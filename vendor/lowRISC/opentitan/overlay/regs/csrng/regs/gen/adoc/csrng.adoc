@@ -2,9 +2,9 @@
 .Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | INTERRUPT_STATE | RW a| -
-| 0x4 | INTERRUPT_ENABLE | RW a| -
-| 0x8 | INTERRUPT_TEST | W a| -
+| 0x0 | INTR_STATE | RW a| -
+| 0x4 | INTR_ENABLE | RW a| -
+| 0x8 | INTR_TEST | W a| -
 | 0xC | ALERT_TEST | W a| -
 | 0x10 | REGWEN | RW a| -
 | 0x14 | CTRL | RW a| -
@@ -29,7 +29,7 @@
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.INTERRUPT_STATE Register
+.INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
@@ -40,7 +40,7 @@
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.INTERRUPT_ENABLE Register
+.INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
@@ -51,7 +51,7 @@
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.INTERRUPT_TEST Register
+.INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved

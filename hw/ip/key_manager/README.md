@@ -1,11 +1,11 @@
 # Key Manager (KM) Component
 
-**Location**: `hw/comp/key_manager`
-**Status**: MVP Implementation
+**Location**: `hw/ip/key_manager`
+**Status**: Implemented
 
 ## Overview
 
-The Key Manager (KM) is a hardware subsystem that provides foundational infrastructure for secure key management operations in a security processor. The MVP implementation establishes the basic infrastructure including a RISC-V CPU, memory interfaces with SRAM scrambling, interconnect fabric, and mailbox communication mechanism.
+The Key Manager (KM) is a hardware subsystem that provides foundational infrastructure for secure key management operations in a security processor. The implementation establishes the basic infrastructure including a RISC-V CPU, memory interfaces with SRAM scrambling, interconnect fabric, and mailbox communication mechanism.
 
 ### Purpose
 
@@ -93,8 +93,9 @@ All KPV read/write operations are performed exclusively by KM firmware via the K
 ## Directory Structure
 
 ```
-hw/comp/key_manager/
+hw/ip/key_manager/
 ├── README.md                 # This file
+├── doc/                      # Design specifications (architecture, firmware)
 ├── rtl/                      # RTL source files
 │   ├── key_manager.sv       # Top-level module
 │   ├── km_crc_engine.sv     # Shared reflected CRC datapath for PCPI instructions
@@ -102,6 +103,8 @@ hw/comp/key_manager/
 │   ├── picorv32_pcpi_crc.sv # PicoRV32 CRC custom-instruction front-end
 │   ├── km_csr.sv            # Control/Status Registers
 │   ├── km_kpv.sv            # Key and Policy Vault (KPV)
+│   ├── km_kpv_regfile.sv    # KPV key storage array
+│   ├── km_kpv_eraser.sv     # KPV hardware erase sequencer
 │   ├── km_mailbox.sv        # Mailbox component
 │   ├── km_drbg_sampler.sv   # DRBG Sampler (CPU→DRBG AXI-Stream bridge)
 │   ├── km_axi_lite_xbar.sv  # AXI-Lite crossbar
@@ -109,32 +112,28 @@ hw/comp/key_manager/
 │   ├── km_sram_interface.sv # SRAM memory interface
 │   ├── km_reset_conditioner.sv # Reset synchronization and extension
 │   └── km_intf_pkg.sv       # Interface package (types, constants)
-├── data/
-│   └── registers/           # Register definitions
-│       ├── rdl/             # SystemRDL source files
-│       │   ├── key_manager.rdl
-│       │   ├── km_csr.rdl
-│       │   ├── km_drbg_sampler.rdl
-│       │   ├── km_kpv.rdl
-│       │   ├── km_mailbox_km.rdl
-│       │   └── km_mailbox_sep.rdl
-│       ├── rtl/             # Generated RTL (from PeakRDL)
-│       ├── svh/             # Generated headers (from PeakRDL)
-│       ├── c/               # Generated C headers (from PeakRDL)
-│       └── Makefile         # Register generation
-├── firmware/                # Primary KM firmware (embedded-style layout)
-│   ├── include/             # Public headers (irq_common.h, etc.)
-│   ├── src/                 # Runtime source (rom_memcpy.c, etc.)
-│   ├── startup/             # Boot/CRT (crt0.s)
-│   └── README.md            # Firmware layout and build notes
-└── tb/                      # Testbench and verification
-    ├── README.md            # Testbench documentation
-    ├── tb_key_manager.sv    # Top-level testbench
-    ├── test_firmware.py     # Generic firmware test runner
-    └── firmware/            # Firmware tests
-        ├── common/          # Common headers and utilities
-        ├── tests/           # Firmware test sources
-        └── demos/           # Demo programs
+├── regs/                     # SystemRDL register definitions
+│   ├── key_manager.rdl      # Address map
+│   ├── km_csr.rdl           # KMCSR
+│   ├── km_kpv.rdl           # KPV
+│   ├── km_drbg_sampler.rdl  # DRBG sampler
+│   ├── km_mailbox_{km,sep}.rdl        # Mailbox, one per port
+│   ├── {hmac,kmac,aes,otbn,abr}_wrapper_key.rdl  # Sideload key interfaces
+│   └── gen/                 # Generated collateral (sv, svh, c, py, ral, adoc, html)
+└── dv/                       # Verification
+    ├── tb/                  # Testbench: tb_key_manager.sv, test_firmware.py, Makefile
+    ├── fw/                  # Firmware under test
+    │   ├── include/         # Public headers
+    │   ├── drivers/         # Driver sources
+    │   ├── startup/         # Boot/CRT (crt0.s)
+    │   ├── link/            # Linker scripts
+    │   ├── scripts/         # Post-processing and analysis tools
+    │   ├── tests/           # One directory per firmware test (cocotb regression)
+    │   ├── sep_images/      # ROM images built for the SEP UVM testbench
+    │   ├── production/      # Production ROM entry point (rom_main)
+    │   └── README.md        # Firmware layout and build notes
+    ├── cocotb/              # Cocotb support code
+    └── testlists/           # Regression test lists
 ```
 
 ## Memory Map
@@ -189,11 +188,16 @@ C header constants (from `key_manager_addr.h`):
 Registers are defined in SystemRDL and generated using PeakRDL:
 
 ```bash
-cd hw/ip/key_manager/regs
-make all        # Generate RTL, headers, and C code
-make all_rtl    # Generate RTL only
-make all_c      # Generate C headers only
+# Run from the repository root. TARGET scopes to one register block; omit it to
+# regenerate every block in the tree.
+make -f ocah.mk ocah-regen-regs TARGET=key_manager     # All non-doc collateral
+make -f ocah.mk ocah-regen-regs-sv TARGET=key_manager  # SystemVerilog RTL only
+make -f ocah.mk ocah-regen-regs-h TARGET=key_manager   # C headers only
 ```
+
+`TARGET=key_manager` covers the address map top. The sub-blocks (`km_csr`, `km_kpv`,
+`km_drbg_sampler`, `km_mailbox_km`, `km_mailbox_sep`, `*_wrapper_key`) are also valid
+`TARGET` values when only one of them changed.
 
 ### Filelist Generation
 
@@ -203,8 +207,8 @@ The component uses Bender for filelist management. Add to your Bender.yml:
 targets:
   key_manager:
     files:
-      - hw/comp/key_manager/rtl/key_manager.sv
-      - hw/comp/key_manager/rtl/km_*.sv
+      - hw/ip/key_manager/rtl/key_manager.sv
+      - hw/ip/key_manager/rtl/km_*.sv
       # ... (see Bender.yml for complete list)
 ```
 
@@ -216,7 +220,8 @@ targets:
        .ROM_SIZE_BYTES(16384),
        .SRAM_SIZE_BYTES(16384),
        .MAILBOX_DEPTH(16),
-       .LATCHED_MEM_RDATA(1'b0)
+       .LATCHED_MEM_RDATA(1'b0),
+       .OTP_EFUSE_REMAP_BASE(32'h1093_0000)  // Integrator-set; see eFuse section
    ) u_key_manager (
        .clk_i(clk),
        .rst_ni(rst_n),
@@ -289,29 +294,27 @@ targets:
 
 ## Testing
 
-The component includes comprehensive firmware-driven tests. See `tb/README.md` for detailed testing documentation.
+The component includes comprehensive firmware-driven tests. See `dv/tb/README.md` for detailed testing documentation.
 
 ### Quick Start
 
 ```bash
-cd hw/comp/key_manager/tb
+cd hw/ip/key_manager/dv/tb
 
 # Run a firmware test
-make run_fw FW_TEST=hello_world
 make run_fw FW_TEST=test_rom_crc
 
 # Run with printf output (VUART printing enabled)
-make run_fw FW_TEST=hello_world VUART_PRINT=1
 make run_fw FW_TEST=test_rom_crc_pcpi_bench VUART_PRINT=1
 
 # Run all tests
 make regression
 
 # Run with waveforms
-make run_fw FW_TEST=hello_world WAVES=1
+make run_fw FW_TEST=test_rom_crc WAVES=1
 
 # Run with both waveforms and printf output
-make run_fw FW_TEST=hello_world WAVES=1 VUART_PRINT=1
+make run_fw FW_TEST=test_rom_crc WAVES=1 VUART_PRINT=1
 ```
 
 **Note**: VUART printing is **disabled by default** to save simulation time during regressions. Enable it with `VUART_PRINT=1` to see `printf()` output from firmware.
@@ -324,7 +327,7 @@ The CRC benchmark records:
 
 ### Test Coverage
 
-The testbench includes 50+ firmware-driven tests covering:
+The testbench includes 109 firmware-driven tests covering:
 - CPU execution and interrupts (EBREAK, bus error)
 - ROM interface, parity checking, and write error detection
 - SRAM interface, parity checking, scrambling, and write-lock
@@ -365,7 +368,7 @@ The testbench includes 50+ firmware-driven tests covering:
 
 - **Address Scrambling**: PRESENT-based remap (XOR + S-box + permutation)
 - **Data Scrambling**: PRESENT-based encryption
-- **Key Source**: 32-bit key written via KMCSR (MVP: deterministic, no DRBG)
+- **Key Source**: 32-bit key in KMCSR, seeded from the DRBG on first boot, then locked (`SCRAMBLER_CTRL.LOCK`) so it cannot be re-read or changed until reset
 - **Enable**: Software-controlled via KMCSR, disabled by default
 
 ### Execute-Permission Whitelist (NX)
@@ -375,7 +378,7 @@ from executing code outside of explicitly allowed memory regions.
 
 | Mode | Executable regions | Trigger |
 |------|--------------------|---------|
-| ROM mode (`SRAM_EXEC_MODE.enable == 0`) | ROM (`0x0000–0x1FFF`) and VROM (`0x1000_0000+`, TB-only) | Power-on / warm reset default |
+| ROM mode (`SRAM_EXEC_MODE.enable == 0`) | ROM (`0x0000–0x3FFF`) and VROM (`0x1000_0000–0x1000_FFFF`, TB-only) | Power-on / warm reset default |
 | SRAM mode (`SRAM_EXEC_MODE.enable == 1`) | ROM, VROM, **and write-locked SRAM regions** (`SRAM_LOCK.lock_bits`) | Set by ROM in stack-less handoff asm |
 
 Any instruction fetch outside the whitelisted set pulses `EXEC_VIOLATION` → `IRQ_STATUS[10]` →
@@ -395,42 +398,14 @@ the window between enabling SRAM execution and actually jumping there.
 
 ### Component Documentation
 
-- **Testbench**: `hw/comp/key_manager/tb/README.md` - Cocotb/VCS flow, firmware tests, regression
-- **Firmware**: `hw/comp/key_manager/firmware/README.md` - Production ROM firmware layout and build
+- **Testbench**: `hw/ip/key_manager/dv/tb/README.md` - Cocotb/VCS flow, firmware tests, regression
+- **Firmware**: `hw/ip/key_manager/dv/fw/README.md` - ROM firmware layout and build
+- **Design specs**: `hw/ip/key_manager/doc/` - Architecture and firmware specifications
 
 ## Dependencies
 
-- **PicoRV32**: RISC-V CPU core (`deps/picorv32/`)
-- **PULP AXI**: AXI-Lite crossbar (`deps/axi/`)
-- **Common Cells**: FIFOs, primitives (`deps/common_cells/`)
+- **PicoRV32**: RISC-V CPU core (`vendor/tenstorrent/tt-picorv32/`)
+- **PULP AXI**: AXI-Lite crossbar (`vendor/pulp-platform/axi/`)
+- **Common Cells**: FIFOs, primitives (`vendor/pulp-platform/common_cells/`)
 - **Scrambler IP**: PRESENT-based scrambling (`hw/ip/scrambler/`)
 - **PeakRDL**: Register generation tool
-
-## Status
-
-**MVP Status**: ✅ Complete
-
-The MVP implementation includes:
-- ✅ PicoRV32 CPU with ROM/SRAM interfaces
-- ✅ AXI-Lite crossbar interconnect
-- ✅ Key and Policy Vault (KPV)
-- ✅ DRBG Sampler (CPU register interface at 0x0000_F000, AXI-Stream to DRBG)
-- ✅ Mailbox for SEP-KM communication
-- ✅ KMCSR control/status registers
-- ✅ SRAM address/data scrambling
-- ✅ ROM/SRAM parity checking
-- ✅ SRAM write-lock (32 regions)
-- ✅ Reset architecture with soft reset
-- ✅ Interrupt aggregation (9 sources)
-- ✅ External crypto engine ports
-- ✅ OTP data interface (life cycle, demotion, UID)
-- ✅ Wipe state support (emergency KPV zeroing)
-- ✅ Error condition outputs (recoverable/unrecoverable)
-- ✅ Comprehensive firmware test suite (50+ tests; see `tb/README.md`)
-
-**Future Enhancements** (Out of Scope for MVP):
-- Full crypto engine integration
-
-## License
-
-Copyright 2026 Tenstorrent Inc.

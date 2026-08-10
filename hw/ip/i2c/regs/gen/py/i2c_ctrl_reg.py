@@ -25,7 +25,7 @@ I2C_CTRL_I2C_CTRL_REG_DEFAULT = 0x00000000
 
 class I2C_CTRL_I2C_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', I2C_CTRL_I2C_CTRL_reg_t),
     ]
 

@@ -18,6 +18,42 @@ testbenches. Tests import OCAH classes and plain dataclasses; backend
 `cocotbext-jtag` is pinned in `pyproject.toml` as `>=0.4.0,<0.5`. Installed
 package metadata for version 0.4.0 reports license `MIT`.
 
+## Cocotb Checker Evidence
+
+`OcahJtagChecker` retains its IEEE 1149.1 item checks and composes the shared
+`ocah_checker` evidence/finalization core:
+
+```python
+from ocah_jtag_vip import OcahJtagChecker
+
+checker = OcahJtagChecker(
+    required_ids={"CHK-IDCODE-RAW", "CHK-IDCODE-MARKER"},
+)
+checker.expect_equal(
+    "CHK-IDCODE-RAW",
+    observed=idcode,
+    expected=expected_idcode,
+    context="tap=primary",
+)
+checker.expect_equal(
+    "CHK-IDCODE-MARKER",
+    observed=idcode & 1,
+    expected=1,
+    context=f"raw={idcode:#x}",
+)
+checker.finalize()
+```
+
+`check_item()` continues to check scan width, IDCODE marker shape, and BYPASS
+record shape. `expect_equal()`/`expect_true()` add named exact-value evidence.
+`finalize()` fails on retained protocol errors, failed evidence, zero checks, or
+missing required IDs.
+
+Monitors deliberately log and catch callback exceptions. An attached checker
+therefore retains its protocol error before raising, and the owning test or
+scoreboard must call `finalize()` after traffic. The first adopter is the DTP
+`dtp_jtag_idcode_test` sequence.
+
 ## Package Layout
 
 ```text

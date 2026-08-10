@@ -5,7 +5,6 @@
 // AUTOMATICALLY GENERATED - DO NOT EDIT
 //
 // Fabric: smc_local_xbar
-// Generated: 2026-07-21 21:05:00
 //
 // ============================================================================
 // ADDRESS MAP
@@ -165,7 +164,7 @@ module smc_local_xbar
     .mst_req_t    (xbar_mst_req_t),
     .mst_resp_t   (xbar_mst_resp_t),
     .rule_t       (addr_rule_t)
-  ) i_axi_xbar (
+  ) u_axi_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),
     .test_i                (test_i),
@@ -224,7 +223,7 @@ module smc_local_xbar
     .full_resp_t     (xbar_out_local_reg_resp_t),
     .lite_req_t      (local_reg_req_t),
     .lite_resp_t     (local_reg_resp_t)
-  ) i_local_reg_a2l_1 (
+  ) u_local_reg_a2l_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (1'b0),
@@ -273,7 +272,7 @@ module smc_local_xbar
     .axi_mst_resp_t      (periph_reg_stage1_resp_t),
     .axi_slv_req_t       (xbar_out_periph_reg_req_t),
     .axi_slv_resp_t      (xbar_out_periph_reg_resp_t)
-  ) i_periph_reg_dw_2 (
+  ) u_periph_reg_dw_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .slv_req_i  (xbar_out_periph_reg_req),
@@ -295,7 +294,7 @@ module smc_local_xbar
     .full_resp_t     (periph_reg_stage1_resp_t),
     .lite_req_t      (periph_reg_req_t),
     .lite_resp_t     (periph_reg_resp_t)
-  ) i_periph_reg_a2l_3 (
+  ) u_periph_reg_a2l_2 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (1'b0),
@@ -346,7 +345,7 @@ module smc_local_xbar
     .axi_mst_resp_t      (smc_dfd_reg_stage1_resp_t),
     .axi_slv_req_t       (xbar_out_smc_dfd_reg_req_t),
     .axi_slv_resp_t      (xbar_out_smc_dfd_reg_resp_t)
-  ) i_smc_dfd_reg_dw_4 (
+  ) u_smc_dfd_reg_dw_1 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .slv_req_i  (xbar_out_smc_dfd_reg_req),
@@ -368,7 +367,7 @@ module smc_local_xbar
     .full_resp_t     (smc_dfd_reg_stage1_resp_t),
     .lite_req_t      (smc_dfd_reg_stage2_req_t),
     .lite_resp_t     (smc_dfd_reg_stage2_resp_t)
-  ) i_smc_dfd_reg_a2l_5 (
+  ) u_smc_dfd_reg_a2l_2 (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (1'b0),
@@ -396,7 +395,7 @@ module smc_local_xbar
     .apb_req_t        (smc_dfd_reg_req_t),
     .apb_resp_t       (smc_dfd_reg_resp_t),
     .rule_t           (apb_addr_rule_t)
-  ) i_smc_dfd_reg_l2apb_6 (
+  ) u_smc_dfd_reg_l2apb_3 (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .axi_lite_req_i  (smc_dfd_reg_stage2_req),

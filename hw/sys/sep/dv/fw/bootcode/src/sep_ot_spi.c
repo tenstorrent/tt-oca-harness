@@ -10,7 +10,7 @@
  * over CSAAT-chained segments.
  *
  * Freestanding ROM environment (no libc). Register access uses the absolute
- * addresses and field unions from och_sep_top_reg.h via the ROM MMIO helpers.
+ * addresses and field unions from sep.h via the ROM MMIO helpers.
  * All timing/device parameters come from the active entry of the parameter table
  * (sep_ot_spi_profiles.h) so a new attached flash part is a one-row table edit.
  */
@@ -21,7 +21,7 @@
 #include "errors.h" /* status codes + simputs/simputshex32 helpers */
 #include "rom_mmio.h"
 #include "harden.h" /* fault-injection value launder (harden_u32)  */
-#include "och_sep_top_reg.h"
+#include "sep.h"
 
 #include "sep_ot_spi.h"
 #include "sep_ot_flash_opcodes.h"
@@ -65,10 +65,10 @@ static uint16_t ot_calc_clkdiv(uint16_t sysclk_mhz, uint16_t sck_mhz) {
 }
 
 static bool ot_rx_wait_data(void) {
-    SPI_CONTROLLER_STATUS_reg_u status;
+    spi_controller__STATUS_t status;
     for (uint32_t i = 0u; i < OT_SPI_POLL_MAX; i++) {
-        status.val = mmio_read32(SPI_CONTROLLER_STATUS_REG_ADDR);
-        if (!status.f.rxempty) {
+        status.w = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        if (!status.f.RXEMPTY) {
             return true;
         }
     }
@@ -80,10 +80,10 @@ static bool ot_rx_wait_data(void) {
  * a known-empty state so residual bytes from a prior or aborted transfer can never
  * leak into the next one. */
 static void ot_spi_flush_fifos(void) {
-    SPI_CONTROLLER_CTRL_reg_u ctrl;
-    ctrl.val = mmio_read32(SPI_CONTROLLER_CTRL_REG_ADDR);
-    ctrl.f.sw_rst = 1u;
-    mmio_write32(SPI_CONTROLLER_CTRL_REG_ADDR, ctrl.val);
+    spi_controller__CTRL_t ctrl;
+    ctrl.w = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    ctrl.f.SW_RST = 1u;
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 }
 
 /* ── Configuration + bring-up ─────────────────────────────────────────────── */
@@ -123,25 +123,24 @@ static int ot_spi_wait_ready(void);
 /* Program mux + controller registers from a parameter set and wait for ready. */
 static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     /* Select the OpenTitan controller on the SPI mux, release CS force-high. */
-    OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_reg_u mux = {
-        .val = OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_DEFAULT};
+    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
     mux.f.spi_sel = 1u; /* 0 = Cadence, 1 = OpenTitan */
     mux.f.cs_force_high = 0u;
-    mmio_write32(SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_REG_ADDR, mux.val);
+    mmio_write32(OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, mux.w);
 
     /* Clock / mode / chip-select timing. */
-    SPI_CONTROLLER_CFG_reg_u cfg = {.val = 0u};
-    cfg.f.clkdiv = ot_calc_clkdiv(g_sysclk_mhz, p->sck_mhz);
-    cfg.f.cpol = p->cpol ? 1u : 0u;
-    cfg.f.cpha = p->cpha ? 1u : 0u;
-    cfg.f.fullcyc = p->full_cyc ? 1u : 0u;
-    cfg.f.csnidle = p->csnidle;
-    cfg.f.csnlead = p->csnlead;
-    cfg.f.csntrail = p->csntrail;
-    mmio_write32(SPI_CONTROLLER_CFG_REG_ADDR, cfg.val);
+    spi_controller__CFG_t cfg = {.w = 0u};
+    cfg.f.CLKDIV = ot_calc_clkdiv(g_sysclk_mhz, p->sck_mhz);
+    cfg.f.CPOL = p->cpol ? 1u : 0u;
+    cfg.f.CPHA = p->cpha ? 1u : 0u;
+    cfg.f.FULLCYC = p->full_cyc ? 1u : 0u;
+    cfg.f.CSNIDLE = p->csnidle;
+    cfg.f.CSNLEAD = p->csnlead;
+    cfg.f.CSNTRAIL = p->csntrail;
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
 
     /* Single chip-select (CS0). */
-    mmio_write32(SPI_CONTROLLER_CSID_REG_ADDR, 0u);
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0u);
 
     /* Enable the controller and its output drivers; set the RX watermark used to
      * pace the DMA drain of the RX FIFO. */
@@ -149,14 +148,14 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     if (rx_wm != (uint32_t)p->rx_watermark) {
         simputshex32("OT_SPI: rx_watermark out of range, clamped from=", (uint32_t)p->rx_watermark);
     }
-    SPI_CONTROLLER_CTRL_reg_u ctrl = {.val = 0u};
-    ctrl.f.spien = 1u;
-    ctrl.f.output_en = 1u;
-    ctrl.f.rx_watermark = rx_wm;
-    mmio_write32(SPI_CONTROLLER_CTRL_REG_ADDR, ctrl.val);
+    spi_controller__CTRL_t ctrl = {.w = 0u};
+    ctrl.f.SPIEN = 1u;
+    ctrl.f.OUTPUT_EN = 1u;
+    ctrl.f.RX_WATERMARK = rx_wm;
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     /* Clear any latched error bits (write-1-to-clear). */
-    mmio_write32(SPI_CONTROLLER_ERROR_STATUS_REG_ADDR, 0xFFFFFFFFu);
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
 
     if (ot_spi_wait_ready() != 0) {
         return SEP_MSG_SPI_OT_INIT_FAILED;
@@ -185,10 +184,10 @@ uint32_t ot_spi_reinit(void) {
 /* ── Transaction primitives (internal) ────────────────────────────────────── */
 
 static int ot_spi_wait_ready(void) {
-    SPI_CONTROLLER_STATUS_reg_u status;
+    spi_controller__STATUS_t status;
     for (uint32_t i = 0u; i < OT_SPI_POLL_MAX; i++) {
-        status.val = mmio_read32(SPI_CONTROLLER_STATUS_REG_ADDR);
-        if (status.f.ready) {
+        status.w = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        if (status.f.READY) {
             return 0;
         }
     }
@@ -202,21 +201,21 @@ static int ot_spi_segment(uint8_t dir, uint8_t speed, uint16_t len_bytes, bool c
     if (ot_spi_wait_ready() != 0) {
         return -1;
     }
-    SPI_CONTROLLER_CMD_reg_u cmd = {.val = 0u};
-    cmd.f.len = (uint32_t)(len_bytes - 1u); /* LEN encodes count - 1 */
-    cmd.f.csaat = csaat ? 1u : 0u;
-    cmd.f.speed = (uint32_t)speed & 0x3u;
-    cmd.f.direction = (uint32_t)dir & 0x3u;
-    mmio_write32(SPI_CONTROLLER_CMD_REG_ADDR, cmd.val);
+    spi_controller__CMD_t cmd = {.w = 0u};
+    cmd.f.LEN = (uint32_t)(len_bytes - 1u); /* LEN encodes count - 1 */
+    cmd.f.CSAAT = csaat ? 1u : 0u;
+    cmd.f.SPEED = (uint32_t)speed & 0x3u;
+    cmd.f.DIRECTION = (uint32_t)dir & 0x3u;
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
     return 0;
 }
 
 static int ot_spi_tx_word(uint32_t w) {
-    SPI_CONTROLLER_STATUS_reg_u status;
+    spi_controller__STATUS_t status;
     for (uint32_t i = 0u; i < OT_SPI_POLL_MAX; i++) {
-        status.val = mmio_read32(SPI_CONTROLLER_STATUS_REG_ADDR);
-        if (!status.f.txfull) {
-            mmio_write32(SPI_CONTROLLER_TXDATA_REG_ADDR, w);
+        status.w = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        if (!status.f.TXFULL) {
+            mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, w);
             return 0;
         }
     }
@@ -224,9 +223,9 @@ static int ot_spi_tx_word(uint32_t w) {
 }
 
 static uint32_t ot_spi_error_status(void) {
-    uint32_t v = mmio_read32(SPI_CONTROLLER_ERROR_STATUS_REG_ADDR);
+    uint32_t v = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (v != 0u) {
-        mmio_write32(SPI_CONTROLLER_ERROR_STATUS_REG_ADDR, v); /* write-1-to-clear */
+        mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, v); /* write-1-to-clear */
     }
     return v;
 }
@@ -257,7 +256,8 @@ typedef struct {
 } ot_spi_dst_region_t;
 
 static const ot_spi_dst_region_t ot_spi_dst_regions[] = {
-    {(uint32_t)SEP_SRAM_MEM_BASE_ADDR, (uint32_t)SEP_SRAM_MEM_SIZE, OT_DMA_ASID_OT_INTERNAL},
+    {(uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR, (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE,
+     OT_DMA_ASID_OT_INTERNAL},
 };
 #define OT_SPI_DST_REGION_COUNT (sizeof(ot_spi_dst_regions) / sizeof(ot_spi_dst_regions[0]))
 
@@ -382,7 +382,7 @@ uint32_t ot_spi_flash_read(uint32_t flash_off, uint32_t dst_sram, uint32_t len) 
             if (!ot_rx_wait_data()) {
                 return SEP_MSG_SPI_OT_TRANSPORT_ERROR;
             }
-            uint32_t word = mmio_read32(SPI_CONTROLLER_RXDATA_REG_ADDR);
+            uint32_t word = mmio_read32(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
             uint32_t remain = chunk - rxdone;
             uint32_t nb = (remain < 4u) ? remain : 4u;
             for (uint32_t b = 0u; b < nb; b++) {
@@ -431,7 +431,7 @@ uint32_t ot_spi_flash_read(uint32_t flash_off, uint32_t dst_sram, uint32_t len) 
  * report a false early success. STATUS is W1C and the engine is idle at every
  * call site, so the write sticks. */
 static void ot_spi_dma_cleanup(void) {
-    mmio_write32(SECURE_DMA_STATUS_REG_ADDR, OT_DMA_STATUS_CLEAR);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, OT_DMA_STATUS_CLEAR);
 }
 
 /* Return the DMA to a clean idle state after a failed streamed read. A failed
@@ -447,9 +447,9 @@ static void ot_spi_dma_cleanup(void) {
 static void ot_dma_teardown(void) {
     /* Abort is honoured regardless of cfg_regwen, then wait (bounded) for the
      * engine to drop out of busy so the config CSRs unlock. */
-    mmio_write32(SECURE_DMA_CONTROL_REG_ADDR, OT_DMA_CTRL_ABORT);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, OT_DMA_CTRL_ABORT);
     for (uint32_t i = 0u; i < OT_SPI_POLL_MAX; i++) {
-        if (!(mmio_read32(SECURE_DMA_STATUS_REG_ADDR) & OT_DMA_STATUS_BUSY)) {
+        if (!(mmio_read32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR) & OT_DMA_STATUS_BUSY)) {
             break;
         }
     }
@@ -457,9 +457,9 @@ static void ot_dma_teardown(void) {
     /* Disarm the handshake at both ends. CONTROL is always writable and clearing
      * it drops hardware_handshake_enable even if the abort could not clear busy;
      * the SPI EVENT_ENABLE is a controller register, unaffected by DMA regwen. */
-    mmio_write32(SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR, 0u);
-    mmio_write32(SECURE_DMA_CONTROL_REG_ADDR, 0u);
-    mmio_write32(SPI_CONTROLLER_EVENT_ENABLE_REG_ADDR, 0u);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0u);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0u);
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, 0u);
 
     ot_spi_flush_fifos();
     (void)ot_spi_error_status();
@@ -479,15 +479,17 @@ static void ot_dma_teardown(void) {
  * the region makes it a genuine hardware bound should a repurposer target a
  * SoC-bus destination. */
 static void ot_spi_dma_dst_setup(const ot_spi_dst_region_t *region, uint32_t dst) {
-    mmio_write32(SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_ADDR, region->base);
-    mmio_write32(SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_ADDR, region->base + region->size - 1u);
-    mmio_write32(SECURE_DMA_RANGE_VALID_REG_ADDR, 0x1u);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, region->base);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR,
+                 region->base + region->size - 1u);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
 
-    mmio_write32(SECURE_DMA_SRC_ADDR_LO_REG_ADDR, SPI_CONTROLLER_RXDATA_REG_ADDR);
-    mmio_write32(SECURE_DMA_SRC_ADDR_HI_REG_ADDR, 0u);
-    mmio_write32(SECURE_DMA_DST_ADDR_LO_REG_ADDR, dst);
-    mmio_write32(SECURE_DMA_DST_ADDR_HI_REG_ADDR, 0u);
-    mmio_write32(SECURE_DMA_ADDR_SPACE_ID_REG_ADDR,
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
+                 OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0u);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
                  ((uint32_t)region->dst_asid << 4) | OT_DMA_ASID_OT_INTERNAL);
 
     /* TODO(repurpose): destination-specific setup — e.g. the ICCM address-remap
@@ -522,22 +524,22 @@ static uint32_t ot_dma_stream(uint32_t flash_off, uint32_t dst, uint32_t dma_len
     }
 
     /* Enable the controller's RX-watermark event, which drives the DMA trigger. */
-    SPI_CONTROLLER_EVENT_ENABLE_reg_u ev = {.val = 0u};
-    ev.f.rxwm = 1u;
-    mmio_write32(SPI_CONTROLLER_EVENT_ENABLE_REG_ADDR, ev.val);
+    spi_controller__EVENT_ENABLE_t ev = {.w = 0u};
+    ev.f.RXWM = 1u;
+    mmio_write32(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, ev.w);
 
     /* Program the source + destination CSRs (range, addresses, ASID) for the region. */
     ot_spi_dma_dst_setup(region, dst);
 
-    mmio_write32(SECURE_DMA_TRANSFER_WIDTH_REG_ADDR, OT_DMA_WIDTH_4B);
-    mmio_write32(SECURE_DMA_SRC_CONFIG_REG_ADDR, OT_DMA_SRC_FIXED);
-    mmio_write32(SECURE_DMA_DST_CONFIG_REG_ADDR, OT_DMA_DST_INCR);
-    mmio_write32(SECURE_DMA_TOTAL_DATA_SIZE_REG_ADDR, dma_len);
-    mmio_write32(SECURE_DMA_CHUNK_DATA_SIZE_REG_ADDR, chunk_bytes);
-    mmio_write32(SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR, 0x1u);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, OT_DMA_WIDTH_4B);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, OT_DMA_SRC_FIXED);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, OT_DMA_DST_INCR);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, dma_len);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, chunk_bytes);
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1u);
 
     /* Arm the DMA; it now drains one chunk per RX-watermark trigger. */
-    mmio_write32(SECURE_DMA_CONTROL_REG_ADDR,
+    mmio_write32(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
                  OT_DMA_CTRL_GO | OT_DMA_CTRL_INITIAL | OT_DMA_CTRL_HSHAKE);
 
     /* Issue the read command, then feed the FIFO with CSAAT-chained RX segments. */
@@ -559,9 +561,10 @@ static uint32_t ot_dma_stream(uint32_t flash_off, uint32_t dst, uint32_t dma_len
     /* Wait (bounded) for the DMA to finish draining. */
     bool done = false;
     for (uint32_t i = 0u; i < OT_SPI_POLL_MAX; i++) {
-        uint32_t st = mmio_read32(SECURE_DMA_STATUS_REG_ADDR);
+        uint32_t st = mmio_read32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (st & OT_DMA_STATUS_ERROR) {
-            simputshex32("OT_SPI: dma error code=", mmio_read32(SECURE_DMA_ERROR_CODE_REG_ADDR));
+            simputshex32("OT_SPI: dma error code=",
+                         mmio_read32(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
             rc = SEP_MSG_SPI_OT_TRANSPORT_ERROR;
             goto cleanup;
         }

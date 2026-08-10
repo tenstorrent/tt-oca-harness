@@ -6,8 +6,26 @@
  * link/km_production.ld so both builds keep an identical SRAM map. Before the
  * INCLUDE, the including script must define the `sram` MEMORY region (0x4000,
  * 16 KB) and map the .data load region with REGION_ALIAS("DATA_LOAD", <rom|vrom>).
+ *
+ * SRAM map (0x4000-0x7FFF, 16 KB), high addresses at the top:
+ *
+ *   0x8000  +------------------------------+
+ *           | .rom_persist (512 B, NOLOAD) |  region 31: ROM-owned warm-persist,
+ *   0x7E00  +------------------------------+               write-locked before handoff
+ *           | .bss                         |  mutable-firmware area: packed downward
+ *           +------------------------------+  from below persist
+ *           | .data (loaded from DATA_LOAD)|
+ *           +------------------------------+  <- DATA_START / stack top
+ *           | stack (grows down)           |
+ *           |              v               |
+ *   0x4000  +------------------------------+  SRAM base
  */
 
+/* Warm-persist region: highest 512 B of SRAM (region 31, 0x7E00-0x7FFF).
+ * Owned exclusively by ROM firmware (the mutable-firmware load area, stack, and
+ * BSS/data live below 0x7E00). Cold-initialized by rom_persist_cold_init();
+ * survives warm reset. Write-locked (SRAM_LOCK bit 31) before handoff to
+ * mutable firmware, after which mutable code cannot write it. */
 .rom_persist ORIGIN(sram) + LENGTH(sram) - 0x200 (NOLOAD) : {
     ROM_PERSIST_START = .;
     KEEP(*(.rom_persist))
@@ -16,6 +34,8 @@
     ROM_PERSIST_END = .;
 } > sram
 
+/* Runtime SRAM, packed downward from just below the warm-persist region:
+ * .bss at the top of the usable area, .data below it, stack below .data. */
 .bss ADDR(.rom_persist) - SIZEOF(.bss) : {
     BSS_START = .;
     . = ALIGN(4);
@@ -39,16 +59,37 @@
 } > sram AT> DATA_LOAD
 DATA_LOAD_START = LOADADDR(.data);
 
+/* Anchor for gp-relative small-data accesses. */
 PROVIDE(__global_pointer$ = DATA_START + 0x800);
 
+/* Main stack grows downward immediately below .data. */
 STACK  = ADDR(.data);
 stack  = STACK;
 _stack = STACK;
 
+/* --------------------------------------------------------------------------
+ * Mutable-firmware load limit (static, worst-case ROM stack bounded).
+ *
+ * The ROM stack grows DOWN from STACK (= ADDR(.data)); mutable firmware is
+ * loaded UP from the SRAM base (0x4000).  After a warm reset that follows
+ * mutable-firmware execution the ROM re-runs and its stack may descend deeper
+ * than it did when the image was first loaded, so the maximum image size MUST
+ * be bounded by the worst-case ROM stack depth, not by the live stack pointer.
+ *
+ * __rom_max_stack is the worst-case ROM main-stack budget in bytes, supplied
+ * via --defsym=__rom_max_stack=<bytes> from the firmware build and validated
+ * against the real production ELF by scripts/km_stack_analyze.py.  PROVIDE gives
+ * a safe default for ad-hoc links that do not pass it.
+ *
+ * KM_FW_LOAD_LIMIT is the exclusive upper bound of the load area: the lowest
+ * address the ROM stack can reach, aligned DOWN to a 512-byte SRAM write-lock
+ * region so the firmware image and the ROM stack never share a lock region.
+ * -------------------------------------------------------------------------- */
 PROVIDE(__rom_max_stack = 0x600);
 KM_FW_LOAD_LIMIT = (STACK - __rom_max_stack) & ~(0x200 - 1);
 PROVIDE(__km_fw_load_limit = KM_FW_LOAD_LIMIT);
 
+/* Shared SRAM overflow assertions. */
 ASSERT(ROM_PERSIST_END == ORIGIN(sram) + LENGTH(sram),
        "Linker error: warm-persist region must end at top of SRAM (0x8000)")
 ASSERT(ADDR(.data) >= ORIGIN(sram),
@@ -56,4 +97,4 @@ ASSERT(ADDR(.data) >= ORIGIN(sram),
 ASSERT(_stack >= ORIGIN(sram),
        "SRAM overflow: stack underflows SRAM base (0x4000)")
 ASSERT(KM_FW_LOAD_LIMIT > ORIGIN(sram),
-       "ROM stack budget (__rom_max_stack) leaves no SRAM for mutable firmware")
+       "ROM stack budget (__rom_max_stack) leaves no SRAM for the mutable firmware load area")

@@ -92,15 +92,22 @@ _start:
     bnez    t2, .L_fill_vector_table
 
     #--------------------------------------------------------------------------
-    # Step 5: Initialize Global Pointer (gp)
+    # Step 5: Initialize Global Pointer (gp) and Thread Pointer (tp)
     #
     # The global pointer enables efficient access to small data sections
     # via gp-relative addressing (linker relaxation).
+    #
+    # tp must point at the TLS block before any libc call: a picolibc built
+    # with thread-local storage enabled reaches state such as the rand() seed
+    # through tp, and would fault on a store to address 0 otherwise. The block
+    # is empty when the toolchain emits no TLS, so this is safe either way.
     #--------------------------------------------------------------------------
     .option push
     .option norelax
     la      gp, __global_pointer$
     .option pop
+
+    la      tp, __tls_base
 
     #--------------------------------------------------------------------------
     # Step 6: Zero BSS section

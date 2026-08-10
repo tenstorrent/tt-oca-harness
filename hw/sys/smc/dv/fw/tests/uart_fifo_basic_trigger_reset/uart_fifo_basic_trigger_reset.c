@@ -313,38 +313,103 @@ static int uart_test_fifo_reset(uint32_t uart_base) {
         return -5; // RX ready interrupt should not be pending after reset.
     }
 
-    // TX side: after writing 8 entries, perform a TX FIFO reset and indirectly confirm FIFO empty
-    // via LSR.THRE/TEMT.
-    simputs("  [STEP] Fill TX FIFO with 8 bytes\n");
-    for (int i = 0; i < 8; i++) {
+    // TX side: fill until THRE==0 (TX holding data), then XMIT reset must idle.
+    // Slow the divisor so the FIFO cannot drain before the pre-reset sample.
+    {
+        uart_16550_main__LCR_t lcr;
+        const uint32_t slow_div = 32u;
+
+        lcr.w =
+            read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+        lcr.f.DLAB = 0x1u;
+        write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
+                               SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+                  lcr.w);
         write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  0x50u + (uint32_t)i);
+                  slow_div & 0xFFu);
+        write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
+                               SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+                  (slow_div >> 8) & 0xFFu);
+        lcr.f.DLAB = 0x0u;
+        write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
+                               SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+                  lcr.w);
+    }
+
+    simputs("  [STEP] Fill TX FIFO until THRE==0\n");
+    {
+        int saw_thre0 = 0;
+        for (int i = 0; i < 16; i++) {
+            write_reg(uart_base +
+                          (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+                      0x50u + (uint32_t)i);
+            lsr.w = read_reg(uart_base +
+                             (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
+                              SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+            if (lsr.f.THRE == 0u) {
+                saw_thre0 = 1;
+                break;
+            }
+        }
+
+        if (!saw_thre0) {
+            simputs("    [ERROR] THRE never 0 before TX reset (TX not holding data)\n");
+            simputshex32("    LSR = 0x", lsr.w);
+            simputs("\n");
+            return -6;
+        }
+    }
+
+    // Pre-reset proof: TX must still hold data so post-idle cannot be natural drain alone.
+    simputs("  [CHECK] LSR.THRE should be 0 before TX reset\n");
+    lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+    if (lsr.f.THRE != 0u) {
+        simputs("    [ERROR] LSR.THRE != 0 before TX reset\n");
+        simputshex32("    LSR = 0x", lsr.w);
+        simputs("\n");
+        return -7;
     }
 
     // Perform TX reset.
+    simputs("  [STEP] Do TX FIFO reset\n");
     uart_fifo_reset(uart_base, 0, 1);
 
-    // After reset, expect THRE=1 and TEMT=1, meaning both TX FIFO and shifter are empty.
+    // XMIT FIFO reset must raise THRE immediately (FIFO empty). TEMT may lag while
+    // a character already in the shift register drains at the slow divisor — wait
+    // for TEMT separately with a long poll (fail-closed).
+    simputs("  [CHECK] LSR.THRE should be 1 after TX reset\n");
+    lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+    if (lsr.f.THRE != 1u) {
+        simputs("    [ERROR] LSR.THRE != 1 after TX reset (FIFO not cleared)\n");
+        simputshex32("    LSR = 0x", lsr.w);
+        simputs("\n");
+        return -8;
+    }
+
     {
-        int seen_tx_empty = 0;
-        int max_iters = 32;
+        int seen_temt = 0;
+        const int max_iters = 4096;
 
         for (int iter = 0; iter < max_iters; iter++) {
             lsr.w = read_reg(uart_base +
                              (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                               SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-            if ((lsr.f.THRE == 1u) && (lsr.f.TEMT == 1u)) {
-                seen_tx_empty = 1;
+            if (lsr.f.TEMT == 1u) {
+                seen_temt = 1;
                 break;
             }
         }
 
-        if (!seen_tx_empty) {
-            simputs("    [ERROR] THRE/TEMT not both 1 after TX reset\n");
+        if (!seen_temt) {
+            simputs("    [ERROR] LSR.TEMT != 1 after TX reset (shifter not idle)\n");
             simputshex32("    LSR = 0x", lsr.w);
             simputs("\n");
-            return -6;
+            return -9;
         }
     }
 

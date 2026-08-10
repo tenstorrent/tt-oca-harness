@@ -67,11 +67,7 @@ module efuse_interface_controller
     parameter int unsigned LC_STATE_WIDTH = 4,
     parameter int unsigned LC_STATE_BIT_POSITION = 0,
 
-    parameter type efuse_map_t = logic,
-
-    // Temporary: fix is on another branch
-    localparam bit [31:0] SMC_EFUSE_MAP_CHIPLET_ID_REG_ADDR = 32'hC000B008,
-    localparam bit [31:0] SMC_EFUSE_MAP_PACKAGE_ID_REG_ADDR = 32'hC000B028
+    parameter type efuse_map_t = logic
 ) (
     input  logic                     clk_i,
     input  logic                     rst_ni,

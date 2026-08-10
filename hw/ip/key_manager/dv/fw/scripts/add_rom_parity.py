@@ -71,7 +71,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Add byte-wise odd parity to a KM ROM hex file.")
     parser.add_argument("input", type=Path)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--depth", type=int, default=2048)
+    parser.add_argument("--depth", type=int, default=4096,
+                        help="ROM depth in words (default: 4096 = 16 KB, the key_manager ROM size)")
     parser.add_argument("--default-word", type=lambda x: int(x, 0), default=NOP)
     args = parser.parse_args()
 

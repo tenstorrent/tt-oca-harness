@@ -97,9 +97,9 @@ int main(void) {
         serviced_single_bit_interrupt = false;
         serviced_double_bit_interrupt = false;
 
-        // set the random seed
+        // set the random seed (wait for TB AXI write_scratch to replace get_seed)
         write_scratch(hartid, get_seed);
-        volatile uint32_t current_scratch_val;
+        volatile uint32_t current_scratch_val = get_seed;
         while (current_scratch_val == get_seed) {
             current_scratch_val = read_scratch(0);
         }

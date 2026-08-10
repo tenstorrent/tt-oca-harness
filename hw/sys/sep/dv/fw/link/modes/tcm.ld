@@ -72,9 +72,39 @@ SECTIONS {
         . = ALIGN(4);
     } > dtcm
 
-    .bss (NOLOAD) : {
+    /*
+     * Thread-local storage.
+     *
+     * picolibc keeps state such as the rand() seed in .tdata/.tbss when it is
+     * built with thread-local-storage enabled, and reaches it via tp-relative
+     * accesses. Placing the TLS block explicitly gives crt0 a base symbol to
+     * point tp at; without it tp stays 0 and the first access traps. Whether
+     * the toolchain emits TLS or not, this block is simply empty and harmless.
+     *
+     * This firmware is single-threaded, so the linked .tdata doubles as the
+     * initial thread's copy and needs no runtime relocation. .tbss is placed
+     * directly ahead of .bss so the existing zeroing loop clears it too.
+     */
+    .tdata : {
+        . = ALIGN(16);
+        PROVIDE(__tls_base = .);
+        *(.tdata)
+        *(.tdata.*)
+        . = ALIGN(4);
+    } > dtcm
+
+    .tbss (NOLOAD) : {
         . = ALIGN(4);
         BSS_START = .;
+        *(.tbss)
+        *(.tbss.*)
+        *(.tcommon)
+        . = ALIGN(4);
+        PROVIDE(__tls_end = .);
+    } > dtcm
+
+    .bss (NOLOAD) : {
+        . = ALIGN(4);
         *(.bss)
         *(.bss.*)
         *(.sbss)

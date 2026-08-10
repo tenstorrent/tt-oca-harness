@@ -4,7 +4,10 @@
 // SMC Peripherals
 
 module smc_peripherals #(
-    parameter int unsigned MAX_TRANS = 2  // GPIO obs consistency; threaded from smc_wrapper
+    parameter int unsigned MAX_TRANS = 2,  // GPIO obs consistency; threaded from smc_wrapper
+    // Vendor eFuse shim CSR block carved off the base of the smc_external window;
+    // literal because the open smc_external map is opaque. Threaded from smc.sv.
+    parameter int unsigned EFUSE_SHIM_SIZE = 'h44
 ) (
 	input  logic                                        											clk_ref_i,
 	input  logic                                        											clk_smc_i,
@@ -220,6 +223,9 @@ module smc_peripherals #(
 	smc_pkg::smc_axil_32_32_req_t                                                            axil_efuse_req;
 	smc_pkg::smc_axil_32_32_resp_t                                                           axil_efuse_resp;
 
+	smc_pkg::smc_axil_32_32_req_t                                                            axil_external_req;
+	smc_pkg::smc_axil_32_32_resp_t                                                           axil_external_resp;
+
 	smc_pkg::smc_axil_32_32_req_t                                                            axil_telemetry_req;
 	smc_pkg::smc_axil_32_32_resp_t                                                           axil_telemetry_resp;
 
@@ -337,7 +343,9 @@ module smc_peripherals #(
 	// AXI-Lite XBar //
 	///////////////////
 
-	smc_periph_axi_lite_xbar u_smc_periph_axi_lite_xbar (
+	smc_periph_axi_lite_xbar #(
+		.EFUSE_SHIM_SIZE                  (EFUSE_SHIM_SIZE)
+	) u_smc_periph_axi_lite_xbar (
 		.clk_i                            (clk_smc_i),
 		.rst_ni                           (rst_primary_smc_clk_no),
 		.test_i                           (test_en_i),
@@ -369,9 +377,12 @@ module smc_peripherals #(
         .reset_unit_resp_i                (axil_reset_unit_resp),
         .misc_req_o                       (axil_misc_req),
         .misc_resp_i                      (axil_misc_resp),
-		.external_req_o                   (smc_external_req_o),
-		.external_resp_i                  (smc_external_resp_i)
+		.external_req_o                   (axil_external_req),
+		.external_resp_i                  (axil_external_resp)
 	);
+
+	assign smc_external_req_o = axil_external_req;
+	assign axil_external_resp = smc_external_resp_i;
 
 	// Rebase DTP CSR addresses to zero: the xbar routes on the full system
 	// address, but the DTP CSR block expects an offset from its base.
@@ -807,7 +818,7 @@ module smc_peripherals #(
 		.test_en_i                       (test_en_i),
 		.scan_rst_ni                     (scan_rst_ni),
 
-		// Functional AXI4-Lite slave (from SMC peripherals xbar)
+		// Functional AXI4-Lite slave (SMC peripherals xbar efuse leg + eFuse shim leg)
 		.axil_req_i                      (axil_efuse_req),
 		.axil_resp_o                     (axil_efuse_resp),
 

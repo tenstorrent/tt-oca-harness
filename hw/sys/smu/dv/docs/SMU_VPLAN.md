@@ -826,7 +826,7 @@ Commercial green SEP gate (no retire required). Catalogued for OSS handoff;
 **not** enrolled until wrapper scoreboards exist:
 
 `smu_sep_smc_xbar_programmable_addr_test`, `smu_sep_wdt_reset_to_smc_test`,
-`smu_sep_spi_bridge_test`, `smu_sep_axi_extension_decode_test`,
+`smu_sep_spi_bridge_test`, `smu_sep_external_decode_test`,
 `smu_sep_external_irq_test`, `smu_sep_alias_mailbox_interrupt_probe_test`,
 `smu_sep_ext_axi_combined_probe_test`, `smu_sep_km_otbn_memory_test`,
 `smu_sep_debug_bus_test`, `smu_fuse_sense_handshake_test`,

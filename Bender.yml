@@ -309,7 +309,7 @@ sources:
   - target: all(dtp, not(sep))
     files:
       - hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
-  - target: any(dtp, sep, smc)
+  - target: any(dtp, sep, smc, key_manager)
     include_dirs:
       - hw/common/assert
       - hw/ip/efuse/rtl/svh
@@ -362,7 +362,7 @@ sources:
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
       - hw/ip/i3ccore_wrap/regs/gen/sv/oca_i3c_wrap_addrmap_pkg.sv
-  - target: sep
+  - target: any(sep, key_manager)
     files:
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_addrmap_pkg.sv
@@ -395,7 +395,7 @@ sources:
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
   - target: sep
     files:
-      - hw/sys/sep/dv/models/regs/gen/sv/sep_axi_extension_addrmap_pkg.sv
+      - hw/sys/sep/dv/models/regs/gen/sv/sep_external_addrmap_pkg.sv
   - target: smc
     files:
       - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
@@ -471,7 +471,7 @@ sources:
       - hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
-  - target: sep
+  - target: any(sep, key_manager)
     files:
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg_pkg.sv
@@ -495,7 +495,7 @@ sources:
   - target: any(sep, smc)
     files:
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
-  - target: sep
+  - target: any(sep, key_manager)
     files:
       - hw/ip/scrambler/rtl/scrambler_pkg.sv
   - target: smc
@@ -567,7 +567,7 @@ sources:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
       - hw/common/tlul/rtl/tlul_to_reg_async.sv
-  - target: any(dtp, sep, smc)
+  - target: any(dtp, sep, smc, key_manager)
     files:
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
       - hw/common/och_prim/rtl/prim_apb_arb.sv
@@ -903,7 +903,7 @@ sources:
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp.sv
       - hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_status_reg.sv
       - hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
-  - target: sep
+  - target: any(sep, key_manager)
     files:
       - hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv
       - hw/ip/key_manager/regs/gen/sv/aes_wrapper_key_reg.sv
@@ -929,6 +929,8 @@ sources:
       - hw/ip/key_manager/rtl/km_sram_interface.sv
       - hw/ip/key_manager/rtl/picorv32_pcpi_crc.sv
       - hw/ip/key_manager/rtl/picorv32_wrapper.sv
+  - target: sep
+    files:
       - hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
       - hw/common/axi/local_alias_remap/rtl/local_alias_remap.sv
   - target: smc
@@ -942,7 +944,7 @@ sources:
     files:
       - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg.sv
       - hw/common/axi/output_remap/rtl/output_remap.sv
-  - target: sep
+  - target: any(sep, key_manager)
     files:
       - hw/ip/scrambler/rtl/scrambler.sv
       - hw/ip/scrambler/rtl/scrambler_1024x32.sv
@@ -1563,6 +1565,7 @@ sources:
       - hw/top/sep_wrapper.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:
+      - hw/top/smc_ijtag_net.sv
       - hw/top/smc_ip_integration.sv
   - target: smc_wrapper
     files:

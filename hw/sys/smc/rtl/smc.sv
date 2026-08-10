@@ -6,6 +6,10 @@
 module smc
 #(
   parameter int unsigned MAX_TRANS = 2,
+  // Vendor eFuse shim CSR block carved off the base of the smc_external window.
+  // The open smc_external map is one opaque region, so this is a literal here and
+  // is overridden by an integration that models the block.
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h44,
   parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_4CORE,
 
   // based on what the CPU config is, change internal defines
@@ -509,7 +513,10 @@ module smc
   // SMC Peripherals  //
   //////////////////////
 
-  smc_peripherals #(.MAX_TRANS(MAX_TRANS)) u_smc_peripherals (
+  smc_peripherals #(
+    .MAX_TRANS       (MAX_TRANS),
+    .EFUSE_SHIM_SIZE (EFUSE_SHIM_SIZE)
+  ) u_smc_peripherals (
     .clk_ref_i                             (clk_ref_i),
     .clk_smc_i                             (clk_smc_i),
     .clk_periph_i                          (clk_periph_i),

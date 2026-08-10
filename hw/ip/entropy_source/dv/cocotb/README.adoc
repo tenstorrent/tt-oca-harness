@@ -20,7 +20,7 @@ popd
 // TODO//
 // TODO // ```bash
 // TODO // pushd ..
-// TODO // python3 generate_all.py -i axi4-lite
+// TODO // make -f ocah.mk ocah-regen-regs
 // TODO // popd
 // TODO // ```
 

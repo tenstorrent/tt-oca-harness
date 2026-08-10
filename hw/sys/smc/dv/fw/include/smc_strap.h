@@ -31,8 +31,8 @@ typedef enum {
 static inline bool smc_strap_is_set(SmcStrapBit strap_bit) {
     uint32_t reg_value;
 
-    // Each GPIO_CTRL register is spaced 0x20 apart (GPIO_CTRL_1 - GPIO_CTRL_0 = 0xC0004460 -
-    // 0xC0004440)
+    // Each GPIO_CTRL register is spaced 0x20 apart (GPIO_CTRL_1 - GPIO_CTRL_0 = 0xC0401120 -
+    // 0xC0401100)
     uint32_t gpio_ctrl_addr =
         SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) +
         (strap_bit * (SMC_TOP_GPIO_CTRL_BASE_ADDR(1) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0)));

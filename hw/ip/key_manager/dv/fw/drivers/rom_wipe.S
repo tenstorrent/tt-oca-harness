@@ -28,6 +28,7 @@
  */
 
 #include "rom_defs.h"
+#include "rom_xoshiro_asm.h"
 
     .section .text
     .global  rom_wipe_shred_sram
@@ -97,45 +98,8 @@ rom_wipe_shred_sram:
 
     /* ---- Inner loop: overwrite every word in SRAM ---- */
 .Lword_loop:
-    /*
-     * xoshiro128++ step:
-     *   result = rotl(s[0] + s[3], 7) + s[0]
-     *   t      = s[1] << 9
-     *   s[2]  ^= s[0]
-     *   s[3]  ^= s[1]
-     *   s[1]  ^= s[2]
-     *   s[0]  ^= s[3]
-     *   s[2]  ^= t
-     *   s[3]   = rotl(s[3], 11)
-     *
-     * We write result to each SRAM word.
-     */
-
-    /* result = rotl(s[0] + s[3], 7) + s[0] */
-    add  x14, x10, x13
-    slli x15, x14, 7
-    srli x14, x14, 25
-    or   x14, x14, x15
-    add  x14, x14, x10
-
-    /* t = s[1] << 9 */
-    slli x15, x11, 9
-
-    /* s[2] ^= s[0] */
-    xor  x12, x12, x10
-    /* s[3] ^= s[1] */
-    xor  x13, x13, x11
-    /* s[1] ^= s[2] */
-    xor  x11, x11, x12
-    /* s[0] ^= s[3] */
-    xor  x10, x10, x13
-    /* s[2] ^= t */
-    xor  x12, x12, x15
-
-    /* s[3] = rotl(s[3], 11) */
-    slli x15, x13, 11
-    srli x13, x13, 21
-    or   x13, x13, x15
+    /* Advance the PRNG, leaving the output word in x14 and using x15 as temp. */
+    XOSHIRO128PP_STEP x10, x11, x12, x13, x14, x15
 
     /* Store xoshiro128++ output word to SRAM */
     sw   x14, 0(x8)

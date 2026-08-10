@@ -17,7 +17,7 @@ UART_LOG_ENGINE_CTRL_CTRL_REG_DEFAULT = 0x00000000
 
 class UART_LOG_ENGINE_CTRL_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_LOG_ENGINE_CTRL_CTRL_reg_t),
     ]
 

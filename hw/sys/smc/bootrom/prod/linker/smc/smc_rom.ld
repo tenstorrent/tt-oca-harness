@@ -7,7 +7,7 @@ ENTRY(_enter)
 MEMORY
 {
     testram (airwx) : ORIGIN = 0xc0060000, LENGTH = 1M
-    rom (rx) : ORIGIN = 0xc0040000, LENGTH = 64K
+    rom (rx) : ORIGIN = 0xc0040000, LENGTH = 128K
 }
 
 PHDRS

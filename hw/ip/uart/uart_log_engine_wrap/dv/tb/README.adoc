@@ -20,9 +20,7 @@ Second, make sure you have built the UART & Log Engine Wrapper IP and testbench 
 main `README.adoc` file of the UART & Log Engine Wrapper IP:
 
 ```bash
-pushd ..
-python3 generate_all.py -i axi4-lite
-popd
+make -f ocah.mk ocah-regen-regs
 ```
 
 Next, run

@@ -11,7 +11,7 @@
  *
  *   1. key_size = 0           → INVALID_ARG
  *   2. dest_valid = 0         → INVALID_ARG
- *   3. dest_valid with invalid bits (0x80) → INVALID_ARG
+ *   3. dest_valid with bits above 8-bit mask (0x100) → INVALID_ARG
  *   4. key_size too large (> max slots × 16 = 512 words) → INVALID_ARG
  *
  * Run with:
@@ -145,10 +145,12 @@ int main(void) {
     }
     TEST_SUBTEST_PASS();
 
-    /* Test 3: dest_valid with invalid bits (0x80) → INVALID_ARG */
-    TEST_SUBTEST_START("invalid dest_valid bits rejected");
+    /* Test 3: dest_valid with bits above [7] (0x100) → INVALID_ARG
+     * Valid dest bits are [7:0] (all 8 bits: classic engines + 4 ABR seeds).
+     * Bit 8 (0x100) is above the 8-bit mask and must be rejected. */
+    TEST_SUBTEST_START("invalid dest_valid bits (above 8-bit mask) rejected");
     {
-        uint32_t payload[2] = {7u, 0x80u};
+        uint32_t payload[2] = {7u, 0x100u};
         send_cmd_with_payload(ROM_KM_CMD_KEY_GENERATE, payload, 2);
         process_and_drain();
         rom_km_msg_header_t rhdr;
@@ -156,7 +158,7 @@ int main(void) {
         int8_t rc;
         read_resp_cmd(&rhdr, &seq_e, &cmd_e, &rc, &arg);
         TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG, "rc = INVALID_ARG");
-        TEST_LOG("  dest_valid=0x80 correctly rejected");
+        TEST_LOG("  dest_valid=0x100 correctly rejected");
         cmd_seq++;
     }
     TEST_SUBTEST_PASS();

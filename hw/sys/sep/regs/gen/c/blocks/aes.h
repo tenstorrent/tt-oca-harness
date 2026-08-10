@@ -10,6 +10,24 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
+// reg - aes::ALERT_TEST
+#define AES__ALERT_TEST__RECOV_CTRL_UPDATE_ERR_bm 0x1
+#define AES__ALERT_TEST__RECOV_CTRL_UPDATE_ERR_bp 0
+#define AES__ALERT_TEST__RECOV_CTRL_UPDATE_ERR_bw 1
+#define AES__ALERT_TEST__RECOV_CTRL_UPDATE_ERR_reset 0x0
+#define AES__ALERT_TEST__FATAL_FAULT_bm 0x2
+#define AES__ALERT_TEST__FATAL_FAULT_bp 1
+#define AES__ALERT_TEST__FATAL_FAULT_bw 1
+#define AES__ALERT_TEST__FATAL_FAULT_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t recov_ctrl_update_err :1;
+        uint32_t fatal_fault :1;
+        uint32_t :30;
+    } f;
+    uint32_t w;
+} aes__ALERT_TEST_t;
+
 // reg - aes::KEY_SHARE0
 #define AES__KEY_SHARE0__KEY_SHARE0_bm 0xffffffff
 #define AES__KEY_SHARE0__KEY_SHARE0_bp 0
@@ -204,7 +222,7 @@ typedef union {
 
 // addrmap - aes
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t RESERVED_0_3[0x4];
+    aes__ALERT_TEST_t ALERT_TEST;
     aes__KEY_SHARE0_t KEY_SHARE0[8];
     aes__KEY_SHARE1_t KEY_SHARE1[8];
     aes__IV_t IV[4];

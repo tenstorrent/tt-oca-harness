@@ -35,10 +35,18 @@ module prim_sync2 #(
   assign d_del = i_d;
 `endif
 
-  prim_flop_2sync sync2[WIDTH-1:0] (
-      .i_CK(i_clk),
-      .i_D (d_del),
-      .o_Q (o_q)
+  // Unlike prim_flop_3sync/4sync, prim_flop_2sync is the OpenTitan cell: OT port names and a
+  // Width parameter, so it takes the vector directly rather than an array of 1-bit instances.
+  // EnablePrimCdcRand must stay 0 -- prim_sync_randomized_delay above already models the CDC
+  // delay, and OT's internal prim_cdc_rand_delay would stack a second random delay on the path.
+  prim_flop_2sync #(
+      .Width            (WIDTH),
+      .EnablePrimCdcRand(1'b0)
+  ) sync2 (
+      .clk_i (i_clk),
+      .rst_ni(1'b1),      // non-resettable variant; use prim_sync2r when a reset is needed
+      .d_i   (d_del),
+      .q_o   (o_q)
   );
 
 endmodule

@@ -112,7 +112,7 @@ void rom_boot_init(void) {
     rom_kpv_scrambler_lock();
 
     if (rom_boot_wipe_enabled()) {
-        rom_kpv_shred_all(&rom_prng_state);
+        rom_kpv_shred_all();
 
         /* ----- Shred all crypto engine sideload keys ----- */
 

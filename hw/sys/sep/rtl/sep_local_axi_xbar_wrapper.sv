@@ -57,8 +57,8 @@ module sep_local_axi_xbar_wrapper
         output sep_pkg::sep_32_64_6_12_axi_req_t     sep_reset_ctrl_axi_req_o,
         input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_reset_ctrl_axi_resp_i,
 
-        output sep_pkg::sep_32_64_6_12_axi_req_t     axi_extension_axi_req_o,
-        input  sep_pkg::sep_32_64_6_12_axi_resp_t    axi_extension_axi_resp_i
+        output sep_pkg::sep_32_64_6_12_axi_req_t     sep_external_axi_req_o,
+        input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_external_axi_resp_i
     );
 
     // =========================================================================
@@ -96,8 +96,8 @@ module sep_local_axi_xbar_wrapper
     sep_local_axi_xbar_pkg::axi_out_resp_t sep_io_resp;
     sep_local_axi_xbar_pkg::axi_out_req_t  entropy_fifo_req;
     sep_local_axi_xbar_pkg::axi_out_resp_t entropy_fifo_resp;
-    sep_local_axi_xbar_pkg::axi_out_req_t  axi_extension_req;
-    sep_local_axi_xbar_pkg::axi_out_resp_t axi_extension_resp;
+    sep_local_axi_xbar_pkg::axi_out_req_t  sep_external_req;
+    sep_local_axi_xbar_pkg::axi_out_resp_t sep_external_resp;
     // =========================================================================
     // Input port assignments (sep_pkg -> xbar_pkg)
     // All input ports have 3-bit ID, 32-bit addr, 64-bit data, 12-bit user
@@ -164,9 +164,9 @@ module sep_local_axi_xbar_wrapper
     `AXI_ASSIGN_REQ_STRUCT(entropy_fifo_axi_req_o, entropy_fifo_req)
     `AXI_ASSIGN_RESP_STRUCT(entropy_fifo_resp, entropy_fifo_axi_resp_i)
 
-    // axi_extension
-    `AXI_ASSIGN_REQ_STRUCT(axi_extension_axi_req_o, axi_extension_req)
-    `AXI_ASSIGN_RESP_STRUCT(axi_extension_resp, axi_extension_axi_resp_i)
+    // sep_external
+    `AXI_ASSIGN_REQ_STRUCT(sep_external_axi_req_o, sep_external_req)
+    `AXI_ASSIGN_RESP_STRUCT(sep_external_resp, sep_external_axi_resp_i)
 
     // =========================================================================
     // Instantiate the generated crossbar
@@ -207,8 +207,8 @@ module sep_local_axi_xbar_wrapper
         .sep_io_resp_i                       (sep_io_resp),
         .entropy_fifo_req_o                  (entropy_fifo_req),
         .entropy_fifo_resp_i                 (entropy_fifo_resp),
-        .axi_extension_req_o                 (axi_extension_req),
-        .axi_extension_resp_i                (axi_extension_resp)
+        .sep_external_req_o                 (sep_external_req),
+        .sep_external_resp_i                (sep_external_resp)
     );
 
     // =========================================================================
@@ -334,13 +334,13 @@ module sep_local_axi_xbar_wrapper
         assert ($bits(entropy_fifo_axi_resp_i.r.id)   == $bits(entropy_fifo_resp.r.id))   else $fatal(1, "ENTROPY_FIFO R ID width mismatch");
         assert ($bits(entropy_fifo_axi_resp_i.b.id)   == $bits(entropy_fifo_resp.b.id))   else $fatal(1, "ENTROPY_FIFO B ID width mismatch");
 
-        // axi_extension
-        assert ($bits(axi_extension_axi_req_o.aw.id)   == $bits(axi_extension_req.aw.id))   else $fatal(1, "AXI_EXTENSION AW ID width mismatch");
-        assert ($bits(axi_extension_axi_req_o.aw.addr) == $bits(axi_extension_req.aw.addr)) else $fatal(1, "AXI_EXTENSION AW ADDR width mismatch");
-        assert ($bits(axi_extension_axi_req_o.w.data)  == $bits(axi_extension_req.w.data))  else $fatal(1, "AXI_EXTENSION W DATA width mismatch");
-        assert ($bits(axi_extension_axi_req_o.ar.id)   == $bits(axi_extension_req.ar.id))   else $fatal(1, "AXI_EXTENSION AR ID width mismatch");
-        assert ($bits(axi_extension_axi_resp_i.r.id)   == $bits(axi_extension_resp.r.id))   else $fatal(1, "AXI_EXTENSION R ID width mismatch");
-        assert ($bits(axi_extension_axi_resp_i.b.id)   == $bits(axi_extension_resp.b.id))   else $fatal(1, "AXI_EXTENSION B ID width mismatch");
+        // sep_external
+        assert ($bits(sep_external_axi_req_o.aw.id)   == $bits(sep_external_req.aw.id))   else $fatal(1, "SEP_EXTERNAL AW ID width mismatch");
+        assert ($bits(sep_external_axi_req_o.aw.addr) == $bits(sep_external_req.aw.addr)) else $fatal(1, "SEP_EXTERNAL AW ADDR width mismatch");
+        assert ($bits(sep_external_axi_req_o.w.data)  == $bits(sep_external_req.w.data))  else $fatal(1, "SEP_EXTERNAL W DATA width mismatch");
+        assert ($bits(sep_external_axi_req_o.ar.id)   == $bits(sep_external_req.ar.id))   else $fatal(1, "SEP_EXTERNAL AR ID width mismatch");
+        assert ($bits(sep_external_axi_resp_i.r.id)   == $bits(sep_external_resp.r.id))   else $fatal(1, "SEP_EXTERNAL R ID width mismatch");
+        assert ($bits(sep_external_axi_resp_i.b.id)   == $bits(sep_external_resp.b.id))   else $fatal(1, "SEP_EXTERNAL B ID width mismatch");
     end
 
     // User-field width assertions
@@ -431,11 +431,11 @@ module sep_local_axi_xbar_wrapper
         assert ($bits(entropy_fifo_axi_resp_i.r.user)  == $bits(entropy_fifo_resp.r.user))  else $fatal(1, "ENTROPY_FIFO R USER width mismatch");
         assert ($bits(entropy_fifo_axi_resp_i.b.user)  == $bits(entropy_fifo_resp.b.user))  else $fatal(1, "ENTROPY_FIFO B USER width mismatch");
 
-        assert ($bits(axi_extension_axi_req_o.aw.user)  == $bits(axi_extension_req.aw.user))  else $fatal(1, "AXI_EXTENSION AW USER width mismatch");
-        assert ($bits(axi_extension_axi_req_o.w.user)   == $bits(axi_extension_req.w.user))   else $fatal(1, "AXI_EXTENSION W USER width mismatch");
-        assert ($bits(axi_extension_axi_req_o.ar.user)  == $bits(axi_extension_req.ar.user))  else $fatal(1, "AXI_EXTENSION AR USER width mismatch");
-        assert ($bits(axi_extension_axi_resp_i.r.user)  == $bits(axi_extension_resp.r.user))  else $fatal(1, "AXI_EXTENSION R USER width mismatch");
-        assert ($bits(axi_extension_axi_resp_i.b.user)  == $bits(axi_extension_resp.b.user))  else $fatal(1, "AXI_EXTENSION B USER width mismatch");
+        assert ($bits(sep_external_axi_req_o.aw.user)  == $bits(sep_external_req.aw.user))  else $fatal(1, "SEP_EXTERNAL AW USER width mismatch");
+        assert ($bits(sep_external_axi_req_o.w.user)   == $bits(sep_external_req.w.user))   else $fatal(1, "SEP_EXTERNAL W USER width mismatch");
+        assert ($bits(sep_external_axi_req_o.ar.user)  == $bits(sep_external_req.ar.user))  else $fatal(1, "SEP_EXTERNAL AR USER width mismatch");
+        assert ($bits(sep_external_axi_resp_i.r.user)  == $bits(sep_external_resp.r.user))  else $fatal(1, "SEP_EXTERNAL R USER width mismatch");
+        assert ($bits(sep_external_axi_resp_i.b.user)  == $bits(sep_external_resp.b.user))  else $fatal(1, "SEP_EXTERNAL B USER width mismatch");
     end
 `endif  // SYNTHESIS
 

@@ -321,26 +321,29 @@ addrmap uart_16550_main {
         field {
             sw = r;
             hw = w;
-            desc = "Clear to Send. This bit is the active-low version of the `cts_ni` input.";
+            desc = "Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so
+                    it reads `1` while the remote device is ready to receive data.";
         } CTS[4:4] = 0x0;
 
         field {
             sw = r;
             hw = w;
-            desc = "Data Set Ready. This bit is the active-low version of the `dsr_ni` input.";
+            desc = "Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,
+                    so it reads `1` while the remote modem is connected and ready.";
         } DSR[5:5] = 0x0;
 
         field {
             sw = r;
             hw = w;
-            desc = "Ring Indicator. This bit is the active-low version of the `ri_ni` input.";
+            desc = "Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so
+                    it reads `1` while the remote modem signals an incoming call.";
         } RI[6:6] = 0x0;
 
         field {
             sw = r;
             hw = w;
-            desc = "Data Carrier Detect. This bit is the active-low version of the `dcd_ni`
-                    input.";
+            desc = "Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite
+                    polarity, so it reads `1` while a carrier is detected.";
         } DCD[7:7] = 0x0;
     };
 

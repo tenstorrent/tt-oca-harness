@@ -21,7 +21,7 @@
 #include "lifecycle.h"
 #include "errors.h"
 #include "rom_mmio.h"
-#include "och_sep_top_reg.h"
+#include "sep.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -90,11 +90,10 @@ static uint32_t check_security_version(uint16_t manifest_ver, uint32_t fuse_addr
 // Check if a key has been revoked via the CHIPLET_PUBK_REVOKE fuse.
 // Reference logic for key revocation checks.
 static uint32_t check_pubkey_revoked(int revocation_index) {
-    SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_reg_u revoke;
-    revoke.val = mmio_read32(SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR);
-    simputshex32("PUBK_REVOKE=", revoke.val);
+    uint32_t revoke = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR);
+    simputshex32("PUBK_REVOKE=", revoke);
 
-    if (revoke.val & (1u << (uint32_t)revocation_index)) {
+    if (revoke & (1u << (uint32_t)revocation_index)) {
         simputshex32("KEY_REVOKED idx=", (uint32_t)revocation_index);
         return MANIFEST_ERR_KEY_REVOKED;
     }
@@ -180,11 +179,11 @@ static uint32_t validate_signature(const manifest_t *m, uint32_t lc_state) {
 
         switch (m->public_key_sel.selection) {
         case PUBK_SEL_FUSE_KEY_0:
-            fuse_addr = SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR + 0x100u;
+            fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR + 0x100u;
             revocation_index = PUBK_SEL_NUM_ROM_KEYS;
             break;
         case PUBK_SEL_FUSE_KEY_1:
-            fuse_addr = SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR + 0x120u;
+            fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR + 0x120u;
             revocation_index = PUBK_SEL_NUM_ROM_KEYS + 1;
             break;
         default:
@@ -251,10 +250,10 @@ uint32_t verify_payload_hash(const manifest_t *m) {
 // ---------------------------------------------------------------------------
 
 // Read encryption class_key from fuse (32 bytes = 8 × 32-bit words).
-// SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR = 0x10930064
+// OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR = 0x10930064
 static void get_enc_key(uint8_t *key) {
     for (uint32_t i = 0; i < FUSE_KEY_LENGTH / 4u; ++i) {
-        uint32_t val = mmio_read32(SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR + i * 4u);
+        uint32_t val = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR + i * 4u);
         key[i * 4] = (uint8_t)(val);
         key[i * 4 + 1] = (uint8_t)(val >> 8);
         key[i * 4 + 2] = (uint8_t)(val >> 16);
@@ -329,7 +328,8 @@ uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state) {
     // Check manifest security_version against BL1_VERSION fuse.
     // If the manifest flags indicate version update is requested,
     // we still validate (update happens after successful boot in BL1).
-    err = check_security_version(m->security_version, SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR);
+    err = check_security_version(m->security_version,
+                                 OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR);
     if (err) return err;
 
     // ── (c) Signature verification (includes (b) key revocation) ──

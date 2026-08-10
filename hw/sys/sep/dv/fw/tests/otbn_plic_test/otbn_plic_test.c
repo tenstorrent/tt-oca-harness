@@ -20,12 +20,12 @@
  * RTL interrupt routing path:
  *       otbn.intr_done_o → sep_crypto_otbn_wrapper.intr_done_o
  *       → sep_crypto.intr_otbn_done_o → sep.intr_otbn_done
- *       → sep_internal_interrupts[27] → sep_interrupts[27]
- *       → VeeR EL2 extintsrc_req[28] → PIC source 28
+ *       → sep_internal_interrupts[29] → sep_interrupts[29]
+ *       → VeeR EL2 extintsrc_req[30] → PIC source 30
  *
  * Note: PIC source = sep_internal_interrupts index + 1 (extintsrc_req is 1-based;
- * bit 0 is the tied no-interrupt source). After the 8-slot mailbox reallocation
- * (hw/sep/sep.sv), OTBN done is internal index 27 -> PIC source 28. This test
+ * bit 0 is the tied no-interrupt source). After the DMA/WDT alert reallocation
+ * (hw/sep/sep.sv), OTBN done is internal index 29 -> PIC source 30. This test
  * REQUIRES the ISR to fire (no INTR_STATE poll fallback):
  * polling INTR_STATE only proves the IP status register, not CPU delivery.
  */
@@ -46,8 +46,8 @@
 
 #define OTBN_IDLE_TIMEOUT 20000
 
-/* OTBN PIC source ID — sep_internal_interrupts[27] -> PIC source 28 (idx + 1) */
-#define OTBN_PIC_SOURCE_ID 28u
+/* OTBN PIC source ID — sep_internal_interrupts[29] -> PIC source 30 (idx + 1) */
+#define OTBN_PIC_SOURCE_ID 30u
 
 /* Volatile flag set by ISR */
 static volatile uint32_t g_otbn_isr_fired = 0;
@@ -161,7 +161,7 @@ int main(void) {
         printf("[STEP 6/8] ISR fired (count=%u) at PIC claim id %u — delivery confirmed\n",
                g_otbn_isr_count, g_otbn_claimid);
     } else {
-        printf("[STEP 6/8] ISR did NOT fire — sep_interrupts[27] -> PIC -> CPU "
+        printf("[STEP 6/8] ISR did NOT fire — sep_interrupts[29] -> PIC -> CPU "
                "delivery BROKEN\n");
         errors++;
     }
@@ -212,7 +212,7 @@ int main(void) {
     printf("\n========================================\n");
     printf("INT-002: OTBN Interrupt to PLIC Test\n");
     printf("  ISR fired:   %s (count=%u)\n", g_otbn_isr_count > 0 ? "YES" : "NO", g_otbn_isr_count);
-    printf("  Claim id:    %u (expected 28 for sep_internal_interrupts[27])\n", g_otbn_claimid);
+    printf("  Claim id:    %u (expected 30 for sep_internal_interrupts[29])\n", g_otbn_claimid);
     printf("  Errors:      %d\n", errors);
     printf("========================================\n");
 

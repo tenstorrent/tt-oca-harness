@@ -11,7 +11,7 @@
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
 # input, output, name/bitfields, log.
 ocah_reg_run_cheader  = "$(UV)" run peakrdl c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical 2>&1 | tee "$(5)"
-ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" 2>&1 | tee "$(5)"
+ocah_reg_run_regblock = "$(UV)" run peakrdl regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" $(call ocah_reg_regblock_opts,$(1)) --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" 2>&1 | tee "$(5)"
 # AsciiDoc register docs are emitted directly from RDL by a custom generator that
 # produces a compact summary table + per-register field tables (table captions,
 # no per-register headings). This replaces the old peakrdl-markdown -> pandoc
@@ -22,6 +22,20 @@ ocah_reg_run_html     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlhtml.py" 
 ocah_reg_run_svh      = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlsvh.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 # $(4) = bitfields policy (none|ltoh), $(5) = log.
 ocah_reg_run_py       = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdlpyhdr.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(2)" "$(3)" --bitfields $(4) 2>&1 | tee "$(5)"
+# UVM RAL, straight from the stock peakrdl-uvm exporter. The flags are not
+# defaults: `header` because the models are included into one TB package rather
+# than compiled standalone, and `hier` because the TB expects one class per
+# register instance (lexical would collapse same-typed instances such as
+# sep_cpu_ctrl's eight TIMEOUT_COUNT_* onto a shared class).
+# $(2) = input RDL, $(3) = top addrmap, $(4) = output, $(5) = rename (may be
+# empty), $(6) = log.
+ocah_reg_run_ral      = "$(UV)" run peakrdl uvm $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -t "$(3)" -o "$(4)"$(if $(strip $(5)), --rename "$(strip $(5))") --file-type header --type-style hier --use-factory 2>&1 | tee "$(6)"
+# JSON register model. --repo-root keeps the recorded def_file paths relative to
+# the checkout rather than absolute. Arrays stay compact (a size/stride pair
+# rather than one entry per index): the model is the whole SMC space, and
+# unrolling it triples the register count for consumers that only ever walk the
+# first element anyway.
+ocah_reg_run_json     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdljson.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) --repo-root "$(OCAH_ROOT)" --compact_arrays "$(2)" "$(3)" 2>&1 | tee "$(4)"
 
 # Refresh one committed vendored RDL from its upstream hjson. This is intentionally
 # NOT a make file rule on the RDL path: the committed RDL must never become a
@@ -44,7 +58,7 @@ $(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UD
 $(call ocah_reg_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/py" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating Python register header for $(1)"
-	@$(ocah_sh) '$(call ocah_reg_run_py,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_py_output,$(1)),$(call ocah_reg_c_bitfields,$(1)),$(call ocah_reg_build,$(1))/py.log)'
+	@$(ocah_sh) '$(call ocah_reg_run_py,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_py_output,$(1)),$(call ocah_reg_py_bitfields,$(1)),$(call ocah_reg_build,$(1))/py.log)'
 
 $(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlsvh.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/svh" "$(call ocah_reg_build,$(1))"
@@ -90,6 +104,11 @@ $(call ocah_reg_html_block_dir,$(1))/%.html: $(call ocah_reg_root,$(1))/regs/blo
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$$<,$$@,$(1)/regs/build/html_$$*.log)'
+
+$(call ocah_reg_ral_dir,$(1))/%_ral_pkg.sv: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
+	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating UVM RAL model for $(1) sub-block $$*"
+	@$(ocah_sh) '$(call ocah_reg_run_ral,$(1),$$<,$$*,$$@,,$(1)/regs/build/ral_$$*.log)'
 endef
 
 # RTL sourced outside regblock: skip the run, keep the empty stamp so .generated
@@ -114,6 +133,23 @@ $(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/html.log)'
 endef
 
+# JSON register model for a whole top (composite or leaf), opt-in list only.
+define ocah_reg_json_rule
+$(call ocah_reg_json_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdljson.py | uv-sync
+	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating JSON register model for $(1)"
+	@$(ocah_sh) '$(call ocah_reg_run_json,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/json.log)'
+endef
+
+# Plain-leaf UVM RAL: one peakrdl uvm run. Only instantiated for leaves on the
+# opt-in list, so there is no skip variant.
+define ocah_reg_ral_plain_rule
+$(call ocah_reg_ral_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
+	@mkdir -p "$(call ocah_reg_ral_dir,$(1))" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating UVM RAL model for $(1)"
+	@$(ocah_sh) '$(call ocah_reg_run_ral,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_name,$(1)),$(call ocah_reg_ral_output,$(1)),$(call ocah_reg_ral_rename,$(1)),$(call ocah_reg_build,$(1))/ral.log)'
+endef
+
 # Plain-leaf firmware C header: one peakrdl c-header run.
 define ocah_reg_cheader_plain_rule
 $(call ocah_reg_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
@@ -130,3 +166,8 @@ $(foreach block,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(eval $(call ocah_reg_composite
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call $(if $(call ocah_reg_sv_skipped,$(block)),ocah_reg_sv_skip_rule,ocah_reg_sv_plain_rule),$(block))))
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call ocah_reg_doc_plain_rule,$(block))))
 $(foreach block,$(OCAH_REG_PLAIN_BLOCK_IDS),$(eval $(call ocah_reg_cheader_plain_rule,$(block))))
+# Opt-in leaves only: RAL is not generated for every block.
+$(foreach block,$(filter $(OCAH_REG_RAL_LEAF_BLOCKS),$(OCAH_REG_PLAIN_BLOCK_IDS)),$(eval $(call ocah_reg_ral_plain_rule,$(block))))
+# JSON applies to a top of either shape, so it loops over all blocks, not the
+# composite/leaf split.
+$(foreach block,$(filter $(OCAH_REG_JSON_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_json_rule,$(block))))

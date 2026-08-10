@@ -26,13 +26,10 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 #define TX_FIFO_DEPTH 73 /* effective capacity: 72 FIFO slots + 1 byte_select stage */
-
-static void configure_spi_mux_ot(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
-}
 
 int main(void) {
     sep_outbound_filter_init();
@@ -46,11 +43,11 @@ int main(void) {
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
 
-    configure_spi_mux_ot();
+    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
-    ctrl.w = 0u;
+    ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     ctrl.f.TX_WATERMARK = 4;

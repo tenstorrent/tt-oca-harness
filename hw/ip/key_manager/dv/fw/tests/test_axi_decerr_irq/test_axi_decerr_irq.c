@@ -10,7 +10,7 @@
  * interconnect to return DECERR, and that KMCSR IRQ_STATUS.AXI_DECERR
  * is set. The test does not rely on IRQ_SET; it provokes a real bus
  * DECERR by reading from an address in the reserved/unmapped region
- * (0x0001_C000 and above per key_manager.rdl).
+ * (0x0001_D000 and above per key_manager.rdl).
  *
  * Requirements: AXI DECERR detection (T069–T072), firmware test T074
  *
@@ -23,8 +23,9 @@
 #include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
-/* Start of unmapped region per key_manager.rdl; accesses here return AXI DECERR */
-#define UNMAPPED_DECERR_ADDR 0x0001C000U
+/* First unmapped address after the ABR window (0x0001_C000-0x0001_CFFF);
+ * accesses here return AXI DECERR */
+#define UNMAPPED_DECERR_ADDR 0x0001D000U
 
 /**
  * Trigger a bus DECERR by reading from an unmapped address.

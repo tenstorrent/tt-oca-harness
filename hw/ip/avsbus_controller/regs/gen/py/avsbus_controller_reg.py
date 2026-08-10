@@ -270,7 +270,7 @@ AVSBUS_CONTROLLER_AVS_INTERRUPT_REG_DEFAULT = 0x00000000
 
 class AVSBUS_CONTROLLER_AVS_INTERRUPT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', AVSBUS_CONTROLLER_AVS_INTERRUPT_reg_t),
     ]
 
@@ -306,7 +306,7 @@ AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_REG_DEFAULT = 0x000001FF
 
 class AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', AVSBUS_CONTROLLER_AVS_INTERRUPT_MASK_reg_t),
     ]
 
@@ -342,7 +342,7 @@ AVSBUS_CONTROLLER_AVS_INTERRUPT_CLEAR_REG_DEFAULT = 0x00000000
 
 class AVSBUS_CONTROLLER_AVS_INTERRUPT_CLEAR_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', AVSBUS_CONTROLLER_AVS_INTERRUPT_CLEAR_reg_t),
     ]
 
@@ -434,7 +434,7 @@ AVSBUS_CONTROLLER_AVS_CONFIG_REG_DEFAULT = 0x00000001
 
 class AVSBUS_CONTROLLER_AVS_CONFIG_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', AVSBUS_CONTROLLER_AVS_CONFIG_reg_t),
     ]
 

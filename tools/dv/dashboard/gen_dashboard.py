@@ -356,7 +356,7 @@ def _load_results(paths: list[str]) -> list[dict]:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results", nargs="+", required=True, help="result JSON paths or glob patterns")
-    parser.add_argument("--html-out", required=True, help="output index.html")
+    parser.add_argument("--html-out", help="optional output index.html; omit for a data-only aggregate")
     parser.add_argument("--summary-out", required=True, help="output summary.json")
     parser.add_argument("--history-in", help="optional existing trend history JSON")
     parser.add_argument("--history-out", help="optional output trend history JSON")
@@ -373,13 +373,15 @@ def main(argv: list[str] | None = None) -> int:
             history = read_json(Path(args.history_in).resolve())
         if args.history_out:
             history = update_history(history, summary)
-        html_out = Path(args.html_out).resolve()
-        html_out.parent.mkdir(parents=True, exist_ok=True)
-        html_out.write_text(render_dashboard(summary, history), encoding="utf-8")
+        if args.html_out:
+            html_out = Path(args.html_out).resolve()
+            html_out.parent.mkdir(parents=True, exist_ok=True)
+            html_out.write_text(render_dashboard(summary, history), encoding="utf-8")
         write_json(summary, Path(args.summary_out).resolve())
         if args.history_out:
             write_json(history or {}, Path(args.history_out).resolve())
-        print(f"Wrote dashboard: {html_out}")
+        if args.html_out:
+            print(f"Wrote dashboard: {html_out}")
         print(f"Wrote summary  : {Path(args.summary_out).resolve()}")
         if args.history_out:
             print(f"Wrote history  : {Path(args.history_out).resolve()}")

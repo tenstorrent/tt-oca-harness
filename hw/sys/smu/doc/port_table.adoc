@@ -212,8 +212,8 @@
 |`ot_spi_irq_o` |`logic` |Output |1 |OT SPI interrupt output (to be muxed with external SPI controller). |SPI mux |N/A
 |`spi_irq_i` |`logic` |Input |1 |Muxed SPI IRQ from `sep_ip_integration`. |SPI mux |Tie to '0 if unused
 
-|`sep_axi_extension_req_o` |`sep_pkg::sep_32_64_6_12_axi_req_t` |Output |- |SEP AXI extension port request passthrough. |Adopter peripherals |N/A
-|`sep_axi_extension_resp_i` |`sep_pkg::sep_32_64_6_12_axi_resp_t` |Input |- |SEP AXI extension port response passthrough. |Adopter peripherals |Tie to DECERR if unused
+|`sep_external_req_o` |`sep_pkg::sep_32_64_6_12_axi_req_t` |Output |- |SEP AXI extension port request passthrough. |Adopter peripherals |N/A
+|`sep_external_resp_i` |`sep_pkg::sep_32_64_6_12_axi_resp_t` |Input |- |SEP AXI extension port response passthrough. |Adopter peripherals |Tie to DECERR if unused
 
 |`sep_reset_n_o` |`logic` |Output |1 |Plain SEP reset (post fuse-sense / JTAG override). |`sep_ip_integration` |N/A
 |`sep_cpu_reset_n_o` |`logic` |Output |1 |SEP combined reset (`sep_reset_n` & WDT)|`sep_ip_integration` |N/A

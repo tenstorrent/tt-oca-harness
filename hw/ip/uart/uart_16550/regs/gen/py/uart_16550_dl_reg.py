@@ -19,7 +19,7 @@ UART_16550_DL_DLL_REG_DEFAULT = 0x00000000
 
 class UART_16550_DL_DLL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_DL_DLL_reg_t),
     ]
 
@@ -47,7 +47,7 @@ UART_16550_DL_DLM_REG_DEFAULT = 0x00000000
 
 class UART_16550_DL_DLM_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', UART_16550_DL_DLM_reg_t),
     ]
 

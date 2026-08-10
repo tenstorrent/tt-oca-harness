@@ -37,7 +37,10 @@
 #                               (space-separated; each bound at its own path)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# -P: the physical path. A checkout reached through a symlinked parent would
+# otherwise be bound at a path that resolves under one of the read-only rootfs
+# mounts, where bwrap cannot create the mount point.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 IMAGE="${OCAH_DOCKER_IMAGE:-ocah-toolchain}"
 DOC_HTML_IMAGE="${OCAH_DOC_HTML_IMAGE:-docker.io/antora/antora:3.1.10}"
 DOC_PDF_IMAGE="${OCAH_DOC_PDF_IMAGE:-docker.io/asciidoctor/docker-asciidoctor:1.106.0@sha256:6266e05784c2d8ece9d9fe5e593b12c3beebebbc467135fd6f4a56269c93cea3}"
@@ -256,9 +259,15 @@ bwrap_run() {
         [[ -e "$extra" ]] && binds+=(--bind "$extra" "$extra")
     done
     # HOME may sit outside the bound trees; give it a writable stand-in.
+    # PYTHONHOME/PYTHONPATH are dropped for the same reason PATH is replaced: the
+    # sandbox runs its own interpreter, and a caller's values point at host trees
+    # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
+    # can import 'encodings', which the firmware post-process steps run into.
     bwrap "${binds[@]}" --chdir "$workdir" \
         --setenv PATH /usr/local/bin:/usr/bin:/bin \
         --setenv HOME /tmp \
+        --unsetenv PYTHONHOME \
+        --unsetenv PYTHONPATH \
         "$@"
 }
 

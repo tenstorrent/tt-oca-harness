@@ -266,18 +266,16 @@ hw/periph/memory_interface/
 ├── memory_macros_wrapper.png                      # Diagram of the components
 ├── generate_ip.py                                 # IP generation script
 ├── test_all_combinations.sh                       # Test script for all interface combinations
-├── data/
-│   └── registers/                                 # Register definition files
-│       ├── generate_register_files.sh             # Register generation script
-│       └── rdl/
-│           ├── sram_example/                      # SRAM example register definitions
-│           │   ├── example_sram_macro_csr.rdl     # CSR register descriptions
-│           │   ├── example_sram_wrap.rdl          # Wrapper register descriptions
-│           │   └── example_sram.rdl               # SRAM register descriptions
-│           └── rom_example/                       # ROM example register definitions
-│               ├── example_rom_macro_csr.rdl      # CSR register descriptions
-│               ├── example_rom_wrap.rdl           # Wrapper register descriptions
-│               └── example_rom.rdl                # ROM register descriptions
+├── regs/                                          # Register definitions; collateral
+│   │                                              # comes from `make -f ocah.mk ocah-regen-regs`
+│   ├── sram_example/                              # SRAM example register definitions
+│   │   ├── example_sram_macro_csr.rdl             # CSR register descriptions
+│   │   ├── example_sram_wrap.rdl                  # Wrapper register descriptions
+│   │   └── example_sram.rdl                       # SRAM register descriptions
+│   └── rom_example/                               # ROM example register definitions
+│       ├── example_rom_macro_csr.rdl              # CSR register descriptions
+│       ├── example_rom_wrap.rdl                   # Wrapper register descriptions
+│       └── example_rom.rdl                        # ROM register descriptions
 ├── rtl/
 │   ├── templates/
 │   │   └── memory_interface.sv.tpl                # Template for interface generation

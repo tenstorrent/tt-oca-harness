@@ -11,7 +11,7 @@
 
 addrmap km_csr {
     name = "Key Manager Control and Status Registers";
-    desc = "Control and status registers for the Key Manager MVP subsystem";
+    desc = "Control and status registers for the Key Manager subsystem";
 
     default regwidth = 32;
     default sw = rw;

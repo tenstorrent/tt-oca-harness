@@ -19,9 +19,7 @@ Second, make sure you have built the UART 16550 Component and testbench as descr
 `README.adoc` file of the UART 16550 Component:
 
 ```bash
-pushd ..
-python3 generate_all.py -i axi4-lite
-popd
+make -f ocah.mk ocah-regen-regs
 ```
 
 Next, run

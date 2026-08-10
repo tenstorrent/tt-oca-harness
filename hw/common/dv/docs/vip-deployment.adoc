@@ -1,0 +1,259 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[shared-vip-deployment]]
+== Installation and DUT Deployment
+
+[[shared-vip-python-environment]]
+=== Python Environment
+
+The native runner provisions the locked DV environment automatically:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --validate-configs
+python3 tools/dv/run_dv.py --doctor --dut dtp --tool verilator
+----
+
+For standalone development, install the shared package from the repository
+root:
+
+[source,bash]
+----
+python3 -m pip install -e hw/common/dv
+----
+
+Supported Python versions are 3.11 through 3.13. Package dependencies are
+declared in `hw/common/dv/pyproject.toml` and resolved through the repository
+`uv.lock`.
+
+[[shared-vip-import-contract]]
+=== Import Contract
+
+Always import the top-level OCAH package:
+
+[source,python]
+----
+from ocah_axi_vip import OcahAxiMaster
+from ocah_jtag_vip import OcahJtagTap
+from ocah_checker import OcahChecker
+----
+
+Do not import:
+
+* implementation modules such as `ocah_axi_vip.cocotb.ocah_axi_master`;
+* backend packages such as `cocotbext.axi` in new tests;
+* private backend transaction/channel types for normal checking.
+
+The root package is the compatibility boundary and may change its backend
+without changing test code.
+
+[[shared-vip-cocotb-deployment]]
+=== Cocotb Deployment Pattern
+
+A DUT environment typically performs four steps:
+
+. construct and bind the VIP;
+. initialize outputs before time advances;
+. wait for DUT reset release;
+. start stimulus/monitor tasks and retain their handles.
+
+[source,python]
+----
+master = OcahAxiMaster.from_prefix(
+    dut,
+    "s_axi",
+    dut.clk_i,
+    dut.rst_ni,
+    reset_active_level=False,
+    timeout_ns=50_000,
+)
+master.init_signals()
+await master.wait_for_reset()
+
+result = await master.write_result(
+    0x1000,
+    0xA5A5_5A5A,
+    check_response=False,
+)
+----
+
+The DUT-local agent converts `result` into its sequence item, scoreboard event,
+or checker evidence. Tests should not inspect `result.raw` except during
+backend debug.
+
+[[shared-vip-monitor-deployment]]
+=== Monitor and Checker Lifecycle
+
+Passive monitors do not drive signals:
+
+[source,python]
+----
+monitor = OcahAxiMonitor.from_prefix(dut, "s_axi", dut.clk_i)
+checker = OcahAxiChecker(raise_on_error=False)
+checker.attach_monitor(monitor)
+
+await monitor.start()
+# Drive DUT traffic.
+await monitor.stop()
+checker.assert_clean()
+----
+
+Monitor callbacks deliberately catch and log subscriber exceptions so one
+subscriber cannot terminate observation. A checker attached to a monitor must
+retain findings before raising, and the owning test or scoreboard must finalize
+after traffic. Named evidence should be finalized through the per-protocol
+checker when it composes `ocah_checker`.
+
+[[shared-vip-split-port]]
+=== Open-Drain Split-Port Binding
+
+I2C/I3C testbenches may expose:
+
+* a resolved bus input read by cocotb;
+* an `ext_low` input where `1` means the testbench pulls the line low.
+
+This polarity differs from many backend APIs, where `1` means release. Keep the
+signal-name and polarity binding in a DUT-local adapter, while implementing
+wired-AND and reusable protocol behavior in the shared split-port helper.
+
+[source,text]
+----
+resolved_sda  <- DUT drive AND testbench pull-low votes
+ext_sda_low   <- DUT-local adapter output
+shared VIP    <- protocol state and transaction API
+----
+
+Never resolve an open-drain bus by letting independent VIP instances overwrite
+one another's output. Use the shared package's per-bus wired-AND mechanism.
+
+[[shared-vip-multiple-instances]]
+=== Multiple Instances
+
+Each VIP instance must have:
+
+* a unique log name;
+* an explicit signal prefix or map;
+* independent statistics and retained history;
+* deterministic configuration;
+* bounded history where monitoring can be long-lived.
+
+Do not use module-level singleton state unless it represents one physical bus
+and is keyed by the bound signal identity.
+
+[[shared-vip-uvm-deployment]]
+=== SystemVerilog UVM Deployment
+
+Protocols with UVM collateral provide a shared interface and VIP-level
+environment. The DUT top instantiates the interface and places it in
+`uvm_config_db`; the DUT environment instantiates the VIP environment.
+
+[source,systemverilog]
+----
+ocah_jtag_if jtag_if();
+
+initial begin
+    uvm_config_db#(virtual ocah_jtag_if)::set(
+        null, "*", "jtag_vif", jtag_if
+    );
+end
+----
+
+The DUT environment retrieves `jtag_vif`, assigns it to an `ocah_jtag_cfg`,
+and publishes that config to the shared JTAG environment. DUT sequences consume
+OCAH items and sequencer handles. DUT scoreboards consume OCAH events or
+monitor items. They do not reach into driver internals.
+
+[[shared-vip-commercial-deployment]]
+=== Commercial Backend Deployment
+
+Commercial VIP is optional and adopter-owned. A commercial integration should:
+
+. preserve OCAH item/config/result semantics;
+. implement translation inside a protocol-specific environment subclass;
+. provide an analysis adapter back to OCAH items;
+. disable duplicate OCAH monitoring when the vendor monitor is authoritative;
+. keep vendor source paths, interfaces, and license configuration behind the
+  commercial build profile.
+
+License-free contributor tests must remain runnable without commercial
+packages.
+
+[[shared-vip-error-deployment]]
+=== Error and Timeout Handling
+
+Positive tests normally use strict response checking. Negative tests use result
+APIs with checking disabled, then compare the exact response:
+
+[source,python]
+----
+result = await master.write_result(
+    blocked_addr,
+    data,
+    check_response=False,
+    timeout_ns=50_000,
+)
+checker.expect_equal(
+    "CHK-DECERR",
+    result.resp,
+    RESP_DECERR,
+    context=f"addr={blocked_addr:#x}",
+)
+checker.expect_not_timed_out(
+    "CHK-COMPLETION",
+    timed_out=result.timed_out,
+    timeout_ns=50_000,
+)
+----
+
+`allow_timeout=True` makes a timeout observable; it does not make the operation
+successful. An expected timeout requires explicit VPLAN intent, a declared
+bound, and `expect_timeout()` evidence.
+
+[[shared-vip-deployment-validation]]
+=== Deployment Validation
+
+Before relying on a new binding:
+
+[source,bash]
+----
+python3 -m py_compile <changed-python-files>
+python3 tools/dv/run_dv.py --validate-configs
+python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>
+python3 tools/dv/run_dv.py \
+  --dut <dut> --items <test> --tool <tool> --seed 1 --dry-run
+python3 tools/dv/run_dv.py \
+  --dut <dut> --items <test> --tool <tool> --seed 1
+----
+
+Retain the run-level `result.json`, structured test result, relevant log, tool
+versions, seed, and commit SHA as qualification evidence.
+
+[[shared-vip-deployment-troubleshooting]]
+=== Troubleshooting
+
+[cols="<3,<7",options="header"]
+|===
+|Symptom |Action
+
+|Top-level OCAH import fails
+|Run through `tools/dv/run_dv.py`, reinstall `hw/common/dv` editable, and verify
+the generated Python namespace bridge.
+
+|Backend import fails
+|Check `hw/common/dv/pyproject.toml`, package README version/license notes, and
+`PYTHONPATH` for vendored dependencies.
+
+|Transaction never completes
+|Verify reset polarity and clock, require a finite `timeout_ns`, and check that
+the DUT has a responder for the selected address.
+
+|Monitor sees no items
+|Confirm it was started before traffic, the prefix matches the flattened bus,
+and the test calls `stop()`/finalization after traffic.
+
+|Checker logs an error but test passes
+|The monitor may have caught the callback exception. Ensure the checker retained
+the finding and the owning test or scoreboard calls `finalize()` or
+`assert_clean()`.
+|===

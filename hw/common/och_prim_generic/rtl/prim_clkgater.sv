@@ -15,7 +15,7 @@
 		logic latched_en;
 		always_latch begin
 		  if(~i_clk) begin
-			latched_en = i_en;
+			latched_en = i_en | i_te;
 		  end
 		end
 		assign o_clk = i_clk & latched_en;

@@ -236,7 +236,10 @@ int main(void) {
     printf("========================================\n");
     printf("Total:  %d tests\n", test_count);
     printf("Passed: %d\n", pass_count);
-    printf("Failed: %d\n", fail_count);
+    /* Use "Failures:" (not "Failed:") so this count line does not match the
+     * regression fail-detection regex, which flags the substring "Failed"
+     * even in "Failed: 0". The real pass/fail signal is test_pass/test_fail. */
+    printf("Failures: %d\n", fail_count);
 
     if (fail_count == 0) {
         printf("\n*** ALL TESTS PASSED ***\n");

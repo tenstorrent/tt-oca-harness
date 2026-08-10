@@ -70,7 +70,7 @@ GPIO_INTF_DATA_CTRL_ENABLE_REG_DEFAULT = 0x00000000
 
 class GPIO_INTF_DATA_CTRL_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', GPIO_INTF_DATA_CTRL_ENABLE_reg_t),
     ]
 

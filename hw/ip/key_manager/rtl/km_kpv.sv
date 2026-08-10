@@ -45,6 +45,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     input  logic        wipe_pulse_i
 );
 
+    `include "prim_assert.sv"
 
     /** @brief Internal register address width (12 bits = 4 KB per port). */
     localparam int unsigned ADDR_W = 12;

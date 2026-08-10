@@ -9,10 +9,12 @@
  * Boots the KM firmware and exercises the CMD_ENGINE_SHRED command:
  *   1. Generate key, transfer to AES, then shred AES → success
  *   2. Shred with dest = 0 → INVALID_ARG
- *   3. Shred with invalid bits (0x80) → INVALID_ARG
+ *   3. Shred with invalid bits (0x100) → INVALID_ARG (bit 8 is above the 8-bit mask)
  *   4. Multi-engine shred: AES|KMAC → success
+ *   5. Shred ABR ML-DSA seed (bit 4) → success
+ *   6. Shred all four ABR seeds at once → success
  *
- * CMD_ENGINE_SHRED payload[0] bits [3:0] = dest engine bitmask.
+ * CMD_ENGINE_SHRED payload[0] bits [7:0] = dest engine bitmask.
  *
  * Run with:
  *   make run_fw FW_TEST=test_km_shred
@@ -214,14 +216,14 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * Test 3: Shred with invalid bits (0x80) → INVALID_ARG
+     * Test 3: Shred with invalid bits (0x100) → INVALID_ARG
      *
-     * Valid dest bits are [3:0] (HMAC|KMAC|AES|OTBN = 0x0F).
-     * Bit 7 is not a valid engine.
+     * Valid dest bits are [7:0] (classic engines plus the 4 ABR seeds).
+     * Bit 8 (0x100) is above the 8-bit mask and must be rejected.
      *=================================================================*/
-    TEST_SUBTEST_START("CMD_ENGINE_SHRED invalid bits → INVALID_ARG");
+    TEST_SUBTEST_START("CMD_ENGINE_SHRED invalid bits (above mask) → INVALID_ARG");
     {
-        uint32_t payload[1] = {0x80u};
+        uint32_t payload[1] = {0x100u};
 
         send_cmd_with_payload(ROM_KM_CMD_ENGINE_SHRED, payload, 1);
         process_and_drain();
@@ -233,8 +235,9 @@ int main(void) {
 
         TEST_ASSERT_EQ(seq_e & 0xFF, (uint32_t)cmd_seq, "shred invalid seq echo");
         TEST_ASSERT_EQ(cmd_e & 0xFF, (uint32_t)ROM_KM_CMD_ENGINE_SHRED, "shred invalid cmd echo");
-        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG, "invalid dest bits → INVALID_ARG");
-        TEST_LOG("  dest=0x80 correctly rejected");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_INVALID_ARG,
+                       "dest=0x100 (above 8-bit mask) → INVALID_ARG");
+        TEST_LOG("  dest=0x100 correctly rejected");
 
         cmd_seq++;
     }
@@ -262,6 +265,58 @@ int main(void) {
         uint32_t expect_dest = (rom_km_dest_bits_t){.aes = 1, .kmac_sha3 = 1}.raw;
         TEST_ASSERT_EQ(shred_ret.dest_engine, expect_dest, "multi-shred echoes dest");
         TEST_LOG("  AES|KMAC shredded");
+
+        cmd_seq++;
+    }
+    TEST_SUBTEST_PASS();
+
+    /*=================================================================
+     * Test 5: ABR-seed shred: ML-DSA seed (bit 4) → success
+     *=================================================================*/
+    TEST_SUBTEST_START("CMD_ENGINE_SHRED ABR ML-DSA seed");
+    {
+        uint32_t payload[1] = {(rom_km_dest_bits_t){.abr_mldsa_seed = 1}.raw};
+
+        send_cmd_with_payload(ROM_KM_CMD_ENGINE_SHRED, payload, 1);
+        process_and_drain();
+
+        rom_km_msg_header_t rhdr;
+        uint32_t seq_e, cmd_e, arg;
+        int8_t rc;
+        read_resp_cmd(&rhdr, &seq_e, &cmd_e, &rc, &arg);
+
+        TEST_ASSERT_EQ(seq_e & 0xFF, (uint32_t)cmd_seq, "abr-shred mldsa seq echo");
+        TEST_ASSERT_EQ(cmd_e & 0xFF, (uint32_t)ROM_KM_CMD_ENGINE_SHRED, "abr-shred mldsa cmd echo");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_SUCCESS, "abr-shred mldsa success");
+        TEST_LOG("  ABR ML-DSA seed shredded");
+
+        cmd_seq++;
+    }
+    TEST_SUBTEST_PASS();
+
+    /*=================================================================
+     * Test 6: ABR-seed shred: all four ABR seeds simultaneously → success
+     *=================================================================*/
+    TEST_SUBTEST_START("CMD_ENGINE_SHRED all four ABR seeds");
+    {
+        rom_km_dest_bits_t all_abr = {
+            .abr_mldsa_seed = 1, .abr_mlkem_seed_d = 1, .abr_mlkem_seed_z = 1, .abr_mlkem_msg = 1};
+        uint32_t payload[1] = {all_abr.raw};
+
+        send_cmd_with_payload(ROM_KM_CMD_ENGINE_SHRED, payload, 1);
+        process_and_drain();
+
+        rom_km_msg_header_t rhdr;
+        uint32_t seq_e, cmd_e, arg;
+        int8_t rc;
+        read_resp_cmd(&rhdr, &seq_e, &cmd_e, &rc, &arg);
+
+        TEST_ASSERT_EQ(seq_e & 0xFF, (uint32_t)cmd_seq, "abr-shred all seq echo");
+        TEST_ASSERT_EQ(cmd_e & 0xFF, (uint32_t)ROM_KM_CMD_ENGINE_SHRED, "abr-shred all cmd echo");
+        TEST_ASSERT_EQ(rc, (int8_t)ROM_KM_RC_SUCCESS, "abr-shred all success");
+        rom_km_engine_shred_ret_t shred_ret = {.raw = arg};
+        TEST_ASSERT_EQ(shred_ret.dest_engine, (uint32_t)all_abr.raw, "abr-shred all echoes dest");
+        TEST_LOG("  All four ABR seeds shredded");
 
         cmd_seq++;
     }

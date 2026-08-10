@@ -291,7 +291,7 @@ TELEMETRY_RECEIVER_STATUS_REG_DEFAULT = 0x00000001
 
 class TELEMETRY_RECEIVER_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', TELEMETRY_RECEIVER_STATUS_reg_t),
     ]
 
@@ -321,7 +321,7 @@ TELEMETRY_RECEIVER_INTR_STATUS_REG_DEFAULT = 0x00000000
 
 class TELEMETRY_RECEIVER_INTR_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', TELEMETRY_RECEIVER_INTR_STATUS_reg_t),
     ]
 
@@ -351,7 +351,7 @@ TELEMETRY_RECEIVER_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class TELEMETRY_RECEIVER_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', TELEMETRY_RECEIVER_INTR_ENABLE_reg_t),
     ]
 
@@ -381,7 +381,7 @@ TELEMETRY_RECEIVER_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class TELEMETRY_RECEIVER_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', TELEMETRY_RECEIVER_INTR_TEST_reg_t),
     ]
 
@@ -409,7 +409,7 @@ TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_REG_DEFAULT = 0x00000000
 
 class TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_reg_t),
     ]
 

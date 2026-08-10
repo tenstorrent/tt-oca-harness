@@ -44,7 +44,7 @@ SPI_CONTROLLER_INTR_STATE_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_INTR_STATE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_INTR_STATE_reg_t),
     ]
 
@@ -73,7 +73,7 @@ SPI_CONTROLLER_INTR_ENABLE_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_INTR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_INTR_ENABLE_reg_t),
     ]
 
@@ -102,7 +102,7 @@ SPI_CONTROLLER_INTR_TEST_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_INTR_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_INTR_TEST_reg_t),
     ]
 
@@ -130,7 +130,7 @@ SPI_CONTROLLER_ALERT_TEST_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_ALERT_TEST_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_ALERT_TEST_reg_t),
     ]
 
@@ -331,7 +331,7 @@ SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT = 0x0000001F
 
 class SPI_CONTROLLER_ERROR_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_ERROR_ENABLE_reg_t),
     ]
 
@@ -364,7 +364,7 @@ SPI_CONTROLLER_ERROR_STATUS_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_ERROR_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_ERROR_STATUS_reg_t),
     ]
 
@@ -397,7 +397,7 @@ SPI_CONTROLLER_EVENT_ENABLE_REG_DEFAULT = 0x00000000
 
 class SPI_CONTROLLER_EVENT_ENABLE_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', SPI_CONTROLLER_EVENT_ENABLE_reg_t),
     ]
 

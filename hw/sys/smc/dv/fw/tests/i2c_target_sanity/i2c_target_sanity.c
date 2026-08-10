@@ -1,6 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
+/**
+ * @file main.c
+ * @brief I2C Target Sanity — prove target RX via DUT loopback.
+ *
+ * I2C_0 controller -> I2C_1 target @ 0x10 (same topology as i2c_p0_rdwr).
+ * No external VIP. Secondary harts must NOT re-enter main().
+ */
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -8,164 +16,159 @@
 #include "smc_test.h"
 #include "i2c_opentitan.h"
 
-//=============================================================================
-// Helper Functions
-//=============================================================================
+#define CONTROLLER_IDX 0
+#define TARGET_IDX 1
+#define TARGET_ADDR 0x10
 
-/**
- * @brief Enable I2C Wrapper Control
- *
- * This is LEVEL 1 of the two-level I2C architecture.
- * Must be done BEFORE configuring the I2C IP.
- *
- * @param idx I2C instance (0 or 1)
- * @param controller_mode true for Controller mode, false for Target mode
- */
-static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
+static void i2c_wrapper_set(uint32_t idx, bool enable, bool controller_mode) {
     uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
 
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
-    ctrl.f.I2C_EN = 1; // Enable GPIO pad mux
-    ctrl.f.I2C_CONTROLLER_MODE_EN = controller_mode ? 1 : 0;
-
+    ctrl.f.I2C_EN = enable ? 1 : 0;
+    ctrl.f.I2C_CONTROLLER_MODE_EN = (enable && controller_mode) ? 1 : 0;
     write_reg(wrapper_addr, ctrl.w);
-
-    simputshex32("  Wrapper[", idx);
-    simputshex32("] enabled: addr=", wrapper_addr);
-    simputs(", mode=");
-    simputs(controller_mode ? "Controller" : "Target");
-    simputs("\n");
 }
 
-//=============================================================================
-// Main Test
-//=============================================================================
-
 int main(void) {
-    const uint32_t TARGET_IDX = 0;    // I2C_0 as Target
-    const uint8_t TARGET_ADDR = 0x10; // Target address (7-bit)
+    const uint8_t EXPECTED[4] = {0xAA, 0xBB, 0xCC, 0xDD};
     int ret;
 
     simputs("\n");
     simputs("################################################\n");
     simputs("##    I2C Target Sanity Test                 ##\n");
+    simputs("##    I2C_0 ctrl -> I2C_1 tgt @ 0x10         ##\n");
     simputs("################################################\n");
     simputs("\n");
 
-    //=========================================================================
-    // Step 1: System Initialization
-    //=========================================================================
     write_scratch(1, 0x00000010);
     simputs("Step 1: System Initialization\n");
-    simputs("  System ready\n");
     write_scratch(1, 0x00000011);
 
-    //=========================================================================
-    // Step 2: LEVEL 1 - Wrapper Control Enable
-    //         Enable GPIO pad mux (MUST be done FIRST)
-    //=========================================================================
     write_scratch(1, 0x00000020);
-    simputs("\nStep 2: LEVEL 1 - Wrapper Control Enable\n");
-
-    // Enable I2C_0 Wrapper (Target mode)
-    i2c_wrapper_enable(TARGET_IDX, false);
+    simputs("Step 2: Connect I2C_0 ctrl + I2C_1 tgt on shared pads\n");
+    i2c_wrapper_set(0, false, true);
+    i2c_wrapper_set(1, false, true);
+    i2c_wrapper_set(2, false, true);
+    i2c_wrapper_set(CONTROLLER_IDX, true, true);
+    i2c_wrapper_set(TARGET_IDX, true, false);
     write_scratch(1, 0x00000021);
 
-    //=========================================================================
-    // Step 3: LEVEL 2 - I2C IP Initialization (Target Mode)
-    //=========================================================================
     write_scratch(1, 0x00000030);
-    simputs("\nStep 3: LEVEL 2 - I2C Target Initialization\n");
+    simputs("Step 3: Init controller + target\n");
 
-    // Validate I2C target address (7-bit address must be in range 0x08-0x77)
-    if (TARGET_ADDR < 0x08 || TARGET_ADDR > 0x77) {
-        simputs("  ERROR: Invalid I2C target address\n");
-        simputshex32("  Address 0x", TARGET_ADDR);
-        simputs(" is outside valid range (0x08-0x77)\n");
+    i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
+                                             .clock_period_nanos = 10,
+                                             .sda_rise_nanos = 300,
+                                             .sda_fall_nanos = 100,
+                                             .scl_period_nanos = 0};
+    i2c_timing_config_t timing;
+    ret = i2c_compute_timing_from_physical(&physical_params, &timing);
+    if (ret != I2C_OK) {
+        i2c_get_default_timing(I2C_SPEED_STANDARD, 100, &timing);
+    }
+
+    i2c_controller_config_t ctrl_cfg = {.timing = timing,
+                                        .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
+                                                 .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
+                                                 .tx_thresh = 0,
+                                                 .acq_thresh = 0},
+                                        .enable_interrupts = false,
+                                        .timeout_cycles = 0};
+    ret = i2c_controller_init(CONTROLLER_IDX, &ctrl_cfg);
+    if (ret != I2C_OK) {
         write_scratch(0, 0xBAD00030);
         test_fail(0);
     }
 
-    // Initialize I2C_0 as Target (address 0x10)
-    simputshex32("  Initializing I2C_0 Target (addr=0x", TARGET_ADDR);
-    simputs(")...\n");
-
-    // Compute optimal timing parameters from physical characteristics
-    i2c_timing_physical_t physical_params = {
-        .speed = I2C_SPEED_STANDARD, // 100 kHz
-        .clock_period_nanos = 10,    // 100 MHz system clock (1/100MHz = 10ns)
-        .sda_rise_nanos = 300,       // Typical for 4.7k pullup
-        .sda_fall_nanos = 100,       // Typical fall time
-        .scl_period_nanos = 0        // Auto (use minimum for standard mode = 10us)
-    };
-
-    i2c_timing_config_t computed_timing;
-    ret = i2c_compute_timing_from_physical(&physical_params, &computed_timing);
-    if (ret != I2C_OK) {
-        simputs("  WARNING: Physical timing computation failed, using defaults\n");
-        i2c_get_default_timing(I2C_SPEED_STANDARD, 100, &computed_timing);
-    } else {
-        simputs("  Using computed timing parameters:\n");
-        simputshex32("    THIGH: ", computed_timing.thigh);
-        simputshex32("    TLOW:  ", computed_timing.tlow);
-        simputshex32("    T_R:   ", computed_timing.t_r);
-        simputshex32("    T_F:   ", computed_timing.t_f);
-        simputs("\n");
-    }
-
-    const uint8_t TARGET_ADDR1 = 0; // Secondary address (not used in this test)
-    i2c_target_config_t tgt_cfg = {
-        .address0 = TARGET_ADDR,
-        .mask0 = 0x7F, // Exact match
-        .address1 = TARGET_ADDR1,
-        .mask1 = 0,
-        .timing = computed_timing,
-        .fifo = {.tx_thresh = 1, // Set to 1 to ensure target FSM reads TX FIFO immediately
-                 .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
-                 .rx_thresh = 0,
-                 .fmt_thresh = 0},
-        .enable_interrupts = false,
-        .ack_ctrl_mode = false,
-        .tx_stretch_ctrl = false,
-        .timeout_cycles = 0};
-
+    i2c_target_config_t tgt_cfg = {.address0 = TARGET_ADDR,
+                                   .mask0 = 0x7F,
+                                   .address1 = 0,
+                                   .mask1 = 0,
+                                   .timing = timing,
+                                   .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
+                                            .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
+                                            .rx_thresh = 0,
+                                            .fmt_thresh = 0},
+                                   .enable_interrupts = false,
+                                   .ack_ctrl_mode = false,
+                                   .tx_stretch_ctrl = false,
+                                   .timeout_cycles = 0};
     ret = i2c_target_init(TARGET_IDX, &tgt_cfg);
     if (ret != I2C_OK) {
-        simputs("  ERROR: Target init failed\n");
-        write_scratch(0, 0xBAD00030);
+        write_scratch(0, 0xBAD00031);
         test_fail(0);
     }
-    simputs("  Target initialized successfully\n");
+
+    uint32_t tbase = i2c_get_base(TARGET_IDX);
+    i2c__CTRL_t tctrl = {.w = read_reg(tbase + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                                                SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+    tctrl.f.ACQ_START_STOP_EN = 1;
+    write_reg(tbase + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
+                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
+              tctrl.w);
     write_scratch(1, 0x00000031);
 
-    // Explicitly set ACQ_START_STOP_EN bit to 1
-    uint32_t base = i2c_get_base(TARGET_IDX);
-    i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
-                                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    ctrl.w |= (1 << 7); // Set ACQ_START_STOP_EN bit (bit 7)
-    write_reg(
-        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
-        ctrl.w);
-
-    // Reset FIFOs after enabling target mode (OpenTitan best practice)
-    i2c_reset_fifos(TARGET_IDX, false, false, true, true);
-    simputs("  FIFOs reset after target enable\n");
-
-    // Signal setup done to testbench
     write_scratch(1, 0xEBEDEBE2);
-    simputs("  Setup complete - waiting for external master...\n");
+    simputs("Step 4: Write + ACQ verify\n");
+    write_scratch(1, 0x00000040);
 
-    // Test passes - firmware setup is complete
-    // The testbench will handle the actual I2C transaction testing
+    ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR, EXPECTED,
+                                                    sizeof(EXPECTED));
+    if (ret != I2C_OK) {
+        simputs("  ERROR: controller write failed\n");
+        write_scratch(0, 0xBAD00040);
+        test_fail(0);
+    }
+
+    uint8_t recv[64];
+    uint32_t recv_len = 0;
+    ret = i2c_target_receive_transaction(TARGET_IDX, recv, sizeof(recv), &recv_len,
+                                         I2C_TIMEOUT_DEFAULT);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: target receive failed\n");
+        write_scratch(0, 0xBAD00041);
+        test_fail(0);
+    }
+
+    ret = i2c_controller_wait_idle(CONTROLLER_IDX, I2C_TIMEOUT_DEFAULT);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: controller idle timeout\n");
+        write_scratch(0, 0xBAD00042);
+        test_fail(0);
+    }
+
+    if (recv_len != sizeof(EXPECTED)) {
+        simputs("  ERROR: length mismatch got=");
+        simputshex32("", recv_len);
+        simputs("\n");
+        write_scratch(0, 0xBAD00043);
+        test_fail(0);
+    }
+    for (uint32_t i = 0; i < sizeof(EXPECTED); i++) {
+        if (recv[i] != EXPECTED[i]) {
+            simputs("  ERROR: data mismatch\n");
+            write_scratch(0, 0xBAD00044);
+            test_fail(0);
+        }
+    }
+
+    i2c_controller_disable(CONTROLLER_IDX);
+    i2c_wrapper_set(CONTROLLER_IDX, false, true);
+    i2c_wrapper_set(TARGET_IDX, false, false);
+
+    write_scratch(1, 0x00000090);
+    write_scratch(1, 0xEBEDEBE4);
+    simputs("\n################################################\n");
+    simputs("##           ALL TESTS PASSED                ##\n");
+    simputs("################################################\n");
     test_pass(0);
 
     while (true) {
         __asm__("wfi");
     }
-
     return 0;
 }
 
-int secondary_main(void) {
-    return main();
-}
+/* Do NOT define secondary_main here — crt0's weak default dispatches the
+ * boot hart into main() and parks other harts. Overriding with a bare WFI
+ * leaves every hart parked and the test never starts. */

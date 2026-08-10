@@ -7,15 +7,13 @@
  * @brief Key Provisioning Vault (KPV) driver implementation
  *
  * Scrambler control, slot shredding (single and bulk), key read/write, and
- * lock operations.  Shred routines use rom_shred_region for pseudorandom
- * overwrite (full KPV as one region when no slots are write-locked,
- * otherwise per-slot).
+ * lock operations.  Shredding drives the hardware erase path, which overwrites
+ * each slot through the KPV scrambler and clears its control register, so
+ * write-locked slots are wiped too.
  */
 
 #include "rom_kpv.h"
 #include "rom_defs.h"
-#include "rom_prng.h"
-#include "rom_shred.h"
 #include "rom_drbg.h"
 #include "key_manager_fw.h"
 
@@ -92,52 +90,35 @@ void rom_kpv_scrambler_lock(void) {
 }
 
 /*===========================================================================
- * Shred all
+ * Shred and hardware erase
+ *
+ * One call chain, outermost first: shred_all -> shred_slot -> erase_slot.
  *===========================================================================*/
 
 /**
- * @brief Shred all KPV slots with pseudorandom data.
+ * @brief Shred all KPV slots via the hardware erase path.
  *
- * If any slot is write-locked, returns -1 without shredding.  Otherwise
- * clears slot control registers and shreds the entire key array (512 words)
- * in one call to rom_shred_region.
- *
- * @param[in] prng PRNG state (re-seeded from DRBG each pass).
- * @return 0 on success, -1 if any slot is write-locked.
+ * Calls rom_kpv_shred_slot on every slot, which erases each slot
+ * ROM_KM_SHRED_ITER+1 times (overwriting the slot data with LFSR output
+ * through the KPV scrambler and clearing the slot CTRL register), so this
+ * also wipes write-locked slots.
  */
-int rom_kpv_shred_all(rom_km_prng_state_t *prng) {
-    for (uint8_t s = 0; s < ROM_KM_KPV_NUM_SLOTS; s++) {
-        if (KPV_CTRL(s).f.lock_write) return -1;
-    }
-
-    for (uint8_t s = 0; s < ROM_KM_KPV_NUM_SLOTS; s++) KPV_CTRL(s).w = 0;
-
-    rom_shred_region(KPV_KEY_BASE, ROM_KM_KPV_TOTAL_WORDS, prng, 1);
-    return 0;
+void rom_kpv_shred_all(void) {
+    for (uint8_t s = 0; s < ROM_KM_KPV_NUM_SLOTS; s++) rom_kpv_shred_slot(s);
 }
-
-/*===========================================================================
- * Shred single slot
- *===========================================================================*/
 
 /**
- * @brief Shred a single KPV slot with pseudorandom data.
+ * @brief Shred a single KPV slot via the hardware erase path.
  *
- * @param[in]  slot Slot index to shred.
- * @param[in]  prng PRNG state (re-seeded from DRBG each pass).
- * @return 0 on success, -1 if the slot is write-locked.
+ * Calls rom_kpv_erase_slot on the slot ROM_KM_SHRED_ITER+1 times.  Each erase
+ * overwrites the slot data with LFSR output (through the KPV scrambler) and
+ * clears the slot CTRL register, so this also wipes write-locked slots.
+ *
+ * @param[in]  slot Slot index to shred (EXTEND determines the span erased).
  */
-int rom_kpv_shred_slot(uint8_t slot, rom_km_prng_state_t *prng) {
-    if (KPV_CTRL(slot).f.lock_write) return -1;
-
-    KPV_CTRL(slot).w = 0;
-    rom_shred_region(KPV_SLOT_BASE(slot), (uint16_t)ROM_KM_KPV_WORDS_PER_SLOT, prng, 1);
-    return 0;
+void rom_kpv_shred_slot(uint8_t slot) {
+    for (uint8_t iter = 0; iter < ROM_KM_SHRED_ITER + 1; iter++) rom_kpv_erase_slot(slot);
 }
-
-/*===========================================================================
- * Hardware erase
- *===========================================================================*/
 
 /**
  * @brief Hardware-erase the base slot and all extended slots, then wait.

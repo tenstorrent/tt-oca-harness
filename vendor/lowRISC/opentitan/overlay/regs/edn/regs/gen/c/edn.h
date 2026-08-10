@@ -21,8 +21,8 @@ extern "C" {
 #define EDN__INTR_STATE__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t EDN_CMD_REQ_DONE :1;
-        uint32_t EDN_FATAL_ERR :1;
+        uint32_t edn_cmd_req_done :1;
+        uint32_t edn_fatal_err :1;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -39,8 +39,8 @@ typedef union {
 #define EDN__INTR_ENABLE__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t EDN_CMD_REQ_DONE :1;
-        uint32_t EDN_FATAL_ERR :1;
+        uint32_t edn_cmd_req_done :1;
+        uint32_t edn_fatal_err :1;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -57,8 +57,8 @@ typedef union {
 #define EDN__INTR_TEST__EDN_FATAL_ERR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t EDN_CMD_REQ_DONE :1;
-        uint32_t EDN_FATAL_ERR :1;
+        uint32_t edn_cmd_req_done :1;
+        uint32_t edn_fatal_err :1;
         uint32_t :30;
     } f;
     uint32_t w;
@@ -75,8 +75,8 @@ typedef union {
 #define EDN__ALERT_TEST__FATAL_ALERT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t RECOV_ALERT :1;
-        uint32_t FATAL_ALERT :1;
+        uint32_t recov_alert :1;
+        uint32_t fatal_alert :1;
         uint32_t :30;
     } f;
     uint32_t w;

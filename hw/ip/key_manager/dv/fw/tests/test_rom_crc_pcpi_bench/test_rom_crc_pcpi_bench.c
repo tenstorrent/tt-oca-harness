@@ -20,7 +20,7 @@
  * visibility.
  *
  * Run with:
- *   make -C hw/comp/key_manager/tb run_fw FW_TEST=test_rom_crc_pcpi_bench VUART_PRINT=1
+ *   make run_fw FW_TEST=test_rom_crc_pcpi_bench VUART_PRINT=1
  */
 
 #include "test_common.h"

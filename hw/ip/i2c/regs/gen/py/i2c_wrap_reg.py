@@ -370,7 +370,7 @@ I2C_SMBUS_CTRL_REG_DEFAULT = 0x00000000
 
 class I2C_SMBUS_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_SMBUS_CTRL_reg_t),
     ]
 
@@ -405,7 +405,7 @@ I2C_CTRL_REG_DEFAULT = 0x00000000
 
 class I2C_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_CTRL_reg_t),
     ]
 
@@ -443,7 +443,7 @@ I2C_STATUS_REG_DEFAULT = 0x0000033C
 
 class I2C_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', I2C_STATUS_reg_t),
     ]
 
@@ -471,7 +471,7 @@ I2C_RDATA_REG_DEFAULT = 0x00000000
 
 class I2C_RDATA_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_RDATA_reg_t),
     ]
 
@@ -504,7 +504,7 @@ I2C_FDATA_REG_DEFAULT = 0x00000000
 
 class I2C_FDATA_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', I2C_FDATA_reg_t),
     ]
 
@@ -536,7 +536,7 @@ I2C_FIFO_CTRL_REG_DEFAULT = 0x00000000
 
 class I2C_FIFO_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', I2C_FIFO_CTRL_reg_t),
     ]
 
@@ -686,7 +686,7 @@ I2C_OVRD_REG_DEFAULT = 0x00000000
 
 class I2C_OVRD_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_OVRD_reg_t),
     ]
 
@@ -955,7 +955,7 @@ I2C_ACQDATA_REG_DEFAULT = 0x00000000
 
 class I2C_ACQDATA_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', I2C_ACQDATA_reg_t),
     ]
 
@@ -983,7 +983,7 @@ I2C_TXDATA_REG_DEFAULT = 0x00000000
 
 class I2C_TXDATA_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_TXDATA_reg_t),
     ]
 
@@ -1068,7 +1068,7 @@ I2C_TARGET_NACK_COUNT_REG_DEFAULT = 0x00000000
 
 class I2C_TARGET_NACK_COUNT_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_TARGET_NACK_COUNT_reg_t),
     ]
 
@@ -1126,7 +1126,7 @@ I2C_ACQ_FIFO_NEXT_DATA_REG_DEFAULT = 0x00000000
 
 class I2C_ACQ_FIFO_NEXT_DATA_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_ACQ_FIFO_NEXT_DATA_reg_t),
     ]
 
@@ -1186,7 +1186,7 @@ I2C_CONTROLLER_EVENTS_REG_DEFAULT = 0x00000000
 
 class I2C_CONTROLLER_EVENTS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_CONTROLLER_EVENTS_reg_t),
     ]
 
@@ -1218,7 +1218,7 @@ I2C_TARGET_EVENTS_REG_DEFAULT = 0x00000000
 
 class I2C_TARGET_EVENTS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_TARGET_EVENTS_reg_t),
     ]
 
@@ -1248,7 +1248,7 @@ I2C_SMBUS_STATUS_REG_DEFAULT = 0x00000000
 
 class I2C_SMBUS_STATUS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint8),
+        ('val', c_uint32),
         ('f', I2C_SMBUS_STATUS_reg_t),
     ]
 
@@ -1280,7 +1280,7 @@ I2C_CTRL_I2C_CTRL_REG_DEFAULT = 0x00000000
 
 class I2C_CTRL_I2C_CTRL_reg_u(Union):
     _fields_ = [
-        ('val', c_uint16),
+        ('val', c_uint32),
         ('f', I2C_CTRL_I2C_CTRL_reg_t),
     ]
 

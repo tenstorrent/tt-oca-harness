@@ -21,6 +21,7 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "spi_mux.h"
 
 //==============================================================================
 // SPI Mux Control Functions
@@ -36,11 +37,6 @@
  * The default value has cs_force_high=1 for safety during power-up.
  * This function clears cs_force_high to allow normal CS# operation.
  */
-static void configure_spi_mux(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR, 1u);
-
-    printf("SPI mux configured: spi_sel=1 (OpenTitan), cs_force_high=0\n");
-}
 
 //==============================================================================
 // Main Test
@@ -62,7 +58,7 @@ int main(void) {
 
     // Configure SPI mux: select OpenTitan SPI Host controller and clear cs_force_high
     // This must be done FIRST before any SPI controller operations
-    configure_spi_mux();
+    spi_mux_select_ot();
 
     printf("\n--- Testing SPI Controller Registers ---\n\n");
 

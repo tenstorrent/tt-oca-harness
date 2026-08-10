@@ -5,7 +5,7 @@
 // - `fw/sep/tests/dma_test/dma_test.c` (secure_dma programming sequence)
 //
 // This file is freestanding and uses absolute register addresses from
-// `och_sep_top_reg.h`.
+// `sep.h`.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -13,7 +13,7 @@
 #include "rom_mmio.h"
 
 // Generated absolute register map for OCH SEP.
-#include "och_sep_top_reg.h"
+#include "sep.h"
 
 #include "sep_dma.h"
 #include "rom_virt_console.h"
@@ -28,15 +28,15 @@
 // Cadence xSPI direct flash access / XIP window (OCH address map):
 //   0x3000_0000 - 0x3FFF_FFFF (256 MiB).
 #ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE ((uint32_t)SEP_AXI_EXTENSION_XIP_REGION_MEM_BASE_ADDR)
+#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
 #endif
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)SEP_AXI_EXTENSION_XIP_REGION_MEM_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
 
 // For OCH, the "SEP EXT SRAM" equivalent is `sep_sram` in the address map.
-#define SEP_EXT_SRAM_BASE ((uint32_t)SEP_SRAM_MEM_BASE_ADDR)
-#define SEP_SRAM_SIZE ((uint32_t)SEP_SRAM_MEM_SIZE)
+#define SEP_EXT_SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
+#define SEP_SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)
 
 // Minimal local error codes for the ROM DMA path.
 enum {
@@ -69,14 +69,14 @@ static inline int contains_range_u32(uint32_t base, uint32_t size, uint32_t addr
 
 void sep_dma_init(void) {
     // Secure DMA requires an enabled memory range before operation.
-    dma_write(SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_REG_ADDR, 0x00000000u);
-    dma_write(SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_REG_ADDR, 0xFFFFFFFFu);
-    dma_write(SECURE_DMA_RANGE_VALID_REG_ADDR, 0x00000001u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00000000u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x00000001u);
 }
 
 // Check if destination is in the ICCM region.
 static inline int dest_is_iccm(uint32_t dest, uint32_t n) {
-    return contains_range_u32(SEP_ICCM_MEM_BASE_ADDR, SEP_ICCM_MEM_SIZE, dest, n);
+    return contains_range_u32(OCH_SEP_TOP_SEP_ICCM_BASE_ADDR, OCH_SEP_TOP_SEP_ICCM_SIZE, dest, n);
 }
 
 uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
@@ -109,51 +109,51 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
     const int iccm_dest = dest_is_iccm(dest, n);
     uint32_t saved_region_size = 0;
     if (iccm_dest) {
-        saved_region_size = mmio_read32(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR);
+        saved_region_size = mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR);
         simputshex32("REMAP_OLD=", saved_region_size);
 
         // Disable remap: set region size to 0.
-        mmio_write32(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR, 0u);
+        mmio_write32(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, 0u);
 
         // Fence to ensure register write is committed before DMA observes it.
         __asm__ volatile("fence ow, ow" ::: "memory");
 
-        uint32_t readback = mmio_read32(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR);
+        uint32_t readback = mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR);
         simputshex32("REMAP_NEW=", readback);
     }
 
     // Program transfer.
-    dma_write(SECURE_DMA_SRC_ADDR_LO_REG_ADDR, src);
-    dma_write(SECURE_DMA_SRC_ADDR_HI_REG_ADDR, 0u);
-    dma_write(SECURE_DMA_DST_ADDR_LO_REG_ADDR, dest);
-    dma_write(SECURE_DMA_DST_ADDR_HI_REG_ADDR, 0u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dest);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
 
     // Configure address space IDs: SRC_ASID=0x7 (OT internal), DST_ASID=0x7.
     // Required by secure_dma hardware (see dma_test.c).
-    dma_write(SECURE_DMA_ADDR_SPACE_ID_REG_ADDR, 0x77u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, 0x77u);
 
     // Configure for contiguous copy.
     // - transfer width: 4 bytes (FOUR_BYTE = 0x2) as used in dma_test.
     // - src/dst increment enabled.
-    dma_write(SECURE_DMA_TRANSFER_WIDTH_REG_ADDR, 0x2u);
-    dma_write(SECURE_DMA_SRC_CONFIG_REG_ADDR, 0x1u);
-    dma_write(SECURE_DMA_DST_CONFIG_REG_ADDR, 0x1u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0x2u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x1u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x1u);
 
-    dma_write(SECURE_DMA_CHUNK_DATA_SIZE_REG_ADDR, n);
-    dma_write(SECURE_DMA_TOTAL_DATA_SIZE_REG_ADDR, n);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, n);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, n);
 
     // Start: OPCODE=COPY (0), INITIAL_TRANSFER=1 (bit 8), GO=1 (bit 31).
-    dma_write(SECURE_DMA_CONTROL_REG_ADDR, 0x80000100u);
+    dma_write(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x80000100u);
 
     // Wait for completion (no timeout in the ROM DMA path).
     uint32_t result = 0;
     for (;;) {
-        const uint32_t status = dma_read(SECURE_DMA_STATUS_REG_ADDR);
+        const uint32_t status = dma_read(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (status & BIT(1)) { // DONE
             break;
         }
         if (status & BIT(3)) { // ERROR
-            uint32_t ecode = dma_read(SECURE_DMA_ERROR_CODE_REG_ADDR);
+            uint32_t ecode = dma_read(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
             simputshex32("DMA_STS=", status);
             simputshex32("DMA_EC=", ecode);
             simputshex32("DMA_DST=", dest);
@@ -166,7 +166,7 @@ uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
 
     // Restore remap if we disabled it.
     if (iccm_dest) {
-        mmio_write32(SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR, saved_region_size);
+        mmio_write32(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, saved_region_size);
     }
 
     return result;

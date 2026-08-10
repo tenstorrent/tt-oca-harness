@@ -176,10 +176,10 @@ package sep_local_axi_xbar_pkg;
   localparam logic [31:0] ENTROPY_FIFO_MAIN_SIZE = 32'h10000;
   localparam logic [32:0] ENTROPY_FIFO_MAIN_END  = 33'h10960000;
 
-  // Output: axi_extension
-  localparam logic [31:0] AXI_EXTENSION_MAIN_BASE = 32'h20000000;
-  localparam logic [31:0] AXI_EXTENSION_MAIN_SIZE = 32'h20000000;
-  localparam logic [32:0] AXI_EXTENSION_MAIN_END  = 33'h40000000;
+  // Output: sep_external
+  localparam logic [31:0] SEP_EXTERNAL_MAIN_BASE = 32'h20000000;
+  localparam logic [31:0] SEP_EXTERNAL_MAIN_SIZE = 32'h20000000;
+  localparam logic [32:0] SEP_EXTERNAL_MAIN_END  = 33'h40000000;
 
   // ===========================================================================
   // Crossbar Configuration

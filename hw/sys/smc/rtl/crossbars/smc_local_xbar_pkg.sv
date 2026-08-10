@@ -5,7 +5,6 @@
 // AUTOMATICALLY GENERATED - DO NOT EDIT
 //
 // Fabric: smc_local_xbar
-// Generated: 2026-07-21 21:05:00
 
 `include "axi/typedef.svh"
 `include "apb/typedef.svh"

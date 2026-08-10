@@ -53,7 +53,7 @@ SMC_OTP_SINGLE_OP_LEN = 72
 SMC_OTP_AXSIZE_4B = 2
 # Relative probe used by P1 CAPS/BUSY (routes to SHIM when MAP base is abs).
 SMC_OTP_DEFAULT_PROBE_ADDR = 0x80
-# Absolute SMC eFuse map window (smc_top_reg / INTERFACE_SEL decode).
+# Absolute SMC eFuse map window (smc_reg.svh / INTERFACE_SEL decode).
 SMC_EFUSE_MAP_BASE = 0xC000_B000
 # BIRA word @ +0x80 — WRITE_UNLOCK in smc_efuse_pkg::EfuseFieldMap.
 SMC_EFUSE_MAP_BIRA_WORD = SMC_EFUSE_MAP_BASE + 0x80

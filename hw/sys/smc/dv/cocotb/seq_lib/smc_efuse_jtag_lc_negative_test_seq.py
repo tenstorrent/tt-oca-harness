@@ -28,7 +28,7 @@ from __future__ import annotations
 from .smc_csr_seq_utils import SmcCsrSeq
 
 CHIP_CONFIG_LC_STATE = 0xC000_290C
-# SEP_IN CSR-mapped SMC_EFUSE_MAP identity registers (smc_top_reg.svh):
+# SEP_IN CSR-mapped SMC_EFUSE_MAP identity registers (smc_reg.svh):
 #   SMC_EFUSE_MAP_CHIPLET_ID_REG_ADDR = 0xC000_B008
 #   SMC_EFUSE_MAP_PACKAGE_ID_REG_ADDR = 0xC000_B028
 SMC_EFUSE_MAP_CHIPLET_ID = 0xC000_B008

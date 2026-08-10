@@ -3,6 +3,10 @@
 Shared DV collateral for the OCAH tree: protocol VIP (`vip/ocah_<proto>_vip/`), shared
 configs (`configs/`), `sva/`, `shims/`, and shared firmware (`fw/`).
 
+See the [Shared Design Verification and VIP Guide](docs/index.adoc) for the
+detailed architecture, package catalog, deployment, checker/reference-model
+contracts, and contributor workflow.
+
 Install the VIP packages from the repository root with:
 
 ```bash
@@ -133,6 +137,85 @@ Two examples define the ownership boundary:
 Contributors should add new DUT-specific behavior under that DUT's `dv/`
 directory. Add or extend shared protocol behavior only under
 `hw/common/dv/vip/ocah_<protocol>_vip/` after the checklist above is met.
+
+## Checker Ownership and Evidence
+
+`vip/ocah_checker/` owns protocol-neutral checker evidence: stable `CHK-*`
+identifiers, exact expected/observed/context formatting, required-ID tracking,
+timeout checks, retained findings, and strict finalization. It is checker
+infrastructure, not a protocol VIP.
+
+Checker ownership follows these boundaries:
+
+- each shared `ocah_<protocol>_vip` owns item-level protocol legality and
+  structural checks, composed over `ocah_checker`;
+- DUT `cocotb/assertions/` owns pure hierarchy/address/lifecycle invariants;
+- DUT `cocotb/env/` owns lifecycle-aware scoreboards, predictors, and reference
+  models;
+- tests and sequences configure independent expected values and must finalize
+  every checker they use.
+
+Named evidence uses one line per concrete VPLAN intent:
+
+```text
+CHK-<ID> PASS expected=<value> observed=<value> context=<address/field/loop>
+CHK-<ID> FAIL expected=<value> observed=<value> context=<address/field/loop>
+CHECKER_SUMMARY name=<name> checks=<n> passed=<n> failed=<n> missing=<n>
+```
+
+Finalization fails on retained errors, zero executed checks, or missing required
+IDs. A nonzero generic check count is not domain non-vacuity; tests must add a
+meaningful `CHK-NONVAC` comparison when their VPLAN requires it.
+
+Transaction timeout fails unless the VPLAN explicitly expects a bounded timeout
+and records that bound. Runner stage timeout is always `TIMEOUT`/124 and cannot
+be converted into checker PASS. Positive `CHK-*` text is auditable log evidence;
+passing `results.xml` and native schema-1 `result.json` remain authoritative for
+the runner.
+
+## Reference Model and Scoreboard Contract
+
+A scenario config may be the single source of truth for both stimulus and
+expected results, but it must not contain simulator handles or mutable runtime
+state. Prefer a frozen dataclass that records the seed, operation, dimensions,
+input values, and evidence context used by:
+
+1. the sequence or driver to program the DUT;
+2. a pure or explicitly resettable reference model to compute expected values;
+3. the checker or scoreboard to identify the corresponding evidence.
+
+The observed value must come only from a DUT-facing driver or monitor. Never
+derive expected data from the observation being checked. Models consume plain
+config/transaction values and return plain expected values or item dataclasses.
+Stateful models must provide deterministic reset/flush behavior, and tests must
+invoke it at the same architectural boundary as the DUT reset or flush.
+
+The checker/scoreboard owns comparison and finalization:
+
+```text
+immutable config -> DUT programming
+immutable config -> reference model -> expected value/item
+DUT driver/monitor -> observed value/item
+expected + observed -> checker/scoreboard -> CHK-* evidence + CHECKER_SUMMARY
+```
+
+Use the common summary format for scoreboards as well as direct checkers:
+
+```text
+CHECKER_SUMMARY name=<name> checks=<n> passed=<n> failed=<n> missing=<n>
+```
+
+`failed` is the scoreboard error count. Before a failed summary, emit one
+triage-ready `CHK-* FAIL` line per failed contract with exact expected,
+observed, and context fields. Finalization must reject retained errors, zero
+checks, and missing required IDs. Domain-specific `CHK-NONVAC` evidence must
+show that the modeled path could not pass through idle, default, stub, or
+unobserved behavior.
+
+Shared protocol-neutral models may move beside their VIP only after the normal
+promotion gates are met. DUT addresses, hierarchy, lifecycle/security policy,
+scenario selection, and DUT-specific goldens remain under the DUT's
+`cocotb/env/`; pure hierarchy invariants remain under `cocotb/assertions/`.
 
 DUT-local packages are exposed by the OSS DV namespace bridge. In a clean shell,
 install the shared package and source the OSS DV environment before running tests:

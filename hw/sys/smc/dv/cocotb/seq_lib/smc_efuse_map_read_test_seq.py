@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Structured map (smc_top_reg.svh), not a flat word array:
+# Structured map (smc_reg.svh), not a flat word array:
 #   LOCKS @ 0xB000 (64b), CHIPLET_ID @ 0xB008, PACKAGE_ID @ 0xB028,
 #   BIRA @ 0xB048, ...
 # LOCKS lo/hi match words 0/1 of assets/smc_efuse_default.hex (smoke default).

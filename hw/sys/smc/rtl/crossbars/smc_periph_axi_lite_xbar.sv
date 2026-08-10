@@ -39,6 +39,11 @@
 module smc_periph_axi_lite_xbar
   import axi_pkg::*;
   import smc_periph_axi_lite_xbar_pkg::*;
+#(
+  // Vendor eFuse shim CSR block carved off the base of the smc_external window;
+  // literal because the open smc_external map is opaque. Threaded from smc_peripherals.sv.
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h44
+)
 (
   input  logic clk_i,
   input  logic rst_ni,
@@ -136,8 +141,10 @@ module smc_periph_axi_lite_xbar
     '{idx: 9, start_addr: 32'hc000b000, end_addr: 33'hc000b800},
     // i3c.i3c: 0xc003a000 - 0xc0040000
     '{idx: 10, start_addr: 32'hc003a000, end_addr: 33'hc0040000},
-    // external.external: 0xc0400000 - 0xc0800000
-    '{idx: 11, start_addr: 32'hc0400000, end_addr: 33'hc0800000}
+    // efuse.efuse_shim: 0xc0400000 -> 0xc0400000 + EFUSE_SHIM_SIZE
+    '{idx: 6, start_addr: 32'hc0400000, end_addr: 33'hc0400000 + 33'(EFUSE_SHIM_SIZE)},
+    // external.external: 0xc0400000 + EFUSE_SHIM_SIZE -> 0xc0800000
+    '{idx: 11, start_addr: 32'hc0400000 + EFUSE_SHIM_SIZE, end_addr: 33'hc0800000}
   };
 
   // ===========================================================================

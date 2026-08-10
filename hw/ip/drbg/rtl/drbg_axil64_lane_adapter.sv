@@ -27,18 +27,20 @@ module drbg_axil64_lane_adapter import drbg_pkg::*; import axi_pkg::*; #(
     parameter type axil32_req_t = drbg_axil32_req_t,
     parameter type axil32_rsp_t = drbg_axil32_resp_t
 ) (
-    input  wire logic        clk_i,
-    input  wire logic        rst_ni,
+    // `wire` is fine on scalar logic; omit it on type-parameter ports
+    // (Xcelium *E,SVNSTP rejects `wire` + type parameters).
+    input  wire logic   clk_i,
+    input  wire logic   rst_ni,
 
-    input  wire axil64_req_t axil64_req_i,
-    output axil64_rsp_t      axil64_rsp_o,
+    input  axil64_req_t axil64_req_i,
+    output axil64_rsp_t axil64_rsp_o,
 
-    output axil32_req_t      axil32_req_o,
-    input  wire axil32_rsp_t axil32_rsp_i,
+    output axil32_req_t axil32_req_o,
+    input  axil32_rsp_t axil32_rsp_i,
 
-    output logic             unsupported_access_pulse_o,
-    output logic             forwarded_read_pulse_o,
-    output logic             forwarded_write_pulse_o
+    output logic        unsupported_access_pulse_o,
+    output logic        forwarded_read_pulse_o,
+    output logic        forwarded_write_pulse_o
 );
 
     `include "prim_assert.sv"

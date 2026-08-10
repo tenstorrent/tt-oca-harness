@@ -349,6 +349,8 @@ localparam int unsigned AES_REG_MAP_BASE_ADDR                                   
 localparam int unsigned AES_REG_MAP_SIZE                                                                          = 32'h0000008C;
 
 
+localparam int unsigned AES_ALERT_TEST_REG_OFFSET                                                                 = 32'h00000000;
+localparam int unsigned AES_ALERT_TEST_REG_ADDR                                                                   = 32'h10910000;
 localparam int unsigned AES_KEY_SHARE0_0__REG_OFFSET                                                              = 32'h00000004;
 localparam int unsigned AES_KEY_SHARE0_0__REG_ADDR                                                                = 32'h10910004;
 localparam int unsigned AES_KEY_SHARE0_1__REG_OFFSET                                                              = 32'h00000008;
@@ -925,19 +927,6 @@ localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET            
 localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR                                                = 32'h10930568;
 localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET                                              = 32'h0000006C;
 localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR                                                = 32'h1093056C;
-
-
-//==============================================================================
-// Addresses for Address Map: efuse_shim_ctrl
-//==============================================================================
-
-
-localparam int unsigned EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR                                                         = 32'h10930600;
-localparam int unsigned EFUSE_SHIM_CTRL_REG_MAP_SIZE                                                              = 32'h00000004;
-
-
-localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_OFFSET                                           = 32'h00000000;
-localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_ADDR                                             = 32'h10930600;
 
 
 //==============================================================================
@@ -3514,22 +3503,35 @@ localparam int unsigned STEE_REGION_MEM_SIZE                                    
 
 
 //==============================================================================
-// Addresses for Address Map: sep_axi_extension
+// Addresses for Address Map: sep_external
 //==============================================================================
 
 
-localparam int unsigned SEP_AXI_EXTENSION_REG_MAP_BASE_ADDR                                                       = 32'h20000000;
-localparam int unsigned SEP_AXI_EXTENSION_REG_MAP_SIZE                                                            = 32'h20000000;
+localparam int unsigned SEP_EXTERNAL_REG_MAP_BASE_ADDR                                                            = 32'h20000000;
+localparam int unsigned SEP_EXTERNAL_REG_MAP_SIZE                                                                 = 32'h20000000;
 
 
+
+
+//==============================================================================
+// Addresses for Address Map: efuse_shim_ctrl
+//==============================================================================
+
+
+localparam int unsigned SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR                                            = 32'h20000000;
+localparam int unsigned SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE                                                 = 32'h00000004;
+
+
+localparam int unsigned SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_OFFSET                              = 32'h00000000;
+localparam int unsigned SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_ADDR                                = 32'h20000000;
 
 
 //==============================================================================
 // Memory: xip_region
 //==============================================================================
 
-localparam int unsigned SEP_AXI_EXTENSION_XIP_REGION_MEM_BASE_ADDR                                                = 32'h30000000;
-localparam int unsigned SEP_AXI_EXTENSION_XIP_REGION_MEM_SIZE                                                     = 32'h10000000;
+localparam int unsigned SEP_EXTERNAL_XIP_REGION_MEM_BASE_ADDR                                                     = 32'h30000000;
+localparam int unsigned SEP_EXTERNAL_XIP_REGION_MEM_SIZE                                                          = 32'h10000000;
 
 
 
@@ -3885,17 +3887,18 @@ localparam longint unsigned OTBN_ERR_BITS_REG_DEFAULT                           
 localparam longint unsigned OTBN_FATAL_ALERT_CAUSE_REG_DEFAULT                                                    = 32'h00000000;
 localparam longint unsigned OTBN_INSN_CNT_REG_DEFAULT                                                             = 32'h00000000;
 localparam longint unsigned OTBN_LOAD_CHECKSUM_REG_DEFAULT                                                        = 32'h00000000;
+localparam longint unsigned AES_ALERT_TEST_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned AES_KEY_SHARE0_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned AES_KEY_SHARE1_REG_DEFAULT                                                            = 32'h00000000;
 localparam longint unsigned AES_IV_REG_DEFAULT                                                                    = 32'h00000000;
 localparam longint unsigned AES_DATA_IN_REG_DEFAULT                                                               = 32'h00000000;
 localparam longint unsigned AES_DATA_OUT_REG_DEFAULT                                                              = 32'h00000000;
-localparam longint unsigned AES_CTRL_SHADOWED_REG_DEFAULT                                                         = 32'h00000000;
-localparam longint unsigned AES_CTRL_AUX_SHADOWED_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned AES_CTRL_SHADOWED_REG_DEFAULT                                                         = 32'h000011FD;
+localparam longint unsigned AES_CTRL_AUX_SHADOWED_REG_DEFAULT                                                     = 32'h00000001;
 localparam longint unsigned AES_CTRL_AUX_REGWEN_REG_DEFAULT                                                       = 32'h00000001;
-localparam longint unsigned AES_TRIGGER_REG_DEFAULT                                                               = 32'h00000000;
+localparam longint unsigned AES_TRIGGER_REG_DEFAULT                                                               = 32'h0000000E;
 localparam longint unsigned AES_STATUS_REG_DEFAULT                                                                = 32'h00000000;
-localparam longint unsigned AES_CTRL_GCM_SHADOWED_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned AES_CTRL_GCM_SHADOWED_REG_DEFAULT                                                     = 32'h00000401;
 localparam longint unsigned HMAC_INTR_STATE_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned HMAC_INTR_ENABLE_REG_DEFAULT                                                          = 32'h00000000;
 localparam longint unsigned HMAC_INTR_TEST_REG_DEFAULT                                                            = 32'h00000000;
@@ -3965,7 +3968,6 @@ localparam longint unsigned EFUSE_MMR_RMA_TOKEN_I_REG_DEFAULT                   
 localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_EOP_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT                                      = 32'h00000020;
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_READ_DATA_REG_DEFAULT                                                    = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_STATUS_REG_DEFAULT                                                       = 64'h0000000000000000;
@@ -4022,6 +4024,7 @@ localparam longint unsigned SPI_CONTROLLER_ERROR_ENABLE_REG_DEFAULT             
 localparam longint unsigned SPI_CONTROLLER_ERROR_STATUS_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned SPI_CONTROLLER_EVENT_ENABLE_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_REG_DEFAULT                                                  = 64'h0000000000000000;
+localparam longint unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT                                      = 32'h00000020;
 localparam longint unsigned SEP_ICCM_MEM_WORD_REG_DEFAULT                                                         = 64'h0000000000000000;
 localparam longint unsigned SEP_DCCM_MEM_WORD_REG_DEFAULT                                                         = 64'h0000000000000000;
 localparam longint unsigned EL2_PIC_MEIPL_REG_DEFAULT                                                             = 32'h00000000;
@@ -4378,6 +4381,12 @@ localparam int unsigned OTBN_INSN_CNT_INSN_CNT_SHIFT                            
 
 localparam int unsigned OTBN_LOAD_CHECKSUM_CHECKSUM_MASK                                                          = 32'hFFFFFFFF;
 localparam int unsigned OTBN_LOAD_CHECKSUM_CHECKSUM_SHIFT                                                         = 0;
+
+localparam int unsigned AES_ALERT_TEST_RECOV_CTRL_UPDATE_ERR_MASK                                                 = 32'h1;
+localparam int unsigned AES_ALERT_TEST_RECOV_CTRL_UPDATE_ERR_SHIFT                                                = 0;
+
+localparam int unsigned AES_ALERT_TEST_FATAL_FAULT_MASK                                                           = 32'h2;
+localparam int unsigned AES_ALERT_TEST_FATAL_FAULT_SHIFT                                                          = 1;
 
 localparam int unsigned AES_KEY_SHARE0_KEY_SHARE0_MASK                                                            = 32'hFFFFFFFF;
 localparam int unsigned AES_KEY_SHARE0_KEY_SHARE0_SHIFT                                                           = 0;
@@ -5243,9 +5252,6 @@ localparam int unsigned EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_SHIFT       
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_MASK                                             = 32'h3F;
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_SHIFT                                            = 0;
 
-localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_INIT_TIME_MASK                                       = 32'hFFFFFFFF;
-localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_INIT_TIME_SHIFT                                      = 0;
-
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_SHIFT                                              = 0;
 
@@ -5635,6 +5641,9 @@ localparam int unsigned SPI_CONTROLLER_EVENT_ENABLE_IDLE_SHIFT                  
 
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_DATA_MASK                                                    = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned REMAPPED_REGION_MEM_WORD_DATA_SHIFT                                                   = 0;
+
+localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_INIT_TIME_MASK                                       = 32'hFFFFFFFF;
+localparam int unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_INIT_TIME_SHIFT                                      = 0;
 
 localparam longint unsigned SEP_ICCM_MEM_WORD_DATA_MASK                                                           = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned SEP_ICCM_MEM_WORD_DATA_SHIFT                                                          = 0;
@@ -6467,6 +6476,13 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   fatal_fault ;
+    logic [0:0]   recov_ctrl_update_err ;
+} aes_alert_test_reg_t;
+
+
+
+typedef struct packed {
     logic [31:0]   key_share0 ;
 } aes_key_share0_reg_t;
 
@@ -7238,12 +7254,6 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   init_time ;
-} efuse_shim_ctrl_efuse_bank_init_time_reg_t;
-
-
-
-typedef struct packed {
     logic [63:0]   write_data ;
 } axil_mailbox_write_data_reg_t;
 
@@ -7680,6 +7690,12 @@ typedef struct packed {
 typedef struct packed {
     logic [63:0]   data ;
 } remapped_region_mem_word_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   init_time ;
+} efuse_shim_ctrl_efuse_bank_init_time_reg_t;
 
 
 

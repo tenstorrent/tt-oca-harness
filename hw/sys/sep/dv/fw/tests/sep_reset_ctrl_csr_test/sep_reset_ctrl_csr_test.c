@@ -4,7 +4,20 @@
 /*******************************************************************************
  * SEP Reset Controller CSR Sanity Test
  *
- * This test verifies the sep_reset_ctrl CSR is correctly implemented.
+ * This test verifies the sep_reset_ctrl CSR and the sw-reset isolation
+ * sequencing (sep_crypto_axi_isolate) in front of the crypto accelerator
+ * wrappers. For each accelerator (OTBN, AES, HMAC, KMAC):
+ *
+ *   a) Probe write/readback proves the port is open and the IP is alive.
+ *   b) Assert only that IP's SW_RESET_N bit and HOLD it.
+ *   c) Access the IP while held in reset: the isolate must terminate the
+ *      write and the read with DECERR (one bus-error NMI each) instead of
+ *      hanging the fabric.
+ *   d) While held in reset, read a different accelerator's register to
+ *      prove the other ports are unaffected.
+ *   e) Release the reset, then read the probe register back: the port
+ *      must reopen (no NMI) and the probe must be at its reset default,
+ *      proving the reset wire reached the IP.
  *
  * SW_RESET_N bit layout:
  *   bit 4 = kmac_sw_rst_n  (default 1, released)
@@ -14,6 +27,8 @@
  *   bit 0 = km_sw_rst_n    (default 0, held in reset)
  *
  * Default value: 0x1E = 0b11110
+ *
+ * KM is skipped because it cannot be brought out of reset in this test case.
  *
  * Copyright 2026 Tenstorrent Inc.
  ******************************************************************************/
@@ -35,6 +50,10 @@ void reset_ctrl_nmi_handler(void) {
     printf("NMI: mdseac = 0x%08x\n", mdseac);
 
     __asm__ volatile("csrw 0xBC0, zero");
+}
+
+static uint32_t nmi_count(void) {
+    return READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
 }
 
 int main(void) {
@@ -65,70 +84,137 @@ int main(void) {
     }
 
     /*
-     * Step 2: Trace each IP's reset wire end-to-end.
+     * Step 2: Per-accelerator isolate/reset/release sequence (see header).
      *
-     * For each writable reset bit:
-     *   a) Write a non-zero value into a R/W register inside the IP
-     *      (the "probe" register, default 0).
-     *   b) Read it back to confirm the IP accepted the write.
-     *   c) Toggle ONLY that bit of SW_RESET_N to assert just this IP's reset.
-     *   d) Release the reset by restoring SW_RESET_N to default.
-     *   e) Re-read the probe register; it must be 0 again because the IP
-     *      saw its rst_ni go low and cleared its internal flops.
-     *
-     * If the probe still holds the value after the toggle, the reset
-     * wire did not actually reach the IP.
-     *
-     * KM is skipped because it cannot be brought out of reset in this test case.
+     * cross_addr is a register in a DIFFERENT accelerator, read while this
+     * one is held in reset to prove the other ports stay open. It is chosen
+     * as the previous entry's probe register, which at that point in the
+     * sequence is back at its reset default.
      */
     struct {
         const char *name;
         uint32_t bit_mask;
         uint32_t probe_addr;
-        uint32_t write_val;        // value to write to the probe
-        uint32_t expect_after_rst; // probe value expected after reset pulse
-    } reset_bits[] = {
+        uint32_t write_val;     // value to write to the probe
+        uint32_t probe_default; // probe value after reset
+        uint32_t cross_addr;    // other accelerator, must stay live
+        uint32_t cross_default;
+    } accels[] = {
         {"otbn", (1u << 1), OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x00000001,
-         OTBN__INTR_ENABLE__DONE_reset},
-        {"aes", (1u << 2), OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000,
-         AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset},
-        {"hmac", (1u << 3), OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
-         HMAC__INTR_ENABLE__HMAC_DONE_reset},
-        {"kmac", (1u << 4), OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         OTBN__INTR_ENABLE__DONE_reset, OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR,
          KMAC__INTR_ENABLE__KMAC_DONE_reset},
+        {"aes", (1u << 2), OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000,
+         AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset, OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR,
+         OTBN__INTR_ENABLE__DONE_reset},
+        {"hmac", (1u << 3), OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         HMAC__INTR_ENABLE__HMAC_DONE_reset, OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR,
+         AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset},
+        {"kmac", (1u << 4), OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         KMAC__INTR_ENABLE__KMAC_DONE_reset, OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR,
+         HMAC__INTR_ENABLE__HMAC_DONE_reset},
     };
 
-    for (size_t i = 0; i < sizeof(reset_bits) / sizeof(reset_bits[0]); i++) {
-        const char *name = reset_bits[i].name;
-        uint32_t bit_mask = reset_bits[i].bit_mask;
-        uint32_t probe_addr = reset_bits[i].probe_addr;
-        uint32_t write_val = reset_bits[i].write_val;
-        uint32_t expect_after_rst = reset_bits[i].expect_after_rst;
+    uint32_t expected_nmi = 0;
+
+    for (size_t i = 0; i < sizeof(accels) / sizeof(accels[0]); i++) {
+        const char *name = accels[i].name;
+        uint32_t bit_mask = accels[i].bit_mask;
         uint32_t asserted = 0x1eu & ~bit_mask;
 
-        printf("Step 2.%u: %s - writing 0x%08x to 0x%08x...\n", (unsigned)i, name, write_val,
-               probe_addr);
-        WRITE_REG(probe_addr, write_val);
-        uint32_t rd_written = READ_REG(probe_addr);
-        if (rd_written != write_val) {
+        /*
+         * 2a: probe write/readback - port open, IP alive
+         */
+        printf("Step 2.%u.a: %s - writing 0x%08x to 0x%08x...\n", (unsigned)i, name,
+               accels[i].write_val, accels[i].probe_addr);
+        WRITE_REG(accels[i].probe_addr, accels[i].write_val);
+        uint32_t rd_written = READ_REG(accels[i].probe_addr);
+        if (rd_written != accels[i].write_val) {
             printf("ERROR: %s probe readback - got 0x%08x, expected 0x%08x\n", name, rd_written,
-                   write_val);
+                   accels[i].write_val);
             test_fail(1);
         }
 
-        printf("Step 2.%u: %s - pulsing reset (SW_RESET_N <- 0x%08x then 0x%08x)...\n", (unsigned)i,
-               name, asserted, 0x1eu);
+        /*
+         * 2b: assert and HOLD this accelerator's reset. The isolate FSM
+         * drains the (idle) port, then asserts the wrapper reset. The
+         * SW_RESET_N readback gives the sequencing time to complete.
+         */
+        printf("Step 2.%u.b: %s - asserting reset (SW_RESET_N <- 0x%08x)...\n", (unsigned)i, name,
+               asserted);
         WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, asserted);
-        WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, 0x1eu);
-
-        uint32_t rd_after = READ_REG(probe_addr);
-        if (rd_after != expect_after_rst) {
-            printf("ERROR: %s probe did not reset - got 0x%08x, expected 0x%08x\n", name, rd_after,
-                   expect_after_rst);
+        uint32_t rd_rst = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+        if (rd_rst != asserted) {
+            printf("ERROR: SW_RESET_N readback - got 0x%08x, expected 0x%08x\n", rd_rst, asserted);
             test_fail(1);
         }
 
-        printf("%s reset wire OK\n", name);
+        /*
+         * 2c: access the held-in-reset accelerator. The isolate must
+         * terminate the write and the read with DECERR (one bus-error NMI
+         * each) instead of hanging the fabric. D-bus errors are IMPRECISE
+         * on VeeR: the NMI lands many cycles after the access, so the two
+         * accesses are spaced by prints and the count is checked after
+         * each, not back-to-back.
+         */
+        printf("Step 2.%u.c: %s - poking isolated port (expect 2 NMIs)...\n", (unsigned)i, name);
+        WRITE_REG(accels[i].probe_addr, accels[i].write_val);
+        printf("Step 2.%u.c: %s - isolated WRITE returned\n", (unsigned)i, name);
+        expected_nmi++;
+        uint32_t count_wr = nmi_count();
+        if (count_wr != expected_nmi) {
+            printf("ERROR: %s isolated-write NMI count - got %u, expected %u\n", name, count_wr,
+                   expected_nmi);
+            test_fail(1);
+        }
+
+        uint32_t rd_isolated = READ_REG(accels[i].probe_addr);
+        printf("Step 2.%u.c: %s - isolated READ returned 0x%08x\n", (unsigned)i, name, rd_isolated);
+        expected_nmi++;
+        uint32_t count_rd = nmi_count();
+        if (count_rd != expected_nmi) {
+            printf("ERROR: %s isolated-read NMI count - got %u, expected %u\n", name, count_rd,
+                   expected_nmi);
+            test_fail(1);
+        }
+
+        /*
+         * 2d: other accelerator ports must stay live while this one is held
+         * in reset (correct read value, no NMI).
+         */
+        printf("Step 2.%u.d: %s - cross-checking live port at 0x%08x...\n", (unsigned)i, name,
+               accels[i].cross_addr);
+        uint32_t cross_rd = READ_REG(accels[i].cross_addr);
+        if (cross_rd != accels[i].cross_default) {
+            printf("ERROR: %s cross-check read - got 0x%08x, expected 0x%08x\n", name, cross_rd,
+                   accels[i].cross_default);
+            test_fail(1);
+        }
+        if (nmi_count() != expected_nmi) {
+            printf("ERROR: %s cross-check raised an unexpected NMI\n", name);
+            test_fail(1);
+        }
+
+        /*
+         * 2e: release the reset. The SW_RESET_N readback covers the
+         * StRelease hold-off before the port reopens. The probe must read
+         * its default (reset reached the IP) without an NMI (port reopened).
+         */
+        printf("Step 2.%u.e: %s - releasing reset...\n", (unsigned)i, name);
+        WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, 0x1eu);
+        (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+
+        uint32_t rd_after = READ_REG(accels[i].probe_addr);
+        if (rd_after != accels[i].probe_default) {
+            printf("ERROR: %s probe after reset - got 0x%08x, expected 0x%08x\n", name, rd_after,
+                   accels[i].probe_default);
+            test_fail(1);
+        }
+        if (nmi_count() != expected_nmi) {
+            printf("ERROR: %s post-release access raised an unexpected NMI\n", name);
+            test_fail(1);
+        }
+
+        printf("%s isolate/reset/release OK\n", name);
     }
 
     /*
@@ -157,10 +243,13 @@ int main(void) {
     uint32_t bad_rd = READ_REG(bad_addr + 0x8);
     printf("Step 4: READ returned 0x%08x\n", bad_rd);
 
-    uint32_t nmi_count = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
-    printf("Step 4: NMI fired %u times (expected 2 from bad write and read)\n", nmi_count);
-    if (nmi_count != 2) {
-        printf("ERROR: expected 2 NMI from Step 4, got %u\n", nmi_count);
+    expected_nmi += 2;
+    uint32_t final_count = nmi_count();
+    printf("Step 4: NMI count %u (expected %u: 2 per isolated accelerator + 2 from bad write and "
+           "read)\n",
+           final_count, expected_nmi);
+    if (final_count != expected_nmi) {
+        printf("ERROR: expected %u NMIs total, got %u\n", expected_nmi, final_count);
         test_fail(1);
     }
 
