@@ -2,20 +2,19 @@
 //
 // abr_wrapper_key_reg -- SEP OSS DV shim for the PeakRDL-generated ABR key CSR block.
 //
-// FIXME(SEP-DV): RETIRED from the active build. The current sep_crypto.sv no
-// longer instantiates abr_wrapper_key_reg, so sep_sim_cfg.toml dropped the
-// exclude/sources swap for this shim. Kept as deferred reference only; delete
-// it (or re-wire the swap) when the ABR engine integration returns.
+// Active via sep_sim_cfg.toml [build] exclude_files + sources: drop the PeakRDL
+// abr_wrapper_key_reg.sv and append this shim. Needed again once
+// sep_crypto_abr_wrapper re-instantiated u_abr_key_csr (ABR engine integration).
 //
-// WHY THIS EXISTS: main #3417 replaced the ABR DECERR placeholder with the generated
-// abr_wrapper_key_reg. That generated block does NOT build under Verilator 5.046:
-// sep_crypto.sv ties its hwif_in struct to '0, and Verilator then either (a) const-
-// folds the tied-'0 struct and emits invalid C++ for the block's reads of it
-// ("0U.__PVT__KEY[5U].__PVT__data..." -> g++ 'operator""U.__PVT__KEY'), or (b) if the
-// module is marked public to defeat that fold, emits a mismatched nested-struct
-// aggregate init. Neither builds, which breaks the shared OSS Verilator model for every
-// crypto test. VCS builds the real block fine; this shim is swapped in for the OSS DV
-// build (both tools, for model parity) via sep_sim_cfg.toml exclude_files/sources.
+// WHY THIS EXISTS: the PeakRDL-generated abr_wrapper_key_reg does NOT build under
+// the site FOSS VL 5.046 flow. sep_crypto / abr wrapper ties hwif_in in ways that
+// make the codegen either (a) const-fold the tied-'0 struct and emit invalid C++
+// for the block's reads of it ("0U.__PVT__KEY[5U].__PVT__data..." -> g++
+// 'operator""U.__PVT__KEY'), or (b) if the module is marked public to defeat that
+// fold, emit a mismatched nested-struct aggregate init (missing
+// __PVT__MLKEM_SHARED_KEY). Neither builds, which breaks the shared OSS model for
+// every crypto test. VCS builds the real block fine; this shim is swapped in for
+// OSS DV (both tools, for model parity) via sep_sim_cfg.toml.
 //
 // FIDELITY: the real block is an ABR-engine placeholder -- there is no ABR engine
 // (hwif_in tied '0), and no OSS test exercises the ABR datapath. sep_crypto only reads
@@ -63,8 +62,11 @@ module abr_wrapper_key_reg (
     // Cover the full 11-bit decode space (word-addressed) so no in-range firmware
     // access is out of bounds. IRQ register word offsets from the generated block.
     localparam int unsigned NWORDS       = 1 << (11 - 2);   // 512 words
-    localparam int unsigned IRQ_STATUS_W = 11'h424 >> 2;    // MLKEM_SHARED_KEY.IRQ_STATUS
-    localparam int unsigned IRQ_ENABLE_W = 11'h428 >> 2;    // MLKEM_SHARED_KEY.IRQ_ENABLE
+    // Word indices derived from the generated address map, never hand-copied.
+    localparam int unsigned IRQ_STATUS_W =
+        abr_wrapper_key_addrmap_pkg::ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STATUS_BASE_ADDR >> 2;
+    localparam int unsigned IRQ_ENABLE_W =
+        abr_wrapper_key_addrmap_pkg::ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_BASE_ADDR >> 2;
 
     logic [31:0] regfile [NWORDS];
 
@@ -150,17 +152,60 @@ module abr_wrapper_key_reg (
     end
 
     // ---------------------------- hw interface out ---------------------------------
-    // Drive ONLY the two leaf fields sep_crypto reads, via continuous assigns, sourced
-    // from real (AXI-written) regfile state. Two deliberate reasons:
+    // The IRQ leaves sep_crypto reads are sourced from real (AXI-written) regfile
+    // state, via continuous assigns. Two deliberate reasons:
     //   * regfile is a variable (AXI-written) -> Verilator cannot const-fold hwif_out
     //     into sep_crypto's reads (that would recreate the "0U.__PVT__..." bug).
-    //   * NO struct-level aggregate ('{default:'0}) is written -- Verilator 5.046
+    //   * NO struct-level aggregate ('{default:'0}) is written -- VL 5.046
     //     miscompiles an aggregate-zero of the nested abr_wrapper_key__out_t type
-    //     ("abr_seed_rf__out_t has no member __PVT__MLDSA_SEED"). The other struct
-    //     fields are left to Verilator's default zero-init (never read by sep_crypto).
+    //     ("abr_seed_rf__out_t has no member __PVT__MLDSA_SEED"), so every leaf is
+    //     assigned individually instead.
     // With no ABR engine the ML-KEM shared-key IRQ stays de-asserted unless firmware
     // writes IRQ_ENABLE (still gated by IRQ_STATUS.key_valid, which no engine sets).
     assign hwif_out.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.value    = regfile[IRQ_STATUS_W][0];
     assign hwif_out.MLKEM_SHARED_KEY.IRQ_ENABLE.key_valid_en.value = regfile[IRQ_ENABLE_W][0];
+
+    // The seed/msg leaves are NOT unread: sep_crypto_abr_wrapper wires this block's
+    // hwif_out straight into sep_abr_kv_shim, which XORs the two key shares and
+    // samples key_valid every cycle (sep_abr_kv_shim.sv gen_seed_share_xor /
+    // gen_msg_share_xor). Leaving them undriven is only safe on a 2-state simulator:
+    // 4-state variables power up at X, not 0, so VCS would feed X key material and X
+    // valid bits into the KV read responders while Verilator fed zeros -- a silent
+    // cross-simulator divergence in a path no OSS test currently checks.
+    //
+    // So drive them explicitly to the honest "no key loaded" state. key_valid = 0
+    // makes the shim's KV responders report error-until-valid, which is exactly what
+    // a system with no ABR engine should look like.
+    //
+    // KNOWN LIMITATION: this ties the KV path off rather than modelling it. AXI writes
+    // to the seed/msg words land in `regfile` and are readable back over AXI, but do
+    // NOT reach the shim, and hwif_in (the shim's key_valid/IRQ hwset writeback) is
+    // ignored. No OSS test exercises the ABR datapath, so nothing depends on that
+    // today; when the ABR engine integration returns, map these leaves onto the
+    // corresponding regfile words and honour hwif_in instead of extending the tie-off.
+    for (genvar i = 0; i < $size(hwif_out.MLDSA_SEED.KEY_SHARE0); i++) begin : gen_abr_kv_tieoff
+        assign hwif_out.MLDSA_SEED.KEY_SHARE0[i].data.value   = '0;
+        assign hwif_out.MLDSA_SEED.KEY_SHARE1[i].data.value   = '0;
+        assign hwif_out.MLKEM_SEED_D.KEY_SHARE0[i].data.value = '0;
+        assign hwif_out.MLKEM_SEED_D.KEY_SHARE1[i].data.value = '0;
+        assign hwif_out.MLKEM_SEED_Z.KEY_SHARE0[i].data.value = '0;
+        assign hwif_out.MLKEM_SEED_Z.KEY_SHARE1[i].data.value = '0;
+        assign hwif_out.MLKEM_MSG.KEY_SHARE0[i].data.value    = '0;
+        assign hwif_out.MLKEM_MSG.KEY_SHARE1[i].data.value    = '0;
+    end
+
+    assign hwif_out.MLDSA_SEED.KEY_CTRL.key_valid.value   = 1'b0;
+    assign hwif_out.MLKEM_SEED_D.KEY_CTRL.key_valid.value = 1'b0;
+    assign hwif_out.MLKEM_SEED_Z.KEY_CTRL.key_valid.value = 1'b0;
+    assign hwif_out.MLKEM_MSG.KEY_CTRL.key_valid.value    = 1'b0;
+
+    // MLKEM_SHARED_KEY's key words have no reader today -- the shim only WRITES them,
+    // through hwif_in, which this stub ignores. Tied off anyway so no leaf of
+    // hwif_out is left at X on a 4-state simulator, and so the claim above ("every
+    // leaf is assigned individually") stays literally true as the struct evolves.
+    for (genvar i = 0; i < $size(hwif_out.MLKEM_SHARED_KEY.KEY); i++) begin : gen_abr_shared_key_tieoff
+        assign hwif_out.MLKEM_SHARED_KEY.KEY[i].data.value = '0;
+    end
+    assign hwif_out.MLKEM_SHARED_KEY.KEY_CTRL.key_valid.value = 1'b0;
 
 endmodule

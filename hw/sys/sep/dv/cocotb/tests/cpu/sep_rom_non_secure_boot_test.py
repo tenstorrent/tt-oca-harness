@@ -18,6 +18,8 @@ runs the real ROM -- not a backdoored payload.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import os
 from pathlib import Path
 
@@ -35,7 +37,7 @@ _ITCM_HEX = os.path.join(_FW_DIR, "boot_rom.itcm.hex")  # ROM .text (ICCM copy; 
 _DTCM_HEX = os.path.join(_FW_DIR, "boot_rom.dtcm.hex")  # ROM .rodata/.data/.bss -> DCCM
 
 # Reset PC -> Boot ROM base 0x10040000 (SEP_BOOT_ROM_MEM_BASE_ADDR). rst_vec = PC[31:1].
-_ROM_BASE = 0x1004_0000
+_ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 # The ROM runs a long init + manifest/DMA/handoff sequence; give it room.
 _MAX_RUN_CYCLES = 4_000_000
 _NO_BOOT_CYCLES = 200_000

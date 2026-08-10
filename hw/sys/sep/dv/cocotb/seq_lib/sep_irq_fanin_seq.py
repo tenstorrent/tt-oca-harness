@@ -13,7 +13,7 @@ across these IPs, so no new driver is needed. The CROSS-IP set spans four differ
 IPs (HMAC, KMAC, CSRNG, EDN) at non-adjacent aggregator bits so the anti-alias
 check exercises a real OR-network fan-in, not adjacent bits of one IP.
 
-Aggregator bit map (hw/sep/sep.sv); FANIN_SOURCES drives the four *_done
+Aggregator bit map (hw/sys/sep/rtl/sep.sv); FANIN_SOURCES drives the four *_done
 bits (one per IP, so each IP's INTR_ENABLE/INTR_TEST is a single-bit write -- the
 SepIrqIp driver writes the whole register, so one bit per base avoids clobber):
   HMAC  done  -> [17]   (base 0x1091_1000; err -> [19], in RTL but not driven here)
@@ -25,10 +25,12 @@ HMAC/KMAC INTR bit0 = <ip>_done (OpenTitan INTR layout).
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE, IrqSrc
 
-HMAC_BASE = 0x1091_1000
-KMAC_BASE = 0x1091_3000
+HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
+KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 
 # The simultaneous cross-IP set: four IPs, four non-adjacent aggregator bits.
 FANIN_SOURCES = (

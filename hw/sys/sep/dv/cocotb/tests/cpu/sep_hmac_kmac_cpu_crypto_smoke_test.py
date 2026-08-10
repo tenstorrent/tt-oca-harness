@@ -33,7 +33,7 @@ from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
-_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "hmac_kmac_smoke_test")
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "hmac_kmac_smoke_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "hmac_kmac_smoke_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "hmac_kmac_smoke_test.dtcm.hex")
 

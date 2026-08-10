@@ -8,6 +8,13 @@
 // public ports so SEP DUT elaboration stays independent of non-public naming.
 // Listed in [build].stubs ahead of the bender filelist so -Wno-MODDUP
 // "first definition wins" selects this over the real prim_sync2.
+//
+// NOT a duplicate of hw/sys/{smc,dtp}/dv/tb/verilator_stubs/prim_sync2.sv, and it
+// must NOT be "consolidated" onto them. Those replace the synchronizer with their
+// own behavioral two-flop model; this one is a pure PORT REMAP that keeps the real
+// prim_flop_2sync in the design, so SEP still exercises the actual synchronizer
+// rather than a stand-in. Same module name, deliberately different strategy --
+// collapsing them would silently lower SEP's CDC fidelity.
 
 `timescale 1ps/1fs
 

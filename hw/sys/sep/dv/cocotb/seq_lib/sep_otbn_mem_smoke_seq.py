@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
-OTBN_IMEM_BASE = 0x1090_4000
-OTBN_DMEM_BASE = 0x1090_8000
+OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
+OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 OTBN_IMEM_SMOKE_WORD = 0x0000_0013
 OTBN_DMEM_SMOKE_WORD = 0xA5A5_5A5A
 

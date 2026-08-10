@@ -11,7 +11,8 @@ out of the TCM. The scoreboard checks:
     mailbox; and
   * the firmware signals PASS (0xA5A55A5A -> 0xCAFEBABE at 0x80000000).
 
-The firmware image is the prebuilt fw/tests/hello_world/*.{itcm,dtcm}.hex.
+The firmware image is fw/build/tests/hello_world/*.{itcm,dtcm}.hex, built by the
+c_compile stage (make dv-fw-tests TEST=hello_world).
 This test stages those byte images into the sim cwd as sep_itcm.hex/sep_dtcm.hex
 and pulses tcm_load_i so the SV responder $readmemh-backdoors them before the
 core leaves reset (keeps absolute firmware paths out of the build config).
@@ -30,7 +31,7 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 # OSS-owned firmware lives under the DV tree (sibling of cocotb/) so it migrates
 # with the env. parents[3] of .../cocotb/tests/cpu/<file> == the DV root.
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
-_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "hello_world")
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "hello_world")
 _ITCM_HEX = os.path.join(_FW_DIR, "hello_world.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "hello_world.dtcm.hex")
 

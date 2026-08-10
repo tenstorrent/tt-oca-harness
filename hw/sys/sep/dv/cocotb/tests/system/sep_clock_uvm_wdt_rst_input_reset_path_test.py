@@ -6,7 +6,7 @@ OSS port of the OCAH ``sep_clock_uvm_wdt_rst_input_reset_path_test`` (subsystem
 
     wdt_rst_ni -> sep_reset_ctrl -> CPU reset
 
-RTL contract (hw/sep/sep_reset_ctrl.sv): ``sep_cpu_reset_no = sep_reset_n &
+RTL contract (hw/sys/sep/rtl/sep_reset_ctrl.sv): ``sep_cpu_reset_no = sep_reset_n &
 wdt_rst_ni``. The test drives the SEP primary input ``wdt_rst_ni`` and confirms
 the CPU warm reset ``sep_cpu_reset_n`` follows, while the main SEP reset
 ``sep_reset_n`` stays released (the gating is CPU-reset-only). Frontdoor: the tb

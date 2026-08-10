@@ -19,7 +19,7 @@
  * broken, it FAILS.
  *
  * Mailbox -> PIC source mapping note:
- *   After the 8-slot mailbox reallocation (hw/sep/sep.sv), the outbound mailbox
+ *   After the 8-slot mailbox reallocation (hw/sys/sep/rtl/sep.sv), the outbound mailbox
  *   vector occupies sep_internal_interrupts[0:7]; mailbox 0 is internal index 0.
  *   sep_interrupts[k] drives EL2 extintsrc_req[k+1] (bit 0 is the tied
  *   no-interrupt source), so mailbox 0 is expected at PIC source 1. To be robust

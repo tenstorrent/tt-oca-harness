@@ -22,13 +22,19 @@ WSTRB=0x00 (all-zero strobe) is excluded (undefined per the SRAM spec).
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import random
 
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
-# sep_addr.h: OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE (256 KiB).
-SEP_SRAM_BASE = 0x1000_0000
+# SEP SRAM aperture (256 KiB). Derived from the generated Python register export
+# rather than a literal, so a map change surfaces as an import error instead of a
+# silently stale constant. The C header spells the same aperture
+# OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
+# is importable from here.
+SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SEP_SRAM_SIZE = 0x0004_0000
 _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 

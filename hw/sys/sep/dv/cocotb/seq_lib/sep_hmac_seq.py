@@ -6,7 +6,7 @@ MSG FIFO, waits for done, and reads the digest -- mirroring the OCAH
 sep_km_hmac_sideload_kat_test_seq op helpers (RAL there; direct AXI here, like
 SepAes/SepOtbn). 32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
 
-HMAC register map (base 0x1091_1000; hw/ip/hmac/rtl/hmac_reg_pkg.sv):
+HMAC register map (base 0x1091_1000; vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_reg_pkg.sv):
   INTR_STATE @ 0x000 (RW1C: bit0 hmac_done, bit2 hmac_err)
   CFG        @ 0x010   CMD @ 0x014   STATUS @ 0x018   ERR_CODE @ 0x01C
   KEY_0..31  @ 0x024..0x0A0   DIGEST_0..7 @ 0x0A4..0x0C0
@@ -18,6 +18,8 @@ write-only and read back zero.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from dataclasses import dataclass
 
 import cocotb
@@ -25,7 +27,7 @@ from cocotb.triggers import ClockCycles
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-HMAC_BASE = 0x1091_1000
+HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
 HMAC_INTR_STATE = HMAC_BASE + 0x000
 HMAC_CFG = HMAC_BASE + 0x010
 HMAC_CMD = HMAC_BASE + 0x014
@@ -36,7 +38,7 @@ HMAC_DIGEST_0 = HMAC_BASE + 0x0A4
 HMAC_MSG_FIFO = HMAC_BASE + 0x1000
 HMAC_NUM_PUBLIC_KEY = 32
 
-# CFG keyed HMAC-SHA256, 256-bit key (hw/ip/hmac/doc): hmac_en[0]=1, sha_en[1]=1,
+# CFG keyed HMAC-SHA256, 256-bit key (hw/sys/sep/regs/gen/adoc/blocks/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
 # digest_size SHA2_256 -> bit5, key_length 256 -> bit10 (field [14:9]=2);
 # endian_swap/digest_swap = 0 (digest word0 = MSB == standard big-endian digest).
 HMAC_CFG_KEYED_256 = 0x0000_0423

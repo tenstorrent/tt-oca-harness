@@ -2,14 +2,14 @@
 //
 // SEP outbound AXI-lite mailbox (axil_mailbox) firmware driver.
 //
-// The SEP system-peripheral mailbox block (hw/ip/axil_mailbox) exposes eight
+// The SEP system-peripheral mailbox block (hw/ip/axi_lite_mailbox_unit) exposes eight
 // outbound mailboxes in the SEP-local fabric at 0x10A0_0000. Each outbound
 // mailbox is a small FIFO with a threshold-based interrupt: writing data past
 // the write threshold (WIRQT) latches the write-IRQ status bit, and the block
 // drives outbound_interrupt_o[m] = |(IRQS & IRQEN) as an active-high level line
 // (the SEP instance builds it level-triggered, IrqEdgeTrig=0/IrqActHigh=1).
 //
-// In hw/sep/sep.sv outbound_interrupt_o feeds sep_internal_interrupts[7:0]
+// In hw/sys/sep/rtl/sep.sv outbound_interrupt_o feeds sep_internal_interrupts[7:0]
 // (one slot per mailbox), so mailbox m -> sep_internal_interrupts[m] -> VeeR EL2
 // PIC source (m + 1). The block's CSR clock is gated off at reset; ungate it via
 // CLOCK_GATE_CTRL bit 2 (MAILBOX_CG) before touching any mailbox register.
@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 // Outbound mailbox 0 register file (0x10A0_0000). Offsets per
-// hw/ip/axil_mailbox/data/registers/c/axil_mailbox_reg.h.
+// hw/ip/axi_lite_mailbox_unit.
 #define SEP_AXIL_MBOX0_BASE 0x10A00000u
 #define SEP_AXIL_MBOX0_WRITE_DATA (SEP_AXIL_MBOX0_BASE + 0x00u) // push word into FIFO
 #define SEP_AXIL_MBOX0_STATUS (SEP_AXIL_MBOX0_BASE + 0x10u)     // RO threshold/full/empty

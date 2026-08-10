@@ -10,18 +10,20 @@ sep_km_otbn_sideload_kat_test_seq run mechanics.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import cocotb
 from cocotb.triggers import ClockCycles
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # OTBN SEP register map (direct AXI; OTBN RAL offsets are unreliable).
-OTBN_BASE = 0x1090_0000
+OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
 OTBN_ADDR_CMD = OTBN_BASE + 0x010
 OTBN_ADDR_STATUS = OTBN_BASE + 0x018
 OTBN_ADDR_ERRBIT = OTBN_BASE + 0x01C
-OTBN_IMEM_BASE = 0x1090_4000
-OTBN_DMEM_BASE = 0x1090_8000
+OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
+OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 
 OTBN_CMD_EXECUTE = 0x0000_00D8
 OTBN_STATUS_IDLE = 0x0000_0000

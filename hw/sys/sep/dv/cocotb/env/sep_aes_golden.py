@@ -9,7 +9,7 @@ trap): the module self-tests against the FIPS-197 Appendix C.3 AES-256 known
 vector at import, so a transcription error in the S-box / key schedule / round
 math fails loudly here rather than silently agreeing with a broken DUT.
 
-Register byte/word convention (OpenTitan AES, hw/ip/aes/doc/registers.md
+Register byte/word convention (OpenTitan AES, hw/sys/sep/regs/gen/adoc/blocks/aes.adoc
 "all registers are little-endian", programmers_guide.md):
   * The 256-bit key is KEY_SHARE0_0..7 (8 words); KEY_SHARE0_0 holds key bytes
     [3:0] little-endian (byte 0 = LSB), KEY_SHARE0_1 holds bytes [7:4], etc.

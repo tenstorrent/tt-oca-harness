@@ -26,7 +26,7 @@ from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
-_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "dma_hash_test")
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_hash_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
 
@@ -36,7 +36,9 @@ _ICCM_BASE = 0xC000_0000
 _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
-_BANNER = "SEP DMA SHA-256 test"
+# Must match the banner dma_hash_test.c actually prints; the firmware was
+# retitled without updating this string.
+_BANNER = "Secure DMA SHA-256 Hash Test"
 
 
 @pyuvm.test()

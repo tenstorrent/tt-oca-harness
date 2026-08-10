@@ -35,6 +35,8 @@ OSS deltas (documented): real PROD-sense replaces OCAH's backdoor
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import os
 from pathlib import Path
 
@@ -46,16 +48,16 @@ from sep_base_test import sep_base_test
 from env.sep_lcc_golden import LC_PROD
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
-_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "efuse_jtag_el2_mux_test")
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "efuse_jtag_el2_mux_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "efuse_jtag_el2_mux_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "efuse_jtag_el2_mux_test.dtcm.hex")
 
 _ICCM_BASE = 0xC000_0000
 # eFuse addresses reachable on the JTAG AXI-Lite port.
-_EFUSE_SHADOW_BASE = 0x1093_0000   # shadow map -> DENIED to JTAG at PROD
-_EFUSE_MMR_TOKEN1 = 0x1093_0504    # MMR token region -> ALLOWED
-_EFUSE_MMR_TOKEN3 = 0x1093_050C
-_EFUSE_MMR_LAST = 0x1093_056C
+_EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")   # shadow map -> DENIED to JTAG at PROD
+_EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")    # MMR token region -> ALLOWED
+_EFUSE_MMR_TOKEN3 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR")
+_EFUSE_MMR_LAST = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 _BADCAB1E = 0xBADC_AB1E
 # The JTAG LC-gated denial routes to prim_axi_lite_err_slv, whose default RESP is
 # RESP_DECERR (=3); the sep_efuse_wrapper instance does not override it. So a

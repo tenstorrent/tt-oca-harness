@@ -17,11 +17,13 @@ Offsets and reset values follow the generated map
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
-SEP_CPU_CTRL_BASE = 0x10A3_0000
+SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 
 # Non-zero reset value, so a successful read proves the block actually decoded
 # rather than returning zeros from an unmapped address.

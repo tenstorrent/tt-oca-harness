@@ -4,7 +4,7 @@
 OSS port of the OCAH ``sep_cpu_ifu_lsu_alias_remap_matrix_test`` (edge E12).
 Boots the VeeR EL2 core running the cpu_alias_remap firmware, which programs the
 CPU-side alias window base (SEP_LOCAL_BASE=0xD000_0000, its post-#3711 reset) and
-proves both the LSU and the IFU local-alias-remap (hw/sep/sep_cpu.sv
+proves both the LSU and the IFU local-alias-remap (hw/sys/sep/rtl/sep_cpu.sv
 u_lsu/u_ifu/u_dbg axi_window_remap): an access to 0xD000_xxxx is remapped to
 physical 0x1000_xxxx (SEP SRAM), while accesses outside the window pass through.
 Post-#3711 the window is a fixed 768 MiB (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE)
@@ -29,7 +29,7 @@ from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
-_FW_DIR = os.path.join(_DV_ROOT, "fw", "tests", "cpu_alias_remap_test")
+_FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "cpu_alias_remap_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "cpu_alias_remap_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "cpu_alias_remap_test.dtcm.hex")
 

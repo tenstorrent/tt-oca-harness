@@ -20,6 +20,8 @@ All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 import cocotb
 from cocotb.triggers import ClockCycles
 
@@ -27,7 +29,7 @@ from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # --- mailbox register map (SEP/host side) ---------------------------------
-KM_MBOX_BASE = 0x1092_0000
+KM_MBOX_BASE = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
 KM_MBOX_WRITE_DATA = 0x000
 KM_MBOX_WRITE_SEPARATOR = 0x004
 KM_MBOX_READ_DATA = 0x008
@@ -238,16 +240,81 @@ class SepKmMailbox:
         return return_code, return_arg
 
     # --- high-level commands ----------------------------------------------
-    async def wait_km_ready(self, *, timeout: int = 400_000, poll_cycles: int = 50) -> None:
-        """Wait for the KM firmware's unsolicited RESP_KM_READY boot announcement."""
-        words = await self.recv_frame(timeout=timeout, poll_cycles=poll_cycles)
+    def _km_boot_evidence(self) -> str:
+        """Snapshot the observables that say WHERE a KM boot stalled.
+
+        A bare "no RESP_KM_READY" is unattributed: it cannot distinguish a KM held
+        in reset, a KM fetching from an empty/!loaded ROM, and a KM that booted but
+        never posted. The ROM/SRAM request counters separate exactly those cases:
+          rom_req == 0            -> the KM CPU never fetched (held in reset, or
+                                     unclocked) -- look at SW_RESET_N bit0.
+          rom_req > 0, sram_wr==0 -> fetching but not progressing (bad image /
+                                     immediate fault on the first instructions).
+          both > 0                -> firmware ran; the stall is later than boot.
+        """
+        dut = cocotb.top
+
+        def _rd(name):
+            try:
+                return int(getattr(dut, name).value)
+            except Exception:
+                return None
+
+        rom = _rd("km_rom_req_count_o")
+        sram_wr = _rd("km_sram_write_count_o")
+        sram_rq = _rd("km_sram_req_count_o")
+        # The KM ROM's rom_drbg_init() spins on STATUS.drbg_ready, and the RTL ties
+        # that bit directly to the EDN->KM stream tvalid
+        # (km_drbg_sampler.sv: hwif_in.STATUS.drbg_ready.next = tvalid). So a KM that
+        # fetches but never announces is usually parked in that spin, and these
+        # signals say which half of the handshake is missing.
+        tvalid = _rd("km_entropy_tvalid_o")
+        tready = _rd("km_entropy_tready_o")
+        seed_v = _rd("drbg_seed_valid_o")
+        genbits = _rd("drbg_genbits_vld_o")
+        parts = [f"km_rom_req_count={rom}", f"km_sram_write_count={sram_wr}",
+                 f"km_sram_req_count={sram_rq}",
+                 f"km_entropy_tvalid={tvalid}", f"km_entropy_tready={tready}",
+                 f"drbg_seed_valid={seed_v}", f"drbg_genbits_vld={genbits}"]
+        if rom == 0:
+            parts.append("=> KM CPU NEVER FETCHED: it is still in reset "
+                         "(SW_RESET_N bit0) or unclocked, so no ROM image can help")
+        elif rom and not sram_wr:
+            parts.append("=> KM fetched but never wrote SRAM: suspect the loaded "
+                         "ROM image (+km_rom_hex) or an early fault")
+        elif rom and not tvalid:
+            parts.append("=> KM is running but EDN never presented a word on its lane "
+                         "(tvalid=0): rom_drbg_init() is spinning on STATUS.drbg_ready, "
+                         "which mirrors this tvalid. The stall is EDN->KM routing, NOT "
+                         "the KM firmware and NOT CFG.TIMEOUT")
+        return " ".join(parts)
+
+    async def wait_km_ready(self, *, timeout: int = 8_000, poll_cycles: int = 50) -> None:
+        """Wait for the KM firmware's unsolicited RESP_KM_READY boot announcement.
+
+        Bounded and attributed: on timeout this reports the KM ROM/SRAM activity
+        counters so the failure names which stage did not retire, rather than
+        silently polling an empty mailbox for milliseconds of sim time.
+
+        The 8000-poll budget is 400k core cycles (~460 us), roughly 1.5x the
+        ~300 us the KM ROM needs to reach RESP_KM_READY in the OCAH subsystem tb.
+        Generous for a healthy boot, but bounded enough that a KM which never
+        boots fails in minutes instead of running the test to its 7200 s cap.
+        """
+        try:
+            words = await self.recv_frame(timeout=timeout, poll_cycles=poll_cycles)
+        except AssertionError as exc:
+            raise AssertionError(
+                f"KM never announced RESP_KM_READY ({exc}). {self._km_boot_evidence()}"
+            ) from exc
         resp_id = (words[0] >> 8) & 0xFF
         if resp_id != KM_RESP_KM_READY:
             raise AssertionError(
                 f"expected RESP_KM_READY (0x{KM_RESP_KM_READY:02x}), got 0x{resp_id:02x} "
                 f"(frame={[hex(w) for w in words]})"
             )
-        self.log.info("KM firmware booted: RESP_KM_READY received")
+        self.log.info("KM firmware booted: RESP_KM_READY received (%s)",
+                      self._km_boot_evidence())
 
     async def key_generate(self, *, dest: int, req_size: int, timeout: int = 200_000) -> int:
         """CMD_KEY_GENERATE; returns the (nonzero) key handle. ``req_size`` is

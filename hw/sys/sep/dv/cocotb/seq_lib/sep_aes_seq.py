@@ -7,7 +7,7 @@ helpers in the OCAH sep_km_aes_sideload_kat_test_seq (RAL there; direct AXI
 here, like SepOtbn). All accesses are 32-bit beats (size=2): the AES register
 block is 32-bit behind the wrapper's 64->32 dw-converter.
 
-AES register map (base 0x1091_0000; hw/ip/aes/rtl/aes_reg_pkg.sv offsets):
+AES register map (base 0x1091_0000; vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_reg_pkg.sv offsets):
   KEY_SHARE0_0..7 @ 0x04..0x20   KEY_SHARE1_0..7 @ 0x24..0x40
   DATA_IN_0..3    @ 0x54..0x60   DATA_OUT_0..3   @ 0x64..0x70
   CTRL_SHADOWED   @ 0x74 (shadowed: written twice)
@@ -16,6 +16,8 @@ AES register map (base 0x1091_0000; hw/ip/aes/rtl/aes_reg_pkg.sv offsets):
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from dataclasses import dataclass
 
 import cocotb
@@ -23,7 +25,7 @@ from cocotb.triggers import ClockCycles
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-AES_BASE = 0x1091_0000
+AES_BASE = sym("AES_REG_MAP_BASE_ADDR")
 AES_KEY_SHARE0_0 = AES_BASE + 0x04
 AES_KEY_SHARE1_0 = AES_BASE + 0x24
 AES_IV_0 = AES_BASE + 0x44
@@ -33,7 +35,7 @@ AES_CTRL_SHADOWED = AES_BASE + 0x74
 AES_TRIGGER = AES_BASE + 0x80
 AES_STATUS = AES_BASE + 0x84
 
-# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / hw/ip/aes/doc/registers.md):
+# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / hw/sys/sep/regs/gen/adoc/blocks/aes.adoc):
 #   OPERATION[1:0]=01 ENC, MODE[7:2]=000001 ECB, KEY_LEN[10:8]=100 AES-256,
 #   SIDELOAD[11], PRNG_RESEED_RATE[14:12]=100 PER_8K, MANUAL_OPERATION[15]=0.
 AES_OP_ENC = 0b01

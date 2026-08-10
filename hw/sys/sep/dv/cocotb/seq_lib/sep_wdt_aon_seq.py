@@ -6,7 +6,7 @@ CPU-LSU master (no_cpu). Exercises the aon_timer internals beyond the bark/bite/
 story: the WKUP (wakeup) timer + its wkup_expired RW1C status, the WDOG
 counter/pet, and the WDOG_REGWEN config-lock.
 
-Register map (meta/registers/rdl/aon_timer.rdl; offsets verified):
+Register map (hw/sys/sep/regs/blocks/aon_timer/aon_timer.rdl; offsets verified):
   WKUP_CTRL   +0x04  enable[0], prescaler[12:1]
   WKUP_THOLD  +0x08 (hi) / +0x0C (lo)   64-bit threshold
   WKUP_COUNT  +0x10 (hi) / +0x14 (lo)   64-bit counter (RW by sw + hw)
@@ -22,11 +22,13 @@ is always clocked (no CLOCK_GATE_CTRL ungate needed).
 
 from __future__ import annotations
 
+from sep_reg_meta import sym
+
 from env.sep_axi_agent import SepAxiOp
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-WDT_BASE = 0x1080_1000
+WDT_BASE = sym("WDT_TIMER_REG_MAP_BASE_ADDR")
 WKUP_CTRL = WDT_BASE + 0x04
 WKUP_THOLD_HI = WDT_BASE + 0x08
 WKUP_THOLD_LO = WDT_BASE + 0x0C
