@@ -1,5 +1,0 @@
-[cols="1,1,1,3", options="header"]
-.Register Map
-|===
-| Address | Name | Access | Description
-|===

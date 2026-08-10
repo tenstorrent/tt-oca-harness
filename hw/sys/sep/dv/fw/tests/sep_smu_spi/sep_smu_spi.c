@@ -26,7 +26,7 @@ static void configure_spi_mux_ot(void) {
     och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t spi_mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
     spi_mux.f.spi_sel = 1; /* Route to OpenTitan SPI controller */
     spi_mux.f.cs_force_high = 0;
-    WRITE_REG(OCH_SEP_TOP_SEP_AXI_EXTENSION_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, spi_mux.w);
+    WRITE_REG(OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, spi_mux.w);
 }
 
 static void spi_controller_init(void) {

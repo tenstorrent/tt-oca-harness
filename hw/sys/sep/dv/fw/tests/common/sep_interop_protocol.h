@@ -85,7 +85,7 @@
  * The values below were auto-filled from the local build (see agent report); re-verify after
  * any firmware/linker change.
  */
-#define SEP_INTEROP_SMC_ENTRY 0x00000000C00601B6    /* RECONCILE vs built image */
+#define SEP_INTEROP_SMC_ENTRY 0x00000000C00601B2    /* RECONCILE vs built image */
 #define SEP_INTEROP_SMC_IMAGE_FIRST_WORD 0x41014081 /* RECONCILE vs built image */
 
 /* SEP-view alias of SMC CPU_CTRL scratch12 (SMC-local 0xC00390E0): the SEP READY rendezvous. */

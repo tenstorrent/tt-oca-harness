@@ -200,7 +200,7 @@ int main(void) {
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    ctrl.w |= (1 << 7); // Set ACQ_START_STOP_EN bit (bit 7)
+    ctrl.f.ACQ_START_STOP_EN = 1;
     write_reg(
         base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
         ctrl.w);
@@ -291,11 +291,18 @@ int main(void) {
         write_scratch(0, 0xBAD00042);
         test_fail(0);
     }
-
-    // Original code (commented out):
-    // simputs("    [Target] Write transaction received, length=");
-    // simputshex32("", write_received_len1);
-    // simputs("\n");
+    if (write_received_len1 != DATA_SIZE || write_recv_buffer1[0] != write_data1) {
+        simputs("  ERROR: First write payload mismatch len=0x");
+        simputshex32("", write_received_len1);
+        simputs(" data=0x");
+        simputshex32("", write_recv_buffer1[0]);
+        simputs("\n");
+        write_scratch(0, 0xBAD00047);
+        test_fail(0);
+    }
+    simputs("    PASS: First write payload matches 0x");
+    simputshex32("", write_data1);
+    simputs("\n");
 
     // ==================================================================
     // CRITICAL FIX: Clear Target ACQ FIFO after receiving write transaction
@@ -554,17 +561,17 @@ int main(void) {
                                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
             if (!status.f.RXEMPTY) break;
 
-            // Check for controller errors
-            uint32_t events = i2c_get_controller_events(CONTROLLER_IDX);
-            if (events & 0x1) {
+            // Check for controller errors via authoritative field map
+            i2c__CONTROLLER_EVENTS_t events = {.w = i2c_get_controller_events(CONTROLLER_IDX)};
+            if (events.f.NACK) {
                 ret = I2C_ERROR_NACK;
                 break;
             }
-            if (events & 0x8) {
+            if (events.f.ARBITRATION_LOST) {
                 ret = I2C_ERROR;
                 break;
             }
-            if (events & 0x4) {
+            if (events.f.BUS_TIMEOUT) {
                 ret = I2C_ERROR_TIMEOUT;
                 break;
             }
@@ -592,6 +599,18 @@ int main(void) {
         write_scratch(0, 0xBAD00043);
         test_fail(0);
     }
+    if (read_recv_buffer != read_data) {
+        simputs("  ERROR: Read data mismatch got 0x");
+        simputshex32("", read_recv_buffer);
+        simputs(" expected 0x");
+        simputshex32("", read_data);
+        simputs("\n");
+        write_scratch(0, 0xBAD00046);
+        test_fail(0);
+    }
+    simputs("    PASS: Read data matches expected 0x");
+    simputshex32("", read_data);
+    simputs("\n");
     simputs("    [Controller] Read completed successfully (received data from Target)\n");
 
     // NOTE: Clear TARGET_EVENTS immediately after read completion
@@ -782,12 +801,18 @@ int main(void) {
         write_scratch(0, 0xBAD00045);
         test_fail(0);
     }
-
-    // Original code (commented out):
-    // simputs("    [Target] Second write transaction received, length=");
-    // simputshex32("", write_received_len2);
-    // simputs("\n");
-    // write_scratch(0, 0xDEB02005);
+    if (write_received_len2 != DATA_SIZE || write_recv_buffer2[0] != write_data2) {
+        simputs("  ERROR: Second write payload mismatch len=0x");
+        simputshex32("", write_received_len2);
+        simputs(" data=0x");
+        simputshex32("", write_recv_buffer2[0]);
+        simputs("\n");
+        write_scratch(0, 0xBAD00048);
+        test_fail(0);
+    }
+    simputs("    PASS: Second write payload matches 0x");
+    simputshex32("", write_data2);
+    simputs("\n");
 
     // ==================================================================
     // CRITICAL FIX: Clear Target ACQ FIFO after receiving write transaction
@@ -861,8 +886,6 @@ int main(void) {
     //=========================================================================
     // Test Complete - Signal to testbench
     //=========================================================================
-    write_scratch(1, 0x00000090);
-
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
     simputs("################################################\n");
@@ -886,7 +909,7 @@ int main(void) {
     simputs("    * i2c_controller_read() - Read (no STOP for repeated START)\n");
     simputs("    * i2c_controller_write() - Subsequent writes (repeated START support)\n");
     simputs("    * i2c_target_receive_transaction() - Target receive (expects header)\n");
-    simputs("  - Verification:       Check waveform for clock stretch behavior\n");
+    simputs("  - Verification:       Fail-closed payload compares (W/R/W)\n");
     simputs("\n################################################\n");
 
     test_pass(0);

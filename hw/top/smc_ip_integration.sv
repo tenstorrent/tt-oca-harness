@@ -123,11 +123,14 @@ module smc_ip_integration (
     // window base and follow the smc_external mandatory map.
     //=========================================================================
 
-    localparam int unsigned ExtGpioCtrlBase   = 'h0100;
+    // The vendor eFuse shim CSR occupies the base of the window, so everything
+    // else sits 0x1000 up from it. The shim is not decoded here: the peripheral
+    // crossbar diverts it to the eFuse controller before the external port.
+    localparam int unsigned ExtGpioCtrlBase   = 'h1100;
     localparam int unsigned ExtGpioCtrlStride = 'h0020;
     localparam int unsigned ExtGpioCtrlNum    = 65;
-    localparam int unsigned ExtPllBase        = 'h1000;
-    localparam int unsigned ExtPvtBase        = 'h2000;
+    localparam int unsigned ExtPllBase        = 'h2000;
+    localparam int unsigned ExtPvtBase        = 'h3000;
     localparam int unsigned ExtWindowSize     = 'h4000;
 
     // Targets, in demux port order. Anything unclaimed lands on ExtUnmapped,

@@ -5,7 +5,6 @@
 // AUTOMATICALLY GENERATED - DO NOT EDIT
 //
 // Fabric: smc_internal_axi_lite_xbar
-// Generated: 2026-07-21 21:05:01
 //
 // ============================================================================
 // ADDRESS MAP
@@ -139,7 +138,7 @@ module smc_internal_axi_lite_xbar
     .axi_req_t    (xbar_slv_req_t),
     .axi_resp_t   (xbar_slv_resp_t),
     .rule_t       (addr_rule_t)
-  ) i_axi_lite_xbar (
+  ) u_axi_lite_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),
     .test_i                (test_i),

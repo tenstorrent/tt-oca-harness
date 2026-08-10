@@ -115,6 +115,7 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
     ctrl.f.I2C_EN = 1; // Enable GPIO pad mux
     ctrl.f.I2C_CONTROLLER_MODE_EN = controller_mode ? 1 : 0;
+    ctrl.f.SMBUS_EN = 1; // Required for SMBALERT#/SMBSUS# pad routing
 
     write_reg(wrapper_addr, ctrl.w);
 
@@ -126,17 +127,17 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
 }
 
 /**
- * @brief Check SMBus Alert status
+ * @brief Check device-side SMBus Alert request (SMBUS_CTRL.SMBALERT)
  *
- * @param idx I2C instance index
- * @return true if SMBALERT# is active (low), false otherwise
+ * Target asserts alert via CTRL; STATUS.SMBALERT is the host/input observe
+ * path and must not be used as the device assert/clear oracle.
  */
-static bool smbus_get_alert_status(uint32_t idx) {
+static bool smbus_get_alert_ctrl(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    i2c__SMBUS_STATUS_t smbus_status = {
-        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(0) -
+    i2c__SMBUS_CTRL_t smbus_ctrl = {
+        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR(0) -
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    return smbus_status.f.SMBALERT ? true : false;
+    return smbus_ctrl.f.SMBALERT ? true : false;
 }
 
 /**
@@ -280,7 +281,7 @@ int main(void) {
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    ctrl.w |= (1 << 7); // Set ACQ_START_STOP_EN bit (bit 7)
+    ctrl.f.ACQ_START_STOP_EN = 1;
     write_reg(
         base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
         ctrl.w);
@@ -326,18 +327,15 @@ int main(void) {
     for (volatile uint32_t i = 0; i < 1000; i++)
         ;
 
-    // Verify alert is asserted (relaxed check - GPIO may be low even if status register not
-    // updated) Note: GPIO39 being low is the actual signal that matters, not just the status
-    // register
-    bool alert_status = smbus_get_alert_status(TARGET_IDX);
+    // Fail-closed: SMBUS_STATUS.SMBALERT must be observed asserted before ARA clear wait
+    bool alert_status = smbus_get_alert_ctrl(TARGET_IDX);
     if (!alert_status) {
-        // Relaxed: Don't fail immediately - GPIO signal may be correct even if status register not
-        // updated
-        simputs("  WARNING: SMBUS_STATUS.SMBALERT not set, but GPIO signal may still be correct\n");
-        simputs("  Continuing - testbench will verify GPIO39 signal directly\n");
-    } else {
-        simputs("  SMBALERT# asserted successfully (status=1)\n");
+        simputs("  ERROR: SMBUS_CTRL.SMBALERT not set after i2c_smbus_alert(true)\n");
+        write_scratch(0, 0xBAD00041);
+        test_fail(0);
     }
+    simputs("  SMBALERT# asserted successfully (CTRL.SMBALERT=1)\n");
+    bool alert_was_asserted = true;
 
     // Signal to testbench that alert assertion is complete
     // Testbench will verify GPIO39 signal directly
@@ -360,10 +358,16 @@ int main(void) {
     const uint32_t ARA_WAIT_TIMEOUT = I2C_TIMEOUT_DEFAULT;
     bool alert_cleared = false;
 
+    if (!alert_was_asserted) {
+        simputs("  ERROR: Cannot wait for ARA clear without prior asserted status\n");
+        write_scratch(0, 0xBAD00052);
+        test_fail(0);
+    }
+
     while (wait_count < ARA_WAIT_TIMEOUT) {
-        alert_status = smbus_get_alert_status(TARGET_IDX);
+        alert_status = smbus_get_alert_ctrl(TARGET_IDX);
         if (!alert_status) {
-            // Alert cleared after ARA ACK
+            /* asserted → cleared edge after ARA ACK */
             alert_cleared = true;
             break;
         }
@@ -392,14 +396,14 @@ int main(void) {
     simputs("\nStep 6: Verifying Alert Cleared\n");
 
     // Verify alert status is cleared
-    alert_status = smbus_get_alert_status(TARGET_IDX);
+    alert_status = smbus_get_alert_ctrl(TARGET_IDX);
     if (alert_status) {
-        simputs("  ERROR: SMBALERT# still asserted after ARA read\n");
+        simputs("  ERROR: SMBUS_CTRL.SMBALERT still set after ARA read\n");
         write_scratch(0, 0xBAD00060);
         test_fail(0);
     }
 
-    simputs("  SMBALERT# cleared successfully (status=0)\n");
+    simputs("  SMBALERT# cleared successfully (CTRL.SMBALERT=0)\n");
     simputs("  Alert was automatically cleared after ARA ACK (SMBus protocol)\n");
     write_scratch(1, 0x00000061);
 
@@ -461,11 +465,11 @@ int main(void) {
     }
 
     if (!suspend_cleared) {
-        simputs("  WARNING: Timeout waiting for SMBSUS# deassertion from VIP\n");
-        simputs("  Continuing test anyway...\n");
-    } else {
-        simputs("  SMBSUS# cleared successfully (status=0, signal is high)\n");
+        simputs("  ERROR: Timeout waiting for SMBSUS# deassertion from VIP\n");
+        write_scratch(0, 0xBAD00072);
+        test_fail(0);
     }
+    simputs("  SMBSUS# cleared successfully (status=0, signal is high)\n");
     write_scratch(1, 0x00000072);
 
     //=========================================================================

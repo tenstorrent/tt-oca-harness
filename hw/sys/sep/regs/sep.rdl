@@ -20,7 +20,6 @@
 `include "sep_efuse_map.rdl"
 `include "efuse_interface_ctrl.rdl"
 `include "efuse_mmr.rdl"
-`include "efuse_shim_ctrl.rdl"
 `include "sep_lifecycle_ctrl.rdl"
 `include "km_mailbox_sep.rdl"
 `include "output_remap.rdl"
@@ -34,7 +33,7 @@
 `include "sep_reset_ctrl.rdl"
 
 `include "spi_controller.rdl"
-`include "sep_axi_extension.rdl"
+`include "sep_external.rdl"
 
 `include "sep_scratch.rdl"
 `include "el2_pic.rdl"
@@ -117,10 +116,6 @@ addrmap och_sep_top #(
     // Base: 0x1093_0500, Size: 112 B (0x70)
     efuse_mmr                   efuse_mmr               @BASE_ADDR + 0x1093_0500;
 
-    // Efuse SHIM Control
-    // Base: 0x1093_0600, Size: 68 B (0x44)
-    efuse_shim_ctrl             efuse_shim_ctrl         @BASE_ADDR + 0x1093_0600;
-
     // =========================================================================
     // System Peripherals (0x10A0_0000 - 0x10A5_0FFF)
     // =========================================================================
@@ -168,13 +163,13 @@ addrmap och_sep_top #(
     external remapped_region       stee_region      @BASE_ADDR + 0x1180_0000;
 
     // =========================================================================
-    // AXI Extension Region (adopter-populated; e.g. external xSPI/I3C peripherals)
+    // SEP External Region (adopter/vendor window: Cadence SPI et al)
     // Base: 0x2000_0000, Size: 512 MB (0x2000_0000)
     // =========================================================================
     // Open-source builds reserve the region; an adopter overlay may override
-    // sep_axi_extension.rdl to instantiate external peripherals.
+    // sep_external.rdl to instantiate external peripherals.
 
-    sep_axi_extension           sep_axi_extension        @BASE_ADDR + 0x2000_0000;
+    sep_external                sep_external             @BASE_ADDR + 0x2000_0000;
 
     // =========================================================================
     // EL2 CPU Resources (0xC000_0000 - 0xD000_0000)

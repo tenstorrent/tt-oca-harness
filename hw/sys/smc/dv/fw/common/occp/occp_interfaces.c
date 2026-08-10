@@ -63,27 +63,27 @@ static void wait_for_target_up_gpio(void) {
     uint32_t poll_count = 0;
 
     simputs("[OCCP_IF] wait_for_target_up_gpio enter\n");
-    data_ctrl.w = read_gpio(61, GPIO_INTF_DATA_CTRL_OFFSET);
-    simputshex32("[OCCP_IF] GPIO61 initial DATA_CTRL: ", data_ctrl.w);
+    data_ctrl.w = read_gpio(58, GPIO_INTF_DATA_CTRL_OFFSET);
+    simputshex32("[OCCP_IF] GPIO58 initial DATA_CTRL: ", data_ctrl.w);
     data_ctrl.f.interface_enable = 1;
     data_ctrl.f.enable_rx_tx = 2;
-    simputshex32("[OCCP_IF] GPIO61 configured DATA_CTRL: ", data_ctrl.w);
-    write_gpio(61, GPIO_INTF_DATA_CTRL_OFFSET, data_ctrl.w);
+    simputshex32("[OCCP_IF] GPIO58 configured DATA_CTRL: ", data_ctrl.w);
+    write_gpio(58, GPIO_INTF_DATA_CTRL_OFFSET, data_ctrl.w);
 
-    data_ctrl.w = read_gpio(61, GPIO_INTF_DATA_CTRL_OFFSET);
-    simputshex32("[OCCP_IF] GPIO61 readback DATA_CTRL: ", data_ctrl.w);
-    simputshex16("[OCCP_IF] GPIO61 readback pad2core: ", data_ctrl.f.pad2core);
+    data_ctrl.w = read_gpio(58, GPIO_INTF_DATA_CTRL_OFFSET);
+    simputshex32("[OCCP_IF] GPIO58 readback DATA_CTRL: ", data_ctrl.w);
+    simputshex16("[OCCP_IF] GPIO58 readback pad2core: ", data_ctrl.f.pad2core);
 
     simputs("Waiting for target to be ready...\n");
     while (data_ctrl.f.pad2core == 0) {
-        data_ctrl.w = read_gpio(61, GPIO_INTF_DATA_CTRL_OFFSET);
+        data_ctrl.w = read_gpio(58, GPIO_INTF_DATA_CTRL_OFFSET);
         poll_count++;
         if ((poll_count & 0x3ffu) == 0u) {
-            simputshex32("[OCCP_IF] GPIO61 poll DATA_CTRL: ", data_ctrl.w);
-            simputshex16("[OCCP_IF] GPIO61 poll pad2core: ", data_ctrl.f.pad2core);
+            simputshex32("[OCCP_IF] GPIO58 poll DATA_CTRL: ", data_ctrl.w);
+            simputshex16("[OCCP_IF] GPIO58 poll pad2core: ", data_ctrl.f.pad2core);
         }
     }
-    simputshex32("[OCCP_IF] GPIO61 ready DATA_CTRL: ", data_ctrl.w);
+    simputshex32("[OCCP_IF] GPIO58 ready DATA_CTRL: ", data_ctrl.w);
     simputs("Target is ready!\n");
 }
 

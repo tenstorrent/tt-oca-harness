@@ -11,28 +11,42 @@
 #include "virt_console.h"
 
 #define NUM_SMC_MAILBOXES (32)
+#define MAILBOX_TEST_DATA (0xdeadbeefu)
 
 _Atomic volatile int core_setup_done[4] = {0, 0, 0, 0};
+// Sticky proof that mailbox_interrupt_handler ran and validated payload for this hart.
+_Atomic volatile int handler_ran[4] = {0, 0, 0, 0};
 char debug_msg[100][4];
 
 void mailbox_interrupt_handler(int id, void *priv) {
+    int hartid = metal_cpu_get_current_hartid();
     // Determine which mailbox triggered the interrupt based on 'id'
     int mailbox_id = id - (MAILBOX_INTERUPT_ID_BASE + 1); // Reverse mapping
 
-    // Read the mailbox
+    // Inbound WRITE_DATA is consumed on the outbound READ_DATA port.
     uint64_t mailbox_data =
-        read_mailbox(mailbox_id, 1,
+        read_mailbox(mailbox_id, 0,
                      (SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR -
                       SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR));
 
-    simputshex16("Core:", metal_cpu_get_current_hartid());
+    simputshex16("Core:", hartid);
     simputshex16("Interrupted by Mailbox ID", mailbox_id);
-    simputshex32("Mailbox Data:", mailbox_data);
+    simputshex32("Mailbox Data:", (uint32_t)mailbox_data);
 
-    // Validate that the correct core triggered the interrupt
-    if (mailbox_id != ((metal_cpu_get_current_hartid() - 1) % 4)) {
+    // Validate that the correct core triggered the interrupt.
+    // Hart N expects mailbox (N-1) mod 4 (C0 ← mb3). Use unsigned mod so C0 is 3, not -1.
+    if (mailbox_id != (int)(((unsigned)hartid + 3u) % 4u)) {
         simputs("Unexpected mailbox interrupt!");
-        test_fail(0);
+        simputshex16("hart:", hartid);
+        simputshex16("mb:", mailbox_id);
+        test_fail(hartid);
+    }
+
+    // Exact payload check — empty/wrong-port reads return 0xfeeddead.
+    if ((uint32_t)mailbox_data != MAILBOX_TEST_DATA) {
+        simputs("Mailbox data mismatch (expected 0xdeadbeef)!");
+        simputshex32("Got:", (uint32_t)mailbox_data);
+        test_fail(hartid);
     }
 
     // Flush the mailbox data
@@ -48,6 +62,8 @@ void mailbox_interrupt_handler(int id, void *priv) {
                   (SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR -
                    SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
                   1);
+
+    metal_atomic_swap(&handler_ran[hartid], 1);
 }
 
 static void reset_plic_enable_registers() {
@@ -68,23 +84,23 @@ static void reset_plic_enable_registers() {
 }
 
 void write_mailbox_int(int mailbox_id) {
-    // Set Write Interrupt Request Threshold for mailbox 0
+    // Set Write Interrupt Request Threshold for mailbox (inbound write side)
     write_mailbox(mailbox_id, 1,
                   (SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_BASE_ADDR -
                    SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
                   0);
 
-    // Enable write threshold interrupt for mailbox 0
+    // Enable write threshold interrupt for mailbox
     write_mailbox(mailbox_id, 1,
                   (SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR -
                    SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
                   1);
 
-    // Write data to mailbox 0
+    // Write data to inbound WRITE_DATA (peer reads via outbound READ_DATA)
     write_mailbox(mailbox_id, 1,
                   (SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR -
                    SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
-                  0xdeadbeef);
+                  MAILBOX_TEST_DATA);
 }
 
 int main(void) {
@@ -128,7 +144,8 @@ int main(void) {
             simputs("Failed to register interrupt handler");
             test_fail(0);
         }
-        metal_interrupt_enable(plic_controller, interrupt_id - 1);
+        // Enable the same PLIC ID that was registered (not interrupt_id - 1).
+        metal_interrupt_enable(plic_controller, interrupt_id);
 
         __metal_interrupt_global_enable();
 
@@ -150,10 +167,11 @@ int main(void) {
         // Send interrupt to mailbox 0
         simputs("Sent interrupt to mailbox 0\n");
 
-        // wait for an interrupt
-        __asm__ volatile("wfi");
+        // Wait until mailbox-3 handler ran with validated data (not bare WFI→pass).
+        while (metal_atomic_add(&handler_ran[0], 0) == 0) {
+            __asm__ volatile("wfi");
+        }
 
-        // If core 0 was interrupted, then test was successful
         test_pass(hartid);
     } else {
         while (metal_atomic_add(&core_setup_done[0], 0) == 0) {
@@ -183,7 +201,10 @@ int main(void) {
         // Say that this core is set up
         metal_atomic_swap(&core_setup_done[hartid], 1);
 
-        __asm__ volatile("wfi");
+        // Wait for this core's inbound mailbox interrupt + data validation.
+        while (metal_atomic_add(&handler_ran[hartid], 0) == 0) {
+            __asm__ volatile("wfi");
+        }
 
         // Send mailbox interrupt
         write_mailbox_int(hartid);
@@ -193,8 +214,10 @@ int main(void) {
                  hartid);
         simputs(debug_msg[hartid]);
 
-        // wait for an interrupt
-        __asm__ volatile("wfi");
+        // Stay alive so the next core in the ring can complete.
+        while (1) {
+            __asm__ volatile("wfi");
+        }
     }
 
     return 0;

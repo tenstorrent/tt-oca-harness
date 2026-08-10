@@ -26,6 +26,8 @@
 #define LONG_WRITE_LEN 70
 #define VERIFY_WRITE_LEN 4
 #define POLL_TIMEOUT 10000
+/* Short probe before forcing target disable (in-transaction after long write). */
+#define TARGET_IDLE_PROBE 256
 
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
     uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
@@ -98,6 +100,15 @@ static int wait_for_target_idle(uint32_t idx) {
     simputs("  ERROR: Timed out waiting for target idle, status=0x");
     simputshex32("", get_i2c_status(idx).w);
     simputs("\n");
+    return I2C_ERROR_TIMEOUT;
+}
+
+static int probe_target_idle(uint32_t idx, uint32_t max_iters) {
+    for (uint32_t i = 0; i < max_iters; i++) {
+        if (i2c_target_is_idle(idx)) {
+            return I2C_OK;
+        }
+    }
     return I2C_ERROR_TIMEOUT;
 }
 
@@ -225,13 +236,15 @@ static int send_long_write_until_target_stretches(void) {
 static int release_stretch_and_discard_long_write_tail(void) {
     int ret;
 
-    simputs("  Resetting target ACQ FIFO to release automatic stretch...\n");
-    clear_target_acq_fifo(TARGET_IDX);
-
-    // Disable host mode only after the target releases SCL. The controller FSM
-    // has an RTL recovery path that generates an automatic STOP when
-    // trans_started is set and host_enable drops.
-    simputs("  Disabling controller to request automatic STOP recovery...\n");
+    /*
+     * Proof stimulus: ACQ FIFO reset releases automatic SCL stretch.
+     * Then recover the in-progress long write like tx_stretch_timeout_recovery
+     * (controller disable → STOP, target disable → idle, reinit both).
+     * ACQ reset + controller disable must be back-to-back — any simputs gap
+     * lets FMT drain more bytes into ACQ and keep targetidle clear.
+     */
+    simputs("  ACQ reset (stretch release) then controller disable...\n");
+    i2c_reset_fifos(TARGET_IDX, false, false, false, true);
     i2c_controller_disable(CONTROLLER_IDX);
 
     simputs("  Waiting for controller idle after automatic STOP recovery...\n");
@@ -241,19 +254,33 @@ static int release_stretch_and_discard_long_write_tail(void) {
         return ret;
     }
 
-    simputs("  Waiting for target idle after automatic STOP recovery...\n");
+    clear_target_acq_fifo(TARGET_IDX);
+    if (probe_target_idle(TARGET_IDX, TARGET_IDLE_PROBE) != I2C_OK) {
+        simputs("  Target still in-transaction; disabling target...\n");
+        i2c_target_disable(TARGET_IDX);
+        clear_target_acq_fifo(TARGET_IDX);
+    }
+
     ret = wait_for_target_idle(TARGET_IDX);
     if (ret != I2C_OK) {
         return ret;
     }
 
-    simputs("  Clearing controller events after automatic STOP recovery...\n");
+    simputs("  Clearing controller events after stretch recovery...\n");
     ret = clear_controller_events_and_wait(CONTROLLER_IDX);
     if (ret != I2C_OK) {
         return ret;
     }
 
-    simputs("  Reinitializing controller after automatic STOP recovery...\n");
+    i2c_reset_fifos(CONTROLLER_IDX, true, true, false, false);
+    i2c_reset_fifos(TARGET_IDX, false, false, true, true);
+
+    simputs("  Reinitializing target+controller after stretch recovery...\n");
+    ret = init_target();
+    if (ret != I2C_OK) {
+        simputs("  ERROR: Target reinitialization failed\n");
+        return ret;
+    }
     ret = init_controller();
     if (ret != I2C_OK) {
         simputs("  ERROR: Controller reinitialization failed\n");

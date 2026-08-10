@@ -28,10 +28,10 @@
 // Cadence xSPI direct flash access / XIP window (OCH address map):
 //   0x3000_0000 - 0x3FFF_FFFF (256 MiB).
 #ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_AXI_EXTENSION_XIP_REGION_BASE_ADDR)
+#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
 #endif
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_AXI_EXTENSION_XIP_REGION_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
 
 // For OCH, the "SEP EXT SRAM" equivalent is `sep_sram` in the address map.

@@ -329,7 +329,7 @@ Independent review raised the items below; triaged here so nothing is lost.
 - Wrapper/model sources lack SPDX headers (`efuse_bank_model.sv`,
   `efuse_interface_shim.sv`, `sep_wrapper.sv`, `sep_ip_integration.sv`,
   `och_sep_spi_mux_ctrl_ot_reg{,_pkg}.sv`, ...) — OSS hygiene.
-- `sep_axi_extension.rdl` trailing whitespace.
+- `sep_external.rdl` trailing whitespace.
 - AXI-extension RTL aliases the whole aperture while generated metadata advertises a
   4-byte map (aliasing already ACCEPTED-for-OSS; still needs the designer ACK the plan
   asked for). Relocated generated eFuse RTL lacks a reproducible generation recipe.

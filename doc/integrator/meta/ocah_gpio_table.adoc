@@ -19,15 +19,15 @@
 |12 |smc_wrapper.GPIO_PAD[12] |SMC |Data In |Output | |UART[0].TX |PU |Horizontal | |CHIP_ID[2] |CHIP_ID is the I2C/I3C static address strap
 |13 |smc_wrapper.GPIO_PAD[13] |SMC |Data In |Input | |UART[0].RTS |PD |Horizontal | |BYPASS_SRAM_REPAIR |Bypass the memory repair process
 |14 |smc_wrapper.GPIO_PAD[14] |SMC |Data In |Output | |UART[0].CTS |PD |Horizontal | |TEST_EN |Enable DFT test mode
-|15 |smc_wrapper.GPIO_PAD[15] |SMC |Data In |Output | |UART[1].RX |PU |Horizontal | | |
+|15 |smc_wrapper.GPIO_PAD[15] |SMC |Data In |Output | |UART[1].RX |PU |Horizontal | |CHIP_ID[1] |CHIP_ID is the I2C/I3C static address strap
 |16 |smc_wrapper.GPIO_PAD[16] |SMC |Data In |Output | |UART[1].TX |PU |Horizontal | | |
 |17 |smc_wrapper.GPIO_PAD[17] |SMC |Data In |Input | |UART[1].RTS |PD |Horizontal | | |
 |18 |smc_wrapper.GPIO_PAD[18] |SMC |Data In |Output | |UART[1].CTS |PD |Horizontal | |BOOT_I2C |Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
 |19 |smc_wrapper.GPIO_PAD[19] |SMC |Data In |Output | |UART[2].RX |PU |Horizontal | |BOOT_RECOVERY |Use I3C0 for BL1 boot image loading instead of the SPI channel.
-|20 |smc_wrapper.GPIO_PAD[20] |SMC |Data In |Output | |UART[2].TX |PU |Horizontal | | |
+|20 |smc_wrapper.GPIO_PAD[20] |SMC |Data In |Output | |UART[2].TX |PU |Horizontal | |BL0_PLLCLK |Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted.
 |21 |smc_wrapper.GPIO_PAD[21] |SMC |Data In |Input | |UART[2].RTS |PD |Horizontal | |STATUS_RPT_DISABLE |Disable BL0 status reporting. It is on by default.
 |22 |smc_wrapper.GPIO_PAD[22] |SMC |Data In |Output | |UART[2].CTS |PD |Horizontal | |SPI_USE_FUSED_CONFIG |Use the SPI configuration values stored in the fuse field
-|23 |smc_wrapper.GPIO_PAD[23] |SMC |Data In |Output | |UART[3].RX |PU |Horizontal | | |
+|23 |smc_wrapper.GPIO_PAD[23] |SMC |Data In |Output | |UART[3].RX |PU |Horizontal | |CHIP_ID[0] |CHIP_ID is the I2C/I3C static address strap
 |24 |smc_wrapper.GPIO_PAD[24] |SMC |Data In |Output | |UART[3].TX |PU |Horizontal | | |
 |25 |smc_wrapper.GPIO_PAD[25] |SMC |Data In |Input | |UART[3].RTS |PD |Horizontal | |PRIMARY_CHIPLET |The primary chiplet has this strap bonded out to identify it as the boot master.
 |26 |smc_wrapper.GPIO_PAD[26] |SMC |Data In |Output | |UART[3].CTS |PD |Horizontal | |SRAM_AUTO_ZERO_DISABLE |Disable auto zero of the SMC SRAM when asserted
@@ -59,19 +59,19 @@
 |52 |smc_wrapper.GPIO_PAD[52] |SMC |Data Out |Output | |Thermal Emergency N |PU |Vertical | | |
 |53 |smc_wrapper.GPIO_PAD[53] |SMC |Data In |Output | |Isolate Request |PD |Vertical | | |
 |54 |smc_wrapper.GPIO_PAD[54] |SMC |Data In |Input | |SPI DQS Loopback |PD |Vertical | |MBIST_BYPASS |Ignore results of Power-On MBIST for boot
-|55 |smc_wrapper.GPIO_PAD[55] |SMC |Data Out |Input | |PLL clock OBS |PD |Vertical |PLL clock observation pin |CHIP_ID[1] |CHIP_ID is the I2C/I3C static address strap
-|56 |smc_wrapper.GPIO_PAD[56] |SMC |Data Out |Input | |Reserved |PD |Vertical | |BL0_PLLCLK |When asserted, use the PLL-generated clock in BL0. When deasserted, use the reference clock.
-|57 |smc_wrapper.GPIO_PAD[57] |SMC |Data Out |Input | |PVT RO |PD |Vertical |Process sensor RO output |CHIP_ID[0] |CHIP_ID is the I2C/I3C static address strap
-|58 |smc_wrapper.GPIO_PAD[58] |SMC |Data Out |Input | |System Timer Sync Load |PD |Vertical | | |
-|59 |smc_wrapper.GPIO_PAD[59] |SMC |Data Out |Input | |System Timer Credit Count |PD |Vertical | | |
-|60 |smc_wrapper.GPIO_PAD[60] |SMC |Data Out |Input | |Boot Stall |PD |Vertical |Stall after fuse sensing to override shadow register values. Boot will resume when this GPIO is released. This value can be overridden by the value specified over JTAG using the boot_stall_jtag_ovrd and boot_stall_jtag_val signals from DTP. | |
-|61 |smc_wrapper.GPIO_PAD[61] |SMC |Data Out |Input | |Reserved |PD |Vertical | |ROTATE_UPDATE |Swaps primary and backup image in SEP BL0 ROM
-|62 |smc_wrapper.GPIO_PAD[62] |SMC |Data Out |Input | |Reserved |PU |Vertical | | |
-|63 |smc_wrapper.GPIO_PAD[63] |SMC |Data Out |Input | |Reserved |PU |Vertical | | |
-|64 |smc_wrapper.UNBONDED_GPIO[64] |SMC |n/a |Input |TRUE |Cool Reset In |PU |Vertical |Not packaged out |Not allowed |
-|65 |smc_wrapper.UNBONDED_GPIO[65] |SMC |n/a |Output | |Cool Reset Out |PU |Vertical |Not packaged out |Not allowed |
-|66 |smc_wrapper.UNBONDED_GPIO[66] |SMC |n/a |Output | |I3C[1] SCL |PU |Vertical |Not packaged out |Not allowed |In package pull-up
-|67 |smc_wrapper.UNBONDED_GPIO[67] |SMC |n/a |Output | |I3C[1] SDA |PU |Vertical |Not packaged out |Not allowed |In package pull-up
+|55 |smc_wrapper.GPIO_PAD[55] |SMC |Data Out |Input | |System Timer Sync Load |PD |Vertical | | |
+|56 |smc_wrapper.GPIO_PAD[56] |SMC |Data Out |Input | |System Timer Credit Count |PD |Vertical | | |
+|57 |smc_wrapper.GPIO_PAD[57] |SMC |Data Out |Input | |Boot Stall |PD |Vertical |Stall after fuse sensing to override shadow register values. Boot will resume when this GPIO is released. This value can be overridden by the value specified over JTAG using the boot_stall_jtag_ovrd and boot_stall_jtag_val signals from DTP. | |
+|58 |smc_wrapper.GPIO_PAD[58] |SMC |Data Out |Input | |OCCP Interface |PD |Vertical | |ROTATE_UPDATE |Swaps primary and backup image in SEP BL0 ROM
+|59 |smc_wrapper.GPIO_PAD[59] |SMC |Data Out |Input | |I3C SCL for test benches (ticket QUAS-1835) |PU |Vertical | | |
+|60 |smc_wrapper.GPIO_PAD[60] |SMC |Data Out |Input | |I3C SCL for test benches (ticket QUAS-1835) |PU |Vertical | | |
+|61 |smc_wrapper.UNBONDED_GPIO[61] |SMC |n/a |Input |TRUE |Cool Reset In |PU |Vertical |Not packaged out |Not allowed |
+|62 |smc_wrapper.UNBONDED_GPIO[62] |SMC |n/a |Output | |Cool Reset Out |PU |Vertical |Not packaged out |Not allowed |
+|63 |smc_wrapper.UNBONDED_GPIO[63] |SMC |n/a |Output | |I3C[1] SCL |PU |Vertical |Not packaged out |Not allowed |In package pull-up
+|64 |smc_wrapper.UNBONDED_GPIO[64] |SMC |n/a |Output | |I3C[1] SDA |PU |Vertical |Not packaged out |Not allowed |In package pull-up
+|65 | | | | | | | | | | |
+|66 | | | | | | | | | | |
+|67 | | | | | | | | | | |
 |68 |smc_wrapper.PAD_JTAG_IN_TCK |? | |Input |TRUE |PTAP TCK | |Horizontal | | |
 |69 |smc_wrapper.PAD_JTAG_IN_TRSTN |? | |Input |TRUE |PTAP TRST | |Horizontal | | |
 |70 |smc_wrapper.PAD_JTAG_IN_TDI |? | |Input |TRUE |PTAP TDI | |Horizontal | | |
@@ -94,4 +94,7 @@
 |87 | |SMC | | | |PVT[0] | | | | |
 |88 | |SMC | | | |PVT[1] | | | | |
 |89 | | | | | |VDDIO | | | | |
+|90 |smc_wrapper.PLL_CLK_OBS_PAD |SMC |Data Out |Input | |PLL clock OBS |PD |Vertical |PLL clock observation pin | |
+|91 |smc_wrapper.PVT_CLK_OBS_PAD |SMC |Data Out |Input | |PVT RO |PD |Vertical |Process sensor RO output | |
+|92 | | | | | | | | | | |
 |===

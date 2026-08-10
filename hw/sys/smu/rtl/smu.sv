@@ -5,6 +5,12 @@
 
 module smu #(
   parameter int unsigned MAX_TRANS = 2,
+    // Vendor eFuse shim CSR blocks carved off the base of each external window.
+    // Both are literals here: the register headers carrying the real sizes are
+    // nonfree, so the nonfree smu_wrapper overrides these from the *_top_reg_pkg
+    // packages (0x44 each with the Samsung shims overlaid).
+    parameter int unsigned SEP_EFUSE_SHIM_SIZE = 'h4,
+    parameter int unsigned SMC_EFUSE_SHIM_SIZE = 'h44,
     parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,
 
     // SEP (Secure Execution Processor) enable. Declared int unsigned (not bit) so VC
@@ -335,8 +341,8 @@ module smu #(
     // Muxed SPI IRQ from sep_ip_integration (Cadence or OT)
     input  logic                        spi_irq_i,
 
-    output sep_pkg::sep_32_64_6_12_axi_req_t   sep_axi_extension_req_o,
-    input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_axi_extension_resp_i,
+    output sep_pkg::sep_32_64_6_12_axi_req_t   sep_external_req_o,
+    input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_external_resp_i,
 
     output logic  sep_reset_n_o,      // plain SEP reset -> Cadence xSPI wrap in sep_ip_integration
     output logic  sep_cpu_reset_n_o,  // sep_reset_n & WDT reset -> sep_ip_integration memories
@@ -682,7 +688,8 @@ module smu #(
         .l1_dcache_tag_req_t(l1_dcache_tag_req_t),
         .l1_dcache_tag_rsp_t(l1_dcache_tag_rsp_t),
         .l1_dcache_data_req_t(l1_dcache_data_req_t),
-        .l1_dcache_data_rsp_t(l1_dcache_data_rsp_t)
+        .l1_dcache_data_rsp_t(l1_dcache_data_rsp_t),
+        .EFUSE_SHIM_SIZE(SMC_EFUSE_SHIM_SIZE)
     ) u_smc (
         .clk_smc_i                           (clk_smu_i),
         .clk_ref_i                           (clk_ref_i),
@@ -849,7 +856,8 @@ module smu #(
         sep #(
             .KM_LATCHED_MEM_RDATA  (Cfg.SEP_KM_LATCHED_MEM_RDATA),
             .SEP_SEC_DISABLE_TOKEN  (SEP_SEC_DISABLE_TOKEN),
-            .EXT_TRNG_NUM_AXIS      (EXT_TRNG_NUM_AXIS)
+            .EXT_TRNG_NUM_AXIS      (EXT_TRNG_NUM_AXIS),
+            .EFUSE_SHIM_SIZE        (SEP_EFUSE_SHIM_SIZE)
         ) u_sep (
             .clk_i                         (clk_smu_i),
             .clk_ref_i                     (clk_ref_i),
@@ -972,8 +980,8 @@ module smu #(
 
             .sep_straps_i                  (sep_straps_i),
 
-            .axi_extension_axi_req_o       (sep_axi_extension_req_o),
-            .axi_extension_axi_resp_i      (sep_axi_extension_resp_i),
+            .sep_external_axi_req_o       (sep_external_req_o),
+            .sep_external_axi_resp_i      (sep_external_resp_i),
 
             .smc_global_base_addr_i        (smc_global_base_o),
             .smc_region_size_i             ({24'h0, smc_region_size_o}),
@@ -1263,7 +1271,7 @@ module smu #(
         assign sep_km_rom_mem_req_o             = '0;
         assign sep_km_sram_mem_req_o            = '0;
         assign sep_io_spi_req                   = '0;
-        assign sep_axi_extension_req_o          = '0;
+        assign sep_external_req_o          = '0;
         assign sep_reset_n_o                    = 1'b1;
         assign sep_cpu_reset_n_o                = 1'b1;
         assign sep_cpu_trace_o                  = '0;
@@ -1285,9 +1293,9 @@ module smu #(
         assign sep_spi_dqs_oe_n     = 1'b1;
         assign sep_spi_dq_ie_n      = 8'hFF;
         assign sep_spi_dq_oe_n      = 8'hFF;
-        assign sep_spi_mem_rebar_oepad = 1'b1;
-        assign sep_spi_mem_rebar_opad  = 1'b1;
-        assign sep_spi_mem_rebar_iepad = 1'b1;
+        assign sep_spi_mem_rebar_oepad = 1'b0;
+        assign sep_spi_mem_rebar_opad  = 1'b0;
+        assign sep_spi_mem_rebar_iepad = 1'b0;
         assign sep_io_spi_rsp       = '0;
 
         // External debug bus tie-off

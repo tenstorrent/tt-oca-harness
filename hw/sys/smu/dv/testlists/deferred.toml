@@ -115,8 +115,8 @@ module = "smu_sep_spi_bridge_test"
 tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]
-name = "smu_sep_axi_extension_decode_test"
-module = "smu_sep_axi_extension_decode_test"
+name = "smu_sep_external_decode_test"
+module = "smu_sep_external_decode_test"
 tags = ["deferred", "sep", "sep_probe", "interop"]
 
 [[tests]]

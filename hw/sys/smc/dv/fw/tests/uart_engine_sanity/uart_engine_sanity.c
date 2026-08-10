@@ -224,8 +224,14 @@ int main(void) {
             bytes_read = 0;
 
             unsigned char recvd_bytes[max_bytes];
-            // Trigger start of log transfer. j*4 is to access offset for each log entry
-            write_reg(engine_addr_indexed + 0u + ((i * num_logs) + j) * 4, max_bytes);
+            // Trigger start of log transfer via LOG_CTRL[n] (upstream:
+            // LOG_ENGINE_LOG_CTRL_0__REG_OFFSET = 0x40). j*4 steps entries.
+            write_reg(engine_addr_indexed +
+                          (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(
+                               0, 0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0)) +
+                          ((i * num_logs) + j) * 4,
+                      max_bytes);
 
             while (bytes_read < max_bytes) {
                 do {

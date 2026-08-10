@@ -345,194 +345,170 @@ static int uart_test_ier_gating_and_mapping(uint32_t uart_base) {
     return 0;
 }
 
-// Subtest B: clear behavior for each interrupt source (simplified).
+// Fail if IIR still reports the given ID as pending (interrupt_pending is active-low).
+static int uart_fail_if_id_still_pending(uint32_t uart_base, uint32_t expect_id, int err) {
+    uart_16550_main__IIR_t iir;
+    iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+    if ((iir.f.INTERRUPT_PENDING == 0u) && (iir.f.INTERRUPT_ID == expect_id)) {
+        return err;
+    }
+    return 0;
+}
+
+// Subtest B: architectural clear with *natural* producers (ITR held 0).
+// ITR OR-tree would make clear-then-ITR=0 vacuous — so prove RBR/THR/MSR clears
+// against loopback-generated pending bits only. LSR/timeout/FIFO encode stay in A/C.
+static void uart_init_loopback_for_clear(uint32_t uart_base) {
+    uart_16550_main__LCR_t lcr;
+    uart_16550_main__MCR_t mcr;
+    uart_16550_main__ITR_t itr;
+
+    itr.w = 0;
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+              itr.w);
+
+    lcr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+    lcr.f.DLAB = 1;
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+              lcr.w);
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+              0x01u);
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+              0x00u);
+    lcr.f.DLAB = 0;
+    lcr.f.WLS = 0x3u;
+    lcr.f.STB = 0;
+    lcr.f.PEN = 0;
+    lcr.f.SET_BREAK = 0;
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+              lcr.w);
+
+    mcr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+    mcr.f.LOOP = 1;
+    mcr.f.RTS = 1;
+    mcr.f.DTR = 1;
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+              mcr.w);
+
+    // Enable FIFOs (FCR shares IIR address).
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+              0x01u);
+}
+
 static int uart_test_clear_behaviour(uint32_t uart_base) {
     uart_16550_main__IER_t ier;
     uart_16550_main__ITR_t itr;
     uart_16550_main__IIR_t iir;
     uart_16550_main__LSR_t lsr;
-    uart_16550_main__MSR_t msr;
+    uart_16550_main__MCR_t mcr;
+    int rc;
+    int wait;
 
     uart_clear_all_status(uart_base);
+    uart_init_loopback_for_clear(uart_base);
 
-    // RX Data Ready: read LSR & RBR to clear.
-    ier.w = 0;
+    // Keep ITR=0 for the entire subtest.
     itr.w = 0;
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
+                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
+              itr.w);
+
+    // --- RDR: natural RX via loopback TX; clear by reading RBR ---
+    ier.w = 0;
     ier.f.ERBFI = 1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               ier.w);
-    itr.f.TRBFI = 1;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir = uart_poll_iir(uart_base, 16);
+              0xA5u);
+    iir = uart_poll_iir(uart_base, 4096);
     if ((iir.f.INTERRUPT_PENDING != 0u) ||
         (iir.f.INTERRUPT_ID != UART_INTR_ID_RECEIVED_DATA_READY)) {
         return -100;
     }
-    lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    (void)lsr.w;
     (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                                 SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    itr.w = 0;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    if ((iir.f.INTERRUPT_PENDING == 0u) &&
-        (iir.f.INTERRUPT_ID == UART_INTR_ID_RECEIVED_DATA_READY)) {
-        return -(100 + 1);
+    rc = uart_fail_if_id_still_pending(uart_base, UART_INTR_ID_RECEIVED_DATA_READY, -101);
+    if (rc != 0) {
+        return rc;
     }
 
-    // RX Timeout: read LSR & RBR to clear.
-    ier.w = 0;
-    itr.w = 0;
-    ier.f.ERBFI = 1;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              ier.w);
-    itr.f.TRTI = 1;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir = uart_poll_iir(uart_base, 16);
-    if ((iir.f.INTERRUPT_PENDING != 0u) || (iir.f.INTERRUPT_ID != UART_INTR_ID_RECEPTION_TIMEOUT)) {
-        return -110;
-    }
-    lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
+    // Drain any residual RX before THRE phase.
+    for (wait = 0; wait < 8; wait++) {
+        lsr.w =
+            read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    (void)lsr.w;
-    (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
-                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    itr.w = 0;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    if ((iir.f.INTERRUPT_PENDING == 0u) && (iir.f.INTERRUPT_ID == UART_INTR_ID_RECEPTION_TIMEOUT)) {
-        return -(110 + 1);
+        if (lsr.f.DR == 0u) {
+            break;
+        }
+        (void)read_reg(uart_base +
+                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
+                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
     }
 
-    // THR Empty: write THR to clear.
+    // --- THRE: natural empty with etbei; clear by IIR read (16550/RTL latch) ---
+    // Keep etbei=1 through the post-clear sample. Zeroing IER before -121 made the
+    // check always-pass; uart_poll_iir's IIR read is the architectural clear.
     ier.w = 0;
-    itr.w = 0;
     ier.f.ETBEI = 1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               ier.w);
-    itr.f.TTBEI = 1;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir = uart_poll_iir(uart_base, 16);
+    iir = uart_poll_iir(uart_base, 4096);
     if ((iir.f.INTERRUPT_PENDING != 0u) ||
         (iir.f.INTERRUPT_ID != UART_INTR_ID_TRANSMITTER_HOLDING_REGISTER_EMPTY)) {
         return -120;
     }
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              0x5Au);
-    itr.w = 0;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    if ((iir.f.INTERRUPT_PENDING == 0u) &&
-        (iir.f.INTERRUPT_ID == UART_INTR_ID_TRANSMITTER_HOLDING_REGISTER_EMPTY)) {
-        return -(120 + 1);
+    // etbei still 1: THRE must not remain pending after the IIR-read clear.
+    rc = uart_fail_if_id_still_pending(uart_base, UART_INTR_ID_TRANSMITTER_HOLDING_REGISTER_EMPTY,
+                                       -121);
+    if (rc != 0) {
+        return rc;
     }
-
-    // Line Status: read LSR to clear.
+    // Drop etbei before MSR so THRE cannot mask modem status.
     ier.w = 0;
-    itr.w = 0;
-    ier.f.ELSI = 1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               ier.w);
-    itr.f.TLSI = 1;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir = uart_poll_iir(uart_base, 16);
-    if ((iir.f.INTERRUPT_PENDING != 0u) ||
-        (iir.f.INTERRUPT_ID != UART_INTR_ID_RECEIVER_LINE_STATUS)) {
-        return -130;
-    }
-    lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    (void)lsr.w;
-    itr.w = 0;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    if ((iir.f.INTERRUPT_PENDING == 0u) &&
-        (iir.f.INTERRUPT_ID == UART_INTR_ID_RECEIVER_LINE_STATUS)) {
-        return -(130 + 1);
-    }
 
-    // Modem Status: read MSR to clear.
+    // --- MSR: toggle MCR in loopback to create delta; clear by reading MSR ---
     ier.w = 0;
-    itr.w = 0;
     ier.f.EDSSI = 1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               ier.w);
-    itr.f.TDSSI = 1;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
+    (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR(0) -
+                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+    mcr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+    mcr.f.RTS = (uint32_t)(mcr.f.RTS ? 0u : 1u);
+    mcr.f.DTR = (uint32_t)(mcr.f.DTR ? 0u : 1u);
+    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir = uart_poll_iir(uart_base, 16);
+              mcr.w);
+    iir = uart_poll_iir(uart_base, 4096);
     if ((iir.f.INTERRUPT_PENDING != 0u) || (iir.f.INTERRUPT_ID != UART_INTR_ID_MODEM_STATUS)) {
         return -140;
     }
-    msr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    (void)msr.w;
-    itr.w = 0;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    if ((iir.f.INTERRUPT_PENDING == 0u) && (iir.f.INTERRUPT_ID == UART_INTR_ID_MODEM_STATUS)) {
-        return -(140 + 1);
+    (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR(0) -
+                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+    rc = uart_fail_if_id_still_pending(uart_base, UART_INTR_ID_MODEM_STATUS, -141);
+    if (rc != 0) {
+        return rc;
     }
 
-    // FIFO Error: read LSR (error bits) to clear.
-    ier.w = 0;
-    itr.w = 0;
-    ier.f.EFEI = 1;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              ier.w);
-    itr.f.TFEI = 1;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir = uart_poll_iir(uart_base, 16);
-    if ((iir.f.INTERRUPT_PENDING != 0u) || (iir.f.INTERRUPT_ID != UART_INTR_ID_FIFO_ERROR)) {
-        return -150;
-    }
-    lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    (void)lsr.w;
-    itr.w = 0;
-    write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
-                           SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              itr.w);
-    iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
-                                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
-    if ((iir.f.INTERRUPT_PENDING == 0u) && (iir.f.INTERRUPT_ID == UART_INTR_ID_FIFO_ERROR)) {
-        return -(150 + 1);
-    }
-
+    uart_clear_all_status(uart_base);
     return 0;
 }
 

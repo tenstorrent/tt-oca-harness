@@ -33,13 +33,14 @@ void ndm_interrupt_handler(int id, void *priv) {
     }
 
     if (timeout == 0) {
-        info_msg_s(0, "WARNING: Timeout waiting for ndmreset_request to clear");
-    } else {
-        write_reg(SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR, 0);
-        info_msg_s(0, "Cleared ndmreset_process");
+        // Do not set ndm_interrupt_received — handshake incomplete must not reach test_pass.
+        raise_fatal_s(0, "NDM reset handshake timeout in handler");
     }
 
-    // Signal that interrupt was received
+    write_reg(SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR, 0);
+    info_msg_s(0, "Cleared ndmreset_process");
+
+    // Signal that interrupt was received and handshake completed
     ndm_interrupt_received = 1;
 }
 

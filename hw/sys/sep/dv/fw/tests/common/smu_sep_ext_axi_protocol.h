@@ -86,7 +86,7 @@
 /* ---- Built SMC image drift guards ----
  * The SEP firmware uses these to re-vector/release the SMC, while cocotb independently checks
  * them against the freshly built test.dis/test.preload.hex before loading the image. */
-#define EXTAXI_SMC_ENTRY 0xC00601B6
+#define EXTAXI_SMC_ENTRY 0xC00601B2 /* RECONCILE vs built image */
 #define EXTAXI_SMC_IMAGE_FIRST_WORD 0x41014081
 
 /* ---- Aperture goldens (each firmware programs + reads back its OWN) ----
@@ -104,8 +104,9 @@
  * (SMC differs: its remap target_base is nonzero so global 0x020390xx -> local 0x000390xx
  * is a valid SMC-fabric alias, which is why the SMC leg already passed.) */
 #define EXTAXI_SEP_GLOBAL_BASE 0x04000000 /* SEP_CPU_CTRL.SEP_GLOBAL_BASE_ADDR */
-#define EXTAXI_SEP_REGION_SIZE \
-    0x11000000 /* SEP_CPU_CTRL.SEP_REGION_SIZE (covers local 0x10802040) */
+/* Keep value on the same line as #define: cocotb parses this header with a
+ * single-line regex (see smu_sep_ext_axi_combined_probe_test._parse_protocol_header). */
+#define EXTAXI_SEP_REGION_SIZE 0x11000000 /* SEP_CPU_CTRL.SEP_REGION_SIZE (covers local 0x10802040) */
 #define EXTAXI_SMC_GLOBAL_BASE 0x02000000 /* SMC_BASE_CONFIG.GLOBAL_BASE */
 #define EXTAXI_SMC_REGION_SIZE 0x01000000 /* SMC_BASE_CONFIG.REGION_SIZE */
 
