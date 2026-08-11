@@ -1033,16 +1033,22 @@ module entropy_source
 
     // auto-detune fired.
     //
-    // AUTOTUNE_FAIL flags that an automatic per-lane retune ACTED, not that the
-    // autotune logic malfunctioned. When CTRL.AUTOTUNE_ENABLE=1, a health-test
-    // failure triggers a self-heal detune; that detune silently changes the
-    // noise-source geometry, which is a certification-relevant event. Pulsing
-    // autotune_fail on the triggering HT failure makes the otherwise-silent
-    // self-heal observable via INTR_STATUS.AUTOTUNE_FAIL. In the certified
-    // config AUTOTUNE_ENABLE is swwel-locked to 0, so this path stays idle and
-    // the geometry cannot self-adjust. autotune_fail feeds only the interrupt;
-    // any_fail_count and the ALERT_THRESHOLD persistent-halt path are separate.
-    assign autotune_fail = reg_out.CTRL.AUTOTUNE_ENABLE.value && ht_fail_pulse;
+    // AUTOTUNE_FAIL flags that an automatic per-lane retune acted. Each lane's
+    // tune FSM is driven by that lane's own health-test status, so the report is
+    // the OR of the twelve per-lane HT-fail signals gated by AUTOTUNE_ENABLE.
+    // When CTRL.AUTOTUNE_ENABLE=1 a per-lane HT failure triggers a self-heal
+    // detune that changes the noise-source geometry, a certification-relevant
+    // event surfaced via INTR_STATUS.AUTOTUNE_FAIL. In the certified config
+    // AUTOTUNE_ENABLE is swwel-locked to 0, so this path stays idle.
+    // autotune_fail feeds only the interrupt; the ALERT_THRESHOLD
+    // persistent-halt path is separate.
+    assign autotune_fail = reg_out.CTRL.AUTOTUNE_ENABLE.value &&
+                           |{generator_0_test_status,  generator_1_test_status,
+                             generator_2_test_status,  generator_3_test_status,
+                             generator_4_test_status,  generator_5_test_status,
+                             generator_6_test_status,  generator_7_test_status,
+                             generator_8_test_status,  generator_9_test_status,
+                             generator_10_test_status, generator_11_test_status};
 
     entropy_src_main_sm u_main_sm (
         .clk_i               (clk_i),
