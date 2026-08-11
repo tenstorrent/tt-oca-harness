@@ -772,7 +772,7 @@ addrmap entropy_source {
             hw = w;
             woclr;
             stickybit;
-            desc = "main_sm_alert_o, latched. Set when the FSM transitions through AlertState (boot health test failed with alert_thresh_fail_i asserted; alert_thresh_fail_i is tied to 0, so this path is currently unreachable and is reserved for a future threshold/lock policy). Write 1 to clear.";
+            desc = "main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang — a permanent halt that requires a hardware reset to exit. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Write 1 to clear the sticky bit; the FSM remains in AlertHang until rst_ni. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.";
         } ALERT[10:10] = 0x0;
         field {
             sw = rw;

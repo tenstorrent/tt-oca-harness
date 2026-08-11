@@ -257,8 +257,8 @@ In OCAH the whitened entropy stream from the noise source is not routed
 directly to the cryptographic accelerators. Instead it seeds the DRBG,
 and the post-CSRNG output of the DRBG (NIST SP 800-90A; HMAC-SHA2 or
 AES-CTR construction) is what fans out to the rest of the crypto
-subsystem. The DRBG exposes two AXI-Stream EDN endpoints
-(`u_drbg_s3c_scan.edn_axis_o[1:0]`) that carry conditioned, DRBG-generated bits,
+subsystem. The DRBG exposes three AXI-Stream EDN endpoints
+(`u_drbg_s3c_scan.edn_axis_o[2:0]`) that carry conditioned, DRBG-generated bits,
 one per sink domain:
 
 * endpoint `[0]` feeds the Key Manager sink domain;
@@ -266,7 +266,12 @@ one per sink domain:
   (AES, KMAC, OTBN edn_rnd, OTBN edn_urnd) through
   `u_axis_edn_crypto_s3c_scan` — the `drbg_axis_edn_adapter` that converts the
   32-bit AXI-Stream feed into a small round-robin native-protocol EDN
-  fan-out.
+  fan-out;
+* endpoint `[2]` feeds the fabric-level entropy-pool FIFO (`u_entropy_pool` in
+  `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates two
+  dedicated interrupts: SEP IRQ 36 (`entropy_pool_low`, pool level below
+  watermark) and IRQ 37 (`entropy_pool_fill_stall`, fill path not making
+  progress).
 
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so

@@ -59,6 +59,12 @@ The health test wrapper instantiates three OpenTitan-derived test modules. The r
 
 Health test thresholds, enable bits, and window sizes are all programmable through the CSR interface. Test status is reported as an 8-bit vector where bit 0 indicates a repetition count failure, bit 3 an adaptive proportion failure, and bits 4-5 Markov high/low failures.
 
+===== Persistent Failure and AlertHang
+
+The health-test subsystem includes a persistent-failure path that permanently halts entropy output when failures accumulate beyond a programmed threshold. A saturating counter (`ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT`) accumulates health-test failures. When it reaches `ALERT_THRESHOLD.THRESHOLD` (default 4, locked by `FIPS_LOCK`), `alert_thresh_fail` is asserted and the main FSM transitions through `AlertState` into `AlertHang` — a permanent halt from which only a hardware reset (`rst_ni`) can recover. The event sets `MAIN_SM_STATUS.ALERT` (sticky W1C) and raises `INTR_STATUS.PERSISTENT_FAILURE`.
+
+Setting `ALERT_THRESHOLD.THRESHOLD` to zero disables the comparator, leaving the counter accumulating without ever asserting `alert_thresh_fail`.
+
 ===== SHA-256 Whitening
 
 When the SHA-256 whitener is enabled via the CSR, the 32-bit BIW output stream feeds into the `entropy_sha256_whitener` module. This module accumulates 16 consecutive 32-bit words (one SHA-256 block of 512 bits), computes the SHA-256 digest using the OpenTitan `prim_sha2_32` primitive, and emits the 8-word (256-bit) digest. The compression ratio is 2:1 (16 input words produce 8 output words). When the whitener is disabled, the BIW output passes through to the FIFO without modification.
