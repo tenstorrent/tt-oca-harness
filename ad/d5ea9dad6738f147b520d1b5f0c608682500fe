@@ -1,0 +1,25 @@
+hw/sys/sep/doc/crypto.adoc
+  s_42d98e48086972::t_a8ec932389fe80 260-261,269-274
+doc/trm/src/revision.adoc
+  s_42d98e48086972::t_12816aeaae06ed 149-153
+hw/ip/entropy_source/doc/architecture.adoc
+  s_42d98e48086972::t_4993e969ce3a39 62-67
+hw/ip/entropy_source/regs/entropy_source.rdl
+  s_42d98e48086972::t_417f99fefdc88e 775
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "add5ea9dad6738f147b520d1b5f0c608682500fe",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
