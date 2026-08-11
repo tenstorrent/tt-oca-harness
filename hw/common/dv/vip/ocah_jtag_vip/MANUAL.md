@@ -82,7 +82,9 @@ Each bit cycle drives TMS/TDI while TCK is low and samples TDO before raising
 TCK. The rising edge then captures TMS/TDI and advances the TAP state. This
 ordering is especially important for the final bit, whose rising edge exits
 `SHIFT_IR` or `SHIFT_DR`; TDO sampled afterward is no longer guaranteed to
-belong to that scan bit.
+belong to that scan bit. Cocotb performs the low-phase read in `ReadOnly` and
+returns to a writable phase on the next timestep before raising TCK, making the
+sample deterministic across event schedulers.
 
 ```python
 captured_ir = await tap.shift_ir(0x01, width=6, back_to_rti=False)

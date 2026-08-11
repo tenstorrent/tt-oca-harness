@@ -24,7 +24,9 @@ The active cocotb and UVM drivers use the same IEEE 1149.1 cycle contract:
 drive TMS/TDI while TCK is low, sample TDO in that low phase before the rising
 edge, then raise TCK so the target captures inputs and advances its TAP state.
 Sampling after the rising edge is invalid on the final scan bit because that
-edge also exits `SHIFT_IR` or `SHIFT_DR`.
+edge also exits `SHIFT_IR` or `SHIFT_DR`. The cocotb driver samples in the
+`ReadOnly` phase and advances to the next timestep before driving TCK, avoiding
+simulator-dependent stale reads.
 
 ## Cocotb Checker Evidence
 
