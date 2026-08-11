@@ -157,6 +157,10 @@
     --oca-cream: #EEEAE0;
     --oca-cream-light: #F8F4EB;
     --oca-gold: #F6BC42;
+    /* Darkened variant of --oca-gold for use as text color on light/white
+       backgrounds. Only needed where gold is used as foreground text on a 
+	   light background. */
+    --oca-gold-accessible: #937027;
     --oca-orange: #F6931E;
     --oca-text: #484848;
     --oca-font-display: "Degular Display", Georgia, "Iowan Old Style", serif;
@@ -239,11 +243,7 @@
 }
 
 /* Version "pill" buttons inside the switcher -- fixed-width font + orange
-   accent, matching Tenstorrent's own button convention, replacing the
-   default dark-grey. This is the mono font's "utility text" role (small
-   labels/tags), specified at 600 (semi-bold); only 400/700 weights were
-   supplied for this font, so the browser substitutes its closest match
-   (currently renders as Bold) until a true 600 weight is confirmed. */
+   accent */
 .nav-panel-explore .versions .version a,
 .nav-panel-explore .version.is-current a {
     font-family: var(--oca-font-mono);
@@ -325,13 +325,15 @@
     font-weight: 500;
 }
 
-/* Links / accents -> green base, gold hover, matching OCA's CTA buttons */
+/* Links / accents -> green base, gold hover, matching OCA's CTA buttons.
+   Uses --oca-gold-accessible rather than --oca-gold: this text sits on
+   the white/light doc content background */
 .doc a {
     color: var(--oca-green);
 }
 
 .doc a:hover {
-    color: var(--oca-gold);
+    color: var(--oca-gold-accessible);
 }
 
 /* Code/mono elements */
@@ -444,8 +446,9 @@
     background-color: #fafafa;
 }
 
+/* dash-pass/dash-fail backgrounds are darkened. */
 .dash-pass {
-    background-color: #4caf50;
+    background-color: #3A863D;
     color: #ffffff;
 }
 
@@ -455,7 +458,7 @@
 }
 
 .dash-fail {
-    background-color: #e05c5c;
+    background-color: #C55050;
     color: #ffffff;
 }
 
