@@ -103,7 +103,8 @@ module dtp_uvm_top
     output logic jtag_ic_reset_ext_ovrd,
     output logic jtag_ic_reset_ext_ctrl_n,
 
-    // Lifecycle feature-control stimulus. These bits are active-high enables.
+    // Lifecycle feature-control stimulus. These bits are active-high enables and
+    // are combined into DTP's active-high dbg_disable_i port below.
     input  wire logic feat_ctrl_sip_debug,
     input  wire logic feat_ctrl_soc_debug,
     input  wire logic feat_ctrl_ap_debug,
@@ -378,7 +379,7 @@ module dtp_uvm_top
     jtag_ic_reset_default_t jtag_ic_reset_smc;
     jtag_ic_reset_default_t jtag_ic_reset_sep;
     jtag_ic_reset_default_t jtag_ic_reset_ext;
-    sep_efuse_map_lc_disable_reg_t feat_ctrl;
+    sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable;
 
     assign jtag_bsr_select     = jtag_bsr_host_scan_ctrl.select;
     assign jtag_bsr_shift_en   = jtag_bsr_host_scan_ctrl.shift_en;
@@ -424,13 +425,11 @@ module dtp_uvm_top
     assign jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext.ovrd;
     assign jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext.val;
 
+    // TODO: DTP now takes eleven pre-resolved per-interface disables
+    // (dbg_disable_i) instead of the five raw lifecycle enables it used to combine
+    // internally.
     always_comb begin
-        feat_ctrl = '0;
-        feat_ctrl.sip_debug = feat_ctrl_sip_debug;
-        feat_ctrl.soc_debug = feat_ctrl_soc_debug;
-        feat_ctrl.ap_debug = feat_ctrl_ap_debug;
-        feat_ctrl.sep_debug = feat_ctrl_sep_debug;
-        feat_ctrl.fuse_test = feat_ctrl_fuse_test;
+        dbg_disable = '0;
     end
 
     // ------------------------------------------------------------------
@@ -678,7 +677,7 @@ module dtp_uvm_top
         .pwr_on_rst_ni                    (pwr_on_rst_ni),
 
         // Lifecycle feature control: '0 == nothing disabled (full debug access)
-        .feat_ctrl_i                      (feat_ctrl),
+        .dbg_disable_i                    (dbg_disable),
 
         // Primary JTAG TAP client
         .jtag_ptap_client_tap_ctrl_i      (jtag_ptap_client_tap_ctrl),
