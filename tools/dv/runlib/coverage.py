@@ -499,6 +499,71 @@ def _parse_text_table(text: str) -> tuple[dict[str, float], float | None]:
     return metrics, overall
 
 
+_URG_SUMMARY_TITLE_RE = re.compile(r"(?i)^\s*total\s+coverage\s+summary\s*:?\s*$")
+
+
+def parse_urg_summary_table(text: str) -> dict[str, float]:
+    """Parse URG's authoritative `Total Coverage Summary` header/value table.
+
+    Returns lowercase native column names (score, line, cond, ...) mapped to
+    their percentages. Columns reported as `--` are omitted. An empty dict
+    means the table was not present in `text`.
+    """
+
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if not _URG_SUMMARY_TITLE_RE.match(line):
+            continue
+        rows = [row for row in lines[index + 1 : index + 6] if row.strip()]
+        if len(rows) < 2:
+            continue
+        headers = [token.lower() for token in rows[0].split()]
+        cells = rows[1].split()
+        if not headers or len(cells) != len(headers):
+            continue
+        if not any(
+            _metric_name(name) is not None or name in _OVERALL_ALIASES
+            for name in headers
+        ):
+            continue
+        values: dict[str, float] = {}
+        for name, cell in zip(headers, cells, strict=True):
+            if cell == "--":
+                continue
+            try:
+                values[name] = float(cell)
+            except ValueError:
+                values.clear()
+                break
+        if values:
+            return values
+    return {}
+
+
+def _parse_urg_dashboard(report_dir: Path) -> tuple[dict[str, float], float | None]:
+    if not report_dir.is_dir():
+        return {}, None
+    for dashboard in sorted(report_dir.rglob("dashboard.txt")):
+        try:
+            text = dashboard.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        table = parse_urg_summary_table(text)
+        if not table:
+            continue
+        metrics: dict[str, float] = {}
+        overall: float | None = None
+        for name, value in table.items():
+            canonical = _metric_name(name)
+            if canonical:
+                metrics[canonical] = value
+            elif name in _OVERALL_ALIASES:
+                overall = value
+        if metrics or overall is not None:
+            return metrics, overall
+    return {}, None
+
+
 def _report_text_files(report_dir: Path, log_path: Path | None) -> list[Path]:
     paths: list[Path] = []
     if report_dir.is_dir():
@@ -520,6 +585,7 @@ def parse_coverage_report(
 
     metrics: dict[str, float] = {}
     overall: float | None = None
+    sweep_report_text = True
     if parser == "verilator":
         parsed_metrics, parsed_overall = _parse_verilator_dat(merged)
         metrics.update(parsed_metrics)
@@ -532,17 +598,27 @@ def parse_coverage_report(
                 metrics.setdefault(name, value)
             if overall is None and parsed_overall is not None:
                 overall = parsed_overall
-
-    for path in _report_text_files(report_dir, log_path):
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        parsed_metrics, parsed_overall = _parse_text_table(text)
-        for name, value in parsed_metrics.items():
-            metrics.setdefault(name, value)
-        if overall is None and parsed_overall is not None:
+    elif parser == "urg":
+        # URG's dashboard summary is the one table whose columns are pure
+        # percentages; the other report files interleave raw covered/total
+        # counts that the generic table sweep misreads as percentages.
+        parsed_metrics, parsed_overall = _parse_urg_dashboard(report_dir)
+        if parsed_metrics or parsed_overall is not None:
+            metrics.update(parsed_metrics)
             overall = parsed_overall
+            sweep_report_text = False
+
+    if sweep_report_text:
+        for path in _report_text_files(report_dir, log_path):
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            parsed_metrics, parsed_overall = _parse_text_table(text)
+            for name, value in parsed_metrics.items():
+                metrics.setdefault(name, value)
+            if overall is None and parsed_overall is not None:
+                overall = parsed_overall
 
     if overall is None and len(metrics) == 1:
         overall = next(iter(metrics.values()))
