@@ -225,8 +225,11 @@ module sep_wrapper
         .efuse_shim_command_req_o  (efuse_shim_command_req),
         .efuse_shim_command_resp_i (efuse_shim_command_resp),
 
-        .axi_extension_axi_req_o  (axi_extension_axi_req),
-        .axi_extension_axi_resp_i (axi_extension_axi_resp)
+        // sep renamed this pair axi_extension_* -> sep_external_* ; the
+        // sep_ip_integration side keeps the axi_extension_* names, so only the
+        // sep-side pin names change here.
+        .sep_external_axi_req_o  (axi_extension_axi_req),
+        .sep_external_axi_resp_i (axi_extension_axi_resp)
     );
 
     /////////////////////////
