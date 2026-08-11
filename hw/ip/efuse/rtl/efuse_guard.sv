@@ -55,7 +55,7 @@ module efuse_guard
 
   logic is_program_locked;
   logic is_read_locked;
-  logic [4:0] pro_read_intf_rd_index, pro_read_intf_wr_index;
+  logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] pro_read_intf_rd_index, pro_read_intf_wr_index;
   logic pro_read_intf_lock_lc_state_write;
   logic pro_read_intf_rm_lc_state_write_lock;
   logic pro_read_intf_rm_lc_state_read_lock;
@@ -137,24 +137,36 @@ module efuse_guard
 
   assign efuse_err_o = err;
 
-  function automatic logic [4:0] find_efuse_field_index(efuse_byte_addr_t address);
+  // Returns '1 (all-ones) for the LOCKS meta-field or any unmapped address;
+  // both cases are excluded from hardware lock checks.
+  function automatic logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] find_efuse_field_index(
+      efuse_byte_addr_t address
+  );
     for (int i = 0; i < EFUSE_FIELDS; i = i + 1) begin
       if (address >= efuse_byte_addr_t'(efuse_field_map_i[i].start_addr) && address <= efuse_byte_addr_t'(efuse_field_map_i[i].end_addr)) begin
         return efuse_field_map_i[i].idx;
       end
     end
-    return EFUSE_FIELDS;
+    return '1;
   endfunction
 
-  function automatic logic entry_write_locked(logic [4:0] index, efuse_map_t shadow_regs);
-    if (index < 5'h1f) begin
-      return shadow_regs.f.locks[index*2];
+  // idx '1 (all-ones) is the sentinel for the LOCKS meta-field and unmapped
+  // addresses; hardware lock bits are never applied to either.
+  function automatic logic entry_write_locked(
+      logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] index,
+      efuse_map_t shadow_regs
+  );
+    if (index != '1) begin
+      return shadow_regs.fields.locks[index*2];
     end else return 1'b0;
   endfunction
 
-  function automatic logic entry_read_locked(logic [4:0]  index, efuse_map_t shadow_regs);
-    if (index < 5'h1f) begin
-      return shadow_regs.f.locks[index*2+1];
+  function automatic logic entry_read_locked(
+      logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] index,
+      efuse_map_t shadow_regs
+  );
+    if (index != '1) begin
+      return shadow_regs.fields.locks[index*2+1];
     end else return 1'b0;
   endfunction
 

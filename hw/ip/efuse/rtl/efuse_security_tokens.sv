@@ -200,7 +200,7 @@ module efuse_security_tokens
     ) u_triple_redundent_comparator_rma_sip_token (
         .compute_comparison_vld_i(compute_rma_sip_token_match),
         .token_digest_i(rma_sip_token_sha256_digest),
-        .token_expected_i(shadow_regs_i.f.rma_sip_token_digest.token_digest),
+        .token_expected_i(shadow_regs_i.fields.rma_sip_token_digest.token_digest),
         .token_match_o(rma_sip_token_match)
     );
 
@@ -211,7 +211,7 @@ module efuse_security_tokens
     ) u_triple_redundent_comparator_rma_chiplet_token (
         .compute_comparison_vld_i(compute_rma_chiplet_token_match),
         .token_digest_i(rma_chiplet_token_sha256_digest),
-        .token_expected_i(shadow_regs_i.f.rma_chiplet_token_digest.token_digest),
+        .token_expected_i(shadow_regs_i.fields.rma_chiplet_token_digest.token_digest),
         .token_match_o(rma_chiplet_token_match)
     );
 
@@ -286,7 +286,7 @@ module efuse_security_tokens
     always_comb begin
         // Default: zero the output and set LC state to invalid
         shadow_regs_o = efuse_map_t'(0);
-        shadow_regs_o.f.lc_state.lc_state = LC_STATE_INVALID;
+        shadow_regs_o.fields.lc_state.lc_state = LC_STATE_INVALID;
 
         // Guard shadow registers from being exposed downstream until fuse sensing is complete,
         // Unless we are in security disable mode, then expose the shadow registers downstream.
