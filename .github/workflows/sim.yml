@@ -133,9 +133,16 @@ jobs:
       - name: Add Verilator to PATH
         run: |
           echo "$HOME/verilator/bin" >> "$GITHUB_PATH"
-          # Runtime dependency of the verilator binary; not preinstalled on
-          # hosted runners and skipped when the cache hits.
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libfl2
+          # libfl2: runtime dependency of the verilator binary; not preinstalled
+          # on hosted runners and skipped when the Verilator cache hits.
+          #
+          # ccache: required by any DUT setting [build.verilator] ccache = true
+          # (sep does). Verilator then emits `ccache g++` as the compiler, and
+          # without the binary the very first C++ compile dies with
+          # "ccache: No such file or directory" / make Error 127 -- after a full
+          # verilation, so it is slow to discover. Installed unconditionally so
+          # the runner never depends on which DUT the matrix is running.
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libfl2 ccache
 
       - name: Check environment
         run: |
