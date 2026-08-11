@@ -52,7 +52,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
             "fuse_reset after bring-up",
             int(dut.fuse_reset_n_delayed_o.value),
             1,
-        evidence="STALL_VS_IC_RESET")
+        )
 
         # --- Make stall sticky across cold (same window as P2-I3a) ---
         await jtag.write(
@@ -114,6 +114,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
             "stall survives IC_RESET warm",
             int(dut.jtag_boot_stall_ovrd.value),
             1,
+            evidence="STALL_VS_IC_RESET",
         )
         sb.expect_eq(
             "fuse still gated during warm ovrd",

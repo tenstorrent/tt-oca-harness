@@ -65,7 +65,8 @@ CPU_FW_FAIL_VALUE = 0xBAD0_0000
 # MMIO to CPU_CTRL SCRATCH may not be reachable until more fabric bring-up.
 CPU_FW_SRAM_MAILBOX = 0xC006_0100
 
-BOOT_STALL_PAD = 60
+# smc_padring.sv: boot_stall is lsio pad 57 (was 60 before 68->65 GPIO shrink).
+BOOT_STALL_PAD = 57
 
 # Backward-compatible aliases.
 CPU_RESET_VECTOR = CPU_RESET_VECTOR_ROM
@@ -94,7 +95,7 @@ async def check_cpu_bfm_observability() -> None:
 
 
 def _set_boot_stall(asserted: bool) -> None:
-    """Drive padring pad 60 (boot_stall, active-high) via TB GPIO override."""
+    """Drive padring pad 57 (boot_stall, active-high) via TB GPIO override."""
     dut = cocotb.top
     if not hasattr(dut, "tb_gpio_ext_drive_en"):
         return
@@ -210,7 +211,7 @@ async def check_cpu_firmware_boot_contract(
       * ``+smc_rom_hex=<path>`` — ROM window preload (vector 0xC004_0000)
       * ``+smc_scratch_ram_hex=<path>`` — scratch ECC hex, 64B-striped across
         32 banks (vector 0xC006_0000)
-      * ``+smc_hold_cpu_boot`` — assert pad60 from time-0 (preferred for scratch)
+      * ``+smc_hold_cpu_boot`` — assert pad57 from time-0 (preferred for scratch)
 
     Paths must be absolute (or resolvable from the simulator cwd under
     ``attempt_*/make``). If both plusargs are present, scratch wins.

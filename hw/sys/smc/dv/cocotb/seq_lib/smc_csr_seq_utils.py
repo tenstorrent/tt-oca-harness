@@ -8,6 +8,12 @@ from cocotb.triggers import ClockCycles
 
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import (
+    GPIO_INTF_STRIDE,
+    I2C_CG_EN,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_base_test_seq import smc_base_test_seq
 
 
@@ -212,10 +218,14 @@ class SmcCsrSeq(smc_base_test_seq):
     # SMC_BASE_CONFIG clock-gate + I2C0 ctrl/ovrd CSRs. Used by the SMBus/PMBus
     # tests (and mirrors smc_i2c_master_target_test) to gate on real DUT behaviour
     # rather than pure VIP-side protocol math.
-    _I2C0_CLOCK_GATE_CONTROL = 0xC001_0018  # base_config offset 0x18
-    _I2C0_CG_EN = 1 << 11
-    _I2C0_CTRL = 0xC000_9E00
-    _I2C0_OVRD = 0xC000_9034
+    _I2C0_CLOCK_GATE_CONTROL = smc_addr(
+        "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
+    )
+    _I2C0_CG_EN = I2C_CG_EN
+    _I2C0_CTRL = smc_indexed_addr(
+        "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
+    )
+    _I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
     _I2C0_CTRL_ENABLE = 0x11
     _I2C0_OVRD_RELEASE = 0x7
     _I2C0_OVRD_SCL_LOW = 0x5
@@ -232,8 +242,10 @@ class SmcCsrSeq(smc_base_test_seq):
         assert sda == exp_sda, f"{name}: DUT-driven SDA={sda}, expected {exp_sda}"
 
     # I2C0 pads 37..40 (SCL/SDA/ALERT/SUS). DATA_CTRL stride 0x10 from GPIO0.
-    _GPIO_INTF0_DATA_CTRL = 0xC000_4000
-    _GPIO_INTF_STRIDE = 0x10
+    _GPIO_INTF0_DATA_CTRL = smc_indexed_addr(
+        "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0
+    )
+    _GPIO_INTF_STRIDE = GPIO_INTF_STRIDE
     _I2C0_SCL_PAD = 37
     _GPIO_LSIO_SELECT = 1 << 17
 

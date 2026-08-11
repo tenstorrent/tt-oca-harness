@@ -1,25 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""smc_mailbox_int_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
+"""smc_mailbox_int_test — PROMOTED out of deferred.
 
-Was Force-based JTAG2AXI / feat_ctrl ungating under SEP=0. Use
-smu_lcc_helpers + SEP=1 eFuse LCC when available (#3538).
-See testlists/deferred.toml (needs_real_lcc, sep1).
+Active implementation: ``cocotb/tests/smc_mailbox_int_test.py`` (SMU_ALL_004
+r8, EXT.S2 width DECODE only). Former Force/LCC body retired; CHANNELS/EXT.S1
+LIVE paths re-homed to SMU_ALL_008.
 """
-
-from __future__ import annotations
-
-import pyuvm
-
-from smu_base_test import smu_base_test
-
-
-@pyuvm.test()
-class smc_mailbox_int_test(smu_base_test):
-    """Deferred: needs_real_lcc — requires SEP=1 (SEP=0 ties feat_ctrl='0')."""
-
-    async def run_scenario(self) -> None:
-        raise AssertionError(
-            "smc_mailbox_int_test deferred: Force ungating removed. "
-            "Needs SEP=1 (gen_no_sep ties feat_ctrl='0'); use eFuse→LCC + smu_lcc_helpers. "
-            "See testlists/deferred.toml (needs_real_lcc, sep1)."
-        )

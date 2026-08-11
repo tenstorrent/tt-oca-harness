@@ -17,11 +17,16 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-EFUSE_STATUS = 0xC000_C000
-EFUSE_PROGRAM_CTRL = 0xC000_C004
-EFUSE_MAP_0 = 0xC000_B000
+EFUSE_STATUS = smc_addr(
+    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+)
+EFUSE_PROGRAM_CTRL = smc_addr(
+    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR"
+)
+EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 
 OTP_WORD0_MARKER = 0xA5A55A5A
 _PROG_DATA = 1 << 16

@@ -2,18 +2,24 @@
 """P1 coverage-gap: EFUSE_INTERFACE_CTRL + EFUSE_SHIM_CTRL (TC_SMC_P1CG_05).
 
 Existing eFuse tests touch chip_config + permission boundary but the
-Samsung eFuse shim interface control registers (0xC000_C000 /
-0xC000_C100) are otherwise unreached.
+Samsung eFuse shim interface control registers
+(EFUSE_INTERFACE_CTRL + EXTERNAL_MANDATORY EFUSE_SHIM_CTRL) are otherwise
+unreached.
 """
 
 from __future__ import annotations
 
 import cocotb
 
+from .smc_addr_map import smc_addr, smc_bootrom_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-EFUSE_INTERFACE_CTRL = 0xC000_C000  # real internal SMC register (responds OKAY here)
-EFUSE_SHIM_CTRL      = 0xC000_C100  # Samsung vendor shim (absent in DUT-only OSS bench)
+EFUSE_INTERFACE_CTRL = smc_addr(
+    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
+)
+EFUSE_SHIM_CTRL = smc_bootrom_addr(
+    "SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR"
+)
 
 
 class smc_efuse_shim_ctrl_test_seq(SmcCsrSeq):
