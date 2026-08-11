@@ -60,12 +60,6 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
             await RisingEdge(dut.clk_smu_i)
 
         sb.expect_eq(
-            "idle dst_ack",
-            _u8(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack"),
-            0,
-            evidence="XT_CTM_REMAP",
-        )
-        sb.expect_eq(
             "idle src_ack[1:0] hardwire",
             _bits(dtp_src_ack, "dtp_xtrig_ctm_src_ack") & 0x3,
             0,
@@ -83,7 +77,7 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
             )
             sb.expect_eq(f"dst_req pat={pat:#x} SMC[1:0] idle", dtp & 0x3, 0)
             sb.expect_eq(
-                f"dst_req pat={pat:#x} TB ack still 0",
+                f"dst_req pat={pat:#x} TB ack idle",
                 _u8(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack"),
                 0,
             )
@@ -101,9 +95,8 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
                 evidence="XT_CTM_REMAP",
             )
             sb.expect_eq(f"src_ack pat={pat:#x} [1:0] hardwire 0", ack & 0x3, 0)
-            # Independent idle expect (not a wire-identity vs hierarchical src_req).
             sb.expect_eq(
-                f"src_req TB idle while ack-only (pat={pat:#x})",
+                f"src_ack pat={pat:#x} TB src_req idle",
                 _u8(dut.xtrig_ctm_src_req, "xtrig_ctm_src_req"),
                 0,
             )

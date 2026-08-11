@@ -3,37 +3,58 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_bootrom_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
+_UART0 = 0  # UART_LOG_ENGINE_WRAP idx
+
 UART_LOG_READS = [
-    ("UART_LOG_ENGINE_CTRL", 0xC000_A000, None),
-    ("UART0_IIR", 0xC000_A108, None),
-    ("UART0_LSR", 0xC000_A114, None),
-    ("UART0_MSR", 0xC000_A118, None),
-    ("UART0_SCR", 0xC000_A11C, None),
-    ("LOG_ENGINE_CTRL", 0xC000_A200, None),
-    ("LOG_ENGINE_REGION_SIZE", 0xC000_A204, None),
-    ("LOG_ENGINE_REGION_ADDR", 0xC000_A208, None),
-    ("LOG_ENGINE_INTR_ENABLE", 0xC000_A218, None),
-    ("LOG_ENGINE_LOG_CTRL_0", 0xC000_A240, None),
+    ("UART_LOG_ENGINE_CTRL", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
+        _UART0), None),
+    ("UART0_IIR", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", _UART0), None),
+    ("UART0_LSR", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", _UART0), None),
+    ("UART0_MSR", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", _UART0), None),
+    ("UART0_SCR", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", _UART0), None),
+    ("LOG_ENGINE_CTRL", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR",
+        _UART0), None),
+    ("LOG_ENGINE_REGION_SIZE", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR",
+        _UART0), None),
+    ("LOG_ENGINE_REGION_ADDR", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR",
+        _UART0), None),
+    ("LOG_ENGINE_INTR_ENABLE", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR",
+        _UART0), None),
+    ("LOG_ENGINE_LOG_CTRL_0", smc_bootrom_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__LOG_ENGINE_LOG_CTRL_0__BASE_ADDR"),
+     None),
 ]
 
-# LOG_ENGINE_LOG_CTRL_0 (0xC000_A240) is intentionally READ-only-swept (see
-# UART_LOG_READS) and NOT part of the write/restore sweep. Its LOG_LEN field is a
-# trigger, not a plain RW register: writing a nonzero length asserts a
-# prim_arbiter_tree request (log_engine.sv: log_reqs[i] = log_lens[i] != 0) that
-# the RTL clears in hardware only when the log write completes
-# (LOG_CTRL.LOG_LEN.hwclr = log_write_done). The DUT-only OSS bench does not
-# service the log-engine write path, so the write never completes; a software
-# restore-to-0 would then drop an ungranted request and trip the arbiter's
-# ReqStaysHighUntilGranted0_M assume (req_chk_i is tied high in log_engine.sv).
-# Write/restore-sweeping it is therefore unsafe in this proxy bench.
+# LOG_ENGINE_LOG_CTRL_0 is intentionally READ-only-swept (see UART_LOG_READS)
+# and NOT part of the write/restore sweep (arbiter assume on unfinished log write).
 UART_LOG_WRITES = [
-    ("UART_LOG_ENGINE_CTRL", 0xC000_A000, 0x1, 0x1),
-    ("UART0_SCR", 0xC000_A11C, 0x5A, 0xFF),
-    ("LOG_ENGINE_REGION_SIZE", 0xC000_A204, 0x0000_1000, 0x000F_FFFF),
-    ("LOG_ENGINE_REGION_ADDR", 0xC000_A208, 0x0000_2000, 0xFFFF_FFFF),
-    ("LOG_ENGINE_INTR_ENABLE", 0xC000_A218, 0x0000_0011, 0x0000_0011),
+    ("UART_LOG_ENGINE_CTRL", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
+        _UART0), 0x1, 0x1),
+    ("UART0_SCR", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", _UART0),
+     0x5A, 0xFF),
+    ("LOG_ENGINE_REGION_SIZE", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR",
+        _UART0), 0x0000_1000, 0x000F_FFFF),
+    ("LOG_ENGINE_REGION_ADDR", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR",
+        _UART0), 0x0000_2000, 0xFFFF_FFFF),
+    ("LOG_ENGINE_INTR_ENABLE", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR",
+        _UART0), 0x0000_0011, 0x0000_0011),
 ]
 
 

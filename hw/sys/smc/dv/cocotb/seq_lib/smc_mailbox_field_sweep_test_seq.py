@@ -17,11 +17,12 @@ Register offsets within a mailbox (offset from base + N * 0x1000):
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-_CLOCK_GATE_CONTROL = 0xC001_0018  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+_CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
 _MAILBOX_CG_EN = 1 << 1
-_OUTBOUND_MAILBOX_BASE = 0xC001_8000
+_OUTBOUND_MAILBOX_BASE = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR")
 _MAILBOX_STRIDE = 0x1000
 
 _FIELD_OFFSETS = [

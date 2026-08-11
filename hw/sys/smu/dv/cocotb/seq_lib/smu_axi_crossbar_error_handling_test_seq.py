@@ -1,35 +1,31 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Sequence for smu_axi_crossbar_error_handling_test (SMU_004 rev 1)."""
+"""Sequence for smu_axi_crossbar_error_handling_test (SMU_ALL_008 rev 18).
+
+DV-CARD:          SMU_ALL_008   ANCHOR: smu_axi_crossbar_error_handling_test
+DV-CARD-REVISION: 18   RECORD-SHA256: 3be11166c37e13bc35de8dddbea105adf69f1f819525f7bb5bdcd292ffdf521d
+DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 18   ENV: cocotb
+
+Option-B honesty amend (plan/cards r18): OWNS only SMC-PWRGOOD-DTP-POR.S2.
+FAB-IN / DECODE removed from the runnable path (OOM / dishonest DECERR poison).
+
+No Force/deposit. Reuses SMU_ALL_005 PTAP leave-TLR helper pattern.
+"""
 
 from __future__ import annotations
 
 import time
 
 import cocotb
-from cocotb.triggers import ClockCycles
-from cocotbext.axi import AxiResp
+from cocotb.triggers import ClockCycles, RisingEdge
+from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_axi_helpers import (
-    axi_read32_resp,
-    axi_write32_resp,
-    make_smu_axi_master,
-    resp_name,
-)
-from seq_lib.smu_filter_helpers import EXT_FABRIC_PROBE_ADDR
-
-# Local-alias addresses blocked by unprogrammed SYS_IN filter (SEP=0 stand-in for
-# ext_in unmatched DECERR — no 3x3 xbar in this build).
-UNMATCHED_ADDRS = (
-    0xC000_2900,
-    EXT_FABRIC_PROBE_ADDR,
-)
+from seq_lib.smu_jtag_helpers import make_smu_jtag_tap
 
 
 class smu_axi_crossbar_error_handling_test_seq:
-    """SMU_004 ext_in unmatched DECERR under SEP=0 inbound filter isolate."""
+    """SMU_ALL_008 r18: bare tb_top SEP=0 PTAP leave-TLR under power-good."""
 
-    BOUND_SMU = 2000
-    EXPECTED_TIMEOUT_PATHS = 2
+    BOUND_TCK = 2000
 
     def __init__(self, test) -> None:
         self.test = test
@@ -37,6 +33,7 @@ class smu_axi_crossbar_error_handling_test_seq:
         self.cfg = test.cfg
         self._step_ts: dict[str, float] = {}
         self._timeout_paths: list[str] = []
+        self._chk_pass: dict[str, bool] = {}
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -45,6 +42,110 @@ class smu_axi_crossbar_error_handling_test_seq:
         self._step_ts[step_id] = time.monotonic()
         self._log(f"STEP {step_id}: {detail}")
 
+    def _sample(self, signal, name: str) -> int:
+        val = signal.value
+        if not val.is_resolvable:
+            raise AssertionError(f"X/Z sample on {name}: {val}")
+        return int(val)
+
+    async def _wait_state(
+        self,
+        jtag,
+        expect: OcahJtagState,
+        *,
+        label: str,
+        hold_tms: int = 0,
+    ) -> int:
+        last = None
+        for _ in range(self.BOUND_TCK):
+            await jtag.step_tms(hold_tms)
+            last = self._sample(self.dut.jtag_ptap_state, "jtag_ptap_state")
+            if last == int(expect):
+                self._timeout_paths.append(
+                    f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}"
+                )
+                return last
+        self._timeout_paths.append(
+            f"{label}: bound={self.BOUND_TCK} EXPIRED last="
+            f"{'None' if last is None else f'0x{last:x}'}"
+        )
+        raise AssertionError(
+            f"TIMEOUT {label}: bound={self.BOUND_TCK} last_state={last} "
+            f"expect={expect.name}(0x{int(expect):x})"
+        )
+
+    async def _step_s1_leave_tlr(self, jtag) -> None:
+        """SMC-PWRGOOD-DTP-POR.S2: leave Test-Logic-Reset under power-good."""
+        dut = self.dut
+        sb = self.test.env.scoreboard
+        self._mark_step(
+            "S1",
+            "ACTION/RESPONSE/EFFECT SMC-PWRGOOD-DTP-POR.S2: power-good "
+            "stable + TRST released; PTAP leaves Test-Logic-Reset",
+        )
+        self._log(
+            "COVERAGE SMC-PWRGOOD-DTP-POR.S2 cells: "
+            "powergood=1 trst=1 tap=exit_tlr"
+        )
+
+        pg = self._sample(dut.powergood_i, "powergood_i")
+        if pg != 1:
+            raise AssertionError(
+                f"CHK-SMC-PWRGOOD-DTP-POR-S2 powergood not stable: "
+                f"powergood_i={pg}"
+            )
+        # Ensure TAP in TLR with TRST released afterward (leave-TLR needs trst=1).
+        await jtag.reset_tap()
+        tlr = self._sample(dut.jtag_ptap_state, "jtag_ptap_state")
+        if tlr != int(OcahJtagState.TEST_LOGIC_RESET):
+            tlr = await self._wait_state(
+                jtag, OcahJtagState.TEST_LOGIC_RESET, label="s1_enter_tlr", hold_tms=1
+            )
+        else:
+            self._timeout_paths.append(
+                f"s1_enter_tlr: bound={self.BOUND_TCK} ok last=0x{tlr:x}"
+            )
+
+        # TRST released (active-low deasserted).
+        dut.jtag_trst.value = 1
+        await ClockCycles(dut.clk_ref_i, 4)
+        trst = self._sample(dut.jtag_trst, "jtag_trst")
+        if trst != 1:
+            raise AssertionError(
+                f"CHK-SMC-PWRGOOD-DTP-POR-S2 TRST not released: jtag_trst={trst}"
+            )
+
+        # Leave TLR → Run-Test/Idle (TMS=0 from TLR).
+        await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
+        idle = self._sample(dut.jtag_ptap_state, "jtag_ptap_state")
+        if idle != int(OcahJtagState.RUN_TEST_IDLE):
+            idle = await self._wait_state(
+                jtag, OcahJtagState.RUN_TEST_IDLE, label="s1_exit_tlr_rti"
+            )
+        else:
+            self._timeout_paths.append(
+                f"s1_exit_tlr_rti: bound={self.BOUND_TCK} ok last=0x{idle:x}"
+            )
+
+        if idle == int(OcahJtagState.TEST_LOGIC_RESET):
+            raise AssertionError(
+                "CHK-SMC-PWRGOOD-DTP-POR-S2 still in Test-Logic-Reset after "
+                f"leave attempt (state=0x{idle:x})"
+            )
+        detail = (
+            f"powergood={pg} trst={trst} pre_tlr=0x{tlr:x} "
+            f"post_state=0x{idle:x} expect_rti=0x"
+            f"{int(OcahJtagState.RUN_TEST_IDLE):x} cell=tap=exit_tlr"
+        )
+        self._log(f"CHK-SMC-PWRGOOD-DTP-POR-S2: PASS ({detail})")
+        sb.expect_eq(
+            "CHK-SMC-PWRGOOD-DTP-POR-S2 leave-TLR state",
+            idle,
+            int(OcahJtagState.RUN_TEST_IDLE),
+            evidence="CHK-SMC-PWRGOOD-DTP-POR-S2",
+        )
+        self._chk_pass["CHK-SMC-PWRGOOD-DTP-POR-S2"] = True
+
     async def run(self) -> None:
         dut = self.dut
         sb = self.test.env.scoreboard
@@ -52,78 +153,63 @@ class smu_axi_crossbar_error_handling_test_seq:
         await self.cfg.reset_done.wait()
         await ClockCycles(dut.clk_smu_i, 32)
 
-        self._mark_step(
-            "S1",
-            "PRELOAD SEP=0 (no smu_axi_xbar); SYS_IN BlockByDefault filter active",
-        )
+        jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
+        jtag.init_signals()
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        # FAB-IN / DECODE intentionally absent from runnable path (r18).
+        await self._step_s1_leave_tlr(jtag)
 
-        self._mark_step(
-            "S2",
-            "UNMATCHED EXT_IN read+write on smu_axi_in outside programmed windows",
-        )
-
-        probe = UNMATCHED_ADDRS[0]
-        rdata, rresp = await axi_read32_resp(master, probe)
-        if rresp != AxiResp.DECERR:
-            raise AssertionError(
-                f"unmatched read RRESP expected DECERR got {resp_name(rresp)} @0x{probe:08x}"
-            )
-
-        wresp = await axi_write32_resp(master, probe, 0xBADC0FFE)
-        if wresp != AxiResp.DECERR:
-            raise AssertionError(
-                f"unmatched write BRESP expected DECERR got {resp_name(wresp)} @0x{probe:08x}"
-            )
-
-        chk_decerr = (
-            "CHK-EXT-IN-DECERR: unmatched ext_in read returns RRESP=DECERR and "
-            f"unmatched ext_in write returns BRESP=DECERR; both recorded "
-            f"(addr=0x{probe:08x} rresp={resp_name(rresp)} bresp={resp_name(wresp)} "
-            f"rdata=0x{rdata & 0xFFFF_FFFF:08x})"
-        )
-        self._log(chk_decerr)
-        sb.expect_eq("CHK-EXT-IN-DECERR read", rresp, AxiResp.DECERR, evidence="CHK-EXT-IN-DECERR")
-        sb.expect_eq("CHK-EXT-IN-DECERR write", wresp, AxiResp.DECERR)
-
-        self._mark_step("S3", "TIMEOUT: bounded AXI error-response waits with last state")
-        self._timeout_paths.append(
-            f"s2_unmatched_read: bound={self.BOUND_SMU} ok last={resp_name(rresp)}"
-        )
-        self._timeout_paths.append(
-            f"s2_unmatched_write: bound={self.BOUND_SMU} ok last={resp_name(wresp)}"
-        )
+        # Bounded-wait inventory (fail_on timeout); not a card checker in r18.
+        self._log("TIMEOUT: bounded waits with last-state diagnostics")
         for line in self._timeout_paths:
             self._log(f"TIMEOUT-PATH {line}")
-        n_paths = len(self._timeout_paths)
-        if n_paths != self.EXPECTED_TIMEOUT_PATHS:
+            if "bound=" not in line:
+                raise AssertionError(
+                    f"timeout path missing finite bound: {line}"
+                )
+            if "ok last=" not in line and "EXPIRED last=" not in line:
+                raise AssertionError(
+                    f"timeout path missing last-state: {line}"
+                )
+
+        # NONVAC: clocks advanced, reset released, S1 PASS token ordered.
+        rst = self._sample(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no")
+        if rst != 1:
             raise AssertionError(
-                f"CHK-TIMEOUT-PATHS count mismatch: got {n_paths} "
-                f"expect {self.EXPECTED_TIMEOUT_PATHS}"
+                f"CHK-NONVAC reset not released: rst_primary_smc_clk_no={rst}"
             )
-        chk_to = (
-            "CHK-TIMEOUT-PATHS: every bounded wait names finite bound, "
-            f"fail-on-expiry path, and last-state diagnostic "
-            f"(paths={n_paths} expect={self.EXPECTED_TIMEOUT_PATHS})"
-        )
-        self._log(chk_to)
-        sb.expect_eq(
-            "CHK-TIMEOUT-PATHS exact count",
-            n_paths,
-            self.EXPECTED_TIMEOUT_PATHS,
-            evidence="CHK-TIMEOUT-PATHS",
-        )
+        await RisingEdge(dut.clk_smu_i)
+        await RisingEdge(dut.clk_smu_i)
+
+        if not self._chk_pass.get("CHK-SMC-PWRGOOD-DTP-POR-S2"):
+            raise AssertionError(
+                "CHK-NONVAC missing PASS term: CHK-SMC-PWRGOOD-DTP-POR-S2"
+            )
 
         self._step_ts["PASS"] = time.monotonic()
-        self._log("SMU_004 sequence complete (PASS term recorded for NONVAC fence)")
-
-        order = ["S2", "PASS"]
+        self._log("SMU_ALL_008 sequence complete (PASS term for NONVAC fence)")
+        order = ["S1", "PASS"]
         for step_id in order:
             if step_id not in self._step_ts:
                 raise AssertionError(f"CHK-NONVAC missing step term: {step_id}")
-        if self._step_ts["S2"] >= self._step_ts["PASS"]:
-            raise AssertionError("CHK-NONVAC order fail: S2 not before PASS")
-        chk_nonvac = "CHK-NONVAC: ordered fence S2<PASS all present"
-        self._log(chk_nonvac)
-        sb.expect_eq("CHK-NONVAC ordered fence", True, True, evidence="CHK-NONVAC")
+        if self._step_ts["S1"] >= self._step_ts["PASS"]:
+            raise AssertionError("CHK-NONVAC order fail: S1 not before PASS")
+        delta_ns = int((self._step_ts["PASS"] - self._step_ts["S1"]) * 1e9)
+        positive_deltas = 1 if delta_ns > 0 else 0
+        if positive_deltas != 1:
+            raise AssertionError(
+                f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
+                f"delta_ns={delta_ns}"
+            )
+        self._log(
+            "CHK-NONVAC: PASS (Ordered fence S1<PASS; "
+            f"reset_released={rst} clocks_advanced=1 "
+            f"s1_pass=1 positive_deltas={positive_deltas} "
+            f"delta_ns={delta_ns})"
+        )
+        sb.expect_eq(
+            "CHK-NONVAC positive step-delta count",
+            positive_deltas,
+            1,
+            evidence="CHK-NONVAC",
+        )

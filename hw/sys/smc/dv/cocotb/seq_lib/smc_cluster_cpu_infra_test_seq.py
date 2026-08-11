@@ -3,7 +3,7 @@
 
 Bundles three previously-unreached CPU-cluster CSR surfaces:
 
-* Per-core WDT (0xC000_0000, stride 0x400, 4 cores).
+* Per-core WDT (smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR"), stride 0x400, 4 cores).
 * SMC_CLUSTER_PLIC (0xC400_0000) — RISC-V PLIC interrupt controller.
 * SMC_CLUSTER_CLINT (0xC800_0000) — RISC-V CLINT machine timer.
 
@@ -14,6 +14,7 @@ without CPU firmware.
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -25,10 +26,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # "never OKAY" invariant.
 CLUSTER_CPU_READS = [
     # Per-core WDT sanity
-    ("WDT_CORE0_CFG",  0xC000_0000),
-    ("WDT_CORE1_CFG",  0xC000_0400),
-    ("WDT_CORE2_CFG",  0xC000_0800),
-    ("WDT_CORE3_CFG",  0xC000_0C00),
+    ("WDT_CORE0_CFG",  smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")),
+    ("WDT_CORE1_CFG",  smc_addr("SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR")),
+    ("WDT_CORE2_CFG",  smc_addr("SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR")),
+    ("WDT_CORE3_CFG",  smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR")),
     # PLIC representative regs
     ("PLIC_PRIORITY_1", 0xC400_0004),
     ("PLIC_PENDING_0",  0xC400_1000),
@@ -44,7 +45,7 @@ CLUSTER_CPU_READS = [
 # flagged as a hard protocol error. (The monitor otherwise treats any DECERR
 # outside its macro/boundary ranges as a failure.)
 CLUSTER_DECERR_RANGES = [
-    (0xC000_0000, 0xC000_1000),  # per-core WDT (4 cores, stride 0x400)
+    (smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR"), 0xC000_1000),  # per-core WDT (4 cores, stride 0x400)
     (0xC400_0000, 0xC800_0000),  # SMC_CLUSTER_PLIC aperture
     (0xC800_0000, 0xC800_C000),  # SMC_CLUSTER_CLINT aperture
 ]

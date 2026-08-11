@@ -200,8 +200,9 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             "writes/reads completed through local fabric (S2) while clk_smc_i toggles"
         )
 
-        # S4 — timeout path bookkeeping + NONVAC
-        self._mark_step("S4", "TIMEOUT path bookkeeping for boot poll")
+        # S4 — NONVAC (timeout-path CHK is only emitted from the expiry branch
+        # inside check_cpu_firmware_boot_contract / AssertionError).
+        self._mark_step("S4", "NONVAC bookkeeping after successful boot poll")
         self._timeout_note(
             f"BOOT_PASS_POLL: bound={self.BOOT_POLL_ITERS}x"
             f"{self.BOOT_POLL_CYCLES} clk_smc_i ok "
@@ -209,14 +210,6 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             f"tb_mbox={self.boot.get('mailbox_tb')} "
             f"rom_reads={rom_reads} scratch_reads={scratch_reads} "
             f"dcache_writes={dcache_now} wb_pc0={pc_now:#x}"
-        )
-        self._log(
-            "CHK-TIMEOUT-PATHS: bounded poll "
-            f"(up to {self.BOOT_POLL_ITERS} iterations x "
-            f"{self.BOOT_POLL_CYCLES} clk_smc_i cycles) raises AssertionError "
-            "carrying last_csr/tb_mbox/rom_reads/scratch_reads/"
-            "dcache_writes/wb_pc0/isolate diagnostics on expiry; "
-            + "; ".join(self._timeout_paths)
         )
 
         order = ["S1", "S2", "S3"]
@@ -226,6 +219,7 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             "CHK-NONVAC: check_cpu_bfm_observability powergood_stable_o==1 "
             f"precedes boot; PASS magic {CPU_FW_SUCCESS_MAGIC:#x} confirms "
             "non-vacuous execution for RESET-VECTOR-FETCH / ROM-IS-TARGET / "
-            "CLK-SMC-LIVE / EFUSE-SENSE-DONE"
+            "CLK-SMC-LIVE / EFUSE-SENSE-DONE; "
+            + "; ".join(self._timeout_paths)
         )
         self._log("SMC_002 scenario PASS")

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 import cocotb
 from cocotb.triggers import ClockCycles
 
@@ -11,8 +12,8 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_base_test_seq import smc_base_test_seq
 
-CHIP_CONFIG_VERSION_LO = 0xC000_2900
-SCRATCH_COLD_2 = 0xC000_2808
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
+SCRATCH_COLD_2 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR") + 0x8
 SCRATCH_PATTERN = 0x1A7A_0002
 
 

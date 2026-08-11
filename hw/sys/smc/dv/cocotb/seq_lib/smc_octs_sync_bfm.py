@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """OCTS dual-chiplet sync helpers for OSS SMC TB.
 
-Mirrors legacy dv/smc/tb OCTS PRIMARY/SECONDARY pad protocol on pads 58/59:
+Mirrors legacy dv/smc/tb OCTS PRIMARY/SECONDARY pad protocol on pads 55/56
+(smc_padring after 68->65 GPIO shrink; formerly 58/59):
   * PRIMARY: DUT drives tb_octs_sync_load_from_dut / tb_octs_cnt_credit_from_dut
   * SECONDARY: TB injects tb_octs_sync_load_ext / tb_octs_cnt_credit_ext
 
