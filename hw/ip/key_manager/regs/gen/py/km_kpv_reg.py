@@ -1198,11 +1198,7 @@ class KM_KPV_CTRL_REG_reg_t(Structure):
         ('lock_write', c_uint32, 1),
         ('lock_use', c_uint32, 1),
         ('erase', c_uint32, 1),
-        ('rsvd_3', c_uint32, 1),
-        ('extend', c_uint32, 3),
-        ('rsvd_16_7', c_uint32, 10),
-        ('last_dword', c_uint32, 4),
-        ('rsvd_31_21', c_uint32, 11),
+        ('rsvd_31_3', c_uint32, 29),
     ]
 
 KM_KPV_CTRL_REG_REG_DEFAULT = 0x00000000

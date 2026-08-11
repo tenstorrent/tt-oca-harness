@@ -429,21 +429,19 @@ KPV has the following registers:
 * 32 corresponding 32-bit control registers
 
 RSA3K keys will not naturally fit into a single key entry, so will be
-concatenated into several as indicated by the new control register field
-xxx[2:0].
+concatenated into several consecutive slots. The KPV has no control register
+field describing that span: how many slots a key occupies, and how many words
+of its final slot are in use, is KM firmware state held in the key registry.
 
 KM control registers for each slot have the following fields:
 
 * Lock_write[0]
-** Prevents KM firmware from overwriting this key entry’s data register
-and the control fields _extend_ and _last_dword_ until
+** Prevents KM firmware from overwriting this key entry’s data register until
 the next KM reset (cleared by either a cold or a warm reset — the KPV
 per-slot lock bits are in the warm reset domain). The control bits
 _lock_write_ and _lock_use_ (lower two bits) remain writable even when _lock_write_
-is set. Writes to the CTRL register when _lock_write_ is set block all
-but the lower three bits (no update to blocked fields). Writes to key
-entry data when _lock_write_ is set trigger AXI SLVERR and do not update
-storage. This field is read-any, write-one-only.
+is set. Writes to key entry data when _lock_write_ is set trigger AXI SLVERR
+and do not update storage. This field is read-any, write-one-only.
 * Lock_use[1]
 ** Prevents KM firmware from reading this key entry’s data register
 until the next KM reset (cold or warm). Key entry reads when _lock_use_
@@ -457,18 +455,7 @@ the slot becomes reusable. Erase is intentionally *not* blocked by
 _lock_write_ or _lock_use_. The hardware self-clears this bit when the
 erase completes; firmware can poll it to detect completion. This field is
 read-any, write-one-only.
-* Reserved[3]
-* Extend[6:4]
-** Indicates the zero-indexed number of slots for wide key fields. For
-example, RSA3K modulus requires 3kbit, so occupies 6 consecutive key
-slot entries with _extend_ set to 5. This is enforced by firmware.
-* Reserved[8:7]
-** TBD
-* Reserved[16:9]
-* Last_dword[20:17]
-** Last valid key entry word index [1,15] e.g. last_dword=7 for a
-256-bit AES key. All invalid key words return 0 if read.
-* Reserved[31:21]
+* Reserved[31:3]
 ** TBD
 
 Reset values: All KPV control registers (CTRL) reset to 0. All KPV key

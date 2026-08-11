@@ -57,7 +57,7 @@ import sys
 # objdump (with --no-show-raw-insn) emits, e.g.:
 #   00000e90 <_start_init>:
 #      e90:\tlui\tt0,0x8
-#      eaa:\tjal\t196 <rom_kpv_get_key_info>
+#      eaa:\tjal\t196 <rom_kpv_read_slot>
 #      f00:\tj\t13c <rom_cmd_validate_payload_length+0xc>
 _FUNC_RE = re.compile(r"^([0-9a-fA-F]+)\s+<([^>]+)>:\s*$")
 # The address column is left-padded only while addresses are short: a test image

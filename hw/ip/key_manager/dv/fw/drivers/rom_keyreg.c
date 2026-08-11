@@ -25,6 +25,7 @@
 void rom_keyreg_init(rom_km_keyreg_t *reg) {
     for (uint16_t i = 0; i < ROM_KM_MAX_KEY_HANDLES + 1; i++) {
         reg->handles[i].base_slot = 0;
+        reg->handles[i].key_words = 0;
         reg->handles[i].valid = 0;
         reg->handles[i].dest_valid.raw = 0;
         reg->handles[i].crc32 = 0;
@@ -99,30 +100,47 @@ int rom_keyreg_get_dest_valid(const rom_km_keyreg_t *reg, uint8_t handle,
     return 0;
 }
 
+/**
+ * @brief Get a key's length in 32-bit words.
+ *
+ * @param[in]  reg       Registry.
+ * @param[in]  handle    Key handle.
+ * @param[out] key_words Receives key length in words.
+ * @return 0 on success, -1 if handle invalid.
+ */
+int rom_keyreg_get_key_words(const rom_km_keyreg_t *reg, uint8_t handle, uint8_t *key_words) {
+    if (handle == ROM_KM_KEY_HANDLE_NULL || !reg->handles[handle].valid) return -1;
+
+    *key_words = reg->handles[handle].key_words;
+    return 0;
+}
+
 /*===========================================================================
  * Allocation / Destruction
  *===========================================================================*/
 
 /**
- * @brief Allocate a new handle and associate it with slots and CRC.
+ * @brief Allocate a new handle and associate it with slots, length, and CRC.
  *
  * @param[in,out] reg       Registry.
  * @param[in]     base_slot Base slot index.
- * @param[in]     num_slots Number of consecutive slots.
+ * @param[in]     key_words Key length in 32-bit words.
  * @param[in]     crc       CRC-32C of key data.
  * @return Allocated handle (1-255) on success, -1 if exhausted.
  */
-int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t num_slots, uint32_t crc,
+int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t key_words, uint32_t crc,
                         rom_km_dest_bits_t dest_valid) {
     if (reg->next_handle == 0) return -1;
 
     uint8_t h = reg->next_handle;
 
     reg->handles[h].base_slot = base_slot;
+    reg->handles[h].key_words = key_words;
     reg->handles[h].valid = 1;
     reg->handles[h].dest_valid = dest_valid;
     reg->handles[h].crc32 = crc;
 
+    uint8_t num_slots = ROM_KM_KEY_SLOT_SPAN(key_words);
     for (uint8_t s = 0; s < num_slots; s++) reg->slot_to_handle[base_slot + s] = h;
 
     reg->next_handle++;

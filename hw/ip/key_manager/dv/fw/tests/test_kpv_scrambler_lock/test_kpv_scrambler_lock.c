@@ -40,11 +40,9 @@ int main(void) {
         TEST_FAIL("Enable not set (ctrl=0x%08X)", (unsigned)KPV_SCRAMBLER_CTRL_REG.w);
     }
 
-    /* Allow reads up to word 1 for the slot we use */
     const unsigned KEY_SLOT = 0u;
     const unsigned KEY_WORD = 1u;
     const uint32_t KEY_VAL = 0xCAFEBABEu;
-    KPV_CTRL_REG(KEY_SLOT).f.last_dword = KEY_WORD;
 
     /* Write key data with scrambling enabled; read back and save for later check */
     KPV_KEY_WORD_REG(KEY_SLOT, KEY_WORD).w = KEY_VAL;

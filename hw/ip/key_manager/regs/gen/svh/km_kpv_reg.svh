@@ -1438,20 +1438,8 @@ localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_SHIFT                          
 localparam int unsigned KM_KPV_CTRL_REG_ERASE_MASK                                                                = 32'h4;
 localparam int unsigned KM_KPV_CTRL_REG_ERASE_SHIFT                                                               = 2;
 
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_MASK                                                               = 32'h8;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_SHIFT                                                              = 3;
-
-localparam int unsigned KM_KPV_CTRL_REG_EXTEND_MASK                                                               = 32'h70;
-localparam int unsigned KM_KPV_CTRL_REG_EXTEND_SHIFT                                                              = 4;
-
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_16_7_MASK                                                            = 32'h1FF80;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_16_7_SHIFT                                                           = 7;
-
-localparam int unsigned KM_KPV_CTRL_REG_LAST_DWORD_MASK                                                           = 32'h1E0000;
-localparam int unsigned KM_KPV_CTRL_REG_LAST_DWORD_SHIFT                                                          = 17;
-
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_31_21_MASK                                                           = 32'hFFE00000;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_31_21_SHIFT                                                          = 21;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_31_3_MASK                                                            = 32'hFFFFFFF8;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_31_3_SHIFT                                                           = 3;
 
 localparam int unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_KEY_MASK                                                     = 32'hFFFFFFFF;
 localparam int unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_KEY_SHIFT                                                    = 0;
@@ -1476,11 +1464,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [10:0]   rsvd_31_21 ;
-    logic [3:0]   last_dword ;
-    logic [9:0]   rsvd_16_7 ;
-    logic [2:0]   extend ;
-    logic [0:0]   rsvd_3 ;
+    logic [28:0]   rsvd_31_3 ;
     logic [0:0]   erase ;
     logic [0:0]   lock_use ;
     logic [0:0]   lock_write ;

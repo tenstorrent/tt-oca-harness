@@ -36,26 +36,10 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_KPV__CTRL_REG__ERASE_bp 2
 #define KM_KPV__CTRL_REG__ERASE_bw 1
 #define KM_KPV__CTRL_REG__ERASE_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_3_bm 0x8
-#define KM_KPV__CTRL_REG__RSVD_3_bp 3
-#define KM_KPV__CTRL_REG__RSVD_3_bw 1
-#define KM_KPV__CTRL_REG__RSVD_3_reset 0x0
-#define KM_KPV__CTRL_REG__EXTEND_bm 0x70
-#define KM_KPV__CTRL_REG__EXTEND_bp 4
-#define KM_KPV__CTRL_REG__EXTEND_bw 3
-#define KM_KPV__CTRL_REG__EXTEND_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_16_7_bm 0x1ff80
-#define KM_KPV__CTRL_REG__RSVD_16_7_bp 7
-#define KM_KPV__CTRL_REG__RSVD_16_7_bw 10
-#define KM_KPV__CTRL_REG__RSVD_16_7_reset 0x0
-#define KM_KPV__CTRL_REG__LAST_DWORD_bm 0x1e0000
-#define KM_KPV__CTRL_REG__LAST_DWORD_bp 17
-#define KM_KPV__CTRL_REG__LAST_DWORD_bw 4
-#define KM_KPV__CTRL_REG__LAST_DWORD_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_31_21_bm 0xffe00000
-#define KM_KPV__CTRL_REG__RSVD_31_21_bp 21
-#define KM_KPV__CTRL_REG__RSVD_31_21_bw 11
-#define KM_KPV__CTRL_REG__RSVD_31_21_reset 0x0
+#define KM_KPV__CTRL_REG__RSVD_31_3_bm 0xfffffff8
+#define KM_KPV__CTRL_REG__RSVD_31_3_bp 3
+#define KM_KPV__CTRL_REG__RSVD_31_3_bw 29
+#define KM_KPV__CTRL_REG__RSVD_31_3_reset 0x0
 
 // reg - km_kpv::kpv_scrambler_key_reg
 #define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bm 0xffffffff

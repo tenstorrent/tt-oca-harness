@@ -14,14 +14,13 @@
  *
  *          Per-slot CTRL registers implement:
  *          - lock_write / lock_use sticky W1S bits.
- *          - extend and last_dword: software-programmed per slot.
  *
  *          Scrambler key/ctrl lock: the stored scrambler key is held in a
  *          local flop; when locked the CSR returns zero to software but
  *          hardware scramblers continue using the provisioned value.
  *
  *          Wipe: wipe_pulse_i zeroes key data, CTRL sticky bits
- *          (via hwclr), hw=rw fields (via next=0), and scrambler key/ctrl.
+ *          (via hwclr), and scrambler key/ctrl.
  *
  * @param axil_req_t          KM-side AXI-Lite request type.
  * @param axil_resp_t         KM-side AXI-Lite response type.
@@ -183,11 +182,6 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
 
     always_comb begin
         for (int i = 0; i < 32; i++) begin
-            // SW write lock.
-            kpv_hwif_in.CTRL[i].extend.swwel =
-                kpv_hwif_out.CTRL[i].lock_write.value;
-            kpv_hwif_in.CTRL[i].last_dword.swwel =
-                kpv_hwif_out.CTRL[i].lock_write.value;
             // Wipe (all slots) or per-slot erase completion: clear sticky
             // W1S fields and the self-clearing erase trigger via hwclr.
             kpv_hwif_in.CTRL[i].lock_write.hwclr = wipe_pulse_i | erase_done[i];
@@ -208,23 +202,6 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
         // Scrambler ctrl: wipe clears enable and lock via hwclr
         kpv_hwif_in.KPV_SCRAMBLER_CTRL.enable.hwclr = wipe_pulse_i;
         kpv_hwif_in.KPV_SCRAMBLER_CTRL.lock.hwclr   = wipe_pulse_i;
-    end
-
-    //==========================================================================
-    // CTRL hwif_in: hold hw=rw fields; zero on wipe
-    //==========================================================================
-    always_comb begin
-        for (int i = 0; i < 32; i++) begin
-            if (wipe_pulse_i || erase_done[i]) begin
-                kpv_hwif_in.CTRL[i].extend.next     = 3'h0;
-                kpv_hwif_in.CTRL[i].last_dword.next  = 4'h0;
-            end else begin
-                kpv_hwif_in.CTRL[i].extend.next =
-                    kpv_hwif_out.CTRL[i].extend.value;
-                kpv_hwif_in.CTRL[i].last_dword.next =
-                    kpv_hwif_out.CTRL[i].last_dword.value;
-            end
-        end
     end
 
     //==========================================================================
@@ -260,14 +237,12 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
         end
     end
 
-    // KM lock / read-zero checks (at external req time)
-    logic km_ext_lock_write, km_ext_lock_use, km_ext_read_zero;
+    // KM lock checks (at external req time)
+    logic km_ext_lock_write, km_ext_lock_use;
     assign km_ext_lock_write =
         kpv_hwif_out.CTRL[km_ext_slot].lock_write.value;
     assign km_ext_lock_use =
         kpv_hwif_out.CTRL[km_ext_slot].lock_use.value;
-    assign km_ext_read_zero = km_ext_word >
-        kpv_hwif_out.CTRL[km_ext_slot].last_dword.value;
 
     // --- KM scrambler (write path: scramble; read path: descramble) ---
     // Inputs are muxed: while the eraser is busy it borrows the scrambler to
@@ -298,12 +273,12 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
         .read_data_o           (km_scrambler_read_out)
     );
 
-    // KM external read data: handle lock_use and read_zero in rd_data
+    // KM external read data: handle lock_use in rd_data
     logic [31:0] km_ext_rd_data;
     assign km_ext_rd_data =
-        (km_ext_lock_use || km_ext_read_zero) ? 32'h0 :
-        kpv_scrambler_enable                  ? km_scrambler_read_out :
-                                                rf_rd_data;
+        km_ext_lock_use      ? 32'h0 :
+        kpv_scrambler_enable ? km_scrambler_read_out :
+                               rf_rd_data;
 
     // Respond to all 32 per-slot interfaces (only active one matters)
     always_comb begin
@@ -366,7 +341,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     // KM response override: SLVERR on violation
     //
     // Key read data is served directly by the external rd_data path
-    // (lock_use and read_zero are handled there).  The FIFO tracks
+    // (lock_use is handled there).  The FIFO tracks
     // only SLVERR information.
     //==========================================================================
     logic km_is_key, km_is_ctrl;
@@ -458,7 +433,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     assign km_axil_resp_o.r_valid  = km_reg_rvalid;
 
     // Key reads: CSR returns external rd_data (already handles
-    // lock_use->0 and read_zero->0).  Non-key reads: CSR returns
+    // lock_use->0).  Non-key reads: CSR returns
     // internal flop data.  No override needed.
     assign km_axil_resp_o.r.data = km_reg_rdata;
 

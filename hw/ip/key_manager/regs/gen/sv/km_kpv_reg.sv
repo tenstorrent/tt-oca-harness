@@ -313,14 +313,6 @@ module km_kpv_reg (
                 logic next;
                 logic load_next;
             } erase;
-            struct {
-                logic [2:0] next;
-                logic load_next;
-            } extend;
-            struct {
-                logic [3:0] next;
-                logic load_next;
-            } last_dword;
         } CTRL[32];
         struct {
             struct {
@@ -352,12 +344,6 @@ module km_kpv_reg (
             struct {
                 logic value;
             } erase;
-            struct {
-                logic [2:0] value;
-            } extend;
-            struct {
-                logic [3:0] value;
-            } last_dword;
         } CTRL[32];
         struct {
             struct {
@@ -462,58 +448,6 @@ module km_kpv_reg (
             end
         end
         assign hwif_out.CTRL[i0].erase.value = field_storage.CTRL[i0].erase.value;
-        // Field: km_kpv.CTRL[].extend
-        always_comb begin
-            automatic logic [2:0] next_c;
-            automatic logic load_next_c;
-            next_c = field_storage.CTRL[i0].extend.value;
-            load_next_c = '0;
-            if(decoded_reg_strb.CTRL[i0] && decoded_req_is_wr && !(hwif_in.CTRL[i0].extend.swwel)) begin // SW write
-                next_c = (field_storage.CTRL[i0].extend.value & ~decoded_wr_biten[6:4]) | (decoded_wr_data[6:4] & decoded_wr_biten[6:4]);
-                load_next_c = '1;
-            end else begin // HW Write
-                next_c = hwif_in.CTRL[i0].extend.next;
-                load_next_c = '1;
-            end
-            field_combo.CTRL[i0].extend.next = next_c;
-            field_combo.CTRL[i0].extend.load_next = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(~hwif_in.WARM_RST_N) begin
-                field_storage.CTRL[i0].extend.value <= 3'h0;
-            end else begin
-                if(field_combo.CTRL[i0].extend.load_next) begin
-                    field_storage.CTRL[i0].extend.value <= field_combo.CTRL[i0].extend.next;
-                end
-            end
-        end
-        assign hwif_out.CTRL[i0].extend.value = field_storage.CTRL[i0].extend.value;
-        // Field: km_kpv.CTRL[].last_dword
-        always_comb begin
-            automatic logic [3:0] next_c;
-            automatic logic load_next_c;
-            next_c = field_storage.CTRL[i0].last_dword.value;
-            load_next_c = '0;
-            if(decoded_reg_strb.CTRL[i0] && decoded_req_is_wr && !(hwif_in.CTRL[i0].last_dword.swwel)) begin // SW write
-                next_c = (field_storage.CTRL[i0].last_dword.value & ~decoded_wr_biten[20:17]) | (decoded_wr_data[20:17] & decoded_wr_biten[20:17]);
-                load_next_c = '1;
-            end else begin // HW Write
-                next_c = hwif_in.CTRL[i0].last_dword.next;
-                load_next_c = '1;
-            end
-            field_combo.CTRL[i0].last_dword.next = next_c;
-            field_combo.CTRL[i0].last_dword.load_next = load_next_c;
-        end
-        always_ff @(posedge clk) begin
-            if(~hwif_in.WARM_RST_N) begin
-                field_storage.CTRL[i0].last_dword.value <= 4'h0;
-            end else begin
-                if(field_combo.CTRL[i0].last_dword.load_next) begin
-                    field_storage.CTRL[i0].last_dword.value <= field_combo.CTRL[i0].last_dword.next;
-                end
-            end
-        end
-        assign hwif_out.CTRL[i0].last_dword.value = field_storage.CTRL[i0].last_dword.value;
     end
     // Field: km_kpv.KPV_SCRAMBLER_KEY.key
     always_comb begin
@@ -653,11 +587,7 @@ module km_kpv_reg (
                 readback_data_var[0] = field_storage.CTRL[i0].lock_write.value;
                 readback_data_var[1] = field_storage.CTRL[i0].lock_use.value;
                 readback_data_var[2] = field_storage.CTRL[i0].erase.value;
-                readback_data_var[3] = 1'h0;
-                readback_data_var[6:4] = field_storage.CTRL[i0].extend.value;
-                readback_data_var[16:7] = 10'h0;
-                readback_data_var[20:17] = field_storage.CTRL[i0].last_dword.value;
-                readback_data_var[31:21] = 11'h0;
+                readback_data_var[31:3] = 29'h0;
             end
         end
         if(rd_mux_addr == 12'h880) begin

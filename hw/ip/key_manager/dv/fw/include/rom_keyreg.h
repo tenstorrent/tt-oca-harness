@@ -6,12 +6,13 @@
  * @file rom_keyreg.h
  * @brief Key handle registry for Key Manager firmware
  *
- * Maps monotonically-increasing 8-bit key handles (1-255) to KPV base
- * slots.  Provides allocation (generate), lookup (get_handle / get_slot /
- * get_crc / get_dest_valid), and destruction (destroy) with a reverse
- * slot-to-handle map for fast slot-based queries.
- *
- * Handle 0 is reserved as the null handle and is never assigned.
+ * Maps monotonically-increasing 8-bit key handles (1-255) to KPV base slots,
+ * with a reverse slot-to-handle map for fast slot-based queries.  Handle 0 is
+ * reserved as the null handle and is never assigned.  Provides allocation
+ * (generate), lookup (get_handle / get_slot / get_crc / get_dest_valid /
+ * get_key_words), and destruction (destroy).  Key length is recorded here too:
+ * the KPV stores key data only, so a key's extent is software state that
+ * callers read back from this registry.
  */
 
 #ifndef ROM_KEYREG_H
@@ -24,9 +25,22 @@
  * Types
  *===========================================================================*/
 
+/**
+ * @brief KPV slots occupied by a key of @p key_words 32-bit words.
+ *
+ * Keys are stored in a contiguous run of slots starting at the base slot, so
+ * the span is the word count rounded up to a whole slot.
+ */
+#define ROM_KM_KEY_SLOT_SPAN(key_words) \
+    ((uint8_t)(((key_words) + ROM_KM_KPV_WORDS_PER_SLOT - 1) / ROM_KM_KPV_WORDS_PER_SLOT))
+
+/** @brief Slots occupied by the largest supported key. */
+#define ROM_KM_KEY_MAX_SLOT_SPAN ROM_KM_KEY_SLOT_SPAN(ROM_KM_MAX_KEY_WORDS)
+
 /** @brief Metadata for a single key handle. */
 typedef struct {
     uint8_t base_slot;             /**< KPV base slot for this key */
+    uint8_t key_words;             /**< Key length in 32-bit words (1-128) */
     uint8_t valid;                 /**< 1 if the handle is live, 0 if destroyed */
     rom_km_dest_bits_t dest_valid; /**< Permitted crypto-engine destination bitmask */
     uint32_t crc32;                /**< CRC-32 recorded at generation time */
@@ -97,6 +111,16 @@ int rom_keyreg_get_crc(const rom_km_keyreg_t *reg, uint8_t handle, uint32_t *crc
 int rom_keyreg_get_dest_valid(const rom_km_keyreg_t *reg, uint8_t handle,
                               rom_km_dest_bits_t *dest_valid);
 
+/**
+ * @brief Look up a key's length in 32-bit words.
+ *
+ * @param reg Registry to query.
+ * @param handle Handle to look up (1-255).
+ * @param key_words Receives the key length in 32-bit words (1-128).
+ * @return 0 on success, -1 if the handle is invalid or destroyed.
+ */
+int rom_keyreg_get_key_words(const rom_km_keyreg_t *reg, uint8_t handle, uint8_t *key_words);
+
 /*===========================================================================
  * Allocation / Destruction
  *===========================================================================*/
@@ -104,18 +128,20 @@ int rom_keyreg_get_dest_valid(const rom_km_keyreg_t *reg, uint8_t handle,
 /**
  * @brief Allocate a new handle for a freshly generated key.
  *
- * Assigns the next monotonic handle, records the base slot, CRC, and
- * permitted destination mask, and updates the reverse slot-to-handle map
- * for all occupied slots (base_slot .. base_slot + num_slots - 1).
+ * Assigns the next monotonic handle, records the base slot, key length, CRC,
+ * and permitted destination mask, and updates the reverse slot-to-handle map
+ * for every slot the key occupies.  The slot span is derived from
+ * @p key_words, so the length is recorded once and cannot disagree with the
+ * set of slots claimed for the key.
  *
  * @param reg Registry to update.
  * @param base_slot KPV base slot for the key.
- * @param num_slots Number of consecutive KPV slots used.
+ * @param key_words Key length in 32-bit words (1-128).
  * @param crc CRC-32 computed over the key material.
  * @param dest_valid Permitted crypto-engine destination bitmask.
  * @return Positive handle value (1-255) on success, -1 if handles exhausted.
  */
-int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t num_slots, uint32_t crc,
+int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t key_words, uint32_t crc,
                         rom_km_dest_bits_t dest_valid);
 
 /**

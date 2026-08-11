@@ -6,8 +6,8 @@
  * @file test_rom_keyreg.c
  * @brief T022 - Key handle registry unit test
  *
- * Exercises rom_keyreg.h: init, generate, get_slot, get_crc, destroy,
- * reverse map, invalid-handle rejection, and handle exhaustion.
+ * Exercises rom_keyreg.h: init, generate, get_slot, get_key_words, get_crc,
+ * destroy, reverse map, invalid-handle rejection, and handle exhaustion.
  *
  * Run with:
  *   make run_fw FW_TEST=test_rom_keyreg
@@ -43,19 +43,20 @@ int main(void) {
     TEST_SUBTEST_START("Generate sequential handles");
     rom_keyreg_init(&reg);
     {
-        int h1 = rom_keyreg_generate(&reg, 0, 1, 0x1111u, (rom_km_dest_bits_t){.raw = 0x04u});
-        int h2 = rom_keyreg_generate(&reg, 1, 1, 0x2222u, (rom_km_dest_bits_t){.raw = 0x02u});
-        int h3 = rom_keyreg_generate(&reg, 2, 1, 0x3333u, (rom_km_dest_bits_t){.raw = 0x08u});
+        int h1 = rom_keyreg_generate(&reg, 0, 16, 0x1111u, (rom_km_dest_bits_t){.raw = 0x04u});
+        int h2 = rom_keyreg_generate(&reg, 1, 8, 0x2222u, (rom_km_dest_bits_t){.raw = 0x02u});
+        int h3 = rom_keyreg_generate(&reg, 2, 4, 0x3333u, (rom_km_dest_bits_t){.raw = 0x08u});
         TEST_ASSERT_EQ(h1, 1u, "handle 1");
         TEST_ASSERT_EQ(h2, 2u, "handle 2");
         TEST_ASSERT_EQ(h3, 3u, "handle 3");
     }
     TEST_SUBTEST_PASS();
 
-    /* 3. get_slot / get_crc / get_dest_valid */
-    TEST_SUBTEST_START("get_slot, get_crc, and get_dest_valid");
+    /* 3. get_slot / get_key_words / get_crc / get_dest_valid */
+    TEST_SUBTEST_START("get_slot, get_key_words, get_crc, and get_dest_valid");
     {
         uint8_t slot;
+        uint8_t key_words;
         uint32_t crc;
         rom_km_dest_bits_t dest_valid;
         int rc;
@@ -67,6 +68,14 @@ int main(void) {
         rc = rom_keyreg_get_slot(&reg, 2, &slot);
         TEST_ASSERT_EQ(rc, 0u, "get_slot(2) rc");
         TEST_ASSERT_EQ(slot, 1u, "get_slot(2) value");
+
+        rc = rom_keyreg_get_key_words(&reg, 1, &key_words);
+        TEST_ASSERT_EQ(rc, 0u, "get_key_words(1) rc");
+        TEST_ASSERT_EQ(key_words, 16u, "get_key_words(1) value");
+
+        rc = rom_keyreg_get_key_words(&reg, 3, &key_words);
+        TEST_ASSERT_EQ(rc, 0u, "get_key_words(3) rc");
+        TEST_ASSERT_EQ(key_words, 4u, "get_key_words(3) value");
 
         rc = rom_keyreg_get_crc(&reg, 1, &crc);
         TEST_ASSERT_EQ(rc, 0u, "get_crc(1) rc");
@@ -125,11 +134,11 @@ int main(void) {
     }
     TEST_SUBTEST_PASS();
 
-    /* 6. Reverse map: slot_to_handle */
+    /* 6. Reverse map: slot_to_handle. A 20-word key spans slots 5 and 6. */
     TEST_SUBTEST_START("Reverse map (slot_to_handle)");
     rom_keyreg_init(&reg);
     {
-        int h = rom_keyreg_generate(&reg, 5, 2, 0xBBBBu, (rom_km_dest_bits_t){.raw = 0x0Cu});
+        int h = rom_keyreg_generate(&reg, 5, 20, 0xBBBBu, (rom_km_dest_bits_t){.raw = 0x0Cu});
         if (h < 1) {
             TEST_FAIL("generate returned %d", h);
         }
