@@ -69,32 +69,29 @@
 |62 |smc_wrapper.UNBONDED_GPIO[62] |SMC |Cool Reset Out |PU |Not packaged out
 |63 |smc_wrapper.UNBONDED_GPIO[63] |SMC |I3C[1] SCL |PU |Not packaged out
 |64 |smc_wrapper.UNBONDED_GPIO[64] |SMC |I3C[1] SDA |PU |Not packaged out
-|65 | | | | |
-|66 | | | | |
-|67 | | | | |
-|68 |smc_wrapper.PAD_JTAG_IN_TCK |? |PTAP TCK | |
-|69 |smc_wrapper.PAD_JTAG_IN_TRSTN |? |PTAP TRST | |
-|70 |smc_wrapper.PAD_JTAG_IN_TDI |? |PTAP TDI | |
-|71 |smc_wrapper.PAD_JTAG_IN_TMS |? |PTAP TMS | |
-|72 |smc_wrapper.PAD_JTAG_IN_TDO |? |PTAP TDO | |
-|73 |smc_wrapper.PAD_JTAG_OUT_TCK |? |STAP TCK | |
-|74 |smc_wrapper.PAD_JTAG_OUT_TRSTN |? |STAP TRST | |
-|75 |smc_wrapper.PAD_JTAG_OUT_TDI |? |STAP TDI | |
-|76 |smc_wrapper.PAD_JTAG_OUT_TMS |? |STAP TMS | |
-|77 |smc_wrapper.PAD_JTAG_OUT_TDO |? |STAP TDO | |
-|78 |smc_wrapper.PAD_REFCLK |SMC |BP_REFCLK_VDD_SYS | |
-|79 |smc_wrapper.PAD_PRSTN |SMC |BP_RESETN | |
-|80 |smc_wrapper.PAD_POWERGOOD |SMC |BP_POWERGOOD | |
-|81 | |SEP |OTP[0] | |
-|82 | |SEP |OTP[1] | |
-|83 | |SEP |OTP[2] | |
-|84 | |SEP |OTP[3] | |
-|85 | |SEP |OTP[4] | |
-|86 | |SEP |OTP[5] | |
-|87 | |SMC |PVT[0] | |
-|88 | |SMC |PVT[1] | |
-|89 | | |VDDIO | |
-|90 |smc_wrapper.PLL_CLK_OBS_PAD |SMC |PLL clock OBS |PD |PLL clock observation pin
-|91 |smc_wrapper.PVT_CLK_OBS_PAD |SMC |PVT RO |PD |Process sensor RO output
-|92 | | | | |
+|65 |smc_wrapper.PAD_JTAG_IN_TCK |? |PTAP TCK | |
+|66 |smc_wrapper.PAD_JTAG_IN_TRSTN |? |PTAP TRST | |
+|67 |smc_wrapper.PAD_JTAG_IN_TDI |? |PTAP TDI | |
+|68 |smc_wrapper.PAD_JTAG_IN_TMS |? |PTAP TMS | |
+|69 |smc_wrapper.PAD_JTAG_IN_TDO |? |PTAP TDO | |
+|70 |smc_wrapper.PAD_JTAG_OUT_TCK |? |STAP TCK | |
+|71 |smc_wrapper.PAD_JTAG_OUT_TRSTN |? |STAP TRST | |
+|72 |smc_wrapper.PAD_JTAG_OUT_TDI |? |STAP TDI | |
+|73 |smc_wrapper.PAD_JTAG_OUT_TMS |? |STAP TMS | |
+|74 |smc_wrapper.PAD_JTAG_OUT_TDO |? |STAP TDO | |
+|75 |smc_wrapper.PAD_REFCLK |SMC |BP_REFCLK_VDD_SYS | |
+|76 |smc_wrapper.PAD_PRSTN |SMC |BP_RESETN | |
+|77 |smc_wrapper.PAD_POWERGOOD |SMC |BP_POWERGOOD | |
+|78 | |SEP |OTP[0] | |
+|79 | |SEP |OTP[1] | |
+|80 | |SEP |OTP[2] | |
+|81 | |SEP |OTP[3] | |
+|82 | |SEP |OTP[4] | |
+|83 | |SEP |OTP[5] | |
+|84 | |SMC |PVT[0] | |
+|85 | |SMC |PVT[1] | |
+|86 | | |VDDIO | |
+|87 |smc_wrapper.PLL_CLK_OBS_PAD |SMC |PLL clock OBS |PD |PLL clock observation pin
+|88 |smc_wrapper.PVT_CLK_OBS_PAD |SMC |PVT RO |PD |Process sensor RO output
+|89 | | | | |
 |===
