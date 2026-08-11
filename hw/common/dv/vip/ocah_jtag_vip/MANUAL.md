@@ -78,6 +78,12 @@ object so replay remains deterministic.
 `shift_ir()` and `shift_dr()` accept and return plain integers. Bits are shifted
 LSB first.
 
+Each bit cycle drives TMS/TDI while TCK is low and samples TDO before raising
+TCK. The rising edge then captures TMS/TDI and advances the TAP state. This
+ordering is especially important for the final bit, whose rising edge exits
+`SHIFT_IR` or `SHIFT_DR`; TDO sampled afterward is no longer guaranteed to
+belong to that scan bit.
+
 ```python
 captured_ir = await tap.shift_ir(0x01, width=6, back_to_rti=False)
 idcode = await tap.shift_dr(0, width=32, back_to_rti=True)
@@ -155,6 +161,7 @@ python3 tools/dv/run_dv.py --doctor --dut dtp
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_sample_preload_test --tool vcs
 ```
 
 If time allows, run:
