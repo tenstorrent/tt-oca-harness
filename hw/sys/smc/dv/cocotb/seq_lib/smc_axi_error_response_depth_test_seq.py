@@ -3,42 +3,35 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import external_gpio_ctrl_addr, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
-_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
-if str(_SMC_REG_PY) not in sys.path:
-    sys.path.insert(0, str(_SMC_REG_PY))
-
-from smc_reg import (  # noqa: E402
-    OCA_I3C_WRAP_0_REG_MAP_BASE_ADDR,
-    SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR,
-    SMC_TOP_REG_MAP_BASE_ADDR,
-)
-
-AXI_RESP_SLVERR = 2
 AXI_RESP_DECERR = 3
 
 # Alive sentinel: always-OKAY local CSR (before/after fabric-alive proof).
-# I3C0 cannot serve this role: i3ccore_stub always returns SLVERR.
-ALIVE_SENTINEL = SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR
+ALIVE_SENTINEL = smc_addr(
+    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
+)
 
 # Intentional unmapped holes — SPEC: hw/sys/smc/doc/memmap.adoc
-# "SMC Address Space Layout" (LOCAL_BASE = SMC_TOP_REG_MAP_BASE_ADDR).
-# Offsets are not decoded CSR windows; fabric default slave returns DECERR.
-_UNMAPPED_LOW = SMC_TOP_REG_MAP_BASE_ADDR + 0x00FF_F000
-_UNMAPPED_HIGH = SMC_TOP_REG_MAP_BASE_ADDR + 0x0FFF_F000
+# "SMC Address Space Layout". Offsets are not decoded CSR windows; fabric
+# default slave returns DECERR.
+_SMC_TOP_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
+_UNMAPPED_LOW = _SMC_TOP_BASE + 0x00FF_F000
+_UNMAPPED_HIGH = _SMC_TOP_BASE + 0x0FFF_F000
 
-# (name, addr, expected AXI resp). MISALIGNED_I3C hits i3ccore_stub → SLVERR.
+# EXTERNAL_MANDATORY GPIO_CTRL is terminated with DECERR on the OSS DUT path
+# (smc_ip_integration err_slv). Replaces the obsolete I3C-stub SLVERR probe —
+# OCA_I3C_WRAP is a real core (OKAY) after open-source integration.
+_GPIO_CTRL0 = external_gpio_ctrl_addr(0)
+
+# (name, addr, expected AXI resp)
 ERROR_PROBES: list[tuple[str, int, int]] = [
     ("UNMAPPED_LOW", _UNMAPPED_LOW, AXI_RESP_DECERR),
     ("UNMAPPED_HIGH", _UNMAPPED_HIGH, AXI_RESP_DECERR),
-    ("MISALIGNED_I3C", OCA_I3C_WRAP_0_REG_MAP_BASE_ADDR + 1, AXI_RESP_SLVERR),
+    ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR),
 ]
 
 
@@ -74,8 +67,7 @@ class smc_axi_error_response_depth_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         # Tell the passive AXI monitor which DECERR addresses are by-design so
-        # they are tallied rather than flagged as hard protocol errors. SLVERR
-        # probes (I3C stub) are not listed here.
+        # they are tallied rather than flagged as hard protocol errors.
         monitor = getattr(getattr(self, "env", None), "axi_monitor", None)
         if monitor is not None:
             monitor.expected_decerr_addrs.update(

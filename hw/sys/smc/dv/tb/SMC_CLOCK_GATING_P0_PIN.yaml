@@ -1,0 +1,33 @@
+# SMC_CLOCK_GATING_P0_PIN.yaml — P0 bring-up gate for SMC clock-gating
+pin_revision: 1
+ip: SMC_CLOCK_GATING_P0
+milestone: P0
+spec:
+- path: hw/sys/smc/doc/index.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f
+- path: hw/sys/smc/doc/overview.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778
+- path: hw/sys/smc/doc/clk_rst.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778
+- path: hw/sys/smc/doc/port_table.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f
+- path: hw/sys/smc/doc/dma.adoc
+  revision: e2aae39953bb8001c7c20e3afd3956e68c22440c
+- path: hw/sys/smc/doc/zeroer.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778
+- path: hw/sys/smc/doc/periphs.adoc
+  revision: ffc8cdcc349e1e01a2b970442a01070b1c62c0d7
+- path: hw/sys/smc/doc/fabric.adoc
+  revision: ffc8cdcc349e1e01a2b970442a01070b1c62c0d7
+- path: hw/sys/smc/doc/memmap.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f
+boundary: 'IN (P0 bring-up only): After reset release, SMC clock-gating bring-up behaviors named by the pinned docs — presence/toggling of clk_smc-domain gated clocks for DMA and Zeroer, CSR/frontdoor reachability of clock-gate enable controls, and a single idle/activity smoke that a gated clock can leave the free-running reset/test state. OUT for P0: full hysteresis sweeps, activity-during-hysteresis races, Zeroer AXI/REG independence cells beyond smoke, DFT/test_en full matrix, multi-ID OutstandingTx/snoop counter capacity, PLL CGM/AWM, P1 nominal-depth formula proofs already closed under SMC_CLOCK_GATING P1, and P3 corner/stress. OUT always: DV docs under hw/sys/smc/dv/, regs/gen/, RTL-as-spec.'
+owns_notes: 'Prefer reuse of smc_clk_running_test / smc_static_cg_sanity_test as bring-up shells; Skill 1 may propose smc_*_cg_bringup_* derived anchors. Do not reopen P1 CLOSED formula cards unless a P0 scenario cannot be allocated otherwise.'
+anchor_mode: augment
+anchors: [smc_clk_running_test, smc_static_cg_sanity_test]
+anchor_name_prefix: smc_
+quality_policy:
+  path: /home/minshaoho/.claude/skills/dv_common/DV_QUALITY_POLICY.md
+  revision: 51a3357d9c31a018d69451b055bc956c089af26e1051368e25ce396c84ac2a75
+confirmed_by: minshaoho
+confirmed_at: 2026-08-05T14:58:00+08:00

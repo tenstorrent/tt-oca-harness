@@ -1,0 +1,64 @@
+# SMU_SEP_PIN.yaml — DRAFT; a human must review, correct, and fill
+# confirmed_by/confirmed_at before any generation run.
+#
+# Fields tagged [NEED] still need a human decision (advisory comment).
+# Gate is YAML values + confirmed_by/confirmed_at — stale [NEED] comments do not block.
+# Milestone options: P0 bring-up | P1 nominal | P2 feature/error breadth | P3 corner/stress.
+#
+pin_revision: 1
+ip: SMU_SEP
+milestone: P2  # confirm this is the intended generation-run label
+spec:
+- path: hw/sys/smu/doc/SMU_SPEC.md
+  revision: 88ddf2482d1e542c0801722975e1f4171907b4fcb68cb511574a88ea9efe88c9  # auto: content SHA-256 (mechanical; no human fill)
+- path: hw/sys/smu/doc/port_table.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/index.adoc
+  revision: 06ed854b2f40c7a31468fdcd6e535d21378ede5e  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/introduction.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/overview.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/fabric.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/cpu.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/crypto.adoc
+  revision: 06ed854b2f40c7a31468fdcd6e535d21378ede5e  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/periphs.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/memory_map.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/port_table.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/lifecycle_controller.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/security_disable.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/test_mode.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/sep/doc/token_processing.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/index.adoc
+  revision: 06ed854b2f40c7a31468fdcd6e535d21378ede5e  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/overview.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/fabric.adoc
+  revision: ffc8cdcc349e1e01a2b970442a01070b1c62c0d7  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/memmap.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/interrupts.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778  # auto: git commit (mechanical; no human fill)
+boundary: 'IN: SMU-level verification of the SEP block when composed under SMU (SEP=1) and the SMU-visible SEP↔SMC / SEP↔external behaviors named by the pinned SMU_SPEC + SEP docs + the SMC fabric/memmap/interrupt docs required for peer paths — SEP sysif onto the SMU AXI crossbar and apertures, SEP→SMC alias remap, mailbox/IRQ crossing to SMC, lifecycle/feat_ctrl/security-disable exports at the SMU boundary, fuse-sense handshake, WDT reset into SMC, SEP memory/crypto/DMA/SPI/eFuse port behaviors observable at SMU, and SEP-side decode/filter/remap/outbound demux effects that the SMU integration boundary can exercise. This pin closes P0–P2 scenarios (milestone P2); P3 corner/stress remains OUT-OF-MILESTONE unless later re-pinned. OUT: deep SEP-internal crypto/CPU behaviors that never appear at the SMU boundary; pure SMC-only and DTP-only paths already owned by SMU_ALL (except where a SEP peer leg is required); DV/VPLAN/testplan/testlist prose; generated register adoc; RTL-as-spec; threat-model prose without a producer→transport→consumer triad. Note: SMU_ALL P2 already closed a small SEP-boundary subset via smu_sep_smoke / related cards — this board inventorizes the full SEP@SMU surface and must not silently assume those closures.'  # [NEED] confirm/extend; remove any FILL-ME sentence
+owns_notes: 'After feature_list freeze: pinned anchors are authoritative for reuse; Skill 1 may still propose origin:derived anchors for gaps (augment). Prefer smu_sep_* names from hw/sys/smu/dv/testlists/sep.toml (sep_exec_blocked + sep_probe). Do not double-allocate scenarios already OWNS-partitioned under SMU_ALL current approved records without an explicit owner decision on the testcase packet. deferred.toml names are naming hints only unless harvested into anchors.'
+anchor_mode: augment  # [NEED] pick: derived | given | augment
+#   derived → Skill 1 derives the whole testcase set; anchors MUST be []
+#   given   → anchors below is the complete, closed set
+#   augment → anchors below are authoritative AND Skill 1 may propose more (brownfield default)
+anchors: [smu_cla_sep_cpu_debug_control_test, smu_feat_ctrl_monitor_test, smu_fuse_sense_handshake_test, smu_ic_reset_sep_ext_slice_test, smu_lifecycle_security_handoff_test, smu_sep_aes_strict_test, smu_sep_aes_test, smu_sep_alias_mailbox_interrupt_probe_test, smu_sep_ap_stee_output_remap_test, smu_sep_ap_stee_remap_region_matrix_test, smu_sep_axi_extension_decode_test, smu_sep_debug_bus_test, smu_sep_dma_test, smu_sep_efuse_test, smu_sep_ext_axi_combined_probe_test, smu_sep_external_irq_test, smu_sep_filter_rule_matrix_test, smu_sep_filter_skip_wire_test, smu_sep_interrupt_error_recovery_matrix_test, smu_sep_km_otbn_memory_test, smu_sep_memory_integrity_test, smu_sep_modules_test, smu_sep_otbn_execute_flow_probe_test, smu_sep_otbn_strict_test, smu_sep_otbn_test, smu_sep_outbound_demux_decode_test, smu_sep_outbound_demux_full_decode_test, smu_sep_sanity_test, smu_sep_smc_addr_route_bug_test, smu_sep_smc_alias_remap_consistency_test, smu_sep_smc_egress_unfiltered_test, smu_sep_smc_xbar_programmable_addr_test, smu_sep_smoke_test, smu_sep_spi_bridge_test, smu_sep_spi_mux_ctrl_wire_test, smu_sep_spi_test, smu_sep_wdt_cdc_path_test, smu_sep_wdt_reset_to_smc_test, smu_sep_wdt_strict_test, smu_sep_wdt_test]  # [NEED] existing testcase names; must be non-empty in augment mode
+anchor_name_prefix: smu_sep_  # optional naming convention for proposed anchors, e.g. i3c_ctrl_ ; null → names proposed and flagged for review
+quality_policy:
+  path: hw/sys/smu/dv/tb/SMU_ALL_QUALITY_POLICY.md
+  revision: 936b77700909a93bb122f9fb124a3ffb6f5dac5f508c623c5950285a5cefb79a  # reuse SMU_ALL fork budgets
+confirmed_by: minshaoho  # [NEED] your identity (null = draft; generation blocked)
+confirmed_at: 2026-08-05T12:00:00+08:00  # [NEED] ISO-8601, e.g. 2026-07-28T12:00:00+08:00

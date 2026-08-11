@@ -4,9 +4,12 @@
 Proves SMU glue on real TB ports (same class as clock-stop remap):
 
   1. xtrig_ctm_dst_req[7:0] -> dtp_xtrig_ctm_dst_req[9:2]; SMC[1:0] stay 0
-  2. xtrig_ctm_dst_ack stays 0 (wire-OR / no CT peer — by construction)
-  3. xtrig_ctm_src_ack[7:0] -> dtp_xtrig_ctm_src_ack[9:2]; ack[1:0] hardwired 0
-  4. TB xtrig_ctm_src_req stays idle (0) while only ack is driven (no DTP peer)
+  2. xtrig_ctm_src_ack[7:0] -> dtp_xtrig_ctm_src_ack[9:2]; ack[1:0] hardwired 0
+
+Idle-negative expects on xtrig_ctm_dst_ack / xtrig_ctm_src_req are out of
+scope until a legal four-phase positive control is enrolled
+(NEGATIVE-NEEDS-POSITIVE-CONTROL). Full four-phase (Force dst_ack / src_req)
+stays deferred.
 """
 
 from __future__ import annotations
@@ -23,13 +26,6 @@ _cocotb_compat.apply()
 
 DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
 SRC_ACK_PATS = (0x01, 0x80, 0x3C)
-
-
-def _u8(signal, name: str) -> int:
-    val = signal.value
-    if not val.is_resolvable:
-        raise AssertionError(f"X/Z sample on {name}: {val}")
-    return int(val) & 0xFF
 
 
 def _bits(signal, name: str) -> int:
@@ -60,12 +56,6 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
             await RisingEdge(dut.clk_smu_i)
 
         sb.expect_eq(
-            "idle dst_ack",
-            _u8(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack"),
-            0,
-            evidence="XT_CTM_REMAP",
-        )
-        sb.expect_eq(
             "idle src_ack[1:0] hardwire",
             _bits(dtp_src_ack, "dtp_xtrig_ctm_src_ack") & 0x3,
             0,
@@ -82,11 +72,6 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
                 evidence="XT_CTM_REMAP",
             )
             sb.expect_eq(f"dst_req pat={pat:#x} SMC[1:0] idle", dtp & 0x3, 0)
-            sb.expect_eq(
-                f"dst_req pat={pat:#x} TB ack still 0",
-                _u8(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack"),
-                0,
-            )
         dut.xtrig_ctm_dst_req.value = 0
         await _settle()
 
@@ -101,12 +86,6 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
                 evidence="XT_CTM_REMAP",
             )
             sb.expect_eq(f"src_ack pat={pat:#x} [1:0] hardwire 0", ack & 0x3, 0)
-            # Independent idle expect (not a wire-identity vs hierarchical src_req).
-            sb.expect_eq(
-                f"src_req TB idle while ack-only (pat={pat:#x})",
-                _u8(dut.xtrig_ctm_src_req, "xtrig_ctm_src_req"),
-                0,
-            )
         dut.xtrig_ctm_src_ack.value = 0
         await _settle()
 

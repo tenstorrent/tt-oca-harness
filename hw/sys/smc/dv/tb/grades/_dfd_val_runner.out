@@ -1,0 +1,18 @@
+=== schema_check.py ==={
+  "status": "valid",
+  "artifact": "testcase-grade",
+  "path": "/proj_soc/user_dev/minshaoho/tryrun/os_aidv/hw/sys/smc/dv/tb/grades/smc_dfd_sanity_test_GRADE.md",
+  "problems": []
+}
+EXIT_CODE=0
+
+=== render_lint.py ==={
+  "status": "agree",
+  "kind": "grade-report",
+  "problems": []
+}
+EXIT_CODE=0
+
+=== sha256 log ===
+020c391108e5384c3ef752d2d44381bb971bd1c85026208ce6725098c838bd9f  /proj_soc/user_dev/minshaoho/tryrun/os_aidv/hw/sys/smc/dv/build/runs/20260806_144023__verilator__smc_dfd_sanity_test/smc_dfd_sanity_test/logs/smc_dfd_sanity_test.log
+EXIT_CODE=0

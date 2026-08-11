@@ -31,6 +31,13 @@ from env import cocotb_compat as _cocotb_compat
 _cocotb_compat.apply()
 
 
+def _sample(signal, name: str) -> int:
+    val = signal.value
+    if not val.is_resolvable:
+        raise AssertionError(f"X/Z sample on {name}: {val}")
+    return int(val)
+
+
 @pyuvm.test()
 class smu_jtag_reset_override_test(smu_base_test):
     """IC_RESET override/release on EXT and SMC cold-reset slices."""
@@ -49,9 +56,18 @@ class smu_jtag_reset_override_test(smu_base_test):
             "IC_RESET default",
             int(default) & SMU_IC_RESET_DEFAULT,
             SMU_IC_RESET_DEFAULT,
-        evidence="IC_RESET_DEFAULT")
-        sb.expect_eq("ext ovrd idle", int(dut.jtag_ic_reset_ext_ovrd.value), 0, evidence="IC_RESET_DOMAIN_EXCL")
-        sb.expect_eq("smc ovrd idle", int(dut.jtag_ic_reset_smc_ovrd.value), 0)
+            evidence="IC_RESET_DEFAULT",
+        )
+        sb.expect_eq(
+            "ext ovrd idle",
+            _sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"),
+            0,
+        )
+        sb.expect_eq(
+            "smc ovrd idle",
+            _sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"),
+            0,
+        )
 
         ext_assert = pack_ic_reset_ports(
             reset_hold=1,
@@ -60,8 +76,22 @@ class smu_jtag_reset_override_test(smu_base_test):
         )
         await jtag.write("IC_RESET", ext_assert)
         await ClockCycles(dut.clk_smu_i, 16)
-        sb.expect_eq("ext ovrd asserted", int(dut.jtag_ic_reset_ext_ovrd.value), 1)
-        sb.expect_eq("ext ctrl_n asserted low", int(dut.jtag_ic_reset_ext_ctrl_n.value), 0)
+        sb.expect_eq(
+            "ext ovrd asserted",
+            _sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"),
+            1,
+        )
+        sb.expect_eq(
+            "ext ctrl_n asserted low",
+            _sample(dut.jtag_ic_reset_ext_ctrl_n, "jtag_ic_reset_ext_ctrl_n"),
+            0,
+        )
+        sb.expect_eq(
+            "smc idle while ext asserted",
+            _sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"),
+            0,
+            evidence="IC_RESET_DOMAIN_EXCL",
+        )
         rb = await jtag.read("IC_RESET", shift_value=ext_assert)
         sb.expect_eq(
             "IC_RESET EXT pattern readback",
@@ -76,17 +106,34 @@ class smu_jtag_reset_override_test(smu_base_test):
         )
         await jtag.write("IC_RESET", smc_assert)
         await ClockCycles(dut.clk_smu_i, 16)
-        sb.expect_eq("smc ovrd asserted", int(dut.jtag_ic_reset_smc_ovrd.value), 1)
-        sb.expect_eq("smc ctrl_n asserted low", int(dut.jtag_ic_reset_smc_ctrl_n.value), 0)
+        sb.expect_eq(
+            "smc ovrd asserted",
+            _sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"),
+            1,
+        )
+        sb.expect_eq(
+            "smc ctrl_n asserted low",
+            _sample(dut.jtag_ic_reset_smc_ctrl_n, "jtag_ic_reset_smc_ctrl_n"),
+            0,
+        )
         sb.expect_eq(
             "ext ovrd released while smc asserted",
-            int(dut.jtag_ic_reset_ext_ovrd.value),
+            _sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"),
             0,
+            evidence="IC_RESET_DOMAIN_EXCL",
         )
 
         await jtag.write("IC_RESET", SMU_IC_RESET_DEFAULT)
         await ClockCycles(dut.clk_smu_i, 16)
-        sb.expect_eq("ext ovrd cleared", int(dut.jtag_ic_reset_ext_ovrd.value), 0)
-        sb.expect_eq("smc ovrd cleared", int(dut.jtag_ic_reset_smc_ovrd.value), 0)
+        sb.expect_eq(
+            "ext ovrd cleared",
+            _sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"),
+            0,
+        )
+        sb.expect_eq(
+            "smc ovrd cleared",
+            _sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"),
+            0,
+        )
 
         self.logger.info("smu_jtag_reset_override_test: IC_RESET EXT/SMC override checked")

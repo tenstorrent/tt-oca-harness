@@ -3,19 +3,20 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_base_test_seq import smc_base_test_seq
 
 # SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR (offset 0x18; shifted from 0x30
 # when the HANG_DET_* control registers were added ahead of it).
-CLOCK_GATE_CONTROL = 0xC001_0018
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 MAILBOX_CG_EN = 1 << 1
 
-MAILBOX_STATUS = 0xC001_8010
-MAILBOX_ERROR_FLAGS = 0xC001_8018
-MAILBOX_WIRQT = 0xC001_8020
-MAILBOX_RIRQT = 0xC001_8028
+MAILBOX_STATUS = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR") + 0x10
+MAILBOX_ERROR_FLAGS = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR") + 0x18
+MAILBOX_WIRQT = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR") + 0x20
+MAILBOX_RIRQT = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR") + 0x28
 MAILBOX_IRQEN = 0xC001_8038
 
 WRITE_READBACK = [

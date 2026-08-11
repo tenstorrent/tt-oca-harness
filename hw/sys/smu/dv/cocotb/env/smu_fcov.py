@@ -183,7 +183,6 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_xtrig_ctm_illegal_phase_test": [
         ("xtrig_cg", "ctm", "illegal_phase"),
-        ("xtrig_cg", "ctm", "smc_bits_clean"),
     ],
     "smu_cla_and_xtrig_concurrent_test": [
         ("reset_clock_cg", "clock_stop", "cla_loop"),

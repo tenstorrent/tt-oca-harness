@@ -1,0 +1,24 @@
+===== schema_check =====
+CMD: python3 /home/minshaoho/.claude/skills/dv_common/schema_check.py /proj_soc/user_dev/minshaoho/tryrun/os_aidv/hw/sys/smc/dv/tb/grades/smc_filter_field_sweep_test_GRADE.md
+EXIT_CODE: 0
+--- STDOUT ---
+{
+  "status": "valid",
+  "artifact": "testcase-grade",
+  "path": "/proj_soc/user_dev/minshaoho/tryrun/os_aidv/hw/sys/smc/dv/tb/grades/smc_filter_field_sweep_test_GRADE.md",
+  "problems": []
+}
+--- STDERR ---
+<empty>
+
+===== render_lint =====
+CMD: python3 /home/minshaoho/.claude/skills/dv_common/render_lint.py --yaml /proj_soc/user_dev/minshaoho/tryrun/os_aidv/hw/sys/smc/dv/tb/grades/smc_filter_field_sweep_test_GRADE.md --kind grade-report
+EXIT_CODE: 0
+--- STDOUT ---
+{
+  "status": "agree",
+  "kind": "grade-report",
+  "problems": []
+}
+--- STDERR ---
+<empty>

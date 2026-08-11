@@ -1,0 +1,42 @@
+# SMC_CLOCK_GATING_PIN.yaml — DRAFT; a human must review, correct, and fill
+# confirmed_by/confirmed_at before any generation run.
+#
+# Fields tagged [NEED] still need a human decision (advisory comment).
+# Gate is YAML values + confirmed_by/confirmed_at — stale [NEED] comments do not block.
+# Milestone options: P0 bring-up | P1 nominal | P2 feature/error breadth | P3 corner/stress.
+#
+pin_revision: 1
+ip: SMC_CLOCK_GATING
+milestone: P1  # confirm this is the intended generation-run label
+spec:
+- path: hw/sys/smc/doc/index.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/overview.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/clk_rst.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/port_table.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/dma.adoc
+  revision: e2aae39953bb8001c7c20e3afd3956e68c22440c  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/zeroer.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/periphs.adoc
+  revision: ffc8cdcc349e1e01a2b970442a01070b1c62c0d7  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/fabric.adoc
+  revision: ffc8cdcc349e1e01a2b970442a01070b1c62c0d7  # auto: git commit (mechanical; no human fill)
+- path: hw/sys/smc/doc/memmap.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f  # auto: git commit (mechanical; no human fill)
+boundary: 'IN: SMC clock-gating and clock-domain power-management behaviors named by the pinned hw/sys/smc/doc/ sources — multi-domain clocks (clk_smc/clk_ref/clk_periph/clk_telemetry), module/per-IP clock-gate enable and hysteresis/activity-detection controls, DMA and zeroer clock-gating paths (including test-mode/reset overrides), and the producer→CSR/control→gated-clock/consumer effects those docs state. This pin closes P0–P2 scenarios (milestone P2); P3 corner/stress remains OUT-OF-MILESTONE unless later re-pinned. OUT: DV/VPLAN/testplan/testlist docs under hw/sys/smc/dv/; generated register adoc under regs/gen/; RTL-as-spec; PLL frequency synthesis / DVFS / CGM-AWM programming beyond what clk_rst names as clock-gating control; deep reset-isolation power-island behaviors that clk_rst places outside clock gating; and IP-internal behaviors never restated at the SMC clock/reset boundary.'  # [NEED] confirm/extend; remove any FILL-ME sentence
+owns_notes: 'After feature_list freeze: pinned anchors are authoritative for reuse; Skill 1 may still propose origin:derived anchors for gaps (augment). Prefer smc_*_cg_* / smc_static_cg_* / smc_clk_* naming from hw/sys/smc/dv/testlists/. deferred.toml names are naming hints only unless already harvested into anchors. PLL CGM/AWM anchors remain only if the frozen feature_list still places them inside boundary.'
+anchor_mode: augment  # [NEED] pick: derived | given | augment
+#   derived → Skill 1 derives the whole testcase set; anchors MUST be []
+#   given   → anchors below is the complete, closed set
+#   augment → anchors below are authoritative AND Skill 1 may propose more (brownfield default)
+anchors: [smc_clk_multi_window_test, smc_clk_running_test, smc_i2c_cg_sanity_test, smc_pll_cgm_awm_config_test, smc_static_cg_sanity_test]  # [NEED] existing testcase names; must be non-empty in augment mode
+anchor_name_prefix: smc_  # optional naming convention for proposed anchors, e.g. i3c_ctrl_ ; null → names proposed and flagged for review
+quality_policy:
+  path: /home/minshaoho/.claude/skills/dv_common/DV_QUALITY_POLICY.md
+  revision: 51a3357d9c31a018d69451b055bc956c089af26e1051368e25ce396c84ac2a75  # auto: content SHA-256 (mechanical; no human fill)
+confirmed_by: minshaoho # [NEED] your identity (null = draft; generation blocked)
+confirmed_at: 2026-08-05T12:00:00+08:00  # [NEED] ISO-8601, e.g. 2026-07-28T12:00:00+08:00

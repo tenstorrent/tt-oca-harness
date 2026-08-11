@@ -1,0 +1,33 @@
+# SMC_CLOCK_GATING_P2_PIN.yaml — P2 feature/error breadth for SMC clock-gating
+pin_revision: 1
+ip: SMC_CLOCK_GATING_P2
+milestone: P2
+spec:
+- path: hw/sys/smc/doc/index.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f
+- path: hw/sys/smc/doc/overview.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778
+- path: hw/sys/smc/doc/clk_rst.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778
+- path: hw/sys/smc/doc/port_table.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f
+- path: hw/sys/smc/doc/dma.adoc
+  revision: e2aae39953bb8001c7c20e3afd3956e68c22440c
+- path: hw/sys/smc/doc/zeroer.adoc
+  revision: 2f40548ea787240680a1c45ab75b8729e9620778
+- path: hw/sys/smc/doc/periphs.adoc
+  revision: ffc8cdcc349e1e01a2b970442a01070b1c62c0d7
+- path: hw/sys/smc/doc/fabric.adoc
+  revision: ffc8cdcc349e1e01a2b970442a01070b1c62c0d7
+- path: hw/sys/smc/doc/memmap.adoc
+  revision: 2ecc7b227e3926b253c65b5aac21239eec24ba5f
+boundary: 'IN (P2 feature/error breadth): SMC clock-gating breadth behaviors named by the pinned docs that P1 deferred — DMA hysteresis full-range sweep and activity-during-hysteresis race; Zeroer axi_clk/reg_clk contested back-to-back / pending-access races; plus axi_cg_snoop OutstandingTx capacity vs fabric MaxTrans/ID-bucket sizing so snoop counters do not overflow under multi-ID concurrent outstanding traffic on DMA/fabric CG paths (producer fabric demand → snoop OutstandingTx bound → correct busy/idle → gated clock). OUT for P2: P3 pure corner/stress randomization beyond named races; PLL CGM/AWM programming; deep power-island isolation outside clk_rst CG; re-proving P1 nominal formula cells already CLOSED under SMC_CLOCK_GATING P1 except where a P2 race requires joint observation. OUT always: DV docs under hw/sys/smc/dv/, regs/gen/, RTL-as-spec.'
+owns_notes: 'P1 deferred keys to close here: DMA-CG-CTRL.S5/S6, ZEROER-AXICLK-CG.S5, ZEROER-REGCLK-CG.S5 (names from prior P1 plan; Skill 1 re-derives from SPEC and may rename). Prefer extend smc_dma_cg_activity_test / smc_zeroer_* or propose smc_*_cg_p2_* / smc_*_snoop_* derived anchors. Constraint: no force/deposit on DUT internals.'
+anchor_mode: augment
+anchors: [smc_dma_cg_activity_test, smc_zeroer_axiclk_cg_test, smc_zeroer_regclk_cg_test, smc_clk_multi_window_test]
+anchor_name_prefix: smc_
+quality_policy:
+  path: /home/minshaoho/.claude/skills/dv_common/DV_QUALITY_POLICY.md
+  revision: 51a3357d9c31a018d69451b055bc956c089af26e1051368e25ce396c84ac2a75
+confirmed_by: minshaoho
+confirmed_at: 2026-08-05T14:58:00+08:00
