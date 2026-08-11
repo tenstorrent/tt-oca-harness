@@ -2089,7 +2089,7 @@ def vcs_analyze(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.
     """Three-step `compile` stage: analyze sources into the work library with vlogan."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     vcs_cfg = info["vcs_cfg"]
-    argv = [
+    analyze_argv = [
         "vlogan",
         *_vcs_preamble(vcs_cfg, flow.framework),
         *_vcs_defines(info["compile_target"], args),
@@ -2100,6 +2100,20 @@ def vcs_analyze(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.
         "-f",
         str(info["filelist"]),
     ]
+    if bool(vcs_cfg.get("uvm", flow.framework == "uvm")):
+        # In a split vlogan -> vcs flow, -ntb_opts uvm on the user-source
+        # invocation exposes the UVM macros but does not analyze uvm_pkg first.
+        # Precompile the simulator-owned package in the same work library before
+        # importing it from the OCAH and DUT UVM packages.
+        argv = [
+            "bash",
+            "-c",
+            "set -euo pipefail\nvlogan -full64 -ntb_opts uvm\nexec \"$@\"",
+            "vcs-analyze",
+            *analyze_argv,
+        ]
+    else:
+        argv = analyze_argv
     console_from_args(args).artifact("build", info["build_dir"])
     return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=info["build_dir"], verbose=args.verbose, timeout_sec=args.timeout)
 
