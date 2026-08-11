@@ -166,7 +166,6 @@ module entropy_source
     logic repcnt_fail_pulse;
     logic apt_hi_fail_pulse,    apt_lo_fail_pulse;
     logic markov_hi_fail_pulse, markov_lo_fail_pulse;
-    logic any_fail_pulse;
 
     logic [31:0] repcnt_total_fails;
     logic [31:0] apt_hi_total_fails,    apt_lo_total_fails;
@@ -981,13 +980,10 @@ module entropy_source
     assign markov_hi_fail_pulse = health_status[4];
     assign markov_lo_fail_pulse = health_status[5];
 
-    assign any_fail_pulse = repcnt_fail_pulse || apt_hi_fail_pulse || apt_lo_fail_pulse ||
-                            markov_hi_fail_pulse || markov_lo_fail_pulse;
-
     assign health_test_clr  = reg_out.CTRL.RESET.value;
     assign alert_cntr_clr_ok = alert_cntr_clr_ok_main_sm;
     assign alert_cntrs_clr  = health_test_clr ||
-                               (window_wrap_pulse && alert_cntr_clr_ok && !any_fail_pulse);
+                               (window_wrap_pulse && alert_cntr_clr_ok && !ht_fail_pulse);
 
     assign es_cntr_err = repcnt_fails_cntr_err    || apt_hi_fails_cntr_err  ||
                          apt_lo_fails_cntr_err     || markov_hi_fails_cntr_err ||
@@ -996,16 +992,18 @@ module entropy_source
                          apt_lo_alert_cntr_err     || markov_hi_alert_cntr_err ||
                          markov_lo_alert_cntr_err;
 
-    // per-window sticky health-test-fail latch for the boot gate.
+    // per-window sticky health-test-fail latch.
     //
-    // ht_fail_pulse samples health only at window wrap. APT/Markov are
-    // window-aligned, but the RCT is *continuous* — a mid-window failure that
-    // is not coincident with the wrap cycle could otherwise slip the boot gate
-    // and let a stuck source pass startup. This sticky latch records any
-    // |health_status assertion occurring during the window and holds it until
-    // the wrap cycle samples it, then clears for the next window. The sampled
-    // sticky value is OR'd into ht_fail_pulse so any mid-window failure forces
-    // a boot-window restart in main_sm.
+    // ht_fail_pulse is the canonical "one assertion per failing window" signal:
+    // it drives the boot gate, the ANY_FAIL_COUNT failing-window counter, and
+    // the clean-window alert-counter clear. It samples health only at window
+    // wrap. APT/Markov are window-aligned, but the RCT is *continuous* — a
+    // mid-window failure that is not coincident with the wrap cycle would
+    // otherwise be missed (slipping the boot gate, or under-counting failing
+    // windows). This sticky latch records any |health_status assertion
+    // occurring during the window and holds it until the wrap cycle samples it,
+    // then clears for the next window. The sampled sticky value is OR'd into
+    // ht_fail_pulse so any mid-window failure counts as one failing window.
     always_ff @(posedge clk_i or negedge rst_n) begin
         if (!rst_n) begin
             ht_fail_sticky_q <= 1'b0;
@@ -1238,7 +1236,7 @@ module entropy_source
         .clk_i   (clk_i),
         .rst_ni  (rst_n),
         .clear_i (alert_cntrs_clr),
-        .event_i (any_fail_pulse),
+        .event_i (ht_fail_pulse),
         .step_i  (16'd1),
         .value_o (any_fail_count),
         .err_o   (any_fails_cntr_err)
