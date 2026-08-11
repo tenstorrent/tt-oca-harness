@@ -1,4 +1,6 @@
-/* Hide placeholder navbar items -- explicit exceptions for every real item we've added. */
+/* Hide placeholder navbar items (upstream demo content only: any leftover
+   Home/Products/Services/Download not otherwise replaced) -- explicit
+   exceptions for every real item we've added. */
 .navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu),
 .navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu) {
     display: none !important;
@@ -77,12 +79,15 @@
    Menu structure is left unchanged; this block only touches color,
    background, and typography.
    ======================================== */
-/* Each family is declared once per    weight/style actually supplied; 
-	the system-font fallback in each --oca-font-* stack below only applies 
-	if a given font file fails to load. */
+/* Fonts, served from the sibling fonts/
+   folder under ui-supplemental. Each family is declared once per
+   weight/style actually supplied; the system-font fallback in each
+   --oca-font-* stack below only applies if a given font file fails
+   to load.*/
 @font-face {
     font-family: "Degular Display";
-    src: url("../fonts/DegularDisplay-Light.otf") format("opentype");
+    src: url("../fonts/DegularDisplay-Light.woff2") format("woff2"),
+         url("../fonts/DegularDisplay-Light.woff") format("woff");
     font-weight: 300;
     font-style: normal;
     font-display: swap;
@@ -90,47 +95,17 @@
 
 @font-face {
     font-family: "Degular Display";
-    src: url("../fonts/DegularDisplay-Medium.otf") format("opentype");
+    src: url("../fonts/DegularDisplay-Medium.woff2") format("woff2"),
+         url("../fonts/DegularDisplay-Medium.woff") format("woff");
     font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Degular Display";
-    src: url("../fonts/DegularDisplay-Semibold.otf") format("opentype");
-    font-weight: 600;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Degular Text";
-    src: url("../fonts/DegularText-Medium.otf") format("opentype");
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Degular Text";
-    src: url("../fonts/DegularText-MediumItalic.otf") format("opentype");
-    font-weight: 500;
-    font-style: italic;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Degular Text";
-    src: url("../fonts/DegularText-Bold.otf") format("opentype");
-    font-weight: 700;
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Neue Haas Unica Pro";
-    src: url("../fonts/NeueHaasUnicaPro-Regular.otf") format("opentype");
+    src: url("../fonts/NeueHaasUnicaProRegular.woff2") format("woff2"),
+         url("../fonts/NeueHaasUnicaProRegular.woff") format("woff");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -138,7 +113,8 @@
 
 @font-face {
     font-family: "Neue Haas Unica Pro";
-    src: url("../fonts/NeueHaasUnicaPro-Medium.otf") format("opentype");
+    src: url("../fonts/NeueHaasUnicaProMedium.woff2") format("woff2"),
+         url("../fonts/NeueHaasUnicaProMedium.woff") format("woff");
     font-weight: 500;
     font-style: normal;
     font-display: swap;
@@ -146,7 +122,7 @@
 
 @font-face {
     font-family: "Berkeley Mono";
-    src: url("../fonts/BerkeleyMono-Regular.otf") format("opentype");
+    src: url("../fonts/BerkeleyMono-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -154,7 +130,7 @@
 
 @font-face {
     font-family: "Berkeley Mono";
-    src: url("../fonts/BerkeleyMono-Bold.otf") format("opentype");
+    src: url("../fonts/BerkeleyMono-Bold.woff2") format("woff2");
     font-weight: 700;
     font-style: normal;
     font-display: swap;
@@ -162,8 +138,16 @@
 
 @font-face {
     font-family: "Berkeley Mono";
-    src: url("../fonts/BerkeleyMono-Oblique.otf") format("opentype");
+    src: url("../fonts/BerkeleyMono-Oblique.woff2") format("woff2");
     font-weight: 400;
+    font-style: oblique;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Bold-Oblique.woff2") format("woff2");
+    font-weight: 700;
     font-style: oblique;
     font-display: swap;
 }
@@ -177,7 +161,6 @@
     --oca-text: #484848;
     --oca-font-display: "Degular Display", Georgia, "Iowan Old Style", serif;
     --oca-font-body: "Neue Haas Unica Pro", -apple-system, "Segoe UI", sans-serif;
-    --oca-font-emphasis: "Degular Text", -apple-system, "Segoe UI", sans-serif;
     --oca-font-mono: "Berkeley Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
@@ -257,7 +240,10 @@
 
 /* Version "pill" buttons inside the switcher -- fixed-width font + orange
    accent, matching Tenstorrent's own button convention, replacing the
-   default dark-grey. */
+   default dark-grey. This is the mono font's "utility text" role (small
+   labels/tags), specified at 600 (semi-bold); only 400/700 weights were
+   supplied for this font, so the browser substitutes its closest match
+   (currently renders as Bold) until a true 600 weight is confirmed. */
 .nav-panel-explore .versions .version a,
 .nav-panel-explore .version.is-current a {
     font-family: var(--oca-font-mono);
@@ -305,12 +291,22 @@
     white-space: nowrap;
 }
 
-/* Headings -> OCA display font + green */
+/* Headings -> OCA display font + green. Large headers (h1/h2) use the
+   Light weight; subheaders (h3-h6) use Medium, per the supplied font's
+   intended usage. */
 .doc h1,
-.doc h2,
-.doc h3 {
+.doc h2 {
     font-family: var(--oca-font-display);
     font-weight: 300;
+    color: var(--oca-green);
+}
+
+.doc h3,
+.doc h4,
+.doc h5,
+.doc h6 {
+    font-family: var(--oca-font-display);
+    font-weight: 500;
     color: var(--oca-green);
 }
 
@@ -320,18 +316,13 @@
     color: var(--oca-text);
 }
 
-/* Emphasis (bold/italic inline text) -> Degular Text, distinct from the
-   Neue Haas Unica Pro body face. */
+/* Emphasis (bold inline text) -> body font at Medium weight, used in
+   place of a true bold face. No italic face is supplied for this font;
+   .doc em/i inherit the body font family and fall back to the browser's
+   synthetic italic. */
 .doc strong,
 .doc b {
-    font-family: var(--oca-font-emphasis);
-    font-weight: 700;
-}
-
-.doc em,
-.doc i {
-    font-family: var(--oca-font-emphasis);
-    font-style: italic;
+    font-weight: 500;
 }
 
 /* Links / accents -> green base, gold hover, matching OCA's CTA buttons */
@@ -403,11 +394,11 @@
     display: inline-flex;
     align-items: center;
     text-decoration: none;
-    vertical-align: middle;
 }
 
 .footer .footer-tt-icon {
     height: 20px;
+    vertical-align: middle;
 }
 
 /* De-emphasized license attribution, kept for MPL-2.0 compliance rather
