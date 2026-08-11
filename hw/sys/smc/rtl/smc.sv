@@ -682,6 +682,6 @@ module smc
     // Efuse debug
     .efuse_debug_o                         (efuse_debug)
   );
-  assign rom_flip_endianness = shadow_regs_o.f.reserved[smc_efuse_pkg::ROM_CTRL_REG_INDEX][smc_efuse_pkg::ROM_FLIP_ENDIANNESS_START_BIT];
+  assign rom_flip_endianness = shadow_regs_o.fields.reserved[smc_efuse_pkg::ROM_CTRL_REG_INDEX][smc_efuse_pkg::ROM_FLIP_ENDIANNESS_START_BIT];
 
 endmodule

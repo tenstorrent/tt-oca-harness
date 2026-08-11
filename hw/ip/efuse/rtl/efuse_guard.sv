@@ -157,7 +157,7 @@ module efuse_guard
       efuse_map_t shadow_regs
   );
     if (index != '1) begin
-      return shadow_regs.fields.locks[index*2];
+      return shadow_regs.locks.locks[index*2];
     end else return 1'b0;
   endfunction
 
@@ -166,7 +166,7 @@ module efuse_guard
       efuse_map_t shadow_regs
   );
     if (index != '1) begin
-      return shadow_regs.fields.locks[index*2+1];
+      return shadow_regs.locks.locks[index*2+1];
     end else return 1'b0;
   endfunction
 
