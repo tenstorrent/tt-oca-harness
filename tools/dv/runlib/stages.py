@@ -2034,6 +2034,22 @@ def _vcs_preamble(vcs_cfg: dict[str, Any], framework: str) -> list[str]:
     return pre
 
 
+def _vcs_uum_elab_args(
+    vcs_cfg: dict[str, Any],
+    framework: str,
+    options: dict[str, Any],
+    args: argparse.Namespace,
+) -> list[str]:
+    """Return UUM elaboration options after vlogan has already parsed all sources."""
+    elab = ["-full64"]
+    if bool(vcs_cfg.get("uvm", framework == "uvm")):
+        elab += ["-ntb_opts", "uvm"]
+    elab += vcs_build_args(options, vcs_cfg, _build_jobs_arg(args))
+    if _wave_format(args, "vcs"):
+        elab.append("-debug_access+all")
+    return elab
+
+
 def _vcs_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
     """Resolve the (fingerprinted) VCS build dir and simv path. Shared by build and sim stages so
     the sim stage locates the exact simv the build stage produced."""
@@ -2124,9 +2140,22 @@ def vcs_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Na
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     build_dir = info["build_dir"]
     vcs_cfg = info["vcs_cfg"]
-    argv = ["vcs", *info["elab_args"]]
     if include_filelist:
+        argv = ["vcs", *info["elab_args"]]
         argv += ["-f", str(info["filelist"])]
+    else:
+        # UUM consumes the work library produced by vlogan. Source-language,
+        # timescale, defines, and target flags are parse-only options and VCS
+        # rejects them when no source file is present.
+        argv = [
+            "vcs",
+            *_vcs_uum_elab_args(
+                vcs_cfg,
+                flow.framework,
+                build_options_cfg(info["build"]),
+                args,
+            ),
+        ]
     argv += [
         info["top"],
         "-o",
