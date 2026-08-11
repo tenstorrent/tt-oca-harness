@@ -33,20 +33,30 @@ _SMBUS_PEC_DATA = 0xA5
 _SMBUS_ARA_ADDR = 0x0C
 _SMBUS_ARA_REPLY = (_I2C_EEPROM_ADDR << 1)  # 0xA0 — alerting slave addr<<1
 
-CLOCK_GATE_CONTROL = 0xC001_0018
-I2C_CG_EN = 1 << 11
-I2C0_WRAP_CTRL = 0xC000_9E00
-I2C0_OVRD = 0xC000_9034
-I2C0_CTRL = 0xC000_9010
-I2C0_STATUS = 0xC000_9014
-I2C0_RDATA = 0xC000_9018
-I2C0_FDATA = 0xC000_901C
-I2C0_FIFO_CTRL = 0xC000_9020
-I2C0_TIMING0 = 0xC000_903C
-I2C0_TIMING1 = 0xC000_9040
-I2C0_TIMING2 = 0xC000_9044
-I2C0_TIMING3 = 0xC000_9048
-I2C0_TIMING4 = 0xC000_904C
+from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
+
+CLOCK_GATE_CONTROL = smc_addr(
+    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
+)
+I2C0_WRAP_CTRL = smc_indexed_addr(
+    "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0
+)
+I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
+I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", 0)
+I2C0_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", 0)
+I2C0_RDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR", 0)
+I2C0_FDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR", 0)
+I2C0_FIFO_CTRL = smc_indexed_addr(
+    "SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0
+)
+I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", 0)
+I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", 0)
+I2C0_TIMING2 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR", 0)
+I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", 0)
+I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", 0)
+I2C0_CONTROLLER_EVENTS = smc_indexed_addr(
+    "SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0
+)
 
 I2C_WRAP_ENABLE_CONTROLLER = 0x11
 I2C_CTRL_ENABLEHOST = 0x1
@@ -63,10 +73,13 @@ I2C_FDATA_STOP = 1 << 9
 I2C_FDATA_READB = 1 << 10
 
 I2C_READABLE_REGS = [
-    ("I2C0_INTR_STATE", 0xC000_9000, 0x0),
+    ("I2C0_INTR_STATE", smc_indexed_addr(
+        "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0), 0x0),
     ("I2C0_STATUS", I2C0_STATUS, None),
-    ("I2C1_INTR_STATE", 0xC000_9200, 0x0),
-    ("I2C2_INTR_STATE", 0xC000_9400, 0x0),
+    ("I2C1_INTR_STATE", smc_indexed_addr(
+        "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1), 0x0),
+    ("I2C2_INTR_STATE", smc_indexed_addr(
+        "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 2), 0x0),
 ]
 
 
@@ -136,7 +149,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 break
             await Timer(1, units="us")
         if not left_idle:
-            cevents = await self.csr_read(f"{label}_CEVENTS_STUCK", 0xC000_9078)
+            cevents = await self.csr_read(f"{label}_CEVENTS_STUCK", I2C0_CONTROLLER_EVENTS)
             raise AssertionError(
                 f"{label}: DUT I2C0 host never left hostidle after FMT push "
                 f"(STATUS=0x{status:08x} CONTROLLER_EVENTS=0x{cevents:08x})"
@@ -147,7 +160,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             if status & I2C_STATUS_HOSTIDLE:
                 return
             await Timer(10, units="us")
-        cevents = await self.csr_read(f"{label}_CEVENTS", 0xC000_9078)
+        cevents = await self.csr_read(f"{label}_CEVENTS", I2C0_CONTROLLER_EVENTS)
         raise AssertionError(
             f"{label}: DUT I2C0 host did not reach hostidle "
             f"(STATUS=0x{status:08x} CONTROLLER_EVENTS=0x{cevents:08x})"
@@ -163,7 +176,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST
         )
         # W1C: clear sticky NACK/halt so a prior attempt cannot freeze Idle+SCL.
-        await self.csr_write("I2C0_CONTROLLER_EVENTS_CLR", 0xC000_9078, 0xF)
+        await self.csr_write("I2C0_CONTROLLER_EVENTS_CLR", I2C0_CONTROLLER_EVENTS, 0xF)
         await self.csr_write("I2C0_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
 
         addr_byte = (_I2C_EEPROM_ADDR << 1) | 0  # write
@@ -182,7 +195,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         )
 
         await self._wait_hostidle("DUT_HOST_WRITE")
-        cevents = await self.csr_read("DUT_HOST_WRITE_CEVENTS", 0xC000_9078)
+        cevents = await self.csr_read("DUT_HOST_WRITE_CEVENTS", I2C0_CONTROLLER_EVENTS)
         await Timer(50, units="us")
         got = self._i2c_slave.read_mem(_I2C_WRITE_OFFSET, 1)
         cocotb.log.info(

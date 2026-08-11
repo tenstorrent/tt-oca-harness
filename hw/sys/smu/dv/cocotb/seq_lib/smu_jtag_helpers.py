@@ -226,6 +226,14 @@ def _ss_reset_ctrl_bit_index(leaf: str, idx: int) -> int:
     raise AssertionError(f"Unknown ss reset leaf: {leaf}")
 
 
+def _sample_bit(signal, name: str) -> int:
+    """Resolve a Logic signal to 0/1; fail closed on X/Z."""
+    val = signal.value
+    if not val.is_resolvable:
+        raise AssertionError(f"X/Z sample on {name}: {val}")
+    return int(val) & 1
+
+
 def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
     """Read one jtag_smc_reset_ctrl ovrd/val leaf (hierarchical or packed).
 
@@ -237,24 +245,45 @@ def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
         bit = _ss_reset_ctrl_bit_index(leaf, idx)
         # Prefer packed whole-struct (VCS may expose ss_* as non-indexable GPI).
         try:
-            return (int(ctrl.value) >> bit) & 1
+            packed = ctrl.value
+            if not packed.is_resolvable:
+                raise AssertionError(
+                    f"X/Z sample on jtag_smc_reset_ctrl (packed) for {leaf}[{idx}]: "
+                    f"{packed}"
+                )
+            return (int(packed) >> bit) & 1
+        except AssertionError:
+            raise
         except Exception:  # noqa: BLE001
             pass
         if hasattr(ctrl, "ovrd") and hasattr(ctrl, "val"):
             group = "ovrd" if leaf.endswith("_ovrd") else "val"
             vec = getattr(getattr(ctrl, group), leaf)
             try:
-                return int(vec[idx].value) & 1
+                return _sample_bit(vec[idx], f"jtag_smc_reset_ctrl.{leaf}[{idx}]")
             except Exception:  # noqa: BLE001
-                return (int(vec.value) >> idx) & 1
+                v = vec.value
+                if not v.is_resolvable:
+                    raise AssertionError(
+                        f"X/Z sample on jtag_smc_reset_ctrl.{leaf}: {v}"
+                    )
+                return (int(v) >> idx) & 1
         raise AssertionError(f"Cannot read jtag_smc_reset_ctrl.{leaf}[{idx}]")
 
     if leaf not in _SMC_RESET_CTRL_BITS:
         raise AssertionError(f"Unknown jtag_smc_reset_ctrl leaf: {leaf}")
     if hasattr(ctrl, "ovrd") and hasattr(ctrl, "val"):
         group = "ovrd" if leaf.endswith("_ovrd") else "val"
-        return int(getattr(getattr(ctrl, group), leaf).value) & 1
-    return (int(ctrl.value) >> _SMC_RESET_CTRL_BITS[leaf]) & 1
+        return _sample_bit(
+            getattr(getattr(ctrl, group), leaf),
+            f"jtag_smc_reset_ctrl.{leaf}",
+        )
+    packed = ctrl.value
+    if not packed.is_resolvable:
+        raise AssertionError(
+            f"X/Z sample on jtag_smc_reset_ctrl (packed) for {leaf}: {packed}"
+        )
+    return (int(packed) >> _SMC_RESET_CTRL_BITS[leaf]) & 1
 
 
 def pack_otp_single_op(

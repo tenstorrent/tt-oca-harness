@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 import cocotb
 from cocotb.triggers import ClockCycles
 
@@ -10,8 +11,8 @@ from env.smc_reset_item import SmcResetItem, SmcResetOp
 
 from .smc_csr_seq_utils import SmcCsrSeq
 
-SCRATCH_COLD_WARM_1 = 0xC000_2884
-CHIP_CONFIG_VERSION_LO = 0xC000_2900
+SCRATCH_COLD_WARM_1 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR") + 0x4
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 PERSIST_PATTERN = 0xCAFE_0020
 
 

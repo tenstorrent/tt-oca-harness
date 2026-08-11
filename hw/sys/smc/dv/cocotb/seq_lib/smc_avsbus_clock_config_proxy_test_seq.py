@@ -3,14 +3,15 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-CLOCK_GATE_CONTROL = 0xC001_0018  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
 AVS_CG_EN = 1 << 10
 AVSBUS_TIMEOUT_READS = [
-    ("AVS_CFG_0", 0xC000_8050),
-    ("AVS_CFG_1", 0xC000_8054),
-    ("AVS_CONFIG", 0xC000_8058),
+    ("AVS_CFG_0", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR")),
+    ("AVS_CFG_1", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_1_BASE_ADDR")),
+    ("AVS_CONFIG", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CONFIG_BASE_ADDR")),
 ]
 
 
