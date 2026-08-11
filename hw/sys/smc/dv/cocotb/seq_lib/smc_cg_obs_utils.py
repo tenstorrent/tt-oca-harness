@@ -8,6 +8,7 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
 from . import smc_addr_map as _addr
+from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
 _LOG = cocotb.log
 
@@ -24,8 +25,6 @@ INBOUND0_END = _addr.INBOUND0_END
 OUTBOUND0_FILTER_CONFIG = _addr.OUTBOUND0_FILTER_CONFIG
 OUTBOUND0_START = _addr.OUTBOUND0_START
 OUTBOUND0_END = _addr.OUTBOUND0_END
-# Fabric filter "pass-all" CONFIG encoding (not an address; protocol constant).
-PASS_ALL_CONFIG = 0x0100_3013
 
 DMA_CTRL_CONFIG = _addr.DMA_CTRL_CONFIG
 DMA_CTRL_STATUS_0 = _addr.DMA_CTRL_STATUS_0

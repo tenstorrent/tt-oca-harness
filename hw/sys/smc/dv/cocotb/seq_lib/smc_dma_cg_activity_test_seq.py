@@ -33,6 +33,7 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_addr_map as _addr
+from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
 
 def _p2_coverage_report_dirs() -> list[Path]:
@@ -127,8 +128,6 @@ INBOUND0_END = _addr.INBOUND0_END
 OUTBOUND0_FILTER_CONFIG = _addr.OUTBOUND0_FILTER_CONFIG
 OUTBOUND0_START = _addr.OUTBOUND0_START
 OUTBOUND0_END = _addr.OUTBOUND0_END
-# Stimulus value for pass-all filter programming (not a register address).
-PASS_ALL_CONFIG = 0x0100_3013
 
 DMA_SRC_ADDR = 0x0200_0000
 DMA_DST_ADDR = 0x0200_0100
