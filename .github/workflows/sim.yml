@@ -43,7 +43,11 @@ jobs:
     # check name `verilator-smoke (dtp)` stable, and nightly runs are labeled.
     # (The env context is unavailable here, so the tier expression is inlined.)
     name: verilator-smoke (${{ matrix.dut }})${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && ' nightly' || '' }}
-    runs-on: ubuntu-latest
+    # Per-DUT runner size (matrix.runner). DTP stays on the 4-vCPU standard
+    # runner; SEP builds a ~1.7 GB Verilator model (VeeR EL2 + OTBN + full
+    # crypto) and gets a 16-vCPU larger runner, which --build-jobs "$(nproc)"
+    # picks up automatically.
+    runs-on: ${{ matrix.runner }}
     # The nightly tier gets headroom for a Verilator cache miss (from-source
     # build) plus ~450 scheduler leaves at --sim-jobs 4 in the same budget.
     timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 90 || 60 }}
@@ -54,9 +58,36 @@ jobs:
         # One artifact and one run_dv.py invocation per CI-qualified DUT/tool
         # pair. Extend this list only with combinations proven Verilator-clean
         # at head; see "Continuous integration" in tools/dv/doc/run-dv.adoc.
+        #
+        # nightly_items selects the nightly-tier group per DUT. It is NOT always
+        # `all`: hosted runners have no RISC-V toolchain, so any DUT whose `all`
+        # group contains firmware tests (a `c_compile` stage) must name a
+        # CPU-free group instead, or every nightly run fails at build.
+        #
+        # runner: the label this DUT's job runs on, and the only knob that sets
+        # build parallelism (--build-jobs "$(nproc)" follows it).
+        #
+        # SEP wants a 16-vCPU larger runner for its ~1.7 GB Verilator model, but
+        # a label with no matching runner does NOT fail fast -- the job queues
+        # until it times out, and everything with `needs:` on it stalls too. So
+        # the default stays the always-present 4-vCPU standard runner, and repo
+        # variable SEP_CI_RUNNER promotes it once the larger-runner label is
+        # confirmed in the org's runner settings:
+        #
+        #   gh variable set SEP_CI_RUNNER --body ubuntu-latest-16-cores
+        #
+        # No workflow edit needed to flip it, or to roll back.
         include:
           - dut: dtp
             tool: verilator
+            runner: ubuntu-latest
+            nightly_items: all
+          - dut: sep
+            tool: verilator
+            runner: ${{ vars.SEP_CI_RUNNER || 'ubuntu-latest' }}
+            # SEP's `all` mixes cpu firmware tests; `no_cpu` is the toolchain-free
+            # subset. The smoke tier is unaffected (sep_axi_smoke_test is no_cpu).
+            nightly_items: no_cpu
     env:
       # smoke: pull_request, push, and default manual dispatch.
       # nightly: daily schedule, or manual dispatch with tier=nightly.
@@ -112,15 +143,15 @@ jobs:
           python3 tools/dv/run_dv.py --validate-configs
           python3 tools/dv/run_dv.py --doctor --dut ${{ matrix.dut }} --tool ${{ matrix.tool }}
 
-      # smoke gates PRs with the 2-test smoke group; nightly regresses the
-      # full `all` group with 3 random seeds per test (~450 recorded,
-      # replayable scheduler leaves) on the 4-vCPU hosted runner. The
-      # explicit --run-dir keeps every tier's tree separate and means
-      # run_dv.py never creates a `latest` symlink.
+      # smoke gates PRs with each DUT's `smoke` group; nightly regresses that
+      # DUT's matrix.nightly_items group with 3 random seeds per test (~450
+      # recorded, replayable scheduler leaves for dtp's `all`) on the 4-vCPU
+      # hosted runner. The explicit --run-dir keeps every tier's tree separate
+      # and means run_dv.py never creates a `latest` symlink.
       - name: Run DV tests
         run: |
           if [ "$TIER" = "nightly" ]; then
-            items=all
+            items=${{ matrix.nightly_items }}
             sim_jobs=4
             tier_args=(--reseed 3)
           else
@@ -128,11 +159,18 @@ jobs:
             sim_jobs=2
             tier_args=()
           fi
+          # Build parallelism is independent of sim fan-out, but run_dv.py falls
+          # back to --sim-jobs when --build-jobs is absent (effective_build_jobs in
+          # runlib/buildcache.py) -- which silently compiled the C++ model with just
+          # -j2 on the smoke tier. Pin it to the runner's core count so the model
+          # build uses the whole machine, and so it scales automatically if this job
+          # ever moves to a larger runner.
           python3 tools/dv/run_dv.py \
             --dut ${{ matrix.dut }} \
             --items "$items" \
             --tool ${{ matrix.tool }} \
             --sim-jobs "$sim_jobs" \
+            --build-jobs "$(nproc)" \
             --run-dir "$RUN_DIR" \
             "${tier_args[@]}"
 
