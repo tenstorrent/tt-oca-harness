@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+//-----------------------------------------------------------------------------
 // SHA-256 Token Hash (OpenTitan prim_sha2 feeder)
-//
 //
 // Description:
 // Generic single-block SHA-256 helper for hashing a fixed 256-bit token.
@@ -17,6 +17,7 @@
 //
 // The produced digest is the standard SHA-256 of the token byte stream (no
 // endianness swap), with H0 placed in the most-significant bits of digest_o.
+//-----------------------------------------------------------------------------
 
 `include "prim_assert.sv"
 

@@ -23,6 +23,9 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_edge_detector.sv
       - upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
       - upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
+  # Guard prim_generic cells with not(synth) target so synthesis picks up real cells 
+  - target: all(any(dtp, sep, smc, opentitan_smu, smu, key_manager), not(synth))
+    files:
       - upstream/hw/ip/prim_generic/rtl/prim_and2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
@@ -35,6 +38,8 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_diff_decode.sv
       - upstream/hw/ip/prim/rtl/prim_alert_sender.sv
       - upstream/hw/ip/prim_generic/rtl/prim_buf.sv
+  - target: all(any(sep, smc, opentitan_smu, smu, key_manager), not(synth))
+    files:
       - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
 
   # Leaf primitives shared with the standalone Key Manager testbench. Listed here
@@ -175,14 +180,9 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_subst_perm.sv
       - upstream/hw/ip/prim/rtl/prim_trivium.sv
       - upstream/hw/ip/prim/rtl/prim_xoshiro256pp.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_en.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_no_rst.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
       - upstream/hw/ip/prim_generic/rtl/prim_rom.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
       - upstream/hw/ip/prim/rtl/prim_flop_macros.sv
       - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
       - upstream/hw/ip/prim/rtl/prim_fifo_async_simple.sv
@@ -328,3 +328,10 @@ sources:
       # TT-owned OpenTitan overlay.
       - overlay/spi_controller/rtl/spi_controller_reg.sv
       - overlay/spi_controller/rtl/spi_controller.sv
+
+  # Guard prim_generic cells with not(synth) target so synthesis picks up real cells instead of generic versions.
+  - target: all(any(opentitan_smu, sep, smu), not(synth))
+    files:
+      - upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_xor2.sv

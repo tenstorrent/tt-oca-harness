@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+//-----------------------------------------------------------------------------
 // Efuse Interface Controller
+//
+//-----------------------------------------------------------------------------
 
 module efuse_interface_controller
 #(

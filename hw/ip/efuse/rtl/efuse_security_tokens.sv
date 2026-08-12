@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+//-----------------------------------------------------------------------------
 // Efuse Security Tokens
+//
+//-----------------------------------------------------------------------------
 
 module efuse_security_tokens
 #(
@@ -10,7 +13,6 @@ module efuse_security_tokens
 
     parameter int unsigned LC_STATE_WIDTH = 4,
     localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2*LC_STATE_WIDTH)'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}}),
-
 
     parameter type efuse_apb_req_t = logic,
     parameter type efuse_apb_resp_t = logic,
