@@ -118,7 +118,8 @@ void rom_kpv_erase_slot(uint8_t slot);
  * @param slot Slot index (0-31).
  * @param words Key data (@p n_words 32-bit words).
  * @param n_words Words to write (1-16).
- * @return 0 on success, -1 if the slot is write-locked.
+ * @return 0 on success, -1 if @p n_words is outside 1-16 or the slot is
+ *         write-locked.
  */
 int rom_kpv_write_slot(uint8_t slot, const uint32_t *words, uint8_t n_words);
 
@@ -132,7 +133,8 @@ int rom_kpv_write_slot(uint8_t slot, const uint32_t *words, uint8_t n_words);
  * @param slot Slot index (0-31).
  * @param words Buffer for @p n_words 32-bit words.
  * @param n_words Words to read (1-16).
- * @return 0 on success, -1 if the slot is read-locked.
+ * @return 0 on success, -1 if @p n_words is outside 1-16 or the slot is
+ *         read-locked.
  */
 int rom_kpv_read_slot(uint8_t slot, uint32_t *words, uint8_t n_words);
 

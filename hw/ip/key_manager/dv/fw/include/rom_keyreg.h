@@ -139,7 +139,9 @@ int rom_keyreg_get_key_words(const rom_km_keyreg_t *reg, uint8_t handle, uint8_t
  * @param key_words Key length in 32-bit words (1-128).
  * @param crc CRC-32 computed over the key material.
  * @param dest_valid Permitted crypto-engine destination bitmask.
- * @return Positive handle value (1-255) on success, -1 if handles exhausted.
+ * @return Positive handle value (1-255) on success, -1 if @p key_words is
+ *         outside 1-128, the key's span would run past the last KPV slot, or
+ *         handles are exhausted.
  */
 int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t key_words, uint32_t crc,
                         rom_km_dest_bits_t dest_valid);

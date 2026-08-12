@@ -126,10 +126,19 @@ int rom_keyreg_get_key_words(const rom_km_keyreg_t *reg, uint8_t handle, uint8_t
  * @param[in]     base_slot Base slot index.
  * @param[in]     key_words Key length in 32-bit words.
  * @param[in]     crc       CRC-32C of key data.
- * @return Allocated handle (1-255) on success, -1 if exhausted.
+ * @return Allocated handle (1-255) on success, -1 if the extent is invalid,
+ *         the key does not fit at @p base_slot, or handles are exhausted.
  */
 int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t key_words, uint32_t crc,
                         rom_km_dest_bits_t dest_valid) {
+    /* The registry is the only record of a key's extent, so reject a length it
+     * could not describe: zero spans no slots yet would still yield a live
+     * handle. Widened because base_slot + span can exceed a uint8_t. */
+    if (key_words == 0 || key_words > ROM_KM_MAX_KEY_WORDS) return -1;
+
+    uint8_t num_slots = ROM_KM_KEY_SLOT_SPAN(key_words);
+    if ((uint16_t)base_slot + num_slots > ROM_KM_KPV_NUM_SLOTS) return -1;
+
     if (reg->next_handle == 0) return -1;
 
     uint8_t h = reg->next_handle;
@@ -140,7 +149,6 @@ int rom_keyreg_generate(rom_km_keyreg_t *reg, uint8_t base_slot, uint8_t key_wor
     reg->handles[h].dest_valid = dest_valid;
     reg->handles[h].crc32 = crc;
 
-    uint8_t num_slots = ROM_KM_KEY_SLOT_SPAN(key_words);
     for (uint8_t s = 0; s < num_slots; s++) reg->slot_to_handle[base_slot + s] = h;
 
     reg->next_handle++;

@@ -157,9 +157,14 @@ void rom_kpv_erase_slot(uint8_t slot) {
  * @param[in] slot     Slot index.
  * @param[in] words    Key data array.
  * @param[in] n_words  Words to write (1-16).
- * @return 0 on success, -1 if the slot is write-locked.
+ * @return 0 on success, -1 if n_words is out of range or the slot is
+ *         write-locked.
  */
 int rom_kpv_write_slot(uint8_t slot, const uint32_t *words, uint8_t n_words) {
+    /* A slot is ROM_KM_KPV_WORDS_PER_SLOT words and the slots are contiguous,
+     * so an over-long count would run into the next slot. */
+    if (n_words == 0 || n_words > ROM_KM_KPV_WORDS_PER_SLOT) return -1;
+
     if (KPV_CTRL(slot).f.lock_write) return -1;
 
     for (uint8_t w = 0; w < n_words; w++) KPV_KEY_WORD(slot, w) = words[w];
@@ -177,9 +182,14 @@ int rom_kpv_write_slot(uint8_t slot, const uint32_t *words, uint8_t n_words) {
  * @param[in]  slot     Slot index.
  * @param[out] words    Output buffer (>= n_words words).
  * @param[in]  n_words  Words to read (1-16).
- * @return 0 on success, -1 if the slot is read-locked.
+ * @return 0 on success, -1 if n_words is out of range or the slot is
+ *         read-locked.
  */
 int rom_kpv_read_slot(uint8_t slot, uint32_t *words, uint8_t n_words) {
+    /* Bounded for the same reason as rom_kpv_write_slot: an over-long count
+     * would read out of the slot and into the next one. */
+    if (n_words == 0 || n_words > ROM_KM_KPV_WORDS_PER_SLOT) return -1;
+
     if (KPV_CTRL(slot).f.lock_use) return -1;
 
     for (uint8_t w = 0; w < n_words; w++) words[w] = KPV_KEY_WORD(slot, w);

@@ -7,7 +7,8 @@
  * @brief T022 - Key handle registry unit test
  *
  * Exercises rom_keyreg.h: init, generate, get_slot, get_key_words, get_crc,
- * destroy, reverse map, invalid-handle rejection, and handle exhaustion.
+ * destroy, reverse map, invalid-handle rejection, handle exhaustion, and
+ * rejection of an out-of-range or overrunning key extent.
  *
  * Run with:
  *   make run_fw FW_TEST=test_rom_keyreg
@@ -167,6 +168,40 @@ int main(void) {
         int overflow = rom_keyreg_generate(&reg, 0, 1, 0xFFFFu, (rom_km_dest_bits_t){.raw = 0x04u});
         if (overflow != -1) {
             TEST_FAIL("256th generate should return -1, got %d", overflow);
+        }
+    }
+    TEST_SUBTEST_PASS();
+
+    /* 8. Extent validation: a key the registry could not describe, or one that
+     * would run past the last slot, must be rejected before anything is
+     * recorded. */
+    TEST_SUBTEST_START("Generate rejects an invalid extent");
+    rom_keyreg_init(&reg);
+    {
+        const rom_km_dest_bits_t dest = {.raw = 0x04u};
+
+        if (rom_keyreg_generate(&reg, 0, 0, 0x1u, dest) != -1) {
+            TEST_FAIL("generate with key_words=0 should return -1");
+        }
+        if (rom_keyreg_generate(&reg, 0, (uint8_t)(ROM_KM_MAX_KEY_WORDS + 1), 0x2u, dest) != -1) {
+            TEST_FAIL("generate with key_words>%u should return -1",
+                      (unsigned)ROM_KM_MAX_KEY_WORDS);
+        }
+
+        /* A 128-word key spans 8 slots, so slot 24 is the last legal base. */
+        if (rom_keyreg_generate(&reg, (uint8_t)(ROM_KM_KPV_NUM_SLOTS - 7),
+                                (uint8_t)ROM_KM_MAX_KEY_WORDS, 0x3u, dest) != -1) {
+            TEST_FAIL("generate running past the last slot should return -1");
+        }
+        if (rom_keyreg_generate(&reg, (uint8_t)(ROM_KM_KPV_NUM_SLOTS - 8),
+                                (uint8_t)ROM_KM_MAX_KEY_WORDS, 0x4u, dest) < 1) {
+            TEST_FAIL("generate ending exactly at the last slot should succeed");
+        }
+
+        /* A rejected call must not have consumed a handle or touched the map. */
+        uint8_t slot;
+        if (rom_keyreg_get_slot(&reg, 2, &slot) != -1) {
+            TEST_FAIL("rejected generates should not have allocated handles");
         }
     }
     TEST_SUBTEST_PASS();
