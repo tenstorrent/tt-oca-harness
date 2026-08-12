@@ -1,0 +1,32 @@
+hw/ip/entropy_source/regs/entropy_source.rdl
+  s_42d98e48086972::t_83bbd5ee376e6f 369,373,378,383,388,392,397,402,407,411,416,421,426,430,435,440
+  s_42d98e48086972::t_2b1173afd1de05 291,296-297,301-302
+  s_42d98e48086972::t_a8e2a339f532d9 281
+  s_42d98e48086972::t_f0a8c08645990c 106
+  s_42d98e48086972::t_92d872db3c3083 1133-1134,1138-1139
+  s_42d98e48086972::t_d6f0acf73a1fed 1190-1191,1195-1196
+hw/ip/entropy_source/rtl/entropy_source.sv
+  s_42d98e48086972::t_bec05d234f5cfd 552
+  s_42d98e48086972::t_17a7b24add2440 579
+  s_42d98e48086972::t_e881495bc8046b 593
+  s_42d98e48086972::t_371ece6216a8d8 492-493
+  s_42d98e48086972::t_9ae5e5126777d1 519-524,527-528
+  s_42d98e48086972::t_71ed6cafff8780 619-620
+  s_42d98e48086972::t_98625a161a0ae6 929-930
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a3347c710da1ecda0f622efab1f64778f600ade2",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
