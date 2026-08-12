@@ -507,11 +507,35 @@ Override them with `--wave-retention {all,failed,none}`. Kept wave directories
 include a copied log and `debug_context.json` with viewer and same-seed replay
 commands.
 
+On VCS (both the cocotb make flow and the standalone UVM flow), dumping is
+driven by a generated UCLI script (`scripts/waves.<test>.ucli`, passed as
+`simv -ucli -i`), so no testbench dump hooks are required. `fsdb` needs Verdi:
+the runner resolves `VERDI_HOME` (explicit env first, then derived from `verdi`
+on `PATH`), validates that the chosen root actually ships the FSDB writer
+(`share/PLI/VCS/<platform>/libnovas.so`), exports the validated value to the
+simulation — overriding a stale inherited `VERDI_HOME` — and fails fast with
+the list of checked candidates when none is usable (`vpd` needs no Verdi
+installation). If dump setup still fails inside the simulator, the script
+degrades to a normal wave-less run: the test result is preserved and the
+missing-wave warning fires. On Xcelium, `shm` capture is driven by a generated
+Tcl script (`scripts/waves.<test>.tcl`).
+
 [NOTE]
 ====
-Exact ranged dumping is currently enforced only for Xcelium SHM and VCS FSDB.
-Other backend/format combinations record the requested range and set
-`range_supported` to false.
+Exact ranged dumping is currently enforced only for Xcelium SHM and VCS
+FSDB/VPD (via the generated dump scripts). Other backend/format combinations
+record the requested range and set `range_supported` to false.
+====
+
+[NOTE]
+====
+The standalone UVM/VCS flow gains dump access by elaborating with
+`-debug_access+all` when waves are requested. A waves run that skips
+elaboration (`--stage sim` against a simv built without waves) cannot dump;
+rerun with the elaborate stage included or `--rebuild`. The cocotb make flow
+always compiles with `-debug_access`, so its cached build needs no rebuild.
+If a wave-enabled simulation produces no wave file, the runner prints a
+warning and records it in the run's wave metadata.
 ====
 
 == CLI reference
@@ -920,7 +944,7 @@ The following behaviors are not part of the implemented runner contract:
 * `--max-failures 0` satisfies the current stop condition immediately and
   therefore skips every scheduler leaf. The aggregate currently reports
   `PASS` and exits `0` despite running no tests; use a positive threshold.
-* Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB.
+* Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
 
 Do not infer support for LSF/SLURM, site-local TOML overrides, background jobs,
 or automatically discovered formal flows from architecture documents until
