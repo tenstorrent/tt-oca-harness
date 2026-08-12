@@ -1,0 +1,23 @@
+hw/ip/entropy_source/rtl/entropy_source.sv
+  s_42d98e48086972::t_ba1e62cac67eaf 991,994,996
+  s_42d98e48086972::t_706483f68f662e 1161-1163
+  s_42d98e48086972::t_4b776055be7ecb 988-990,992-993,995,997
+  s_42d98e48086972::t_50d8f39b69ae82 164-165
+  s_42d98e48086972::t_214d9ebadbd398 1176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6c2fabf21b31368f34201051b4313b6a16c96e68",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
