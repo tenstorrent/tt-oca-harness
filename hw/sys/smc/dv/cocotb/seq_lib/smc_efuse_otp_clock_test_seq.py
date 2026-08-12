@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-CLOCK_GATE_CONTROL = 0xC001_0018  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
 CHIP_CONFIG_READS = [
-    ("CHIP_CONFIG_VERSION_LO", 0xC000_2900, 0x0001_00A0),
-    ("CHIP_CONFIG_VERSION_HI", 0xC000_2904, 0),
-    ("CHIP_CONFIG_CHIP_ID", 0xC000_2908, None),
+    ("CHIP_CONFIG_VERSION_LO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR"), 0x0001_00A0),
+    ("CHIP_CONFIG_VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0x4, 0),
+    ("CHIP_CONFIG_CHIP_ID", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0x8, None),
 ]
 
 

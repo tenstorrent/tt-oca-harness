@@ -1,25 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 """P1 coverage-gap: GPIO_CTRL window routing sweep (TC_SMC_P1CG_07).
 
-RTL exposes 68 ``GPIO_CTRL_N`` entries at 0xC000_4440 stride 0x20.
-``smc_ip_integration`` terminates ``axil_req_gpio_ctrl`` with DECERR + 0.
-This sequence proves decode/route into that boundary.
+Sweeps every bootrom ``EXTERNAL_MANDATORY_GPIO_CTRL_N`` CONTROL address.
+``smc_ip_integration`` terminates that window with DECERR + 0.
 """
 
 from __future__ import annotations
 
+from .smc_addr_map import external_gpio_ctrl_addr, external_gpio_ctrl_indices
 from .smc_csr_seq_utils import SmcCsrSeq
-
-_GPIO_CTRL_BASE = 0xC000_4440
-_GPIO_CTRL_STRIDE = 0x20
-_GPIO_CTRL_COUNT = 68
 
 
 class smc_gpio_ctrl_full_sweep_test_seq(SmcCsrSeq):
     async def body(self) -> None:
-        for idx in range(_GPIO_CTRL_COUNT):
-            addr = _GPIO_CTRL_BASE + idx * _GPIO_CTRL_STRIDE
+        idxs = external_gpio_ctrl_indices()
+        for idx in idxs:
+            addr = external_gpio_ctrl_addr(idx)
             await self.csr_read_decerr_zero(f"GPIO_CTRL_{idx}", addr)
-        assert self.accesses == _GPIO_CTRL_COUNT, (
+        assert self.accesses == len(idxs), (
             f"GPIO_CTRL full sweep count mismatch: {self.accesses}"
         )

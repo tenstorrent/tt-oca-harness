@@ -26,6 +26,6 @@ class smc_octs_dual_sync_test(smc_base_test):
             proxy=False,
             details=(
                 "OCTS dual-chiplet: secondary sync-then-credit COUNT + "
-                "primary pad58/59 rising-edge hard-gates"
+                "primary pad55/56 rising-edge hard-gates"
             ),
         )

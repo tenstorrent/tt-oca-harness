@@ -644,10 +644,7 @@ name = "smc_gpio_strap_sanity_test"
 module = "smc_gpio_strap_sanity_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-[[tests]]
-name = "smc_mailbox_int_test"
-module = "smc_mailbox_int_test"
-tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
+# smc_mailbox_int_test → promoted to testlists/smc.toml (SMU_ALL_004 r8 EXT.S2)
 
 [[tests]]
 name = "smc_reset_unit_wdt_scratch_test"

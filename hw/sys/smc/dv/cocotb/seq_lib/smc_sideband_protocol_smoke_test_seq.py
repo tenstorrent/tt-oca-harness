@@ -3,33 +3,32 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Sideband/AVSBus status window: AVS_READBACK is an error-slave window (SLVERR,
-# data=0) on this SEP_IN path until a sideband responder exists; the rest decode
-# and return OKAY with real data. Gate each read deterministically on its
-# expected response so a decode regression (OKAY<->error) fails the test.
+# Authoritative AVSBus window (PeakRDL). Status regs return OKAY; AVS_READBACK
+# is still an error-slave on this SEP_IN path (SLVERR, data=0).
 SIDEBAND_OKAY_READS = [
-    ("AVS_DEBUG_READBACK", 0xC000_8008),
-    ("AVS_NORMAL_STATUS", 0xC000_8020),
-    ("AVS_SLAVE_STATUS", 0xC000_8024),
-    ("AVS_FIFOS_STATUS", 0xC000_8028),
+    ("AVS_DEBUG_READBACK", smc_addr(
+        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR")),
+    ("AVS_NORMAL_STATUS", smc_addr(
+        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR")),
+    ("AVS_SLAVE_STATUS", smc_addr(
+        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_SLAVE_STATUS_BASE_ADDR")),
+    ("AVS_FIFOS_STATUS", smc_addr(
+        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_FIFOS_STATUS_BASE_ADDR")),
 ]
 SIDEBAND_ERR_READS = [
-    ("AVS_READBACK", 0xC000_8004),
+    ("AVS_READBACK", smc_addr(
+        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_READBACK_BASE_ADDR")),
 ]
 
 
 class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
-    """Exercise one OSS-safe sideband CSR window before adding a BFM."""
-
-    def __init__(self, name: str = "smc_sideband_protocol_smoke_test_seq") -> None:
-        super().__init__(name)
-
     async def body(self) -> None:
-        for name, addr in SIDEBAND_OKAY_READS:
-            await self.csr_read(name, addr)
-        for name, addr in SIDEBAND_ERR_READS:
-            await self.csr_read_expect_error(name, addr)
+        for n, addr in SIDEBAND_OKAY_READS:
+            await self.csr_read(n, addr)
+        for n, addr in SIDEBAND_ERR_READS:
+            await self.csr_read_expect_error(n, addr)
         total = len(SIDEBAND_OKAY_READS) + len(SIDEBAND_ERR_READS)
         assert self.accesses == total, "sideband CSR precheck mismatch"

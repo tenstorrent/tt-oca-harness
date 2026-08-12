@@ -157,9 +157,12 @@ run_modes = ["smoke"]
 # {repo_root} paths: simulator cwd is attempt_*/make, not the repo root.
 # SMC_002 card: real fuse sense (no +skip_fuse_sense); ROM-only boot
 # (no +smc_scratch_ram_hex) so CHK-ROM-IS-TARGET / CHK-EFUSE-SENSE-DONE hold.
-# +smc_hold_cpu_boot: keep pad60 boot_stall from t=0 until the sequence
+# +smc_hold_cpu_boot: keep pad57 boot_stall from t=0 until the sequence
 # programs RESET_VECTOR then releases (prevents fetch before revector).
 # min_pass.rom.hex: sync-free RV64 stub at ROM window (writes 0xACAFACA1).
+# Both +rom_hex and +smc_rom_hex point at min_pass so the smoke-mode
+# default smc_rom_default.hex cannot remain the sole identity (OCAH loads
+# the first +rom_hex; smc_cpu_mem_integration then prefers +smc_rom_hex).
 # (main #172 c_compile hello_world.ecc.scratch path intentionally not used.)
 args = [
     "+smc_hold_cpu_boot",
@@ -199,7 +202,14 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "vplan_gap", "p2_phase_b", "u7_ecc", "pyuvm"]
 run_modes = ["smoke"]
-args = ["+skip_fuse_sense"]
+# Scratch-bank0 inject fire needs live CPU fetch of a preloaded scratch image.
+# Hold boot until the seq arms inject + programs the scratch reset vector.
+args = [
+    "+skip_fuse_sense",
+    "+smc_hold_cpu_boot",
+    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+    "+smc_scratch_ram_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.ecc.hex",
+]
 
 # smc_dfd_dbs_fault_inject_test moved to deferred.toml (tb_glue / not_dut_rtl).
 # Kept out of vplan_gaps CI — TB latches 0xDB5C_AFE1, does not exercise smc_dfd_wrap.
