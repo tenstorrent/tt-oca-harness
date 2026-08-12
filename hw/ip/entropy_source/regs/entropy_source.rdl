@@ -103,7 +103,7 @@ addrmap entropy_source {
         field {
             sw = rw;
             hw = r;
-            desc = "Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved/padding. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved/padding. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved/padding. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved/padding.";
+            desc = "Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved — outputs constant 0. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved — outputs constant 0. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved — outputs constant 0. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved — outputs constant 0. Reserved selections select constant zero at the signal mux output; the ripple-divider internal state is preserved across selector changes.";
         } SELECT_SIGNAL[7:0] = 0x0;
         field {
             sw = rw;
@@ -278,7 +278,7 @@ addrmap entropy_source {
         field {
             sw = rw;
             hw = r;
-            desc = "Entropy Churning Mode Enable. When asserted high, incoming entropy data is XORed with existing FIFO data located at (write_ptr + DEPTH/2) % DEPTH before being written. This creates a circular feedback churning pattern where new entropy is combined with entropy from halfway around the FIFO buffer (16 entries earlier for DEPTH=32). Churning operation: write_data = incoming_data XOR mem[(wptr + 16) % 32]. Purpose: Enhance entropy quality through continuous churning of fresh randomness with accumulated randomness. Useful for additional conditioning and resistance to entropy source degradation. Default=0 (disabled, direct write without churning).";
+            desc = "Entropy Churning Mode Enable. When asserted high, incoming entropy data is XORed with existing FIFO data located at (write_ptr + DEPTH/2) % DEPTH before being written. This creates a circular feedback churning pattern where new entropy is combined with entropy from halfway around the FIFO buffer (32 entries earlier for DEPTH=64). Churning operation: write_data = incoming_data XOR mem[(wptr + 32) % 64]. Purpose: Enhance entropy quality through continuous churning of fresh randomness with accumulated randomness. Useful for additional conditioning and resistance to entropy source degradation. Default=0 (disabled, direct write without churning).";
             swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
         } ENTROPY_CHURN_ENABLE[4:4] = 0x0;
     };
@@ -288,18 +288,18 @@ addrmap entropy_source {
         field {
             sw = r;
             hw = w;
-            desc = "Fill Level. Number of valid 32-bit entropy words currently in FIFO (0-32). Poll this field to determine when data is available for reading. LEVEL=0 means FIFO empty, LEVEL=32 means FIFO full.";
+            desc = "Fill Level. Number of valid 32-bit entropy words currently in FIFO (0-64). Poll this field to determine when data is available for reading. LEVEL=0 means FIFO empty, LEVEL=64 means FIFO full.";
         } LEVEL[6:0] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Write Pointer. Current FIFO write address (0-31). Updated by hardware when entropy data is pushed. Read-only for software.";
-        } WPTR[12:8] = 0x0;
+            desc = "Write Pointer. Current FIFO write address (0-63). Updated by hardware when entropy data is pushed. Read-only for software.";
+        } WPTR[13:8] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Read Pointer. Current FIFO read address (0-31). Updated by hardware when FIFO_RDATA is read. Read-only for software.";
-        } RPTR[20:16] = 0x0;
+            desc = "Read Pointer. Current FIFO read address (0-63). Updated by hardware when FIFO_RDATA is read. Read-only for software.";
+        } RPTR[21:16] = 0x0;
     };
 
     reg FIFO_RDATA {
@@ -366,78 +366,78 @@ addrmap entropy_source {
     };
 
     reg APT_PATTERN_COUNT_1BIT {
-        desc = "Adaptive Proportion Test (APT) 1-bit Pattern Count (real-time statistics)";
+        desc = "Adaptive Proportion Test (APT) 1-bit statistics: high one-count (apt_test_cnt_hi from entropy_health_test). Exposes the per-window maximum one-count observed in the 1-bit path. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.";
         field {
             sw = r;
             hw = w;
-            desc = "Current count of the most frequently occurring 1-bit pattern in the sliding 512-sample window. For good entropy, expect ~256 (50% of 512). Values >280 indicate potential bias. Compare to APT_PROPORTION_1BIT.LIMIT. Updates continuously as window slides. Widened to 16-bit to support full counter range.";
+            desc = "APT high one-count for the 1-bit pattern: apt_test_cnt_hi (maximum one-count observed in the current window). Updates at window boundaries. For good entropy expect ~half the window size.";
         } PATTERN_COUNT[15:0] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Current 1-bit target pattern being tracked (0 or 1). Hardware automatically selects the most common pattern. Read to identify which bit value is dominant.";
+            desc = "Not implemented. Reads zero. (RTL ties apt_target_pattern_1bit_o to 4'd0.)";
         } TARGET_PATTERN[19:16] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Number of 1-bit samples processed in current window (0-512). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 512.";
+            desc = "Not implemented. Reads zero. (RTL ties apt_samples_processed_1bit_o to 10'd0.)";
         } SAMPLES_PROCESSED[29:20] = 0x0;
     };
 
     reg APT_PATTERN_COUNT_2BIT {
-        desc = "Adaptive Proportion Test (APT) 2-bit Pattern Count (real-time statistics)";
+        desc = "Adaptive Proportion Test (APT) 2-bit statistics: low one-count (apt_test_cnt_lo from entropy_health_test). Exposes the per-window minimum one-count observed in the 2-bit path. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.";
         field {
             sw = r;
             hw = w;
-            desc = "Current count of the most frequently occurring 2-bit pattern in the sliding 256-sample window. For good entropy, expect ~64 (25% of 256). Values >75 indicate potential bias. Compare to APT_PROPORTION_2BIT.LIMIT. Updates continuously as window slides. Widened to 16-bit to support full counter range.";
+            desc = "APT low one-count for the 2-bit pattern: apt_test_cnt_lo (minimum one-count observed in the current window). Updates at window boundaries.";
         } PATTERN_COUNT[15:0] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Current 2-bit target pattern being tracked (0b00, 0b01, 0b10, or 0b11). Hardware automatically selects the most common pattern. Read to identify which 2-bit value is dominant.";
+            desc = "Not implemented. Reads zero. (RTL ties apt_target_pattern_2bit_o to 4'd0.)";
         } TARGET_PATTERN[19:16] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Number of 2-bit samples processed in current window (0-256). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 256.";
+            desc = "Not implemented. Reads zero. (RTL ties apt_samples_processed_2bit_o to 10'd0.)";
         } SAMPLES_PROCESSED[29:20] = 0x0;
     };
 
     reg APT_PATTERN_COUNT_3BIT {
-        desc = "Adaptive Proportion Test (APT) 3-bit Pattern Count (real-time statistics)";
+        desc = "APT 3-bit statistics register. PATTERN_COUNT, TARGET_PATTERN, and SAMPLES_PROCESSED are not implemented and all read zero. (RTL ties apt_pattern_count_3bit_o, apt_target_pattern_3bit_o, and apt_samples_processed_3bit_o to 0.)";
         field {
             sw = r;
             hw = w;
-            desc = "Current count of the most frequently occurring 3-bit pattern in the sliding 170-sample window. For good entropy, expect ~21 (12.5% of 170). Values >28 indicate potential bias. Compare to APT_PROPORTION_3BIT.LIMIT. Updates continuously as window slides.";
+            desc = "Not implemented. Reads zero.";
         } PATTERN_COUNT[9:0] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Current 3-bit target pattern being tracked (0b000 through 0b111). Hardware automatically selects the most common pattern. Read to identify which 3-bit value is dominant.";
+            desc = "Not implemented. Reads zero.";
         } TARGET_PATTERN[13:10] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Number of 3-bit samples processed in current window (0-170). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 170.";
+            desc = "Not implemented. Reads zero.";
         } SAMPLES_PROCESSED[29:20] = 0x0;
     };
 
     reg APT_PATTERN_COUNT_4BIT {
-        desc = "Adaptive Proportion Test (APT) 4-bit Pattern Count (real-time statistics)";
+        desc = "APT 4-bit statistics register. PATTERN_COUNT, TARGET_PATTERN, and SAMPLES_PROCESSED are not implemented and all read zero. (RTL ties apt_pattern_count_4bit_o, apt_target_pattern_4bit_o, and apt_samples_processed_4bit_o to 0.)";
         field {
             sw = r;
             hw = w;
-            desc = "Current count of the most frequently occurring 4-bit pattern in the sliding 128-sample window. For good entropy, expect ~8 (6.25% of 128). Values >12 indicate potential bias. Compare to APT_PROPORTION_4BIT.LIMIT. Updates continuously as window slides.";
+            desc = "Not implemented. Reads zero.";
         } PATTERN_COUNT[9:0] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Current 4-bit target pattern being tracked (0x0 through 0xF). Hardware automatically selects the most common pattern. Read to identify which 4-bit value is dominant.";
+            desc = "Not implemented. Reads zero.";
         } TARGET_PATTERN[13:10] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Number of 4-bit samples processed in current window (0-128). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 128.";
+            desc = "Not implemented. Reads zero.";
         } SAMPLES_PROCESSED[29:20] = 0x0;
     };
 
@@ -1130,13 +1130,13 @@ addrmap entropy_source {
         field {
             sw = r;
             hw = w;
-            desc = "Write pointer. Current BIW observe FIFO write address. Updated by hardware when a post-BIW word is pushed. Read-only.";
-        } WPTR[12:8] = 5'h0;
+            desc = "Write pointer. Current BIW observe FIFO write address (0-63). Updated by hardware when a post-BIW word is pushed. Read-only.";
+        } WPTR[13:8] = 6'h0;
         field {
             sw = r;
             hw = w;
-            desc = "Read pointer. Current BIW observe FIFO read address. Updated by hardware when BIW_OBS_RDATA is read. Read-only.";
-        } RPTR[20:16] = 5'h0;
+            desc = "Read pointer. Current BIW observe FIFO read address (0-63). Updated by hardware when BIW_OBS_RDATA is read. Read-only.";
+        } RPTR[21:16] = 6'h0;
     };
 
     // External read-data register: reading pops one word from the BIW observe
@@ -1187,13 +1187,13 @@ addrmap entropy_source {
         field {
             sw = r;
             hw = w;
-            desc = "Write pointer. Current raw-noise observe FIFO write address. Updated by hardware when a packed raw word is pushed. Read-only.";
-        } WPTR[12:8] = 5'h0;
+            desc = "Write pointer. Current raw-noise observe FIFO write address (0-63). Updated by hardware when a packed raw word is pushed. Read-only.";
+        } WPTR[13:8] = 6'h0;
         field {
             sw = r;
             hw = w;
-            desc = "Read pointer. Current raw-noise observe FIFO read address. Updated by hardware when NOISE_OBS_RDATA is read. Read-only.";
-        } RPTR[20:16] = 5'h0;
+            desc = "Read pointer. Current raw-noise observe FIFO read address (0-63). Updated by hardware when NOISE_OBS_RDATA is read. Read-only.";
+        } RPTR[21:16] = 6'h0;
     };
 
     // External read-data register: reading pops one word from the raw-noise
