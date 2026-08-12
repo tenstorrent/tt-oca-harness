@@ -23,6 +23,20 @@
 #     real `dtp` top-level ports; constraints below are modeled on their
 #     nearest siblings (`stop_clks_o` and the SMC block's JTAG_TCK-domain DFT
 #     ports, respectively).
+#   - CDC crossings are NOT bounded by this file. The flow bounds every
+#     crossing in two layers: asynchronous clock groups declared with
+#     `-allow_paths` plus a loose default max_delay per inter-group clock
+#     pair, and a per-instance `set_max_delay` on each synchronizer and async
+#     FIFO. Neither layer is reproduced here -- the per-instance layer is
+#     generated against the block hierarchy and must be regenerated whenever
+#     the RTL changes, so a copy in this file would go stale silently.
+#     Note that `set_clock_groups -asynchronous` below is the bare form:
+#     `set_false_path` outranks `set_max_delay` in exception priority, so if
+#     this SDC ever becomes a real STA/P&R input, that line needs
+#     `-allow_paths` or it will mask every per-instance bound.
+#     The DTP async groups also need the JTAG_TCK passthrough clocks
+#     (`JTAG_TCK_*`) grouped with JTAG_TCK; the flow does this, this file
+#     does not. See "CDC Timing Constraints" in the Integrator Guide.
 #-----------------------------------------------------------------------------
 
 ##################

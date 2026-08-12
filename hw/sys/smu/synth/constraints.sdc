@@ -51,6 +51,20 @@
 #     primitive instance called `div_clk`), so the pin only resolves
 #     post-synthesis once technology mapping assigns it a cell name; it will
 #     not resolve against the elaborated RTL.
+#   - CDC crossings are NOT bounded by this file. The flow bounds every
+#     crossing in two layers: asynchronous clock groups declared with
+#     `-allow_paths` plus a loose default max_delay per inter-group clock
+#     pair, and a per-instance `set_max_delay` on each synchronizer and async
+#     FIFO. Neither layer is reproduced here -- the per-instance layer is
+#     generated against the block hierarchy and must be regenerated whenever
+#     the RTL changes, so a copy in this file would go stale silently. This
+#     is separate from the CDC/RDC signoff notes above, which concern how
+#     individual crossings are modeled or waived, not how they are bounded.
+#     Note that `set_clock_groups -asynchronous` below is the bare form:
+#     `set_false_path` outranks `set_max_delay` in exception priority, so if
+#     this SDC ever becomes a real STA/P&R input, that line needs
+#     `-allow_paths` or it will mask every per-instance bound.
+#     See "CDC Timing Constraints" in the Integrator Guide.
 #-----------------------------------------------------------------------------
 
 ##################
@@ -395,14 +409,6 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smu_axi_out_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smu_axi_out_resp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_pll_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_pll_resp_i*}] -add_delay
-
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_pvt_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_pvt_resp_i*}] -add_delay
-
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_req_gpio_ctrl_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_resp_gpio_ctrl_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_external_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_external_resp_i*}] -add_delay

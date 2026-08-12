@@ -15,7 +15,7 @@
 # (e.g. OpenROAD/OpenSTA) is added to the flow. See
 # flows/synth/yosys/README.md for the rationale.
 #
-# Known limitation, called out explicitly:
+# Known limitations, called out explicitly:
 #   - The entropy clock-tree section below (ENTROPY_ROSC_CLK /
 #     ENTROPY_SHARED_RO / per-tap generated clocks) targets post-synthesis
 #     standard-cell instances by hierarchical path and by cell reference name
@@ -26,6 +26,18 @@
 #     section is kept as documentation of the intended clock topology for
 #     whichever technology/EDA flow eventually implements it, not as a
 #     constraint that resolves against this repo's RTL or PDK today.
+#   - CDC crossings are NOT bounded by this file. The flow bounds every
+#     crossing in two layers: asynchronous clock groups declared with
+#     `-allow_paths` plus a loose default max_delay per inter-group clock
+#     pair, and a per-instance `set_max_delay` on each synchronizer and async
+#     FIFO. Neither layer is reproduced here -- the per-instance layer is
+#     generated against the block hierarchy and must be regenerated whenever
+#     the RTL changes, so a copy in this file would go stale silently.
+#     Note that `set_clock_groups -asynchronous` below is the bare form:
+#     `set_false_path` outranks `set_max_delay` in exception priority, so if
+#     this SDC ever becomes a real STA/P&R input, that line needs
+#     `-allow_paths` or it will mask every per-instance bound.
+#     See "CDC Timing Constraints" in the Integrator Guide.
 #-----------------------------------------------------------------------------
 
 ##################
