@@ -2,7 +2,8 @@
 #
 # Profile naming uses <runner>-<framework>: this file is the native runner's UVM profile. A DUT
 # opts in with `profile = "native-uvm"` and carries only its local launch content. The UVM
-# library comes from the simulator itself (`-ntb_opts uvm`), selected by `framework = "uvm"`.
+# library comes from the simulator itself: the VCS analyze stage precompiles it with a dedicated
+# `vlogan -ntb_opts uvm` invocation before analyzing user sources.
 
 kind = "dv"
 framework = "uvm"
@@ -54,7 +55,8 @@ defines = [
 ]
 
 [target_defaults.default.tools.vcs]
-# -sverilog/-full64/-ntb_opts uvm/-timescale come from the vcs_* stage preamble.
+# -sverilog/-full64/-ntb_opts uvm/-timescale come from the vcs_* stage preamble; the analyze stage
+# also precompiles the simulator-owned UVM package before this source set.
 flags = []
 
 [native]

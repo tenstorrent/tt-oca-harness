@@ -18,6 +18,16 @@ testbenches. Tests import OCAH classes and plain dataclasses; backend
 `cocotbext-jtag` is pinned in `pyproject.toml` as `>=0.4.0,<0.5`. Installed
 package metadata for version 0.4.0 reports license `MIT`.
 
+## Pin Timing
+
+The active cocotb and UVM drivers use the same IEEE 1149.1 cycle contract:
+drive TMS/TDI while TCK is low, sample TDO in that low phase before the rising
+edge, then raise TCK so the target captures inputs and advances its TAP state.
+Sampling after the rising edge is invalid on the final scan bit because that
+edge also exits `SHIFT_IR` or `SHIFT_DR`. The cocotb driver samples in the
+`ReadOnly` phase and advances to the next timestep before driving TCK, avoiding
+simulator-dependent stale reads.
+
 ## Cocotb Checker Evidence
 
 `OcahJtagChecker` retains its IEEE 1149.1 item checks and composes the shared
@@ -253,6 +263,7 @@ python3 tools/dv/run_dv.py --doctor --dut dtp
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_sample_preload_test --tool vcs
 ```
 
 ## Scope
