@@ -24,7 +24,7 @@
  *
  *
  * @param ROM_SIZE_BYTES       ROM size in bytes (default 16 KB).
- * @param SRAM_SIZE_BYTES      SRAM size in bytes (default 16 KB).
+ * @param SRAM_SIZE_BYTES      SRAM size in bytes (default 32 KB).
  * @param MAILBOX_DEPTH        Words per FIFO direction (default 16).
  * @param LATCHED_MEM_RDATA    Set to 1 if ROM/SRAM latch read data for
  *                             look-ahead optimization.
@@ -35,7 +35,7 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
     // Parameters
     //=========================================================================
     parameter int unsigned ROM_SIZE_BYTES   = 16384,  // 16KB ROM
-    parameter int unsigned SRAM_SIZE_BYTES  = 16384,  // 16KB SRAM
+    parameter int unsigned SRAM_SIZE_BYTES  = 32768,  // 32KB SRAM
     parameter int unsigned MAILBOX_DEPTH    = 16,     // Words per FIFO direction
     // LATCHED_MEM_RDATA: Set to 1 if ROM/SRAM latch read data (data stays valid after request deasserts)
     //                    Set to 0 if memory read data is only valid when rvalid is asserted
@@ -153,8 +153,11 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
     //=========================================================================
     // Constitution VI: Parameter validation with ASSERT_INIT
 
-    `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == 16384)
-    `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == 16384)
+    // Pinned against the address map rather than a literal: the memory sizes and
+    // the decode ranges have to agree, and the map is the one that also feeds the
+    // write-lock and exec region indices.
+    `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::ROM_SIZE_BYTES)
+    `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SRAM_SIZE_BYTES)
     `OCAH_OT_ASSERT_INIT(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
     `OCAH_OT_ASSERT_INIT(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
 

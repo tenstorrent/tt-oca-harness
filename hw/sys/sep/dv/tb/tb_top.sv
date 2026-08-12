@@ -757,7 +757,7 @@ module sep_uvm_top
     initial begin : backdoor_default_fill_nonzero
         for (int i = 0; i < 4096; i++)
             `SEP_IPI.u_km_rom.mem[i] = {bd_km_word_parity(32'h0000_0013), 32'h0000_0013};
-        for (int i = 0; i < 4096; i++)
+        for (int i = 0; i < 8192; i++)
             `SEP_IPI.u_km_sram.gen_ram_inst[0].u_mem.mem[i] = {4'hF, 32'h0};
         for (int i = 0; i < 4096; i++)
             `SEP_IPI.u_otbn_imem_sram.mem[i] = BD_OTBN_ZERO;

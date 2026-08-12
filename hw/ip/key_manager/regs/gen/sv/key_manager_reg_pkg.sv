@@ -14,24 +14,6 @@ package key_manager_reg_pkg;
         logic rd_ack;
         logic [31:0] rd_data;
         logic wr_ack;
-    } km_kpv__external__in_t;
-
-    typedef struct {
-        logic rd_ack;
-        logic [31:0] rd_data;
-        logic wr_ack;
-    } km_csr__external__in_t;
-
-    typedef struct {
-        logic rd_ack;
-        logic [31:0] rd_data;
-        logic wr_ack;
-    } km_drbg_sampler__external__in_t;
-
-    typedef struct {
-        logic rd_ack;
-        logic [31:0] rd_data;
-        logic wr_ack;
     } km_mailbox_km__external__in_t;
 
     typedef struct {
@@ -51,6 +33,24 @@ package key_manager_reg_pkg;
         logic [31:0] rd_data;
         logic wr_ack;
     } efuse_mmr__external__in_t;
+
+    typedef struct {
+        logic rd_ack;
+        logic [31:0] rd_data;
+        logic wr_ack;
+    } km_kpv__external__in_t;
+
+    typedef struct {
+        logic rd_ack;
+        logic [31:0] rd_data;
+        logic wr_ack;
+    } km_csr__external__in_t;
+
+    typedef struct {
+        logic rd_ack;
+        logic [31:0] rd_data;
+        logic wr_ack;
+    } km_drbg_sampler__external__in_t;
 
     typedef struct {
         logic rd_ack;
@@ -83,43 +83,19 @@ package key_manager_reg_pkg;
     } abr_wrapper_key__external__in_t;
 
     typedef struct {
-        km_kpv__external__in_t kpv;
-        km_csr__external__in_t kmcsr;
-        km_drbg_sampler__external__in_t drbg_sampler;
         km_mailbox_km__external__in_t mailbox_km;
         sep_efuse_map__external__in_t otp_efuse_map;
         efuse_interface_ctrl__external__in_t otp_efuse_ctrl;
         efuse_mmr__external__in_t otp_efuse_mmr;
+        km_kpv__external__in_t kpv;
+        km_csr__external__in_t kmcsr;
+        km_drbg_sampler__external__in_t drbg_sampler;
         otbn_wrapper_key__external__in_t otbn_wrapper_key;
         aes_wrapper_key__external__in_t aes_wrapper_key;
         kmac_wrapper_key__external__in_t kmac_wrapper_key;
         hmac_wrapper_key__external__in_t hmac_wrapper_key;
         abr_wrapper_key__external__in_t abr_wrapper_key;
     } key_manager__in_t;
-
-    typedef struct {
-        logic req;
-        logic [11:0] addr;
-        logic req_is_wr;
-        logic [31:0] wr_data;
-        logic [31:0] wr_biten;
-    } km_kpv__external__out_t;
-
-    typedef struct {
-        logic req;
-        logic [9:0] addr;
-        logic req_is_wr;
-        logic [31:0] wr_data;
-        logic [31:0] wr_biten;
-    } km_csr__external__out_t;
-
-    typedef struct {
-        logic req;
-        logic [3:0] addr;
-        logic req_is_wr;
-        logic [31:0] wr_data;
-        logic [31:0] wr_biten;
-    } km_drbg_sampler__external__out_t;
 
     typedef struct {
         logic req;
@@ -152,6 +128,30 @@ package key_manager_reg_pkg;
         logic [31:0] wr_data;
         logic [31:0] wr_biten;
     } efuse_mmr__external__out_t;
+
+    typedef struct {
+        logic req;
+        logic [12:0] addr;
+        logic req_is_wr;
+        logic [31:0] wr_data;
+        logic [31:0] wr_biten;
+    } km_kpv__external__out_t;
+
+    typedef struct {
+        logic req;
+        logic [9:0] addr;
+        logic req_is_wr;
+        logic [31:0] wr_data;
+        logic [31:0] wr_biten;
+    } km_csr__external__out_t;
+
+    typedef struct {
+        logic req;
+        logic [3:0] addr;
+        logic req_is_wr;
+        logic [31:0] wr_data;
+        logic [31:0] wr_biten;
+    } km_drbg_sampler__external__out_t;
 
     typedef struct {
         logic req;
@@ -194,13 +194,13 @@ package key_manager_reg_pkg;
     } abr_wrapper_key__external__out_t;
 
     typedef struct {
-        km_kpv__external__out_t kpv;
-        km_csr__external__out_t kmcsr;
-        km_drbg_sampler__external__out_t drbg_sampler;
         km_mailbox_km__external__out_t mailbox_km;
         sep_efuse_map__external__out_t otp_efuse_map;
         efuse_interface_ctrl__external__out_t otp_efuse_ctrl;
         efuse_mmr__external__out_t otp_efuse_mmr;
+        km_kpv__external__out_t kpv;
+        km_csr__external__out_t kmcsr;
+        km_drbg_sampler__external__out_t drbg_sampler;
         otbn_wrapper_key__external__out_t otbn_wrapper_key;
         aes_wrapper_key__external__out_t aes_wrapper_key;
         kmac_wrapper_key__external__out_t kmac_wrapper_key;

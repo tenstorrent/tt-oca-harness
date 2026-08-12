@@ -10,23 +10,24 @@
  *          memory interface (km_sram_mem_req_t / km_sram_mem_rsp_t).
  *
  *          Features:
- *          - Optional address/data scrambling via scrambler_4096x32 (controlled
+ *          - Optional address/data scrambling via scrambler_8192x32 (controlled
  *            by scrambler_key_i / scrambler_en_i from KMCSR).
  *          - Odd-parity generation on the write path and checking on the read
  *            path (parity computed before scrambling).
- *          - Per-region write-lock (512 bytes/region): writes to a locked
- *            region are silently dropped and a one-hot violation
+ *          - Per-region write-lock (SRAM_LOCK_REGION_BYTES per region): writes
+ *            to a locked region are silently dropped and a one-hot violation
  *            pulse is reported to KMCSR.
  *          - PicoRV32 look-ahead prefetch support for pipelined SRAM.
  *
  *
  * @param SRAM_ADDR_WIDTH       Word-address width for the SRAM.
- * @param SRAM_NUM_LOCK_REGIONS Number of 512-byte write-lock regions.
+ * @param SRAM_NUM_LOCK_REGIONS Number of write-lock regions.
  */
 
 module km_sram_interface import km_intf_pkg::*; import scrambler_pkg::*; #(
     parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,
-    parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS  // SRAM_SIZE_BYTES / 512
+    // SRAM_SIZE_BYTES / SRAM_LOCK_REGION_BYTES
+    parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS
 ) (
     // Clock and Reset
     input  logic   clk_i,
@@ -54,7 +55,7 @@ module km_sram_interface import km_intf_pkg::*; import scrambler_pkg::*; #(
     input  logic [31:0] scrambler_key_i,  // Scrambler key
     input  logic   scrambler_en_i,   // Scrambler enable
 
-    // SRAM write-lock (from KMCSR): bit[i]=1 locks region i (512 bytes each)
+    // SRAM write-lock (from KMCSR): bit[i]=1 locks region i
     input  logic [SRAM_NUM_LOCK_REGIONS-1:0] sram_lock_bits_i,
 
     // Parity error output (to KMCSR)
@@ -86,13 +87,17 @@ module km_sram_interface import km_intf_pkg::*; import scrambler_pkg::*; #(
     ////////////////////////////////////////////////////////////////////////////
     // Write-Lock Check
     ////////////////////////////////////////////////////////////////////////////
-    // Region index: region r = [SRAM_BASE + r*512, SRAM_BASE + (r+1)*512).
-    // SRAM base is 0x4000 (16KB-aligned), so word_addr = mem_addr_i[13:2] is already
-    // 0-based within the 16KB window. Each region is 128 words (2^7); region = word_addr >> 7.
+    // Region index: region r covers
+    // [SRAM_BASE + r*SRAM_LOCK_REGION_BYTES, SRAM_BASE + (r+1)*SRAM_LOCK_REGION_BYTES).
+    // The SRAM base is naturally aligned to its own size, so word_addr is already
+    // 0-based within the window and the region index is just its high bits.
     /** @brief Bits needed to index a write-lock region. */
     localparam int unsigned SRAM_LOCK_REGION_ADDR_W = $clog2(SRAM_NUM_LOCK_REGIONS);
+    /** @brief Word-address bits consumed by one write-lock region. */
+    localparam int unsigned SRAM_LOCK_REGION_WORD_W =
+        $clog2(km_intf_pkg::SRAM_LOCK_REGION_BYTES / (KM_MEM_DATA_WIDTH / 8));
     logic [SRAM_LOCK_REGION_ADDR_W-1:0] write_region;
-    assign write_region = (word_addr >> 7);  // 128 words per region; low bits index region
+    assign write_region = (word_addr >> SRAM_LOCK_REGION_WORD_W);
 
     logic write_to_locked_region;
     assign write_to_locked_region = is_write_request && sram_lock_bits_i[write_region];
@@ -185,7 +190,7 @@ module km_sram_interface import km_intf_pkg::*; import scrambler_pkg::*; #(
     logic [SRAM_ADDR_WIDTH-1:0] scrambled_addr;
     logic [31:0] scrambled_write_data;
 
-    scrambler_4096x32 #(
+    scrambler_8192x32 #(
         .ADDR_WIDTH(SRAM_ADDR_WIDTH),
         .DATA_WIDTH(32),
         .BYTE_WISE(1)
@@ -200,7 +205,7 @@ module km_sram_interface import km_intf_pkg::*; import scrambler_pkg::*; #(
         .read_data_o           ()
     );
 
-    scrambler_4096x32 #(
+    scrambler_8192x32 #(
         .ADDR_WIDTH(SRAM_ADDR_WIDTH),
         .DATA_WIDTH(32),
         .BYTE_WISE(1)

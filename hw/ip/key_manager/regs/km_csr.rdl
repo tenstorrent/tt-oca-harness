@@ -575,7 +575,7 @@ addrmap km_csr {
     scrambler_ctrl_reg SCRAMBLER_CTRL @ 0x018;
 
     //=========================================================================
-    // SRAM_LOCK Register (0x01C) - Write-1-only, one bit per 512-byte region
+    // SRAM_LOCK Register (0x01C) - Write-1-only, one bit per 1 KB region
     //=========================================================================
     // Native SystemRDL woset: writing 1 sets the bit, writing 0 has no effect.
     // Warm-reset domain: cleared by a warm or cold reset. The ROM is responsible
@@ -583,11 +583,11 @@ addrmap km_csr {
     // handing control to mutable firmware.
     reg sram_lock_reg {
         name = "SRAM_LOCK";
-        desc = "SRAM write-lock bits. Bit[i]=1 locks region i (512 bytes each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.";
+        desc = "SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.";
 
         field {
             name = "LOCK_BITS";
-            desc = "One bit per 512-byte SRAM region. Region 0 = 0x4000-0x41FF, region 31 = 0x7E00-0x7FFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
+            desc = "One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
             sw = rw;
             onwrite = woset;
             hw = r;   // Hardware only reads; storage is updated by SW woset

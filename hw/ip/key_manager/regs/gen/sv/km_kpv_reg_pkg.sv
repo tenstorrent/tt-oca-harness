@@ -7,8 +7,8 @@
 package km_kpv_reg_pkg;
 
     localparam KM_KPV_REG_DATA_WIDTH = 32;
-    localparam KM_KPV_REG_MIN_ADDR_WIDTH = 12;
-    localparam KM_KPV_REG_SIZE = 'h888;
+    localparam KM_KPV_REG_MIN_ADDR_WIDTH = 13;
+    localparam KM_KPV_REG_SIZE = 'h1108;
 
     typedef struct {
         logic rd_ack;
@@ -60,8 +60,8 @@ package km_kpv_reg_pkg;
 
     typedef struct {
         logic WARM_RST_N;
-        km_kpv__key_entry_rf__external__in_t KEY_ENTRY[32];
-        km_kpv__ctrl_reg__in_t CTRL[32];
+        km_kpv__key_entry_rf__external__in_t KEY_ENTRY[64];
+        km_kpv__ctrl_reg__in_t CTRL[64];
         km_kpv__kpv_scrambler_key_reg__in_t KPV_SCRAMBLER_KEY;
         km_kpv__kpv_scrambler_ctrl_reg__in_t KPV_SCRAMBLER_CTRL;
     } km_kpv__in_t;
@@ -114,8 +114,8 @@ package km_kpv_reg_pkg;
     } km_kpv__kpv_scrambler_ctrl_reg__out_t;
 
     typedef struct {
-        km_kpv__key_entry_rf__external__out_t KEY_ENTRY[32];
-        km_kpv__ctrl_reg__out_t CTRL[32];
+        km_kpv__key_entry_rf__external__out_t KEY_ENTRY[64];
+        km_kpv__ctrl_reg__out_t CTRL[64];
         km_kpv__kpv_scrambler_key_reg__out_t KPV_SCRAMBLER_KEY;
         km_kpv__kpv_scrambler_ctrl_reg__out_t KPV_SCRAMBLER_CTRL;
     } km_kpv__out_t;

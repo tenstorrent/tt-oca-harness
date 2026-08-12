@@ -6,7 +6,7 @@
  * @file km_kpv_regfile.sv
  * @brief Single-write, single-read register file for KPV key data storage.
  *
- * @details Stores 512 entries of 32-bit data (32 slots x 16 words per slot).
+ * @details Stores NUM_SLOTS x WORDS_PER_SLOT entries of DATA_WIDTH bits.
  *          - Write port: KM (Key Manager CPU).
  *          - Read port: KM only (combinational, zero-latency).
  *

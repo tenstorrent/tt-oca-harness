@@ -185,9 +185,6 @@ package km_intf_pkg;
 
     /**
      * @brief SRAM write-lock granularity: 1 KB per lockable region.
-     *
-     * Chosen so that a 32 KB SRAM yields exactly 32 regions, keeping the
-     * SRAM_LOCK and SRAM_WRITE_LOCK_VIOLATION masks inside one 32-bit register.
      */
     localparam int unsigned SRAM_LOCK_REGION_BYTES = 1024;
     localparam int unsigned SRAM_NUM_LOCK_REGIONS  = SRAM_SIZE_BYTES / SRAM_LOCK_REGION_BYTES;
@@ -246,4 +243,3 @@ package km_intf_pkg;
     } km_otp_data_t;
 
 endpackage : km_intf_pkg
-
