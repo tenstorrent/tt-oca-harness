@@ -132,7 +132,6 @@ hw/sys/dtp/dv/
     DTP_RESEARCH.md
   tb/
     tb_top.sv
-    verilator_stubs/
   env/
     dtp_env.py
     dtp_env_cfg.py
@@ -287,22 +286,12 @@ Python-side functional observations in the PyUVM environment and rely on
 commercial simulators for SV covergroups, assertion coverage, and full code
 coverage. See `DTP_FCOV.adoc`.
 
-=== Verilator Stubs
+=== Canonical RTL Selection
 
-`tb/verilator_stubs/` contains:
-
-[cols=",",options="header",]
-|===
-|Stub |Purpose
-|`prim_sync2.sv` |Maps the public synchronizer wrapper to legacy port naming
-|`cross_trigger_port_reg.sv` |Replaces generated CTP CSR block for Verilator
-|`cross_trigger_matrix_reg.sv` |Replaces generated CTM CSR block for Verilator
-|===
-
-The CSR stubs complete no real CSR behavior and drive hardware outputs inactive.
-Functional XTRIG CSR, CTP, and CTM tests must remove these stubs and use a
-commercial simulator, or replace the generated blocks with a Verilator-safe CSR
-implementation.
+Bender supplies the HW-owned `prim_sync2` and generated
+`cross_trigger_port_reg` and `cross_trigger_matrix_reg` implementations to the
+DTP simulator flows. Verilator and VCS therefore compile the same synchronizer
+and CSR RTL selected by the subsystem source graph.
 
 === SystemVerilog UVM Smoke Layer (`--dut dtp_uvm`)
 

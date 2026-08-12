@@ -14,7 +14,6 @@ filesets:
   files_dv:
     files:
       - tb/tb_top.sv
-      - tb/verilator_stubs/prim_sync2.sv
     file_type: systemVerilogSource
 
   files_tests:
