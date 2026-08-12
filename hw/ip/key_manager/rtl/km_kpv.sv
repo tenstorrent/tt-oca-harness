@@ -55,6 +55,17 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     localparam int unsigned WORDS_PER_SLOT = 16;
     localparam int unsigned WORD_W         = $clog2(WORDS_PER_SLOT);
 
+    /**
+     * @brief Key-data word width, spanning the eraser, scrambler and regfile.
+     *
+     * Distinct from the KM AXI-Lite bus width even though both are 32 today: a
+     * key word is what one KEY_ENTRY sub-word holds, so it follows the RDL
+     * regwidth rather than the fabric.  The KEY_ENTRY/CTRL address slices below
+     * assume that same regwidth, so changing it means regenerating the register
+     * block, not just editing this line.
+     */
+    localparam int unsigned DATA_W = 32;
+
     /** @brief Regfile/scrambler address width: {slot, word}. */
     localparam int unsigned RF_ADDR_W = SLOT_W + WORD_W;
 
@@ -136,7 +147,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     logic                 erase_wr_en;
     logic [SLOT_W-1:0]    erase_slot;
     logic [WORD_W-1:0]    erase_word;
-    logic [31:0]          erase_wr_data;
+    logic [DATA_W-1:0]    erase_wr_data;
     logic [NUM_SLOTS-1:0] erase_done;
     logic                 erase_busy;
 
@@ -147,7 +158,8 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
 
     km_kpv_eraser #(
         .NUM_SLOTS     (NUM_SLOTS),
-        .WORDS_PER_SLOT(WORDS_PER_SLOT)
+        .WORDS_PER_SLOT(WORDS_PER_SLOT),
+        .DATA_WIDTH    (DATA_W)
     ) u_eraser (
         .clk_i        (clk_i),
         .cold_rst_ni  (cold_rst_ni),
@@ -226,14 +238,14 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     logic              km_ext_is_wr;
     logic [SLOT_W-1:0] km_ext_slot;
     logic [WORD_W-1:0] km_ext_word;
-    logic [31:0]       km_ext_wr_data;
+    logic [DATA_W-1:0] km_ext_wr_data;
 
     always_comb begin
         km_ext_active  = 1'b0;
         km_ext_is_wr   = 1'b0;
         km_ext_slot    = '0;
         km_ext_word    = '0;
-        km_ext_wr_data = 32'h0;
+        km_ext_wr_data = '0;
         for (int i = 0; i < NUM_SLOTS; i++) begin
             if (!km_ext_active &&
                 kpv_hwif_out.KEY_ENTRY[i].req) begin
@@ -259,11 +271,11 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     // access through the scrambler during an erase (it only polls CTRL.erase
     // via the regblock), so there is no contention.
     logic [RF_ADDR_W-1:0] km_scrambler_addr;
-    logic [31:0]          km_scrambler_in_data;
+    logic [DATA_W-1:0]    km_scrambler_in_data;
     logic [RF_ADDR_W-1:0] km_scrambler_phys_addr;
-    logic [31:0]          km_scrambler_write_out;
-    logic [31:0]          km_scrambler_read_out;
-    logic [31:0]          rf_rd_data;
+    logic [DATA_W-1:0]    km_scrambler_write_out;
+    logic [DATA_W-1:0]    km_scrambler_read_out;
+    logic [DATA_W-1:0]    rf_rd_data;
 
     assign km_scrambler_addr = erase_busy ? {erase_slot, erase_word}
                                           : {km_ext_slot, km_ext_word};
@@ -271,7 +283,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
 
     scrambler_1024x32 #(
         .ADDR_WIDTH(RF_ADDR_W),
-        .DATA_WIDTH(32)
+        .DATA_WIDTH(DATA_W)
     ) u_scrambler_km (
         .addr_i                (km_scrambler_addr),
         .scrambler_key_i       (scrambler_key_stored),
@@ -283,9 +295,9 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     );
 
     // KM external read data: handle lock_use in rd_data
-    logic [31:0] km_ext_rd_data;
+    logic [DATA_W-1:0] km_ext_rd_data;
     assign km_ext_rd_data =
-        km_ext_lock_use      ? 32'h0 :
+        km_ext_lock_use      ? '0 :
         kpv_scrambler_enable ? km_scrambler_read_out :
                                rf_rd_data;
 
@@ -307,7 +319,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     //==========================================================================
     logic                 rf_wr_a_en;
     logic [RF_ADDR_W-1:0] rf_wr_a_addr;
-    logic [31:0]          rf_wr_a_data;
+    logic [DATA_W-1:0]    rf_wr_a_data;
     logic [RF_ADDR_W-1:0] rf_rd_addr;
 
     // Write port: eraser (priority while busy) or KM external write
@@ -335,7 +347,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     km_kpv_regfile #(
         .NUM_SLOTS     (NUM_SLOTS),
         .WORDS_PER_SLOT(WORDS_PER_SLOT),
-        .DATA_WIDTH    (32)
+        .DATA_WIDTH    (DATA_W)
     ) u_key_regfile (
         .clk_i           (clk_i),
         .wipe_i          (wipe_pulse_i),
