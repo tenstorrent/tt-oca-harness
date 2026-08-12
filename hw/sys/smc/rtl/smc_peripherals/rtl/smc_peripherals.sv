@@ -933,7 +933,7 @@ module smc_peripherals #(
 	prim_clkgater i3c_clk_periph_gater (
 		.i_clk(clk_periph_i),
 		.i_en(~i3c_cg_en_periph_clk),  // Note: inverted - 1 = gate clock OFF
-		.i_te(test_mode_i),
+		.i_te(test_en_i),
 		.o_clk(gated_clk_periph_i3c)
 	);
 
