@@ -159,13 +159,99 @@
 </td>
 <td class="content">
 <div class="paragraph">
-<p>This section is currently under development. Placeholder for the future
-OCAH Programmer&#8217;s Guide documentation product. More content will be added as the
-project matures.</p>
+<p>This documentation product is currently under development. More content will be
+added as the project matures.</p>
 </div>
 </td>
 </tr>
 </table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="documentation-overview"><a class="anchor" href="#documentation-overview"></a><a class="link" href="#documentation-overview">1. Documentation Overview</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#sep-cpu-bring-up">SEP CPU Bring-Up</a> - Firmware bring-up requirements for the SEP VeeR-EL2 core</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-cpu-bring-up"><a class="anchor" href="#sep-cpu-bring-up"></a><a class="link" href="#sep-cpu-bring-up">2. SEP CPU Bring-Up</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="sep-nmi-vector-programming"><a class="anchor" href="#sep-nmi-vector-programming"></a><a class="link" href="#sep-nmi-vector-programming">2.1. NMI Vector Programming</a></h3>
+<div class="paragraph">
+<p>The Security Processor (SEP) runs a VeeR-EL2 core whose Non-Maskable Interrupt
+is driven by the watchdog timer bark (<code>sep.sv</code> wires <code>nmi_int</code> to
+<code>intr_wdog_timer_bark</code>). When the NMI asserts, the core jumps to the address
+held in the <code>SEP_NMI_VEC</code> register of the <code>sep_cpu_ctrl</code> block (offset <code>0x180</code>).</p>
+</div>
+<div class="paragraph">
+<p>Software reads and writes <code>SEP_NMI_VEC</code> as a byte address. The register&#8217;s
+<code>nmi_vec</code> field occupies bits 31:1, so bit 0 is reserved and always reads back
+as zero; the hardware imposes no stricter alignment than that. The reference DV
+firmware nevertheless aligns its NMI trampoline to 256 bytes, which the linker
+script enforces.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The <code>SEP_NMI_VEC</code> reset value (<code>0xC000_0100</code>) is a placeholder. It does not
+point at a valid handler, and no part of the boot flow makes it one. Firmware
+must complete the following sequence before enabling the watchdog timer or any
+other NMI source:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Place an NMI handler in ICCM.</p>
+</li>
+<li>
+<p>Write the handler&#8217;s address to <code>SEP_NMI_VEC</code>.</p>
+</li>
+<li>
+<p>Set <code>SEP_NMI_VEC_LOCK</code> (offset <code>0x188</code>) to freeze the vector until the next
+reset.</p>
+</li>
+<li>
+<p>Only then enable the WDT.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>If a bark arrives while the reset value is still in place, the core jumps to
+<code>0xC000_0100</code> and executes whatever occupies that location: arbitrary
+instructions if the loaded image covers it, or an uncorrectable ICCM ECC error
+if it does not. The ECC case re-raises NMI, so the core makes no forward
+progress.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Because <code>SEP_NMI_VEC_LOCK</code> is write-one-to-set and sticky until reset, the
+vector cannot be repointed once locked. Firmware that needs to install a
+different handler after lock must do so through its own indirection — the
+reference firmware keeps a runtime-writable handler pointer that the trampoline
+dispatches through, so the locked vector always targets the trampoline.</p>
+</div>
+<div class="paragraph">
+<p>If the watchdog bite threshold is also enabled, an unserviced bark still
+escalates to the watchdog reset path and resets the SEP. A mis-programmed
+vector therefore degrades to a watchdog reset rather than a silent hang, but it
+does so only after the bite interval and without running any handler.</p>
+</div>
 </div>
 </div>
 </div>
