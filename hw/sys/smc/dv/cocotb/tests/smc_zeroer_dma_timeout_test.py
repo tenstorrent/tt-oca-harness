@@ -30,7 +30,7 @@ class smc_zeroer_dma_timeout_test(smc_base_test):
             timeouts=seq.timeouts,
             proxy=False,
             details=(
-                "Zeroer wrote real output-fabric payload bytes to zero and matched "
-                f"memory model (checked_bytes={seq.checked_bytes})"
+                "Zeroer cleared output-fabric payload via JTAG AXI readback "
+                f"(checked_bytes={seq.checked_bytes}; neighbour poison unchanged)"
             ),
         )

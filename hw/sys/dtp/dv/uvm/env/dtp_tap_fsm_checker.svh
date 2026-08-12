@@ -73,16 +73,19 @@ class dtp_tap_fsm_checker extends uvm_subscriber #(ocah_jtag_event);
     // demand full closure.
     function void check_fsm_closure();
         int unsigned states_hit = 0, edges_hit = 0;
+        ocah_jtag_tap_state_e state;
         foreach (m_state_seen[s]) begin
+            state = ocah_jtag_tap_state_e'(s);
             if (m_state_seen[s]) states_hit++;
             else `uvm_error("sanity_fsm_visit_chk", $sformatf(
-                "TAP state never visited: %s", ocah_jtag_tap_state_e'(s).name()))
+                "TAP state never visited: %s", state.name()))
         end
         foreach (m_edge_seen[s, t]) begin
+            state = ocah_jtag_tap_state_e'(s);
             if (m_edge_seen[s][t]) edges_hit++;
             else `uvm_error("sanity_fsm_visit_chk", $sformatf(
                 "legal TAP transition never taken: %s with tms=%0d",
-                ocah_jtag_tap_state_e'(s).name(), t))
+                state.name(), t))
         end
         `uvm_info("sanity_fsm_visit_chk", $sformatf(
             "FSM closure: %0d/16 states visited, %0d/32 legal edges taken",

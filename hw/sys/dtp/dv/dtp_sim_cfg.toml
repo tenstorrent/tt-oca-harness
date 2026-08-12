@@ -33,14 +33,6 @@ common_bender_targets = [
 # DUT and simulation targets.
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/sys/dtp/dv/tb"]
-# Verilator-friendly behavioral stubs. Listed ahead of the bender filelist so
-# the -Wno-MODDUP "first definition wins" rule selects them over the real RTL.
-# The cross_trigger_*_reg stubs replace PeakRDL CSR blocks whose dynamically
-# indexed struct-array NBA hits Verilator BLKLOOPINIT under --public-flat-rw;
-# the cross-trigger CSR path is tied off in tb_top, so JTAG/JTAG2AXI are unaffected.
-stubs = [
-  "hw/sys/dtp/dv/tb/verilator_stubs/prim_sync2.sv",
-]
 
 [cocotb]
 # Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.

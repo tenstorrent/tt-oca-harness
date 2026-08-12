@@ -10,13 +10,14 @@ return in the current public Verilator model.
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_base_test_seq import smc_base_test_seq
 
-CHIP_CONFIG_VERSION_LO = 0xC000_2900
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 CHIP_CONFIG_VERSION_LO_VALUE = 0x0001_00A0
-SCRATCH_COLD_1 = 0xC000_2804
+SCRATCH_COLD_1 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR") + 0x4
 SCRATCH_PATTERN = 0x1A7A_0001
 
 

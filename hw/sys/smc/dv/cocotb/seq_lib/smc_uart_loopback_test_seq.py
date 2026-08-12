@@ -6,19 +6,31 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from .smc_addr_map import UART_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_uart_protocol_vip import SmcUartVip, SmcUartVipError
 
-# UART_LOG_ENGINE_WRAP_0
-UART_LOG_ENGINE_CTRL = 0xC000_A000
-UART0_BASE = 0xC000_A100
-UART0_THR = UART0_BASE + 0x00  # also RBR / DLL (DLAB)
-UART0_IER = UART0_BASE + 0x04  # also DLM (DLAB)
-UART0_LCR = UART0_BASE + 0x0C
-UART0_LSR = UART0_BASE + 0x14
+# UART_LOG_ENGINE_WRAP_0 (PeakRDL)
+UART_LOG_ENGINE_CTRL = smc_indexed_addr(
+    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
+    0,
+)
+UART0_THR = smc_indexed_addr(
+    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0
+)  # also THR / DLL (DLAB)
+UART0_IER = smc_indexed_addr(
+    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0
+)
+UART0_LCR = smc_indexed_addr(
+    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0
+)
+UART0_LSR = smc_indexed_addr(
+    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0
+)
 
-CLOCK_GATE_CONTROL = 0xC001_0018
-UART_CG_EN = 1 << 12  # clear to ungate (same polarity as I2C bit 11)
+CLOCK_GATE_CONTROL = smc_addr(
+    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
+)
 
 UART_EN = 0x1
 LCR_DLAB = 0x80

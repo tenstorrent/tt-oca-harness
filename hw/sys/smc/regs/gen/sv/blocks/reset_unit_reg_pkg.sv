@@ -44,7 +44,7 @@ package reset_unit_reg_pkg;
     } reset_unit__STRAPS_LO__in_t;
 
     typedef struct {
-        logic [31:0] next;
+        logic [28:0] next;
     } reset_unit__STRAPS_HI__straps__in_t;
 
     typedef struct {

@@ -188,7 +188,9 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
         self._ensure_model_region()
         await self._program_output_fabric_pass_all()
 
-        start_writes = _sample_output_write_count()
+        # Track poison in the VIP model for neighbour bookkeeping only; the
+        # zeroed-region oracle is JTAG AXI readback vs ZEROER_EXPECTED, not
+        # memory_model.expect after rewriting the model.
         self.memory_model.write(OUTPUT_FABRIC_ADDR, ZEROER_POISON,
                                 region=OUTPUT_FABRIC_MODEL_REGION)
         self.memory_model.write(OUTPUT_FABRIC_NEIGHBOUR_ADDR, ZEROER_NEIGHBOUR_POISON,
@@ -201,10 +203,13 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
         )
         assert preload_rb == ZEROER_POISON
         assert neighbour_preload == ZEROER_NEIGHBOUR_POISON
+        # Baseline AFTER JTAG preload so +2 cannot be satisfied by preload writes.
+        start_writes = _sample_output_write_count()
         cocotb.log.info(
             "CHK-NONVAC: S1 JTAG preload readback confirms poison "
             f"{preload_rb.hex()} and neighbour {neighbour_preload.hex()} "
-            "were written and observed before trigger"
+            f"were written and observed before trigger; "
+            f"write-count baseline after preload={start_writes}"
         )
 
         cocotb.log.info(
@@ -225,17 +230,16 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
         )
         # The zeroer FSM starts on the INT_EN field write side effect.
         await self.csr_write("ZEROER_CTRL_STATUS_START", ZEROER_CTRL_STATUS, 0x1, length=8)
-        await self._wait_for_zeroer_write(start_writes + 2)
+        # One AXI write clears the 8-byte DEST region; neighbour is untouched.
+        await self._wait_for_zeroer_write(start_writes + 1)
         write_count = _sample_output_write_count()
         cocotb.log.info(
             "CHK-ZEROER-TRIGGER-STARTS: after DEST/SIZE set, "
             f"ZEROER_CTRL_STATUS_START@{ZEROER_CTRL_STATUS:#x}=0x1 caused "
             f"tb_output_axi_write_count {start_writes}->{write_count} "
-            f"(baseline+2) within bound={ZEROER_WAIT_CYCLES} clk_smc_i"
+            f"(post-preload baseline+1) within bound={ZEROER_WAIT_CYCLES} clk_smc_i"
         )
 
-        self.memory_model.write(OUTPUT_FABRIC_ADDR, ZEROER_EXPECTED,
-                                region=OUTPUT_FABRIC_MODEL_REGION)
         actual = await self._read_bytes(OUTPUT_FABRIC_ADDR, len(ZEROER_EXPECTED))
         neighbour_after = await self._read_bytes(
             OUTPUT_FABRIC_NEIGHBOUR_ADDR, len(ZEROER_NEIGHBOUR_POISON)
@@ -247,11 +251,11 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
             "zeroer modified neighbour bytes outside configured region: "
             f"got {neighbour_after.hex()}, expected {ZEROER_NEIGHBOUR_POISON.hex()}"
         )
-        assert write_count >= start_writes + 2, "zeroer write did not reach output responder"
-        self.memory_model.expect(OUTPUT_FABRIC_ADDR, ZEROER_EXPECTED,
-                                 region=OUTPUT_FABRIC_MODEL_REGION)
+        assert write_count >= start_writes + 1, "zeroer write did not reach output responder"
+        # Independent oracles: AXI readback vs ZEROER_EXPECTED / neighbour poison.
+        # Do not rewrite memory_model then expect — that is a self-compare.
         self.checked_bytes = len(ZEROER_EXPECTED)
-        self.model_checks = 1
+        self.model_checks = 0
         cells_hit = ["zeroer-region-zeroed", "zeroer-neighbours-untouched"]
         report_path = _emit_functional_coverage_report(cells_hit)
         cocotb.log.info(
@@ -259,7 +263,8 @@ class smc_zeroer_dma_timeout_test_seq(SmcCsrSeq):
             f"returns {actual.hex()} (8 zero bytes), replacing poison; "
             f"neighbour@{OUTPUT_FABRIC_NEIGHBOUR_ADDR:#x} still "
             f"{neighbour_after.hex()}; "
-            f"tb_output_axi_write_count={write_count} >= baseline+2; "
+            f"tb_output_axi_write_count={write_count} >= post-preload baseline+1 "
+            f"(baseline={start_writes}); "
             f"COV cells={cells_hit}; functional-coverage-report={report_path}"
         )
         cocotb.log.info("SMC_006 scenario PASS")

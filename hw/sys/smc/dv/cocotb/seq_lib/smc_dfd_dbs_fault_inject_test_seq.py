@@ -8,13 +8,14 @@ See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Keep a diagnostic CSR touch so the test still exercises SEP_IN.
-RAS_BANK_INFO = 0xC000_2910
+RAS_BANK_INFO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR")
 
 
 class smc_dfd_dbs_fault_inject_test_seq(SmcCsrSeq):

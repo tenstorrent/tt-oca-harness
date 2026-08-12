@@ -17,18 +17,37 @@ from __future__ import annotations
 TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     # --- P0 density / phase1 ---
     "smu_smc_smoke_test": [
-        ("CHK-CLK-PRIMARY", "CHK-CLK-PRIMARY", "SMC/DTP advance + clk_smu freeze contrast"),
-        ("CHK-CLK-REF", "CHK-CLK-REF", "ref-domain reset-sync samples on clk_ref_i"),
-        ("CHK-COLD-RESET", "CHK-COLD-RESET", "rst_cold_stable assert/release"),
-        ("CHK-PRIMARY-RESET", "CHK-PRIMARY-RESET", "rst_primary smc/ref hold/release"),
+        (
+            "CHK-SMC-FAB-DUAL-NET-S2",
+            "CHK-SMC-FAB-DUAL-NET-S2",
+            "AXI4-Lite LP to local_peripheral + config_register",
+        ),
+        (
+            "CHK-SMC-FAB-DUAL-NET-S3",
+            "CHK-SMC-FAB-DUAL-NET-S3",
+            "AXI4 + AXI4-Lite both 64-bit data",
+        ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<PASS"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_dtp_jtag_smoke_test": [
-        ("CHK-PTAP-BYPASS", "CHK-PTAP-BYPASS", "BYPASS TDI/TDO one-bit latency"),
-        ("CHK-PTAP-STATE", "CHK-PTAP-STATE", "Select/Capture/Shift/Update-DR visited"),
+        (
+            "CHK-DTP-JTAG-PTAP-S1",
+            "CHK-DTP-JTAG-PTAP-S1",
+            "IDCODE instruction returns configured IDCODE fields",
+        ),
+        (
+            "CHK-DTP-JTAG-PTAP-S2",
+            "CHK-DTP-JTAG-PTAP-S2",
+            "BYPASS single-bit TDI/TDO latency",
+        ),
+        (
+            "CHK-DTP-JTAG-PTAP-S3",
+            "CHK-DTP-JTAG-PTAP-S3",
+            "TRST and POR return TAP to Test-Logic-Reset",
+        ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded JTAG waits with last TAP state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<S3<PASS"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
     ],
     "smu_no_sep_configuration_test": [
         ("CHK-SEP0-LC", "CHK-SEP0-LC", "lc_state_o==0xf0 stable >=16 cycles"),
@@ -43,7 +62,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_dft_dtp_boot_stall_test": [
         ("CHK-STALL-STICKY", "STALL_COLD_STICKY", "stall survives cold"),
-        ("CHK-STALL-TRST", "STALL_TRST_CLEAR", "TRST clears stall"),
+        ("CHK-STALL-REASSERT", "STALL_REASSERT_STICKY", "re-assert does not re-gate"),
     ],
     "smu_dft_gpio_boot_stall_test": [
         ("CHK-STALL-STICKY", "STALL_COLD_STICKY", "GPIO stall sticky across cold"),
@@ -56,7 +75,67 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-XT-DEST-4PH", "XT_DEST_4PHASE", "CTM path observable"),
     ],
     "smu_clock_stop_coordination_test": [
-        ("CHK-CLA-LOOP", "CLA_CLK_STOP_LOOP", "clock-stop coordination observed"),
+        (
+            "CHK-DTP-BOOT-STALL-S1",
+            "CHK-DTP-BOOT-STALL-S1",
+            "Override enabled with stall asserted holds SMC boot",
+        ),
+        (
+            "CHK-DTP-BOOT-STALL-S2",
+            "CHK-DTP-BOOT-STALL-S2",
+            "Clearing stall/override allows SMC boot progression",
+        ),
+        (
+            "CHK-DTP-IC-RESET-S1",
+            "CHK-DTP-IC-RESET-S1",
+            "SMC IC_RESET override forces selected SMC reset slice",
+        ),
+        (
+            "CHK-DTP-IC-RESET-S3",
+            "CHK-DTP-IC-RESET-S3",
+            "TRST/POR or clearing override removes override effect",
+        ),
+        (
+            "CHK-DTP-CLKSTOP-AGG-S1",
+            "CHK-DTP-CLKSTOP-AGG-S1",
+            "Only jtag_clock_stop asserts stop_clks_o",
+        ),
+        (
+            "CHK-DTP-CLKSTOP-AGG-S2",
+            "CHK-DTP-CLKSTOP-AGG-S2",
+            "Only CLA clk_stop_req asserts stop_clks_o and CLA-only status",
+        ),
+        (
+            "CHK-DTP-CLKSTOP-AGG-S3",
+            "CHK-DTP-CLKSTOP-AGG-S3",
+            "Port [0] reserved for SMC participates in SMC CLA handshake",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS"),
+    ],
+    "smu_sep_smoke_test": [
+        (
+            "CHK-SMC-RST-PRIMARY-EXPORT-S1",
+            "CHK-SMC-RST-PRIMARY-EXPORT-S1",
+            "Functional cold reset asserts both exported primary reset outputs",
+        ),
+        (
+            "CHK-SMC-RST-PRIMARY-EXPORT-S2",
+            "CHK-SMC-RST-PRIMARY-EXPORT-S2",
+            "JTAG/TDR state is not cleared by rst_primary alone",
+        ),
+        (
+            "CHK-DTP-XTRIG-CTM-S2",
+            "CHK-DTP-XTRIG-CTM-S2",
+            "Pulse-sync mode leaves ack ports unused as specified",
+        ),
+        (
+            "CHK-DTP-XTRIG-CTM-S3",
+            "CHK-DTP-XTRIG-CTM-S3",
+            "Bits [1:0] remain reserved for SMC",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
     ],
     "smu_xtrig_ctm_remap_test": [
         ("CHK-XT-CTM-REMAP", "XT_CTM_REMAP", "product-pin CTM remap"),
@@ -80,7 +159,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
     ],
     "smc_mailbox_int_test": [
-        ("CHK-SMC-MBOX-IRQ", "SMC_MBOX_IRQ", "mailbox interrupt path proven"),
+        (
+            "CHK-SMC-MBX-IRQ-EXT-S2",
+            "CHK-SMC-MBX-IRQ-EXT-S2",
+            "ext_mailbox_interrupts width equals NUM_MAILBOXES 32",
+        ),
+        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<PASS"),
     ],
     "smc_gpio_strap_sanity_test": [
         ("CHK-SMC-STRAP", "SMC_STRAP_OK", "GPIO strap observe"),
@@ -101,14 +186,26 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-AXI-ID-WIDTH", "AXI_ID_WIDTH_OK", "ID width conversion completes"),
     ],
     "smu_axi_crossbar_error_handling_test": [
-        ("CHK-EXT-IN-DECERR", "CHK-EXT-IN-DECERR", "unmatched ext_in read/write DECERR"),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded AXI error waits"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<PASS"),
+        (
+            "CHK-SMC-PWRGOOD-DTP-POR-S2",
+            "CHK-SMC-PWRGOOD-DTP-POR-S2",
+            "PTAP leave-TLR with power-good + TRST released",
+        ),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<PASS after leave-TLR"),
     ],
     "smu_axi_external_port_connectivity_test": [
-        ("CHK-SMN-IN", "CHK-SMN-IN", "inbound write/read BRESP/RRESP + ID match"),
+        (
+            "CHK-SMU-PORT-SMN-AXI-S1",
+            "CHK-SMU-PORT-SMN-AXI-S1",
+            "SEP=0 inbound smu_axi_in reaches SMC via direct IW",
+        ),
+        (
+            "CHK-SMU-SEP-PARAM-S2",
+            "CHK-SMU-SEP-PARAM-S2",
+            "SEP=0 direct SMC↔external ID converters elaborated",
+        ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded AXI waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<PASS"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_smc_global_base_remap_test": [
         ("CHK-AXI-REMAP", "AXI_GLOBAL_BASE", "GLOBAL_BASE remap observed"),
@@ -200,7 +297,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-WDT-DOUBLE", "WDT_DOUBLE_PULSE", "two pulses; cold sticky"),
     ],
     "smu_xtrig_ctm_illegal_phase_test": [
-        ("CHK-XT-ILLEGAL", "XT_ILLEGAL_PHASE", "illegal order ignored"),
+        (
+            "CHK-XT-ILLEGAL",
+            "XT_ILLEGAL_PHASE",
+            "DTP[9:2] follows abort/double-req pin patterns",
+        ),
     ],
     "smu_cla_and_xtrig_concurrent_test": [
         ("CHK-CLA-CTM-CONC", "CLA_CTM_CONCURRENT", "stop_clks held through CTM"),
@@ -240,7 +341,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-IC-SS", "IC_RESET_SS_COLD_OVRD", "SS cold/warm ovrd exclusive"),
     ],
     "smu_dtp_bsr_extest_loopback_test": [
-        ("CHK-BSR-EXTEST", "BSR_EXTEST_TDO_MATCH", "EXTEST DR loopback TDO"),
+        (
+            "CHK-BSR-EXTEST",
+            "BSR_EXTEST_TDO_MATCH",
+            "TB BSR scan loopback TDO (declared stub; pad BSR out of scope)",
+        ),
     ],
     "smu_telemetry_atb_handshake_test": [
         ("CHK-TEL-ATB", "TEL_ATREADY_HS", "ATB handshake"),
