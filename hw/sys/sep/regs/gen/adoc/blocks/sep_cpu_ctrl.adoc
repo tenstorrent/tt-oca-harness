@@ -28,8 +28,16 @@
 | 0x160 | SEP_STRAPS | R a| -
 | 0x170 | RAS_BANK_INFO | RW a| -
 | 0x178 | SEP_SW_DEBUG | RW a| -
-| 0x180 | SEP_NMI_VEC | RW a| NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_1000. The NMI
+| 0x180 | SEP_NMI_VEC | RW a| NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI
 interrupt is used for the WDT Bark interrupt.
+
+WARNING: the reset value is a placeholder, not a usable handler. Firmware must
+program this register with the address of its own NMI handler, and then set
+SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).
+If a bark arrives while the reset value is still in place, the CPU jumps to
+0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if
+the loaded image covers that location, or an uncorrectable ICCM ECC error
+(which itself re-raises NMI) if it does not.
 | 0x188 | SEP_NMI_VEC_LOCK | RW a| Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The
 NMI interrupt is used for the WDT Bark interrupt.
 | 0x190 | EXT_TRNG_SRC_SEL | RW a| Per-stream external TRNG source selection for crypto subsystem entropy muxes.
@@ -262,7 +270,8 @@ When this is 1, it is safe to send requests to the SMC.
 | 63:32 | `Reserved` | - | - a| Reserved
 | 31:1 | `nmi_vec` | RW | 0x60000080 a| NMI vector address [31:1] for VeeR-EL2 CPU. Bit 0 is always 0 (aligned).
 Address where CPU jumps on Non-Maskable Interrupt. This is used for the
-WDT Bark interrupt.
+WDT Bark interrupt. The reset value does not point at a valid handler --
+see the register description for the required programming order.
 | 0 | `rsvd` | R | 0x0 a| Reserved, bit 0 is always 0 (aligned)
 |===
 
