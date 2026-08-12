@@ -49,13 +49,6 @@ timeout_sec = 1800
 tags = ["deferred", "rtl_placeholder"]
 
 [[tests]]
-name = "smc_static_cg_sanity_test"
-module = "smc_static_cg_sanity_test"
-seed = 1
-timeout_sec = 1800
-tags = ["deferred", "rtl_placeholder"]
-
-[[tests]]
 name = "smc_sideband_avsbus_octs_bfm_test"
 module = "smc_sideband_avsbus_octs_bfm_test"
 seed = 1

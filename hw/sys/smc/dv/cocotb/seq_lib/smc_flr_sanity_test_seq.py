@@ -9,6 +9,7 @@ stability, and prove the SEP_IN AXI CSR path recovers afterwards.
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 import cocotb
 from cocotb.triggers import ClockCycles
 
@@ -17,9 +18,9 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_base_test_seq import smc_base_test_seq
 
-CHIP_CONFIG_VERSION_LO = 0xC000_2900
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 CHIP_CONFIG_VERSION_LO_VALUE = 0x0001_00A0
-SCRATCH_COLD_WARM_0 = 0xC000_2880
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 SCRATCH_PATTERN = 0xF1A0_0001
 
 

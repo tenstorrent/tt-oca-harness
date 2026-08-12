@@ -11,12 +11,19 @@ from __future__ import annotations
 
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_indexed_addr
 from .smc_base_test_seq import smc_base_test_seq
 from .smc_csr_field_catalog import catalog_entry
 
-SCRATCH_COLD_0 = 0xC000_2800
-SCRATCH_COLD_1 = 0xC000_2804
-SCRATCH_COLD_WARM_0 = 0xC000_2880
+SCRATCH_COLD_0 = smc_indexed_addr(
+    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0
+)
+SCRATCH_COLD_1 = smc_indexed_addr(
+    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 1
+)
+SCRATCH_COLD_WARM_0 = smc_indexed_addr(
+    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR", 0
+)
 
 WRITE_READBACK = [
     ("SCRATCH_COLD_0", SCRATCH_COLD_0, 0xA5A5_0001),

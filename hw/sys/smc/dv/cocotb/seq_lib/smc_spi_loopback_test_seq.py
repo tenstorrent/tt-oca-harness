@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import cocotb
 
+from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 try:
@@ -53,11 +54,16 @@ class _MockSignal:
 
 # Small set of low-speed CSR reads exercising the SEP_IN AXI slave path.
 _PROBE_READS = [
-    ("UART_LOG_ENGINE_CTRL", 0xC000_A000),
-    ("LOG_ENGINE_CTRL",      0xC000_A200),
-    ("AVS_NORMAL_STATUS",    0xC000_8020),
-    ("AVS_INTERRUPT",        0xC000_8030),
-    ("OCTS_STATUS",          0xC000_E008),
+    ("UART_LOG_ENGINE_CTRL", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
+        0)),
+    ("LOG_ENGINE_CTRL", smc_indexed_addr(
+        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR", 0)),
+    ("AVS_NORMAL_STATUS", smc_addr(
+        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR")),
+    ("AVS_INTERRUPT", smc_addr(
+        "SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR")),
+    ("OCTS_STATUS", smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR")),
 ]
 
 

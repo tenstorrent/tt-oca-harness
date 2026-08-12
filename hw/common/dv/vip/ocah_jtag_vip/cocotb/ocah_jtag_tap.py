@@ -9,7 +9,7 @@ from random import Random
 from typing import Any
 
 import cocotb
-from cocotb.triggers import Timer
+from cocotb.triggers import NextTimeStep, ReadOnly, Timer
 from cocotb.utils import get_sim_time
 from cocotbext.jtag import JTAGBus, JTAGDriver
 
@@ -448,9 +448,14 @@ class OcahJtagTap:
         self.bus.tdi.value = int(tdi) & 0x1
         self.bus.tck.value = 0
         await _timer(self._half_period, self._time_unit)
+        # IEEE 1149.1 targets update TDO on the falling edge. Sample it in the
+        # low phase before the next rising edge advances the TAP state; sampling
+        # after that edge corrupts the final scan bit when TMS exits Shift-IR/DR.
+        await ReadOnly()
+        tdo = _logic_int(self.bus.tdo)
+        await NextTimeStep()
         self.bus.tck.value = 1
         await _timer(self._half_period, self._time_unit)
-        tdo = _logic_int(self.bus.tdo)
         self.bus.tck.value = 0
         self._state = next_jtag_state(previous, tms)
         if self._trst_is_asserted():

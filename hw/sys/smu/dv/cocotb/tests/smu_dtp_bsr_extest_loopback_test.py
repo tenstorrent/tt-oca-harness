@@ -4,7 +4,12 @@
 Loads IR=EXTEST, shifts compact 8-bit patterns through the TB scan_in<-scan_out
 loopback, and checks TDO matches. Also checks one-hot EXTEST decode.
 
-Does NOT claim functional pad BSR or SEP STAP.
+STUB:DECLARED
+  name: BSR_TB_SCAN_LOOPBACK
+  site: tb_top jtag_bsr_host_scan_in_i <- jtag_bsr_host_scan_out_o
+  length: DTP_BSR_MODEL_LEN (compact 8-bit model)
+  scope: TB EXTEST DR path only — NOT LIVE pad BSR / SEP STAP proof
+  real-path: deferred until a pad-BSR / STAP model is enrolled
 
 Pattern 0x00 is omitted: OcahJtagTap._logic_int maps X/Z TDO to 0, which would
 make an all-zero expect can't-fail. Nonzero patterns remain sensitive to stuck-0
@@ -52,6 +57,13 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
         await self.cfg.reset_done.wait()
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
+
+        self.logger.info(
+            "STUB:DECLARED BSR_TB_SCAN_LOOPBACK "
+            "site=tb_top.scan_in<-scan_out len=%d "
+            "scope=TB_EXTEST_DR_only (not LIVE pad BSR)",
+            DTP_BSR_MODEL_LEN,
+        )
 
         await jtag.shift_ir(DTP_IR_EXTEST)
         await ClockCycles(dut.clk_smu_i, 4)

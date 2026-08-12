@@ -3,11 +3,14 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-GPIO0_DATA_CTRL = 0xC000_4000
+GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 GPIO_INPUT_ACTIVE_LOW_IRQ = (2 << 4) | (1 << 16) | (1 << 18) | (1 << 20)
-MAILBOX_IRQEN = 0xC001_8038
+MAILBOX_IRQEN = smc_addr(
+    "SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR"
+)
 
 
 class smc_gpio_irq_active_test_seq(SmcCsrSeq):

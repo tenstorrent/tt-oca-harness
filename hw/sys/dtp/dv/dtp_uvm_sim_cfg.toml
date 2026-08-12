@@ -45,11 +45,6 @@ incdirs = [
   "hw/sys/dtp/dv/uvm/seq_lib",
   "hw/sys/dtp/dv/uvm/tests",
 ]
-# Same stub list as the cocotb flow; for VCS the filelist generator keeps only stubs with no
-# real counterpart in the bender graph and emits them after it (last-definition-wins rule).
-stubs = [
-  "hw/sys/dtp/dv/tb/verilator_stubs/prim_sync2.sv",
-]
 sources = [
   "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",

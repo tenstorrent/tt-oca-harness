@@ -24,9 +24,10 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from .smc_addr_map import smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-GPIO0_DATA_CTRL = 0xC000_4000
+GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
 _CORE2PAD = 1 << 0
 _TX_ENABLE = 1 << 4          # enable_rx_tx = 2'b01

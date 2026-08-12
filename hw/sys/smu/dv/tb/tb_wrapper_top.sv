@@ -60,7 +60,31 @@ module smu_wrapper_uvm_top (
     output logic        sep_rungate_at_release_valid_o,
     output logic        sep_mpc_reset_run_at_release_o,
     output logic        sep_mpc_xz_at_release_o,
-    output logic [15:0] sep_cla_at_release_o
+    output logic [15:0] sep_cla_at_release_o,
+    // SMU_ALL_001 compose / clk-domain / lifecycle observe surface
+    output logic [7:0]  lc_state_o,
+    // Hierarchical SEP lifecycle source (for lc_state=from_sep identity).
+    // Under SMU_NO_SEP this is tied off; checkers must not treat that as from_sep.
+    output logic [7:0]  obs_sep_lc_state_o,
+    // Legacy compile-time present flags — not used by SMU_ALL_001 FAIL-ON path
+    // (presence is proven via hierarchical clk/rst identity observes below).
+    output logic        obs_compose_smc_present_o,
+    output logic        obs_compose_sep_present_o,
+    output logic        obs_compose_dtp_present_o,
+    output logic        obs_compose_xbar_present_o,
+    output logic        obs_dtp_clk_o,
+    output logic        obs_smc_clk_o,
+    output logic        obs_sep_clk_o,
+    output logic        obs_xbar_clk_o,
+    output logic        obs_dtp_rst_n_o,
+    output logic        obs_smc_rst_n_o,
+    output logic        obs_sep_rst_n_o,
+    output logic        obs_xbar_rst_n_o,
+    output logic        obs_smc_tel_clk_o,
+    output logic        obs_sep_wdt_clk_o,
+    output logic        obs_jtag_tdo_o,
+    output logic        obs_smu_axi_awready_o,
+    output logic        obs_xtrig_src_req0_o
 );
 
 `ifdef SMU_NO_SEP
@@ -119,6 +143,9 @@ module smu_wrapper_uvm_top (
     smu_axi_xbar_pkg::axi_56_64_resp_t smu_axi_in_resp;
     smu_axi_xbar_pkg::axi_out_req_t     smu_axi_out_req;
     smu_axi_xbar_pkg::axi_out_resp_t    smu_axi_out_resp;
+    logic [7:0] lc_state;
+    // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
+    logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
 
     chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
     chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp;
@@ -174,6 +201,41 @@ module smu_wrapper_uvm_top (
     assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
     assign sep_reset_n_o = sep_reset_n;
     assign ext_mailbox_interrupts_o = ext_mailbox_interrupts;
+    assign lc_state_o = lc_state;
+    assign obs_jtag_tdo_o = jtag_ptap_tdo;
+    assign obs_smu_axi_awready_o = smu_axi_in_resp.aw_ready;
+    assign obs_xtrig_src_req0_o = xtrig_ctm_src_req[0];
+
+    // Compose presence + shared-domain mirrors (hierarchical passive observe).
+    // SMC/DTP always elaborate; SEP/xbar only under SEP=1 generate.
+    assign obs_compose_smc_present_o = 1'b1;
+    assign obs_compose_dtp_present_o = 1'b1;
+    assign obs_smc_clk_o = u_dut.u_smu.u_smc.clk_smc_i;
+    assign obs_dtp_clk_o = u_dut.u_smu.u_dtp.clk_i;
+    assign obs_smc_rst_n_o = u_dut.u_smu.u_smc.rst_primary_smc_clk_no;
+    assign obs_dtp_rst_n_o = u_dut.u_smu.u_dtp.rst_n_i;
+    assign obs_smc_tel_clk_o = u_dut.u_smu.u_smc.clk_telemetry_i;
+
+`ifndef SMU_NO_SEP
+    assign obs_compose_sep_present_o = 1'b1;
+    assign obs_compose_xbar_present_o = 1'b1;
+    assign obs_sep_clk_o = u_dut.u_smu.gen_sep.u_sep.clk_i;
+    assign obs_xbar_clk_o = u_dut.u_smu.gen_sep.u_smu_axi_xbar.clk_i;
+    assign obs_sep_rst_n_o = u_dut.u_smu.gen_sep.u_sep.rst_ni;
+    assign obs_xbar_rst_n_o = u_dut.u_smu.gen_sep.u_smu_axi_xbar.rst_ni;
+    assign obs_sep_wdt_clk_o = u_dut.u_smu.gen_sep.u_sep.clk_wdt_i;
+    // Live SEP LCC export — must match lc_state_o for lc_state=from_sep.
+    assign obs_sep_lc_state_o = u_dut.u_smu.gen_sep.u_sep.lc_state_o;
+`else
+    assign obs_compose_sep_present_o = 1'b0;
+    assign obs_compose_xbar_present_o = 1'b0;
+    assign obs_sep_clk_o = 1'b0;
+    assign obs_xbar_clk_o = 1'b0;
+    assign obs_sep_rst_n_o = 1'b0;
+    assign obs_xbar_rst_n_o = 1'b0;
+    assign obs_sep_wdt_clk_o = 1'b0;
+    assign obs_sep_lc_state_o = 8'h00;
+`endif
 
     assign smc_scratch_0_o =
         u_dut.u_smu.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[0];
@@ -526,7 +588,7 @@ module smu_wrapper_uvm_top (
         .jtag_ptap_inst_decoded_o (),
         .jtag_ic_reset_ext_o (),
 
-        .xtrig_ctm_src_req_o (),
+        .xtrig_ctm_src_req_o (xtrig_ctm_src_req),
         .xtrig_ctm_src_ack_i ('0),
         .xtrig_ctm_dst_req_i ('0),
         .xtrig_ctm_dst_ack_o (),
@@ -586,7 +648,7 @@ module smu_wrapper_uvm_top (
         .skip_mem_repair_o (),
         .ext_boot_seq_done_i (1'b1),
         .temp_interrupt_i (1'b0),
-        .lc_state_o (),
+        .lc_state_o (lc_state),
         .lc_sigint_err_o (),
         .ras_bank_chip_o (),
         .ras_bank_instance_o (),
