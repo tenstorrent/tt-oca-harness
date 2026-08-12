@@ -161,6 +161,8 @@ module entropy_source
 
     logic health_test_clr;
     logic alert_cntrs_clr;
+    logic module_en_q;
+    logic module_en_pulse;
     logic alert_cntr_clr_ok;
 
     logic repcnt_fail_pulse;
@@ -983,7 +985,14 @@ module entropy_source
     assign markov_hi_fail_pulse = health_status[4];
     assign markov_lo_fail_pulse = health_status[5];
 
-    assign health_test_clr  = reg_out.CTRL.RESET.value;
+    // MODULE_ENABLE rising-edge detect (OpenTitan module_en_pulse).
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) module_en_q <= 1'b0;
+        else         module_en_q <= reg_out.CTRL.MODULE_ENABLE.value;
+    end
+    assign module_en_pulse = reg_out.CTRL.MODULE_ENABLE.value && !module_en_q;
+
+    assign health_test_clr  = module_en_pulse || reg_out.CTRL.RESET.value;
     assign alert_cntr_clr_ok = alert_cntr_clr_ok_main_sm;
     assign alert_cntrs_clr  = health_test_clr ||
                                (window_wrap_pulse && alert_cntr_clr_ok && !ht_fail_pulse);
@@ -1104,9 +1113,9 @@ module entropy_source
         endcase
     end
 
-    // Register the resolved value
-    always_ff @(posedge clk_i or negedge rst_n) begin
-        if (!rst_n) begin
+    // Register the resolved value (rst_ni: selector persists across CTRL.RESET).
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
             ht_watermark_num_q <= REPCNT_HI;
         end else begin
             ht_watermark_num_q <= ht_watermark_num_d;
@@ -1153,9 +1162,6 @@ module entropy_source
         endcase
     end
 
-    // Prevent watermark register updates while the module disabled. Upon enabling, we then clear
-    // the watermark register before we start recording.
-    // |ENABLE: reduce the 8-bit ENABLE field to a 1-bit enable (nonzero = enabled)
     assign ht_watermark_event = ht_watermark_event_pre && (|reg_out.HEALTH_TEST_CTRL.ENABLE.value);
 
     assign repcnt_event_cnt    = ctr_repetition;
@@ -1169,7 +1175,7 @@ module entropy_source
         .ResVal   (16'h0)
     ) u_entropy_src_ht_watermark_reg (
         .clk_i    (clk_i),
-        .rst_ni   (rst_n),
+        .rst_ni   (rst_ni),
         .high_i   (ht_watermark_high),
         .clear_i  (health_test_clr),
         .oneway_i (1'b1),
