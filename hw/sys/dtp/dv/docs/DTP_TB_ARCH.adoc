@@ -288,15 +288,10 @@ coverage. See `DTP_FCOV.adoc`.
 
 === Canonical RTL Selection
 
-DTP compiles no DV-owned replacements for synthesizable RTL. All simulator
-flows use the HW-owned `prim_sync2` and generated `cross_trigger_port_reg` and
-`cross_trigger_matrix_reg` implementations selected by Bender.
-
-The former `tb/verilator_stubs/` overrides were removed after the canonical
-`prim_sync2` port mapping was corrected under issue 179 and Verilator accepted
-the generated cross-trigger CSR blocks. Future simulator compatibility issues
-must be resolved in the owning RTL or source-selection flow rather than through
-duplicate-module compilation order.
+Bender supplies the HW-owned `prim_sync2` and generated
+`cross_trigger_port_reg` and `cross_trigger_matrix_reg` implementations to the
+DTP simulator flows. Verilator and VCS therefore compile the same synchronizer
+and CSR RTL selected by the subsystem source graph.
 
 === SystemVerilog UVM Smoke Layer (`--dut dtp_uvm`)
 
