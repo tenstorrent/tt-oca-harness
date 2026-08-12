@@ -1082,6 +1082,11 @@ module entropy_source
     assign reg_in.MAIN_SM_STATUS.BOOT_PHASE_DONE.next   = boot_phase_done;
     assign reg_in.MAIN_SM_STATUS.ALERT_CNTR_CLR_OK.next = alert_cntr_clr_ok_main_sm;
 
+    // The sticky ALERT/ERR bits reset on rst_ni only, but the FSM that sets
+    // them also clears on CTRL.RESET; clear the status here so it tracks the FSM.
+    assign reg_in.MAIN_SM_STATUS.ALERT.hwclr = reg_out.CTRL.RESET.value;
+    assign reg_in.MAIN_SM_STATUS.ERR.hwclr   = reg_out.CTRL.RESET.value;
+
     assign ht_watermark_num_reg_if =
         watermark_test_e'(reg_out.HT_WATERMARK_NUM.WATERMARK_NUM.value);
 

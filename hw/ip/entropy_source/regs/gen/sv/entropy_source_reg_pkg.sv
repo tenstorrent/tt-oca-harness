@@ -415,10 +415,12 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         logic next;
+        logic hwclr;
     } entropy_source__MAIN_SM_STATUS__ALERT__in_t;
 
     typedef struct {
         logic next;
+        logic hwclr;
     } entropy_source__MAIN_SM_STATUS__ERR__in_t;
 
     typedef struct {

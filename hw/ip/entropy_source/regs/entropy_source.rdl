@@ -770,16 +770,18 @@ addrmap entropy_source {
         field {
             sw = rw;
             hw = w;
+            hwclr;  // cleared by the CTRL.RESET soft reset
             woclr;
             stickybit;
-            desc = "main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang — a permanent halt that requires a hardware reset to exit. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Write 1 to clear the sticky bit; the FSM remains in AlertHang until rst_ni. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.";
+            desc = "main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang, halting entropy output. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset; the FSM leaves AlertHang on rst_ni, CTRL.RESET, or CTRL.MODULE_ENABLE=0. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.";
         } ALERT[10:10] = 0x0;
         field {
             sw = rw;
             hw = w;
+            hwclr;  // cleared by the CTRL.RESET soft reset
             woclr;
             stickybit;
-            desc = "main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Write 1 to clear.";
+            desc = "main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset.";
         } ERR[11:11] = 0x0;
         field {
             sw = r;
