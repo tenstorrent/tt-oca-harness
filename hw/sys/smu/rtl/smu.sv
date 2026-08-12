@@ -279,7 +279,7 @@ module smu #(
     input  logic  scan_rst_ni,
 
     // Captured Straps
-    input  logic [63:0]  captured_straps_i,
+    input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]  captured_straps_i,
 
     // DFT status indicators
     input  logic mem_repair_done_i,

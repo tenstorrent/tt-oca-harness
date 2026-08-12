@@ -54,6 +54,7 @@ from .waves import (
     WAVE_DEFAULT,
     find_failure_time_ps,
     parse_time_ps,
+    require_verdi_home,
     resolve_wave_format,
     waves_on_fail_requested,
 )
@@ -1346,9 +1347,13 @@ def run_flow(
     executor = selected_executor(flow, args)
     validate_selected_tool_available(tool, simulators, args)
     if args.waves:
-        resolve_wave_format(args, simulators, tool)
+        wave_format = resolve_wave_format(args, simulators, tool)
+        if not args.dry_run:
+            require_verdi_home(tool, wave_format)
     if args.waves_on_fail:
-        resolve_wave_format(args, simulators, tool, on_fail=True)
+        wave_format = resolve_wave_format(args, simulators, tool, on_fail=True)
+        if not args.dry_run:
+            require_verdi_home(tool, wave_format)
     sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
     catalog = load_test_catalog(flow, root)
     stages = selected_stages(flow, args)

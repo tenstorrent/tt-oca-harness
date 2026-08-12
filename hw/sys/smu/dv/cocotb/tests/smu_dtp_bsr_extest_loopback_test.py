@@ -2,7 +2,11 @@
 """smu_dtp_bsr_extest_loopback_test - P4 EXTEST BSR scan loopback.
 
 Loads IR=EXTEST, shifts compact 8-bit patterns through the TB scan_in<-scan_out
-loopback, and checks TDO matches. Also checks one-hot EXTEST decode.
+loopback, and checks TDO returns the pattern retimed by one TCK
+(`(pattern << 1) & mask`): the zero-length chain feeds TDI through the DUT's
+IEEE 1149.1 falling-edge TDO retimer, so observed bit i is pattern bit i-1 and
+observed bit 0 is the retimer's scan-entry content (0, TDI held low during TAP
+navigation). Also checks one-hot EXTEST decode.
 
 STUB:DECLARED
   name: BSR_TB_SCAN_LOOPBACK
@@ -11,12 +15,14 @@ STUB:DECLARED
   scope: TB EXTEST DR path only — NOT LIVE pad BSR / SEP STAP proof
   real-path: deferred until a pad-BSR / STAP model is enrolled
 
-Pattern 0x00 is omitted: OcahJtagTap._logic_int maps X/Z TDO to 0, which would
-make an all-zero expect can't-fail. Nonzero patterns remain sensitive to stuck-0
-/ unresolved TDO (captured 0 != pattern).
+Patterns whose retimed expectation is all-zero are forbidden: OcahJtagTap's
+_logic_int maps X/Z TDO to 0, which would make an all-zero expect can't-fail.
+Nonzero expectations remain sensitive to stuck-0 / unresolved TDO.
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 import pyuvm
@@ -78,9 +84,25 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
         )
 
         mask = (1 << DTP_BSR_MODEL_LEN) - 1
-        for pattern in _PATTERNS:
-            if (pattern & mask) == 0:
-                raise AssertionError("zero pattern forbidden (X/Z->0 can't-fail)")
+        # Seeded random patterns on top of the directed set. Salted so the
+        # draws stay decoupled from the base test's timing randomization.
+        seed = self.random_seed()
+        rng = random.Random(seed ^ 0x0B52)
+        randoms: list[int] = []
+        while len(randoms) < 4:
+            pattern = rng.getrandbits(DTP_BSR_MODEL_LEN) & mask
+            if (pattern << 1) & mask and pattern not in randoms:
+                randoms.append(pattern)
+        self.logger.info(
+            "BSR_EXTEST patterns: directed=%s random=%s (RANDOM_SEED=%d)",
+            [hex(p) for p in _PATTERNS],
+            [hex(p) for p in randoms],
+            seed,
+        )
+        for pattern in (*_PATTERNS, *randoms):
+            expected = (pattern << 1) & mask  # one-TCK TDO retiming delay
+            if expected == 0:
+                raise AssertionError("all-zero expectation forbidden (X/Z->0 can't-fail)")
             captured = await jtag.shift_dr(
                 pattern & mask,
                 width=DTP_BSR_MODEL_LEN,
@@ -91,7 +113,7 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
             sb.expect_eq(
                 f"BSR_EXTEST_TDO_MATCH pat=0x{pattern:02x}",
                 int(captured) & mask,
-                pattern & mask,
+                expected,
                 evidence="BSR_EXTEST_TDO_MATCH",
             )
 

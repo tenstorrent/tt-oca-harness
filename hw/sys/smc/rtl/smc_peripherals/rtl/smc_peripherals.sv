@@ -158,7 +158,7 @@ module smc_peripherals #(
 
 	input  smc_pkg::jtag_smc_reset_ctrl_t                                                           jtag_reset_ctrl_i,
 
-	input  logic [63:0]                                                                    			captured_straps_i,
+	input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]                                            			captured_straps_i,
 
     input  logic [7:0]                                                            			        sep_mailbox_interrupts_i,
     output logic [31:0]                                                                    			peripheral_interrupts_o,

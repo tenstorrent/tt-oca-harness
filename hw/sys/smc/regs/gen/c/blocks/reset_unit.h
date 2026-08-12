@@ -155,13 +155,14 @@ typedef union {
 } reset_unit__STRAPS_LO_t;
 
 // reg - reset_unit::STRAPS_HI
-#define RESET_UNIT__STRAPS_HI__STRAPS_bm 0xffffffff
+#define RESET_UNIT__STRAPS_HI__STRAPS_bm 0x1fffffff
 #define RESET_UNIT__STRAPS_HI__STRAPS_bp 0
-#define RESET_UNIT__STRAPS_HI__STRAPS_bw 32
+#define RESET_UNIT__STRAPS_HI__STRAPS_bw 29
 #define RESET_UNIT__STRAPS_HI__STRAPS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t straps :32;
+        uint32_t straps :29;
+        uint32_t :3;
     } f;
     uint32_t w;
 } reset_unit__STRAPS_HI_t;
