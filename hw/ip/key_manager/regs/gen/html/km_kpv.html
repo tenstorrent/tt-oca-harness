@@ -10,15 +10,15 @@
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>WORD[16]</strong>: 16 registers, base 0x0, stride 0x4</li>
-<li><strong>CTRL[32]</strong>: 32 registers, base 0x800, stride 0x4</li>
+<li><strong>CTRL[64]</strong>: 64 registers, base 0x1000, stride 0x4</li>
 </ul>
 <h2>Register List:</h2>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x3C</td><td><a href="#WORD_16_">WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
-<tr><td>0x800 - 0x87C</td><td><a href="#CTRL_32_">CTRL[32]</a></td><td>RW</td><td>Per-slot control: lock bits (W1S) and the erase trigger</td></tr>
-<tr><td>0x880</td><td><a href="#KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.</td></tr>
-<tr><td>0x884</td><td><a href="#KPV_SCRAMBLER_CTRL">KPV_SCRAMBLER_CTRL</a></td><td>RW</td><td>KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.</td></tr>
+<tr><td>0x1000 - 0x10FC</td><td><a href="#CTRL_64_">CTRL[64]</a></td><td>RW</td><td>Per-slot control: lock bits (W1S) and the erase trigger</td></tr>
+<tr><td>0x1100</td><td><a href="#KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.</td></tr>
+<tr><td>0x1104</td><td><a href="#KPV_SCRAMBLER_CTRL">KPV_SCRAMBLER_CTRL</a></td><td>RW</td><td>KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.</td></tr>
 </table>
 <h2>Register Details:</h2>
 <h3 id="WORD_16_">WORD[16]</h3>
@@ -26,7 +26,7 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
 </table>
-<h3 id="CTRL_32_">CTRL[32]</h3>
+<h3 id="CTRL_64_">CTRL[64]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>rsvd_31_3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>

@@ -19,7 +19,7 @@
  *
  * Assembly handoff: rom_handover_jump.S — scrambles the entire SRAM (locked
  * regions are silently skipped by hardware), clears all GPRs, then jumps to
- * 0x4000.  Note that locking and IRQ disable all occur in C
+ * 0x8000.  Note that locking and IRQ disable all occur in C
  * (rom_handover_finish) before entering the stack-less assembly path; this is
  * required because the assembly wipes the C stack.
  */
@@ -130,11 +130,11 @@ void rom_handover_lock_kpv_root_keys(void);
  * Runs entirely from registers.  No stack use from this point forward.
  *
  * Actions:
- *   1. Overwrite the entire SRAM (0x4000-0x8000) with a register-seeded
+ *   1. Overwrite the entire SRAM (0x8000-0x10000) with a register-seeded
  *      xoshiro128++ pattern.  Hardware silently drops writes to write-locked
  *      regions (firmware image, rom_persist), so only unlocked data is erased.
  *   2. Clear all GPRs (x1-x15).
- *   3. fence; jump to 0x4000.
+ *   3. fence; jump to 0x8000.
  *
  * @param s0-s3  xoshiro128++ initial state words (passed in a0-a3).
  */

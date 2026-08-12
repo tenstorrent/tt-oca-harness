@@ -7,7 +7,7 @@ This module provides a generic cocotb test that can run any firmware image
 and check for standardized pass/fail criteria. Firmware tests use the
 protocol defined in test_common.h to report results.
 
-Protocol (KMCSR Registers at base 0xE000):
+Protocol (KMCSR Registers at base 0x14000):
     TB_RESULT    @ 0x110 : 0=fail, 1=pass (KMCSR_TB_RESULT_REG_ADDR)
     TB_SIGNATURE @ 0x114 : 0x600D600D (pass) or 0xBADBADBA (fail) (KMCSR_TB_SIGNATURE_REG_ADDR)
     TB_ERRCODE   @ 0x118 : Optional error code (KMCSR_TB_ERRCODE_REG_ADDR)
@@ -435,7 +435,7 @@ class TestbenchCommandHandler:
         """Read raw SRAM data (before descrambling).
 
         Args:
-            arg: Physical SRAM word address (12 bits, 0-4095)
+            arg: Physical SRAM word address (13 bits, 0-8191)
                  Firmware calculates the scrambled address if scrambler is enabled.
                  Testbench simply reads from SRAM at the provided address.
 
@@ -445,9 +445,9 @@ class TestbenchCommandHandler:
         try:
             # Access SRAM memory array from testbench
             # Path: tb_key_manager -> sram_mem array
-            physical_addr = arg & 0xFFF  # 12-bit address (4096 words)
+            physical_addr = arg & 0x1FFF  # 13-bit address (8192 words)
 
-            if physical_addr >= 4096:
+            if physical_addr >= 8192:
                 self.dut._log.error(f"[TB CMD] Invalid SRAM address: {physical_addr}")
                 return 0
 
@@ -1435,21 +1435,21 @@ class TestbenchCommandHandler:
 
             # Convert byte address to SRAM word address
             # The SRAM interface extracts word address as mem_addr_i[SRAM_ADDR_WIDTH+1:2]
-            # which is mem_addr_i[13:2] (divides by 4, doesn't subtract base)
-            # SRAM_ADDR_WIDTH = 12, so we extract bits [13:2] from the byte address
+            # which is mem_addr_i[14:2] (divides by 4, doesn't subtract base)
+            # SRAM_ADDR_WIDTH = 13, so we extract bits [14:2] from the byte address
             byte_addr = arg & 0xFFFFFFFF
 
-            # Check if address is in SRAM range (0x4000 - 0x7FFF)
-            SRAM_BASE = 0x4000
-            SRAM_END = 0x7FFF
+            SRAM_BASE = 0x8000
+            SRAM_WORDS = 8192
+            SRAM_END = SRAM_BASE + SRAM_WORDS * 4 - 1
             if byte_addr < SRAM_BASE or byte_addr > SRAM_END:
                 self.dut._log.error(f"[TB CMD] Invalid SRAM address: 0x{byte_addr:08X} (must be 0x{SRAM_BASE:04X}-0x{SRAM_END:04X})")
                 return 0
 
-            # Extract word address using same method as SRAM interface: bits [13:2]
+            # Extract word address using same method as SRAM interface: bits [14:2]
             # This is equivalent to dividing by 4, but matches the hardware behavior
-            word_addr = (byte_addr >> 2) & 0xFFF  # Extract bits [13:2], mask to 12 bits
-            if word_addr >= 4096:
+            word_addr = (byte_addr >> 2) & (SRAM_WORDS - 1)
+            if word_addr >= SRAM_WORDS:
                 self.dut._log.error(f"[TB CMD] SRAM address out of range: word_addr={word_addr}")
                 return 0
 
@@ -1459,7 +1459,7 @@ class TestbenchCommandHandler:
             self.dut._log.info(f"[TB CMD] Reading string from SRAM byte_addr=0x{byte_addr:08X}, word_addr={word_addr}")
 
             # Read up to 8 words (32 bytes) to get the string
-            for word_idx in range(word_addr, min(word_addr + 8, 4096)):
+            for word_idx in range(word_addr, min(word_addr + 8, SRAM_WORDS)):
                 try:
                     # Read from SRAM memory array (this should reflect CPU writes)
                     sram_word = int(self.dut.sram_mem[word_idx].value)

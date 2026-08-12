@@ -12,12 +12,12 @@
  * The KM handler:
  *   1. Validates the command and fw_words count.
  *   2. Sends RESP_CMD success directly (before polling the FIFO for the image).
- *   3. Streams 14 image words + CRC from the inbound FIFO into SRAM 0x4000.
+ *   3. Streams 14 image words + CRC from the inbound FIFO into SRAM 0x8000.
  *   4. Verifies the CRC-32 (must match).
  *   5. Sets sram_fw_size, locks sensitive data, writes the SRAM firmware-region
- *      lock mask, scrambles unlocked SRAM, clears GPRs, and jumps to 0x4000.
+ *      lock mask, scrambles unlocked SRAM, clears GPRs, and jumps to 0x8000.
  *
- * The mutable firmware blob (mutable_fw_blob_small, 14 words) executes at 0x4000
+ * The mutable firmware blob (mutable_fw_blob_small, 14 words) executes at 0x8000
  * and writes TEST_RESULT=1 and TEST_SIGNATURE=TEST_PASS_SIGNATURE to the KMCSR
  * test registers, signalling success to the cocotb testbench.
  *
@@ -135,14 +135,14 @@ int main(void) {
      *   - Verifies CRC-32 (matches → success).
      *   - Sets sram_fw_size = 56 in rom_persist.
      *   - Calls rom_handover_finish: lock OTP, lock rom_persist, set SRAM
-     *     write-lock for region 0 (covers 0x4000..0x41FF), disable all IRQs,
+     *     write-lock for region 0 (covers 0x8000..0x83FF), disable all IRQs,
      *     call rom_handover_jump.S.
      *   - rom_handover_jump.S: scrambles unlocked SRAM, clears GPRs, jumps
-     *     to 0x4000.
+     *     to 0x8000.
      *
-     * The mutable blob at 0x4000 executes and writes:
-     *   TEST_RESULT    = 1                  (0xE110)
-     *   TEST_SIGNATURE = TEST_PASS_SIGNATURE (0xE114)
+     * The mutable blob at 0x8000 executes and writes:
+     *   TEST_RESULT    = 1                  (0x14110)
+     *   TEST_SIGNATURE = TEST_PASS_SIGNATURE (0x14114)
      *
      * This call never returns.
      */
@@ -156,6 +156,6 @@ int main(void) {
     rom_msg_rx_process();
 
     /* Should never reach here */
-    TEST_FAIL("CMD_SRAM_LOAD_EXEC should have jumped to mutable firmware at 0x4000");
+    TEST_FAIL("CMD_SRAM_LOAD_EXEC should have jumped to mutable firmware at 0x8000");
     return 0;
 }

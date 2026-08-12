@@ -20,9 +20,13 @@
 #include "rom_kmcsr.h"
 #include "key_manager_fw.h"
 
-/* Use region 24 (0x4000 + 24*0x200 = 0x7000) as the locked code region. */
-#define LOCKED_CODE_REGION 24u
-#define REGION_SIZE_BYTES 0x200u
+/* Use region 8 (0x8000 + 8*0x400 = 0xA000) as the locked code region. ROM .data,
+ * .bss and the stack all sit in the top of SRAM (the stack descends from .data
+ * no further than __km_fw_load_limit), so a low region is the only place where
+ * write-locking cannot freeze live ROM state. No mutable firmware is loaded in
+ * this test, so the load area below the stack floor is free scratch. */
+#define LOCKED_CODE_REGION 8u
+#define REGION_SIZE_BYTES SRAM_LOCK_REGION_BYTES
 #define SRAM_CODE_BASE (SRAM_BASE + (LOCKED_CODE_REGION * REGION_SIZE_BYTES))
 
 /* The copied function will add a constant to its argument. */
@@ -53,8 +57,8 @@ int main(void) {
 
     rom_boot_init(); /* enables exec_violation_en */
 
-    /* Copy function to SRAM region 24 *before* locking (data write, allowed). */
-    TEST_SUBTEST_START("copy function to SRAM region 24");
+    /* Copy function to SRAM region 8 *before* locking (data write, allowed). */
+    TEST_SUBTEST_START("copy function to SRAM region 8");
     uint32_t fn_size = (uint32_t)((uintptr_t)locked_add_stub_end - (uintptr_t)locked_add_stub);
     if (fn_size == 0 || fn_size > REGION_SIZE_BYTES) {
         TEST_FAIL("Unexpected function size");
@@ -64,12 +68,12 @@ int main(void) {
     for (uint32_t i = 0; i < fn_size; i++) dst[i] = src[i];
     TEST_SUBTEST_PASS();
 
-    /* Write-lock region 24.  After this, data writes to 0x7000-0x71FF are
+    /* Write-lock region 8.  After this, data writes to 0xA000-0xA3FF are
      * blocked and the region is whitelisted for instruction fetch in SRAM mode. */
-    TEST_SUBTEST_START("write-lock region 24");
+    TEST_SUBTEST_START("write-lock region 8");
     rom_kmcsr_sram_lock_set(1u << LOCKED_CODE_REGION);
     TEST_ASSERT_EQ((rom_kmcsr_sram_lock_read() >> LOCKED_CODE_REGION) & 1u, 1u,
-                   "SRAM_LOCK bit 24 must be set");
+                   "SRAM_LOCK bit 8 must be set");
     TEST_SUBTEST_PASS();
 
     /* Enable SRAM execution mode.  ROM and write-locked SRAM become executable. */
@@ -79,7 +83,7 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /* Execute from locked SRAM.  This is whitelisted and must succeed. */
-    TEST_SUBTEST_START("execute from locked SRAM region 24");
+    TEST_SUBTEST_START("execute from locked SRAM region 8");
     add_fn_t fn = (add_fn_t)SRAM_CODE_BASE;
     volatile uint32_t result = fn(1u);
     TEST_ASSERT_EQ(result, 1u + ADD_CONSTANT, "SRAM function returned correct value");

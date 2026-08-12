@@ -12,7 +12,7 @@
 | 0x10 | IRQ_ENABLE | RW a| Interrupt enable/mask register
 | 0x14 | SCRAMBLER_KEY | RW a| 32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.
 | 0x18 | SCRAMBLER_CTRL | RW a| Scrambler control register
-| 0x1C | SRAM_LOCK | RW a| SRAM write-lock bits. Bit[i]=1 locks region i (512 bytes each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.
+| 0x1C | SRAM_LOCK | RW a| SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.
 | 0x20 | IRQ_SET | W a| Interrupt set register. Write 1 to trigger corresponding interrupt (for ISR testing). Write-only, reads return 0.
 | 0x24 | SRAM_WRITE_LOCK_VIOLATION | RW a| Which SRAM region(s) had write attempts while locked. Bit[i]=region i. Sticky, write 1 to clear each bit.
 | 0x28 | RECOVERABLE_ERR | RW a| Recoverable error status. Firmware writes 1 to set (after recovering in ISR), writes 0 to clear (e.g. when SEP requests clear). Drives recoverable error event output.
@@ -183,7 +183,7 @@
 .SRAM_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `lock_bits` | RW | 0x0 a| One bit per 512-byte SRAM region. Region 0 = 0x4000-0x41FF, region 31 = 0x7E00-0x7FFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
+| 31:0 | `lock_bits` | RW | 0x0 a| One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
 [cols="1,1,1,1,3", options="header"]

@@ -7,7 +7,7 @@
  * @brief KPV scrambler test
  *
  * 1. Set scrambler key, enable scrambling.
- * 2. Write values to all KPV key registers (32 slots x 16 words); read back all
+ * 2. Write values to all KPV key registers (every slot x 16 words); read back all
  *    key words and verify they match (round-trip with scrambling: write
  *    scramble -> store -> read descramble).
  * 3. Disable scrambling, read back all key words and confirm returned values
@@ -17,6 +17,7 @@
  */
 
 #include "test_common.h"
+#include "rom_defs.h"
 #include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
@@ -34,8 +35,8 @@
 #define KPV_SCRAMBLER_CTRL_REG \
     (*(volatile km_kpv__kpv_scrambler_ctrl_reg_t *)KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR)
 
-#define NUM_SLOTS 32u
-#define WORDS_PER_SLOT 16u
+#define NUM_SLOTS ROM_KM_KPV_NUM_SLOTS
+#define WORDS_PER_SLOT ROM_KM_KPV_WORDS_PER_SLOT
 
 static inline void kpv_scrambler_set_key(uint32_t key) {
     KPV_SCRAMBLER_KEY_REG.w = key;

@@ -18,15 +18,15 @@
  *   - Testbench probes these registers for completion and commands
  *   - VUART output is captured for debugging/logging
  *
- * Register Locations (KMCSR base 0xE000):
- *   - TB_RESULT    @ 0xE110 - Test result (0=fail, 1=pass)
- *   - TB_SIGNATURE @ 0xE114 - Completion signature
- *   - TB_ERRCODE   @ 0xE118 - Error code
- *   - TB_SUBTEST   @ 0xE11C - Current subtest number
- *   - TB_CMD       @ 0xE120 - Command from FW to TB
- *   - TB_CMD_ARG   @ 0xE124 - Command argument
- *   - TB_CMD_STATUS@ 0xE128 - Status from TB to FW
- *   - TB_CMD_RESULT@ 0xE12C - Result from TB to FW
+ * Register Locations (KMCSR base 0x14000):
+ *   - TB_RESULT    @ 0x14110 - Test result (0=fail, 1=pass)
+ *   - TB_SIGNATURE @ 0x14114 - Completion signature
+ *   - TB_ERRCODE   @ 0x14118 - Error code
+ *   - TB_SUBTEST   @ 0x1411C - Current subtest number
+ *   - TB_CMD       @ 0x14120 - Command from FW to TB
+ *   - TB_CMD_ARG   @ 0x14124 - Command argument
+ *   - TB_CMD_STATUS@ 0x14128 - Status from TB to FW
+ *   - TB_CMD_RESULT@ 0x1412C - Result from TB to FW
  *
  * Usage:
  *   #include "test_common.h"
@@ -51,6 +51,7 @@
 #include <stddef.h>
 #include "vuart.h"
 #include "key_manager_fw.h"
+#include "rom_defs.h"
 #include "rom_boot.h"
 #include "rom_picorv32.h"
 #include "rom_kmcsr.h"
@@ -98,7 +99,7 @@ typedef km_mailbox_sep__irq_enable_reg_t KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
     (*(volatile km_csr__tb_cmd_result_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_RESULT_BASE_ADDR)
 
 /* SRAM base */
-#define SRAM_BASE 0x00004000
+#define SRAM_BASE ROM_KM_SRAM_BASE
 
 /* ROM region */
 #define ROM_BASE 0x00000000

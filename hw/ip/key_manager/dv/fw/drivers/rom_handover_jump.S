@@ -19,7 +19,7 @@
  * narrowest possible window before the jump.
  *
  * Algorithm:
- *   1. Overwrite the entire SRAM (0x4000..0x7FFF inclusive) with a
+ *   1. Overwrite the entire SRAM (0x8000..0xFFFF inclusive) with a
  *      register-seeded xoshiro128++ pseudorandom pattern.
  *      - Hardware silently drops writes to write-locked regions (firmware image
  *        and rom_persist), so only unlocked data (ROM stack, .data, .bss,
@@ -28,7 +28,7 @@
  *        preventing spurious unrecoverable faults from the locked-region writes.
  *   2. fence — ensure all stores complete before register clear.
  *   3. Clear all general-purpose registers (x1-x15 in RV32E).
- *   4. Jump to SRAM base (0x4000).
+ *   4. Jump to SRAM base (0x8000).
  *
  * Note on step ordering: locking (SRAM regions, OTP, persist) and IRQ disable
  * are performed in C (rom_handover_finish) before this routine.  This is
@@ -116,9 +116,9 @@ rom_handover_jump:
     li   x1,  0
     li   x2,  0
 
-    /* Jump to mutable firmware.  x5 holds 0x4000; jalr zero,0(x5) writes the
-     * return address to x0 (discarded) and jumps to 0x4000.  x5 still holds
-     * 0x4000 on landing but the mutable firmware initialises its own state. */
+    /* Jump to mutable firmware.  x5 holds the SRAM base; jalr zero,0(x5) writes
+     * the return address to x0 (discarded) and jumps there.  x5 still holds the
+     * base on landing but the mutable firmware initialises its own state. */
     jalr zero, 0(x5)
 
     .size rom_handover_jump, . - rom_handover_jump

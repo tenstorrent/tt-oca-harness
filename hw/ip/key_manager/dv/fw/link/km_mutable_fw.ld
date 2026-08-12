@@ -7,23 +7,23 @@
 ENTRY(_mutable_fw_entry)
 
 MEMORY {
-    mutable_sram (rwx) : ORIGIN = 0x00004000, LENGTH = 0x00001800
+    mutable_sram (rwx) : ORIGIN = 0x00008000, LENGTH = 0x00001800
 }
 
 SECTIONS {
-    .text.mutable_entry 0x00004000 : {
+    .text.mutable_entry 0x00008000 : {
         KEEP(*(.text.mutable_entry))
         . = ALIGN(4);
-        . = 0x00004010;
+        . = 0x00008010;
     } > mutable_sram
 
-    .text.mutable_irq 0x00004010 : {
+    .text.mutable_irq 0x00008010 : {
         KEEP(*(.text.mutable_irq))
         . = ALIGN(4);
-        . = 0x00004020;
+        . = 0x00008020;
     } > mutable_sram
 
-    .text 0x00004020 : {
+    .text 0x00008020 : {
         *(.text .text.*)
         *(.rodata .rodata.*)
         . = ALIGN(4);
@@ -43,5 +43,5 @@ SECTIONS {
         . = ALIGN(4);
     } > mutable_sram
 
-    _mutable_fw_load_words = (_mutable_fw_load_end - 0x00004000 + 3) / 4;
+    _mutable_fw_load_words = (_mutable_fw_load_end - 0x00008000 + 3) / 4;
 }

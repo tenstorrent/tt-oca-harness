@@ -43,7 +43,9 @@ int main(void) {
         return 0;
     }
 
-    if (!tb_set_timeout(1500000)) {
+    /* The wipe handler sweeps the whole SRAM once per shred pass, so the budget
+     * scales with ROM_KM_SRAM_SIZE. */
+    if (!tb_set_timeout(4000000)) {
         TEST_FAIL("Failed to set testbench timeout");
     }
 
