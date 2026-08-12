@@ -36,7 +36,7 @@ addrmap entropy_source {
         field {
             sw = rw;
             hw = r;
-            desc = "Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, and decorrelator shift registers. Ring oscillators continue running. Self-clearing after 1 clock cycle.";
+            desc = "Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, decorrelator shift registers, and the downsample phase counter. Ring oscillators continue running. Level-sensitive: the reset holds while this bit is 1, so software must write 0 to release it.";
         } RESET[0:0] = 0x0;
         field {
             sw = rw;

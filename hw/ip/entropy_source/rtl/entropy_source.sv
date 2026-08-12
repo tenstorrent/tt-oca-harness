@@ -629,8 +629,9 @@ module entropy_source
     // Sequential
     ///////////////
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
+    // rst_n (= rst_ni & ~CTRL.RESET) so a soft reset also reloads the cadence.
+    always_ff @(posedge clk_i or negedge rst_n) begin
+        if (!rst_n) begin
             downsample_count <= reg_out.CTRL.DOWNSAMPLE_RATE.value;
         end else if (entropy_stream_valid_gated) begin
             if (downsample_count == 10'd0) begin
