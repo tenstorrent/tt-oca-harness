@@ -445,11 +445,14 @@ class TestbenchCommandHandler:
         try:
             # Access SRAM memory array from testbench
             # Path: tb_key_manager -> sram_mem array
-            physical_addr = arg & 0x1FFF  # 13-bit address (8192 words)
+            SRAM_WORDS = 8192
 
-            if physical_addr >= 8192:
-                self.dut._log.error(f"[TB CMD] Invalid SRAM address: {physical_addr}")
+            if arg >= SRAM_WORDS:
+                self.dut._log.error(f"[TB CMD] Invalid SRAM word address: {arg} "
+                                    f"(must be 0-{SRAM_WORDS - 1})")
                 return 0
+
+            physical_addr = arg
 
             # Read from SRAM memory array at physical address
             # Firmware has already calculated the scrambled address if needed
