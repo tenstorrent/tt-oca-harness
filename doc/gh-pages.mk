@@ -25,7 +25,7 @@ ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-pr
 	@echo "Building combined OCAH documentation site (Antora, all 4 books) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && SITE_SEARCH_PROVIDER=lunr $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
-		$(OCAH_DOC_ANTORA_REVISION_HISTORY_ARG) \
+		$(OCAH_DOC_ANTORA_RELEASE_ARG) \
 		"$(OCAH_COMBINED_PLAYBOOK)"
 	@echo "Done: $(OCAH_GHPAGES_DIR)/ocah-docs/latest/index.html"
 

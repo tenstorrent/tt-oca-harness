@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Revision History
+= Internal Revision History
 :doctype: book
 :sectanchors:
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
 
-This document tracks major revisions and updates to the OCAH
-documentation.
+This document tracks internal revisions and updates to the OCAH documentation.
 
-.Revision History
+.Internal Revision History
 [width="100%",cols="15%,15%,15%,55%",options="header",]
 |=======================================================================
 |Version |Date |Author |Description
