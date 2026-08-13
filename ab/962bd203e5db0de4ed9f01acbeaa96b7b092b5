@@ -1,0 +1,33 @@
+doc/trm/doc.mk
+  s_735d663e4c2165::t_1d22acfd5ae99b 40,42,53,66
+doc/trm/src/index.adoc
+  s_735d663e4c2165::t_e436d0a09c85c9 26-28,36,38
+README.md
+  s_735d663e4c2165::t_76e6081e70c99d 43-45,48-49
+doc/trm/modules/ROOT/nav.adoc
+  s_735d663e4c2165::t_45ca5cdaf0f44b 5-7
+doc/gh-pages.mk
+  s_735d663e4c2165::t_0dfa44b74e5d2a 28
+doc/doc.mk
+  s_735d663e4c2165::t_4275ed66f7e1c8 23-28
+doc/trm/src/revision.adoc
+  s_735d663e4c2165::t_052b55a1c4dc5a 4,11,13
+scripts/docker-run.sh
+  s_735d663e4c2165::t_eeb57363a8b020 331-332,343,349,352,355,360-361,375,377,385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ab962bd203e5db0de4ed9f01acbeaa96b7b092b5",
+  "prompts": {},
+  "sessions": {
+    "s_735d663e4c2165": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a51313d-04e6-40c2-b49e-afad05839e75",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
