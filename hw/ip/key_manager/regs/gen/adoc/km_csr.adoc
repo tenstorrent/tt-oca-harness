@@ -19,7 +19,7 @@
 | 0x2C | BOOT_STATUS | RW a| Boot status. Firmware writes 1 to COLD_BOOT_DONE after cold-boot init completes; bit remains set until next cold reset.
 | 0x30 | OTP_LIFE_CYCLE | R a| Life cycle state. 8-bit (4-bit value differentially encoded). Read-through from OTP port; no reset.
 | 0x34 | OTP_DEMOTION_STATE | R a| Demotion state. 2-bit, differentially encoded. Read-through from OTP port; no reset.
-| 0x38 | SRAM_EXEC_MODE | RW a| Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM-only executable; 1=ROM + write-locked SRAM regions executable. Set by ROM stack-less handover immediately before jumping to mutable firmware.
+| 0x38 | SRAM_EXEC_MODE | RW a| Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.
 | 0xB8 | IRQ_ENTRY_ADDR | RW a| Effective IRQ entry address for subsequent interrupts. Writable while unlocked; any 32-bit value accepted.
 | 0xBC | IRQ_ENTRY_LOCK | RW a| Write-one-only lock for IRQ_ENTRY_ADDR. Separate readable register; cleared only on KM reset.
 | 0x100 | VUART_TX | RW a| Virtual UART transmit register. Write a byte to send to testbench. DATA_VALID is set on write and self-clears.
@@ -131,8 +131,9 @@
 .IRQ_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:11 | `rsvd` | R | 0x0 a| Reserved
-| 10 | `exec_violation` | RW | 0x0 a| Instruction fetch from a non-whitelisted (non-executable) memory region detected. Sticky, write 1 to clear.
+| 31:12 | `rsvd` | R | 0x0 a| Reserved
+| 11 | `rom_access_violation` | RW | 0x0 a| KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.
+| 10 | `exec_violation` | RW | 0x0 a| Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.
 | 9 | `otp_sigint` | RW | 0x0 a| OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.
 | 8 | `otp_change` | RW | 0x0 a| An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).
 | 7 | `wipe_state` | RW | 0x0 a| Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.
@@ -149,7 +150,8 @@
 .IRQ_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:11 | `rsvd` | R | 0x0 a| Reserved
+| 31:12 | `rsvd` | R | 0x0 a| Reserved
+| 11 | `rom_access_violation_en` | RW | 0x0 a| Enable ROM lockout violation interrupt
 | 10 | `exec_violation_en` | RW | 0x0 a| Enable execute-permission whitelist violation interrupt
 | 9 | `otp_sigint_en` | RW | 0x0 a| Enable OTP dual-rail integrity violation interrupt
 | 8 | `otp_change_en` | RW | 0x0 a| Enable OTP field change interrupt
@@ -190,7 +192,8 @@
 .IRQ_SET Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:11 | `rsvd` | W | 0x0 a| Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)
+| 31:12 | `rsvd` | W | 0x0 a| Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)
+| 11 | `rom_access_violation_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)
 | 10 | `exec_violation_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)
 | 9 | `otp_sigint_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)
 | 8 | `otp_change_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)
@@ -249,7 +252,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
-| 0 | `enable` | RW | 0x0 a| Execute-permission mode: 0=ROM-only whitelist; 1=ROM + write-locked SRAM whitelist. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
+| 0 | `enable` | RW | 0x0 a| Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
 [cols="1,1,1,1,3", options="header"]

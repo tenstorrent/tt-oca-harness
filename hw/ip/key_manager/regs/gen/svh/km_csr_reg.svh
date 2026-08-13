@@ -318,8 +318,11 @@ localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_SHIFT                  
 localparam int unsigned KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_MASK                                                 = 32'h400;
 localparam int unsigned KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_SHIFT                                                = 10;
 
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_MASK                                                           = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT                                                          = 11;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_ACCESS_VIOLATION_MASK                                           = 32'h800;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_ACCESS_VIOLATION_SHIFT                                          = 11;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_MASK                                                           = 32'hFFFFF000;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT                                                          = 12;
 
 localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_PARITY_EN_MASK                                                  = 32'h1;
 localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_PARITY_EN_SHIFT                                                 = 0;
@@ -354,8 +357,11 @@ localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_SIGINT_EN_SHIFT               
 localparam int unsigned KM_CSR_IRQ_ENABLE_REG_EXEC_VIOLATION_EN_MASK                                              = 32'h400;
 localparam int unsigned KM_CSR_IRQ_ENABLE_REG_EXEC_VIOLATION_EN_SHIFT                                             = 10;
 
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_MASK                                                           = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT                                                          = 11;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_ACCESS_VIOLATION_EN_MASK                                        = 32'h800;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_ACCESS_VIOLATION_EN_SHIFT                                       = 11;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_MASK                                                           = 32'hFFFFF000;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT                                                          = 12;
 
 localparam int unsigned KM_CSR_SCRAMBLER_KEY_REG_KEY_MASK                                                         = 32'hFFFFFFFF;
 localparam int unsigned KM_CSR_SCRAMBLER_KEY_REG_KEY_SHIFT                                                        = 0;
@@ -405,8 +411,11 @@ localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_SIGINT_SET_SHIFT                 
 localparam int unsigned KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_MASK                                                = 32'h400;
 localparam int unsigned KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_SHIFT                                               = 10;
 
-localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_MASK                                                              = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_SHIFT                                                             = 11;
+localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_ACCESS_VIOLATION_SET_MASK                                          = 32'h800;
+localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_ACCESS_VIOLATION_SET_SHIFT                                         = 11;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_MASK                                                              = 32'hFFFFF000;
+localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_SHIFT                                                             = 12;
 
 localparam int unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_VIOLATION_BITS_MASK                                  = 32'hFFFFFFFF;
 localparam int unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_VIOLATION_BITS_SHIFT                                 = 0;
@@ -602,7 +611,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [20:0]   rsvd ;
+    logic [19:0]   rsvd ;
+    logic [0:0]   rom_access_violation ;
     logic [0:0]   exec_violation ;
     logic [0:0]   otp_sigint ;
     logic [0:0]   otp_change ;
@@ -619,7 +629,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [20:0]   rsvd ;
+    logic [19:0]   rsvd ;
+    logic [0:0]   rom_access_violation_en ;
     logic [0:0]   exec_violation_en ;
     logic [0:0]   otp_sigint_en ;
     logic [0:0]   otp_change_en ;
@@ -656,7 +667,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [20:0]   rsvd ;
+    logic [19:0]   rsvd ;
+    logic [0:0]   rom_access_violation_set ;
     logic [0:0]   exec_violation_set ;
     logic [0:0]   otp_sigint_set ;
     logic [0:0]   otp_change_set ;

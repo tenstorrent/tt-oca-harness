@@ -26,10 +26,23 @@
  *
  *          An execute-permission whitelist is enforced on committed instruction
  *          fetches (mem_instr).  Allowed regions are selected by sram_exec_mode_i
- *          (from KMCSR SRAM_EXEC_MODE.enable):
+ *          (from KMCSR SRAM_EXEC_MODE.enable) and by the ROM lockout:
  *            - 0 (ROM mode): ROM and VROM only.
- *            - 1 (SRAM mode): ROM, VROM, and write-locked SRAM regions.
- *          Any fetch outside the whitelist pulses exec_violation_o.
+ *            - 1 (SRAM mode), lockout not engaged: ROM, VROM, and write-locked
+ *              SRAM regions.
+ *            - 1 (SRAM mode), lockout engaged: VROM and write-locked SRAM
+ *              regions.  The ROM is gone.
+ *          Any fetch outside the whitelist pulses exec_violation_o, except a
+ *          blocked ROM access, which pulses rom_access_violation_o instead.
+ *
+ *          The whitelist becomes an exchange rather than an addition: writing
+ *          sram_exec_mode_i only arms it, and the ROM is revoked on the first
+ *          committed fetch from a write-locked SRAM address, which is the point
+ *          at which mutable firmware actually starts running.  The handover
+ *          assembly therefore keeps executing from ROM between the arming store
+ *          and its jump.  Once engaged the lockout blocks ROM instruction
+ *          fetches and ROM data reads until the next warm or cold reset; the
+ *          blocked access returns zeros rather than ROM content.
  *
  * @param axil_req_t        AXI-Lite request struct type for peripheral port.
  * @param axil_resp_t       AXI-Lite response struct type for peripheral port.
@@ -77,10 +90,12 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     // SRAM write-lock violation (to KMCSR): one-hot region that had attempted write while locked
     output logic [31:0] sram_write_lock_violation_region_o,
 
-    // Execute-permission whitelist mode (from KMCSR): 0=ROM-only, 1=ROM+write-locked-SRAM
+    // Execute-permission whitelist mode (from KMCSR): 0=ROM-only, 1=write-locked-SRAM
     input  logic   sram_exec_mode_i,
     // Execute-permission whitelist violation (to KMCSR): pulse on committed fetch outside whitelist
     output logic        exec_violation_o,
+    // ROM lockout violation (to KMCSR): pulse on ROM fetch or data read after lockout engages
+    output logic        rom_access_violation_o,
 
     // AXI4-Lite Master Interface (for peripherals via crossbar)
     output axil_req_t  axi_mst_req_o,
@@ -317,16 +332,19 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     //=========================================================================
     // A committed instruction fetch (mem_valid && mem_instr && !wstrb) is allowed
     // only from whitelisted regions.  All other fetches pulse exec_violation_o,
-    // which triggers an unrecoverable fault via KMCSR IRQ.
+    // which triggers an unrecoverable fault via KMCSR IRQ.  A fetch blocked by
+    // the ROM lockout instead pulses rom_access_violation_o.
     //
     // Whitelist (controlled by SRAM_EXEC_MODE.enable from KMCSR):
     //   enable == 0 (ROM mode): ROM and VROM only.
-    //   enable == 1 (SRAM mode): ROM, VROM, and write-locked SRAM regions
-    //                            (SRAM_LOCK.lock_bits[region] == 1).
+    //   enable == 1 (SRAM mode): VROM and write-locked SRAM regions
+    //                            (SRAM_LOCK.lock_bits[region] == 1), plus the ROM
+    //                            until the lockout engages below.
     //
     // VROM is the testbench virtual ROM (0x1000_0000); it is always executable
     // because block-TB firmware runs .text from VROM (km_exec_from_vrom.ld).
-    // VROM does not exist in production silicon.
+    // VROM does not exist in production silicon, so it carries no security
+    // requirement and is exempt from the ROM lockout as well.
     //
     // Region index: SRAM_LOCK_REGION_BYTES-sized regions within the SRAM.  The
     // SRAM base is naturally aligned to its own size, so the index is a plain
@@ -336,14 +354,52 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
 
     logic        committed_fetch;
     logic        exec_allowed;
+    logic        sram_exec_allowed;
+    logic        rom_lockout_q;
     logic [SRAM_REGION_INDEX_W-1:0] fetch_region;
 
     assign committed_fetch = mem_valid && mem_instr && !(|mem_wstrb);
     assign fetch_region    = mem_addr[SRAM_REGION_LSB + SRAM_REGION_INDEX_W - 1 : SRAM_REGION_LSB];
-    assign exec_allowed    = is_rom_addr
-                          || is_vrom_addr
-                          || (is_sram_addr && sram_exec_mode_i && sram_lock_bits_i[fetch_region]);
-    assign exec_violation_o = committed_fetch && !exec_allowed;
+    assign sram_exec_allowed = is_sram_addr && sram_exec_mode_i && sram_lock_bits_i[fetch_region];
+    assign exec_allowed      = (is_rom_addr && !rom_lockout_q)
+                             || is_vrom_addr
+                             || sram_exec_allowed;
+
+    // exec_allowed above is the whitelist as documented; the ROM exclusion here
+    // is what keeps the two status bits disjoint, since a ROM fetch refused by
+    // the lockout is reported on rom_access_violation_o instead.
+    assign exec_violation_o = committed_fetch && !exec_allowed && !is_rom_addr;
+
+    //=========================================================================
+    // ROM Lockout
+    //=========================================================================
+    // Writing SRAM_EXEC_MODE.enable arms the exchange; the ROM is revoked on the
+    // first committed fetch from a write-locked SRAM address.  Engaging on the
+    // fetch rather than on the register write is what lets the stack-less
+    // handover assembly finish: its triple write, register clears and jalr are
+    // all ROM fetches that must still succeed.  Fetch-only also decouples the
+    // lockout from incidental data traffic — ROM code reads its own rom_persist
+    // structure, which lives in a write-locked region.
+    //
+    // The latch is in the warm-reset domain to match SRAM_EXEC_MODE.enable
+    // (resetsignal = WARM_RST_N), so the lockout is one-way within a boot and
+    // is cleared only by a warm or cold reset.
+    always_ff @(posedge clk_i or negedge rst_sync_ni) begin
+        if (!rst_sync_ni) begin
+            rom_lockout_q <= 1'b0;
+        end else if (committed_fetch && sram_exec_allowed) begin
+            rom_lockout_q <= 1'b1;
+        end
+    end
+
+    // Any ROM fetch or data read once locked out.  Writes are excluded: they are
+    // already reported as rom_write_err_o by km_rom_interface.
+    assign rom_access_violation_o = rom_lockout_q && mem_valid && is_rom_addr && !(|mem_wstrb);
+
+    // Reads and fetches are refused; writes still reach the ROM interface so it
+    // can raise rom_write_err_o.
+    logic rom_read_blocked;
+    assign rom_read_blocked = rom_lockout_q && !(|mem_wstrb);
 
     // ROM interface signals
     logic        rom_mem_ready;
@@ -395,8 +451,11 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     assign vrom_mem_la_read = mem_la_read && is_la_vrom_addr;
     assign vrom_mem_la_addr = mem_la_addr;
 
-    // Combine ready signals
-    assign mem_ready = (is_rom_addr && rom_mem_ready) ||
+    // Combine ready signals.  A ROM access refused by the lockout completes
+    // immediately: km_rom_interface derives its ready from the ROM response, so
+    // suppressing the request without supplying a ready here would stall the CPU
+    // forever instead of faulting.
+    assign mem_ready = (is_rom_addr && (rom_mem_ready || rom_read_blocked)) ||
                        (is_sram_addr && sram_mem_ready) ||
                        (is_vrom_addr && vrom_mem_ready) ||
                        (is_periph_addr && axi_adapter_mem_ready);
@@ -448,9 +507,14 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
         end
     end
 
+    // Once locked out the ROM leg reads as zero, both for the blocked access
+    // itself and for any value still held in the prefetch register from before.
+    logic [31:0] rom_mem_rdata_gated;
+    assign rom_mem_rdata_gated = rom_lockout_q ? 32'h0 : rom_mem_rdata;
+
     always_comb begin
         unique case (mem_rdata_sel)
-            MemRdataSelRom:    mem_rdata = rom_mem_rdata;
+            MemRdataSelRom:    mem_rdata = rom_mem_rdata_gated;
             MemRdataSelSram:   mem_rdata = sram_mem_rdata;
             MemRdataSelVrom:   mem_rdata = vrom_mem_rdata;
             MemRdataSelPeriph: mem_rdata = axi_adapter_mem_rdata;
@@ -467,7 +531,10 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     ) u_rom_if (
         .clk_i          (clk_i),
         .rst_ni         (rst_ni),
-        .mem_valid_i    (mem_valid && is_rom_addr),
+        // The lockout is applied at the interface boundary so that no ROM word is
+        // ever fetched or latched into the prefetch register.  Writes still get
+        // through, unchanged, so that rom_write_err_o keeps reporting them.
+        .mem_valid_i    (mem_valid && is_rom_addr && !rom_read_blocked),
         .mem_ready_o    (rom_mem_ready),
         .mem_addr_i     (mem_addr),
         .mem_wdata_i    (mem_wdata),
@@ -475,7 +542,7 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
         .mem_rstrb_i    (mem_rstrb),
         .mem_rdata_o    (rom_mem_rdata),
         // Look-ahead interface for prefetching
-        .mem_la_read_i  (mem_la_read && is_la_rom_addr),
+        .mem_la_read_i  (mem_la_read && is_la_rom_addr && !rom_lockout_q),
         .mem_la_addr_i  (mem_la_addr),
         .mem_la_rstrb_i (mem_la_rstrb),
         .rom_mem_req_o  (rom_mem_req_o),

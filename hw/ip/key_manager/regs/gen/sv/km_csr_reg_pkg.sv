@@ -66,6 +66,11 @@ package km_csr_reg_pkg;
     } km_csr__irq_status_reg__exec_violation__in_t;
 
     typedef struct {
+        logic next;
+        logic hwset;
+    } km_csr__irq_status_reg__rom_access_violation__in_t;
+
+    typedef struct {
         km_csr__irq_status_reg__rom_parity_err__in_t rom_parity_err;
         km_csr__irq_status_reg__sram_parity_err__in_t sram_parity_err;
         km_csr__irq_status_reg__rom_write_err__in_t rom_write_err;
@@ -77,6 +82,7 @@ package km_csr_reg_pkg;
         km_csr__irq_status_reg__otp_change__in_t otp_change;
         km_csr__irq_status_reg__otp_sigint__in_t otp_sigint;
         km_csr__irq_status_reg__exec_violation__in_t exec_violation;
+        km_csr__irq_status_reg__rom_access_violation__in_t rom_access_violation;
     } km_csr__irq_status_reg__in_t;
 
     typedef struct {
@@ -383,6 +389,10 @@ package km_csr_reg_pkg;
     } km_csr__irq_status_reg__exec_violation__out_t;
 
     typedef struct {
+        logic value;
+    } km_csr__irq_status_reg__rom_access_violation__out_t;
+
+    typedef struct {
         km_csr__irq_status_reg__rom_parity_err__out_t rom_parity_err;
         km_csr__irq_status_reg__sram_parity_err__out_t sram_parity_err;
         km_csr__irq_status_reg__rom_write_err__out_t rom_write_err;
@@ -394,6 +404,7 @@ package km_csr_reg_pkg;
         km_csr__irq_status_reg__otp_change__out_t otp_change;
         km_csr__irq_status_reg__otp_sigint__out_t otp_sigint;
         km_csr__irq_status_reg__exec_violation__out_t exec_violation;
+        km_csr__irq_status_reg__rom_access_violation__out_t rom_access_violation;
     } km_csr__irq_status_reg__out_t;
 
     typedef struct {
@@ -441,6 +452,10 @@ package km_csr_reg_pkg;
     } km_csr__irq_enable_reg__exec_violation_en__out_t;
 
     typedef struct {
+        logic value;
+    } km_csr__irq_enable_reg__rom_access_violation_en__out_t;
+
+    typedef struct {
         km_csr__irq_enable_reg__rom_parity_en__out_t rom_parity_en;
         km_csr__irq_enable_reg__sram_parity_en__out_t sram_parity_en;
         km_csr__irq_enable_reg__rom_write_en__out_t rom_write_en;
@@ -452,6 +467,7 @@ package km_csr_reg_pkg;
         km_csr__irq_enable_reg__otp_change_en__out_t otp_change_en;
         km_csr__irq_enable_reg__otp_sigint_en__out_t otp_sigint_en;
         km_csr__irq_enable_reg__exec_violation_en__out_t exec_violation_en;
+        km_csr__irq_enable_reg__rom_access_violation_en__out_t rom_access_violation_en;
     } km_csr__irq_enable_reg__out_t;
 
     typedef struct {
@@ -528,6 +544,10 @@ package km_csr_reg_pkg;
     } km_csr__irq_set_reg__exec_violation_set__out_t;
 
     typedef struct {
+        logic value;
+    } km_csr__irq_set_reg__rom_access_violation_set__out_t;
+
+    typedef struct {
         km_csr__irq_set_reg__rom_parity_err_set__out_t rom_parity_err_set;
         km_csr__irq_set_reg__sram_parity_err_set__out_t sram_parity_err_set;
         km_csr__irq_set_reg__rom_write_err_set__out_t rom_write_err_set;
@@ -539,6 +559,7 @@ package km_csr_reg_pkg;
         km_csr__irq_set_reg__otp_change_set__out_t otp_change_set;
         km_csr__irq_set_reg__otp_sigint_set__out_t otp_sigint_set;
         km_csr__irq_set_reg__exec_violation_set__out_t exec_violation_set;
+        km_csr__irq_set_reg__rom_access_violation_set__out_t rom_access_violation_set;
     } km_csr__irq_set_reg__out_t;
 
     typedef struct {
