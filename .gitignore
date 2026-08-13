@@ -94,3 +94,7 @@ vendor/**/Bender.lock
 /flow_runs_*.tar.gz
 /packaged_ip/
 /weekly_packaged_ip/
+
+# npm install target for a11y
+tools/a11y/node_mo#dules/
+tools/a11y/report/
