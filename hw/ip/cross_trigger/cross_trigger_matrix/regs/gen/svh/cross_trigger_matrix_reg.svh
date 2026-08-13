@@ -23,93 +23,302 @@
 
 
 localparam int unsigned CROSS_TRIGGER_MATRIX_REG_MAP_BASE_ADDR                                                    = 32'h00000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_REG_MAP_SIZE                                                         = 32'h000000CC;
+localparam int unsigned CROSS_TRIGGER_MATRIX_REG_MAP_SIZE                                                         = 32'h000000D0;
 
 
-localparam int unsigned CT_SRC0_CONFIG_0_REG_OFFSET                                                               = 32'h00000000;
-localparam int unsigned CT_SRC0_CONFIG_0_REG_ADDR                                                                 = 32'h00000000;
-localparam int unsigned CT_SRC1_CONFIG_0_REG_OFFSET                                                               = 32'h00000008;
-localparam int unsigned CT_SRC1_CONFIG_0_REG_ADDR                                                                 = 32'h00000008;
-localparam int unsigned CT_SRC2_CONFIG_0_REG_OFFSET                                                               = 32'h00000010;
-localparam int unsigned CT_SRC2_CONFIG_0_REG_ADDR                                                                 = 32'h00000010;
-localparam int unsigned CT_SRC3_CONFIG_0_REG_OFFSET                                                               = 32'h00000018;
-localparam int unsigned CT_SRC3_CONFIG_0_REG_ADDR                                                                 = 32'h00000018;
-localparam int unsigned CT_SRC4_CONFIG_0_REG_OFFSET                                                               = 32'h00000020;
-localparam int unsigned CT_SRC4_CONFIG_0_REG_ADDR                                                                 = 32'h00000020;
-localparam int unsigned CT_SRC5_CONFIG_0_REG_OFFSET                                                               = 32'h00000028;
-localparam int unsigned CT_SRC5_CONFIG_0_REG_ADDR                                                                 = 32'h00000028;
-localparam int unsigned CT_SRC6_CONFIG_0_REG_OFFSET                                                               = 32'h00000030;
-localparam int unsigned CT_SRC6_CONFIG_0_REG_ADDR                                                                 = 32'h00000030;
-localparam int unsigned CT_SRC7_CONFIG_0_REG_OFFSET                                                               = 32'h00000038;
-localparam int unsigned CT_SRC7_CONFIG_0_REG_ADDR                                                                 = 32'h00000038;
-localparam int unsigned CT_SRC8_CONFIG_0_REG_OFFSET                                                               = 32'h00000040;
-localparam int unsigned CT_SRC8_CONFIG_0_REG_ADDR                                                                 = 32'h00000040;
-localparam int unsigned CT_SRC9_CONFIG_0_REG_OFFSET                                                               = 32'h00000048;
-localparam int unsigned CT_SRC9_CONFIG_0_REG_ADDR                                                                 = 32'h00000048;
-localparam int unsigned CT_SRC10_CONFIG_0_REG_OFFSET                                                              = 32'h00000050;
-localparam int unsigned CT_SRC10_CONFIG_0_REG_ADDR                                                                = 32'h00000050;
-localparam int unsigned CT_SRC11_CONFIG_0_REG_OFFSET                                                              = 32'h00000058;
-localparam int unsigned CT_SRC11_CONFIG_0_REG_ADDR                                                                = 32'h00000058;
-localparam int unsigned CT_SRC12_CONFIG_0_REG_OFFSET                                                              = 32'h00000060;
-localparam int unsigned CT_SRC12_CONFIG_0_REG_ADDR                                                                = 32'h00000060;
-localparam int unsigned CT_SRC13_CONFIG_0_REG_OFFSET                                                              = 32'h00000068;
-localparam int unsigned CT_SRC13_CONFIG_0_REG_ADDR                                                                = 32'h00000068;
-localparam int unsigned CT_SRC14_CONFIG_0_REG_OFFSET                                                              = 32'h00000070;
-localparam int unsigned CT_SRC14_CONFIG_0_REG_ADDR                                                                = 32'h00000070;
-localparam int unsigned CT_SRC15_CONFIG_0_REG_OFFSET                                                              = 32'h00000078;
-localparam int unsigned CT_SRC15_CONFIG_0_REG_ADDR                                                                = 32'h00000078;
-localparam int unsigned CT_SRC16_CONFIG_0_REG_OFFSET                                                              = 32'h00000080;
-localparam int unsigned CT_SRC16_CONFIG_0_REG_ADDR                                                                = 32'h00000080;
-localparam int unsigned CT_SRC17_CONFIG_0_REG_OFFSET                                                              = 32'h00000088;
-localparam int unsigned CT_SRC17_CONFIG_0_REG_ADDR                                                                = 32'h00000088;
-localparam int unsigned CT_SRC18_CONFIG_0_REG_OFFSET                                                              = 32'h00000090;
-localparam int unsigned CT_SRC18_CONFIG_0_REG_ADDR                                                                = 32'h00000090;
-localparam int unsigned CT_SRC19_CONFIG_0_REG_OFFSET                                                              = 32'h00000098;
-localparam int unsigned CT_SRC19_CONFIG_0_REG_ADDR                                                                = 32'h00000098;
-localparam int unsigned CT_SRC20_CONFIG_0_REG_OFFSET                                                              = 32'h000000A0;
-localparam int unsigned CT_SRC20_CONFIG_0_REG_ADDR                                                                = 32'h000000A0;
-localparam int unsigned CT_SRC21_CONFIG_0_REG_OFFSET                                                              = 32'h000000A8;
-localparam int unsigned CT_SRC21_CONFIG_0_REG_ADDR                                                                = 32'h000000A8;
-localparam int unsigned CT_SRC22_CONFIG_0_REG_OFFSET                                                              = 32'h000000B0;
-localparam int unsigned CT_SRC22_CONFIG_0_REG_ADDR                                                                = 32'h000000B0;
-localparam int unsigned CT_SRC23_CONFIG_0_REG_OFFSET                                                              = 32'h000000B8;
-localparam int unsigned CT_SRC23_CONFIG_0_REG_ADDR                                                                = 32'h000000B8;
-localparam int unsigned CT_SRC24_CONFIG_0_REG_OFFSET                                                              = 32'h000000C0;
-localparam int unsigned CT_SRC24_CONFIG_0_REG_ADDR                                                                = 32'h000000C0;
-localparam int unsigned CT_SRC25_CONFIG_0_REG_OFFSET                                                              = 32'h000000C8;
-localparam int unsigned CT_SRC25_CONFIG_0_REG_ADDR                                                                = 32'h000000C8;
+
+
+//==============================================================================
+// Register File: CT_SRC[0]
+//==============================================================================
+
+localparam int unsigned CT_SRC_0__REG_FILE_BASE_ADDR                                                              = 32'h00000000;
+localparam int unsigned CT_SRC_0__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_0__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_0__CONFIG_0_REG_ADDR                                                               = 32'h00000000;
+
+
+//==============================================================================
+// Register File: CT_SRC[1]
+//==============================================================================
+
+localparam int unsigned CT_SRC_1__REG_FILE_BASE_ADDR                                                              = 32'h00000008;
+localparam int unsigned CT_SRC_1__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_1__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_1__CONFIG_0_REG_ADDR                                                               = 32'h00000008;
+
+
+//==============================================================================
+// Register File: CT_SRC[2]
+//==============================================================================
+
+localparam int unsigned CT_SRC_2__REG_FILE_BASE_ADDR                                                              = 32'h00000010;
+localparam int unsigned CT_SRC_2__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_2__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_2__CONFIG_0_REG_ADDR                                                               = 32'h00000010;
+
+
+//==============================================================================
+// Register File: CT_SRC[3]
+//==============================================================================
+
+localparam int unsigned CT_SRC_3__REG_FILE_BASE_ADDR                                                              = 32'h00000018;
+localparam int unsigned CT_SRC_3__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_3__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_3__CONFIG_0_REG_ADDR                                                               = 32'h00000018;
+
+
+//==============================================================================
+// Register File: CT_SRC[4]
+//==============================================================================
+
+localparam int unsigned CT_SRC_4__REG_FILE_BASE_ADDR                                                              = 32'h00000020;
+localparam int unsigned CT_SRC_4__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_4__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_4__CONFIG_0_REG_ADDR                                                               = 32'h00000020;
+
+
+//==============================================================================
+// Register File: CT_SRC[5]
+//==============================================================================
+
+localparam int unsigned CT_SRC_5__REG_FILE_BASE_ADDR                                                              = 32'h00000028;
+localparam int unsigned CT_SRC_5__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_5__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_5__CONFIG_0_REG_ADDR                                                               = 32'h00000028;
+
+
+//==============================================================================
+// Register File: CT_SRC[6]
+//==============================================================================
+
+localparam int unsigned CT_SRC_6__REG_FILE_BASE_ADDR                                                              = 32'h00000030;
+localparam int unsigned CT_SRC_6__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_6__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_6__CONFIG_0_REG_ADDR                                                               = 32'h00000030;
+
+
+//==============================================================================
+// Register File: CT_SRC[7]
+//==============================================================================
+
+localparam int unsigned CT_SRC_7__REG_FILE_BASE_ADDR                                                              = 32'h00000038;
+localparam int unsigned CT_SRC_7__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_7__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_7__CONFIG_0_REG_ADDR                                                               = 32'h00000038;
+
+
+//==============================================================================
+// Register File: CT_SRC[8]
+//==============================================================================
+
+localparam int unsigned CT_SRC_8__REG_FILE_BASE_ADDR                                                              = 32'h00000040;
+localparam int unsigned CT_SRC_8__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_8__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_8__CONFIG_0_REG_ADDR                                                               = 32'h00000040;
+
+
+//==============================================================================
+// Register File: CT_SRC[9]
+//==============================================================================
+
+localparam int unsigned CT_SRC_9__REG_FILE_BASE_ADDR                                                              = 32'h00000048;
+localparam int unsigned CT_SRC_9__REG_FILE_SIZE                                                                   = 32'h00000004;
+
+localparam int unsigned CT_SRC_9__CONFIG_0_REG_OFFSET                                                             = 32'h00000000;
+localparam int unsigned CT_SRC_9__CONFIG_0_REG_ADDR                                                               = 32'h00000048;
+
+
+//==============================================================================
+// Register File: CT_SRC[10]
+//==============================================================================
+
+localparam int unsigned CT_SRC_10__REG_FILE_BASE_ADDR                                                             = 32'h00000050;
+localparam int unsigned CT_SRC_10__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_10__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_10__CONFIG_0_REG_ADDR                                                              = 32'h00000050;
+
+
+//==============================================================================
+// Register File: CT_SRC[11]
+//==============================================================================
+
+localparam int unsigned CT_SRC_11__REG_FILE_BASE_ADDR                                                             = 32'h00000058;
+localparam int unsigned CT_SRC_11__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_11__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_11__CONFIG_0_REG_ADDR                                                              = 32'h00000058;
+
+
+//==============================================================================
+// Register File: CT_SRC[12]
+//==============================================================================
+
+localparam int unsigned CT_SRC_12__REG_FILE_BASE_ADDR                                                             = 32'h00000060;
+localparam int unsigned CT_SRC_12__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_12__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_12__CONFIG_0_REG_ADDR                                                              = 32'h00000060;
+
+
+//==============================================================================
+// Register File: CT_SRC[13]
+//==============================================================================
+
+localparam int unsigned CT_SRC_13__REG_FILE_BASE_ADDR                                                             = 32'h00000068;
+localparam int unsigned CT_SRC_13__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_13__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_13__CONFIG_0_REG_ADDR                                                              = 32'h00000068;
+
+
+//==============================================================================
+// Register File: CT_SRC[14]
+//==============================================================================
+
+localparam int unsigned CT_SRC_14__REG_FILE_BASE_ADDR                                                             = 32'h00000070;
+localparam int unsigned CT_SRC_14__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_14__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_14__CONFIG_0_REG_ADDR                                                              = 32'h00000070;
+
+
+//==============================================================================
+// Register File: CT_SRC[15]
+//==============================================================================
+
+localparam int unsigned CT_SRC_15__REG_FILE_BASE_ADDR                                                             = 32'h00000078;
+localparam int unsigned CT_SRC_15__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_15__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_15__CONFIG_0_REG_ADDR                                                              = 32'h00000078;
+
+
+//==============================================================================
+// Register File: CT_SRC[16]
+//==============================================================================
+
+localparam int unsigned CT_SRC_16__REG_FILE_BASE_ADDR                                                             = 32'h00000080;
+localparam int unsigned CT_SRC_16__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_16__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_16__CONFIG_0_REG_ADDR                                                              = 32'h00000080;
+
+
+//==============================================================================
+// Register File: CT_SRC[17]
+//==============================================================================
+
+localparam int unsigned CT_SRC_17__REG_FILE_BASE_ADDR                                                             = 32'h00000088;
+localparam int unsigned CT_SRC_17__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_17__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_17__CONFIG_0_REG_ADDR                                                              = 32'h00000088;
+
+
+//==============================================================================
+// Register File: CT_SRC[18]
+//==============================================================================
+
+localparam int unsigned CT_SRC_18__REG_FILE_BASE_ADDR                                                             = 32'h00000090;
+localparam int unsigned CT_SRC_18__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_18__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_18__CONFIG_0_REG_ADDR                                                              = 32'h00000090;
+
+
+//==============================================================================
+// Register File: CT_SRC[19]
+//==============================================================================
+
+localparam int unsigned CT_SRC_19__REG_FILE_BASE_ADDR                                                             = 32'h00000098;
+localparam int unsigned CT_SRC_19__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_19__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_19__CONFIG_0_REG_ADDR                                                              = 32'h00000098;
+
+
+//==============================================================================
+// Register File: CT_SRC[20]
+//==============================================================================
+
+localparam int unsigned CT_SRC_20__REG_FILE_BASE_ADDR                                                             = 32'h000000A0;
+localparam int unsigned CT_SRC_20__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_20__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_20__CONFIG_0_REG_ADDR                                                              = 32'h000000A0;
+
+
+//==============================================================================
+// Register File: CT_SRC[21]
+//==============================================================================
+
+localparam int unsigned CT_SRC_21__REG_FILE_BASE_ADDR                                                             = 32'h000000A8;
+localparam int unsigned CT_SRC_21__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_21__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_21__CONFIG_0_REG_ADDR                                                              = 32'h000000A8;
+
+
+//==============================================================================
+// Register File: CT_SRC[22]
+//==============================================================================
+
+localparam int unsigned CT_SRC_22__REG_FILE_BASE_ADDR                                                             = 32'h000000B0;
+localparam int unsigned CT_SRC_22__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_22__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_22__CONFIG_0_REG_ADDR                                                              = 32'h000000B0;
+
+
+//==============================================================================
+// Register File: CT_SRC[23]
+//==============================================================================
+
+localparam int unsigned CT_SRC_23__REG_FILE_BASE_ADDR                                                             = 32'h000000B8;
+localparam int unsigned CT_SRC_23__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_23__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_23__CONFIG_0_REG_ADDR                                                              = 32'h000000B8;
+
+
+//==============================================================================
+// Register File: CT_SRC[24]
+//==============================================================================
+
+localparam int unsigned CT_SRC_24__REG_FILE_BASE_ADDR                                                             = 32'h000000C0;
+localparam int unsigned CT_SRC_24__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_24__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_24__CONFIG_0_REG_ADDR                                                              = 32'h000000C0;
+
+
+//==============================================================================
+// Register File: CT_SRC[25]
+//==============================================================================
+
+localparam int unsigned CT_SRC_25__REG_FILE_BASE_ADDR                                                             = 32'h000000C8;
+localparam int unsigned CT_SRC_25__REG_FILE_SIZE                                                                  = 32'h00000004;
+
+localparam int unsigned CT_SRC_25__CONFIG_0_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned CT_SRC_25__CONFIG_0_REG_ADDR                                                              = 32'h000000C8;
 
 
 //==============================================================================
 // Default values for registers
 //==============================================================================
 
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC4_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC5_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC6_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC7_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC8_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC9_CONFIG_0_REG_DEFAULT                                     = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC10_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC11_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC12_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC13_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC14_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC15_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC16_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC17_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC18_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC19_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC20_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC21_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC22_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC23_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC24_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
-localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC25_CONFIG_0_REG_DEFAULT                                    = 32'h00000000;
+localparam longint unsigned CT_SRC_CONFIG_0_REG_DEFAULT                                                           = 32'h00000000;
 
 
 
@@ -117,161 +326,11 @@ localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC25_CONFIG_0_REG_DEFAULT  
 // Bit Fields for Address Map: cross_trigger_matrix
 //==============================================================================
 
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
+localparam int unsigned CT_SRC_CONFIG_0_CT_DST_SELECT_MASK                                                        = 32'h3FFFFFF;
+localparam int unsigned CT_SRC_CONFIG_0_CT_DST_SELECT_SHIFT                                                       = 0;
 
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC4_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC4_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC4_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC4_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC5_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC5_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC5_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC5_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC6_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC6_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC6_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC6_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC7_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC7_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC7_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC7_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC8_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC8_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC8_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC8_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC9_CONFIG_0_CT_DST_SELECT_MASK                                  = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC9_CONFIG_0_CT_DST_SELECT_SHIFT                                 = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC9_CONFIG_0_RESERVED_MASK                                       = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC9_CONFIG_0_RESERVED_SHIFT                                      = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC10_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC10_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC10_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC10_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC11_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC11_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC11_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC11_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC12_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC12_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC12_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC12_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC13_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC13_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC13_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC13_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC14_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC14_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC14_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC14_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC15_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC15_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC15_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC15_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC16_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC16_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC16_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC16_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC17_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC17_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC17_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC17_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC18_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC18_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC18_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC18_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC19_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC19_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC19_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC19_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC20_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC20_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC20_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC20_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC21_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC21_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC21_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC21_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC22_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC22_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC22_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC22_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC23_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC23_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC23_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC23_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC24_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC24_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC24_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC24_CONFIG_0_RESERVED_SHIFT                                     = 26;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC25_CONFIG_0_CT_DST_SELECT_MASK                                 = 32'h3FFFFFF;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC25_CONFIG_0_CT_DST_SELECT_SHIFT                                = 0;
-
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC25_CONFIG_0_RESERVED_MASK                                      = 32'hFC000000;
-localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC25_CONFIG_0_RESERVED_SHIFT                                     = 26;
+localparam int unsigned CT_SRC_CONFIG_0_RESERVED_MASK                                                             = 32'hFC000000;
+localparam int unsigned CT_SRC_CONFIG_0_RESERVED_SHIFT                                                            = 26;
 
 
 
@@ -280,182 +339,7 @@ localparam int unsigned CROSS_TRIGGER_MATRIX_CT_SRC25_CONFIG_0_RESERVED_SHIFT   
 typedef struct packed {
     logic [5:0]   reserved ;
     logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src0_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src1_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src2_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src3_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src4_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src5_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src6_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src7_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src8_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src9_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src10_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src11_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src12_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src13_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src14_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src15_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src16_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src17_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src18_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src19_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src20_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src21_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src22_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src23_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src24_config_0_reg_t;
-
-
-
-typedef struct packed {
-    logic [5:0]   reserved ;
-    logic [25:0]   ct_dst_select ;
-} cross_trigger_matrix_ct_src25_config_0_reg_t;
+} ct_src_config_0_reg_t;
 
 
 

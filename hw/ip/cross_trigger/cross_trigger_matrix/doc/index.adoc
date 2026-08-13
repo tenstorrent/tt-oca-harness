@@ -15,9 +15,15 @@ The CTM is compatible with CTPs operating in either of the two signaling modes, 
 [cols="<,<,<,<",options="header"]
 |===
 |Parameter |Range |Default |Description
-|NUM_CTP |1-32 |16 |Number of external Cross Trigger Ports
-|NUM_INT_CT |0-32 |1 |Number of internal cross triggers (to CLAs)
+|NUM_CT_SRC |set by the register map |26 |Number of CT_Src output ports
+|NUM_CT_DST |1-26 |26 |Number of CT_Dst input ports
 |===
+
+The register map declares one configuration register per CT_Src port as an array
+sized by its own `NUM_CT_SRC` parameter, each with a 26-bit destination select
+field. `NUM_CT_SRC` therefore tracks the generated array size, and `NUM_CT_DST`
+can be narrowed to any width the select field covers. See <<ctm-architecture>>
+for how the select fields drive the crossbar.
 
 ifdef::backend-pdf[]
 :imagesdir: assets

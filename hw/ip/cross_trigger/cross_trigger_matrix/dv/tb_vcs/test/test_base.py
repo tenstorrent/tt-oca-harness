@@ -16,28 +16,23 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'axil_vip'))
 from axil_master import AxiLiteMaster
 
-# Import register definitions
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'data' / 'registers' / 'py_headers'))
-try:
-    from cross_trigger_matrix_reg import (
-        CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_REG_DEFAULT,
-        CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_REG_DEFAULT,
-        CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_REG_DEFAULT,
-        CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_REG_DEFAULT,
-    )
-except ImportError:
-    # Fallback if registers not generated yet
-    CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_REG_DEFAULT = 0x0
-    CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_REG_DEFAULT = 0x0
-    CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_REG_DEFAULT = 0x0
-    CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_REG_DEFAULT = 0x0
+# Import register definitions from the generated Python header
+sys.path.insert(0, str(Path(__file__).parents[3] / 'regs' / 'gen' / 'py'))
+import cross_trigger_matrix_reg as ctm_regs
 
-# Register Address Map (CT_SRC[i]_CONFIG registers)
+NUM_CT_SRC = 26
+
+# One config register per CT_Src port, addressed from the generated header so the
+# stride never has to be restated here
 REG_MAP = {
-    'CT_SRC0_CONFIG':  (0x0,  'RW', 'CT_Src[0] Configuration', CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_REG_DEFAULT, 0xFFFFFFFF),
-    'CT_SRC1_CONFIG':  (0x4,  'RW', 'CT_Src[1] Configuration', CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_REG_DEFAULT, 0xFFFFFFFF),
-    'CT_SRC2_CONFIG':  (0x8,  'RW', 'CT_Src[2] Configuration', CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_REG_DEFAULT, 0xFFFFFFFF),
-    'CT_SRC3_CONFIG':  (0xC,  'RW', 'CT_Src[3] Configuration', CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_REG_DEFAULT, 0xFFFFFFFF),
+    f'CT_SRC{i}_CONFIG_0': (
+        getattr(ctm_regs, f'CT_SRC_{i}__CONFIG_0_REG_ADDR'),
+        'RW',
+        f'CT_Src[{i}] Configuration',
+        ctm_regs.CT_SRC_CONFIG_0_REG_DEFAULT,
+        0xFFFFFFFF,
+    )
+    for i in range(NUM_CT_SRC)
 }
 
 async def start_clocks(dut, period_ns=10):
