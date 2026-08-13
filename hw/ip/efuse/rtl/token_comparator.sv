@@ -6,17 +6,12 @@
 // Token Comparator (single instance) — radix-4 reduction tree
 //
 // Computes a fully-differential equal / not-equal result for a 256-bit token
-// using dont_touch hard-cell primitives so synthesis cannot merge or optimize
+// using hard-cell primitives so synthesis cannot merge or optimize
 // away the compare logic.
 //
 // Equal path (match_p_o): per-bit XNOR, then radix-4 NAND/NOR reduction.
-//   Alternating polarity implements AND-all-ones over the XNOR leaves:
-//     L0 NAND4: group matched iff output=0 (all XNOR=1)
-//     L1 NOR4:  polarity restored; output=1 iff all L0 groups matched
-//     L2 NAND4 / L3 NOR4: same pattern; L3 output=1 => full match
 //
 // Not-equal path (match_n_o): per-bit XOR, then radix-4 OR4 reduction.
-//   Fully independent of the equal path; any differing bit drives match_n_o=1.
 //
 // Gate count per instance: 256 XNOR + 85 NAND/NOR (eq) + 256 XOR + 85 OR4 (neq)
 //                         = ~682 hard cells.
@@ -46,6 +41,8 @@ module token_comparator #(
     logic [L1Width-1:0]    eq_l1;
     logic [L2Width-1:0]    eq_l2;
 
+    // ex: 8'b1101_0001 ?= 8'b1101_0001
+
     // XNOR all the bits, this is the first level of the reduction tree
     // If all the bits are the same, then the output will be a 1, otherwise it will be a 0
     for (genvar i = 0; i < TOKEN_WIDTH; i++) begin : gen_bit_eq
@@ -57,6 +54,7 @@ module token_comparator #(
             .out_o(bit_eq[i])
         );
     end
+    // bit_eq: 8'b1111_1111
 
     // L0: Use NAND gates to reduce the 256 bits to 64 bits
     // If all the bits are a 1, then the output will be a 0, this is indicative of a match
@@ -69,6 +67,7 @@ module token_comparator #(
             .out_o(eq_l0[g])
         );
     end
+    // eq_l0: 2'b00
 
     // L1: Use NOR gates to reduce the 64 bits to 16 bits
     // If all the input bits are a 0, then the output will be a 1, this is indicative of a match
@@ -81,6 +80,7 @@ module token_comparator #(
             .out_o(eq_l1[g])
         );
     end
+    // eq_l1: 1'b1
 
     // L2: Use NAND gates to reduce the 16 bits to 4 bits
     // If all the input bits are a 1, then the output will be a 0, this is indicative of a match
@@ -93,6 +93,7 @@ module token_comparator #(
             .out_o(eq_l2[g])
         );
     end
+    // eq_l2: 1'b0
 
     // L3: Use NOR gates to reduce the 4 bits to 1 bit
     // If the input bits are all a 0, then the output will be a 1, this is indicative of a match
@@ -103,6 +104,7 @@ module token_comparator #(
         .in3_i(eq_l2[3]),
         .out_o(match_p_o)
     );
+    //
 
     //-------------------------------------------------------------------------
     // Not-equal datapath: XOR leaves + radix-4 OR4 reduction tree.
