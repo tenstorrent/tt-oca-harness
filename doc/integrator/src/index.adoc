@@ -193,24 +193,26 @@ subsystem components that the adopter instantiates externally. The
 subsections below describe each connection in turn.
 
 [[smc-external-connection]]
-===== Adopter Peripheral Window (GPIO, PLL, PVT, and others)
+===== Adopter Peripheral Window
 
 The `smc_external_req_o` and `smc_external_resp_i` signals form a 32-bit
-AXI-Lite interface to the adopter's own peripheral register maps. The GPIO pad
-controls, PLL macro, PVT sensors and eFuse SHIM all sit behind this window;
-there are no longer dedicated per-peripheral ports for them.
+AXI-Lite interface to the adopter's own peripheral register maps. Any
+technology- or product-specific block that SMC firmware needs to reach sits
+behind this window rather than on a dedicated per-peripheral port.
 
-Connect it to the control/status registers of the GPIO padring configuration
-logic, the external PLL block(s), PVT sensors, and any other adopter logic that
-SMC firmware must reach. Runtime reconfiguration of pin directions, pull
-settings, and peripheral multiplexing happens through the GPIO pad controls in
-this window. The SMC decodes the aperture and forwards; what lives behind it is
-entirely adopter-defined.
+The window is the recommended home for the control/status registers of logic
+that the SMC must configure or monitor but that the SMC itself does not
+implement -- padring configuration logic, clock generation, on-die sensors,
+memory-technology SHIMs, and similar adopter-owned blocks are typical examples.
+For example, runtime reconfiguration of pin directions, pull settings, and peripheral
+multiplexing is expected to be reachable here. The SMC decodes the aperture and
+forwards the transaction; what lives behind it is entirely adopter-defined.
 
-The window is split into a mandatory region, for the blocks above that every
-integration must implement, and a supplementary region for anything else the
-adopter chooses to expose. For placement and the full register layout, refer to
-the SMC Memory Map documentation (`hw/smc/doc/memmap.adoc`).
+The window is split into a mandatory region, whose contents and placement the
+SMC memory map fixes and every integration must implement, and a supplementary
+region for anything else the adopter chooses to expose. For placement and the
+full register layout, refer to the SMC Memory Map documentation
+(`hw/smc/doc/memmap.adoc`).
 
 [[smc-efuse-connection]]
 ===== eFuse Interface
@@ -1818,22 +1820,14 @@ in the harness checkout.
 
 === Why crossings are bounded rather than timed
 
-A clock-domain crossing cannot be timed the way a synchronous path is. There is no
-fixed phase relationship between the launching and capturing clocks, so "arrive
-before the next capture edge" is not a requirement any tool can check. The
-conventional response is `set_clock_groups -asynchronous`, which declares the
-domains unrelated and stops the tool reporting paths between them.
+A clock-domain crossing has no fixed phase relationship, so it cannot be timed
+against a capture edge. Its correctness still depends on delay, though: every CDC
+element assumes the data reaches the receiver within a bounded time.
 
-That is a blunt instrument. It makes every crossing a false path, so the tool is
-free to route the wire between two domains through arbitrarily much delay. For a
-two-flop synchronizer that is not safe: the first flop only resolves metastability
-if the data settles and holds long enough relative to the capturing clock, and
-unbounded combinational delay in front of it breaks the assumption the
-synchronizer is built on.
-
-The goal is therefore narrower than timing the crossing. It is to *bound* the
-crossing tightly enough that the synchronizer's own guarantee still holds, without
-pretending a phase relationship exists.
+OCAH therefore keeps the crossings visible to the tool and gives each one an
+explicit upper bound, sized from the clock that captures it. This asserts no phase
+relationship -- it states only how much delay the crossing tolerates while its CDC
+element's guarantee still holds.
 
 === What is constrained
 
@@ -1875,33 +1869,43 @@ equally safe.
 
 The payload of a gray-pointer FIFO or a req/ack handshake never passes through a
 synchronizer -- only the pointer or request does. So this is not a metastability
-constraint, and it is reasonable to ask why the 20 ns default is not sufficient
-when the protocol already makes the crossing safe.
+constraint, and it is reasonable to ask why such a path needs a bound at all, or
+why a single blanket bound covering every crossing in the design would not be
+enough.
 
 Because the protocol guarantees *ordering*, not *arrival*. The read side will not
 look at an entry until the write pointer has crossed, which takes `SYNC_STAGES`
-destination cycles -- three in `cdc_fifo_gray`, two in `prim_fifo_async`. Nothing
-in the protocol ensures the data physically arrived within that window; that is a
-timing property, and only a `max_delay` states it. Miss it and the consumer samples
-the entry's previous contents. There is no violation report and no metastability
-event, just wrong data.
+destination cycles, where `SYNC_STAGES` is the depth of the pointer
+synchronizer. Nothing in the protocol ensures the data physically arrived within 
+that window; that is a timing property, and only a `max_delay` states it. Miss it 
+and the consumer samples the entry's previous contents. There is no violation
+report and no metastability event, just wrong data.
 
-So the requirement is `data path < SYNC_STAGES * T_dst`, which means whether the
-default suffices depends entirely on the destination clock:
+So the requirement is `data path < SYNC_STAGES * T_dst`. It is not a fixed number
+of nanoseconds: it scales with the clock that captures the crossing, and the
+destination periods within one design span an order of magnitude.
 
 [options="header"]
 |===
-| Destination period | Guarantee at 3 stages | 20 ns default
+| Destination period | Guarantee at 3 stages
 
-| 1 ns  | 3 ns  | 6.7x too loose
-| 5 ns  | 15 ns | 1.3x too loose
-| 10 ns | 30 ns | sufficient
+| 1 ns  | 3 ns
+| 5 ns  | 15 ns
+| 10 ns | 30 ns
 |===
 
-For slow destination domains the default really is enough and the explicit
-constraint is redundant. For fast ones it permits several times more delay than
-the pointer scheme tolerates, which is why these paths are constrained
-explicitly.
+That is why the bound is applied per instance rather than as one global value. A
+single blanket `max_delay` has to be chosen once for the whole design: loose
+enough to be feasible on the slowest domains, it permits several times more delay
+than a fast crossing's pointer scheme tolerates; tight enough for the fastest
+domain, it over-constrains every slow crossing and burns effort closing paths
+that were never at risk. Sizing each crossing from its own capturing clock is the
+only bound that tracks the requirement.
+
+The blanket default that the clock-group layer applies (see <<cdc-two-layers,The
+two layers>>) is deliberately on the loose side, and for slow destination domains
+it is already sufficient -- there the explicit per-instance constraint is
+redundant. It is the fast crossings that need it.
 
 `1.0 * T_dst` is therefore conservative by a factor of two to three. It is kept
 simple deliberately, but if wide payloads such as AXI data will not close, raising
@@ -1912,14 +1916,21 @@ recompute from their own `SYNC_STAGES` rather than inheriting this factor.
 Enumeration and clock resolution run once, offline, against an elaborated design,
 and their output is an explicit per-block file of constraint calls that is reviewed
 and checked in. The flow itself does no discovery. This matters to an integrator
-for one reason: those files describe the OCAH hierarchy, so you regenerate them
-against your own design rather than editing them (see
-<<cdc-integration-checklist,Integration checklist>> item 2).
+because those files are written against the OCAH hierarchy and OCAH's clock names.
+If you instantiate a block as delivered, you do not need to regenerate or hand-edit
+them: set `::cdc_hier_prefix` to where the block sits in your hierarchy, and
+optionally `::cdc_clock_alias` to map OCAH clock names onto your own. Regeneration
+is needed only when the block is reconfigured in a way that changes which CDC
+elements exist, since no prefix can conjure constraints for elements the file never
+listed (see <<cdc-integration-checklist,Integration checklist>> item 2).
 
+[[cdc-two-layers]]
 === The two layers
 
-Per-instance bounds are useless on their own. They sit on top of a clock-group
-layer that must be set up correctly first.
+The per-instance bounds take effect only on top of a correctly configured
+clock-group layer. That layer decides whether the tool considers inter-domain
+paths at all, so it must be established first; the per-instance exceptions then
+refine it.
 
 *Layer 1* is `set_async_clock_groups`, called from each block's
 `clock_defines.tcl`. It declares the asynchronous groups *with `-allow_paths`* and
