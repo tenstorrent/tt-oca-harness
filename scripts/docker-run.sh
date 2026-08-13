@@ -328,8 +328,8 @@ doc_product_paths() {
     esac
 }
 
-doc_revision_history_enabled() {
-    case "${OCAH_DOC_SHOW_REVISION_HISTORY:-0}" in
+doc_release_enabled() {
+    case "${OCAH_DOC_RELEASE:-1}" in
         1|yes|true) return 0 ;;
         *) return 1 ;;
     esac
@@ -340,25 +340,25 @@ doc_setup() {
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
     run_image "$DOC_PDF_IMAGE" env \
         OCAH_DOC_REGEN_REGS=0 \
-        OCAH_DOC_SHOW_REVISION_HISTORY="${OCAH_DOC_SHOW_REVISION_HISTORY:-0}" \
+        OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
         make "$setup_target"
 }
 
 doc_html() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
-    local revision_args=()
+    local release_args=()
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
     doc_setup "$product"
-    doc_revision_history_enabled && revision_args=(--attribute show-revision-history)
+    doc_release_enabled && release_args=(--attribute release)
     "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}"\
         -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-        "${revision_args[@]}" \
+        "${release_args[@]}" \
         --attribute "basedir=${basedir}" "$playbook"
 }
 
 doc_html_all() {
-    local revision_arg=""
-    doc_revision_history_enabled && revision_arg="--attribute show-revision-history"
+    local release_arg=""
+    doc_release_enabled && release_arg="--attribute release"
     # This is the combined-architecture build.
     doc_setup trm
     doc_setup integrator
@@ -373,9 +373,9 @@ doc_html_all() {
     # bind-mounted repo root, so it only needs to happen once per checkout
     # (harmless to repeat). Make sure node_modules/ is gitignored.
     "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm \
-        -e SITE_SEARCH_PROVIDER=lunr -e OCAH_DOC_REVISION_ARG="$revision_arg" \
+        -e SITE_SEARCH_PROVIDER=lunr -e OCAH_DOC_RELEASE_ARG="$release_arg" \
         -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora $OCAH_DOC_REVISION_ARG antora-playbook.yml'
+        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora $OCAH_DOC_RELEASE_ARG antora-playbook.yml'
 }
 
 doc_pdf() {
@@ -383,7 +383,7 @@ doc_pdf() {
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
     run_image "$DOC_PDF_IMAGE" env \
         OCAH_DOC_REGEN_REGS=0 \
-        OCAH_DOC_SHOW_REVISION_HISTORY="${OCAH_DOC_SHOW_REVISION_HISTORY:-0}" \
+        OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
         make "$pdf_target"
 }
 

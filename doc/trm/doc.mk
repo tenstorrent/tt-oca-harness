@@ -37,9 +37,9 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 	  OCAH_DOC_PRODUCT_META="$(OCAH_TRM_META)" \
 	  OCAH_DOC_PRODUCT_MODULES="$(OCAH_TRM_MODULES)" \
 	  OCAH_DOC_PRODUCT_ASSETS="$(OCAH_TRM_ASSETS)" \
-	  OCAH_DOC_PRODUCT_INCLUDE_REVISION="$(if $(OCAH_DOC_SHOW_REVISION_HISTORY_ENABLED),1,0)" \
+	  OCAH_DOC_PRODUCT_INCLUDE_REVISION="$(if $(OCAH_DOC_RELEASE_ENABLED),0,1)" \
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh"
-	@if [ "$(if $(OCAH_DOC_SHOW_REVISION_HISTORY_ENABLED),1,0)" != "1" ]; then \
+	@if [ "$(if $(OCAH_DOC_RELEASE_ENABLED),1,0)" = "1" ]; then \
 		rm -f "$(OCAH_TRM_BUILD)/html_antora/ocah-docs/latest/revision.html" \
 			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-docs/latest/revision.html"; \
 	fi
@@ -50,7 +50,7 @@ ocah-doc-trm-html: ocah-doc-trm-setup
 	@echo "Building TRM HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
-		$(OCAH_DOC_ANTORA_REVISION_HISTORY_ARG) \
+		$(OCAH_DOC_ANTORA_RELEASE_ARG) \
 		--attribute basedir="$(OCAH_TRM_DIR)" "$(OCAH_TRM_PLAYBOOK)"
 	@echo "Done: $(OCAH_TRM_BUILD)/html_antora/ocah-docs/latest/index.html"
 
@@ -63,7 +63,7 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 	@cd "$(OCAH_TRM_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
-		$(OCAH_DOC_ASCIIDOCTOR_REVISION_HISTORY_ARG) \
+		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \
 		-o "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" src/index.adoc
 	@cp "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" "$(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)"
 	@echo "Done: $(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)"
