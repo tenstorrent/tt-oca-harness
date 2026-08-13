@@ -1,0 +1,44 @@
+doc/trm/src/revision.adoc
+  s_735d663e4c2165::t_dabb747cb5205d 149-152
+doc/integrator/src/revision.adoc
+  s_735d663e4c2165::t_6a01834d51a484 18-21
+hw/sys/smc/doc/interrupts.adoc
+  s_735d663e4c2165::t_74867e0f5d3f28 59,102,382,384-389
+hw/ip/uart/uart_16550/doc/interface.adoc
+  s_735d663e4c2165::t_53c4e2ccff4faf 57-65,72-75,78-79,82-83,86-87,94-97
+doc/trm/src/architecture.adoc
+  s_735d663e4c2165::t_f79f24a0ecc3b2 255-266,324-334
+hw/ip/uart/uart_16550/doc/architecture.adoc
+  s_735d663e4c2165::t_b49dc1b467a869 32-37,53-55
+hw/ip/uart/uart_16550/doc/programming.adoc
+  s_735d663e4c2165::t_598eb54442d0e5 40-79
+hw/ip/uart/uart_16550/doc/index.adoc
+  s_735d663e4c2165::t_607c067d2ce029 26-27
+doc/integrator/src/index.adoc
+  s_735d663e4c2165::t_8f0503673e1bc0 287-288
+  s_735d663e4c2165::t_123c54a77bf307 10-11,55-56,128,131,162-177,331-332,340-343,367-370,377,444-449,458-462,576-578,778-791,825-835
+hw/sys/smc/doc/cpu.adoc
+  s_735d663e4c2165::t_02979a3c086467 105-109
+hw/sys/sep/doc/periphs.adoc
+  s_735d663e4c2165::t_d078166fc3aab4 279
+hw/ip/key_manager/doc/firmware.adoc
+  s_735d663e4c2165::t_6b1da270fa188d 128
+doc/trm/src/index.adoc
+  s_735d663e4c2165::t_0ceeea21ce8074 10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ad7b30d537602e178d3ef48f1e72cd207617cc1e",
+  "prompts": {},
+  "sessions": {
+    "s_735d663e4c2165": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a51313d-04e6-40c2-b49e-afad05839e75",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
