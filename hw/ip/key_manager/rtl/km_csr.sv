@@ -125,17 +125,17 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     localparam int unsigned SCRAMBLER_CTRL_LOCK_BIT_POS   = 1;
 
     /** @brief Bit positions for the internal IRQ aggregation vector (excludes mailbox). */
-    localparam int unsigned IRQ_AGG_ROM_PARITY_ERR_BIT      = 0;
-    localparam int unsigned IRQ_AGG_SRAM_PARITY_ERR_BIT     = 1;
-    localparam int unsigned IRQ_AGG_ROM_WRITE_ERR_BIT       = 2;
-    localparam int unsigned IRQ_AGG_SRAM_WRITE_LOCK_ERR_BIT = 3;
-    localparam int unsigned IRQ_AGG_AXI_SLVERR_BIT          = 4;
-    localparam int unsigned IRQ_AGG_AXI_DECERR_BIT          = 5;
-    localparam int unsigned IRQ_AGG_DRBG_ERR_BIT            = 6;
-    localparam int unsigned IRQ_AGG_WIPE_STATE_BIT          = 7;
-    localparam int unsigned IRQ_AGG_OTP_CHANGE_BIT          = 8;
-    localparam int unsigned IRQ_AGG_OTP_SIGINT_BIT          = 9;
-    localparam int unsigned IRQ_AGG_EXEC_VIOLATION_BIT      = 10;
+    localparam int unsigned IRQ_AGG_ROM_PARITY_ERR_BIT       = 0;
+    localparam int unsigned IRQ_AGG_SRAM_PARITY_ERR_BIT      = 1;
+    localparam int unsigned IRQ_AGG_ROM_WRITE_ERR_BIT        = 2;
+    localparam int unsigned IRQ_AGG_SRAM_WRITE_LOCK_ERR_BIT  = 3;
+    localparam int unsigned IRQ_AGG_AXI_SLVERR_BIT           = 4;
+    localparam int unsigned IRQ_AGG_AXI_DECERR_BIT           = 5;
+    localparam int unsigned IRQ_AGG_DRBG_ERR_BIT             = 6;
+    localparam int unsigned IRQ_AGG_WIPE_STATE_BIT           = 7;
+    localparam int unsigned IRQ_AGG_OTP_CHANGE_BIT           = 8;
+    localparam int unsigned IRQ_AGG_OTP_SIGINT_BIT           = 9;
+    localparam int unsigned IRQ_AGG_EXEC_VIOLATION_BIT       = 10;
     localparam int unsigned IRQ_AGG_ROM_ACCESS_VIOLATION_BIT = 11;
 
     /** @brief Total number of IRQ sources aggregated into km_irq_o. */
@@ -249,8 +249,8 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
 
     // ROM lockout violation: set by pulse from CPU wrapper or by IRQ_SET (test)
     assign hwif_in.IRQ_STATUS.rom_access_violation.next  = 1'b0;
-    assign hwif_in.IRQ_STATUS.rom_access_violation.hwset = rom_access_violation_i |
-                                                     hwif_out.IRQ_SET.rom_access_violation_set.value;
+    assign hwif_in.IRQ_STATUS.rom_access_violation.hwset =
+        rom_access_violation_i | hwif_out.IRQ_SET.rom_access_violation_set.value;
 
     //=========================================================================
     // IRQ Aggregation
@@ -271,7 +271,7 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     assign irq_status[IRQ_AGG_OTP_CHANGE_BIT]           = hwif_out.IRQ_STATUS.otp_change.value;
     assign irq_status[IRQ_AGG_OTP_SIGINT_BIT]           = hwif_out.IRQ_STATUS.otp_sigint.value;
     assign irq_status[IRQ_AGG_EXEC_VIOLATION_BIT]       = hwif_out.IRQ_STATUS.exec_violation.value;
-    assign irq_status[IRQ_AGG_ROM_ACCESS_VIOLATION_BIT]  = hwif_out.IRQ_STATUS.rom_access_violation.value;
+    assign irq_status[IRQ_AGG_ROM_ACCESS_VIOLATION_BIT] = hwif_out.IRQ_STATUS.rom_access_violation.value;
 
     assign irq_enable[IRQ_AGG_ROM_PARITY_ERR_BIT]      = hwif_out.IRQ_ENABLE.rom_parity_en.value;
     assign irq_enable[IRQ_AGG_SRAM_PARITY_ERR_BIT]     = hwif_out.IRQ_ENABLE.sram_parity_en.value;
@@ -284,7 +284,7 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     assign irq_enable[IRQ_AGG_OTP_CHANGE_BIT]           = hwif_out.IRQ_ENABLE.otp_change_en.value;
     assign irq_enable[IRQ_AGG_OTP_SIGINT_BIT]           = hwif_out.IRQ_ENABLE.otp_sigint_en.value;
     assign irq_enable[IRQ_AGG_EXEC_VIOLATION_BIT]       = hwif_out.IRQ_ENABLE.exec_violation_en.value;
-    assign irq_enable[IRQ_AGG_ROM_ACCESS_VIOLATION_BIT]  = hwif_out.IRQ_ENABLE.rom_access_violation_en.value;
+    assign irq_enable[IRQ_AGG_ROM_ACCESS_VIOLATION_BIT] = hwif_out.IRQ_ENABLE.rom_access_violation_en.value;
 
     assign irq_masked = irq_status & irq_enable;
     assign km_irq_o = |irq_masked;

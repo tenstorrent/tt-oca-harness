@@ -729,8 +729,7 @@ addrmap km_csr {
     // Writing 1 arms an exchange rather than adding to the whitelist: the ROM
     // stays executable until the first committed fetch from write-locked SRAM,
     // at which point the ROM lockout engages and revokes ROM fetch and read
-    // access (ROM_ACCESS_VIOLATION IRQ).  That leaves the handover assembly free
-    // to keep running from ROM between the arming write and its jump.
+    // access (ROM_ACCESS_VIOLATION IRQ).
     // Warm reset clears both this bit and the lockout, so the ROM-only whitelist
     // is re-applied on every boot cycle.
     reg sram_exec_mode_reg {

@@ -163,7 +163,7 @@ the `OTP_READ_LOCK_COLD` register (cold-reset-domain OTP read-lock bits).
 guarantee no in-flight transaction lingers across a warm reset — see
 below); the KMCSR warm subset (`IRQ_STATUS`/`IRQ_ENABLE`/`IRQ_SET`,
 `SOFT_RST_CODE`, `RECOVERABLE_ERR`, `SRAM_LOCK` write-lock bits,
-`SRAM_LOCK` violation bits, `SRAM_EXEC_MODE`,
+`SRAM_LOCK` violation bits, `SRAM_EXEC_MODE`, the ROM lockout latch,
 `IRQ_ENTRY_ADDR`/`IRQ_ENTRY_LOCK`, `OTP_READ_LOCK`,
 `OTP_CHANGE_STATUS`, and the firmware test-bench registers);
 all DRBG sampler CSRs and datapath-control state; the KPV per-slot lock
@@ -651,7 +651,11 @@ The current hardware revision reads as version `1.0.0` (`MAJOR=1`, `MINOR=0`,
 read-only: a write completes with an AXI SLVERR response and does not change
 the value.
 
-The interrupt aggregation logic collects eleven hardware event sources into a single CPU interrupt. Each source has a sticky status bit in `IRQ_STATUS` (write-one-to-clear), a mask bit in `IRQ_ENABLE`, and a software-trigger bit in `IRQ_SET` for ISR testing. The aggregated interrupt output is the logical OR of the masked status bits (`IRQ_STATUS & IRQ_ENABLE`).
+The interrupt aggregation logic collects twelve hardware event sources into a
+single CPU interrupt. Each source has a sticky status bit in `IRQ_STATUS`
+(write-one-to-clear), a mask bit in `IRQ_ENABLE`, and a software-trigger bit in
+`IRQ_SET` for ISR testing. The aggregated interrupt output is the logical OR of
+the masked status bits (`IRQ_STATUS & IRQ_ENABLE`).
 
 [cols="<10%,<30%,<60%",options="header"]
 |===
@@ -666,10 +670,11 @@ The interrupt aggregation logic collects eleven hardware event sources into a si
 |7 |Wipe State |Rising edge detected on the `wipe_state_i` input.
 |8 |OTP Change |A monitored OTP readout field's decoded value changed (see `OTP_CHANGE_STATUS`).
 |9 |OTP Integrity Violation |OTP dual-rail integrity violation (value and complement not complementary).
-|10 |Execute Violation |Instruction fetch from a non-whitelisted (non-executable) memory region.
+|10 |Execute Violation |Instruction fetch from a non-whitelisted (non-executable) memory region, excluding the ROM.
+|11 |ROM Access Violation |ROM instruction fetch or data read attempted after the ROM lockout engaged.
 |===
 
-Bits `[31:11]` of `IRQ_STATUS` are reserved. Two interrupt sources are not part
+Bits `[31:12]` of `IRQ_STATUS` are reserved. Two interrupt sources are not part
 of the KMCSR `IRQ_STATUS` aggregation and are serviced separately: the mailbox
 sources (FIFO data-available/space-available and overflow/underflow/flush
 conditions), and the Adams Bridge ML-KEM shared-key interrupt on its own
@@ -723,7 +728,8 @@ The PicoRV32 enforces a whitelist of executable memory regions on every
 committed instruction fetch (`mem_valid && mem_instr`).  Any fetch from
 outside the whitelist immediately pulses `KMCSR.IRQ_STATUS.EXEC_VIOLATION`,
 which (if unmasked) routes to the ISR and triggers the unrecoverable fault
-`ROM_KM_UFAULT_EXEC`.
+`ROM_KM_UFAULT_EXEC`.  A ROM fetch refused by the ROM lockout described below
+is reported on `ROM_ACCESS_VIOLATION` instead, so the two bits are disjoint.
 
 The whitelist mode is controlled by the `KMCSR.SRAM_EXEC_MODE.enable` bit
 (write-1-only, warm-reset domain):
@@ -732,7 +738,7 @@ The whitelist mode is controlled by the `KMCSR.SRAM_EXEC_MODE.enable` bit
 |===
 |`enable` |Executable regions |Forbidden regions
 |`0` (ROM mode) |ROM (`0x0000`–`0x3FFF`) and VROM* |All SRAM; Peripheral/AXI
-|`1` (SRAM mode) |ROM, VROM*, and write-locked 1 KB SRAM regions (`SRAM_LOCK.lock_bits`) |Unlocked SRAM; Peripheral/AXI
+|`1` (SRAM mode) |Write-locked 1 KB SRAM regions (`SRAM_LOCK.lock_bits`), VROM*, and the ROM until the lockout engages |Unlocked SRAM; Peripheral/AXI; the ROM once the lockout engages
 |===
 
 The fetch-region index is a plain slice of the byte address, which works only
@@ -742,8 +748,9 @@ region can never disagree.
 
 * VROM (`0x1000_0000`) is a testbench-only virtual ROM used in the block TB.
   It is treated as always executable in both modes so that firmware running
-  from VROM in simulation is not falsely faulted.  VROM does not exist in
-  production silicon.
+  from VROM in simulation is not falsely faulted, and it is exempt from the ROM
+  lockout for the same reason.  VROM does not exist in production silicon and
+  so carries no security requirement.
 
 `SRAM_EXEC_MODE.enable` is set by the stack-less handover assembly
 (`rom_handover_jump.S`) immediately before the `jalr` to mutable firmware,
@@ -751,6 +758,62 @@ after SRAM write-lock regions have already been committed.  This minimises
 the window between enabling SRAM execution and the first fetch from SRAM.
 The bit is write-1-only and cleared by warm reset, so the ROM-only
 whitelist is re-applied on every boot cycle.
+
+[[rom-lockout]]
+*ROM Lockout*
+
+Setting `SRAM_EXEC_MODE.enable` exchanges the ROM for write-locked SRAM rather
+than adding to the whitelist.  Were it purely additive, mutable firmware would
+inherit read and fetch access to the ROM that handed control to it, leaving the
+ROM's key-management routines and its `rom_persist` structure reachable by code
+the ROM does not trust.
+
+The exchange is staged so that the handover can complete.  Writing the bit only
+*arms* the lockout; the lockout *engages* on the first committed instruction
+fetch from a write-locked SRAM address, which is the point at which mutable
+firmware actually begins executing.  Everything the handover assembly runs after
+its arming store — the store itself, the register clears, the `jalr` — is ROM
+code, and remains legal precisely because the lockout has not engaged yet.
+Engaging on a fetch rather than on any ROM access also keeps the rule
+independent of incidental data traffic: ROM code reads `rom_persist`, which
+itself lives in a write-locked SRAM region.
+
+Once engaged, the lockout blocks ROM instruction fetches and ROM data reads
+until the next warm or cold reset.  The latch is in the warm reset domain, the
+same domain as `SRAM_EXEC_MODE.enable`, so the transition is one-way within a
+boot and every reset that re-enters ROM restores ROM access.  ROM *writes* are
+unaffected and continue to raise `ROM_WRITE_ERR`.
+
+*Blocked access behaviour.*  A blocked access returns zeros; ROM content is
+never delivered.  What follows depends on the access type:
+
+* A blocked *data read* raises `ROM_ACCESS_VIOLATION` and nothing else.  Zero is
+  a legitimate data value, so no decode and no trap occur.
+* A blocked *instruction fetch* raises `ROM_ACCESS_VIOLATION` and additionally
+  feeds an all-zeros instruction stream, which the PicoRV32 `CATCH_ILLINSN`
+  logic traps as an illegal instruction.
+
+The two reports are ordered by causality rather than by arbitration.  The
+violation is combinational in the cycle of the blocked access, whereas the
+illegal instruction cannot be detected until the zero word has been returned and
+decoded, which is strictly later.  Since `IRQ_STATUS` is sticky, the violation
+bit is always recorded first.
+
+Which mechanism *acts* depends on the interrupt mask, and after handover only
+one does.  Handover leaves all CPU interrupts masked, so the illegal instruction
+takes the PicoRV32 trap state rather than an interrupt: the core halts,
+`unrecoverable_err_o` asserts, and the KPV is wiped.  The `ROM_ACCESS_VIOLATION`
+interrupt is inert in that state — it sets its sticky bit but has nowhere to
+vector, because the ROM ISR it would have vectored to is itself in the ROM the
+lockout has just revoked.  A real post-handover breach therefore halts the KM
+without emitting a mailbox fault code; `ROM_KM_UFAULT_ROM_ACCESS` is reportable
+only while the ROM is still live (via `IRQ_SET`) or through a vector that
+mutable firmware installed itself.
+
+Both mechanisms are retained because they do different jobs.  The violation bit
+is the diagnostic that distinguishes a lockout breach from any other
+illegal-instruction halt; the trap is the containment, and it requires no
+firmware cooperation, no enabled interrupt, and no reachable handler.
 
 [[error-events]]
 *Error Events*
@@ -767,6 +830,7 @@ but are not limited to, the following conditions:
 * Invalid writes to ROM or SRAM
 * AXI bus faults (SLVERR or DECERR)
 * Instruction fetch from a non-whitelisted (non-executable) memory region
+* ROM instruction fetch or data read after the ROM lockout engaged
 * Any other unhandled exception or fault
 
 The PicoRV32 includes a trap state that asserts a trap signal. When the

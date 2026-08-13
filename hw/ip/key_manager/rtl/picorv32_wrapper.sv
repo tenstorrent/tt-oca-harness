@@ -28,21 +28,10 @@
  *          fetches (mem_instr).  Allowed regions are selected by sram_exec_mode_i
  *          (from KMCSR SRAM_EXEC_MODE.enable) and by the ROM lockout:
  *            - 0 (ROM mode): ROM and VROM only.
- *            - 1 (SRAM mode), lockout not engaged: ROM, VROM, and write-locked
- *              SRAM regions.
- *            - 1 (SRAM mode), lockout engaged: VROM and write-locked SRAM
- *              regions.  The ROM is gone.
+ *            - 1 (SRAM mode): VROM and write-locked SRAM regions, plus the ROM
+ *              until the lockout engages (see ROM Lockout below).
  *          Any fetch outside the whitelist pulses exec_violation_o, except a
  *          blocked ROM access, which pulses rom_access_violation_o instead.
- *
- *          The whitelist becomes an exchange rather than an addition: writing
- *          sram_exec_mode_i only arms it, and the ROM is revoked on the first
- *          committed fetch from a write-locked SRAM address, which is the point
- *          at which mutable firmware actually starts running.  The handover
- *          assembly therefore keeps executing from ROM between the arming store
- *          and its jump.  Once engaged the lockout blocks ROM instruction
- *          fetches and ROM data reads until the next warm or cold reset; the
- *          blocked access returns zeros rather than ROM content.
  *
  * @param axil_req_t        AXI-Lite request struct type for peripheral port.
  * @param axil_resp_t       AXI-Lite response struct type for peripheral port.
@@ -374,16 +363,10 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     // ROM Lockout
     //=========================================================================
     // Writing SRAM_EXEC_MODE.enable arms the exchange; the ROM is revoked on the
-    // first committed fetch from a write-locked SRAM address.  Engaging on the
-    // fetch rather than on the register write is what lets the stack-less
-    // handover assembly finish: its triple write, register clears and jalr are
-    // all ROM fetches that must still succeed.  Fetch-only also decouples the
-    // lockout from incidental data traffic — ROM code reads its own rom_persist
-    // structure, which lives in a write-locked region.
-    //
-    // The latch is in the warm-reset domain to match SRAM_EXEC_MODE.enable
-    // (resetsignal = WARM_RST_N), so the lockout is one-way within a boot and
-    // is cleared only by a warm or cold reset.
+    // first committed fetch from a write-locked SRAM address, which is what keeps
+    // the ROM fetches after the arming store legal.  The latch is in the
+    // warm-reset domain to match SRAM_EXEC_MODE.enable (resetsignal =
+    // WARM_RST_N), so the lockout is cleared only by a warm or cold reset.
     always_ff @(posedge clk_i or negedge rst_sync_ni) begin
         if (!rst_sync_ni) begin
             rom_lockout_q <= 1'b0;
@@ -531,9 +514,6 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     ) u_rom_if (
         .clk_i          (clk_i),
         .rst_ni         (rst_ni),
-        // The lockout is applied at the interface boundary so that no ROM word is
-        // ever fetched or latched into the prefetch register.  Writes still get
-        // through, unchanged, so that rom_write_err_o keeps reporting them.
         .mem_valid_i    (mem_valid && is_rom_addr && !rom_read_blocked),
         .mem_ready_o    (rom_mem_ready),
         .mem_addr_i     (mem_addr),
