@@ -1,0 +1,26 @@
+hw/sys/sep/doc/crypto.adoc
+  s_42d98e48086972::t_a8ec932389fe80 260-261,269-274
+hw/ip/entropy_source/doc/architecture.adoc
+  s_42d98e48086972::t_520ca7f4cd6bea 64
+  s_42d98e48086972::t_4993e969ce3a39 62-63,65-67
+doc/trm/src/revision.adoc
+  s_42d98e48086972::t_ce9fd6e2046383 149-150
+hw/ip/entropy_source/regs/entropy_source.rdl
+  s_42d98e48086972::t_417f99fefdc88e 775
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3bb8501ebd86f946469d3f956efaceab693df7f6",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
