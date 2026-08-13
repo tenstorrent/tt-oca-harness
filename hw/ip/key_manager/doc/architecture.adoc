@@ -298,9 +298,7 @@ unallocated.
 
 |0x0000_4000 |0x0000_7FFF | | |_Reserved_ (decode error)
 
-|0x0000_8000 |0x0000_FBFF |31 kB |KM SRAM |Key Manager Prgm/Data SRAM
-
-|0x0000_FC00 |0x0000_FFFF |1 kB |KM SRAM (warm-persist) |ROM warm-persistent region (`rom_persist`)
+|0x0000_8000 |0x0000_FFFF |32 kB |KM SRAM |Key Manager Prgm/Data SRAM
 
 |0x0001_0000 |0x0001_0FFF |4kB |MB |Mailbox Message
 
@@ -689,9 +687,25 @@ bit that can only transition from 0 to 1: while it is 0 firmware may reprogram
 every reset that re-enters ROM (cold, external asynchronous, and KM soft reset)
 restores `IRQ_ENTRY_ADDR` to `0x0000_0010` and clears `IRQ_ENTRY_LOCK`.
 
-The scrambler lock logic in the KMCSR is described in the SRAM Scrambling section of this document. The SRAM write-lock uses the `SRAM_LOCK` register, which is implemented as write-one-to-set (RDL `woset`). Each of the 32 bits corresponds to a 1 KB SRAM region, so the register covers the whole 32 KB SRAM. Once a bit is set, it is cleared by the next warm or cold KM reset — `SRAM_LOCK` is in the warm reset domain. The SRAM scrambler key/enable/lock (`SCRAMBLER_KEY`, `SCRAMBLER_CTRL`) remain non-volatile state in the cold reset domain and are preserved across a warm reset. Because `SRAM_LOCK` clears on warm reset, the ROM is responsible for re-applying the write-lock policy on every boot (cold and warm) before handing control to mutable firmware.
+The scrambler lock logic in the KMCSR is described in the SRAM Scrambling
+section of this document. The SRAM write-lock uses the `SRAM_LOCK` register,
+which is implemented as write-one-to-set (RDL `woset`). Each of the 32 bits
+corresponds to a 1 KB SRAM region, so the register covers the whole 32 KB
+SRAM. Once a bit is set, it is cleared by the next warm or cold KM reset —
+`SRAM_LOCK` is in the warm reset domain. The SRAM scrambler key/enable/lock
+(`SCRAMBLER_KEY`, `SCRAMBLER_CTRL`) remain non-volatile state in the cold
+reset domain and are preserved across a warm reset. Because `SRAM_LOCK`
+clears on warm reset, the ROM is responsible for re-applying the write-lock
+policy on every boot (cold and warm) before handing control to mutable
+firmware.
 
-The soft reset mechanism is guarded by a magic code. Firmware must write the value `0x53525354` (ASCII `"SRST"`) to the `SOFT_RST_CODE` register; when the code matches, the KMCSR asserts an active-low soft reset (`soft_rst_n`) that feeds the *warm* path of the reset conditioner. This produces a synchronous warm reset of the KM CPU and volatile state (see Reset Conditioning) — it does not reset the cold-only domain. The warm reset remains asserted until the hold counter expires (`MIN_RESET_CYCLES`).
+The soft reset mechanism is guarded by a magic code. Firmware must write the
+value `0x53525354` (ASCII `"SRST"`) to the `SOFT_RST_CODE` register; when the
+code matches, the KMCSR asserts an active-low soft reset (`soft_rst_n`) that
+feeds the *warm* path of the reset conditioner. This produces a synchronous
+warm reset of the KM CPU and volatile state (see Reset Conditioning) — it
+does not reset the cold-only domain. The warm reset remains asserted until
+the hold counter expires (`MIN_RESET_CYCLES`).
 
 The `BOOT_STATUS` register (offset `0x02C`) carries a single
 `COLD_BOOT_DONE` flag. It is a write-one-only (RDL `woset`-style) status
