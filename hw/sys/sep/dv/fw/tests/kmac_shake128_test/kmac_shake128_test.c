@@ -44,7 +44,8 @@ static void setup_entropy(void) {
 static void read_state(uint32_t *out, int words) {
     for (int i = 0; i < words; i++) {
         uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
-        uint32_t s1 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        uint32_t s1 =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
         out[i] = s0 ^ s1;
     }
 }

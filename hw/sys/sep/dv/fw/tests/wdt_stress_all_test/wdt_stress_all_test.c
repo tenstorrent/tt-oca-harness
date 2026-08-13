@@ -57,8 +57,7 @@ int main(void) {
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-                  AON_TIMER__WDOG_CTRL__ENABLE_bm);
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
         for (volatile int j = 0; j < 10000; j++) {
             __asm__ volatile("nop");
@@ -104,8 +103,8 @@ int main(void) {
         }
         if (nmi_count <= prev) {
             uint32_t st = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-            printf("  FAIL: INTR_TEST injection %d NMI not received (INTR_STATE=0x%08x)\n",
-                   i + 1, st);
+            printf("  FAIL: INTR_TEST injection %d NMI not received (INTR_STATE=0x%08x)\n", i + 1,
+                   st);
             errors++;
         } else {
             printf("  PASS: INTR_TEST injection %d NMI received\n", i + 1);
@@ -118,8 +117,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
     /* Let count reach ~200 then change bark to trigger */
     while (READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR) < 200) {
         __asm__ volatile("nop");

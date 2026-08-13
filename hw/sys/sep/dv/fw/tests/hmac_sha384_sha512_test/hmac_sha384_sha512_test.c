@@ -131,17 +131,15 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     /* NIST FIPS 180-4 SHA-384("abc") */
-    const char *sha384_hex =
-        "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed"
-        "8086072ba1e7cc2358baeca134c825a7";
+    const char *sha384_hex = "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed"
+                             "8086072ba1e7cc2358baeca134c825a7";
     if (run_sha_case("SHA-384", SEP_HMAC_DIGEST_SIZE_SHA2_384, 12, sha384_hex) != 0) {
         pass = 0;
     }
 
     /* NIST FIPS 180-4 SHA-512("abc") */
-    const char *sha512_hex =
-        "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a"
-        "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
+    const char *sha512_hex = "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a"
+                             "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
     if (run_sha_case("SHA-512", SEP_HMAC_DIGEST_SIZE_SHA2_512, 16, sha512_hex) != 0) {
         pass = 0;
     }

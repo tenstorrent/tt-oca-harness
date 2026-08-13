@@ -32,9 +32,8 @@
 #include "test_completion.h"
 #include "aon_timer.h"
 
-#define INTR_STATE_CLEAR_ALL                                               \
-    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm |                           \
-     AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
+#define INTR_STATE_CLEAR_ALL \
+    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm | AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
 
 static volatile int nmi_count = 0;
 static volatile int nmi_errors = 0;
@@ -97,8 +96,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 2000);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* Wait for first bark */
     while (phase == 0) {
@@ -139,8 +137,7 @@ int main(void) {
     /* STEP 4: Manual INTR_STATE W1C with WDT disabled — require bark set first */
     printf("\n// STEP 4: Manual INTR_STATE W1C (via INTR_TEST)\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR,
-              AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
 
     uint32_t st = 0;
     int timeout = 2000000;

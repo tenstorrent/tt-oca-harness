@@ -88,7 +88,8 @@ static int run_kmac_with_prefix(const uint32_t *prefix, uint32_t *digest_out) {
 
     for (int i = 0; i < 8; i++) {
         uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
-        uint32_t s1 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        uint32_t s1 =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
         digest_out[i] = s0 ^ s1;
     }
 

@@ -21,9 +21,8 @@
 #define BITE_THOLD_VAL (200u)
 #define BARK_THOLD_VAL (5000u)
 
-#define INTR_STATE_CLEAR_ALL                                               \
-    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm |                           \
-     AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
+#define INTR_STATE_CLEAR_ALL \
+    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm | AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
 
 int main(void) {
     sep_outbound_filter_init();
@@ -47,16 +46,14 @@ int main(void) {
     uint32_t bite_rb = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR);
 
     if (bark_rb != BARK_THOLD_VAL) {
-        printf("  FAIL: BARK_THOLD read back 0x%08x (expected 0x%08x)\n", bark_rb,
-               BARK_THOLD_VAL);
+        printf("  FAIL: BARK_THOLD read back 0x%08x (expected 0x%08x)\n", bark_rb, BARK_THOLD_VAL);
         errors++;
     } else {
         printf("  PASS: BARK_THOLD = %u\n", bark_rb);
     }
 
     if (bite_rb != BITE_THOLD_VAL) {
-        printf("  FAIL: BITE_THOLD read back 0x%08x (expected 0x%08x)\n", bite_rb,
-               BITE_THOLD_VAL);
+        printf("  FAIL: BITE_THOLD read back 0x%08x (expected 0x%08x)\n", bite_rb, BITE_THOLD_VAL);
         errors++;
     } else {
         printf("  PASS: BITE_THOLD = %u\n", bite_rb);
@@ -81,8 +78,7 @@ int main(void) {
     printf("\n// STEP 3: Observe count reach BITE without BARK INTR\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, BITE_THOLD_VAL - 16u);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     int reached_bite = 0;
     uint32_t cnt = 0;
@@ -102,12 +98,11 @@ int main(void) {
     }
 
     if (errors == 0 && !reached_bite) {
-        printf("  FAIL: Timeout waiting for count >= BITE (%u); last=0x%08x\n",
-               BITE_THOLD_VAL, cnt);
+        printf("  FAIL: Timeout waiting for count >= BITE (%u); last=0x%08x\n", BITE_THOLD_VAL,
+               cnt);
         errors++;
     } else if (errors == 0) {
-        printf("  PASS: count=0x%08x >= BITE %u with BARK INTR clear\n", cnt,
-               BITE_THOLD_VAL);
+        printf("  PASS: count=0x%08x >= BITE %u with BARK INTR clear\n", cnt, BITE_THOLD_VAL);
     }
 
     /* STEP 4: Signal before/as bite reset request propagates */

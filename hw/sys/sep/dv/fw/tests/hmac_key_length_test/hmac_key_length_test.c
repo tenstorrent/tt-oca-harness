@@ -109,8 +109,8 @@ int main(void) {
     int pass = 1;
 
     /* Part 1: Readback verify key_length field for multiple values */
-    uint32_t klen_vals[] = {SEP_HMAC_KEY_LENGTH_128, SEP_HMAC_KEY_LENGTH_256, SEP_HMAC_KEY_LENGTH_384,
-                            SEP_HMAC_KEY_LENGTH_512};
+    uint32_t klen_vals[] = {SEP_HMAC_KEY_LENGTH_128, SEP_HMAC_KEY_LENGTH_256,
+                            SEP_HMAC_KEY_LENGTH_384, SEP_HMAC_KEY_LENGTH_512};
     const char *klen_names[] = {"128b", "256b", "384b", "512b"};
 
     for (int t = 0; t < 4; t++) {

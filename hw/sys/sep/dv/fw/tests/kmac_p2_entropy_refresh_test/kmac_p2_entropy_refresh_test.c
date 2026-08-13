@@ -136,7 +136,8 @@ int main(void) {
 
     uint32_t threshold_rb = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR);
     printf("  ENTROPY_REFRESH_THRESHOLD write=0x%08x read=0x%08x\n", threshold.w, threshold_rb);
-    if ((threshold_rb & KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bm) != threshold.f.threshold) {
+    if ((threshold_rb & KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bm) !=
+        threshold.f.threshold) {
         printf("  FAIL: entropy refresh threshold readback mismatch\n");
         pass = 0;
     }

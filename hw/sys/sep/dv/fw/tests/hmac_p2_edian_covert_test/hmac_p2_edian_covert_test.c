@@ -110,8 +110,8 @@ static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_
     uint32_t msg_lo = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
     uint32_t msg_hi = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
     if (msg_lo != (uint32_t)expected_bits || msg_hi != (uint32_t)(expected_bits >> 32)) {
-        printf("  FAIL: MSG_LENGTH=%u:%u expected=%u:%u\n", msg_lo, msg_hi,
-               (uint32_t)expected_bits, (uint32_t)(expected_bits >> 32));
+        printf("  FAIL: MSG_LENGTH=%u:%u expected=%u:%u\n", msg_lo, msg_hi, (uint32_t)expected_bits,
+               (uint32_t)(expected_bits >> 32));
         return -1;
     }
 

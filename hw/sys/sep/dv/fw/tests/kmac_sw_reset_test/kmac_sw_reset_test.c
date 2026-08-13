@@ -102,7 +102,8 @@ static int run_sha3_hash(void) {
     int mismatch = 0;
     for (int i = 0; i < 8; i++) {
         uint32_t dig = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (uint32_t)i * 4u) ^
-                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (uint32_t)i * 4u);
+                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET +
+                                (uint32_t)i * 4u);
         uint32_t dig_be = byte_swap(dig);
         if (dig_be != sha3_256_empty_ref[i]) {
             printf("  DIGEST_%d=0x%08x expected=0x%08x\n", i, dig_be, sha3_256_empty_ref[i]);

@@ -294,8 +294,8 @@ int main(void) {
      * treat IRQ masking as informational until RTL/ENV matches OT.
      */
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    printf("  INTR_STATUS with ERROR_ENABLE.UNDERFLOW=0: 0x%08x, ERROR=%u\n",
-           intr_status.w, intr_status.f.ERROR);
+    printf("  INTR_STATUS with ERROR_ENABLE.UNDERFLOW=0: 0x%08x, ERROR=%u\n", intr_status.w,
+           intr_status.f.ERROR);
     if (intr_status.f.ERROR) {
         printf("  INFO: ERROR IRQ still set with UNDERFLOW masked (DUT/ENV; not FAIL-ON)\n");
     } else {

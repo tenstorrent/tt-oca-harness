@@ -125,7 +125,8 @@ int main(void) {
     *fifo8 = 0xAA;
 
     uint32_t err = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
-    if (!check_reg("ERR_CODE (push when sha_en=0)", err, SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_DISALLOWED)) {
+    if (!check_reg("ERR_CODE (push when sha_en=0)", err,
+                   SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_DISALLOWED)) {
         pass = 0;
     }
 
@@ -200,7 +201,8 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     err = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
-    if (!check_reg("ERR_CODE (SwHashStartWhenActive)", err, SEP_HMAC_ERR_SW_HASH_START_WHEN_ACTIVE)) {
+    if (!check_reg("ERR_CODE (SwHashStartWhenActive)", err,
+                   SEP_HMAC_ERR_SW_HASH_START_WHEN_ACTIVE)) {
         pass = 0;
     }
 

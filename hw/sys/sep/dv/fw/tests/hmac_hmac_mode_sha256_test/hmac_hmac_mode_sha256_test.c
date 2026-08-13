@@ -100,7 +100,7 @@ int main(void) {
     cfg.f.sha_en = 1;
     cfg.f.endian_swap = 0;
     cfg.f.digest_swap = 0;
-    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;   /* SHA2_256 */
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; /* SHA2_256 */
     cfg.f.key_length = SEP_HMAC_KEY_LENGTH_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 

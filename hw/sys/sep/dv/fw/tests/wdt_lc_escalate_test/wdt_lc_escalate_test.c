@@ -58,8 +58,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     for (volatile int i = 0; i < 40000; i++) {
         __asm__ volatile("nop");
@@ -81,8 +80,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 3000);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     int timeout = 5000000;
     while (bark_fired == 0 && timeout-- > 0) {
@@ -94,8 +92,7 @@ int main(void) {
         printf("  FAIL: Timeout waiting for bark NMI (lc_escalate=Off)\n");
         errors++;
     } else {
-        printf("  PASS: Bark fired normally with lc_escalate=Off (bark_fired=%d)\n",
-               bark_fired);
+        printf("  PASS: Bark fired normally with lc_escalate=Off (bark_fired=%d)\n", bark_fired);
     }
 
     printf("\n// DOCUMENTED LIMITATION: TC_WDT_007 LC escalate halt not testable\n");

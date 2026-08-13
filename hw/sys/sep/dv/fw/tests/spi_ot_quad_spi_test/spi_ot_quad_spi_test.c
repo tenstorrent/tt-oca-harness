@@ -195,8 +195,8 @@ int main(void) {
         pass = 0;
     } else if (status.f.RXQD < 1 || status.f.RXEMPTY) {
         /* RXQD is word count; 4-byte Quad RX packs into one RXDATA word */
-        printf("  FAIL: Quad RX produced no data (RXQD=%u RXEMPTY=%u)\n",
-               status.f.RXQD, status.f.RXEMPTY);
+        printf("  FAIL: Quad RX produced no data (RXQD=%u RXEMPTY=%u)\n", status.f.RXQD,
+               status.f.RXEMPTY);
         pass = 0;
     } else {
         uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);

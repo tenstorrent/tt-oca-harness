@@ -39,9 +39,8 @@ static volatile int phase = 0; /* 0=wait first bark, 1=done */
 #define BARK_THOLD_VAL (0xFFFFFFF0u) /* fires quickly when count near max */
 #define BITE_THOLD_VAL (0xFFFFFFFFu) /* prevent bite from firing on wrap */
 
-#define INTR_STATE_CLEAR_ALL                                               \
-    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm |                           \
-     AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
+#define INTR_STATE_CLEAR_ALL \
+    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm | AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
 
 void wdt_nmi_handler(void) {
     nmi_count++;
@@ -92,8 +91,7 @@ int main(void) {
 
     /* STEP 2: Enable and wait for BARK NMI */
     printf("// STEP 2: Enable WDT — BARK fires when count reaches 0x%08x\n", BARK_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* Wait for phase=1 (first BARK NMI + pet) */
     int timeout = 5000000;
@@ -154,8 +152,7 @@ int main(void) {
     int seen_fe = 0;
     int seen_ff = 0;
     int seen_zero = 0;
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     for (int i = 0; i < 5000000; i++) {
         uint32_t c = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);

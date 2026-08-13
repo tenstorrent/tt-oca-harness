@@ -158,8 +158,7 @@ int main(void) {
         uint8_t typ = (uint8_t)((jedec >> 8) & 0xFF);
         uint8_t cap = (uint8_t)((jedec >> 16) & 0xFF);
         printf("  JEDEC raw=0x%08x -> %02x/%02x/%02x\n", jedec, mfr, typ, cap);
-        if (mfr != JEDEC_MFR_WINBOND || typ != JEDEC_TYPE_W25Q512JV ||
-            cap != JEDEC_CAP_W25Q512JV) {
+        if (mfr != JEDEC_MFR_WINBOND || typ != JEDEC_TYPE_W25Q512JV || cap != JEDEC_CAP_W25Q512JV) {
             printf("  FAIL: flash presence/ID mismatch (cannot trust 0xFF golden)\n");
             pass = 0;
             goto done;

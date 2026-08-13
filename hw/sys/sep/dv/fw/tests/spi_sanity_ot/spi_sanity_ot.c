@@ -70,8 +70,7 @@ int main(void) {
            (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
-    write_val = SPI_CONTROLLER__INTR_ENABLE__ERROR_bm |
-                SPI_CONTROLLER__INTR_ENABLE__SPI_EVENT_bm;
+    write_val = SPI_CONTROLLER__INTR_ENABLE__ERROR_bm | SPI_CONTROLLER__INTR_ENABLE__SPI_EVENT_bm;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR);
     printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
@@ -87,8 +86,7 @@ int main(void) {
            (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
-    write_val = SPI_CONTROLLER__INTR_TEST__ERROR_bm |
-                SPI_CONTROLLER__INTR_TEST__SPI_EVENT_bm;
+    write_val = SPI_CONTROLLER__INTR_TEST__ERROR_bm | SPI_CONTROLLER__INTR_TEST__SPI_EVENT_bm;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_TEST_BASE_ADDR);
     printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
@@ -155,12 +153,9 @@ int main(void) {
            (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
-    write_val = SPI_CONTROLLER__EVENT_ENABLE__RXFULL_bm |
-                SPI_CONTROLLER__EVENT_ENABLE__TXEMPTY_bm |
-                SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm |
-                SPI_CONTROLLER__EVENT_ENABLE__TXWM_bm |
-                SPI_CONTROLLER__EVENT_ENABLE__READY_bm |
-                SPI_CONTROLLER__EVENT_ENABLE__IDLE_bm;
+    write_val = SPI_CONTROLLER__EVENT_ENABLE__RXFULL_bm | SPI_CONTROLLER__EVENT_ENABLE__TXEMPTY_bm |
+                SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm | SPI_CONTROLLER__EVENT_ENABLE__TXWM_bm |
+                SPI_CONTROLLER__EVENT_ENABLE__READY_bm | SPI_CONTROLLER__EVENT_ENABLE__IDLE_bm;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, write_val);
     read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
     printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,

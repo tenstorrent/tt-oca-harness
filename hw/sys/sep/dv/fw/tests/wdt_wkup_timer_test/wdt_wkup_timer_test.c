@@ -31,13 +31,11 @@
 #include "test_completion.h"
 #include "aon_timer.h"
 
-#define WKUP_CTRL_PRESCALER(p)                                             \
-    ((((uint32_t)(p)) << AON_TIMER__WKUP_CTRL__PRESCALER_bp) &             \
-     AON_TIMER__WKUP_CTRL__PRESCALER_bm)
+#define WKUP_CTRL_PRESCALER(p) \
+    ((((uint32_t)(p)) << AON_TIMER__WKUP_CTRL__PRESCALER_bp) & AON_TIMER__WKUP_CTRL__PRESCALER_bm)
 
-#define INTR_STATE_CLEAR_ALL                                               \
-    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm |                           \
-     AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
+#define INTR_STATE_CLEAR_ALL \
+    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm | AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
 
 /* WKUP threshold: small value for fast test (prescaler=0 → count/AON cycle) */
 #define WKUP_THOLD_LO_VAL (500u)
@@ -100,7 +98,7 @@ int main(void) {
     /* STEP 4: Clear INTR_STATE wkup (W1C) and WKUP_CAUSE (W0C) */
     printf("\n// STEP 4: Clear INTR_STATE wkup (W1C) and WKUP_CAUSE (W0C)\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
-              AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm); /* W1C */
+              AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm);    /* W1C */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CAUSE_BASE_ADDR, 0x0); /* W0C */
 
     /* Brief propagation delay */

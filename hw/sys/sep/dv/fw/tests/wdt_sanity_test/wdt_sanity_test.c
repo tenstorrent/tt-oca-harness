@@ -97,8 +97,7 @@ void wdt_nmi_handler(void) {
         printf("//////////////////////////////////////////////////\n\n");
 
         /* Positive control: with enable ON, count must advance within AON window. */
-        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-                  AON_TIMER__WDOG_CTRL__ENABLE_bm);
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
         wait_multiple_aon_ticks();
         wdt_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
         if (wdt_count == 0) {
@@ -112,8 +111,7 @@ void wdt_nmi_handler(void) {
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
         uint32_t wdog_ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
         if ((wdog_ctrl & AON_TIMER__WDOG_CTRL__ENABLE_bm) != 0) {
-            printf("ERROR: WDOG_CTRL.enable still set after disable (0x%08x)\n",
-                   wdog_ctrl);
+            printf("ERROR: WDOG_CTRL.enable still set after disable (0x%08x)\n", wdog_ctrl);
             test_fail(1);
             return;
         }
@@ -121,8 +119,7 @@ void wdt_nmi_handler(void) {
         wait_multiple_aon_ticks();
         wdt_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
         if (wdt_count != 0) {
-            printf("ERROR: WDT count advanced while disabled! got 0x%08x\n",
-                   wdt_count);
+            printf("ERROR: WDT count advanced while disabled! got 0x%08x\n", wdt_count);
             test_fail(1);
             return;
         }
@@ -190,8 +187,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, bark_threshold);
 
     printf("Enabling watchdog...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     printf("SUCCESS: WDT initialized\n");
 
@@ -218,8 +214,7 @@ int main(void) {
 
     // Reenable WDT
     printf("Reenabling watchdog...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     // Wait for BITE
     while (interrupt_count == 1) {

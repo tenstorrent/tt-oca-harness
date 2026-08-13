@@ -60,18 +60,24 @@ static int run_kmac128(const uint32_t *key, int key_words, uint32_t key_len_val,
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     setup_entropy();
 
-
     kmac__KEY_LEN_t kl = {.w = 0};
     kl.f.len = key_len_val;
     WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
 
+    /* Clear full key window so unused KEY_LEN lanes cannot leak prior runs. */
+    for (int i = 0; i < 16; i++) {
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0);
+    }
     for (int i = 0; i < key_words; i++) {
         WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), key[i]);
         WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001);
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00004341);
+    /* encode_string("KMAC") || encode_string("") — PREFIX_1 must include left_encode(0)=0x01||0x00
+     */
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001u);
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00014341u);
     for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
 
     kmac__CMD_t cmd = {.w = 0};
@@ -96,7 +102,8 @@ static int run_kmac128(const uint32_t *key, int key_words, uint32_t key_len_val,
 
     for (int i = 0; i < 8; i++) {
         uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
-        uint32_t s1 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        uint32_t s1 =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
         digest_out[i] = s0 ^ s1;
     }
 

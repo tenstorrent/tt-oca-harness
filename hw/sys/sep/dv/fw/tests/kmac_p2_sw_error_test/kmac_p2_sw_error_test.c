@@ -34,9 +34,9 @@ static void clear_error(void) {
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.err_processed = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-              KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                  KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
 }
 
 static void write_cfg_shadowed(kmac__CFG_SHADOWED_t cfg) {
@@ -86,9 +86,9 @@ static int run_legal_empty_sha3(void) {
         printf("  FAIL: legal SHA3 timeout\n");
         return -1;
     }
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-              KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                  KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
     cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     clear_error();

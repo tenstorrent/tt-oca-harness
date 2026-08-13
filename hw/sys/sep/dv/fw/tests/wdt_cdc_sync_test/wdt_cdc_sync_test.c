@@ -27,7 +27,7 @@
 #include "test_completion.h"
 #include "aon_timer.h"
 
-#define WDOG_CTRL_FIELD_MASK                                               \
+#define WDOG_CTRL_FIELD_MASK \
     (AON_TIMER__WDOG_CTRL__ENABLE_bm | AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm)
 
 static int check_reg(uint32_t addr, uint32_t expected, const char *name) {
@@ -93,8 +93,7 @@ int main(void) {
     printf("\n// STEP 4: WDOG_COUNT write (pet) readback near 0\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* Wait until count has advanced (pet proof needs non-trivial before_pet). */
     uint32_t before_pet = 0;
@@ -116,8 +115,8 @@ int main(void) {
         uint32_t after_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
         printf("  Count after pet = 0x%08x (expect ~0)\n", after_pet);
         if (after_pet > 0x200u || after_pet >= before_pet) {
-            printf("  FAIL: Pet did not reduce count (before=0x%08x after=0x%08x)\n",
-                   before_pet, after_pet);
+            printf("  FAIL: Pet did not reduce count (before=0x%08x after=0x%08x)\n", before_pet,
+                   after_pet);
             errors++;
         } else {
             printf("  PASS: Count reset to ~0 by write (was 0x%08x)\n", before_pet);
@@ -140,10 +139,8 @@ int main(void) {
     /* STEP 6: WKUP_CTRL non-zero pattern then clear (dead-bus 0 must fail) */
     printf("\n// STEP 6: WKUP_CTRL non-zero write/readback then clear\n");
     uint32_t wkup_pat =
-        AON_TIMER__WKUP_CTRL__ENABLE_bm |
-        ((uint32_t)0x5Au << AON_TIMER__WKUP_CTRL__PRESCALER_bp);
-    uint32_t wkup_mask =
-        AON_TIMER__WKUP_CTRL__ENABLE_bm | AON_TIMER__WKUP_CTRL__PRESCALER_bm;
+        AON_TIMER__WKUP_CTRL__ENABLE_bm | ((uint32_t)0x5Au << AON_TIMER__WKUP_CTRL__PRESCALER_bp);
+    uint32_t wkup_mask = AON_TIMER__WKUP_CTRL__ENABLE_bm | AON_TIMER__WKUP_CTRL__PRESCALER_bm;
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, wkup_pat);
     uint32_t wkup_ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR);
     printf("  WKUP_CTRL wrote 0x%08x, readback = 0x%08x\n", wkup_pat, wkup_ctrl);

@@ -18,8 +18,7 @@
 #include "sep_kmac.h"
 
 /* Composed from generated field reset / bitmasks in blocks/kmac.h. */
-#define KMAC_STATUS_RESET_VAL \
-    (KMAC__STATUS__SHA3_IDLE_bm | KMAC__STATUS__FIFO_EMPTY_bm)
+#define KMAC_STATUS_RESET_VAL (KMAC__STATUS__SHA3_IDLE_bm | KMAC__STATUS__FIFO_EMPTY_bm)
 #define KMAC_CFG_REGWEN_RESET_VAL (KMAC__CFG_REGWEN__EN_bm)
 #define KMAC_CFG_SHADOWED_RESET_VAL (KMAC__CFG_SHADOWED__SIDELOAD_bm)
 
@@ -115,9 +114,9 @@ static int test_intr_test_w1s(void) {
      * only claim the set-leg here (INTR_TEST forces the bit). Clear polarity is
      * proven in kmac_interrupt_test with a non-empty FIFO.
      */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-              KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                  KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__FIFO_EMPTY_bm);
     state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & KMAC__INTR_STATE__FIFO_EMPTY_bm) {
@@ -128,14 +127,14 @@ static int test_intr_test_w1s(void) {
     }
     /* Drop vacuous W1C clear claim at idle (level re-assert cannot fail). */
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-              KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                  KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
 
     /* --- bit 2: kmac_err --- */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-              KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                  KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__KMAC_ERR_bm);
     state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & KMAC__INTR_STATE__KMAC_ERR_bm) {
@@ -154,9 +153,9 @@ static int test_intr_test_w1s(void) {
     }
 
     /* Clear all remaining */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-              KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                  KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
 
     return 0;
 }

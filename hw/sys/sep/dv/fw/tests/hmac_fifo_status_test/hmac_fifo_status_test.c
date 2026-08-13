@@ -104,8 +104,8 @@ int main(void) {
            expect_bits, max_depth_seen, fifo_full_seen);
     if (!check_reg("MSG_LENGTH after FIFO writes", msg_bits, expect_bits)) pass = 0;
     if (fifo_full_seen || max_depth_seen >= 32u) {
-        printf("  INFO: observed FIFO capacity pressure (full=%u max_depth=%u)\n",
-               fifo_full_seen, max_depth_seen);
+        printf("  INFO: observed FIFO capacity pressure (full=%u max_depth=%u)\n", fifo_full_seen,
+               max_depth_seen);
     } else {
         printf("  INFO: instant drain under CPU MMIO (expected); capacity deferred to UVM\n");
     }

@@ -77,15 +77,13 @@ int main(void) {
     printf("Set count=50, bark=1000, bite=0xFFFFFFFF\n");
 
     /* Enable WDT */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
     printf("WDT enabled\n");
 
     /* Confirm no bark yet with unreachable threshold (count=50 < bark=1000). */
     uint32_t intr_before = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
     if (intr_before & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
-        printf("ERROR: BARK already set before threshold jump (INTR_STATE=0x%08x)\n",
-               intr_before);
+        printf("ERROR: BARK already set before threshold jump (INTR_STATE=0x%08x)\n", intr_before);
         test_fail(1);
         return 1;
     }
@@ -148,8 +146,7 @@ int main(void) {
     printf("Set count=100, bite=1000, bark=0xFFFFFFFF\n");
 
     /* Enable WDT */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
     printf("WDT enabled\n");
 
     /* Lower bite threshold below current count to trigger reset */

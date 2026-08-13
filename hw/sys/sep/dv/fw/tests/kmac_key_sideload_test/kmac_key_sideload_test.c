@@ -72,7 +72,8 @@ static int wait_done(void) {
             return -2;
         }
         if (intr & KMAC__INTR_STATE__KMAC_DONE_bm) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm); /* W1C */
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
+                      KMAC__INTR_STATE__KMAC_DONE_bm); /* W1C */
             return 0;
         }
     }
@@ -140,8 +141,9 @@ static int run_kmac_op(uint32_t out[8]) {
 
     /* Read digest: XOR two masked shares */
     for (int i = 0; i < 8; i++)
-        out[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
-                 READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        out[i] =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
 
     /* DONE */
     cmd.f.cmd = SEP_KMAC_CMD_DONE; /* CmdDone */
@@ -317,9 +319,9 @@ int main(void) {
         kmac__CMD_t ec = {.w = 0};
         ec.f.err_processed = 1;
         WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, ec.w);
-        WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-                  KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                      KMAC__INTR_STATE__KMAC_ERR_bm);
+        WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                             KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                             KMAC__INTR_STATE__KMAC_ERR_bm);
         (void)wait_idle();
     }
 

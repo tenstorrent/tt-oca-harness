@@ -231,8 +231,7 @@ int main(void) {
             if (status.f.TXEMPTY && status.f.TXQD == 0 && !status.f.ACTIVE) break;
         }
         if (t <= 0) {
-            printf("  FAIL: TIMEOUT waiting for TXEMPTY after SW_RST (STATUS=0x%08x)\n",
-                   status.w);
+            printf("  FAIL: TIMEOUT waiting for TXEMPTY after SW_RST (STATUS=0x%08x)\n", status.w);
             pass = 0;
         }
     }

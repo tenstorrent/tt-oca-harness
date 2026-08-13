@@ -62,8 +62,12 @@ static int wait_for_error_bit(int (*bit_set)(spi_controller__ERROR_STATUS_t), in
     return -1;
 }
 
-static int err_cmdinval_set(spi_controller__ERROR_STATUS_t e) { return e.f.CMDINVAL != 0; }
-static int err_csidinval_set(spi_controller__ERROR_STATUS_t e) { return e.f.CSIDINVAL != 0; }
+static int err_cmdinval_set(spi_controller__ERROR_STATUS_t e) {
+    return e.f.CMDINVAL != 0;
+}
+static int err_csidinval_set(spi_controller__ERROR_STATUS_t e) {
+    return e.f.CSIDINVAL != 0;
+}
 
 int main(void) {
     sep_outbound_filter_init();
@@ -202,17 +206,16 @@ int main(void) {
     /* Step 6: Test ERROR_ENABLE defaults (from generated field resets) */
     printf("\nStep 6: ERROR_ENABLE default check\n");
     {
-        uint32_t err_en_default =
-            (SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_reset
-             << SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_bp) |
-            (SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_reset
-             << SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_bp) |
-            (SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_reset
-             << SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_bp) |
-            (SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_reset
-             << SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_bp) |
-            (SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_reset
-             << SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_bp);
+        uint32_t err_en_default = (SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_bp) |
+                                  (SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_bp) |
+                                  (SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_bp) |
+                                  (SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_bp) |
+                                  (SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_bp);
         err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
         if (!check_reg("ERROR_ENABLE default", err_enable.w, err_en_default)) pass = 0;
     }

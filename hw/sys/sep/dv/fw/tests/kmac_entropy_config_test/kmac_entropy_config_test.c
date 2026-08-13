@@ -32,7 +32,6 @@ static int wait_for_idle(void) {
     return -1;
 }
 
-
 static int test_entropy_config(void) {
     int errors = 0;
     uint32_t val;

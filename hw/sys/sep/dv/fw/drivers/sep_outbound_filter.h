@@ -25,11 +25,11 @@
  * Do NOT set ALLOW_NS: EnNsFilter=1 and SEP CPU traffic is secure (ns=0).
  * Bit32 reserved: keep OCAH/XBAR golden (XBAR_SEP_OUTBOUND_CFG) until RTL/docs clarify.
  */
-#define SEP_OUTBOUND_FILTER_CFG_OPEN                                                 \
-    ((uint64_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm |                        \
-                FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |                       \
-                FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm |                       \
-                FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm) |                        \
+#define SEP_OUTBOUND_FILTER_CFG_OPEN \
+    ((uint64_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm) | \
      (1ULL << 32))
 
 /* Mailbox window: STDOUT (test_completion) plus a small pad. */
@@ -55,8 +55,7 @@ static inline void sep_outbound_filter_init_range(uint64_t start, uint64_t end) 
 
 /* Open filter 0 over the testpass mailbox window. Call before mailbox access. */
 static inline void sep_outbound_filter_init(void) {
-    sep_outbound_filter_init_range(SEP_OUTBOUND_FILTER_WIN_START,
-                                   SEP_OUTBOUND_FILTER_WIN_END);
+    sep_outbound_filter_init_range(SEP_OUTBOUND_FILTER_WIN_START, SEP_OUTBOUND_FILTER_WIN_END);
 }
 
 #endif // SEP_OUTBOUND_FILTER_H

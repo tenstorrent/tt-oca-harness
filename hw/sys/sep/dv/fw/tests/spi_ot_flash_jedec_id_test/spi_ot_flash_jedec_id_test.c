@@ -123,8 +123,7 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR,
-              (uint32_t)FLASH_CMD_JEDEC_ID);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, (uint32_t)FLASH_CMD_JEDEC_ID);
 
     cmd.w = 0;
     cmd.f.LEN = 0;       /* 1 byte */

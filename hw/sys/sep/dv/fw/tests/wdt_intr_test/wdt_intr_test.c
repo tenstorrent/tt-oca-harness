@@ -27,9 +27,8 @@
 #include "test_completion.h"
 #include "aon_timer.h"
 
-#define INTR_STATE_CLEAR_ALL                                               \
-    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm |                           \
-     AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
+#define INTR_STATE_CLEAR_ALL \
+    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm | AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
 
 static volatile int intr_count = 0;
 static volatile int intr_errors = 0;
@@ -70,8 +69,7 @@ int main(void) {
     printf("  Writing INTR_TEST = bark bitmask\n");
 
     int pre_count = intr_count;
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR,
-              AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
 
     int timeout = 2000000;
     while (intr_count == pre_count && timeout-- > 0) {
@@ -99,8 +97,7 @@ int main(void) {
     /* STEP 3: Second injection */
     printf("\n// STEP 3: Second INTR_TEST injection\n");
     pre_count = intr_count;
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR,
-              AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
 
     timeout = 2000000;
     while (intr_count == pre_count && timeout-- > 0) {
@@ -128,8 +125,7 @@ int main(void) {
 
     /* Manual W1C test: INTR_TEST then poll-clear */
     printf("\n// STEP 4b: Manual INTR_STATE W1C verification\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR,
-              AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
     uint32_t st_set = 0;
     timeout = 2000000;
     while (timeout-- > 0) {
@@ -147,8 +143,8 @@ int main(void) {
                   AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm); /* W1C */
         uint32_t st_clr = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
         if (st_clr & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
-            printf("  FAIL: W1C did not clear INTR_STATE bark (set=0x%08x, clr=0x%08x)\n",
-                   st_set, st_clr);
+            printf("  FAIL: W1C did not clear INTR_STATE bark (set=0x%08x, clr=0x%08x)\n", st_set,
+                   st_clr);
             errors++;
         } else {
             printf("  PASS: W1C cleared INTR_STATE bark (was 0x%08x)\n", st_set);
@@ -159,8 +155,7 @@ int main(void) {
     printf("\n// STEP 5: WDT counting unaffected by INTR_TEST\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     for (volatile int i = 0; i < 30000; i++) {
         __asm__ volatile("nop");

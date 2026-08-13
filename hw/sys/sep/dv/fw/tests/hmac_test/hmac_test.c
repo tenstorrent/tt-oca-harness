@@ -86,10 +86,10 @@ static int stage_config(void) {
 
     // SHA-256, no swaps, SHA enabled, HMAC disabled
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;     // HMAC disabled
-    cfg.f.sha_en = 1;      // SHA enabled
-    cfg.f.endian_swap = 0; // No endian swap
-    cfg.f.digest_swap = 0; // No digest swap
+    cfg.f.hmac_en = 0;                                 // HMAC disabled
+    cfg.f.sha_en = 1;                                  // SHA enabled
+    cfg.f.endian_swap = 0;                             // No endian swap
+    cfg.f.digest_swap = 0;                             // No digest swap
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA2_256 (value=1)
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 

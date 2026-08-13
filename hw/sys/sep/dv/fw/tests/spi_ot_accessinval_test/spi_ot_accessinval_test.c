@@ -189,7 +189,8 @@ int main(void) {
         printf("  PASS: ERROR_ENABLE bit 20 RAZ/WI (ACCESSINVAL not in enable map)\n");
     }
     /* Restore POR default composed from generated field resets */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, SPI_CONTROLLER__ERROR_ENABLE_reset);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR,
+              SPI_CONTROLLER__ERROR_ENABLE_reset);
 
     /* ------------------------------------------------------------------ */
     /* Step 6: Other ERROR_STATUS bits unaffected by ACCESSINVAL W1C      */

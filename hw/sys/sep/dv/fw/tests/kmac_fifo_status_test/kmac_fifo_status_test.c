@@ -88,8 +88,8 @@ static int test_fifo_status(void) {
         WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0xA5A5A500u + (uint32_t)i);
     }
     s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
-    printf("  After burst: depth=%u empty=%u full=%u baseline=%u\n", s.f.fifo_depth,
-           s.f.fifo_empty, s.f.fifo_full, baseline_depth);
+    printf("  After burst: depth=%u empty=%u full=%u baseline=%u\n", s.f.fifo_depth, s.f.fifo_empty,
+           s.f.fifo_full, baseline_depth);
     /* Instant drain under CPU MMIO is expected; do not soft-skip. Accept proof is
      * PROCESS completion + fifo_empty below (capacity/full needs UVM TL burst). */
     (void)baseline_depth;

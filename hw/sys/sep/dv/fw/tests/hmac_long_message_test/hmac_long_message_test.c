@@ -108,8 +108,8 @@ static int test_long_message_sha256(void) {
 
     // Configure for SHA-256
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;       // SHA only
-    cfg.f.sha_en = 1;        // SHA enabled
+    cfg.f.hmac_en = 0;                                 // SHA only
+    cfg.f.sha_en = 1;                                  // SHA enabled
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA-256
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x (SHA-256, SHA mode)\n", cfg.w);
@@ -171,8 +171,8 @@ static int test_very_long_message(void) {
 
     // Configure for SHA-256
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;       // SHA only
-    cfg.f.sha_en = 1;        // SHA enabled
+    cfg.f.hmac_en = 0;                                 // SHA only
+    cfg.f.sha_en = 1;                                  // SHA enabled
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA-256
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 

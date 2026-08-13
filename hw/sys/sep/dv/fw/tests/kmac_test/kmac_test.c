@@ -69,7 +69,7 @@ static int kmac128_simple_test(void) {
     // Step 2: Configure for KMAC-128 BEFORE setting key
     printf("Step 2: Configuring for KMAC-128...\n");
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.kmac_en = 1;          // KMAC mode
+    cfg.f.kmac_en = 1; // KMAC mode
     cfg.f.mode = SEP_KMAC_MODE_CSHAKE;
     cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
     cfg.f.msg_endianness = 0;   // Little-endian
@@ -158,7 +158,8 @@ static int kmac128_simple_test(void) {
 
     // Read share 1 (SEP_KMAC_STATE_SHARE1_OFFSET into STATE window)
     for (int i = 0; i < 8; i++) {
-        share1[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        share1[i] =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
     }
 
     // XOR shares to get actual digest

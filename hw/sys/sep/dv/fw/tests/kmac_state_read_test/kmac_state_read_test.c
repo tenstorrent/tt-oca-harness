@@ -62,7 +62,6 @@ static int test_state_read(void) {
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     setup_entropy();
 
-
     printf("=== Step 2: START ===\n");
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = SEP_KMAC_CMD_START;
@@ -89,7 +88,8 @@ static int test_state_read(void) {
     for (int i = 0; i < 8; i++) share0[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
 
     for (int i = 0; i < 8; i++)
-        share1[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        share1[i] =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
 
     for (int i = 0; i < 8; i++) digest[i] = share0[i] ^ share1[i];
 

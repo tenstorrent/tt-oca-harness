@@ -33,14 +33,14 @@
 
 #define RX_SIZE 64u // bytes to receive (multiple of 4)
 #define RX_WORDS (RX_SIZE / 4u)
-#define DMA_CHUNK 16u                    // RX_WM(4 words) * 4B: drain to below WM
-#define RX_WATERMARK 4u                  // RX FIFO words that assert lsio_trigger
+#define DMA_CHUNK 16u   // RX_WM(4 words) * 4B: drain to below WM
+#define RX_WATERMARK 4u // RX FIFO words that assert lsio_trigger
 #define DST_STAGING_OFF 0x6000u
 #define DST_ADDR ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + DST_STAGING_OFF)
-#define RX_PATTERN 0xA5u                 // BFM-preloaded flash byte (see test .py)
-#define EXPECT_WORD 0xA5A5A5A5u          // 4 x RX_PATTERN, packing-agnostic
-#define FILL_WORD 0xDEADBEEFu            // pre-DMA SRAM marker
-#define SPI_READ_OPCODE 0x03u            // NOR-flash READ (1-1-1), 24-bit addr
+#define RX_PATTERN 0xA5u        // BFM-preloaded flash byte (see test .py)
+#define EXPECT_WORD 0xA5A5A5A5u // 4 x RX_PATTERN, packing-agnostic
+#define FILL_WORD 0xDEADBEEFu   // pre-DMA SRAM marker
+#define SPI_READ_OPCODE 0x03u   // NOR-flash READ (1-1-1), 24-bit addr
 #define DMA_STATUS_RW1C_MASK \
     (SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_ERROR | SEP_DMA_STATUS_CHUNK_DONE)
 

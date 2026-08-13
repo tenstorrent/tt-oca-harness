@@ -54,8 +54,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, bark_thold);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, bite_thold);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* Wait for BARK NMI */
     while (bark_count == 0) {
@@ -79,16 +78,14 @@ int main(void) {
 
     /* Verify count was past bark but still below bite at the sample. */
     if (cnt_at_bark < bark_thold) {
-        printf("  FAIL: count 0x%08x < bark_thold %u at bark sample\n",
-               cnt_at_bark, bark_thold);
+        printf("  FAIL: count 0x%08x < bark_thold %u at bark sample\n", cnt_at_bark, bark_thold);
         errors++;
     } else if (cnt_at_bark >= bite_thold) {
-        printf("  FAIL: count 0x%08x >= bite_thold %u at bark sample\n",
-               cnt_at_bark, bite_thold);
+        printf("  FAIL: count 0x%08x >= bite_thold %u at bark sample\n", cnt_at_bark, bite_thold);
         errors++;
     } else {
-        printf("  PASS: count 0x%08x in [%u, %u) at bark (bite not reached)\n",
-               cnt_at_bark, bark_thold, bite_thold);
+        printf("  PASS: count 0x%08x in [%u, %u) at bark (bite not reached)\n", cnt_at_bark,
+               bark_thold, bite_thold);
     }
 
     /* Signal pass before triggering BITE (BITE causes system reset) */
@@ -108,8 +105,7 @@ int main(void) {
               0xFFFFFFFF); /* bark won't fire again */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 200);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 100);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-              AON_TIMER__WDOG_CTRL__ENABLE_bm);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* Loop - BITE reset will fire */
     while (1) {
