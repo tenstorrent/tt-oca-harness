@@ -62,7 +62,7 @@ module smc_reset_unit (
 		input  logic                                   scan_rst_ni,
 
 		// Captured straps input
-		input  logic [63:0]                            captured_straps_i
+		input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]    captured_straps_i
 	);
 
 	logic rst_primary_n;
@@ -118,7 +118,7 @@ module smc_reset_unit (
 
 		// Fields driven by captured straps
 		hwif_in.STRAPS_LO.straps.next               = captured_straps_i[31:0];  // Quasi static, raw crossing
-		hwif_in.STRAPS_HI.straps.next               = captured_straps_i[63:32]; // Quasi static, raw crossing
+		hwif_in.STRAPS_HI.straps.next               = captured_straps_i[smc_pkg::NUM_BONDED_GPIO-1:32]; // Quasi static, raw crossing
 	end
 
 	reset_unit_reg u_reset_unit_reg (

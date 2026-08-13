@@ -278,15 +278,24 @@ addrmap sep_cpu_ctrl {
     reg SEP_NMI_VEC {
         regwidth = 64;
         accesswidth = 64;
-        desc = "NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_1000. The NMI
-                interrupt is used for the WDT Bark interrupt.";
+        desc = "NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI
+                interrupt is used for the WDT Bark interrupt.
+
+                WARNING: the reset value is a placeholder, not a usable handler. Firmware must
+                program this register with the address of its own NMI handler, and then set
+                SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).
+                If a bark arrives while the reset value is still in place, the CPU jumps to
+                0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if
+                the loaded image covers that location, or an uncorrectable ICCM ECC error
+                (which itself re-raises NMI) if it does not.";
 
         field {
             sw = rw;
             hw = r;
             desc = "NMI vector address [31:1] for VeeR-EL2 CPU. Bit 0 is always 0 (aligned).
                     Address where CPU jumps on Non-Maskable Interrupt. This is used for the
-                    WDT Bark interrupt.";
+                    WDT Bark interrupt. The reset value does not point at a valid handler --
+                    see the register description for the required programming order.";
         } nmi_vec[31:1] = 0x6000_0080;
 
         field {

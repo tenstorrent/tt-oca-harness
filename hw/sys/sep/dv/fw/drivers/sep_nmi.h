@@ -25,7 +25,11 @@
 // the LOCK is write-once-set and, once set, freezes SEP_NMI_VEC until reset.
 #define SEP_NMI_VEC_ADDR 0x10A30180u
 #define SEP_NMI_VEC_LOCK_ADDR 0x10A30188u
-#define SEP_NMI_VEC_DEFAULT 0xC0000100u // reset value (256-byte aligned)
+// Reset value only. It is a placeholder, not a valid handler -- nothing guarantees
+// the image even covers 0xC000_0100, and an uninitialized ICCM fetch there is an
+// uncorrectable ECC error that re-raises NMI. Steps 1-2 above must complete before
+// any NMI source is enabled.
+#define SEP_NMI_VEC_DEFAULT 0xC0000100u // 256-byte aligned
 
 typedef void (*sep_nmi_handler_t)(void);
 

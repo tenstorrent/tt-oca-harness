@@ -82,8 +82,8 @@ class dtp_sanity_seq extends dtp_jtag_base_seq;
         // Start-of-test banner: intent, seed, and randomized configuration.
         if (!$value$plusargs("ntb_random_seed=%d", seed_val)) seed_val = 0;
         `uvm_info(get_type_name(), $sformatf(
-            "DTP SV-UVM sanity (VPLAN 0.1): FSM 32-edge closure + BYPASS 1-TCK latency + scan path; "
-            "seed=%0d (+ntb_random_seed) rand_walks=%0dx%0d steps",
+            {"DTP SV-UVM sanity (VPLAN 0.1): FSM 32-edge closure + BYPASS 1-TCK ",
+             "latency + scan path; seed=%0d (+ntb_random_seed) rand_walks=%0dx%0d steps"},
             seed_val, RandWalks, RandWalkSteps), UVM_LOW)
 
         // Power-on/system reset sequencing, then TAP reset (VPLAN 0.1 step 1).
