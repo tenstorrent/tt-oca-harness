@@ -4,15 +4,23 @@
 [[ctm-architecture]]
 ==== Architecture
 
-The Cross Trigger Matrix in this tree is committed source with a fixed configuration of 26 source ports and 26 destination ports, matching the DTP cross-trigger topology. The matrix implements a combinatorial AND-OR crossbar with registered outputs to route cross-trigger pulses between CTPs and internal cross-trigger sources.
+The Cross Trigger Matrix in this tree is committed source with a fixed
+configuration of 26 source ports and 26 destination ports, matching the DTP
+cross-trigger topology. The matrix implements a combinatorial AND-OR crossbar
+with registered outputs to route cross-trigger pulses between CTPs and internal
+cross-trigger sources.
 
 image::ctm_module_diagram.png[Cross Trigger Matrix Module Diagram,scaledwidth=90.0%]
 
-The CTM is programmed at runtime via firmware or debug transactions. Proper configuration of the CTMs in each chiplet will minimize trigger latency and prevent loops in the SiP cross trigger network.
+The CTM is programmed at runtime via firmware or debug transactions. Proper
+configuration of the CTMs in each chiplet will minimize trigger latency and
+prevent loops in the SiP cross trigger network.
 
 ===== Routing Logic
 
-The CTM routing implements a two-stage combinatorial path followed by output registration. Each of the 26 CT_Src output ports is driven by a dedicated `ctm_src_selector` module that performs the following operation:
+The CTM routing implements a two-stage combinatorial path followed by output
+registration. Each of the 26 CT_Src output ports is driven by a dedicated
+`ctm_src_selector` module that performs the following operation:
 
 [width="100%",cols="<50%,<50%",options="header"]
 |===
@@ -28,7 +36,11 @@ The CTM routing implements a two-stage combinatorial path followed by output reg
 |The combinatorial result is registered on `clk_i` rising edge: `ct_src_o <= ct_src_comb`
 |===
 
-This architecture allows each CT_Src output to combine pulses from multiple CT_Dst inputs through OR-aggregation. Multiple CT_Src outputs can source from the same CT_Dst input, enabling broadcast distribution. The register stage prevents glitches on the output when configuration changes or when multiple input pulses arrive simultaneously.
+This architecture allows each CT_Src output to combine pulses from multiple
+CT_Dst inputs through OR-aggregation. Multiple CT_Src outputs can source from
+the same CT_Dst input, enabling broadcast distribution. The register stage
+prevents glitches on the output when configuration changes or when multiple
+input pulses arrive simultaneously.
 
 ===== Port Indexing
 
@@ -41,4 +53,5 @@ CTM ports are indexed as follows:
 |N to N+M-1 |Internal CTPs (NUM_INT_CT)
 |===
 
-Where N = NUM_CTP and M = NUM_INT_CT. This indexing is used for CTM ct_dst_i and ct_src_o port assignment and CTM routing configuration registers.
+Where N = NUM_CTP and M = NUM_INT_CT. This indexing is used for CTM ct_dst_i and
+ct_src_o port assignment and CTM routing configuration registers.

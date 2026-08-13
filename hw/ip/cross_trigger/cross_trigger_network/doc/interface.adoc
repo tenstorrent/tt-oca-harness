@@ -6,8 +6,8 @@
 
 ===== Cross Trigger Port (CTP)
 
-The following diagram and table illustrate the logical behavior and
-signal interface of a CTP module:
+The following diagram and table illustrate the logical behavior and signal
+interface of a CTP module:
 
 image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
 
@@ -75,12 +75,12 @@ this signal. In wire-OR mode it is unused.
 
 The CTM has the following data ports and logical structure:
 
-* *CT_Src[N-1:0]* - Cross trigger pulse output signals from the CTM to
-CLAs, CTPs, or other cross trigger sinking devices, where N is the
-number of these cross trigger sinks. +
-* *CT_Dst[M-1:0]* - Cross trigger pulse input signals to the CTM from
-CLAs, CTPs, or other cross trigger generating devices, where M is the
-number of these cross trigger sources.
+* *CT_Src[N-1:0]* - Cross trigger pulse output signals from the CTM to CLAs,
+  CTPs, or other cross trigger sinking devices, where N is the number of these
+  cross trigger sinks. +
+* *CT_Dst[M-1:0]* - Cross trigger pulse input signals to the CTM from CLAs,
+  CTPs, or other cross trigger generating devices, where M is the number of
+  these cross trigger sources.
 
 ===== Cross Trigger Network Module Interface
 
@@ -88,7 +88,8 @@ The top-level `cross_trigger_network` module has the following interface:
 
 *Parameters*
 
-* `INT_CT_MODE` - Per-bit mode selection for internal CTPs (0 = Wire-OR, 1 = P2P)
+* `INT_CT_MODE` - Per-bit mode selection for internal CTPs (0 = Wire-OR, 1 =
+  P2P)
 * `axil_req_t`, `axil_resp_t` - AXI-Lite request/response types
 
 *Ports*
