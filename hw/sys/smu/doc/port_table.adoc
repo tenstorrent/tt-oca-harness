@@ -178,7 +178,7 @@
 
 |`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller |1'b0
 |`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1
-|`captured_straps_i` |`logic` |Input |`[63:0]` |Captured strap configuration. |GPIO padring |N/A
+|`captured_straps_i` |`logic` |Input |`[63:0]` |Captured strap configuration. Please refer to the `reset_unit` STRAPS_LO and STRAPS_HI register descriptions for the decoded value of the straps. |GPIO padring |N/A
 
 |`mem_repair_done_i` |`logic` |Input |1 |Memory repair done indicator. |DFT controller |1'b0
 |`mem_repair_success_i` |`logic` |Input |1 |Memory repair success indicator. |DFT controller |1'b0

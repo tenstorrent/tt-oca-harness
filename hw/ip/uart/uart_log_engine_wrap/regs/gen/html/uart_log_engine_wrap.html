@@ -103,10 +103,10 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit is the active-low version of the `dcd_ni`<br>input.</td></tr>
-<tr><td>6</td><td>RI</td><td>R</td><td>0x0</td><td>Ring Indicator. This bit is the active-low version of the `ri_ni` input.</td></tr>
-<tr><td>5</td><td>DSR</td><td>R</td><td>0x0</td><td>Data Set Ready. This bit is the active-low version of the `dsr_ni` input.</td></tr>
-<tr><td>4</td><td>CTS</td><td>R</td><td>0x0</td><td>Clear to Send. This bit is the active-low version of the `cts_ni` input.</td></tr>
+<tr><td>7</td><td>DCD</td><td>R</td><td>0x0</td><td>Data Carrier Detect. This bit reflects the `dcd_ni` input in the opposite<br>polarity, so it reads `1` while a carrier is detected.</td></tr>
+<tr><td>6</td><td>RI</td><td>R</td><td>0x0</td><td>Ring Indicator. This bit reflects the `ri_ni` input in the opposite polarity, so<br>it reads `1` while the remote modem signals an incoming call.</td></tr>
+<tr><td>5</td><td>DSR</td><td>R</td><td>0x0</td><td>Data Set Ready. This bit reflects the `dsr_ni` input in the opposite polarity,<br>so it reads `1` while the remote modem is connected and ready.</td></tr>
+<tr><td>4</td><td>CTS</td><td>R</td><td>0x0</td><td>Clear to Send. This bit reflects the `cts_ni` input in the opposite polarity, so<br>it reads `1` while the remote device is ready to receive data.</td></tr>
 <tr><td>3</td><td>DDCD</td><td>R</td><td>0x0</td><td>Delta Data Carrier Detect. When set, indicates that the `DCD` bit has changed<br>since the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>
 <tr><td>2</td><td>TERI</td><td>R</td><td>0x0</td><td>Trailing Edge Ring Indicator. When set, indicates that the `RI` bit has changed<br>from a `1` to a `0`. This bit triggers the Modem Status Interrupt.</td></tr>
 <tr><td>1</td><td>DDSR</td><td>R</td><td>0x0</td><td>Delta Data Set Ready. When set, indicates that the `DSR` bit has changed since<br>the last time this register was read. This bit triggers the Modem Status<br>Interrupt.</td></tr>

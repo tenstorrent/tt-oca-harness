@@ -241,7 +241,7 @@ module smc
     input  logic                                                                           scan_rst_ni,
 
     // Captured straps input
-    input  logic [63:0]                                                                    captured_straps_i,
+    input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]                                            captured_straps_i,
 
 // indicators for DFT status
     input  logic                                                                                    mem_repair_done_i,
