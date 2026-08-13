@@ -21,7 +21,8 @@ The DTP serves as the central hub for:
 * *Debug Access*: JTAG-based access to on-chip registers and memory
 * *Boundary Scan*: IEEE 1149.1 boundary scan for board-level testing
 * *Cross Triggering*: Die-to-die and internal trigger coordination
-* *Clock Control*: Debug clock-stop controls and CLA clock-stop request aggregation
+* *Clock Control*: Debug clock-stop controls and CLA clock-stop request
+  aggregation
 
 ==== Key Features
 
@@ -38,7 +39,8 @@ The DTP serves as the central hub for:
 * Configurable number of internal cross triggers (0-32)
 * Cross Trigger Matrix for flexible routing
 * Wire-OR and Point-to-Point signaling modes
-* OR aggregation of incoming CLA clock-stop request sources, OR-combined with JTAG clock stop for clock control gating
+* OR aggregation of incoming CLA clock-stop request sources, OR-combined with
+  JTAG clock stop for clock control gating
 
 *iJTAG Support*
 

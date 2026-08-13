@@ -33,7 +33,8 @@ The STAP interface timing follows IEEE 1838-2019:
 * TDI is sampled on the rising edge of TCK
 * TDO is driven on the falling edge of TCK
 * TMS is sampled on the rising edge of TCK
-* The lockup latch captures data on the falling edge of TCK when transitioning out of Shift-DR/IR states
+* The lockup latch captures data on the falling edge of TCK when transitioning
+  out of Shift-DR/IR states
 
 ===== Dependencies
 

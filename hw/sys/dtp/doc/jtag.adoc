@@ -4,7 +4,8 @@
 [[dtp-jtag-integration]]
 === DTP JTAG Integration
 
-This section describes how JTAG components are integrated within the DTP subsystem. For detailed component documentation, see:
+This section describes how JTAG components are integrated within the DTP
+subsystem. For detailed component documentation, see:
 
 * <<jtag-interface-unit>> - Top-level JTAG control module
 * <<jtag-ptap>> - Primary TAP implementation
@@ -12,7 +13,8 @@ This section describes how JTAG components are integrated within the DTP subsyst
 
 ==== DTP JTAG Topology
 
-The DTP instantiates a single JTAG Interface Unit that serves as the primary debug access point for the chiplet. The interface unit connects to:
+The DTP instantiates a single JTAG Interface Unit that serves as the primary
+debug access point for the chiplet. The interface unit connects to:
 
 * External JTAG pins (TCK, TDI, TDO, TMS, TRST)
 * Cross Trigger Network for clock stop control
@@ -45,12 +47,15 @@ The DTP operates in two clock domains:
 |JTAG Clock |TCK |JTAG test clock for all TAP controller and scan logic
 |===
 
-All cross-trigger signals are synchronized to the system clock domain within the CTPs.
+All cross-trigger signals are synchronized to the system clock domain within the
+CTPs.
 
 ==== Reset Architecture
 
-* *rst_n_i*: Active-low asynchronous reset for cross trigger logic and AXI interfaces
-* *pwr_on_rst_ni*: Asynchronous active-low power-on reset for JTAG logic, combined internally with TRST_n
+* *rst_n_i*: Active-low asynchronous reset for cross trigger logic and AXI
+  interfaces
+* *pwr_on_rst_ni*: Asynchronous active-low power-on reset for JTAG logic,
+  combined internally with TRST_n
 * All registers reset to safe states
 * Clock stop output resets to 0 (clocks running)
 * JTAG TAP resets to Test-Logic-Reset state on TRST or power-on
@@ -58,15 +63,15 @@ All cross-trigger signals are synchronized to the system clock domain within the
 ==== Lifecycle Feature Control
 
 The DTP top level consumes `feat_ctrl_i` using the SEP lifecycle feature control
-type `sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t`. That type is reused for its
-bit layout only: the bits themselves are active-high feature *enables*
-(1 = feature enabled), driven by the SEP lifecycle controller. The DTP
-synchronizes `feat_ctrl_i` into the TCK domain before use, then derives a
-security disable signal per gated path.
+type `sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t`. That type is reused for
+its bit layout only: the bits themselves are active-high feature *enables* (1 =
+feature enabled), driven by the SEP lifecycle controller. The DTP synchronizes
+`feat_ctrl_i` into the TCK domain before use, then derives a security disable
+signal per gated path.
 
-Because `feat_ctrl_i` is enable-polarity, a path is enabled only when *all* of its
-required enables are asserted, and is therefore disabled whenever *any* one of
-them is deasserted:
+Because `feat_ctrl_i` is enable-polarity, a path is enabled only when *all* of
+its required enables are asserted, and is therefore disabled whenever *any* one
+of them is deasserted:
 
 [cols="<40%,<60%",options="header"]
 |===
@@ -107,10 +112,11 @@ them is deasserted:
 |===
 
 A disabled path remains observable only where required for control and readback;
-its host-visible scan or debug access is clamped or bypassed so the disabled path
-cannot be used to reach downstream secure logic. For a JTAG2AXI bridge this means
-its TDR update registers are not latched, buffered requests are dropped, and the
-AXI state machine is held in idle, so no AXI traffic can be generated at all.
+its host-visible scan or debug access is clamped or bypassed so the disabled
+path cannot be used to reach downstream secure logic. For a JTAG2AXI bridge this
+means its TDR update registers are not latched, buffered requests are dropped,
+and the AXI state machine is held in idle, so no AXI traffic can be generated at
+all.
 
 The STAP and iJTAG conditions are implemented in `jtag_intf_unit`; the three
 JTAG2AXI conditions are implemented in `jtag_ptap`.
