@@ -36,6 +36,7 @@ from .config import (
     validate_native_config_shape,
 )
 from .duts import load_duts, resolve_dut
+from .junit import materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
@@ -1818,6 +1819,23 @@ def run_flow(
                 elapsed_sec=time.monotonic() - run_started,
             )
 
+        replaying_coverage = existing_result is not None and replay_run_dir == run_dir
+        # Structured-result guarantee, leafless case: a non-passing run in which no sim
+        # leaf executed (compile/elaboration/filelist failure) gets one run-level stage
+        # XML so the failure is visible to JUnit consumers. Runs before result_payload
+        # so the failing stage's artifact pointer lands in result.json; skipped on
+        # coverage replay, which re-enters a run dir whose leaves did not rerun.
+        if not args.dry_run and not replaying_coverage:
+            try:
+                materialize_stage_junit(
+                    flow=flow,
+                    root=root,
+                    run_dir=run_dir,
+                    tool=tool,
+                    stages=results,
+                )
+            except Exception as exc:  # noqa: BLE001
+                console.event("warning", f"junit synthesis failed: {exc}", force=True)
         payload = result_payload(
             flow=flow,
             root=root,
@@ -1830,7 +1848,7 @@ def run_flow(
             args=args,
             executor=executor,
         )
-        if existing_result is not None and replay_run_dir == run_dir:
+        if replaying_coverage:
             payload = _merge_coverage_replay_result(existing_result, payload)
         result_path = run_dir / "result.json"
         if not args.dry_run:
@@ -1841,7 +1859,7 @@ def run_flow(
                     export_path = root / export_path
                 if export_path != result_path:
                     write_result(export_path, payload)
-            if existing_result is not None and replay_run_dir == run_dir:
+            if replaying_coverage:
                 _update_regression_coverage(
                     run_dir,
                     payload.get("coverage", {}),

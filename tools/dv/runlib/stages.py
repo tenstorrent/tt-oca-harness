@@ -76,6 +76,7 @@ from .coverage_policy import (
     native_policy_args,
     native_policy_manifest,
 )
+from .junit import ensure_leaf_junit
 from .logparse import parse_stage_result
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
 from .paths import repo_path, repo_rel
@@ -3437,7 +3438,7 @@ def run_stage(
     if dry_run_sink is not None:
         dry_run_sink.close()
     ui_suppression.__exit__(None, None, None)
-    return StageResult(
+    result = StageResult(
         stage=stage_name,
         item=item,
         status=status,
@@ -3453,3 +3454,25 @@ def run_stage(
         metadata=metadata,
         target=target_name if stage_name in {"flist", "hdl_compile", "elaborate", "sim", "regress"} else None,
     )
+    # Structured-result guarantee: every executed leaf ends with results/results.xml —
+    # the framework's own file when it wrote one, a synthesized single-testcase file
+    # otherwise. Runs after classification and must never affect status or exit.
+    if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
+        try:
+            native_xml = stage_dir / "results" / "results.xml"
+            if native_xml.is_file():
+                artifacts["results_xml"] = repo_rel(root, native_xml)
+            else:
+                generated = ensure_leaf_junit(
+                    flow=flow,
+                    root=root,
+                    run_dir=run_dir,
+                    tool=tool,
+                    result=result,
+                    leaf_dir=stage_dir,
+                )
+                if generated is not None:
+                    artifacts["results_xml"] = repo_rel(root, generated)
+        except Exception as exc:  # noqa: BLE001
+            console.event("warning", f"junit synthesis failed for {item}: {exc}", force=True)
+    return result
