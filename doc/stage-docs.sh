@@ -80,6 +80,9 @@ done
 for f in "$SRC"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/"
 done
+if [ "${OCAH_DOC_PRODUCT_INCLUDE_REVISION:-1}" != "1" ]; then
+  rm -f "$MOD/ROOT/pages/revision.adoc"
+fi
 mkdir -p "$MOD/ROOT/pages/meta"
 for f in "$META"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/meta/"

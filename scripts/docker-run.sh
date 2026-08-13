@@ -328,22 +328,37 @@ doc_product_paths() {
     esac
 }
 
+doc_revision_history_enabled() {
+    case "${OCAH_DOC_SHOW_REVISION_HISTORY:-0}" in
+        1|yes|true) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 doc_setup() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-    run_image "$DOC_PDF_IMAGE" env OCAH_DOC_REGEN_REGS=0 make "$setup_target"
+    run_image "$DOC_PDF_IMAGE" env \
+        OCAH_DOC_REGEN_REGS=0 \
+        OCAH_DOC_SHOW_REVISION_HISTORY="${OCAH_DOC_SHOW_REVISION_HISTORY:-0}" \
+        make "$setup_target"
 }
 
 doc_html() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
+    local revision_args=()
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
     doc_setup "$product"
+    doc_revision_history_enabled && revision_args=(--attribute show-revision-history)
     "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}"\
         -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
+        "${revision_args[@]}" \
         --attribute "basedir=${basedir}" "$playbook"
 }
 
 doc_html_all() {
+    local revision_arg=""
+    doc_revision_history_enabled && revision_arg="--attribute show-revision-history"
     # This is the combined-architecture build.
     doc_setup trm
     doc_setup integrator
@@ -356,15 +371,19 @@ doc_html_all() {
     # needs its own install). `npm install` here writes into the
     # bind-mounted repo root, so it only needs to happen once per checkout
     # (harmless to repeat). Make sure node_modules/ is gitignored.
-    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm -e SITE_SEARCH_PROVIDER=lunr \
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm \
+        -e SITE_SEARCH_PROVIDER=lunr -e OCAH_DOC_REVISION_ARG="$revision_arg" \
         -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora antora-playbook.yml'
+        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora $OCAH_DOC_REVISION_ARG antora-playbook.yml'
 }
 
 doc_pdf() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-    run_image "$DOC_PDF_IMAGE" env OCAH_DOC_REGEN_REGS=0 make "$pdf_target"
+    run_image "$DOC_PDF_IMAGE" env \
+        OCAH_DOC_REGEN_REGS=0 \
+        OCAH_DOC_SHOW_REVISION_HISTORY="${OCAH_DOC_SHOW_REVISION_HISTORY:-0}" \
+        make "$pdf_target"
 }
 
 # doc_stage: add PDFs + .nojekyll on top of the already-built combined
