@@ -7,6 +7,9 @@ DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_rev
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
@@ -18,17 +21,36 @@ from . import smc_cg_obs_utils as cg
 
 _LOG = cocotb.log
 
-# Required cells for SMC-CG-ARCH-PARAMS.S1 (deterministic, not seed-lucky).
+# Legal programmed hysteresis for LIVE DMA-CG measure path.
 # Low end is 8 (not 0/1): hyst=0 never runs under cg_enable; hyst=1 loses the
 # frontend→backend handoff (DMA accepts NEXT_ID but DONE never advances).
-# 8 is near the low end of the 6-bit legal range and matches the proven DMA CG
-# activity path (stimulus defect fix; expectation strength unchanged).
-HYST_MIN = 8
-HYST_MID = 31
-HYST_MAX = 63
+HYST_LEGAL_LO = 8
+HYST_LEGAL_HI = 63
+# Seed-driven draw count (execution guide: 8 random windows per seed). Always
+# covers low/mid/high bands so required_cells stay hit.
+NUM_RANDOM_WINDOWS = 8
 IDLE_OBSERVE = 4
 GATE_OFF_TIMEOUT_SMC = 512
 BUSY_TIMEOUT_SMC = 1024
+
+
+def _seeded_hyst_windows(seed: int) -> tuple[int, int, int, list[int]]:
+    """Return (hyst_min, hyst_mid, hyst_max, extras) from RANDOM_SEED.
+
+    Band picks guarantee ordered low < mid < high for scale checkers; extras
+    fill out NUM_RANDOM_WINDOWS distinct values in the legal range.
+    """
+    rng = random.Random(seed ^ 0xC10C_5111)
+    low = rng.randint(HYST_LEGAL_LO, 20)
+    mid = rng.randint(max(low + 1, 21), 45)
+    high = rng.randint(max(mid + 1, 46), HYST_LEGAL_HI)
+    vals = {low, mid, high}
+    while len(vals) < NUM_RANDOM_WINDOWS:
+        vals.add(rng.randint(HYST_LEGAL_LO, HYST_LEGAL_HI))
+    ordered = sorted(vals)
+    hyst_min, hyst_mid, hyst_max = ordered[0], ordered[len(ordered) // 2], ordered[-1]
+    extras = [h for h in ordered if h not in (hyst_min, hyst_mid, hyst_max)]
+    return hyst_min, hyst_mid, hyst_max, extras
 
 DMA_SRC_ADDR = 0x0200_0000
 DMA_DST_ADDR = 0x0200_0100
@@ -262,23 +284,56 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
         if DMA_MODEL_REGION not in self.memory_model.regions:
             self.memory_model.add_region(DMA_MODEL_REGION, DMA_SRC_ADDR, DMA_MODEL_SIZE)
 
+        seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        hyst_min, hyst_mid, hyst_max, extras = _seeded_hyst_windows(seed)
+        _LOG.info(
+            "SEED: %d hyst windows min/mid/max=%d/%d/%d extras=%s",
+            seed,
+            hyst_min,
+            hyst_mid,
+            hyst_max,
+            extras,
+        )
+
         await self._program_output_fabric_pass_all()
         await self._write_bytes(DMA_SRC_ADDR, DMA_PAYLOAD)
         await self._write_bytes(DMA_DST_ADDR, bytes(0x5A for _ in range(len(DMA_PAYLOAD))))
 
-        d_min = await self._measure_window("S1", HYST_MIN, "hysteresis_delay_min", "low-window-measured")
-        d_mid = await self._measure_window("S2", HYST_MID, "hysteresis_delay_mid", "mid-window-measured")
-        d_max = await self._measure_window("S3", HYST_MAX, "hysteresis_delay_max", "high-window-measured")
+        d_min = await self._measure_window(
+            "S1", hyst_min, "hysteresis_delay_min", "low-window-measured"
+        )
+        d_mid = await self._measure_window(
+            "S2", hyst_mid, "hysteresis_delay_mid", "mid-window-measured"
+        )
+        d_max = await self._measure_window(
+            "S3", hyst_max, "hysteresis_delay_max", "high-window-measured"
+        )
 
         # Scale check: mid and max delays track programmed values (min may be 0).
         assert d_mid >= d_min, f"mid delay {d_mid} < min {d_min}"
         assert d_max >= d_mid, f"max delay {d_max} < mid {d_mid}"
 
+        # Close required-cell fence before seed-driven extras (extras are
+        # coverage variety; they must not reorder the NONVAC fence).
+        cg.assert_fence_order(
+            self.fence,
+            ["low-window-measured", "mid-window-measured", "high-window-measured"],
+        )
+
+        for idx, hyst in enumerate(extras):
+            await self._measure_window(
+                f"SX{idx}",
+                hyst,
+                f"hysteresis_delay_extra_{idx}",
+                f"extra-window-{idx}-measured",
+            )
+
         cg.emit_chk(
             self.chk_seen,
             "CHK-HYST-WINDOW",
             "CHK-HYST-WINDOW: low/mid/high measured within_1cyc "
-            f"min={d_min}/{HYST_MIN} mid={d_mid}/{HYST_MID} max={d_max}/{HYST_MAX} "
+            f"min={d_min}/{hyst_min} mid={d_mid}/{hyst_mid} max={d_max}/{hyst_max} "
+            f"extras={extras} seed={seed} "
             f"zero_toggles_idle=1 cells={','.join(self.required_cells_hit)}",
         )
         cg.emit_chk(
@@ -286,11 +341,6 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS: gate_off/busy/done/regate waits all bounded "
             f"timeout_smc={GATE_OFF_TIMEOUT_SMC} fail_on_expiry=1",
-        )
-
-        cg.assert_fence_order(
-            self.fence,
-            ["low-window-measured", "mid-window-measured", "high-window-measured"],
         )
         cg.emit_chk(
             self.chk_seen,
