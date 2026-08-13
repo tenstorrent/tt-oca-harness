@@ -1603,6 +1603,9 @@ the SEP-to-SMC dedicated AXI connection.
 |`captured_straps_i` |input |[63:0] |SMU external port
 |===
 
+Please refer to the `reset_unit` STRAPS_LO and STRAPS_HI register descriptions for the decoded
+value of the straps.
+
 [[smc-dtp-interconnection]]
 ==== SMC-DTP Internal Interconnection
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import json
 import shlex
@@ -103,6 +104,57 @@ def find_failure_time_ps(log_path: Path | None) -> dict[str, Any]:
         "raw": chosen["raw"],
         "line": chosen["line"],
     }
+
+
+# simv dlopens <VERDI_HOME>/<subdir>/libnovas.so for UCLI `dump -type FSDB`; the platform
+# directory name differs across Verdi releases.
+NOVAS_PLI_SUBDIRS = ("share/PLI/VCS/LINUXAMD64", "share/PLI/VCS/LINUX64")
+
+
+def _has_novas_pli(home: Path) -> bool:
+    return any((home / sub / "libnovas.so").is_file() for sub in NOVAS_PLI_SUBDIRS)
+
+
+def verdi_home_candidates() -> list[Path]:
+    """Possible Verdi roots: $VERDI_HOME, then the install root above `verdi` on PATH."""
+    candidates: list[Path] = []
+    explicit = os.environ.get("VERDI_HOME", "").strip()
+    if explicit:
+        candidates.append(Path(explicit))
+    verdi = shutil.which("verdi")
+    if verdi:
+        derived = Path(verdi).resolve().parents[1]
+        if derived not in candidates:
+            candidates.append(derived)
+    return candidates
+
+
+def resolve_verdi_home() -> str | None:
+    """First candidate Verdi root that actually ships the Novas FSDB writer."""
+    for home in verdi_home_candidates():
+        if _has_novas_pli(home):
+            return str(home)
+    return None
+
+
+def require_verdi_home(tool: str, wave_format: str) -> str | None:
+    """FSDB dumping on VCS loads Verdi's FSDB writer through VERDI_HOME; fail fast when absent."""
+    if tool != "vcs" or wave_format != "fsdb":
+        return None
+    home = resolve_verdi_home()
+    if home is None:
+        candidates = verdi_home_candidates()
+        checked = (
+            "; ".join(f"`{c}` (missing <home>/{{{'|'.join(NOVAS_PLI_SUBDIRS)}}}/libnovas.so)" for c in candidates)
+            if candidates
+            else "VERDI_HOME is unset and `verdi` is not on PATH"
+        )
+        raise ConfigError(
+            "waveform format `fsdb` on VCS needs Verdi's FSDB writer (libnovas.so). "
+            f"Checked: {checked}. Set VERDI_HOME to a Verdi installation root, or use "
+            "`--waves vpd` which needs no Verdi installation"
+        )
+    return home
 
 
 def _tool_wave_cfg(simulators: dict[str, Any], tool: str) -> dict[str, Any]:
