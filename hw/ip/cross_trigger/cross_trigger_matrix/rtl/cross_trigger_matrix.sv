@@ -12,7 +12,7 @@
 // N sink ports (CT_Src). Each CT_Src can be configured to select and OR together
 // multiple CT_Dst sources.
 //
-// The port counts follow the register map: NUM_CT_SRC must equal the number of
+// The port counts follow the register map: NUM_CT_SRC defaults to the number of
 // config registers declared by regs/cross_trigger_matrix.rdl, and NUM_CT_DST is
 // bounded by the width of their select field. Resize the matrix by changing
 // NUM_CT_SRC in that RDL and regenerating, rather than by editing this module.
@@ -20,8 +20,9 @@
 
 
 module cross_trigger_matrix #(
-    // Number of CT_Src output ports (must equal the number of config registers)
-    parameter int unsigned NUM_CT_SRC = 26,
+    // Number of CT_Src output ports, defaulting to the config register array size
+    parameter int unsigned NUM_CT_SRC =
+        int'(cross_trigger_matrix_addrmap_pkg::CROSS_TRIGGER_MATRIX_CT_SRC_NUM),
     // Number of CT_Dst input ports (up to the select field width)
     parameter int unsigned NUM_CT_DST = 26,
     // Parameterized AXI-Lite bus interface types (default logic to force explicit definition)
