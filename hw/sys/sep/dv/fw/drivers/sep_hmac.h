@@ -24,7 +24,7 @@
 #define SEP_HMAC_DIGEST_0 (SEP_HMAC_BASE + 0x0A4)
 #define SEP_HMAC_MSG_FIFO 0x10912000u
 
-// CFG fields.
+// CFG fields (bit-in-word, for raw CFG writes).
 #define SEP_HMAC_CFG_SHA_EN (1u << 1)
 #define SEP_HMAC_CFG_DIGEST_SWAP (1u << 3)
 #define SEP_HMAC_CFG_DIGEST_SHA256 (1u << 5) // digest_size[8:5] = 1 (SHA2_256)
@@ -35,6 +35,33 @@
 #define SEP_HMAC_STATUS_IDLE (1u << 0)
 #define SEP_HMAC_STATUS_FIFO_FULL (1u << 2)
 #define SEP_HMAC_INTR_DONE (1u << 0)
+
+/*
+ * CFG.digest_size / CFG.key_length field encodings (OpenTitan hmac.hjson).
+ * Use with PeakRDL unions: cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256.
+ */
+#define SEP_HMAC_DIGEST_SIZE_SHA2_256 ((uint32_t)0x1u)
+#define SEP_HMAC_DIGEST_SIZE_SHA2_384 ((uint32_t)0x2u)
+#define SEP_HMAC_DIGEST_SIZE_SHA2_512 ((uint32_t)0x4u)
+#define SEP_HMAC_DIGEST_SIZE_SHA2_NONE ((uint32_t)0x8u)
+
+#define SEP_HMAC_KEY_LENGTH_128 ((uint32_t)0x01u)
+#define SEP_HMAC_KEY_LENGTH_256 ((uint32_t)0x02u)
+#define SEP_HMAC_KEY_LENGTH_384 ((uint32_t)0x04u)
+#define SEP_HMAC_KEY_LENGTH_512 ((uint32_t)0x08u)
+#define SEP_HMAC_KEY_LENGTH_1024 ((uint32_t)0x10u)
+#define SEP_HMAC_KEY_LENGTH_NONE ((uint32_t)0x20u)
+
+/*
+ * ERR_CODE encodings (OT HMAC Programmer's Guide / SW error table).
+ * DV fixed-vector table — not sampled from DUT RTL under test.
+ */
+#define SEP_HMAC_ERR_NO_ERROR ((uint32_t)0x0u)
+#define SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_SHA_DISABLED ((uint32_t)0x1u) /* unused */
+#define SEP_HMAC_ERR_SW_HASH_START_WHEN_SHA_DISABLED ((uint32_t)0x2u)
+#define SEP_HMAC_ERR_SW_UPDATE_SECRET_KEY_IN_PROCESS ((uint32_t)0x3u)
+#define SEP_HMAC_ERR_SW_HASH_START_WHEN_ACTIVE ((uint32_t)0x4u)
+#define SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_DISALLOWED ((uint32_t)0x5u)
 
 #define SEP_HMAC_TIMEOUT 1000000
 

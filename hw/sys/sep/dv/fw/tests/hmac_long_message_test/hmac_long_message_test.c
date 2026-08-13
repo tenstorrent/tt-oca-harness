@@ -25,6 +25,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static int wait_for_completion(void) {
     int timeout = 1000000;
@@ -109,7 +110,7 @@ static int test_long_message_sha256(void) {
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 0;       // SHA only
     cfg.f.sha_en = 1;        // SHA enabled
-    cfg.f.digest_size = 0x1; // SHA-256
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA-256
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x (SHA-256, SHA mode)\n", cfg.w);
 
@@ -123,11 +124,16 @@ static int test_long_message_sha256(void) {
     int total_bytes = 200;
     if (feed_long_message(pattern, total_bytes) != 0) return -1;
 
-    // Set message length in bits
-    uint64_t msg_len_bits = total_bytes * 8;
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, (uint32_t)(msg_len_bits & 0xFFFFFFFF));
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
-    printf("  Message length: %llu bits\n", msg_len_bits);
+    /* Assert HW-maintained length; do not overwrite MSG_LENGTH_*. */
+    uint64_t msg_len_bits = (uint64_t)total_bytes * 8ull;
+    uint32_t ml = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t mu = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
+    printf("  Message length HW: %u:%u expected %llu bits\n", ml, mu,
+           (unsigned long long)msg_len_bits);
+    if (ml != (uint32_t)msg_len_bits || mu != (uint32_t)(msg_len_bits >> 32)) {
+        printf("  FAIL: MSG_LENGTH mismatch\n");
+        return -1;
+    }
 
     // Trigger hash processing
     cmd.w = 0;
@@ -139,7 +145,9 @@ static int test_long_message_sha256(void) {
     if (wait_for_completion() != 0) return -1;
     printf("  Hash completed\n");
 
-    // Read digest
+    // Independent SHA-256 of ABCDEFGH-repeat (200 bytes), digest_swap=0 BE words.
+    static const uint32_t expected[8] = {0xb2586d0eu, 0xa407d6d1u, 0xa97c3b45u, 0xb1b7974au,
+                                         0x37702fadu, 0x88949f82u, 0x1e53c2cau, 0x3b216c61u};
     uint32_t digest[8];
     for (int i = 0; i < 8; i++) {
         digest[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
@@ -148,17 +156,10 @@ static int test_long_message_sha256(void) {
     printf("  SHA-256 digest of long message:\n");
     for (int i = 0; i < 8; i++) {
         printf("    DIGEST_%d: 0x%08x\n", i, digest[i]);
-    }
-
-    // Verify we got a non-zero digest
-    int all_zero = 1;
-    for (int i = 0; i < 8; i++) {
-        if (digest[i] != 0) all_zero = 0;
-    }
-
-    if (all_zero) {
-        printf("  FAIL: SHA-256 digest is all zeros\n");
-        return -1;
+        if (digest[i] != expected[i]) {
+            printf("  FAIL: DIGEST_%d mismatch expected=0x%08x\n", i, expected[i]);
+            return -1;
+        }
     }
 
     printf("  PASS: Long message SHA-256 digest computed\n");
@@ -172,7 +173,7 @@ static int test_very_long_message(void) {
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 0;       // SHA only
     cfg.f.sha_en = 1;        // SHA enabled
-    cfg.f.digest_size = 0x1; // SHA-256
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA-256
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // Start new hash
@@ -185,11 +186,15 @@ static int test_very_long_message(void) {
     int total_bytes = 1000;
     if (feed_long_message(pattern, total_bytes) != 0) return -1;
 
-    // Set message length in bits
-    uint64_t msg_len_bits = total_bytes * 8;
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, (uint32_t)(msg_len_bits & 0xFFFFFFFF));
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
-    printf("  Message length: %llu bits\n", msg_len_bits);
+    uint64_t msg_len_bits = (uint64_t)total_bytes * 8ull;
+    uint32_t ml = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t mu = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
+    printf("  Message length HW: %u:%u expected %llu bits\n", ml, mu,
+           (unsigned long long)msg_len_bits);
+    if (ml != (uint32_t)msg_len_bits || mu != (uint32_t)(msg_len_bits >> 32)) {
+        printf("  FAIL: MSG_LENGTH mismatch\n");
+        return -1;
+    }
 
     // Trigger hash processing
     cmd.w = 0;
@@ -201,7 +206,8 @@ static int test_very_long_message(void) {
     if (wait_for_completion() != 0) return -1;
     printf("  Hash completed\n");
 
-    // Read digest
+    static const uint32_t expected[8] = {0xab6c5f32u, 0x37f551d2u, 0x08fc2ca5u, 0x225a4ccau,
+                                         0x20b3fd63u, 0x8794a804u, 0xf0ed5549u, 0xd5041734u};
     uint32_t digest[8];
     for (int i = 0; i < 8; i++) {
         digest[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
@@ -210,17 +216,10 @@ static int test_very_long_message(void) {
     printf("  SHA-256 digest of very long message:\n");
     for (int i = 0; i < 8; i++) {
         printf("    DIGEST_%d: 0x%08x\n", i, digest[i]);
-    }
-
-    // Verify we got a non-zero digest
-    int all_zero = 1;
-    for (int i = 0; i < 8; i++) {
-        if (digest[i] != 0) all_zero = 0;
-    }
-
-    if (all_zero) {
-        printf("  FAIL: SHA-256 digest is all zeros\n");
-        return -1;
+        if (digest[i] != expected[i]) {
+            printf("  FAIL: DIGEST_%d mismatch expected=0x%08x\n", i, expected[i]);
+            return -1;
+        }
     }
 
     printf("  PASS: Very long message SHA-256 digest computed\n");

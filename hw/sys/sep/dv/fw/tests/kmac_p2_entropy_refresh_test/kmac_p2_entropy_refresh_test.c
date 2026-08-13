@@ -18,8 +18,8 @@
 #include "och_sep_common.h"
 #include "sep.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
 #include "test_completion.h"
-
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
@@ -47,39 +47,51 @@ static int wait_for_done(void) {
     return -1;
 }
 
-static void seed_entropy(uint32_t salt) {
-    for (int i = 0; i < 6; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0x2468ace0u + salt + (uint32_t)i);
-    }
-}
-
 static void write_cfg_shadowed(kmac__CFG_SHADOWED_t cfg) {
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 }
 
-static int run_sha3_message(uint32_t msg) {
+static int run_kmac_message(uint32_t msg) {
+    /* HASH_CNT increments only after KMAC keyblock (kmac_en=1). */
     if (wait_for_idle() != 0) {
         return -1;
     }
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x0;
-    cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x1;
+    cfg.f.kmac_en = 1;
+    cfg.f.mode = SEP_KMAC_MODE_CSHAKE;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
+    cfg.f.sideload = 0;
     cfg.f.entropy_ready = 0;
     write_cfg_shadowed(cfg);
 
-    seed_entropy(msg);
     cfg.f.entropy_ready = 1;
     write_cfg_shadowed(cfg);
+    for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
+        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0x2468ace0u + msg + (uint32_t)i);
+    }
+
+    kmac__KEY_LEN_t kl = {.w = 0};
+    kl.f.len = 0x0; /* Key128 */
+    WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
+    for (int i = 0; i < 4; i++) {
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0);
+    }
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001U);
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00004341U);
+    for (int i = 2; i < 11; i++) {
+        WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
+    }
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29; /* START */
+    cmd.f.cmd = SEP_KMAC_CMD_START;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, msg);
-    cmd.f.cmd = 46; /* PROCESS */
+    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001u); /* right_encode(256) */
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) {
@@ -87,13 +99,25 @@ static int run_sha3_message(uint32_t msg) {
     }
 
     uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR) ^
-                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100);
+                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET);
     printf("  msg=0x%08x digest0=0x%08x\n", msg, digest0);
 
-    cmd.f.cmd = 22; /* DONE */
+    cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    return (digest0 != 0) ? 0 : -1;
+    if (msg == 0x74736574u && digest0 != 0xddfe0cb1u) {
+        printf("  FAIL: digest0 != expected 0xddfe0cb1 for msg \"test\"\n");
+        return -1;
+    }
+    if (msg == 0x61626300u && digest0 != 0xa0aa6a9fu) {
+        printf("  FAIL: digest0 != expected 0xa0aa6a9f for msg abc\n");
+        return -1;
+    }
+    if (digest0 == 0) {
+        printf("  FAIL: digest0 is zero\n");
+        return -1;
+    }
+    return 0;
 }
 
 int main(void) {
@@ -106,13 +130,13 @@ int main(void) {
     int pass = 1;
 
     kmac__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t threshold = {.w = 0};
-    threshold.f.threshold = 1;
+    threshold.f.threshold = 10; /* avoid auto-clear before read */
     WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR, threshold.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR, threshold.w);
 
     uint32_t threshold_rb = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR);
     printf("  ENTROPY_REFRESH_THRESHOLD write=0x%08x read=0x%08x\n", threshold.w, threshold_rb);
-    if ((threshold_rb & 0x3ffu) != threshold.f.threshold) {
+    if ((threshold_rb & KMAC__ENTROPY_REFRESH_THRESHOLD_SHADOWED__THRESHOLD_bm) != threshold.f.threshold) {
         printf("  FAIL: entropy refresh threshold readback mismatch\n");
         pass = 0;
     }
@@ -121,29 +145,30 @@ int main(void) {
     cmd.f.hash_cnt_clr = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    if (pass && run_sha3_message(0x74736574u) != 0) {
+    if (pass && run_kmac_message(0x74736574u) != 0) {
         pass = 0;
     }
-    if (pass && run_sha3_message(0x61626300u) != 0) {
+    if (pass && run_kmac_message(0x61626300u) != 0) {
         pass = 0;
     }
 
     kmac__ENTROPY_REFRESH_HASH_CNT_t cnt = {
         .w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_HASH_CNT_BASE_ADDR)};
     printf("  ENTROPY_REFRESH_HASH_CNT after hashes=%u (raw=0x%08x)\n", cnt.f.hash_cnt, cnt.w);
-    if (cnt.f.hash_cnt == 0) {
-        printf("  INFO: hash counter did not increment in this integration; clear path still "
-               "checked\n");
-    }
-
-    cmd.w = 0;
-    cmd.f.hash_cnt_clr = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-    cnt.w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_HASH_CNT_BASE_ADDR);
-    printf("  ENTROPY_REFRESH_HASH_CNT after clear=%u (raw=0x%08x)\n", cnt.f.hash_cnt, cnt.w);
-    if (cnt.f.hash_cnt != 0) {
-        printf("  FAIL: hash counter clear did not take effect\n");
+    if (cnt.f.hash_cnt != 2) {
+        printf("  FAIL: expected hash_cnt==2 after two KMAC ops\n");
+        printf("  FAIL: hash counter did not increment after completed hashes\n");
         pass = 0;
+    } else {
+        cmd.w = 0;
+        cmd.f.hash_cnt_clr = 1;
+        WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+        cnt.w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_HASH_CNT_BASE_ADDR);
+        printf("  ENTROPY_REFRESH_HASH_CNT after clear=%u (raw=0x%08x)\n", cnt.f.hash_cnt, cnt.w);
+        if (cnt.f.hash_cnt != 0) {
+            printf("  FAIL: hash counter clear did not take effect\n");
+            pass = 0;
+        }
     }
 
     printf("\n========================================\n");

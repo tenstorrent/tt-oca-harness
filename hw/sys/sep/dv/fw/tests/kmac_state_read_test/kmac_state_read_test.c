@@ -15,6 +15,8 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
+
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
@@ -28,8 +30,8 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
+        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -49,28 +51,34 @@ static int test_state_read(void) {
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x0;
-    cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.mode = SEP_KMAC_MODE_SHA3;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-
-    setup_entropy();
 
     cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    setup_entropy();
+
 
     printf("=== Step 2: START ===\n");
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29;
+    cmd.f.cmd = SEP_KMAC_CMD_START;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    printf("=== Step 3: Write 'abc' to MSG_FIFO ===\n");
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00636261);
+    printf("=== Step 3: Write exact 3-byte 'abc' to MSG_FIFO ===\n");
+    {
+        volatile uint8_t *fifo8 =
+            (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR;
+        *fifo8 = (uint8_t)'a';
+        *fifo8 = (uint8_t)'b';
+        *fifo8 = (uint8_t)'c';
+    }
 
     printf("=== Step 4: PROCESS ===\n");
-    cmd.f.cmd = 46;
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
@@ -81,7 +89,7 @@ static int test_state_read(void) {
     for (int i = 0; i < 8; i++) share0[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
 
     for (int i = 0; i < 8; i++)
-        share1[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (0x100 + (i * 4))));
+        share1[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
 
     for (int i = 0; i < 8; i++) digest[i] = share0[i] ^ share1[i];
 
@@ -97,13 +105,22 @@ static int test_state_read(void) {
     for (int i = 0; i < 8; i++) printf("%08x ", digest[i]);
     printf("\n");
 
-    printf("=== Step 6: Verify share properties ===\n");
+    printf("=== Step 6: Exact SHA3-256(abc) + share properties ===\n");
 
-    int s0_nz = 0, s1_nz = 0, d_nz = 0;
+    /* NIST FIPS 202 SHA3-256("abc") as little-endian STATE words. */
+    static const uint32_t expected[8] = {0xa75d983au, 0xb225e24fu, 0x2d175c04u, 0xbd90d36bu,
+                                         0x6e085f85u, 0x5b529d3eu, 0x45e2bf46u, 0x32154311u};
+    for (int i = 0; i < 8; i++) {
+        if (digest[i] != expected[i]) {
+            printf("FAIL: DIGEST_%d=0x%08x expected=0x%08x\n", i, digest[i], expected[i]);
+            errors++;
+        }
+    }
+
+    int s0_nz = 0, s1_nz = 0;
     for (int i = 0; i < 8; i++) {
         if (share0[i] != 0) s0_nz = 1;
         if (share1[i] != 0) s1_nz = 1;
-        if (digest[i] != 0) d_nz = 1;
     }
 
     if (!s0_nz) {
@@ -134,15 +151,8 @@ static int test_state_read(void) {
         printf("PASS: share0 != share1 (masking active)\n");
     }
 
-    if (!d_nz) {
-        printf("FAIL: digest (XOR) is all zeros\n");
-        errors++;
-    } else {
-        printf("PASS: digest is non-zero\n");
-    }
-
     printf("=== Step 7: DONE ===\n");
-    cmd.f.cmd = 22;
+    cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return errors;

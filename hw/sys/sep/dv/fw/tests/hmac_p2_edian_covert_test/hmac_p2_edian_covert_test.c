@@ -22,6 +22,7 @@
 #include "och_sep_common.h"
 #include "sep.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 #include "test_completion.h"
 
 static inline uint32_t bswap32(uint32_t x) {
@@ -87,7 +88,7 @@ static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;
     cfg.f.hmac_en = 0;
-    cfg.f.digest_size = 1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     cfg.f.endian_swap = endian_swap;
     cfg.f.digest_swap = digest_swap;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
@@ -105,9 +106,12 @@ static int run_hash(uint32_t endian_swap, uint32_t digest_swap, uint32_t digest_
         return -1;
     }
 
-    uint32_t msg_len = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
-    if (msg_len != sizeof(msg_words) * 8u) {
-        printf("  FAIL: MSG_LENGTH=%u expected=%u\n", msg_len, (unsigned)(sizeof(msg_words) * 8u));
+    uint64_t expected_bits = (uint64_t)sizeof(msg_words) * 8ull;
+    uint32_t msg_lo = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t msg_hi = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
+    if (msg_lo != (uint32_t)expected_bits || msg_hi != (uint32_t)(expected_bits >> 32)) {
+        printf("  FAIL: MSG_LENGTH=%u:%u expected=%u:%u\n", msg_lo, msg_hi,
+               (uint32_t)expected_bits, (uint32_t)(expected_bits >> 32));
         return -1;
     }
 
@@ -158,7 +162,7 @@ static int check_key_swap_cfg_bit(void) {
 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;
-    cfg.f.digest_size = 1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     cfg.f.key_swap = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
@@ -214,6 +218,32 @@ int main(void) {
     }
     print_digest("both", both);
 
+    /* Independent SHA-256 of the four word stimulus under each CFG combo. */
+    static const uint32_t expected_base[8] = {0xff107f9au, 0x1a123b36u, 0x3b5480a5u, 0x1ea1aec4u,
+                                              0xe79dafc0u, 0x2be71119u, 0x780b4aa6u, 0x98c57fefu};
+    static const uint32_t expected_endian[8] = {0x411d3f1du, 0x2390ff3fu, 0x482ac8dfu, 0x4e730780u,
+                                                0xbb081a19u, 0x2f283d2fu, 0x373138fdu, 0x101dc8feu};
+    static const uint32_t expected_digest[8] = {0x9a7f10ffu, 0x363b121au, 0xa580543bu, 0xc4aea11eu,
+                                                0xc0af9de7u, 0x1911e72bu, 0xa64a0b78u, 0xef7fc598u};
+    static const uint32_t expected_both[8] = {0x1d3f1d41u, 0x3fff9023u, 0xdfc82a48u, 0x8007734eu,
+                                              0x191a08bbu, 0x2f3d282fu, 0xfd383137u, 0xfec81d10u};
+
+    if (pass && !digest_equal(base, expected_base)) {
+        printf("  FAIL: baseline digest mismatch vs independent SHA-256\n");
+        pass = 0;
+    }
+    if (pass && !digest_equal(endian_only, expected_endian)) {
+        printf("  FAIL: endian_only digest mismatch vs independent SHA-256\n");
+        pass = 0;
+    }
+    if (pass && !digest_equal(digest_only, expected_digest)) {
+        printf("  FAIL: digest_only mismatch vs independent SHA-256\n");
+        pass = 0;
+    }
+    if (pass && !digest_equal(both, expected_both)) {
+        printf("  FAIL: combined-swap digest mismatch vs independent SHA-256\n");
+        pass = 0;
+    }
     if (pass && digest_equal(base, endian_only)) {
         printf("  FAIL: endian_swap did not change raw digest for word writes\n");
         pass = 0;

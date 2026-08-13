@@ -22,17 +22,25 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
+#include "../kmac_sha3_256_test/kmac_test_vectors.h"
+
+static uint32_t byte_swap(uint32_t x) {
+    return ((x & 0x000000ffu) << 24) | ((x & 0x0000ff00u) << 8) | ((x & 0x00ff0000u) >> 8) |
+           ((x & 0xff000000u) >> 24);
+}
 
 #define RST_CTRL_ADDR OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR
 
-/* Bits in SW_RESET_N */
-#define RST_KM (1u << 0)
-#define RST_OTBN (1u << 1)
-#define RST_AES (1u << 2)
-#define RST_HMAC (1u << 3)
-#define RST_KMAC (1u << 4)
+#define RST_KM SEP_RESET_CTRL__SW_RESET_N__KM_SW_RST_N_bm
+#define RST_OTBN SEP_RESET_CTRL__SW_RESET_N__OTBN_SW_RST_N_bm
+#define RST_AES SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm
+#define RST_HMAC SEP_RESET_CTRL__SW_RESET_N__HMAC_SW_RST_N_bm
+#define RST_KMAC SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_bm
 
-/* Release all crypto IPs from reset (baseline state) */
+/* Post-TB bring-up: KM held (bit0=0), otbn/aes/hmac/kmac released (0x1E). */
+#define RST_POST_TB_EXPECTED (RST_OTBN | RST_AES | RST_HMAC | RST_KMAC)
+/* Explicit full release mask used when this test releases KMAC (and KM). */
 #define RST_ALL_RELEASE (RST_KM | RST_OTBN | RST_AES | RST_HMAC | RST_KMAC)
 
 static int test_errors = 0;
@@ -50,8 +58,8 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
+        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -68,45 +76,59 @@ static int run_sha3_hash(void) {
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x0;      /* SHA3 */
-    cfg.f.kstrength = 0x2; /* L256 */
-    cfg.f.entropy_mode = 0x1;
+    cfg.f.mode = SEP_KMAC_MODE_SHA3;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     cfg.f.entropy_ready = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
-    setup_entropy();
-
     cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    setup_entropy();
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29; /* START */
+    cmd.f.cmd = SEP_KMAC_CMD_START;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574); /* "test" */
-
-    cmd.f.cmd = 46; /* PROCESS */
+    /* Empty message SHA3-256 NIST FIPS 202 vector */
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
-    uint32_t digest0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR) ^
-                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100);
+    /* STATE words are LE; NIST refs in kmac_test_vectors.h are BE words. */
+    int mismatch = 0;
+    for (int i = 0; i < 8; i++) {
+        uint32_t dig = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (uint32_t)i * 4u) ^
+                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (uint32_t)i * 4u);
+        uint32_t dig_be = byte_swap(dig);
+        if (dig_be != sha3_256_empty_ref[i]) {
+            printf("  DIGEST_%d=0x%08x expected=0x%08x\n", i, dig_be, sha3_256_empty_ref[i]);
+            mismatch = 1;
+        }
+    }
 
-    cmd.f.cmd = 22; /* DONE */
+    cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    return (digest0 != 0) ? 0 : -1;
+    return mismatch ? -1 : 0;
 }
 
 static int test_sw_reset(void) {
     printf("=== Step 1: Check default reset state ===\n");
     uint32_t rst = READ_REG(RST_CTRL_ADDR);
-    printf("  SW_RESET_N default = 0x%08x\n", rst);
-    /* Default is 0x0 per spec (all IPs in reset). Testbench releases before boot.
-     * Read current state after testbench init (expect all bits = 1 = released). */
+    printf("  SW_RESET_N default = 0x%08x (expect 0x%08x: KM held, others released)\n", rst,
+           RST_POST_TB_EXPECTED);
+    /* Fail hard if TB precondition unmet (matches sep_reset_ctrl reset value 0x1E). */
+    if (rst != RST_POST_TB_EXPECTED) {
+        printf("FAIL: SW_RESET_N=0x%08x expected=0x%08x (TB precondition unmet)\n", rst,
+               RST_POST_TB_EXPECTED);
+        test_errors++;
+    } else {
+        printf("PASS: SW_RESET_N post-TB default matches expected\n");
+    }
 
     printf("=== Step 2: Assert KMAC reset only (keep others released) ===\n");
     /* Release all except KMAC */
@@ -114,9 +136,16 @@ static int test_sw_reset(void) {
     WRITE_REG(RST_CTRL_ADDR, release_others);
     rst = READ_REG(RST_CTRL_ADDR);
     printf("  SW_RESET_N after assert KMAC reset = 0x%08x\n", rst);
-
-    /* Note: KMAC AXI slave is gated while kmac_sw_rst_n=0; reading KMAC registers
-     * in this state would stall the AXI bus indefinitely.  Skip the status read. */
+    if (rst != release_others) {
+        printf("FAIL: SW_RESET_N=0x%08x expected=0x%08x after KMAC assert\n", rst, release_others);
+        test_errors++;
+    } else if (rst & RST_KMAC) {
+        printf("FAIL: KMAC reset bit still released after assert write\n");
+        test_errors++;
+    } else {
+        printf("PASS: KMAC held in reset (SW_RESET_N.kmac=0)\n");
+    }
+    /* Note: KMAC AXI slave is gated while kmac_sw_rst_n=0; do not MMIO STATUS. */
 
     printf("=== Step 3: Release KMAC reset ===\n");
     WRITE_REG(RST_CTRL_ADDR, RST_ALL_RELEASE);
@@ -124,7 +153,7 @@ static int test_sw_reset(void) {
     printf("  SW_RESET_N after release = 0x%08x\n", rst);
     /* Note: RST_CTRL readback may return bus-error value from SEP CPU perspective.
      * Functional verification (sha3_idle, hash) is used to confirm reset release. */
-    printf("PASS: kmac_sw_rst_n write issued (functional check follows)\n");
+    printf("INFO: kmac_sw_rst_n write issued (functional check follows)\n");
 
     printf("=== Step 4: Verify KMAC idle after release ===\n");
     if (wait_for_idle() != 0) {
@@ -154,9 +183,9 @@ static int test_sw_reset(void) {
 
     printf("=== Step 6: Run SHA3-256 hash to confirm KMAC operational ===\n");
     if (run_sha3_hash() == 0) {
-        printf("PASS: SHA3-256 hash produced non-zero digest after reset release\n");
+        printf("PASS: SHA3-256 empty-message NIST digest after reset release\n");
     } else {
-        printf("FAIL: SHA3-256 hash failed after reset release\n");
+        printf("FAIL: SHA3-256 hash/digest mismatch after reset release\n");
         test_errors++;
     }
 

@@ -22,6 +22,7 @@
 #include "tb.h"
 #include "nmi.h"
 #include "test_completion.h"
+#include "aon_timer.h"
 
 int interrupt_count;
 
@@ -29,8 +30,8 @@ void wdt_nmi_handler(void) {
 
     interrupt_count++;
 
-    /* Clear watchdog bark interrupt (bit 1 of INTR_STATE is wdog_timer_bark) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
 
     printf("SUCCESS: WDT bark interrupt received\n");
 }
@@ -76,10 +77,20 @@ int main(void) {
     printf("Set count=50, bark=1000, bite=0xFFFFFFFF\n");
 
     /* Enable WDT */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
+              AON_TIMER__WDOG_CTRL__ENABLE_bm);
     printf("WDT enabled\n");
 
-    /* Lower bark threshold to trigger interrupt */
+    /* Confirm no bark yet with unreachable threshold (count=50 < bark=1000). */
+    uint32_t intr_before = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+    if (intr_before & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
+        printf("ERROR: BARK already set before threshold jump (INTR_STATE=0x%08x)\n",
+               intr_before);
+        test_fail(1);
+        return 1;
+    }
+
+    /* Lower bark threshold below current count to trigger interrupt. */
     printf("Lowering bark threshold to 20...\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 20);
 
@@ -87,6 +98,21 @@ int main(void) {
     while (interrupt_count == 0) {
         __asm__ volatile("wfi");
     }
+
+    /* Correlate: bark thold is the jumped value and count is past it. */
+    uint32_t bark_thold = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR);
+    uint32_t count_at_bark = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    if (bark_thold != 20) {
+        printf("ERROR: bark thold not jumped (got %u)\n", bark_thold);
+        test_fail(1);
+        return 1;
+    }
+    if (count_at_bark < 20) {
+        printf("ERROR: count 0x%08x < jumped bark thold 20\n", count_at_bark);
+        test_fail(1);
+        return 1;
+    }
+    printf("CHK-BARK-JUMP: thold=%u count=0x%08x\n", bark_thold, count_at_bark);
 
     /* Disable WDT */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
@@ -122,12 +148,28 @@ int main(void) {
     printf("Set count=100, bite=1000, bark=0xFFFFFFFF\n");
 
     /* Enable WDT */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
+              AON_TIMER__WDOG_CTRL__ENABLE_bm);
     printf("WDT enabled\n");
 
-    /* Lower bite threshold to trigger reset */
+    /* Lower bite threshold below current count to trigger reset */
     printf("Lowering bite threshold to 20...\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 20);
+
+    /* Firmware-provable arming check only; rst_req edge is owned by cocotb. */
+    uint32_t bite_thold = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR);
+    uint32_t count_armed = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    if (bite_thold != 20) {
+        printf("ERROR: bite thold not jumped (got %u)\n", bite_thold);
+        test_fail(1);
+        return 1;
+    }
+    if (count_armed < 20) {
+        printf("ERROR: count 0x%08x < jumped bite thold 20\n", count_armed);
+        test_fail(1);
+        return 1;
+    }
+    printf("CHK-BITE-ARMED: thold=%u count=0x%08x\n", bite_thold, count_armed);
 
     /* Loop forever - reset should fire and cocotb will verify */
     printf("Waiting for reset (cocotb will verify)...\n");

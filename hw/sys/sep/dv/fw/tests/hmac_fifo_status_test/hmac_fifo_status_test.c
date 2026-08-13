@@ -4,8 +4,8 @@
 /*
  * HMAC FIFO Status Monitoring Test - TC_HMAC_004 (P0)
  *
- * Verifies MSG FIFO status tracking: fifo_empty, fifo_depth, fifo_full
- * through write filling and hash processing drain cycle.
+ * Verifies MSG FIFO accepts data (MSG_LENGTH) and drains after hash_process.
+ * Note: fifo_full@32 is not required under CPU MMIO (Pass-through absorb).
  *
  * Execution:
  *   make test-sep TEST_NAME=sep_hmac_fifo_status_test STACK=sim
@@ -17,6 +17,7 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -71,65 +72,45 @@ int main(void) {
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;
     cfg.f.hmac_en = 0;
-    cfg.f.digest_size = 1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t cmd = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     printf("  hash_start issued\n");
 
-    /* Step 3: Write 1 word to MSG_FIFO, verify fifo_empty deasserts */
-    printf("\nStep 3: Write 1 word, verify fifo_empty=0\n");
+    /*
+     * After hash_start, OT MSG_FIFO is Pass-through and SHA absorbs immediately.
+     * CPU MMIO is too slow to observe fifo_full/depth=32; prove acceptance via
+     * MSG_LENGTH (+ optional status sampling). fifo_full saturation is a UVM TL
+     * burst check, not a FW-only hard requirement.
+     */
+    printf("\nStep 3: Write words; prove MSG_FIFO accepts data\n");
     volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
-    *fifo32 = 0xDEADBEEFu;
-
-    sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
-    printf("  After 1 word: fifo_empty=%u fifo_depth=%u fifo_full=%u\n", sts.f.fifo_empty,
-           sts.f.fifo_depth, sts.f.fifo_full);
-    if (sts.f.fifo_empty == 1) {
-        printf("  WARNING: fifo_empty still 1 after write (HW may have consumed it)\n");
-    }
-
-    /* Step 4: Fill FIFO until fifo_full=1 or depth approaches 32 */
-    printf("\nStep 4: Fill FIFO until full or depth=32\n");
-    uint32_t words_written = 1;
-    int fifo_full_seen = 0;
+    const uint32_t words_written = 16u;
     uint32_t max_depth_seen = 0;
+    int fifo_full_seen = 0;
 
-    for (uint32_t i = 0; i < 64; i++) {
+    for (uint32_t i = 0; i < words_written; i++) {
+        *fifo32 = (i == 0u) ? 0xDEADBEEFu : (0xA0000000u | i);
         sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
         if (sts.f.fifo_depth > max_depth_seen) max_depth_seen = sts.f.fifo_depth;
-
-        if (sts.f.fifo_full) {
-            fifo_full_seen = 1;
-            printf("  FIFO full after %u words, depth=%u\n", words_written, sts.f.fifo_depth);
-            break;
-        }
-
-        *fifo32 = (0xA0000000u | i);
-        words_written++;
+        if (sts.f.fifo_full) fifo_full_seen = 1;
     }
 
-    if (!fifo_full_seen) {
-        sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
-        if (sts.f.fifo_depth > max_depth_seen) max_depth_seen = sts.f.fifo_depth;
-        printf("  Wrote %u words total, max_depth=%u, fifo_full=%u\n", words_written,
-               max_depth_seen, sts.f.fifo_full);
-    }
-
-    /* Step 5: Verify fifo_full if reached capacity */
-    printf("\nStep 5: Verify fifo_full status\n");
-    sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
-    printf("  STATUS: fifo_empty=%u fifo_full=%u fifo_depth=%u\n", sts.f.fifo_empty,
-           sts.f.fifo_full, sts.f.fifo_depth);
-    if (fifo_full_seen) {
-        if (!check_reg("fifo_full at capacity", sts.f.fifo_full, 1)) {
-            printf("  NOTE: FIFO may have drained during read; continuing\n");
-        }
+    uint32_t msg_bits = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t expect_bits = words_written * 32u;
+    printf("  MSG_LENGTH_LOWER=%u expected=%u max_depth=%u fifo_full_seen=%u\n", msg_bits,
+           expect_bits, max_depth_seen, fifo_full_seen);
+    if (!check_reg("MSG_LENGTH after FIFO writes", msg_bits, expect_bits)) pass = 0;
+    if (fifo_full_seen || max_depth_seen >= 32u) {
+        printf("  INFO: observed FIFO capacity pressure (full=%u max_depth=%u)\n",
+               fifo_full_seen, max_depth_seen);
     } else {
-        printf("  fifo_full not reached (max_depth=%u); FIFO may drain faster than fill\n",
-               max_depth_seen);
+        printf("  INFO: instant drain under CPU MMIO (expected); capacity deferred to UVM\n");
     }
+
+    printf("\nStep 4/5: (capacity hard-check removed; see Step 3 MSG_LENGTH)\n");
 
     /* Step 6: hash_process and wait for completion */
     printf("\nStep 6: hash_process and wait for completion\n");

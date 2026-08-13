@@ -70,6 +70,7 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__CFG_t cfg;
     spi_controller__ERROR_STATUS_t err_status;
+    uint32_t i;
 
     spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
@@ -118,13 +119,17 @@ int main(void) {
 
     /* Wait for completion */
     if (wait_for_idle(TIMEOUT_LIMIT)) {
-        printf("  WARN: Transaction did not complete (no SPI device)\n");
+        printf("  FAIL: Transaction did not complete (ACTIVE stuck)\n");
+        pass = 0;
+        goto done;
     }
 
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS after TX: 0x%08x\n", err_status.w);
     if (err_status.w != 0) {
-        printf("  WARN: Errors detected (may be expected without device)\n");
+        printf("  FAIL: Unexpected ERROR_STATUS after TX (0x%08x)\n", err_status.w);
+        pass = 0;
+        goto done;
     }
 
     /* Step 2: Multi-byte TX */
@@ -167,19 +172,31 @@ int main(void) {
 
     /* Wait for completion */
     if (wait_for_idle(TIMEOUT_LIMIT)) {
-        printf("  INFO: Transaction pending (no external SPI device)\n");
+        printf("  FAIL: RX transaction did not complete (ACTIVE stuck)\n");
+        pass = 0;
+        goto done;
     }
 
-    /* Check RX FIFO */
+    /* Check RX FIFO — require data after successful RX command */
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS: RXQD=%u, RXEMPTY=%u\n", status.f.RXQD, status.f.RXEMPTY);
 
-    if (status.f.RXQD > 0) {
+    /* RXQD counts words; 4-byte RX packs into one RXDATA word */
+    if (status.f.RXQD < 1) {
+        printf("  FAIL: Expected RXQD>=1 after 4-byte RX (got RXQD=%u)\n", status.f.RXQD);
+        pass = 0;
+        goto done;
+    }
+    {
+        /* No independent SPI-peer golden for this standard RX path; occupancy
+         * was checked above. Leave payload compare until a TB/model vector is
+         * documented ([EXACT-EXPECTATION] retained intentionally). */
         uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
-        printf("  RXDATA: 0x%08x\n", rxdata);
+        printf("  RXDATA[0]: 0x%08x (4-byte RX packed; no peer golden)\n", rxdata);
+        (void)i;
     }
 
-    /* Step 4: Verify no critical errors */
+    /* Step 4: Verify no sticky ERROR_STATUS bits after the directed sequence */
     printf("\nStep 4: Final error check\n");
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x\n", err_status.w);
@@ -187,10 +204,12 @@ int main(void) {
            err_status.f.CMDBUSY, err_status.f.OVERFLOW, err_status.f.UNDERFLOW,
            err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
 
-    /* CMDINVAL and CSIDINVAL would be hard failures */
-    if (err_status.f.CMDINVAL || err_status.f.CSIDINVAL) {
-        printf("  FAIL: Invalid command or CSID error\n");
+    if (err_status.f.CMDBUSY || err_status.f.OVERFLOW || err_status.f.UNDERFLOW ||
+        err_status.f.CMDINVAL || err_status.f.CSIDINVAL) {
+        printf("  FAIL: unexpected ERROR_STATUS bits set\n");
         pass = 0;
+    } else {
+        printf("  PASS: ERROR_STATUS clear\n");
     }
 
 done:

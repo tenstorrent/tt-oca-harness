@@ -5,8 +5,8 @@
  * TC_KMAC_008 - Entropy Configuration Test (P1)
  *
  * Verifies KMAC entropy period register, entropy seed provisioning,
- * and entropy_ready flow. Runs a SHA3-256 hash to confirm entropy
- * is functional, then reads ENTROPY_REFRESH_HASH_CNT.
+ * and entropy_ready flow. Runs KMAC-128 (keyblock) so HASH_CNT increments,
+ * then reads ENTROPY_REFRESH_HASH_CNT.
  */
 
 #include <stdint.h>
@@ -15,6 +15,13 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
+/* Fixed KMAC-128(zero-key, "test", 256) digest from sep_kmac128_sw_smoke. */
+static const uint32_t expected_smoke_digest[8] = {
+    0xddfe0cb1u, 0x2d03e2e8u, 0x599a8018u, 0xb3142692u,
+    0x342fa6a8u, 0xcb802413u, 0x00c7694fu, 0x92934aa6u,
+};
+
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
@@ -25,17 +32,6 @@ static int wait_for_idle(void) {
     return -1;
 }
 
-static int wait_for_done(void) {
-    int timeout = 1000000;
-    while (timeout-- > 0) {
-        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
-            return 0;
-        }
-    }
-    printf("Timeout waiting for done\n");
-    return -1;
-}
 
 static int test_entropy_config(void) {
     int errors = 0;
@@ -60,69 +56,50 @@ static int test_entropy_config(void) {
         errors++;
     }
 
-    printf("=== Step 3: Seed entropy ===\n");
-    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
-
-    printf("=== Step 4: Configure SHA3-256 with entropy ===\n");
+    printf("=== Step 3/4/5/6: KMAC-128 SW-entropy hash (keyblock increments HASH_CNT) ===\n");
     if (wait_for_idle() != 0) return -1;
 
-    kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x0;
-    cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    /* HASH_CNT only increments on KMAC keyblock completion, not bare SHA3. */
+    kmac__CMD_t clr = {.w = 0};
+    clr.f.hash_cnt_clr = 1;
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, clr.w);
 
-    cfg.f.entropy_ready = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    kmac__ENTROPY_REFRESH_THRESHOLD_SHADOWED_t thr = {.w = 0};
+    thr.f.threshold = 0; /* disable auto-clear on threshold */
+    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR, thr.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_THRESHOLD_SHADOWED_BASE_ADDR, thr.w);
 
-    printf("=== Step 5: START, write message, PROCESS ===\n");
-    kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
-
-    cmd.f.cmd = 46;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-
-    if (wait_for_done() != 0) return -1;
-
-    printf("=== Step 6: Read digest ===\n");
     uint32_t digest[8];
-    for (int i = 0; i < 8; i++) {
-        uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
-        uint32_t s1 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (0x100 + (i * 4))));
-        digest[i] = s0 ^ s1;
-    }
-
-    int non_zero = 0;
-    printf("Digest: ");
-    for (int i = 0; i < 8; i++) {
-        printf("%08x ", digest[i]);
-        if (digest[i] != 0) non_zero = 1;
-    }
-    printf("\n");
-
-    if (!non_zero) {
-        printf("FAIL: digest is all zeros\n");
+    int smoke = sep_kmac128_sw_smoke(digest);
+    if (smoke != 0) {
+        printf("FAIL: sep_kmac128_sw_smoke returned %d\n", smoke);
         errors++;
+    } else {
+        printf("Digest: ");
+        for (int i = 0; i < 8; i++) printf("%08x ", digest[i]);
+        printf("\n");
+        {
+            int mismatch = 0;
+            for (int i = 0; i < 8; i++)
+                if (digest[i] != expected_smoke_digest[i]) mismatch = 1;
+            if (mismatch) {
+                printf("FAIL: smoke digest != expected vector\n");
+                errors++;
+            } else {
+                printf("PASS: smoke digest matches expected vector\n");
+            }
+        }
     }
 
-    cmd.f.cmd = 22;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-
-    printf("=== Step 7: Read ENTROPY_REFRESH_HASH_CNT (expect > 0 after hash) ===\n");
+    printf("=== Step 7: Read ENTROPY_REFRESH_HASH_CNT (expect == 1 after KMAC) ===\n");
     kmac__ENTROPY_REFRESH_HASH_CNT_t hc = {
         .w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_REFRESH_HASH_CNT_BASE_ADDR)};
     printf("ENTROPY_REFRESH_HASH_CNT = %u\n", hc.f.hash_cnt);
-    if (hc.f.hash_cnt > 0) {
-        printf("PASS: ENTROPY_REFRESH_HASH_CNT incremented after hash\n");
+    if (hc.f.hash_cnt == 1) {
+        printf("PASS: hash_cnt==1 after one KMAC keyblock\n");
     } else {
-        printf(
-            "INFO: ENTROPY_REFRESH_HASH_CNT=0 (may reset with entropy_ready; not a hard fail)\n");
+        printf("FAIL: hash_cnt=%u expected 1 after one KMAC keyblock\n", hc.f.hash_cnt);
+        errors++;
     }
 
     return errors;

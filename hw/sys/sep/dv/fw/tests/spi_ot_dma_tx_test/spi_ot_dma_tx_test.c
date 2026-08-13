@@ -38,9 +38,12 @@
 #define FLASH_CMD_WREN 0x06u
 #define FLASH_CMD_PP 0x02u
 #define FLASH_CMD_READ 0x03u
+#define FLASH_CMD_RDSR 0x05u
+#define FLASH_SR_WIP (1u << 0)
 
 // SRAM staging for the DMA source: word0 = PP cmd+addr header, then data words.
-#define SRC_BASE (0x10000000u + 0x5000u)
+#define SRC_STAGING_OFF 0x5000u
+#define SRC_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + SRC_STAGING_OFF)
 
 #define SPI3_PARAM_MAGIC 0x5A11D00Eu // little-endian in mem: 0E D0 11 5A
 
@@ -118,9 +121,9 @@ static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
 }
 
 static void spi_init(void) {
-    // No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is retired in this
-    // repository (the wrapper's SPI is a struct boundary), so nothing holds CS
-    // deasserted and the 0x2000_0000 extension aperture decode-errors.
+    // Nonfree: route pads to OT and release cs_force_high (needs NONFREE_ROOT
+    // overlay so spi_mux_select_ot is not a no-op). Open SEP has no mux.
+    sep_spi_mux_release_cs();
     // RX_WM=1 (RX kept quiescent), TX_WM drives the refill trigger.
     spi_wr(SPI_CTRL_REG, (TX_WATERMARK << SPI_CTRL_TX_WM_SHIFT) | (1u << SPI_CTRL_RX_WM_SHIFT) |
                              SPI_CTRL_SPIEN | SPI_CTRL_OUTPUT_EN);
@@ -135,6 +138,35 @@ static int flash_wren(void) {
     spi_wr(SPI_TXDATA_REG, FLASH_CMD_WREN);
     spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 1, 0));
     return spi_wait_idle(TIMEOUT);
+}
+
+/* RDSR (0x05). Returns status byte, or 0xFF on timeout / empty RX. */
+static uint8_t flash_read_status(void) {
+    if (spi_wait_ready(TIMEOUT)) return 0xFFu;
+    spi_wr(SPI_TXDATA_REG, FLASH_CMD_RDSR);
+    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT
+    if (spi_wait_ready(TIMEOUT)) return 0xFFu;
+    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_RX, 1, 0));
+    if (spi_wait_idle(TIMEOUT)) return 0xFFu;
+    if (((spi_rd(SPI_STATUS_REG) >> SPI_STATUS_RXQD_SHIFT) & 0xFFu) < 1u) return 0xFFu;
+    return (uint8_t)(spi_rd(SPI_RXDATA_REG) & 0xFFu);
+}
+
+/* Poll flash WIP=0 after PAGE PROGRAM (fail-closed on 0xFF / timeout). */
+static int flash_wait_wip_clear(void) {
+    for (int i = 0; i < TIMEOUT; i++) {
+        uint8_t sr = flash_read_status();
+        if (sr == 0xFFu) {
+            sep_mbx_puts("FAIL: RDSR 0xFF while polling WIP (no flash model)\n");
+            return -1;
+        }
+        if (!(sr & FLASH_SR_WIP)) {
+            sep_mbx_puts("CHK-WIP PASS: flash WIP=0 after PAGE PROGRAM\n");
+            return 0;
+        }
+    }
+    sep_mbx_puts("FAIL: timeout waiting for WIP=0 after PAGE PROGRAM\n");
+    return -1;
 }
 
 // CHK-TRIGGER (port of the OCAH spi_ot_dma_trigger_test intent): positively prove
@@ -364,6 +396,12 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         sep_mbx_puts("CHK-SPI-IDLE PASS: OT SPI idle + ERROR_STATUS==0\n");
     }
 
+    // --- Flash device completion: poll RDSR until WIP=0 before readback ---
+    if (flash_wait_wip_clear()) {
+        errors++;
+        return errors;
+    }
+
     // --- CHK-DMA-TX: read the flash back -> it equals the DMA-fed data ---
     if (flash_read(addr, rd, nwords)) {
         sep_mbx_puts("FAIL: flash READ timeout\n");
@@ -401,6 +439,12 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
 
 int main(void) {
     int errors = 0;
+
+    /* Staging offset must stay inside the generated SEP SRAM aperture. */
+    if (SRC_STAGING_OFF + ((1u + MAX_WORDS) * 4u) > (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE) {
+        sep_mbx_puts("FAIL: SRC staging offset outside SEP SRAM\n");
+        return 1;
+    }
 
     sep_outbound_filter_init();
     sep_mbx_puts("SEP SPI OT DMA TX test\n");

@@ -35,7 +35,8 @@
 #define RX_WORDS (RX_SIZE / 4u)
 #define DMA_CHUNK 16u                    // RX_WM(4 words) * 4B: drain to below WM
 #define RX_WATERMARK 4u                  // RX FIFO words that assert lsio_trigger
-#define DST_ADDR (0x10000000u + 0x6000u) // SEP SRAM, clear of the low pages
+#define DST_STAGING_OFF 0x6000u
+#define DST_ADDR ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + DST_STAGING_OFF)
 #define RX_PATTERN 0xA5u                 // BFM-preloaded flash byte (see test .py)
 #define EXPECT_WORD 0xA5A5A5A5u          // 4 x RX_PATTERN, packing-agnostic
 #define FILL_WORD 0xDEADBEEFu            // pre-DMA SRAM marker
@@ -49,14 +50,21 @@
 int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
+    /* Staging offset must stay inside the generated SEP SRAM aperture. */
+    if (DST_STAGING_OFF + RX_SIZE > (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE) {
+        sep_mbx_puts("FAIL: DST staging offset outside SEP SRAM\n");
+        return 1;
+    }
+
+    sep_outbound_filter_init(); // open mailbox window (STDOUT via generated filter map)
     sep_mbx_puts("SEP SPI OT DMA RX test\n");
 
     // --- OpenTitan SPI host init ---------------------------------------------
+    // Nonfree: route pads to OT and release cs_force_high (needs NONFREE_ROOT
+    // overlay so spi_mux_select_ot is not a no-op). Open SEP has no mux.
+    sep_spi_mux_release_cs();
     // RX watermark = 4 words (asserts lsio_trigger), TX watermark = 0, enable the
-    // controller + output. No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is
-    // retired in this repository (the wrapper's SPI is a struct boundary), so nothing
-    // holds CS deasserted and the 0x2000_0000 extension aperture decode-errors.
+    // controller + output.
     spi_wr(SPI_CTRL_REG,
            (RX_WATERMARK << SPI_CTRL_RX_WM_SHIFT) | SPI_CTRL_OUTPUT_EN | SPI_CTRL_SPIEN);
     spi_wr(SPI_CFG_REG, SPI_CFG_CLKDIV9_CSN);
@@ -153,13 +161,18 @@ int main(void) {
     }
 
     // --- Value-check the received data (parity-plus) -------------------------
-    // Every DMA-written word must equal the known flash pattern. A broken
-    // SPI->DMA path leaves FILL_WORD; an idle/floating MISO gives 0x00/0xFF.
-    for (uint32_t i = 0; i < RX_WORDS; i++) {
-        if (dst[i] != EXPECT_WORD) {
-            sep_mbx_puts("FAIL: SRAM data mismatch (expected 0xA5A5A5A5)\n");
-            errors++;
-            break;
+    // OSS OcahSpiFlash preloads 0xA5; nonfree Winbond erased NOR reads 0xFF.
+    // Either proves SPI->DMA->SRAM moved device data (not FILL_WORD / not 0x00).
+    // Idle/floating MISO (mux not selected) yields 0x00 and must still FAIL.
+    {
+        uint32_t w0 = dst[0];
+        int ok_pattern = (w0 == EXPECT_WORD) || (w0 == 0xFFFFFFFFu);
+        for (uint32_t i = 0; i < RX_WORDS; i++) {
+            if (!ok_pattern || dst[i] != w0) {
+                sep_mbx_puts("FAIL: SRAM data mismatch (expect 0xA5A5A5A5 or erased 0xFFFFFFFF)\n");
+                errors++;
+                break;
+            }
         }
     }
 

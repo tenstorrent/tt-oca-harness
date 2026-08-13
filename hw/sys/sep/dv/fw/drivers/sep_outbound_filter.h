@@ -1,41 +1,62 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP outbound filter driver.
+// SEP outbound filter driver. Header-only.
 //
-// The SEP outbound filter blocks all transactions by default. Firmware must
-// open a window before it can reach the testbench mailbox at 0x8000_0000.
+// The outbound filter blocks all transactions by default. Firmware must open a
+// window before it can reach the testbench mailbox (STDOUT in tb.h).
 // sep_outbound_filter_init() configures filter 0 for that window.
 //
-// Register layout (OUTBOUND_FILTER_CTRL_0 @ 0x10A2_0000):
-//   +0x00  CONFIG (64b)  start-addr (64b) +0x08   end-addr (64b) +0x10
-// CONFIG must be written LAST: it enables the filter once the range is set.
+// Addresses come from generated sep_addr.h; FILTER_CONFIG packing uses
+// generated filter_ctrl.h field masks (same pattern as sep_spi.h / sep_dma.h).
 
 #ifndef SEP_OUTBOUND_FILTER_H
 #define SEP_OUTBOUND_FILTER_H
 
 #include <stdint.h>
 
-#define SEP_OUTBOUND_FILTER_BASE 0x10A20000u
-#define SEP_OUTBOUND_FILTER_CONFIG 0x00u
-#define SEP_OUTBOUND_FILTER_START 0x08u
-#define SEP_OUTBOUND_FILTER_END 0x10u
+#include "och_sep_common.h"
+#include "sep.h"
+#include "tb.h"
+#include "filter_ctrl.h"
 
-// read_allowed(0) | write_allowed(1) | entry_enabled(4) | allow_ns(8) | allow_burst(24)
-#define SEP_OUTBOUND_FILTER_CFG_OPEN 0x0000000101000013ULL
-#define SEP_OUTBOUND_FILTER_WIN_START 0x0000000080000000ULL
-#define SEP_OUTBOUND_FILTER_WIN_END 0x00000000800000FFULL
+/*
+ * FILTER_CONFIG open window: read|write|entry_enabled|allow_burst.
+ * Compose from generated FILTER_CTRL__FILTER_CONFIG__*_bm (filter_ctrl.h).
+ * Do NOT set ALLOW_NS: EnNsFilter=1 and SEP CPU traffic is secure (ns=0).
+ * Bit32 reserved: keep OCAH/XBAR golden (XBAR_SEP_OUTBOUND_CFG) until RTL/docs clarify.
+ */
+#define SEP_OUTBOUND_FILTER_CFG_OPEN                                                 \
+    ((uint64_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm |                        \
+                FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |                       \
+                FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm |                       \
+                FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm) |                        \
+     (1ULL << 32))
 
-static inline void sep_wr64(uintptr_t addr, uint64_t val) {
-    *((volatile uint64_t *)addr) = val;
+/* Mailbox window: STDOUT (test_completion) plus a small pad. */
+#define SEP_OUTBOUND_FILTER_WIN_START ((uint64_t)(uint32_t)STDOUT)
+#define SEP_OUTBOUND_FILTER_WIN_END (((uint64_t)(uint32_t)STDOUT) + 0xFFULL)
+
+/* Legacy aliases used by older OCAH-style tests. */
+#define FILTER_CONFIG_VALUE SEP_OUTBOUND_FILTER_CFG_OPEN
+#define FILTER_START_ADDR SEP_OUTBOUND_FILTER_WIN_START
+#define FILTER_END_ADDR SEP_OUTBOUND_FILTER_WIN_END
+
+/*
+ * Open filter 0 over [start, end]. Write START/END before CONFIG so the
+ * filter enables atomically over the final range.
+ */
+static inline void sep_outbound_filter_init_range(uint64_t start, uint64_t end) {
+    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), start);
+    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), end);
+    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0),
+                SEP_OUTBOUND_FILTER_CFG_OPEN);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
-// Open outbound filter 0 over the 0x8000_0000 mailbox window. Call before any
-// mailbox access.
+/* Open filter 0 over the testpass mailbox window. Call before mailbox access. */
 static inline void sep_outbound_filter_init(void) {
-    sep_wr64(SEP_OUTBOUND_FILTER_BASE + SEP_OUTBOUND_FILTER_START, SEP_OUTBOUND_FILTER_WIN_START);
-    sep_wr64(SEP_OUTBOUND_FILTER_BASE + SEP_OUTBOUND_FILTER_END, SEP_OUTBOUND_FILTER_WIN_END);
-    sep_wr64(SEP_OUTBOUND_FILTER_BASE + SEP_OUTBOUND_FILTER_CONFIG,
-             SEP_OUTBOUND_FILTER_CFG_OPEN); // enables last
+    sep_outbound_filter_init_range(SEP_OUTBOUND_FILTER_WIN_START,
+                                   SEP_OUTBOUND_FILTER_WIN_END);
 }
 
 #endif // SEP_OUTBOUND_FILTER_H
