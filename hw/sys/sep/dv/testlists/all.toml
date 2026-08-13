@@ -31,8 +31,7 @@ includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", 
 name = "smoke"
 tests = ["sep_axi_smoke_test"]
 
-# Legacy alias for the smoke group; kept so existing `--items sanity`
-# invocations keep working. Prefer `smoke`.
+# Alias of `smoke` for callers that pass `--items sanity`. Prefer `smoke`.
 [[groups]]
 name = "sanity"
 tests = ["sep_axi_smoke_test"]

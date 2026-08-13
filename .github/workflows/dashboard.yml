@@ -72,13 +72,13 @@ jobs:
       #
       # Everything downstream of here is single-DUT: the classification file is
       # keyed by day alone, and ghdata/latest holds one result. The sim matrix
-      # now has more than one DUT, so an unqualified "first artifact" pick would
+      # carries several DUTs, so an unqualified "first artifact" pick would
       # publish whichever the API happened to list first and make the trend
-      # series silently alternate between DUTs. Pin the published DUT instead
-      # (DASHBOARD_DUT), and fall back to the alphabetically-first available
-      # artifact so a dispatch naming a run without that DUT still publishes
-      # something deterministic. Teaching the data branch to carry a series per
-      # DUT is the real fix; until then this is explicit rather than arbitrary.
+      # series silently alternate between DUTs. DASHBOARD_DUT pins the published
+      # DUT, falling back to the alphabetically-first available artifact so a
+      # dispatch naming a run without that DUT still publishes something
+      # deterministic. Teaching the data branch to carry a series per DUT is the
+      # real fix; until then this is explicit rather than arbitrary.
       - name: Locate nightly artifact
         id: art
         env:
