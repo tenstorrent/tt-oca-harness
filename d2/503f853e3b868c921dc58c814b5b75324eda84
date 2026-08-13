@@ -1,0 +1,32 @@
+hw/ip/entropy_source/doc/architecture.adoc
+  s_42d98e48086972::t_999c7f215dc0ad 64
+doc/trm/src/revision.adoc
+  s_42d98e48086972::t_d67c321ad5d8b1 151-153
+hw/ip/entropy_source/rtl/entropy_source.sv
+  s_42d98e48086972::t_c4db0a71558ad0 1085-1086
+  s_42d98e48086972::t_e03867d3ccfa93 1087-1089
+hw/ip/entropy_source/regs/entropy_source.rdl
+  s_42d98e48086972::t_4dab3519df4d55 781
+  s_42d98e48086972::t_701b7f62d8537c 773
+  s_42d98e48086972::t_75aa82e0fc36b8 776,784
+hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
+  s_42d98e48086972::t_eca8e0c928ff6e 2533-2535,2561-2563
+hw/ip/entropy_source/regs/gen/sv/entropy_source_reg_pkg.sv
+  s_42d98e48086972::t_e36f0ba4667c74 418,423
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d2503f853e3b868c921dc58c814b5b75324eda84",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
