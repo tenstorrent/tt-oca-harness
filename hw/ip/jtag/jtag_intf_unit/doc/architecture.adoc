@@ -152,11 +152,3 @@ The interface unit instantiates multiple JTAG2AXI bridges:
 * *SEP Fuse JTAG2AXIL TDRs*: This set of TDRs provide a mechanism to interact
   directly with the SEP fuse controller. The JTAG2AXIL interface connects to the
   fuse controller CSRs through an AXI4-lite-to-APB bridge.
-
-===== Security Integration
-
-The JTAG Interface Unit integrates with the chiplet lifecycle controller:
-
-* Security disable signals gate STAP selection
-* Lifecycle feature control sync for debug enable/disable
-* Per-STAP security lockout capability
