@@ -1815,8 +1815,17 @@ SMC, SEP, DTP and SMU. This section explains what those constraints do, how they
 are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.
 
-The collateral lives in `block_flow_customizations/`, which sits under `nonfree/`
-in the harness checkout.
+The collateral ships with the harness. Each block carries its own constraints in
+`hw/sys/<block>/synth/`:
+
+* `constraints.sdc` -- the block's full timing intent, including the clock
+definitions and the asynchronous clock groups. It sources the two files below.
+* `<block>_cdc_max_delay.tcl` -- generated-clock periods and any hand-written
+overrides.
+* `<block>_cdc_max_delay_generated.tcl` -- the per-instance calls.
+
+The two pieces shared by every block live in `flows/synth/constraints/`:
+`async_clock_groups.tcl` and `cdc_max_delay_procs.tcl`.
 
 === Why crossings are bounded rather than timed
 
@@ -1932,8 +1941,9 @@ clock-group layer. That layer decides whether the tool considers inter-domain
 paths at all, so it must be established first; the per-instance exceptions then
 refine it.
 
-*Layer 1* is `set_async_clock_groups`, called from each block's
-`clock_defines.tcl`. It declares the asynchronous groups *with `-allow_paths`* and
+*Layer 1* is `set_async_clock_groups`, defined in
+`flows/synth/constraints/async_clock_groups.tcl` and called from each block's
+`constraints.sdc`. It declares the asynchronous groups *with `-allow_paths`* and
 applies a loose 20 ns / -20 ns default to every inter-group clock pair.
 
 [IMPORTANT]
@@ -1998,9 +2008,7 @@ This is the most important change.
 As shipped, the procs target the prim wrapper's own port, `prim_sync3/i_d`. That
 port exists only as long as the wrapper survives as a hierarchical boundary, and a
 prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
-dissolving its ports. OCAH gets away with it only because
-`global.cdc_preserve_hier.tcl` explicitly keeps those boundaries alive, which it
-must do because the reference flow enables auto-ungrouping.
+dissolving its ports.
 
 [WARNING]
 ====
@@ -2032,19 +2040,16 @@ Anchoring this way makes hierarchy preservation a safety margin rather than a
 load-bearing dependency.
 
 If you keep the prim wrappers unchanged, the shipped port names work as-is, but
-`global.cdc_preserve_hier.tcl` must stay in the flow. A `destination empty`
+your flow must then preserve those wrapper boundaries. A `destination empty`
 warning appearing after `compile` where there was none at constraint-load time
 means a boundary was dissolved.
 
-If the module name differs, also add a row to `$::cdc_dump_types` in
-`global.cdc_dump_instances.tcl` so the generator finds it. The third field onward
-is the clock port name or names on the module being searched for -- one for a
-synchronizer, two for a two-clock element in source, destination order.
-
-[source,tcl]
-----
-{my_sync3_cell   set_cdc_max_delay_prim_sync3   my_clk_port}
-----
+If you go further and replace a wrapper with a module of your own name, the
+enumeration that produced `<block>_cdc_max_delay_generated.tcl` knows nothing
+about it and those crossings end up with no per-instance bound at all. Nothing
+warns -- an element that was never listed cannot report itself missing. Add the
+calls for it to `<block>_cdc_max_delay.tcl` by hand; the procs take an instance
+path and the capturing clock regardless of the module they were named after.
 
 ==== 2. Point the files at your hierarchy, or regenerate
 
@@ -2088,8 +2093,8 @@ not the child's file with a prefix.
 ==== 3. Set the default bound
 
 The 20 ns / -20 ns figures are a starting point. Both are
-`info exists`-guarded in `global.async_clock_groups.tcl`, so setting them before
-that file is sourced overrides without editing it. `set_async_clock_groups` also
+`info exists`-guarded in `flows/synth/constraints/async_clock_groups.tcl`, so
+setting them before that file is sourced overrides without editing it. `set_async_clock_groups` also
 accepts per-call overrides, which is the cleaner way to give one block a different
 default:
 
@@ -2111,9 +2116,10 @@ hold is not a real requirement.
 
 ==== 4. Declare your own clock groups
 
-`set_async_clock_groups` is called from each block's `clock_defines.tcl` with that
+`set_async_clock_groups` is called from each block's `constraints.sdc` with that
 block's group list. Each inner list is one asynchronous group and globs are
-allowed.
+allowed. Globs resolve when the call runs, so it has to come after every
+`create_clock` and `create_generated_clock` it is meant to cover.
 
 [source,tcl]
 ----
@@ -2132,8 +2138,8 @@ unless you hit a `TIM-184` conflict.
 ==== 5. Declare periods for generated clocks
 
 A generated clock exposes no readable `period` attribute in Design Compiler, so
-any generated clock that clocks a CDC element needs an explicit entry in the
-block's hand-written file:
+any generated clock that clocks a CDC element needs an explicit entry in
+`<block>_cdc_max_delay.tcl`:
 
 [source,tcl]
 ----
@@ -2146,18 +2152,18 @@ a clean run means you have them all. Keep them in step with your
 
 ==== Also check
 
-*Hierarchy preservation.* `global.cdc_preserve_hier.tcl` applies
-`set_ungroup false` and `set_boundary_optimization false` to the CDC designs from
-each block's `compile1_pre.tcl`. How much this matters depends on item 1: with leaf
-cell pins it is a safety margin, with wrapper ports it is load-bearing. Either way,
-list your own cell names in that file.
+*Hierarchy preservation.* The reference flow applies `set_ungroup false` and
+`set_boundary_optimization false` to the CDC designs before `compile`. How much
+this matters depends on item 1: with leaf cell pins it is a safety margin, with
+wrapper ports it is load-bearing. Either way, your flow needs the equivalent, and
+it needs to name your cells rather than OCAH's.
 
 *Delay factors.* `0.5 * T_dst` and `1.0 * T_dst` are policy, not physics. If your
 methodology wants more settling margin, change `cdc_sync_delay` and
-`cdc_data_delay` in `global.cdc_max_delay_procs.tcl`. Per-instance overrides are
-also available without editing procs: every proc takes an optional trailing delay
-in picoseconds, and re-stating a call in the hand-written file after the `source`
-wins.
+`cdc_data_delay` in `flows/synth/constraints/cdc_max_delay_procs.tcl`.
+Per-instance overrides are also available without editing procs: every proc takes
+an optional trailing delay in picoseconds, and re-stating a call in
+`<block>_cdc_max_delay.tcl` after the `source` wins.
 
 *Tool differences.* Two Design Compiler specific choices to revisit under
 PrimeTime. `get_attribute <pin> clocks` is used because `get_clocks -of_objects`
@@ -2208,5 +2214,5 @@ CDC signoff.
 Because the instance list is generated offline, removals are loud but additions
 are silent. A stale instance path warns, but a synchronizer added without
 regenerating produces no warning: the constraint never exists, the path falls back
-to the default, and it passes timing. Re-run the generator and diff its output
-against what is checked in whenever the RTL changes.
+to the default, and it passes timing. Regenerate and diff the result against what
+is checked in whenever the RTL changes.
