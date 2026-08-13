@@ -19,7 +19,7 @@ package cross_trigger_network_pkg;
 
     `include "axi/typedef.svh"
 
-    // Default parameters (templated from DTP generator)
+    // Default parameters; keep in step with dtp_pkg when used inside the DTP
     localparam int unsigned DEFAULT_NUM_CTP          = 16;  // Number of external CTPs
     localparam int unsigned DEFAULT_NUM_INT_CT       = 10;   // Number of internal CTPs
     localparam int unsigned DEFAULT_NUM_CLK_STOP_REQ = 9;   // Number of clock stop requests

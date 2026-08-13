@@ -20,6 +20,20 @@ The DTP instantiates a single JTAG Interface Unit that serves as the primary deb
 * SMC and SEP OTP controllers via JTAG2AXIL
 * SMC and SEP CPU debug TAPs via STAPs
 
+==== STAP Secondary Scan Path
+
+The PTAP secondary scan path in the DTP is ordered as follows:
+
+* PTAP
+* I/O STAP when `JTAG_STAP_IO_ENABLE=1`
+* SMC debug STAP when `JTAG_SMC_DBG_ENABLE=1`
+* SEP debug STAP when `JTAG_SEP_DBG_ENABLE=1`
+* extra STAP instances `[JTAG_NUM_EXTRA_STAPS-1:0]`
+* return to PTAP
+
+When a STAP is disabled by parameter, the DTP bypasses it in the secondary scan
+chain and drives its internal host outputs low.
+
 ==== Clock Domains
 
 The DTP operates in two clock domains:
@@ -41,10 +55,62 @@ All cross-trigger signals are synchronized to the system clock domain within the
 * Clock stop output resets to 0 (clocks running)
 * JTAG TAP resets to Test-Logic-Reset state on TRST or power-on
 
-==== Security Integration
+==== Lifecycle Feature Control
 
-The DTP integrates with the chiplet lifecycle controller:
+The DTP top level consumes `feat_ctrl_i` using the SEP lifecycle feature control
+type `sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t`. That type is reused for its
+bit layout only: the bits themselves are active-high feature *enables*
+(1 = feature enabled), driven by the SEP lifecycle controller. The DTP
+synchronizes `feat_ctrl_i` into the TCK domain before use, then derives a
+security disable signal per gated path.
 
-* Security disable signals gate STAP selection for debug TAPs
-* Lifecycle feature control determines which debug features are accessible
-* JTAG2AXI access can be restricted based on lifecycle state
+Because `feat_ctrl_i` is enable-polarity, a path is enabled only when *all* of its
+required enables are asserted, and is therefore disabled whenever *any* one of
+them is deasserted:
+
+[cols="<40%,<60%",options="header"]
+|===
+|Gated Path |Security Disable Condition
+
+|I/O STAP host path
+|`!feat_ctrl_i.sip_debug`
+
+|SMC debug STAP host path
+|`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+
+|SEP debug STAP host path
+|`!feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+
+|Extra STAP host paths
+|`!feat_ctrl_i.ap_debug`
+
+|External STAP return path
+|`!feat_ctrl_i.ap_debug`
+
+|Secure external DFT iJTAG path
+|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+
+|Non-secure external DFT iJTAG path
+|`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+
+|DFD iJTAG path
+|`!feat_ctrl_i.ap_debug`
+
+|SMC fabric JTAG2AXI path
+|`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+
+|SMC OTP JTAG2AXI path
+|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+
+|SEP OTP JTAG2AXI path
+|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|===
+
+A disabled path remains observable only where required for control and readback;
+its host-visible scan or debug access is clamped or bypassed so the disabled path
+cannot be used to reach downstream secure logic. For a JTAG2AXI bridge this means
+its TDR update registers are not latched, buffered requests are dropped, and the
+AXI state machine is held in idle, so no AXI traffic can be generated at all.
+
+The STAP and iJTAG conditions are implemented in `jtag_intf_unit`; the three
+JTAG2AXI conditions are implemented in `jtag_ptap`.
