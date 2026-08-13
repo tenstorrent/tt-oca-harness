@@ -129,11 +129,6 @@ package km_intf_pkg;
      *  | HMAC   | 0x0001_B000 | 0x0001_BFFF |  4 KB |                                         |
      *  | ABR    | 0x0001_C000 | 0x0001_CFFF |  4 KB |                                         |
      *  | VROM   | 0x1000_0000 | 0x1000_FFFF | 64 KB |                                         |
-     *
-     * Memories occupy 0x0000_0000-0x0000_FFFF and every non-memory block sits at
-     * 0x0001_0000 and above.  SRAM is placed on a 32 KB boundary so the write-lock
-     * and exec region indices stay plain bit slices of the CPU address, with no
-     * base subtraction (see km_sram_interface.sv and picorv32_wrapper.sv).
      */
 
     // Internal memory

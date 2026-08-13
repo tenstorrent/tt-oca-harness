@@ -85,15 +85,6 @@ extern const uint8_t __km_fw_load_limit[];
  */
 #define ROM_KM_ROM_IRQ_ENTRY 0x10u
 
-/** @brief Key Provisioning Vault register base address (8 KB window). */
-#define ROM_KM_KPV_BASE 0x00012000
-/** @brief Key Manager CSR register base address. */
-#define ROM_KM_KMCSR_BASE 0x00014000
-/** @brief DRBG sampler register base address. */
-#define ROM_KM_DRBG_BASE 0x00015000
-/** @brief Mailbox register base address. */
-#define ROM_KM_MAILBOX_BASE 0x00010000
-
 /** @brief Words per mailbox FIFO (matches RTL MAILBOX_DEPTH default) */
 #define ROM_KM_MAILBOX_FIFO_DEPTH 16
 
