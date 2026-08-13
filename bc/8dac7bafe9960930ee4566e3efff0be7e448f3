@@ -1,0 +1,28 @@
+hw/sys/sep/doc/memory_map.adoc
+  s_42d98e48086972::t_e5a52409f77d4d 176-191
+  s_42d98e48086972::t_c07cfba4e0c41e 98-100
+hw/ip/entropy_source/regs/entropy_source.rdl
+  s_42d98e48086972::t_fdaa5c040e3e76 945
+doc/trm/src/revision.adoc
+  s_42d98e48086972::t_16824550a48786 154-159
+hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc
+  s_42d98e48086972::t_3962acce92c883 21-24,64,108,125,210,219-222,224,280-282,290-292,300,302-303,311,313-314,432-433,745-748,775-778
+hw/ip/entropy_source/regs/gen/html/entropy_source.html
+  s_42d98e48086972::t_a0554cf312b5fc 27-30,70,111,124,199,206-209,211,253-255,261-263,269,271-272,278,280-281,371-372,606-609,630-633
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bc8dac7bafe9960930ee4566e3efff0be7e448f3",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
