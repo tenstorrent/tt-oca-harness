@@ -777,7 +777,7 @@ module reset_unit_reg (
             readback_data_var[31:0] = hwif_in.STRAPS_LO.straps.next;
         end
         if(rd_mux_addr == 8'h94) begin
-            readback_data_var[31:0] = hwif_in.STRAPS_HI.straps.next;
+            readback_data_var[28:0] = hwif_in.STRAPS_HI.straps.next;
         end
         if(rd_mux_addr == 8'ha8) begin
             readback_data_var[0] = field_storage.SYNC_REG.sync.value;

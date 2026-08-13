@@ -23,5 +23,8 @@ class smc_ecc_fault_inject_test(smc_base_test):
             type(self).__name__,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="scratch bank0 SBE/DBE inject fire_count scored",
+            details=(
+                "DUT scratch0_inject_fire scored via live scratch fetch "
+                "(SBE/recovery/DBE)"
+            ),
         )

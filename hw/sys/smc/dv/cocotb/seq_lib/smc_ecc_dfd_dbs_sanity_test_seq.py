@@ -3,25 +3,21 @@
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Diagnostic reads, identical on Verilator and VCS. Traceability is mixed:
-#   * RAS_BANK_INFO (chip_config.rdl) and NDMRESET_PROCESS (ndm_reset.rdl)
-#     reset to 0x0 per RDL -> G3 spec-anchored.
+#   * RAS_BANK_INFO / NDMRESET_PROCESS: RDL reset 0x0 -> G3 spec-anchored.
 #   * NDMRESET_CLUSTER_COUNT=0x4 is a REGRESSION-LOCK: RDL reset is 0x0; the 4
 #     is a tied HW "#clusters" input (hw=w), not a spec reset constant.
-#   * CPU_DEBUG_CTRL/BUS_MUX @0xC001_0208/0210: SUSPECT -- no RDL register
-#     exists at these addresses; the same-named regs in dfx_ctrl_status.rdl are
-#     at 0xC000_F808/F810 and reset 0x0. The observed 0xC000_0000/0x0100_0000
-#     are the cluster black-box "magic" constants. Kept as reachability
-#     regression-locks pending OWNER REVIEW of the intended addresses.
-#     Do not re-baseline silently if RDL reset values change.
+#   * DFX DEBUG_CTRL / DEBUG_BUS_MUX: PeakRDL symbols at 0xC000_B808/B810,
+#     RDL reset 0x0 (do not use the old false-identity window 0xC001_0208/0210).
 DIAGNOSTIC_READS = [
-    ("CHIP_CONFIG_RAS_BANK_INFO", 0xC000_2910, 0x0),
-    ("NDMRESET_PROCESS", 0xC000_2A04, 0x0),
-    ("NDMRESET_CLUSTER_COUNT", 0xC000_2A08, 0x4),          # regression-lock (tied HW, RDL=0)
-    ("CPU_DEBUG_CTRL", 0xC001_0208, 0xC000_0000),          # SUSPECT addr (F1 C2)
-    ("CPU_DEBUG_BUS_MUX", 0xC001_0210, 0x0100_0000),       # SUSPECT addr (F1 C2)
+    ("CHIP_CONFIG_RAS_BANK_INFO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"), 0x0),
+    ("NDMRESET_PROCESS", smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"), 0x0),
+    ("NDMRESET_CLUSTER_COUNT", smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR"), 0x4),  # regression-lock (tied HW, RDL=0)
+    ("DFX_DEBUG_CTRL", smc_addr("SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR"), 0x0),
+    ("DFX_DEBUG_BUS_MUX", smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR"), 0x0),
 ]
 
 

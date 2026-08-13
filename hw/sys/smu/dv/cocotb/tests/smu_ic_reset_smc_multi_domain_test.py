@@ -31,6 +31,14 @@ from env import cocotb_compat as _cocotb_compat
 
 _cocotb_compat.apply()
 
+
+def _sample(signal, name: str) -> int:
+    val = signal.value
+    if not val.is_resolvable:
+        raise AssertionError(f"X/Z sample on {name}: {val}")
+    return int(val)
+
+
 # (port, ovrd leaf, val leaf) under u_dut.jtag_smc_reset_ctrl
 _DOMAINS = (
     (SMU_IC_RESET_SMC_FUSE_PORT, "fuse_reset_n_ovrd", "fuse_reset_n_val"),
@@ -59,7 +67,7 @@ class smu_ic_reset_smc_multi_domain_test(smu_base_test):
                 f"idle {ovrd_name}",
                 read_smc_reset_ctrl_bit(dut, ovrd_name),
                 0,
-            evidence="IC_RESET_DOMAIN_EXCL")
+            )
 
         for port, ovrd_name, val_name in _DOMAINS:
             pattern = pack_ic_reset_ports(
@@ -89,18 +97,19 @@ class smu_ic_reset_smc_multi_domain_test(smu_base_test):
                     f"{other_ovrd} idle while {ovrd_name}",
                     read_smc_reset_ctrl_bit(dut, other_ovrd),
                     0,
+                    evidence="IC_RESET_DOMAIN_EXCL",
                 )
 
             # TB cold mirror only tracks cold domain.
             if port == SMU_IC_RESET_SMC_COLD_PORT:
                 sb.expect_eq(
                     "TB smc cold ovrd",
-                    int(dut.jtag_ic_reset_smc_ovrd.value),
+                    _sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"),
                     1,
                 )
                 sb.expect_eq(
                     "TB smc cold ctrl_n",
-                    int(dut.jtag_ic_reset_smc_ctrl_n.value),
+                    _sample(dut.jtag_ic_reset_smc_ctrl_n, "jtag_ic_reset_smc_ctrl_n"),
                     0,
                 )
 

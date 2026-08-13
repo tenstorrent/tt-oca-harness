@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """U4-5 OCTS dual-chiplet sync: SECONDARY inject then PRIMARY outbound.
 
-Legacy reference (dv/smc/tb): DUT PRIMARY drives pads 58/59; master BFM
-SECONDARY tracks. OSS has a single bare ``smc`` DUT, so this sequence:
+Legacy reference (dv/smc/tb): DUT PRIMARY drives OCTS sync/credit pads;
+master BFM SECONDARY tracks. OSS has a single bare ``smc`` DUT, so this
+sequence (pads 55/56 after 68->65 GPIO shrink):
 
-  1. Strap SECONDARY, inject ordered sync then credit on pad2core[58/59],
+  1. Strap SECONDARY, inject ordered sync then credit on pad2core[55/56],
      hard-gate COUNT / STATUS.MODE.
   2. Strap PRIMARY, TIMER_START, hard-gate rising edges on DUT pad observe.
 
@@ -23,14 +24,18 @@ from .smc_octs_sync_bfm import (
     drive_secondary_sync_then_credits,
 )
 
-_OCTS_TIMER_START = 0xC000_E000
-_OCTS_CTRL = 0xC000_E004
-_OCTS_STATUS = 0xC000_E008
-_OCTS_PRESET_LO = 0xC000_E00C
-_OCTS_PRESET_HI = 0xC000_E010
-_OCTS_COUNT_LO = 0xC000_E014
-_OCTS_COUNT_HI = 0xC000_E018
-_OCTS_TIMER_GPIO_ENABLE = 0xC000_E020
+from .smc_addr_map import smc_addr
+
+_OCTS_TIMER_START = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR")
+_OCTS_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
+_OCTS_STATUS = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR")
+_OCTS_PRESET_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR")
+_OCTS_PRESET_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR")
+_OCTS_COUNT_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADDR")
+_OCTS_COUNT_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR")
+_OCTS_TIMER_GPIO_ENABLE = smc_addr(
+    "SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR"
+)
 
 # CTRL: CREDIT_VAL=0x10, PULSE_WIDTH=0x02, STEP=0x01 (matches legacy FW).
 _OCTS_CTRL_VAL = 0x0001_0210
@@ -144,10 +149,10 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         sync_edges = await edge_task_sync
         credit_edges = await edge_task_credit
         assert sync_edges >= 1, (
-            f"OCTS primary pad58 sync_load edges={sync_edges}, need >= 1"
+            f"OCTS primary pad55 sync_load edges={sync_edges}, need >= 1"
         )
         assert credit_edges >= 2, (
-            f"OCTS primary pad59 cnt_credit edges={credit_edges}, need >= 2"
+            f"OCTS primary pad56 cnt_credit edges={credit_edges}, need >= 2"
         )
 
         count_pri = await self._read_count()

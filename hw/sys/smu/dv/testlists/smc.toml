@@ -36,7 +36,13 @@ timeout_sec = 1800
 tags = ["smc", "reset", "phase1"]
 run_modes = ["smc"]
 
-# smc_mailbox_int_test → testlists/deferred.toml
+[[tests]]
+name = "smc_mailbox_int_test"
+module = "smc_mailbox_int_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "mailbox", "phase1", "smu_all_004"]
+run_modes = ["smc"]
 
 # smc_gpio_strap_sanity_test → testlists/deferred.toml
 

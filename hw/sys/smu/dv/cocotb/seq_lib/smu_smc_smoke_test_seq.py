@@ -1,9 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Sequence body for smu_smc_smoke_test (DV Skill 1.5 / SMU_001 rev 1).
+"""Sequence for smu_smc_smoke_test (SMU_ALL_003 rev 6).
 
-Implements the approved checkbox card steps/checkers for P0 clock + cold/primary
-reset observability at the SMU boundary. Emits greppable ``CHK-*`` / ``STEP``
-lines; does not grade features.
+DV-CARD:          SMU_ALL_003   ANCHOR: smu_smc_smoke_test
+DV-CARD-REVISION: 6   RECORD-SHA256: b3f504a0350089e1b8867785d30aa618dd4c31a9fc7dcef2192f8ff42ada6380
+DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 6   ENV: cocotb
+
+Approved OWNS (card r6 / plan r3):
+  SMC-FAB-DUAL-NET.S2 — local peripherals/config registers use AXI4-Lite LP
+  SMC-FAB-DUAL-NET.S3 — both networks carry 64-bit data without truncation
+
+Bare tb_top SEP=0: hierarchical CONNECTIVITY observe only (no Force/deposit).
+
+Independent expects from pinned hw/sys/smc/doc/fabric.adoc
+  §Network Characteristics / §AXI Common Signal Widths / §AXI ID Widths /
+  §Traffic Subordinates (AXI4-Lite Low-Performance rows) @ffc8cdcc…
 """
 
 from __future__ import annotations
@@ -11,23 +21,37 @@ from __future__ import annotations
 import time
 
 import cocotb
-from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 
 
 class smu_smc_smoke_test_seq:
-    """SMU_001 clock-freeze + cold/primary reset evidence sequence."""
+    """SMU_ALL_003 r6: SMC dual-network LP dest + SPEC 64-bit data observe."""
 
-    FREEZE_REF_CYCLES = 64
-    RUN_SMU_CYCLES = 32
-    REF_OBS_CYCLES = 32
-    BOUND_REF_CYCLES = 2000
-    SETTLE_REF_CYCLES = 500
-    # Exact count of _wait_eq sites:
-    #   S1 release (3) + S2 arm×2 (4) + S2 live (3) + S2 resume (3) + S4–S7 (6) = 19
-    EXPECTED_TIMEOUT_PATHS = 19
-    # DTP clock-stop request bit observed through CTN 2FF+reg on clk_smu.
-    DTP_CLK_STOP_PAT = 0x01
+    BOUND_CYCLES = 2000
+    SETTLE_CYCLES = 32
+    # Bounded waits: primary release (S1) + dest attachment settle (S2).
+    EXPECTED_TIMEOUT_PATHS = 2
+
+    # Pinned SPEC field widths (fabric.adoc) — never RTL typedef totals.
+    SPEC_DATA_WIDTH = 64
+    SPEC_ADDR_LOCAL = 32
+    SPEC_USER_WIDTH = 12
+    SPEC_ID_LOCAL_FABRIC_SLV = 6  # Local / Output fabric (slave side)
+    # SPEC also documents some AXI4-Lite peripheral paths at 32-bit data.
+    SPEC_PERIPH_LITE_DATA = 32
+
+    # AMBA AXI4 channel fixed field widths (protocol, not DUT typedefs).
+    _AXI4_LEN = 8
+    _AXI4_SIZE = 3
+    _AXI4_BURST = 2
+    _AXI4_LOCK = 1
+    _AXI4_CACHE = 4
+    _AXI4_PROT = 3
+    _AXI4_QOS = 4
+    _AXI4_REGION = 4
+    _AXI4_ATOP = 6
+    _AXI4_LAST = 1
+    _AXIL_PROT = 3
 
     def __init__(self, test) -> None:
         self.test = test
@@ -35,10 +59,6 @@ class smu_smc_smoke_test_seq:
         self.cfg = test.cfg
         self._step_ts: dict[str, float] = {}
         self._timeout_paths: list[str] = []
-        self._clk_smu_task = None
-        self._clk_ref_task = None
-        self._clk_periph_task = None
-        self._smu_clk_enable = [True]
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -53,29 +73,139 @@ class smu_smc_smoke_test_seq:
             raise AssertionError(f"X/Z sample on {name}: {val}")
         return int(val)
 
-    def _start_clock(self, signal, period_ns: float):
-        return cocotb.start_soon(Clock(signal, period_ns, unit="ns").start())
+    def _require_child(self, parent, name: str):
+        if not hasattr(parent, name):
+            raise AssertionError(
+                f"missing hierarchical child {name} under {parent}"
+            )
+        return getattr(parent, name)
 
-    async def _gated_smu_clock(self) -> None:
-        """Drive clk_smu_i with a pauseable generator (cocotb Clock cannot freeze)."""
-        half = self.cfg.smu_clk_period_ns / 2.0
-        sig = self.dut.clk_smu_i
-        while True:
-            if self._smu_clk_enable[0]:
-                sig.value = 1
-                await Timer(half, unit="ns")
-                sig.value = 0
-                await Timer(half, unit="ns")
-            else:
-                sig.value = 0
-                await Timer(half, unit="ns")
+    def _nbits(self, signal, name: str) -> int:
+        """Return signal bit-width; fail on missing/X handles."""
+        if signal is None:
+            raise AssertionError(f"width observe fail: {name} is None")
+        n = getattr(signal, "n_bits", None)
+        if n is None:
+            try:
+                n = len(signal)
+            except TypeError as exc:
+                raise AssertionError(
+                    f"width observe fail: cannot measure {name}"
+                ) from exc
+        if n <= 0:
+            raise AssertionError(f"width observe fail: {name} n_bits={n}")
+        _ = self._sample(signal, name)
+        return int(n)
 
-    def _freeze_smu_clk(self) -> None:
-        self._smu_clk_enable[0] = False
-        self.dut.clk_smu_i.value = 0
+    @classmethod
+    def _axil_req_bits(cls, addr_w: int, data_w: int) -> int:
+        """AXI4-Lite req packed width from SPEC addr/data (pulp AXI_LITE layout).
 
-    def _resume_smu_clk(self) -> None:
-        self._smu_clk_enable[0] = True
+        aw/ar = addr+prot; w = data+strb; plus aw/w/ar_valid + b/r_ready.
+        """
+        strb = data_w // 8
+        return 2 * (addr_w + cls._AXIL_PROT) + data_w + strb + 5
+
+    @classmethod
+    def _axi4_req_bits(cls, addr_w: int, data_w: int, id_w: int, user_w: int) -> int:
+        """AXI4 req packed width from SPEC field widths (pulp AXI_TYPEDEF layout)."""
+        aw = (
+            id_w
+            + addr_w
+            + cls._AXI4_LEN
+            + cls._AXI4_SIZE
+            + cls._AXI4_BURST
+            + cls._AXI4_LOCK
+            + cls._AXI4_CACHE
+            + cls._AXI4_PROT
+            + cls._AXI4_QOS
+            + cls._AXI4_REGION
+            + cls._AXI4_ATOP
+            + user_w
+        )
+        w = data_w + (data_w // 8) + cls._AXI4_LAST + user_w
+        ar = (
+            id_w
+            + addr_w
+            + cls._AXI4_LEN
+            + cls._AXI4_SIZE
+            + cls._AXI4_BURST
+            + cls._AXI4_LOCK
+            + cls._AXI4_CACHE
+            + cls._AXI4_PROT
+            + cls._AXI4_QOS
+            + cls._AXI4_REGION
+            + user_w
+        )
+        return aw + 1 + w + 1 + 1 + ar + 1 + 1
+
+    @classmethod
+    def _derive_axil_data_width(cls, packed: int, addr_w: int) -> int:
+        """Invert Lite packing: packed = 2*(addr+3) + data + data/8 + 5."""
+        const = 2 * (addr_w + cls._AXIL_PROT) + 5
+        rem = packed - const
+        # rem = data + data/8 = 9*data/8 → data = rem*8/9
+        if rem <= 0 or (rem * 8) % 9 != 0:
+            raise AssertionError(
+                f"AXI4-Lite packed={packed} not invertible to data width "
+                f"(addr={addr_w} rem={rem})"
+            )
+        data_w = (rem * 8) // 9
+        if cls._axil_req_bits(addr_w, data_w) != packed:
+            raise AssertionError(
+                f"AXI4-Lite invert mismatch: packed={packed} → data={data_w}"
+            )
+        return data_w
+
+    @classmethod
+    def _derive_axi4_data_width(
+        cls, packed: int, addr_w: int, id_w: int, user_w: int
+    ) -> int:
+        """Invert AXI4 packing for data width (strb = data/8)."""
+        aw_wo_data = (
+            id_w
+            + addr_w
+            + cls._AXI4_LEN
+            + cls._AXI4_SIZE
+            + cls._AXI4_BURST
+            + cls._AXI4_LOCK
+            + cls._AXI4_CACHE
+            + cls._AXI4_PROT
+            + cls._AXI4_QOS
+            + cls._AXI4_REGION
+            + cls._AXI4_ATOP
+            + user_w
+            + 1
+        )
+        ar = (
+            id_w
+            + addr_w
+            + cls._AXI4_LEN
+            + cls._AXI4_SIZE
+            + cls._AXI4_BURST
+            + cls._AXI4_LOCK
+            + cls._AXI4_CACHE
+            + cls._AXI4_PROT
+            + cls._AXI4_QOS
+            + cls._AXI4_REGION
+            + user_w
+            + 1
+        )
+        # packed = aw+1 + (data+strb+last+user)+1 + 1 + ar+1 + 1
+        #        = aw_wo_data + data + data/8 + last + user + 1 + 1 + ar + 1
+        const = aw_wo_data + cls._AXI4_LAST + user_w + 1 + 1 + ar + 1
+        rem = packed - const
+        if rem <= 0 or (rem * 8) % 9 != 0:
+            raise AssertionError(
+                f"AXI4 packed={packed} not invertible to data width "
+                f"(addr={addr_w} id={id_w} user={user_w} rem={rem})"
+            )
+        data_w = (rem * 8) // 9
+        if cls._axi4_req_bits(addr_w, data_w, id_w, user_w) != packed:
+            raise AssertionError(
+                f"AXI4 invert mismatch: packed={packed} → data={data_w}"
+            )
+        return data_w
 
     async def _wait_eq(
         self,
@@ -102,395 +232,285 @@ class smu_smc_smoke_test_seq:
             f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect}"
         )
 
-    async def _bringup_clocks_preload(self) -> None:
-        """S1-capable bring-up: clocks running, cold held, powergood=1."""
-        dut = self.dut
-        self._smu_clk_enable[0] = True
-        self._clk_smu_task = cocotb.start_soon(self._gated_smu_clock())
-        self._clk_ref_task = self._start_clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns)
-        self._clk_periph_task = self._start_clock(
-            dut.clk_periph_i, self.cfg.periph_clk_period_ns
-        )
+    def _resolve_dual_net_hierarchy(self, dut):
+        """Walk bare SMU→SMC fabric dual-network instances (CONNECTIVITY)."""
+        smu = self._require_child(dut, "u_dut")
+        smc = self._require_child(smu, "u_smc")
+        base = self._require_child(smc, "u_smc_base")
+        fabric = self._require_child(base, "u_smc_fabric")
+        local = self._require_child(fabric, "u_smc_local_fabric")
+        hp_xbar = self._require_child(local, "u_smc_local_xbar")
+        lp_cfg_xbar = self._require_child(local, "u_smc_internal_axi_lite_xbar")
+        periphs = self._require_child(smc, "u_smc_peripherals")
+        lp_periph_xbar = self._require_child(periphs, "u_smc_periph_axi_lite_xbar")
+        return {
+            "smu": smu,
+            "smc": smc,
+            "local_fabric": local,
+            "hp_xbar": hp_xbar,
+            "lp_cfg_xbar": lp_cfg_xbar,
+            "lp_periph_xbar": lp_periph_xbar,
+        }
 
-        dut.powergood_i.value = 0
-        dut.rst_cold_ni.value = 0
-        if hasattr(dut, "ext_boot_seq_done_i"):
-            dut.ext_boot_seq_done_i.value = 1
-        dut.jtag_tck.value = 0
-        dut.jtag_tms.value = 0
-        dut.jtag_trst.value = 0
-        dut.jtag_tdi.value = 0
-        if hasattr(dut, "xtrig_ctm_dst_req"):
-            dut.xtrig_ctm_dst_req.value = 0
-        if hasattr(dut, "xtrig_ctm_src_ack"):
-            dut.xtrig_ctm_src_ack.value = 0
-        if hasattr(dut, "xtrig_clk_stop_req"):
-            dut.xtrig_clk_stop_req.value = 0
-        if hasattr(dut, "captured_straps_i"):
-            dut.captured_straps_i.value = 0
-        if hasattr(dut, "gpio_boot_stall_drive_i"):
-            dut.gpio_boot_stall_drive_i.value = 0
-        for name in (
-            "s_axi_awvalid",
-            "s_axi_wvalid",
-            "s_axi_bready",
-            "s_axi_arvalid",
-            "s_axi_rready",
-        ):
-            getattr(dut, name).value = 0
-
-        await ClockCycles(dut.clk_ref_i, 10)
-        dut.powergood_i.value = 1
-        # Hold cold asserted through deglitch window (card S1).
-        await ClockCycles(dut.clk_ref_i, 64)
+    def _rst_handle(self, mod, label: str):
+        if hasattr(mod, "rst_ni"):
+            return mod.rst_ni
+        if hasattr(mod, "rst_n"):
+            return mod.rst_n
+        raise AssertionError(f"{label} rst unobservable")
 
     async def run(self) -> None:
         dut = self.dut
         sb = self.test.env.scoreboard
 
-        await self._bringup_clocks_preload()
+        await self.cfg.reset_done.wait()
+        await ClockCycles(dut.clk_smu_i, self.SETTLE_CYCLES)
 
-        # S1 — PRELOAD (ext_boot_seq_done_i hard-tied 1'b1 in tb_top)
+        # ------------------------------------------------------------------
+        # S1 SETUP
+        # ------------------------------------------------------------------
         self._mark_step(
             "S1",
-            "PRELOAD clk_smu_i/clk_ref_i toggling; rst_cold_ni=0; "
-            "powergood_i=1; ext_boot_seq_done_i=1 (TB tie)",
+            "SETUP: SEP=0 bare tb_top clocks/resets stable; resolve SMC "
+            "dual-network hierarchy baseline",
         )
-        assert self._sample(dut.rst_cold_ni, "rst_cold_ni") == 0
-        assert self._sample(dut.powergood_i, "powergood_i") == 1
-
-        # Release cold/primary for clock observation window (S2/S3).
-        dut.rst_cold_ni.value = 1
-        dut.jtag_trst.value = 1
-        await ClockCycles(dut.clk_ref_i, self.SETTLE_REF_CYCLES)
-        await self._wait_eq(
-            dut.rst_cold_stable_ref_clk_no,
-            1,
-            clk=dut.clk_ref_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_cold_stable_ref_clk_no_release",
-        )
-        await self._wait_eq(
+        primary = await self._wait_eq(
             dut.rst_primary_smc_clk_no,
             1,
             clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_primary_smc_clk_no_release",
+            bound=self.BOUND_CYCLES,
+            label="s1_rst_primary_smc_release",
         )
-        await self._wait_eq(
-            dut.rst_primary_ref_clk_no,
-            1,
-            clk=dut.clk_ref_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_primary_ref_clk_no_release",
+        hier = self._resolve_dual_net_hierarchy(dut)
+        self._log(
+            "baseline dual-net hierarchy: "
+            "u_smc_local_xbar + u_smc_internal_axi_lite_xbar + "
+            "u_smc_periph_axi_lite_xbar present "
+            f"(rst_primary_smc={primary})"
         )
 
-        # S2 — CLK PRIMARY with freeze window
-        # SMC progress: fuse_reset_n_delayed_o is a 16-stage clk_smc pipe (en=1).
-        # DTP progress: xtrig_clk_stop_req -> CTN 2FF+reg -> dtp_stop_clks_o.
+        # ------------------------------------------------------------------
+        # S2 SMC-FAB-DUAL-NET.S2 — dest=local_peripheral + dest=config_register
+        # ------------------------------------------------------------------
         self._mark_step(
             "S2",
-            "CLK PRIMARY: SMC fuse_reset pipe + DTP stop_clks sync; "
-            "freeze >=64; resume",
+            "ACTION SMC-FAB-DUAL-NET.S2: observe AXI4-Lite LP destination "
+            "attachments (GPIO local_peripheral + base_config config_register)",
+        )
+        self._log(
+            "COVERAGE SMC-FAB-DUAL-NET.S2 cells: "
+            "dest=local_peripheral dest=config_register net=AXI4-Lite"
         )
 
-        async def _arm_smc_pipe_midflight(tag: str) -> None:
-            """Cold pulse so fuse_reset_n_delayed_o is 0 with primary just released.
+        lp_cfg = hier["lp_cfg_xbar"]
+        lp_periph = hier["lp_periph_xbar"]
+        cfg_rst = self._rst_handle(lp_cfg, "LP cfg xbar")
+        per_rst = self._rst_handle(lp_periph, "LP periph xbar")
 
-            No long settle — the 16-stage pipe fills within ~16 clk_smu cycles.
-            """
-            dut.xtrig_clk_stop_req.value = 0
-            dut.rst_cold_ni.value = 0
-            await ClockCycles(dut.clk_ref_i, 64)
-            await self._wait_eq(
-                dut.rst_primary_smc_clk_no,
-                0,
-                clk=dut.clk_smu_i,
-                bound=self.BOUND_REF_CYCLES,
-                label=f"s2_{tag}_rst_primary_smc_hold",
-            )
-            dut.rst_cold_ni.value = 1
-            await self._wait_eq(
-                dut.rst_primary_smc_clk_no,
-                1,
-                clk=dut.clk_smu_i,
-                bound=self.BOUND_REF_CYCLES,
-                label=f"s2_{tag}_rst_primary_smc_release",
-            )
-            # Pipe input is 1 but delayed output still 0 for ~16 clk_smu cycles.
-            if self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o") != 0:
-                raise AssertionError(
-                    f"SMC fuse_reset_n_delayed_o not 0 right after primary "
-                    f"release ({tag})"
+        # Destination-side attachments (Traffic Subordinates):
+        #   local_peripheral → gpio_req_o (SPEC: UART/I2C/GPIO …)
+        #   config_register  → smc_base_config_req_o (SPEC: fabric control /
+        #                      filtering / remapping CSRs)
+        gpio_req = self._require_child(lp_periph, "gpio_req_o")
+        cfg_req = self._require_child(lp_cfg, "smc_base_config_req_o")
+
+        expect_periph_lite = self._axil_req_bits(
+            self.SPEC_ADDR_LOCAL, self.SPEC_PERIPH_LITE_DATA
+        )
+        expect_cfg_lite = self._axil_req_bits(
+            self.SPEC_ADDR_LOCAL, self.SPEC_DATA_WIDTH
+        )
+
+        label = "s2_dest_attachment_settle"
+        last_cfg_rst = last_per_rst = None
+        gpio_bits = cfg_bits = None
+        matched = False
+        for _ in range(self.BOUND_CYCLES):
+            await RisingEdge(dut.clk_smu_i)
+            last_cfg_rst = self._sample(cfg_rst, "lp_cfg.rst")
+            last_per_rst = self._sample(per_rst, "lp_periph.rst")
+            try:
+                gpio_bits = self._nbits(gpio_req, "dest.gpio_req_o")
+                cfg_bits = self._nbits(cfg_req, "dest.smc_base_config_req_o")
+            except AssertionError:
+                continue
+            if (
+                last_cfg_rst == 1
+                and last_per_rst == 1
+                and gpio_bits == expect_periph_lite
+                and cfg_bits == expect_cfg_lite
+            ):
+                matched = True
+                self._timeout_paths.append(
+                    f"{label}: bound={self.BOUND_CYCLES} ok "
+                    f"last=cfg_rst={last_cfg_rst}/per_rst={last_per_rst}/"
+                    f"gpio_bits={gpio_bits}/cfg_bits={cfg_bits}"
                 )
-
-        # LIVE: prove each consumer advances because clk_smu_i runs.
-        await _arm_smc_pipe_midflight("live")
-        smc_live0 = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
-        await self._wait_eq(
-            dut.fuse_reset_n_delayed_o,
-            1,
-            clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="s2_smc_fuse_delayed_live",
-        )
-        smc_live1 = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
-        smc_adv = 1 if smc_live1 != smc_live0 else 0
-
-        dtp_live0 = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
-        if dtp_live0 != 0:
-            raise AssertionError(
-                f"DTP dtp_stop_clks_o expected 0 before LIVE stop req, got {dtp_live0}"
+                break
+        if not matched:
+            self._timeout_paths.append(
+                f"{label}: bound={self.BOUND_CYCLES} EXPIRED "
+                f"last=cfg_rst={last_cfg_rst}/per_rst={last_per_rst}/"
+                f"gpio_bits={gpio_bits}/cfg_bits={cfg_bits}"
             )
-        dut.xtrig_clk_stop_req.value = self.DTP_CLK_STOP_PAT
-        await self._wait_eq(
-            dut.dtp_stop_clks_o,
-            1,
-            clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="s2_dtp_stop_clks_live_assert",
-        )
-        dtp_live1 = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
-        dtp_adv = 1 if dtp_live1 != dtp_live0 else 0
-        dut.xtrig_clk_stop_req.value = 0
-        await self._wait_eq(
-            dut.dtp_stop_clks_o,
-            0,
-            clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="s2_dtp_stop_clks_live_clear",
-        )
-        if smc_adv < 1 or dtp_adv < 1:
             raise AssertionError(
-                f"SMC/DTP clocked LIVE progress missing: "
-                f"smc_adv={smc_adv} dtp_adv={dtp_adv}"
+                f"TIMEOUT {label}: bound={self.BOUND_CYCLES} "
+                f"last_state=cfg_rst={last_cfg_rst}/per_rst={last_per_rst}/"
+                f"gpio_bits={gpio_bits}/cfg_bits={cfg_bits} "
+                f"expect_gpio={expect_periph_lite} expect_cfg={expect_cfg_lite}"
             )
 
-        # FREEZE mid-flight: re-arm both, freeze before either completes.
-        await _arm_smc_pipe_midflight("freeze")
-        smc_pre = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
-        dtp_pre = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
-        if smc_pre != 0 or dtp_pre != 0:
-            raise AssertionError(
-                f"mid-flight arm failed: smc_delayed={smc_pre} dtp_stop={dtp_pre}"
-            )
-        dut.xtrig_clk_stop_req.value = self.DTP_CLK_STOP_PAT
-        freeze_edges = [0]
+        # Dual-network coexistence: HP AXI4 xbar still present.
+        if hier["hp_xbar"] is None:
+            raise AssertionError("HP AXI4 local xbar missing (not dual-net)")
 
-        async def _count_smu_edges() -> None:
-            while True:
-                await RisingEdge(dut.clk_smu_i)
-                freeze_edges[0] += 1
-
-        self._freeze_smu_clk()
-        edge_mon = cocotb.start_soon(_count_smu_edges())
-        await ClockCycles(dut.clk_ref_i, self.FREEZE_REF_CYCLES)
-        edge_mon.cancel()
-        freeze_smc_adv = freeze_edges[0]
-        freeze_dtp_adv = freeze_edges[0]
-        smc_frz = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
-        dtp_frz = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
-        if freeze_smc_adv != 0:
-            raise AssertionError(
-                f"clk_smu_i edges during freeze: {freeze_smc_adv} (expect 0)"
+        # Dest cells achieved: both subordinate attachments observed.
+        dest_cells = 0
+        if gpio_bits == expect_periph_lite:
+            dest_cells += 1
+            self._log(
+                "DEST dest=local_peripheral path=gpio_req_o "
+                f"axil_pack={gpio_bits} "
+                f"(SPEC addr={self.SPEC_ADDR_LOCAL} "
+                f"periph_data={self.SPEC_PERIPH_LITE_DATA})"
             )
-        if smc_frz != smc_pre or dtp_frz != dtp_pre:
+        if cfg_bits == expect_cfg_lite:
+            dest_cells += 1
+            self._log(
+                "DEST dest=config_register path=smc_base_config_req_o "
+                f"axil_pack={cfg_bits} "
+                f"(SPEC addr={self.SPEC_ADDR_LOCAL} "
+                f"data={self.SPEC_DATA_WIDTH})"
+            )
+        if dest_cells != 2:
             raise AssertionError(
-                f"SMC/DTP progressed during clk_smu freeze: "
-                f"smc {smc_pre}->{smc_frz} dtp {dtp_pre}->{dtp_frz}"
+                f"SMC-FAB-DUAL-NET.S2 dest cells={dest_cells} expect=2"
             )
 
-        # RESUME: both clocked consumers complete their pending transitions.
-        self._resume_smu_clk()
-        await self._wait_eq(
-            dut.fuse_reset_n_delayed_o,
-            1,
-            clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="s2_smc_fuse_delayed_resume",
+        detail_s2 = (
+            "net=AXI4-Lite "
+            f"dest=local_peripheral=gpio_req_o(pack={gpio_bits}) "
+            f"dest=config_register=smc_base_config_req_o(pack={cfg_bits}) "
+            f"cfg_rst={last_cfg_rst} per_rst={last_per_rst}"
         )
-        await self._wait_eq(
-            dut.dtp_stop_clks_o,
-            1,
-            clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="s2_dtp_stop_clks_resume",
-        )
-        resume_smc = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
-        resume_dtp = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
-        dut.xtrig_clk_stop_req.value = 0
-        await self._wait_eq(
-            dut.dtp_stop_clks_o,
-            0,
-            clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="s2_dtp_stop_clks_resume_clear",
-        )
-        if resume_smc != 1 or resume_dtp != 1:
-            raise AssertionError(
-                f"SMC/DTP did not resume after freeze: "
-                f"smc={resume_smc} dtp={resume_dtp}"
-            )
-
-        chk_clk_primary = (
-            f"CHK-CLK-PRIMARY: SMC and DTP each record >=1 advancing sample while "
-            f"clk_smu_i toggles and 0 advancing samples across a frozen clk_smu_i "
-            f"window of >={self.FREEZE_REF_CYCLES} cycles "
-            f"(smc_adv={smc_adv} dtp_adv={dtp_adv} "
-            f"smc_live={smc_live0}->{smc_live1} dtp_live={dtp_live0}->{dtp_live1} "
-            f"freeze_smc={smc_pre}->{smc_frz} freeze_dtp={dtp_pre}->{dtp_frz} "
-            f"resume_smc={resume_smc} resume_dtp={resume_dtp} "
-            f"freeze_smc_adv={freeze_smc_adv} freeze_dtp_adv={freeze_dtp_adv} "
-            f"freeze_cycles={self.FREEZE_REF_CYCLES})"
-        )
-        self._log(chk_clk_primary)
+        self._log(f"CHK-SMC-FAB-DUAL-NET-S2: PASS ({detail_s2})")
         sb.expect_eq(
-            "CHK-CLK-PRIMARY clocked progress freeze resume",
-            (
-                smc_adv >= 1
-                and dtp_adv >= 1
-                and freeze_smc_adv == 0
-                and freeze_dtp_adv == 0
-                and smc_frz == smc_pre
-                and dtp_frz == dtp_pre
-                and resume_smc == 1
-                and resume_dtp == 1
-            ),
-            True,
-            evidence="CHK-CLK-PRIMARY",
+            "CHK-SMC-FAB-DUAL-NET-S2 dest cell count",
+            dest_cells,
+            2,
+            evidence="CHK-SMC-FAB-DUAL-NET-S2",
+        )
+        sb.expect_eq(
+            "CHK-SMC-FAB-DUAL-NET-S2 local_peripheral gpio pack",
+            gpio_bits,
+            expect_periph_lite,
+            evidence="CHK-SMC-FAB-DUAL-NET-S2",
+        )
+        sb.expect_eq(
+            "CHK-SMC-FAB-DUAL-NET-S2 config_register pack",
+            cfg_bits,
+            expect_cfg_lite,
+            evidence="CHK-SMC-FAB-DUAL-NET-S2",
         )
 
-        # S3 — CLK REF
+        # ------------------------------------------------------------------
+        # S3 SMC-FAB-DUAL-NET.S3 — data-bus width 64 on both networks
+        # ------------------------------------------------------------------
         self._mark_step(
             "S3",
-            "CLK REF: sample reference-domain reset-sync advancing on clk_ref_i",
+            "ACTION SMC-FAB-DUAL-NET.S3: derive data-bus width from SPEC "
+            "packing formula on AXI4 HP and AXI4-Lite LP nets",
         )
-        ref_adv = 0
-        for _ in range(self.REF_OBS_CYCLES):
-            await RisingEdge(dut.clk_ref_i)
-            cold = self._sample(
-                dut.rst_cold_stable_ref_clk_no, "rst_cold_stable_ref_clk_no"
+        self._log(
+            "COVERAGE SMC-FAB-DUAL-NET.S3 cells: "
+            "net=AXI4,data=64 net=AXI4-Lite,data=64"
+        )
+
+        local = hier["local_fabric"]
+        if not hasattr(local, "input_axi_req_i"):
+            raise AssertionError("unobservable AXI4 HP packed bus input_axi_req_i")
+        if not hasattr(local, "axil_smc_base_config_req_o"):
+            raise AssertionError(
+                "unobservable AXI4-Lite LP packed bus axil_smc_base_config_req_o"
             )
-            pref = self._sample(dut.rst_primary_ref_clk_no, "rst_primary_ref_clk_no")
-            if cold != 1 or pref != 1:
-                raise AssertionError(
-                    f"ref-domain reset-sync unexpected levels cold={cold} pref={pref}"
-                )
-            ref_adv += 1
-        chk_clk_ref = (
-            f"CHK-CLK-REF: reference-domain reset-sync logic records >=1 advancing "
-            f"sample on clk_ref_i in the observation window (ref_adv={ref_adv})"
+
+        hp_packed = self._nbits(local.input_axi_req_i, "local_fabric.input_axi_req_i")
+        lp_packed = self._nbits(
+            local.axil_smc_base_config_req_o,
+            "local_fabric.axil_smc_base_config_req_o",
         )
-        self._log(chk_clk_ref)
+
+        # Independent expect: invert sampled packing with SPEC addr/id/user
+        # to obtain the data-bus width (the FL quantity). Fail if != 64.
+        hp_data = self._derive_axi4_data_width(
+            hp_packed,
+            self.SPEC_ADDR_LOCAL,
+            self.SPEC_ID_LOCAL_FABRIC_SLV,
+            self.SPEC_USER_WIDTH,
+        )
+        lp_data = self._derive_axil_data_width(lp_packed, self.SPEC_ADDR_LOCAL)
+
+        if hp_data != self.SPEC_DATA_WIDTH:
+            raise AssertionError(
+                f"AXI4 HP data_width={hp_data} expect={self.SPEC_DATA_WIDTH} "
+                f"(packed={hp_packed})"
+            )
+        if lp_data != self.SPEC_DATA_WIDTH:
+            raise AssertionError(
+                f"AXI4-Lite LP data_width={lp_data} "
+                f"expect={self.SPEC_DATA_WIDTH} (packed={lp_packed})"
+            )
+
+        # Secondary falsifier only: 32-bit Lite contrast must not equal LP64.
+        expect_lite32 = self._axil_req_bits(
+            self.SPEC_ADDR_LOCAL, self.SPEC_PERIPH_LITE_DATA
+        )
+        if lp_packed == expect_lite32:
+            raise AssertionError(
+                "AXI4-Lite config network collapsed to 32-bit Lite packing"
+            )
+
+        net_cells = 0
+        if hp_data == self.SPEC_DATA_WIDTH:
+            net_cells += 1
+        if lp_data == self.SPEC_DATA_WIDTH:
+            net_cells += 1
+        if net_cells != 2:
+            raise AssertionError(
+                f"SMC-FAB-DUAL-NET.S3 net cells={net_cells} expect=2"
+            )
+
+        detail_s3 = (
+            f"net=AXI4,data={hp_data} "
+            f"(input_axi_req_i packed={hp_packed} "
+            f"formula←SPEC addr={self.SPEC_ADDR_LOCAL}/"
+            f"id={self.SPEC_ID_LOCAL_FABRIC_SLV}/"
+            f"user={self.SPEC_USER_WIDTH}) "
+            f"net=AXI4-Lite,data={lp_data} "
+            f"(axil_smc_base_config_req_o packed={lp_packed} "
+            f"formula←SPEC addr={self.SPEC_ADDR_LOCAL})"
+        )
+        self._log(f"CHK-SMC-FAB-DUAL-NET-S3: PASS ({detail_s3})")
         sb.expect_eq(
-            "CHK-CLK-REF ref-domain samples",
-            ref_adv >= 1,
-            True,
-            evidence="CHK-CLK-REF",
+            "CHK-SMC-FAB-DUAL-NET-S3 AXI4 data-bus width",
+            hp_data,
+            self.SPEC_DATA_WIDTH,
+            evidence="CHK-SMC-FAB-DUAL-NET-S3",
         )
-
-        # S4 — COLD ASSERT
-        self._mark_step("S4", "COLD ASSERT: rst_cold_ni=0; expect rst_cold_stable=0")
-        dut.rst_cold_ni.value = 0
-        cold_asserted = await self._wait_eq(
-            dut.rst_cold_stable_ref_clk_no,
-            0,
-            clk=dut.clk_ref_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_cold_stable_assert",
-        )
-
-        # S5 — COLD RELEASE
-        self._mark_step(
-            "S5",
-            "COLD RELEASE: rst_cold_ni=1; expect rst_cold_stable=1 after sync",
-        )
-        dut.rst_cold_ni.value = 1
-        cold_released = await self._wait_eq(
-            dut.rst_cold_stable_ref_clk_no,
-            1,
-            clk=dut.clk_ref_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_cold_stable_release",
-        )
-        chk_cold = (
-            f"CHK-COLD-RESET: rst_cold_stable_ref_clk_no=1'b0 while rst_cold_ni "
-            f"asserted; after release equals 1'b1 following sync deassert on "
-            f"clk_ref_i (asserted={cold_asserted} released={cold_released})"
-        )
-        self._log(chk_cold)
         sb.expect_eq(
-            "CHK-COLD-RESET polarity",
-            (cold_asserted == 0 and cold_released == 1),
-            True,
-            evidence="CHK-COLD-RESET",
+            "CHK-SMC-FAB-DUAL-NET-S3 AXI4-Lite data-bus width",
+            lp_data,
+            self.SPEC_DATA_WIDTH,
+            evidence="CHK-SMC-FAB-DUAL-NET-S3",
         )
 
-        # S6 — PRIMARY HOLD (cold asserted again so primary holds)
+        # ------------------------------------------------------------------
+        # S4 TIMEOUT inventory
+        # ------------------------------------------------------------------
         self._mark_step(
-            "S6",
-            "PRIMARY HOLD: assert cold/primary path; sample primary smc/ref = 0",
-        )
-        dut.rst_cold_ni.value = 0
-        prim_smc_hold = await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
-            0,
-            clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_primary_smc_hold",
-        )
-        prim_ref_hold = await self._wait_eq(
-            dut.rst_primary_ref_clk_no,
-            0,
-            clk=dut.clk_ref_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_primary_ref_hold",
-        )
-
-        # S7 — PRIMARY RELEASE
-        self._mark_step(
-            "S7",
-            "PRIMARY RELEASE: release cold; sample primary smc/ref = 1",
-        )
-        dut.rst_cold_ni.value = 1
-        await ClockCycles(dut.clk_ref_i, self.SETTLE_REF_CYCLES)
-        prim_smc_rel = await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
-            1,
-            clk=dut.clk_smu_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_primary_smc_release",
-        )
-        prim_ref_rel = await self._wait_eq(
-            dut.rst_primary_ref_clk_no,
-            1,
-            clk=dut.clk_ref_i,
-            bound=self.BOUND_REF_CYCLES,
-            label="rst_primary_ref_release",
-        )
-        chk_prim = (
-            f"CHK-PRIMARY-RESET: rst_primary_smc_clk_no and rst_primary_ref_clk_no "
-            f"both 1'b0 when held and both 1'b1 when released "
-            f"(hold_smc={prim_smc_hold} hold_ref={prim_ref_hold} "
-            f"rel_smc={prim_smc_rel} rel_ref={prim_ref_rel})"
-        )
-        self._log(chk_prim)
-        sb.expect_eq(
-            "CHK-PRIMARY-RESET hold/release",
-            (
-                prim_smc_hold == 0
-                and prim_ref_hold == 0
-                and prim_smc_rel == 1
-                and prim_ref_rel == 1
-            ),
-            True,
-            evidence="CHK-PRIMARY-RESET",
-        )
-
-        # S8 — TIMEOUT contract evidence (exact count + per-entry shape; can fail)
-        self._mark_step(
-            "S8",
-            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry + last-state",
+            "S4",
+            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry "
+            "+ last-state",
         )
         for line in self._timeout_paths:
             self._log(f"TIMEOUT-PATH {line}")
@@ -503,21 +523,17 @@ class smu_smc_smoke_test_seq:
         for i, line in enumerate(self._timeout_paths):
             if "bound=" not in line:
                 raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing finite bound field: {line}"
+                    f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}"
                 )
             if "ok last=" not in line and "EXPIRED last=" not in line:
                 raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing last-state diagnostic: {line}"
-                )
-            if f"bound={self.BOUND_REF_CYCLES}" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] bound != {self.BOUND_REF_CYCLES}: {line}"
+                    f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}"
                 )
         chk_to = (
             "CHK-TIMEOUT-PATHS: every bounded wait names finite bound, "
             f"fail-on-expiry path, and last-state diagnostic "
             f"(paths={n_paths} expect={self.EXPECTED_TIMEOUT_PATHS} "
-            f"bound={self.BOUND_REF_CYCLES})"
+            f"bound={self.BOUND_CYCLES})"
         )
         self._log(chk_to)
         sb.expect_eq(
@@ -527,25 +543,32 @@ class smu_smc_smoke_test_seq:
             evidence="CHK-TIMEOUT-PATHS",
         )
 
-        # PASS term first, then final assertion gate, then CHK-NONVAC.
-        self.cfg.reset_done.set()
         self._step_ts["PASS"] = time.monotonic()
-        self._log("SMU_001 sequence complete (PASS term recorded for NONVAC fence)")
+        self._log(
+            "SMU_ALL_003 sequence complete (PASS term recorded for NONVAC fence)"
+        )
 
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "PASS"]
+        order = ["S1", "S2", "S3", "S4", "PASS"]
         for step_id in order:
             if step_id not in self._step_ts:
                 raise AssertionError(f"CHK-NONVAC missing step term: {step_id}")
         for a, b in zip(order, order[1:]):
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        chk_nonvac = (
-            "CHK-NONVAC: ordered fence S1<S2<S3<S4<S5<S6<S7<PASS all present"
-        )
-        self._log(chk_nonvac)
+        deltas_ns = [
+            int((self._step_ts[b] - self._step_ts[a]) * 1e9)
+            for a, b in zip(order, order[1:])
+        ]
+        positive_deltas = sum(1 for d in deltas_ns if d > 0)
+        if positive_deltas != 4:
+            raise AssertionError(
+                f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
+                f"deltas_ns={deltas_ns}"
+            )
+        self._log("CHK-NONVAC: ordered fence S1<S2<S3<S4<PASS all present")
         sb.expect_eq(
-            "CHK-NONVAC ordered fence",
-            True,
-            True,
+            "CHK-NONVAC positive step-delta count",
+            positive_deltas,
+            4,
             evidence="CHK-NONVAC",
         )
