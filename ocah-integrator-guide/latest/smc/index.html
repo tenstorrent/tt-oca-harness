@@ -234,722 +234,14 @@ consolidated description of OCAH use cases is available in the top-level
 </div>
 </div>
 <div class="sect2">
-<h3 id="smc-memory-map"><a class="anchor" href="#smc-memory-map"></a><a class="link" href="#smc-memory-map">1.2. Memory Map</a></h3>
-<div class="paragraph">
-<p>This section provides a comprehensive overview of the SMC memory map.
-The SMC address space is organized to provide access to various
-functional units including CPU control, peripheral interfaces, system
-management functions, and fabric control mechanisms.</p>
-</div>
-<div class="paragraph">
-<p>All addresses below are expressed as <code>BASE + offset</code>, where <code>BASE</code> can
-be either the local alias (<code>LOCAL_BASE</code>, fixed read-only at
-<code>0xC000_0000</code>) or the global system address (<code>GLOBAL_BASE</code>,
-programmable by firmware). The fabric routes transactions to SMC
-resources identically regardless of which base is used, as long as the
-access falls inside the relevant local or global aperture. The current
-SMC <code>REGION_SIZE</code> CSR reset is 16 MiB for the chiplet-global aperture;
-the input fabric&#8217;s internal local-alias window is controlled by the RTL
-<code>LOCAL_ALIAS_REGION_SIZE</code> parameter, currently fixed at 16 MiB.
-Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
-conventions. For details on how <code>LOCAL_BASE</code> and <code>GLOBAL_BASE</code> relate
-and how an adopter maps this aperture into the system address space,
-refer to the
-SMC Address Map Integration
-section of the Integration Guide.</p>
-</div>
-<div class="sect3">
-<h4 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">1.2.1. Address Space Organization</a></h4>
-<div class="paragraph">
-<p>The SMC address space is divided into several major functional regions:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. SMC Address Space Layout</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 15%;">
-<col style="width: 45%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Address Range</th>
-<th class="tableblock halign-left valign-top">Size</th>
-<th class="tableblock halign-left valign-top">Function</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_0000 - BASE + 0x000_0FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core watchdog
-timer interfaces (4 cores, 1KB each)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_1000 - BASE + 0x000_1FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Unit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V Debug Module
-interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2000 - BASE + 0x000_2FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit and
-miscellaneous system control registers</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3000 - BASE + 0x000_3FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose I/O
-control and configuration (65 GPIO instances)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 - BASE + 0x000_5FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Controllers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C controller
-instances (6 instances)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_6000 - BASE + 0x000_8FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">12KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral Controllers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus,
-I2C, and UART interfaces</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_9000 - BASE + 0x000_DFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">20KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Security, Timing &amp; DFT</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse,
-telemetry, system timer, DTP control, and DFT status</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_0000 - BASE + 0x001_7FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU control, address
-remapping, and filtering</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_8000 - BASE + 0x003_7FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
-communication mailbox (32 channels: 16 inbound + 16 outbound)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8000 - BASE + 0x003_83FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data Processing</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMA controller and
-memory zeroer</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x004_0000 - BASE + 0x007_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">256KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Regions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ROM and scratchpad
-memory spaces</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x016_0000 - BASE + 0x016_8FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">36KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Debug and trace (CLA) module</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 - BASE + 0x040_57FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">22KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite External</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter
-extension window: mandatory technology-specific blocks (GPIO pads, PLL, PVT,
-eFuse SHIM) plus optional supplementary devices</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x080_0000 - BASE + 0x1FF_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">24MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address Remapping</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode and Xvisor
-remapped address regions</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400_0000 - BASE + 0x43F_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V PLIC
-(Platform-Level Interrupt Controller)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800_0000 - BASE + 0x801_3FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">80KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Timer &amp; Bus Error</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT and per-core
-Bus Error Units</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect3">
-<h4 id="detailed-address-map"><a class="anchor" href="#detailed-address-map"></a><a class="link" href="#detailed-address-map">1.2.2. Detailed Address Map</a></h4>
-<div class="paragraph">
-<p>The following table provides specific address assignments for all SMC
-components:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. SMC Component Address Map</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 20%;">
-<col style="width: 30%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Component</th>
-<th class="tableblock halign-left valign-top">Address Range</th>
-<th class="tableblock halign-left valign-top">Instance</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WDT Core 0-3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_0000 + (N×0x400)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timers for
-each CPU core</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Module</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_1000 - BASE + 0x000_1FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V debug
-interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2000 - BASE + 0x000_27FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System reset control</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Miscellaneous Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2800 - BASE + 0x000_2FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System
-configuration registers</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3000 + (N×0x10)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interface
-control</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3440 + (N×0x20)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad
-configuration</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C Controllers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 + (N×0x500)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C
-controller instances</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus Controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_6000 - BASE + 0x000_6FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive
-voltage scaling control</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I2C Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_7000 - BASE + 0x000_7FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I2C/SMBus
-communication interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_8000 - BASE + 0x000_8FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART communication
-interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Map</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_9000 - BASE + 0x000_9FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse memory mapping
-interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_A000 - BASE + 0x000_AFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse interface
-controller</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry Receiver</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_B000 - BASE + 0x000_BFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry
-data processing</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer OCTS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_C000 - BASE + 0x000_CFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Multi-chiplet
-time synchronization</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DTP Control Registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_D000 - BASE + 0x000_D7FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">512 entries</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DTP
-control register block</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Control/Status</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_D800 - BASE + 0x000_DFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DFT control
-and status for ROM</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_0000 - BASE + 0x001_1FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster
-management</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Alias Remap</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_2000 + (N×0x20)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address alias
-remapping</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode Remap</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_3000 + (N×0x8)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Machine mode
-address remapping</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Xvisor Remap</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_4000 + (N×0x8)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hypervisor address
-remapping</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound Filters</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_5000 + (N×0x20)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound traffic
-filtering</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound Filters</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_6000 + (N×0x20)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound traffic
-filtering</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_8000 - BASE + 0x003_7FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 channels</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
-communication (16 inbound + 16 outbound)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8000 - BASE + 0x003_81FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Direct memory
-access controller</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8200 - BASE + 0x003_83FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory
-initialization unit</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPM ROM Memory</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x004_0000 - BASE + 0x005_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad ROM memory
-space</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPM Memory</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x006_0000 - BASE + 0x007_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad memory space</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CLA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x016_0000 - BASE + 0x016_8FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Debug and trace (CLA)
-module</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite External</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 - BASE + 0x040_57FF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 window</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter
-extension window, split into a mandatory and a supplementary region (see the
-AXI-Lite External Window section below)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode Region</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x100_0000 - BASE + 0x17F_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Machine mode remapped
-space</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Xvisor Region</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x180_0000 - BASE + 0x1FF_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hypervisor remapped
-space</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400_0000 - BASE + 0x43F_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt
-Controller</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800_0000 - BASE + 0x800_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core Local Interruptor</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Units</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x801_0000 + (N×0x1000)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core bus
-error handling</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect3">
-<h4 id="axi-lite-external-window"><a class="anchor" href="#axi-lite-external-window"></a><a class="link" href="#axi-lite-external-window">1.2.3. AXI-Lite External Window</a></h4>
-<div class="paragraph">
-<p>The <code>smc_external</code> window at <code>BASE + 0x040_0000</code> is the adopter extension
-window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
-technology- and vendor-specific implementations of memory-mapped blocks. The
-window is split into two regions (see <code>smc_external.rdl</code>); hardware treats
-both identically — the split is purely organizational:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
-Their function is dictated by the OCAH specifications, but their
-implementation is inherently technology- and vendor-specific — the GPIO pad
-controls, the PLL macro, the PVT sensors, and the eFuse SHIM.</p>
-</li>
-<li>
-<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): optional region for any additional
-memory-mapped devices the adopter wants to expose. The reference
-integration places its vendor I3C controllers (nonfree overlay) here.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Addresses below are expressed as <code>BASE + offset</code> (<code>BASE</code> = <code>0xC000_0000</code>).</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. SMC AXI-Lite External Window — Mandatory Region</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 20%;">
-<col style="width: 30%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Component</th>
-<th class="tableblock halign-left valign-top">Address Range</th>
-<th class="tableblock halign-left valign-top">Instance</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Clock-Obs GPIO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 (intf), BASE + 0x040_000C (ctrl)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation GPIO</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Clock-Obs GPIO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0010 (intf), BASE + 0x040_001C (ctrl)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT clock observation GPIO</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO PoC/PBias Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0020</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Power-on and pad bias
-control</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Refclk Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_002C</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock GPIO control</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Per-Pad GPIO Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0100 + (N×0x20)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Per-pad
-control registers for the pad ring</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_1000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock generation and management</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Wrapper</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_2000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Process, Voltage, Temperature
-monitoring</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse SHIM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_3000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter eFuse hardware abstraction
-layer</p></td>
-</tr>
-</tbody>
-</table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. SMC AXI-Lite External Window — Supplementary Region (optional)</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 20%;">
-<col style="width: 30%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Component</th>
-<th class="tableblock halign-left valign-top">Address Range</th>
-<th class="tableblock halign-left valign-top">Instance</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Vendor I3C Controllers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_4000 + (N×0x400)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6 instances</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Vendor
-I3C controller wrappers (nonfree overlay)</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>The unallocated remainder of the window is passed through to the chip-level
-adopter external port.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="register-interface-standards"><a class="anchor" href="#register-interface-standards"></a><a class="link" href="#register-interface-standards">1.2.4. Register Interface Standards</a></h4>
-<div class="paragraph">
-<p>All SMC components use standard AMBA interfaces. We summarize the
-interfaces in the following table:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. Register Interface Standards</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 20%;">
-<col style="width: 30%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Interface</th>
-<th class="tableblock halign-left valign-top">Address Width</th>
-<th class="tableblock halign-left valign-top">Data Width</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High-performance components</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral components</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Address Alignment:</strong> 32-bit registers on 4-byte boundaries, 64-bit on 8-byte boundaries</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Endianness:</strong> Little-endian byte ordering throughout</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Protection:</strong> AXI protection bits used for secure/non-secure access control</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect3">
-<h4 id="access-control-and-security"><a class="anchor" href="#access-control-and-security"></a><a class="link" href="#access-control-and-security">1.2.5. Access Control and Security</a></h4>
-<div class="paragraph">
-<p>The SMC implements the following access control mechanisms:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. Access Control Mechanisms</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 75%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Mechanism</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address Filtering</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable inbound and outbound address filters</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Protection Levels</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI protection attribute enforcement</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure Regions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse and security-critical registers require elevated
-privileges</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Error Handling</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bus error units provide comprehensive error logging and
-reporting</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect3">
-<h4 id="component-specific-register-documentation"><a class="anchor" href="#component-specific-register-documentation"></a><a class="link" href="#component-specific-register-documentation">1.2.6. Component-Specific Register Documentation</a></h4>
-<div class="paragraph">
-<p>For detailed register-level documentation of each SMC component, refer
-to the individual component documentation:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. SMC Component Documentation</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 50%;">
-<col style="width: 20%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Category</th>
-<th class="tableblock halign-left valign-top">Description</th>
-<th class="tableblock halign-left valign-top">Reference</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU and System Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control, PLIC, CLINT, Watchdog Timers, and
-Bus Error Units</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">cpu</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller (PLIC)
-details</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">interrupts</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller detailed register interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">dma</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer control registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">zeroer</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address remapping, inbound/outbound filters, and fabric
-control registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">fabric</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Peripherals and I/O</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO, UART, I2C, PVT, eFuse, Telemetry, and System
-Timer registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">periphs</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Management</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit and system control registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">clk_rst</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock Generation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL wrapper and clock generation registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">pll</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="clock-and-reset-management"><a class="anchor" href="#clock-and-reset-management"></a><a class="link" href="#clock-and-reset-management">1.3. Clock and Reset Management</a></h3>
+<h3 id="clock-and-reset-management"><a class="anchor" href="#clock-and-reset-management"></a><a class="link" href="#clock-and-reset-management">1.2. Clock and Reset Management</a></h3>
 <div class="paragraph">
 <p>The SMC clock and reset management architecture supports multiple clock
 domains, hierarchical reset structures, and selective power management
 through clock gating.</p>
 </div>
 <div class="sect3">
-<h4 id="clock-architecture"><a class="anchor" href="#clock-architecture"></a><a class="link" href="#clock-architecture">1.3.1. Clock Architecture</a></h4>
+<h4 id="clock-architecture"><a class="anchor" href="#clock-architecture"></a><a class="link" href="#clock-architecture">1.2.1. Clock Architecture</a></h4>
 <div class="paragraph">
 <p>The SMC employs a multi-domain clocking architecture.</p>
 </div>
@@ -1067,7 +359,7 @@ systems.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">1.3.2. Reset Architecture</a></h4>
+<h4 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">1.2.2. Reset Architecture</a></h4>
 <div class="paragraph">
 <p>The SMC employs a hierarchical reset strategy with multiple reset
 sources and synchronization mechanisms. The following diagram shows the
@@ -1089,7 +381,7 @@ logic into reset even when TRST is released. <code>BP_RESETN</code> drives the S
 functional cold reset path after power-good is stable.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. SMC Reset Sources and Characteristics</caption>
+<caption class="title">Table 1. SMC Reset Sources and Characteristics</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -1162,7 +454,7 @@ registers. JTAG/TDR reset state is reset by POR, not by
 <p>Primary reset is activated by reset sources in the following table:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Primary Reset Activation Sources</caption>
+<caption class="title">Table 2. Primary Reset Activation Sources</caption>
 <colgroup>
 <col style="width: 34%;">
 <col style="width: 66%;">
@@ -1203,7 +495,7 @@ per-core watchdog timers and bus error units</p>
 <p>Warm reset is activated by reset sources in the following table:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. Warm Reset Activation Sources</caption>
+<caption class="title">Table 3. Warm Reset Activation Sources</caption>
 <colgroup>
 <col style="width: 34%;">
 <col style="width: 66%;">
@@ -1339,7 +631,7 @@ is asynchronous and deassertion is synchronous.</p>
 provide metastability protection.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. Reset Synchronization Domains</caption>
+<caption class="title">Table 4. Reset Synchronization Domains</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 25%;">
@@ -1387,7 +679,7 @@ coordination for peripheral controllers</p></td>
 system management needs:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. Advanced Reset Features</caption>
+<caption class="title">Table 5. Advanced Reset Features</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -1581,12 +873,12 @@ robust operation during complex reset scenarios.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="clock-and-reset-based-power-management-integration"><a class="anchor" href="#clock-and-reset-based-power-management-integration"></a><a class="link" href="#clock-and-reset-based-power-management-integration">1.3.3. Clock and Reset-Based Power Management Integration</a></h4>
+<h4 id="clock-and-reset-based-power-management-integration"><a class="anchor" href="#clock-and-reset-based-power-management-integration"></a><a class="link" href="#clock-and-reset-based-power-management-integration">1.2.3. Clock and Reset-Based Power Management Integration</a></h4>
 <div class="paragraph">
 <p>The following table lists the clock gating control parameters.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 13. Clock Gating Control Parameters</caption>
+<caption class="title">Table 6. Clock Gating Control Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 35%;">
@@ -1627,6 +919,136 @@ robust operation during complex reset scenarios.</p>
 allowing individual subsystems to be reset and isolated, enabling power
 islands where unused subsystems can be fully powered down.</p>
 </div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="peripherals"><a class="anchor" href="#peripherals"></a><a class="link" href="#peripherals">1.3. Peripherals</a></h3>
+<div class="paragraph">
+<p>This section documents the main peripherals integrated within the System
+Management Controller (SMC). These peripherals provide essential I/O and
+communication capabilities for the OCH system, supporting various
+protocols and interfaces required for system operation and external
+connectivity.</p>
+</div>
+<div class="paragraph">
+<p>The following table summarizes the key peripherals, their communication
+protocols, and default instance counts:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. SMC Peripheral Summary</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 47%;">
+<col style="width: 17%;">
+<col style="width: 11%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Peripheral</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Protocol</th>
+<th class="tableblock halign-left valign-top">Instances</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/axi_lite_mailbox_unit/doc/index.html" class="xref page">Mailbox</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO-based bidirectional
+communication channels for inter-processor or inter-chiplet
+communication.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/system_timer_octs/doc/index.html" class="xref page">System Timer OCTS</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit
+timer for multi-chiplet time synchronization with PRIMARY/SECONDARY
+modes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/efuse/doc/index.html" class="xref page">eFuse</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure access to One-Time
+Programmable (OTP) memory with layered security architecture.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/uart_16550/doc/index.html" class="xref page">UART 16550</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Industry-standard
+UART with enhanced FIFO capabilities and comprehensive interrupt
+support.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/log_engine/doc/index.html" class="xref page">Log Engine</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA-based logging
+system for efficient transfer of log messages to UART interface.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/i2c/doc/index.html" class="xref page">I2C</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Full I2C/SMBus/PMBus communication
+controller supporting both controller and target modes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/avsbus_controller/doc/index.html" class="xref page">AVSBus Controller</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive voltage scaling communication controller for managing voltage
+rails and power conditions.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose Input/Output
+with dual-mode operation and comprehensive interrupt system (64 bonded + 4 unbonded).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">68</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hardware component for decoding and processing telemetry data from
+multi-chiplet systems.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller for enhanced serial communication (RESERVED - NOT YET
+IMPLEMENTED).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset control and synchronization, deals with SMC resets (core, primary),
+subsystem (chiplet) resets, and the cool reset sequence.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Misc</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Wrapper for miscellaneous registers: scratch registers, chip config and NDM reset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><a href="../ip/axi_lite_mailbox_unit/doc/index.html" class="xref page">Mailbox</a>
+<a href="../ip/system_timer_octs/doc/index.html" class="xref page">System Timer OCTS</a>
+<a href="../ip/efuse/doc/index.html" class="xref page">EFuse</a>
+<a href="../ip/uart_16550/doc/index.html" class="xref page">UART 16550</a>
+<a href="../ip/log_engine/doc/index.html" class="xref page">Log Engine</a>
+<a href="../ip/i2c/doc/index.html" class="xref page">I2C</a>
+<a href="../ip/avsbus_controller/doc/index.html" class="xref page">AVSBus Controller</a>
+<a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a>
+<a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p>
 </div>
 </div>
 <div class="sect2">
@@ -2407,195 +1829,7 @@ firmware development and diagnostics.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="rom"><a class="anchor" href="#rom"></a><a class="link" href="#rom">1.5. Boot ROM</a></h3>
-<div class="paragraph">
-<p>The SMC Boot ROM provides the initial firmware that executes immediately after
-power-on reset, performing essential hardware initialization and system bring-up
-functions. The ROM contains the SMC Production ROM firmware, a minimal
-bootloader designed to establish a known good hardware state before
-transitioning control to more sophisticated firmware layers.</p>
-</div>
-<div class="sect3">
-<h4 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1.5.1. ROM Architecture</a></h4>
-<div class="paragraph">
-<p>The Boot ROM is implemented as a read-only memory region mapped at base address
-<code>0xC0040000</code> with a configurable size of up to 64KB. The ROM is accessed by the
-CPU cluster through an AXI-Lite interface, with read requests issued via the
-<code>rom_intf_req_o</code> signal and responses received through <code>rom_intf_rsp_i</code>. This
-interface provides the CPU with direct access to the ROM contents for
-instruction fetch and read-only data access during the boot sequence.</p>
-</div>
-<div class="paragraph">
-<p>The ROM memory layout is organized into standard executable sections, with code
-residing in the <code>.text</code> section, read-only data in <code>.rodata</code>, and initialization
-routines in <code>.init</code>. Initialized data variables are stored in the <code>.data</code>
-section within ROM but are automatically copied to SRAM during the boot process,
-allowing the ROM to remain read-only while providing writable data space for the
-firmware. The detailed memory layout and section placement are defined in the
-linker script located at <code>hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld</code>, which
-specifies the exact address ranges and alignment requirements for each memory
-region.</p>
-</div>
-<div class="paragraph">
-<p>Within the SMC&#8217;s memory hierarchy, the ROM serves as the primary boot source,
-providing the initial reset vector target for all CPU cores. The ROM operates
-independently of the cache hierarchy, ensuring deterministic boot behavior, and
-complements the scratchpad SRAM by providing persistent code storage while the
-SRAM provides runtime data and stack space for the boot firmware.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="rom-hardware-configuration"><a class="anchor" href="#rom-hardware-configuration"></a><a class="link" href="#rom-hardware-configuration">1.5.2. ROM Hardware Configuration</a></h4>
-<div class="paragraph">
-<p>The ROM wrapper module (<code>OCAHSMCCluster_rom_wrapper</code>) provides hardware support
-for <strong>memory bank configuration</strong> and <strong>endianness swapping</strong>, enabling flexibility in
-ROM implementation and compatibility with different system requirements.</p>
-</div>
-<div class="paragraph">
-<p><strong>Memory bank configuration</strong> is controlled through the <code>mem_cfg_i</code> input signal,
-which provides an 11-bit configuration value passed to the underlying ROM
-primitive. This configuration mechanism allows the ROM memory banks to be
-configured for different memory technologies, repair strategies, or
-foundry-specific requirements. The configuration follows the same pattern used
-by other memory components in the SMC, including cache tag and data arrays and
-scratchpad RAM banks, providing a consistent interface for memory configuration
-across the system.</p>
-</div>
-<div class="paragraph">
-<p>The ROM bank configuration can be controlled through shadow
-register values read from efuse data, similar to the endianness control, allowing
-bank swapping and memory configuration to be set during manufacturing or through
-efuse programming.</p>
-</div>
-<div class="paragraph">
-<p><strong>Endianness swapping</strong> support enables the ROM to provide data in either
-little-endian or big-endian byte order, regardless of the native byte order
-stored in the ROM memory. The <code>rom_flip_endianness_i</code> control signal, when
-asserted, causes the ROM wrapper to perform byte-level swapping on 64-bit words
-read from the ROM before returning them to the CPU. The endianness flip function
-swaps byte pairs within each 64-bit word, transforming little-endian data to
-big-endian format and vice versa. This hardware-level byte swapping occurs
-transparently to the CPU, allowing the same ROM image to be used in systems with
-different endianness requirements without modifying the firmware image itself.</p>
-</div>
-<div class="paragraph">
-<p>The endianness control signal is derived from shadow register values read from
-efuse data during system initialization, allowing the endianness configuration to
-be set during manufacturing or through efuse programming. This configuration
-remains fixed throughout system operation, ensuring consistent ROM access behavior
-across all boot phases and runtime operation.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="rom-boot-code"><a class="anchor" href="#rom-boot-code"></a><a class="link" href="#rom-boot-code">1.5.3. ROM Boot Code</a></h4>
-<div class="paragraph">
-<p>The SMC Production ROM firmware implements a comprehensive boot sequence
-designed to initialize hardware components, read configuration data, and
-establish communication interfaces for multi-chiplet coordination. The boot code
-is organized into a structured multi-phase initialization process that
-progressively establishes system functionality.</p>
-</div>
-<div class="paragraph">
-<p>The boot sequence begins with Phase 0, which initializes POST (Power-On
-Self-Test) codes and the scratchpad memory system. POST codes provide external
-visibility into the boot progress, enabling debug and monitoring equipment to
-track initialization stages. The scratchpad initialization establishes the
-memory environment required for subsequent boot phases.</p>
-</div>
-<div class="paragraph">
-<p><strong>Phase 1:</strong> focuses on reading hardware configuration through strap pins and efuse
-registers. Hardware straps, sampled from GPIO pins during power-on reset,
-determine fundamental system behavior including chiplet role (primary or
-secondary), boot mode selection, and feature enables. Efuse data provides
-device-specific configuration including I2C/I3C addresses, security settings,
-and chiplet identification. This configuration data drives all subsequent
-initialization decisions.</p>
-</div>
-<div class="paragraph">
-<p>For a secondary chiplet, Phase 1.5 performs PLL (Phase-Locked Loop)
-configuration to establish the primary system clock. The ROM firmware configures
-the PLL through AXI-Lite transactions, switching from the reference clock to the
-synthesized PLL output clock. This phase is conditional based on chiplet type
-detection and the <code>BL0_PLLCLK</code> strap configuration.</p>
-</div>
-<div class="paragraph">
-<p><strong>Phase 2:</strong> handles SRAM setup and memory protection. The ROM establishes memory
-protection boundaries to prevent corruption of its own code and data regions,
-implementing defense-in-depth security measures. SRAM initialization may be
-performed by hardware auto-zero functionality or through software-based zeroing,
-depending on the <code>SRAM_AUTO_ZERO_DISABLE</code> strap setting.</p>
-</div>
-<div class="paragraph">
-<p><strong>Phase 3:</strong> configures communication interfaces based on the chiplet role and boot mode.
-The ROM initializes I2C and I3C controllers, configuring them according to addresses
-read from efuse data. Interface selection logic determines which communication
-channels are enabled based on whether the chiplet is primary or secondary and the
-security state of the device.</p>
-</div>
-<div class="paragraph">
-<p><strong>Phase 4:</strong> initializes the OCCP (Open Chiplet Communication Protocol) interface, which
-enables coordination between chiplets in a multi-chiplet system. The OCCP protocol
-provides a standardized command interface for boot image distribution, status
-reporting, and chiplet coordination. Successful OCCP initialization indicates that
-the ROM is ready to participate in system-level boot coordination.</p>
-</div>
-<div class="paragraph">
-<p><strong>Phase 5:</strong> enters the OCCP command processing loop, where the ROM continuously processes
-commands received over the configured communication interfaces. This loop handles
-firmware image loading, manifest processing for secure boot scenarios, and
-coordination commands from primary chiplets. The ROM remains in this processing loop
-until it receives commands to transition control to subsequent bootloader stages or
-application firmware.</p>
-</div>
-<div class="paragraph">
-<p>The boot code is organized into several functional components. The boot sequence
-components, located in <code>fw/smc/prod_rom/boot/</code>, provide assembly-level startup code,
-trap handlers for exception processing, and SRAM initialization routines. Hardware
-drivers in <code>fw/smc/prod_rom/drivers/</code> implement interfaces to strap pin reading,
-efuse access, PLL configuration, and I2C/I3C peripheral control. Library components
-in <code>fw/smc/prod_rom/lib/</code> provide higher-level functionality including status
-reporting through ring buffers, security state detection, OCCP protocol
-implementation, and interface mapping logic.</p>
-</div>
-<div class="paragraph">
-<p>The ROM firmware is optimized for size, with the production release build
-occupying approximately 20KB of ROM space. Debug builds, which include console
-output and additional diagnostic capabilities, expand to approximately 960KB. The
-detailed boot architecture, protocol specifications, and implementation details are
-documented in the SMC ROM Boot Architecture Specification located at
-<code>fw/smc/prod_rom/specification/smc_rom.adoc</code>.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="integration-and-operation"><a class="anchor" href="#integration-and-operation"></a><a class="link" href="#integration-and-operation">1.5.4. Integration and Operation</a></h4>
-<div class="paragraph">
-<p>The ROM must be populated with a valid firmware image before the system initiates
-the boot sequence. The firmware image is typically programmed into the ROM memory
-during manufacturing or through a secure programming interface before the first
-power-on reset. The ROM contents remain fixed throughout system operation, ensuring
-a reliable and tamper-resistant boot source.</p>
-</div>
-<div class="paragraph">
-<p>The ROM firmware implements chiplet coordination functionality, distinguishing
-between primary and secondary chiplet roles based on hardware strap configuration.
-Primary chiplets act as boot masters, coordinating the initialization of secondary
-chiplets and distributing boot images across the multi-chiplet system. Secondary
-chiplets wait for coordination commands and boot images from the primary chiplet,
-enabling synchronized system bring-up.</p>
-</div>
-<div class="paragraph">
-<p>The OCCP protocol implementation enables secure and reliable communication between
-chiplets during the boot process. The protocol supports both secure and non-secure
-boot modes, with secure modes requiring manifest validation through coordination
-with the SEP (Security and Exception Processor) subsystem. The ROM protects its
-own memory regions from corruption through explicit access control checks,
-preventing unauthorized modification of boot code even in non-secure operational
-modes.</p>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">1.6. Interrupts</a></h3>
+<h3 id="interrupts"><a class="anchor" href="#interrupts"></a><a class="link" href="#interrupts">1.5. Interrupts</a></h3>
 <div class="paragraph">
 <p>The SMC can handle interrupt sources across diverse system management
 functions. The architecture centers around the RISC-V Platform-Level
@@ -2608,7 +1842,7 @@ interrupt routing and priority handling.</p>
 error (NMI)</strong> behavior.</p>
 </div>
 <div class="sect3">
-<h4 id="interrupt-controllers-mmio"><a class="anchor" href="#interrupt-controllers-mmio"></a><a class="link" href="#interrupt-controllers-mmio">1.6.1. Interrupt controllers (MMIO)</a></h4>
+<h4 id="interrupt-controllers-mmio"><a class="anchor" href="#interrupt-controllers-mmio"></a><a class="link" href="#interrupt-controllers-mmio">1.5.1. Interrupt controllers (MMIO)</a></h4>
 <div class="paragraph">
 <p>The CPU cluster integrates with system interrupt controllers via
 standardized interfaces. PLIC (AXI4-Lite) and CLINT (AXI4-Lite) are used
@@ -2665,7 +1899,7 @@ and interfaces (SMC-local view):</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="smc-interrupt-vector-cpu_interrupts_o"><a class="anchor" href="#smc-interrupt-vector-cpu_interrupts_o"></a><a class="link" href="#smc-interrupt-vector-cpu_interrupts_o">1.6.2. SMC interrupt vector (<code>cpu_interrupts_o</code>)</a></h4>
+<h4 id="smc-interrupt-vector-cpu_interrupts_o"><a class="anchor" href="#smc-interrupt-vector-cpu_interrupts_o"></a><a class="link" href="#smc-interrupt-vector-cpu_interrupts_o">1.5.2. SMC interrupt vector (<code>cpu_interrupts_o</code>)</a></h4>
 <div class="paragraph">
 <p>The PLIC exposes 332 global interrupt sources (indices 0–331) in the 4-core
 configuration. Most indices are driven from the SMC <code>cpu_interrupts_o</code> assembly
@@ -2690,7 +1924,7 @@ raw vector bits and PLIC source IDs, see the following section.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="cpu-interrupt-vector-map"><a class="anchor" href="#cpu-interrupt-vector-map"></a><a class="link" href="#cpu-interrupt-vector-map">1.6.3. SMC CPU Interrupt Vector Map</a></h4>
+<h4 id="cpu-interrupt-vector-map"><a class="anchor" href="#cpu-interrupt-vector-map"></a><a class="link" href="#cpu-interrupt-vector-map">1.5.3. SMC CPU Interrupt Vector Map</a></h4>
 <div class="paragraph">
 <p>This section documents the raw <code>cpu_interrupts_o</code> vector assembled in
 <code>hw/smc/smc_base.sv</code>. The vector is built from four sources:</p>
@@ -3110,7 +2344,7 @@ external interrupt bit is defined by the enclosing SoC integration.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="risc-v-plic"><a class="anchor" href="#risc-v-plic"></a><a class="link" href="#risc-v-plic">1.6.4. RISC-V PLIC</a></h4>
+<h4 id="risc-v-plic"><a class="anchor" href="#risc-v-plic"></a><a class="link" href="#risc-v-plic">1.5.4. RISC-V PLIC</a></h4>
 <div class="paragraph">
 <p>The SMC uses a standards-compliant RISC-V Platform-Level Interrupt
 Controller (PLIC) at 0xC400_0000–0xC43F_FFFF (4MB) to manage 332
@@ -3132,14 +2366,14 @@ individual enable bits and <code>mstatus.MIE</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="system-management-interrupt-source-integration"><a class="anchor" href="#system-management-interrupt-source-integration"></a><a class="link" href="#system-management-interrupt-source-integration">1.6.5. System Management Interrupt Source Integration</a></h4>
+<h4 id="system-management-interrupt-source-integration"><a class="anchor" href="#system-management-interrupt-source-integration"></a><a class="link" href="#system-management-interrupt-source-integration">1.5.5. System Management Interrupt Source Integration</a></h4>
 <div class="paragraph">
 <p>The SMC interrupt system brings together a broad set of interrupt
 sources that support reliable and responsive system monitoring and
 control, summarized in the following table.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 14. SMC interrupt sources</caption>
+<caption class="title">Table 8. SMC interrupt sources</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -3198,7 +2432,7 @@ isolation</p></td>
 </div>
 </div>
 <div class="sect3">
-<h4 id="multi-tier-interrupt-classification-and-response-strategy"><a class="anchor" href="#multi-tier-interrupt-classification-and-response-strategy"></a><a class="link" href="#multi-tier-interrupt-classification-and-response-strategy">1.6.6. Multi-Tier Interrupt Classification and Response Strategy</a></h4>
+<h4 id="multi-tier-interrupt-classification-and-response-strategy"><a class="anchor" href="#multi-tier-interrupt-classification-and-response-strategy"></a><a class="link" href="#multi-tier-interrupt-classification-and-response-strategy">1.5.6. Multi-Tier Interrupt Classification and Response Strategy</a></h4>
 <div class="paragraph">
 <p>The SMC interrupt architecture classifies interrupt sources by system
 management function and response needs. System-wide events are delivered
@@ -3214,7 +2448,7 @@ issues with appropriate, targeted actions.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="multi-core-interrupt-distribution-and-load-management"><a class="anchor" href="#multi-core-interrupt-distribution-and-load-management"></a><a class="link" href="#multi-core-interrupt-distribution-and-load-management">1.6.7. Multi-Core Interrupt Distribution and Load Management</a></h4>
+<h4 id="multi-core-interrupt-distribution-and-load-management"><a class="anchor" href="#multi-core-interrupt-distribution-and-load-management"></a><a class="link" href="#multi-core-interrupt-distribution-and-load-management">1.5.7. Multi-Core Interrupt Distribution and Load Management</a></h4>
 <div class="paragraph">
 <p>The SMC supports independent interrupt delivery to each CPU core,
 enabling distribution of interrupt handling and specialized core roles.
@@ -3230,7 +2464,7 @@ to operational needs and system management policies.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="risc-v-clint-and-precise-system-management-timing"><a class="anchor" href="#risc-v-clint-and-precise-system-management-timing"></a><a class="link" href="#risc-v-clint-and-precise-system-management-timing">1.6.8. RISC-V CLINT and Precise System Management Timing</a></h4>
+<h4 id="risc-v-clint-and-precise-system-management-timing"><a class="anchor" href="#risc-v-clint-and-precise-system-management-timing"></a><a class="link" href="#risc-v-clint-and-precise-system-management-timing">1.5.8. RISC-V CLINT and Precise System Management Timing</a></h4>
 <div class="paragraph">
 <p>The Core Local Interruptor (CLINT) in the SMC provides per-core timer
 and software interrupt functionality for precise, deterministic timing
@@ -3245,7 +2479,7 @@ communication essential to reliable multi-core system management.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="fault-detection-and-recovery-architecture"><a class="anchor" href="#fault-detection-and-recovery-architecture"></a><a class="link" href="#fault-detection-and-recovery-architecture">1.6.9. Fault Detection and Recovery Architecture</a></h4>
+<h4 id="fault-detection-and-recovery-architecture"><a class="anchor" href="#fault-detection-and-recovery-architecture"></a><a class="link" href="#fault-detection-and-recovery-architecture">1.5.9. Fault Detection and Recovery Architecture</a></h4>
 <div class="paragraph">
 <p>The SMC provides fault detection and recovery through per-core watchdog
 timers and bus error monitoring, enabling both local fault recovery and
@@ -3254,7 +2488,7 @@ described in the following sections.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="advanced-plic-management-and-adaptive-priority-control"><a class="anchor" href="#advanced-plic-management-and-adaptive-priority-control"></a><a class="link" href="#advanced-plic-management-and-adaptive-priority-control">1.6.10. Advanced PLIC Management and Adaptive Priority Control</a></h4>
+<h4 id="advanced-plic-management-and-adaptive-priority-control"><a class="anchor" href="#advanced-plic-management-and-adaptive-priority-control"></a><a class="link" href="#advanced-plic-management-and-adaptive-priority-control">1.5.10. Advanced PLIC Management and Adaptive Priority Control</a></h4>
 <div class="paragraph">
 <p>In the PLIC, each interrupt source has a configurable priority, letting
 software focus on critical events without overloading the system.</p>
@@ -3276,7 +2510,7 @@ duplicated interrupts and smoothly handles high interrupt rates.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="multi-context-architecture-and-privilege-level-integration"><a class="anchor" href="#multi-context-architecture-and-privilege-level-integration"></a><a class="link" href="#multi-context-architecture-and-privilege-level-integration">1.6.11. Multi-Context Architecture and Privilege Level Integration</a></h4>
+<h4 id="multi-context-architecture-and-privilege-level-integration"><a class="anchor" href="#multi-context-architecture-and-privilege-level-integration"></a><a class="link" href="#multi-context-architecture-and-privilege-level-integration">1.5.11. Multi-Context Architecture and Privilege Level Integration</a></h4>
 <div class="paragraph">
 <p>The multi-context architecture supports security boundaries and
 privilege separation in interrupt handling. Machine-mode and
@@ -3296,7 +2530,7 @@ at different privilege levels.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="precision-timer-management-and-inter-core-coordination"><a class="anchor" href="#precision-timer-management-and-inter-core-coordination"></a><a class="link" href="#precision-timer-management-and-inter-core-coordination">1.6.12. Precision Timer Management and Inter-Core Coordination</a></h4>
+<h4 id="precision-timer-management-and-inter-core-coordination"><a class="anchor" href="#precision-timer-management-and-inter-core-coordination"></a><a class="link" href="#precision-timer-management-and-inter-core-coordination">1.5.12. Precision Timer Management and Inter-Core Coordination</a></h4>
 <div class="paragraph">
 <p>The CLINT timer system delivers precise timing for managing both
 individual cores and coordinated multi-core operations, using a 64-bit
@@ -3318,7 +2552,7 @@ efficient and responsive multi-core management.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="register-interfaces"><a class="anchor" href="#register-interfaces"></a><a class="link" href="#register-interfaces">1.6.13. Register Interfaces</a></h4>
+<h4 id="register-interfaces"><a class="anchor" href="#register-interfaces"></a><a class="link" href="#register-interfaces">1.5.13. Register Interfaces</a></h4>
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -3513,6 +2747,194 @@ efficient and responsive multi-core management.</p>
 </div>
 </div>
 <div class="sect2">
+<h3 id="rom"><a class="anchor" href="#rom"></a><a class="link" href="#rom">1.6. Boot ROM</a></h3>
+<div class="paragraph">
+<p>The SMC Boot ROM provides the initial firmware that executes immediately after
+power-on reset, performing essential hardware initialization and system bring-up
+functions. The ROM contains the SMC Production ROM firmware, a minimal
+bootloader designed to establish a known good hardware state before
+transitioning control to more sophisticated firmware layers.</p>
+</div>
+<div class="sect3">
+<h4 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1.6.1. ROM Architecture</a></h4>
+<div class="paragraph">
+<p>The Boot ROM is implemented as a read-only memory region mapped at base address
+<code>0xC0040000</code> with a configurable size of up to 64KB. The ROM is accessed by the
+CPU cluster through an AXI-Lite interface, with read requests issued via the
+<code>rom_intf_req_o</code> signal and responses received through <code>rom_intf_rsp_i</code>. This
+interface provides the CPU with direct access to the ROM contents for
+instruction fetch and read-only data access during the boot sequence.</p>
+</div>
+<div class="paragraph">
+<p>The ROM memory layout is organized into standard executable sections, with code
+residing in the <code>.text</code> section, read-only data in <code>.rodata</code>, and initialization
+routines in <code>.init</code>. Initialized data variables are stored in the <code>.data</code>
+section within ROM but are automatically copied to SRAM during the boot process,
+allowing the ROM to remain read-only while providing writable data space for the
+firmware. The detailed memory layout and section placement are defined in the
+linker script located at <code>hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld</code>, which
+specifies the exact address ranges and alignment requirements for each memory
+region.</p>
+</div>
+<div class="paragraph">
+<p>Within the SMC&#8217;s memory hierarchy, the ROM serves as the primary boot source,
+providing the initial reset vector target for all CPU cores. The ROM operates
+independently of the cache hierarchy, ensuring deterministic boot behavior, and
+complements the scratchpad SRAM by providing persistent code storage while the
+SRAM provides runtime data and stack space for the boot firmware.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rom-hardware-configuration"><a class="anchor" href="#rom-hardware-configuration"></a><a class="link" href="#rom-hardware-configuration">1.6.2. ROM Hardware Configuration</a></h4>
+<div class="paragraph">
+<p>The ROM wrapper module (<code>OCAHSMCCluster_rom_wrapper</code>) provides hardware support
+for <strong>memory bank configuration</strong> and <strong>endianness swapping</strong>, enabling flexibility in
+ROM implementation and compatibility with different system requirements.</p>
+</div>
+<div class="paragraph">
+<p><strong>Memory bank configuration</strong> is controlled through the <code>mem_cfg_i</code> input signal,
+which provides an 11-bit configuration value passed to the underlying ROM
+primitive. This configuration mechanism allows the ROM memory banks to be
+configured for different memory technologies, repair strategies, or
+foundry-specific requirements. The configuration follows the same pattern used
+by other memory components in the SMC, including cache tag and data arrays and
+scratchpad RAM banks, providing a consistent interface for memory configuration
+across the system.</p>
+</div>
+<div class="paragraph">
+<p>The ROM bank configuration can be controlled through shadow
+register values read from efuse data, similar to the endianness control, allowing
+bank swapping and memory configuration to be set during manufacturing or through
+efuse programming.</p>
+</div>
+<div class="paragraph">
+<p><strong>Endianness swapping</strong> support enables the ROM to provide data in either
+little-endian or big-endian byte order, regardless of the native byte order
+stored in the ROM memory. The <code>rom_flip_endianness_i</code> control signal, when
+asserted, causes the ROM wrapper to perform byte-level swapping on 64-bit words
+read from the ROM before returning them to the CPU. The endianness flip function
+swaps byte pairs within each 64-bit word, transforming little-endian data to
+big-endian format and vice versa. This hardware-level byte swapping occurs
+transparently to the CPU, allowing the same ROM image to be used in systems with
+different endianness requirements without modifying the firmware image itself.</p>
+</div>
+<div class="paragraph">
+<p>The endianness control signal is derived from shadow register values read from
+efuse data during system initialization, allowing the endianness configuration to
+be set during manufacturing or through efuse programming. This configuration
+remains fixed throughout system operation, ensuring consistent ROM access behavior
+across all boot phases and runtime operation.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rom-boot-code"><a class="anchor" href="#rom-boot-code"></a><a class="link" href="#rom-boot-code">1.6.3. ROM Boot Code</a></h4>
+<div class="paragraph">
+<p>The SMC Production ROM firmware implements a comprehensive boot sequence
+designed to initialize hardware components, read configuration data, and
+establish communication interfaces for multi-chiplet coordination. The boot code
+is organized into a structured multi-phase initialization process that
+progressively establishes system functionality.</p>
+</div>
+<div class="paragraph">
+<p>The boot sequence begins with Phase 0, which initializes POST (Power-On
+Self-Test) codes and the scratchpad memory system. POST codes provide external
+visibility into the boot progress, enabling debug and monitoring equipment to
+track initialization stages. The scratchpad initialization establishes the
+memory environment required for subsequent boot phases.</p>
+</div>
+<div class="paragraph">
+<p><strong>Phase 1:</strong> focuses on reading hardware configuration through strap pins and efuse
+registers. Hardware straps, sampled from GPIO pins during power-on reset,
+determine fundamental system behavior including chiplet role (primary or
+secondary), boot mode selection, and feature enables. Efuse data provides
+device-specific configuration including I2C/I3C addresses, security settings,
+and chiplet identification. This configuration data drives all subsequent
+initialization decisions.</p>
+</div>
+<div class="paragraph">
+<p>For a secondary chiplet, Phase 1.5 performs PLL (Phase-Locked Loop)
+configuration to establish the primary system clock. The ROM firmware configures
+the PLL through AXI-Lite transactions, switching from the reference clock to the
+synthesized PLL output clock. This phase is conditional based on chiplet type
+detection and the <code>BL0_PLLCLK</code> strap configuration.</p>
+</div>
+<div class="paragraph">
+<p><strong>Phase 2:</strong> handles SRAM setup and memory protection. The ROM establishes memory
+protection boundaries to prevent corruption of its own code and data regions,
+implementing defense-in-depth security measures. SRAM initialization may be
+performed by hardware auto-zero functionality or through software-based zeroing,
+depending on the <code>SRAM_AUTO_ZERO_DISABLE</code> strap setting.</p>
+</div>
+<div class="paragraph">
+<p><strong>Phase 3:</strong> configures communication interfaces based on the chiplet role and boot mode.
+The ROM initializes I2C and I3C controllers, configuring them according to addresses
+read from efuse data. Interface selection logic determines which communication
+channels are enabled based on whether the chiplet is primary or secondary and the
+security state of the device.</p>
+</div>
+<div class="paragraph">
+<p><strong>Phase 4:</strong> initializes the OCCP (Open Chiplet Communication Protocol) interface, which
+enables coordination between chiplets in a multi-chiplet system. The OCCP protocol
+provides a standardized command interface for boot image distribution, status
+reporting, and chiplet coordination. Successful OCCP initialization indicates that
+the ROM is ready to participate in system-level boot coordination.</p>
+</div>
+<div class="paragraph">
+<p><strong>Phase 5:</strong> enters the OCCP command processing loop, where the ROM continuously processes
+commands received over the configured communication interfaces. This loop handles
+firmware image loading, manifest processing for secure boot scenarios, and
+coordination commands from primary chiplets. The ROM remains in this processing loop
+until it receives commands to transition control to subsequent bootloader stages or
+application firmware.</p>
+</div>
+<div class="paragraph">
+<p>The boot code is organized into several functional components. The boot sequence
+components, located in <code>fw/smc/prod_rom/boot/</code>, provide assembly-level startup code,
+trap handlers for exception processing, and SRAM initialization routines. Hardware
+drivers in <code>fw/smc/prod_rom/drivers/</code> implement interfaces to strap pin reading,
+efuse access, PLL configuration, and I2C/I3C peripheral control. Library components
+in <code>fw/smc/prod_rom/lib/</code> provide higher-level functionality including status
+reporting through ring buffers, security state detection, OCCP protocol
+implementation, and interface mapping logic.</p>
+</div>
+<div class="paragraph">
+<p>The ROM firmware is optimized for size, with the production release build
+occupying approximately 20KB of ROM space. Debug builds, which include console
+output and additional diagnostic capabilities, expand to approximately 960KB. The
+detailed boot architecture, protocol specifications, and implementation details are
+documented in the SMC ROM Boot Architecture Specification located at
+<code>fw/smc/prod_rom/specification/smc_rom.adoc</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="integration-and-operation"><a class="anchor" href="#integration-and-operation"></a><a class="link" href="#integration-and-operation">1.6.4. Integration and Operation</a></h4>
+<div class="paragraph">
+<p>The ROM must be populated with a valid firmware image before the system initiates
+the boot sequence. The firmware image is typically programmed into the ROM memory
+during manufacturing or through a secure programming interface before the first
+power-on reset. The ROM contents remain fixed throughout system operation, ensuring
+a reliable and tamper-resistant boot source.</p>
+</div>
+<div class="paragraph">
+<p>The ROM firmware implements chiplet coordination functionality, distinguishing
+between primary and secondary chiplet roles based on hardware strap configuration.
+Primary chiplets act as boot masters, coordinating the initialization of secondary
+chiplets and distributing boot images across the multi-chiplet system. Secondary
+chiplets wait for coordination commands and boot images from the primary chiplet,
+enabling synchronized system bring-up.</p>
+</div>
+<div class="paragraph">
+<p>The OCCP protocol implementation enables secure and reliable communication between
+chiplets during the boot process. The protocol supports both secure and non-secure
+boot modes, with secure modes requiring manifest validation through coordination
+with the SEP (Security and Exception Processor) subsystem. The ROM protects its
+own memory regions from corruption through explicit access control checks,
+preventing unauthorized modification of boot code even in non-secure operational
+modes.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
 <h3 id="fabric"><a class="anchor" href="#fabric"></a><a class="link" href="#fabric">1.7. Fabric</a></h3>
 <div class="paragraph">
 <p>The SMC fabric provides interconnect infrastructure with address
@@ -3525,7 +2947,7 @@ management, traffic filtering, and security enforcement mechanisms.</p>
 performance and area:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 15. Fabric Configuration Parameters</caption>
+<caption class="title">Table 9. Fabric Configuration Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -3641,7 +3063,7 @@ transactions to peripherals.</p>
 traffic types:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. Network Characteristics</caption>
+<caption class="title">Table 10. Network Characteristics</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 30%;">
@@ -3682,7 +3104,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 <p>The table below lists the common AXI signal widths shared across all AXI4 fabric interfaces.</p>
 </div>
 <table id="fabric-axi-widths" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. AXI Common Signal Widths</caption>
+<caption class="title">Table 11. AXI Common Signal Widths</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 15%;">
@@ -3728,7 +3150,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 The table below lists the ID width at each point in the fabric.</p>
 </div>
 <table id="fabric-axi-id-widths" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. AXI ID Widths by Fabric Stage</caption>
+<caption class="title">Table 12. AXI ID Widths by Fabric Stage</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 15%;">
@@ -3802,7 +3224,7 @@ enforcement.</p>
 local and remote resources through the dual-network architecture.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Fabric Traffic Managers</caption>
+<caption class="title">Table 13. Fabric Traffic Managers</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -3868,7 +3290,7 @@ flexible address management between local and global address spaces.</p>
 organized by network type and function.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. Fabric Traffic Subordinates</caption>
+<caption class="title">Table 14. Fabric Traffic Subordinates</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -4109,7 +3531,7 @@ attributes:</p>
 encode transaction security and privilege attributes:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. Protection Bit Encoding</caption>
+<caption class="title">Table 15. Protection Bit Encoding</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 15%;">
@@ -4344,7 +3766,7 @@ level and routing path, plus a cacheable flag from the alias remap
 configuration:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. Source ID by Traffic Path</caption>
+<caption class="title">Table 16. Source ID by Traffic Path</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -4531,7 +3953,7 @@ multi-channel operation, scatter-gather transfers, and integration with
 SMC fabric filtering.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. DMA Controller Integration</caption>
+<caption class="title">Table 17. DMA Controller Integration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4598,7 +4020,7 @@ control plane and data plane operations.</p>
 <p>The DMA controller supports the following configuration parameters:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 24. DMA Configuration Parameters</caption>
+<caption class="title">Table 18. DMA Configuration Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -4687,7 +4109,7 @@ processing, and transfer descriptor handling.</p>
 <p>The table below describes the frontend control interface.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 25. Frontend Control Interface</caption>
+<caption class="title">Table 19. Frontend Control Interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4731,7 +4153,7 @@ transfers</p></td>
 <p>The table below describes the transfer descriptor support.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 26. Transfer Capabilities</caption>
+<caption class="title">Table 20. Transfer Capabilities</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4832,7 +4254,7 @@ iDMA.</p>
 <p>The table below describes the AXI master interface.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 27. AXI4 Master Characteristics</caption>
+<caption class="title">Table 21. AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4891,7 +4313,7 @@ access</p></td>
 DMA backend.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 28. Transfer Parameters</caption>
+<caption class="title">Table 22. Transfer Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4941,7 +4363,7 @@ DMA backend.</p>
 backend.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 29. Status Monitoring and Control</caption>
+<caption class="title">Table 23. Status Monitoring and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4996,7 +4418,7 @@ changes</p></td>
 optimization and power management features.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 30. Performance Features</caption>
+<caption class="title">Table 24. Performance Features</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -5044,7 +4466,7 @@ controller optimization</p></td>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 31. Clock Gating Configuration</caption>
+<caption class="title">Table 25. Clock Gating Configuration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -5535,7 +4957,7 @@ zero without CPU intervention. The unit uses a state machine-based
 architecture with dual clock domains.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 32. Memory Zeroer Integration</caption>
+<caption class="title">Table 26. Memory Zeroer Integration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -5597,7 +5019,7 @@ sequences</p>
 <p>The zeroer implements a three-state operation model:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. State Machine States</caption>
+<caption class="title">Table 27. State Machine States</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -5653,7 +5075,7 @@ optional interrupt</p>
 <div class="sect4">
 <h5 id="axi-master-interface"><a class="anchor" href="#axi-master-interface"></a><a class="link" href="#axi-master-interface">AXI Master Interface</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. AXI4 Master Characteristics</caption>
+<caption class="title">Table 28. AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -5728,7 +5150,7 @@ and interface isolation.</p>
 <div class="sect4">
 <h5 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">Clock Domains</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. Clock Domain Characteristics</caption>
+<caption class="title">Table 29. Clock Domain Characteristics</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -5756,7 +5178,7 @@ independent of AXI activity</p></td>
 <div class="sect4">
 <h5 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">Clock Gating</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. Clock Gating Control</caption>
+<caption class="title">Table 30. Clock Gating Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -5796,7 +5218,7 @@ independent of AXI activity</p></td>
 <div class="sect5">
 <h6 id="operation-control"><a class="anchor" href="#operation-control"></a><a class="link" href="#operation-control">Operation Control</a></h6>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. Configuration and Control</caption>
+<caption class="title">Table 31. Configuration and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -5855,7 +5277,7 @@ independent of AXI activity</p></td>
 <div class="sect3">
 <h4 id="operation-details"><a class="anchor" href="#operation-details"></a><a class="link" href="#operation-details">1.9.3. Operation Details</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. Data Generation and Control</caption>
+<caption class="title">Table 32. Data Generation and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -5934,137 +5356,7 @@ unaligned addresses</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="peripherals"><a class="anchor" href="#peripherals"></a><a class="link" href="#peripherals">1.10. Peripherals</a></h3>
-<div class="paragraph">
-<p>This section documents the main peripherals integrated within the System
-Management Controller (SMC). These peripherals provide essential I/O and
-communication capabilities for the OCH system, supporting various
-protocols and interfaces required for system operation and external
-connectivity.</p>
-</div>
-<div class="paragraph">
-<p>The following table summarizes the key peripherals, their communication
-protocols, and default instance counts:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 39. SMC Peripheral Summary</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 47%;">
-<col style="width: 17%;">
-<col style="width: 11%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Peripheral</th>
-<th class="tableblock halign-left valign-top">Description</th>
-<th class="tableblock halign-left valign-top">Protocol</th>
-<th class="tableblock halign-left valign-top">Instances</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/axi_lite_mailbox_unit/doc/index.html" class="xref page">Mailbox</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO-based bidirectional
-communication channels for inter-processor or inter-chiplet
-communication.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/system_timer_octs/doc/index.html" class="xref page">System Timer OCTS</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit
-timer for multi-chiplet time synchronization with PRIMARY/SECONDARY
-modes.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/efuse/doc/index.html" class="xref page">eFuse</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure access to One-Time
-Programmable (OTP) memory with layered security architecture.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/uart_16550/doc/index.html" class="xref page">UART 16550</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Industry-standard
-UART with enhanced FIFO capabilities and comprehensive interrupt
-support.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/log_engine/doc/index.html" class="xref page">Log Engine</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMA-based logging
-system for efficient transfer of log messages to UART interface.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/i2c/doc/index.html" class="xref page">I2C</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Full I2C/SMBus/PMBus communication
-controller supporting both controller and target modes.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/avsbus_controller/doc/index.html" class="xref page">AVSBus Controller</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive voltage scaling communication controller for managing voltage
-rails and power conditions.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose Input/Output
-with dual-mode operation and comprehensive interrupt system (64 bonded + 4 unbonded).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">68</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hardware component for decoding and processing telemetry data from
-multi-chiplet systems.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I3C</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller for enhanced serial communication (RESERVED - NOT YET
-IMPLEMENTED).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset control and synchronization, deals with SMC resets (core, primary),
-subsystem (chiplet) resets, and the cool reset sequence.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Misc</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Wrapper for miscellaneous registers: scratch registers, chip config and NDM reset.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p><a href="../ip/axi_lite_mailbox_unit/doc/index.html" class="xref page">Mailbox</a>
-<a href="../ip/system_timer_octs/doc/index.html" class="xref page">System Timer OCTS</a>
-<a href="../ip/efuse/doc/index.html" class="xref page">EFuse</a>
-<a href="../ip/uart_16550/doc/index.html" class="xref page">UART 16550</a>
-<a href="../ip/log_engine/doc/index.html" class="xref page">Log Engine</a>
-<a href="../ip/i2c/doc/index.html" class="xref page">I2C</a>
-<a href="../ip/avsbus_controller/doc/index.html" class="xref page">AVSBus Controller</a>
-<a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a>
-<a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="smc-scan-protection"><a class="anchor" href="#smc-scan-protection"></a><a class="link" href="#smc-scan-protection">1.11. eFuse Shadow Register Scan Protection</a></h3>
+<h3 id="smc-scan-protection"><a class="anchor" href="#smc-scan-protection"></a><a class="link" href="#smc-scan-protection">1.10. eFuse Shadow Register Scan Protection</a></h3>
 <div class="paragraph">
 <p>DFT scan test and debug scandump share the scan chain infrastructure. Any flop
 placed on a scan chain can be shifted out, and any flop on a dumpable chain can
@@ -6081,9 +5373,9 @@ authoritatively in the SEP Lifecycle Controller chapter, <em>Asset and Scan-Chai
 Protection</em>. This section records how they apply to the SMC eFuse controller.</p>
 </div>
 <div class="sect3">
-<h4 id="smc-efuse-asset-classification"><a class="anchor" href="#smc-efuse-asset-classification"></a><a class="link" href="#smc-efuse-asset-classification">1.11.1. SMC eFuse Asset Classification</a></h4>
+<h4 id="smc-efuse-asset-classification"><a class="anchor" href="#smc-efuse-asset-classification"></a><a class="link" href="#smc-efuse-asset-classification">1.10.1. SMC eFuse Asset Classification</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 40. SMC eFuse shadow register classification</caption>
+<caption class="title">Table 33. SMC eFuse shadow register classification</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -6135,7 +5427,7 @@ consumers.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="implementation"><a class="anchor" href="#implementation"></a><a class="link" href="#implementation">1.11.2. Implementation</a></h4>
+<h4 id="implementation"><a class="anchor" href="#implementation"></a><a class="link" href="#implementation">1.10.2. Implementation</a></h4>
 <div class="paragraph">
 <p><code>efuse_shadow_regs</code> keeps its shadow storage in two separately named arrays and
 reconstructs the public register view from both. The array holding Class 1 words
@@ -6174,7 +5466,7 @@ regenerated:</p>
 shadow words 0 and 1.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 41. SMC shadow word allocation</caption>
+<caption class="title">Table 34. SMC shadow word allocation</caption>
 <colgroup>
 <col style="width: 55%;">
 <col style="width: 45%;">
@@ -6207,7 +5499,7 @@ so a bad range map is a build failure rather than a silent loss of protection.</
 </div>
 </div>
 <div class="sect3">
-<h4 id="downstream-lock-path"><a class="anchor" href="#downstream-lock-path"></a><a class="link" href="#downstream-lock-path">1.11.3. Downstream Lock Path</a></h4>
+<h4 id="downstream-lock-path"><a class="anchor" href="#downstream-lock-path"></a><a class="link" href="#downstream-lock-path">1.10.3. Downstream Lock Path</a></h4>
 <div class="paragraph">
 <p>Excluding the <code>LOCKS</code> shadow flops is only sufficient if no scannable flop
 downstream of them re-derives the lock decision. In the SMC eFuse controller
@@ -6225,7 +5517,7 @@ does not reveal or alter the <code>LOCKS</code> value.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="notes-for-dft"><a class="anchor" href="#notes-for-dft"></a><a class="link" href="#notes-for-dft">1.11.4. Notes for DFT</a></h4>
+<h4 id="notes-for-dft"><a class="anchor" href="#notes-for-dft"></a><a class="link" href="#notes-for-dft">1.10.4. Notes for DFT</a></h4>
 <div class="ulist">
 <ul>
 <li>
@@ -6250,13 +5542,721 @@ the RDL alone does not confer scan protection.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="verification"><a class="anchor" href="#verification"></a><a class="link" href="#verification">1.11.5. Verification</a></h4>
+<h4 id="verification"><a class="anchor" href="#verification"></a><a class="link" href="#verification">1.10.5. Verification</a></h4>
 <div class="paragraph">
 <p><code>smc_efuse_shadow_lock_matrix_test</code> exercises reads and writes across the
 <code>LOCKS</code> matrix and therefore covers the relocated words functionally, confirming
 that moving <code>LOCKS</code> into the Class 1 array does not change access-control
 behaviour.</p>
 </div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-memory-map"><a class="anchor" href="#smc-memory-map"></a><a class="link" href="#smc-memory-map">1.11. Memory Map</a></h3>
+<div class="paragraph">
+<p>This section provides a comprehensive overview of the SMC memory map.
+The SMC address space is organized to provide access to various
+functional units including CPU control, peripheral interfaces, system
+management functions, and fabric control mechanisms.</p>
+</div>
+<div class="paragraph">
+<p>All addresses below are expressed as <code>BASE + offset</code>, where <code>BASE</code> can
+be either the local alias (<code>LOCAL_BASE</code>, fixed read-only at
+<code>0xC000_0000</code>) or the global system address (<code>GLOBAL_BASE</code>,
+programmable by firmware). The fabric routes transactions to SMC
+resources identically regardless of which base is used, as long as the
+access falls inside the relevant local or global aperture. The current
+SMC <code>REGION_SIZE</code> CSR reset is 16 MiB for the chiplet-global aperture;
+the input fabric&#8217;s internal local-alias window is controlled by the RTL
+<code>LOCAL_ALIAS_REGION_SIZE</code> parameter, currently fixed at 16 MiB.
+Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
+conventions. For details on how <code>LOCAL_BASE</code> and <code>GLOBAL_BASE</code> relate
+and how an adopter maps this aperture into the system address space,
+refer to the
+SMC Address Map Integration
+section of the Integration Guide.</p>
+</div>
+<div class="sect3">
+<h4 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">1.11.1. Address Space Organization</a></h4>
+<div class="paragraph">
+<p>The SMC address space is divided into several major functional regions:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 35. SMC Address Space Layout</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 15%;">
+<col style="width: 45%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Function</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_0000 - BASE + 0x000_0FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core watchdog
+timer interfaces (4 cores, 1KB each)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_1000 - BASE + 0x000_1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V Debug Module
+interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2000 - BASE + 0x000_2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit and
+miscellaneous system control registers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3000 - BASE + 0x000_3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose I/O
+control and configuration (65 GPIO instances)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 - BASE + 0x000_5FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Controllers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C controller
+instances (6 instances)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_6000 - BASE + 0x000_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral Controllers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus,
+I2C, and UART interfaces</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_9000 - BASE + 0x000_DFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">20KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security, Timing &amp; DFT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse,
+telemetry, system timer, DTP control, and DFT status</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_0000 - BASE + 0x001_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU control, address
+remapping, and filtering</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_8000 - BASE + 0x003_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
+communication mailbox (32 channels: 16 inbound + 16 outbound)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8000 - BASE + 0x003_83FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data Processing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA controller and
+memory zeroer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x004_0000 - BASE + 0x007_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Regions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM and scratchpad
+memory spaces</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x016_0000 - BASE + 0x016_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug and trace (CLA) module</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 - BASE + 0x040_57FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">22KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter
+extension window: mandatory technology-specific blocks (GPIO pads, PLL, PVT,
+eFuse SHIM) plus optional supplementary devices</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x080_0000 - BASE + 0x1FF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Remapping</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode and Xvisor
+remapped address regions</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400_0000 - BASE + 0x43F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V PLIC
+(Platform-Level Interrupt Controller)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800_0000 - BASE + 0x801_3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timer &amp; Bus Error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT and per-core
+Bus Error Units</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="detailed-address-map"><a class="anchor" href="#detailed-address-map"></a><a class="link" href="#detailed-address-map">1.11.2. Detailed Address Map</a></h4>
+<div class="paragraph">
+<p>The following table provides specific address assignments for all SMC
+components:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 36. SMC Component Address Map</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Instance</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT Core 0-3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_0000 + (N×0x400)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timers for
+each CPU core</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Module</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_1000 - BASE + 0x000_1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V debug
+interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2000 - BASE + 0x000_27FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System reset control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Miscellaneous Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_2800 - BASE + 0x000_2FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System
+configuration registers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3000 + (N×0x10)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interface
+control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_3440 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad
+configuration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C Controllers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_4000 + (N×0x500)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C
+controller instances</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_6000 - BASE + 0x000_6FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive
+voltage scaling control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_7000 - BASE + 0x000_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C/SMBus
+communication interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_8000 - BASE + 0x000_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART communication
+interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_9000 - BASE + 0x000_9FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse memory mapping
+interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_A000 - BASE + 0x000_AFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse interface
+controller</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry Receiver</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_B000 - BASE + 0x000_BFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry
+data processing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer OCTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_C000 - BASE + 0x000_CFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Multi-chiplet
+time synchronization</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP Control Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_D000 - BASE + 0x000_D7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 entries</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP
+control register block</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT Control/Status</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x000_D800 - BASE + 0x000_DFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT control
+and status for ROM</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_0000 - BASE + 0x001_1FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster
+management</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alias Remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_2000 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address alias
+remapping</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode Remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_3000 + (N×0x8)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Machine mode
+address remapping</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Xvisor Remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_4000 + (N×0x8)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hypervisor address
+remapping</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound Filters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_5000 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound traffic
+filtering</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound Filters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_6000 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound traffic
+filtering</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_8000 - BASE + 0x003_7FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 channels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
+communication (16 inbound + 16 outbound)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8000 - BASE + 0x003_81FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct memory
+access controller</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8200 - BASE + 0x003_83FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory
+initialization unit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPM ROM Memory</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x004_0000 - BASE + 0x005_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad ROM memory
+space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPM Memory</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x006_0000 - BASE + 0x007_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad memory space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CLA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x016_0000 - BASE + 0x016_8FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug and trace (CLA)
+module</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 - BASE + 0x040_57FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 window</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter
+extension window, split into a mandatory and a supplementary region (see the
+AXI-Lite External Window section below)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">M-mode Region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x100_0000 - BASE + 0x17F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Machine mode remapped
+space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Xvisor Region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x180_0000 - BASE + 0x1FF_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hypervisor remapped
+space</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400_0000 - BASE + 0x43F_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4MB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt
+Controller</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800_0000 - BASE + 0x800_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64KB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core Local Interruptor</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Units</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x801_0000 + (N×0x1000)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-core bus
+error handling</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="axi-lite-external-window"><a class="anchor" href="#axi-lite-external-window"></a><a class="link" href="#axi-lite-external-window">1.11.3. AXI-Lite External Window</a></h4>
+<div class="paragraph">
+<p>The <code>smc_external</code> window at <code>BASE + 0x040_0000</code> is the adopter extension
+window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
+technology- and vendor-specific implementations of memory-mapped blocks. The
+window is split into two regions (see <code>smc_external.rdl</code>); hardware treats
+both identically — the split is purely organizational:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
+Their function is dictated by the OCAH specifications, but their
+implementation is inherently technology- and vendor-specific — the GPIO pad
+controls, the PLL macro, the PVT sensors, and the eFuse SHIM.</p>
+</li>
+<li>
+<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): optional region for any additional
+memory-mapped devices the adopter wants to expose. The reference
+integration places its vendor I3C controllers (nonfree overlay) here.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Addresses below are expressed as <code>BASE + offset</code> (<code>BASE</code> = <code>0xC000_0000</code>).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 37. SMC AXI-Lite External Window — Mandatory Region</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Instance</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Clock-Obs GPIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0000 (intf), BASE + 0x040_000C (ctrl)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation GPIO</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Clock-Obs GPIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0010 (intf), BASE + 0x040_001C (ctrl)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT clock observation GPIO</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO PoC/PBias Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0020</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power-on and pad bias
+control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Refclk Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_002C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock GPIO control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-Pad GPIO Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_0100 + (N×0x20)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-pad
+control registers for the pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_1000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock generation and management</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_2000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Process, Voltage, Temperature
+monitoring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse SHIM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_3000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter eFuse hardware abstraction
+layer</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 38. SMC AXI-Lite External Window — Supplementary Region (optional)</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Address Range</th>
+<th class="tableblock halign-left valign-top">Instance</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendor I3C Controllers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x040_4000 + (N×0x400)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6 instances</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendor
+I3C controller wrappers (nonfree overlay)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The unallocated remainder of the window is passed through to the chip-level
+adopter external port.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="register-interface-standards"><a class="anchor" href="#register-interface-standards"></a><a class="link" href="#register-interface-standards">1.11.4. Register Interface Standards</a></h4>
+<div class="paragraph">
+<p>All SMC components use standard AMBA interfaces. We summarize the
+interfaces in the following table:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 39. Register Interface Standards</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface</th>
+<th class="tableblock halign-left valign-top">Address Width</th>
+<th class="tableblock halign-left valign-top">Data Width</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High-performance components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Address Alignment:</strong> 32-bit registers on 4-byte boundaries, 64-bit on 8-byte boundaries</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Endianness:</strong> Little-endian byte ordering throughout</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="4"><p class="tableblock"><strong>Protection:</strong> AXI protection bits used for secure/non-secure access control</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="access-control-and-security"><a class="anchor" href="#access-control-and-security"></a><a class="link" href="#access-control-and-security">1.11.5. Access Control and Security</a></h4>
+<div class="paragraph">
+<p>The SMC implements the following access control mechanisms:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 40. Access Control Mechanisms</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Mechanism</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address Filtering</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable inbound and outbound address filters</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protection Levels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI protection attribute enforcement</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure Regions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse and security-critical registers require elevated
+privileges</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error Handling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus error units provide comprehensive error logging and
+reporting</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="component-specific-register-documentation"><a class="anchor" href="#component-specific-register-documentation"></a><a class="link" href="#component-specific-register-documentation">1.11.6. Component-Specific Register Documentation</a></h4>
+<div class="paragraph">
+<p>For detailed register-level documentation of each SMC component, refer
+to the individual component documentation:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 41. SMC Component Documentation</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 50%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Category</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU and System Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control, PLIC, CLINT, Watchdog Timers, and
+Bus Error Units</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cpu</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller (PLIC)
+details</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">interrupts</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller detailed register interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dma</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory Zeroer control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">zeroer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fabric Control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address remapping, inbound/outbound filters, and fabric
+control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">fabric</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripherals and I/O</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO, UART, I2C, PVT, eFuse, Telemetry, and System
+Timer registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">periphs</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Management</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit and system control registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">clk_rst</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock Generation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL wrapper and clock generation registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
