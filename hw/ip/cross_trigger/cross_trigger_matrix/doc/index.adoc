@@ -20,9 +20,14 @@ the CTM will act as both a source and a sink for cross trigger pulses.
 [cols="<,<,<,<",options="header"]
 |===
 |Parameter |Range |Default |Description
-|NUM_CTP |1-32 |16 |Number of external Cross Trigger Ports
-|NUM_INT_CT |0-32 |1 |Number of internal cross triggers (to CLAs)
+|NUM_CT_SRC |26 |26 |Number of CT_Src output ports, fixed by the register map
+|NUM_CT_DST |1-26 |26 |Number of CT_Dst input ports
 |===
+
+The register map provides one configuration register per CT_Src port, each with
+a 26-bit destination select field, so `NUM_CT_SRC` is fixed at 26 and
+`NUM_CT_DST` can only be narrowed. See <<ctm-architecture>> for how the select
+fields drive the crossbar.
 
 ifdef::backend-pdf[]
 :imagesdir: assets

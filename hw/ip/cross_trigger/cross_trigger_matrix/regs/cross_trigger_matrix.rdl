@@ -7,7 +7,11 @@
 //------------------------------------------------------------------------------
 // Copyright 2025 Tenstorrent Inc.
 // Cross Trigger Matrix Configuration Registers
-// Generated from template with NUM_CT_SRC = 26, NUM_CT_DST = 26
+//
+// Committed source, configured for NUM_CT_SRC = 26, NUM_CT_DST = 26. Upstream
+// expanded this file from a template; that generator was not carried into this
+// tree, so the per-source registers are edited by hand and must stay in step
+// with the select decode in rtl/cross_trigger_matrix.sv.
 //------------------------------------------------------------------------------
 
 addrmap cross_trigger_matrix {

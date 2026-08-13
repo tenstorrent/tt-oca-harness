@@ -23,16 +23,27 @@ make -f ocah.mk ocah-regen-regs-clean TARGET=cross_trigger_matrix
 
 The Mako templates that produced the RDL, the RTL, and the testbench from a
 `--num-ct-src`/`--num-ct-dst` pair were not carried into this tree. The CTM here
-is committed source, sized for the DTP cross-trigger topology of 26 CT_Src and 26
-CT_Dst ports, from `dtp_pkg::DEFAULT_NUM_CTP` (16) plus
+is committed source, sized for the DTP cross-trigger topology of 26 CT_Src and
+26 CT_Dst ports, from `dtp_pkg::DEFAULT_NUM_CTP` (16) plus
 `dtp_pkg::DEFAULT_NUM_INT_CT` (10).
 
-`NUM_CT_SRC` and `NUM_CT_DST` are module parameters, so a *smaller* matrix can be
-instantiated without touching the sources; the unused CSRs simply stay
-unconnected. Going *above* 26 CT_Src means extending both
-`regs/cross_trigger_matrix.rdl` and the per-source select decode in
-`rtl/cross_trigger_matrix.sv`, which names each `CT_SRCn_CONFIG_*` register
-explicitly, and then rerunning the register flow above.
+`NUM_CT_SRC` and `NUM_CT_DST` are module parameters, but only `NUM_CT_DST` is
+adjustable, and only downward:
+
+* `NUM_CT_SRC` must be 26. The `NumCtSrcMatchesGen_A` assertion in
+  `rtl/cross_trigger_matrix.sv` enforces it, because the select decode there
+  names each of the 26 `CT_SRCn_CONFIG_0` registers explicitly.
+* `NUM_CT_DST` may be 1 to 26. The `CT_DST_SELECT` field is 26 bits wide with
+  bits 31:26 reserved, and the decode truncates the mask to `NUM_CT_DST`, so a
+  narrower matrix leaves the upper mask bits unused. The range assertion
+  nominally permits up to `MAX_NUM_CT_DST` (64), but a wider matrix has no
+  register bits to select with: the second config register the decode comments
+  refer to (`CT_SRCn_CONFIG_1`, for CT_Dst[63:32]) is not part of this
+  configuration.
+
+Changing either dimension means editing `regs/cross_trigger_matrix.rdl` and the
+select decode in `rtl/cross_trigger_matrix.sv` together, then rerunning the
+register flow above.
 
 ### Test
 
@@ -72,6 +83,6 @@ The CTM consists of:
 
 * **Register Interface**: AXI4-Lite interface for configuration
 * **Source Selector Modules**: One per CT_Src port, implements selection and OR logic
-* **Parameterized Design**: `NUM_CT_SRC` and `NUM_CT_DST` up to the 26 ports the committed RDL and select decode provide
+* **Fixed 26x26 Configuration**: `NUM_CT_SRC` is pinned at 26; `NUM_CT_DST` may be narrowed
 
 See `doc/` for detailed architecture and implementation documentation.
