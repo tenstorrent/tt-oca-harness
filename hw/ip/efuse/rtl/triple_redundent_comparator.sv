@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
-// Triple-Redundant Comparator
+// Triple-Redundant Comparator Wrapper
 //
-// Wraps three token_compare_match_hardened instances to maintain triple
+// Wraps three token_comparator instances to maintain triple
 // redundancy. Each instance performs an independent 256-bit comparison using
 // hard-cell primitives (XNOR/XOR + NAND/NOR/OR reduction trees), preventing
-// synthesis from CSE-ing the three compare cones into one.
+// synthesis from optimizing the three compare cones into one.
 //
 // Output encoding:
 //   token_match_o = {match_n[2], match_p[2], match_n[1], match_p[1], match_n[0], match_p[0]}
@@ -33,12 +33,9 @@ module triple_redundent_comparator #(
     logic [2:0] match_p_raw, match_n_raw;
     logic [2:0] match_p, match_n;
 
-    // Three independent hardened comparators.
-    // The full DATA_WIDTH comparison lives inside hard-cell reduction trees
-    // inside each token_compare_match_hardened instance, so synthesis cannot
-    // common-subexpression the three compare cones.
-    for (genvar i = 0; i < 3; i++) begin : gen_hardened_comparators
-        token_compare_match_hardened #(
+    // Three independent token comparators.
+    for (genvar i = 0; i < 3; i++) begin : gen_token_comparators
+        token_comparator #(
             .TOKEN_WIDTH(DATA_WIDTH)
         ) u_comparator (
             .token_digest_i   (token_digest_i),
