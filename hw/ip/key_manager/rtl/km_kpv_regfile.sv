@@ -14,7 +14,7 @@
  *          undefined for security.  The wipe input provides synchronous
  *          bulk-clear of all entries.
  *
- * @param NUM_SLOTS       Number of key slots (default 32).
+ * @param NUM_SLOTS       Number of key slots (default 64).
  * @param WORDS_PER_SLOT  Words per slot (default 16).
  * @param DATA_WIDTH      Data width in bits (default 32).
  */

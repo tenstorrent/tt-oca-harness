@@ -22,7 +22,7 @@
  *          The LFSR is seeded to all-ones on cold reset only (no warm reset);
  *          the exact seed value is not security-relevant.
  *
- * @param NUM_SLOTS       Number of key slots (default 32).
+ * @param NUM_SLOTS       Number of key slots (default 64).
  * @param WORDS_PER_SLOT  Words per slot (default 16).
  * @param DATA_WIDTH      Key-data word width; also sizes the LFSR (default 32).
  */
