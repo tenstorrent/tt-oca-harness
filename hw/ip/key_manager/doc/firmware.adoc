@@ -2593,7 +2593,7 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
 
 . *Scramble.*  A stack-less assembly routine (`rom_handover_jump.S`) seeds a
   `xoshiro128++` PRNG from the value passed from C, iterates over the full
-  SRAM range `0x8000–0x10000`, and overwrites each address with a
+  SRAM range `0x8000`–`0xFFFF`, and overwrites each address with a
   pseudo-random word.  Hardware silently discards writes to write-locked
   regions (firmware image and `rom_persist`), so only ROM runtime data
   (stack, `.data`, `.bss`) is actually overwritten.  No stack pointer or

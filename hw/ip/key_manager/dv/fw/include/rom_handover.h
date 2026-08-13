@@ -130,7 +130,7 @@ void rom_handover_lock_kpv_root_keys(void);
  * Runs entirely from registers.  No stack use from this point forward.
  *
  * Actions:
- *   1. Overwrite the entire SRAM (0x8000-0x10000) with a register-seeded
+ *   1. Overwrite the entire SRAM (0x8000..0xFFFF inclusive) with a register-seeded
  *      xoshiro128++ pattern.  Hardware silently drops writes to write-locked
  *      regions (firmware image, rom_persist), so only unlocked data is erased.
  *   2. Clear all GPRs (x1-x15).
