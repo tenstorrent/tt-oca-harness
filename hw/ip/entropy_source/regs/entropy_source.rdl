@@ -942,7 +942,7 @@ addrmap entropy_source {
 
     // Watermark value register
     reg HT_WATERMARK {
-        desc = "Health Test Watermark Value. Displays the watermark value for the test selected by HT_WATERMARK_NUM. Low watermarks are initialized to all-1s after enabling entropy source.";
+        desc = "Health Test Watermark Value. Displays the watermark value for the test selected by HT_WATERMARK_NUM. Each watermark arms to its starting value when the entropy source is enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse: high watermarks (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low watermarks (APT_LO, MARKOV_LO) arm to all-1s (0xFFFF) and hold the running minimum. The all-zero reset value shown below is the raw power-on default before the first arming clear.";
         field {
             sw = r;
             hw = w;

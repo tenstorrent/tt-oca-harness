@@ -61,7 +61,7 @@
 | 0x128 | GENERATOR_10_SAMPLE_CLK_CONFIG | RW a| Generator 10 Sample Clock Configuration
 | 0x12C | GENERATOR_11_SAMPLE_CLK_CONFIG | RW a| Generator 11 Sample Clock Configuration
 | 0x130 | HT_WATERMARK_NUM | RW a| Health Test Watermark Selector. Selects which health test watermark to display in HT_WATERMARK register.
-| 0x134 | HT_WATERMARK | R a| Health Test Watermark Value. Displays the watermark value for the test selected by HT_WATERMARK_NUM. Low watermarks are initialized to all-1s after enabling entropy source.
+| 0x134 | HT_WATERMARK | R a| Health Test Watermark Value. Displays the watermark value for the test selected by HT_WATERMARK_NUM. Each watermark arms to its starting value when the entropy source is enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse: high watermarks (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low watermarks (APT_LO, MARKOV_LO) arm to all-1s (0xFFFF) and hold the running minimum. The all-zero reset value shown below is the raw power-on default before the first arming clear.
 | 0x138 | REPCNT_TOTAL_FAILS | R a| Repetition Count Test Total Failures. Counts the total number of test failures since module enable. Increments at health_test_done_pulse when threshold is exceeded. Cleared on health_test_clr.
 | 0x13C | APT_HI_TOTAL_FAILS | R a| Adaptive Proportion Test High Threshold Total Failures. Counts the total number of APT high test failures since module enable.
 | 0x140 | APT_LO_TOTAL_FAILS | R a| Adaptive Proportion Test Low Threshold Total Failures. Counts the total number of APT low test failures since module enable.
