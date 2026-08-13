@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.1
-:revdate: 2026-06-17
+:revnumber: 0.0.2
+:revdate: 2026-08-13
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -52,8 +52,8 @@ GPIO padrings) are instantiated externally by the adopter. See the
 wrappers demonstrate this integration.
 
 For detailed architectural documentation about the SMC internal design, refer to
-`hw/smc/doc/`. The `hw/top/smc_wrapper.sv` reference wrapper demonstrates the
-integration boundary.
+`hw/sys/smc/doc/`. The public integration examples are
+`hw/top/smc_wrapper.sv` and `hw/top/smc_ip_integration.sv`.
 
 ==== Clock and Reset
 
@@ -125,10 +125,10 @@ The SMC fabric uses three registers in the CPU Control block
   the fixed `LOCAL_ALIAS_REGION_SIZE` parameter in RTL.
 
 For full details on alias remapping and outbound routing, see the SMC
-Fabric documentation (`hw/smc/doc/fabric.adoc`).
+Fabric documentation (`hw/sys/smc/doc/fabric.adoc`).
 
 For a detailed breakdown of all components within the SMC local map,
-refer to the SMC Memory Map documentation (`hw/smc/doc/memmap.adoc`).
+refer to the SMC Memory Map documentation (`hw/sys/smc/doc/memmap.adoc`).
 
 ==== AXI Interface Configuration
 
@@ -159,31 +159,22 @@ this interface.
 
 ==== GPIO Pad Integration
 
-GPIO pad integration requires careful attention to pull-up/pull-down
-requirements and strap configurations. The GPIO table below specifies default
-directions and pull settings for each pin. During power-up, certain GPIO pins
-function as configuration straps that determine boot behavior and operational
-modes.
+GPIO pad integration requires careful attention to function assignment and pull
+requirements. The GPIO table below lists each signal, bump location, function,
+recommended pull, and integration notes. Default input/output direction is
+defined by `smc_padring_pkg::DefaultDirectionMap`, not by the table.
 
-The testbench provides reference implementations for pad connections starting at
-line 732. For input-only pins such as the JTAG interface (pins 68-77), connect
-directly to external pads without output drivers. For bidirectional pins,
-implement proper tri-state buffers controlled by the `gpio_out_en_o` signals.
-The testbench demonstrates pull-up resistor integration using `pullup`
-primitives on specific signals like I2C and I3C interfaces.
+The public `hw/top/smc_wrapper.sv` and `hw/top/smc_ip_integration.sv` examples
+show the pad connections. For bidirectional pins, implement proper tri-state
+buffers controlled by the `gpio_out_en_o` signals. Connect multiplexed UART,
+I2C, I3C, and SPI pins to external devices according to the function assignments
+in the GPIO table.
 
-Configuration straps such as `BYPASS_SRAM_REPAIR` (pin 13), `TEST_EN` (pin 14),
-and others listed in the GPIO table must be set before the cold reset
-deassertion. These strap values determine fundamental operational modes and
-cannot be changed after the SMC completes fuse sensing. The testbench shows
-examples of strap forcing through GPIO pad connections.
-
-For peripheral interfaces like UART, I2C, I3C, and SPI that multiplex through
-GPIO pins, the testbench demonstrates loopback configurations between transmit
-and receive pairs. In actual integration, connect these pins to external devices
-according to the pin function assignments shown in the GPIO table. The
-`lsio_interface_select_o` signals control peripheral multiplexing and are driven
-by SMC configuration registers.
+Configuration straps are captured separately from the GPIO table. Establish
+them before cold reset deassertion and keep them stable during capture. The
+generated reset-unit `STRAPS_LO` and `STRAPS_HI` register descriptions define
+the decoded bit assignments, including `BYPASS_SRAM_REPAIR` at
+`STRAPS_LO[13]` and `TEST_EN` at `STRAPS_LO[14]`.
 
 [[smc-peripheral-connections]]
 ==== Peripheral Interface Connections
@@ -291,7 +282,8 @@ memory interfaces for L1 instruction and data caches (`l1_icache_*` and
 The `disable_sram_auto_init_i` input controls automatic memory initialization
 behavior. When deasserted, the SMC automatically zeroes all SRAM contents during
 bring-up. The `init_mem_done_o` output indicates completion of this
-initialization sequence. The strap `SRAM_AUTO_ZERO_DISABLE` (GPIO pin 26) can
+initialization sequence. The `SRAM_AUTO_ZERO_DISABLE` strap
+(`STRAPS_LO[26]`) can
 disable this automatic zeroing behavior if your integration requires preserved
 SRAM contents across resets.
 
@@ -334,8 +326,8 @@ arrays according to your memory architecture.
 
 **Status Monitoring:**
 
-Repair completion and success are reported through DFT Control Status registers
-at `0xC000F800` (SOC) and `0xC000F80C` (SEP/SMC). The `mem_repair_done` bit
+Repair completion and success are reported through
+`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
 indicates completion regardless of success, while `mem_repair_success` indicates
 successful repair. Both bits are set by the external repair controller. The SMC
 ROM firmware monitors these bits during initialization to verify repair
@@ -343,10 +335,10 @@ completion.
 
 **Bypass Configuration:**
 
-The `BYPASS_SRAM_REPAIR` configuration strap (GPIO pin 13) bypasses repair logic
-when asserted high, causing `skip_mem_repair_o` to assert. Use bypass mode only
-when SRAM arrays are guaranteed defect-free, such as during development or with
-known-good components.
+The `BYPASS_SRAM_REPAIR` configuration strap (`STRAPS_LO[13]`) bypasses
+repair logic when asserted high, causing `skip_mem_repair_o` to assert. Use
+bypass mode only when SRAM arrays are guaranteed defect-free, such as during
+development or with known-good components.
 
 **Integration Requirements:**
 
@@ -370,16 +362,17 @@ repair unless explicitly bypassed via strap configuration.
 
 The SMC aggregates interrupts from multiple sources into `cpu_interrupts_o`, which feeds
 the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
-`hw/smc/smc_base.sv` and `hw/smc/smc_peripherals/rtl/smc_peripherals.sv`. The authoritative
-bit-level map (1-core and 4-core columns, RTL trace, and PLIC source ID note) is maintained
-in a single place:
+`hw/sys/smc/rtl/smc_base.sv` and
+`hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`. The authoritative
+bit-level map (1-core and 4-core columns, RTL trace, and PLIC source ID note) is
+maintained in a single place:
 
 ifdef::backend-html5[]
 xref:smc:interrupts.adoc#cpu-interrupt-vector-map[SMC CPU interrupt vector map]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-<<cpu-interrupt-vector-map,SMC CPU interrupt vector map>>
+See the _SMC CPU interrupt vector map_ in the Technical Reference Manual.
 endif::backend-pdf[]
 
 Configure your interrupt controller to monitor the `sync_irq_o` signal and read SMC interrupt
@@ -446,11 +439,12 @@ endif::backend-pdf[]
 
 ==== GPIO Pin Requirements
 
-The SMC provides GPIO functionality with multiplexed peripheral functions, configuration
-straps, and test interfaces. The following table specifies all GPIO pins with their
-default configurations, pull-up/pull-down requirements, and strap definitions. Note that
-strap configurations must be established before cold reset deassertion and remain stable
-during fuse sensing.
+The SMC provides GPIO functionality with multiplexed peripheral functions and
+test interfaces. The following table lists the signal and bump location,
+assigned function, recommended pull, and GPIO-specific notes. It does not define
+default direction or decode configuration straps; use
+`smc_padring_pkg::DefaultDirectionMap` and the generated reset-unit `STRAPS_LO`
+and `STRAPS_HI` register descriptions for those.
 
 ifdef::backend-html5[]
 include::meta/ocah_gpio_table.adoc[]
@@ -459,11 +453,11 @@ ifdef::backend-pdf[]
 include::../meta/ocah_gpio_table.adoc[]
 endif::backend-pdf[]
 
-For multi-chiplet systems, the `PRIMARY_CHIPLET` strap (GPIO pin 25) determines
-whether the chiplet operates as primary or secondary. The primary chiplet's
-System Timer OCTS generates synchronization pulses (`timer_sync_load_o`,
-`timer_cnt_credit_o`) that secondary chiplets receive to maintain coherent
-timestamps across the system.
+For multi-chiplet systems, the `PRIMARY_CHIPLET` strap (`STRAPS_LO[25]`)
+determines whether the chiplet operates as primary or secondary. The primary
+chiplet's System Timer OCTS generates synchronization pulses
+(`timer_sync_load_o`, `timer_cnt_credit_o`) that secondary chiplets receive to
+maintain coherent timestamps across the system.
 
 [[dtp-integration]]
 === Debug & Test Ports (DTP) Integration
@@ -577,9 +571,9 @@ procedures for adopters integrating the SEP as part of the SMU or as a
 standalone out-of-context IP.
 
 For detailed architectural documentation about the SEP internal design, refer to
-the dedicated SEP documentation located in `hw/sep/doc/`. The SEP hardware
-overview and interconnect fabric are described in `hw/sep/doc/overview.adoc` and
-`hw/sep/doc/fabric.adoc` respectively.
+the dedicated SEP documentation located in `hw/sys/sep/doc/`. The SEP hardware
+overview and interconnect fabric are described in
+`hw/sys/sep/doc/overview.adoc` and `hw/sys/sep/doc/fabric.adoc` respectively.
 
 ==== Module Overview
 
@@ -779,10 +773,20 @@ AXI4 manager/subordinate pairs: the SEP outbound master (`sep_out`),
 the SMC outbound master (`smc_out`), and the external SMU AXI input
 (`ext_in` / `smu_axi_in`). The corresponding targets are the SEP and
 SMC inbound subordinates, and the external SMU AXI output
-(`ext_out` / `smu_axi_out`). Connectivity is described in
-<<smu-axi-crossbar,SMU AXI Crossbar>>; the split between hardware-fixed
-behaviour and firmware-programmable apertures is documented in
-<<ocah-memory-map,OCAH Memory Map>>.
+(`ext_out` / `smu_axi_out`).
+
+ifdef::backend-html5[]
+Connectivity is described in
+xref:ocah-docs:ROOT:architecture.adoc#smu-axi-crossbar[SMU AXI Crossbar];
+the split between hardware-fixed behaviour and firmware-programmable apertures
+is documented in
+xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See the _SMU AXI Crossbar_ and _OCAH Memory Map_ sections of the Technical
+Reference Manual for connectivity and the responsibility split between
+hardware-fixed and firmware-programmable apertures.
+endif::backend-pdf[]
 
 The crossbar uses a *runtime* address map. Only the SEP and SMC
 apertures are programmable at runtime; the `ext_out` rule is static:
@@ -816,9 +820,17 @@ SMC `GLOBAL_BASE` / `REGION_SIZE` during early boot, *before any
 cross-subsystem AXI traffic is issued*, and must ensure the two
 apertures do not overlap and both fall within the chiplet-visible SMU
 envelope assigned by the integrator. The SMU crossbar does not itself
-constrain envelope size; see <<ocah-memory-map,OCAH Memory Map>> for
-the responsibility split between integrator, firmware, and the internal
-SEP/SMC address maps.
+constrain envelope size.
+
+ifdef::backend-html5[]
+See xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map] for
+the responsibility split between integrator, firmware, and the internal SEP/SMC
+address maps.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See the _OCAH Memory Map_ section of the Technical Reference Manual for that
+responsibility split.
+endif::backend-pdf[]
 
 ==== SMU Default Parameters
 

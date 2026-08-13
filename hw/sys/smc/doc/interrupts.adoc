@@ -56,7 +56,7 @@ raw vector bits and PLIC source IDs, see the following section.
 ==== SMC CPU Interrupt Vector Map
 
 This section documents the raw `cpu_interrupts_o` vector assembled in
-`hw/smc/smc_base.sv`. The vector is built from four sources:
+`hw/sys/smc/rtl/smc_base.sv`. The vector is built from four sources:
 
 * `ext_interrupts_i`
 * `peripheral_interrupts_i[31:0]`
@@ -99,7 +99,7 @@ human-readable; implementation signal names are called out in the
 |`[31:0]`
 |External interrupts
 |Integration-defined external interrupt inputs
-|`hw/smc/smc_base.sv` drives
+|`hw/sys/smc/rtl/smc_base.sv` drives
 `cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_i`.
 
 |`256`
@@ -379,13 +379,14 @@ tail bits in `smc_base.sv`.
 ===== Trace Notes
 
 * Peripheral interrupt construction is defined in
-  `hw/smc/smc_peripherals/rtl/smc_peripherals.sv`.
+  `hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`.
 * Mailbox interrupt construction is defined in `hw/ip/mailbox/rtl/mailbox.sv`
-  and is routed into `cpu_interrupts_o` by `hw/smc/smc_base.sv`.
-* Internal interrupt construction is defined by `hw/smc/smc_base.sv`,
-  with the DFD CLA signals sourced through `hw/smc/smc_internal_regs.sv`,
-  the DMA completion pulse sourced by `hw/comp/idma_wrapper/rtl/idma_wrapper.sv`,
-  and the Zeroer completion pulse sourced by `hw/comp/zeroer/rtl/zeroer.sv`.
+  and is routed into `cpu_interrupts_o` by `hw/sys/smc/rtl/smc_base.sv`.
+* Internal interrupt construction is defined by `hw/sys/smc/rtl/smc_base.sv`,
+  with the DFD CLA signals sourced through
+  `hw/sys/smc/rtl/smc_internal_regs.sv`, the DMA completion pulse sourced by
+  `hw/ip/idma_wrapper/rtl/idma_wrapper.sv`, and the Zeroer completion pulse
+  sourced by `hw/ip/zeroer/rtl/zeroer.sv`.
 * The raw vector documents SMC-generated sources only. The meaning of each
   external interrupt bit is defined by the enclosing SoC integration.
 
