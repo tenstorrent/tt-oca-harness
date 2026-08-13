@@ -677,7 +677,8 @@ module dtp_uvm_top
         .rst_n_i                          (rst_n_i),
         .pwr_on_rst_ni                    (pwr_on_rst_ni),
 
-        // Lifecycle feature control: '0 == nothing disabled (full debug access)
+        // Lifecycle feature control is enable-polarity: all required bits set
+        // to 1 enables full debug access.
         .feat_ctrl_i                      (feat_ctrl),
 
         // Primary JTAG TAP client
