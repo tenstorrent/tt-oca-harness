@@ -9,7 +9,7 @@
 [cols=",",options="header",]
 |===
 |Field |Value
-|DUT |`dtp` (`hw/dtp/rtl/dtp.sv`)
+|DUT |`dtp` (`hw/sys/dtp/rtl/dtp.sv`)
 |Repository |`tt-oca`
 |Project |OCAH
 |Framework |PyUVM on cocotb (primary); SystemVerilog UVM smoke layer (`--dut dtp_uvm`, VCS)

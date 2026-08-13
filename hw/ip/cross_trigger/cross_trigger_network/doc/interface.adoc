@@ -123,6 +123,6 @@ output logic [NUM_INT_CT-1:0] ctm_dst_ack_o
 
 The CTN depends on the following components:
 
-* `hw/ip/cross_trigger_port` - Cross Trigger Port IP
-* `hw/ip/cross_trigger_matrix` - Cross Trigger Matrix IP
-* `deps/axi` - AXI infrastructure (axi_lite_xbar)
+* `hw/ip/cross_trigger/cross_trigger_port` - Cross Trigger Port IP
+* `hw/ip/cross_trigger/cross_trigger_matrix` - Cross Trigger Matrix IP
+* `vendor/pulp-platform/axi` - AXI infrastructure (`axi_lite_xbar`)

@@ -39,4 +39,4 @@ The STAP interface timing follows IEEE 1838-2019:
 
 The STAP depends on the following components:
 
-* `hw/common/prim` - Primitive cells (clock gating, synchronizers)
+* `hw/common/och_prim` - Primitive cells (clock gating, synchronizers)

@@ -473,15 +473,19 @@ timestamps across the system.
 
 ==== Configuration
 
-Before integrating the DTP, run the configuration script to generate required files:
+The cross-trigger topology is fixed at elaboration by `dtp_pkg`, a committed
+source file at `hw/sys/dtp/rtl/dtp_pkg.sv`. `DEFAULT_NUM_CTP`,
+`DEFAULT_NUM_INT_CT`, and `DEFAULT_NUM_CLK_STOP_REQ` there set the
+`XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, and `XTRIG_NUM_CLK_STOP_REQ` localparams of
+`dtp`, so a different port count is applied by editing that package rather than
+by overriding parameters at the instantiation. The remaining DTP parameters,
+including `XTRIG_INT_CT_MODE` and every `JTAG_*` enable, are set at the
+instantiation as shown below.
 
-[source,bash]
-----
-cd hw/dtp
-python3 generate_dtp.py --num-ctp <N> --num-int-ct <M>
-----
-
-Include the DTP in your build using `hw/dtp/config/dtp.f` or Bender target `dtp_rtl`.
+Include the DTP in your build using Bender target `dtp`, which pulls in the DTP
+RTL together with the JTAG and cross-trigger IPs it instantiates. The legacy
+filelist `hw/sys/dtp/rtl/config/dtp.f` covers only the JTAG portion of the
+hierarchy and is not a complete DTP recipe.
 
 ==== Instantiation
 
@@ -536,21 +540,26 @@ STAP connects to the SEP JTAG debug port when `SEP=1`; when `SEP=0`, the SMU
 ties `sep_stap_tdo_to_dtp = 1'b0` to bypass the SEP STAP return path.
 
 Each STAP host interface is gated by lifecycle feature controls, synchronized to
-TCK inside the DTP.
+TCK inside the DTP. `feat_ctrl_i` is enable-polarity (1 = feature enabled), so a
+STAP host interface is enabled only when all of its required enables are asserted
+and is disabled when any one of them is deasserted.
 
-[cols="<30%,<70%",options="header"]
+[cols="<25%,<35%,<40%",options="header"]
 |===
-|STAP |Lifecycle Host Gating
-|SMC debug STAP |`feat_ctrl_i.soc_debug \|\| feat_ctrl_i.ap_debug`
-|SEP debug STAP |`feat_ctrl_i.sep_debug \|\| feat_ctrl_i.soc_debug \|\| feat_ctrl_i.ap_debug`
+|STAP |Enabled When |Host Gating Disable Condition
+|SMC debug STAP |`feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|SEP debug STAP |`feat_ctrl_i.sep_debug \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
 |===
+
+The full set of lifecycle-gated debug paths, including the iJTAG chains and the
+JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.
 
 ==== DTP Port Interface
 
 The DTP exposes interfaces for JTAG TAP control, boundary scan, multiple STAP
 host ports, iJTAG scan chains, AXI debug bridges, cross trigger networks, and
 CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
-the dedicated DTP documentation in `hw/dtp/doc/` for internal design details.
+the dedicated DTP documentation in `hw/sys/dtp/doc/` for internal design details.
 
 ifdef::backend-html5[]
 include::partial$hw/dtp/doc/port_table.adoc[]

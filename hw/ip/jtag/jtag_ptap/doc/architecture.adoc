@@ -60,15 +60,15 @@ The PTAP implementation instantiates the following submodules:
 |60-bit capabilities readback register
 |Always instantiated
 
-|`prim_jtag2axi` (SMC OTP)
+|`jtag2axi` (SMC OTP)
 |JTAG-to-AXI-Lite bridge for SMC OTP controller
 |When `SMC_DBG_ENABLE=1`
 
-|`prim_jtag2axi` (SEP OTP)
+|`jtag2axi` (SEP OTP)
 |JTAG-to-AXI-Lite bridge for SEP OTP controller
 |When `SEP_DBG_ENABLE=1`
 
-|`prim_jtag2axi` (SMC fabric)
+|`jtag2axi` (SMC fabric)
 |JTAG-to-AXI bridge for SMC system fabric
 |When `SMC_DBG_ENABLE=1`
 |===
@@ -443,4 +443,4 @@ The PTAP derives three independent security disable signals from the feature con
 |`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
 |===
 
-Each derived security disable signal feeds into the corresponding `prim_jtag2axi` module instance. When a debug interface is disabled by lifecycle state, the JTAG2AXI module blocks all AXI transaction generation, preventing unauthorized access to memory-mapped debug registers and system resources.
+Each derived security disable signal feeds into the corresponding `jtag2axi` module instance. When a debug interface is disabled by lifecycle state, the JTAG2AXI module blocks all AXI transaction generation, preventing unauthorized access to memory-mapped debug registers and system resources.

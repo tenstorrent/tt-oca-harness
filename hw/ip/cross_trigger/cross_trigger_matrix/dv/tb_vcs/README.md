@@ -3,10 +3,16 @@ Cross Trigger Matrix Testbench
 
 This directory contains the VCS testbench for the Cross Trigger Matrix IP.
 
+**Note**: the top-level testbench module is not present in this tree. Upstream
+generated `tb_cross_trigger_matrix.sv` from a Mako template alongside the RDL and
+the RTL, and only the generated RTL was carried over. `tb.f` still names the file,
+so this testbench does not elaborate as-is; the CTM is covered here through the
+CTN and DTP testbenches instead.
+
 Testbench Structure
 ------------------
 
-* **tb_cross_trigger_matrix.sv**: Top-level testbench module
+* **tb_cross_trigger_matrix.sv**: Top-level testbench module (not ported, see above)
 * **test/**: Python test files using cocotb
   * **test_base.py**: Base test class with common utilities
   * **test_sanity.py**: Basic sanity test
@@ -16,17 +22,16 @@ Testbench Structure
 Test Plan
 ---------
 
-See doc/verification.rst for detailed test plan.
+See ../../doc/architecture.adoc and ../../doc/interface.adoc for the design
+description this testbench checks against.
 
 Quick Start
 -----------
 
-1. Generate IP files (registers, RTL package, testbench):
+1. Regenerate register collateral if `regs/gen/` is stale:
    ```bash
-   cd ..
-   python3 generate_ip.py --num-ct-src <N> --num-ct-dst <M>
+   make -f ocah.mk ocah-regen-regs TARGET=cross_trigger_matrix
    ```
-   Where ``<N>`` and ``<M>`` are the number of CT_Src and CT_Dst ports (1-32, default: 4).
 
 2. Run sanity test:
    ```bash
@@ -70,4 +75,4 @@ Requirements
 * VCS simulator
 * Cocotb framework
 * Python 3.7+
-* AXI-Lite VIP (from cross_trigger_port/tb_vcs/axil_vip)
+* AXI-Lite VIP (from cross_trigger_port/dv/tb_vcs/axil_vip)

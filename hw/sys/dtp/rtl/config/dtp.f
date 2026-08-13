@@ -2,7 +2,7 @@
 # Copyright 2025 Tenstorrent Inc.
 
 # Include directories
-+incdir+$OCH_ROOT/hw/dtp/rtl
++incdir+$OCH_ROOT/hw/sys/dtp/rtl
 +incdir+$OCH_ROOT/hw/common/och_prim/rtl
 +incdir+$OCH_ROOT/vendor/opentitan/upstream/hw/ip/prim/rtl
 +incdir+$OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl
@@ -37,7 +37,7 @@ $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_ptap.sv
 $OCH_ROOT/hw/ip/jtag/jtag_stap/rtl/jtag_stap.sv
 
 # JTAG Interface Unit
-$OCH_ROOT/hw/comp/jtag_intf_unit/rtl/jtag_intf_unit.sv
+$OCH_ROOT/hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
 
 # Top-level DTP module
-$OCH_ROOT/hw/dtp/rtl/dtp.sv
+$OCH_ROOT/hw/sys/dtp/rtl/dtp.sv
