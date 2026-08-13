@@ -146,4 +146,8 @@ being public, need no read protection. Replaced the two coarse reserved blocks
 with eight individually lockable 256-bit spare fields (spare0-spare7) so an
 adopter can provision and lock spare storage one field at a time. The map
 remains 8192 bits.
+|0.5.23 |2026-08-13 |Alessandro Ottaviano |Completed the published-document
+migration audit. Restored the shared reference-counter description and UART
+software flow-control guidance; aligned DFX status, repository path, and
+cross-document link descriptions with the current implementation.
 |=======================================================================

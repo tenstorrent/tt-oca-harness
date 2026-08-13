@@ -276,7 +276,7 @@ fail signature verification and cannot be loaded.
 
 ===== RTL Integration
 
-The eFuse subsystem in the SEP is implemented by `sep_efuse_wrapper`, which is instantiated inside `sep_crypto`. The wrapper converts the SEP-side AXI bus (64-bit) to AXI-Lite (32-bit) through an `axi_dw_converter` and `axi_to_axi_lite` bridge, and then connects to the shared `efuse_interface_controller` IP from `hw/periph/efuse/`. A separate JTAG AXI-Lite port provides debug and manufacturing access.
+The eFuse subsystem in the SEP is implemented by `sep_efuse_wrapper`, which is instantiated inside `sep_crypto`. The wrapper converts the SEP-side AXI bus (64-bit) to AXI-Lite (32-bit) through an `axi_dw_converter` and `axi_to_axi_lite` bridge, and then connects to the shared `efuse_interface_controller` IP from `hw/ip/efuse/`. A separate JTAG AXI-Lite port provides debug and manufacturing access.
 
 The `efuse_interface_controller` is instantiated with the `HAS_LC_STATE` parameter set to `1'b1`. When this parameter is asserted, the controller implements special handling for the `LC_STATE` fuse field: the shadow register output for `LC_STATE` is driven to `4'b1111` (invalid) until fuse sensing completes, preventing downstream logic from acting on an incorrect life-cycle state during the boot sequence. The life-cycle state width is 4 bits (`sep_pkg::LC_STATE_BIT_WIDTH`), starting at bit position 64 in the shadow register map (`sep_pkg::LC_STATE_BIT_POSITION`).
 

@@ -252,6 +252,18 @@ top-level block diagram highlighting the clock domains.
 //.OCAH Clock Domains
 //image::ocah_clock_domains.png[OCAH Clock Domains,scaledwidth=100.0%]
 
+[[ocah-reference-counter]]
+==== Reference Counter
+
+Both the SMC and the SEP expose a free-running 64-bit reference counter in their
+CPU control register block (the `REFERENCE_COUNTER` CSR), clocked by the
+always-on reference clock (`clk_ref_i`). It advances continuously from reset,
+independent of the system clock (`clk_smu_i`) frequency or PLL state. Its value
+is synchronised into the CPU clock domain for software reads, and software may
+write the CSR to reload the counter, after which it resumes counting from the
+loaded value. Both subsystems share the same implementation
+(`prim_refclk_count_w_cdc`) and behave identically.
+
 [[ocah-reset]]
 === Reset
 
@@ -309,9 +321,17 @@ The reset hierarchy within the SMU proceeds as follows:
   ports.
 
 For the detailed reset controller design, sequencing FSM, reset register
-interface, and clock-reset interaction, refer to the
-<<clock-and-reset-management>> chapter. For integration-level reset
-procedures, refer to the Integrator Guide.
+interface, and clock-reset interaction, refer to the Clock and Reset Management
+chapter:
+
+ifdef::backend-html5[]
+xref:smc:clk_rst.adoc#clock-and-reset-management[Clock and Reset Management]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<clock-and-reset-management,Clock and Reset Management>>
+endif::backend-pdf[]
+
+For integration-level reset procedures, refer to the Integrator Guide.
 
 // ============================================================================
 // Per-subsystem deep dives
