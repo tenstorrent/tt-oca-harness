@@ -156,8 +156,12 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-  # Sticky PR summary comment built from the smoke run's native results.
-  # Same-repo PRs only: fork PRs get a read-only token and cannot comment.
+  # Sticky PR failure comment built from the smoke run's native results. The
+  # comment exists only while the smoke gate is failing: a passing run posts
+  # nothing (the green required check is the pass signal) and deletes a stale
+  # failure comment left by an earlier push, so a recovered PR carries no
+  # leftover red summary. Same-repo PRs only: fork PRs get a read-only token
+  # and cannot comment.
   pr-comment:
     needs: verilator-smoke
     if: always() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
@@ -167,17 +171,28 @@ jobs:
       pull-requests: write
     steps:
       - name: Download smoke artifacts
+        if: needs.verilator-smoke.result != 'success'
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           pattern: dv-run-*-smoke
           path: runs
 
-      - name: Post sticky summary comment
+      - name: Sync sticky failure comment
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           marker='<!-- ocah-dv-smoke-summary -->'
+          pr=${{ github.event.pull_request.number }}
+          cid=$(gh api "repos/${{ github.repository }}/issues/$pr/comments" --paginate \
+            --jq "[.[] | select(.body | startswith(\"$marker\"))][0].id // empty")
+          if [ "${{ needs.verilator-smoke.result }}" = "success" ]; then
+            # Passing run: no comment traffic; drop a stale failure summary.
+            if [ -n "$cid" ]; then
+              gh api -X DELETE "repos/${{ github.repository }}/issues/comments/$cid"
+            fi
+            exit 0
+          fi
           {
             echo "$marker"
             echo "### DV smoke summary"
@@ -200,9 +215,6 @@ jobs:
             echo ""
             echo "_Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (job result: ${{ needs.verilator-smoke.result }})_"
           } > comment.md
-          pr=${{ github.event.pull_request.number }}
-          cid=$(gh api "repos/${{ github.repository }}/issues/$pr/comments" --paginate \
-            --jq "[.[] | select(.body | startswith(\"$marker\"))][0].id // empty")
           if [ -n "$cid" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$cid" -F body=@comment.md
           else
