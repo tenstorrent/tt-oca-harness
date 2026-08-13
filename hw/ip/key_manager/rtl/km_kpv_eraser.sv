@@ -28,7 +28,7 @@
  */
 
 module km_kpv_eraser #(
-    parameter int unsigned NUM_SLOTS      = 32,
+    parameter int unsigned NUM_SLOTS      = 64,
     parameter int unsigned WORDS_PER_SLOT = 16,
     parameter int unsigned DATA_WIDTH     = 32
 ) (
