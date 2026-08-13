@@ -20,6 +20,12 @@ OCAH_DOC_PDF_THEME ?= $(OCAH_DOC_DIR)/theme.yml
 OCAH_DOC_PDF_THEMESDIR ?= $(OCAH_DOC_DIR)
 OCAH_CSV_TO_ADOC := python3 $(OCAH_ROOT)/tools/doc/csvadoc.py
 OCAH_DOC_REGEN_REGS ?= 1
+# Partner-facing output omits the detailed TRM revision history by default.
+# Set OCAH_DOC_SHOW_REVISION_HISTORY=1 for internal HTML/PDF builds.
+OCAH_DOC_SHOW_REVISION_HISTORY ?= 0
+OCAH_DOC_SHOW_REVISION_HISTORY_ENABLED := $(filter 1 yes true,$(strip $(OCAH_DOC_SHOW_REVISION_HISTORY)))
+OCAH_DOC_ANTORA_REVISION_HISTORY_ARG := $(if $(OCAH_DOC_SHOW_REVISION_HISTORY_ENABLED),--attribute show-revision-history)
+OCAH_DOC_ASCIIDOCTOR_REVISION_HISTORY_ARG := $(if $(OCAH_DOC_SHOW_REVISION_HISTORY_ENABLED),-a show-revision-history)
 # Optional Antora --url override (nested publish paths, e.g. /trm).
 OCAH_DOC_SITE_URL ?=
 
