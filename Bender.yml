@@ -413,6 +413,7 @@ sources:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
   - target: dtp
     files:
+      - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
