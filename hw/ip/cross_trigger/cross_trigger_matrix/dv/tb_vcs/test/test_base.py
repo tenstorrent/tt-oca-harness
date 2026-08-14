@@ -30,11 +30,15 @@ NUM_CT_DST = dict(
 )['ct_dst_select']
 CT_DST_SELECT_MASK = (1 << NUM_CT_DST) - 1
 
+def ct_src_config_addr(src_idx):
+    """Address of the CT_Src[src_idx] config register, from the generated header"""
+    return getattr(ctm_regs, f'CT_SRC_{src_idx}__CONFIG_0_REG_ADDR')
+
 # One config register per CT_Src port, addressed from the generated header so the
 # stride never has to be restated here
 REG_MAP = {
     f'CT_SRC{i}_CONFIG_0': (
-        getattr(ctm_regs, f'CT_SRC_{i}__CONFIG_0_REG_ADDR'),
+        ct_src_config_addr(i),
         'RW',
         f'CT_Src[{i}] Configuration',
         ctm_regs.CT_SRC_CONFIG_0_REG_DEFAULT,
@@ -91,13 +95,11 @@ async def reg_read(dut, axil, reg_name):
 
 async def write_ct_src_config(dut, axil, src_idx, select_mask):
     """Write CT_SRC[i]_CONFIG register with select mask"""
-    addr = src_idx * 4
-    await axil_write(dut, axil, addr, select_mask)
+    await axil_write(dut, axil, ct_src_config_addr(src_idx), select_mask)
 
 async def read_ct_src_config(dut, axil, src_idx):
     """Read CT_SRC[i]_CONFIG register"""
-    addr = src_idx * 4
-    return await axil_read(dut, axil, addr)
+    return await axil_read(dut, axil, ct_src_config_addr(src_idx))
 
 async def pulse_ct_dst(dut, dst_idx, duration_cycles=1):
     """Generate pulse on CT_Dst[dst_idx]"""
