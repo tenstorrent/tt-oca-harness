@@ -21,7 +21,9 @@ paths = ["{run_dir}", "hw/sys/dtp/dv/build/uvm"]
 # `include`s uvm/tests/dtp_tests.sv. Compile order is load-bearing and explicit — the generated
 # filelist emits `sources` in listed order AFTER the bender filelist (DUT packages visible),
 # then `top_file` last:
-#   ocah_jtag_if (shared VIP) -> dtp_tb_if -> ocah_jtag_uvm_pkg (shared VIP agent)
+#   ocah_jtag_if (shared VIP) -> ocah_axi_if -> dtp_tb_if
+#   -> AXI protocol SVA + behavioral responders (module collateral)
+#   -> ocah_jtag_uvm_pkg -> ocah_axi_uvm_pkg (shared VIP agents/passive env)
 #   -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
 top_module = "dtp_uvm_top"
 top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
@@ -40,15 +42,23 @@ common_bender_targets = [
 bender_targets = ["dtp", "simulation"]
 incdirs = [
   "hw/sys/dtp/dv/tb",
+  "hw/common/assert",
   "hw/common/dv/vip/ocah_jtag_vip/uvm",
+  "hw/common/dv/vip/ocah_axi_vip/uvm",
   "hw/sys/dtp/dv/uvm/env",
   "hw/sys/dtp/dv/uvm/seq_lib",
   "hw/sys/dtp/dv/uvm/tests",
 ]
 sources = [
   "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_protocol_checker.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sv/ocah_axil_ram_responder.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sv/ocah_axi_ram_responder.sv",
+  "hw/common/dv/vip/ocah_axi_vip/cov/ocah_axi_cov.sv",
   "hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_uvm_pkg.sv",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv",
   "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
 ]

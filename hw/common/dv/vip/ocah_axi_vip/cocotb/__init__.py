@@ -21,6 +21,9 @@ OcahAxiLiteSlave      — AXI4-Lite memory-backed slave/responder.
 OcahAxiLiteRam        — Alias for OcahAxiLiteSlave.
 OcahAxiMonitor      — Passive AXI4 transaction monitor with callbacks.
 OcahAxiLiteMonitor  — Passive AXI4-Lite transaction monitor with callbacks.
+OcahAxiRefModel       — Shadow memory + expected-response reference model.
+OcahAxiScoreboard     — Evidence-emitting scoreboard over monitor item streams.
+OcahAxiProtocolWatcher / OcahAxiLiteProtocolWatcher — cycle-level rule watchers.
 
 Quick-start
 -----------
@@ -53,6 +56,12 @@ from .ocah_axi_item import (
     OcahAxiWriteItem,
 )
 from .ocah_axi_lite_slave import OcahAxiLiteRam, OcahAxiLiteSlave, OcahFaultAxiLiteRam
+from .ocah_axi_ref_model import (
+    OcahAxiPrediction,
+    OcahAxiRefModel,
+    OcahAxiRegionExpectation,
+)
+from .ocah_axi_scoreboard import OcahAxiScoreboard
 from .ocah_axi_slave import OcahAxiRam, OcahAxiSlave, OcahAxiSlaveImportError, OcahFaultAxiRam
 from .results import (
     RESP_DECERR,
@@ -100,6 +109,19 @@ except ModuleNotFoundError as exc:
     OcahAxiMonitor = _unavailable_class("OcahAxiMonitor", "cocotb")
     OcahAxiLiteMonitor = _unavailable_class("OcahAxiLiteMonitor", "cocotb")
 
+try:
+    from .ocah_axi_protocol_watcher import (
+        OcahAxiLiteProtocolWatcher,
+        OcahAxiProtocolWatcher,
+        OcahAxiWatchFinding,
+    )
+except ModuleNotFoundError as exc:
+    if "cocotb" not in str(exc):
+        raise
+    OcahAxiProtocolWatcher = _unavailable_class("OcahAxiProtocolWatcher", "cocotb")
+    OcahAxiLiteProtocolWatcher = _unavailable_class("OcahAxiLiteProtocolWatcher", "cocotb")
+    OcahAxiWatchFinding = None
+
 __all__ = [
     # Master drivers
     "OcahAxiMaster",
@@ -122,6 +144,14 @@ __all__ = [
     "OcahAxiLiteReadItem",
     "OcahAxiChecker",
     "OcahAxiCheckerError",
+    # Reference model, scoreboard, and protocol watchers
+    "OcahAxiRefModel",
+    "OcahAxiRegionExpectation",
+    "OcahAxiPrediction",
+    "OcahAxiScoreboard",
+    "OcahAxiProtocolWatcher",
+    "OcahAxiLiteProtocolWatcher",
+    "OcahAxiWatchFinding",
     # Error types
     "OcahAxiMasterError",
     "OcahAxiLiteMasterError",

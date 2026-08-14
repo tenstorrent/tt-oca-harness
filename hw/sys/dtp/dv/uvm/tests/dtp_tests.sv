@@ -70,3 +70,85 @@ class dtp_uvm_sanity_test extends dtp_uvm_base_test;
     endtask
 
 endclass : dtp_uvm_sanity_test
+
+// ---------------------------------------------------------------------
+// dtp_uvm_jtag2axi_smc_otp_test — issue #3295 (`--items
+// dtp_jtag2axi_smc_otp_axi_single_write_read_test`): JTAG2AXI single-op
+// traffic on the SMC OTP AXI-Lite port through the shared ocah_axi_vip
+// passive env — randomized write/readback, armed SLVERR/DECERR classified
+// as EXPECTED, security-gating no-activity, and required CHK-* evidence.
+// ---------------------------------------------------------------------
+class dtp_uvm_jtag2axi_smc_otp_test extends dtp_uvm_base_test;
+    `uvm_component_utils(dtp_uvm_jtag2axi_smc_otp_test)
+
+    function new(string name = "dtp_uvm_jtag2axi_smc_otp_test", uvm_component parent = null);
+        super.new(name, parent);
+    endfunction
+
+    function void end_of_elaboration_phase(uvm_phase phase);
+        super.end_of_elaboration_phase(phase);
+        m_env.m_smc_otp_axi_cfg.require_checks = 1'b1;
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-RESP");
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-RDATA");
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-ERR-INJ");
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-STRB");
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-WADDR");
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-WDATA");
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-RADDR");
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-GATE-AW");
+        m_env.m_smc_otp_axi_cfg.required_ids.push_back("CHK-AXI-GATE-AR");
+    endfunction
+
+    task run_phase(uvm_phase phase);
+        dtp_jtag2axi_single_op_seq seq;
+        phase.raise_objection(this, "dtp_uvm_jtag2axi_smc_otp_test running");
+        seq = dtp_jtag2axi_single_op_seq::type_id::create("seq");
+        seq.tb_vif       = m_env.tb_vif;
+        seq.target_name  = "smc_otp";
+        seq.axi_cfg      = m_env.m_smc_otp_axi_cfg;
+        seq.axi_evidence = m_env.m_smc_otp_axi_env.m_scoreboard.m_checker;
+        seq.start(m_env.m_jtag_env.m_sequencer);
+        phase.drop_objection(this, "dtp_uvm_jtag2axi_smc_otp_test done");
+    endtask
+
+endclass : dtp_uvm_jtag2axi_smc_otp_test
+
+// ---------------------------------------------------------------------
+// dtp_uvm_jtag2axi_smc_axi_test — issue #3295 Phase B: the same single-op
+// scenario on the SMC fabric AXI4 manager port (132-bit wide TDR scans,
+// 64-bit data, ID-tagged bursts observed by the shared monitor).
+// ---------------------------------------------------------------------
+class dtp_uvm_jtag2axi_smc_axi_test extends dtp_uvm_base_test;
+    `uvm_component_utils(dtp_uvm_jtag2axi_smc_axi_test)
+
+    function new(string name = "dtp_uvm_jtag2axi_smc_axi_test", uvm_component parent = null);
+        super.new(name, parent);
+    endfunction
+
+    function void end_of_elaboration_phase(uvm_phase phase);
+        super.end_of_elaboration_phase(phase);
+        m_env.m_smc_axi_cfg.require_checks = 1'b1;
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RESP");
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RDATA");
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-ERR-INJ");
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-STRB");
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-WADDR");
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-WDATA");
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-RADDR");
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-GATE-AW");
+        m_env.m_smc_axi_cfg.required_ids.push_back("CHK-AXI-GATE-AR");
+    endfunction
+
+    task run_phase(uvm_phase phase);
+        dtp_jtag2axi_single_op_seq seq;
+        phase.raise_objection(this, "dtp_uvm_jtag2axi_smc_axi_test running");
+        seq = dtp_jtag2axi_single_op_seq::type_id::create("seq");
+        seq.tb_vif       = m_env.tb_vif;
+        seq.target_name  = "smc_axi";
+        seq.axi_cfg      = m_env.m_smc_axi_cfg;
+        seq.axi_evidence = m_env.m_smc_axi_env.m_scoreboard.m_checker;
+        seq.start(m_env.m_jtag_env.m_sequencer);
+        phase.drop_objection(this, "dtp_uvm_jtag2axi_smc_axi_test done");
+    endtask
+
+endclass : dtp_uvm_jtag2axi_smc_axi_test

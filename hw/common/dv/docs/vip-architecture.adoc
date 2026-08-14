@@ -153,7 +153,10 @@ handshake stability, and protocol coverage.
 
 |`hw/common/dv/sva/`
 |Reusable signal-level properties whose meaning is protocol-neutral and whose
-binding does not depend on DUT hierarchy.
+binding does not depend on DUT hierarchy. Protocol-specific SVA lives with its
+protocol VIP instead: the first VIP-embedded assertion package is
+`ocah_axi_vip/sva/ocah_axi_protocol_checker.sv` (clean-room AXI4/AXI4-Lite
+rules, issue #3295).
 
 |DUT `cocotb/assertions/` or local SVA
 |Hierarchy, address, reset, lifecycle, security, and integration invariants.

@@ -225,7 +225,140 @@ checker.assert_clean()
 
 Item fields include `protocol`, `direction`, `address`, `data_words`,
 `strobes`, `size`, `burst`, `transaction_id`, `prot`, `resp_list`, `ok`, and
-`timed_out`.
+`timed_out`. Monitors pair outstanding transactions by ID (per-ARID address
+queues, per-RID beat accumulation; write bursts matched to BID), stamp
+`start_time_ns`/`end_time_ns`, and expose:
+
+- `get_request_activity() -> {"aw": n, "w": n, "ar": n}` — request-channel
+  VALID-high CYCLE counters (matching the DTP tb pulse counters) for
+  no-activity evidence; back-to-back requests with VALID held continuously
+  still count every cycle.
+- `pending_transactions() -> {"write": n, "read": n}` — in-flight requests
+  awaiting completion, retained across `stop()`; `orphan_responses` counts
+  B/R completions that had no request phase (logged as errors, never
+  published as transactions). Both are enforced at scoreboard finalize via
+  `CHK-AXI-DRAIN`.
+- `arm_expected_resp(resp, count=1, direction=None)` — passive credits: the
+  next matching non-OKAY completions publish with
+  `metadata["expected_resp"]`; monitors never raise, classification authority
+  stays with the scoreboard.
+
+`OcahAxiChecker` composes the common `ocah_checker.OcahChecker` evidence core:
+it retains item-level protocol findings in `errors` AND emits named
+`CHK-* PASS/FAIL` evidence via `expect_equal/expect_true/
+expect_not_timed_out/expect_timeout`, finalized once with `finalize()`
+(zero checks, failures, and missing required IDs all fail).
+
+Item-level rules (clean-room from the public AMBA AXI4 spec, IHI 0022):
+`AXI-RESP-LEGAL`, `AXI-LITE-SINGLE`, `AXI-LITE-RESP` (no EXOKAY on Lite),
+`AXI-BEATS`, `AXI-BURST-LEGAL` (reserved 0b11), `AXI-WRAP-ALIGN`,
+`AXI-FIXED-LEN`, `AXI-ALIGN` (opt-in), `AXI-4KB` (INCR only),
+`AXI-STRB-LEGAL` (lane-window check when `bus_bytes` is configured).
+
+## Reference Model And Scoreboard
+
+`OcahAxiRefModel` is a stateful, cocotb-free shadow: a sparse byte memory
+with strobe-masked commits, plus the expected-response policy —
+address-region expectations (`add_region(OcahAxiRegionExpectation(...))`)
+and one-shot armed errors (`expect_error(addr, resp, read=, write=)`, beat
+aligned exactly like `OcahFaultMixin.inject_error` pops them). Predictions
+resolve the response first and commit memory only on expected-OKAY writes.
+`write_bytes()` mirrors backdoor preloads; `reset()` restores deterministic
+state.
+
+`OcahAxiScoreboard` pairs monitor items with model predictions and emits the
+named evidence IDs:
+
+| Check ID | Meaning |
+|---|---|
+| `CHK-AXI-RESP` | per-beat observed responses == model expectation (position-exact) |
+| `CHK-AXI-RESP-EXPECTED` | an armed non-OKAY credit was consumed exactly |
+| `CHK-AXI-RDATA` | read data == predicted readback (expected-OKAY reads) |
+| `CHK-AXI-WMEM` | DUT memory bytes == expectation (`check_memory()`; pass `expected=` with stimulus-intent bytes for the non-circular form, else the model shadow proves RAM-vs-bus only) |
+| `CHK-AXI-STRB` | observed write strobes == armed stimulus intent (`arm_expected_strobes()`) |
+| `CHK-AXI-NOACT` | activity counters unchanged / blocked window empty |
+| `CHK-AXI-BLOCKED` | violation detector: a transaction whose beats OVERLAP a `blocked=True` region fails, regardless of response — byte-span overlap, so regions smaller than a bus word and regions entered mid-burst are both caught |
+| `CHK-AXI-DRAIN` | emitted per attached monitor at finalize: every accepted request completed (no in-flight AW/AR) and no orphan B/R response arrived without a request phase |
+| `CHK-AXI-COMPLETION` / `CHK-AXI-TIMEOUT` | a timed-out transaction fails unless the test armed it via `arm_expected_timeout()`; nothing on the observed item can authorize its own pass |
+| `CHK-AXI-CREDITS` | zero unconsumed armed credits (response, strobe, and timeout) at finalize |
+| `CHK-AXI-STREAM-MIN` | per-stream minimum compared-transaction count |
+| `CHK-AXI-PROTOCOL` | protocol-watcher findings == 0 |
+| `CHK-AXI-NONVAC` | adopter's domain non-vacuity (`expect_nonvacuous()`) |
+
+Expected-vs-unexpected non-OKAY: `arm_expected_resp(resp, count=1,
+address=None, direction=None, stream=None)` declares expected errors (the
+generalization of SEP's `arm_expected_decerr`); any other non-OKAY fails the
+per-beat `CHK-AXI-RESP` comparison, and unconsumed credits fail
+`CHK-AXI-CREDITS`. When a model is attached, the per-beat comparison is emitted in addition to
+`CHK-AXI-RESP-EXPECTED` on every credited transaction, so an error response
+in the wrong burst position — or a credit that conflicts with the model's
+expectation — fails even on the expected path. A `blocked=True` region flags
+a burst if ANY of its beats touches the region, not just the start address.
+Scoreboard credits and the model are the ONLY classification sources — the
+monitor's `arm_expected_resp` credits are a monitor-local tally
+(`expected_resp_seen`/`unexpected_error_count`) and cannot override the
+scoreboard. Write-strobe intent: `arm_expected_strobes(strobes, count=1,
+address=None, stream=None)` declares the stimulus wstrb the observed bus
+strobes must match. Blocked windows (`begin/end_blocked_window`) fail any
+transaction observed while a stream must be silent;
+`expect_no_activity(before=, after=)` compares counter snapshots from either
+the monitors or DUT-side pulse counters. Multi-stream use: one scoreboard,
+`attach_monitor(monitor, stream=..., model=...)` per port, and
+`min_checks_per_stream` to reject silently-dead streams. Finalize exactly
+once after drain.
+
+A simulator-free self-test (positive flow + the A-R fail-closed negative suite)
+lives at `cocotb/examples/example_axi_scoreboard_selftest.py`:
+
+```bash
+PYTHONPATH="$PWD/hw/common/dv/vip" .venv/bin/python \
+  hw/common/dv/vip/ocah_axi_vip/cocotb/examples/example_axi_scoreboard_selftest.py
+```
+
+## Protocol Watchers (cycle-level)
+
+`OcahAxiProtocolWatcher` / `OcahAxiLiteProtocolWatcher` sample per cycle
+(RisingEdge + ReadOnly, pure Python, Verilator-friendly) and retain findings
+for: `AXI-{AW,W,AR,R,B}-STABLE` (payload stable while VALID && !READY),
+`AXI-{AW,W,AR,R,B}-HOLD` (VALID held until READY), `AXI-RESET-VALID`, and
+(AXI4) `AXI-W-LAST` / `AXI-R-LAST` last-beat position. Report once before
+finalization: `watcher.report(evidence)` emits `CHK-AXI-PROTOCOL` requiring
+zero findings.
+
+## SystemVerilog Layer (interface / sva / sv / uvm)
+
+The SV side of this package (compiled via `dtp_uvm_sim_cfg.toml`-style
+explicit sources, never Bender or Verilator filelists):
+
+- `interface/ocah_axi_if.sv` — flat AXI4/AXI4-Lite monitor interface
+  (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
+  lives in `ocah_axi_cfg`; Lite adapters tie the AXI4-only fields).
+- `sva/ocah_axi_protocol_checker.sv` — clean-room SVA protocol rules
+  (`OCAH_AXI_*` asserts + `OCAH_AXI_C_*` covers): reset-VALID, per-channel
+  stability/hold/X-hygiene, burst legality (reserved encoding, size,
+  FIXED<=16, WRAP length+alignment, 4KB), WLAST/RLAST position, strobe
+  lane-window, B/R ordering and ID matching, EXOKAY-exclusive, and the Lite
+  response-legality rules. `IS_LITE` selects the subset; `en_i` is the
+  runtime suppress knob. Rules are implemented from IHI 0022 rule
+  descriptions only — no third-party checker source was consulted.
+- `sv/ocah_axil_ram_responder.sv`, `sv/ocah_axi_ram_responder.sv` —
+  behavioral error-injectable RAM responders (SV analogue of the cocotb
+  fault RAMs) with port-driven arm/addr/resp/direction error controls.
+- `uvm/ocah_axi_uvm_pkg.sv` — passive UVM layer: `ocah_axi_item`,
+  `ocah_axi_cfg` (owns the `arm_expected_resp` table), `ocah_axi_checker`
+  (SV port of the CHK-*/CHECKER_SUMMARY evidence grammar; FAIL lines raise
+  `uvm_error`), `ocah_axi_monitor` (per-ID reconstruction over
+  `ocah_axi_if.mon_cb`), `ocah_axi_ref_model` (shadow memory + expected
+  items), `ocah_axi_scoreboard` (in-order pairing; `CHK-AXI-RESP/RDATA/
+  BEATS/ADDR-ALIGN/ERR-INJ`; finalizes in `check_phase`),
+  `ocah_axi_cov_sub` (optional `ocah_axi_cov_if` sampler), and
+  `ocah_axi_env` (cfg-gated bundle). No driver/sequencer — active SV-UVM
+  stimulus is tracked in the BFM workstream (#2906).
+
+The DTP SV-UVM flow (`--dut dtp_uvm`) is the first consumer: tb_top
+instantiates the responders and SVA checkers, and
+`dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
+JTAG VIP path (issue #3295).
 
 ## Functional Coverage Hook
 

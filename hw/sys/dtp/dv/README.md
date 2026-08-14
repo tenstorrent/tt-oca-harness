@@ -96,6 +96,13 @@ python3 tools/dv/run_dv.py --dut dtp_uvm --items dtp_sanity_test --tool vcs --se
 # SV-UVM build only / smoke group
 python3 tools/dv/run_dv.py --dut dtp_uvm --build-only
 python3 tools/dv/run_dv.py --dut dtp_uvm --items smoke --tool vcs
+
+# Checker qualification record: docs/DTP_AXI_CHECKER_QUALIFICATION.md
+# SV-UVM JTAG2AXI checker proofs (shared ocah_axi_vip passive env, issue #3295)
+python3 tools/dv/run_dv.py --dut dtp_uvm --tool vcs --seed 1 \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
+python3 tools/dv/run_dv.py --dut dtp_uvm --tool vcs --seed 1 \
+  --items dtp_jtag2axi_smc_axi_single_write_read_test
 ```
 
 Both flows share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
