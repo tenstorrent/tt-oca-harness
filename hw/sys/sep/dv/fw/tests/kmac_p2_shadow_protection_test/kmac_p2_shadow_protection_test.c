@@ -18,6 +18,7 @@
 #include "och_sep_common.h"
 #include "sep.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
 #include "test_completion.h"
 
 static void write_cfg_shadowed_twice(uint32_t val) {
@@ -60,9 +61,9 @@ int main(void) {
     printf("\nStep 1: Valid matching shadowed write\n");
     kmac__CFG_SHADOWED_t valid = {.w = 0};
     valid.f.kmac_en = 0;
-    valid.f.mode = 0x0;
-    valid.f.kstrength = 0x2;
-    valid.f.entropy_mode = 0x1;
+    valid.f.mode = SEP_KMAC_MODE_SHA3;
+    valid.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
+    valid.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     write_cfg_shadowed_twice(valid.w);
 
     uint32_t committed = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
@@ -74,12 +75,12 @@ int main(void) {
 
     printf("\nStep 2: Mismatched shadowed write should be rejected\n");
     kmac__CFG_SHADOWED_t first = valid;
-    first.f.mode = 0x1;
-    first.f.kstrength = 0x2;
+    first.f.mode = SEP_KMAC_MODE_RESERVED;
+    first.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
 
     kmac__CFG_SHADOWED_t second = valid;
-    second.f.mode = 0x2;
-    second.f.kstrength = 0x0;
+    second.f.mode = SEP_KMAC_MODE_SHAKE;
+    second.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
 
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, first.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, second.w);
@@ -94,10 +95,18 @@ int main(void) {
         printf("  FAIL: mismatched second shadow write committed\n");
         pass = 0;
     }
+    if (after_bad != valid.w) {
+        printf("  FAIL: residual CFG after mismatch is 0x%08x (expected prior valid 0x%08x)\n",
+               after_bad, valid.w);
+        pass = 0;
+    } else {
+        printf("  PASS: residual CFG remains prior valid value after mismatch\n");
+    }
     if (status.f.ALERT_RECOV_CTRL_UPDATE_ERR) {
         printf("  PASS: recoverable shadow update alert observed\n");
     } else {
-        printf("  INFO: recoverable alert status not observed; commit protection still checked\n");
+        printf("  FAIL: ALERT_RECOV_CTRL_UPDATE_ERR not set after intentional shadow mismatch\n");
+        pass = 0;
     }
 
     printf("\nStep 3: Restore valid configuration after mismatch\n");
@@ -109,7 +118,9 @@ int main(void) {
         pass = 0;
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x7);
+    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
 
     printf("\n========================================\n");
     if (pass) {

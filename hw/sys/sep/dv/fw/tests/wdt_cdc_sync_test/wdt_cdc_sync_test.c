@@ -25,6 +25,10 @@
 #include "sep.h"
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
+#include "aon_timer.h"
+
+#define WDOG_CTRL_FIELD_MASK \
+    (AON_TIMER__WDOG_CTRL__ENABLE_bm | AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm)
 
 static int check_reg(uint32_t addr, uint32_t expected, const char *name) {
     uint32_t val = READ_REG(addr);
@@ -66,12 +70,16 @@ int main(void) {
 
     /* STEP 3: WDOG_CTRL write/readback */
     printf("\n// STEP 3: WDOG_CTRL R/W consistency\n");
-    /* Bit 0=enable, bit 1=pause_in_sleep */
-    uint32_t ctrl_vals[] = {0x0, 0x1, 0x2, 0x3};
+    uint32_t ctrl_vals[] = {
+        0x0,
+        AON_TIMER__WDOG_CTRL__ENABLE_bm,
+        AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm,
+        (AON_TIMER__WDOG_CTRL__ENABLE_bm | AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm),
+    };
     for (int i = 0; i < 4; i++) {
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, ctrl_vals[i]);
         uint32_t rd = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
-        if ((rd & 0x3) != (ctrl_vals[i] & 0x3)) {
+        if ((rd & WDOG_CTRL_FIELD_MASK) != (ctrl_vals[i] & WDOG_CTRL_FIELD_MASK)) {
             printf("  FAIL: WDOG_CTRL wrote 0x%x, readback 0x%08x\n", ctrl_vals[i], rd);
             errors++;
         } else {
@@ -85,23 +93,34 @@ int main(void) {
     printf("\n// STEP 4: WDOG_COUNT write (pet) readback near 0\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
-    /* Let it count a bit */
-    for (volatile int i = 0; i < 30000; i++) {
+    /* Wait until count has advanced (pet proof needs non-trivial before_pet). */
+    uint32_t before_pet = 0;
+    int advanced = 0;
+    for (int i = 0; i < 2000000; i++) {
+        before_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        if (before_pet > 0x40u) {
+            advanced = 1;
+            break;
+        }
         __asm__ volatile("nop");
     }
-    uint32_t before_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  Count before pet = 0x%08x\n", before_pet);
-
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    uint32_t after_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
-    printf("  Count after pet = 0x%08x (expect ~0)\n", after_pet);
-    if (after_pet > 0x200) {
-        printf("  FAIL: Count not reset by write (0x%08x)\n", after_pet);
+    if (!advanced) {
+        printf("  FAIL: Count did not advance before pet (stuck at 0x%08x)\n", before_pet);
         errors++;
     } else {
-        printf("  PASS: Count reset to ~0 by write\n");
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+        uint32_t after_pet = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        printf("  Count after pet = 0x%08x (expect ~0)\n", after_pet);
+        if (after_pet > 0x200u || after_pet >= before_pet) {
+            printf("  FAIL: Pet did not reduce count (before=0x%08x after=0x%08x)\n", before_pet,
+                   after_pet);
+            errors++;
+        } else {
+            printf("  PASS: Count reset to ~0 by write (was 0x%08x)\n", before_pet);
+        }
     }
 
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
@@ -117,12 +136,28 @@ int main(void) {
     errors += check_reg(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x12345678,
                         "BITE_THOLD after seq");
 
-    /* STEP 6: WKUP registers accessible (coverage for unused but present registers) */
-    printf("\n// STEP 6: WKUP_CTRL register accessible\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, 0x0);
+    /* STEP 6: WKUP_CTRL non-zero pattern then clear (dead-bus 0 must fail) */
+    printf("\n// STEP 6: WKUP_CTRL non-zero write/readback then clear\n");
+    uint32_t wkup_pat =
+        AON_TIMER__WKUP_CTRL__ENABLE_bm | ((uint32_t)0x5Au << AON_TIMER__WKUP_CTRL__PRESCALER_bp);
+    uint32_t wkup_mask = AON_TIMER__WKUP_CTRL__ENABLE_bm | AON_TIMER__WKUP_CTRL__PRESCALER_bm;
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, wkup_pat);
     uint32_t wkup_ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR);
-    printf("  WKUP_CTRL readback = 0x%08x\n", wkup_ctrl);
-    printf("  PASS: WKUP registers accessible\n");
+    printf("  WKUP_CTRL wrote 0x%08x, readback = 0x%08x\n", wkup_pat, wkup_ctrl);
+    if ((wkup_ctrl & wkup_mask) != (wkup_pat & wkup_mask)) {
+        printf("  FAIL: WKUP_CTRL non-zero pattern mismatch\n");
+        errors++;
+    } else {
+        printf("  PASS: WKUP_CTRL non-zero pattern retained\n");
+    }
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, 0x0);
+    wkup_ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR);
+    if ((wkup_ctrl & wkup_mask) != 0) {
+        printf("  FAIL: WKUP_CTRL not cleared (0x%08x)\n", wkup_ctrl);
+        errors++;
+    } else {
+        printf("  PASS: WKUP_CTRL cleared after write 0\n");
+    }
 
     printf("\n======================================================\n");
     if (errors == 0) {
