@@ -28,6 +28,10 @@ content:
       branches: HEAD
       start_path: doc/appnotes
       edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/contributing
+      edit_url: false
 ui:
   bundle:
     # Pinned 2026-07-24 to the latest antora-ui-default commit at the time
