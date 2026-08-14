@@ -35,11 +35,8 @@ cd "$(pwd -P)"            # from the repository root; see the note on symlinked 
 source nonfree/setup_env.sh
 ```
 
-This exports `OCH_ROOT` / `NONFREE_ROOT`, loads a module bundling the simulator, waveform
-viewer and the rest of the DV tools (the same one CI uses), points `OCAH_DOCKER_CACHE_DIR`
-at a shared cache of the firmware toolchain image, sets `OCAH_TOOLCHAIN_ROOTFS`, and links
-`block_flow_customizations` into the open root. Verify afterwards that `bender`, `python3`
-and your simulator's executable all resolve:
+Read `nonfree/setup_env.sh` if you need to know what it sets up. Whatever it does, verify
+afterwards that `bender`, `python3` and your simulator's executable all resolve:
 
 ```bash
 for t in bender python3 <simulator>; do printf '%-12s %s\n' "$t" "$(command -v "$t" || echo MISSING)"; done
@@ -50,9 +47,9 @@ for t in bender python3 <simulator>; do printf '%-12s %s\n' "$t" "$(command -v "
 > banner while your shell gets nothing. Redirect to a file instead:
 > `source nonfree/setup_env.sh > "$TMPDIR/envsetup.log" 2>&1`.
 
-The script assigns its tool-home variables as `${VAR:-…}`, so a module-provided version takes
-precedence over the script's own fallback. Record which version you used when reporting a
-failure, but do not blame the simulator without an A/B that shows it is the cause.
+A tool already on your `PATH` can take precedence over the version the script would otherwise
+select, so record which versions you actually used when reporting a failure — and do not blame
+the simulator without an A/B that shows it is the cause.
 
 ### Without it (open tree only)
 
@@ -65,12 +62,11 @@ Provide the equivalents yourself:
   `scripts/docker-run.sh build` builds locally from `tools/docker/Dockerfile`.
 - `TMPDIR` pointed at a large local scratch directory (see below).
 
-The only environment pieces unique to the companion are that module, the shared image cache
-(`OCAH_DOCKER_CACHE_DIR`), the pre-extracted toolchain rootfs it points
-`OCAH_TOOLCHAIN_ROOTFS` at — the variable itself is a general opt-in anyone can set — and the
-`block_flow_customizations` link. With all of them unset, `docker-run.sh` builds and runs
-the image itself, which is the behaviour `tools/docker/README.md` documents as the default.
-Doc builds, register generation, lint and format targets need no site tooling at all.
+Nothing here is exotic. `scripts/docker-run.sh` documents its own environment variables in its
+header, and with the optional ones unset — notably `OCAH_DOCKER_CACHE_DIR` and
+`OCAH_TOOLCHAIN_ROOTFS` — it builds and runs the image itself, which is the behaviour
+`tools/docker/README.md` documents as the default. Doc builds, register generation, lint and
+format targets need no site tooling at all.
 
 ### Work from the physical path if your checkout is reached through a symlink
 
