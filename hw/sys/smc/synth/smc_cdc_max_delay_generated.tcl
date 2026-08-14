@@ -18,6 +18,12 @@
 # which sources this file.
 ################################################################################
 
+# Hierarchical instance paths below run past 100 characters and cannot be wrapped:
+# a Tcl word does not survive a line break. Brace-quoted words keep a trailing
+# backslash-newline literal, and inside quotes it collapses to a space, either way
+# corrupting the path. Only the length rule is disabled; the rest still apply.
+# tclint-disable line-length
+
 
 # ---- prim_sync2r (6 instances) ----
 set_cdc_max_delay_prim_sync2 {u_smc_peripherals/telemetry_receiver_wrap/gen_telemetry_receivers[0].afready_sync2r} TELEMETRYCLK

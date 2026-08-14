@@ -23,13 +23,13 @@ set ::cdc_clock_period(AVS_CLKMUX_OUTPUT_FROM_REFCLK) \
 set ::cdc_clock_period(AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK) \
     $clock_periods(PERIPHERALCLK_PERIOD)
 set ::cdc_clock_period(AVS_CLK_DIV_CLK_O_FROM_REFCLK) \
-    [expr {2 * $clock_periods(REFCLK_PERIOD)}]
+    [expr { 2 * $clock_periods(REFCLK_PERIOD) }]
 set ::cdc_clock_period(AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK) \
-    [expr {4 * $clock_periods(PERIPHERALCLK_PERIOD)}]
+    [expr { 4 * $clock_periods(PERIPHERALCLK_PERIOD) }]
 set ::cdc_clock_period(AVS_CLK_FROM_REFCLK) \
-    [expr {2 * $clock_periods(REFCLK_PERIOD)}]
+    [expr { 2 * $clock_periods(REFCLK_PERIOD) }]
 set ::cdc_clock_period(AVS_CLK_FROM_PERIPHERALCLK) \
-    [expr {4 * $clock_periods(PERIPHERALCLK_PERIOD)}]
+    [expr { 4 * $clock_periods(PERIPHERALCLK_PERIOD) }]
 
 source [file join $ocah_sdc_dir smc_cdc_max_delay_generated.tcl]
 

@@ -38,17 +38,20 @@
 # left alone.
 ################################################################################
 
-# Time unit is picoseconds, matching global.clock_periods.tcl.
-if {![info exists ::CDC_DEFAULT_MAX_DELAY]} { set ::CDC_DEFAULT_MAX_DELAY  20000 }  ;#  20 ns
-if {![info exists ::CDC_DEFAULT_MIN_DELAY]} { set ::CDC_DEFAULT_MIN_DELAY -20000 }  ;# -20 ns
+# Time unit is picoseconds, matching the clock periods each block's
+# constraints.sdc declares.
+if { ![info exists ::CDC_DEFAULT_MAX_DELAY] } { set ::CDC_DEFAULT_MAX_DELAY 20000 } ;#  20 ns
+if { ![info exists ::CDC_DEFAULT_MIN_DELAY] } { set ::CDC_DEFAULT_MIN_DELAY -20000 } ;# -20 ns
 
 # Is this ordered clock pair covered by an exclusion? Patterns match either way
 # round, so a caller need not list a pair twice.
 proc acg_excluded { a b exclude } {
     foreach pr $exclude {
         lassign $pr pa pb
-        if {([string match $pa $a] && [string match $pb $b]) ||
-            ([string match $pb $a] && [string match $pa $b])} { return 1 }
+        if {
+            ([string match $pa $a] && [string match $pb $b]) ||
+            ([string match $pb $a] && [string match $pa $b])
+        } { return 1 }
     }
     return 0
 }
@@ -58,61 +61,61 @@ proc acg_excluded { a b exclude } {
 #         and full runs.
 proc set_async_clock_groups { groups args } {
     array set opt [list -max_delay $::CDC_DEFAULT_MAX_DELAY \
-                        -min_delay $::CDC_DEFAULT_MIN_DELAY \
-                        -exclude   {}]
+        -min_delay $::CDC_DEFAULT_MIN_DELAY \
+        -exclude {}]
     array set opt $args
     set max_delay $opt(-max_delay)
     set min_delay $opt(-min_delay)
-    set exclude   $opt(-exclude)
+    set exclude $opt(-exclude)
 
     set names {}
     foreach g $groups {
         set c [get_clocks $g -quiet]
-        if {[sizeof_collection $c] == 0} {
+        if { [sizeof_collection $c] == 0 } {
             puts "INFO: async_clock_groups: group {$g} matched no clock, dropped"
             continue
         }
         lappend names [get_object_name $c]
     }
     set ng [llength $names]
-    if {$ng < 2} {
+    if { $ng < 2 } {
         puts "WARNING: async_clock_groups: fewer than two groups resolved -\
               no asynchronous relationship declared"
         return
     }
 
-    set n_grp 0 ; set n_split 0
-    for {set i 0} {$i < $ng} {incr i} {
-        for {set j [expr {$i + 1}]} {$j < $ng} {incr j} {
+    set n_grp 0; set n_split 0
+    for { set i 0 } { $i < $ng } { incr i } {
+        for { set j [expr { $i + 1 }] } { $j < $ng } { incr j } {
             set gi [lindex $names $i]
             set gj [lindex $names $j]
 
             # Split each side into the clocks that participate in an exclusion
             # with the other side, and the rest.
-            set xi {} ; set ri {}
+            set xi {}; set ri {}
             foreach a $gi {
                 set hit 0
-                foreach b $gj { if {[acg_excluded $a $b $exclude]} { set hit 1 ; break } }
-                if {$hit} { lappend xi $a } else { lappend ri $a }
+                foreach b $gj { if { [acg_excluded $a $b $exclude] } { set hit 1; break } }
+                if { $hit } { lappend xi $a } else { lappend ri $a }
             }
-            set xj {} ; set rj {}
+            set xj {}; set rj {}
             foreach b $gj {
                 set hit 0
-                foreach a $gi { if {[acg_excluded $a $b $exclude]} { set hit 1 ; break } }
-                if {$hit} { lappend xj $b } else { lappend rj $b }
+                foreach a $gi { if { [acg_excluded $a $b $exclude] } { set hit 1; break } }
+                if { $hit } { lappend xj $b } else { lappend rj $b }
             }
 
-            if {![llength $xi] || ![llength $xj]} {
+            if { ![llength $xi] || ![llength $xj] } {
                 set_clock_groups -asynchronous -allow_paths \
                     -group [get_clocks $gi] -group [get_clocks $gj]
                 incr n_grp
             } else {
-                if {[llength $ri]} {
+                if { [llength $ri] } {
                     set_clock_groups -asynchronous -allow_paths \
                         -group [get_clocks $ri] -group [get_clocks $gj]
                     incr n_grp
                 }
-                if {[llength $rj]} {
+                if { [llength $rj] } {
                     set_clock_groups -asynchronous -allow_paths \
                         -group [get_clocks $xi] -group [get_clocks $rj]
                     incr n_grp
@@ -131,14 +134,14 @@ proc set_async_clock_groups { groups args } {
     # One clock to one clock rather than collection to collection, so each
     # exception is individually reportable and one pair can be retuned without
     # unpicking a group. Both directions: -from A -to B does not cover B -> A.
-    set n 0 ; set n_skip 0
-    for {set i 0} {$i < $ng} {incr i} {
-        for {set j 0} {$j < $ng} {incr j} {
-            if {$i == $j} continue
+    set n 0; set n_skip 0
+    for { set i 0 } { $i < $ng } { incr i } {
+        for { set j 0 } { $j < $ng } { incr j } {
+            if { $i == $j } { continue }
             foreach src [lindex $names $i] {
                 set from [get_clocks $src]
                 foreach dst [lindex $names $j] {
-                    if {[acg_excluded $src $dst $exclude]} { incr n_skip ; continue }
+                    if { [acg_excluded $src $dst $exclude] } { incr n_skip; continue }
                     set to [get_clocks $dst]
                     set_max_delay $max_delay -ignore_clock_latency -from $from -to $to
                     set_min_delay $min_delay -ignore_clock_latency -from $from -to $to
