@@ -16,7 +16,7 @@ partial read costs far more time than a full one.
 | `README.md` | Repository layout, doc builds, register generation, DV firmware targets, vendoring |
 | `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
-| `hw/ip/<block>/dv/tb/README.md` | Testbench usage, regression mechanics, log file locations |
+| A testbench's own `README` (`.md` or `.adoc`, under `dv/tb*/` or `dv/cocotb/`) | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
@@ -149,9 +149,10 @@ container. A host toolchain that does provide it works too — point `RISCV_TOOL
 With the companion's `OCAH_DOCKER_CACHE_DIR` set, `docker-run.sh` loads the image from that
 shared cache instead of building it; otherwise it builds locally from the Dockerfile.
 
-`hw/ip/<block>/dv/tb/Makefile` dispatches firmware builds through
-`scripts/docker-run.sh run-here`, so the container is used automatically while the
-simulator runs natively on the host.
+A testbench that builds firmware as part of its own flow dispatches those builds through
+`scripts/docker-run.sh run-here`, so the container is used automatically while the simulator
+runs natively on the host. Not every testbench does this — check its Makefile rather than
+assuming.
 
 If `OCAH_TOOLCHAIN_ROOTFS` is set — which only happens with the companion — `docker-run.sh`
 uses bubblewrap instead of a container engine. That path fails when the checkout sits on a
@@ -273,7 +274,7 @@ Whatever the testbench, these hold:
 | `dv/` | Verification that sits outside a single block's tree |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes` |
 | `flows/` | Lint, format and synthesis flow makefiles |
-| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those — patch via the sibling `patches/` |
+| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |
 | `nonfree/` | Proprietary companion repository, present only for those with access |
