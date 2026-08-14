@@ -21,7 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[4] / 'cross_trigger_port' / 'dv' / 'tb_vcs' / 'axil_vip'))
 from axil_master import AxiLiteMaster
 
-# Configuration parameters (templated to match cross_trigger_network_pkg)
+# Port counts, which must match cross_trigger_network_pkg
 NUM_CTP = 16
 NUM_INT_CT = 10
 NUM_CTM_PORTS = NUM_CTP + NUM_INT_CT

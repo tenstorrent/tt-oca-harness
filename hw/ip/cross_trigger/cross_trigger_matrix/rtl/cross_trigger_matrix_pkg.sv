@@ -19,15 +19,13 @@ package cross_trigger_matrix_pkg;
 
     `include "axi/typedef.svh"
 
-    // Default parameters
-    localparam int unsigned DEFAULT_NUM_CT_SRC = 26;
-    localparam int unsigned DEFAULT_NUM_CT_DST = 26;
-
-    // Parameter constraints
-    localparam int unsigned MIN_NUM_CT_SRC = 1;
-    localparam int unsigned MAX_NUM_CT_SRC = 64;
-    localparam int unsigned MIN_NUM_CT_DST = 1;
-    localparam int unsigned MAX_NUM_CT_DST = 64;
+    // Port counts, taken from the register map: one config register per CT_Src port
+    // and one select bit per CT_Dst port. Resize the matrix by regenerating
+    // regs/cross_trigger_matrix.rdl, not by overriding these.
+    localparam int unsigned NUM_CT_SRC =
+        int'(cross_trigger_matrix_addrmap_pkg::CROSS_TRIGGER_MATRIX_CT_SRC_NUM);
+    localparam int unsigned NUM_CT_DST =
+        int'(cross_trigger_matrix_reg_pkg::NUM_CT_DST);
 
     // AXI-Lite Parameters
     localparam int unsigned AXI_LITE_ADDR_WIDTH = 32;

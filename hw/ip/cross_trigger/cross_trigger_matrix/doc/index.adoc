@@ -6,18 +6,43 @@
 
 ==== Overview
 
-The Cross Trigger Matrix (CTM) is a crossbar that aggregates and statically routes cross trigger pulses between various sources and sinks. Typical connections to the CTM include Core Logic Analyzers (CLAs) and Cross Trigger Ports (CTPs), including other miscellaneous devices.
+The Cross Trigger Matrix (CTM) is a crossbar that aggregates and statically
+routes cross trigger pulses between various sources and sinks. Typical
+connections to the CTM include Core Logic Analyzers (CLAs) and Cross Trigger
+Ports (CTPs), including other miscellaneous devices.
 
-The CTM is compatible with CTPs operating in either of the two signaling modes, point-to-point or wire-OR. Typically, each device or logic module connected to the CTM will act as both a source and a sink for cross trigger pulses.
+The CTM is compatible with CTPs operating in either of the two signaling modes,
+point-to-point or wire-OR. Typically, each device or logic module connected to
+the CTM will act as both a source and a sink for cross trigger pulses.
 
-==== Configuration Parameters
+==== Configuration
 
-[cols="<,<,<,<",options="header"]
+The port counts are localparams read from the generated register collateral, not
+module parameters, so they cannot be overridden at instantiation:
+
+[cols="<,<,<",options="header"]
 |===
-|Parameter |Range |Default |Description
-|NUM_CTP |1-32 |16 |Number of external Cross Trigger Ports
-|NUM_INT_CT |0-32 |1 |Number of internal cross triggers (to CLAs)
+|Constant |Value |Description
+|NUM_CT_SRC |`CT_SRC` array size in the register map (26) |Number of CT_Src output ports
+|NUM_CT_DST |`CT_DST_SELECT` field width in the register map (26) |Number of CT_Dst input ports
 |===
+
+The register map carries both dimensions as parameters of its own: it declares
+one configuration register per CT_Src port as an array sized by `NUM_CT_SRC`,
+each holding one select bit per CT_Dst port over a field sized by `NUM_CT_DST`,
+where that field may be 1 to 64 bits wide. Resizing the matrix therefore means
+regenerating the register map rather than editing the RTL or overriding a
+parameter. See <<ctm-architecture>> for how the select fields drive the
+crossbar.
+
+The two parameters the module does take are the AXI-Lite request and response
+types, which the cross trigger network overrides to match its crossbar.
+
+Every port occupies 8 bytes regardless of the port count. Above 32 destinations
+the select mask fills both words of that space and its writes become buffered,
+committing when the upper word is written so that a mask spanning the word
+boundary never takes effect half-programmed. At or below 32 destinations,
+including the DTP's 26, the register is a single word with immediate writes.
 
 ifdef::backend-pdf[]
 :imagesdir: assets
