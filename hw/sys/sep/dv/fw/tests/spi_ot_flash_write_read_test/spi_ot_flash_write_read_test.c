@@ -196,7 +196,9 @@ int main(void) {
     printf("  Status Register = 0x%02x (WEL=%u, WIP=%u)\n", sr, (sr >> 1) & 1, (sr >> 0) & 1);
 
     if (sr == 0xFF) {
-        printf("  WARN: Status 0xFF - no flash model? Continuing...\n");
+        printf("  FAIL: Status 0xFF after WREN (no flash model / status unread)\n");
+        pass = 0;
+        goto done;
     } else if (!(sr & FLASH_SR_WEL)) {
         printf("  FAIL: WEL bit not set after WREN\n");
         pass = 0;
@@ -271,9 +273,9 @@ int main(void) {
         sr = flash_read_status();
         poll_count++;
         if (sr == 0xFF) {
-            printf("  WARN: Status 0xFF - no flash model? Skipping WIP poll\n");
-            wip_done = 1;
-            break;
+            printf("  FAIL: Status 0xFF while polling WIP (no flash model)\n");
+            pass = 0;
+            goto done;
         }
         if (!(sr & FLASH_SR_WIP)) {
             wip_done = 1;
