@@ -12,12 +12,9 @@
 // N sink ports (CT_Src). Each CT_Src can be configured to select and OR together
 // multiple CT_Dst sources.
 //
-// Both port counts come from the register map, through localparams in
-// cross_trigger_matrix_pkg: NUM_CT_SRC is the number of config registers declared by
-// regs/cross_trigger_matrix.rdl, NUM_CT_DST the width of their select field. They are
-// not module parameters, because a matrix of a size the register map cannot address
-// has nothing to program it. Resize by regenerating that RDL, whose own parameters
-// carry both counts.
+// NUM_CT_SRC and NUM_CT_DST are localparams in cross_trigger_matrix_pkg, taken
+// from regs/cross_trigger_matrix.rdl's generated collateral rather than module
+// parameters: a matrix the map cannot address has nothing to program it.
 //
 // Past 32 destinations the RDL widens the select field across both words of each
 // register; the decode below is unaffected, since the field arrives as one value
