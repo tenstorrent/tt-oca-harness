@@ -36,11 +36,6 @@
 #define SEP_OUTBOUND_FILTER_WIN_START ((uint64_t)(uint32_t)STDOUT)
 #define SEP_OUTBOUND_FILTER_WIN_END (((uint64_t)(uint32_t)STDOUT) + 0xFFULL)
 
-/* Legacy aliases used by older OCAH-style tests. */
-#define FILTER_CONFIG_VALUE SEP_OUTBOUND_FILTER_CFG_OPEN
-#define FILTER_START_ADDR SEP_OUTBOUND_FILTER_WIN_START
-#define FILTER_END_ADDR SEP_OUTBOUND_FILTER_WIN_END
-
 /*
  * Open filter 0 over [start, end]. Write START/END before CONFIG so the
  * filter enables atomically over the final range.

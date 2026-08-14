@@ -115,8 +115,8 @@ static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
 }
 
 static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
-    uint32_t v = (direction << SPI_CMD_DIR_SHIFT) | ((len_bytes - 1) & 0x1FF);
-    if (csaat) v |= SPI_CMD_CSAAT;
+    uint32_t v = (direction << SPI_CONTROLLER__CMD__DIRECTION_bp) | ((len_bytes - 1) & 0x1FF);
+    if (csaat) v |= SPI_CONTROLLER__CMD__CSAAT_bm;
     return v;
 }
 
@@ -125,31 +125,36 @@ static void spi_init(void) {
     // overlay so spi_mux_select_ot is not a no-op). Open SEP has no mux.
     sep_spi_mux_release_cs();
     // RX_WM=1 (RX kept quiescent), TX_WM drives the refill trigger.
-    spi_wr(SPI_CTRL_REG, (TX_WATERMARK << SPI_CTRL_TX_WM_SHIFT) | (1u << SPI_CTRL_RX_WM_SHIFT) |
-                             SPI_CTRL_SPIEN | SPI_CTRL_OUTPUT_EN);
-    spi_wr(SPI_CFG_REG, SPI_CFG_CLKDIV9_CSN);
-    spi_wr(SPI_CSID_REG, 0);
-    spi_wr(SPI_EVENT_ENABLE_REG, SPI_EVENT_TXWM); // TX watermark -> lsio_trigger
-    spi_wr(SPI_ERROR_STATUS_REG, 0xFFFFFFFFu);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
+           (TX_WATERMARK << SPI_CONTROLLER__CTRL__TX_WATERMARK_bp) |
+               (1u << SPI_CONTROLLER__CTRL__RX_WATERMARK_bp) | SPI_CONTROLLER__CTRL__SPIEN_bm |
+               SPI_CONTROLLER__CTRL__OUTPUT_EN_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
+           SPI_CONTROLLER__EVENT_ENABLE__TXWM_bm); // TX watermark -> lsio_trigger
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
 }
 
 static int flash_wren(void) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SPI_TXDATA_REG, FLASH_CMD_WREN);
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_WREN);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
     return spi_wait_idle(TIMEOUT);
 }
 
 /* RDSR (0x05). Returns status byte, or 0xFF on timeout / empty RX. */
 static uint8_t flash_read_status(void) {
     if (spi_wait_ready(TIMEOUT)) return 0xFFu;
-    spi_wr(SPI_TXDATA_REG, FLASH_CMD_RDSR);
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_RDSR);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT
     if (spi_wait_ready(TIMEOUT)) return 0xFFu;
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_RX, 1, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
     if (spi_wait_idle(TIMEOUT)) return 0xFFu;
-    if (((spi_rd(SPI_STATUS_REG) >> SPI_STATUS_RXQD_SHIFT) & 0xFFu) < 1u) return 0xFFu;
-    return (uint8_t)(spi_rd(SPI_RXDATA_REG) & 0xFFu);
+    if (((spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) >> SPI_CONTROLLER__STATUS__RXQD_bp) &
+         0xFFu) < 1u)
+        return 0xFFu;
+    return (uint8_t)(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR) & 0xFFu);
 }
 
 /* Poll flash WIP=0 after PAGE PROGRAM (fail-closed on 0xFF / timeout). */
@@ -187,38 +192,41 @@ static int chk_trigger(void) {
     int err = 0;
 
     // SPI-side trigger source enable: EVENT_ENABLE.TXWM reads back as programmed.
-    uint32_t evt = spi_rd(SPI_EVENT_ENABLE_REG);
-    if (!(evt & SPI_EVENT_TXWM)) {
+    uint32_t evt = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
+    if (!(evt & SPI_CONTROLLER__EVENT_ENABLE__TXWM_bm)) {
         sep_mbx_puts("FAIL: CHK-TRIGGER EVENT_ENABLE.TXWM not set\n");
         err++;
     }
     // DMA-side trigger enable: HANDSHAKE_INTR_ENABLE stores what we write (the bare
     // -sep handshake is FIFO-level based; the CTN interrupt-clear regs are tied off
     // and intentionally unused).
-    sep_dma_wr(SEP_DMA_HANDSHAKE_INTR_ENABLE, 0x1);
-    if (sep_dma_rd(SEP_DMA_HANDSHAKE_INTR_ENABLE) != 0x1) {
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
+    if (sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR) != 0x1) {
         sep_mbx_puts("FAIL: CHK-TRIGGER HANDSHAKE_INTR_ENABLE did not retain 0x1\n");
         err++;
     }
 
     // TXWM tracks TXQD across the watermark: empty (TXQD=0 < wm) -> TXWM=1;
     // fill past wm -> TXWM=0; SW_RST drain -> TXWM=1.
-    uint32_t st = spi_rd(SPI_STATUS_REG);
-    uint32_t txqd_empty = st & SPI_STATUS_TXQD_MASK;
-    int txwm_empty = !!(st & SPI_STATUS_TXWM);
+    uint32_t st = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    uint32_t txqd_empty = st & SPI_CONTROLLER__STATUS__TXQD_bm;
+    int txwm_empty = !!(st & SPI_CONTROLLER__STATUS__TXWM_bm);
 
     for (uint32_t i = 0; i < TX_WATERMARK + 4u; i++) {
-        spi_wr(SPI_TXDATA_REG, 0xD0000000u + i);
+        spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xD0000000u + i);
     }
-    st = spi_rd(SPI_STATUS_REG);
-    uint32_t txqd_full = st & SPI_STATUS_TXQD_MASK;
-    int txwm_full = !!(st & SPI_STATUS_TXWM);
+    st = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    uint32_t txqd_full = st & SPI_CONTROLLER__STATUS__TXQD_bm;
+    int txwm_full = !!(st & SPI_CONTROLLER__STATUS__TXWM_bm);
 
-    spi_wr(SPI_CTRL_REG, spi_rd(SPI_CTRL_REG) | SPI_CTRL_SW_RST); // drain FIFO
-    spi_wr(SPI_CTRL_REG, spi_rd(SPI_CTRL_REG) & ~SPI_CTRL_SW_RST);
-    st = spi_rd(SPI_STATUS_REG);
-    uint32_t txqd_drain = st & SPI_STATUS_TXQD_MASK;
-    int txwm_drain = !!(st & SPI_STATUS_TXWM);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
+           spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR) |
+               SPI_CONTROLLER__CTRL__SW_RST_bm); // drain FIFO
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
+           spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR) & ~SPI_CONTROLLER__CTRL__SW_RST_bm);
+    st = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    uint32_t txqd_drain = st & SPI_CONTROLLER__STATUS__TXQD_bm;
+    int txwm_drain = !!(st & SPI_CONTROLLER__STATUS__TXWM_bm);
 
     sep_mbx_puts("CHK-TRIGGER TXQD empty=");
     sep_mbx_puthex(txqd_empty);
@@ -255,34 +263,43 @@ static int chk_trigger(void) {
 // check that the DMA-fed PAGE PROGRAM actually reached the flash.
 static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SPI_TXDATA_REG, pack_hdr(FLASH_CMD_READ, addr));
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 4, 1)); // cmd+addr, CSAAT
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, pack_hdr(FLASH_CMD_READ, addr));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_TX, 4, 1)); // cmd+addr, CSAAT
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX, release CS
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX, release CS
     if (spi_wait_idle(TIMEOUT)) return -1;
-    for (uint32_t i = 0; i < nwords; i++) out[i] = spi_rd(SPI_RXDATA_REG);
+    for (uint32_t i = 0; i < nwords; i++)
+        out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     return 0;
 }
 
 // Arm the Secure DMA in hardware-handshake mode: SRC=SRAM (incrementing),
 // DST=SPI TXDATA (fixed/wrap), refilled on the TX-watermark lsio_trigger.
 static void dma_arm_tx(uint32_t src, uint32_t total_bytes) {
-    sep_dma_wr(SEP_DMA_ENABLED_RANGE_BASE, 0x0);
-    sep_dma_wr(SEP_DMA_ENABLED_RANGE_LIMIT, 0xFFFFFFFFu);
-    sep_dma_wr(SEP_DMA_RANGE_VALID, 0x1);
-    sep_dma_wr(SEP_DMA_SRC_ADDR_LO, src);
-    sep_dma_wr(SEP_DMA_SRC_ADDR_HI, 0x0);
-    sep_dma_wr(SEP_DMA_DST_ADDR_LO, SPI_TXDATA_REG);
-    sep_dma_wr(SEP_DMA_DST_ADDR_HI, 0x0);
-    sep_dma_wr(SEP_DMA_ADDR_SPACE_ID, SEP_DMA_ASID_OT | (SEP_DMA_ASID_OT << 4));
-    sep_dma_wr(SEP_DMA_TRANSFER_WIDTH, SEP_DMA_WIDTH_4B);
-    sep_dma_wr(SEP_DMA_SRC_CONFIG, SEP_DMA_ADDR_INCR); // walk SRAM
-    sep_dma_wr(SEP_DMA_DST_CONFIG, SEP_DMA_ADDR_WRAP); // fixed TXDATA register
-    sep_dma_wr(SEP_DMA_TOTAL_DATA_SIZE, total_bytes);
-    sep_dma_wr(SEP_DMA_CHUNK_DATA_SIZE, DMA_CHUNK);
-    sep_dma_wr(SEP_DMA_HANDSHAKE_INTR_ENABLE, 0x1);
-    sep_dma_wr(SEP_DMA_CONTROL, SEP_DMA_CTRL_GO | SEP_DMA_CTRL_INITIAL | SEP_DMA_CTRL_HW_HANDSHAKE |
-                                    SEP_DMA_OPCODE_COPY);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
+               OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
+               SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset |
+                   (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << 4));
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
+               SECURE_DMA__SRC_CONFIG__INCREMENT_bm); // walk SRAM
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR,
+               SECURE_DMA__SRC_CONFIG__WRAP_bm); // fixed TXDATA register
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, total_bytes);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, DMA_CHUNK);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+               SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
+                   SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm | SEP_DMA_OPCODE_COPY);
 }
 
 static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, uint32_t nwords) {
@@ -330,7 +347,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
 
     // Issue the TX command BEFORE starting the DMA (OCAH order): the SPI stalls
     // for TX data, the DMA feeds it on each TX-watermark trigger. LEN == TOTAL-1.
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, total_bytes, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, total_bytes, 0));
     dma_arm_tx(SRC_BASE, total_bytes);
 
     // --- CHK-DMA-DONE: run the handshake transfer to completion ---
@@ -343,17 +360,20 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     int t = DMA_POLL_LIM;
     int chunk_done_seen = 0, chunk_done_w1c_ok = 0;
     while (t-- > 0) {
-        st = sep_dma_rd(SEP_DMA_STATUS);
-        if ((st & SEP_DMA_STATUS_CHUNK_DONE) && !chunk_done_seen) {
+        st = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        if ((st & SECURE_DMA__STATUS__CHUNK_DONE_bm) && !chunk_done_seen) {
             chunk_done_seen = 1;
-            sep_dma_wr(SEP_DMA_STATUS, SEP_DMA_STATUS_CHUNK_DONE); // W1C the exact bit
+            sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
+                       SECURE_DMA__STATUS__CHUNK_DONE_bm); // W1C the exact bit
             __asm__ volatile("fence" ::: "memory");
-            if (!(sep_dma_rd(SEP_DMA_STATUS) & SEP_DMA_STATUS_CHUNK_DONE)) chunk_done_w1c_ok = 1;
+            if (!(sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR) &
+                  SECURE_DMA__STATUS__CHUNK_DONE_bm))
+                chunk_done_w1c_ok = 1;
         }
-        if (st & (SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_ERROR)) break;
+        if (st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) break;
     }
-    if (!(st & SEP_DMA_STATUS_DONE) || (st & SEP_DMA_STATUS_ERROR) ||
-        sep_dma_rd(SEP_DMA_ERROR_CODE) != 0) {
+    if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) ||
+        sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR) != 0) {
         sep_mbx_puts("FAIL: CHK-DMA-DONE status=");
         sep_mbx_puthex(st);
         sep_mbx_putc('\n');
@@ -364,10 +384,11 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     } else {
         // W1C done (+ any residual chunk_done) and READ THE STATUS BACK to prove both
         // bits are clear -- not a blind write.
-        sep_dma_wr(SEP_DMA_STATUS, SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_CHUNK_DONE);
+        sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
+                   SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm);
         __asm__ volatile("fence" ::: "memory");
-        uint32_t post = sep_dma_rd(SEP_DMA_STATUS);
-        if (post & (SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_CHUNK_DONE)) {
+        uint32_t post = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        if (post & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm)) {
             sep_mbx_puts("FAIL: DMA STATUS RW1C did not read back clear post=");
             sep_mbx_puthex(post);
             sep_mbx_putc('\n');
@@ -386,7 +407,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         sep_mbx_puts("FAIL: SPI not idle\n");
         errors++;
     }
-    uint32_t serr = spi_rd(SPI_ERROR_STATUS_REG);
+    uint32_t serr = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (serr != 0) {
         sep_mbx_puts("FAIL: CHK-SPI-IDLE ERROR_STATUS=");
         sep_mbx_puthex(serr);

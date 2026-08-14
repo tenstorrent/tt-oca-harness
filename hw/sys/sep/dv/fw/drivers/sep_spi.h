@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP OpenTitan SPI-host firmware driver for the OSS tests. Header-only.
-// Register addresses and field masks come from generated sep_addr.h /
-// spi_controller.h (via sep.h) — do not keep a parallel hand-copied map.
+// SEP OpenTitan SPI-host firmware helpers for the OSS tests. Header-only.
+// Addresses and field masks come from generated sep_addr.h / spi_controller.h
+// (via sep.h). Do not alias those symbols — call them by their PeakRDL names.
 
 #ifndef SEP_SPI_H
 #define SEP_SPI_H
@@ -12,51 +12,17 @@
 #include "sep.h"
 #include "spi_mux.h"
 
-// OpenTitan SPI host CSR block (generated sep_addr.h aperture).
-#define SPI_CTRL_BASE OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR
-#define SPI_CTRL_REG OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR
-#define SPI_STATUS_REG OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR
-#define SPI_CFG_REG OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR
-#define SPI_CSID_REG OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR
-#define SPI_CMD_REG OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR
-#define SPI_RXDATA_REG OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR
-#define SPI_TXDATA_REG OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR
-#define SPI_ERROR_STATUS_REG OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR
-#define SPI_EVENT_ENABLE_REG OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR
-
-// CTRL fields (generated bit positions).
-#define SPI_CTRL_RX_WM_SHIFT SPI_CONTROLLER__CTRL__RX_WATERMARK_bp
-#define SPI_CTRL_TX_WM_SHIFT SPI_CONTROLLER__CTRL__TX_WATERMARK_bp
-#define SPI_CTRL_OUTPUT_EN SPI_CONTROLLER__CTRL__OUTPUT_EN_bm
-#define SPI_CTRL_SW_RST SPI_CONTROLLER__CTRL__SW_RST_bm
-#define SPI_CTRL_SPIEN SPI_CONTROLLER__CTRL__SPIEN_bm
-
-// CFG: clkdiv in [15:0]; CPOL/CPHA = 0 (Mode 0). CS timing CSNIDLE/TRAIL/LEAD=2
-// matches the OSS flash BFM needs (composed from generated field positions).
+// CFG: CPOL/CPHA = 0 (Mode 0). CS timing CSNIDLE/TRAIL/LEAD=2 matches the OSS
+// flash BFM (composed from generated field positions, not a packed hex constant).
 #define SPI_CFG_CSN_TIMING \
     ((2u << SPI_CONTROLLER__CFG__CSNIDLE_bp) | (2u << SPI_CONTROLLER__CFG__CSNTRAIL_bp) | \
      (2u << SPI_CONTROLLER__CFG__CSNLEAD_bp))
 #define SPI_CFG_CLKDIV9_CSN (SPI_CFG_CSN_TIMING | 9u)
 #define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv)&0xFFFFu))
 
-// CMD fields.
-#define SPI_CMD_LEN_SHIFT SPI_CONTROLLER__CMD__LEN_bp
-#define SPI_CMD_CSAAT SPI_CONTROLLER__CMD__CSAAT_bm
-#define SPI_CMD_SPEED_SHIFT SPI_CONTROLLER__CMD__SPEED_bp
-#define SPI_CMD_DIR_SHIFT SPI_CONTROLLER__CMD__DIRECTION_bp
+// CMD.DIRECTION encodings (not named in PeakRDL).
 #define SPI_CMD_DIR_RX 1u
 #define SPI_CMD_DIR_TX 2u
-
-// STATUS bits.
-#define SPI_STATUS_TXQD_MASK SPI_CONTROLLER__STATUS__TXQD_bm
-#define SPI_STATUS_RXQD_SHIFT SPI_CONTROLLER__STATUS__RXQD_bp
-#define SPI_STATUS_TXWM SPI_CONTROLLER__STATUS__TXWM_bm
-#define SPI_STATUS_ACTIVE SPI_CONTROLLER__STATUS__ACTIVE_bm
-#define SPI_STATUS_READY SPI_CONTROLLER__STATUS__READY_bm
-
-// EVENT_ENABLE bits.
-#define SPI_EVENT_RXWM SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm
-#define SPI_EVENT_TXWM SPI_CONTROLLER__EVENT_ENABLE__TXWM_bm
 
 /*
  * Composed register reset values (OCH_SEP_FIELD_RESET from sep.h).
@@ -110,7 +76,8 @@ static inline void sep_spi_mux_release_cs(void) {
 // surfaces as a firmware timeout rather than an infinite loop).
 static inline int spi_wait_ready(int timeout) {
     while (timeout-- > 0) {
-        if (spi_rd(SPI_STATUS_REG) & SPI_STATUS_READY) {
+        if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+            SPI_CONTROLLER__STATUS__READY_bm) {
             return 0;
         }
     }
@@ -120,7 +87,8 @@ static inline int spi_wait_ready(int timeout) {
 // Spin until the controller is idle (no active segment).
 static inline int spi_wait_idle(int timeout) {
     while (timeout-- > 0) {
-        if (!(spi_rd(SPI_STATUS_REG) & SPI_STATUS_ACTIVE)) {
+        if (!(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+              SPI_CONTROLLER__STATUS__ACTIVE_bm)) {
             return 0;
         }
     }
