@@ -27,6 +27,9 @@ module sep_wdt_wrap
 
     localparam int unsigned NumAlerts = aon_timer_reg_pkg::NumAlerts;
 
+    // Demux master ports: 0 = aon_timer registers, 1 = error slave
+    localparam int unsigned NumSlaves = 2;
+
     logic rst_wdt_n;
 
     prim_alert_pkg::alert_tx_t [NumAlerts-1:0] wdt_alert_tx;
@@ -44,9 +47,6 @@ module sep_wdt_wrap
 
     sep_pkg::sep_32_32_6_12_axi_req_t  sep_wdt_tlul_axi_req;
     sep_pkg::sep_32_32_6_12_axi_resp_t sep_wdt_tlul_axi_resp;
-
-    // AXI request with offset-adjusted address for register interface
-    sep_pkg::sep_32_32_6_12_axi_req_t  sep_wdt_tlul_axi_req_offset;
 
     axi_dw_converter #(
         .AxiMaxReads         (16), // TODO: Add max reads parameter to sep_pkg
@@ -74,19 +74,18 @@ module sep_wdt_wrap
         .mst_resp_i          (sep_wdt_tlul_axi_resp)
     );
 
-    // Convert absolute address to offset by subtracting base address
-    always_comb begin
-        sep_wdt_tlul_axi_req_offset         = sep_wdt_tlul_axi_req;
-        sep_wdt_tlul_axi_req_offset.ar.addr = sep_wdt_tlul_axi_req.ar.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR;
-        sep_wdt_tlul_axi_req_offset.aw.addr = sep_wdt_tlul_axi_req.aw.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR;
-    end
-
     tlul_pkg::tl_h2d_t tl_d_i;
     tlul_pkg::tl_d2h_t tl_d_o;
 
     // AXI-Lite intermediate signals
     sep_pkg::sep_32_32_axil_req_t  axi_lite_req;
     sep_pkg::sep_32_32_axil_resp_t axi_lite_resp;
+
+    sep_pkg::sep_32_32_axil_req_t  [NumSlaves-1:0] axi_lite_reqs;
+    sep_pkg::sep_32_32_axil_resp_t [NumSlaves-1:0] axi_lite_resps;
+
+    // AXI-Lite request with offset-adjusted address for register interface
+    sep_pkg::sep_32_32_axil_req_t  axi_lite_req_offset;
 
     // Stage 1: AXI to AXI-Lite conversion
     axi_to_axi_lite #(
@@ -104,13 +103,85 @@ module sep_wdt_wrap
         .clk_i       (clk_i),
         .rst_ni      (rst_ni),
         .test_i      (test_en_i),
-        .slv_req_i   (sep_wdt_tlul_axi_req_offset),
+        .slv_req_i   (sep_wdt_tlul_axi_req),
         .slv_resp_o  (sep_wdt_tlul_axi_resp),
         .mst_req_o   (axi_lite_req),
         .mst_resp_i  (axi_lite_resp)
     );
 
-    // Stage 2: AXI-Lite to TL-UL conversion
+    // Stage 2: Address decode. The xbar window (4 KB) is far larger than the
+    // register block, so unmapped addresses must be steered to the error slave
+    // rather than aliasing onto a real register once the base is subtracted.
+    logic [$clog2(NumSlaves)-1:0] axi_lite_aw_select, axi_lite_ar_select;
+
+    always_comb begin
+        if (axi_lite_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR &&
+            axi_lite_req.aw.addr <  och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR +
+                                    och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE) begin
+            axi_lite_aw_select = 1'b0;  // aon_timer registers
+        end else begin
+            axi_lite_aw_select = 1'b1;  // Error slave
+        end
+    end
+
+    always_comb begin
+        if (axi_lite_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR &&
+            axi_lite_req.ar.addr <  och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR +
+                                    och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE) begin
+            axi_lite_ar_select = 1'b0;  // aon_timer registers
+        end else begin
+            axi_lite_ar_select = 1'b1;  // Error slave
+        end
+    end
+
+    axi_lite_demux #(
+        .aw_chan_t       (sep_pkg::sep_32_32_axil_aw_chan_t),
+        .w_chan_t        (sep_pkg::sep_32_32_axil_w_chan_t),
+        .b_chan_t        (sep_pkg::sep_32_32_axil_b_chan_t),
+        .ar_chan_t       (sep_pkg::sep_32_32_axil_ar_chan_t),
+        .r_chan_t        (sep_pkg::sep_32_32_axil_r_chan_t),
+        .axi_req_t       (sep_pkg::sep_32_32_axil_req_t),
+        .axi_resp_t      (sep_pkg::sep_32_32_axil_resp_t),
+        .NoMstPorts      (NumSlaves),
+        .MaxTrans        (2),
+        .FallThrough     (1'b0),
+        .SpillAw         (1'b1),
+        .SpillW          (1'b0),
+        .SpillB          (1'b0),
+        .SpillAr         (1'b1),
+        .SpillR          (1'b0)
+    ) u_wdt_axi_lite_demux (
+        .clk_i           (clk_i),
+        .rst_ni          (rst_ni),
+        .test_i          (test_en_i),
+        .slv_req_i       (axi_lite_req),
+        .slv_aw_select_i (axi_lite_aw_select),
+        .slv_ar_select_i (axi_lite_ar_select),
+        .slv_resp_o      (axi_lite_resp),
+        .mst_reqs_o      (axi_lite_reqs),
+        .mst_resps_i     (axi_lite_resps)
+    );
+
+    // Convert absolute address to offset by subtracting base address
+    always_comb begin
+        axi_lite_req_offset         = axi_lite_reqs[0];
+        axi_lite_req_offset.ar.addr = axi_lite_reqs[0].ar.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR;
+        axi_lite_req_offset.aw.addr = axi_lite_reqs[0].aw.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR;
+    end
+
+    prim_axil_err_slv #(
+        .AXI_DATA_WIDTH (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+        .AXI_ADDR_WIDTH (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+        .axil_req_t     (sep_pkg::sep_32_32_axil_req_t),
+        .axil_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
+    ) u_wdt_axil_err_slv (
+        .clk_i       (clk_i),
+        .rst_ni      (rst_ni),
+        .axil_req_i  (axi_lite_reqs [NumSlaves-1]),
+        .axil_resp_o (axi_lite_resps[NumSlaves-1])
+    );
+
+    // Stage 3: AXI-Lite to TL-UL conversion
     axi_lite_to_tlul #(
         .AXI_ADDR_WIDTH   (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
         .AXI_DATA_WIDTH   (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -121,8 +192,8 @@ module sep_wdt_wrap
     ) u_wdt_axi_lite_to_tlul (
         .clk_i           (clk_i),
         .rst_ni          (rst_ni),
-        .axi_lite_req_i  (axi_lite_req),
-        .axi_lite_rsp_o  (axi_lite_resp),
+        .axi_lite_req_i  (axi_lite_req_offset),
+        .axi_lite_rsp_o  (axi_lite_resps[0]),
         .tl_o            (tl_d_i),
         .tl_i            (tl_d_o),
         .err_o           (/* UNUSED */)
