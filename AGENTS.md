@@ -16,7 +16,7 @@ partial read costs far more time than a full one.
 | `README.md` | Repository layout, doc builds, register generation, DV firmware targets, vendoring |
 | `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
-| A testbench's own `README` (`.md` or `.adoc`, under `dv/tb*/` or `dv/cocotb/`) | Testbench usage, regression mechanics, log file locations |
+| A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
@@ -253,7 +253,7 @@ Whatever the testbench, these hold:
 
    ```bash
    git worktree add "$TMPDIR/bisect" <commit>
-   cd "$TMPDIR/bisect/hw/<ip|sys>/<block>/dv/tb"
+   cd "$TMPDIR/bisect/hw/<ip|sys>/<block>/dv/<tb dir>"
    # then the testbench's own single-test target
    ```
 
@@ -310,7 +310,7 @@ doc: Regenerate stale uart and smc reset_unit register collaterals (#282)
 
 | Check | Local command |
 |---|---|
-| SystemVerilog lint (slang) | `make lint-slang-all` lints every `hw/sys` block; add `BLOCK=<block…>` to restrict it to some. `make lint-slang` from a block's own flow lints that block alone |
+| SystemVerilog lint (slang) | `make lint-slang-all` lints every block carrying a `flow.mk`, which `flows/common.mk` discovers under `hw/sys/*`, `hw/ip/*` and vendored IP overlays; add `BLOCK=<block…>` to restrict it. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (verible) | `make lint-sv-verible` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check` |
 | C formatting | `make format-c`, `make format-c-check` |
