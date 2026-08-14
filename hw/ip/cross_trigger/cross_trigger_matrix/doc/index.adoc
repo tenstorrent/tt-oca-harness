@@ -6,9 +6,14 @@
 
 ==== Overview
 
-The Cross Trigger Matrix (CTM) is a crossbar that aggregates and statically routes cross trigger pulses between various sources and sinks. Typical connections to the CTM include Core Logic Analyzers (CLAs) and Cross Trigger Ports (CTPs), including other miscellaneous devices.
+The Cross Trigger Matrix (CTM) is a crossbar that aggregates and statically
+routes cross trigger pulses between various sources and sinks. Typical
+connections to the CTM include Core Logic Analyzers (CLAs) and Cross Trigger
+Ports (CTPs), including other miscellaneous devices.
 
-The CTM is compatible with CTPs operating in either of the two signaling modes, point-to-point or wire-OR. Typically, each device or logic module connected to the CTM will act as both a source and a sink for cross trigger pulses.
+The CTM is compatible with CTPs operating in either of the two signaling modes,
+point-to-point or wire-OR. Typically, each device or logic module connected to
+the CTM will act as both a source and a sink for cross trigger pulses.
 
 ==== Configuration Parameters
 
@@ -19,18 +24,18 @@ The CTM is compatible with CTPs operating in either of the two signaling modes, 
 |NUM_CT_DST |1-64 |26 |Number of CT_Dst input ports
 |===
 
-The register map carries both dimensions as parameters of its own: it declares one
-configuration register per CT_Src port as an array sized by `NUM_CT_SRC`, each
-holding one select bit per CT_Dst port over a field sized by `NUM_CT_DST`. The
-module parameters follow that generated collateral, so a resized matrix comes from
-regenerating the register map rather than from editing the RTL. See
+The register map carries both dimensions as parameters of its own: it declares
+one configuration register per CT_Src port as an array sized by `NUM_CT_SRC`,
+each holding one select bit per CT_Dst port over a field sized by `NUM_CT_DST`.
+The module parameters follow that generated collateral, so a resized matrix
+comes from regenerating the register map rather than from editing the RTL. See
 <<ctm-architecture>> for how the select fields drive the crossbar.
 
-Every port occupies 8 bytes regardless of the port count. Above 32 destinations the
-select mask fills both words of that space and its writes become buffered,
-committing when the upper word is written so that a mask spanning the word boundary
-never takes effect half-programmed. At or below 32 destinations, including the DTP's
-26, the register is a single word with immediate writes.
+Every port occupies 8 bytes regardless of the port count. Above 32 destinations
+the select mask fills both words of that space and its writes become buffered,
+committing when the upper word is written so that a mask spanning the word
+boundary never takes effect half-programmed. At or below 32 destinations,
+including the DTP's 26, the register is a single word with immediate writes.
 
 ifdef::backend-pdf[]
 :imagesdir: assets
