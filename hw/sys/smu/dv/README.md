@@ -3,7 +3,7 @@
 OCAH open-source DV testbench for the **SMU (System Management Unit)**.
 Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
 
-**Master VPLAN (P1 + P2):** [`docs/SMU_VPLAN.md`](docs/SMU_VPLAN.md)
+**Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — live green `phase1` **14**, `sep0_all` **19** (no Force; product-pin CTM).
 
 **Green / signoff policy (2026-07-29):** no DUT Force / no TB placeholder.
@@ -11,11 +11,9 @@ Raise-stub Force-era bodies live under `cocotb/tests_deferred/` +
 `testlists/deferred.toml` — **not** reportable as PASS. Shared cleanup
 checklist: [`../../smc/doc/dv_hack_cleanup_checklist.md`](../../smc/doc/dv_hack_cleanup_checklist.md).
 
-**P1 executable detail:** [`docs/SMU_OSS_VPLAN_PHASE1.md`](docs/SMU_OSS_VPLAN_PHASE1.md)
-(`smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1`).
+**Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
 
-**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): [`testlists/deferred.toml`](testlists/deferred.toml)
-+ `SMU_VPLAN.md` Appendix A.
+**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): [`testlists/deferred.toml`](testlists/deferred.toml).
 
 ```
 smu_<scenario>_test
@@ -28,7 +26,6 @@ smu_<scenario>_test
 
 | Path | Role |
 |------|------|
-| `docs/` | SPEC, CSR, TB_ARCH, **VPLAN (P1/P2 master)**, PHASE1 detail, FCOV |
 | `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB |
 | `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
 | `cocotb/tests_deferred/` | Force-era raise stubs (catalog only) |
@@ -148,6 +145,5 @@ seeds, and those run paths on the tracking GitHub issue.
 
 ## Status
 
-Docs + Phase-1 testlists are in place. Cocotb env/sequences/test bodies and a
-fully-wired `SEP=0` `tb_top.sv` are the next implementation step
-(`SMU_OSS_VPLAN_PHASE1.md` §6).
+Phase-1 testlists are in place. Cocotb env/sequences/test bodies and a
+fully-wired `SEP=0` `tb_top.sv` are the next implementation step.

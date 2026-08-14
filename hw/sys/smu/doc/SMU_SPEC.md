@@ -143,8 +143,7 @@ GB) to `SEP_SMC_REGION_ALIAS_BASE=0x0000_0000`.
 
 **Mailbox challenge-response**: SMC writes a token to an outbound mailbox; SEP
 reads it from its inbound mailbox, verifies, and writes the complement back; SMC
-pops the response. This is the primary real SMC↔SEP interoperability path (see
-`SMU_TB_ARCH.md` and `SMU_CSR.md`).
+pops the response. This is the primary real SMC↔SEP interoperability path.
 
 ## Interfaces
 
@@ -285,14 +284,11 @@ outbound filter (ISSUE-16); SEP eFuse `shadow_regs` tied `0` at the wrapper
 
 ## Verification Alignment
 
-The working reference plans in `dv/smu/tb/doc/` (`smu_all_testplan.md`,
-`smu_vplan.md`, `SMU_INTEROP_VERIFICATION_PLAN.md`, `smu_dev.md`,
-`SMU_INTEROP_VPLAN.md`) define the SMU test streams. The open-source `SMU_VPLAN.md`
-organizes them into SMU-level SMC/SEP/DTP, SMC/SEP and SMC/DTP interoperability,
-and AXI-fabric connectivity streams, plus the SMC dual/Master-BFM reference set
-and the OCAC-aligned compliance mapping. Coverage intent is in `SMU_FCOV.md`;
-register/address detail is in `SMU_CSR.md`; the testbench architecture is in
-`SMU_TB_ARCH.md`.
+Enrolled SMU open-source DV is defined by `hw/sys/smu/dv/testlists/*.toml`
+(primarily `all.toml` for SEP=0 density and `wrapper.toml` for the production
+wrapper baseline). Deferred / SEP=1 inventory lives in `testlists/deferred.toml`
+and is not reportable as PASS. Live stimulus and checkers are under
+`hw/sys/smu/dv/cocotb/` and `hw/sys/smu/dv/cocotb_wrapper/`.
 
 ## Revision History
 
