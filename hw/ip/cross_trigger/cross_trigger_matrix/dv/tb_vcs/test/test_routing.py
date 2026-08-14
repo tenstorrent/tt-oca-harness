@@ -11,7 +11,7 @@ from test.test_base import (
     start_clocks, init, init_axil,
     AxiLiteMaster, write_ct_src_config, read_ct_src_config,
     pulse_ct_dst, wait_for_ct_src_pulse, check_ct_src_low,
-    CT_DST_SELECT_MASK
+    CT_DST_SELECT_MASK, NUM_CT_SRC
 )
 
 @cocotb.test()
@@ -181,7 +181,7 @@ async def test_register_readback(dut):
     # select field read back as zero
     test_values = [0x00000001, 0x0000000F, 0x000000AA, 0xFFFFFFFF]
 
-    for src_idx in range(4):
+    for src_idx in range(NUM_CT_SRC):
         for value in test_values:
             # Write value
             await write_ct_src_config(dut, axil, src_idx, value)
