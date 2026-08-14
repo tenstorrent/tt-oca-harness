@@ -66,9 +66,6 @@ The register flow writes `regs/gen/` from `regs/cross_trigger_matrix.rdl`:
 * `regs/gen/svh/cross_trigger_matrix_reg.svh` - Flattened SystemVerilog header
 * `regs/gen/adoc/cross_trigger_matrix.adoc` - Register documentation, included by the CTN memory map page
 
-The RTL under `rtl/` is hand-written and parameterized; it indexes the generated
-register array rather than enumerating one decode branch per port.
-
 ## Documentation
 
 The `doc/` pages are AsciiDoc partials published through the tree-wide Antora
