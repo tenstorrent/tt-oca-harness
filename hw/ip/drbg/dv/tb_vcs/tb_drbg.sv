@@ -8,8 +8,6 @@
 // Cocotb-oriented SystemVerilog harness for the DRBG wrapper.
 //----------------------------------------------------------
 
-`default_nettype none
-
 /**
  * @file tb_drbg.sv
  * @brief Cocotb-friendly wrapper harness for `drbg`.
@@ -348,5 +346,3 @@ module tb_drbg import drbg_pkg::*; #(
 `endif
 
 endmodule : tb_drbg
-
-`default_nettype wire
