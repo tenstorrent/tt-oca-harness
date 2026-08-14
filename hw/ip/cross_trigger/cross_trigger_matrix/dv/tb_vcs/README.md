@@ -7,8 +7,8 @@ This testbench does not run in this repository. Two pieces were never
 ported: the top-level module `tb_cross_trigger_matrix.sv` that `tb.f` names is
 absent, and the `Makefile` reads its filelists from `hw/ip/cross_trigger_matrix/tb_vcs/`,
 a path that predates the move to `hw/ip/cross_trigger/cross_trigger_matrix/dv/`.
-The tests and filelists below are kept current so that porting the top module is
-the only remaining work.
+The tests and `rtl.f` below are kept current, so bringing this up means porting
+the top module and repointing those two `Makefile` paths.
 
 Until then the matrix is verified at the DTP level, where the `dtp_ctm_*` and
 `dtp_xtrig_*` scenarios cover routing, CSR access, and reset behavior:
