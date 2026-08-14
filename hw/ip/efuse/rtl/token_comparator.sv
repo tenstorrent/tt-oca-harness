@@ -34,6 +34,14 @@ module token_comparator #(
 );
 
     //-------------------------------------------------------------------------
+    // Parameter validation
+    //-------------------------------------------------------------------------
+    // Both reduction trees are hardcoded to four radix-4 levels
+    // (256 -> 64 -> 16 -> 4 -> 1), so no other token width is supported.
+    // Additionally the efuse_security_tokens module only supports a 256-bit token.
+    `OCAH_OT_ASSERT_INIT(TokenWidthIs256_A, TOKEN_WIDTH == 256)
+
+    //-------------------------------------------------------------------------
     // Equal datapath: XNOR leaves + radix-4 NAND/NOR reduction tree.
     //-------------------------------------------------------------------------
     logic [TOKEN_WIDTH-1:0] bit_eq;
