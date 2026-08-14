@@ -219,8 +219,9 @@ int main(void) {
         uint8_t sr = flash_read_status();
         poll_count++;
         if (sr == 0xFF) {
-            printf("  WARN: SR=0xFF (no flash model?), skipping WIP poll\n");
-            break;
+            printf("  FAIL: SR=0xFF while polling WIP (no flash model)\n");
+            pass = 0;
+            goto done;
         }
         if (!(sr & FLASH_SR_WIP)) {
             printf("  WIP=0 after %d polls (page program complete)\n", poll_count);

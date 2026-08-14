@@ -19,7 +19,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
-
+#include "sep_hmac.h"
 // All register addresses, bit field masks, and shifts are now provided by sep.h / sep_addr.h
 // No need for hardcoded offsets or bit positions!
 
@@ -86,11 +86,11 @@ static int stage_config(void) {
 
     // SHA-256, no swaps, SHA enabled, HMAC disabled
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;     // HMAC disabled
-    cfg.f.sha_en = 1;      // SHA enabled
-    cfg.f.endian_swap = 0; // No endian swap
-    cfg.f.digest_swap = 0; // No digest swap
-    cfg.f.digest_size = 1; // SHA2_256 (value=1)
+    cfg.f.hmac_en = 0;                                 // HMAC disabled
+    cfg.f.sha_en = 1;                                  // SHA enabled
+    cfg.f.endian_swap = 0;                             // No endian swap
+    cfg.f.digest_swap = 0;                             // No digest swap
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA2_256 (value=1)
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // Start a new hash
@@ -118,12 +118,15 @@ static int stage_fifo_feed(const uint8_t *data, uint32_t len) {
         *fifo8 = data[i]; // byte write to ensure exact length accounting
     }
 
-    // Verify message length (in bits) matches exactly
+    // Verify message length (in bits) matches exactly on both halves
+    uint64_t expected_bits = (uint64_t)len * 8ull;
     uint32_t ml = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
     uint32_t mu = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
-    printf("  MSG_LENGTH lower=%u upper=%u (bits)\n", ml, mu);
-    if (ml != (len * 8u)) {
-        printf("  Message length mismatch: got %u, expected %u\n", ml, (unsigned)(len * 8u));
+    uint32_t exp_lo = (uint32_t)(expected_bits & 0xffffffffu);
+    uint32_t exp_hi = (uint32_t)(expected_bits >> 32);
+    printf("  MSG_LENGTH lower=%u upper=%u (bits) expected=%u:%u\n", ml, mu, exp_lo, exp_hi);
+    if (ml != exp_lo || mu != exp_hi) {
+        printf("  Message length mismatch: got %u:%u, expected %u:%u\n", ml, mu, exp_lo, exp_hi);
         return -1;
     }
     return 0;

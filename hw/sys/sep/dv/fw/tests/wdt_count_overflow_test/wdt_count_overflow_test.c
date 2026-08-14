@@ -11,41 +11,51 @@
  * 2. Enable WDT — count reaches BARK_THOLD quickly, BARK fires (NMI)
  * 3. In NMI handler: immediately pet (count = 0) before count reaches
  *    BITE_THOLD=0xFFFFFFFF, preventing system reset
- * 4. After pet: verify count is small (wrapped / reset to 0)
+ * 4. After pet: verify count is small (far below BARK_THOLD)
  * 5. Wait and verify no second BARK fires (count << BARK_THOLD after pet)
- * 6. Direct overflow test: write count = 0xFFFFFFFE, verify count increments
- *    to 0xFFFFFFFF, then wraps to 0x00000000
+ * 6. Direct overflow: sample FE→FF (bark at FF expected), disable before bite,
+ *    then one more enable tick to wrap FF→~0 without software pet
  *
  * RTL note:
  *   wdog_count_wr_data_o = reg2hw.wdog_count.q + 32'd1
  *   At count=0xFFFFFFFF: +1 = 0x00000000 (32-bit wrap, no saturation).
- *   wdog_intr_o deasserts when count < bark_thold (after wrap, 0 < 0xFFFFFFF0).
+ *   bark/bite use count >= thold on the same incr that advances the counter.
+ *   Free-running with bark=bite=0xFFFFFFFF and no pet level-reasserts bark and
+ *   pulses bite every AON tick at FF — that hangs this TB; STEP 5 avoids it.
  *
  ******************************************************************************/
 
-#include <stdio.h>
-#include <stdint.h>
+#include "aon_timer.h"
+#include "nmi.h"
 #include "och_sep_common.h"
 #include "sep.h"
 #include "sep_outbound_filter.h"
-#include "nmi.h"
 #include "test_completion.h"
+#include <stdint.h>
+#include <stdio.h>
 
 static volatile int nmi_count = 0;
 static volatile int nmi_errors = 0;
-static volatile int phase = 0; /* 0=wait first bark, 1=done */
+/* 0=near-max bark+pet, 1=idle, 2=wrap tick, 3=FE→FF climb (bark at FF OK) */
+static volatile int phase = 0;
+static volatile int wrap_bark_seen = 0;
+static volatile uint32_t count_after_wrap_bark = 0xFFFFFFFFu;
 
 #define BARK_THOLD_VAL (0xFFFFFFF0u) /* fires quickly when count near max */
-#define BITE_THOLD_VAL (0xFFFFFFFFu) /* prevent bite from firing on wrap */
+#define BITE_THOLD_VAL (0xFFFFFFFFu) /* above near-max bark window (STEPS 1–4) */
+
+#define INTR_STATE_CLEAR_ALL \
+    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm | AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
 
 void wdt_nmi_handler(void) {
     nmi_count++;
     uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2); /* W1C immediately (level NMI) */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm); /* W1C immediately */
 
-    if (!(state & 0x2)) {
+    if (!(state & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm)) {
         nmi_errors++;
-        printf("  NMI #%d: INTR_STATE[1] not set (got 0x%08x)\n", nmi_count, state);
+        printf("  NMI #%d: INTR_STATE bark not set (got 0x%08x)\n", nmi_count, state);
         return;
     }
 
@@ -54,6 +64,23 @@ void wdt_nmi_handler(void) {
         WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
         printf("  NMI #%d: BARK at near-max count, petted (count → 0)\n", nmi_count);
         phase = 1;
+    } else if (phase == 3) {
+        /*
+         * 5a climb: FE→FF with bark_thold=FF fires bark on the same incr that
+         * lands on FF (count >= thold). Clear only; main disables on sample.
+         * No pet (would hide the FF sample) and no printf (level-bark UART risk).
+         */
+        __asm__ volatile("fence" ::: "memory");
+    } else if (phase == 2) {
+        /*
+         * Wrap tick: bark and wrap share the incr at count==FF. Disable so
+         * level bark cannot reassert; never software-pet (would fabricate wrap).
+         * No printf here — UART in NMI can stall progress under level bark.
+         */
+        count_after_wrap_bark = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+        wrap_bark_seen = 1;
+        __asm__ volatile("fence" ::: "memory");
     } else {
         /* Unexpected second NMI — count should be far from BARK_THOLD after pet */
         nmi_errors++;
@@ -76,14 +103,14 @@ int main(void) {
     /* STEP 1: Write count near 0xFFFFFFFF, set thresholds */
     printf("// STEP 1: Write WDOG_COUNT=0xFFFFFFF0, BARK=0x%08x, BITE=0x%08x\n", BARK_THOLD_VAL,
            BITE_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0xFFFFFFF0u);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, BARK_THOLD_VAL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, BITE_THOLD_VAL);
 
     /* STEP 2: Enable and wait for BARK NMI */
     printf("// STEP 2: Enable WDT — BARK fires when count reaches 0x%08x\n", BARK_THOLD_VAL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* Wait for phase=1 (first BARK NMI + pet) */
     int timeout = 5000000;
@@ -114,10 +141,11 @@ int main(void) {
         printf("  PASS: Count is small after pet (overflow prevented)\n");
     }
 
-    /* STEP 4: Verify no second BARK for a while */
+    /* STEP 4: Verify no second BARK for a while (bounded — long nop loops
+     * burn wall time under this TB's outbound-mailbox UART path). */
     printf("\n// STEP 4: Verify no spurious BARK NMI after pet\n");
     int prev_nmi = nmi_count;
-    for (volatile int i = 0; i < 200000; i++) {
+    for (volatile int i = 0; i < 20000; i++) {
         __asm__ volatile("nop");
     }
     if (nmi_count != prev_nmi) {
@@ -130,32 +158,87 @@ int main(void) {
     /* Disable WDT before overflow direct test */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
 
-    /* STEP 5: Direct overflow verification */
-    printf("\n// STEP 5: Direct overflow — write 0xFFFFFFFE, verify wrap to 0\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3);
-    /* Set thresholds so BARK fires at 0xFFFFFFFF, pet in NMI before BITE */
+    /*
+     * STEP 5: Direct overflow without free-running at FF with bark=bite=FF.
+     *
+     * 5a) FE→FF: the incr that lands on FF also satisfies count>=bark (FF), so
+     *     bark may fire; phase==3 accepts that. Disable as soon as FF is
+     *     sampled (before the wrap/bite incr). Bite also arms at FF; disable
+     *     before the next tick.
+     * 5b) FF→0: one enable tick; bark+wrap (+bite pulse) share that incr.
+     *     phase==2 NMI disables immediately and must not pet.
+     */
+    printf("\n// STEP 5: Direct overflow — FE→FF then one-tick wrap to ~0\n");
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFFu);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFFu);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0xFFFFFFFEu);
 
-    /* Reset phase for re-use */
-    phase = 0;
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    /* 5a: climb to FF, then stop before wrap/bite */
+    phase = 3; /* bark at FF is expected; do not pet or score as error */
+    int seen_fe = 0;
+    int seen_ff = 0;
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
-    timeout = 5000000;
-    while (phase == 0 && timeout-- > 0) {
-        __asm__ volatile("wfi");
+    for (int i = 0; i < 5000000; i++) {
+        uint32_t c = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        if (c == 0xFFFFFFFEu) {
+            seen_fe = 1;
+        }
+        if (c == 0xFFFFFFFFu) {
+            seen_ff = 1;
+            WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+            printf("  Observed count=0xFFFFFFFF (disabled before wrap/bite tick)\n");
+            break;
+        }
+        __asm__ volatile("nop");
     }
 
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
 
-    if (timeout <= 0) {
-        printf("  FAIL: Timeout waiting for BARK at count=0xFFFFFFFF\n");
+    if (!seen_ff) {
+        printf("  FAIL: Never sampled count==0xFFFFFFFF (seen_fe=%d)\n", seen_fe);
+        errors++;
+        goto finish;
+    }
+
+    /* Ensure we are parked at FF before the wrap tick */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
+
+    wrap_bark_seen = 0;
+    count_after_wrap_bark = 0xFFFFFFFFu;
+    phase = 2;
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
+
+    timeout = 5000000;
+    while (!wrap_bark_seen && timeout-- > 0) {
+        uint32_t c = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        /* Poll path: wrap may be visible before/without relying on NMI flag alone
+         */
+        if (c < 0x100u) {
+            break;
+        }
+        __asm__ volatile("nop");
+    }
+
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+
+    uint32_t cnt_wrap = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    if (wrap_bark_seen) {
+        cnt_wrap = count_after_wrap_bark;
+        printf("  Wrap bark NMI: count after bark/disable = 0x%08x\n", cnt_wrap);
+    } else {
+        printf("  Wrap observe (poll): count = 0x%08x\n", cnt_wrap);
+    }
+
+    if (cnt_wrap >= 0x100u) {
+        printf("  FAIL: No free-running wrap to ~0 (count=0x%08x, "
+               "wrap_bark_seen=%d)\n",
+               cnt_wrap, wrap_bark_seen);
         errors++;
     } else {
-        uint32_t cnt_wrap = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
-        printf("  PASS: BARK fired at count=0xFFFFFFFF, count after pet = 0x%08x\n", cnt_wrap);
-        printf("  Count wrapped from 0xFFFFFFFF to 0x00000000 correctly\n");
+        printf("  PASS: Hardware wrap FF→0x%08x without software pet\n", cnt_wrap);
     }
 
 finish:

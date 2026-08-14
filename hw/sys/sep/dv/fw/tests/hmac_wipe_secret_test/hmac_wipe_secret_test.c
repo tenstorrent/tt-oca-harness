@@ -19,6 +19,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static inline uint32_t bswap32(uint32_t x) {
     return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
@@ -76,7 +77,7 @@ static int sha256_abc(uint32_t digest_words[8]) {
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 0;
     cfg.f.sha_en = 1;
-    cfg.f.digest_size = 1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t cmd = {.f.hash_start = 1};
@@ -125,7 +126,8 @@ int main(void) {
     printf("Writing WIPE_SECRET...\n");
     WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
 
-    /* Step 3: Read digest again, verify at least some words changed */
+    /* Step 3: Each DIGEST word must equal the wipe pattern (OT WIPE_SECRET). */
+    const uint32_t wipe_pattern = 0xFFFFFFFFu;
     uint32_t digest_wiped[8];
     for (int i = 0; i < 8; i++) {
         digest_wiped[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
@@ -134,14 +136,12 @@ int main(void) {
     for (int i = 0; i < 8; i++) printf(" 0x%08x", digest_wiped[i]);
     printf("\n");
 
-    int changed_count = 0;
     for (int i = 0; i < 8; i++) {
-        if (digest_wiped[i] != digest1[i]) changed_count++;
-    }
-    printf("Digest words changed after wipe: %d/8\n", changed_count);
-    if (changed_count == 0) {
-        printf("FAIL: No digest words changed after WIPE_SECRET\n");
-        pass = 0;
+        if (digest_wiped[i] != wipe_pattern) {
+            printf("FAIL: DIGEST_%d=0x%08x after wipe, expected 0x%08x\n", i, digest_wiped[i],
+                   wipe_pattern);
+            pass = 0;
+        }
     }
 
     /* Step 4: Verify STATUS returns idle */

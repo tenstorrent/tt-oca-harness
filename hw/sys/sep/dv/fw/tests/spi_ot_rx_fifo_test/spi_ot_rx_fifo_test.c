@@ -135,7 +135,9 @@ int main(void) {
     }
     issue_rx_cmd(RX_LEN_BYTES);
     if (wait_for_idle(TIMEOUT_LIMIT)) {
-        printf("  WARN: transaction did not complete (no SPI device?)\n");
+        printf("  FAIL: transaction did not complete (ACTIVE stuck / no SPI device)\n");
+        pass = 0;
+        goto done;
     }
 
     /* -------------------------------------------------------------------
@@ -236,7 +238,9 @@ int main(void) {
     }
     issue_rx_cmd(RX_LEN_BYTES);
     if (wait_for_idle(TIMEOUT_LIMIT)) {
-        printf("  WARN: transaction did not complete\n");
+        printf("  FAIL: transaction did not complete (ACTIVE stuck)\n");
+        pass = 0;
+        goto done;
     }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
