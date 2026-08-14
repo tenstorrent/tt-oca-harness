@@ -7,6 +7,7 @@ package cross_trigger_matrix_reg_pkg;
     localparam CROSS_TRIGGER_MATRIX_REG_MIN_ADDR_WIDTH = 8;
     localparam CROSS_TRIGGER_MATRIX_REG_SIZE = 'hd0;
     localparam NUM_CT_SRC = 'h1a;
+    localparam NUM_CT_DST = 'h1a;
 
     typedef struct {
         logic [25:0] value;

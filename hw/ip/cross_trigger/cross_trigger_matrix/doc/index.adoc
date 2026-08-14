@@ -16,14 +16,15 @@ The CTM is compatible with CTPs operating in either of the two signaling modes, 
 |===
 |Parameter |Range |Default |Description
 |NUM_CT_SRC |set by the register map |26 |Number of CT_Src output ports
-|NUM_CT_DST |1-26 |26 |Number of CT_Dst input ports
+|NUM_CT_DST |1 to the select field width |26 |Number of CT_Dst input ports
 |===
 
-The register map declares one configuration register per CT_Src port as an array
-sized by its own `NUM_CT_SRC` parameter, each with a 26-bit destination select
-field. `NUM_CT_SRC` therefore tracks the generated array size, and `NUM_CT_DST`
-can be narrowed to any width the select field covers. See <<ctm-architecture>>
-for how the select fields drive the crossbar.
+The register map carries both dimensions as parameters of its own: it declares one
+configuration register per CT_Src port as an array sized by `NUM_CT_SRC`, each
+holding one select bit per CT_Dst port over a field sized by `NUM_CT_DST`. The
+module parameters follow that generated collateral, so a resized matrix comes from
+regenerating the register map rather than from editing the RTL. See
+<<ctm-architecture>> for how the select fields drive the crossbar.
 
 ifdef::backend-pdf[]
 :imagesdir: assets

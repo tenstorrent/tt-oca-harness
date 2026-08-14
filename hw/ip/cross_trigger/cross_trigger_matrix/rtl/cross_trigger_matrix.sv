@@ -14,8 +14,8 @@
 //
 // The port counts follow the register map: NUM_CT_SRC defaults to the number of
 // config registers declared by regs/cross_trigger_matrix.rdl, and NUM_CT_DST is
-// bounded by the width of their select field. Resize the matrix by changing
-// NUM_CT_SRC in that RDL and regenerating, rather than by editing this module.
+// bounded by the width of their select field. Both are parameters of that RDL, so
+// resize the matrix by regenerating it rather than by editing this module.
 //------------------------------------------------------------------------------
 
 

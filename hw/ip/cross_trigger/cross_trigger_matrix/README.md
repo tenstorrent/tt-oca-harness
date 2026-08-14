@@ -27,16 +27,21 @@ ports, from `dtp_pkg::DEFAULT_NUM_CTP` (16) plus `dtp_pkg::DEFAULT_NUM_INT_CT`
   declares. `rtl/cross_trigger_matrix.sv` asserts this against
   `CROSS_TRIGGER_MATRIX_CT_SRC_NUM` from the generated address package, so it
   follows a regenerated map without further edits.
-* `NUM_CT_DST` may be 1 up to the width of the `CT_DST_SELECT` field, which is 26
-  bits with bits 31:26 reserved. The select mask is truncated to `NUM_CT_DST`, so
-  a narrower matrix leaves the upper mask bits unused.
+* `NUM_CT_DST` may be 1 up to the width of the `CT_DST_SELECT` field. The RTL
+  bounds it with `$bits` on that field and truncates the select mask to
+  `NUM_CT_DST`, so a matrix narrower than the register map leaves the upper mask
+  bits unused.
 
-To resize the source dimension, change the `NUM_CT_SRC` default in
-`regs/cross_trigger_matrix.rdl` and rerun the register flow above; the RTL needs
-no change, because the select decode indexes the register array with its generate
-loop variable. Widening the destination dimension past 26 additionally means
-widening `CT_DST_SELECT`, which spills into the doubleword reserved at each
-element's offset 0x4.
+Both dimensions are parameters of the address map in
+`regs/cross_trigger_matrix.rdl`, so resizing either one is a change to its default
+there plus a rerun of the register flow above. The RTL needs no edit: the select
+decode indexes the register array with its generate loop variable, and both
+parameters follow the generated collateral.
+
+`NUM_CT_DST` in the RDL is limited to 31, because the select mask and its reserved
+remainder share `CONFIG_0`. Selecting among more destinations means adding a
+`CONFIG_1` register in the doubleword reserved at each element's offset 0x4 and
+extending the mask concatenation in the RTL to span both registers.
 
 ## Generated Files
 
