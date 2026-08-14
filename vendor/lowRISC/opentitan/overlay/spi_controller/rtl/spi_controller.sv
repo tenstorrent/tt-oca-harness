@@ -363,9 +363,38 @@ module spi_controller
     assign reg_in.ERROR_STATUS.OVERFLOW.next    = error_overflow;
     assign reg_in.ERROR_STATUS.CMDBUSY.next     = error_busy;
 
-    assign enb_error = reg_out.ERROR_STATUS.intr; // Aggregate
+    logic [5:0] error_vector;
+    logic [5:0] error_mask;
+    logic       status_error;
 
-    assign error_intr = (reg_out.ERROR_STATUS.intr || reg_out.INTR_TEST.ERROR.value) &&
+    assign error_vector = {
+        reg_out.ERROR_STATUS.ACCESSINVAL.value,
+        reg_out.ERROR_STATUS.CSIDINVAL.value,
+        reg_out.ERROR_STATUS.CMDINVAL.value,
+        reg_out.ERROR_STATUS.UNDERFLOW.value,
+        reg_out.ERROR_STATUS.OVERFLOW.value,
+        reg_out.ERROR_STATUS.CMDBUSY.value
+    };
+
+    // Which classes of latched error escalate to an error interrupt. ACCESSINVAL
+    // is a bus error with no CSR.ERROR_ENABLE bit, so it always escalates.
+    assign error_mask = {
+        1'b1,
+        reg_out.ERROR_ENABLE.CSIDINVAL.value,
+        reg_out.ERROR_ENABLE.CMDINVAL.value,
+        reg_out.ERROR_ENABLE.UNDERFLOW.value,
+        reg_out.ERROR_ENABLE.OVERFLOW.value,
+        reg_out.ERROR_ENABLE.CMDBUSY.value
+    };
+
+    assign status_error = |(error_vector & error_mask);
+
+    // Deliberately the unmasked aggregate: ERROR_ENABLE gates the interrupt only.
+    // Any latched error still holds the core off until software clears
+    // ERROR_STATUS, matching the upstream spi_host.
+    assign enb_error = reg_out.ERROR_STATUS.intr;
+
+    assign error_intr = (status_error || reg_out.INTR_TEST.ERROR.value) &&
                         reg_out.INTR_ENABLE.ERROR.value;
     assign reg_in.INTR_STATUS.ERROR.next = error_intr;
 

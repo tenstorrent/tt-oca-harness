@@ -8,9 +8,6 @@
 // 32-bit entropy-word to CSRNG seed adapter for the DRBG wrapper.
 //----------------------------------------------------------
 
-`default_nettype none
-
-
 /**
  * @file drbg_csrng_seed_adapter.sv
  * @brief Packs 32-bit entropy words into queued 384-bit CSRNG seeds.
@@ -131,5 +128,3 @@ module drbg_csrng_seed_adapter import drbg_pkg::*; #(
     `OCAH_OT_ASSERT(SeedFifoNotWrittenWhenFull_A, packer_rvalid && seed_fifo_full |-> !seed_push_o)
 
 endmodule : drbg_csrng_seed_adapter
-
-`default_nettype wire

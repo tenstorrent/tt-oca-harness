@@ -4,7 +4,19 @@ A configurable crossbar for routing cross trigger pulses between M source ports 
 
 ## Quick Start
 
-### Register Generation
+### Build and Test
+
+The matrix is verified at the DTP level by the `dtp_ctm_*` and `dtp_xtrig_*`
+scenarios:
+
+```bash
+python3 tools/dv/run_dv.py --dut dtp --items dtp_ctm_rand_all_scenarios_test
+```
+
+A block-level VCS testbench is checked in under `dv/tb_vcs`, but its top module
+was never ported and cannot run yet; its README records what is missing.
+
+### Register generation
 
 CTM's register collateral comes from the tree-wide flow, which reads the
 committed `regs/cross_trigger_matrix.rdl` and writes `regs/gen/`:
@@ -13,68 +25,69 @@ committed `regs/cross_trigger_matrix.rdl` and writes `regs/gen/`:
 make -f ocah.mk ocah-regen-regs TARGET=cross_trigger_matrix
 ```
 
-Clean it with:
+## Port Counts
 
-```bash
-make -f ocah.mk ocah-regen-regs-clean TARGET=cross_trigger_matrix
-```
+The matrix is sized for the DTP cross-trigger topology of 26 CT_Src and 26
+CT_Dst ports, from `dtp_pkg::DEFAULT_NUM_CTP` (16) plus
+`dtp_pkg::DEFAULT_NUM_INT_CT` (10). Both counts are localparams in
+`rtl/cross_trigger_matrix_pkg.sv` read from the generated collateral, not
+module parameters:
 
-### Port Count
+* `NUM_CT_SRC` is the number of `CT_SRC` array elements the register map
+  declares, from `CROSS_TRIGGER_MATRIX_CT_SRC_NUM` in the generated address
+  package.
+* `NUM_CT_DST` is the width of their `CT_DST_SELECT` field, from the register
+  package. `rtl/cross_trigger_matrix.sv` checks it against `$bits` of the field
+  the map actually generated.
 
-The Mako templates that produced the RDL, the RTL, and the testbench from a
-`--num-ct-src`/`--num-ct-dst` pair were not carried into this tree. The CTM here
-is committed source, sized for the DTP cross-trigger topology of 26 CT_Src and
-26 CT_Dst ports, from `dtp_pkg::DEFAULT_NUM_CTP` (16) plus
-`dtp_pkg::DEFAULT_NUM_INT_CT` (10).
+Neither can be overridden at instantiation, because a matrix of a size the
+register map cannot address has nothing to program it. Both dimensions are
+parameters of the address map in `regs/cross_trigger_matrix.rdl`, so resizing
+the matrix is a change to its defaults there plus a rerun of the register flow
+above; the RTL follows without edit, since the select decode indexes the
+register array with its generate loop variable.
 
-`NUM_CT_SRC` and `NUM_CT_DST` are module parameters, but only `NUM_CT_DST` is
-adjustable, and only downward:
+A consequence for integrators: the register map must be generated for the port
+count the enclosing design wires up. `cross_trigger_network` connects
+`NUM_CTM_PORTS` signals and no longer sizes the matrix, so the two have to be
+resized together. `dtp_pkg` checks that they were, failing elaboration if the
+DTP's cross trigger port counts and this map disagree.
 
-* `NUM_CT_SRC` must be 26. The `NumCtSrcMatchesGen_A` assertion in
-  `rtl/cross_trigger_matrix.sv` enforces it, because the select decode there
-  names each of the 26 `CT_SRCn_CONFIG_0` registers explicitly.
-* `NUM_CT_DST` may be 1 to 26. The `CT_DST_SELECT` field is 26 bits wide with
-  bits 31:26 reserved, and the decode truncates the mask to `NUM_CT_DST`, so a
-  narrower matrix leaves the upper mask bits unused. The range assertion
-  nominally permits up to `MAX_NUM_CT_DST` (64), but a wider matrix has no
-  register bits to select with: the second config register the decode comments
-  refer to (`CT_SRCn_CONFIG_1`, for CT_Dst[63:32]) is not part of this
-  configuration.
+Each port occupies 8 bytes whatever the port count, so selecting among more than 32
+destinations widens the select field to fill that space instead of moving any
+addresses. The register map switches form on `NUM_CT_DST`:
 
-Changing either dimension means editing `regs/cross_trigger_matrix.rdl` and the
-select decode in `rtl/cross_trigger_matrix.sv` together, then rerunning the
-register flow above.
+| `NUM_CT_DST` | Register | Writes |
+| --- | --- | --- |
+| 1 to 32 | 32 bits, second word unmapped | immediate |
+| 33 to 64 | 64 bits, accessed a word at a time | buffered |
 
-### Test
-
-```bash
-cd dv/tb_vcs
-make test
-```
+Buffering is required above 32 because the select mask then spans both words: it
+commits when the upper word is written, so a mask never takes effect
+half-programmed, and firmware must write both words, low first. Below that
+threshold nothing about the register or its programming changes, and at the DTP's
+26 destinations the generated collateral is identical either way.
 
 ## Generated Files
 
-Register collateral from `regs/cross_trigger_matrix.rdl` lands under `regs/gen/`,
-one directory per output format:
+The register flow writes `regs/gen/` from `regs/cross_trigger_matrix.rdl`:
 
-* `sv/` - register RTL module and its package
-* `c/` - C header
-* `py/` - Python header
-* `svh/` - flattened SystemVerilog header
-* `adoc/`, `html/` - documentation, included by the CTN memory map page
-
-## Requirements
-
-The register flow runs through `uv`, which installs peakrdl and the exporters
-from the lockfile; nothing else needs to be on PATH.
+* `regs/gen/sv/cross_trigger_matrix_reg.sv` - Register RTL module
+* `regs/gen/sv/cross_trigger_matrix_reg_pkg.sv` - Register package
+* `regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv` - Address and array-size constants
+* `regs/gen/c/cross_trigger_matrix.h` - Firmware C header
+* `regs/gen/c/cross_trigger_matrix_addr.h` - Raw address header
+* `regs/gen/py/cross_trigger_matrix_reg.py` - Python header used by the cocotb tests
+* `regs/gen/svh/cross_trigger_matrix_reg.svh` - Flattened SystemVerilog header
+* `regs/gen/adoc/cross_trigger_matrix.adoc` - Register documentation, included by the CTN memory map page
 
 ## Documentation
 
-The pages under `doc/` are AsciiDoc sources published with the rest of the OCAH
-documentation. Build the TRM, which includes them under the DTP subsystem:
+The `doc/` pages are AsciiDoc partials published through the tree-wide Antora
+site. Build the HTML books from the repository root:
 
 ```bash
-make -f ocah.mk ocah-doc-trm-html
+make -f ocah.mk ocah-doc-html
 ```
 
 ## Architecture
@@ -83,6 +96,6 @@ The CTM consists of:
 
 * **Register Interface**: AXI4-Lite interface for configuration
 * **Source Selector Modules**: One per CT_Src port, implements selection and OR logic
-* **Fixed 26x26 Configuration**: `NUM_CT_SRC` is pinned at 26; `NUM_CT_DST` may be narrowed
+* **26x26 Configuration**: both counts follow the register map, as described under Port Counts
 
 See `doc/` for detailed architecture and implementation documentation.

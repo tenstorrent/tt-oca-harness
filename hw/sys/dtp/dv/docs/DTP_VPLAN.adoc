@@ -6417,7 +6417,7 @@ c. Confirm reserved bits remain zero and are not disturbed by adjacent writes.
 
 *Test Coverage*:
 
-* Deterministic closure of per-source select mapping for every defined CTM source-select CSR (`CT_SRC1_CONFIG_0` through `CT_SRC25_CONFIG_0`)
+* Deterministic closure of per-source select mapping for every defined CTM source-select CSR (`CT_SRC[0].CONFIG_0` through `CT_SRC[25].CONFIG_0`)
 * Single-destination, paired-destination, and inverted-destination `CT_DST_SELECT` masks written and read back at every source index
 * No source index aliases another CTM source register
 * Direct exercise of all generated CTM source-select mapping code in the default DTP configuration

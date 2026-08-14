@@ -1014,6 +1014,7 @@ module spi_controller_reg (
             end
         end
     end
+    assign hwif_out.ERROR_ENABLE.CMDBUSY.value = field_storage.ERROR_ENABLE.CMDBUSY.value;
     // Field: spi_controller.ERROR_ENABLE.OVERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1036,6 +1037,7 @@ module spi_controller_reg (
             end
         end
     end
+    assign hwif_out.ERROR_ENABLE.OVERFLOW.value = field_storage.ERROR_ENABLE.OVERFLOW.value;
     // Field: spi_controller.ERROR_ENABLE.UNDERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1058,6 +1060,7 @@ module spi_controller_reg (
             end
         end
     end
+    assign hwif_out.ERROR_ENABLE.UNDERFLOW.value = field_storage.ERROR_ENABLE.UNDERFLOW.value;
     // Field: spi_controller.ERROR_ENABLE.CMDINVAL
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1080,6 +1083,7 @@ module spi_controller_reg (
             end
         end
     end
+    assign hwif_out.ERROR_ENABLE.CMDINVAL.value = field_storage.ERROR_ENABLE.CMDINVAL.value;
     // Field: spi_controller.ERROR_ENABLE.CSIDINVAL
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1102,6 +1106,7 @@ module spi_controller_reg (
             end
         end
     end
+    assign hwif_out.ERROR_ENABLE.CSIDINVAL.value = field_storage.ERROR_ENABLE.CSIDINVAL.value;
     // Field: spi_controller.ERROR_STATUS.CMDBUSY
     always_comb begin
         automatic logic [0:0] next_c;

@@ -152,15 +152,18 @@ static uint32_t pack_cmd_addr(uint8_t flash_cmd, uint32_t addr) {
            (((addr >> 0) & 0xFF) << 24);
 }
 
-/* Poll WIP bit until clear; returns 0 on success, -1 on timeout */
+/* Poll WIP bit until clear; returns 0 on success, -1 on timeout / bad status.
+ * SR==0xFF means status read failed or no flash model — must fail closed. */
 static int flash_wait_wip(const char *op_name) {
     int poll_count = 0;
     while (poll_count < STATUS_POLL_LIMIT) {
         uint8_t sr = flash_read_status();
         poll_count++;
         if (sr == 0xFF) {
-            printf("  WARN: SR=0xFF (no flash model?), skipping WIP poll for %s\n", op_name);
-            return 0;
+            printf("  FAIL: SR=0xFF while waiting for WIP=0 (%s); "
+                   "status unread/no flash model — require +spi_device_sel\n",
+                   op_name);
+            return -1;
         }
         if (!(sr & FLASH_SR_WIP)) {
             printf("  WIP=0 after %d polls (%s complete)\n", poll_count, op_name);
@@ -297,10 +300,13 @@ int main(void) {
         if (!match) pre_erase_fail++;
     }
     if (pre_erase_fail) {
-        printf("  WARN: %u word(s) mismatch pre-erase (no flash model?)\n", pre_erase_fail);
-    } else {
-        printf("  Pre-erase data verified OK\n");
+        printf("  FAIL: %u word(s) mismatch pre-erase "
+               "(require flash model +spi_device_sel=winbond)\n",
+               pre_erase_fail);
+        pass = 0;
+        goto done;
     }
+    printf("  Pre-erase data verified OK\n");
 
     /* ---------------------------------------------------------------
      * Phase 3: Sector Erase (0x20) at FLASH_TARGET_ADDR
@@ -313,9 +319,14 @@ int main(void) {
     }
     printf("  WREN issued\n");
 
-    /* Verify WEL=1 */
+    /* Verify WEL=1 — SR==0xFF is not affirmative WEL proof */
     uint8_t sr = flash_read_status();
-    if (sr != 0xFF && !(sr & FLASH_SR_WEL)) {
+    if (sr == 0xFF) {
+        printf("  FAIL: SR=0xFF after WREN (status unread/no flash model)\n");
+        pass = 0;
+        goto done;
+    }
+    if (!(sr & FLASH_SR_WEL)) {
         printf("  FAIL: WEL not set after WREN (SR=0x%02x)\n", sr);
         pass = 0;
         goto done;
