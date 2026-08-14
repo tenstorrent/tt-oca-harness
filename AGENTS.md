@@ -5,6 +5,23 @@ Harness (OCAH) repository. It covers environment setup, the container-based firm
 toolchain, running firmware-driven DV, and how to debug failures without chasing the wrong
 layer. Machine- and site-specific values are left as placeholders; substitute your own.
 
+## Editing this guide
+
+A guide that is confidently wrong costs more than one that is silent, because a reader has no
+reason to doubt it. Three rules keep it worth trusting.
+
+- **Keep it current with the repository.** Any change that materially affects what is written
+  here — a renamed target, a flow that gains a block, a moved directory, a fixed failure mode
+  — should update this file in the same pull request. Verify claims against the tree rather
+  than from memory, and prefer pointing at the authoritative file over restating it, since a
+  pointer cannot drift.
+- **Keep proprietary material out.** Nothing from `nonfree/` belongs here: not its internals,
+  tool names, site paths or procedures. Note that the companion exists, say what a reader
+  without it should arrange instead, and refer to its own scripts for the detail.
+- **Keep it generic.** No personal paths, hostnames, usernames, tool versions or one-off
+  workarounds. Use placeholders for anything machine- or site-specific, and write so the
+  guidance still holds for someone with a bare clone and no site tooling.
+
 ## Read the repository documentation first
 
 This repo documents itself well, and nearly every environment question below is answered
