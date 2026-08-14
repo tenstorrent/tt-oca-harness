@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "sep.h"
+#include "sep_spi.h"
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
@@ -70,7 +71,8 @@ int main(void) {
     /* Step 2: INTR_ENABLE write-readback */
     printf("\nStep 2: INTR_ENABLE write-readback\n");
     intr_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR);
-    if (!check_reg("INTR_ENABLE default", intr_enable.w, 0)) pass = 0;
+    if (!check_reg("INTR_ENABLE default", intr_enable.w, SPI_CONTROLLER__INTR_ENABLE_reset))
+        pass = 0;
 
     intr_enable.w = 0;
     intr_enable.f.ERROR = 1;
@@ -129,7 +131,8 @@ int main(void) {
     /* Step 4: EVENT_ENABLE configuration */
     printf("\nStep 4: EVENT_ENABLE configuration\n");
     event_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
-    if (!check_reg("EVENT_ENABLE default", event_enable.w, 0)) pass = 0;
+    if (!check_reg("EVENT_ENABLE default", event_enable.w, SPI_CONTROLLER__EVENT_ENABLE_reset))
+        pass = 0;
 
     /* Step 4.5: INTR_STATUS.spi_event via TXEMPTY event */
     printf("\nStep 4.5: INTR_STATUS.spi_event via TXEMPTY\n");
