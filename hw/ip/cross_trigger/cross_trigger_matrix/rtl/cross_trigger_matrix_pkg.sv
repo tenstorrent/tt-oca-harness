@@ -27,7 +27,6 @@ package cross_trigger_matrix_pkg;
     localparam int unsigned MIN_NUM_CT_SRC = 1;
     localparam int unsigned MAX_NUM_CT_SRC = 64;
     localparam int unsigned MIN_NUM_CT_DST = 1;
-    // 64 select bits fill the 8 bytes each CT_Src port occupies in the register map.
     localparam int unsigned MAX_NUM_CT_DST = 64;
 
     // AXI-Lite Parameters
