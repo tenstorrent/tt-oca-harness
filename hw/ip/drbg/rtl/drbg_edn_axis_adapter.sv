@@ -8,9 +8,6 @@
 // Native EDN endpoint to AXI-Stream adapter for the DRBG wrapper.
 //----------------------------------------------------------
 
-`default_nettype none
-
-
 /**
  * @file drbg_edn_axis_adapter.sv
  * @brief Converts native EDN endpoint req/ack traffic into AXI-Stream outputs.
@@ -100,5 +97,3 @@ module drbg_edn_axis_adapter import drbg_pkg::*; #(
     `OCAH_OT_ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
 
 endmodule : drbg_edn_axis_adapter
-
-`default_nettype wire

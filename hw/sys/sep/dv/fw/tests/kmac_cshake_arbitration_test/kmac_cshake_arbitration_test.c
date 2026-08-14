@@ -33,7 +33,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
-
+#include "sep_kmac.h"
 /* ------------------------------------------------------------------ */
 /* KMAC helpers                                                        */
 /* ------------------------------------------------------------------ */
@@ -52,8 +52,9 @@ static int wait_done(void) {
     int t = 2000000;
     while (t-- > 0) {
         uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
-        if (intr & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1); /* W1C */
+        if (intr & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
+                      KMAC__INTR_STATE__KMAC_DONE_bm); /* W1C */
             return 0;
         }
     }
@@ -62,23 +63,25 @@ static int wait_done(void) {
 }
 
 /*
- * Configure for pure cSHAKE-128 (no KMAC key).
- *   kmac_en=0, mode=0x2 (SHAKE/cSHAKE), kstrength=0 (L128), sideload=0.
- * entropy_mode=1 (EDN) — avoid SW entropy deadlock.
+ * Configure for pure cSHAKE-128 (no KMAC key) with software entropy.
  */
 static void configure_cshake(void) {
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x2;         /* SHAKE/cSHAKE mode */
-    cfg.f.kstrength = 0x0;    /* L128 */
-    cfg.f.entropy_mode = 0x1; /* EDN */
+    cfg.f.mode = SEP_KMAC_MODE_CSHAKE;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     cfg.f.sideload = 0;
+    cfg.f.entropy_ready = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
+        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + (uint32_t)i);
+    }
 }
 
 /* Set customization string prefix = encode_string("csh") for cSHAKE */
@@ -90,7 +93,7 @@ static void write_cshake_prefix(void) {
      * packed 32-bit LE word0: 0x63181801 (bytestream), word1: 0x00007368
      * Using a simple fixed prefix for determinism */
     WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x63181801U);
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + 4, 0x00007368U);
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00007368U); /* not BASE(0)+4 */
     for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
 }
 
@@ -103,22 +106,23 @@ static void write_cshake_prefix(void) {
 static int run_cshake_op(const uint32_t *msg_words, int msg_count, uint32_t out[8]) {
     kmac__CMD_t cmd = {.w = 0};
 
-    cmd.f.cmd = 29; /* CmdStart */
+    cmd.f.cmd = SEP_KMAC_CMD_START; /* CmdStart */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     for (int i = 0; i < msg_count; i++)
         WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, msg_words[i]);
 
-    cmd.f.cmd = 46; /* CmdProcess */
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS; /* CmdProcess */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_done() != 0) return -1;
 
     for (int i = 0; i < 8; i++)
-        out[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
-                 READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (0x100 + (i * 4))));
+        out[i] =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
 
-    cmd.f.cmd = 22; /* CmdDone */
+    cmd.f.cmd = SEP_KMAC_CMD_DONE; /* CmdDone */
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
@@ -254,14 +258,21 @@ int main(void) {
         errors++;
     }
 
-    /* Also verify D == A (same check, different run) */
+    /* Also verify D == A (same check, different run) — FAIL-ON mismatch */
     int d_eq_a = 1;
     for (int i = 0; i < 8; i++)
         if (digest_d[i] != digest_a[i]) {
             d_eq_a = 0;
             break;
         }
-    printf("  INFO: digest_D %s digest_A\n", d_eq_a ? "==" : "!= (unexpected)");
+    if (d_eq_a) {
+        printf("  CHK[6b] PASS: digest_D matches digest_A\n");
+    } else {
+        printf("  CHK[6b] FAIL: digest_D != digest_A\n");
+        print_digest("A", digest_a);
+        print_digest("D", digest_d);
+        errors++;
+    }
 
 done:
     printf("\n========================================\n");

@@ -8,9 +8,6 @@
 // 64-bit AXI-Lite single-lane adapter used by the DRBG wrapper.
 //----------------------------------------------------------
 
-`default_nettype none
-
-
 /**
  * @file drbg_axil64_lane_adapter.sv
  * @brief 64-bit AXI-Lite single-lane adapter used by the DRBG wrapper.
@@ -327,5 +324,3 @@ module drbg_axil64_lane_adapter import drbg_pkg::*; import axi_pkg::*; #(
     `OCAH_OT_ASSERT_KNOWN(Axil64RDataKnown_A, axil64_rsp_o.r.data)
 
 endmodule : drbg_axil64_lane_adapter
-
-`default_nettype wire

@@ -5595,7 +5595,7 @@ class RESET_UNIT_STRAPS_LO_reg_u(Union):
 RESET_UNIT_STRAPS_HI_REG_DEFAULT = 0x00000000
 class RESET_UNIT_STRAPS_HI_reg_t(Structure):
     _fields_ = [
-        ('straps', c_uint32, 32),
+        ('straps', c_uint32, 29),
     ]
 
 RESET_UNIT_STRAPS_HI_REG_DEFAULT = 0x00000000

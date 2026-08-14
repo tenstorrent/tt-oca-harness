@@ -13,6 +13,8 @@ until a legal ATOP driver and a filter-allow / OKAY positive control exist
 
 from __future__ import annotations
 
+import random
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
@@ -33,6 +35,9 @@ class smu_axi_atomic_operation_test(smu_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         sb = self.env.scoreboard
+        seed = self.random_seed()
+        arid = random.Random(seed ^ 0xFAB_A709).randint(1, 0xFF)
+        self.logger.info("SEED: %d non-ATOP arid=0x%x", seed, arid)
 
         await ClockCycles(dut.clk_smu_i, 50)
         master = await make_smu_axi_master(
@@ -41,7 +46,7 @@ class smu_axi_atomic_operation_test(smu_base_test):
         value, resp, issued, rid = await axi_read32_resp_ids_bounded(
             master,
             SMC_CHIP_CONFIG_VERSION_LO,
-            arid=0x2A,
+            arid=arid,
             label="non_atop_rd",
         )
         sb.expect_eq(
