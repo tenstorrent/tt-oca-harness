@@ -18,6 +18,7 @@
 #include "och_sep_common.h"
 #include "sep.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 #include "test_completion.h"
 
 typedef struct {
@@ -130,10 +131,13 @@ static int run_stress_case(const hmac_stress_case_t *test_case, uint32_t iter) {
         return -1;
     }
 
-    uint32_t msg_len = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
-    uint32_t expected_bits = test_case->len * 8u;
-    printf("  MSG_LENGTH_LOWER=%u expected=%u\n", msg_len, expected_bits);
-    if (msg_len != expected_bits) {
+    uint64_t expected_bits = (uint64_t)test_case->len * 8ull;
+    uint32_t msg_lo = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t msg_hi = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
+    uint32_t exp_lo = (uint32_t)(expected_bits & 0xffffffffu);
+    uint32_t exp_hi = (uint32_t)(expected_bits >> 32);
+    printf("  MSG_LENGTH=%u:%u expected=%u:%u\n", msg_lo, msg_hi, exp_lo, exp_hi);
+    if (msg_lo != exp_lo || msg_hi != exp_hi) {
         printf("  FAIL: message length was polluted by a previous operation\n");
         return -1;
     }
@@ -188,7 +192,7 @@ int main(void) {
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;
     cfg.f.hmac_en = 0;
-    cfg.f.digest_size = 1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     static const hmac_stress_case_t cases[] = {

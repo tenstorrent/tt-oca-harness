@@ -24,12 +24,14 @@
 #include "sep_outbound_filter.h"
 #include "nmi.h"
 #include "test_completion.h"
+#include "aon_timer.h"
 
 static volatile int bark_fired = 0;
 
 void wdt_nmi_handler(void) {
     bark_fired++;
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
     printf("  WDT bark NMI received (bark_fired=%d)\n", bark_fired);
 }
 
@@ -56,7 +58,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     for (volatile int i = 0; i < 40000; i++) {
         __asm__ volatile("nop");
@@ -78,14 +80,20 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 3000);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
-    while (bark_fired == 0) {
-        __asm__ volatile("wfi");
+    int timeout = 5000000;
+    while (bark_fired == 0 && timeout-- > 0) {
+        __asm__ volatile("nop");
     }
 
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
-    printf("  PASS: Bark fired normally with lc_escalate=Off\n");
+    if (bark_fired == 0) {
+        printf("  FAIL: Timeout waiting for bark NMI (lc_escalate=Off)\n");
+        errors++;
+    } else {
+        printf("  PASS: Bark fired normally with lc_escalate=Off (bark_fired=%d)\n", bark_fired);
+    }
 
     printf("\n// DOCUMENTED LIMITATION: TC_WDT_007 LC escalate halt not testable\n");
     printf("//   sep_wdt_wrap.sv:145: .lc_escalate_en_i ({3{lc_ctrl_pkg::Off}})\n");

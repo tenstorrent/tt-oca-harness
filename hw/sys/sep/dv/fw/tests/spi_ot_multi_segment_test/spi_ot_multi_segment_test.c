@@ -194,7 +194,11 @@ int main(void) {
     cmd.f.DIRECTION = 1; /* RX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
-    wait_for_idle(TIMEOUT_LIMIT);
+    if (wait_for_idle(TIMEOUT_LIMIT)) {
+        printf("  FAIL: transaction did not complete (ACTIVE stuck)\n");
+        pass = 0;
+        goto done;
+    }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  Post-seg4: CMDQD=%u ACTIVE=%u RXQD=%u\n", status.f.CMDQD, status.f.ACTIVE,

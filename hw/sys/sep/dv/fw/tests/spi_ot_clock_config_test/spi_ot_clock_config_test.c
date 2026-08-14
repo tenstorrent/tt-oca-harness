@@ -49,7 +49,7 @@ int main(void) {
     /* Step 1: Verify CFG default */
     printf("Step 1: CFG default check\n");
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    if (!check_reg("CFG default", cfg.w, 0u)) pass = 0;
+    if (!check_reg("CFG default", cfg.w, SPI_CONTROLLER__CFG_reset)) pass = 0;
 
     /* Step 2: Test CLKDIV values */
     printf("\nStep 2: CLKDIV values\n");
@@ -120,7 +120,12 @@ int main(void) {
     cfg.f.CSNTRAIL = 0;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    if (!check_reg("CS timing all zero", cfg.w & 0x0FFF0000, 0)) pass = 0;
+    {
+        const uint32_t cs_timing_bm = SPI_CONTROLLER__CFG__CSNIDLE_bm |
+                                      SPI_CONTROLLER__CFG__CSNTRAIL_bm |
+                                      SPI_CONTROLLER__CFG__CSNLEAD_bm;
+        if (!check_reg("CS timing all zero", cfg.w & cs_timing_bm, 0)) pass = 0;
+    }
 
     /* Step 6: Combined configuration */
     printf("\nStep 6: Combined config (CLKDIV=9, Mode3, FULLCYC, timing)\n");
