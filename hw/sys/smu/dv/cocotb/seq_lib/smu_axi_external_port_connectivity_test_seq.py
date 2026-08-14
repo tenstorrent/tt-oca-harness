@@ -18,6 +18,8 @@ SMU_ALL_008 — out of scope for this card.
 
 from __future__ import annotations
 
+import os
+import random
 import time
 
 import cocotb
@@ -41,8 +43,6 @@ class smu_axi_external_port_connectivity_test_seq:
 
     # Authoritative map: smc_addr.h VERSION_LO (SMC local-alias aperture).
     IN_PROBE = SMC_CHIP_CONFIG_VERSION_LO
-    WRITE_ID = 0x42
-    READ_ID = 0x43
     # Finite bound enforced by with_timeout — must match logged TIMEOUT bound.
     AXI_TIMEOUT_NS = 200_000
     # Bounded waits: inbound write + inbound read (S2).
@@ -54,6 +54,15 @@ class smu_axi_external_port_connectivity_test_seq:
         self.cfg = test.cfg
         self._step_ts: dict[str, float] = {}
         self._timeout_paths: list[str] = []
+        seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(seed ^ 0xFAB_E001)
+        # 8-bit SMN IDs; keep write/read distinct for BID/RID match checkers.
+        self.WRITE_ID = rng.randint(1, 0xFE)
+        self.READ_ID = (self.WRITE_ID + 1 + rng.randint(0, 0x7F)) & 0xFF
+        if self.READ_ID == 0 or self.READ_ID == self.WRITE_ID:
+            self.READ_ID = (self.WRITE_ID ^ 0x55) or 0x43
+        self.wdata = rng.getrandbits(32)
+        self._seed = seed
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -195,7 +204,11 @@ class smu_axi_external_port_connectivity_test_seq:
             "COVERAGE SMU-PORT-SMN-AXI.S1 cells: dir=in dest=smc_aperture"
         )
 
-        wdata = 0xA5A5_5A5A
+        self._log(
+            f"SEED: {self._seed} WRITE_ID=0x{self.WRITE_ID:x} "
+            f"READ_ID=0x{self.READ_ID:x} wdata=0x{self.wdata:08x}"
+        )
+        wdata = self.wdata
         wresp, w_awid, w_bid = await self._axi_write_bounded(
             master, self.IN_PROBE, wdata, self.WRITE_ID
         )
