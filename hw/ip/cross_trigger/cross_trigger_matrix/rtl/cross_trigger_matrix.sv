@@ -12,12 +12,15 @@
 // N sink ports (CT_Src). Each CT_Src can be configured to select and OR together
 // multiple CT_Dst sources.
 //
-// The port counts follow the register map: NUM_CT_SRC defaults to the number of
-// config registers declared by regs/cross_trigger_matrix.rdl, and NUM_CT_DST is
-// bounded by the width of their select field. Both are parameters of that RDL, so
-// resize the matrix by regenerating it rather than by editing this module. Past 32
-// destinations the RDL widens the select field across both words of each register;
-// the decode below is unaffected, since the field arrives as one value either way.
+// Both port counts default to the register map: NUM_CT_SRC to the number of config
+// registers declared by regs/cross_trigger_matrix.rdl, NUM_CT_DST to the width of
+// their select field. Both are parameters of that RDL, so resize the matrix by
+// regenerating it rather than by editing this module. A narrower matrix may still
+// be built by overriding NUM_CT_DST, which leaves the upper select bits unused.
+//
+// Past 32 destinations the RDL widens the select field across both words of each
+// register; the decode below is unaffected, since the field arrives as one value
+// either way.
 //------------------------------------------------------------------------------
 
 
@@ -25,8 +28,9 @@ module cross_trigger_matrix #(
     // Number of CT_Src output ports, defaulting to the config register array size
     parameter int unsigned NUM_CT_SRC =
         int'(cross_trigger_matrix_addrmap_pkg::CROSS_TRIGGER_MATRIX_CT_SRC_NUM),
-    // Number of CT_Dst input ports (up to the select field width)
-    parameter int unsigned NUM_CT_DST = 26,
+    // Number of CT_Dst input ports, defaulting to the select field width
+    parameter int unsigned NUM_CT_DST =
+        int'(cross_trigger_matrix_reg_pkg::NUM_CT_DST),
     // Parameterized AXI-Lite bus interface types (default logic to force explicit definition)
     parameter type axil_req_t = cross_trigger_matrix_pkg::ctm_axil_req_t,
     parameter type axil_resp_t = cross_trigger_matrix_pkg::ctm_axil_resp_t
