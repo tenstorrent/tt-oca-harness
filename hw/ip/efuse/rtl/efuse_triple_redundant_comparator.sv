@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
-// Triple-Redundant Comparator Wrapper
+// Triple-Redundant Token Digest Comparator Wrapper
 //
-// Wraps three token_comparator instances to maintain triple
+// Wraps three efuse_token_digest_comparator instances to maintain triple
 // redundancy. Each instance performs an independent 256-bit comparison using
 // hard-cell primitives (XNOR/XOR + NAND/NOR/OR reduction trees), preventing
 // synthesis from optimizing the three compare cones into one.
@@ -18,26 +18,21 @@
 
 `include "prim_assert.sv"
 
-module triple_redundent_comparator #(
-    parameter logic [1:0]  HASH_PASS  = 2'b01,
-    parameter logic [1:0]  HASH_FAIL  = 2'b10,
-    parameter type         data_t     = logic,
-    parameter int unsigned DATA_WIDTH = 256
+module efuse_triple_redundant_comparator #(
+    localparam int TokenWidth = 256
 ) (
     input  logic                   compute_comparison_vld_i,
-    input  logic [DATA_WIDTH-1:0]  token_digest_i,
-    input  logic [DATA_WIDTH-1:0]  token_expected_i,
+    input  logic [TokenWidth-1:0]  token_digest_i,
+    input  logic [TokenWidth-1:0]  token_expected_i,
     output logic [5:0]             token_match_o
 );
 
     logic [2:0] match_p_raw, match_n_raw;
     logic [2:0] match_p, match_n;
 
-    // Three independent token comparators.
-    for (genvar i = 0; i < 3; i++) begin : gen_token_comparators
-        token_comparator #(
-            .TOKEN_WIDTH(DATA_WIDTH)
-        ) u_comparator (
+    // Three independent token digest comparators.
+    for (genvar i = 0; i < 3; i++) begin : gen_token_digest_comparators
+        efuse_token_digest_comparator u_token_digest_comparator (
             .token_digest_i   (token_digest_i),
             .token_expected_i (token_expected_i),
             .match_p_o        (match_p_raw[i]),
@@ -63,4 +58,4 @@ module triple_redundent_comparator #(
 
     assign token_match_o = {match_n[2], match_p[2], match_n[1], match_p[1], match_n[0], match_p[0]};
 
-endmodule : triple_redundent_comparator
+endmodule : efuse_triple_redundant_comparator

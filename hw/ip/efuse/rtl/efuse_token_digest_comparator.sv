@@ -3,11 +3,11 @@
 
 //-----------------------------------------------------------------------------
 //
-// Token Comparator (single instance) — radix-4 reduction tree
+// Token Digest Comparator (single instance) — radix-4 reduction tree
 //
-// Computes a fully-differential equal / not-equal result for a 256-bit token
-// using hard-cell primitives so synthesis cannot merge or optimize
-// away the compare logic.
+// Computes a fully-differential equal / not-equal result for two 256-bit
+// token digests using hard-cell primitives so synthesis cannot merge or
+// optimize away the compare logic.
 //
 // Equal path (match_p_o): per-bit XNOR, then radix-4 NAND/NOR reduction.
 //
@@ -20,38 +20,30 @@
 
 `include "prim_assert.sv"
 
-module token_comparator #(
-    parameter int unsigned TOKEN_WIDTH = 256,
-    localparam int L0Width    = TOKEN_WIDTH / 4,
-    localparam int L1Width    = L0Width / 4,
-    localparam int L2Width    = L1Width / 4
+module efuse_token_digest_comparator #(
+    localparam int unsigned TokenWidth = 256,
+    localparam int unsigned L0Width    = TokenWidth / 4,
+    localparam int unsigned L1Width    = L0Width / 4,
+    localparam int unsigned L2Width    = L1Width / 4
 ) (
-    input  logic [TOKEN_WIDTH-1:0] token_digest_i,
-    input  logic [TOKEN_WIDTH-1:0] token_expected_i,
+    input  logic [TokenWidth-1:0] token_digest_i,
+    input  logic [TokenWidth-1:0] token_expected_i,
 
     output logic                  match_p_o,  // 1 = equal
     output logic                  match_n_o   // 1 = not equal
 );
 
     //-------------------------------------------------------------------------
-    // Parameter validation
-    //-------------------------------------------------------------------------
-    // Both reduction trees are hardcoded to four radix-4 levels
-    // (256 -> 64 -> 16 -> 4 -> 1), so no other token width is supported.
-    // Additionally the efuse_security_tokens module only supports a 256-bit token.
-    `OCAH_OT_ASSERT_INIT(TokenWidthIs256_A, TOKEN_WIDTH == 256)
-
-    //-------------------------------------------------------------------------
     // Equal datapath: XNOR leaves + radix-4 NAND/NOR reduction tree.
     //-------------------------------------------------------------------------
-    logic [TOKEN_WIDTH-1:0] bit_eq;
+    logic [TokenWidth-1:0] bit_eq;
     logic [L0Width-1:0]    eq_l0;
     logic [L1Width-1:0]    eq_l1;
     logic [L2Width-1:0]    eq_l2;
 
     // XNOR all the bits, this is the first level of the reduction tree
     // If all the bits are the same, then the output will be a 1, otherwise it will be a 0
-    for (genvar i = 0; i < TOKEN_WIDTH; i++) begin : gen_bit_eq
+    for (genvar i = 0; i < TokenWidth; i++) begin : gen_bit_eq
         prim_xnor2 #(
             .Width(1)
         ) u_xnor_d0nt_touch (
@@ -110,12 +102,12 @@ module token_comparator #(
     //-------------------------------------------------------------------------
     // Not-equal datapath: XOR leaves + radix-4 OR4 reduction tree.
     //-------------------------------------------------------------------------
-    logic [TOKEN_WIDTH-1:0] bit_neq;
+    logic [TokenWidth-1:0] bit_neq;
     logic [L0Width-1:0]    neq_l0;
     logic [L1Width-1:0]    neq_l1;
     logic [L2Width-1:0]    neq_l2;
 
-    for (genvar i = 0; i < TOKEN_WIDTH; i++) begin : gen_bit_neq
+    for (genvar i = 0; i < TokenWidth; i++) begin : gen_bit_neq
         prim_xor2 #(
             .Width(1)
         ) u_xor_d0nt_touch (
@@ -163,4 +155,4 @@ module token_comparator #(
         .out_o(match_n_o)
     );
 
-endmodule : token_comparator
+endmodule : efuse_token_digest_comparator

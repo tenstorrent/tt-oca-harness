@@ -783,12 +783,12 @@ sources:
       - hw/ip/efuse/rtl/efuse_read_interface.sv
       - hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
       - hw/ip/efuse/rtl/efuse_shadow_regs.sv
-      - hw/ip/efuse/rtl/token_comparator.sv
-      - hw/ip/efuse/rtl/triple_redundent_comparator.sv
+      - hw/ip/efuse/rtl/efuse_token_digest_comparator.sv
+      - hw/ip/efuse/rtl/efuse_triple_redundant_comparator.sv
   - target: sep
     files:
-      - hw/ip/efuse/rtl/sha256_token_hash.sv
-      - hw/ip/efuse/rtl/efuse_security_tokens.sv
+      - hw/ip/efuse/rtl/efuse_token_digest_sha256.sv
+      - hw/ip/efuse/rtl/efuse_token_processing.sv
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
       - hw/ip/entropy_source/rtl/entropy_debug_monitor.sv
       - hw/ip/entropy_source/rtl/entropy_decorrelator.sv

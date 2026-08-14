@@ -2,11 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //-----------------------------------------------------------------------------
-// Efuse Security Tokens
+// Efuse Token Processing
 //
 //-----------------------------------------------------------------------------
 
-module efuse_security_tokens
+module efuse_token_processing
 #(
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0,
     parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,
@@ -17,10 +17,7 @@ module efuse_security_tokens
     parameter type efuse_apb_req_t = logic,
     parameter type efuse_apb_resp_t = logic,
 
-    parameter type efuse_map_t = logic,
-
-    localparam logic[1:0] SHA256_PASS = 2'b01,
-    localparam logic[1:0] SHA256_FAIL = 2'b10
+    parameter type efuse_map_t = logic
 ) (
     input  logic                     clk_i,
     input  logic                     rst_ni,
@@ -161,7 +158,7 @@ module efuse_security_tokens
 
     /////////////////////////////// SHA256 HASHING ENGINES ///////////////////////////////
     // A single `*_go` pulse from the CSR triggers the hashing engine.
-    sha256_token_hash u_sha256_rma_sip_token (
+    efuse_token_digest_sha256 u_sha256_rma_sip_token (
         .clk_i               (clk_i),
         .rst_ni              (rst_ni),
         .test_en_i           (test_en_i),
@@ -171,7 +168,7 @@ module efuse_security_tokens
         .sha_digest_sticky_o (rma_sip_token_sha256_digest)
     );
 
-    sha256_token_hash u_sha256_rma_chiplet_token (
+    efuse_token_digest_sha256 u_sha256_rma_chiplet_token (
         .clk_i               (clk_i),
         .rst_ni              (rst_ni),
         .test_en_i           (test_en_i),
@@ -181,7 +178,7 @@ module efuse_security_tokens
         .sha_digest_sticky_o (rma_chiplet_token_sha256_digest)
     );
 
-    sha256_token_hash u_sha256_sec_disable_token (
+    efuse_token_digest_sha256 u_sha256_sec_disable_token (
         .clk_i               (clk_i),
         .rst_ni              (rst_ni),
         .test_en_i           (test_en_i),
@@ -195,22 +192,14 @@ module efuse_security_tokens
     assign compute_rma_sip_token_match = rma_sip_token_digest_vld_sticky && fuse_sense_done_i;
     assign compute_rma_chiplet_token_match = rma_chiplet_token_digest_vld_sticky && fuse_sense_done_i;
 
-    triple_redundent_comparator #(
-        .HASH_PASS(SHA256_PASS),
-        .HASH_FAIL(SHA256_FAIL),
-        .DATA_WIDTH(256)
-    ) u_triple_redundent_comparator_rma_sip_token (
+    efuse_triple_redundant_comparator u_triple_redundant_comparator_rma_sip_token (
         .compute_comparison_vld_i(compute_rma_sip_token_match),
         .token_digest_i(rma_sip_token_sha256_digest),
         .token_expected_i(shadow_regs_i.f.rma_sip_token_digest.token_digest),
         .token_match_o(rma_sip_token_match)
     );
 
-    triple_redundent_comparator #(
-        .HASH_PASS(SHA256_PASS),
-        .HASH_FAIL(SHA256_FAIL),
-        .DATA_WIDTH(256)
-    ) u_triple_redundent_comparator_rma_chiplet_token (
+    efuse_triple_redundant_comparator u_triple_redundant_comparator_rma_chiplet_token (
         .compute_comparison_vld_i(compute_rma_chiplet_token_match),
         .token_digest_i(rma_chiplet_token_sha256_digest),
         .token_expected_i(shadow_regs_i.f.rma_chiplet_token_digest.token_digest),
@@ -239,11 +228,7 @@ module efuse_security_tokens
         .SRC_HIGH(1'b1)
     );
 
-    triple_redundent_comparator #(
-        .HASH_PASS(SHA256_PASS),
-        .HASH_FAIL(SHA256_FAIL),
-        .DATA_WIDTH(256)
-    ) u_triple_redundent_comparator_sec_disable_token (
+    efuse_triple_redundant_comparator u_triple_redundant_comparator_sec_disable_token (
         // Do not need to wait for fuse sense done; sec_disable_token_rev is a metal-fixed constant
         .compute_comparison_vld_i(sec_disable_token_digest_vld_sticky),
         .token_digest_i(sec_disable_token_sha256_digest_sticky),
@@ -366,4 +351,4 @@ module efuse_security_tokens
         end
     `endif
 
-endmodule : efuse_security_tokens
+endmodule : efuse_token_processing
