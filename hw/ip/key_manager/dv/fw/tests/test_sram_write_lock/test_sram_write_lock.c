@@ -6,7 +6,7 @@
  * @file test_sram_write_lock.c
  * @brief SRAM write-lock test for 512-byte regions
  *
- * Verifies SRAM write-locking (FR-0000-031 through FR-0000-035):
+ * Verifies SRAM write-locking:
  * - For each region: lock region, attempt write, verify write dropped,
  *   verify SRAM_WRITE_LOCK_VIOLATION status bit, verify IRQ_STATUS.sram_write_lock_err
  * - Tests write-1-only lock (only 1s set)

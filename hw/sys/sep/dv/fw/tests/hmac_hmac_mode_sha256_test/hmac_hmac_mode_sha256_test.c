@@ -25,6 +25,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static inline uint32_t bswap32(uint32_t x) {
     return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
@@ -99,8 +100,8 @@ int main(void) {
     cfg.f.sha_en = 1;
     cfg.f.endian_swap = 0;
     cfg.f.digest_swap = 0;
-    cfg.f.digest_size = 1;   /* SHA2_256 */
-    cfg.f.key_length = 0x02; /* 256-bit key */
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; /* SHA2_256 */
+    cfg.f.key_length = SEP_HMAC_KEY_LENGTH_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     /* Start hash */

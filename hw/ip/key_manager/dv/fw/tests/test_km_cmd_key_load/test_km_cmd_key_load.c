@@ -4,20 +4,20 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_cmd_key_load.c
- * @brief User Story 1 - CMD_KEY_LOAD happy-path test (SC-2739-001..003, SC-2739-009)
+ * @brief CMD_KEY_LOAD happy-path test
  *
  * Covers:
- *   AS1.1 / SC-2739-001: Load a 4-word key (KEY_SIZE=3, DEST_VALID=AES=0x04),
- *     verify RESP_CMD success, non-zero handle, echoed REQ_SIZE and DEST_VALID.
- *   AS1.2 / SC-2739-002: CMD_KEY_TRANSFER of the loaded handle to AES succeeds.
- *   AS1.3 / SC-2739-003: CMD_KEY_REVOKE of the loaded handle succeeds;
- *     subsequent CMD_KEY_TRANSFER returns FAILURE.
- *   SC-2739-009: Sweep KEY_SIZE in {0,1,3,15} — each load succeeds and the
- *     resulting handle is usable for CMD_KEY_TRANSFER.
- *   FR-2739-023: After AS1.1 load, verify KPV_CTRL for the allocated slot has
+ *   - Load a 4-word key (KEY_SIZE=3, DEST_VALID=AES=0x04), verify RESP_CMD
+ *     success, non-zero handle, echoed REQ_SIZE and DEST_VALID.
+ *   - CMD_KEY_TRANSFER of the loaded handle to AES succeeds.
+ *   - CMD_KEY_REVOKE of the loaded handle succeeds; subsequent
+ *     CMD_KEY_TRANSFER returns FAILURE.
+ *   - Sweep KEY_SIZE in {0,1,3,15} — each load succeeds and the resulting
+ *     handle is usable for CMD_KEY_TRANSFER.
+ *   - After the 4-word load, verify KPV_CTRL for the allocated slot has
  *     lock_write=1, dest_valid matching request, extend and last_dword correct.
- *   FR-2739-004: Sweep DEST_VALID in {0x01,0x02,0x04,0x08,0x0F} — each load
- *     succeeds and CMD_KEY_TRANSFER to each set bit succeeds; unset bits fail.
+ *   - Sweep DEST_VALID in {0x01,0x02,0x04,0x08,0x0F} — each load succeeds and
+ *     CMD_KEY_TRANSFER to each set bit succeeds; unset bits fail.
  *
  * Run with:
  *   make run_fw FW_TEST=test_km_cmd_key_load
@@ -170,11 +170,11 @@ int main(void) {
     cmd_seq = 0;
 
     /*=================================================================
-     * AS1.1 / SC-2739-001: Load a 4-word key (KEY_SIZE=3, AES)
+     * Load a 4-word key (KEY_SIZE=3, AES)
      *=================================================================*/
     uint8_t handle_a;
 
-    TEST_SUBTEST_START("AS1.1/SC-2739-001: CMD_KEY_LOAD 4-word key AES");
+    TEST_SUBTEST_START("CMD_KEY_LOAD 4-word key AES");
     {
         handle_a = do_key_load(3u, (rom_km_dest_bits_t){.aes = 1}.raw);
         TEST_LOG("  loaded handle=%u", handle_a);
@@ -182,7 +182,7 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * FR-2739-023: Verify KPV CTRL and registry fields for the AS1.1 loaded key
+     * Verify KPV CTRL and registry fields for the 4-word loaded key
      *
      * For KEY_SIZE=3 (key_size=4 words), num_slots=1:
      *   extend    = 0  (only 1 slot)
@@ -190,7 +190,7 @@ int main(void) {
      *   lock_write = 1
      * dest_valid is tracked in the software key registry, not KPV CTRL.
      *=================================================================*/
-    TEST_SUBTEST_START("FR-2739-023: KPV CTRL and registry fields correct after key_load");
+    TEST_SUBTEST_START("KPV CTRL and registry fields correct after key_load");
     {
         uint8_t base_slot;
         if (rom_keyreg_get_slot(&rom_keyreg_state, handle_a, &base_slot) < 0)
@@ -213,9 +213,9 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS1.2 / SC-2739-002: CMD_KEY_TRANSFER of loaded handle to AES
+     * CMD_KEY_TRANSFER of loaded handle to AES
      *=================================================================*/
-    TEST_SUBTEST_START("AS1.2/SC-2739-002: CMD_KEY_TRANSFER of loaded key");
+    TEST_SUBTEST_START("CMD_KEY_TRANSFER of loaded key");
     {
         uint32_t payload[2] = {(uint32_t)handle_a, (rom_km_dest_bits_t){.aes = 1}.raw};
         send_cmd_with_payload(ROM_KM_CMD_KEY_TRANSFER, payload, 2);
@@ -235,9 +235,9 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS1.3 / SC-2739-003: CMD_KEY_REVOKE the loaded handle
+     * CMD_KEY_REVOKE the loaded handle
      *=================================================================*/
-    TEST_SUBTEST_START("AS1.3/SC-2739-003: CMD_KEY_REVOKE of loaded key");
+    TEST_SUBTEST_START("CMD_KEY_REVOKE of loaded key");
     {
         uint32_t payload[1] = {(uint32_t)handle_a};
         send_cmd_with_payload(ROM_KM_CMD_KEY_REVOKE, payload, 1);
@@ -253,7 +253,7 @@ int main(void) {
     }
     TEST_SUBTEST_PASS();
 
-    TEST_SUBTEST_START("AS1.3/SC-2739-003: CMD_KEY_TRANSFER after revoke → FAILURE");
+    TEST_SUBTEST_START("CMD_KEY_TRANSFER after revoke → FAILURE");
     {
         uint32_t payload[2] = {(uint32_t)handle_a, (rom_km_dest_bits_t){.aes = 1}.raw};
         send_cmd_with_payload(ROM_KM_CMD_KEY_TRANSFER, payload, 2);
@@ -271,10 +271,10 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * SC-2739-009: Sweep KEY_SIZE values 0, 1, 3, 15
+     * Sweep KEY_SIZE values 0, 1, 3, 15
      * Each load must succeed; result handle is usable for CMD_KEY_TRANSFER.
      *=================================================================*/
-    TEST_SUBTEST_START("SC-2739-009: KEY_SIZE sweep (0,1,3,15)");
+    TEST_SUBTEST_START("KEY_SIZE sweep (0,1,3,15)");
     {
         static const uint8_t key_sizes[] = {0u, 1u, 3u, 15u};
         uint8_t dest = (rom_km_dest_bits_t){.hmac_sha2 = 1}.raw;
@@ -300,11 +300,11 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * FR-2739-004: Sweep DEST_VALID bits {0x01,0x02,0x04,0x08,0x0F}
+     * Sweep DEST_VALID bits {0x01,0x02,0x04,0x08,0x0F}
      * For each value: load a key, then transfer to each set bit (expect
      * success) and to each unset bit (expect FAILURE).
      *=================================================================*/
-    TEST_SUBTEST_START("FR-2739-004: DEST_VALID bit sweep");
+    TEST_SUBTEST_START("DEST_VALID bit sweep");
     {
         static const uint8_t dest_masks[] = {0x01u, 0x02u, 0x04u, 0x08u, 0x0Fu};
 

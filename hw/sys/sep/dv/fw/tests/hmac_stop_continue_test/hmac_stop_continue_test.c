@@ -18,6 +18,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static inline uint32_t bswap32(uint32_t x) {
     return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
@@ -40,16 +41,6 @@ static int wait_for_done_or_idle(void) {
         WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, intr.w);
     }
     return 0;
-}
-
-static int wait_for_idle(void) {
-    int timeout = 1000000;
-    while (timeout-- > 0) {
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
-        if (sts.f.hmac_idle) return 0;
-    }
-    printf("Timeout waiting for HMAC idle\n");
-    return -1;
 }
 
 static int feed_msg(const uint8_t *data, uint32_t len) {
@@ -118,7 +109,7 @@ int main(void) {
 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;
-    cfg.f.digest_size = 1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t cmd_start = {.f.hash_start = 1};
@@ -158,7 +149,7 @@ int main(void) {
 
     hmac__CFG_t cfg2 = {.w = 0};
     cfg2.f.sha_en = 1;
-    cfg2.f.digest_size = 1;
+    cfg2.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg2.w);
 
     /* hash_start */
@@ -220,13 +211,31 @@ int main(void) {
     to_hex(digest_multi, hex_multi, 32);
     printf("Multi-part digest:  %s\n", hex_multi);
 
-    /* ---- Compare ---- */
-    if (memcmp(digest_single, digest_multi, 32) == 0) {
-        printf("Digests match\n");
+    /* Independent SHA-256 of the exact 69-byte stimulus (64×'A' || "Hello"). */
+    static const char expected_hex[] =
+        "4705bf4749c8b2cdda9cd82ff0a79861cbc6bbecf0cdc3c5b154722d4785da2e";
+    int pass = 1;
+    if (strcmp(hex_single, expected_hex) != 0) {
+        printf("FAIL: single-pass digest mismatch vs independent SHA-256\n");
+        printf("Expected: %s\n", expected_hex);
+        pass = 0;
+    }
+    if (strcmp(hex_multi, expected_hex) != 0) {
+        printf("FAIL: multi-part digest mismatch vs independent SHA-256\n");
+        printf("Expected: %s\n", expected_hex);
+        pass = 0;
+    }
+    if (memcmp(digest_single, digest_multi, 32) != 0) {
+        printf("FAIL: Single-pass and multi-part digests differ\n");
+        pass = 0;
+    } else {
+        printf("Digests match (stop/continue equivalence)\n");
+    }
+
+    if (pass) {
         printf("=== TC_HMAC_010 PASSED ===\n");
         test_pass(0);
     } else {
-        printf("FAIL: Single-pass and multi-part digests differ\n");
         test_fail(1);
     }
 

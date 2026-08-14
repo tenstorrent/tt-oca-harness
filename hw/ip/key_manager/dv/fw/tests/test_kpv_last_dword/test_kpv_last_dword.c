@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_kpv_last_dword.c
- * @brief KPV last_dword enforcement (FR-0000-105)
+ * @brief KPV last_dword enforcement
  *
  * Reads at or within last_dword return key data; reads beyond last_dword
  * return 0. Covers multiple slots, boundaries, and changing last_dword.

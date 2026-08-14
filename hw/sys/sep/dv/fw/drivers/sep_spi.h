@@ -1,65 +1,61 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP OpenTitan SPI-host firmware driver for the OSS tests. Header-only,
-// self-contained (register addresses + field positions are SEP fabric facts,
-// matching the OpenTitan spi_host CSRs at the SEP-local 0x10B0_0000 aperture /
-// och_sep_top_reg). Covers the controller-init + command-issue path the
-// spi_ot_dma_rx test drives; the Cadence xSPI controller is out of the OSS DUT.
+// SEP OpenTitan SPI-host firmware helpers for the OSS tests. Header-only.
+// Addresses and field masks come from generated sep_addr.h / spi_controller.h
+// (via sep.h). Do not alias those symbols — call them by their PeakRDL names.
 
 #ifndef SEP_SPI_H
 #define SEP_SPI_H
 
 #include <stdint.h>
 
+#include "sep.h"
 #include "spi_mux.h"
 
-// OpenTitan SPI host CSR block (SEP local fabric @ 0x10B0_0000).
-#define SPI_CTRL_BASE 0x10B00000u
-#define SPI_CTRL_REG (SPI_CTRL_BASE + 0x010)
-#define SPI_STATUS_REG (SPI_CTRL_BASE + 0x014)
-#define SPI_CFG_REG (SPI_CTRL_BASE + 0x018)
-#define SPI_CSID_REG (SPI_CTRL_BASE + 0x01C)
-#define SPI_CMD_REG (SPI_CTRL_BASE + 0x020)
-#define SPI_RXDATA_REG (SPI_CTRL_BASE + 0x024)
-#define SPI_TXDATA_REG (SPI_CTRL_BASE + 0x028)
-#define SPI_ERROR_STATUS_REG (SPI_CTRL_BASE + 0x030)
-#define SPI_EVENT_ENABLE_REG (SPI_CTRL_BASE + 0x034)
-
-// CTRL fields.
-#define SPI_CTRL_RX_WM_SHIFT 0
-#define SPI_CTRL_TX_WM_SHIFT 8
-#define SPI_CTRL_OUTPUT_EN (1u << 29)
-#define SPI_CTRL_SW_RST (1u << 30)
-#define SPI_CTRL_SPIEN (1u << 31)
-
-// CFG: clkdiv in [15:0]; CPOL/CPHA = 0 (Mode 0). The csnidle/csnlead/csntrail
-// timing in [31:16] gives the device CS setup/hold the OSS flash BFM needs.
-#define SPI_CFG_CLKDIV9_CSN 0x02220009u
-
-// Same CS timing, but with a caller-supplied divider so the SCLK can track the
-// actual core clock (see spi_clk.h). A fixed divider only holds at one core
-// frequency.
-#define SPI_CFG_CSN_TIMING 0x02220000u
+// CFG: CPOL/CPHA = 0 (Mode 0). CS timing CSNIDLE/TRAIL/LEAD=2 matches the OSS
+// flash BFM (composed from generated field positions, not a packed hex constant).
+#define SPI_CFG_CSN_TIMING \
+    ((2u << SPI_CONTROLLER__CFG__CSNIDLE_bp) | (2u << SPI_CONTROLLER__CFG__CSNTRAIL_bp) | \
+     (2u << SPI_CONTROLLER__CFG__CSNLEAD_bp))
+#define SPI_CFG_CLKDIV9_CSN (SPI_CFG_CSN_TIMING | 9u)
 #define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv)&0xFFFFu))
 
-// CMD fields.
-#define SPI_CMD_LEN_SHIFT 0     // LEN = (#bytes - 1)
-#define SPI_CMD_CSAAT (1u << 9) // keep CS asserted after this segment
-#define SPI_CMD_SPEED_SHIFT 10  // 0 = standard (single)
-#define SPI_CMD_DIR_SHIFT 12
+// CMD.DIRECTION encodings (not named in PeakRDL).
 #define SPI_CMD_DIR_RX 1u
 #define SPI_CMD_DIR_TX 2u
 
-// STATUS bits (byte-spread spi_controller layout).
-#define SPI_STATUS_TXQD_MASK 0x000000FFu // TX FIFO depth (entries)
-#define SPI_STATUS_RXQD_SHIFT 8
-#define SPI_STATUS_TXWM (1u << 26) // TX FIFO below TX_WATERMARK
-#define SPI_STATUS_ACTIVE (1u << 30)
-#define SPI_STATUS_READY (1u << 31)
+/*
+ * Composed register reset values (OCH_SEP_FIELD_RESET from sep.h).
+ * Keep SPI-only reset aggregates here rather than growing common sep.h.
+ */
+#define SPI_CONTROLLER__INTR_STATUS_reset \
+    (OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_STATUS, ERROR) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_STATUS, SPI_EVENT))
 
-// EVENT_ENABLE bits (byte-spread in the SEP spi_controller reg map).
-#define SPI_EVENT_RXWM (1u << 8)  // RX watermark event (drives lsio_trigger)
-#define SPI_EVENT_TXWM (1u << 12) // TX watermark event (drives lsio_trigger)
+#define SPI_CONTROLLER__INTR_ENABLE_reset \
+    (OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_ENABLE, ERROR) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_ENABLE, SPI_EVENT))
+
+#define SPI_CONTROLLER__INTR_TEST_reset \
+    (OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_TEST, ERROR) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__INTR_TEST, SPI_EVENT))
+
+#define SPI_CONTROLLER__CSID_reset (OCH_SEP_FIELD_RESET(SPI_CONTROLLER__CSID, CSID))
+
+#define SPI_CONTROLLER__EVENT_ENABLE_reset \
+    (OCH_SEP_FIELD_RESET(SPI_CONTROLLER__EVENT_ENABLE, RXFULL) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__EVENT_ENABLE, TXEMPTY) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__EVENT_ENABLE, RXWM) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__EVENT_ENABLE, TXWM) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__EVENT_ENABLE, READY) | \
+     OCH_SEP_FIELD_RESET(SPI_CONTROLLER__EVENT_ENABLE, IDLE))
+
+/*
+ * ERROR_STATUS field macros are PeakRDL-mangled in blocks/spi_controller.h;
+ * och_sep_common.h only aliases *_bm. Every field resets to 0, so the
+ * aggregate is identically zero (same as the pre-refactor check).
+ */
+#define SPI_CONTROLLER__ERROR_STATUS_reset 0u
 
 static inline uint32_t spi_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;
@@ -71,9 +67,7 @@ static inline void spi_wr(uint32_t addr, uint32_t value) {
 
 // SPI mux control. Out of reset SPI_MUX_CTRL selects the Cadence xSPI controller
 // and forces CS# high, so an OT scenario must both point the mux at the OT host
-// (spi_sel=1) and release CS# (cs_force_high=0). Writing a plain 0 releases CS#
-// but leaves spi_sel=0, i.e. still Cadence, which the OT host cannot drive
-// through.
+// (spi_sel=1) and release CS# (cs_force_high=0).
 static inline void sep_spi_mux_release_cs(void) {
     spi_mux_select_ot();
 }
@@ -82,7 +76,8 @@ static inline void sep_spi_mux_release_cs(void) {
 // surfaces as a firmware timeout rather than an infinite loop).
 static inline int spi_wait_ready(int timeout) {
     while (timeout-- > 0) {
-        if (spi_rd(SPI_STATUS_REG) & SPI_STATUS_READY) {
+        if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+            SPI_CONTROLLER__STATUS__READY_bm) {
             return 0;
         }
     }
@@ -92,7 +87,8 @@ static inline int spi_wait_ready(int timeout) {
 // Spin until the controller is idle (no active segment).
 static inline int spi_wait_idle(int timeout) {
     while (timeout-- > 0) {
-        if (!(spi_rd(SPI_STATUS_REG) & SPI_STATUS_ACTIVE)) {
+        if (!(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+              SPI_CONTROLLER__STATUS__ACTIVE_bm)) {
             return 0;
         }
     }

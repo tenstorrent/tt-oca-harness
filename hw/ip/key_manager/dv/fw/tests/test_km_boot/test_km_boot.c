@@ -43,7 +43,7 @@ int main(void) {
     }
 
     /*
-     * Run the full boot sequence (FR-0000-171 through FR-0000-176).
+     * Run the full boot sequence.
      *
      * First pass: SRAM scrambler disabled → boot_init writes scrambler
      * key, enables + locks it, jumps to 0x0 (restart).

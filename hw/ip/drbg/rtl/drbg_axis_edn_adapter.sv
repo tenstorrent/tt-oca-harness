@@ -8,9 +8,6 @@
 // Generic 32b AXI-Stream to multi-client native EDN fan-out.
 //----------------------------------------------------------
 
-`default_nettype none
-
-
 /**
  * @file drbg_axis_edn_adapter.sv
  * @brief Converts a single 32-bit AXI-Stream source into `NUM_ENDPOINTS`
@@ -211,5 +208,3 @@ module drbg_axis_edn_adapter import drbg_pkg::*; #(
     `OCAH_OT_ASSERT_INIT(AxisEdnEndpointCount_A, NUM_ENDPOINTS > 0)
 
 endmodule : drbg_axis_edn_adapter
-
-`default_nettype wire

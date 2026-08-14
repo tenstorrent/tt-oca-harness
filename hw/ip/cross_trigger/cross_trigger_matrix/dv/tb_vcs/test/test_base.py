@@ -9,6 +9,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, Timer, ReadOnly
 from typing import Optional
+import re
 import sys
 from pathlib import Path
 
@@ -16,28 +17,40 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'axil_vip'))
 from axil_master import AxiLiteMaster
 
-# Import register definitions
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'data' / 'registers' / 'py_headers'))
-try:
-    from cross_trigger_matrix_reg import (
-        CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_REG_DEFAULT,
-        CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_REG_DEFAULT,
-        CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_REG_DEFAULT,
-        CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_REG_DEFAULT,
-    )
-except ImportError:
-    # Fallback if registers not generated yet
-    CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_REG_DEFAULT = 0x0
-    CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_REG_DEFAULT = 0x0
-    CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_REG_DEFAULT = 0x0
-    CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_REG_DEFAULT = 0x0
+# Import register definitions from the generated Python header
+sys.path.insert(0, str(Path(__file__).parents[3] / 'regs' / 'gen' / 'py'))
+import cross_trigger_matrix_reg as ctm_regs
 
-# Register Address Map (CT_SRC[i]_CONFIG registers)
+# The header declares one CONFIG_0 constant per CT_Src port, so counting them
+# tracks whatever port count the register map was generated for
+NUM_CT_SRC = sum(
+    1 for name in dir(ctm_regs)
+    if re.fullmatch(r'CT_SRC_\d+__CONFIG_0_REG_ADDR', name)
+)
+
+# Bits above the select field are unmapped: they read as zero however they are
+# written, so readback checks compare against this mask. Width comes from the
+# generated ctypes bitfield rather than being restated here.
+NUM_CT_DST = dict(
+    (name, width) for name, _, width in ctm_regs.CT_SRC_CONFIG_0_reg_t._fields_
+)['ct_dst_select']
+CT_DST_SELECT_MASK = (1 << NUM_CT_DST) - 1
+
+def ct_src_config_addr(src_idx):
+    """Address of the CT_Src[src_idx] config register, from the generated header"""
+    return getattr(ctm_regs, f'CT_SRC_{src_idx}__CONFIG_0_REG_ADDR')
+
+# One config register per CT_Src port, addressed from the generated header so the
+# stride never has to be restated here
 REG_MAP = {
-    'CT_SRC0_CONFIG':  (0x0,  'RW', 'CT_Src[0] Configuration', CROSS_TRIGGER_MATRIX_CT_SRC0_CONFIG_REG_DEFAULT, 0xFFFFFFFF),
-    'CT_SRC1_CONFIG':  (0x4,  'RW', 'CT_Src[1] Configuration', CROSS_TRIGGER_MATRIX_CT_SRC1_CONFIG_REG_DEFAULT, 0xFFFFFFFF),
-    'CT_SRC2_CONFIG':  (0x8,  'RW', 'CT_Src[2] Configuration', CROSS_TRIGGER_MATRIX_CT_SRC2_CONFIG_REG_DEFAULT, 0xFFFFFFFF),
-    'CT_SRC3_CONFIG':  (0xC,  'RW', 'CT_Src[3] Configuration', CROSS_TRIGGER_MATRIX_CT_SRC3_CONFIG_REG_DEFAULT, 0xFFFFFFFF),
+    f'CT_SRC{i}_CONFIG_0': (
+        ct_src_config_addr(i),
+        'RW',
+        f'CT_Src[{i}] Configuration',
+        ctm_regs.CT_SRC_CONFIG_0_REG_DEFAULT,
+        CT_DST_SELECT_MASK,
+    )
+    for i in range(NUM_CT_SRC)
 }
 
 async def start_clocks(dut, period_ns=10):
@@ -88,13 +101,11 @@ async def reg_read(dut, axil, reg_name):
 
 async def write_ct_src_config(dut, axil, src_idx, select_mask):
     """Write CT_SRC[i]_CONFIG register with select mask"""
-    addr = src_idx * 4
-    await axil_write(dut, axil, addr, select_mask)
+    await axil_write(dut, axil, ct_src_config_addr(src_idx), select_mask)
 
 async def read_ct_src_config(dut, axil, src_idx):
     """Read CT_SRC[i]_CONFIG register"""
-    addr = src_idx * 4
-    return await axil_read(dut, axil, addr)
+    return await axil_read(dut, axil, ct_src_config_addr(src_idx))
 
 async def pulse_ct_dst(dut, dst_idx, duration_cycles=1):
     """Generate pulse on CT_Dst[dst_idx]"""
