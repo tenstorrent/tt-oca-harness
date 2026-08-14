@@ -27,7 +27,9 @@ package cross_trigger_matrix_pkg;
     localparam int unsigned MIN_NUM_CT_SRC = 1;
     localparam int unsigned MAX_NUM_CT_SRC = 64;
     localparam int unsigned MIN_NUM_CT_DST = 1;
-    localparam int unsigned MAX_NUM_CT_DST = 64;
+    // 63, not 64: the select mask shares its register with a reserved remainder
+    // that SystemRDL cannot make empty. See regs/cross_trigger_matrix.rdl.
+    localparam int unsigned MAX_NUM_CT_DST = 63;
 
     // AXI-Lite Parameters
     localparam int unsigned AXI_LITE_ADDR_WIDTH = 32;

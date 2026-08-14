@@ -38,10 +38,26 @@ there plus a rerun of the register flow above. The RTL needs no edit: the select
 decode indexes the register array with its generate loop variable, and both
 parameters follow the generated collateral.
 
-`NUM_CT_DST` in the RDL is limited to 31, because the select mask and its reserved
-remainder share `CONFIG_0`. Selecting among more destinations means adding a
-`CONFIG_1` register in the doubleword reserved at each element's offset 0x4 and
-extending the mask concatenation in the RTL to span both registers.
+Each port occupies 8 bytes whatever the port count, so selecting among more than 32
+destinations widens the select field to fill that space instead of moving any
+addresses. The register map switches form on `NUM_CT_DST`:
+
+| `NUM_CT_DST` | Register | Writes |
+| --- | --- | --- |
+| 1 to 31 | 32 bits, second word unmapped | immediate |
+| 32 | 64 bits, accessed a word at a time | immediate |
+| 33 to 63 | 64 bits, accessed a word at a time | buffered |
+
+Buffering is required above 32 because the select mask then spans both words: it
+commits when the upper word is written, so a mask never takes effect
+half-programmed, and firmware must write both words, low first. Below that
+threshold nothing about the register or its programming changes, and at the DTP's
+26 destinations the generated collateral is identical either way.
+
+64 destinations are not reachable as written, since the reserved remainder beside
+the mask would be empty and SystemRDL cannot express that. Getting there means
+dropping the `RESERVED` field and leaving the upper bits unmapped, which also stops
+reserved bits reading back what was written to them.
 
 ## Generated Files
 

@@ -16,7 +16,7 @@ The CTM is compatible with CTPs operating in either of the two signaling modes, 
 |===
 |Parameter |Range |Default |Description
 |NUM_CT_SRC |set by the register map |26 |Number of CT_Src output ports
-|NUM_CT_DST |1 to the select field width |26 |Number of CT_Dst input ports
+|NUM_CT_DST |1-63 |26 |Number of CT_Dst input ports
 |===
 
 The register map carries both dimensions as parameters of its own: it declares one
@@ -25,6 +25,12 @@ holding one select bit per CT_Dst port over a field sized by `NUM_CT_DST`. The
 module parameters follow that generated collateral, so a resized matrix comes from
 regenerating the register map rather than from editing the RTL. See
 <<ctm-architecture>> for how the select fields drive the crossbar.
+
+Every port occupies 8 bytes regardless of the port count. Above 32 destinations the
+select mask fills both words of that space and its writes become buffered,
+committing when the upper word is written so that a mask spanning the word boundary
+never takes effect half-programmed. At or below 32 destinations, including the DTP's
+26, the register is a single word with immediate writes.
 
 ifdef::backend-pdf[]
 :imagesdir: assets

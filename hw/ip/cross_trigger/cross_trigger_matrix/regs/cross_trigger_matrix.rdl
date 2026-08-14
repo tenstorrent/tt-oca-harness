@@ -10,13 +10,25 @@
 //
 // One configuration register per CT_Src output port, declared as an array sized
 // by NUM_CT_SRC, each holding one select bit per CT_Dst port. Every port occupies
-// 8 bytes: CONFIG_0 selects among the first 32 CT_Dst ports and the second
-// doubleword is reserved for CT_Dst[63:32].
+// 8 bytes regardless of the port count, so the address map does not move when the
+// matrix is resized.
 //
-// NUM_CT_DST must be 1 to 31, since the select mask and its reserved remainder
-// share CONFIG_0. Selecting among more than 31 destinations means adding a
-// CONFIG_1 register in the reserved doubleword and extending the mask
-// concatenation in rtl/cross_trigger_matrix.sv to span both.
+// Selecting among more than 32 destinations needs a select field wider than one
+// bus word, so the register grows to fill its 8 bytes and is accessed a word at a
+// time. Both properties follow NUM_CT_DST:
+//
+//   NUM_CT_DST <= 31   32-bit register, second word unmapped
+//   NUM_CT_DST >= 32   64-bit register accessed 32 bits at a time
+//   NUM_CT_DST >  32   writes buffered, since the select field spans both words
+//
+// Buffered writes commit the whole select mask when the upper word is written, so
+// a mask crossing the word boundary never takes effect half-programmed. Firmware
+// must write both words, low first, to change such a mask.
+//
+// NUM_CT_DST must be 1 to 63. At 64 the reserved remainder below would be empty,
+// which SystemRDL cannot express, so reaching 64 destinations means dropping the
+// RESERVED field and leaving the upper bits unmapped. That would also stop
+// reserved bits reading back what was written to them.
 //
 // The array is wrapped in a regfile because the C header exporter rejects a
 // register array whose stride exceeds the register width.
@@ -34,7 +46,11 @@ addrmap cross_trigger_matrix #(
         desc = "Cross trigger destination selection for one CT_Src output port";
 
         reg {
-            desc = "Cross Trigger Source Configuration - first 32 CT_Dst ports";
+            regwidth = NUM_CT_DST >= 32 ? 64 : 32;
+            accesswidth = 32;
+            buffer_writes = NUM_CT_DST > 32;
+
+            desc = "Cross Trigger Source Configuration - CT_Dst select mask";
             field {
                 sw = rw;
                 hw = r;
@@ -49,7 +65,7 @@ addrmap cross_trigger_matrix #(
                 sw = rw;
                 hw = r;
                 desc = "Reserved. Must be written as zero.";
-            } RESERVED[31:NUM_CT_DST] = 0x0;
+            } RESERVED[(NUM_CT_DST >= 32 ? 63 : 31):NUM_CT_DST] = 0x0;
         } CONFIG_0 @0x0;
     } CT_SRC[NUM_CT_SRC] @0x0 += 0x8;
 };
