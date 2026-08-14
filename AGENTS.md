@@ -272,7 +272,7 @@ Whatever the testbench, these hold:
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
 | `dv/` | Verification that sits outside a single block's tree |
-| `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes` |
+| `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `contributing` |
 | `flows/` | Lint, format and synthesis flow makefiles |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone |
 | `tools/` | Register, doc, DV and container tooling |
