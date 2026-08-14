@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Iterable
 
 from systemrdl import RDLCompiler, RDLListener, RDLWalker
-from systemrdl.node import FieldNode, RegNode, SignalNode
+from systemrdl.node import AddrmapNode, FieldNode, RegNode, RootNode, SignalNode
 
 
 @dataclass
@@ -101,6 +101,16 @@ def bit_ranges(reg: RegNode) -> list[Field]:
     return out
 
 
+def array_ancestor(node: RegNode):
+    """Nearest enclosing array (a regfile or memory replicated per index), if any."""
+    parent = node.parent
+    while parent is not None and not isinstance(parent, (AddrmapNode, RootNode)):
+        if getattr(parent, "is_array", False):
+            return parent
+        parent = parent.parent
+    return None
+
+
 class Collector(RDLListener):
     def __init__(self):
         self.regs: list[Reg] = []
@@ -111,12 +121,23 @@ class Collector(RDLListener):
         if node.is_array and any(i != 0 for i in (node.current_idx or [])):
             return
 
-        if node.is_array:
-            count = node.array_dimensions[0] if node.array_dimensions else 1
-            stride = getattr(node, "array_stride", 0) or 0
+        # A register inside an array of regfiles is replicated the same way an
+        # array of registers is, so document one entry with the enclosing stride
+        # rather than one entry per index.
+        enclosing = array_ancestor(node)
+        if enclosing is not None and any(i != 0 for i in (enclosing.current_idx or [])):
+            return
+
+        if node.is_array or enclosing is not None:
+            dim_node = node if node.is_array else enclosing
+            count = dim_node.array_dimensions[0] if dim_node.array_dimensions else 1
+            stride = getattr(dim_node, "array_stride", 0) or 0
             base = node.absolute_address
             last = base + (count - 1) * stride
-            name = f"{node.get_path_segment(array_suffix='')}[{count}]"
+            if node.is_array:
+                name = f"{node.get_path_segment(array_suffix='')}[{count}]"
+            else:
+                name = f"{enclosing.get_path_segment(array_suffix='')}[{count}].{node.inst_name}"
             addr = f"0x{base:X} - 0x{last:X}"
             self.arrays.setdefault(name, (count, f"0x{base:X}", f"0x{stride:X}" if stride else None))
         else:

@@ -76,7 +76,7 @@ module cross_trigger_network
     // Local Parameters
     //--------------------------------------------------------------------------
 
-    // Configuration parameters (templated, not configurable)
+    // Port counts, from cross_trigger_network_pkg
     localparam int unsigned NUM_CTP          = DEFAULT_NUM_CTP;
     localparam int unsigned NUM_INT_CT       = DEFAULT_NUM_INT_CT;
     localparam int unsigned NUM_CLK_STOP_REQ = DEFAULT_NUM_CLK_STOP_REQ;
@@ -342,8 +342,6 @@ module cross_trigger_network
     //--------------------------------------------------------------------------
 
     cross_trigger_matrix #(
-        .NUM_CT_SRC  (NUM_CTM_PORTS),
-        .NUM_CT_DST  (NUM_CTM_PORTS),
         .axil_req_t  (axil_req_t),
         .axil_resp_t (axil_resp_t)
     ) u_ctm (
