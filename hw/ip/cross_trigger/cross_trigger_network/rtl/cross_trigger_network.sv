@@ -342,8 +342,6 @@ module cross_trigger_network
     //--------------------------------------------------------------------------
 
     cross_trigger_matrix #(
-        .NUM_CT_SRC  (NUM_CTM_PORTS),
-        .NUM_CT_DST  (NUM_CTM_PORTS),
         .axil_req_t  (axil_req_t),
         .axil_resp_t (axil_resp_t)
     ) u_ctm (

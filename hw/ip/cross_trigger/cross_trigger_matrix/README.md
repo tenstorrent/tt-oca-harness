@@ -19,24 +19,30 @@ make -f ocah.mk ocah-regen-regs TARGET=cross_trigger_matrix
 
 ## Port Counts
 
-The matrix is sized for the DTP cross-trigger topology of 26 CT_Src and 26 CT_Dst
-ports, from `dtp_pkg::DEFAULT_NUM_CTP` (16) plus `dtp_pkg::DEFAULT_NUM_INT_CT`
-(10). The register map is the source of both bounds:
+The matrix is sized for the DTP cross-trigger topology of 26 CT_Src and 26
+CT_Dst ports, from `dtp_pkg::DEFAULT_NUM_CTP` (16) plus
+`dtp_pkg::DEFAULT_NUM_INT_CT` (10). Both counts are localparams in
+`rtl/cross_trigger_matrix_pkg.sv` read from the generated collateral, not
+module parameters:
 
-* `NUM_CT_SRC` must equal the number of `CT_SRC` array elements the register map
-  declares. `rtl/cross_trigger_matrix.sv` asserts this against
-  `CROSS_TRIGGER_MATRIX_CT_SRC_NUM` from the generated address package, so it
-  follows a regenerated map without further edits.
-* `NUM_CT_DST` may be 1 up to the width of the `CT_DST_SELECT` field. The RTL
-  bounds it with `$bits` on that field and truncates the select mask to
-  `NUM_CT_DST`, so a matrix narrower than the register map leaves the upper mask
-  bits unused.
+* `NUM_CT_SRC` is the number of `CT_SRC` array elements the register map
+  declares, from `CROSS_TRIGGER_MATRIX_CT_SRC_NUM` in the generated address
+  package.
+* `NUM_CT_DST` is the width of their `CT_DST_SELECT` field, from the register
+  package. `rtl/cross_trigger_matrix.sv` checks it against `$bits` of the field
+  the map actually generated.
 
-Both dimensions are parameters of the address map in
-`regs/cross_trigger_matrix.rdl`, so resizing either one is a change to its default
-there plus a rerun of the register flow above. The RTL needs no edit: the select
-decode indexes the register array with its generate loop variable, and both
-parameters follow the generated collateral.
+Neither can be overridden at instantiation, because a matrix of a size the
+register map cannot address has nothing to program it. Both dimensions are
+parameters of the address map in `regs/cross_trigger_matrix.rdl`, so resizing
+the matrix is a change to its defaults there plus a rerun of the register flow
+above; the RTL follows without edit, since the select decode indexes the
+register array with its generate loop variable.
+
+A consequence for integrators: the register map must be generated for the port
+count the enclosing design wires up. `cross_trigger_network` connects
+`NUM_CTM_PORTS` signals and no longer sizes the matrix, so the two have to be
+resized together.
 
 Each port occupies 8 bytes whatever the port count, so selecting among more than 32
 destinations widens the select field to fill that space instead of moving any
@@ -81,6 +87,6 @@ The CTM consists of:
 
 * **Register Interface**: AXI4-Lite interface for configuration
 * **Source Selector Modules**: One per CT_Src port, implements selection and OR logic
-* **26x26 Default Configuration**: `NUM_CT_SRC` follows the register map array size; `NUM_CT_DST` may be narrowed
+* **26x26 Configuration**: both counts follow the register map, as described under Port Counts
 
 See `doc/` for detailed architecture and implementation documentation.

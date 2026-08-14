@@ -12,11 +12,12 @@
 // N sink ports (CT_Src). Each CT_Src can be configured to select and OR together
 // multiple CT_Dst sources.
 //
-// Both port counts default to the register map: NUM_CT_SRC to the number of config
-// registers declared by regs/cross_trigger_matrix.rdl, NUM_CT_DST to the width of
-// their select field. Both are parameters of that RDL, so resize the matrix by
-// regenerating it rather than by editing this module. A narrower matrix may still
-// be built by overriding NUM_CT_DST, which leaves the upper select bits unused.
+// Both port counts come from the register map, through localparams in
+// cross_trigger_matrix_pkg: NUM_CT_SRC is the number of config registers declared by
+// regs/cross_trigger_matrix.rdl, NUM_CT_DST the width of their select field. They are
+// not module parameters, because a matrix of a size the register map cannot address
+// has nothing to program it. Resize by regenerating that RDL, whose own parameters
+// carry both counts.
 //
 // Past 32 destinations the RDL widens the select field across both words of each
 // register; the decode below is unaffected, since the field arrives as one value
@@ -24,13 +25,9 @@
 //------------------------------------------------------------------------------
 
 
-module cross_trigger_matrix #(
-    // Number of CT_Src output ports, defaulting to the config register array size
-    parameter int unsigned NUM_CT_SRC =
-        int'(cross_trigger_matrix_addrmap_pkg::CROSS_TRIGGER_MATRIX_CT_SRC_NUM),
-    // Number of CT_Dst input ports, defaulting to the select field width
-    parameter int unsigned NUM_CT_DST =
-        int'(cross_trigger_matrix_reg_pkg::NUM_CT_DST),
+module cross_trigger_matrix
+    import cross_trigger_matrix_pkg::*;
+#(
     // Parameterized AXI-Lite bus interface types (default logic to force explicit definition)
     parameter type axil_req_t = cross_trigger_matrix_pkg::ctm_axil_req_t,
     parameter type axil_resp_t = cross_trigger_matrix_pkg::ctm_axil_resp_t
@@ -52,22 +49,15 @@ module cross_trigger_matrix #(
 
     `include "prim_assert.sv"
 
-    import cross_trigger_matrix_reg_pkg::*;
-    import cross_trigger_matrix_pkg::*;
-
     // Register interface (no hwif_in needed - all registers are write-only from software)
     cross_trigger_matrix_reg_pkg::cross_trigger_matrix__out_t reg_out;
 
-    // The register map provides one config register per CT_Src port and a select
-    // bit per CT_Dst port, so both dimensions are bounded by what it declares.
-    localparam int unsigned NUM_CT_SRC_REGS =
-        cross_trigger_matrix_addrmap_pkg::CROSS_TRIGGER_MATRIX_CT_SRC_NUM;
+    // NUM_CT_DST comes from the register map's own parameter; check it against the
+    // width the map actually generated for the select field.
     localparam int unsigned CT_DST_SELECT_WIDTH =
         $bits(reg_out.CT_SRC[0].CONFIG_0.CT_DST_SELECT.value);
 
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumCtSrcMatchesRegs_A, NUM_CT_SRC == NUM_CT_SRC_REGS)
-    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumCtDstInRange_A,
-                              NUM_CT_DST >= MIN_NUM_CT_DST && NUM_CT_DST <= CT_DST_SELECT_WIDTH)
+    `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumCtDstMatchesField_A, NUM_CT_DST == CT_DST_SELECT_WIDTH)
 
     // Register module instantiation - wire AXI-Lite structs directly
     cross_trigger_matrix_reg u_reg (
@@ -110,13 +100,10 @@ module cross_trigger_matrix #(
     genvar i;
     generate
         for (i = 0; i < NUM_CT_SRC; i++) begin : gen_src_selectors
-            // Extract the CT_DST_SELECT field for this CT_Src
-            // Only use the bits corresponding to NUM_CT_DST
+            // Select mask for this CT_Src, one config register per port
             logic [NUM_CT_DST-1:0] select_mask;
 
-            // One config register per CT_Src port, indexed by the loop
-            assign select_mask =
-                reg_out.CT_SRC[i].CONFIG_0.CT_DST_SELECT.value[NUM_CT_DST-1:0];
+            assign select_mask = reg_out.CT_SRC[i].CONFIG_0.CT_DST_SELECT.value;
 
             // Instantiate selector module for this CT_Src
             ctm_src_selector #(
