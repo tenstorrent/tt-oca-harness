@@ -2,10 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // DTP Package - Cross-trigger and debug-interface configuration
-//
-// Committed source. Upstream generated this package from a template; that
-// generator was not carried into this tree, so the values below are edited by
-// hand. Keep them consistent with cross_trigger_network_pkg and the CTM RTL.
 
 package dtp_pkg;
 
@@ -30,14 +26,9 @@ package dtp_pkg;
     //-------------------------------------------------------------------------
     // Cross Trigger Configuration Checks
     //
-    // The counts above are restated by cross_trigger_network_pkg, and the matrix
-    // takes its own from the register map generated out of
-    // cross_trigger_matrix.rdl. Nothing derives one from another, so these check
-    // that the three agree.
-    //
-    // These fail elaboration rather than lint, so a disagreement stops any build
-    // that compiles this package. Growing the cross trigger network therefore
-    // means regenerating the CTM register map for the new port count.
+    // cross_trigger_network_pkg restates these counts, and the matrix takes its
+    // own from its generated register map. Nothing derives one from another, so
+    // check that the three agree. Failures are elaboration errors, not lint.
     //-------------------------------------------------------------------------
 
     `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(NumCtpMatchesCtn_A,
@@ -47,8 +38,8 @@ package dtp_pkg;
     `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(NumClkStopReqMatchesCtn_A,
         DEFAULT_NUM_CLK_STOP_REQ == cross_trigger_network_pkg::DEFAULT_NUM_CLK_STOP_REQ)
 
-    // The matrix routes every CTM port in both directions, so its register map
-    // needs one CT_Src config register and one CT_Dst select bit per port.
+    // The matrix routes every port in both directions: one CT_Src config register
+    // and one CT_Dst select bit each.
     `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmSrcMatchesCtmPorts_A,
         DEFAULT_NUM_CTM_PORTS == cross_trigger_matrix_pkg::NUM_CT_SRC)
     `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmDstMatchesCtmPorts_A,
