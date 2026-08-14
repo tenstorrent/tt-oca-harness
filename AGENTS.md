@@ -66,7 +66,8 @@ Provide the equivalents yourself:
 - `TMPDIR` pointed at a large local scratch directory (see below).
 
 The only environment pieces unique to the companion are that module, the shared image cache
-(`OCAH_DOCKER_CACHE_DIR`), the extracted toolchain rootfs (`OCAH_TOOLCHAIN_ROOTFS`) and the
+(`OCAH_DOCKER_CACHE_DIR`), the pre-extracted toolchain rootfs it points
+`OCAH_TOOLCHAIN_ROOTFS` at — the variable itself is a general opt-in anyone can set — and the
 `block_flow_customizations` link. With all of them unset, `docker-run.sh` builds and runs
 the image itself, which is the behaviour `tools/docker/README.md` documents as the default.
 Doc builds, register generation, lint and format targets need no site tooling at all.
@@ -154,10 +155,11 @@ A testbench that builds firmware as part of its own flow dispatches those builds
 runs natively on the host. Not every testbench does this — check its Makefile rather than
 assuming.
 
-If `OCAH_TOOLCHAIN_ROOTFS` is set — which only happens with the companion — `docker-run.sh`
-uses bubblewrap instead of a container engine. That path fails when the checkout sits on a
-filesystem whose mountpoint bwrap cannot create inside its read-only rootfs, typically a
-networked or site-specific mount:
+When `OCAH_TOOLCHAIN_ROOTFS` points at an extracted toolchain rootfs and `bwrap` is
+installed, `docker-run.sh` uses bubblewrap instead of a container engine. It is an opt-in
+either way: the companion sets it for you, and anyone can set it by hand. That path fails
+when the checkout sits on a filesystem whose mountpoint bwrap cannot create inside its
+read-only rootfs, typically a networked or site-specific mount:
 
 ```
 bwrap: Can't mkdir parents for <repository path>: Read-only file system
@@ -308,7 +310,7 @@ doc: Regenerate stale uart and smc reset_unit register collaterals (#282)
 
 | Check | Local command |
 |---|---|
-| SystemVerilog lint (slang) | `make lint-slang-all [BLOCK=<block…>]` — omit `BLOCK` for all `hw/sys` blocks; `make lint-slang` from a block's own flow lints just that block |
+| SystemVerilog lint (slang) | `make lint-slang-all` lints every `hw/sys` block; add `BLOCK=<block…>` to restrict it to some. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (verible) | `make lint-sv-verible` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check` |
 | C formatting | `make format-c`, `make format-c-check` |
