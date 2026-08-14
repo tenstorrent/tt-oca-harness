@@ -42,7 +42,7 @@ at a shared cache of the firmware toolchain image, sets `OCAH_TOOLCHAIN_ROOTFS`,
 and your simulator's executable all resolve:
 
 ```bash
-for t in bender python3 <simulator>; do printf '%-12s %s\n' "$t" "$(command -v $t || echo MISSING)"; done
+for t in bender python3 <simulator>; do printf '%-12s %s\n' "$t" "$(command -v "$t" || echo MISSING)"; done
 ```
 
 > **Do not pipe the `source` command.** `source nonfree/setup_env.sh | tail -20` runs the
