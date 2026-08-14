@@ -13,6 +13,8 @@ No Force/deposit. Reuses SMU_ALL_005 PTAP leave-TLR helper pattern.
 
 from __future__ import annotations
 
+import os
+import random
 import time
 
 import cocotb
@@ -34,6 +36,11 @@ class smu_axi_crossbar_error_handling_test_seq:
         self._step_ts: dict[str, float] = {}
         self._timeout_paths: list[str] = []
         self._chk_pass: dict[str, bool] = {}
+        seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(seed ^ 0xFAB_C808)
+        self._seed = seed
+        self._post_reset_cycles = rng.randint(24, 64)
+        self._post_trst_cycles = rng.randint(2, 8)
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -108,7 +115,7 @@ class smu_axi_crossbar_error_handling_test_seq:
 
         # TRST released (active-low deasserted).
         dut.jtag_trst.value = 1
-        await ClockCycles(dut.clk_ref_i, 4)
+        await ClockCycles(dut.clk_ref_i, self._post_trst_cycles)
         trst = self._sample(dut.jtag_trst, "jtag_trst")
         if trst != 1:
             raise AssertionError(
@@ -151,7 +158,12 @@ class smu_axi_crossbar_error_handling_test_seq:
         sb = self.test.env.scoreboard
 
         await self.cfg.reset_done.wait()
-        await ClockCycles(dut.clk_smu_i, 32)
+        self._log(
+            f"SEED: {self._seed} post_reset_cycles={self._post_reset_cycles} "
+            f"post_trst_cycles={self._post_trst_cycles} "
+            f"jtag_period_ns={self.cfg.jtag_period_ns}"
+        )
+        await ClockCycles(dut.clk_smu_i, self._post_reset_cycles)
 
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         jtag.init_signals()
