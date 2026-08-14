@@ -4,8 +4,8 @@
 package oca_i3c_wrap_reg_pkg;
 
     localparam OCA_I3C_WRAP_REG_DATA_WIDTH = 32;
-    localparam OCA_I3C_WRAP_REG_MIN_ADDR_WIDTH = 11;
-    localparam OCA_I3C_WRAP_REG_SIZE = 'h500;
+    localparam OCA_I3C_WRAP_REG_MIN_ADDR_WIDTH = 12;
+    localparam OCA_I3C_WRAP_REG_SIZE = 'h1000;
 
     typedef struct {
         logic rd_ack;
@@ -19,7 +19,7 @@ package oca_i3c_wrap_reg_pkg;
 
     typedef struct {
         logic req;
-        logic [10:0] addr;
+        logic [11:0] addr;
         logic req_is_wr;
         logic [31:0] wr_data;
         logic [31:0] wr_biten;

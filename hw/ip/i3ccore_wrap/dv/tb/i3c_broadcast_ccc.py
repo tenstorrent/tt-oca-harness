@@ -4,22 +4,25 @@
 """
 I3C Broadcast CCC  (Test Plan #32)
 
-Exercises broadcast CCCs beyond SETDASA: ENEC / DISEC (enable/disable events)
-and RSTDAA (via RSTACT defining byte 0x01).
+Exercises Broadcast CCCs (MIPI I3C Basic Table 16/17):
+  - Broadcast ENEC  = 0x00
+  - Broadcast DISEC = 0x01
+  - Broadcast RSTDAA = 0x06
+
+Bring-up still uses SETDASA so the target has a Dynamic Address before
+RSTDAA; after RSTDAA the test asserts DYNAMIC_ADDR_VALID clears.
 
 Constrained-random: the ENEC/DISEC *event defining byte* is randomized (shared
 framework, seed from +seed/SEED/default) instead of a fixed 0x01. Per MIPI I3C
 the defined event bits are ENINT/IBI (bit0), ENCR (bit1) and ENHJ (bit3); a
-random subset (at least one bit, only legal bits) is generated so the broadcast
-defining-byte datapath sees the full event-mask space. DISEC mirrors whatever
+random subset (at least one bit, only legal bits) is generated so the defining-
+byte datapath sees the full legal event-mask space. DISEC mirrors whatever
 ENEC enabled so the pair is symmetric.
 """
 import cocotb
+from i3c_api import CCC_ENEC_BCAST, CCC_DISEC_BCAST
 from i3c_test_base import make_env, bring_up_and_assign
 from i3c_rand import RandMgr
-
-ENEC_CCC = 0x80   # broadcast enable events command
-DISEC_CCC = 0x81  # broadcast disable events command
 
 # Legal event-enable bits in the ENEC/DISEC defining byte (MIPI I3C):
 #   bit0 = ENINT (IBI), bit1 = ENCR (controller-role req), bit3 = ENHJ (hot-join)
@@ -46,16 +49,24 @@ async def test_broadcast_ccc(dut):
 
     event_mask = rand_event_mask(r)
 
-    # ENEC: enable a random set of events
-    ok = await ctrl.set_ccc(ENEC_CCC, [event_mask], dat_idx=0)
-    tb.log.info(f"ENEC(mask=0x{event_mask:02X}) ok={ok}")
+    # Broadcast ENEC: enable a random set of events on all Targets
+    ok, resp = await ctrl.broadcast_set_ccc(CCC_ENEC_BCAST, [event_mask])
+    tb.log.info(f"Broadcast ENEC(0x00, mask=0x{event_mask:02X}) "
+                f"ok={ok} resp=0x{resp:08X}")
+    assert ok, f"Broadcast ENEC failed resp=0x{resp:08X}"
 
-    # DISEC: disable the same set of events (symmetric pair)
-    ok = await ctrl.set_ccc(DISEC_CCC, [event_mask], dat_idx=0)
-    tb.log.info(f"DISEC(mask=0x{event_mask:02X}) ok={ok}")
+    # Broadcast DISEC: disable the same set of events (symmetric pair)
+    ok, resp = await ctrl.broadcast_set_ccc(CCC_DISEC_BCAST, [event_mask])
+    tb.log.info(f"Broadcast DISEC(0x01, mask=0x{event_mask:02X}) "
+                f"ok={ok} resp=0x{resp:08X}")
+    assert ok, f"Broadcast DISEC failed resp=0x{resp:08X}"
 
-    # RSTDAA via RSTACT defining byte 0x01
-    ok = await ctrl.rstact(0x01, dat_idx=0)
-    tb.log.info(f"RSTACT/RSTDAA ok={ok}")
+    # Broadcast RSTDAA: clear Dynamic Address on all Targets (must be last)
+    ok, resp = await ctrl.send_rstdaa()
+    tb.log.info(f"Broadcast RSTDAA(0x06) ok={ok} resp=0x{resp:08X}")
+    assert ok, f"Broadcast RSTDAA failed resp=0x{resp:08X}"
+
+    cleared = await tgt.wait_dynamic_addr_cleared()
+    assert cleared, "Target DYNAMIC_ADDR_VALID still set after Broadcast RSTDAA"
 
     tb.log.info(f"Broadcast CCC test complete (seed=0x{r.seed:08X})")

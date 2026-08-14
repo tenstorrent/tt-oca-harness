@@ -34,7 +34,12 @@ async def test_reset_mid_transaction(dut):
 
     # Kick off one more transfer, then assert reset after a random cycle delay so
     # it lands at a random point in the bus phase (start/addr/data/turnaround).
-    await ctrl.private_write(rand_bytes(r, rand_len(r, MWL)), tgt, dat_idx=0)
+    pre_reset_data = rand_bytes(r, rand_len(r, MWL))
+    ok, resp, rx = await ctrl.private_write(pre_reset_data, tgt, dat_idx=0)
+    assert ok, f"pre-reset write failed resp=0x{resp:08X}"
+    assert rx == pre_reset_data, (
+        f"pre-reset payload mismatch: got {rx} != sent {pre_reset_data}"
+    )
     delay = r.randint(1, 200)
     tb.log.info(f"asserting reset mid-transaction after {delay} cycles...")
     await ClockCycles(dut.clk, delay)

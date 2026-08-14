@@ -20,8 +20,8 @@ from cocotb.triggers import RisingEdge, Timer, ClockCycles
 
 from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
-# Add path to register headers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))
+# Generated register model (make regen-regs TARGET=I3CCSR)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../regs/gen/py'))
 
 from I3CCSR_reg import (
     # Base registers

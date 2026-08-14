@@ -75,8 +75,9 @@ async def init_controller(ctrl, tx_buf=1, rx_buf=1):
 
 
 async def init_target(tgt, static_addr=DEFAULT_STATIC_ADDR, tx_buf=1, rx_buf=1):
-    """Standard target bring-up: init(static) + thresholds."""
+    """Standard target bring-up: init(static) + OD timing + thresholds."""
     await tgt.initialize(static_addr)
+    await tgt.configure_timing_od_i3c()
     await tgt.configure_thresholds(tx_buf=tx_buf, tx_start=0, rx_buf=rx_buf, rx_start=0)
 
 

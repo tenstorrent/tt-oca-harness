@@ -30,14 +30,21 @@ from cocotb.handle import Force, Release
 # Import tests from other test files
 from i3c_error_sanity import i3c_error_wrong_addr, i3c_fifo_overflow
 
-# Add path to import sim_handle utility
+# sim_handle resolves a VCS-style hierarchical path to a cocotb handle. It lives
+# in the SMC TB tree, which is not part of the open checkout, so it is optional:
+# without it the DAT/DCT backing-SRAM X-clearing below is skipped (the behavioral
+# RAM in tb_i3ccore.sv already resets to 0, so the tests still hold).
+sim_handle = None
 OCH_ROOT = os.getenv("OCH_ROOT")
 if OCH_ROOT:
     sys.path.append(f'{OCH_ROOT}/dv/smc/tb/tb_wrap_cocotb')
-    from common.smc_utils import sim_handle
+    try:
+        from common.smc_utils import sim_handle
+    except ImportError:
+        pass
 
-# Add path to register headers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))
+# Generated register model (make regen-regs TARGET=I3CCSR)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../regs/gen/py'))
 
 from I3CCSR_reg import (
     # Base registers
@@ -434,38 +441,17 @@ async def test_register_access(dut):
     tb.log.info("=" * 60)
 
 
-@cocotb.test(skip=True)
-async def test_i3c_loopback(dut):
-    """
-    Test I3C bus loopback (placeholder for future I3C protocol tests).
-
-    This test requires the cocotbext-i3c target model.
-    Currently skipped - enable when I3C target model is integrated.
-    """
-    tb = TB(dut)
-
-    tb.log.info("=" * 60)
-    tb.log.info("Starting I3C loopback test")
-    tb.log.info("=" * 60)
-
-    # Wait for simulation to initialize
-    await Timer(500, units="ns")
-
-    # Setup AXI-Lite master
-    await tb.setup_axi_master()
-
-    # Wait for reset release
-    await tb.reset_dut()
-
-    # TODO: Add I3C target model setup
-    # from cocotbext_i3c.i3c_target import I3cTarget
-    # target = I3cTarget(...)
-
-    # TODO: Configure I3C controller via registers
-    # TODO: Send I3C transactions
-    # TODO: Verify responses
-
-    tb.log.info("I3C loopback test PASSED (placeholder)!")
+# NOTE: a skip=True `test_i3c_loopback` placeholder used to sit here. It was removed
+# rather than enabled. Its stated reason for being skipped -- "requires the
+# cocotbext-i3c target model ... enable when I3C target model is integrated" -- was
+# obsolete: this TB instantiates NUM_I3C=2 copies of the i3ccore RTL as controller +
+# target (tb_i3ccore.sv, CTRL_BASE/TGT_BASE in i3c_test_base.py), so no cocotbext
+# target model is needed, and controller<->target loopback is already covered with
+# payload comparison and exact ERR_STATUS checks by i3c_write_read_sanity,
+# i3c_long_write_sanity, i3c_long_read_sanity, i3c_immediate_write_sanity and
+# i3c_max_length_transfer. Its body was three TODOs that logged
+# "I3C loopback test PASSED (placeholder)!" -- enabling it would have been a
+# pass-without-checking, so deletion was the only non-misleading option.
 
 
 # =============================================================================

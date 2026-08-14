@@ -40,8 +40,13 @@ async def test_multi_target_dat(dut):
     tb.log.info(f"DAT[0] (real target) {len(data)}B transfer ok")
 
     # Transfer to DAT[1] (absent) is expected to error/NACK
-    ok2, resp2, _ = await ctrl.private_write(rand_bytes(r, 1), tgt, dat_idx=1)
-    err2 = (resp2 >> 27) & 0x3
-    tb.log.info(f"DAT[1] (absent) transfer ok={ok2} err_status={err2} resp=0x{resp2:08X}")
+    ok2, resp2, _ = await ctrl.private_write(
+        rand_bytes(r, 1), tgt, dat_idx=1, expect_error=True)
+    err2 = (resp2 >> 28) & 0xF
+    assert not ok2, (
+        f"DAT[1] absent address should NACK/error, got ok=True resp=0x{resp2:08X}")
+    assert err2 != 0, (
+        f"DAT[1] expected non-zero err_status, got {err2} resp=0x{resp2:08X}")
+    tb.log.info(f"DAT[1] (absent) NACK/err as expected: err_status={err2} resp=0x{resp2:08X}")
 
     tb.log.info(f"Multi-target DAT test complete (seed=0x{r.seed:08X})")

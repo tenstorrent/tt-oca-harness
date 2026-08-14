@@ -8,7 +8,7 @@ Directed-random CCC ordering: repeatedly pick a CCC from the supported set in
 random order and issue it, stressing the command FSM. SET values are drawn from
 the full legal range (not a 3-value pool), and SET/GET round-trips self-check.
 
-Uses the shared constrained-random framework (dv/common/cocotb + i3c_rand):
+Uses the shared constrained-random framework (constrained_random + i3c_rand):
 seed from +seed=<n> / SEED=<n> / default, logged, so regression runs vary the
 sequence and accumulate coverage. CCCs are picked by weight (GET-heavy, like
 real read-mostly traffic) to bias the command-FSM ordering.
@@ -29,6 +29,12 @@ async def test_random_ccc_stress(dut):
 
     # shadow model of the last programmed MWL/MRL for SET/GET self-checking
     shadow = {"mwl": None, "mrl": None}
+    # Count comparisons actually executed. The GET handlers used to skip their compare
+    # whenever the matching SET had not been drawn yet, so a draw in which a GET
+    # precedes every SET of the same register executed ZERO comparisons and still
+    # passed. The shadow is seeded below and a directed GET of each runs after the
+    # loop, so these counters are asserted non-zero at the end.
+    compares = {"mwl": 0, "mrl": 0}
 
     async def ccc_getbcr():
         ok, _ = await ctrl.getbcr(dat_idx=0)
@@ -43,8 +49,9 @@ async def test_random_ccc_stress(dut):
     async def ccc_getmwl():
         ok, got = await ctrl.getmwl(dat_idx=0)
         assert ok, "GETMWL failed"
-        if shadow["mwl"] is not None:
-            assert got == shadow["mwl"], f"MWL {got:#x} != set {shadow['mwl']:#x}"
+        assert shadow["mwl"] is not None, "shadow MWL unseeded — see the seeding step"
+        assert got == shadow["mwl"], f"MWL {got:#x} != set {shadow['mwl']:#x}"
+        compares["mwl"] += 1
 
     async def ccc_setmrl():
         v = rand_mrl(r)
@@ -56,8 +63,14 @@ async def test_random_ccc_stress(dut):
     async def ccc_getmrl():
         ok, got, _ibi = await ctrl.getmrl(dat_idx=0)
         assert ok, "GETMRL failed"
-        if shadow["mrl"] is not None:
-            assert got == shadow["mrl"], f"MRL {got:#x} != set {shadow['mrl']:#x}"
+        assert shadow["mrl"] is not None, "shadow MRL unseeded — see the seeding step"
+        assert got == shadow["mrl"], f"MRL {got:#x} != set {shadow['mrl']:#x}"
+        compares["mrl"] += 1
+
+    # Seed the shadow with one directed SET of each so every GET the random loop draws
+    # is a real comparison rather than a skipped one.
+    await ccc_setmwl()
+    await ccc_setmrl()
 
     # weighted CCC pool: GET-heavy ordering
     ccc_pool = [
@@ -70,4 +83,19 @@ async def test_random_ccc_stress(dut):
         tb.log.info(f"[{i}] CCC -> {op.__name__}")
         await op()
 
-    tb.log.info(f"Random CCC stress ({N_ITERS} iters, seed=0x{r.seed:08X}) complete")
+    # Directed round-trip of each register after the random ordering, so the minimum
+    # activity below is guaranteed by construction and not by what the seed happened
+    # to draw.
+    await ccc_getmwl()
+    await ccc_getmrl()
+
+    # Zero executed comparisons must be a failure, never a pass.
+    assert compares["mwl"] >= 1 and compares["mrl"] >= 1, (
+        f"zero-activity pass: MWL compares={compares['mwl']}, "
+        f"MRL compares={compares['mrl']} (seed=0x{r.seed:08X})"
+    )
+
+    tb.log.info(
+        f"Random CCC stress ({N_ITERS} iters, seed=0x{r.seed:08X}) complete; "
+        f"MWL compares={compares['mwl']}, MRL compares={compares['mrl']}"
+    )

@@ -9,7 +9,20 @@
  * - Flattened AXI-Lite signals for cocotb access
  * - I3C bus signals with open-drain modeling
  * - FSDB waveform dumping support
+ *
+ * BEHAVIORAL STUB / PEER TOPOLOGY (declared):
+ *   NUM_I3C=2 instances of the same i3ccore RTL act as controller + target
+ *   peers on a shared open-drain bus. This is a same-RTL loopback peer, NOT
+ *   an independent third-party I3C target model. Interop / multi-vendor
+ *   claims are out of scope for tests that only exercise this harness.
  *************************************************************************/
+
+// DAT/DCT depths (and the rest of the core's build-time configuration) come from
+// the vendored i3c-core header, not from I3CCSR_pkg: PeakRDL emits only
+// I3CCSR_DATA_WIDTH / I3CCSR_MIN_ADDR_WIDTH into that package. The header is
+// guarded (`I3C_CONFIG`), so including it here is safe even though i3c.sv has
+// already pulled it into the compile unit.
+`include "i3c_defines.svh"
 
 module tb_i3ccore;
 
@@ -98,30 +111,41 @@ module tb_i3ccore;
     logic [NUM_I3C-1:0] escalated_reset;
 
     //--------------------------------------------------------------------------
-    // DAT/DCT external memory interface
-    // The i3ccore_wrapper expects the Device Address Table / Device
-    // Characteristics Table SRAMs to be instantiated externally (as the SMC
-    // integration does). Without them, DAT reads return X and SETDASA sends an
-    // X address. Modeled by the behavioral SRAM in gen_i3c_mem below.
+    // DAT/DCT external memory: the wrapper expects these SRAMs instantiated
+    // externally (as the SMC does); modeled by gen_i3c_mem below.
     //--------------------------------------------------------------------------
     i3c_pkg::dat_mem_src_t  [NUM_I3C-1:0] dat_mem_src;
     i3c_pkg::dat_mem_sink_t [NUM_I3C-1:0] dat_mem_sink;
     i3c_pkg::dct_mem_src_t  [NUM_I3C-1:0] dct_mem_src;
     i3c_pkg::dct_mem_sink_t [NUM_I3C-1:0] dct_mem_sink;
+    i3c_pkg::rlt_mem_src_t  [NUM_I3C-1:0] rlt_mem_src;
+    i3c_pkg::rlt_mem_sink_t [NUM_I3C-1:0] rlt_mem_sink;
 
     //--------------------------------------------------------------------------
     // I3C Shared Bus Model for Controller-Target Communication
     // Instance 0 = Controller, Instance 1 = Target
     //--------------------------------------------------------------------------
 
-    // SCL: Controller (instance 0) drives, target (instance 1) only reads
-    // (I3C targets cannot drive SCL - no clock stretching)
-    assign scl_i[0] = scl_o[0];  // Controller sees its own SCL
-    assign scl_i[1] = scl_o[0];  // Target sees controller's SCL
+    // SCL: open-drain with pull-up (like SDA) — pulled low only when a device's pad
+    // is enabled and driving 0 (scl_o tied 0, OE carries drive). Don't wire scl_oe to scl_i.
+    wire scl_shared = ((scl_oe[0] && !scl_o[0]) || (scl_oe[1] && !scl_o[1])) ? 1'b0 : 1'b1;
+    assign scl_i[0] = scl_shared;
+    assign scl_i[1] = scl_shared;
 
     // SDA: Open-drain, both can drive (target needs to ACK/send data)
     // Bus is LOW if either device pulls it low, otherwise HIGH (pull-up)
-    wire sda_shared = ((sda_oe[0] && !sda_o[0]) || (sda_oe[1] && !sda_o[1])) ? 1'b0 : 1'b1;
+    wire sda_raw = ((sda_oe[0] && !sda_o[0]) || (sda_oe[1] && !sda_o[1])) ? 1'b0 : 1'b1;
+
+    // Bus-level bit-flip injection point for error tests (parity/CRC/frame).
+    // sda_corrupt has NO continuous driver, so cocotb can drive it directly; XOR-ing it
+    // into the shared bus is the only way to corrupt a bit here, because sda_shared
+    // itself is a continuous assign and a cocotb deposit on it would be overwritten at
+    // the next evaluation. It rests at 0, so every test that does not inject sees the
+    // bus behave exactly as before.
+    logic sda_corrupt;
+    initial sda_corrupt = 1'b0;
+
+    wire sda_shared = sda_raw ^ sda_corrupt;
     assign sda_i[0] = sda_shared;
     assign sda_i[1] = sda_shared;
 
@@ -157,10 +181,8 @@ module tb_i3ccore;
         .NUM_I3C(NUM_I3C),
         .I3C_REG_ADDR_WIDTH(I3C_REG_ADDR_WIDTH),
         .BASE_ADDR(BASE_ADDR),
-        // Instance window must match the per-instance register map (DAT@0x400,
-        // DCT@0x800-0xBFF) and the cocotb API's TGT_BASE=0x1000. The wrapper
-        // default (0x500) is too small, so target accesses (0x1xxx) miss the
-        // decode and fall through to instance 0, clobbering the controller.
+        // Must be >= the per-instance map (DAT@0x400, DCT@0x800) and the API's
+        // TGT_BASE=0x1000; the 0x500 default mis-decodes target accesses to inst 0.
         .INSTANCE_SPACING(32'h1000)
     ) u_dut (
         .clk_i(clk),
@@ -218,16 +240,31 @@ module tb_i3ccore;
         .dat_mem_src_i (dat_mem_src),
         .dat_mem_sink_o(dat_mem_sink),
         .dct_mem_src_i (dct_mem_src),
-        .dct_mem_sink_o(dct_mem_sink)
+        .dct_mem_sink_o(dct_mem_sink),
+        .rlt_mem_src_i (rlt_mem_src),
+        .rlt_mem_sink_o(rlt_mem_sink)
     );
 
     //--------------------------------------------------------------------------
-    // DAT/DCT memory. Default: the same SRAM the SMC integration uses
-    // (prim_ram_1p_adv_i3ccore). Define I3C_BEHAV_DAT_MEM to use a simple
-    // single-cycle write-forwarding behavioral RAM instead (debug: isolate
-    // read-after-write behavior of the SRAM).
+    // DAT/DCT/RLT memory.
+    //
+    // Default: the single-cycle write-forwarding behavioral RAM below. This is
+    // not a debug fallback in this tree -- it is the only model available.
+    // i3c-core's memory primitives are deliberately not vendored here
+    // (exclude_from_upstream: "src/libs/mem" in
+    // vendor/chipsalliance/i3c-core/Bender.yml), so prim_ram_1p_adv /
+    // prim_ram_2p do not exist in the OSS checkout, and the SMC integration ties
+    // the DAT/DCT port off rather than instantiating an SRAM
+    // (hw/sys/smc/dv/tb/tb_top.sv).
+    //
+    // Single-cycle read latency is required, not incidental: flow_active
+    // captures DAT read data one cycle after the request, so a two-cycle
+    // (output-pipelined) SRAM makes it sample X -- hence EnableOutputPipeline(0)
+    // in the opt-in branch below.
+    //
+    // Define I3C_SRAM_DAT_MEM to swap in real SRAMs once they are available.
     //--------------------------------------------------------------------------
-`ifdef I3C_BEHAV_DAT_MEM
+`ifndef I3C_SRAM_DAT_MEM
     for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem
         logic [63:0]  dat_arr [0:(1<<i3c_pkg::DatAw)-1];
         logic [127:0] dct_arr [0:(1<<i3c_pkg::DctAw)-1];
@@ -263,15 +300,40 @@ module tb_i3ccore;
                 end
             end
         end
+        // RLT dual-port behavioral model (DatAw-bit wide, addr[6:0] => 128 deep)
+        logic [i3c_pkg::DatAw-1:0] rlt_arr [0:127];
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+                for (int k = 0; k < 128; k++) rlt_arr[k] <= '0;
+                rlt_mem_src[gi].a_rdata <= '0;
+                rlt_mem_src[gi].b_rdata <= '0;
+            end else begin
+                if (rlt_mem_sink[gi].a_req) begin
+                    if (rlt_mem_sink[gi].a_write)
+                        rlt_arr[rlt_mem_sink[gi].a_addr] <=
+                            (rlt_mem_sink[gi].a_wdata &  rlt_mem_sink[gi].a_wmask) |
+                            (rlt_arr[rlt_mem_sink[gi].a_addr] & ~rlt_mem_sink[gi].a_wmask);
+                    rlt_mem_src[gi].a_rdata <= rlt_arr[rlt_mem_sink[gi].a_addr];
+                end
+                if (rlt_mem_sink[gi].b_req) begin
+                    if (rlt_mem_sink[gi].b_write)
+                        rlt_arr[rlt_mem_sink[gi].b_addr] <=
+                            (rlt_mem_sink[gi].b_wdata &  rlt_mem_sink[gi].b_wmask) |
+                            (rlt_arr[rlt_mem_sink[gi].b_addr] & ~rlt_mem_sink[gi].b_wmask);
+                    rlt_mem_src[gi].b_rdata <= rlt_arr[rlt_mem_sink[gi].b_addr];
+                end
+            end
+        end
     end : gen_i3c_mem
 `else
     for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem
-        // DAT memory (64-bit wide)
-        prim_ram_1p_adv_i3ccore #(
-            .Depth              (I3CCSR_pkg::dat_depth + 1),
+        // DAT memory (64-bit). EnableOutputPipeline=0: flow_active captures DAT data
+        // 1 cycle after the read request, so a 2-cycle read makes it sample X.
+        prim_ram_1p_adv #(
+            .Depth              (`DAT_DEPTH  + 1),
             .Width              (64),
             .DataBitsPerMask    (32),
-            .EnableOutputPipeline(1)
+            .EnableOutputPipeline(0)
         ) i3c_dat_memory (
             .clk_i   (clk),
             .rst_ni  (rst_n),
@@ -287,11 +349,11 @@ module tb_i3ccore;
         );
 
         // DCT memory (128-bit wide)
-        prim_ram_1p_adv_i3ccore #(
-            .Depth              (I3CCSR_pkg::dct_depth + 1),
+        prim_ram_1p_adv #(
+            .Depth              (`DCT_DEPTH + 1),
             .Width              (128),
             .DataBitsPerMask    (32),
-            .EnableOutputPipeline(1)
+            .EnableOutputPipeline(0)
         ) i3c_dct_memory (
             .clk_i   (clk),
             .rst_ni  (rst_n),
@@ -305,6 +367,30 @@ module tb_i3ccore;
             .rerror_o(dct_mem_src[gi].rerror),
             .cfg_i   ('0)
         );
+
+        // RLT (reverse-lookup table) memory (dual-port, DatAw-bit wide, addr[6:0] => 128 deep)
+        prim_ram_2p #(
+            .Depth          (128),
+            .Width          (i3c_pkg::DatAw),
+            .DataBitsPerMask(1)
+        ) i3c_rlt_memory (
+            .clk_a_i (clk),
+            .clk_b_i (clk),
+            .a_req_i  (rlt_mem_sink[gi].a_req),
+            .a_write_i(rlt_mem_sink[gi].a_write),
+            .a_addr_i (rlt_mem_sink[gi].a_addr),
+            .a_wdata_i(rlt_mem_sink[gi].a_wdata),
+            .a_wmask_i(rlt_mem_sink[gi].a_wmask),
+            .a_rdata_o(rlt_mem_src[gi].a_rdata),
+            .b_req_i  (rlt_mem_sink[gi].b_req),
+            .b_write_i(rlt_mem_sink[gi].b_write),
+            .b_addr_i (rlt_mem_sink[gi].b_addr),
+            .b_wdata_i(rlt_mem_sink[gi].b_wdata),
+            .b_wmask_i(rlt_mem_sink[gi].b_wmask),
+            .b_rdata_o(rlt_mem_src[gi].b_rdata),
+            .cfg_i    ('0),
+            .cfg_rsp_o()
+        );
     end : gen_i3c_mem
 `endif
 
@@ -314,7 +400,7 @@ module tb_i3ccore;
     //--------------------------------------------------------------------------
     i3c_coverage_if u_i3c_cov (
         .clk      (clk),
-        .scl      (scl_o[0]),
+        .scl      (scl_shared),
         .sda      (sda_shared),
         .sel_od_pp(sel_od_pp[0]),
         .irq      (irq),
@@ -342,12 +428,16 @@ module tb_i3ccore;
         wait (rst_n);
         repeat (100) @(posedge clk);
 
-        $display("I3C Core Wrapper Testbench completed - basic compilation check passed!");
+        $display("I3C Core Wrapper Testbench: basic compilation check finished (not a test verdict)");
     end
 
     //--------------------------------------------------------------------------
-    // FSDB waveform dumping for VCS (Verdi-compatible)
+    // FSDB waveform dumping for VCS (Verdi-compatible).
+    // Guarded by I3C_FSDB, which the Makefile defines only when it has linked
+    // the Verdi PLI (novas.tab/pli.a). VCS errors out on $fsdbDump* at compile
+    // time when the PLI is absent, so this cannot be a run-time-only check.
     //--------------------------------------------------------------------------
+`ifdef I3C_FSDB
     initial begin
         if ($test$plusargs("waves")) begin
             string wave_file;
@@ -360,5 +450,12 @@ module tb_i3ccore;
             $fsdbDumpvars("+all");
         end
     end
+`else
+    initial begin
+        if ($test$plusargs("waves")) begin
+            $display("[I3C TB] +waves ignored: built without the Verdi PLI (make WAVES=1 with VERDI_HOME set)");
+        end
+    end
+`endif
 
 endmodule : tb_i3ccore

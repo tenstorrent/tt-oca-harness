@@ -20,7 +20,7 @@ from i3c_api import I3CHelper, I3CController, I3CTarget
 # Import register addresses
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../regs/gen/py'))
 from I3CCSR_reg import (
     PIOCONTROL_COMMAND_PORT_REG_ADDR,
     PIOCONTROL_RESPONSE_PORT_REG_ADDR,
@@ -163,15 +163,24 @@ async def immediate_write(helper, ctrl, tgt, data_bytes, tid=0, dat_idx=0):
         helper.log.error(f"immediate_write: transfer error, err_status={err_status}")
         return False, resp, []
 
-    # Wait for target RX descriptor to be ready
+    # Wait for target RX descriptor to be ready. Expiry must fail the transfer: reading
+    # the descriptor queue after failing to observe it non-empty parses whatever that
+    # read returned. Mirrors the shared API's hardened wait (i3c_api.py private_write).
     TTI_RX_DESC_THLD_STAT = (1 << 11)
-    for _ in range(1000):
+    POLLS = 1000
+    tgt_status = 0
+    for _ in range(POLLS):
         tgt_status = await helper.read(tgt.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
         if tgt_status & TTI_RX_DESC_THLD_STAT:
             break
         await ClockCycles(helper.dut.clk, 10)
     else:
-        helper.log.warning("immediate_write: timeout waiting for target RX descriptor")
+        helper.log.error(
+            f"immediate_write: timeout waiting for target RX descriptor after {POLLS} "
+            f"polls; last TTI_INTERRUPT_STATUS=0x{tgt_status:08X}, "
+            f"expected {len(data_bytes)} bytes"
+        )
+        return False, resp, []
 
     # Read target RX descriptor
     tgt_rx_desc = await helper.read(tgt.base + I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR)
@@ -180,8 +189,11 @@ async def immediate_write(helper, ctrl, tgt, data_bytes, tid=0, dat_idx=0):
     helper.log.debug(f"immediate_write: target RX descriptor=0x{tgt_rx_desc:08X}, "
                      f"data_length={tgt_rx_data_length}, error={tgt_rx_error}")
 
+    # A target-side receive error is fatal to the transfer, not a warning: the shared
+    # API treats the identical field that way (i3c_api.py private_write).
     if tgt_rx_error != 0:
-        helper.log.warning(f"immediate_write: target RX descriptor reports error={tgt_rx_error}")
+        helper.log.error(f"immediate_write: target RX descriptor reports error={tgt_rx_error}")
+        return False, resp, []
 
     # Drain target RX FIFO
     rx_data = []

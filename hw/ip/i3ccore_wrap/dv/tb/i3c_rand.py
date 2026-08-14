@@ -5,12 +5,13 @@
 i3c_rand.py — I3C-specific constrained-random layer for the I3C block TB.
 
 Thin domain layer on top of the IP-agnostic core in
-``dv/common/cocotb/constrained_random.py``: it re-exports the generic seed /
+``constrained_random.py`` (same directory): it re-exports the generic seed /
 constraint primitives and adds I3C protocol-specific generators and a
 declarative transaction object.
 
 Generic primitives (seed mgmt, in_range, weighted, banded, rand_bytes) live in
-the shared core so every IP's TB can reuse them; only the I3C knowledge
+that core so it can be promoted to hw/common/dv/ once a second TB needs it; only
+the I3C knowledge
 (reserved addresses, MWL/MRL, threshold reachability, IBI, transfers) lives here.
 
 Example
@@ -24,24 +25,8 @@ Example
         await do_transfer(ctrl, tgt, t)  # drives + self-checks
 """
 
-import os
-import sys
-
-# Locate the shared cocotb core: prefer $OCH_ROOT, fall back to a path relative
-# to this file (hw/periph/i3ccore_wrap/tb -> repo root -> dv/common/cocotb).
-_OCH = os.getenv("OCH_ROOT")
-_candidates = []
-if _OCH:
-    _candidates.append(os.path.join(_OCH, "dv", "common", "cocotb"))
-_candidates.append(os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..",
-                 "dv", "common", "cocotb")))
-for _p in _candidates:
-    if os.path.isdir(_p) and _p not in sys.path:
-        sys.path.insert(0, _p)
-
 # Re-export the generic core so tests can `from i3c_rand import RandMgr, ...`.
-from constrained_random import (   # noqa: E402
+from constrained_random import (
     RandMgr, resolve_seed, in_range, weighted, banded, rand_bytes,
 )
 

@@ -7,7 +7,7 @@ I3C Random Transfer Stress  (Test Plan #44)
 Directed-random private write/read transfers with random direction/length/data,
 checked for integrity each iteration via the built-in scoreboard.
 
-Uses the shared constrained-random framework (dv/common/cocotb + i3c_rand):
+Uses the shared constrained-random framework (constrained_random + i3c_rand):
 the seed is resolved from +seed=<n> / SEED=<n> / default and logged, so each
 regression run varies the sequence and accumulates coverage (run multiple seeds
 and merge). A fixed default keeps local runs reproducible.
@@ -25,8 +25,13 @@ MWL = 256
 async def test_random_transfer_stress(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    await ctrl.setmwl(MWL, dat_idx=0)
-    await ctrl.setmrl(MWL, ibi_payload_size=0xFF, dat_idx=0)
+    # These two CCCs establish the whole randomization envelope; set_ccc reports
+    # failure only through a returned flag, so an unprogrammed envelope would
+    # otherwise go unnoticed for the entire run.
+    ok, resp = await ctrl.setmwl(MWL, dat_idx=0)
+    assert ok, f"SETMWL({MWL}) failed resp=0x{resp:08X}"
+    ok, resp = await ctrl.setmrl(MWL, ibi_payload_size=0xFF, dat_idx=0)
+    assert ok, f"SETMRL({MWL}) failed resp=0x{resp:08X}"
 
     r = RandMgr(name="random_transfer")          # seed logged; +seed/SEED override
 

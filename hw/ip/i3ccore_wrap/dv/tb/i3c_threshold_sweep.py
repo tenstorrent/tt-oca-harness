@@ -36,7 +36,15 @@ async def test_threshold_sweep(dut):
 
         ok, resp = await ctrl.send_setdasa(DEFAULT_STATIC_ADDR, DEFAULT_DYNAMIC_ADDR)
         assert ok, f"SETDASA failed at thr={thr}"
-        await tgt.wait_dynamic_addr()
+        # wait_dynamic_addr returns (success, addr) and logs nothing on expiry, so a
+        # target that never took its address would otherwise walk silently into the
+        # transfer below. This test bypasses bring_up_and_assign to re-init per leg,
+        # so it has to make that helper's two assertions itself.
+        ok, dyn = await tgt.wait_dynamic_addr()
+        assert ok, f"target never took a dynamic address at thr={thr}"
+        assert dyn == DEFAULT_DYNAMIC_ADDR, (
+            f"target addr mismatch at thr={thr}: 0x{dyn:02X} != 0x{DEFAULT_DYNAMIC_ADDR:02X}"
+        )
 
         data = [(i + thr) & 0xFF for i in range(32)]
         ok, resp, rx = await ctrl.private_write(data, tgt, dat_idx=0)

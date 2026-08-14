@@ -4,6 +4,27 @@
 `ifndef _I3C_COVERAGE_IF_SV_
 `define _I3C_COVERAGE_IF_SV_
 
+//***************************************************************************
+//
+// Tenstorrent CONFIDENTIAL
+// __________________
+//
+//  Tenstorrent Inc.
+//  All Rights Reserved.
+//
+//---------------------------------------------------------------------------
+// INTERFACE: i3c_coverage_if
+//---------------------------------------------------------------------------
+//
+// I3C functional-coverage interface for the OCA I3C controller block.
+// Observes the shared I3C bus (SDA/SCL), the OD/PP mode select, interrupts,
+// and the AXI-Lite command/response ports, and samples covergroups derived
+// from I3C_COVERAGE_POINT.md.
+//
+// All covergroups are guarded by +define+I3C_COVERAGE so the interface always
+// compiles (inert) when coverage is not requested.
+//
+//***************************************************************************
 
 interface i3c_coverage_if (
     input logic        clk,
@@ -48,7 +69,7 @@ interface i3c_coverage_if (
     logic        cmd_sample;    // pulse when a command lo-word is captured
 
     // Decoded response-descriptor fields
-    logic [1:0]  resp_err;
+    logic [3:0]  resp_err;
     logic        resp_sample;   // pulse when a response word is read
 
     // Bus protocol events
@@ -89,7 +110,7 @@ interface i3c_coverage_if (
     always @(posedge clk) begin
         resp_sample <= 1'b0;
         if (rvalid && rready && (port_off(last_araddr) == RESPONSE_PORT_OFF)) begin
-            resp_err    <= rdata[27:26];   // err_status (encoding per RDL; see GAP Q-002)
+            resp_err    <= rdata[31:28];   // err_status[31:28] (matches i3c_api / HCI response)
             resp_sample <= 1'b1;
         end
     end
@@ -141,10 +162,11 @@ interface i3c_coverage_if (
     // Response coverage (RESP_DESC_CG / ERR_TYPE_CG)
     covergroup i3c_resp_cg @(posedge resp_sample);
         cp_err: coverpoint resp_err {
-            bins success = {2'h0};
-            bins crc     = {2'h1};
-            bins parity  = {2'h2};
-            bins frame   = {2'h3};
+            bins success = {4'h0};
+            bins crc     = {4'h1};
+            bins parity  = {4'h2};
+            bins frame   = {4'h3};
+            bins other   = {[4'h4:4'hF]};
         }
     endgroup
 

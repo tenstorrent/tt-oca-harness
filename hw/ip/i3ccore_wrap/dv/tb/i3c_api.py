@@ -25,6 +25,7 @@ import sys
 import os
 
 from cocotb.triggers import ClockCycles, Timer
+from cocotbext.axi import AxiResp
 
 # CCC Command Codes (Direct GET commands)
 CCC_GETBCR = 0x8E  # Get Bus Characteristics Register
@@ -36,107 +37,200 @@ CCC_SETMWL = 0x89  # Set Max Write Length
 CCC_SETMRL = 0x8A  # Set Max Read Length
 CCC_RSTACT = 0x9A  # Direct Reset Action
 
-# Add path to register headers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))
+# CCC Command Codes (Broadcast — bit7=0; see MIPI I3C Basic Table 16)
+CCC_ENEC_BCAST = 0x00   # Broadcast Enable Target Events
+CCC_DISEC_BCAST = 0x01  # Broadcast Disable Target Events
+CCC_RSTDAA = 0x06       # Broadcast Reset Dynamic Address Assignment
 
-from I3CCSR_reg import (
-    # Base registers
-    I3CBASE_HC_CONTROL_REG_ADDR,
-    # PIO registers
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
-    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
-    PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR,
-    PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR,
-    PIOCONTROL_QUEUE_SIZE_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR,
-    PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR,
-    PIOCONTROL_PIO_INTR_FORCE_REG_ADDR,
-    PIOCONTROL_PIO_CONTROL_REG_ADDR,
-    # Standby controller mode
-    I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR,
-    I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR,
-    # TTI (target)
-    I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
-    I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR,
-    I3C_EC_TTI_RX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_TX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
-    I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
-    I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR,
-    I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR,
-    # Timing registers (OD)
-    I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR,
-    # IBI registers
-    PIOCONTROL_IBI_PORT_REG_ADDR,
-    I3C_EC_TTI_CONTROL_REG_ADDR,
-    I3C_EC_TTI_STATUS_REG_ADDR,
-    I3C_EC_TTI_IBI_PORT_REG_ADDR,
-    # Timing registers (PP)
-    I3C_EC_SOCMGMTIF_T_R_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_F_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HIGH_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_LOW_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_PP_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HD_PP_REG_REG_ADDR,
-    # DAT memory
-    DAT_MEM_BASE_ADDR,
-    # Ctypes Union classes for bitfield access
-    BASEREGS_PIO_OFFSET_80_EXT_OFFSET_100_DAT_TABLE_SIZE_F_DAT_OFFSET_300_DCT_TABLE_SIZE_F_DCT_OFFSET_400_MIPI_COMMANDS_35_HC_CONTROL_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_CONTROL_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_STATUS_CMD_QUEUE_READY_STAT_d0716a40_IBI_STATUS_THLD_STAT_a69a4555_RESP_READY_STAT_976af25d_RX_THLD_STAT_0f2071bf_TRANSFER_ABORT_STAT_1fe261ad_TRANSFER_ERR_STAT_8815d17d_TX_THLD_STAT_9fe979f6_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_STATUS_ENABLE_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_SIGNAL_ENABLE_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_FORCE_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_DATA_BUFFER_THLD_CTRL_reg_u,
-    PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_QUEUE_THLD_CTRL_reg_u,
-    STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_STBY_CR_CONTROL_reg_u,
-    STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_STBY_CR_DEVICE_ADDR_reg_u,
-    TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_DATA_BUFFER_THLD_CTRL_reg_u,
-    TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_QUEUE_THLD_CTRL_reg_u,
-    TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_INTERRUPT_STATUS_reg_u,
-)
+# Generated register model (make regen-regs TARGET=I3CCSR)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../regs/gen/py'))
 
-# Short aliases for ctypes Union classes
-HcControl = BASEREGS_PIO_OFFSET_80_EXT_OFFSET_100_DAT_TABLE_SIZE_F_DAT_OFFSET_300_DCT_TABLE_SIZE_F_DCT_OFFSET_400_MIPI_COMMANDS_35_HC_CONTROL_reg_u
-PioControl = PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_CONTROL_reg_u
-PioIntrStatus = PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_STATUS_CMD_QUEUE_READY_STAT_d0716a40_IBI_STATUS_THLD_STAT_a69a4555_RESP_READY_STAT_976af25d_RX_THLD_STAT_0f2071bf_TRANSFER_ABORT_STAT_1fe261ad_TRANSFER_ERR_STAT_8815d17d_TX_THLD_STAT_9fe979f6_reg_u
-PioIntrStatusEnable = PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_STATUS_ENABLE_reg_u
-PioIntrSignalEnable = PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_SIGNAL_ENABLE_reg_u
-PioIntrForce = PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_PIO_INTR_FORCE_reg_u
-DataBufferThldCtrl = PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_DATA_BUFFER_THLD_CTRL_reg_u
-QueueThldCtrl = PIOREGS_CMD_FIFO_SIZE_8_RESP_FIFO_SIZE_8_IBI_FIFO_SIZE_8_TX_FIFO_SIZE_8_RX_FIFO_SIZE_8_EXT_IBI_SIZE_0_QUEUE_THLD_CTRL_reg_u
-StbyCrControl = STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_STBY_CR_CONTROL_reg_u
-StbyCrDeviceAddr = STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_STBY_CR_DEVICE_ADDR_reg_u
-TtiDataBufferThldCtrl = TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_DATA_BUFFER_THLD_CTRL_reg_u
-TtiQueueThldCtrl = TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_QUEUE_THLD_CTRL_reg_u
-TtiIntrStatus = TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_8_TX_DESC_FIFO_SIZE_8_RX_FIFO_SIZE_8_TX_FIFO_SIZE_8_IBI_FIFO_SIZE_8_INTERRUPT_STATUS_reg_u
+import I3CCSR_reg as _csr
 
-# TTI Interrupt Status bit positions (from target_transaction_interface.rdl)
-# Used for bit-testing TTI_INTERRUPT_STATUS register
-TTI_INTR_TX_DATA_THLD_BIT = 8      # tx_data_thld_stat
-TTI_INTR_RX_DATA_THLD_BIT = 9      # rx_data_thld_stat
-TTI_INTR_TX_DESC_THLD_BIT = 10     # tx_desc_thld_stat
-TTI_INTR_RX_DESC_THLD_BIT = 11     # rx_desc_thld_stat
-TTI_INTR_IBI_THLD_BIT = 12         # ibi_thld_stat
-TTI_INTR_IBI_DONE_BIT = 13         # ibi_done
-TTI_INTR_TX_DESC_COMPLETE_BIT = 26 # tx_desc_complete
+# Generated ctypes union names encode FIFO/table sizes that change across RDL
+# regens, so resolve them by reg-name suffix (see _union_by_suffix) rather than
+# pinning the full identifier; addresses are imported by name.
 
-# TTI Control register bit positions
-TTI_CTRL_IBI_EN_BIT = 12           # ibi_en - IBI transmission enable
+# Register addresses (each `<NAME>_REG_ADDR` symbol from the header).
+I3CBASE_HC_CONTROL_REG_ADDR = _csr.I3CBASE_HC_CONTROL_REG_ADDR
+PIOCONTROL_COMMAND_PORT_REG_ADDR = _csr.PIOCONTROL_COMMAND_PORT_REG_ADDR
+PIOCONTROL_RESPONSE_PORT_REG_ADDR = _csr.PIOCONTROL_RESPONSE_PORT_REG_ADDR
+PIOCONTROL_TX_DATA_PORT_REG_ADDR = _csr.PIOCONTROL_TX_DATA_PORT_REG_ADDR
+PIOCONTROL_RX_DATA_PORT_REG_ADDR = _csr.PIOCONTROL_RX_DATA_PORT_REG_ADDR
+PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR = _csr.PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR
+PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR = _csr.PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR
+PIOCONTROL_QUEUE_SIZE_REG_ADDR = _csr.PIOCONTROL_QUEUE_SIZE_REG_ADDR
+PIOCONTROL_PIO_INTR_STATUS_REG_ADDR = _csr.PIOCONTROL_PIO_INTR_STATUS_REG_ADDR
+PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR = _csr.PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR
+PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR = _csr.PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR
+PIOCONTROL_PIO_INTR_FORCE_REG_ADDR = _csr.PIOCONTROL_PIO_INTR_FORCE_REG_ADDR
+PIOCONTROL_PIO_CONTROL_REG_ADDR = _csr.PIOCONTROL_PIO_CONTROL_REG_ADDR
+I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR = _csr.I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR
+I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR = _csr.I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR
+I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR = _csr.I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR
+I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR = _csr.I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR
+I3C_EC_TTI_RX_DATA_PORT_REG_ADDR = _csr.I3C_EC_TTI_RX_DATA_PORT_REG_ADDR
+I3C_EC_TTI_TX_DATA_PORT_REG_ADDR = _csr.I3C_EC_TTI_TX_DATA_PORT_REG_ADDR
+I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR = _csr.I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR
+I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR = _csr.I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR
+I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR = _csr.I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR
+I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR = _csr.I3C_EC_TTI_QUEUE_THLD_CTRL_REG_ADDR
+I3C_EC_TTI_QUEUE_STATUS_REG_ADDR = _csr.I3C_EC_TTI_QUEUE_STATUS_REG_ADDR
+I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR
+I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR = _csr.I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR
+PIOCONTROL_IBI_PORT_REG_ADDR = _csr.PIOCONTROL_IBI_PORT_REG_ADDR
+I3C_EC_TTI_CONTROL_REG_ADDR = _csr.I3C_EC_TTI_CONTROL_REG_ADDR
+I3C_EC_TTI_STATUS_REG_ADDR = _csr.I3C_EC_TTI_STATUS_REG_ADDR
+I3C_EC_TTI_IBI_PORT_REG_ADDR = _csr.I3C_EC_TTI_IBI_PORT_REG_ADDR
+DAT_MEM_BASE_ADDR = _csr.DAT_MEM_BASE_ADDR
+
+
+def _union_by_suffix(suffix, prefix="", exclude=None):
+    """Resolve a ctypes union by its `_<REG>_reg_u` suffix (only prefix+suffix are
+    stable across regens). `prefix` disambiguates regs that exist in >1 reg file;
+    `exclude` drops a longer name that also ends with the same suffix (CONTROL vs
+    RESET_CONTROL)."""
+    matches = [
+        getattr(_csr, n)
+        for n in dir(_csr)
+        if n.startswith(prefix) and n.endswith(suffix + "_reg_u")
+        and (exclude is None or exclude not in n)
+    ]
+    if not matches:
+        raise ImportError(f"No ctypes union '{prefix}*{suffix}_reg_u' in I3CCSR_reg")
+    if len(matches) > 1:
+        raise ImportError(f"Ambiguous ctypes union '{prefix}*{suffix}_reg_u': {len(matches)} matches")
+    return matches[0]
+
+
+# Short aliases for ctypes Union classes (resolved by reg-file prefix + reg-name suffix).
+_PIO = "PIOREGS_"
+_TTI = "TARGETTRANSACTIONINTERFACEREGISTERS_"
+def _union_by_contains(needle, exclude=None):
+    """Resolve a ctypes union whose name contains `needle` (for regs like
+    PIO_INTR_STATUS whose generated name has no stable suffix)."""
+    matches = [
+        getattr(_csr, n)
+        for n in dir(_csr)
+        if n.endswith("_reg_u") and needle in n and (exclude is None or exclude not in n)
+    ]
+    if len(matches) != 1:
+        raise ImportError(f"Expected 1 ctypes union containing '{needle}', got {len(matches)}")
+    return matches[0]
+
+
+HcControl = _union_by_suffix("HC_CONTROL")
+PioControl = _union_by_suffix("PIO_CONTROL")
+PioIntrStatus = _union_by_contains("_PIO_INTR_STATUS_CMD_QUEUE_READY_STAT", exclude="_ENABLE")
+PioIntrStatusEnable = _union_by_suffix("PIO_INTR_STATUS_ENABLE")
+PioIntrSignalEnable = _union_by_suffix("PIO_INTR_SIGNAL_ENABLE")
+PioIntrForce = _union_by_suffix("PIO_INTR_FORCE")
+DataBufferThldCtrl = _union_by_suffix("DATA_BUFFER_THLD_CTRL", _PIO)
+QueueThldCtrl = _union_by_suffix("QUEUE_THLD_CTRL", _PIO)
+StbyCrControl = _union_by_suffix("STBY_CR_CONTROL")
+StbyCrDeviceAddr = _union_by_suffix("STBY_CR_DEVICE_ADDR")
+TtiDataBufferThldCtrl = _union_by_suffix("DATA_BUFFER_THLD_CTRL", _TTI)
+TtiQueueThldCtrl = _union_by_suffix("QUEUE_THLD_CTRL", _TTI)
+TtiQueueStatus = _union_by_suffix("QUEUE_STATUS", _TTI)
+TtiIntrStatus = _union_by_suffix("INTERRUPT_STATUS", _TTI)
+TtiControl = _union_by_suffix("CONTROL", _TTI, exclude="RESET_CONTROL")
+TtiTargetErrCtrl = _union_by_suffix("TARGET_ERR_CTRL", _TTI)
+
+
+def _bit(union, field):
+    """Bit offset of `field` within a generated register union.
+
+    Derived, never hand-written. The generated map is the only authority for bit
+    positions, and deriving them means a field that is renamed or moved by a
+    regeneration breaks loudly here instead of silently shifting which bit every
+    test masks — the failure mode is a test that still passes while checking the
+    wrong bit. The eight constants below were previously transcribed from
+    target_transaction_interface.rdl; all eight were correct at the time of this
+    change, so this is a rot-proofing change with no behavioural difference.
+    """
+    struct = dict((f[0], f[1]) for f in union._fields_)["f"]
+    offset = 0
+    for entry in struct._fields_:
+        name, width = entry[0], (entry[2] if len(entry) > 2 else None)
+        if name == field:
+            return offset
+        if width is None:
+            raise TypeError(f"{union.__name__}.{name} is not a bit-field")
+        offset += width
+    raise AttributeError(
+        f"{union.__name__}: no bit-field {field!r} in the generated register map"
+    )
+
+
+# TTI Interrupt Status bit positions, resolved from the generated union above.
+TTI_INTR_TX_DATA_THLD_BIT = _bit(TtiIntrStatus, "tx_data_thld_stat")
+TTI_INTR_RX_DATA_THLD_BIT = _bit(TtiIntrStatus, "rx_data_thld_stat")
+TTI_INTR_TX_DESC_THLD_BIT = _bit(TtiIntrStatus, "tx_desc_thld_stat")
+TTI_INTR_RX_DESC_THLD_BIT = _bit(TtiIntrStatus, "rx_desc_thld_stat")
+TTI_INTR_IBI_THLD_BIT = _bit(TtiIntrStatus, "ibi_thld_stat")
+TTI_INTR_IBI_DONE_BIT = _bit(TtiIntrStatus, "ibi_done")
+TTI_INTR_TX_DESC_COMPLETE_BIT = _bit(TtiIntrStatus, "tx_desc_complete")
+
+# TTI Control register bit positions.
+TTI_CTRL_IBI_EN_BIT = _bit(TtiControl, "ibi_en")
+
+# Target error-detection enables (TTI.TARGET_ERR_CTRL). These gate the target's
+# protocol-error checks at the detection source, e.g. te2_err_det_en_i in
+# i3c_target_fsm.sv, so a test that expects an error must enable its class first.
+TTI_ERR_CTRL_TE2_DET_EN_BIT = _bit(TtiTargetErrCtrl, "te2_err_det_en")
+
+
+def build_immediate_write_cmd(data_bytes, dat_idx=0, tid=0):
+    """Build an immediate-write command descriptor (64-bit) -> (cmd_lo, cmd_hi).
+
+    Immediate transfers carry 1-4 data bytes inside the descriptor itself, but still
+    put real data bytes + T-bits on the bus, so they are the cheapest way to drive a
+    data phase without any TX FIFO management.
+
+    Descriptor format (i3c_pkg.sv immediate_data_trans_direct_desc_t):
+      DWORD 0: [31] toc, [30] wroc, [29] rnw, [28:26] mode, [25:23] dtt,
+               [20:16] dev_idx, [15] cp, [14:7] cmd, [6:3] tid, [2:0] attr
+      DWORD 1: data bytes, little-endian ([7:0] = byte 0)
+
+    NOTE: i3c_error_sanity.py carries a local copy of this that predates this helper;
+    new tests should use this one.
+    """
+    dtt = len(data_bytes)
+    attr = 0x1  # ImmediateDataTransfer
+
+    cmd_lo = (
+        (attr << 0) |           # [2:0] attr = 1 (ImmediateDataTransfer)
+        (tid << 3) |            # [6:3] tid
+        (0 << 7) |              # [14:7] cmd (unused for private)
+        (0 << 15) |             # [15] cp = 0 (no command)
+        (dat_idx << 16) |       # [20:16] dev_idx
+        (dtt << 23) |           # [25:23] dtt (number of valid bytes)
+        (0 << 26) |             # [28:26] mode = SDR0
+        (0 << 29) |             # [29] rnw = 0 (write)
+        (1 << 30) |             # [30] wroc = 1 (response on completion)
+        (1 << 31)               # [31] toc = 1 (terminate on completion)
+    )
+
+    cmd_hi = 0
+    for i, byte in enumerate(data_bytes[:4]):
+        cmd_hi |= (byte & 0xFF) << (i * 8)
+
+    return cmd_lo, cmd_hi
 
 
 class I3CHelper:
@@ -147,13 +241,33 @@ class I3CHelper:
         self.dut = dut
         self.log = log or logging.getLogger("i3c_api")
 
-    async def write(self, addr, data):
-        """Write 32-bit value (can pass reg.val from ctypes Union)."""
-        await self.axi.write_dword(addr, data)
+    async def write(self, addr, data, *, expect_resp=AxiResp.OKAY):
+        """Write 32-bit value and require the AXI BRESP to match expect_resp.
 
-    async def read(self, addr):
-        """Read 32-bit value from register."""
-        return await self.axi.read_dword(addr)
+        Uses the response-returning master API (not write_dword), so SLVERR /
+        DECERR cannot silently pass. Pass expect_resp=AxiResp.SLVERR (etc.) for
+        intentional negative-protocol checks.
+        """
+        wresp = await self.axi.write(addr, int(data).to_bytes(4, "little"))
+        if wresp.resp != expect_resp:
+            raise AssertionError(
+                f"AXI write BRESP @0x{addr:X}: got {wresp.resp.name}, "
+                f"expected {expect_resp.name}"
+            )
+
+    async def read(self, addr, *, expect_resp=AxiResp.OKAY):
+        """Read 32-bit value and require the AXI RRESP to match expect_resp.
+
+        Uses the response-returning master API (not read_dword), so SLVERR /
+        DECERR cannot silently pass.
+        """
+        rresp = await self.axi.read(addr, 4)
+        if rresp.resp != expect_resp:
+            raise AssertionError(
+                f"AXI read RRESP @0x{addr:X}: got {rresp.resp.name}, "
+                f"expected {expect_resp.name}"
+            )
+        return int.from_bytes(rresp.data, "little")
 
     async def read_into(self, addr, reg_class):
         """Read register and return as ctypes Union instance for field access."""
@@ -176,6 +290,15 @@ class I3CHelper:
         for _ in range(max_polls):
             reg = await self.read_into(addr, reg_class)
             if getattr(reg.f, field_name):
+                return True, reg
+            await ClockCycles(self.dut.clk, interval)
+        return False, None
+
+    async def poll_field_clear(self, addr, reg_class, field_name, max_polls=10000, interval=10):
+        """Poll until a specific field in a ctypes register is zero."""
+        for _ in range(max_polls):
+            reg = await self.read_into(addr, reg_class)
+            if not getattr(reg.f, field_name):
                 return True, reg
             await ClockCycles(self.dut.clk, interval)
         return False, None
@@ -204,6 +327,36 @@ class I3CController:
         self.rx_thld = 1
         self.bcr_cache = {}  # Store BCR per dat_idx for setmrl
 
+    async def set_iba_include(self, enable=True):
+        """Set HC_CONTROL.IBA_INCLUDE and return the read-back bit.
+
+        Controls whether the I3C Broadcast Address (7'h7E) precedes private transfers.
+        Per HCI v1.2 section 7.4.2 this bit resets to 0, and "if the I3C Broadcast
+        Address is not included for private transfers, then IBIs driven from Target
+        Devices might not win the Arbitration".
+
+        Only an Address Header that follows a START is arbitrable (I3C Basic, rules
+        991-1006), and 7'h7E = 7'b1111110 is deliberately near-maximal, so under
+        open-drain arbitration any Target's own address beats it at the first differing
+        bit. Setting this bit is therefore what makes an IBI's preemption of a private
+        transfer deterministic instead of a race.
+
+        Call AFTER initialize(), which rewrites HC_CONTROL wholesale.
+
+        Returns:
+            int: HC_CONTROL.iba_include as read back.
+        """
+        reg = HcControl()
+        reg.val = await self.h.read(self.base + I3CBASE_HC_CONTROL_REG_ADDR)
+        reg.f.iba_include = 1 if enable else 0
+        await self.h.write(self.base + I3CBASE_HC_CONTROL_REG_ADDR, reg.val)
+
+        back = HcControl()
+        back.val = await self.h.read(self.base + I3CBASE_HC_CONTROL_REG_ADDR)
+        self.h.log.info(
+            f"HC_CONTROL = 0x{back.val:08X} (iba_include={back.f.iba_include})")
+        return back.f.iba_include
+
     async def initialize(self):
         """Full controller init: HC_CONTROL, PIO enable, interrupts, RS=1."""
         # 1. Read queue sizes (optional, for info)
@@ -216,9 +369,11 @@ class I3CController:
         hc_ctrl.f.mode_selector = 1  # PIO mode
         await self.h.write(self.base + I3CBASE_HC_CONTROL_REG_ADDR, hc_ctrl.val)
 
-        # 3. Set Active Controller Mode (ACM_INIT) - required to drive the bus
+        # Active Controller Mode: Table-5 encoding (3); legacy 0b01 won't activate,
+        # so queued CCCs never execute. TARGET_XACT_ENABLE also required.
         stby_cr = StbyCrControl()
-        stby_cr.f.stby_cr_enable_init = 0b01  # ACM_INIT = Active Controller Mode
+        stby_cr.f.stby_cr_enable_init = 3  # MODE_CONTROLLER (Active Controller)
+        stby_cr.f.target_xact_enable = 1
         await self.h.write(self.base + I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR, stby_cr.val)
 
         # 4. Enable PIO interrupts (status enable)
@@ -243,30 +398,32 @@ class I3CController:
         await self.h.write(self.base + PIOCONTROL_PIO_CONTROL_REG_ADDR, pio_ctrl.val)
 
     async def configure_timing_od_i3c(self):
-        """Configure open-drain timing for I3C (hardcoded values)."""
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR, 10)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR, 10)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR, 8)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR, 2)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR, 5)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR, 5)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR, 5)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR, 5)
+        """Program the controller's open-drain bus timing (mirrors upstream boot_init;
+        the OD-specific timings incl. T_HIGH_INIT_OD are needed to drive SCL)."""
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR, 0)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR, 0)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR, 2)
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR, 2)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR, 500)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR, 14)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR, 20)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR, 70)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR, 14)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR, 70)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR, 13)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR, 9)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR, 8)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR, 9)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR, 24)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR, 13)
         # T_AVAL: Bus available time (target waits this before sending IBI)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR, 1000)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR, 333)
         # T_IDLE: Bus idle time
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR, 2000)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR, 66600)
 
     async def configure_timing_pp(self):
-        """Configure push-pull timing (hardcoded values)."""
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_R_PP_REG_REG_ADDR, 1)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_F_PP_REG_REG_ADDR, 1)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_PP_REG_REG_ADDR, 3)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_PP_REG_REG_ADDR, 3)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_PP_REG_REG_ADDR, 1)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_PP_REG_REG_ADDR, 1)
+        """No-op: upstream core dropped the dedicated PP timing registers (kept for
+        call-site compatibility; PP timing derives from the generic T_HIGH/T_LOW)."""
+        return
 
     async def configure_thresholds(self, tx_buf=1, tx_start=0, rx_buf=1, rx_start=0,
                                    cmd_empty_buf=1, resp_buf=1):
@@ -361,9 +518,11 @@ class I3CController:
         """
         bytes_per_entry = 4
         all_data = []
+        ibi_id = 0
+        max_status_descriptors = 64
 
         # Loop reading IBI status descriptors until last_status is set
-        while True:
+        for status_idx in range(1, max_status_descriptors + 1):
             # Read IBI status descriptor
             ibi_status = await self.h.read(self.base + PIOCONTROL_IBI_PORT_REG_ADDR)
 
@@ -399,6 +558,11 @@ class I3CController:
             # Exit loop if this is the last status descriptor
             if last_status:
                 break
+        else:
+            self.h.log.error(
+                f"read_ibi: timeout — last_status never set after {max_status_descriptors} "
+                f"descriptors (bytes_so_far={len(all_data)})")
+            return False, ibi_id, 0, []
 
         # For RegularIbi (status_type=0), first byte is MDB
         if len(all_data) > 0:
@@ -412,12 +576,36 @@ class I3CController:
                          f"payload={[f'0x{b:02X}' for b in payload_bytes]}")
         return True, ibi_id, mdb, payload_bytes
 
-    async def set_dat_entry(self, idx, static_addr, dynamic_addr):
-        """Write DAT entry for device address table."""
+    async def set_dat_entry(self, idx, static_addr, dynamic_addr, ibi_payload=False):
+        """Write DAT entry for device address table.
+
+        ibi_payload: set the DAT entry's IBI Payload bit (dat_entry_t.ibi_payload,
+        bit 12 per controller_pkg.sv). The controller aborts an inbound IBI unless
+        this bit is set for the target (ibi_abort = ibi_reject | ~ibi_payload), so
+        targets whose BCR[2]=1 must have it programmed to receive IBI MDB/payload.
+        """
         dat_lo = (static_addr & 0x7F) | ((dynamic_addr & 0x7F) << 16)
+        if ibi_payload:
+            dat_lo |= (1 << 12)
         dat_hi = 0
         await self.h.write(self.base + DAT_MEM_BASE_ADDR + idx * 8, dat_lo)
         await self.h.write(self.base + DAT_MEM_BASE_ADDR + idx * 8 + 4, dat_hi)
+
+    async def configure_target_ibi(self, dat_idx, static_addr, dynamic_addr):
+        """Program the DAT entry's IBI-payload policy from the target's BCR[2].
+
+        Call after the target's dynamic address is assigned (GETBCR must succeed).
+        The controller aborts an inbound IBI unless DAT.ibi_payload is set
+        (ibi_abort = ibi_reject | ~ibi_payload), so a target whose BCR[2]=1 must
+        have it programmed to receive the IBI MDB/payload. Returns the bit set.
+        """
+        ok, bcr = await self.getbcr(dat_idx=dat_idx)
+        ibi_payload = bool(ok and ((bcr >> 2) & 0x1))
+        await self.set_dat_entry(dat_idx, static_addr, dynamic_addr,
+                                 ibi_payload=ibi_payload)
+        self.h.log.info(f"configure_target_ibi: dat[{dat_idx}] bcr=0x{bcr:02X} "
+                        f"-> ibi_payload={int(ibi_payload)}")
+        return ibi_payload
 
     async def send_setdasa(self, static_addr, dynamic_addr, dat_idx=0):
         """Send SETDASA CCC to assign dynamic address. Returns (success, response)."""
@@ -438,7 +626,8 @@ class I3CController:
             return err == 0, resp
         return False, 0
 
-    async def private_write(self, data_bytes, target, dat_idx=0, bytes_per_entry=4):
+    async def private_write(self, data_bytes, target, dat_idx=0, bytes_per_entry=4,
+                            expect_error=False):
         """
         Private write with interleaved target RX drain.
         Returns (success, response, rx_data).
@@ -448,6 +637,10 @@ class I3CController:
             target: I3CTarget instance
             dat_idx: DAT index for target
             bytes_per_entry: Bytes per FIFO entry (default 4, matches TtiRxDataWidth=32)
+            expect_error: If True, a non-zero controller err_status is logged at INFO
+                (expected negative path) instead of ERROR, so TTEM fail patterns do not
+                trip while the caller asserts the failure. Timeouts / length mismatches
+                always log ERROR.
         """
         data_len = len(data_bytes)
 
@@ -470,7 +663,8 @@ class I3CController:
             self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
             PioIntrStatus, 'cmd_queue_ready_stat')
         if not ok:
-            self.h.log.warning("private_write: timeout waiting for command queue ready")
+            self.h.log.error("private_write: timeout waiting for command queue ready")
+            return False, 0, []
 
         # Issue command (see i3c_pkg.sv for descriptor format):
         cmd_lo = (0x0 << 0) | (dat_idx << 16) | (1 << 30) | (1 << 31)
@@ -482,12 +676,11 @@ class I3CController:
         bytes_written = 0
         bytes_read = 0
         rx_data = []
-        loop_count = 0
 
         # Loop until controller response is ready
         # During the loop: write TX data and drain target RX data when threshold interrupts fire
-        while True:
-            loop_count += 1
+        max_loops = 10000
+        for loop_count in range(1, max_loops + 1):
             if loop_count % 100 == 0:
                 self.h.log.debug(f"private_write: loop {loop_count}, written={bytes_written}/{data_len}, read={bytes_read}/{data_len} "
                                  f"rx_data={len(rx_data)}")
@@ -512,16 +705,25 @@ class I3CController:
             # Drain target RX FIFO when TTI_RX_DATA_THLD_STAT fires naturally
             tgt_status = await self.h.read(target.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
             if tgt_status & TTI_RX_DATA_THLD_STAT:
-                # Read rx_entries_per_interrupt entries
+                # Read up to threshold entries, but never more bytes than still expected
                 for entry_idx in range(rx_entries_per_interrupt):
+                    if bytes_read >= data_len:
+                        break
                     word = await self.h.read(target.base + I3C_EC_TTI_RX_DATA_PORT_REG_ADDR)
-                    unpacked = self.h.unpack_bytes(word, bytes_per_entry)
+                    bytes_to_take = min(bytes_per_entry, data_len - bytes_read)
+                    unpacked = self.h.unpack_bytes(word, bytes_to_take)
                     self.h.log.debug(f"private_write: RX entry[{bytes_read//4 + entry_idx}] word=0x{word:08X} -> {[f'0x{b:02X}' for b in unpacked]}")
                     rx_data.extend(unpacked)
-                bytes_read += rx_bytes_per_interrupt
-                self.h.log.debug(f"private_write: drained {rx_bytes_per_interrupt} bytes from target RX, total={len(rx_data)}")
+                    bytes_read += bytes_to_take
+                self.h.log.debug(f"private_write: drained target RX, total={len(rx_data)}")
 
             await ClockCycles(self.h.dut.clk, 10)
+        else:
+            self.h.log.error(
+                f"private_write: timeout waiting for resp_ready "
+                f"(loops={max_loops}, written={bytes_written}/{data_len}, "
+                f"read={bytes_read}/{data_len}, rx_len={len(rx_data)})")
+            return False, 0, []
 
         # Read controller response descriptor
         resp = await self.h.read(self.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
@@ -531,22 +733,28 @@ class I3CController:
 
         # Check for errors
         if err_status != 0:
-            self.h.log.error(f"private_write: transfer error, err_status={err_status}")
+            msg = f"private_write: transfer error, err_status={err_status}"
+            if expect_error:
+                self.h.log.info(msg + " (expected)")
+            else:
+                self.h.log.error(msg)
             return False, resp, rx_data
 
-        # Validate resp_data_length is 0 (all bytes have been recieved)
+        # Validate resp_data_length is 0 (all bytes have been received)
         if resp_data_length != 0:
-            self.h.log.warning(f"private_write: response descriptor data_length is not 0. This means you have not recieved all bytes")
+            self.h.log.error(
+                f"private_write: response descriptor data_length={resp_data_length} "
+                f"(expected 0 — not all bytes received)")
+            return False, resp, rx_data
 
-        # Wait for target RX descriptor to be ready (RX_DESC_THLD_STAT)
-        TTI_RX_DESC_THLD_STAT = (1 << TTI_INTR_RX_DESC_THLD_BIT)
-        for _ in range(1000):
-            tgt_status = await self.h.read(target.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
-            if tgt_status & TTI_RX_DESC_THLD_STAT:
-                break
-            await ClockCycles(self.h.dut.clk, 10)
-        else:
-            self.h.log.warning("private_write: timeout waiting for target RX descriptor")
+        # Wait for target RX descriptor to be posted (QUEUE_STATUS, not THLD interrupt —
+        # same FW-owns-queue model as TX data; THLD_STAT is not a reliable ready signal).
+        ok, _ = await self.h.poll_field_clear(
+            target.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
+            TtiQueueStatus, 'rx_desc_queue_empty', max_polls=1000, interval=10)
+        if not ok:
+            self.h.log.error("private_write: timeout waiting for target RX descriptor")
+            return False, resp, rx_data
 
         # Read target RX descriptor (format: {rx_error[31:20], reserved[19:16], byte_counter[15:0]})
         tgt_rx_desc = await self.h.read(target.base + I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR)
@@ -556,10 +764,14 @@ class I3CController:
                          f"data_length={tgt_rx_data_length}, error={tgt_rx_error}")
 
         if tgt_rx_error != 0:
-            self.h.log.warning(f"private_write: target RX descriptor reports error={tgt_rx_error}")
+            self.h.log.error(f"private_write: target RX descriptor reports error={tgt_rx_error}")
+            return False, resp, rx_data
 
         if tgt_rx_data_length != data_len:
-            self.h.log.error(f"private_write: read {tgt_rx_data_length} bytes, but needed to read {data_len} bytes")
+            self.h.log.error(
+                f"private_write: target RX data_length={tgt_rx_data_length}, "
+                f"expected {data_len}")
+            return False, resp, rx_data
 
         # Drain any remaining bytes not read during threshold interrupts (I3C HCI 6.8.1)
         remaining_bytes = tgt_rx_data_length - bytes_read
@@ -576,9 +788,15 @@ class I3CController:
                 drain_entry_idx += 1
             self.h.log.debug(f"private_write: final rx_data length={len(rx_data)}")
 
-        return True, resp, rx_data[:data_len]
+        if len(rx_data) != data_len:
+            self.h.log.error(
+                f"private_write: drained payload length={len(rx_data)} != expected {data_len}")
+            return False, resp, rx_data
 
-    async def private_read(self, target, tx_data, dat_idx=0, bytes_per_entry=4):
+        return True, resp, rx_data
+
+    async def private_read(self, target, tx_data, dat_idx=0, bytes_per_entry=4,
+                           expect_error=False):
         """
         Private read with interleaved target TX fill and controller RX drain.
         Returns (success, response, rx_data).
@@ -588,6 +806,8 @@ class I3CController:
             tx_data: Data for target to transmit
             dat_idx: DAT index for target
             bytes_per_entry: Bytes per FIFO entry (default 4)
+            expect_error: If True, a non-zero controller err_status / early response is
+                logged at INFO (expected negative path) instead of ERROR.
         """
         data_len = len(tx_data)
 
@@ -606,27 +826,22 @@ class I3CController:
                          f"ctrl_rx_thld={rx_bytes_per_interrupt} bytes ({rx_entries_per_interrupt} entries), "
                          f"tgt_tx_thld={tx_bytes_per_interrupt} bytes ({tx_entries_per_interrupt} entries)")
 
-        # Issue read command FIRST (before filling target TX)
-        cmd_lo = (0x0 << 0) | (dat_idx << 16) | (1 << 29) | (1 << 30) | (1 << 31)  # rnw=1
-        cmd_hi = data_len << 16
-        await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-        await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
-        self.h.log.debug(f"private_read: command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})")
-
         bytes_written = 0  # bytes written to target TX FIFO
         bytes_read = 0     # bytes read from controller RX FIFO
         rx_data = []
-        loop_count = 0
 
-        # Wait for target TX descriptor queue to have space
-        TTI_TX_DESC_THLD_STAT = (1 << TTI_INTR_TX_DESC_THLD_BIT)
-        for _ in range(1000):
-            tgt_status = await self.h.read(target.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
-            if tgt_status & TTI_TX_DESC_THLD_STAT:
-                break
-            await ClockCycles(self.h.dut.clk, 10)
-        else:
-            self.h.log.warning("private_read: timeout waiting for TX descriptor queue ready")
+        # Arm the target TX (descriptor + first chunk) BEFORE issuing the read: the
+        # target NACKs a read with an empty TX queue (no clock-stretch), and the
+        # controller treats that NACK as terminal -> TX_DESC_COMPLETE never fires.
+
+        # Wait for target TX descriptor queue to have space via QUEUE_STATUS
+        # (not TX_DESC_THLD_STAT — that interrupt is not a reliable ready signal here).
+        ok, _ = await self.h.poll_field_clear(
+            target.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
+            TtiQueueStatus, 'tx_desc_queue_full', max_polls=1000, interval=10)
+        if not ok:
+            self.h.log.error("private_read: timeout waiting for TX descriptor queue space")
+            return False, 0, []
 
         # Write TX descriptor to target - tells target how many bytes to send
         # Format: byte_count in upper 16 bits
@@ -634,9 +849,33 @@ class I3CController:
         await self.h.write(target.base + I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, tx_desc)
         self.h.log.debug(f"private_read: wrote TX descriptor 0x{tx_desc:08X} (byte_count={data_len})")
 
-        # Main loop - wait for target TX_DESC_COMPLETE
-        while True:
-            loop_count += 1
+        # Pre-fill the target TX queue up to the WHOLE message or TX_DATA_QUEUE_FULL
+        # BEFORE issuing the read command. The target NACKs a read until the message is
+        # startable (whole-resident, or queue at the streaming start-threshold for
+        # messages larger than the queue), and this block-level API does not retry on
+        # NACK (chiplet fw does), so arming must win the race deterministically -- the
+        # old tiny threshold-sized prefill only worked by racing the address phase.
+        if data_len > 0:
+            while bytes_written < data_len:
+                qs = await self.h.read_into(
+                    target.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
+                if qs.f.tx_data_queue_full:
+                    break          # queue full: >capacity message streams the rest below
+                word = self.h.pack_bytes(tx_data[bytes_written:bytes_written + bytes_per_entry])
+                await self.h.write(target.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
+                bytes_written += min(bytes_per_entry, data_len - bytes_written)
+            self.h.log.debug(f"private_read: pre-filled {bytes_written}/{data_len} bytes to target TX")
+
+        # Issue the read command AFTER the target is armed
+        cmd_lo = (0x0 << 0) | (dat_idx << 16) | (1 << 29) | (1 << 30) | (1 << 31)  # rnw=1
+        cmd_hi = data_len << 16
+        await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+        await self.h.write(self.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+        self.h.log.debug(f"private_read: command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})")
+
+        # Main loop - wait for target TX_DESC_COMPLETE (bounded; do not rely on module timeout)
+        max_loops = 10000
+        for loop_count in range(1, max_loops + 1):
             if loop_count % 100 == 0:
                 self.h.log.debug(f"private_read: loop {loop_count}, written={bytes_written}/{data_len}, "
                                  f"read={bytes_read}/{data_len}")
@@ -648,15 +887,18 @@ class I3CController:
                                  f"bytes_read={bytes_read}")
                 break
 
-            # Fill target TX FIFO when TX_DATA_THLD_STAT fires
-            if bytes_written < data_len and (tgt_status & TTI_TX_DATA_THLD_STAT):
-                remaining_tx = data_len - bytes_written
-                chunk = min(tx_bytes_per_interrupt, remaining_tx)
-                for i in range(0, chunk, bytes_per_entry):
-                    word = self.h.pack_bytes(tx_data[bytes_written + i:bytes_written + i + bytes_per_entry])
-                    await self.h.write(target.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
-                bytes_written += chunk
-                self.h.log.debug(f"private_read: wrote {chunk} bytes to target TX, total={bytes_written}/{data_len}")
+            # Top up target TX by POLLING QUEUE_STATUS.tx_data_queue_full
+            # instead of waiting for TX_DATA_THLD_STAT, which this core hardwires to 0
+            # (tti.sv:273-274, "FW owns this queue"). FW-owns-queue model => poll, don't
+            # wait for the (unimplemented) threshold interrupt.
+            while bytes_written < data_len:
+                qs = await self.h.read_into(
+                    target.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
+                if qs.f.tx_data_queue_full:
+                    break
+                _word = self.h.pack_bytes(tx_data[bytes_written:bytes_written + bytes_per_entry])
+                await self.h.write(target.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, _word)
+                bytes_written += bytes_per_entry
 
             # Drain controller RX FIFO when RX_THLD_STAT fires
             ctrl_status = await self.h.read_into(
@@ -665,22 +907,43 @@ class I3CController:
                 self.h.log.debug(f"private_read: ctrl_status raw=0x{ctrl_status.val:08X}")
 
                 for entry_idx in range(rx_entries_per_interrupt):
+                    if bytes_read >= data_len:
+                        break
                     word = await self.h.read(self.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
-                    unpacked = self.h.unpack_bytes(word, bytes_per_entry)
+                    bytes_to_take = min(bytes_per_entry, data_len - bytes_read)
+                    unpacked = self.h.unpack_bytes(word, bytes_to_take)
                     self.h.log.debug(f"private_read: RX entry[{bytes_read//4 + entry_idx}] word=0x{word:08X} -> "
                                      f"{[f'0x{b:02X}' for b in unpacked]}")
                     rx_data.extend(unpacked)
-                bytes_read += rx_bytes_per_interrupt
-                self.h.log.debug(f"private_read: drained {rx_bytes_per_interrupt} bytes from controller RX, "
-                                 f"total={bytes_read}")
+                    bytes_read += bytes_to_take
+                self.h.log.debug(f"private_read: drained controller RX, total={bytes_read}")
+
+            # Fail fast: a terminal controller response (e.g. NACK) posts resp_ready
+            # while TX_DESC_COMPLETE never fires. Do not fall through to a green return.
+            if ctrl_status.f.resp_ready_stat:
+                resp = await self.h.read(self.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+                err_status = (resp >> 28) & 0xF
+                msg = ("private_read: controller posted response before "
+                       f"target TX_DESC_COMPLETE (resp=0x{resp:08X}, err={err_status})")
+                if expect_error:
+                    self.h.log.info(msg + " (expected)")
+                else:
+                    self.h.log.error(msg)
+                return False, resp, rx_data
 
             await ClockCycles(self.h.dut.clk, 10)
+        else:
+            self.h.log.error(
+                f"private_read: timeout waiting for TX_DESC_COMPLETE "
+                f"(loops={max_loops}, written={bytes_written}/{data_len}, "
+                f"read={bytes_read}/{data_len})")
+            return False, 0, []
 
         # Wait for controller response descriptor
         ok, _ = await self.h.poll_field(
             self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, 'resp_ready_stat')
         if not ok:
-            self.h.log.warning("private_read: timeout waiting for controller response")
+            self.h.log.error("private_read: timeout waiting for controller response")
             return False, 0, []
 
         # Read and validate controller response
@@ -690,12 +953,18 @@ class I3CController:
         self.h.log.debug(f"private_read: response=0x{resp:08X}, data_length={resp_data_length}, err={err_status}")
 
         if err_status != 0:
-            self.h.log.error(f"private_read: transfer error, err_status={err_status}")
+            msg = f"private_read: transfer error, err_status={err_status}"
+            if expect_error:
+                self.h.log.info(msg + " (expected)")
+            else:
+                self.h.log.error(msg)
             return False, resp, rx_data
 
         # For private_read, DATA_LENGTH = bytes received (should match data_len)
         if resp_data_length != data_len:
-            self.h.log.warning(f"private_read: DATA_LENGTH={resp_data_length} != expected {data_len}")
+            self.h.log.error(
+                f"private_read: DATA_LENGTH={resp_data_length} != expected {data_len}")
+            return False, resp, rx_data
 
         # Drain remaining bytes not read during threshold interrupts
         remaining_bytes = resp_data_length - bytes_read
@@ -713,7 +982,12 @@ class I3CController:
                 drain_entry_idx += 1
             self.h.log.debug(f"private_read: final rx_data length={len(rx_data)}")
 
-        return True, resp, rx_data[:data_len]
+        if len(rx_data) != data_len:
+            self.h.log.error(
+                f"private_read: drained payload length={len(rx_data)} != expected {data_len}")
+            return False, resp, rx_data
+
+        return True, resp, rx_data
 
     async def get_ccc(self, ccc_code, max_data_len, dat_idx=0):
         """
@@ -737,7 +1011,8 @@ class I3CController:
             self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
             PioIntrStatus, 'cmd_queue_ready_stat')
         if not ok:
-            self.h.log.warning("get_ccc: timeout waiting for command queue ready")
+            self.h.log.error("get_ccc: timeout waiting for command queue ready")
+            return False, []
 
         # Build command descriptor for CCC read:
         # attr=0 (RegularTransfer), cp=1 (command present), rnw=1 (read)
@@ -870,7 +1145,7 @@ class I3CController:
             self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
             PioIntrStatus, 'cmd_queue_ready_stat')
         if not ok:
-            self.h.log.warning("set_ccc: timeout waiting for command queue ready")
+            self.h.log.error("set_ccc: timeout waiting for command queue ready")
             return False, 0
 
         if use_immediate:
@@ -915,7 +1190,8 @@ class I3CController:
                 self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
                 PioIntrStatus, 'tx_thld_stat')
             if not ok:
-                self.h.log.warning("set_ccc: timeout waiting for tx_thld_stat")
+                self.h.log.error("set_ccc: timeout waiting for tx_thld_stat")
+                return False, 0
 
             # Push data to TX FIFO
             bytes_per_entry = 4
@@ -943,6 +1219,39 @@ class I3CController:
             return False, resp
 
         return True, resp
+
+    async def broadcast_set_ccc(self, ccc_code, data_bytes=None):
+        """
+        Send a Broadcast CCC SET (MIPI I3C Basic: Command Codes 0x00–0x7F).
+
+        HCI framing uses an Immediate/Regular Transfer Command with CP=1.
+        DEV_INDEX is unused for Broadcast CCCs and is forced to 0
+        (MIPI I3C HCI §6.7 / §6.3). The controller selects Broadcast vs Direct
+        framing from CCC bit7 (0 = Broadcast).
+
+        Args:
+            ccc_code: Broadcast CCC opcode (must be < 0x80), e.g. 0x00 ENEC
+            data_bytes: Optional defining/data bytes (None or [] for no payload)
+
+        Returns:
+            (success, response) tuple
+        """
+        if data_bytes is None:
+            data_bytes = []
+        if ccc_code & 0x80:
+            raise ValueError(
+                f"broadcast_set_ccc: 0x{ccc_code:02X} is a Direct CCC "
+                f"(bit7=1); use set_ccc()/rstact() instead")
+        return await self.set_ccc(ccc_code, data_bytes, dat_idx=0)
+
+    async def send_rstdaa(self):
+        """
+        Broadcast RSTDAA (0x06) — clear Dynamic Address on all Targets.
+
+        Returns:
+            (success, response) tuple
+        """
+        return await self.broadcast_set_ccc(CCC_RSTDAA, [])
 
     async def setmwl(self, mwl, dat_idx=0):
         """
@@ -1011,7 +1320,7 @@ class I3CController:
             self.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
             PioIntrStatus, 'cmd_queue_ready_stat')
         if not ok:
-            self.h.log.warning("rstact: timeout waiting for command queue ready")
+            self.h.log.error("rstact: timeout waiting for command queue ready")
             return False, 0
 
         # Immediate descriptor with defining byte:
@@ -1064,6 +1373,12 @@ class I3CTarget:
 
     async def initialize(self, static_addr):
         """Target init: set static addr, enable SETDASA and private xact using ctypes."""
+        # Target PHY/ACK path is gated on HC_CONTROL.BUS_ENABLE (configuration.sv
+        # phy_en); without it the target ignores the bus and NACKs the address header.
+        hc_ctrl = HcControl()
+        hc_ctrl.f.bus_enable = 1
+        await self.h.write(self.base + I3CBASE_HC_CONTROL_REG_ADDR, hc_ctrl.val)
+
         # Set STBY_CR_DEVICE_ADDR with static address valid
         addr_reg = StbyCrDeviceAddr()
         addr_reg.f.static_addr = static_addr
@@ -1091,30 +1406,32 @@ class I3CTarget:
         await self.h.write(self.base + I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR, tti_intr_en)
 
     async def configure_timing_od_i3c(self):
-        """Configure open-drain timing for I3C target (same as controller)."""
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR, 10)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR, 10)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR, 8)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR, 2)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR, 5)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR, 5)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR, 5)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR, 5)
+        """Program the target's open-drain bus timing (must match the controller's;
+        without the OD edge/START-STOP timings the target mis-times its ACK/SDA)."""
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR, 0)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR, 0)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR, 2)
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR, 2)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR, 500)
-        # T_AVAL: Bus available time (target waits this before sending IBI)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR, 1000)
-        # T_IDLE: Bus idle time
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR, 2000)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR, 14)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_REG_ADDR, 20)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_REG_ADDR, 70)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR, 14)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_OD_REG_REG_ADDR, 70)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR, 13)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR, 9)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR, 8)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_REG_ADDR, 9)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_DS_OD_REG_REG_ADDR, 24)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR, 13)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR, 333)
+        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_IDLE_REG_REG_ADDR, 66600)
 
     async def configure_timing_pp(self):
-        """Configure push-pull timing for I3C target (same as controller)."""
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_R_PP_REG_REG_ADDR, 1)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_F_PP_REG_REG_ADDR, 1)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_PP_REG_REG_ADDR, 3)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_PP_REG_REG_ADDR, 3)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_PP_REG_REG_ADDR, 1)
-        await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_PP_REG_REG_ADDR, 1)
+        """No-op: the upstream core dropped the dedicated PP timing registers.
+
+        Kept for call-site compatibility (see I3CController.configure_timing_pp).
+        """
+        return
 
     async def configure_thresholds(self, tx_buf=1, tx_start=0, rx_buf=1, rx_start=0,
                                    tx_desc=1, rx_desc=1):
@@ -1144,6 +1461,12 @@ class I3CTarget:
         """Enable IBI (In-Band Interrupt) mode on target.
 
         Sets TTI_CONTROL.IBI_EN bit to enable IBI transmission capability.
+
+        NOTE: IBI_EN is set at RESET -- TTI_CONTROL's generated reset value is
+        0x1400, i.e. ibi_en (bit 12) AND hj_en (bit 10) are both already 1. So this
+        call is normally a no-op, and *omitting* it does NOT disable IBI generation.
+        A test that needs IBI generation off must call disable_ibi_mode() and verify
+        the read-back; see i3c_ibi_nack_disabled.
         """
         # Read TTI_CONTROL register
         tti_ctrl_val = await self.h.read(self.base + I3C_EC_TTI_CONTROL_REG_ADDR)
@@ -1154,6 +1477,28 @@ class I3CTarget:
 
         await self.h.write(self.base + I3C_EC_TTI_CONTROL_REG_ADDR, tti_ctrl_val)
         self.h.log.info("Target IBI mode enabled")
+
+    async def disable_ibi_mode(self):
+        """Disable IBI generation on the target and return the read-back ibi_en bit.
+
+        Clears TTI_CONTROL.IBI_EN. Needed because that bit is SET at reset
+        (TTI_CONTROL reset value 0x1400), so simply not calling enable_ibi_mode()
+        leaves IBI generation ENABLED. The RTL gates transmission on this bit
+        (i3c_target_fsm.sv: ibi_pending = ibi_byte_valid_i && ibi_enable_i && ...).
+
+        Returns:
+            int: TTI_CONTROL.ibi_en as read back, so the caller can assert it is 0.
+        """
+        IBI_EN_BIT = (1 << TTI_CTRL_IBI_EN_BIT)
+        tti_ctrl_val = await self.h.read(self.base + I3C_EC_TTI_CONTROL_REG_ADDR)
+        await self.h.write(self.base + I3C_EC_TTI_CONTROL_REG_ADDR,
+                           tti_ctrl_val & ~IBI_EN_BIT)
+
+        readback = await self.h.read(self.base + I3C_EC_TTI_CONTROL_REG_ADDR)
+        ibi_en = (readback >> TTI_CTRL_IBI_EN_BIT) & 0x1
+        self.h.log.info(
+            f"Target IBI mode disabled: TTI_CONTROL=0x{readback:08X}, ibi_en={ibi_en}")
+        return ibi_en
 
     async def write_ibi(self, mdb, payload_bytes):
         """Write IBI descriptor and payload to target's IBI queue.
@@ -1178,15 +1523,14 @@ class I3CTarget:
 
         self.h.log.debug(f"write_ibi: mdb=0x{mdb:02X}, payload_len={payload_len}, header=0x{ibi_header:08X}")
 
-        # Wait for IBI queue to have space (check TTI_IBI_THLD_STAT)
-        TTI_IBI_THLD_STAT = (1 << TTI_INTR_IBI_THLD_BIT)
-        for _ in range(1000):
-            tgt_status = await self.h.read(self.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
-            if tgt_status & TTI_IBI_THLD_STAT:
-                break
-            await ClockCycles(self.h.dut.clk, 10)
-        else:
-            self.h.log.warning("write_ibi: timeout waiting for IBI queue threshold")
+        # Wait for IBI queue to have space via QUEUE_STATUS (not IBI_THLD_STAT —
+        # that interrupt is not a reliable ready signal on this core).
+        ok, _ = await self.h.poll_field_clear(
+            self.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
+            TtiQueueStatus, 'ibi_queue_full', max_polls=1000, interval=10)
+        if not ok:
+            self.h.log.error("write_ibi: timeout waiting for IBI queue space")
+            return False
 
         # Write IBI descriptor header
         await self.h.write(self.base + I3C_EC_TTI_IBI_PORT_REG_ADDR, ibi_header)
@@ -1226,6 +1570,9 @@ class I3CTarget:
                 return True, last_ibi_status
             await ClockCycles(self.h.dut.clk, interval)
 
+        self.h.log.error(
+            f"wait_ibi_done: timeout after {max_polls} polls "
+            f"(interval={interval} cycles)")
         return False, 0
 
     async def wait_dynamic_addr(self, max_polls=1000):
@@ -1237,3 +1584,111 @@ class I3CTarget:
                 return True, addr_reg.f.dynamic_addr
             await ClockCycles(self.h.dut.clk, 10)
         return False, 0
+
+    async def wait_dynamic_addr_cleared(self, max_polls=1000):
+        """Wait until DYNAMIC_ADDR_VALID clears (e.g. after Broadcast RSTDAA)."""
+        for _ in range(max_polls):
+            addr_reg = await self.h.read_into(
+                self.base + I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR, StbyCrDeviceAddr)
+            if not addr_reg.f.dynamic_addr_valid:
+                return True
+            await ClockCycles(self.h.dut.clk, 10)
+        self.h.log.error(
+            f"wait_dynamic_addr_cleared: DYNAMIC_ADDR_VALID still set "
+            f"after {max_polls} polls")
+        return False
+
+
+# ===========================================================================
+# ADDITIVE-ONLY SECTION -- DV-CARD I3C_CTRL_017 (i3c_ctrl_intr_threshold_test)
+# ===========================================================================
+# Nothing above this line is modified, renamed or re-ordered: 30 other cocotb
+# modules import from this file. This block only ADDS register offsets, ctypes
+# unions and derived bit positions for the four-register interrupt model and the
+# threshold/queue registers that DV-CARD I3C_CTRL_017 exercises.
+#
+# Every offset is imported by symbol from the generated map (never hand-copied),
+# same rot-proofing rule as the block at the top of this file. The values in the
+# generated map at the time of this change are:
+#   INTR_STATUS         BASE + 0x20   (I3CBASE_INTR_STATUS_REG_ADDR        = 0x020)
+#   INTR_STATUS_ENABLE  BASE + 0x24   (I3CBASE_INTR_STATUS_ENABLE_REG_ADDR = 0x024)
+#   INTR_SIGNAL_ENABLE  BASE + 0x28   (I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR = 0x028)
+#   INTR_FORCE          BASE + 0x2C   (I3CBASE_INTR_FORCE_REG_ADDR         = 0x02C)
+#   RESET_CONTROL       BASE + 0x10   (queue/FIFO reset, used for cleanup only)
+# and, with PIO_SECTION_OFFSET = 0x80 (BASEREGS parameterisation
+# "PIO_OFFSET_80"), the PIO set that already exists above resolves to
+#   RESPONSE_QUEUE_PORT PIO + 0x04 = 0x084   (PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+#   XFER_DATA_PORT      PIO + 0x08 = 0x088   (PIOCONTROL_TX_DATA_PORT_REG_ADDR /
+#                                             PIOCONTROL_RX_DATA_PORT_REG_ADDR)
+#   QUEUE_SIZE          PIO + 0x18 = 0x098   (PIOCONTROL_QUEUE_SIZE_REG_ADDR)
+#   PIO_INTR_STATUS     PIO + 0x20 = 0x0A0   (PIOCONTROL_PIO_INTR_STATUS_REG_ADDR)
+#   PIO_INTR_STATUS_EN  PIO + 0x24 = 0x0A4
+#   PIO_INTR_SIGNAL_EN  PIO + 0x28 = 0x0A8
+#   PIO_INTR_FORCE      PIO + 0x2C = 0x0AC
+# so no new PIO symbols are needed -- the card's PIO offsets are already here.
+
+I3CBASE_INTR_STATUS_REG_ADDR = _csr.I3CBASE_INTR_STATUS_REG_ADDR
+I3CBASE_INTR_STATUS_ENABLE_REG_ADDR = _csr.I3CBASE_INTR_STATUS_ENABLE_REG_ADDR
+I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR = _csr.I3CBASE_INTR_SIGNAL_ENABLE_REG_ADDR
+I3CBASE_INTR_FORCE_REG_ADDR = _csr.I3CBASE_INTR_FORCE_REG_ADDR
+I3CBASE_RESET_CONTROL_REG_ADDR = _csr.I3CBASE_RESET_CONTROL_REG_ADDR
+PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR = _csr.PIOCONTROL_ALT_QUEUE_SIZE_REG_ADDR
+I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR = _csr.I3C_EC_TTI_DATA_QUEUE_DEPTH_REG_ADDR
+I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR = _csr.I3C_EC_TTI_DESC_QUEUE_DEPTH_REG_ADDR
+
+_BASEREGS = "BASEREGS_"
+
+# INTR_STATUS has no stable name suffix (the generated identifier embeds a hash
+# per field), so resolve it by a substring that is unique across the map.
+IntrStatus = _union_by_contains("_INTR_STATUS_HC_ERR_CMD_SEQ_TIMEOUT_STAT")
+IntrStatusEnable = _union_by_suffix("INTR_STATUS_ENABLE", _BASEREGS)
+IntrSignalEnable = _union_by_suffix("INTR_SIGNAL_ENABLE", _BASEREGS)
+IntrForce = _union_by_suffix("INTR_FORCE", _BASEREGS)
+ResetControl = _union_by_suffix("RESET_CONTROL", _BASEREGS)
+QueueSize = _union_by_suffix("QUEUE_SIZE", _PIO, exclude="ALT_")
+AltQueueSize = _union_by_suffix("ALT_QUEUE_SIZE", _PIO)
+TtiDataQueueDepth = _union_by_suffix("DATA_QUEUE_DEPTH", _TTI)
+TtiDescQueueDepth = _union_by_suffix("DESC_QUEUE_DEPTH", _TTI)
+
+# BASE INTR_STATUS / _ENABLE / _SIGNAL_ENABLE / _FORCE bit positions
+# (HCI 7.4.7 Table 23 .. 7.4.10 Table 26), derived from the generated map so a
+# regeneration that moves a field breaks loudly instead of silently masking the
+# wrong bit.
+HC_INTERNAL_ERR_STAT_BIT = _bit(IntrStatus, "hc_internal_err_stat")
+HC_SEQ_CANCEL_STAT_BIT = _bit(IntrStatus, "hc_seq_cancel_stat")
+HC_WARN_CMD_SEQ_STALL_STAT_BIT = _bit(IntrStatus, "hc_warn_cmd_seq_stall_stat")
+HC_ERR_CMD_SEQ_TIMEOUT_STAT_BIT = _bit(IntrStatus, "hc_err_cmd_seq_timeout_stat")
+SCHED_CMD_MISSED_TICK_STAT_BIT = _bit(IntrStatus, "sched_cmd_missed_tick_stat")
+
+# Ordered (name, bit) pairs for the five general Host Controller interrupt
+# events; the card's decode walk iterates exactly this set.
+HC_INTR_BITS = (
+    ("HC_INTERNAL_ERR_STAT", HC_INTERNAL_ERR_STAT_BIT),
+    ("HC_SEQ_CANCEL_STAT", HC_SEQ_CANCEL_STAT_BIT),
+    ("HC_WARN_CMD_SEQ_STALL_STAT", HC_WARN_CMD_SEQ_STALL_STAT_BIT),
+    ("HC_ERR_CMD_SEQ_TIMEOUT_STAT", HC_ERR_CMD_SEQ_TIMEOUT_STAT_BIT),
+    ("SCHED_CMD_MISSED_TICK_STAT", SCHED_CMD_MISSED_TICK_STAT_BIT),
+)
+# Mask of the R/W bits of INTR_STATUS_ENABLE / INTR_SIGNAL_ENABLE: bits [14:10].
+HC_INTR_RW_MASK = sum(1 << b for _, b in HC_INTR_BITS)
+
+# PIO_INTR_STATUS bit positions (HCI 7.5.9 Table 45), likewise derived.
+PIO_INTR_TX_THLD_BIT = _bit(PioIntrStatus, "tx_thld_stat")
+PIO_INTR_RX_THLD_BIT = _bit(PioIntrStatus, "rx_thld_stat")
+PIO_INTR_IBI_STATUS_THLD_BIT = _bit(PioIntrStatus, "ibi_status_thld_stat")
+PIO_INTR_CMD_QUEUE_READY_BIT = _bit(PioIntrStatus, "cmd_queue_ready_stat")
+PIO_INTR_RESP_READY_BIT = _bit(PioIntrStatus, "resp_ready_stat")
+PIO_INTR_TRANSFER_ABORT_BIT = _bit(PioIntrStatus, "transfer_abort_stat")
+PIO_INTR_TRANSFER_ERR_BIT = _bit(PioIntrStatus, "transfer_err_stat")
+
+# BASE RESET_CONTROL bit positions (queue/FIFO reset; cleanup use only).
+RESET_CTRL_CMD_QUEUE_RST_BIT = _bit(ResetControl, "cmd_queue_rst")
+RESET_CTRL_RESP_QUEUE_RST_BIT = _bit(ResetControl, "resp_queue_rst")
+RESET_CTRL_TX_FIFO_RST_BIT = _bit(ResetControl, "tx_fifo_rst")
+RESET_CTRL_RX_FIFO_RST_BIT = _bit(ResetControl, "rx_fifo_rst")
+
+# Response Descriptor ERR_STATUS field (HCI Table 146 / TCRI 6.4.1 Table 1).
+RESP_ERR_STATUS_SHIFT = 28
+RESP_ERR_STATUS_MASK = 0xF
+RESP_ERR_SUCCESS = 0x0
+RESP_ERR_NACK = 0x5

@@ -26,11 +26,22 @@ N_RANDOM = 4
 async def test_ibi_payload_variants(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
+    # (A)-fix: program the DAT IBI-payload policy from the target's BCR[2], else the
+    # controller aborts inbound IBIs (ibi_abort = ibi_reject | ~ibi_payload).
+    # The returned bit is the programmed policy: if the internal GETBCR failed it is
+    # left clear and every inbound IBI is aborted, so it has to be asserted.
+    ibi_payload_bit = await ctrl.configure_target_ibi(0, 0x10, 0x10)
+    assert ibi_payload_bit, (
+        "DAT ibi_payload bit not set (GETBCR likely failed); the controller would "
+        "abort every inbound IBI"
+    )
     r = RandMgr(name="ibi_payload")           # seed logged; +seed/SEED override
 
     await ctrl.enable_ibi_interrupts(ibi_threshold=1)
     await tgt.enable_ibi_mode()
-    await ctrl.setmrl(0x40, ibi_payload_size=IBI_PAYLOAD_SIZE, dat_idx=0)
+    # This SETMRL programs the IBI payload envelope every iteration below relies on.
+    ok, resp = await ctrl.setmrl(0x40, ibi_payload_size=IBI_PAYLOAD_SIZE, dat_idx=0)
+    assert ok, f"SETMRL(ibi_payload_size=0x{IBI_PAYLOAD_SIZE:02X}) failed resp=0x{resp:08X}"
 
     # directed boundary lengths first, then random ones
     lengths = [0, 1, IBI_PAYLOAD_SIZE] + [r.randint(0, IBI_PAYLOAD_SIZE)
@@ -40,13 +51,27 @@ async def test_ibi_payload_variants(dut):
         mdb = rand_ibi_mdb(r)                  # random MDB (tracked for self-check)
         payload = rand_bytes(r, n)
         tb.log.info(f"IBI mdb=0x{mdb:02X} payload size {n}")
-        await tgt.write_ibi(mdb, payload)
-        await ctrl.wait_ibi_received()
+        assert await tgt.write_ibi(mdb, payload), (
+            f"write_ibi mdb=0x{mdb:02X} len={n} failed (target IBI queue full)"
+        )
+        ok, _reg = await ctrl.wait_ibi_received()
+        assert ok, (
+            f"IBI mdb=0x{mdb:02X} len={n} never reached the controller "
+            f"(ibi_status_thld_stat never set)"
+        )
         ok, ibi_id, got_mdb, got_payload = await ctrl.read_ibi()
         tb.log.info(f"  received ibi_id=0x{ibi_id:02X} mdb=0x{got_mdb:02X} payload={got_payload}")
         assert ok, "IBI read failed"
         assert got_mdb == mdb, f"MDB mismatch: got 0x{got_mdb:02X} != sent 0x{mdb:02X}"
-        await tgt.wait_ibi_done()
+        # read_ibi truncates to the descriptor's data_length, so this compare is exact.
+        # Without it a 0-byte, truncated, or arbitrary payload all passed identically --
+        # which is the property the module docstring claims to verify.
+        assert list(got_payload) == list(payload), (
+            f"IBI payload mismatch at len={n}: got {[f'0x{b:02X}' for b in got_payload]} "
+            f"!= sent {[f'0x{b:02X}' for b in payload]}"
+        )
+        ok, ibi_status = await tgt.wait_ibi_done()
+        assert ok, f"target IBI never completed at len={n} (last status=0x{ibi_status:08X})"
         await ClockCycles(dut.clk, 50)
 
     tb.log.info(f"IBI payload-size variants complete (seed=0x{r.seed:08X})")

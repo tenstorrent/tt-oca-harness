@@ -7,7 +7,7 @@
 
 # C header omits bitfield structs (peakrdl can't represent >64-bit registers);
 # address/mask defines only.
-OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
+OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map I3CCSR oca_i3c_wrap
 
 # The Python header has its own list because the reason above is a peakrdl
 # c-header limitation, not a general one: rdlpyhdr.py drops just the registers it
@@ -22,17 +22,21 @@ OCAH_REG_NO_BITFIELDS_PY ?=
 # the resolved RDL means an overlay variant reusing a canonical top inherits this.
 ocah_reg_is_composite = $(wildcard $(dir $(OCAH_REG_RDL_$(call ocah_reg_key,$(1))))blocks)
 
-# Reserve an address window only: C header, but no SV RTL and no docs.
+# Composite sub-blocks that still get a C header, but no per-sub-block SV RTL
+# or docs. oca_i3c_wrap's RDL is the real vendored I3CCSR map (SMC top expands
+# the HCI fields); its register RTL remains the vendored i3c-core, not regblock.
 OCAH_REG_PLACEHOLDER_BLOCKS ?= oca_i3c_wrap
 # Register RTL authored outside regblock: excluded from SV only, still docs + C header.
 # The vendored OpenTitan blocks (aes/hmac/kmac/otbn/csrng/edn/secure_dma/
 # spi_controller/aon_timer) get their reg RTL from upstream reggen, not peakrdl.
+# I3CCSR is the i3ccore_wrap DV register model: its RTL is the vendored
+# i3c-core I3CCSR.sv, so only the C/Python/address views are generated here.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
-  el2_pic aon_timer dfd smc_cla dma_ctrl
+  el2_pic aon_timer dfd smc_cla dma_ctrl I3CCSR
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
@@ -120,6 +124,15 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   uart_log_engine_wrap \
   uart_wrap
 OCAH_REG_INCDIR_BLOCKS ?= $(sort $(OCAH_REG_CATALOG_SEARCH_BLOCKS) $(foreach b,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(call ocah_reg_name,$(b))))
+
+# Per-block -I additions for the vendored i3c-core MIPI HCI map. Both the
+# standalone I3CCSR top and oca_i3c_wrap `include "registers.rdl"`; put the
+# vendor dir first on each block's path (file-backed EXTRA_SEARCH defaults to
+# the local regs/ dir, which has no registers.rdl of its own).
+OCAH_REG_EXTRA_SEARCH_hw_ip_i3ccore_wrap_regs_I3CCSR += \
+  $(OCAH_ROOT)/vendor/chipsalliance/i3c-core/upstream/src/rdl
+OCAH_REG_EXTRA_SEARCH_hw_ip_i3ccore_wrap_regs_oca_i3c_wrap += \
+  $(OCAH_ROOT)/vendor/chipsalliance/i3c-core/upstream/src/rdl
 
 # Blocks in scope: TARGET=<name> selects one, else all.
 ocah_reg_block_by_name = $(strip $(foreach block,$(OCAH_REG_BLOCKS),$(if $(filter $(1),$(notdir $(block))),$(block))))

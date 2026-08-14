@@ -31,14 +31,22 @@ async def test_setnewda(dut):
     # New dynamic address: legal, non-reserved, and != the SETDASA-assigned one.
     new_dyn = rand_i3c_addr(r, exclude={DEFAULT_DYNAMIC_ADDR})
 
-    # Re-assign dynamic address via SETNEWDA (data = new dynamic addr, left-shifted)
-    ok = await ctrl.set_ccc(SETNEWDA_CCC, [new_dyn << 1], dat_idx=0)
+    # Re-assign dynamic address via SETNEWDA (data = new dynamic addr, left-shifted).
+    # set_ccc returns (success, resp) -- unpack, or `ok` is a truthy tuple for every
+    # outcome including failure.
+    ok, resp = await ctrl.set_ccc(SETNEWDA_CCC, [new_dyn << 1], dat_idx=0)
     tb.log.info(f"SETNEWDA -> 0x{new_dyn:02X} (was 0x{DEFAULT_DYNAMIC_ADDR:02X}) ok={ok}")
+    assert ok, f"SETNEWDA to 0x{new_dyn:02X} failed resp=0x{resp:08X}"
 
     # Update DAT to point at the new dynamic address and verify a transfer
     await ctrl.set_dat_entry(0, DEFAULT_DYNAMIC_ADDR, new_dyn)
     data = rand_bytes(r, rand_len(r, MWL))
     ok, resp, rx = await ctrl.private_write(data, tgt, dat_idx=0)
     tb.log.info(f"Private write on new DA 0x{new_dyn:02X}: {len(data)}B ok={ok}")
+    # The private write is this test's scoreboard: assert both legs.
+    assert ok, f"private write on new DA 0x{new_dyn:02X} failed resp=0x{resp:08X}"
+    assert rx == data, (
+        f"payload mismatch on new DA 0x{new_dyn:02X}: got {rx} != sent {data}"
+    )
 
     tb.log.info(f"SETNEWDA test complete (seed=0x{r.seed:08X})")

@@ -14,7 +14,7 @@ ALL_TEST_MODULES = test_i3ccore i3c_immediate_write_sanity i3c_write_read_sanity
     i3c_threshold_sweep i3c_max_length_transfer i3c_back_to_back i3c_broadcast_ccc i3c_ibi_payload_variants \
     i3c_ibi_nack_disabled i3c_hotjoin i3c_error_parity_inject i3c_error_target_abort i3c_multi_target_dat \
     i3c_multi_instance_indep i3c_axi_protocol i3c_recovery_reset_iface i3c_reset_mid_transaction \
-    i3c_random_ccc_stress i3c_random_transfer_stress
+    i3c_random_ccc_stress i3c_random_transfer_stress i3c_tx_capacity_512
 
 # Optional cocotb X-resolution policy. cocotb raises on reading an X/Z bit by
 # default (good — it surfaces real X-propagation bugs). Opt in to masking with
@@ -39,15 +39,14 @@ ifdef SEED
     export SEED
 endif
 
-# Project root - go up to the repository root
-PROJECT_ROOT := $(shell cd ../../../.. && pwd)
+# Project root: five levels up (hw/ip/i3ccore_wrap/dv/tb -> repo root).
+PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))../../../../..)
 
 # Compilation arguments
-# Include the filelist and testbench
-# Pre-define register-interface assert macros (OPENSOURCE_REG_INTF_ASSERT) before
-# any dependency RTL (e.g. i2c_core.sv) that uses them, to avoid an incdir-ordering
-# collision between the common and register_interface prim_assert flavors.
-COMPILE_ARGS += $(PROJECT_ROOT)/deps/register_interface/include/register_interface_prim_assert.sv
+# Include the filelist and testbench. The vendored register_interface drops the
+# fork's prim_assert collision-avoidance include on purpose (see
+# vendor/pulp-platform/register_interface/Bender.yml), so nothing is pre-included
+# here; the flist carries the assert macros the dependency RTL needs.
 COMPILE_ARGS += -f $(PWD)/i3ccore_filelist.f
 COMPILE_ARGS += $(PWD)/i3c_coverage_if.sv
 COMPILE_ARGS += $(PWD)/tb_i3ccore.sv
@@ -60,9 +59,12 @@ ifeq ($(I3C_COVERAGE),1)
     SIM_ARGS += -cm line+cond+fsm+tgl+branch
 endif
 
-# Debug: use a simple write-forwarding behavioral DAT/DCT RAM instead of prim_ram
-ifeq ($(I3C_BEHAV_DAT_MEM),1)
-    COMPILE_ARGS += +define+I3C_BEHAV_DAT_MEM
+# DAT/DCT memory: the behavioral write-forwarding RAM in tb_i3ccore.sv is the
+# default because i3c-core's memory primitives are not vendored in this tree
+# (see the note in tb_i3ccore.sv). Set I3C_SRAM_DAT_MEM=1 to instantiate a real
+# prim_ram_1p_adv_i3ccore instead, once one is available.
+ifeq ($(I3C_SRAM_DAT_MEM),1)
+    COMPILE_ARGS += +define+I3C_SRAM_DAT_MEM
 endif
 
 # VCS-specific options
@@ -78,20 +80,24 @@ ifeq ($(SIM),vcs)
     COMPILE_ARGS += +lint=PCWM +warn=noCWUC +warn=noUII-L -error:IWNF:1 +lint=TFIPC-L
     COMPILE_ARGS += +incdir+$(PWD)
 
-    # FSDB waveform dumping support
+    # FSDB waveform dumping support. +define+I3C_FSDB is what unlocks the
+    # $fsdbDump* calls in tb_i3ccore.sv, and it is only set where the Verdi PLI
+    # is actually linked: VCS rejects those system tasks at compile time when
+    # novas.tab/pli.a are absent, so an unguarded call breaks every non-WAVES run.
     ifdef WAVES
-        ifdef VERDI_HOME
+        ifndef VERDI_HOME
+            $(warning VERDI_HOME not set - looking for verdi on PATH)
+            VERDI_HOME := $(shell which verdi 2>/dev/null | xargs dirname | xargs dirname 2>/dev/null || echo "")
+            ifneq ($(VERDI_HOME),)
+                $(info Found Verdi at: $(VERDI_HOME))
+            endif
+        endif
+        ifneq ($(VERDI_HOME),)
             COMPILE_ARGS += -P $(VERDI_HOME)/share/PLI/VCS/LINUX64/novas.tab $(VERDI_HOME)/share/PLI/VCS/LINUX64/pli.a
+            COMPILE_ARGS += +define+I3C_FSDB
             SIM_ARGS += +fsdb+delta +vcs+dumparrays
         else
-            $(warning VERDI_HOME not set - FSDB dumping may not work)
-            VERDI_HOME_CANDIDATE := $(shell which verdi 2>/dev/null | xargs dirname | xargs dirname 2>/dev/null || echo "")
-            ifneq ($(VERDI_HOME_CANDIDATE),)
-                VERDI_HOME := $(VERDI_HOME_CANDIDATE)
-                $(info Found Verdi at: $(VERDI_HOME))
-                COMPILE_ARGS += -P $(VERDI_HOME)/share/PLI/VCS/LINUX64/novas.tab $(VERDI_HOME)/share/PLI/VCS/LINUX64/pli.a
-                SIM_ARGS += +fsdb+delta +vcs+dumparrays
-            endif
+            $(warning Verdi not found - FSDB dumping disabled for this build)
         endif
     endif
 endif
@@ -238,21 +244,36 @@ ifdef WAVES
     PLUSARGS += +WAVE_FILE=$(WAVE_FILE)
 endif
 
-# Generate filelist using bender
-# Uses the main project's Bender.yml with smc target which includes i3c-core files
-# Filters out original i3c.sv and i3c_wrapper.sv from i3c-core (replaced by i3ccore_wrap versions)
+# Generate filelist via the repository's own bender wrapper (ocah.mk).
+# The smc target carries the i3c-core sources plus hw/ip/i3ccore_wrap/rtl.
+# Nothing is filtered out: `module i3c` comes from the vendored
+# upstream/src/i3c.sv (AXI mode, selected by I3C_USE_AXI in i3c_defines.svh),
+# which is what rtl/i3c_wrapper.sv instantiates -- it passes AxiDataWidth /
+# AxiUserWidth / AxiIdWidth and drives awuser_i/awid_i, none of which exist on
+# the AXI-Lite-only rtl/i3c.sv. upstream/src/i3c_wrapper.sv is already dropped
+# by exclude_from_upstream in Bender.yml, so it never reaches the flist.
+#
+# Target set = the repo's canonical common set (hw/sys/smc/dv/smc_wrapper_sim_cfg.toml
+# `common_bender_targets`, mirrored by flows/common.mk) plus `smc`. Notably
+# register_interface_l1: the OSS de-fork stopped bundling OpenTitan prim packages
+# inside the register_interface fork, so prim_subreg_pkg/prim_mubi_pkg now come
+# from that target (see vendor/pulp-platform/register_interface/Bender.yml). Without
+# it prim_ram_1p_adv_ext.sv fails with "prim_mubi_pkg is not a package".
+BENDER_TARGETS := \
+	-t tech_cells_generic_exclude_deprecated \
+	-t tech_cells_generic_exclude_tc_sram \
+	-t axi_rtl \
+	-t apb_rtl \
+	-t common_cells_rtl \
+	-t common_cell_sync_shim \
+	-t idma_rtl \
+	-t register_interface_l1 \
+	-t smc
+
 filelist:
 	@echo "Generating i3ccore_filelist.f from project root..."
-	@cd $(PROJECT_ROOT) && source bin/setup_env.sh >/dev/null 2>&1 && \
-		bender script flist-plus \
-			-t smc \
-			-t axi_rtl \
-			-t apb_rtl \
-			-t common_cells_rtl \
-			-t common_cell_sync_shim \
-		| grep -v 'vendor/chipsalliance/i3c-core/upstream/src/i3c\.sv' \
-		| grep -v 'vendor/chipsalliance/i3c-core/upstream/src/i3c_wrapper\.sv' \
-		> $(PWD)/i3ccore_filelist.f
+	@$(MAKE) --no-print-directory -C $(PROJECT_ROOT) generate_filelist \
+		EXTRA_TARGETS="$(BENDER_TARGETS)" FLIST_OUT="$(PWD)/i3ccore_filelist.f"
 	@echo "Generated i3ccore_filelist.f ($$(wc -l < $(PWD)/i3ccore_filelist.f) lines)"
 
 # Open Verdi with waveforms
@@ -287,7 +308,8 @@ help:
 	@echo "I3C Core Wrapper Testbench Makefile"
 	@echo ""
 	@echo "Setup (run once):"
-	@echo "  cd $(PROJECT_ROOT) && source bin/setup_env.sh"
+	@echo "  make -C $(PROJECT_ROOT) regen-regs TARGET=I3CCSR   # generate the register model"
+	@echo "  make filelist                                      # generate i3ccore_filelist.f"
 	@echo ""
 	@echo "Targets:"
 	@echo "  make                       - Run default tests (test_i3ccore) with VCS"
@@ -299,6 +321,9 @@ help:
 	@echo "  make verdi                 - Open Verdi with waveforms"
 	@echo "  make clean                 - Clean generated files"
 	@echo "  make help                  - Show this help"
+	@echo ""
+	@echo "OSS launcher (Verilator default; see ../README.md):"
+	@echo "  python3 tools/dv/run_dv.py --dut i3ccore_wrap --items smoke --tool verilator --stage sim"
 	@echo ""
 	@echo "Variables:"
 	@echo "  SIM            - Simulator (vcs)"

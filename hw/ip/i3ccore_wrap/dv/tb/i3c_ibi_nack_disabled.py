@@ -4,13 +4,43 @@
 """
 I3C IBI when Disabled  (Test Plan #34)
 
-With target IBI generation NOT enabled, confirm the controller does not see a
-spurious IBI (the request should be NACKed / not serviced).
-Compile-only: exact NACK-status assertion confirmed during sim-verify.
+With target IBI generation NOT enabled, a real IBI attempt must not be serviced:
+the controller's PIO_INTR_STATUS.ibi_status_thld_stat has to stay clear.
+
+Two legs, because a negative result is only meaningful against a positive control:
+
+  1. Negative leg  -- target IBI mode left disabled, an IBI descriptor is queued
+     anyway, and the controller must NOT latch an IBI over the observation window.
+  2. Positive control -- target IBI mode is then enabled and the IBI IS serviced.
+     Without this leg a permanently dead IBI path would produce the same clear
+     status as correctly-suppressed IBI generation.
+
+The previous version never queued an IBI at all (it just omitted
+enable_ibi_mode()), so the "NACK" it claimed to check was never requested, and it
+would have passed against RTL in which a disabled target happily transmits IBIs.
+
+IMPORTANT -- why omitting enable_ibi_mode() is not enough: TTI_CONTROL's generated
+reset value is 0x1400, so ibi_en (bit 12) is ALREADY SET out of reset. IBI
+generation must therefore be switched OFF explicitly and the read-back verified,
+or the "disabled" leg is silently running with IBI enabled. (Measured: with ibi_en
+left at its reset value the queued IBI is transmitted and the controller latches
+PIO_INTR_STATUS.ibi_status_thld_stat, exactly as the RTL specifies --
+i3c_target_fsm.sv: ibi_pending = ibi_byte_valid_i && ibi_enable_i && ...)
 """
+import os
+import sys
+
 import cocotb
 from cocotb.triggers import ClockCycles
 from i3c_test_base import make_env, bring_up_and_assign
+from i3c_api import PioIntrStatus
+
+# Authoritative register map (generated) — no hand-copied offsets.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../regs/gen/py'))
+from I3CCSR_reg import PIOCONTROL_PIO_INTR_STATUS_REG_ADDR  # noqa: E402
+
+OBSERVE_CYCLES = 2000       # window the disabled target gets to (not) transmit
+MDB = 0xA5
 
 
 @cocotb.test(timeout_time=2000, timeout_unit='us')
@@ -27,9 +57,48 @@ async def test_ibi_nack_disabled(dut):
     assert ok, f"transfer failed resp=0x{resp:08X}"
     assert rx == data, "data mismatch"
 
-    # No IBI should have been latched; read PIO interrupt status for visibility
-    await ClockCycles(dut.clk, 100)
-    status = await helper.read(0x0A0)
-    tb.log.info(f"PIO_INTR_STATUS (IBI disabled) = 0x{status:08X}")
+    # --- Negative leg: request an IBI with target IBI generation disabled ---
+    # ibi_en is SET at reset (TTI_CONTROL default 0x1400), so it has to be cleared
+    # explicitly; the read-back is asserted so the leg cannot run with IBI enabled.
+    ibi_en = await tgt.disable_ibi_mode()
+    assert ibi_en == 0, (
+        f"TTI_CONTROL.ibi_en read back as {ibi_en} after disable_ibi_mode(); the "
+        f"disabled-IBI premise of this test does not hold"
+    )
 
-    tb.log.info("IBI-disabled test complete")
+    payload = [0x11, 0x22, 0x33, 0x44]
+    assert await tgt.write_ibi(MDB, payload), (
+        "queuing the IBI descriptor failed, so the disabled-IBI property was never "
+        "actually requested"
+    )
+    tb.log.info(
+        f"queued IBI mdb=0x{MDB:02X} with TTI_CONTROL.ibi_en verified 0 by read-back")
+
+    await ClockCycles(dut.clk, OBSERVE_CYCLES)
+    status = await helper.read_into(
+        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+    tb.log.info(f"PIO_INTR_STATUS (IBI disabled) = 0x{status.val:08X}")
+    assert not status.f.ibi_status_thld_stat, (
+        f"spurious IBI latched with target IBI generation disabled: "
+        f"0x{status.val:08X} (ibi_status_thld_stat set)"
+    )
+
+    # --- Positive control: same path, IBI enabled, must now be serviced ---
+    # The DAT ibi_payload policy has to be programmed too, else the controller aborts
+    # inbound IBIs (ibi_abort = ibi_reject | ~ibi_payload) and this control would
+    # "prove" a live path was dead.
+    ibi_payload_bit = await ctrl.configure_target_ibi(0, 0x10, 0x10)
+    assert ibi_payload_bit, "DAT ibi_payload bit not set (GETBCR likely failed)"
+    await tgt.enable_ibi_mode()
+    assert await tgt.write_ibi(MDB, payload), "write_ibi failed on the positive control"
+
+    # Either the descriptor queued above or this one may be the one serviced; the claim
+    # is only that the path CAN deliver an IBI once enabled.
+    ok, _reg = await ctrl.wait_ibi_received()
+    assert ok, (
+        "positive control failed: no IBI reached the controller even with "
+        "TTI_CONTROL.ibi_en set, so the disabled-leg result above proves nothing"
+    )
+    tb.log.info("positive control: IBI serviced once enabled")
+
+    tb.log.info("IBI-disabled test complete (negative leg + positive control)")
