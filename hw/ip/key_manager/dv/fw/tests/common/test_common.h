@@ -588,7 +588,7 @@ static inline int tb_otp_write_sigint(void) {
 
 /**
  * Trigger wipe: ask testbench to assert wipe_state_i for one cycle.
- * Result = 1 on success. Use for test_wipe_state (SC-0000-019).
+ * Result = 1 on success. Use for test_wipe_state.
  */
 static inline int tb_wipe_trigger(uint32_t timeout_cycles) {
     if (!tb_send_cmd(TB_CMD_WIPE_TRIGGER, 0, timeout_cycles)) {
@@ -599,7 +599,7 @@ static inline int tb_wipe_trigger(uint32_t timeout_cycles) {
 
 /**
  * PRESENT sbox4 lookup table (for address scrambling).
- * Matches PRESENT standard (ISO/IEC 29192-2:2019) and spec FR-0000-024.
+ * Matches PRESENT standard (ISO/IEC 29192-2:2019).
  * This is the only function that MUST match the PRESENT standard.
  */
 static const uint8_t sbox4_table[16] = {0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD,
@@ -607,7 +607,7 @@ static const uint8_t sbox4_table[16] = {0xC, 0x5, 0x6, 0xB, 0x9, 0x0, 0xA, 0xD,
 
 /**
  * Apply perm12 permutation (for address scrambling).
- * Implements bijective permutation for 12-bit blocks (FR-0000-016).
+ * Implements bijective permutation for 12-bit blocks.
  * This function matches the scrambler IP's permutation implementation
  * (hw/ip/scrambler/rtl/scrambler_pkg.sv) for test verification purposes.
  * The exact permutation pattern is defined by the scrambler IP, not by PRESENT formulas.
@@ -633,8 +633,8 @@ static inline uint32_t perm12(uint32_t d) {
 }
 
 /**
- * Scramble a 12-bit address using the scrambler algorithm (FR-0000-016).
- * Implements spec FR-0000-016: XOR with key, sbox4 substitution, perm12 permutation.
+ * Scramble a 12-bit address using the scrambler algorithm:
+ * XOR with key, sbox4 substitution, perm12 permutation.
  * This function matches the scrambler IP's implementation (hw/ip/scrambler) for test
  * verification purposes. The permutation functions are defined by the scrambler IP.
  * @param addr 12-bit logical address (0-4095)
@@ -657,7 +657,7 @@ static inline uint32_t addr_scramble12(uint32_t addr, uint32_t key) {
 }
 
 /**
- * Compute address-tweaked round key for data scrambling (FR-0000-021).
+ * Compute address-tweaked round key for data scrambling.
  * Expands a 12-bit address to 32 bits and XORs with key.
  * This matches the scrambler IP's addr_tweak implementation.
  * @param addr 12-bit address
@@ -717,7 +717,7 @@ static inline uint32_t player(uint32_t d) {
 }
 
 /**
- * Scramble 32-bit data using the scrambler algorithm (FR-0000-017).
+ * Scramble 32-bit data using the scrambler algorithm.
  * Implements: XOR with round_key, sbox4 substitution, player permutation.
  * This matches the scrambler IP's implementation for test verification.
  * @param data 32-bit input data
