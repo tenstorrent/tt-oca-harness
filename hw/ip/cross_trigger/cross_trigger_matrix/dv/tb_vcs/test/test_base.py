@@ -9,6 +9,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, Timer, ReadOnly
 from typing import Optional
+import re
 import sys
 from pathlib import Path
 
@@ -20,7 +21,12 @@ from axil_master import AxiLiteMaster
 sys.path.insert(0, str(Path(__file__).parents[3] / 'regs' / 'gen' / 'py'))
 import cross_trigger_matrix_reg as ctm_regs
 
-NUM_CT_SRC = 26
+# The header declares one CONFIG_0 constant per CT_Src port, so counting them
+# tracks whatever port count the register map was generated for
+NUM_CT_SRC = sum(
+    1 for name in dir(ctm_regs)
+    if re.fullmatch(r'CT_SRC_\d+__CONFIG_0_REG_ADDR', name)
+)
 
 # Bits above the select field are unmapped: they read as zero however they are
 # written, so readback checks compare against this mask. Width comes from the

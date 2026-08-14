@@ -6,7 +6,15 @@ A configurable crossbar for routing cross trigger pulses between M source ports 
 
 ### Build and Test
 
-The VCS testbench lives in `dv/tb_vcs`; see its README for how to run it.
+The matrix is verified at the DTP level by the `dtp_ctm_*` and `dtp_xtrig_*`
+scenarios:
+
+```bash
+python3 tools/dv/run_dv.py --dut dtp --items dtp_ctm_rand_all_scenarios_test
+```
+
+A block-level VCS testbench is checked in under `dv/tb_vcs`, but its top module
+was never ported and cannot run yet; its README records what is missing.
 
 ### Register generation
 
