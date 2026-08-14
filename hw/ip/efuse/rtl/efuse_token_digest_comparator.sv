@@ -18,8 +18,6 @@
 //
 //-----------------------------------------------------------------------------
 
-`include "prim_assert.sv"
-
 module efuse_token_digest_comparator #(
     localparam int unsigned TokenWidth = 256,
     localparam int unsigned L0Width    = TokenWidth / 4,
