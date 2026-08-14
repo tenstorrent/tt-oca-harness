@@ -22,6 +22,14 @@ import cross_trigger_matrix_reg as ctm_regs
 
 NUM_CT_SRC = 26
 
+# Bits above the select field are unmapped: they read as zero however they are
+# written, so readback checks compare against this mask. Width comes from the
+# generated ctypes bitfield rather than being restated here.
+NUM_CT_DST = dict(
+    (name, width) for name, _, width in ctm_regs.CT_SRC_CONFIG_0_reg_t._fields_
+)['ct_dst_select']
+CT_DST_SELECT_MASK = (1 << NUM_CT_DST) - 1
+
 # One config register per CT_Src port, addressed from the generated header so the
 # stride never has to be restated here
 REG_MAP = {
@@ -30,7 +38,7 @@ REG_MAP = {
         'RW',
         f'CT_Src[{i}] Configuration',
         ctm_regs.CT_SRC_CONFIG_0_REG_DEFAULT,
-        0xFFFFFFFF,
+        CT_DST_SELECT_MASK,
     )
     for i in range(NUM_CT_SRC)
 }

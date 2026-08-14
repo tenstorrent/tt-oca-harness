@@ -14,12 +14,7 @@ package cross_trigger_matrix_reg_pkg;
     } cross_trigger_matrix__CT_SRC__CONFIG_0__CT_DST_SELECT__out_t;
 
     typedef struct {
-        logic [5:0] value;
-    } cross_trigger_matrix__CT_SRC__CONFIG_0__RESERVED__out_t;
-
-    typedef struct {
         cross_trigger_matrix__CT_SRC__CONFIG_0__CT_DST_SELECT__out_t CT_DST_SELECT;
-        cross_trigger_matrix__CT_SRC__CONFIG_0__RESERVED__out_t RESERVED;
     } cross_trigger_matrix__CT_SRC__CONFIG_0__out_t;
 
     typedef struct {

@@ -15,14 +15,10 @@ extern "C" {
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bp 0
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bw 26
 #define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_reset 0x0
-#define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__RESERVED_bm 0xfc000000
-#define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__RESERVED_bp 26
-#define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__RESERVED_bw 6
-#define CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__RESERVED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t CT_DST_SELECT :26;
-        uint32_t RESERVED :6;
+        uint32_t :6;
     } f;
     uint32_t w;
 } cross_trigger_matrix__CT_SRC__CONFIG_0_t;

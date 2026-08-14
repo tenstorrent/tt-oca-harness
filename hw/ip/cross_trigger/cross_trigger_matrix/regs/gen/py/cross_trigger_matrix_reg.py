@@ -113,7 +113,6 @@ CT_SRC_CONFIG_0_REG_DEFAULT = 0x00000000
 class CT_SRC_CONFIG_0_reg_t(Structure):
     _fields_ = [
         ('ct_dst_select', c_uint32, 26),
-        ('reserved', c_uint32, 6),
     ]
 
 CT_SRC_CONFIG_0_REG_DEFAULT = 0x00000000

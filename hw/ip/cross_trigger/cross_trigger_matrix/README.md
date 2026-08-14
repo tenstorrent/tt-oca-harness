@@ -44,20 +44,14 @@ addresses. The register map switches form on `NUM_CT_DST`:
 
 | `NUM_CT_DST` | Register | Writes |
 | --- | --- | --- |
-| 1 to 31 | 32 bits, second word unmapped | immediate |
-| 32 | 64 bits, accessed a word at a time | immediate |
-| 33 to 63 | 64 bits, accessed a word at a time | buffered |
+| 1 to 32 | 32 bits, second word unmapped | immediate |
+| 33 to 64 | 64 bits, accessed a word at a time | buffered |
 
 Buffering is required above 32 because the select mask then spans both words: it
 commits when the upper word is written, so a mask never takes effect
 half-programmed, and firmware must write both words, low first. Below that
 threshold nothing about the register or its programming changes, and at the DTP's
 26 destinations the generated collateral is identical either way.
-
-64 destinations are not reachable as written, since the reserved remainder beside
-the mask would be empty and SystemRDL cannot express that. Getting there means
-dropping the `RESERVED` field and leaving the upper bits unmapped, which also stops
-reserved bits reading back what was written to them.
 
 ## Generated Files
 

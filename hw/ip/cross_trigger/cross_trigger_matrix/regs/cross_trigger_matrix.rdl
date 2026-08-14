@@ -15,20 +15,15 @@
 //
 // Selecting among more than 32 destinations needs a select field wider than one
 // bus word, so the register grows to fill its 8 bytes and is accessed a word at a
-// time. Both properties follow NUM_CT_DST:
+// time. Both properties follow NUM_CT_DST, which may be 1 to 64:
 //
-//   NUM_CT_DST <= 31   32-bit register, second word unmapped
-//   NUM_CT_DST >= 32   64-bit register accessed 32 bits at a time
-//   NUM_CT_DST >  32   writes buffered, since the select field spans both words
+//   NUM_CT_DST <= 32   32-bit register, second word unmapped
+//   NUM_CT_DST >  32   64-bit register accessed 32 bits at a time, writes
+//                      buffered because the select field spans both words
 //
 // Buffered writes commit the whole select mask when the upper word is written, so
 // a mask crossing the word boundary never takes effect half-programmed. Firmware
 // must write both words, low first, to change such a mask.
-//
-// NUM_CT_DST must be 1 to 63. At 64 the reserved remainder below would be empty,
-// which SystemRDL cannot express, so reaching 64 destinations means dropping the
-// RESERVED field and leaving the upper bits unmapped. That would also stop
-// reserved bits reading back what was written to them.
 //
 // The array is wrapped in a regfile because the C header exporter rejects a
 // register array whose stride exceeds the register width.
@@ -46,7 +41,7 @@ addrmap cross_trigger_matrix #(
         desc = "Cross trigger destination selection for one CT_Src output port";
 
         reg {
-            regwidth = NUM_CT_DST >= 32 ? 64 : 32;
+            regwidth = NUM_CT_DST > 32 ? 64 : 32;
             accesswidth = 32;
             buffer_writes = NUM_CT_DST > 32;
 
@@ -61,11 +56,6 @@ addrmap cross_trigger_matrix #(
                         are then OR'd together to produce the CT_Src output. Set
                         this register to all-zero to disable that output.";
             } CT_DST_SELECT[NUM_CT_DST-1:0] = 0x0;
-            field {
-                sw = rw;
-                hw = r;
-                desc = "Reserved. Must be written as zero.";
-            } RESERVED[(NUM_CT_DST >= 32 ? 63 : 31):NUM_CT_DST] = 0x0;
         } CONFIG_0 @0x0;
     } CT_SRC[NUM_CT_SRC] @0x0 += 0x8;
 };

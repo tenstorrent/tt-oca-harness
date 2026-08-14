@@ -329,15 +329,11 @@ localparam longint unsigned CT_SRC_CONFIG_0_REG_DEFAULT                         
 localparam int unsigned CT_SRC_CONFIG_0_CT_DST_SELECT_MASK                                                        = 32'h3FFFFFF;
 localparam int unsigned CT_SRC_CONFIG_0_CT_DST_SELECT_SHIFT                                                       = 0;
 
-localparam int unsigned CT_SRC_CONFIG_0_RESERVED_MASK                                                             = 32'hFC000000;
-localparam int unsigned CT_SRC_CONFIG_0_RESERVED_SHIFT                                                            = 26;
-
 
 
 
 
 typedef struct packed {
-    logic [5:0]   reserved ;
     logic [25:0]   ct_dst_select ;
 } ct_src_config_0_reg_t;
 

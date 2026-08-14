@@ -264,10 +264,6 @@ module cross_trigger_matrix_reg (
                     logic [25:0] next;
                     logic load_next;
                 } CT_DST_SELECT;
-                struct {
-                    logic [5:0] next;
-                    logic load_next;
-                } RESERVED;
             } CONFIG_0;
         } CT_SRC[26];
     } field_combo_t;
@@ -279,9 +275,6 @@ module cross_trigger_matrix_reg (
                 struct {
                     logic [25:0] value;
                 } CT_DST_SELECT;
-                struct {
-                    logic [5:0] value;
-                } RESERVED;
             } CONFIG_0;
         } CT_SRC[26];
     } field_storage_t;
@@ -311,29 +304,6 @@ module cross_trigger_matrix_reg (
             end
         end
         assign hwif_out.CT_SRC[i0].CONFIG_0.CT_DST_SELECT.value = field_storage.CT_SRC[i0].CONFIG_0.CT_DST_SELECT.value;
-        // Field: cross_trigger_matrix.CT_SRC[].CONFIG_0.RESERVED
-        always_comb begin
-            automatic logic [5:0] next_c;
-            automatic logic load_next_c;
-            next_c = field_storage.CT_SRC[i0].CONFIG_0.RESERVED.value;
-            load_next_c = '0;
-            if(decoded_reg_strb.CT_SRC[i0].CONFIG_0 && decoded_req_is_wr) begin // SW write
-                next_c = (field_storage.CT_SRC[i0].CONFIG_0.RESERVED.value & ~decoded_wr_biten[31:26]) | (decoded_wr_data[31:26] & decoded_wr_biten[31:26]);
-                load_next_c = '1;
-            end
-            field_combo.CT_SRC[i0].CONFIG_0.RESERVED.next = next_c;
-            field_combo.CT_SRC[i0].CONFIG_0.RESERVED.load_next = load_next_c;
-        end
-        always_ff @(posedge clk or negedge arst_n) begin
-            if(~arst_n) begin
-                field_storage.CT_SRC[i0].CONFIG_0.RESERVED.value <= 6'h0;
-            end else begin
-                if(field_combo.CT_SRC[i0].CONFIG_0.RESERVED.load_next) begin
-                    field_storage.CT_SRC[i0].CONFIG_0.RESERVED.value <= field_combo.CT_SRC[i0].CONFIG_0.RESERVED.next;
-                end
-            end
-        end
-        assign hwif_out.CT_SRC[i0].CONFIG_0.RESERVED.value = field_storage.CT_SRC[i0].CONFIG_0.RESERVED.value;
     end
 
     //--------------------------------------------------------------------------
@@ -359,7 +329,6 @@ module cross_trigger_matrix_reg (
         for(int i0=0; i0<26; i0++) begin
             if(rd_mux_addr == 8'h0 + (8)'(i0) * 8'h8) begin
                 readback_data_var[25:0] = field_storage.CT_SRC[i0].CONFIG_0.CT_DST_SELECT.value;
-                readback_data_var[31:26] = field_storage.CT_SRC[i0].CONFIG_0.RESERVED.value;
             end
         end
         readback_data = readback_data_var;
