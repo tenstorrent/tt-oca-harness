@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_version_write_slverr.c
- * @brief VERSION register write → SLVERR and value unchanged (FR-0000-078, SC-0000-022)
+ * @brief VERSION register write → SLVERR and value unchanged
  *
  * Verifies that writes to the read-only VERSION register:
  * - Complete with AXI SLVERR (IRQ_STATUS.AXI_SLVERR set when err_if_bad_rw enabled)
@@ -29,7 +29,7 @@ int main(void) {
 
     TEST_INIT();
 
-    printf("VERSION Write SLVERR Test (FR-0000-078, SC-0000-022)\n");
+    printf("VERSION Write SLVERR Test\n");
     printf("==================================\n\n");
 
     /* Clear any existing AXI SLVERR sticky bit */
@@ -84,7 +84,7 @@ int main(void) {
         rom_kmcsr_irq_status_clear(clear_val.w);
     }
 
-    TEST_LOG("  VERSION write SLVERR and value unchanged verified (FR-0000-078, SC-0000-022)");
+    TEST_LOG("  VERSION write SLVERR and value unchanged verified");
     TEST_PASS();
     return 0;
 }
