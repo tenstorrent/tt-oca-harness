@@ -42,7 +42,8 @@ register array with its generate loop variable.
 A consequence for integrators: the register map must be generated for the port
 count the enclosing design wires up. `cross_trigger_network` connects
 `NUM_CTM_PORTS` signals and no longer sizes the matrix, so the two have to be
-resized together.
+resized together. `dtp_pkg` checks that they were, failing elaboration if the
+DTP's cross trigger port counts and this map disagree.
 
 Each port occupies 8 bytes whatever the port count, so selecting among more than 32
 destinations widens the select field to fill that space instead of moving any
