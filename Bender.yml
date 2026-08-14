@@ -625,11 +625,15 @@ sources:
       - hw/common/och_prim/rtl/prim_updown_counter.sv
       - hw/common/och_prim/rtl/prim_zero_counter.sv
       - hw/common/och_prim_generic/rtl/prim_and3.sv
+      - hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
+      - hw/common/och_prim_generic/rtl/prim_clock_or2.sv
+      - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
+      - hw/common/sync.sv
+  - target: all(any(dtp, sep, smc, key_manager), not(synth))
+    files:
       - hw/common/och_prim_generic/rtl/prim_clkgater.sv
       - hw/common/och_prim_generic/rtl/prim_clock_mux2.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
       - hw/common/och_prim_generic/rtl/prim_clock_nand2.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_or2.sv
       - hw/common/och_prim_generic/rtl/prim_dffrxq.sv
       - hw/common/och_prim_generic/rtl/prim_dffsxq.sv
       - hw/common/och_prim_generic/rtl/prim_flop_2sync_r.sv
@@ -644,11 +648,12 @@ sources:
       - hw/common/och_prim_generic/rtl/prim_inverter.sv
       - hw/common/och_prim_generic/rtl/prim_latch_n.sv
       - hw/common/och_prim_generic/rtl/prim_metastab_hardened_dffr.sv
+      - hw/common/och_prim_generic/rtl/prim_nand4.sv
+      - hw/common/och_prim_generic/rtl/prim_nor4.sv
       - hw/common/och_prim_generic/rtl/prim_or2.sv
-      - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
+      - hw/common/och_prim_generic/rtl/prim_or4.sv
       - hw/common/och_prim_generic/rtl/prim_stdbuf.sv
       - hw/common/och_prim_generic/rtl/prim_stdmux2.sv
-      - hw/common/sync.sv
   - target: sep
     files:
       - hw/common/tlul/rtl/tlul_adapter_host.sv
@@ -779,11 +784,12 @@ sources:
       - hw/ip/efuse/rtl/efuse_read_interface.sv
       - hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
       - hw/ip/efuse/rtl/efuse_shadow_regs.sv
-      - hw/ip/efuse/rtl/triple_redundent_comparator.sv
+      - hw/ip/efuse/rtl/efuse_token_digest_comparator.sv
+      - hw/ip/efuse/rtl/efuse_triple_redundant_comparator.sv
   - target: sep
     files:
-      - hw/ip/efuse/rtl/sha256_token_hash.sv
-      - hw/ip/efuse/rtl/efuse_security_tokens.sv
+      - hw/ip/efuse/rtl/efuse_token_digest_sha256.sv
+      - hw/ip/efuse/rtl/efuse_token_processing.sv
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
       - hw/ip/entropy_source/rtl/entropy_debug_monitor.sv
       - hw/ip/entropy_source/rtl/entropy_decorrelator.sv
