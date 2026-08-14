@@ -46,7 +46,10 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
     // upper 20 bits replaced with OTP_EFUSE_REMAP_BASE[31:12] before being driven
     // onto efuse_req_o; the lower 12 bits (register offset) are preserved.
     // Set by the integrator to match the system-level address of the eFuse controller.
-    parameter km_addr_t OTP_EFUSE_REMAP_BASE = 32'h1093_0000
+    parameter km_addr_t OTP_EFUSE_REMAP_BASE = 32'h1093_0000,
+    // Absolute address of the mailbox on the SEP host bus, used by km_mailbox to
+    // range-check the SEP port. Set by the integrator.
+    parameter km_addr_t SEP_MBOX_BASE_ADDR = 32'h1092_0000
 ) (
     //=========================================================================
     // Clock and Reset
@@ -413,7 +416,8 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
         .km_axil_req_t (km_axil_req_t),
         .km_axil_resp_t(km_axil_resp_t),
         .sep_axil_req_t (km_axil_req_t),  // SEP uses same types as KM for now
-        .sep_axil_resp_t(km_axil_resp_t)
+        .sep_axil_resp_t(km_axil_resp_t),
+        .SEP_MBOX_BASE_ADDR(SEP_MBOX_BASE_ADDR)
     ) u_mailbox (
         .clk_i              (clk_i),
         .cold_rst_ni        (rst_cold_aasd_n),
