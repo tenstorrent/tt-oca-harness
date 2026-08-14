@@ -1093,7 +1093,6 @@ module sep
     assign lsio_trigger[$bits(lsio_trigger)-1:1] = '0;
 
     sep_dma_wrap #(
-        .SECURE_DMA_REG_MAP_BASE_ADDR (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
         .AlertAsyncOn           ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
         .AlertSkewCycles        (1'b0),
         .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)
