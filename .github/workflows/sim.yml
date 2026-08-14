@@ -200,9 +200,3 @@ jobs:
           path: ${{ env.RUN_DIR }}
           retention-days: 14
           if-no-files-found: ignore
-
-  # No PR comment job: the required check's green/red state is the smoke
-  # signal, and run details live in the workflow logs and uploaded artifacts.
-  # (A previous sticky-comment job posted misleading summaries when a
-  # superseded run was cancelled mid-flight: partial PASS results inside a
-  # `cancelled` job result, racing the newer run's cleanup.)
