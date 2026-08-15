@@ -379,6 +379,7 @@ doc_stage() {
     local integrator_dist="${OCAH_INTEGRATOR_DIST:-doc/integrator/dist}" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
     local programmer_dist="${OCAH_PROGRAMMER_DIST:-doc/programmer/dist}" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
     local appnotes_dist="${OCAH_APPNOTES_DIST:-doc/appnotes/dist}" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
+	local contributing_dist="${OCAH_CONTRIBUTING_DIST:-doc/contributing/dist}" contributing_pdf="${OCAH_CONTRIBUTING_PDF:-ocah-contributing.pdf}"
 
     if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
         echo "error: missing combined HTML output at $ghpages_dir" >&2
@@ -411,6 +412,12 @@ doc_stage() {
         cp "$ROOT/$appnotes_dist/$appnotes_pdf" "$ROOT/$ghpages_dir/downloads/"
     else
         echo "warning: Application Notes PDF not found at $appnotes_dist/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
+    fi
+
+    if [[ -f "$ROOT/$contributing_dist/$contributing_pdf" ]]; then
+        cp "$ROOT/$contributing_dist/$contributing_pdf" "$ROOT/$ghpages_dir/downloads/"
+    else
+        echo "warning: Contributing Guide PDF not found at $contributing_dist/$contributing_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf contributing)"
     fi
 
     echo "Staged GitHub Pages tree at $ghpages_dir"

@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Licensing
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+[WARNING]
+This document is not yet developed.
+
+== Reporting Bugs and Defects
+
+[NOTE]
+The words "Bug" and "Defect" are here used interchangeably to represent any behaviour which is not compliant to specification.
+
+Ideally, all designs are bug free. However, code will be at different states of maturity.  Some will still be under active testing and development.  Defects may even be found in production code.
+
+If you have discovered a possible defect in the code in this repository, please raise a new GitHub Issue to describe the bug.
+
+=== Defect data
+
+Issues raised to represent bugs should include as much detail as possible
+about the nature of the bug and how it can be reproduced.  The goal should
+always be that the defect should be reproduceable from the data in the Issue.
+
+It is helpful to include:
+
+* A copy of, or link to, the program or simulator output.
+* Any suggested resolution to the problem.
+* All the information needed to reproduce the issue.
+** Git hash
+** Executed command
+** Program input
+** Simulation seed
+** etc.

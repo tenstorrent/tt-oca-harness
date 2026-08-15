@@ -2,4 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 * xref:index.adoc[Contributing Guide]
+** xref:contribution.adoc[Contributions]
+** xref:licensing.adoc[Licensing]
+** xref:guidelines.adoc[Guidelines]
+** xref:defects.adoc[Defect Reporting]
 

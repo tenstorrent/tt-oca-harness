@@ -26,10 +26,16 @@ ifdef::backend-html5[]
 
 This documentation is organized into the following sections:
 
-
+* xref:licensing.adoc[Licensing] - OCAH Licensing
+* xref:contribution.adoc[Contributions] - Making contributions to OCAH
+* xref:guidelines.adoc[Guidelines] - Standards and guidelines for OCAH
+* xref:defects.adoc[Defect Reporting] - Making bug reports
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: ../assets
+include::licensing.adoc[]
 include::contribution.adoc[]
+include::guidelines.adoc[]
+include::defects.adoc[]
 endif::backend-pdf[]
