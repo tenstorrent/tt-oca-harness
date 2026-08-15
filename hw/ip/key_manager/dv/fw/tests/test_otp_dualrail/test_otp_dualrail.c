@@ -13,8 +13,8 @@
  * perspective; the hardware sigint path is separate).
  *
  * Subtests:
- *   1. Valid pattern: all four fields pass dual-rail integrity.
- *   2. Fields are distinct (chiplet_uid != sip_uid != sys_uid != class_key).
+ *   1. Valid pattern: all seven 256-bit fields pass dual-rail integrity.
+ *   2. Fields are distinct, so a mis-decoded or aliased field cannot pass.
  *
  * Run: make run_fw FW_TEST=test_otp_dualrail
  */
@@ -37,6 +37,18 @@ static const uint32_t exp_sys[ROM_KM_OTP_WORDS] = {0x43424140u, 0x47464544u, 0x4
 static const uint32_t exp_class[ROM_KM_OTP_WORDS] = {0x63626160u, 0x67666564u, 0x6B6A6968u,
                                                      0x6F6E6D6Cu, 0x73727170u, 0x77767574u,
                                                      0x7B7A7978u, 0x7F7E7D7Cu};
+
+static const uint32_t exp_chip_id[ROM_KM_OTP_WORDS] = {0x13121110u, 0x17161514u, 0x1B1A1918u,
+                                                       0x1F1E1D1Cu, 0x23222120u, 0x27262524u,
+                                                       0x2B2A2928u, 0x2F2E2D2Cu};
+
+static const uint32_t exp_sip_id[ROM_KM_OTP_WORDS] = {0x33323130u, 0x37363534u, 0x3B3A3938u,
+                                                      0x3F3E3D3Cu, 0x43424140u, 0x47464544u,
+                                                      0x4B4A4948u, 0x4F4E4D4Cu};
+
+static const uint32_t exp_sys_id[ROM_KM_OTP_WORDS] = {0x53525150u, 0x57565554u, 0x5B5A5958u,
+                                                      0x5F5E5D5Cu, 0x63626160u, 0x67666564u,
+                                                      0x6B6A6968u, 0x6F6E6D6Cu};
 
 static void check_field(const char *name, int (*reader)(uint32_t[ROM_KM_OTP_WORDS]),
                         const uint32_t expected[ROM_KM_OTP_WORDS]) {
@@ -80,19 +92,41 @@ int main(void) {
     check_field("CLASS_KEY", rom_otp_read_class_key, exp_class);
     TEST_SUBTEST_PASS();
 
+    TEST_SUBTEST_START("SEP_CHIPLET_ID dual-rail valid");
+    check_field("SEP_CHIPLET_ID", rom_otp_read_sep_chiplet_id, exp_chip_id);
+    TEST_SUBTEST_PASS();
+
+    TEST_SUBTEST_START("SEP_SIP_ID dual-rail valid");
+    check_field("SEP_SIP_ID", rom_otp_read_sep_sip_id, exp_sip_id);
+    TEST_SUBTEST_PASS();
+
+    TEST_SUBTEST_START("SEP_SYS_ID dual-rail valid");
+    check_field("SEP_SYS_ID", rom_otp_read_sep_sys_id, exp_sys_id);
+    TEST_SUBTEST_PASS();
+
     /* Sanity check: fields are distinct (no aliasing) */
-    TEST_SUBTEST_START("All four fields are distinct");
+    TEST_SUBTEST_START("All seven 256-bit fields are distinct");
     {
-        uint32_t c[ROM_KM_OTP_WORDS], s[ROM_KM_OTP_WORDS];
-        uint32_t sy[ROM_KM_OTP_WORDS], ck[ROM_KM_OTP_WORDS];
-        (void)rom_otp_read_chiplet_uid(c);
-        (void)rom_otp_read_sip_uid(s);
-        (void)rom_otp_read_sys_uid(sy);
-        (void)rom_otp_read_class_key(ck);
-        if (c[0] == s[0] || c[0] == sy[0] || c[0] == ck[0]) {
-            TEST_FAIL("Fields are not distinct: chiplet[0]=0x%08X sip[0]=0x%08X "
-                      "sys[0]=0x%08X class[0]=0x%08X",
-                      c[0], s[0], sy[0], ck[0]);
+        static int (*const readers[])(uint32_t[ROM_KM_OTP_WORDS]) = {
+            rom_otp_read_chiplet_uid,    rom_otp_read_sip_uid,     rom_otp_read_sys_uid,
+            rom_otp_read_class_key,      rom_otp_read_sep_chiplet_id, rom_otp_read_sep_sip_id,
+            rom_otp_read_sep_sys_id,
+        };
+        const unsigned n = sizeof(readers) / sizeof(readers[0]);
+        uint32_t first_word[sizeof(readers) / sizeof(readers[0])];
+
+        for (unsigned i = 0; i < n; i++) {
+            uint32_t buf[ROM_KM_OTP_WORDS];
+            (void)readers[i](buf);
+            first_word[i] = buf[0];
+        }
+        for (unsigned i = 0; i < n; i++) {
+            for (unsigned j = i + 1; j < n; j++) {
+                if (first_word[i] == first_word[j]) {
+                    TEST_FAIL("Fields %u and %u are not distinct: both read 0x%08X", i, j,
+                              first_word[i]);
+                }
+            }
         }
     }
     TEST_SUBTEST_PASS();

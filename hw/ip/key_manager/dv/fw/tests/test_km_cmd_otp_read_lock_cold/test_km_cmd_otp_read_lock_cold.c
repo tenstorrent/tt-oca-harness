@@ -15,9 +15,10 @@
  *   3. Unlocked field (sip_uid) remains readable after unrelated cold lock.
  *   4. Multi-field: set sip_uid and sys_uid cold locks together; both now
  *      return zero, chiplet_uid still zero from step 1.
- *   5. Write-1-only: writing 0 does not clear cold-locked bits.
- *   6. Error — invalid payload length (0 words): INVALID_LEN.
- *   7. Error — reserved bits set in lock_bits: INVALID_ARG.
+ *   5. The three public identity lock bits are accepted and mask their fields.
+ *   6. Write-1-only: writing 0 does not clear cold-locked bits.
+ *   7. Error — invalid payload length (0 words): INVALID_LEN.
+ *   8. Error — reserved bits set in lock_bits: INVALID_ARG.
  *
  * Run: make run_fw FW_TEST=test_km_cmd_otp_read_lock_cold
  */
@@ -237,7 +238,46 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*-----------------------------------------------------------------------
-     * Subtest 5: Write-1-only — writing 0 does not clear cold-locked bits
+     * Subtest 5: The public identity lock bits are accepted, not reserved
+     *-----------------------------------------------------------------------*/
+    TEST_SUBTEST_START("Lock the three public identity fields");
+
+    send_cmd_one_word(ROM_KM_CMD_OTP_READ_LOCK_COLD,
+                      KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bm |
+                          KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bm |
+                          KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bm);
+    cmd_seq++;
+    process_and_drain();
+    read_resp_cmd(&rc, &arg);
+
+    TEST_ASSERT_EQ((int32_t)rc, (int32_t)ROM_KM_RC_SUCCESS, "identity CMD_OTP_READ_LOCK_COLD rc");
+    TEST_ASSERT(arg & KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bm,
+                "return_arg sep_chiplet_id bit set (arg=0x%08X)", (unsigned)arg);
+    TEST_ASSERT(arg & KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bm,
+                "return_arg sep_sip_id bit set (arg=0x%08X)", (unsigned)arg);
+    TEST_ASSERT(arg & KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bm,
+                "return_arg sep_sys_id bit set (arg=0x%08X)", (unsigned)arg);
+
+    (void)rom_otp_read_sep_chiplet_id(buf);
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != 0u)
+            TEST_FAIL("sep_chiplet_id[%u]: non-zero after cold-lock (0x%08X)", i, (unsigned)buf[i]);
+    }
+    (void)rom_otp_read_sep_sip_id(buf);
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != 0u)
+            TEST_FAIL("sep_sip_id[%u]: non-zero after cold-lock (0x%08X)", i, (unsigned)buf[i]);
+    }
+    (void)rom_otp_read_sep_sys_id(buf);
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != 0u)
+            TEST_FAIL("sep_sys_id[%u]: non-zero after cold-lock (0x%08X)", i, (unsigned)buf[i]);
+    }
+
+    TEST_SUBTEST_PASS();
+
+    /*-----------------------------------------------------------------------
+     * Subtest 6: Write-1-only — writing 0 does not clear cold-locked bits
      *-----------------------------------------------------------------------*/
     TEST_SUBTEST_START("Write-1-only: 0-write cannot clear cold-locked bits");
 
@@ -256,7 +296,7 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*-----------------------------------------------------------------------
-     * Subtest 6: Error — no payload words → INVALID_LEN
+     * Subtest 7: Error — no payload words → INVALID_LEN
      *-----------------------------------------------------------------------*/
     TEST_SUBTEST_START("Error: zero-payload CMD_OTP_READ_LOCK_COLD → INVALID_LEN");
 
@@ -270,11 +310,11 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*-----------------------------------------------------------------------
-     * Subtest 7: Error — reserved bits set → INVALID_ARG
+     * Subtest 8: Error — reserved bits set → INVALID_ARG
      *-----------------------------------------------------------------------*/
     TEST_SUBTEST_START("Error: reserved bits set in lock_bits → INVALID_ARG");
 
-    send_cmd_one_word(ROM_KM_CMD_OTP_READ_LOCK_COLD, 0x80u); /* bit 7 = reserved */
+    send_cmd_one_word(ROM_KM_CMD_OTP_READ_LOCK_COLD, 0x200u); /* bit 9 = reserved */
     cmd_seq++;
     process_and_drain();
     read_resp_cmd(&rc, &arg);
