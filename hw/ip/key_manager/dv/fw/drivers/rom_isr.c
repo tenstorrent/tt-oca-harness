@@ -155,7 +155,6 @@ __attribute__((cold)) void rom_isr_kmcsr(void) {
     if (status.f.axi_decerr && enable.f.axi_decerr_en)
         rom_trigger_unrecoverable(ROM_KM_UFAULT_AXI_DECERR);
 
-    /* A DRBG error also raises axi_slverr, so this arm must precede it. */
     if (status.f.drbg_err && enable.f.drbg_err_en)
         rom_trigger_unrecoverable(ROM_KM_UFAULT_DRBG_ERR);
 
