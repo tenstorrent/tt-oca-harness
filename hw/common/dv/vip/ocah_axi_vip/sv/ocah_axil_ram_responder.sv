@@ -82,7 +82,9 @@ module ocah_axil_ram_responder #(
     assign awready = rst_ni && !aw_pend && !bvalid;
     assign wready  = rst_ni && !w_pend && !bvalid;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
+    // Plain `always`: `mem` is also zero-filled by the time-0 initial block,
+    // and always_ff forbids a variable written by any other process.
+    always @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             aw_pend  <= 1'b0;
             w_pend   <= 1'b0;

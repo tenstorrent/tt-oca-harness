@@ -133,7 +133,9 @@ module ocah_axi_ram_responder #(
     assign awready = rst_ni && !wr_active && !bvalid;
     assign wready  = rst_ni && wr_active;
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
+    // Plain `always`: `mem` is also zero-filled by the time-0 initial block,
+    // and always_ff forbids a variable written by any other process.
+    always @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             wr_active <= 1'b0;
             bvalid    <= 1'b0;
@@ -204,7 +206,9 @@ module ocah_axi_ram_responder #(
         end
     endtask
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
+    // Plain `always`: rdata/rresp are also assigned inside load_read_beat, a
+    // task tools cannot prove is called only from this process (IEEE 9.2.2.4).
+    always @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             rd_active <= 1'b0;
             rvalid    <= 1'b0;
