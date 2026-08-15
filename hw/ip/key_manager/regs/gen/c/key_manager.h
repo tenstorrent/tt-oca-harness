@@ -1042,9 +1042,13 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bp 10
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bw 1
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bp 11
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bw 21
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bm 0x800
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bp 11
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bw 1
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bp 12
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bw 20
 #define KM_CSR__IRQ_STATUS_REG__RSVD_reset 0x0
 
 // reg - km_csr::irq_enable_reg
@@ -1092,9 +1096,13 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bp 10
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 11
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 21
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bm 0x800
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bp 11
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 12
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 20
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_reset 0x0
 
 // reg - km_csr::scrambler_key_reg
@@ -1167,9 +1175,13 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bp 10
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_SET_REG__RSVD_bp 11
-#define KM_CSR__IRQ_SET_REG__RSVD_bw 21
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bm 0x800
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bp 11
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_SET_REG__RSVD_bp 12
+#define KM_CSR__IRQ_SET_REG__RSVD_bw 20
 #define KM_CSR__IRQ_SET_REG__RSVD_reset 0x0
 
 // reg - km_csr::sram_write_lock_violation_reg
@@ -1375,9 +1387,21 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bp 6
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bw 26
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bp 9
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bw 23
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_reset 0x0
 
 // reg - km_csr::otp_change_status_reg
@@ -1405,9 +1429,21 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bp 6
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 26
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bp 9
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 23
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_reset 0x0
 
 // reg - km_csr::otp_read_lock_cold_reg
@@ -1435,9 +1471,21 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 6
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 26
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 9
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 23
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_reset 0x0
 
 // addrmap - km_csr
@@ -1542,6 +1590,55 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t OTP_READ_LOCK;
     uint32_t OTP_CHANGE_STATUS;
     uint32_t OTP_READ_LOCK_COLD;
+    uint8_t RESERVED_30c_3ff[0xf4];
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_0;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_1;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_2;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_3;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_4;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_5;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_6;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_7;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_0;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_1;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_2;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_3;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_4;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_5;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_6;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_7;
+    uint32_t OTP_SEP_SIP_ID_VAL_0;
+    uint32_t OTP_SEP_SIP_ID_VAL_1;
+    uint32_t OTP_SEP_SIP_ID_VAL_2;
+    uint32_t OTP_SEP_SIP_ID_VAL_3;
+    uint32_t OTP_SEP_SIP_ID_VAL_4;
+    uint32_t OTP_SEP_SIP_ID_VAL_5;
+    uint32_t OTP_SEP_SIP_ID_VAL_6;
+    uint32_t OTP_SEP_SIP_ID_VAL_7;
+    uint32_t OTP_SEP_SIP_ID_CPL_0;
+    uint32_t OTP_SEP_SIP_ID_CPL_1;
+    uint32_t OTP_SEP_SIP_ID_CPL_2;
+    uint32_t OTP_SEP_SIP_ID_CPL_3;
+    uint32_t OTP_SEP_SIP_ID_CPL_4;
+    uint32_t OTP_SEP_SIP_ID_CPL_5;
+    uint32_t OTP_SEP_SIP_ID_CPL_6;
+    uint32_t OTP_SEP_SIP_ID_CPL_7;
+    uint32_t OTP_SEP_SYS_ID_VAL_0;
+    uint32_t OTP_SEP_SYS_ID_VAL_1;
+    uint32_t OTP_SEP_SYS_ID_VAL_2;
+    uint32_t OTP_SEP_SYS_ID_VAL_3;
+    uint32_t OTP_SEP_SYS_ID_VAL_4;
+    uint32_t OTP_SEP_SYS_ID_VAL_5;
+    uint32_t OTP_SEP_SYS_ID_VAL_6;
+    uint32_t OTP_SEP_SYS_ID_VAL_7;
+    uint32_t OTP_SEP_SYS_ID_CPL_0;
+    uint32_t OTP_SEP_SYS_ID_CPL_1;
+    uint32_t OTP_SEP_SYS_ID_CPL_2;
+    uint32_t OTP_SEP_SYS_ID_CPL_3;
+    uint32_t OTP_SEP_SYS_ID_CPL_4;
+    uint32_t OTP_SEP_SYS_ID_CPL_5;
+    uint32_t OTP_SEP_SYS_ID_CPL_6;
+    uint32_t OTP_SEP_SYS_ID_CPL_7;
 } km_csr_t;
 
 // reg - km_drbg_sampler::data_reg
@@ -1786,7 +1883,7 @@ typedef struct __attribute__ ((__packed__)) {
     km_kpv_t kpv;
     uint8_t RESERVED_13108_13fff[0xef8];
     km_csr_t kmcsr;
-    uint8_t RESERVED_1430c_14fff[0xcf4];
+    uint8_t RESERVED_144c0_14fff[0xb40];
     km_drbg_sampler_t drbg_sampler;
     uint8_t RESERVED_15010_17fff[0x2ff0];
     otbn_wrapper_key_t otbn_wrapper_key;

@@ -26,7 +26,7 @@
 
 
 localparam int unsigned KM_CSR_REG_MAP_BASE_ADDR                                                                  = 32'h00000000;
-localparam int unsigned KM_CSR_REG_MAP_SIZE                                                                       = 32'h0000030C;
+localparam int unsigned KM_CSR_REG_MAP_SIZE                                                                       = 32'h000004C0;
 
 
 localparam int unsigned VERSION_REG_OFFSET                                                                        = 32'h00000000;
@@ -221,6 +221,102 @@ localparam int unsigned OTP_CHANGE_STATUS_REG_OFFSET                            
 localparam int unsigned OTP_CHANGE_STATUS_REG_ADDR                                                                = 32'h00000304;
 localparam int unsigned OTP_READ_LOCK_COLD_REG_OFFSET                                                             = 32'h00000308;
 localparam int unsigned OTP_READ_LOCK_COLD_REG_ADDR                                                               = 32'h00000308;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_0_REG_OFFSET                                                       = 32'h00000400;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_0_REG_ADDR                                                         = 32'h00000400;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_1_REG_OFFSET                                                       = 32'h00000404;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_1_REG_ADDR                                                         = 32'h00000404;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_2_REG_OFFSET                                                       = 32'h00000408;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_2_REG_ADDR                                                         = 32'h00000408;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_3_REG_OFFSET                                                       = 32'h0000040C;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_3_REG_ADDR                                                         = 32'h0000040C;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_4_REG_OFFSET                                                       = 32'h00000410;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_4_REG_ADDR                                                         = 32'h00000410;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_5_REG_OFFSET                                                       = 32'h00000414;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_5_REG_ADDR                                                         = 32'h00000414;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_6_REG_OFFSET                                                       = 32'h00000418;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_6_REG_ADDR                                                         = 32'h00000418;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_7_REG_OFFSET                                                       = 32'h0000041C;
+localparam int unsigned OTP_SEP_CHIPLET_ID_VAL_7_REG_ADDR                                                         = 32'h0000041C;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_0_REG_OFFSET                                                       = 32'h00000420;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_0_REG_ADDR                                                         = 32'h00000420;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_1_REG_OFFSET                                                       = 32'h00000424;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_1_REG_ADDR                                                         = 32'h00000424;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_2_REG_OFFSET                                                       = 32'h00000428;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_2_REG_ADDR                                                         = 32'h00000428;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_3_REG_OFFSET                                                       = 32'h0000042C;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_3_REG_ADDR                                                         = 32'h0000042C;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_4_REG_OFFSET                                                       = 32'h00000430;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_4_REG_ADDR                                                         = 32'h00000430;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_5_REG_OFFSET                                                       = 32'h00000434;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_5_REG_ADDR                                                         = 32'h00000434;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_6_REG_OFFSET                                                       = 32'h00000438;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_6_REG_ADDR                                                         = 32'h00000438;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_7_REG_OFFSET                                                       = 32'h0000043C;
+localparam int unsigned OTP_SEP_CHIPLET_ID_CPL_7_REG_ADDR                                                         = 32'h0000043C;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_0_REG_OFFSET                                                           = 32'h00000440;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_0_REG_ADDR                                                             = 32'h00000440;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_1_REG_OFFSET                                                           = 32'h00000444;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_1_REG_ADDR                                                             = 32'h00000444;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_2_REG_OFFSET                                                           = 32'h00000448;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_2_REG_ADDR                                                             = 32'h00000448;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_3_REG_OFFSET                                                           = 32'h0000044C;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_3_REG_ADDR                                                             = 32'h0000044C;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_4_REG_OFFSET                                                           = 32'h00000450;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_4_REG_ADDR                                                             = 32'h00000450;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_5_REG_OFFSET                                                           = 32'h00000454;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_5_REG_ADDR                                                             = 32'h00000454;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_6_REG_OFFSET                                                           = 32'h00000458;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_6_REG_ADDR                                                             = 32'h00000458;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_7_REG_OFFSET                                                           = 32'h0000045C;
+localparam int unsigned OTP_SEP_SIP_ID_VAL_7_REG_ADDR                                                             = 32'h0000045C;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_0_REG_OFFSET                                                           = 32'h00000460;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_0_REG_ADDR                                                             = 32'h00000460;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_1_REG_OFFSET                                                           = 32'h00000464;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_1_REG_ADDR                                                             = 32'h00000464;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_2_REG_OFFSET                                                           = 32'h00000468;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_2_REG_ADDR                                                             = 32'h00000468;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_3_REG_OFFSET                                                           = 32'h0000046C;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_3_REG_ADDR                                                             = 32'h0000046C;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_4_REG_OFFSET                                                           = 32'h00000470;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_4_REG_ADDR                                                             = 32'h00000470;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_5_REG_OFFSET                                                           = 32'h00000474;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_5_REG_ADDR                                                             = 32'h00000474;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_6_REG_OFFSET                                                           = 32'h00000478;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_6_REG_ADDR                                                             = 32'h00000478;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_7_REG_OFFSET                                                           = 32'h0000047C;
+localparam int unsigned OTP_SEP_SIP_ID_CPL_7_REG_ADDR                                                             = 32'h0000047C;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_0_REG_OFFSET                                                           = 32'h00000480;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_0_REG_ADDR                                                             = 32'h00000480;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_1_REG_OFFSET                                                           = 32'h00000484;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_1_REG_ADDR                                                             = 32'h00000484;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_2_REG_OFFSET                                                           = 32'h00000488;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_2_REG_ADDR                                                             = 32'h00000488;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_3_REG_OFFSET                                                           = 32'h0000048C;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_3_REG_ADDR                                                             = 32'h0000048C;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_4_REG_OFFSET                                                           = 32'h00000490;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_4_REG_ADDR                                                             = 32'h00000490;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_5_REG_OFFSET                                                           = 32'h00000494;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_5_REG_ADDR                                                             = 32'h00000494;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_6_REG_OFFSET                                                           = 32'h00000498;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_6_REG_ADDR                                                             = 32'h00000498;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_7_REG_OFFSET                                                           = 32'h0000049C;
+localparam int unsigned OTP_SEP_SYS_ID_VAL_7_REG_ADDR                                                             = 32'h0000049C;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_0_REG_OFFSET                                                           = 32'h000004A0;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_0_REG_ADDR                                                             = 32'h000004A0;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_1_REG_OFFSET                                                           = 32'h000004A4;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_1_REG_ADDR                                                             = 32'h000004A4;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_2_REG_OFFSET                                                           = 32'h000004A8;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_2_REG_ADDR                                                             = 32'h000004A8;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_3_REG_OFFSET                                                           = 32'h000004AC;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_3_REG_ADDR                                                             = 32'h000004AC;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_4_REG_OFFSET                                                           = 32'h000004B0;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_4_REG_ADDR                                                             = 32'h000004B0;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_5_REG_OFFSET                                                           = 32'h000004B4;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_5_REG_ADDR                                                             = 32'h000004B4;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_6_REG_OFFSET                                                           = 32'h000004B8;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_6_REG_ADDR                                                             = 32'h000004B8;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_7_REG_OFFSET                                                           = 32'h000004BC;
+localparam int unsigned OTP_SEP_SYS_ID_CPL_7_REG_ADDR                                                             = 32'h000004BC;
 
 
 //==============================================================================
@@ -540,8 +636,17 @@ localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SYS_UID_SHIFT                  
 localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_MASK                                                   = 32'h20;
 localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_SHIFT                                                  = 5;
 
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_MASK                                                        = 32'hFFFFFFC0;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT                                                       = 6;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_CHIPLET_ID_MASK                                              = 32'h40;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_CHIPLET_ID_SHIFT                                             = 6;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_SIP_ID_MASK                                                  = 32'h80;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_SIP_ID_SHIFT                                                 = 7;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_SYS_ID_MASK                                                  = 32'h100;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_SYS_ID_SHIFT                                                 = 8;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_MASK                                                        = 32'hFFFFFE00;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT                                                       = 9;
 
 localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_MASK                                              = 32'h1;
 localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_SHIFT                                             = 0;
@@ -561,8 +666,17 @@ localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_SHIFT              
 localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_MASK                                               = 32'h20;
 localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_SHIFT                                              = 5;
 
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_MASK                                                    = 32'hFFFFFFC0;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_SHIFT                                                   = 6;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_CHIPLET_ID_MASK                                          = 32'h40;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_CHIPLET_ID_SHIFT                                         = 6;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_SIP_ID_MASK                                              = 32'h80;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_SIP_ID_SHIFT                                             = 7;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_SYS_ID_MASK                                              = 32'h100;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_SYS_ID_SHIFT                                             = 8;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_MASK                                                    = 32'hFFFFFE00;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_SHIFT                                                   = 9;
 
 localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_LIFE_CYCLE_MASK                                             = 32'h1;
 localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_LIFE_CYCLE_SHIFT                                            = 0;
@@ -582,8 +696,17 @@ localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SYS_UID_SHIFT             
 localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CLASS_KEY_MASK                                              = 32'h20;
 localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CLASS_KEY_SHIFT                                             = 5;
 
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_MASK                                                   = 32'hFFFFFFC0;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_SHIFT                                                  = 6;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_CHIPLET_ID_MASK                                         = 32'h40;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_CHIPLET_ID_SHIFT                                        = 6;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_SIP_ID_MASK                                             = 32'h80;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_SIP_ID_SHIFT                                            = 7;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_SYS_ID_MASK                                             = 32'h100;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_SYS_ID_SHIFT                                            = 8;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_MASK                                                   = 32'hFFFFFE00;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_SHIFT                                                  = 9;
 
 
 
@@ -825,7 +948,10 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [25:0]   rsvd ;
+    logic [22:0]   rsvd ;
+    logic [0:0]   sep_sys_id ;
+    logic [0:0]   sep_sip_id ;
+    logic [0:0]   sep_chiplet_id ;
     logic [0:0]   class_key ;
     logic [0:0]   sys_uid ;
     logic [0:0]   sip_uid ;
@@ -837,7 +963,10 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [25:0]   rsvd ;
+    logic [22:0]   rsvd ;
+    logic [0:0]   sep_sys_id ;
+    logic [0:0]   sep_sip_id ;
+    logic [0:0]   sep_chiplet_id ;
     logic [0:0]   class_key ;
     logic [0:0]   sys_uid ;
     logic [0:0]   sip_uid ;
@@ -849,7 +978,10 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [25:0]   rsvd ;
+    logic [22:0]   rsvd ;
+    logic [0:0]   sep_sys_id ;
+    logic [0:0]   sep_sip_id ;
+    logic [0:0]   sep_chiplet_id ;
     logic [0:0]   class_key ;
     logic [0:0]   sys_uid ;
     logic [0:0]   sip_uid ;

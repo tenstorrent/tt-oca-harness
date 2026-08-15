@@ -10,7 +10,7 @@ module km_csr_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [9:0] s_axil_awaddr,
+        input wire [10:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,7 +21,7 @@ module km_csr_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [9:0] s_axil_araddr,
+        input wire [10:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -37,7 +37,7 @@ module km_csr_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [9:0] cpuif_addr;
+    logic [10:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +54,10 @@ module km_csr_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [9:0] axil_araddr;
+    logic [10:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [9:0] axil_awaddr;
+    logic [10:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -135,17 +135,17 @@ module km_csr_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[9:2], 2'b0};
+                cpuif_addr = {axil_araddr[10:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[9:2], 2'b0};
+                cpuif_addr = {axil_awaddr[10:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[9:2], 2'b0};
+                cpuif_addr = {axil_araddr[10:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -324,10 +324,58 @@ module km_csr_reg (
         logic OTP_READ_LOCK;
         logic OTP_CHANGE_STATUS;
         logic OTP_READ_LOCK_COLD;
+        logic OTP_SEP_CHIPLET_ID_VAL_0;
+        logic OTP_SEP_CHIPLET_ID_VAL_1;
+        logic OTP_SEP_CHIPLET_ID_VAL_2;
+        logic OTP_SEP_CHIPLET_ID_VAL_3;
+        logic OTP_SEP_CHIPLET_ID_VAL_4;
+        logic OTP_SEP_CHIPLET_ID_VAL_5;
+        logic OTP_SEP_CHIPLET_ID_VAL_6;
+        logic OTP_SEP_CHIPLET_ID_VAL_7;
+        logic OTP_SEP_CHIPLET_ID_CPL_0;
+        logic OTP_SEP_CHIPLET_ID_CPL_1;
+        logic OTP_SEP_CHIPLET_ID_CPL_2;
+        logic OTP_SEP_CHIPLET_ID_CPL_3;
+        logic OTP_SEP_CHIPLET_ID_CPL_4;
+        logic OTP_SEP_CHIPLET_ID_CPL_5;
+        logic OTP_SEP_CHIPLET_ID_CPL_6;
+        logic OTP_SEP_CHIPLET_ID_CPL_7;
+        logic OTP_SEP_SIP_ID_VAL_0;
+        logic OTP_SEP_SIP_ID_VAL_1;
+        logic OTP_SEP_SIP_ID_VAL_2;
+        logic OTP_SEP_SIP_ID_VAL_3;
+        logic OTP_SEP_SIP_ID_VAL_4;
+        logic OTP_SEP_SIP_ID_VAL_5;
+        logic OTP_SEP_SIP_ID_VAL_6;
+        logic OTP_SEP_SIP_ID_VAL_7;
+        logic OTP_SEP_SIP_ID_CPL_0;
+        logic OTP_SEP_SIP_ID_CPL_1;
+        logic OTP_SEP_SIP_ID_CPL_2;
+        logic OTP_SEP_SIP_ID_CPL_3;
+        logic OTP_SEP_SIP_ID_CPL_4;
+        logic OTP_SEP_SIP_ID_CPL_5;
+        logic OTP_SEP_SIP_ID_CPL_6;
+        logic OTP_SEP_SIP_ID_CPL_7;
+        logic OTP_SEP_SYS_ID_VAL_0;
+        logic OTP_SEP_SYS_ID_VAL_1;
+        logic OTP_SEP_SYS_ID_VAL_2;
+        logic OTP_SEP_SYS_ID_VAL_3;
+        logic OTP_SEP_SYS_ID_VAL_4;
+        logic OTP_SEP_SYS_ID_VAL_5;
+        logic OTP_SEP_SYS_ID_VAL_6;
+        logic OTP_SEP_SYS_ID_VAL_7;
+        logic OTP_SEP_SYS_ID_CPL_0;
+        logic OTP_SEP_SYS_ID_CPL_1;
+        logic OTP_SEP_SYS_ID_CPL_2;
+        logic OTP_SEP_SYS_ID_CPL_3;
+        logic OTP_SEP_SYS_ID_CPL_4;
+        logic OTP_SEP_SYS_ID_CPL_5;
+        logic OTP_SEP_SYS_ID_CPL_6;
+        logic OTP_SEP_SYS_ID_CPL_7;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
-    logic [9:0] decoded_addr;
+    logic [10:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -338,294 +386,438 @@ module km_csr_reg (
         automatic logic is_valid_rw;
         is_valid_addr = '0;
         is_valid_rw = '0;
-        decoded_reg_strb.VERSION = cpuif_req_masked & (cpuif_addr == 10'h0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h0);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h0) & !cpuif_req_is_wr;
-        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 10'h4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h4);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h4) & !cpuif_req_is_wr;
-        decoded_reg_strb.SOFT_RST_CODE = cpuif_req_masked & (cpuif_addr == 10'h8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h8);
-        decoded_reg_strb.IRQ_STATUS = cpuif_req_masked & (cpuif_addr == 10'hc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'hc);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'hc);
-        decoded_reg_strb.IRQ_ENABLE = cpuif_req_masked & (cpuif_addr == 10'h10);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h10);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h10);
-        decoded_reg_strb.SCRAMBLER_KEY = cpuif_req_masked & (cpuif_addr == 10'h14);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h14);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h14);
-        decoded_reg_strb.SCRAMBLER_CTRL = cpuif_req_masked & (cpuif_addr == 10'h18);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h18);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h18);
-        decoded_reg_strb.SRAM_LOCK = cpuif_req_masked & (cpuif_addr == 10'h1c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h1c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h1c);
-        decoded_reg_strb.IRQ_SET = cpuif_req_masked & (cpuif_addr == 10'h20) & cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h20);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h20) & cpuif_req_is_wr;
-        decoded_reg_strb.SRAM_WRITE_LOCK_VIOLATION = cpuif_req_masked & (cpuif_addr == 10'h24);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h24);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h24);
-        decoded_reg_strb.RECOVERABLE_ERR = cpuif_req_masked & (cpuif_addr == 10'h28);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h28);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h28);
-        decoded_reg_strb.BOOT_STATUS = cpuif_req_masked & (cpuif_addr == 10'h2c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2c);
-        decoded_reg_strb.OTP_LIFE_CYCLE = cpuif_req_masked & (cpuif_addr == 10'h30) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h30);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h30) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_DEMOTION_STATE = cpuif_req_masked & (cpuif_addr == 10'h34) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h34);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h34) & !cpuif_req_is_wr;
-        decoded_reg_strb.SRAM_EXEC_MODE = cpuif_req_masked & (cpuif_addr == 10'h38);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h38);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h38);
-        decoded_reg_strb.IRQ_ENTRY_ADDR = cpuif_req_masked & (cpuif_addr == 10'hb8);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'hb8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'hb8);
-        decoded_reg_strb.IRQ_ENTRY_LOCK = cpuif_req_masked & (cpuif_addr == 10'hbc);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'hbc);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'hbc);
-        decoded_reg_strb.VUART_TX = cpuif_req_masked & (cpuif_addr == 10'h100);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h100);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h100);
-        decoded_reg_strb.VUART_RX = cpuif_req_masked & (cpuif_addr == 10'h104) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h104);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h104) & !cpuif_req_is_wr;
-        decoded_reg_strb.VUART_STATUS = cpuif_req_masked & (cpuif_addr == 10'h108) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h108);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h108) & !cpuif_req_is_wr;
-        decoded_reg_strb.TB_RESULT = cpuif_req_masked & (cpuif_addr == 10'h110);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h110);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h110);
-        decoded_reg_strb.TB_SIGNATURE = cpuif_req_masked & (cpuif_addr == 10'h114);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h114);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h114);
-        decoded_reg_strb.TB_ERRCODE = cpuif_req_masked & (cpuif_addr == 10'h118);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h118);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h118);
-        decoded_reg_strb.TB_SUBTEST = cpuif_req_masked & (cpuif_addr == 10'h11c);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h11c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h11c);
-        decoded_reg_strb.TB_CMD = cpuif_req_masked & (cpuif_addr == 10'h120);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h120);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h120);
-        decoded_reg_strb.TB_CMD_ARG = cpuif_req_masked & (cpuif_addr == 10'h124);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h124);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h124);
-        decoded_reg_strb.TB_CMD_STATUS = cpuif_req_masked & (cpuif_addr == 10'h128);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h128);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h128);
-        decoded_reg_strb.TB_CMD_RESULT = cpuif_req_masked & (cpuif_addr == 10'h12c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h12c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h12c) & !cpuif_req_is_wr;
-        decoded_reg_strb.DEBUG = cpuif_req_masked & (cpuif_addr == 10'h1fc) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h1fc);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h1fc) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_VAL_0 = cpuif_req_masked & (cpuif_addr == 10'h200) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h200);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h200) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_VAL_1 = cpuif_req_masked & (cpuif_addr == 10'h204) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h204);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h204) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_VAL_2 = cpuif_req_masked & (cpuif_addr == 10'h208) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h208);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h208) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_VAL_3 = cpuif_req_masked & (cpuif_addr == 10'h20c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h20c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h20c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_VAL_4 = cpuif_req_masked & (cpuif_addr == 10'h210) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h210);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h210) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_VAL_5 = cpuif_req_masked & (cpuif_addr == 10'h214) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h214);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h214) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_VAL_6 = cpuif_req_masked & (cpuif_addr == 10'h218) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h218);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h218) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_VAL_7 = cpuif_req_masked & (cpuif_addr == 10'h21c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h21c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h21c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_CPL_0 = cpuif_req_masked & (cpuif_addr == 10'h220) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h220);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h220) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_CPL_1 = cpuif_req_masked & (cpuif_addr == 10'h224) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h224);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h224) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_CPL_2 = cpuif_req_masked & (cpuif_addr == 10'h228) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h228);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h228) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_CPL_3 = cpuif_req_masked & (cpuif_addr == 10'h22c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h22c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h22c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_CPL_4 = cpuif_req_masked & (cpuif_addr == 10'h230) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h230);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h230) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_CPL_5 = cpuif_req_masked & (cpuif_addr == 10'h234) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h234);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h234) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_CPL_6 = cpuif_req_masked & (cpuif_addr == 10'h238) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h238);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h238) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CHIPLET_UID_CPL_7 = cpuif_req_masked & (cpuif_addr == 10'h23c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h23c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h23c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_VAL_0 = cpuif_req_masked & (cpuif_addr == 10'h240) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h240);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h240) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_VAL_1 = cpuif_req_masked & (cpuif_addr == 10'h244) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h244);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h244) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_VAL_2 = cpuif_req_masked & (cpuif_addr == 10'h248) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h248);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h248) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_VAL_3 = cpuif_req_masked & (cpuif_addr == 10'h24c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h24c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h24c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_VAL_4 = cpuif_req_masked & (cpuif_addr == 10'h250) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h250);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h250) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_VAL_5 = cpuif_req_masked & (cpuif_addr == 10'h254) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h254);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h254) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_VAL_6 = cpuif_req_masked & (cpuif_addr == 10'h258) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h258);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h258) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_VAL_7 = cpuif_req_masked & (cpuif_addr == 10'h25c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h25c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h25c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_CPL_0 = cpuif_req_masked & (cpuif_addr == 10'h260) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h260);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h260) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_CPL_1 = cpuif_req_masked & (cpuif_addr == 10'h264) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h264);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h264) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_CPL_2 = cpuif_req_masked & (cpuif_addr == 10'h268) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h268);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h268) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_CPL_3 = cpuif_req_masked & (cpuif_addr == 10'h26c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h26c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h26c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_CPL_4 = cpuif_req_masked & (cpuif_addr == 10'h270) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h270);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h270) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_CPL_5 = cpuif_req_masked & (cpuif_addr == 10'h274) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h274);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h274) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_CPL_6 = cpuif_req_masked & (cpuif_addr == 10'h278) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h278);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h278) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SIP_UID_CPL_7 = cpuif_req_masked & (cpuif_addr == 10'h27c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h27c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h27c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_VAL_0 = cpuif_req_masked & (cpuif_addr == 10'h280) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h280);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h280) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_VAL_1 = cpuif_req_masked & (cpuif_addr == 10'h284) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h284);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h284) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_VAL_2 = cpuif_req_masked & (cpuif_addr == 10'h288) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h288);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h288) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_VAL_3 = cpuif_req_masked & (cpuif_addr == 10'h28c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h28c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h28c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_VAL_4 = cpuif_req_masked & (cpuif_addr == 10'h290) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h290);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h290) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_VAL_5 = cpuif_req_masked & (cpuif_addr == 10'h294) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h294);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h294) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_VAL_6 = cpuif_req_masked & (cpuif_addr == 10'h298) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h298);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h298) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_VAL_7 = cpuif_req_masked & (cpuif_addr == 10'h29c) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h29c);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h29c) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_CPL_0 = cpuif_req_masked & (cpuif_addr == 10'h2a0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2a0);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2a0) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_CPL_1 = cpuif_req_masked & (cpuif_addr == 10'h2a4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2a4);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2a4) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_CPL_2 = cpuif_req_masked & (cpuif_addr == 10'h2a8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2a8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2a8) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_CPL_3 = cpuif_req_masked & (cpuif_addr == 10'h2ac) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2ac);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2ac) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_CPL_4 = cpuif_req_masked & (cpuif_addr == 10'h2b0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2b0);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2b0) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_CPL_5 = cpuif_req_masked & (cpuif_addr == 10'h2b4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2b4);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2b4) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_CPL_6 = cpuif_req_masked & (cpuif_addr == 10'h2b8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2b8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2b8) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_SYS_UID_CPL_7 = cpuif_req_masked & (cpuif_addr == 10'h2bc) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2bc);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2bc) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_VAL_0 = cpuif_req_masked & (cpuif_addr == 10'h2c0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2c0);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2c0) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_VAL_1 = cpuif_req_masked & (cpuif_addr == 10'h2c4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2c4);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2c4) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_VAL_2 = cpuif_req_masked & (cpuif_addr == 10'h2c8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2c8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2c8) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_VAL_3 = cpuif_req_masked & (cpuif_addr == 10'h2cc) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2cc);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2cc) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_VAL_4 = cpuif_req_masked & (cpuif_addr == 10'h2d0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2d0);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2d0) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_VAL_5 = cpuif_req_masked & (cpuif_addr == 10'h2d4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2d4);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2d4) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_VAL_6 = cpuif_req_masked & (cpuif_addr == 10'h2d8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2d8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2d8) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_VAL_7 = cpuif_req_masked & (cpuif_addr == 10'h2dc) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2dc);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2dc) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_CPL_0 = cpuif_req_masked & (cpuif_addr == 10'h2e0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2e0);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2e0) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_CPL_1 = cpuif_req_masked & (cpuif_addr == 10'h2e4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2e4);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2e4) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_CPL_2 = cpuif_req_masked & (cpuif_addr == 10'h2e8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2e8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2e8) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_CPL_3 = cpuif_req_masked & (cpuif_addr == 10'h2ec) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2ec);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2ec) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_CPL_4 = cpuif_req_masked & (cpuif_addr == 10'h2f0) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2f0);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2f0) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_CPL_5 = cpuif_req_masked & (cpuif_addr == 10'h2f4) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2f4);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2f4) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_CPL_6 = cpuif_req_masked & (cpuif_addr == 10'h2f8) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2f8);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2f8) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_CLASS_KEY_CPL_7 = cpuif_req_masked & (cpuif_addr == 10'h2fc) & !cpuif_req_is_wr;
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h2fc);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h2fc) & !cpuif_req_is_wr;
-        decoded_reg_strb.OTP_READ_LOCK = cpuif_req_masked & (cpuif_addr == 10'h300);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h300);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h300);
-        decoded_reg_strb.OTP_CHANGE_STATUS = cpuif_req_masked & (cpuif_addr == 10'h304);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h304);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h304);
-        decoded_reg_strb.OTP_READ_LOCK_COLD = cpuif_req_masked & (cpuif_addr == 10'h308);
-        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 10'h308);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 10'h308);
+        decoded_reg_strb.VERSION = cpuif_req_masked & (cpuif_addr == 11'h0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h0) & !cpuif_req_is_wr;
+        decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 11'h4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4) & !cpuif_req_is_wr;
+        decoded_reg_strb.SOFT_RST_CODE = cpuif_req_masked & (cpuif_addr == 11'h8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h8);
+        decoded_reg_strb.IRQ_STATUS = cpuif_req_masked & (cpuif_addr == 11'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'hc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'hc);
+        decoded_reg_strb.IRQ_ENABLE = cpuif_req_masked & (cpuif_addr == 11'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h10);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h10);
+        decoded_reg_strb.SCRAMBLER_KEY = cpuif_req_masked & (cpuif_addr == 11'h14);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h14);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h14);
+        decoded_reg_strb.SCRAMBLER_CTRL = cpuif_req_masked & (cpuif_addr == 11'h18);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h18);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h18);
+        decoded_reg_strb.SRAM_LOCK = cpuif_req_masked & (cpuif_addr == 11'h1c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h1c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h1c);
+        decoded_reg_strb.IRQ_SET = cpuif_req_masked & (cpuif_addr == 11'h20) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h20);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h20) & cpuif_req_is_wr;
+        decoded_reg_strb.SRAM_WRITE_LOCK_VIOLATION = cpuif_req_masked & (cpuif_addr == 11'h24);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h24);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h24);
+        decoded_reg_strb.RECOVERABLE_ERR = cpuif_req_masked & (cpuif_addr == 11'h28);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h28);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h28);
+        decoded_reg_strb.BOOT_STATUS = cpuif_req_masked & (cpuif_addr == 11'h2c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2c);
+        decoded_reg_strb.OTP_LIFE_CYCLE = cpuif_req_masked & (cpuif_addr == 11'h30) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h30);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h30) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_DEMOTION_STATE = cpuif_req_masked & (cpuif_addr == 11'h34) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h34);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h34) & !cpuif_req_is_wr;
+        decoded_reg_strb.SRAM_EXEC_MODE = cpuif_req_masked & (cpuif_addr == 11'h38);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h38);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h38);
+        decoded_reg_strb.IRQ_ENTRY_ADDR = cpuif_req_masked & (cpuif_addr == 11'hb8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'hb8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'hb8);
+        decoded_reg_strb.IRQ_ENTRY_LOCK = cpuif_req_masked & (cpuif_addr == 11'hbc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'hbc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'hbc);
+        decoded_reg_strb.VUART_TX = cpuif_req_masked & (cpuif_addr == 11'h100);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h100);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h100);
+        decoded_reg_strb.VUART_RX = cpuif_req_masked & (cpuif_addr == 11'h104) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h104);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h104) & !cpuif_req_is_wr;
+        decoded_reg_strb.VUART_STATUS = cpuif_req_masked & (cpuif_addr == 11'h108) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h108);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h108) & !cpuif_req_is_wr;
+        decoded_reg_strb.TB_RESULT = cpuif_req_masked & (cpuif_addr == 11'h110);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h110);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h110);
+        decoded_reg_strb.TB_SIGNATURE = cpuif_req_masked & (cpuif_addr == 11'h114);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h114);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h114);
+        decoded_reg_strb.TB_ERRCODE = cpuif_req_masked & (cpuif_addr == 11'h118);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h118);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h118);
+        decoded_reg_strb.TB_SUBTEST = cpuif_req_masked & (cpuif_addr == 11'h11c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h11c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h11c);
+        decoded_reg_strb.TB_CMD = cpuif_req_masked & (cpuif_addr == 11'h120);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h120);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h120);
+        decoded_reg_strb.TB_CMD_ARG = cpuif_req_masked & (cpuif_addr == 11'h124);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h124);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h124);
+        decoded_reg_strb.TB_CMD_STATUS = cpuif_req_masked & (cpuif_addr == 11'h128);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h128);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h128);
+        decoded_reg_strb.TB_CMD_RESULT = cpuif_req_masked & (cpuif_addr == 11'h12c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h12c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h12c) & !cpuif_req_is_wr;
+        decoded_reg_strb.DEBUG = cpuif_req_masked & (cpuif_addr == 11'h1fc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h1fc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h1fc) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_VAL_0 = cpuif_req_masked & (cpuif_addr == 11'h200) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h200);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h200) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_VAL_1 = cpuif_req_masked & (cpuif_addr == 11'h204) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h204);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h204) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_VAL_2 = cpuif_req_masked & (cpuif_addr == 11'h208) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h208);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h208) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_VAL_3 = cpuif_req_masked & (cpuif_addr == 11'h20c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h20c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h20c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_VAL_4 = cpuif_req_masked & (cpuif_addr == 11'h210) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h210);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h210) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_VAL_5 = cpuif_req_masked & (cpuif_addr == 11'h214) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h214);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h214) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_VAL_6 = cpuif_req_masked & (cpuif_addr == 11'h218) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h218);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h218) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_VAL_7 = cpuif_req_masked & (cpuif_addr == 11'h21c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h21c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h21c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_CPL_0 = cpuif_req_masked & (cpuif_addr == 11'h220) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h220);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h220) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_CPL_1 = cpuif_req_masked & (cpuif_addr == 11'h224) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h224);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h224) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_CPL_2 = cpuif_req_masked & (cpuif_addr == 11'h228) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h228);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h228) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_CPL_3 = cpuif_req_masked & (cpuif_addr == 11'h22c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h22c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h22c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_CPL_4 = cpuif_req_masked & (cpuif_addr == 11'h230) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h230);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h230) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_CPL_5 = cpuif_req_masked & (cpuif_addr == 11'h234) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h234);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h234) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_CPL_6 = cpuif_req_masked & (cpuif_addr == 11'h238) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h238);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h238) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CHIPLET_UID_CPL_7 = cpuif_req_masked & (cpuif_addr == 11'h23c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h23c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h23c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_VAL_0 = cpuif_req_masked & (cpuif_addr == 11'h240) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h240);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h240) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_VAL_1 = cpuif_req_masked & (cpuif_addr == 11'h244) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h244);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h244) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_VAL_2 = cpuif_req_masked & (cpuif_addr == 11'h248) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h248);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h248) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_VAL_3 = cpuif_req_masked & (cpuif_addr == 11'h24c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h24c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h24c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_VAL_4 = cpuif_req_masked & (cpuif_addr == 11'h250) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h250);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h250) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_VAL_5 = cpuif_req_masked & (cpuif_addr == 11'h254) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h254);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h254) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_VAL_6 = cpuif_req_masked & (cpuif_addr == 11'h258) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h258);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h258) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_VAL_7 = cpuif_req_masked & (cpuif_addr == 11'h25c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h25c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h25c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_CPL_0 = cpuif_req_masked & (cpuif_addr == 11'h260) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h260);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h260) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_CPL_1 = cpuif_req_masked & (cpuif_addr == 11'h264) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h264);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h264) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_CPL_2 = cpuif_req_masked & (cpuif_addr == 11'h268) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h268);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h268) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_CPL_3 = cpuif_req_masked & (cpuif_addr == 11'h26c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h26c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h26c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_CPL_4 = cpuif_req_masked & (cpuif_addr == 11'h270) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h270);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h270) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_CPL_5 = cpuif_req_masked & (cpuif_addr == 11'h274) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h274);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h274) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_CPL_6 = cpuif_req_masked & (cpuif_addr == 11'h278) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h278);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h278) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SIP_UID_CPL_7 = cpuif_req_masked & (cpuif_addr == 11'h27c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h27c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h27c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_VAL_0 = cpuif_req_masked & (cpuif_addr == 11'h280) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h280);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h280) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_VAL_1 = cpuif_req_masked & (cpuif_addr == 11'h284) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h284);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h284) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_VAL_2 = cpuif_req_masked & (cpuif_addr == 11'h288) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h288);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h288) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_VAL_3 = cpuif_req_masked & (cpuif_addr == 11'h28c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h28c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h28c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_VAL_4 = cpuif_req_masked & (cpuif_addr == 11'h290) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h290);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h290) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_VAL_5 = cpuif_req_masked & (cpuif_addr == 11'h294) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h294);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h294) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_VAL_6 = cpuif_req_masked & (cpuif_addr == 11'h298) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h298);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h298) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_VAL_7 = cpuif_req_masked & (cpuif_addr == 11'h29c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h29c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h29c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_CPL_0 = cpuif_req_masked & (cpuif_addr == 11'h2a0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2a0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2a0) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_CPL_1 = cpuif_req_masked & (cpuif_addr == 11'h2a4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2a4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2a4) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_CPL_2 = cpuif_req_masked & (cpuif_addr == 11'h2a8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2a8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2a8) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_CPL_3 = cpuif_req_masked & (cpuif_addr == 11'h2ac) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2ac);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2ac) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_CPL_4 = cpuif_req_masked & (cpuif_addr == 11'h2b0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2b0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2b0) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_CPL_5 = cpuif_req_masked & (cpuif_addr == 11'h2b4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2b4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2b4) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_CPL_6 = cpuif_req_masked & (cpuif_addr == 11'h2b8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2b8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2b8) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SYS_UID_CPL_7 = cpuif_req_masked & (cpuif_addr == 11'h2bc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2bc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2bc) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_VAL_0 = cpuif_req_masked & (cpuif_addr == 11'h2c0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2c0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2c0) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_VAL_1 = cpuif_req_masked & (cpuif_addr == 11'h2c4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2c4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2c4) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_VAL_2 = cpuif_req_masked & (cpuif_addr == 11'h2c8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2c8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2c8) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_VAL_3 = cpuif_req_masked & (cpuif_addr == 11'h2cc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2cc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2cc) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_VAL_4 = cpuif_req_masked & (cpuif_addr == 11'h2d0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2d0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2d0) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_VAL_5 = cpuif_req_masked & (cpuif_addr == 11'h2d4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2d4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2d4) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_VAL_6 = cpuif_req_masked & (cpuif_addr == 11'h2d8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2d8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2d8) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_VAL_7 = cpuif_req_masked & (cpuif_addr == 11'h2dc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2dc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2dc) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_CPL_0 = cpuif_req_masked & (cpuif_addr == 11'h2e0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2e0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2e0) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_CPL_1 = cpuif_req_masked & (cpuif_addr == 11'h2e4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2e4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2e4) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_CPL_2 = cpuif_req_masked & (cpuif_addr == 11'h2e8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2e8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2e8) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_CPL_3 = cpuif_req_masked & (cpuif_addr == 11'h2ec) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2ec);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2ec) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_CPL_4 = cpuif_req_masked & (cpuif_addr == 11'h2f0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2f0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2f0) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_CPL_5 = cpuif_req_masked & (cpuif_addr == 11'h2f4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2f4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2f4) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_CPL_6 = cpuif_req_masked & (cpuif_addr == 11'h2f8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2f8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2f8) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_CLASS_KEY_CPL_7 = cpuif_req_masked & (cpuif_addr == 11'h2fc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h2fc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h2fc) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_READ_LOCK = cpuif_req_masked & (cpuif_addr == 11'h300);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h300);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h300);
+        decoded_reg_strb.OTP_CHANGE_STATUS = cpuif_req_masked & (cpuif_addr == 11'h304);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h304);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h304);
+        decoded_reg_strb.OTP_READ_LOCK_COLD = cpuif_req_masked & (cpuif_addr == 11'h308);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h308);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h308);
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_VAL_0 = cpuif_req_masked & (cpuif_addr == 11'h400) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h400);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h400) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_VAL_1 = cpuif_req_masked & (cpuif_addr == 11'h404) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h404);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h404) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_VAL_2 = cpuif_req_masked & (cpuif_addr == 11'h408) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h408);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h408) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_VAL_3 = cpuif_req_masked & (cpuif_addr == 11'h40c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h40c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h40c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_VAL_4 = cpuif_req_masked & (cpuif_addr == 11'h410) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h410);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h410) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_VAL_5 = cpuif_req_masked & (cpuif_addr == 11'h414) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h414);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h414) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_VAL_6 = cpuif_req_masked & (cpuif_addr == 11'h418) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h418);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h418) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_VAL_7 = cpuif_req_masked & (cpuif_addr == 11'h41c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h41c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h41c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_CPL_0 = cpuif_req_masked & (cpuif_addr == 11'h420) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h420);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h420) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_CPL_1 = cpuif_req_masked & (cpuif_addr == 11'h424) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h424);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h424) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_CPL_2 = cpuif_req_masked & (cpuif_addr == 11'h428) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h428);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h428) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_CPL_3 = cpuif_req_masked & (cpuif_addr == 11'h42c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h42c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h42c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_CPL_4 = cpuif_req_masked & (cpuif_addr == 11'h430) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h430);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h430) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_CPL_5 = cpuif_req_masked & (cpuif_addr == 11'h434) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h434);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h434) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_CPL_6 = cpuif_req_masked & (cpuif_addr == 11'h438) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h438);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h438) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_CHIPLET_ID_CPL_7 = cpuif_req_masked & (cpuif_addr == 11'h43c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h43c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h43c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_VAL_0 = cpuif_req_masked & (cpuif_addr == 11'h440) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h440);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h440) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_VAL_1 = cpuif_req_masked & (cpuif_addr == 11'h444) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h444);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h444) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_VAL_2 = cpuif_req_masked & (cpuif_addr == 11'h448) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h448);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h448) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_VAL_3 = cpuif_req_masked & (cpuif_addr == 11'h44c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h44c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h44c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_VAL_4 = cpuif_req_masked & (cpuif_addr == 11'h450) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h450);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h450) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_VAL_5 = cpuif_req_masked & (cpuif_addr == 11'h454) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h454);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h454) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_VAL_6 = cpuif_req_masked & (cpuif_addr == 11'h458) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h458);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h458) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_VAL_7 = cpuif_req_masked & (cpuif_addr == 11'h45c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h45c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h45c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_CPL_0 = cpuif_req_masked & (cpuif_addr == 11'h460) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h460);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h460) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_CPL_1 = cpuif_req_masked & (cpuif_addr == 11'h464) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h464);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h464) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_CPL_2 = cpuif_req_masked & (cpuif_addr == 11'h468) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h468);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h468) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_CPL_3 = cpuif_req_masked & (cpuif_addr == 11'h46c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h46c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h46c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_CPL_4 = cpuif_req_masked & (cpuif_addr == 11'h470) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h470);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h470) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_CPL_5 = cpuif_req_masked & (cpuif_addr == 11'h474) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h474);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h474) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_CPL_6 = cpuif_req_masked & (cpuif_addr == 11'h478) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h478);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h478) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SIP_ID_CPL_7 = cpuif_req_masked & (cpuif_addr == 11'h47c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h47c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h47c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_VAL_0 = cpuif_req_masked & (cpuif_addr == 11'h480) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h480);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h480) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_VAL_1 = cpuif_req_masked & (cpuif_addr == 11'h484) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h484);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h484) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_VAL_2 = cpuif_req_masked & (cpuif_addr == 11'h488) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h488);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h488) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_VAL_3 = cpuif_req_masked & (cpuif_addr == 11'h48c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h48c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h48c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_VAL_4 = cpuif_req_masked & (cpuif_addr == 11'h490) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h490);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h490) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_VAL_5 = cpuif_req_masked & (cpuif_addr == 11'h494) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h494);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h494) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_VAL_6 = cpuif_req_masked & (cpuif_addr == 11'h498) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h498);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h498) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_VAL_7 = cpuif_req_masked & (cpuif_addr == 11'h49c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h49c);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h49c) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_CPL_0 = cpuif_req_masked & (cpuif_addr == 11'h4a0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4a0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4a0) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_CPL_1 = cpuif_req_masked & (cpuif_addr == 11'h4a4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4a4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4a4) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_CPL_2 = cpuif_req_masked & (cpuif_addr == 11'h4a8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4a8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4a8) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_CPL_3 = cpuif_req_masked & (cpuif_addr == 11'h4ac) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4ac);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4ac) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_CPL_4 = cpuif_req_masked & (cpuif_addr == 11'h4b0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4b0);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4b0) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_CPL_5 = cpuif_req_masked & (cpuif_addr == 11'h4b4) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4b4);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4b4) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_CPL_6 = cpuif_req_masked & (cpuif_addr == 11'h4b8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4b8);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4b8) & !cpuif_req_is_wr;
+        decoded_reg_strb.OTP_SEP_SYS_ID_CPL_7 = cpuif_req_masked & (cpuif_addr == 11'h4bc) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 11'h4bc);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr == 11'h4bc) & !cpuif_req_is_wr;
         decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req;
     end
 
@@ -935,6 +1127,18 @@ module km_csr_reg (
                 logic next;
                 logic load_next;
             } class_key;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_chiplet_id;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_sip_id;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_sys_id;
         } OTP_READ_LOCK;
         struct {
             struct {
@@ -961,6 +1165,18 @@ module km_csr_reg (
                 logic next;
                 logic load_next;
             } class_key;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_chiplet_id;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_sip_id;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_sys_id;
         } OTP_CHANGE_STATUS;
         struct {
             struct {
@@ -987,6 +1203,18 @@ module km_csr_reg (
                 logic next;
                 logic load_next;
             } class_key;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_chiplet_id;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_sip_id;
+            struct {
+                logic next;
+                logic load_next;
+            } sep_sys_id;
         } OTP_READ_LOCK_COLD;
     } field_combo_t;
     field_combo_t field_combo;
@@ -1224,6 +1452,15 @@ module km_csr_reg (
             struct {
                 logic value;
             } class_key;
+            struct {
+                logic value;
+            } sep_chiplet_id;
+            struct {
+                logic value;
+            } sep_sip_id;
+            struct {
+                logic value;
+            } sep_sys_id;
         } OTP_READ_LOCK;
         struct {
             struct {
@@ -1244,6 +1481,15 @@ module km_csr_reg (
             struct {
                 logic value;
             } class_key;
+            struct {
+                logic value;
+            } sep_chiplet_id;
+            struct {
+                logic value;
+            } sep_sip_id;
+            struct {
+                logic value;
+            } sep_sys_id;
         } OTP_CHANGE_STATUS;
         struct {
             struct {
@@ -1264,6 +1510,15 @@ module km_csr_reg (
             struct {
                 logic value;
             } class_key;
+            struct {
+                logic value;
+            } sep_chiplet_id;
+            struct {
+                logic value;
+            } sep_sip_id;
+            struct {
+                logic value;
+            } sep_sys_id;
         } OTP_READ_LOCK_COLD;
     } field_storage_t;
     field_storage_t field_storage;
@@ -2843,6 +3098,75 @@ module km_csr_reg (
         end
     end
     assign hwif_out.OTP_READ_LOCK.class_key.value = field_storage.OTP_READ_LOCK.class_key.value;
+    // Field: km_csr.OTP_READ_LOCK.sep_chiplet_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK.sep_chiplet_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK.sep_chiplet_id.value | (decoded_wr_data[6:6] & decoded_wr_biten[6:6]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK.sep_chiplet_id.next = next_c;
+        field_combo.OTP_READ_LOCK.sep_chiplet_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.OTP_READ_LOCK.sep_chiplet_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK.sep_chiplet_id.load_next) begin
+                field_storage.OTP_READ_LOCK.sep_chiplet_id.value <= field_combo.OTP_READ_LOCK.sep_chiplet_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK.sep_chiplet_id.value = field_storage.OTP_READ_LOCK.sep_chiplet_id.value;
+    // Field: km_csr.OTP_READ_LOCK.sep_sip_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK.sep_sip_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK.sep_sip_id.value | (decoded_wr_data[7:7] & decoded_wr_biten[7:7]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK.sep_sip_id.next = next_c;
+        field_combo.OTP_READ_LOCK.sep_sip_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.OTP_READ_LOCK.sep_sip_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK.sep_sip_id.load_next) begin
+                field_storage.OTP_READ_LOCK.sep_sip_id.value <= field_combo.OTP_READ_LOCK.sep_sip_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK.sep_sip_id.value = field_storage.OTP_READ_LOCK.sep_sip_id.value;
+    // Field: km_csr.OTP_READ_LOCK.sep_sys_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK.sep_sys_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK.sep_sys_id.value | (decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK.sep_sys_id.next = next_c;
+        field_combo.OTP_READ_LOCK.sep_sys_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.OTP_READ_LOCK.sep_sys_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK.sep_sys_id.load_next) begin
+                field_storage.OTP_READ_LOCK.sep_sys_id.value <= field_combo.OTP_READ_LOCK.sep_sys_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK.sep_sys_id.value = field_storage.OTP_READ_LOCK.sep_sys_id.value;
     // Field: km_csr.OTP_CHANGE_STATUS.life_cycle
     always_comb begin
         automatic logic [0:0] next_c;
@@ -3017,6 +3341,93 @@ module km_csr_reg (
         end
     end
     assign hwif_out.OTP_CHANGE_STATUS.class_key.value = field_storage.OTP_CHANGE_STATUS.class_key.value;
+    // Field: km_csr.OTP_CHANGE_STATUS.sep_chiplet_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_CHANGE_STATUS.sep_chiplet_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_CHANGE_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.OTP_CHANGE_STATUS.sep_chiplet_id.value & ~(decoded_wr_data[6:6] & decoded_wr_biten[6:6]);
+            load_next_c = '1;
+        end else if(hwif_in.OTP_CHANGE_STATUS.sep_chiplet_id.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end else if(hwif_in.OTP_CHANGE_STATUS.sep_chiplet_id.hwset) begin // HW Set
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.OTP_CHANGE_STATUS.sep_chiplet_id.next = next_c;
+        field_combo.OTP_CHANGE_STATUS.sep_chiplet_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.OTP_CHANGE_STATUS.sep_chiplet_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_CHANGE_STATUS.sep_chiplet_id.load_next) begin
+                field_storage.OTP_CHANGE_STATUS.sep_chiplet_id.value <= field_combo.OTP_CHANGE_STATUS.sep_chiplet_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_CHANGE_STATUS.sep_chiplet_id.value = field_storage.OTP_CHANGE_STATUS.sep_chiplet_id.value;
+    // Field: km_csr.OTP_CHANGE_STATUS.sep_sip_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_CHANGE_STATUS.sep_sip_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_CHANGE_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.OTP_CHANGE_STATUS.sep_sip_id.value & ~(decoded_wr_data[7:7] & decoded_wr_biten[7:7]);
+            load_next_c = '1;
+        end else if(hwif_in.OTP_CHANGE_STATUS.sep_sip_id.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end else if(hwif_in.OTP_CHANGE_STATUS.sep_sip_id.hwset) begin // HW Set
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.OTP_CHANGE_STATUS.sep_sip_id.next = next_c;
+        field_combo.OTP_CHANGE_STATUS.sep_sip_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.OTP_CHANGE_STATUS.sep_sip_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_CHANGE_STATUS.sep_sip_id.load_next) begin
+                field_storage.OTP_CHANGE_STATUS.sep_sip_id.value <= field_combo.OTP_CHANGE_STATUS.sep_sip_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_CHANGE_STATUS.sep_sip_id.value = field_storage.OTP_CHANGE_STATUS.sep_sip_id.value;
+    // Field: km_csr.OTP_CHANGE_STATUS.sep_sys_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_CHANGE_STATUS.sep_sys_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_CHANGE_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.OTP_CHANGE_STATUS.sep_sys_id.value & ~(decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end else if(hwif_in.OTP_CHANGE_STATUS.sep_sys_id.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end else if(hwif_in.OTP_CHANGE_STATUS.sep_sys_id.hwset) begin // HW Set
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.OTP_CHANGE_STATUS.sep_sys_id.next = next_c;
+        field_combo.OTP_CHANGE_STATUS.sep_sys_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.OTP_CHANGE_STATUS.sep_sys_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_CHANGE_STATUS.sep_sys_id.load_next) begin
+                field_storage.OTP_CHANGE_STATUS.sep_sys_id.value <= field_combo.OTP_CHANGE_STATUS.sep_sys_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_CHANGE_STATUS.sep_sys_id.value = field_storage.OTP_CHANGE_STATUS.sep_sys_id.value;
     // Field: km_csr.OTP_READ_LOCK_COLD.life_cycle
     always_comb begin
         automatic logic [0:0] next_c;
@@ -3155,6 +3566,75 @@ module km_csr_reg (
         end
     end
     assign hwif_out.OTP_READ_LOCK_COLD.class_key.value = field_storage.OTP_READ_LOCK_COLD.class_key.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.sep_chiplet_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.sep_chiplet_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.sep_chiplet_id.value | (decoded_wr_data[6:6] & decoded_wr_biten[6:6]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.sep_chiplet_id.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.sep_chiplet_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.sep_chiplet_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.sep_chiplet_id.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.sep_chiplet_id.value <= field_combo.OTP_READ_LOCK_COLD.sep_chiplet_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.sep_chiplet_id.value = field_storage.OTP_READ_LOCK_COLD.sep_chiplet_id.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.sep_sip_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.sep_sip_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.sep_sip_id.value | (decoded_wr_data[7:7] & decoded_wr_biten[7:7]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.sep_sip_id.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.sep_sip_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.sep_sip_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.sep_sip_id.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.sep_sip_id.value <= field_combo.OTP_READ_LOCK_COLD.sep_sip_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.sep_sip_id.value = field_storage.OTP_READ_LOCK_COLD.sep_sip_id.value;
+    // Field: km_csr.OTP_READ_LOCK_COLD.sep_sys_id
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.OTP_READ_LOCK_COLD.sep_sys_id.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.OTP_READ_LOCK_COLD && decoded_req_is_wr) begin // SW write 1 set
+            next_c = field_storage.OTP_READ_LOCK_COLD.sep_sys_id.value | (decoded_wr_data[8:8] & decoded_wr_biten[8:8]);
+            load_next_c = '1;
+        end
+        field_combo.OTP_READ_LOCK_COLD.sep_sys_id.next = next_c;
+        field_combo.OTP_READ_LOCK_COLD.sep_sys_id.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.OTP_READ_LOCK_COLD.sep_sys_id.value <= 1'h0;
+        end else begin
+            if(field_combo.OTP_READ_LOCK_COLD.sep_sys_id.load_next) begin
+                field_storage.OTP_READ_LOCK_COLD.sep_sys_id.value <= field_combo.OTP_READ_LOCK_COLD.sep_sys_id.next;
+            end
+        end
+    end
+    assign hwif_out.OTP_READ_LOCK_COLD.sep_sys_id.value = field_storage.OTP_READ_LOCK_COLD.sep_sys_id.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -3167,7 +3647,7 @@ module km_csr_reg (
     // Readback
     //--------------------------------------------------------------------------
 
-    logic [9:0] rd_mux_addr;
+    logic [10:0] rd_mux_addr;
     assign rd_mux_addr = decoded_addr;
 
     logic readback_err;
@@ -3176,19 +3656,19 @@ module km_csr_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 10'h0) begin
+        if(rd_mux_addr == 11'h0) begin
             readback_data_var[7:0] = 8'h0;
             readback_data_var[15:8] = 8'h0;
             readback_data_var[23:16] = 8'h1;
             readback_data_var[31:24] = 8'h0;
         end
-        if(rd_mux_addr == 10'h4) begin
+        if(rd_mux_addr == 11'h4) begin
             readback_data_var[31:0] = 32'h0;
         end
-        if(rd_mux_addr == 10'h8) begin
+        if(rd_mux_addr == 11'h8) begin
             readback_data_var[31:0] = field_storage.SOFT_RST_CODE.code.value;
         end
-        if(rd_mux_addr == 10'hc) begin
+        if(rd_mux_addr == 11'hc) begin
             readback_data_var[0] = field_storage.IRQ_STATUS.rom_parity_err.value;
             readback_data_var[1] = field_storage.IRQ_STATUS.sram_parity_err.value;
             readback_data_var[2] = field_storage.IRQ_STATUS.rom_write_err.value;
@@ -3203,7 +3683,7 @@ module km_csr_reg (
             readback_data_var[11] = field_storage.IRQ_STATUS.rom_access_violation.value;
             readback_data_var[31:12] = 20'h0;
         end
-        if(rd_mux_addr == 10'h10) begin
+        if(rd_mux_addr == 11'h10) begin
             readback_data_var[0] = field_storage.IRQ_ENABLE.rom_parity_en.value;
             readback_data_var[1] = field_storage.IRQ_ENABLE.sram_parity_en.value;
             readback_data_var[2] = field_storage.IRQ_ENABLE.rom_write_en.value;
@@ -3218,309 +3698,462 @@ module km_csr_reg (
             readback_data_var[11] = field_storage.IRQ_ENABLE.rom_access_violation_en.value;
             readback_data_var[31:12] = 20'h0;
         end
-        if(rd_mux_addr == 10'h14) begin
+        if(rd_mux_addr == 11'h14) begin
             readback_data_var[31:0] = field_storage.SCRAMBLER_KEY.key.value;
         end
-        if(rd_mux_addr == 10'h18) begin
+        if(rd_mux_addr == 11'h18) begin
             readback_data_var[0] = field_storage.SCRAMBLER_CTRL.enable.value;
             readback_data_var[1] = field_storage.SCRAMBLER_CTRL.lock.value;
             readback_data_var[31:2] = 30'h0;
         end
-        if(rd_mux_addr == 10'h1c) begin
+        if(rd_mux_addr == 11'h1c) begin
             readback_data_var[31:0] = field_storage.SRAM_LOCK.lock_bits.value;
         end
-        if(rd_mux_addr == 10'h24) begin
+        if(rd_mux_addr == 11'h24) begin
             readback_data_var[31:0] = field_storage.SRAM_WRITE_LOCK_VIOLATION.violation_bits.value;
         end
-        if(rd_mux_addr == 10'h28) begin
+        if(rd_mux_addr == 11'h28) begin
             readback_data_var[0] = field_storage.RECOVERABLE_ERR.recoverable_err.value;
             readback_data_var[31:1] = 31'h0;
         end
-        if(rd_mux_addr == 10'h2c) begin
+        if(rd_mux_addr == 11'h2c) begin
             readback_data_var[0] = field_storage.BOOT_STATUS.cold_boot_done.value;
             readback_data_var[31:1] = 31'h0;
         end
-        if(rd_mux_addr == 10'h30) begin
+        if(rd_mux_addr == 11'h30) begin
             readback_data_var[7:0] = hwif_in.OTP_LIFE_CYCLE.value.next;
             readback_data_var[31:8] = 24'h0;
         end
-        if(rd_mux_addr == 10'h34) begin
+        if(rd_mux_addr == 11'h34) begin
             readback_data_var[1:0] = hwif_in.OTP_DEMOTION_STATE.demote_1_value.next;
             readback_data_var[3:2] = hwif_in.OTP_DEMOTION_STATE.demote_2_value.next;
             readback_data_var[31:4] = 28'h0;
         end
-        if(rd_mux_addr == 10'h38) begin
+        if(rd_mux_addr == 11'h38) begin
             readback_data_var[0] = field_storage.SRAM_EXEC_MODE.enable.value;
             readback_data_var[31:1] = 31'h0;
         end
-        if(rd_mux_addr == 10'hb8) begin
+        if(rd_mux_addr == 11'hb8) begin
             readback_data_var[31:0] = field_storage.IRQ_ENTRY_ADDR.addr.value;
         end
-        if(rd_mux_addr == 10'hbc) begin
+        if(rd_mux_addr == 11'hbc) begin
             readback_data_var[0] = field_storage.IRQ_ENTRY_LOCK.lock.value;
             readback_data_var[31:1] = 31'h0;
         end
-        if(rd_mux_addr == 10'h100) begin
+        if(rd_mux_addr == 11'h100) begin
             readback_data_var[7:0] = field_storage.VUART_TX.tx_byte.value;
             readback_data_var[30:8] = 23'h0;
             readback_data_var[31] = field_storage.VUART_TX.data_valid.value;
         end
-        if(rd_mux_addr == 10'h104) begin
+        if(rd_mux_addr == 11'h104) begin
             readback_data_var[7:0] = hwif_in.VUART_RX.rx_byte.next;
             readback_data_var[30:8] = 23'h0;
             readback_data_var[31] = hwif_in.VUART_RX.data_valid.next;
         end
-        if(rd_mux_addr == 10'h108) begin
+        if(rd_mux_addr == 11'h108) begin
             readback_data_var[0] = hwif_in.VUART_STATUS.tx_ready.next;
             readback_data_var[1] = hwif_in.VUART_STATUS.rx_valid.next;
             readback_data_var[2] = hwif_in.VUART_STATUS.print_enable.next;
             readback_data_var[31:3] = 29'h0;
         end
-        if(rd_mux_addr == 10'h110) begin
+        if(rd_mux_addr == 11'h110) begin
             readback_data_var[31:0] = field_storage.TB_RESULT.result.value;
         end
-        if(rd_mux_addr == 10'h114) begin
+        if(rd_mux_addr == 11'h114) begin
             readback_data_var[31:0] = field_storage.TB_SIGNATURE.signature.value;
         end
-        if(rd_mux_addr == 10'h118) begin
+        if(rd_mux_addr == 11'h118) begin
             readback_data_var[31:0] = field_storage.TB_ERRCODE.errcode.value;
         end
-        if(rd_mux_addr == 10'h11c) begin
+        if(rd_mux_addr == 11'h11c) begin
             readback_data_var[31:0] = field_storage.TB_SUBTEST.subtest.value;
         end
-        if(rd_mux_addr == 10'h120) begin
+        if(rd_mux_addr == 11'h120) begin
             readback_data_var[31:0] = field_storage.TB_CMD.cmd.value;
         end
-        if(rd_mux_addr == 10'h124) begin
+        if(rd_mux_addr == 11'h124) begin
             readback_data_var[31:0] = field_storage.TB_CMD_ARG.arg.value;
         end
-        if(rd_mux_addr == 10'h128) begin
+        if(rd_mux_addr == 11'h128) begin
             readback_data_var[31:0] = field_storage.TB_CMD_STATUS.status.value;
         end
-        if(rd_mux_addr == 10'h12c) begin
+        if(rd_mux_addr == 11'h12c) begin
             readback_data_var[31:0] = hwif_in.TB_CMD_RESULT.result.next;
         end
-        if(rd_mux_addr == 10'h1fc) begin
+        if(rd_mux_addr == 11'h1fc) begin
             readback_data_var[31:0] = 32'hcafebeef;
         end
-        if(rd_mux_addr == 10'h200) begin
+        if(rd_mux_addr == 11'h200) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_VAL_0.value.next;
         end
-        if(rd_mux_addr == 10'h204) begin
+        if(rd_mux_addr == 11'h204) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_VAL_1.value.next;
         end
-        if(rd_mux_addr == 10'h208) begin
+        if(rd_mux_addr == 11'h208) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_VAL_2.value.next;
         end
-        if(rd_mux_addr == 10'h20c) begin
+        if(rd_mux_addr == 11'h20c) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_VAL_3.value.next;
         end
-        if(rd_mux_addr == 10'h210) begin
+        if(rd_mux_addr == 11'h210) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_VAL_4.value.next;
         end
-        if(rd_mux_addr == 10'h214) begin
+        if(rd_mux_addr == 11'h214) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_VAL_5.value.next;
         end
-        if(rd_mux_addr == 10'h218) begin
+        if(rd_mux_addr == 11'h218) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_VAL_6.value.next;
         end
-        if(rd_mux_addr == 10'h21c) begin
+        if(rd_mux_addr == 11'h21c) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_VAL_7.value.next;
         end
-        if(rd_mux_addr == 10'h220) begin
+        if(rd_mux_addr == 11'h220) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_CPL_0.value.next;
         end
-        if(rd_mux_addr == 10'h224) begin
+        if(rd_mux_addr == 11'h224) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_CPL_1.value.next;
         end
-        if(rd_mux_addr == 10'h228) begin
+        if(rd_mux_addr == 11'h228) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_CPL_2.value.next;
         end
-        if(rd_mux_addr == 10'h22c) begin
+        if(rd_mux_addr == 11'h22c) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_CPL_3.value.next;
         end
-        if(rd_mux_addr == 10'h230) begin
+        if(rd_mux_addr == 11'h230) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_CPL_4.value.next;
         end
-        if(rd_mux_addr == 10'h234) begin
+        if(rd_mux_addr == 11'h234) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_CPL_5.value.next;
         end
-        if(rd_mux_addr == 10'h238) begin
+        if(rd_mux_addr == 11'h238) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_CPL_6.value.next;
         end
-        if(rd_mux_addr == 10'h23c) begin
+        if(rd_mux_addr == 11'h23c) begin
             readback_data_var[31:0] = hwif_in.OTP_CHIPLET_UID_CPL_7.value.next;
         end
-        if(rd_mux_addr == 10'h240) begin
+        if(rd_mux_addr == 11'h240) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_VAL_0.value.next;
         end
-        if(rd_mux_addr == 10'h244) begin
+        if(rd_mux_addr == 11'h244) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_VAL_1.value.next;
         end
-        if(rd_mux_addr == 10'h248) begin
+        if(rd_mux_addr == 11'h248) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_VAL_2.value.next;
         end
-        if(rd_mux_addr == 10'h24c) begin
+        if(rd_mux_addr == 11'h24c) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_VAL_3.value.next;
         end
-        if(rd_mux_addr == 10'h250) begin
+        if(rd_mux_addr == 11'h250) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_VAL_4.value.next;
         end
-        if(rd_mux_addr == 10'h254) begin
+        if(rd_mux_addr == 11'h254) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_VAL_5.value.next;
         end
-        if(rd_mux_addr == 10'h258) begin
+        if(rd_mux_addr == 11'h258) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_VAL_6.value.next;
         end
-        if(rd_mux_addr == 10'h25c) begin
+        if(rd_mux_addr == 11'h25c) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_VAL_7.value.next;
         end
-        if(rd_mux_addr == 10'h260) begin
+        if(rd_mux_addr == 11'h260) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_CPL_0.value.next;
         end
-        if(rd_mux_addr == 10'h264) begin
+        if(rd_mux_addr == 11'h264) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_CPL_1.value.next;
         end
-        if(rd_mux_addr == 10'h268) begin
+        if(rd_mux_addr == 11'h268) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_CPL_2.value.next;
         end
-        if(rd_mux_addr == 10'h26c) begin
+        if(rd_mux_addr == 11'h26c) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_CPL_3.value.next;
         end
-        if(rd_mux_addr == 10'h270) begin
+        if(rd_mux_addr == 11'h270) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_CPL_4.value.next;
         end
-        if(rd_mux_addr == 10'h274) begin
+        if(rd_mux_addr == 11'h274) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_CPL_5.value.next;
         end
-        if(rd_mux_addr == 10'h278) begin
+        if(rd_mux_addr == 11'h278) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_CPL_6.value.next;
         end
-        if(rd_mux_addr == 10'h27c) begin
+        if(rd_mux_addr == 11'h27c) begin
             readback_data_var[31:0] = hwif_in.OTP_SIP_UID_CPL_7.value.next;
         end
-        if(rd_mux_addr == 10'h280) begin
+        if(rd_mux_addr == 11'h280) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_VAL_0.value.next;
         end
-        if(rd_mux_addr == 10'h284) begin
+        if(rd_mux_addr == 11'h284) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_VAL_1.value.next;
         end
-        if(rd_mux_addr == 10'h288) begin
+        if(rd_mux_addr == 11'h288) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_VAL_2.value.next;
         end
-        if(rd_mux_addr == 10'h28c) begin
+        if(rd_mux_addr == 11'h28c) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_VAL_3.value.next;
         end
-        if(rd_mux_addr == 10'h290) begin
+        if(rd_mux_addr == 11'h290) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_VAL_4.value.next;
         end
-        if(rd_mux_addr == 10'h294) begin
+        if(rd_mux_addr == 11'h294) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_VAL_5.value.next;
         end
-        if(rd_mux_addr == 10'h298) begin
+        if(rd_mux_addr == 11'h298) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_VAL_6.value.next;
         end
-        if(rd_mux_addr == 10'h29c) begin
+        if(rd_mux_addr == 11'h29c) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_VAL_7.value.next;
         end
-        if(rd_mux_addr == 10'h2a0) begin
+        if(rd_mux_addr == 11'h2a0) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_CPL_0.value.next;
         end
-        if(rd_mux_addr == 10'h2a4) begin
+        if(rd_mux_addr == 11'h2a4) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_CPL_1.value.next;
         end
-        if(rd_mux_addr == 10'h2a8) begin
+        if(rd_mux_addr == 11'h2a8) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_CPL_2.value.next;
         end
-        if(rd_mux_addr == 10'h2ac) begin
+        if(rd_mux_addr == 11'h2ac) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_CPL_3.value.next;
         end
-        if(rd_mux_addr == 10'h2b0) begin
+        if(rd_mux_addr == 11'h2b0) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_CPL_4.value.next;
         end
-        if(rd_mux_addr == 10'h2b4) begin
+        if(rd_mux_addr == 11'h2b4) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_CPL_5.value.next;
         end
-        if(rd_mux_addr == 10'h2b8) begin
+        if(rd_mux_addr == 11'h2b8) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_CPL_6.value.next;
         end
-        if(rd_mux_addr == 10'h2bc) begin
+        if(rd_mux_addr == 11'h2bc) begin
             readback_data_var[31:0] = hwif_in.OTP_SYS_UID_CPL_7.value.next;
         end
-        if(rd_mux_addr == 10'h2c0) begin
+        if(rd_mux_addr == 11'h2c0) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_VAL_0.value.next;
         end
-        if(rd_mux_addr == 10'h2c4) begin
+        if(rd_mux_addr == 11'h2c4) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_VAL_1.value.next;
         end
-        if(rd_mux_addr == 10'h2c8) begin
+        if(rd_mux_addr == 11'h2c8) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_VAL_2.value.next;
         end
-        if(rd_mux_addr == 10'h2cc) begin
+        if(rd_mux_addr == 11'h2cc) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_VAL_3.value.next;
         end
-        if(rd_mux_addr == 10'h2d0) begin
+        if(rd_mux_addr == 11'h2d0) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_VAL_4.value.next;
         end
-        if(rd_mux_addr == 10'h2d4) begin
+        if(rd_mux_addr == 11'h2d4) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_VAL_5.value.next;
         end
-        if(rd_mux_addr == 10'h2d8) begin
+        if(rd_mux_addr == 11'h2d8) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_VAL_6.value.next;
         end
-        if(rd_mux_addr == 10'h2dc) begin
+        if(rd_mux_addr == 11'h2dc) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_VAL_7.value.next;
         end
-        if(rd_mux_addr == 10'h2e0) begin
+        if(rd_mux_addr == 11'h2e0) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_CPL_0.value.next;
         end
-        if(rd_mux_addr == 10'h2e4) begin
+        if(rd_mux_addr == 11'h2e4) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_CPL_1.value.next;
         end
-        if(rd_mux_addr == 10'h2e8) begin
+        if(rd_mux_addr == 11'h2e8) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_CPL_2.value.next;
         end
-        if(rd_mux_addr == 10'h2ec) begin
+        if(rd_mux_addr == 11'h2ec) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_CPL_3.value.next;
         end
-        if(rd_mux_addr == 10'h2f0) begin
+        if(rd_mux_addr == 11'h2f0) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_CPL_4.value.next;
         end
-        if(rd_mux_addr == 10'h2f4) begin
+        if(rd_mux_addr == 11'h2f4) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_CPL_5.value.next;
         end
-        if(rd_mux_addr == 10'h2f8) begin
+        if(rd_mux_addr == 11'h2f8) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_CPL_6.value.next;
         end
-        if(rd_mux_addr == 10'h2fc) begin
+        if(rd_mux_addr == 11'h2fc) begin
             readback_data_var[31:0] = hwif_in.OTP_CLASS_KEY_CPL_7.value.next;
         end
-        if(rd_mux_addr == 10'h300) begin
+        if(rd_mux_addr == 11'h300) begin
             readback_data_var[0] = field_storage.OTP_READ_LOCK.life_cycle.value;
             readback_data_var[1] = field_storage.OTP_READ_LOCK.demotion.value;
             readback_data_var[2] = field_storage.OTP_READ_LOCK.chiplet_uid.value;
             readback_data_var[3] = field_storage.OTP_READ_LOCK.sip_uid.value;
             readback_data_var[4] = field_storage.OTP_READ_LOCK.sys_uid.value;
             readback_data_var[5] = field_storage.OTP_READ_LOCK.class_key.value;
-            readback_data_var[31:6] = 26'h0;
+            readback_data_var[6] = field_storage.OTP_READ_LOCK.sep_chiplet_id.value;
+            readback_data_var[7] = field_storage.OTP_READ_LOCK.sep_sip_id.value;
+            readback_data_var[8] = field_storage.OTP_READ_LOCK.sep_sys_id.value;
+            readback_data_var[31:9] = 23'h0;
         end
-        if(rd_mux_addr == 10'h304) begin
+        if(rd_mux_addr == 11'h304) begin
             readback_data_var[0] = field_storage.OTP_CHANGE_STATUS.life_cycle.value;
             readback_data_var[1] = field_storage.OTP_CHANGE_STATUS.demotion.value;
             readback_data_var[2] = field_storage.OTP_CHANGE_STATUS.chiplet_uid.value;
             readback_data_var[3] = field_storage.OTP_CHANGE_STATUS.sip_uid.value;
             readback_data_var[4] = field_storage.OTP_CHANGE_STATUS.sys_uid.value;
             readback_data_var[5] = field_storage.OTP_CHANGE_STATUS.class_key.value;
-            readback_data_var[31:6] = 26'h0;
+            readback_data_var[6] = field_storage.OTP_CHANGE_STATUS.sep_chiplet_id.value;
+            readback_data_var[7] = field_storage.OTP_CHANGE_STATUS.sep_sip_id.value;
+            readback_data_var[8] = field_storage.OTP_CHANGE_STATUS.sep_sys_id.value;
+            readback_data_var[31:9] = 23'h0;
         end
-        if(rd_mux_addr == 10'h308) begin
+        if(rd_mux_addr == 11'h308) begin
             readback_data_var[0] = field_storage.OTP_READ_LOCK_COLD.life_cycle.value;
             readback_data_var[1] = field_storage.OTP_READ_LOCK_COLD.demotion.value;
             readback_data_var[2] = field_storage.OTP_READ_LOCK_COLD.chiplet_uid.value;
             readback_data_var[3] = field_storage.OTP_READ_LOCK_COLD.sip_uid.value;
             readback_data_var[4] = field_storage.OTP_READ_LOCK_COLD.sys_uid.value;
             readback_data_var[5] = field_storage.OTP_READ_LOCK_COLD.class_key.value;
-            readback_data_var[31:6] = 26'h0;
+            readback_data_var[6] = field_storage.OTP_READ_LOCK_COLD.sep_chiplet_id.value;
+            readback_data_var[7] = field_storage.OTP_READ_LOCK_COLD.sep_sip_id.value;
+            readback_data_var[8] = field_storage.OTP_READ_LOCK_COLD.sep_sys_id.value;
+            readback_data_var[31:9] = 23'h0;
+        end
+        if(rd_mux_addr == 11'h400) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_VAL_0.value.next;
+        end
+        if(rd_mux_addr == 11'h404) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_VAL_1.value.next;
+        end
+        if(rd_mux_addr == 11'h408) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_VAL_2.value.next;
+        end
+        if(rd_mux_addr == 11'h40c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_VAL_3.value.next;
+        end
+        if(rd_mux_addr == 11'h410) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_VAL_4.value.next;
+        end
+        if(rd_mux_addr == 11'h414) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_VAL_5.value.next;
+        end
+        if(rd_mux_addr == 11'h418) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_VAL_6.value.next;
+        end
+        if(rd_mux_addr == 11'h41c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_VAL_7.value.next;
+        end
+        if(rd_mux_addr == 11'h420) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_CPL_0.value.next;
+        end
+        if(rd_mux_addr == 11'h424) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_CPL_1.value.next;
+        end
+        if(rd_mux_addr == 11'h428) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_CPL_2.value.next;
+        end
+        if(rd_mux_addr == 11'h42c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_CPL_3.value.next;
+        end
+        if(rd_mux_addr == 11'h430) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_CPL_4.value.next;
+        end
+        if(rd_mux_addr == 11'h434) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_CPL_5.value.next;
+        end
+        if(rd_mux_addr == 11'h438) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_CPL_6.value.next;
+        end
+        if(rd_mux_addr == 11'h43c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_CHIPLET_ID_CPL_7.value.next;
+        end
+        if(rd_mux_addr == 11'h440) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_VAL_0.value.next;
+        end
+        if(rd_mux_addr == 11'h444) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_VAL_1.value.next;
+        end
+        if(rd_mux_addr == 11'h448) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_VAL_2.value.next;
+        end
+        if(rd_mux_addr == 11'h44c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_VAL_3.value.next;
+        end
+        if(rd_mux_addr == 11'h450) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_VAL_4.value.next;
+        end
+        if(rd_mux_addr == 11'h454) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_VAL_5.value.next;
+        end
+        if(rd_mux_addr == 11'h458) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_VAL_6.value.next;
+        end
+        if(rd_mux_addr == 11'h45c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_VAL_7.value.next;
+        end
+        if(rd_mux_addr == 11'h460) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_CPL_0.value.next;
+        end
+        if(rd_mux_addr == 11'h464) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_CPL_1.value.next;
+        end
+        if(rd_mux_addr == 11'h468) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_CPL_2.value.next;
+        end
+        if(rd_mux_addr == 11'h46c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_CPL_3.value.next;
+        end
+        if(rd_mux_addr == 11'h470) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_CPL_4.value.next;
+        end
+        if(rd_mux_addr == 11'h474) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_CPL_5.value.next;
+        end
+        if(rd_mux_addr == 11'h478) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_CPL_6.value.next;
+        end
+        if(rd_mux_addr == 11'h47c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SIP_ID_CPL_7.value.next;
+        end
+        if(rd_mux_addr == 11'h480) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_VAL_0.value.next;
+        end
+        if(rd_mux_addr == 11'h484) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_VAL_1.value.next;
+        end
+        if(rd_mux_addr == 11'h488) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_VAL_2.value.next;
+        end
+        if(rd_mux_addr == 11'h48c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_VAL_3.value.next;
+        end
+        if(rd_mux_addr == 11'h490) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_VAL_4.value.next;
+        end
+        if(rd_mux_addr == 11'h494) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_VAL_5.value.next;
+        end
+        if(rd_mux_addr == 11'h498) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_VAL_6.value.next;
+        end
+        if(rd_mux_addr == 11'h49c) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_VAL_7.value.next;
+        end
+        if(rd_mux_addr == 11'h4a0) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_CPL_0.value.next;
+        end
+        if(rd_mux_addr == 11'h4a4) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_CPL_1.value.next;
+        end
+        if(rd_mux_addr == 11'h4a8) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_CPL_2.value.next;
+        end
+        if(rd_mux_addr == 11'h4ac) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_CPL_3.value.next;
+        end
+        if(rd_mux_addr == 11'h4b0) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_CPL_4.value.next;
+        end
+        if(rd_mux_addr == 11'h4b4) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_CPL_5.value.next;
+        end
+        if(rd_mux_addr == 11'h4b8) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_CPL_6.value.next;
+        end
+        if(rd_mux_addr == 11'h4bc) begin
+            readback_data_var[31:0] = hwif_in.OTP_SEP_SYS_ID_CPL_7.value.next;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;
