@@ -6,10 +6,10 @@
  * @file test_km_unrec_hw_drbg_slverr.c
  * @brief Unrecoverable fault test: DRBG_ERR is reported ahead of AXI_SLVERR
  *
- * A DRBG timeout answers the CPU's DATA read with SLVERR and pulses
- * drbg_error_o in the same cycle, so IRQ_STATUS.AXI_SLVERR and
- * IRQ_STATUS.DRBG_ERR are always set together. Uses KMCSR IRQ_SET to assert
- * both in a single write and verifies the firmware reports the specific
+ * Stops the DRBG source and reads DATA, so the sampler exhausts CFG.TIMEOUT and
+ * answers the read with SLVERR while pulsing drbg_error_o. IRQ_STATUS.AXI_SLVERR
+ * and IRQ_STATUS.DRBG_ERR therefore arrive together, as they do when entropy runs
+ * out in a real system, and the firmware must report the specific
  * ROM_KM_UFAULT_DRBG_ERR rather than the generic ROM_KM_UFAULT_AXI_SLVERR.
  */
 
@@ -18,6 +18,16 @@
 #include "irq_common.h"
 #include "key_manager_fw.h"
 #include "key_manager_addr.h"
+
+/* DRBG Sampler registers */
+#define DRBG_DATA_REG \
+    (*(volatile km_drbg_sampler__data_reg_t *)KEY_MANAGER_DRBG_SAMPLER_DATA_BASE_ADDR)
+#define DRBG_CFG_REG \
+    (*(volatile km_drbg_sampler__cfg_reg_t *)KEY_MANAGER_DRBG_SAMPLER_CFG_BASE_ADDR)
+
+/* Reads attempted against the stopped source. The first may still be served from a
+ * word prefetched before the stop, so more than one is needed to reach the timeout. */
+#define STARVED_READS 4u
 
 int rom_boot_wipe_enabled(void) {
     return 0;
@@ -54,12 +64,21 @@ int main(void) {
 
     rom_boot_init();
 
-    /* One write so both sticky bits land together, as the hardware sets them. */
-    km_csr__irq_set_reg_t set_val = {0};
-    set_val.f.axi_slverr_set = 1;
-    set_val.f.drbg_err_set = 1;
-    rom_kmcsr_irq_set(set_val.w);
+    /* CFG.TIMEOUT keeps its reset value so the sampler times out on the same budget
+     * production uses; prefetch is cleared so no fetch is started behind the read. */
+    km_drbg_sampler__cfg_reg_t cfg = {.w = DRBG_CFG_REG.w};
+    cfg.f.prefetch = 0;
+    DRBG_CFG_REG.w = cfg.w;
 
-    TEST_FAIL("CPU did not halt after DRBG error with SLVERR");
+    if (!tb_drbg_stop(1000)) {
+        TEST_FAIL("tb_drbg_stop failed");
+    }
+
+    for (uint32_t i = 0; i < STARVED_READS; i++) {
+        volatile uint32_t discard = DRBG_DATA_REG.w;
+        (void)discard;
+    }
+
+    TEST_FAIL("CPU did not halt after DRBG timeout");
     return 0;
 }
