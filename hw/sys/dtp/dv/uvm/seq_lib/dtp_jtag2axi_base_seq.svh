@@ -37,7 +37,7 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
 
     typedef struct {
         string       name;
-        jtag_inst_reg_pkg::inst_reg_e single_op_instr;
+        jtag_inst_reg_pkg::jtag_instruction_e single_op_instr;
         int unsigned addr_width;
         int unsigned data_width;
         int unsigned size_bits;
