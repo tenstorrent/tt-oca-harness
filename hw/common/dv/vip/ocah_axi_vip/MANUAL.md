@@ -352,8 +352,8 @@ explicit sources, never Bender or Verilator filelists):
   items), `ocah_axi_scoreboard` (in-order pairing; `CHK-AXI-RESP/RDATA/
   BEATS/ADDR-ALIGN/ERR-INJ`; finalizes in `check_phase`),
   `ocah_axi_cov_sub` (optional `ocah_axi_cov_if` sampler), and
-  `ocah_axi_env` (cfg-gated bundle). No driver/sequencer — active SV-UVM
-  stimulus is tracked in the BFM workstream (#2906).
+  `ocah_axi_env` (cfg-gated bundle). No driver/sequencer — the package is
+  passive-only; active SV-UVM stimulus belongs to the BFM workstream.
 
 The DTP SV-UVM flow (`--dut dtp_uvm`) is the first consumer: tb_top
 instantiates the responders and SVA checkers, and
