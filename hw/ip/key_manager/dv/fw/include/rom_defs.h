@@ -319,13 +319,15 @@ typedef enum {
      KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bm | KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bm)
 
 /**
- * @brief OTP_CHANGE_STATUS aggregate covering all six monitored fields. Used
+ * @brief OTP_CHANGE_STATUS aggregate covering all nine monitored fields. Used
  *        to verify/clear change status.
  */
-#define ROM_KM_OTP_CHANGE_ALL_MASK \
-    (KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bm | KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bm | \
-     KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bm | \
-     KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bm)
+#define ROM_KM_OTP_CHANGE_ALL_MASK                                                                \
+    (KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bm | KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bm |  \
+     KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bm |  \
+     KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bm |    \
+     KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bm |                                           \
+     KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bm)
 
 /*===========================================================================
  * Message Header Layout
@@ -404,18 +406,18 @@ typedef struct {
 
 /** @brief Payload for CMD_OTP_READ_LOCK_COLD (0x28): 1 word.
  *
- * word 0: LOCK_BITS[5:0]  RESERVED[31:6]=0  — OTP field read-lock bitmask
+ * word 0: LOCK_BITS[8:0]  RESERVED[31:9]=0  — OTP field read-lock bitmask
  *   applied to the cold-reset-domain OTP_READ_LOCK_COLD register (woset).
- * RESERVED[31:6] must be zero; non-zero reserved bits return INVALID_ARG.
+ * RESERVED[31:9] must be zero; non-zero reserved bits return INVALID_ARG.
  * Bits can only be set, not cleared.  Already-set bits are unaffected (woset).
  * The return argument echoes the resulting OTP_READ_LOCK_COLD register value.
  */
 typedef struct {
-    uint32_t lock_bits; /**< [5:0] OTP field bitmask; RESERVED[31:6] must be 0 */
+    uint32_t lock_bits; /**< [8:0] OTP field bitmask; RESERVED[31:9] must be 0 */
 } rom_km_cmd_otp_read_lock_cold_args_t;
 
 /** @brief Valid (non-reserved) bit mask for CMD_OTP_READ_LOCK_COLD lock_bits. */
-#define ROM_KM_OTP_READ_LOCK_COLD_VALID_MASK 0x3Fu
+#define ROM_KM_OTP_READ_LOCK_COLD_VALID_MASK 0x1FFu
 
 /**
  * @brief Payload for CMD_SRAM_LOAD_EXEC (0x11): 1 word.
