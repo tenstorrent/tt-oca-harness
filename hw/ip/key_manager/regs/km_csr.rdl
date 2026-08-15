@@ -812,10 +812,10 @@ addrmap km_csr {
     // Each field exposes: VAL_0..7 (value[255:0] in 32-bit words) and
     //                     CPL_0..7 (complement[255:0] in 32-bit words).
     // All fields: sw=r; hw=w; no reset (read-through).
-    // Read-lock: controlled by OTP_READ_LOCK; locked reads return zero (set in km_csr.sv).
+    // Read-lock: OTP_READ_LOCK | OTP_READ_LOCK_COLD; locked reads return zero (set in km_csr.sv).
     reg otp_dr_word_reg {
         name = "OTP_DR_WORD";
-        desc = "Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.";
+        desc = "Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.";
         field {
             name = "VALUE";
             desc = "32-bit OTP word. No reset; power-up value undefined.";
