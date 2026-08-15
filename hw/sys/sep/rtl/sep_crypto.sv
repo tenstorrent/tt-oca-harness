@@ -892,8 +892,7 @@ module sep_crypto #(
         .data_o (km_otp_data.sys_uid)
     );
 
-    // The SEP_*_ID fuses are not in the efuse map yet.  Encoding zero keeps the
-    // dual-rail legal, which a plain tie-off of the 512-bit wire would not.
+    // The SEP_*_ID fuses are not in the efuse map yet, so encode a zero value.
     prim_diff_encode_multi #(
         .Width      (256),
         .OutputFlop (1'b0)

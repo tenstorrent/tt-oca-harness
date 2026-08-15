@@ -1219,8 +1219,7 @@ addrmap km_csr {
     otp_dr_word_reg OTP_CLASS_KEY_CPL_6 @ 0x2F8;
     otp_dr_word_reg OTP_CLASS_KEY_CPL_7 @ 0x2FC;
 
-    // Public per-owner identity fields.  0x400 rather than 0x300, which the
-    // OTP control registers below already occupy.
+    // Public per-owner identity fields.
 
     // SEP_CHIPLET_ID: value words @ 0x400-0x41C, complement words @ 0x420-0x43C
     otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_0 @ 0x400;
