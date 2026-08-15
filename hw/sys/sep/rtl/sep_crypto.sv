@@ -850,7 +850,7 @@ module sep_crypto #(
     assign km_otp_data.demotion_state_1 = lcc_demote_state_1_o;
     assign km_otp_data.demotion_state_2 = lcc_demote_state_2_o;
 
-    // Dual-rail encode all four 256-bit KM-routed OTP fields.
+    // Dual-rail encode every 256-bit KM-routed OTP field.
     // OutputFlop=0: purely combinational encode (no pipeline latency).
     prim_diff_encode_multi #(
         .Width      (256),
