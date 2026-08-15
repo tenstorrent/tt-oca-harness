@@ -284,7 +284,7 @@ The concrete implementation is
 `OcahJtagChecker.finalize()` first rejects retained IEEE 1149.1 item findings,
 then finalizes named evidence.
 
-A second concrete composition reference is the AXI package (issue #3295):
+A second concrete composition reference is the AXI package:
 `ocah_axi_vip/cocotb/ocah_axi_checker.py` (item rules + evidence),
 `ocah_axi_ref_model.py` (stateful shadow memory + expected-response policy),
 and `ocah_axi_scoreboard.py` (expected-vs-unexpected non-OKAY credits,

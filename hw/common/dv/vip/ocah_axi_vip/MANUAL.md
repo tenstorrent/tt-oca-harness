@@ -358,7 +358,7 @@ explicit sources, never Bender or Verilator filelists):
 The DTP SV-UVM flow (`--dut dtp_uvm`) is the first consumer: tb_top
 instantiates the responders and SVA checkers, and
 `dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
-JTAG VIP path (issue #3295).
+JTAG VIP path.
 
 ## Functional Coverage Hook
 

@@ -104,7 +104,7 @@ Primary classes:
 * `OcahAxiItem` and direction/protocol-specific item subclasses;
 * `OcahAxiMonitor`, `OcahAxiLiteMonitor`, `OcahAxiChecker`;
 * `OcahAxiRefModel`, `OcahAxiRegionExpectation`, `OcahAxiScoreboard`
-  (checker/reference-model contract adopters, issue #3295);
+  (checker/reference-model contract adopters);
 * `OcahAxiProtocolWatcher`, `OcahAxiLiteProtocolWatcher` (cycle-level rules).
 
 SystemVerilog layer (compiled by explicit sim-cfg sources, never Verilator

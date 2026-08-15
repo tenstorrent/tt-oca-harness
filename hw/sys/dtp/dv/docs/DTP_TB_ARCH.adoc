@@ -336,7 +336,7 @@ under `uvm/`:
 Compile order is explicit and load-bearing: interfaces first, then
 `ocah_jtag_uvm_pkg`, `dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
 
-==== JTAG2AXI Checker Layer (issue #3295)
+==== JTAG2AXI Checker Layer
 
 The UVM harness additionally consumes the shared `ocah_axi_vip` SV layer:
 

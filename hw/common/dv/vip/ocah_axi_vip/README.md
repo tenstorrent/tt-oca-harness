@@ -93,7 +93,7 @@ ocah_axi_vip/
 ```
 
 The checker, reference model, and scoreboard follow the shared contract in
-`hw/common/dv/docs/vip-checker-model.adoc` (issue #3295): named
+`hw/common/dv/docs/vip-checker-model.adoc`: named
 `CHK-* PASS/FAIL` evidence with a `CHECKER_SUMMARY`, expected-vs-unexpected
 non-OKAY classification via armed credits, blocked-window/no-activity checks,
 and fail-closed finalization. Protocol rules are re-implemented clean-room
