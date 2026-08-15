@@ -66,8 +66,8 @@
 <tr><td>0x124</td><td><a href="#GENERATOR_9_SAMPLE_CLK_CONFIG">GENERATOR_9_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 9 Sample Clock Configuration</td></tr>
 <tr><td>0x128</td><td><a href="#GENERATOR_10_SAMPLE_CLK_CONFIG">GENERATOR_10_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 10 Sample Clock Configuration</td></tr>
 <tr><td>0x12C</td><td><a href="#GENERATOR_11_SAMPLE_CLK_CONFIG">GENERATOR_11_SAMPLE_CLK_CONFIG</a></td><td>RW</td><td>Generator 11 Sample Clock Configuration</td></tr>
-<tr><td>0x130</td><td><a href="#HT_WATERMARK_NUM">HT_WATERMARK_NUM</a></td><td>RW</td><td>Health Test Watermark Selector. Selects which health test watermark to display in HT_WATERMARK register.</td></tr>
-<tr><td>0x134</td><td><a href="#HT_WATERMARK">HT_WATERMARK</a></td><td>R</td><td>Health Test Watermark Value. Displays the watermark value for the test selected by HT_WATERMARK_NUM. Each watermark arms to its starting value when the entropy source is enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse: high watermarks (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low watermarks (APT_LO, MARKOV_LO) arm to all-1s (0xFFFF) and hold the running minimum. The all-zero reset value shown below is the raw power-on default before the first arming clear.</td></tr>
+<tr><td>0x130</td><td><a href="#HT_WATERMARK_NUM">HT_WATERMARK_NUM</a></td><td>RW</td><td>Health Test Watermark Selector. Selects which health-test counter updates the single shared HT_WATERMARK storage and whether it tracks a maximum or minimum. Writing this selector does not re-arm or clear the shared value, so a selector change alone carries the value recorded by the previous mode. To establish the selected mode&#x27;s documented baseline, write HT_WATERMARK_NUM first and then pulse CTRL.RESET or toggle CTRL.MODULE_ENABLE from 0 to 1.</td></tr>
+<tr><td>0x134</td><td><a href="#HT_WATERMARK">HT_WATERMARK</a></td><td>R</td><td>Health Test Watermark Value. This is one shared storage location for the mode selected by HT_WATERMARK_NUM, not an independent bank per selector. It arms when the entropy source is enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse: high modes (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low modes (APT_LO, MARKOV_LO) arm to 0xFFFF and hold the running minimum. HT_WATERMARK_NUM persists across CTRL.RESET so the clear uses the selected mode. Changing only HT_WATERMARK_NUM does not re-arm the storage and intentionally carries the previous mode&#x27;s value. Software must select the mode before an arming event when a deterministic baseline is required. The all-zero reset value shown below is the raw power-on default before the automatic MODULE_ENABLE pulse performs the first mode-aware arm.</td></tr>
 <tr><td>0x138</td><td><a href="#REPCNT_TOTAL_FAILS">REPCNT_TOTAL_FAILS</a></td><td>R</td><td>Repetition Count Test Total Failures. Counts the total number of test failures since module enable. Increments at health_test_done_pulse when threshold is exceeded. Cleared on health_test_clr.</td></tr>
 <tr><td>0x13C</td><td><a href="#APT_HI_TOTAL_FAILS">APT_HI_TOTAL_FAILS</a></td><td>R</td><td>Adaptive Proportion Test High Threshold Total Failures. Counts the total number of APT high test failures since module enable.</td></tr>
 <tr><td>0x140</td><td><a href="#APT_LO_TOTAL_FAILS">APT_LO_TOTAL_FAILS</a></td><td>R</td><td>Adaptive Proportion Test Low Threshold Total Failures. Counts the total number of APT low test failures since module enable.</td></tr>
@@ -521,13 +521,13 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:0</td><td>WATERMARK_NUM</td><td>RW</td><td>0x0</td><td>Watermark test selector</td></tr>
+<tr><td>3:0</td><td>WATERMARK_NUM</td><td>RW</td><td>0x0</td><td>Shared watermark source selector. Unsupported values are sanitized to REPCNT_HI. A write changes the source but preserves the current shared value until an arming event or qualifying health-test event.</td></tr>
 </table>
 <h3 id="HT_WATERMARK">HT_WATERMARK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>WATERMARK_VALUE</td><td>R</td><td>0x0</td><td>Current watermark value for selected test</td></tr>
+<tr><td>15:0</td><td>WATERMARK_VALUE</td><td>R</td><td>0x0</td><td>Current value in the shared selector-dependent watermark storage.</td></tr>
 </table>
 <h3 id="REPCNT_TOTAL_FAILS">REPCNT_TOTAL_FAILS</h3>
 <table>
