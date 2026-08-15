@@ -1660,7 +1660,7 @@ the lifetime of a power cycle, regardless of subsequent warm resets.
 
 *Payload*
 
-A bitmask selecting which OTP fields to lock. Bits `[31:6]` are
+A bitmask selecting which OTP fields to lock. Bits `[31:9]` are
 reserved and must be zero; a non-zero reserved field returns
 `invalid_arg`. Writing 0 is a no-op; already-set bits are unaffected
 (write-one-to-set, idempotent).
@@ -1669,8 +1669,8 @@ reserved and must be zero; a non-zero reserved field returns
 [cols="32*^",options="header"]
 |===
 | [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-26+^| `RESERVED`
-^| `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
+23+^| `RESERVED`
+^| `SsI` | `SiI` | `cI` | `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
 |===
 
 .LOCK_BITS Field Encoding
@@ -1683,11 +1683,14 @@ reserved and must be zero; a non-zero reserved field returns
 | `3` | `SiU` | Lock `OTP_SIP_UID_VAL/CPL` reads.
 | `4` | `SU` | Lock `OTP_SYS_UID_VAL/CPL` reads.
 | `5` | `CK` | Lock `OTP_CLASS_KEY_VAL/CPL` reads.
+| `6` | `cI` | Lock `OTP_SEP_CHIPLET_ID_VAL/CPL` reads.
+| `7` | `SiI` | Lock `OTP_SEP_SIP_ID_VAL/CPL` reads.
+| `8` | `SsI` | Lock `OTP_SEP_SYS_ID_VAL/CPL` reads.
 |===
 
 *Response*
 
-If any reserved bit `[31:6]` is set, the command returns `RESP_CMD`
+If any reserved bit `[31:9]` is set, the command returns `RESP_CMD`
 _invalid_arg_ with `return_arg` = the raw `lock_bits` word received.
 
 NOTE: This is a deliberate deviation from the word-index convention the other
@@ -1713,13 +1716,16 @@ The KM's consumers of a locked field fail closed rather than reading zeroes:
   `KM_ERR_LOCKED`. The device-state sample is a PRF binding, and deriving
   against a zeroed sample would silently mint keys under a wrong binding. 
   Locking these values disable the ability of the KM to mint new keys
+* Locking an identity field (`cI`, `SiI`, `SsI`) conceals nothing — the values
+  are public — but it does stop that owner's `ID_ROOT` from being re-derived at
+  the next warm boot, in the same per-owner way as locking their UID.
 
 .RESP_CMD _Success_ Return Argument
 [cols="32*^",options="header"]
 |===
 | [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-26+^| `RESERVED`
-^| `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
+23+^| `RESERVED`
+^| `SsI` | `SiI` | `cI` | `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
 |===
 
 [[km-cmd-key-info]]
