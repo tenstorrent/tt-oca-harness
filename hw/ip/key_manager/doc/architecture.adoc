@@ -31,7 +31,7 @@ This data comes from the following sources:
 * OTP secret fields: CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY
 ** Once these fields have been pushed into the Key Manager, the corresponding read lock bits will be set in order to prevent software from accessing these values
 * OTP public fields: SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID
-** Per-owner public identity values that personalize each owner's identity root. Their integrity is what matters, so they are dual-rail encoded like the secrets; they carry read-lock bits too, not for confidentiality but so the block stays uniform and firmware can gate `ID_ROOT` re-derivation
+** Per-owner public identity values that personalize each owner's identity root. Being public, only their integrity matters
 * Test control signals
 * Configuration parameters e.g. version numbers
 
@@ -1050,11 +1050,6 @@ relationship.
 |`OTP_READ_LOCK_COLD` |9-bit |Write-one-to-set read-lock bits (cold reset domain), one per field. Survives warm reset; cleared only by cold reset. Effective lock = `OTP_READ_LOCK` \| `OTP_READ_LOCK_COLD`.
 |`OTP_CHANGE_STATUS` |9-bit |Sticky write-1-to-clear flags: set when a monitored field's decoded value changes.
 |===
-
-The three `SEP_*_ID` fields are the per-owner public identity values; they are
-carried and checked exactly like the secrets, and their readout words sit at
-`0x400`-`0x4BF` rather than continuing the secret block, which ends where the
-control registers begin at `0x300`.
 
 *Dual-rail integrity.* The hardware continuously checks that each value word is
 the bitwise inverse of its complement word. Any violation raises the

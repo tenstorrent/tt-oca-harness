@@ -892,12 +892,8 @@ module sep_crypto #(
         .data_o (km_otp_data.sys_uid)
     );
 
-    // Public per-owner identity fuses SEP_CHIPLET_ID / SEP_SIP_ID / SEP_SYS_ID
-    // do not exist in the efuse map yet; they arrive with the v0.5.22 map
-    // expansion (tt-oca-harness#212).  Encoding a zero input keeps the dual-rail
-    // valid, so the KM decoders stay quiet instead of reporting OTP_SIGINT: a
-    // plain zero tie on the 512-bit wire would not be a legal {~value, value}.
-    // Once the fuses land, swap data_i for shadow_regs_o.fields.sep_*_id.
+    // The SEP_*_ID fuses are not in the efuse map yet.  Encoding zero keeps the
+    // dual-rail legal, which a plain tie-off of the 512-bit wire would not.
     prim_diff_encode_multi #(
         .Width      (256),
         .OutputFlop (1'b0)

@@ -129,10 +129,6 @@ int rom_otp_read_class_key(uint32_t out[ROM_KM_OTP_WORDS]);
 /**
  * @brief Read SEP_CHIPLET_ID from KMCSR dual-rail registers with integrity check.
  *
- * The per-owner public identity fuse that personalizes the chiplet owner's
- * ID_ROOT.  Public, but the integrity check still matters: a flipped bit would
- * silently derive a different identity root.
- *
  * @param[out] out  Array of ROM_KM_OTP_WORDS (8) uint32_t words.
  * @return 0 on success, -1 if dual-rail integrity check failed.
  */

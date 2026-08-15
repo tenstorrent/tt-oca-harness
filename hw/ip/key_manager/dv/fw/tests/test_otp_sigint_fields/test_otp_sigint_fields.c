@@ -38,13 +38,13 @@ static const struct {
     uint32_t selector;
     int (*reader)(uint32_t[ROM_KM_OTP_WORDS]);
 } k_fields[] = {
-    {"CHIPLET_UID", ROM_KM_OTP_DR_FIELD_CHIPLET_UID, rom_otp_read_chiplet_uid},
-    {"SIP_UID", ROM_KM_OTP_DR_FIELD_SIP_UID, rom_otp_read_sip_uid},
-    {"SYS_UID", ROM_KM_OTP_DR_FIELD_SYS_UID, rom_otp_read_sys_uid},
-    {"CLASS_KEY", ROM_KM_OTP_DR_FIELD_CLASS_KEY, rom_otp_read_class_key},
-    {"SEP_CHIPLET_ID", ROM_KM_OTP_DR_FIELD_SEP_CHIPLET_ID, rom_otp_read_sep_chiplet_id},
-    {"SEP_SIP_ID", ROM_KM_OTP_DR_FIELD_SEP_SIP_ID, rom_otp_read_sep_sip_id},
-    {"SEP_SYS_ID", ROM_KM_OTP_DR_FIELD_SEP_SYS_ID, rom_otp_read_sep_sys_id},
+    {"CHIPLET_UID", KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bp, rom_otp_read_chiplet_uid},
+    {"SIP_UID", KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bp, rom_otp_read_sip_uid},
+    {"SYS_UID", KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bp, rom_otp_read_sys_uid},
+    {"CLASS_KEY", KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bp, rom_otp_read_class_key},
+    {"SEP_CHIPLET_ID", KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bp, rom_otp_read_sep_chiplet_id},
+    {"SEP_SIP_ID", KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bp, rom_otp_read_sep_sip_id},
+    {"SEP_SYS_ID", KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bp, rom_otp_read_sep_sys_id},
 };
 
 #define NUM_FIELDS (sizeof(k_fields) / sizeof(k_fields[0]))

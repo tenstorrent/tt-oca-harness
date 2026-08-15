@@ -51,6 +51,7 @@ from key_manager_reg import (
     KMCSR_RECOVERABLE_ERR_REG_ADDR,
     KMCSR_REG_MAP_BASE_ADDR,
     KM_CSR_DEBUG_REG_REG_DEFAULT,
+    KM_CSR_OTP_READ_LOCK_REG_reg_t,
     MAILBOX_KM_KM_READ_DATA_REG_ADDR,
 )
 
@@ -113,7 +114,7 @@ TB_CMD_DRBG_TVALID_GLITCH = 0x0000002A  # One-shot: assert TVALID for 1 cycle th
 TB_CMD_DRBG_QUEUE_BEAT = 0x0000002B    # Queue one DRBG beat: arg[3:0]=TSTRB; tdata from last SET_NEXT_VALUE; result = 1
 TB_CMD_KM_WARM_RESET = 0x0000002C      # Pulse warm_rst_n for MIN_RESET_CYCLES+2 cycles; result = 1
 TB_CMD_OTP_WRITE_CHANGED = 0x0000002D  # Drive changed 256-bit OTP patterns (triggers OTP_CHANGE IRQ); result = 1
-TB_CMD_OTP_WRITE_SIGINT = 0x0000002E   # Drive corrupted dual-rail on one 256-bit field (triggers OTP_SIGINT IRQ); arg = OTP_DR_FIELDS index; result = 1
+TB_CMD_OTP_WRITE_SIGINT = 0x0000002E   # Drive corrupted dual-rail on one 256-bit field (triggers OTP_SIGINT IRQ); arg = field's OTP_READ_LOCK bit position; result = 1
 TB_CMD_SEP_MBOX_DRAIN_CTRL = 0x0000002F  # Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); arg=1 arm, 0 disarm; result = 1
 TB_CMD_ABR_SK_LOAD = 0x00000030  # Inject shared-key into ABR reg block: arg=word_index (0-7); pre-fill tb_abr_sk_load_data via DRBG_SET_NEXT_VALUE then call with arg=0xFF to assert hwset; result = 1
 TB_CMD_ABR_SK_IRQ_STATUS_READ = 0x00000031  # Read ABR ML-KEM shared-key IRQ status (abr_mlkem_sharedkey_irq signal); result = 0 or 1
@@ -122,18 +123,17 @@ TB_STATUS_IDLE = 0x00000000
 TB_STATUS_ACK = 0x00000001
 TB_STATUS_ERR = 0xFFFFFFFF
 
-# The 256-bit dual-rail members of km_otp_data_t, in declaration order.  The
-# index into this list is the field selector carried by TB_CMD_OTP_WRITE_SIGINT
-# and must match ROM_KM_OTP_DR_FIELD_* in dv/fw/tests/common/test_common.h.
-OTP_DR_FIELDS = (
-    "chiplet_uid",
-    "sip_uid",
-    "sys_uid",
-    "class_key",
-    "sep_chiplet_id",
-    "sep_sip_id",
-    "sep_sys_id",
+# OTP field names by OTP_READ_LOCK bit position, from the generated register
+# layout.  TB_CMD_OTP_WRITE_SIGINT carries that bit position as its argument, so
+# firmware selects a field with KM_CSR__OTP_READ_LOCK_REG__<FIELD>_bp and both
+# sides name the field through the same generated collateral.
+OTP_LOCK_FIELDS = tuple(
+    name for name, *_ in KM_CSR_OTP_READ_LOCK_REG_reg_t._fields_ if name != "rsvd"
 )
+
+# Those of them that are 256-bit dual-rail members of km_otp_data_t; life_cycle
+# and demotion are narrow encoded fields driven separately.
+OTP_DR_FIELDS = tuple(n for n in OTP_LOCK_FIELDS if n not in ("life_cycle", "demotion"))
 
 # First byte of each field's 32-byte ramp pattern.  Each field gets a distinct
 # base in both sets so a swapped or mis-decoded readback cannot look correct,
@@ -2041,7 +2041,7 @@ class TestbenchCommandHandler:
     async def _handle_otp_write_sigint(self, arg):
         """Drive the OTP port with a CORRUPTED dual-rail encoding on one field.
 
-        arg selects the field by its index in OTP_DR_FIELDS, defaulting to
+        arg selects the field by its OTP_READ_LOCK bit position, defaulting to
         chiplet_uid.  That field's value half is valid but its complement half
         has bit 0 intentionally NOT inverted, which should trigger OTP_SIGINT in
         hardware and an unrecoverable fault.  All other fields stay valid.
@@ -2049,11 +2049,13 @@ class TestbenchCommandHandler:
         if not hasattr(self.dut, "otp_data"):
             self.dut._log.warning("[TB CMD] OTP signals not found on DUT")
             return 0
-        field_idx = int(arg) if arg is not None else 0
-        if field_idx >= len(OTP_DR_FIELDS):
-            self.dut._log.error(f"[TB CMD] OTP_WRITE_SIGINT: field index {field_idx} out of range")
+        field_bp = int(arg) if arg is not None else OTP_LOCK_FIELDS.index("chiplet_uid")
+        field = OTP_LOCK_FIELDS[field_bp] if field_bp < len(OTP_LOCK_FIELDS) else None
+        if field not in OTP_DR_FIELDS:
+            self.dut._log.error(
+                f"[TB CMD] OTP_WRITE_SIGINT: lock bit {field_bp} is not a dual-rail field"
+            )
             return 0
-        field = OTP_DR_FIELDS[field_idx]
         try:
             otp_data = self.dut.otp_data
             # life_cycle / demotion are VALID dual-rail here, so otp_sigint is
