@@ -113,18 +113,20 @@ int main(void) {
             rom_otp_read_sep_sys_id,
         };
         const unsigned n = sizeof(readers) / sizeof(readers[0]);
-        uint32_t first_word[sizeof(readers) / sizeof(readers[0])];
+        static uint32_t vals[sizeof(readers) / sizeof(readers[0])][ROM_KM_OTP_WORDS];
 
         for (unsigned i = 0; i < n; i++) {
-            uint32_t buf[ROM_KM_OTP_WORDS];
-            (void)readers[i](buf);
-            first_word[i] = buf[0];
+            (void)readers[i](vals[i]);
         }
         for (unsigned i = 0; i < n; i++) {
             for (unsigned j = i + 1; j < n; j++) {
-                if (first_word[i] == first_word[j]) {
-                    TEST_FAIL("Fields %u and %u are not distinct: both read 0x%08X", i, j,
-                              first_word[i]);
+                unsigned matching = 0;
+                for (unsigned w = 0; w < ROM_KM_OTP_WORDS; w++) {
+                    matching += (vals[i][w] == vals[j][w]) ? 1u : 0u;
+                }
+                if (matching == ROM_KM_OTP_WORDS) {
+                    TEST_FAIL("Fields %u and %u are not distinct: both read 0x%08X...", i, j,
+                              vals[i][0]);
                 }
             }
         }
