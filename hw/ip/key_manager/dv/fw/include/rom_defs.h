@@ -322,11 +322,11 @@ typedef enum {
  * @brief OTP_CHANGE_STATUS aggregate covering all nine monitored fields. Used
  *        to verify/clear change status.
  */
-#define ROM_KM_OTP_CHANGE_ALL_MASK                                                                \
-    (KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bm | KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bm |  \
-     KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bm |  \
-     KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bm |    \
-     KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bm |                                           \
+#define ROM_KM_OTP_CHANGE_ALL_MASK \
+    (KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bm | KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bm | \
+     KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bm | \
+     KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bm | \
+     KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bm | \
      KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bm | KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bm)
 
 /*===========================================================================

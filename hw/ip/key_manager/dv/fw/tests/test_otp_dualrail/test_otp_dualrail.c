@@ -108,8 +108,8 @@ int main(void) {
     TEST_SUBTEST_START("All seven 256-bit fields are distinct");
     {
         static int (*const readers[])(uint32_t[ROM_KM_OTP_WORDS]) = {
-            rom_otp_read_chiplet_uid,    rom_otp_read_sip_uid,     rom_otp_read_sys_uid,
-            rom_otp_read_class_key,      rom_otp_read_sep_chiplet_id, rom_otp_read_sep_sip_id,
+            rom_otp_read_chiplet_uid, rom_otp_read_sip_uid,        rom_otp_read_sys_uid,
+            rom_otp_read_class_key,   rom_otp_read_sep_chiplet_id, rom_otp_read_sep_sip_id,
             rom_otp_read_sep_sys_id,
         };
         const unsigned n = sizeof(readers) / sizeof(readers[0]);

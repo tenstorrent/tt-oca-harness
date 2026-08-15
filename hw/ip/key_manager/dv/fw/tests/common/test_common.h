@@ -184,7 +184,7 @@ typedef km_mailbox_sep__irq_enable_reg_t KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
 #define TB_CMD_KM_WARM_RESET 0x0000002C /* Pulse warm_rst_n input for 22+ cycles; result = 1 */
 #define TB_CMD_OTP_WRITE_CHANGED \
     0x0000002D /* Drive changed OTP pattern (different 256-bit values); result = 1 */
-#define TB_CMD_OTP_WRITE_SIGINT                                                                 \
+#define TB_CMD_OTP_WRITE_SIGINT \
     0x0000002E /* Drive a corrupted dual-rail (value != ~cpl) on the field selected by arg; see \
                   ROM_KM_OTP_DR_FIELD_*; result = 1 */
 #define TB_CMD_SEP_MBOX_DRAIN_CTRL \
