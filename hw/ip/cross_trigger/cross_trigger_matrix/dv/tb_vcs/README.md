@@ -3,50 +3,52 @@ Cross Trigger Matrix Testbench
 
 This directory contains the VCS testbench for the Cross Trigger Matrix IP.
 
+This testbench does not run in this repository. Two pieces were never
+ported: the top-level module `tb_cross_trigger_matrix.sv` that `tb.f` names is
+absent, and the `Makefile` reads its filelists from `hw/ip/cross_trigger_matrix/tb_vcs/`,
+a path that predates the move to `hw/ip/cross_trigger/cross_trigger_matrix/dv/`.
+The tests and `rtl.f` below are kept current, so bringing this up means porting
+the top module and repointing those two `Makefile` paths.
+
+Until then the matrix is verified at the DTP level, where the `dtp_ctm_*` and
+`dtp_xtrig_*` scenarios cover routing, CSR access, and reset behavior:
+
+```bash
+python3 tools/dv/run_dv.py --dut dtp --items dtp_ctm_rand_all_scenarios_test
+```
+
 Testbench Structure
 ------------------
 
-* **tb_cross_trigger_matrix.sv**: Top-level testbench module
+* **tb_cross_trigger_matrix.sv**: Top-level testbench module (not present, see above)
 * **test/**: Python test files using cocotb
   * **test_base.py**: Base test class with common utilities
   * **test_sanity.py**: Basic sanity test
   * **test_routing.py**: Comprehensive routing tests
 * **axil_vip/**: AXI-Lite Verification IP for register access (reuse from cross_trigger_port)
 
+Register addresses and the port count come from the generated Python header in
+`regs/gen/py/`, so resizing the matrix is a change to the RDL defaults plus a
+rerun of the register flow; see the IP README for that flow. There is no
+`generate_ip.py` in this repository.
+
 Test Plan
 ---------
 
-See doc/verification.rst for detailed test plan.
+The CTM scenarios are enrolled in the DTP verification plan,
+`hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`.
 
-Quick Start
------------
+Intended Usage
+--------------
 
-1. Generate IP files (registers, RTL package, testbench):
-   ```bash
-   cd ..
-   python3 generate_ip.py --num-ct-src <N> --num-ct-dst <M>
-   ```
-   Where ``<N>`` and ``<M>`` are the number of CT_Src and CT_Dst ports (1-32, default: 4).
+Once the top module is ported, the `Makefile` targets are:
 
-2. Run sanity test:
-   ```bash
-   make test_sanity
-   ```
-
-3. Run all tests:
-   ```bash
-   make test
-   ```
-
-4. Run specific test:
-   ```bash
-   make TEST=test_routing run
-   ```
-
-5. Run with waveforms:
-   ```bash
-   make TEST=test_sanity WAVES=1 run
-   ```
+```bash
+make test_sanity              # sanity test
+make test                     # all tests
+make TEST=test_routing run    # a specific test
+make TEST=test_sanity WAVES=1 run
+```
 
 Test Descriptions
 ----------------

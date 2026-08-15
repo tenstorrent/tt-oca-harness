@@ -9,9 +9,8 @@
  * This test exposes the stub at km_drbg_sampler.sv line 345:
  *   assign stream_err_pulse = 1'b0;  // Can be extended if DRBG protocol defines error
  *
- * Per FR-0000-127, FR-0000-132, and SC-0000-016, when the DRBG source asserts
- * TVALID and then deasserts it before TREADY (an AXI-Stream protocol violation),
- * the sampler MUST:
+ * When the DRBG source asserts TVALID and then deasserts it before TREADY (an
+ * AXI-Stream protocol violation), the sampler MUST:
  *   1. Set STATUS.STREAM_ERR (W1C sticky bit, bit 3)
  *   2. Increment STATUS.COUNT_BAD
  *   3. Pulse drbg_error_o, which sets IRQ_STATUS.DRBG_ERR in KMCSR
@@ -32,8 +31,6 @@
  *
  * Run with:
  *   make run_fw FW_TEST=test_drbg_stream_err
- *
- * Requirements: FR-0000-127, FR-0000-132, SC-0000-016, FR-0000-133
  */
 
 #include "test_common.h"

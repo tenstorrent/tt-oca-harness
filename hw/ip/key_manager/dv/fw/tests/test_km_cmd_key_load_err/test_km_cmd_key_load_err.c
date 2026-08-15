@@ -4,19 +4,19 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_cmd_key_load_err.c
- * @brief User Story 2 - CMD_KEY_LOAD argument-error path test (SC-2739-004,005)
+ * @brief CMD_KEY_LOAD argument-error path test
  *
- * Covers every documented rejection path from FR-2739-015:
- *   AS2.3 / SC-2739-004: KEY_SIZE reserved bit [7] set → invalid_arg, arg=0
- *   AS2.1 / SC-2739-004: Payload-length/KEY_SIZE mismatch  → invalid_arg, arg=0
- *   AS2.2 / SC-2739-004: DEST_VALID reserved bits [31:8] set → invalid_arg, arg=1
- *   AS2.2 / SC-2739-004: DEST_VALID == 0                  → invalid_arg, arg=1
- *   AS2.2:               DEST_VALID[31:8] != 0 (bit 8)     → invalid_arg, arg=1
- *   AS2.4 / SC-2739-005: KPV full (no eligible slots)     → failure, no arg
- *   AS2.5:               Handle-pool exhausted             → failure, no arg, no KPV mutation
+ * Covers every documented rejection path:
+ *   - KEY_SIZE reserved bit [7] set            → invalid_arg, arg=0
+ *   - Payload-length/KEY_SIZE mismatch         → invalid_arg, arg=0
+ *   - DEST_VALID reserved bits [31:8] set      → invalid_arg, arg=1
+ *   - DEST_VALID == 0                          → invalid_arg, arg=1
+ *   - DEST_VALID[31:8] != 0 (bit 8)            → invalid_arg, arg=1
+ *   - KPV full (no eligible slots)             → failure, no arg
+ *   - Handle-pool exhausted                    → failure, no arg, no KPV mutation
  *
  * After every rejection the KPV CTRL snapshot is compared to confirm no
- * slot was mutated (FR-2739-010).
+ * slot was mutated.
  *
  * Run with:
  *   make run_fw FW_TEST=test_km_cmd_key_load_err
@@ -109,7 +109,7 @@ static void read_resp_cmd(rom_km_msg_header_t *rhdr, uint32_t *seq_echo, uint32_
 }
 
 /**
- * Snapshot all 32 KPV_CTRL registers (FR-2739-010).
+ * Snapshot all 32 KPV_CTRL registers.
  * Used to confirm no slot was mutated after a rejected command.
  */
 static void snapshot_kpv_ctrl(uint32_t out[ROM_KM_KPV_NUM_SLOTS]) {
@@ -120,7 +120,7 @@ static void snapshot_kpv_ctrl(uint32_t out[ROM_KM_KPV_NUM_SLOTS]) {
     }
 }
 
-/** Assert two snapshots match (FR-2739-010). */
+/** Assert two snapshots match. */
 static void assert_kpv_unchanged(const uint32_t before[ROM_KM_KPV_NUM_SLOTS],
                                  const uint32_t after[ROM_KM_KPV_NUM_SLOTS]) {
     for (uint8_t s = 0u; s < ROM_KM_KPV_NUM_SLOTS; s++) {
@@ -197,9 +197,9 @@ int main(void) {
     uint32_t snap_after[ROM_KM_KPV_NUM_SLOTS];
 
     /*=================================================================
-     * AS2.3 / SC-2739-004: KEY_SIZE reserved bit [7] set → invalid_arg, arg=0
+     * KEY_SIZE reserved bit [7] set → invalid_arg, arg=0
      *=================================================================*/
-    TEST_SUBTEST_START("AS2.3/SC-2739-004: KEY_SIZE rsvd bit → invalid_arg");
+    TEST_SUBTEST_START("KEY_SIZE rsvd bit → invalid_arg");
     {
         uint32_t payload[3] = {0x00000080u, /* KEY_SIZE with bit 7 set (reserved) */
                                (rom_km_dest_bits_t){.aes = 1}.raw, 0xDEADBEEFu};
@@ -217,11 +217,11 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS2.1 / SC-2739-004: payload_len inconsistent with KEY_SIZE
+     * payload_len inconsistent with KEY_SIZE
      * KEY_SIZE=3 declares 4 key words → expected payload_len=6.
      * Send only 5 words → mismatch.
      *=================================================================*/
-    TEST_SUBTEST_START("AS2.1/SC-2739-004: payload_len/KEY_SIZE mismatch → invalid_arg");
+    TEST_SUBTEST_START("payload_len/KEY_SIZE mismatch → invalid_arg");
     {
         uint32_t payload[5] = {
             3u, /* KEY_SIZE=3: expects payload_len=3+3=6 */
@@ -242,9 +242,9 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS2.2 / SC-2739-004: DEST_VALID reserved bits [31:8] set → invalid_arg, arg=1
+     * DEST_VALID reserved bits [31:8] set → invalid_arg, arg=1
      *=================================================================*/
-    TEST_SUBTEST_START("AS2.2/SC-2739-004: DEST_VALID rsvd[31:8] → invalid_arg");
+    TEST_SUBTEST_START("DEST_VALID rsvd[31:8] → invalid_arg");
     {
         uint32_t payload[6] = {3u,          /* KEY_SIZE=3 */
                                0x00000100u, /* DEST_VALID: bit 8 set (reserved[31:8]) */
@@ -263,9 +263,9 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS2.2 / SC-2739-004: DEST_VALID == 0 → invalid_arg, arg=1
+     * DEST_VALID == 0 → invalid_arg, arg=1
      *=================================================================*/
-    TEST_SUBTEST_START("AS2.2/SC-2739-004: DEST_VALID=0 → invalid_arg");
+    TEST_SUBTEST_START("DEST_VALID=0 → invalid_arg");
     {
         uint32_t payload[6] = {3u,    0u, /* DEST_VALID=0 → zero destinations */
                                0x11u, 0x22u, 0x33u, 0x44u};
@@ -283,10 +283,10 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS2.2: DEST_VALID[31:8] != 0 → invalid_arg, arg=1
+     * DEST_VALID[31:8] != 0 → invalid_arg, arg=1
      * (Bits 4-7 are now valid for ABR seeds; bit 8 and above remain reserved.)
      *=================================================================*/
-    TEST_SUBTEST_START("AS2.2: DEST_VALID rsvd[31:8] set (bit 8) → invalid_arg");
+    TEST_SUBTEST_START("DEST_VALID rsvd[31:8] set (bit 8) → invalid_arg");
     {
         uint32_t payload[6] = {3u,    0x00000100u, /* DEST_VALID: bit 8 set (truly reserved) */
                                0x11u, 0x22u,       0x33u, 0x44u};
@@ -304,13 +304,13 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS2.4 / SC-2739-005: KPV slot-fit failure → failure, no arg
+     * KPV slot-fit failure → failure, no arg
      *
      * Fill all 32 KPV slots with 1-word keys (KEY_SIZE=0 via CMD_KEY_GENERATE,
      * 1 slot each), then attempt CMD_KEY_LOAD.  The load must fail because
      * no consecutive slots remain.  KPV must be unchanged after rejection.
      *=================================================================*/
-    TEST_SUBTEST_START("AS2.4/SC-2739-005: KPV full → failure");
+    TEST_SUBTEST_START("KPV full → failure");
     {
         /* Fill KPV: 32 slots × 1-word-key = 32 CMD_KEY_GENERATE calls. */
         uint8_t filled = 0u;
@@ -340,7 +340,7 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS2.5: Handle-pool exhaustion → failure, no arg, no KPV mutation
+     * Handle-pool exhaustion → failure, no arg, no KPV mutation
      *
      * Directly set rom_keyreg_state.next_handle = 0 to simulate wrap-around
      * (handle pool exhausted). Some KPV slots are free at this point (after
@@ -350,7 +350,7 @@ int main(void) {
      * Use a fresh boot-state approach: reset next_handle to 0 and confirm
      * CMD_KEY_LOAD detects exhaustion before mutating KPV.
      *=================================================================*/
-    TEST_SUBTEST_START("AS2.5: handle exhaustion (next_handle=0) → failure, no KPV mutation");
+    TEST_SUBTEST_START("handle exhaustion (next_handle=0) → failure, no KPV mutation");
     {
         /* Save the current next_handle and force it to 0 to simulate exhaustion.
          * next_handle == 0 is the sentinel used by rom_keyreg_generate to signal

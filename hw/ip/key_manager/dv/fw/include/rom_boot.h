@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file rom_boot.h
- * @brief Key Manager one-time boot sequence (FR-0000-171 through FR-0000-176).
+ * @brief Key Manager one-time boot sequence.
  *
  * Declares rom_boot_init() so production firmware (rom_main.c) and
  * tests that exercise the boot path can link the same implementation.

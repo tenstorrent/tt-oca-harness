@@ -4,8 +4,7 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-# Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>
-#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
 #   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build     (re)build firmware image + publish to shared tarball cache
 #   ensure    make firmware image available (local -> cache -> build); auto-run
@@ -324,7 +323,8 @@ doc_product_paths() {
         integrator)  echo "doc/integrator antora-integrator-playbook.yml ocah-doc-integrator-setup ocah-doc-integrator-pdf" ;;
         programmer)  echo "doc/programmer antora-programmer-playbook.yml ocah-doc-programmer-setup ocah-doc-programmer-pdf" ;;
         appnotes)    echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
-        *) echo "error: unknown doc product '$1' (expected trm, integrator, programmer, or appnotes)" >&2; exit 1 ;;
+        contributing) echo "doc/contributing antora-contributing-playbook.yml ocah-doc-contributing-setup ocah-doc-contributing-pdf" ;;
+        *) echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, or contributing)" >&2; exit 1 ;;
     esac
 }
 
@@ -349,6 +349,7 @@ doc_html_all() {
     doc_setup integrator
     doc_setup programmer
     doc_setup appnotes
+	doc_setup contributing
     # The prebuilt antora/antora:3.1.10 image has Antora pre-installed but
     # NOT @antora/lunr-extension (that's only added to the npx-based
     # OCAH_ANTORA path in doc/doc.mk, which real CI uses via `make

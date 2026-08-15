@@ -4,17 +4,17 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_cmd_key_load_recov.c
- * @brief User Story 4 - CMD_KEY_LOAD rejection during recoverable fault state (SC-2739-006)
+ * @brief CMD_KEY_LOAD rejection during recoverable fault state
  *
  * Covers:
- *   AS4.1 / SC-2739-006: While RECOVERABLE_ERR is set, CMD_KEY_LOAD is
- *     rejected with RESP_CMD failure and no KPV mutation, identically to
- *     CMD_KEY_GENERATE and other key-management commands.
- *   AS4.2 / SC-2739-006: After CMD_RECOV_ACK, the same CMD_KEY_LOAD
- *     payload succeeds and returns a valid handle.
- *   AS4.3 (code-path): The rejection occurs via the recoverable-fault
- *     allow-list filter in rom_msg_rx_process before the handler runs,
- *     not via a partial argument-validation path.
+ *   - While RECOVERABLE_ERR is set, CMD_KEY_LOAD is rejected with RESP_CMD
+ *     failure and no KPV mutation, identically to CMD_KEY_GENERATE and other
+ *     key-management commands.
+ *   - After CMD_RECOV_ACK, the same CMD_KEY_LOAD payload succeeds and returns
+ *     a valid handle.
+ *   - Code path: the rejection occurs via the recoverable-fault allow-list
+ *     filter in rom_msg_rx_process before the handler runs, not via a partial
+ *     argument-validation path.
  *
  * Run with:
  *   make run_fw FW_TEST=test_km_cmd_key_load_recov
@@ -135,7 +135,7 @@ static void drain_fault_response(void) {
 }
 
 /**
- * Snapshot all 32 KPV_CTRL registers (FR-2739-010).
+ * Snapshot all 32 KPV_CTRL registers.
  */
 static void snapshot_kpv_ctrl(uint32_t out[ROM_KM_KPV_NUM_SLOTS]) {
     for (uint8_t s = 0u; s < ROM_KM_KPV_NUM_SLOTS; s++) {
@@ -219,16 +219,16 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS4.1 / SC-2739-006: CMD_KEY_LOAD while RECOVERABLE_ERR=1
+     * CMD_KEY_LOAD while RECOVERABLE_ERR=1
      * Must return FAILURE, no return arg, no KPV mutation.
      *
-     * AS4.3 (code-path): The FAILURE comes from the allow-list filter
-     * in rom_msg_rx_process, not from the command handler.  We verify
+     * Code path: the FAILURE comes from the allow-list filter in
+     * rom_msg_rx_process, not from the command handler.  We verify
      * this indirectly: even an otherwise-valid payload returns FAILURE
      * with payload_len=3 (no return_arg), which matches the allow-list
      * filter's behavior (identical to CMD_KEY_GENERATE rejection pattern).
      *=================================================================*/
-    TEST_SUBTEST_START("AS4.1/SC-2739-006: CMD_KEY_LOAD rejected during RECOVERABLE_ERR");
+    TEST_SUBTEST_START("CMD_KEY_LOAD rejected during RECOVERABLE_ERR");
     {
         snapshot_kpv_ctrl(snap_before);
         send_cmd_with_payload(ROM_KM_CMD_KEY_LOAD, key_load_payload, 6u);
@@ -272,10 +272,10 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * AS4.2 / SC-2739-006: After CMD_RECOV_ACK, same CMD_KEY_LOAD
-     * payload must succeed and return a non-zero handle.
+     * After CMD_RECOV_ACK, same CMD_KEY_LOAD payload must succeed and
+     * return a non-zero handle.
      *=================================================================*/
-    TEST_SUBTEST_START("AS4.2/SC-2739-006: CMD_KEY_LOAD succeeds after CMD_RECOV_ACK");
+    TEST_SUBTEST_START("CMD_KEY_LOAD succeeds after CMD_RECOV_ACK");
     {
         send_cmd_with_payload(ROM_KM_CMD_KEY_LOAD, key_load_payload, 6u);
         process_and_drain();

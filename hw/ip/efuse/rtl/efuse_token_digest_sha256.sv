@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+//-----------------------------------------------------------------------------
 // SHA-256 Token Hash (OpenTitan prim_sha2 feeder)
-//
 //
 // Description:
 // Generic single-block SHA-256 helper for hashing a fixed 256-bit token.
@@ -17,10 +17,11 @@
 //
 // The produced digest is the standard SHA-256 of the token byte stream (no
 // endianness swap), with H0 placed in the most-significant bits of digest_o.
+//-----------------------------------------------------------------------------
 
 `include "prim_assert.sv"
 
-module sha256_token_hash
+module efuse_token_digest_sha256
     import prim_sha2_pkg::*;
 (
     input  logic             clk_i,
@@ -34,9 +35,6 @@ module sha256_token_hash
     output logic             digest_vld_sticky_o, // sticky valid when digest_o is valid
     output logic [255:0]     sha_digest_sticky_o
 );
-
-    // Match the encoding used by triple_redundent_comparator (PASS = 2'b01).
-    localparam logic [1:0] SHA256_PASS = 2'b01;
 
     typedef enum logic [2:0] {
         StIdle,
@@ -229,4 +227,4 @@ module sha256_token_hash
         test_en_i |=> $stable(sha_digest_sticky_n0_scan) && $stable(digest_vld_sticky_n0_scan),
         clk_i, !rst_ni)
 
-endmodule : sha256_token_hash
+endmodule : efuse_token_digest_sha256

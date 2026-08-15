@@ -9,7 +9,7 @@
  * Verifies (1) COUNT_GOOD saturates at 0xFFFF (no overflow), (2) COUNT_BAD
  * saturates at 0xFF (no overflow), and (3) writing any value other than 0
  * to the COUNT_GOOD or COUNT_BAD field of the STATUS register clears that
- * counter to 0 (FR-0000-128, SC-0000-016).
+ * counter to 0.
  *
  * Run with:
  *   make run_fw FW_TEST=test_drbg_counters

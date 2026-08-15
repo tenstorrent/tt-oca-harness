@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_mailbox_flush.c
- * @brief Mailbox flush test (FR-0000-067, FR-0000-068)
+ * @brief Mailbox flush test
  *
  * Verifies (1a) SEP flush clears both FIFOs; (1b) KM flush clears both FIFOs;
  * (2) SEP flush -> KM interrupt (FLUSHED_BY_SEP); (3) KM flush -> SEP

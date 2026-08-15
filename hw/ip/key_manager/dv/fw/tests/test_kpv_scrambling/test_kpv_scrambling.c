@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_kpv_scrambling.c
- * @brief KPV scrambler test (FR-0000-114, FR-0000-115, SC-0000-018)
+ * @brief KPV scrambler test
  *
  * 1. Set scrambler key, enable scrambling.
  * 2. Write values to all KPV key registers (32 slots x 16 words) and all CTRL

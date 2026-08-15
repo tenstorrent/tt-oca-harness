@@ -14,7 +14,7 @@
  *
  * IRQ safety: main-loop code that mutates a buffer shared with the mailbox
  * ISR must mask the mailbox IRQ (ROM_KM_IRQ_MBOX_BIT) for the duration of
- * the mutation (FR-0000-204). The ISR is the sole writer to rx_buf and sole
+ * the mutation. The ISR is the sole writer to rx_buf and sole
  * reader of tx_buf; the main loop is the sole writer to tx_buf and sole
  * reader of rx_buf.
  */
