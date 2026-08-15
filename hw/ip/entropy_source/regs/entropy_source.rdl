@@ -103,7 +103,7 @@ addrmap entropy_source {
         field {
             sw = rw;
             hw = r;
-            desc = "Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved — outputs constant 0. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved — outputs constant 0. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved — outputs constant 0. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved — outputs constant 0. Reserved selections select constant zero at the signal mux output; the ripple-divider internal state is preserved across selector changes.";
+            desc = "Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved. Reserved selections drive the signal mux output to 0. With SELECT_FREQ_DIV=0 the external monitor pin is also 0. With SELECT_FREQ_DIV nonzero, the selected ripple-divider stage retains its previous value while the mux output is 0, so the monitor pin can hold 0 or 1 until the divider is reset. Set SELECT_FREQ_DIV=0 before selecting a reserved value when a constant-zero pin output is required.";
         } SELECT_SIGNAL[7:0] = 0x0;
         field {
             sw = rw;
@@ -133,7 +133,7 @@ addrmap entropy_source {
             hw = w;
             level intr;
             woclr;
-            desc = "FIFO Overflow Interrupt. Set when entropy data is pushed to a full FIFO (32 entries deep). Data is discarded on overflow. Write 1 to clear.";
+            desc = "FIFO Overflow Interrupt. Set when entropy data is pushed to a full FIFO (64 entries deep). Data is discarded on overflow. Write 1 to clear.";
         } FIFO_OVERFLOW[8:8] = 0x0;
         field {
             sw = rw;
@@ -269,7 +269,7 @@ addrmap entropy_source {
     };
 
     reg FIFO_CTRL {
-        desc = "FIFO Control (32-entry x 32-bit entropy collection buffer)";
+        desc = "FIFO Control (64-entry x 32-bit entropy collection buffer)";
         field {
             sw = rw;
             hw = r;
@@ -366,11 +366,11 @@ addrmap entropy_source {
     };
 
     reg APT_PATTERN_COUNT_1BIT {
-        desc = "Adaptive Proportion Test (APT) 1-bit statistics: high one-count (apt_test_cnt_hi from entropy_health_test). Exposes the per-window maximum one-count observed in the 1-bit path. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.";
+        desc = "Adaptive Proportion Test (APT) high one-count statistics. The single APT instance counts ones independently on each lane of the 32-bit entropy stream over HEALTH_TEST_WINDOW_SIZE.SIZE samples (default 2048). PATTERN_COUNT exposes the maximum current per-lane count. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.";
         field {
             sw = r;
             hw = w;
-            desc = "APT high one-count for the 1-bit pattern: apt_test_cnt_hi (maximum one-count observed in the current window). Updates at window boundaries. For good entropy expect ~half the window size.";
+            desc = "Maximum per-lane ones count in the current APT window (apt_test_cnt_hi). The count updates on each valid sample and clears at the window boundary. For good entropy expect approximately half of HEALTH_TEST_WINDOW_SIZE.SIZE.";
         } PATTERN_COUNT[15:0] = 0x0;
         field {
             sw = r;
@@ -385,11 +385,11 @@ addrmap entropy_source {
     };
 
     reg APT_PATTERN_COUNT_2BIT {
-        desc = "Adaptive Proportion Test (APT) 2-bit statistics: low one-count (apt_test_cnt_lo from entropy_health_test). Exposes the per-window minimum one-count observed in the 2-bit path. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.";
+        desc = "Adaptive Proportion Test (APT) low one-count statistics. The single APT instance counts ones independently on each lane of the 32-bit entropy stream over HEALTH_TEST_WINDOW_SIZE.SIZE samples (default 2048). PATTERN_COUNT exposes the minimum current per-lane count. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.";
         field {
             sw = r;
             hw = w;
-            desc = "APT low one-count for the 2-bit pattern: apt_test_cnt_lo (minimum one-count observed in the current window). Updates at window boundaries.";
+            desc = "Minimum per-lane ones count in the current APT window (apt_test_cnt_lo). The count updates on each valid sample and clears at the window boundary.";
         } PATTERN_COUNT[15:0] = 0x0;
         field {
             sw = r;
@@ -461,31 +461,31 @@ addrmap entropy_source {
     };
 
     reg APT_PROPORTION_2BIT {
-        desc = "Adaptive Proportion Test 2-bit Proportion Limit (NIST SP 800-90B Window=256)";
+        desc = "Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.";
         field {
             sw = rw;
             hw = r;
-            desc = "APT proportion threshold for 2-bit samples. Maximum allowed count of most common 2-bit pattern in a 256-sample window. For unbiased source, expect ~64 (25%). Default=128 allows up to 50%. Reduce to ~75-85 to detect 2-bit pattern bias. Test fails if pattern count exceeds this limit.";
+            desc = "Legacy unused field retained for register compatibility. RTL does not read this value.";
             swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
         } LIMIT[9:0] = 128;
     };
 
     reg APT_PROPORTION_3BIT {
-        desc = "Adaptive Proportion Test 3-bit Proportion Limit (NIST SP 800-90B Window=170)";
+        desc = "Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.";
         field {
             sw = rw;
             hw = r;
-            desc = "APT proportion threshold for 3-bit samples. Maximum allowed count of most common 3-bit pattern in a 170-sample window. For unbiased source, expect ~21 (12.5%). Default=64 allows up to 38%. Reduce to ~28-32 to detect 3-bit pattern bias. Test fails if pattern count exceeds this limit.";
+            desc = "Legacy unused field retained for register compatibility. RTL does not read this value.";
             swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
         } LIMIT[9:0] = 64;
     };
 
     reg APT_PROPORTION_4BIT {
-        desc = "Adaptive Proportion Test 4-bit Proportion Limit (NIST SP 800-90B Window=128)";
+        desc = "Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.";
         field {
             sw = rw;
             hw = r;
-            desc = "APT proportion threshold for 4-bit samples. Maximum allowed count of most common 4-bit pattern in a 128-sample window. For unbiased source, expect ~8 (6.25%). Default=32 allows up to 25%. Reduce to ~12-15 to detect 4-bit pattern bias. Test fails if pattern count exceeds this limit.";
+            desc = "Legacy unused field retained for register compatibility. RTL does not read this value.";
             swwel = true;  // Locked by FIPS_LOCK.LOCK: certified-config field, SW writes ignored while locked (cleared only by reset).
         } LIMIT[9:0] = 32;
     };
