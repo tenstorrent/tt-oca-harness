@@ -10,9 +10,17 @@
 class dtp_uvm_env extends uvm_env;
     `uvm_component_utils(dtp_uvm_env)
 
-    ocah_jtag_cfg       m_jtag_cfg;
-    ocah_jtag_env       m_jtag_env;
-    dtp_tap_fsm_checker m_fsm_checker;
+    ocah_jtag_cfg          m_jtag_cfg;
+    ocah_jtag_env          m_jtag_env;
+    dtp_tap_fsm_checker    m_fsm_checker;
+
+    // Shared JTAG named-evidence checker + scan reconstruction (issue #3296).
+    // Always built: the FSM checker's aggregate CHK-TAP-STATE lands on every
+    // test; required-ID/zero-check rejection is armed only by JTAG-contract
+    // tests via jtag_require_checks.
+    ocah_jtag_checker      m_jtag_checker;
+    ocah_jtag_scan_builder m_scan_builder;
+    bit                    jtag_require_checks;
 
     // Passive shared-VIP AXI observation (issue #3295): one cfg+env per
     // observed JTAG2AXI port. Always built (compile/runtime coverage on every
@@ -46,6 +54,11 @@ class dtp_uvm_env extends uvm_env;
         m_fsm_checker = dtp_tap_fsm_checker::type_id::create("m_fsm_checker", this);
         m_fsm_checker.tb_vif = tb_vif;
 
+        m_jtag_checker = ocah_jtag_checker::type_id::create("m_jtag_checker");
+        m_jtag_checker.name_tag = "dtp_jtag";
+        m_fsm_checker.m_evidence = m_jtag_checker;
+        m_scan_builder = ocah_jtag_scan_builder::type_id::create("m_scan_builder", this);
+
         m_smc_otp_axi_cfg = ocah_axi_cfg::type_id::create("m_smc_otp_axi_cfg");
         if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "smc_otp_axil_vif",
                                                       m_smc_otp_axi_cfg.vif))
@@ -77,6 +90,13 @@ class dtp_uvm_env extends uvm_env;
     function void connect_phase(uvm_phase phase);
         super.connect_phase(phase);
         m_jtag_env.event_ap.connect(m_fsm_checker.analysis_export);
+        m_jtag_env.event_ap.connect(m_scan_builder.analysis_export);
+    endfunction
+
+    function void check_phase(uvm_phase phase);
+        super.check_phase(phase);
+        m_fsm_checker.report_evidence();
+        m_jtag_checker.finalize(jtag_require_checks);
     endfunction
 
 endclass : dtp_uvm_env

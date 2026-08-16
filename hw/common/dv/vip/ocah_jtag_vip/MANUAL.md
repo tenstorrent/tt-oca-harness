@@ -147,6 +147,47 @@ checker.assert_clean()
 `bit_count`, `instruction`, `start_time_ns`, `end_time_ns`, `start_state`,
 `end_state`, and `source`.
 
+## TAP Reference Model And Named TAP Checks
+
+`OcahJtagTapRefModel` is a pure-Python IEEE 1149.1 TAP controller model with
+no simulator handles. Every `OcahJtagChecker` owns one (or accepts a shared
+instance via `ref_model=`) and exposes reference-model-backed named evidence:
+
+```python
+checker = OcahJtagChecker(
+    required_ids={"CHK-TAP-RESET-TLR", "CHK-TAP-STATE", "CHK-TAP-TLR-TMS5"},
+)
+
+# TAP reset must land in Test-Logic-Reset.
+checker.check_reset_to_tlr(observed_state)
+
+# Every raw TMS step must match the reference FSM prediction.
+checker.check_state_step(tms, observed_state)
+
+# Five or more TMS-high TCK cycles must force TLR from any state.
+checker.check_tms_ones_to_tlr(ones_count, observed_state)
+
+# BYPASS must delay TDI to TDO by exactly one TCK.
+checker.check_bypass_latency(observed_tdo, pattern=pattern, width=width)
+
+# Monitor-observed scan bit counts must equal the driven widths.
+checker.check_scan_length(scan_item, expected_width=width)
+
+checker.finalize()
+```
+
+`check_state_step()` predicts from the model's tracked state. Scan helpers
+that navigate internally (for example back-to-RTI legs) move the TAP without
+per-step visibility; call `checker.sync_state(state)` at those landing points
+so the next prediction starts from the true controller state. On a mismatch
+in aggregate mode the model re-aligns to the observed state so later steps
+stay meaningful.
+
+The DTP `dtp_jtag_base_test_seq.attach_tap_checker()` hook wires these checks
+into TAP navigation automatically; `DTP_JTAG_TAP_CHECKER_NEGATIVE=1` runs the
+documented negative validation (a deliberately desynced model must FAIL the
+`dtp_jtag_tlr_reset_test` run).
+
 ## Backend And License Status
 
 The package depends on `cocotbext-jtag>=0.4.0,<0.5`. The installed 0.4.0 package

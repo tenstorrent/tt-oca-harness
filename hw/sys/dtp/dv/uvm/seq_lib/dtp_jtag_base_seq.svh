@@ -15,9 +15,17 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
     `uvm_object_utils(dtp_jtag_base_seq)
 
     localparam int unsigned IrWidth = 6;
+    // DTP primary TAP default device-identification value (bit 0 = marker).
+    localparam bit [31:0] DtpDefaultIdcode = 32'h0000_0001;
 
     // Plumbed by the test from dtp_uvm_env before start(sequencer).
     virtual dtp_tb_if tb_vif;
+
+    // Optional shared-VIP evidence handles (issue #3296): when plumbed, TAP
+    // resets, TLR walks, BYPASS latency, and reconstructed scan lengths also
+    // emit named CHK-* evidence through env.m_jtag_checker.
+    ocah_jtag_checker      evidence;
+    ocah_jtag_scan_builder scan_builder;
 
     function new(string name = "dtp_jtag_base_seq");
         super.new(name);
@@ -48,13 +56,15 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
         do_jtag(it);
     endtask
 
-    function void check_state(tap_state_e expected, string checker, string what);
+    // `checker_tag` because bare `checker` is an IEEE 1800 reserved word
+    // (VCS tolerates it; Verilator lint does not).
+    function void check_state(tap_state_e expected, string checker_tag, string what);
         if (tb_vif.tap_state !== expected)
-            `uvm_error(checker, $sformatf(
+            `uvm_error(checker_tag, $sformatf(
                 "%s: expected TAP state %s (0x%04h), got 0x%04h",
                 what, expected.name(), expected, tb_vif.tap_state))
         else
-            `uvm_info(checker, $sformatf("%s: TAP state %s as expected", what, expected.name()),
+            `uvm_info(checker_tag, $sformatf("%s: TAP state %s as expected", what, expected.name()),
                       UVM_MEDIUM)
     endfunction
 
@@ -78,6 +88,8 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
         `uvm_info(get_type_name(), "asserting TRST for TAP reset", UVM_MEDIUM)
         it.op = OCAH_JTAG_TAP_RESET;
         do_jtag(it);
+        if (evidence != null)
+            void'(evidence.check_reset_to_tlr(tb_vif.tap_state, "after TRST release"));
         check_state(TEST_LOGIC_RESET, "sanity_fsm_visit_chk", "after TRST release");
     endtask
 
@@ -86,6 +98,8 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
         bit tms[] = '{1'b1, 1'b1, 1'b1, 1'b1, 1'b1};
         bit tdi[] = '{1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
         raw_walk(tms, tdi);
+        if (evidence != null)
+            void'(evidence.check_tms_ones_to_tlr(5, tb_vif.tap_state, "after 5x TMS=1"));
         check_state(TEST_LOGIC_RESET, "sanity_scan_path_chk", "after 5x TMS=1");
     endtask
 
@@ -99,6 +113,7 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
         it.wdata = 64'(instr);
         do_jtag(it);
         check_state(RUN_TEST_IDLE, "sanity_scan_path_chk", "after IR scan");
+        check_last_scan_length(1'b1, IrWidth, $sformatf("ir=0x%02h", instr));
     endtask
 
     // DR scan from Run-Test/Idle (LSB-first), returning observed TDO.
@@ -111,15 +126,41 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
         do_jtag(it);
         observed = it.tdo;
         check_state(RUN_TEST_IDLE, "sanity_scan_path_chk", "after DR scan");
+        check_last_scan_length(1'b0, width, $sformatf("pattern=0x%0h", pattern));
+    endtask
+
+    // CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN: the newest reconstructed scan of
+    // this kind (published on the Shift->Exit1 edge, cycles before the
+    // driver's back-to-RTI leg completes) must span exactly the driven width.
+    function void check_last_scan_length(bit is_ir, int unsigned width, string context_s);
+        ocah_jtag_scan_item item;
+        if (evidence == null || scan_builder == null)
+            return;
+        if (is_ir ? scan_builder.ir_items.size() == 0 : scan_builder.dr_items.size() == 0) begin
+            `uvm_error("sanity_scan_len_chk", $sformatf(
+                "no reconstructed %s scan observed (%s)", is_ir ? "IR" : "DR", context_s))
+            return;
+        end
+        item = is_ir ? scan_builder.ir_items[$] : scan_builder.dr_items[$];
+        void'(evidence.check_scan_length(item, width, context_s));
+    endfunction
+
+    // Read the 32-bit device-identification register via IDCODE.
+    task read_idcode(output bit [63:0] observed);
+        load_ir(IDCODE_INSTR);
+        shift_dr(64'h0, 32, observed);
     endtask
 
     // sanity_bypass_latency_chk: BYPASS (IR 0x00) => exactly 1-TCK
     // TDI-to-TDO delay: observed = {pattern[width-2:0], 1'b0} LSB-first.
     task check_bypass_latency(bit [63:0] pattern, int unsigned width);
         bit [63:0] observed, expected;
-        expected = ((pattern << 1) & ((width < 64) ? ((64'h1 << width) - 1) : '1));
+        expected = ocah_jtag_checker::predict_bypass_tdo(pattern, width);
         shift_dr(pattern, width, observed);
-        if (observed !== expected)
+        if (evidence != null) begin
+            void'(evidence.check_bypass_latency(observed, pattern, width));
+        end
+        else if (observed !== expected)
             `uvm_error("sanity_bypass_latency_chk", $sformatf(
                 "BYPASS TDI-to-TDO latency not 1 TCK: pattern=0x%016h width=%0d expected=0x%016h observed=0x%016h",
                 pattern, width, expected, observed))

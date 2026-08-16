@@ -16,6 +16,8 @@ Primary exports
 OcahJtagTap        — Active TAP driver with named high-level methods.
 OcahJtagMonitor    — Passive monitor that captures IR/DR transitions and fires
                      user callbacks with plain-int transaction records.
+OcahJtagTapRefModel — Pure-Python IEEE 1149.1 TAP reference model used by
+                     `OcahJtagChecker` for named TAP state/reset/BYPASS checks.
 
 Standard IEEE 1149.1 instruction codes (re-exported for convenience)
 ---------------------------------------------------------------------
@@ -48,6 +50,7 @@ from .ocah_jtag_checker import OcahJtagChecker, OcahJtagCheckerError
 from .ocah_jtag_device import OcahJtagDevice, OcahJtagRegister
 from .ocah_jtag_item import OcahJtagScanItem, OcahJtagStateItem
 from .ocah_jtag_monitor import OcahJtagMonitor
+from .ocah_jtag_ref_model import TLR_TMS_ONES, OcahJtagTapRefModel
 from .ocah_jtag_state import OcahJtagState, jtag_tms_path, next_jtag_state
 from .ocah_jtag_tap import OcahJtagTap, OcahJtagTapError
 
@@ -65,9 +68,11 @@ __all__ = [
     "OcahJtagScanItem",
     "OcahJtagStateItem",
     "OcahJtagState",
+    "OcahJtagTapRefModel",
+    "TLR_TMS_ONES",
     "next_jtag_state",
     "jtag_tms_path",
     "IDCODE_OPCODE",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

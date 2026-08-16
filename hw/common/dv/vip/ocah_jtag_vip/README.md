@@ -59,10 +59,27 @@ record shape. `expect_equal()`/`expect_true()` add named exact-value evidence.
 `finalize()` fails on retained protocol errors, failed evidence, zero checks, or
 missing required IDs.
 
+The checker also carries an `OcahJtagTapRefModel` (a pure-Python IEEE 1149.1
+TAP controller model) and exposes reference-model-backed named checks for the
+core TAP contracts (issue tt-oca-hw#3296):
+
+| Method | Check ID | Contract |
+|---|---|---|
+| `check_reset_to_tlr(observed)` | `CHK-TAP-RESET-TLR` | A TAP reset lands in Test-Logic-Reset |
+| `check_state_step(tms, observed)` | `CHK-TAP-STATE` | Each TMS step matches the reference FSM |
+| `check_tms_ones_to_tlr(n, observed)` | `CHK-TAP-TLR-TMS5` | >= 5 TMS-high cycles force TLR from any state |
+| `check_bypass_latency(tdo, ...)` | `CHK-BYPASS-LATENCY` | BYPASS delays TDI to TDO by exactly one TCK |
+| `check_scan_length(item, ...)` | `CHK-SCAN-IR-LEN` / `CHK-SCAN-DR-LEN` | Monitor-observed bit count equals the driven width |
+
+`check_state_step()` predicts from the model's tracked state; after
+BFM-internal navigation (for example a scan that returns to Run-Test/Idle),
+call `sync_state()` so predictions restart from the true controller state.
+
 Monitors deliberately log and catch callback exceptions. An attached checker
 therefore retains its protocol error before raising, and the owning test or
-scoreboard must call `finalize()` after traffic. The first adopter is the DTP
-`dtp_jtag_idcode_test` sequence.
+scoreboard must call `finalize()` after traffic. Adopters: the DTP
+`dtp_jtag_idcode_test`, `dtp_jtag_bypass_test`, `dtp_jtag_tlr_reset_test`, and
+`dtp_jtag_trst_test` sequences (via `dtp_jtag_base_test_seq.attach_tap_checker`).
 
 ## Package Layout
 
@@ -73,7 +90,8 @@ ocah_jtag_vip/
   cocotb/ocah_jtag_device.py    - device/register map
   cocotb/ocah_jtag_item.py      - scan/state item dataclasses
   cocotb/ocah_jtag_monitor.py   - passive item-producing monitor
-  cocotb/ocah_jtag_checker.py   - item-level checker
+  cocotb/ocah_jtag_checker.py   - item-level checker with named TAP evidence
+  cocotb/ocah_jtag_ref_model.py - pure-Python IEEE 1149.1 TAP reference model
   cocotb/ocah_jtag_state.py     - TAP state enum and TMS path helpers
   cocotb/examples/
     example_idcode.py    - PTAP/STAP/CPU TAP usage examples
@@ -93,6 +111,8 @@ ocah_jtag_vip/
 | `ocah_jtag_cfg` | vif, `is_active`, TCK half-period, TRST reset cycles |
 | `ocah_jtag_driver` | Pin-level TCK bit-bang; scans navigate RTI -> scan leg -> RTI |
 | `ocah_jtag_monitor` | Passive: per-TCK `STEP` events (published on the falling edge) + async `TRST` events via `event_ap` |
+| `ocah_jtag_scan_builder` | Subscriber reconstructing IR/DR scans from the step stream (reference-FSM walk); publishes `ocah_jtag_scan_item` on `scan_ap` with bounded history |
+| `ocah_jtag_checker` | Named-evidence checker (`CHK-*`/`CHECKER_SUMMARY`, same grammar as `ocah_axi_checker`) with the TAP reference model: `check_reset_to_tlr`, `check_state_step`, `check_tms_ones_to_tlr`, `check_bypass_latency` (`predict_bypass_tdo`), `check_scan_length` |
 | `ocah_jtag_sequencer` | `uvm_sequencer #(ocah_jtag_item)` |
 | `ocah_jtag_agent` | Standard bundle; monitor when `en_monitor`, driver/sequencer when active |
 | `ocah_jtag_env` | VIP-level env: what DUTs instantiate and commercial integrations override |
@@ -100,12 +120,17 @@ ocah_jtag_vip/
 The package also ships an encoding-agnostic IEEE 1149.1 TAP model
 (`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`; state values match the
 conventional 0..15 numbering, i.e. the bit index of one-hot RTL encodings)
-for DUT-side checkers. Protocol-legality checking, scoreboarding, and
-coverage live in subscribers, not in the monitor; IR/DR scan-level
-reconstruction is a documented follow-up once a scoreboard consumer exists.
-First user: the DTP SV-UVM flow (`--dut dtp_uvm`), whose
-`dtp_tap_fsm_checker` pairs monitor steps with the DUT's decoded TAP state.
-Like all SV-UVM collateral, compile sign-off is gated on a Linux VCS run.
+for DUT-side checkers. Per-cycle pairing of monitor steps with a DUT's
+decoded TAP state stays DUT-side (DTP's `dtp_tap_fsm_checker`, which now
+reports an aggregate `CHK-TAP-STATE` through the shared `ocah_jtag_checker`);
+scan-level reconstruction and the named TAP-contract evidence are VIP-owned
+(issue tt-oca-hw#3296), mirroring the cocotb checker's check IDs. First user:
+the DTP SV-UVM flow (`--dut dtp_uvm`) `dtp_sanity_test`, which requires
+`CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`,
+`CHK-IDCODE-RAW/STABLE/MARKER`, `CHK-BYPASS-LATENCY`, and
+`CHK-SCAN-IR-LEN/DR-LEN`; `+DTP_JTAG_TAP_CHECKER_NEGATIVE` arms the must-FAIL
+negative validation. Like all SV-UVM collateral, compile sign-off is gated on
+a Linux VCS run.
 
 ## Template Contract (per-protocol VIPs and commercial plug-ins)
 
