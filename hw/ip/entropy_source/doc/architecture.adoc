@@ -61,7 +61,7 @@ Health test thresholds, enable bits, and window sizes are all programmable throu
 
 ===== Persistent Failure and AlertHang
 
-The health-test subsystem includes a persistent-failure path that permanently halts entropy output when failures accumulate beyond a programmed threshold. A saturating counter (`ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT`) accumulates health-test failures. When it reaches `ALERT_THRESHOLD.THRESHOLD` (default 4, locked by `FIPS_LOCK`), `alert_thresh_fail` is asserted and the main FSM transitions through `AlertState` into `AlertHang` — a permanent halt from which only a hardware reset (`rst_ni`) can recover. The event sets `MAIN_SM_STATUS.ALERT` (sticky W1C) and raises `INTR_STATUS.PERSISTENT_FAILURE`.
+The health-test subsystem includes a persistent-failure path that halts entropy output when failures persist beyond a programmed threshold. A saturating counter (`ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT`) records one count per health-test window in which any test failed; a mid-window failure of the continuous repetition-count test is captured and counted once for that window. When the counter reaches `ALERT_THRESHOLD.THRESHOLD` (default 4, i.e. four failing windows, locked by `FIPS_LOCK`), `alert_thresh_fail` is asserted and the main FSM transitions through `AlertState` into `AlertHang`, halting entropy output. `AlertHang` persists until the FSM is reset — by a hardware reset (`rst_ni`), the `CTRL.RESET` soft reset, or clearing `CTRL.MODULE_ENABLE`. The event sets `MAIN_SM_STATUS.ALERT` (sticky W1C) and raises `INTR_STATUS.PERSISTENT_FAILURE`.
 
 Setting `ALERT_THRESHOLD.THRESHOLD` to zero disables the comparator, leaving the counter accumulating without ever asserting `alert_thresh_fail`.
 
