@@ -270,6 +270,24 @@ statistical requirements specified by the BSI agency.</p>
 </div>
 </div>
 <div class="sect4">
+<h5 id="health-test-watermark"><a class="anchor" href="#health-test-watermark"></a><a class="link" href="#health-test-watermark">Health Test Watermark</a></h5>
+<div class="paragraph">
+<p><code>HT_WATERMARK</code> is one shared register whose source and maximum/minimum direction are selected by <code>HT_WATERMARK_NUM</code>; there is no independent storage per selector. A selector write changes which counter updates the shared register but does not clear it, so changing only the selector carries the value recorded by the previous mode.</p>
+</div>
+<div class="paragraph">
+<p>The shared watermark is armed by a <code>CTRL.MODULE_ENABLE</code> 0-to-1 transition or by a <code>CTRL.RESET</code> pulse. High modes (<code>REPCNT_HI</code>, <code>APT_HI</code>, and <code>MARKOV_HI</code>) arm to <code>0x0000</code>; low modes (<code>APT_LO</code> and <code>MARKOV_LO</code>) arm to <code>0xFFFF</code>. The selector persists across <code>CTRL.RESET</code>, allowing the synchronous clear to use the selected mode. Software that needs a deterministic baseline must write <code>HT_WATERMARK_NUM</code> before the arming event. With the reset-default <code>MODULE_ENABLE=1</code>, the power-on enable pulse performs the first mode-aware arm automatically.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="persistent-failure-and-alerthang"><a class="anchor" href="#persistent-failure-and-alerthang"></a><a class="link" href="#persistent-failure-and-alerthang">Persistent Failure and AlertHang</a></h5>
+<div class="paragraph">
+<p>The health-test subsystem includes a persistent-failure path that halts entropy output when failures persist beyond a programmed threshold. A saturating counter (<code>ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT</code>) records one count per health-test window in which any test failed; a mid-window failure of the continuous repetition-count test is captured and counted once for that window. When the counter reaches <code>ALERT_THRESHOLD.THRESHOLD</code> (default 4, i.e. four failing windows, locked by <code>FIPS_LOCK</code>), <code>alert_thresh_fail</code> is asserted and the main FSM transitions through <code>AlertState</code> into <code>AlertHang</code>, halting entropy output. <code>AlertHang</code> persists until the FSM is reset — by a hardware reset (<code>rst_ni</code>), the <code>CTRL.RESET</code> soft reset, or clearing <code>CTRL.MODULE_ENABLE</code>. The event sets <code>MAIN_SM_STATUS.ALERT</code> and raises <code>INTR_STATUS.PERSISTENT_FAILURE</code>. The sticky <code>MAIN_SM_STATUS.ALERT</code> and <code>MAIN_SM_STATUS.ERR</code> status bits are cleared either by writing 1 (W1C) or by a <code>CTRL.RESET</code> soft reset, so that a firmware-issued reset returns the status to a consistent state alongside the FSM it reflects.</p>
+</div>
+<div class="paragraph">
+<p>Setting <code>ALERT_THRESHOLD.THRESHOLD</code> to zero disables the comparator, leaving the counter accumulating without ever asserting <code>alert_thresh_fail</code>.</p>
+</div>
+</div>
+<div class="sect4">
 <h5 id="sha-256-whitening"><a class="anchor" href="#sha-256-whitening"></a><a class="link" href="#sha-256-whitening">SHA-256 Whitening</a></h5>
 <div class="paragraph">
 <p>When the SHA-256 whitener is enabled via the CSR, the 32-bit BIW output stream feeds into the <code>entropy_sha256_whitener</code> module. This module accumulates 16 consecutive 32-bit words (one SHA-256 block of 512 bits), computes the SHA-256 digest using the OpenTitan <code>prim_sha2_32</code> primitive, and emits the 8-word (256-bit) digest. The compression ratio is 2:1 (16 input words produce 8 output words). When the whitener is disabled, the BIW output passes through to the FIFO without modification.</p>

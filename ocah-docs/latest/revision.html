@@ -532,6 +532,32 @@ with eight individually lockable 256-bit spare fields (spare0-spare7) so an
 adopter can provision and lock spare storage one field at a time. The map
 remains 8192 bits.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-08-11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aligned entropy-source documentation with the
+RTL: corrected the MAIN_SM_STATUS.ALERT / AlertHang description and the DRBG EDN endpoint count.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-08-11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy source: the sticky
+MAIN_SM_STATUS.ALERT and ERR status bits are now also cleared by a CTRL.RESET
+soft reset, keeping the status consistent with the FSM it reflects.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0.5.25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-08-12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alessandro Ottaviano</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Surfaced the Entropy Source IP
+register reference in the SEP Detailed Register Map (previously only prose was
+included) and reconciled the generated register tables with the RDL. Completed
+the HT_WATERMARK description: each watermark arms when the entropy source is
+enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse&#8201;&#8212;&#8201;high watermarks to
+0x0000 (running maximum), low watermarks to 0xFFFF (running minimum).</p></td>
+</tr>
 </tbody>
 </table>
 </div>

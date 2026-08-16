@@ -555,8 +555,8 @@ the CSRs.</p>
 directly to the cryptographic accelerators. Instead it seeds the DRBG,
 and the post-CSRNG output of the DRBG (NIST SP 800-90A; HMAC-SHA2 or
 AES-CTR construction) is what fans out to the rest of the crypto
-subsystem. The DRBG exposes two AXI-Stream EDN endpoints
-(<code>u_drbg_s3c_scan.edn_axis_o[1:0]</code>) that carry conditioned, DRBG-generated bits,
+subsystem. The DRBG exposes three AXI-Stream EDN endpoints
+(<code>u_drbg_s3c_scan.edn_axis_o[2:0]</code>) that carry conditioned, DRBG-generated bits,
 one per sink domain:</p>
 </div>
 <div class="ulist">
@@ -569,7 +569,14 @@ one per sink domain:</p>
 (AES, KMAC, OTBN edn_rnd, OTBN edn_urnd) through
 <code>u_axis_edn_crypto_s3c_scan</code> — the <code>drbg_axis_edn_adapter</code> that converts the
 32-bit AXI-Stream feed into a small round-robin native-protocol EDN
-fan-out.</p>
+fan-out;</p>
+</li>
+<li>
+<p>endpoint <code>[2]</code> feeds the fabric-level entropy-pool FIFO (<code>u_entropy_fifo</code> in
+<code>sep.sv</code>) through <code>u_axis_edn_pool_s3c_scan</code>. The pool generates two
+dedicated interrupts: SEP IRQ 36 (<code>entropy_pool_low</code>, pool level below
+watermark) and IRQ 37 (<code>entropy_pool_fill_stall</code>, fill path not making
+progress).</p>
 </li>
 </ul>
 </div>
