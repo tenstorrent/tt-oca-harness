@@ -303,6 +303,24 @@ committed output always corresponds to the RDL sources.
 make regen-regs
 ```
 
+## Code Comments
+
+Write a comment only to tell the reader something the code cannot: a constraint, an ordering
+that matters, a hardware behaviour a maintainer would otherwise have to rediscover. State it in
+the present tense, as something that is true of the code, not as an account of what changed.
+
+Three kinds of comment are not worth their space.
+
+- **Narration.** Restating the line below it costs reading time and returns nothing.
+- **Breadcrumbs.** Why a change was made, what it replaced, or which review asked for it belongs
+  in the commit message, which stays accurate; a comment recording it is wrong after the next
+  edit.
+- **Justification.** Arguing that a change is correct addresses a reviewer who is gone once the
+  pull request merges.
+
+Where a test can carry the constraint instead, prefer the test: it fails when the constraint is
+broken, and a comment does not.
+
 ## Commit Conventions
 
 Follow the existing history: a path-like scope, then an imperative summary, with the PR
