@@ -1,0 +1,189 @@
+hw/sys/sep/dv/fw/tests/sep_reset_ctrl_csr_test/sep_reset_ctrl_csr_test.c
+  s_8a9b8e56b5dc3f::t_740ddedbaa7496 23,30,45-47,85-86,126,207,297-298
+  s_8a9b8e56b5dc3f::t_cc3e8de037bb6e 309-310,312,314,316,320-321
+  s_8a9b8e56b5dc3f::t_72e99b0a83a0c1 225-263,265-271,273-293,303
+  s_8a9b8e56b5dc3f::t_41b57a1369d884 264,272
+hw/sys/sep/dv/fw/tests/reset_wdt_sanity_test/reset_wdt_sanity_test.c
+  s_8a9b8e56b5dc3f::t_d4927789b09f30 44
+  s_8a9b8e56b5dc3f::t_5a332f5376ca13 7,45-46,131-135,250
+Bender.yml
+  s_8a9b8e56b5dc3f::t_052db457804e68 1014
+  s_8a9b8e56b5dc3f::t_db9d2d47c12efa 1013
+hw/sys/sep/dv/tb/tb_top.sv
+  s_8a9b8e56b5dc3f::t_af4b04dd4b9242 469
+  s_8a9b8e56b5dc3f::t_253b7802f84e1c 1056,1068,1085-1086,1095,1101,1107-1117
+  s_8a9b8e56b5dc3f::t_626a33213ef532 309-311,1007
+  s_8a9b8e56b5dc3f::t_573c2874116683 1087-1089
+  s_8a9b8e56b5dc3f::t_f5fa16e8c93c11 312-315,1008-1013
+hw/sys/sep/dv/cocotb/seq_lib/sep_crypto_reset_iso_seq.py
+  s_8a9b8e56b5dc3f::t_b935bb2df199f6 12-15,22,30-31
+hw/sys/sep/dv/testlists/all.toml
+  s_8a9b8e56b5dc3f::t_210e42091005e1 71,142
+hw/sys/sep/dv/cocotb/tests/km/sep_km_aes_sideload_kat_test.py
+  s_8a9b8e56b5dc3f::t_a8e6ad693c15d9 112,118
+hw/sys/sep/dv/cocotb/env/sep_drbg_scoreboard.py
+  s_8a9b8e56b5dc3f::t_b35697d4606c80 335-337,339,357-358,407
+hw/sys/sep/dv/testlists/system.toml
+  s_8a9b8e56b5dc3f::t_6e5d5ba9948b96 146-148
+  s_8a9b8e56b5dc3f::t_80d4e1fd408682 144-145,149-157
+  s_8a9b8e56b5dc3f::t_eaa8b098fe35eb 226
+  s_8a9b8e56b5dc3f::t_30e72aff68a1a5 143
+hw/sys/sep/dv/cocotb/tests/crypto/sep_drbg_real_sink_multi_km_aes_test.py
+  s_8a9b8e56b5dc3f::t_2fe78efa667322 112
+  s_8a9b8e56b5dc3f::t_15f7ee28119bbf 117
+hw/sys/sep/dv/cocotb/tests/km/sep_km_hmac_sideload_kat_test.py
+  s_8a9b8e56b5dc3f::t_d5e9c28997e2d7 93
+  s_8a9b8e56b5dc3f::t_dba910901fb267 100
+hw/sys/sep/rtl/sep_crypto_trng_axi_isolate.sv
+  s_8a9b8e56b5dc3f::t_3e340addbb0220 60,63-66,189
+  s_8a9b8e56b5dc3f::t_8619fafd95e9eb 188,190
+  s_8a9b8e56b5dc3f::t_a619138aaf8f6f 1-59,61-62,67-122,125-143,146-164,167-183,191-192
+  s_8a9b8e56b5dc3f::t_9f1c26ae3b6c42 123-124
+  s_8a9b8e56b5dc3f::t_aae6f2169e98af 144-145
+  s_8a9b8e56b5dc3f::t_ef54b617dd9d16 165-166
+  s_8a9b8e56b5dc3f::t_55653a7b0fd432 184-187
+hw/sys/sep/doc/periphs.adoc
+  s_8a9b8e56b5dc3f::t_da244b3e70dee1 375,387,390-392,407-422
+  s_8a9b8e56b5dc3f::t_8e7b4a596465f4 423
+hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl
+  s_8a9b8e56b5dc3f::t_75dd9fb9035f31 18-22
+hw/sys/sep/dv/cocotb/env/sep_reg_meta.py
+  s_8a9b8e56b5dc3f::t_888f5414d9e50d 362
+  s_8a9b8e56b5dc3f::t_7501c5a28159f4 134-148
+  s_8a9b8e56b5dc3f::t_a7cedc57a14c7a 375-378,391
+hw/sys/sep/dv/cocotb/tests/system/sep_trng_reset_recovery_test.py
+  s_8a9b8e56b5dc3f::t_775d9759ccc1af 84-90,101-105,107-120,160-162
+  s_8a9b8e56b5dc3f::t_0a1aa709cd0273 121,183
+  s_8a9b8e56b5dc3f::t_75662cdedb10a3 8-9,33,37,39,163-165,169-178
+  s_8a9b8e56b5dc3f::t_5850bbb15e67b1 43-46,48,186-191,193-202
+  s_8a9b8e56b5dc3f::t_ec08da8ab9ccad 28,208
+  s_8a9b8e56b5dc3f::t_dc8ecfc972902a 149-152
+  s_8a9b8e56b5dc3f::t_7c124c7be5baf4 166-168
+  s_8a9b8e56b5dc3f::t_39326e94dc19c3 10-11
+  s_8a9b8e56b5dc3f::t_e696fa8bfc91f9 18,36,38,126-148,153-158
+  s_8a9b8e56b5dc3f::t_7e04ea24d36782 40-41,64-73,106,123-124,159,179-182,184-185,192,203,225,227-228
+  s_8a9b8e56b5dc3f::t_01c0f9598ee729 122
+  s_8a9b8e56b5dc3f::t_a3bf109d328209 1-7,12-17,19-27,29-32,42,47,49-63,74-83,91-94,98-100,125,224,226,229-240,244-247,249-257
+  s_8a9b8e56b5dc3f::t_b7251f33c705fe 34,215-223,248
+  s_8a9b8e56b5dc3f::t_dbc5d31f622262 204-207,209-211
+  s_8a9b8e56b5dc3f::t_687721a2d5d147 35,95-97,212-214,241-243
+hw/sys/sep/rtl/sep_trng.sv
+  s_8a9b8e56b5dc3f::t_cace8e4b6f2423 1-245
+hw/sys/sep/doc/jtag_sep_reset_ctrl_mapping.md
+  s_8a9b8e56b5dc3f::t_53696146a5b664 15,51,57,62-65
+  s_8a9b8e56b5dc3f::t_3519f3b9df9b81 66
+hw/sys/sep/dv/fw/drivers/sep_reset.h
+  s_8a9b8e56b5dc3f::t_57e2f6eac8f02d 15,53-78
+  s_8a9b8e56b5dc3f::t_5bc12db2c56ef3 6-7,19-20,26,43-52
+  s_8a9b8e56b5dc3f::t_edb14805326d98 79
+esrc.md
+  s_8a9b8e56b5dc3f::t_ee74c02f3d68bc 106-131,224-237
+  s_8a9b8e56b5dc3f::t_20426ac23a1bed 154-158
+  s_8a9b8e56b5dc3f::t_e2de7d7bb3c6e3 103-105
+  s_8a9b8e56b5dc3f::t_dcf66e12e72382 132-134,151-153
+  s_8a9b8e56b5dc3f::t_bde6c77a95514e 159-161,221-223
+  s_8a9b8e56b5dc3f::t_8d048f63cb4df8 238-240
+hw/sys/sep/dv/testlists/cpu.toml
+  s_8a9b8e56b5dc3f::t_a4457b3d9ff7dc 96
+hw/sys/sep/dv/docs/SEP_OSS_VPLAN_PHASE1.md
+  s_8a9b8e56b5dc3f::t_1381f78a8d2108 207
+  s_8a9b8e56b5dc3f::t_0b90f681b5e868 795,798-801
+  s_8a9b8e56b5dc3f::t_6740694abd2b31 206
+  s_8a9b8e56b5dc3f::t_a6f20400ce16d9 191
+hw/sys/sep/dv/cocotb/tests/km/sep_km_kmac_sideload_kat_test.py
+  s_8a9b8e56b5dc3f::t_d7474de89656cc 91
+hw/sys/smu/dv/docs/SMU_TB_ARCH.md
+  s_8a9b8e56b5dc3f::t_9ece0e758474e9 193
+hw/sys/sep/dv/cocotb/tests/crypto/sep_crypto_edn_multisink_arbitration_test.py
+  s_8a9b8e56b5dc3f::t_b9fd9ee05ddfab 149
+hw/sys/sep/rtl/sep_entropy_fifo.sv
+  s_8a9b8e56b5dc3f::t_485b1899e9da27 230-232,274,305,329-330,333-334,354-370,375-378
+  s_8a9b8e56b5dc3f::t_1386a33728fc2e 70-71,73,166-167,178,250,258
+  s_8a9b8e56b5dc3f::t_fdb79eb2b32436 48-49,275
+  s_8a9b8e56b5dc3f::t_ffb056c177861f 72,194,218
+  s_8a9b8e56b5dc3f::t_8cd96ca67168eb 144,201,277-278,281,283
+  s_8a9b8e56b5dc3f::t_946eb7b0a21f41 380-384
+  s_8a9b8e56b5dc3f::t_5cb3f09e8fca08 259-260
+  s_8a9b8e56b5dc3f::t_14f97e8e2f967f 276
+  s_8a9b8e56b5dc3f::t_013f671ee5fcb9 279-280
+  s_8a9b8e56b5dc3f::t_1813beb237e344 282
+  s_8a9b8e56b5dc3f::t_abd6bfb24d811d 379
+hw/ip/entropy_source/doc/architecture.adoc
+  s_8a9b8e56b5dc3f::t_1ace74c31e1436 64,77-89
+doc/trm/src/revision.adoc
+  s_8a9b8e56b5dc3f::t_c5946945d343f1 160-165
+hw/sys/sep/dv/fw/drivers/sep_entropy.h
+  s_8a9b8e56b5dc3f::t_a4cea5feeb18ab 58-60,75-83
+  s_8a9b8e56b5dc3f::t_b2746500b4dec3 14,37,92-93,95
+  s_8a9b8e56b5dc3f::t_b4bcd82a9fd2bb 25,67
+  s_8a9b8e56b5dc3f::t_cff07a21e22f0c 30
+  s_8a9b8e56b5dc3f::t_34a31318d51b5e 84-85
+hw/sys/sep/dv/cocotb/seq_lib/sep_sw_reset_seq.py
+  s_8a9b8e56b5dc3f::t_00155e6f401acd 76,80-83,87-95,98-104
+  s_8a9b8e56b5dc3f::t_a7ecf28fe3f75b 77-79,84-86,96-97
+  s_8a9b8e56b5dc3f::t_a267de96b8072f 9-10,14-15,20,33,36-37,47
+hw/sys/sep/rtl/sep_crypto.sv
+  s_8a9b8e56b5dc3f::t_65b34dd31a1b55 236,473-477,480,482-502
+  s_8a9b8e56b5dc3f::t_c4ebe9b28db7b1 49-50,103
+  s_8a9b8e56b5dc3f::t_3a07fc8dc2851c 1110,1132
+  s_8a9b8e56b5dc3f::t_4d7c053e068e6e 478-479,481,503-506
+hw/sys/sep/rtl/sep_reset_ctrl.sv
+  s_8a9b8e56b5dc3f::t_ef0c907dbf4106 7-10,18,122,139
+hw/sys/sep/rtl/sep.sv
+  s_8a9b8e56b5dc3f::t_d3f24eab59ab0c 361,814,857,928
+hw/ip/entropy_source/rtl/entropy_source.sv
+  s_8a9b8e56b5dc3f::t_6771dfb8a291e2 1182,1194,1206,1218,1230,1242,1254,1266,1278,1290,1302
+  s_8a9b8e56b5dc3f::t_fe1f68bb2ab44c 266,335,369,409,426,472
+  s_8a9b8e56b5dc3f::t_1151a1fd7acbb2 599,632-634,791,991,1015-1016,1061,1107
+hw/ip/entropy_source/dv/tb_vcs/debug_signals.svh
+  s_8a9b8e56b5dc3f::t_9152c4d99c6a33 20,67,75
+hw/sys/sep/dv/fw/tests/pic_irq_source_map_test/pic_irq_source_map_test.c
+  s_8a9b8e56b5dc3f::t_9ae492f7c60e56 23
+hw/sys/sep/dv/cocotb/tests/km/sep_km_otbn_sideload_kat_test.py
+  s_8a9b8e56b5dc3f::t_d5f86380871380 87
+  s_8a9b8e56b5dc3f::t_d89ab8cfeb5e6c 80
+hw/top/sep_wrapper.sv
+  s_8a9b8e56b5dc3f::t_c9bf73f588369b 22,228-229
+hw/sys/sep/doc/attack_countermeasures.adoc
+  s_8a9b8e56b5dc3f::t_15c35b62242373 105-106
+hw/sys/sep/dv/cocotb/tests/system/sep_crypto_per_ip_reset_isolation_test.py
+  s_8a9b8e56b5dc3f::t_58b6c71bd1d658 31
+  s_8a9b8e56b5dc3f::t_9da56f990dd1d6 61,196-201,205-218,221
+  s_8a9b8e56b5dc3f::t_8e92c36841cca5 202-204
+hw/sys/sep/dv/cocotb/tests/cpu/sep_reset_wdt_sanity_test.py
+  s_8a9b8e56b5dc3f::t_809d50bf019a88 6-7
+hw/sys/sep/doc/crypto.adoc
+  s_8a9b8e56b5dc3f::t_20420f189594cd 302-303
+  s_8a9b8e56b5dc3f::t_f68a9e417a5617 282-298
+hw/top/sep_ip_integration.sv
+  s_8a9b8e56b5dc3f::t_8e1bbf0ecaa9f0 26
+hw/ip/entropy_source/regs/entropy_source.rdl
+  s_8a9b8e56b5dc3f::t_fd10c606b34c4d 37-40
+  s_8a9b8e56b5dc3f::t_7c66fd9bbf91ec 775,782,943
+hw/sys/sep/dv/cocotb/seq_lib/sep_esrc_bringup_seq.py
+  s_8a9b8e56b5dc3f::t_976fd2c54f630d 157
+  s_8a9b8e56b5dc3f::t_4ebd77a1884fdc 248,252,257-262
+  s_8a9b8e56b5dc3f::t_380897494756c4 30,49
+  s_8a9b8e56b5dc3f::t_7db89500617b24 73,288,295
+  s_8a9b8e56b5dc3f::t_0e72824610b9b2 5-6,47-48,181,190,270
+  s_8a9b8e56b5dc3f::t_2a0802991f2d57 195
+hw/sys/sep/rtl/sep_pkg.sv
+  s_8a9b8e56b5dc3f::t_e57fbfcd881ead 712-714
+  s_8a9b8e56b5dc3f::t_f0731065b8f5f3 524,715,732
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "130eba6bcf08d8447c835834ea8068632c513217",
+  "prompts": {},
+  "sessions": {
+    "s_8a9b8e56b5dc3f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "04203c6f-c215-4b0e-814b-5c8666884008",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
