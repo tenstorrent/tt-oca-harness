@@ -3448,8 +3448,8 @@ module entropy_source_reg (
         end
         if(rd_mux_addr == 9'h24) begin
             readback_data_var[6:0] = hwif_in.FIFO_STATUS.LEVEL.next;
-            readback_data_var[12:8] = hwif_in.FIFO_STATUS.WPTR.next;
-            readback_data_var[20:16] = hwif_in.FIFO_STATUS.RPTR.next;
+            readback_data_var[13:8] = hwif_in.FIFO_STATUS.WPTR.next;
+            readback_data_var[21:16] = hwif_in.FIFO_STATUS.RPTR.next;
         end
         if(rd_mux_addr == 9'h28) begin
             readback_data_var = hwif_in.FIFO_RDATA.rd_data;
@@ -3667,8 +3667,8 @@ module entropy_source_reg (
         end
         if(rd_mux_addr == 9'h168) begin
             readback_data_var[6:0] = hwif_in.BIW_OBS_STATUS.LEVEL.next;
-            readback_data_var[12:8] = hwif_in.BIW_OBS_STATUS.WPTR.next;
-            readback_data_var[20:16] = hwif_in.BIW_OBS_STATUS.RPTR.next;
+            readback_data_var[13:8] = hwif_in.BIW_OBS_STATUS.WPTR.next;
+            readback_data_var[21:16] = hwif_in.BIW_OBS_STATUS.RPTR.next;
         end
         if(rd_mux_addr == 9'h16c) begin
             readback_data_var = hwif_in.BIW_OBS_RDATA.rd_data;
@@ -3679,8 +3679,8 @@ module entropy_source_reg (
         end
         if(rd_mux_addr == 9'h174) begin
             readback_data_var[6:0] = hwif_in.NOISE_OBS_STATUS.LEVEL.next;
-            readback_data_var[12:8] = hwif_in.NOISE_OBS_STATUS.WPTR.next;
-            readback_data_var[20:16] = hwif_in.NOISE_OBS_STATUS.RPTR.next;
+            readback_data_var[13:8] = hwif_in.NOISE_OBS_STATUS.WPTR.next;
+            readback_data_var[21:16] = hwif_in.NOISE_OBS_STATUS.RPTR.next;
         end
         if(rd_mux_addr == 9'h178) begin
             readback_data_var = hwif_in.NOISE_OBS_RDATA.rd_data;

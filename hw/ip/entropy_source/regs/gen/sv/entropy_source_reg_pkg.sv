@@ -117,11 +117,11 @@ package entropy_source_reg_pkg;
     } entropy_source__FIFO_STATUS__LEVEL__in_t;
 
     typedef struct {
-        logic [4:0] next;
+        logic [5:0] next;
     } entropy_source__FIFO_STATUS__WPTR__in_t;
 
     typedef struct {
-        logic [4:0] next;
+        logic [5:0] next;
     } entropy_source__FIFO_STATUS__RPTR__in_t;
 
     typedef struct {
@@ -758,11 +758,11 @@ package entropy_source_reg_pkg;
     } entropy_source__BIW_OBS_STATUS__LEVEL__in_t;
 
     typedef struct {
-        logic [4:0] next;
+        logic [5:0] next;
     } entropy_source__BIW_OBS_STATUS__WPTR__in_t;
 
     typedef struct {
-        logic [4:0] next;
+        logic [5:0] next;
     } entropy_source__BIW_OBS_STATUS__RPTR__in_t;
 
     typedef struct {
@@ -785,11 +785,11 @@ package entropy_source_reg_pkg;
     } entropy_source__NOISE_OBS_STATUS__LEVEL__in_t;
 
     typedef struct {
-        logic [4:0] next;
+        logic [5:0] next;
     } entropy_source__NOISE_OBS_STATUS__WPTR__in_t;
 
     typedef struct {
-        logic [4:0] next;
+        logic [5:0] next;
     } entropy_source__NOISE_OBS_STATUS__RPTR__in_t;
 
     typedef struct {

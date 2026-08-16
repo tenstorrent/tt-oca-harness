@@ -10,7 +10,7 @@
 | 0x14 | INTR_ENABLE | RW a| Interrupt Enable (individual enable bits for each interrupt source)
 | 0x18 | INTR_TEST | W a| Interrupt Test (write 1 to manually trigger interrupt for testing)
 | 0x1C | SHA256_STATUS | R a| SHA-256 Whitening Status
-| 0x20 | FIFO_CTRL | RW a| FIFO Control (32-entry x 32-bit entropy collection buffer)
+| 0x20 | FIFO_CTRL | RW a| FIFO Control (64-entry x 32-bit entropy collection buffer)
 | 0x24 | FIFO_STATUS | R a| FIFO Status (real-time buffer occupancy and pointers)
 | 0x28 | FIFO_RDATA | R a| FIFO Read Data (auto-incrementing read port)
 | 0x30 | HEALTH_TEST_CTRL | RW a| Health Test Control (NIST SP 800-90B compliant continuous tests)
@@ -18,14 +18,14 @@
 | 0x38 | MARKOV_TEST_PROB_THRESHOLDS | RW a| Markov Test Transition Count Thresholds (16-bit direct count thresholds)
 | 0x40 | HEALTH_TEST_STATUS | RW a| Health Test Status for 32-bit Entropy Stream (Write-1-to-Clear). Latches health test failures until firmware clears by writing 1. Bit allocation: [0]=Repetition, [1:2]=Reserved, [3]=APT, [4]=Markov-Hi, [5]=Markov-Lo, [6:7]=Reserved.
 | 0x44 | REPETITION_TEST_COUNT | R a| Repetition Test Count (current consecutive repetition streak)
-| 0x50 | APT_PATTERN_COUNT_1BIT | R a| Adaptive Proportion Test (APT) 1-bit Pattern Count (real-time statistics)
-| 0x54 | APT_PATTERN_COUNT_2BIT | R a| Adaptive Proportion Test (APT) 2-bit Pattern Count (real-time statistics)
-| 0x58 | APT_PATTERN_COUNT_3BIT | R a| Adaptive Proportion Test (APT) 3-bit Pattern Count (real-time statistics)
-| 0x5C | APT_PATTERN_COUNT_4BIT | R a| Adaptive Proportion Test (APT) 4-bit Pattern Count (real-time statistics)
+| 0x50 | APT_PATTERN_COUNT_1BIT | R a| Adaptive Proportion Test (APT) high one-count statistics. The single APT instance counts ones independently on each lane of the 32-bit entropy stream over HEALTH_TEST_WINDOW_SIZE.SIZE samples (default 2048). PATTERN_COUNT exposes the maximum current per-lane count. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.
+| 0x54 | APT_PATTERN_COUNT_2BIT | R a| Adaptive Proportion Test (APT) low one-count statistics. The single APT instance counts ones independently on each lane of the 32-bit entropy stream over HEALTH_TEST_WINDOW_SIZE.SIZE samples (default 2048). PATTERN_COUNT exposes the minimum current per-lane count. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.
+| 0x58 | APT_PATTERN_COUNT_3BIT | R a| APT 3-bit statistics register. PATTERN_COUNT, TARGET_PATTERN, and SAMPLES_PROCESSED are not implemented and all read zero. (RTL ties apt_pattern_count_3bit_o, apt_target_pattern_3bit_o, and apt_samples_processed_3bit_o to 0.)
+| 0x5C | APT_PATTERN_COUNT_4BIT | R a| APT 4-bit statistics register. PATTERN_COUNT, TARGET_PATTERN, and SAMPLES_PROCESSED are not implemented and all read zero. (RTL ties apt_pattern_count_4bit_o, apt_target_pattern_4bit_o, and apt_samples_processed_4bit_o to 0.)
 | 0x60 | APT_PROPORTION_1BIT | RW a| Adaptive Proportion Test 1-bit Proportion Limit (16-bit direct count threshold)
-| 0x64 | APT_PROPORTION_2BIT | RW a| Adaptive Proportion Test 2-bit Proportion Limit (NIST SP 800-90B Window=256)
-| 0x68 | APT_PROPORTION_3BIT | RW a| Adaptive Proportion Test 3-bit Proportion Limit (NIST SP 800-90B Window=170)
-| 0x6C | APT_PROPORTION_4BIT | RW a| Adaptive Proportion Test 4-bit Proportion Limit (NIST SP 800-90B Window=128)
+| 0x64 | APT_PROPORTION_2BIT | RW a| Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.
+| 0x68 | APT_PROPORTION_3BIT | RW a| Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.
+| 0x6C | APT_PROPORTION_4BIT | RW a| Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.
 | 0x70 | APT_PROPORTION_LO | RW a| Adaptive Proportion Test Low Threshold (two-sided NIST SP 800-90B compliance). Detects low-bias noise where too few 1s are observed per bit lane. The APT counts 1s per bit lane over a health test window; if the minimum count across all lanes falls below this threshold, the test fails (apt_test_fail_lo). For window_size=2048 with good entropy, expect ~1024 ones per lane. Default=848 (41.4% of 2048, symmetric 5-sigma margin below mean, matching the high threshold at 1200=58.6%).
 | 0x80 | MARKOV_TEST_COUNTS_0 | R a| Markov Test Counts 0
 | 0x84 | MARKOV_TEST_COUNTS_1 | R a| Markov Test Counts 1
@@ -105,7 +105,7 @@
 | 4 | `AUTOTUNE_ENABLE` | RW | 0x0 a| Enable automatic detuning of individual ring oscillator noise generators when corresponding per-generator health tests fail. When enabled, a failing health test causes the generator's noise RO to switch to its detuned (higher frequency) tap point. The shared sampling RO also detunes if ANY generator requests it. Automatic detuning is disabled by default (manual tuning via RING_OSC_TUNE required). Locked by FIPS_LOCK.LOCK: the lock freezes this field at whatever value it holds when FIPS_LOCK is set (swwel is value-agnostic). The certified flow writes 0 and then locks, so the entropy-source noise geometry cannot silently self-adjust mid-operation (SP 800-90B validated configuration).
 | 3:2 | `Reserved` | - | - a| Reserved
 | 1 | `MODULE_ENABLE` | RW | 0x1 a| Master enable for the OpenTitan entropy_src_main_sm boot/startup gate. Drives main_sm's enable_i. When 0, main_sm stays in Idle and MAIN_SM_STATUS.BOOT_PHASE_DONE never asserts, so no entropy reaches the whitener/FIFO. When 1 (default), main_sm runs the boot health-test window and asserts BOOT_PHASE_DONE once it passes. Locked by FIPS_LOCK.LOCK. See doc/main_sm_boot_gate_functional_compat.md.
-| 0 | `RESET` | RW | 0x0 a| Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, and decorrelator shift registers. Ring oscillators continue running. Self-clearing after 1 clock cycle.
+| 0 | `RESET` | RW | 0x0 a| Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, decorrelator shift registers, and the downsample phase counter. Ring oscillators continue running. Level-sensitive: the reset holds while this bit is 1, so software must write 0 to release it.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -122,7 +122,7 @@
 | Bits | Field | Access | Reset | Description
 | 31:11 | `Reserved` | - | - a| Reserved
 | 10:8 | `SELECT_FREQ_DIV` | RW | 0x0 a| Select Frequency Divider for debug monitor output pin. Division ratios: 0=div1 (no division), 1=div2, 2=div4, 3=div8, 4=div16, 5=div32, 6=div64, 7=div128. Used to slow down high-frequency signals for external observation. Default=0 (no division).
-| 7:0 | `SELECT_SIGNAL` | RW | 0x0 a| Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved/padding. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved/padding. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved/padding. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved/padding.
+| 7:0 | `SELECT_SIGNAL` | RW | 0x0 a| Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved. Reserved selections drive the signal mux output to 0. With SELECT_FREQ_DIV=0 the external monitor pin is also 0. With SELECT_FREQ_DIV nonzero, the selected ripple-divider stage retains its previous value while the mux output is 0, so the monitor pin can hold 0 or 1 until the divider is reset. Set SELECT_FREQ_DIV=0 before selecting a reserved value when a constant-zero pin output is required.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -140,7 +140,7 @@
 | 15:13 | `Reserved` | - | - a| Reserved
 | 12 | `FIFO_UNDERFLOW` | RW | 0x0 a| FIFO Underflow Interrupt. Set when software reads from an empty FIFO. Read returns stale/undefined data. Write 1 to clear.
 | 11:9 | `Reserved` | - | - a| Reserved
-| 8 | `FIFO_OVERFLOW` | RW | 0x0 a| FIFO Overflow Interrupt. Set when entropy data is pushed to a full FIFO (32 entries deep). Data is discarded on overflow. Write 1 to clear.
+| 8 | `FIFO_OVERFLOW` | RW | 0x0 a| FIFO Overflow Interrupt. Set when entropy data is pushed to a full FIFO (64 entries deep). Data is discarded on overflow. Write 1 to clear.
 | 7:5 | `Reserved` | - | - a| Reserved
 | 4 | `FIFO_ERROR` | RW | 0x0 a| FIFO Error Interrupt. Set on FIFO read/write protocol violations. Write 1 to clear.
 | 3:1 | `Reserved` | - | - a| Reserved
@@ -207,7 +207,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
-| 4 | `ENTROPY_CHURN_ENABLE` | RW | 0x0 a| Entropy Churning Mode Enable. When asserted high, incoming entropy data is XORed with existing FIFO data located at (write_ptr + DEPTH/2) % DEPTH before being written. This creates a circular feedback churning pattern where new entropy is combined with entropy from halfway around the FIFO buffer (16 entries earlier for DEPTH=32). Churning operation: write_data = incoming_data XOR mem[(wptr + 16) % 32]. Purpose: Enhance entropy quality through continuous churning of fresh randomness with accumulated randomness. Useful for additional conditioning and resistance to entropy source degradation. Default=0 (disabled, direct write without churning).
+| 4 | `ENTROPY_CHURN_ENABLE` | RW | 0x0 a| Entropy Churning Mode Enable. When asserted high, incoming entropy data is XORed with existing FIFO data located at (write_ptr + DEPTH/2) % DEPTH before being written. This creates a circular feedback churning pattern where new entropy is combined with entropy from halfway around the FIFO buffer (32 entries earlier for DEPTH=64). Churning operation: write_data = incoming_data XOR mem[(wptr + 32) % 64]. Purpose: Enhance entropy quality through continuous churning of fresh randomness with accumulated randomness. Useful for additional conditioning and resistance to entropy source degradation. Default=0 (disabled, direct write without churning).
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `ENABLE` | RW | 0x1 a| FIFO write enable control. When enabled (1=default), entropy data flows into FIFO and write pointer updates normally. When disabled (set to 0), write operations are blocked: no entropy pushed, write pointer frozen, data collection paused. IMPORTANT: Read operations remain functional when disabled - software can still drain the FIFO by reading FIFO_RDATA. This allows capturing a snapshot of entropy and reading it out without new data being added. Use case: Stop entropy collection, drain FIFO for analysis, re-enable collection. Default=1 (enabled).
 |===
@@ -216,12 +216,12 @@
 .FIFO_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:21 | `Reserved` | - | - a| Reserved
-| 20:16 | `RPTR` | R | 0x0 a| Read Pointer. Current FIFO read address (0-31). Updated by hardware when FIFO_RDATA is read. Read-only for software.
-| 15:13 | `Reserved` | - | - a| Reserved
-| 12:8 | `WPTR` | R | 0x0 a| Write Pointer. Current FIFO write address (0-31). Updated by hardware when entropy data is pushed. Read-only for software.
+| 31:22 | `Reserved` | - | - a| Reserved
+| 21:16 | `RPTR` | R | 0x0 a| Read Pointer. Current FIFO read address (0-63). Updated by hardware when FIFO_RDATA is read. Read-only for software.
+| 15:14 | `Reserved` | - | - a| Reserved
+| 13:8 | `WPTR` | R | 0x0 a| Write Pointer. Current FIFO write address (0-63). Updated by hardware when entropy data is pushed. Read-only for software.
 | 7 | `Reserved` | - | - a| Reserved
-| 6:0 | `LEVEL` | R | 0x0 a| Fill Level. Number of valid 32-bit entropy words currently in FIFO (0-32). Poll this field to determine when data is available for reading. LEVEL=0 means FIFO empty, LEVEL=32 means FIFO full.
+| 6:0 | `LEVEL` | R | 0x0 a| Fill Level. Number of valid 32-bit entropy words currently in FIFO (0-64). Poll this field to determine when data is available for reading. LEVEL=0 means FIFO empty, LEVEL=64 means FIFO full.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -277,9 +277,9 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:30 | `Reserved` | - | - a| Reserved
-| 29:20 | `SAMPLES_PROCESSED` | R | 0x0 a| Number of 1-bit samples processed in current window (0-512). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 512.
-| 19:16 | `TARGET_PATTERN` | R | 0x0 a| Current 1-bit target pattern being tracked (0 or 1). Hardware automatically selects the most common pattern. Read to identify which bit value is dominant.
-| 15:0 | `PATTERN_COUNT` | R | 0x0 a| Current count of the most frequently occurring 1-bit pattern in the sliding 512-sample window. For good entropy, expect ~256 (50% of 512). Values >280 indicate potential bias. Compare to APT_PROPORTION_1BIT.LIMIT. Updates continuously as window slides. Widened to 16-bit to support full counter range.
+| 29:20 | `SAMPLES_PROCESSED` | R | 0x0 a| Not implemented. Reads zero. (RTL ties apt_samples_processed_1bit_o to 10'd0.)
+| 19:16 | `TARGET_PATTERN` | R | 0x0 a| Not implemented. Reads zero. (RTL ties apt_target_pattern_1bit_o to 4'd0.)
+| 15:0 | `PATTERN_COUNT` | R | 0x0 a| Maximum per-lane ones count in the current APT window (apt_test_cnt_hi). The count updates on each valid sample and clears at the window boundary. For good entropy expect approximately half of HEALTH_TEST_WINDOW_SIZE.SIZE.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -287,9 +287,9 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:30 | `Reserved` | - | - a| Reserved
-| 29:20 | `SAMPLES_PROCESSED` | R | 0x0 a| Number of 2-bit samples processed in current window (0-256). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 256.
-| 19:16 | `TARGET_PATTERN` | R | 0x0 a| Current 2-bit target pattern being tracked (0b00, 0b01, 0b10, or 0b11). Hardware automatically selects the most common pattern. Read to identify which 2-bit value is dominant.
-| 15:0 | `PATTERN_COUNT` | R | 0x0 a| Current count of the most frequently occurring 2-bit pattern in the sliding 256-sample window. For good entropy, expect ~64 (25% of 256). Values >75 indicate potential bias. Compare to APT_PROPORTION_2BIT.LIMIT. Updates continuously as window slides. Widened to 16-bit to support full counter range.
+| 29:20 | `SAMPLES_PROCESSED` | R | 0x0 a| Not implemented. Reads zero. (RTL ties apt_samples_processed_2bit_o to 10'd0.)
+| 19:16 | `TARGET_PATTERN` | R | 0x0 a| Not implemented. Reads zero. (RTL ties apt_target_pattern_2bit_o to 4'd0.)
+| 15:0 | `PATTERN_COUNT` | R | 0x0 a| Minimum per-lane ones count in the current APT window (apt_test_cnt_lo). The count updates on each valid sample and clears at the window boundary.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -297,10 +297,10 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:30 | `Reserved` | - | - a| Reserved
-| 29:20 | `SAMPLES_PROCESSED` | R | 0x0 a| Number of 3-bit samples processed in current window (0-170). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 170.
+| 29:20 | `SAMPLES_PROCESSED` | R | 0x0 a| Not implemented. Reads zero.
 | 19:14 | `Reserved` | - | - a| Reserved
-| 13:10 | `TARGET_PATTERN` | R | 0x0 a| Current 3-bit target pattern being tracked (0b000 through 0b111). Hardware automatically selects the most common pattern. Read to identify which 3-bit value is dominant.
-| 9:0 | `PATTERN_COUNT` | R | 0x0 a| Current count of the most frequently occurring 3-bit pattern in the sliding 170-sample window. For good entropy, expect ~21 (12.5% of 170). Values >28 indicate potential bias. Compare to APT_PROPORTION_3BIT.LIMIT. Updates continuously as window slides.
+| 13:10 | `TARGET_PATTERN` | R | 0x0 a| Not implemented. Reads zero.
+| 9:0 | `PATTERN_COUNT` | R | 0x0 a| Not implemented. Reads zero.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -308,10 +308,10 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:30 | `Reserved` | - | - a| Reserved
-| 29:20 | `SAMPLES_PROCESSED` | R | 0x0 a| Number of 4-bit samples processed in current window (0-128). Used for window initialization and wraparound tracking. Pattern count is valid when this reaches 128.
+| 29:20 | `SAMPLES_PROCESSED` | R | 0x0 a| Not implemented. Reads zero.
 | 19:14 | `Reserved` | - | - a| Reserved
-| 13:10 | `TARGET_PATTERN` | R | 0x0 a| Current 4-bit target pattern being tracked (0x0 through 0xF). Hardware automatically selects the most common pattern. Read to identify which 4-bit value is dominant.
-| 9:0 | `PATTERN_COUNT` | R | 0x0 a| Current count of the most frequently occurring 4-bit pattern in the sliding 128-sample window. For good entropy, expect ~8 (6.25% of 128). Values >12 indicate potential bias. Compare to APT_PROPORTION_4BIT.LIMIT. Updates continuously as window slides.
+| 13:10 | `TARGET_PATTERN` | R | 0x0 a| Not implemented. Reads zero.
+| 9:0 | `PATTERN_COUNT` | R | 0x0 a| Not implemented. Reads zero.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -327,7 +327,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `LIMIT` | RW | 0x80 a| APT proportion threshold for 2-bit samples. Maximum allowed count of most common 2-bit pattern in a 256-sample window. For unbiased source, expect ~64 (25%). Default=128 allows up to 50%. Reduce to ~75-85 to detect 2-bit pattern bias. Test fails if pattern count exceeds this limit.
+| 9:0 | `LIMIT` | RW | 0x80 a| Legacy unused field retained for register compatibility. RTL does not read this value.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -335,7 +335,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `LIMIT` | RW | 0x40 a| APT proportion threshold for 3-bit samples. Maximum allowed count of most common 3-bit pattern in a 170-sample window. For unbiased source, expect ~21 (12.5%). Default=64 allows up to 38%. Reduce to ~28-32 to detect 3-bit pattern bias. Test fails if pattern count exceeds this limit.
+| 9:0 | `LIMIT` | RW | 0x40 a| Legacy unused field retained for register compatibility. RTL does not read this value.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -343,7 +343,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9:0 | `LIMIT` | RW | 0x20 a| APT proportion threshold for 4-bit samples. Maximum allowed count of most common 4-bit pattern in a 128-sample window. For unbiased source, expect ~8 (6.25%). Default=32 allows up to 25%. Reduce to ~12-15 to detect 4-bit pattern bias. Test fails if pattern count exceeds this limit.
+| 9:0 | `LIMIT` | RW | 0x20 a| Legacy unused field retained for register compatibility. RTL does not read this value.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -429,8 +429,8 @@
 | 31:14 | `Reserved` | - | - a| Reserved
 | 13 | `ALERT_CNTR_CLR_OK` | R | 0x0 a| alert_cntr_clr_ok_o. Set when main_sm allows the per-window alert fail counters (ALERT_SUMMARY_FAIL_COUNTS, ALERT_FAIL_COUNTS) to clear on a passing window (replaces the legacy hardcoded alert_cntr_clr_ok=1).
 | 12 | `BOOT_PHASE_DONE` | R | 0x0 a| boot_phase_done_o. Set once the boot-time health test window has passed; gates entropy_stream_valid_gated. Deasserts on disable, reset, or escalation to Error/AlertHang.
-| 11 | `ERR` | RW | 0x0 a| main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Write 1 to clear.
-| 10 | `ALERT` | RW | 0x0 a| main_sm_alert_o, latched. Set when the FSM transitions through AlertState (boot health test failed with alert_thresh_fail_i asserted; alert_thresh_fail_i is tied to 0, so this path is currently unreachable and is reserved for a future threshold/lock policy). Write 1 to clear.
+| 11 | `ERR` | RW | 0x0 a| main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset.
+| 10 | `ALERT` | RW | 0x0 a| main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang, halting entropy output. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset; the FSM leaves AlertHang on rst_ni, CTRL.RESET, or CTRL.MODULE_ENABLE=0. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.
 | 9 | `IDLE` | R | 0x0 a| main_sm_idle_o. Set while the FSM is in the Idle state (module disabled or not yet enabled).
 | 8:0 | `STATE` | R | 0x0 a| Current entropy_src_main_sm state (sparse FSM encoding from entropy_src_main_sm_pkg::state_e). Useful values while bypass_mode_i=1: Idle, BootHTRunning, BootPostHTChk, BootPhaseDone, AlertState, AlertHang, Error.
 |===
@@ -742,10 +742,10 @@
 .BIW_OBS_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:21 | `Reserved` | - | - a| Reserved
-| 20:16 | `RPTR` | R | 0x0 a| Read pointer. Current BIW observe FIFO read address. Updated by hardware when BIW_OBS_RDATA is read. Read-only.
-| 15:13 | `Reserved` | - | - a| Reserved
-| 12:8 | `WPTR` | R | 0x0 a| Write pointer. Current BIW observe FIFO write address. Updated by hardware when a post-BIW word is pushed. Read-only.
+| 31:22 | `Reserved` | - | - a| Reserved
+| 21:16 | `RPTR` | R | 0x0 a| Read pointer. Current BIW observe FIFO read address (0-63). Updated by hardware when BIW_OBS_RDATA is read. Read-only.
+| 15:14 | `Reserved` | - | - a| Reserved
+| 13:8 | `WPTR` | R | 0x0 a| Write pointer. Current BIW observe FIFO write address (0-63). Updated by hardware when a post-BIW word is pushed. Read-only.
 | 7 | `Reserved` | - | - a| Reserved
 | 6:0 | `LEVEL` | R | 0x0 a| Fill level. Number of 32-bit words currently held in the BIW observe FIFO (0-64).
 |===
@@ -772,10 +772,10 @@
 .NOISE_OBS_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:21 | `Reserved` | - | - a| Reserved
-| 20:16 | `RPTR` | R | 0x0 a| Read pointer. Current raw-noise observe FIFO read address. Updated by hardware when NOISE_OBS_RDATA is read. Read-only.
-| 15:13 | `Reserved` | - | - a| Reserved
-| 12:8 | `WPTR` | R | 0x0 a| Write pointer. Current raw-noise observe FIFO write address. Updated by hardware when a packed raw word is pushed. Read-only.
+| 31:22 | `Reserved` | - | - a| Reserved
+| 21:16 | `RPTR` | R | 0x0 a| Read pointer. Current raw-noise observe FIFO read address (0-63). Updated by hardware when NOISE_OBS_RDATA is read. Read-only.
+| 15:14 | `Reserved` | - | - a| Reserved
+| 13:8 | `WPTR` | R | 0x0 a| Write pointer. Current raw-noise observe FIFO write address (0-63). Updated by hardware when a packed raw word is pushed. Read-only.
 | 7 | `Reserved` | - | - a| Reserved
 | 6:0 | `LEVEL` | R | 0x0 a| Fill level. Number of 32-bit words currently held in the raw-noise observe FIFO (0-64).
 |===

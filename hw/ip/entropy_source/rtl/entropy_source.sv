@@ -240,6 +240,7 @@ module entropy_source
     logic                    noise_obs_sample_stb;
     logic [31:0]             noise_obs_shift_q,  noise_obs_shift_d;
     logic [4:0]              noise_obs_bit_cnt_q, noise_obs_bit_cnt_d;
+    logic [3:0]              noise_obs_lane_sel_eff;
     logic [3:0]              noise_obs_lane_sel_q;
     logic                    noise_obs_word_push;
 
@@ -489,8 +490,8 @@ module entropy_source
 
     // BIW_OBS_STATUS feeds (mirrors FIFO_STATUS layout).
     assign reg_in.BIW_OBS_STATUS.LEVEL.next = biw_obs_level;
-    assign reg_in.BIW_OBS_STATUS.WPTR.next  = biw_obs_wptr[4:0];
-    assign reg_in.BIW_OBS_STATUS.RPTR.next  = biw_obs_rptr[4:0];
+    assign reg_in.BIW_OBS_STATUS.WPTR.next  = biw_obs_wptr;
+    assign reg_in.BIW_OBS_STATUS.RPTR.next  = biw_obs_rptr;
 
     // External auto-advancing read port (mirror of the FIFO_RDATA pattern):
     // reading BIW_OBS_RDATA pops one word. rd_ack is guarded with rst_ni so a
@@ -516,15 +517,16 @@ module entropy_source
     // full FIFO simply drops the word (never stalls capture or the datapath).
     // ----------------------------------------------------------------------
 
-    // Lane mux. LANE_SEL is 4 bits (0-15) but NRINGS==12, so zero-pad the
-    // monitor vectors to 16 entries before indexing: out-of-range selects
-    // (12-15) then read a constant 0 (no lane -> no sample strobe -> the raw
-    // observe FIFO simply never fills), and the index can never exceed the
-    // array bound (no SELRANGE lint warning).
+    // Lane mux. LANE_SEL is 4 bits (0-15) but NRINGS==12. Clamp out-of-range
+    // selects (>=12) to lane 0, matching the RDL contract. Zero-padding to 16
+    // entries keeps the index within array bounds (no SELRANGE lint warning).
+    assign noise_obs_lane_sel_eff =
+        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value >= 4'(NRINGS))
+        ? 4'd0 : reg_out.NOISE_OBS_CTRL.LANE_SEL.value;
     assign noise_bit_monitor_ext  = {{(16 - NRINGS){1'b0}}, noise_bit_monitor};
     assign sample_clk_monitor_ext = {{(16 - NRINGS){1'b0}}, sample_clk_monitor};
-    assign noise_obs_raw_bit  = noise_bit_monitor_ext [reg_out.NOISE_OBS_CTRL.LANE_SEL.value];
-    assign noise_obs_raw_sclk = sample_clk_monitor_ext[reg_out.NOISE_OBS_CTRL.LANE_SEL.value];
+    assign noise_obs_raw_bit  = noise_bit_monitor_ext [noise_obs_lane_sel_eff];
+    assign noise_obs_raw_sclk = sample_clk_monitor_ext[noise_obs_lane_sel_eff];
 
     // Rising-edge strobe on the selected lane's sample clock: a fresh raw bit
     // is available once per rising edge of the (async, divided) sample clock.
@@ -548,7 +550,7 @@ module entropy_source
         noise_obs_bit_cnt_d = noise_obs_bit_cnt_q;
 
         if (!reg_out.NOISE_OBS_CTRL.RAW_ENABLE.value ||
-            (reg_out.NOISE_OBS_CTRL.LANE_SEL.value != noise_obs_lane_sel_q)) begin
+            (noise_obs_lane_sel_eff != noise_obs_lane_sel_q)) begin
             // Disabled or lane switched: restart the packer so a word never
             // mixes samples from two lanes.
             noise_obs_shift_d   = 32'h0;
@@ -575,7 +577,7 @@ module entropy_source
             noise_obs_sclk_sync <= {noise_obs_sclk_sync[0], noise_obs_sclk_meta};
             noise_obs_shift_q    <= noise_obs_shift_d;
             noise_obs_bit_cnt_q  <= noise_obs_bit_cnt_d;
-            noise_obs_lane_sel_q <= reg_out.NOISE_OBS_CTRL.LANE_SEL.value;
+            noise_obs_lane_sel_q <= noise_obs_lane_sel_eff;
         end
     end
 
@@ -589,7 +591,7 @@ module entropy_source
     // software force a discard on demand. The packer already restarts on the
     // same lane-change edge (see above), so packer and FIFO stay consistent.
     assign noise_obs_flush =
-        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value != noise_obs_lane_sel_q)
+        (noise_obs_lane_sel_eff != noise_obs_lane_sel_q)
         || reg_out.NOISE_OBS_CTRL.FLUSH.value;
 
     entropy_fifo #(
@@ -615,8 +617,8 @@ module entropy_source
 
     // NOISE_OBS_STATUS feeds (mirrors FIFO_STATUS layout).
     assign reg_in.NOISE_OBS_STATUS.LEVEL.next = noise_obs_level;
-    assign reg_in.NOISE_OBS_STATUS.WPTR.next  = noise_obs_wptr[4:0];
-    assign reg_in.NOISE_OBS_STATUS.RPTR.next  = noise_obs_rptr[4:0];
+    assign reg_in.NOISE_OBS_STATUS.WPTR.next  = noise_obs_wptr;
+    assign reg_in.NOISE_OBS_STATUS.RPTR.next  = noise_obs_rptr;
 
     // External auto-advancing read port (mirror of the FIFO_RDATA pattern):
     // reading NOISE_OBS_RDATA pops one word. rd_ack is guarded with rst_ni so a
@@ -925,8 +927,8 @@ module entropy_source
     assign irq_o = reg_out.INTR_STATUS.intr;
 
     assign reg_in.FIFO_STATUS.LEVEL.next = fifo_level;
-    assign reg_in.FIFO_STATUS.WPTR.next  = fifo_wptr[4:0];
-    assign reg_in.FIFO_STATUS.RPTR.next  = fifo_rptr[4:0];
+    assign reg_in.FIFO_STATUS.WPTR.next  = fifo_wptr;
+    assign reg_in.FIFO_STATUS.RPTR.next  = fifo_rptr;
 
     assign reg_in.HEALTH_TEST_STATUS.HEALTH_STATUS.next = health_status;
 
