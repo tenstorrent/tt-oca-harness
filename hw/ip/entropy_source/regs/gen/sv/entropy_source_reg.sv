@@ -2530,6 +2530,9 @@ module entropy_source_reg (
         end else if(hwif_in.MAIN_SM_STATUS.ALERT.next) begin // stickybit
             next_c = '1;
             load_next_c = '1;
+        end else if(hwif_in.MAIN_SM_STATUS.ALERT.hwclr) begin // HW Clear
+            next_c = '0;
+            load_next_c = '1;
         end
         field_combo.MAIN_SM_STATUS.ALERT.next = next_c;
         field_combo.MAIN_SM_STATUS.ALERT.load_next = load_next_c;
@@ -2554,6 +2557,9 @@ module entropy_source_reg (
             load_next_c = '1;
         end else if(hwif_in.MAIN_SM_STATUS.ERR.next) begin // stickybit
             next_c = '1;
+            load_next_c = '1;
+        end else if(hwif_in.MAIN_SM_STATUS.ERR.hwclr) begin // HW Clear
+            next_c = '0;
             load_next_c = '1;
         end
         field_combo.MAIN_SM_STATUS.ERR.next = next_c;
