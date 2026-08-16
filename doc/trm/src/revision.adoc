@@ -146,4 +146,6 @@ being public, need no read protection. Replaced the two coarse reserved blocks
 with eight individually lockable 256-bit spare fields (spare0-spare7) so an
 adopter can provision and lock spare storage one field at a time. The map
 remains 8192 bits.
+|0.5.23 |2026-08-11 |Alessandro Ottaviano |Aligned entropy-source documentation with the
+RTL: corrected the MAIN_SM_STATUS.ALERT / AlertHang description and the DRBG EDN endpoint count.
 |=======================================================================
