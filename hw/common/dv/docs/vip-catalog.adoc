@@ -102,7 +102,18 @@ Primary classes:
 * `OcahAxiLiteSlave`, `OcahAxiLiteRam`, `OcahFaultAxiLiteRam`;
 * `OcahAxiReadResult`, `OcahAxiWriteResult`;
 * `OcahAxiItem` and direction/protocol-specific item subclasses;
-* `OcahAxiMonitor`, `OcahAxiLiteMonitor`, `OcahAxiChecker`.
+* `OcahAxiMonitor`, `OcahAxiLiteMonitor`, `OcahAxiChecker`;
+* `OcahAxiRefModel`, `OcahAxiRegionExpectation`, `OcahAxiScoreboard`
+  (checker/reference-model contract adopters);
+* `OcahAxiProtocolWatcher`, `OcahAxiLiteProtocolWatcher` (cycle-level rules).
+
+SystemVerilog layer (compiled by explicit sim-cfg sources, never Verilator
+filelists): `interface/ocah_axi_if.sv`, the clean-room
+`sva/ocah_axi_protocol_checker.sv` (`OCAH_AXI_*` rules from IHI 0022 rule
+descriptions), behavioral error-injectable responders under `sv/`, and the
+passive `uvm/ocah_axi_uvm_pkg.sv` (monitor, reference model, scoreboard with
+`CHK-*`/`CHECKER_SUMMARY` evidence, optional coverage subscriber, env).
+The DTP SV-UVM flow is the first consumer.
 
 Use compatibility `read()`/`write()` methods for positive paths. Use
 `read_result()`/`write_result()` when checking responses, expected errors, or

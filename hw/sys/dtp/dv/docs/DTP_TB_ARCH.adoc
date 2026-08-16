@@ -336,6 +336,36 @@ under `uvm/`:
 Compile order is explicit and load-bearing: interfaces first, then
 `ocah_jtag_uvm_pkg`, `dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
 
+==== JTAG2AXI Checker Layer
+
+The UVM harness additionally consumes the shared `ocah_axi_vip` SV layer:
+
+* `tb/tb_top.sv` (UVM block) replaces the historical never-responding OTP
+  tie-off and the undriven `m_axi_*` response inputs with the behavioral
+  error-injectable responders (`ocah_axil_ram_responder` on `smc_otp_axil`,
+  `ocah_axi_ram_responder` on `m_axi`), instantiates `ocah_axi_if` monitor
+  adapters and the clean-room `ocah_axi_protocol_checker` SVA on both ports,
+  and mirrors the request-activity pulse counters into `dtp_tb_if`. The
+  `sep_otp_axil` port keeps its tie-off (documented stretch).
+* `tb/dtp_tb_if.sv` carries test-drivable lifecycle enables (init 0 preserves
+  the old gated-off tie-off for the sanity test), responder error controls,
+  the SVA `axi_sva_en` knob, and counter mirrors.
+* `dtp_uvm_env` builds one passive `ocah_axi_env` (monitor -> reference model
+  -> scoreboard with `CHK-*`/`CHECKER_SUMMARY` evidence) per observed port;
+  zero-check rejection (`cfg.require_checks`) is armed only by AXI tests so
+  `dtp_uvm_sanity_test` is unaffected.
+* `uvm/seq_lib/dtp_jtag2axi_base_seq.svh` mirrors the cocotb helper layer:
+  SINGLE_OP DR packing (LSB-first `OP|SIZE|WSTRB|DATA|ADDR`, 72b OTP / 132b
+  SMC via the JTAG VIP wide-scan `wbits`/`rbits` path), busy polling,
+  lifecycle sequencing, and `arm_target_error()` which drives the responder
+  error ports AND `ocah_axi_cfg.arm_expected_resp()` in one place — the
+  injected non-OKAY is therefore EXPECTED for the scoreboard.
+* `dtp_jtag2axi_single_op_seq` runs randomized write/readback, armed
+  SLVERR/DECERR, recovery, and a security-gating no-activity case
+  (`CHK-AXI-GATE-*` from the pulse-counter mirrors);
+  `dtp_uvm_jtag2axi_smc_otp_test` and `dtp_uvm_jtag2axi_smc_axi_test` set the
+  required evidence IDs (`CHK-AXI-RESP/RDATA/ERR-INJ/GATE-*`).
+
 Logical item names stay framework-neutral and match the VPLAN scenarios
 (testlist `name = "dtp_sanity_test"`, `module = "dtp_uvm_sanity_test"`), so
 `--items dtp_sanity_test` selects the same scenario in either flow. The SV-UVM

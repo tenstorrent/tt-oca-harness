@@ -71,6 +71,16 @@ python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
 
+# JTAG2AXI checker-enabled tests (shared ocah_axi_vip scoreboard)
+python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_decode_error_decerr_read_test \
+          dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test \
+          dtp_jtag2axi_smc_axi_error_single_write_test
+
+# Checker negative validation: deliberately wrong arming must fail the run
+DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_decode_error_decerr_read_test
+
 # Smoke + functional group
 python3 tools/dv/run_dv.py --dut dtp --items functional
 
@@ -96,6 +106,12 @@ python3 tools/dv/run_dv.py --dut dtp_uvm --items dtp_sanity_test --tool vcs --se
 # SV-UVM build only / smoke group
 python3 tools/dv/run_dv.py --dut dtp_uvm --build-only
 python3 tools/dv/run_dv.py --dut dtp_uvm --items smoke --tool vcs
+
+# SV-UVM JTAG2AXI checker proofs (shared ocah_axi_vip passive env)
+python3 tools/dv/run_dv.py --dut dtp_uvm --tool vcs --seed 1 \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
+python3 tools/dv/run_dv.py --dut dtp_uvm --tool vcs --seed 1 \
+  --items dtp_jtag2axi_smc_axi_single_write_read_test
 ```
 
 Both flows share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
