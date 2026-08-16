@@ -931,22 +931,22 @@ addrmap entropy_source {
 
     // Watermark selector register
     reg HT_WATERMARK_NUM {
-        desc = "Health Test Watermark Selector. Selects which health test watermark to display in HT_WATERMARK register.";
+        desc = "Health Test Watermark Selector. Selects which health-test counter updates the single shared HT_WATERMARK storage and whether it tracks a maximum or minimum. Writing this selector does not re-arm or clear the shared value, so a selector change alone carries the value recorded by the previous mode. To establish the selected mode's documented baseline, write HT_WATERMARK_NUM first and then pulse CTRL.RESET or toggle CTRL.MODULE_ENABLE from 0 to 1.";
         field {
             sw = rw;
             hw = rw;
             encode = WATERMARK_TEST;
-            desc = "Watermark test selector";
+            desc = "Shared watermark source selector. Unsupported values are sanitized to REPCNT_HI. A write changes the source but preserves the current shared value until an arming event or qualifying health-test event.";
         } WATERMARK_NUM[3:0] = 4'h0;
     };
 
     // Watermark value register
     reg HT_WATERMARK {
-        desc = "Health Test Watermark Value. Displays the watermark value for the test selected by HT_WATERMARK_NUM. Low watermarks are initialized to all-1s after enabling entropy source.";
+        desc = "Health Test Watermark Value. This is one shared storage location for the mode selected by HT_WATERMARK_NUM, not an independent bank per selector. It arms when the entropy source is enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse: high modes (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low modes (APT_LO, MARKOV_LO) arm to 0xFFFF and hold the running minimum. HT_WATERMARK_NUM persists across CTRL.RESET so the clear uses the selected mode. Changing only HT_WATERMARK_NUM does not re-arm the storage and intentionally carries the previous mode's value. Software must select the mode before an arming event when a deterministic baseline is required. The all-zero reset value shown below is the raw power-on default before the automatic MODULE_ENABLE pulse performs the first mode-aware arm.";
         field {
             sw = r;
             hw = w;
-            desc = "Current watermark value for selected test";
+            desc = "Current value in the shared selector-dependent watermark storage.";
         } WATERMARK_VALUE[15:0] = 16'h0;
     };
 
