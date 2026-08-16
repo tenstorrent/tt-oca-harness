@@ -105,7 +105,7 @@ module entropy_source
     logic [31:0] fifo_wdata, fifo_rdata;
     logic [6:0]  fifo_level;
     /* verilator lint_off UNUSEDSIGNAL */
-    logic [5:0]  fifo_wptr, fifo_rptr;  // bit [5] unused — only [4:0] used in registers
+    logic [5:0]  fifo_wptr, fifo_rptr;
     /* verilator lint_on UNUSEDSIGNAL */
     logic        fifo_error;
     logic        fifo_overflow, fifo_underflow;
