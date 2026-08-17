@@ -67,6 +67,7 @@ class dtp_uvm_sanity_test extends dtp_uvm_base_test;
         m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-STATE");
         m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-RESET-TLR");
         m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-TLR-TMS5");
+        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-GOTO");
         m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-TLR-IDCODE");
         m_env.m_jtag_checker.required_ids.push_back("CHK-IDCODE-RAW");
         m_env.m_jtag_checker.required_ids.push_back("CHK-IDCODE-STABLE");

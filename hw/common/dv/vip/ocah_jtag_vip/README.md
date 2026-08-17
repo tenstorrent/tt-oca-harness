@@ -124,7 +124,7 @@ ocah_jtag_vip/
 | `ocah_jtag_item` | Stimulus item: `TAP_RESET`, `IR_SCAN`, `DR_SCAN`, `RAW_TMS`; driver fills observed TDO in-place |
 | `ocah_jtag_cfg` | vif, `is_active`, TCK half-period, TRST reset cycles, `en_cov` (file: `ocah_jtag_config.svh`) |
 | `ocah_jtag_ref_model` | IEEE 1149.1 TAP controller reference model (state tracking, BYPASS TDO prediction, one-hot helpers) |
-| `ocah_jtag_base_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset — DUT sequence libraries extend it |
+| `ocah_jtag_base_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset, and tracked-state navigation (`goto_state`, `goto_random_state`, `random_tms_walk`, `current_state`, `sync_model`) — DUT sequence libraries extend it |
 | `ocah_jtag_driver` | Pin-level TCK bit-bang; scans navigate RTI -> scan leg -> RTI |
 | `ocah_jtag_monitor` | Passive: per-TCK `STEP` events (published on the falling edge) + async `TRST` events via `event_ap` |
 | `ocah_jtag_scan_builder` | Subscriber reconstructing IR/DR scans from the step stream (reference-FSM walk); publishes `ocah_jtag_scan_item` on `scan_ap` with bounded history |
@@ -143,17 +143,21 @@ with a runtime `en_i` suppress knob; the DTP integration wires it to the
 primary TAP with `dtp_tb_if.jtag_sva_en`.
 
 The package also ships an encoding-agnostic IEEE 1149.1 TAP model
-(`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`; state values match the
-conventional 0..15 numbering, i.e. the bit index of one-hot RTL encodings)
-for DUT-side checkers. Per-cycle pairing of monitor steps with a DUT's
+(`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`, and the shortest-path
+planner `ocah_jtag_tms_path()`; state values match the conventional 0..15
+numbering, i.e. the bit index of one-hot RTL encodings) for DUT-side
+checkers. The base sequence tracks the predicted TAP state through an owned
+reference model, so `goto_state()` plans from wherever the previous
+operation ended — the same navigation semantics as the cocotb
+`OcahJtagTap.goto_state()`. Per-cycle pairing of monitor steps with a DUT's
 decoded TAP state stays DUT-side (DTP's `dtp_tap_fsm_checker`, which reports
 an aggregate `CHK-TAP-STATE` through the shared `ocah_jtag_checker`);
 scan-level reconstruction and the named TAP-contract evidence are VIP-owned,
 mirroring the cocotb checker's check IDs. For a full integration example, see
 the DTP SV-UVM flow's (`--dut dtp_uvm`) `dtp_sanity_test`, which requires
-`CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`,
-`CHK-IDCODE-RAW/STABLE/MARKER`, `CHK-BYPASS-LATENCY`, and
-`CHK-SCAN-IR-LEN/DR-LEN`, and arms the must-FAIL negative validation via
+`CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO`,
+`CHK-TAP-TLR-IDCODE`, `CHK-IDCODE-RAW/STABLE/MARKER`, `CHK-BYPASS-LATENCY`,
+and `CHK-SCAN-IR-LEN/DR-LEN`, and arms the must-FAIL negative validation via
 `+DTP_JTAG_TAP_CHECKER_NEGATIVE`. SV-UVM collateral compiles on commercial
 simulators (e.g. VCS) and is excluded from Verilator builds.
 

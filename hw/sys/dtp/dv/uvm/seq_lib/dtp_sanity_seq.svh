@@ -6,8 +6,10 @@
 //   * deterministic 32-edge TAP FSM closure walk (16 states x tms in {0,1});
 //     the env's dtp_tap_fsm_checker model-checks every TCK cycle, and the
 //     test asserts full closure via check_fsm_closure() after this sequence
-//     completes. Randomized TMS walks run IN ADDITION as stress stimulus,
-//     not as the closure mechanism, so pass/fail is seed-independent;
+//     completes. Randomized TMS walks and targeted goto_random_state() hops
+//     (VIP shortest-path navigation, landing state checked against the DUT
+//     one-hot observable) run IN ADDITION as stress stimulus, not as the
+//     closure mechanism, so pass/fail is seed-independent;
 //   * BYPASS (6-bit IR 0x00) 1-TCK TDI-to-TDO latency, fixed + random
 //     patterns (checked here from the DR_SCAN item responses);
 //   * clean scan-path returns to Run-Test/Idle, final Test-Logic-Reset via
@@ -24,6 +26,7 @@ class dtp_sanity_seq extends dtp_jtag_base_seq;
 
     localparam int unsigned RandWalks = 2;
     localparam int unsigned RandWalkSteps = 64;
+    localparam int unsigned GotoHops = 8;
 
     function new(string name = "dtp_sanity_seq");
         super.new(name);
@@ -78,6 +81,27 @@ class dtp_sanity_seq extends dtp_jtag_base_seq;
             end
             raw_walk(tms, tdi);
             goto_tlr_via_tms();
+        end
+    endtask
+
+    // CHK-TAP-GOTO: targeted navigation through the VIP's shortest-TMS-path
+    // planner. Each hop picks a random target state, navigates there via
+    // goto_random_state(), and compares the DUT's one-hot TAP state
+    // observable against the target (every intermediate TCK step is also
+    // model-checked by the env's dtp_tap_fsm_checker).
+    task run_goto_state_hops();
+        ocah_jtag_tap_state_e reached;
+        for (int unsigned h = 0; h < GotoHops; h++) begin
+            goto_random_state(reached);
+            `uvm_info(get_type_name(), $sformatf(
+                "goto hop %0d/%0d: target=%s", h + 1, GotoHops, reached.name()), UVM_LOW)
+            if (evidence != null)
+                void'(evidence.expect_equal("CHK-TAP-GOTO", 64'(tb_vif.tap_state),
+                                            64'(16'h1 << int'(reached)),
+                                            $sformatf("hop=%0d/%0d target=%s",
+                                                      h + 1, GotoHops, reached.name())));
+            check_state(tap_state_e'(16'h1 << int'(reached)), "sanity_goto_state_chk",
+                        $sformatf("after goto hop %0d/%0d", h + 1, GotoHops));
         end
     endtask
 
@@ -171,6 +195,9 @@ class dtp_sanity_seq extends dtp_jtag_base_seq;
 
         // Randomized raw-TMS stress on top of the deterministic closure.
         run_random_walks();
+
+        // CHK-TAP-GOTO: targeted shortest-path navigation hops.
+        run_goto_state_hops();
 
         // sanity_scan_path_chk epilogue: TLR via five TMS=1 cycles. Full
         // FSM closure is asserted by the test via env.m_fsm_checker after
