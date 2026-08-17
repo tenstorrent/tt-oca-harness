@@ -43,7 +43,7 @@ it incrementally, using unified OCAH BFM packages for standard interfaces.
 
 | SMU Interface | Preferred VIP | Modeling Approach | Notes |
 |---------------|---------------|-------------------|-------|
-| Primary JTAG TAP | `ocah_jtag_vip` `OcahJtagTap` | Unified OCAH BFM | Pin-level TAP driver/helper |
+| Primary JTAG TAP | `ocah_jtag_vip` `OcahJtagMasterDriver` | Unified OCAH BFM | Pin-level TAP driver/helper |
 | External SMN AXI4 (`smu_axi_out`) | `ocah_axi_vip` `OcahAxiRam` | Unified OCAH BFM | Memory responder with scoreboard backdoor |
 | External SMN AXI4 (`smu_axi_in`) | `ocah_axi_vip` master | Unified OCAH BFM | Drives inbound SMN traffic |
 | SMC/SEP OTP AXI-Lite | `ocah_axi_vip` AXI-Lite wrapper | Unified OCAH BFM | OTP-over-JTAG2AXI responders |
@@ -138,7 +138,7 @@ to cocotb-friendly scalar/vector ports.
 | DUT Interface | `tb_top` Handling |
 |---------------|-------------------|
 | Clocks/resets | cocotb drives `clk_smu_i`, `clk_ref_i`, `clk_periph_i`, `rst_cold_ni`, `powergood_i` |
-| JTAG TAP | Exposes `jtag_tck/tms/trst/tdi/tdo/tdo_oen` for `OcahJtagTap` |
+| JTAG TAP | Exposes `jtag_tck/tms/trst/tdi/tdo/tdo_oen` for `OcahJtagMasterDriver` |
 | External SMN AXI | Flattens `smu_axi_in_*` / `smu_axi_out_*` structs for `OcahAxiRam` / master BFM |
 | SMC scratch / mailbox | Exposes scratch words, `smc_test_pass`, and `ext_mailbox_interrupts` for the scoreboard |
 | Real SEP RTL | Exposes SEP PC and instruction count; SEP TCM loaded via `+SEP_ITCM_HEX_FILE`/`+SEP_DTCM_HEX_FILE` |
@@ -147,7 +147,7 @@ to cocotb-friendly scalar/vector ports.
 ## Environment Components (planned)
 
 ### `SmuJtagAgent`
-Wraps `ocah_jtag_vip.OcahJtagTap` for DTP TAP access through the SMU wrapper
+Wraps `ocah_jtag_vip.OcahJtagMasterDriver` for DTP TAP access through the SMU wrapper
 (IDCODE/BYPASS, DEBUG_CONTROL, IC_RESET, JTAG2AXI, cross-trigger CSR).
 
 ### `SmuAxiAgent`
@@ -210,7 +210,7 @@ backdoor PC / instruction-count checks (see "Real SMC + SEP Co-Simulation").
 | `clk_ref_i`, `clk_periph_i` | cocotb | Reference / peripheral domains |
 | `rst_cold_ni` | base test | Cold reset (async assert / sync deassert) |
 | `powergood_i` | base test | Power-good → DTP power-on reset |
-| JTAG TCK / TRST | `OcahJtagTap` | TAP clock domain |
+| JTAG TCK / TRST | `OcahJtagMasterDriver` | TAP clock domain |
 
 Interop and JTAG2AXI sequences poll response status / scratch instead of sleeping
 for a fixed number of cycles, keeping CDC and AXI latency handling protocol-based.

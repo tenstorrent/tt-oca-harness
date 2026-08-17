@@ -9,7 +9,7 @@
 // navigates RTI -> scan leg -> RTI).
 //
 // The sequence tracks the predicted TAP state through an owned
-// ocah_jtag_ref_model (mirroring the cocotb OcahJtagTap's tracked state):
+// ocah_jtag_ref_model (mirroring the cocotb OcahJtagMasterDriver's tracked state):
 // every task steps the model with the exact TMS bits the driver drives, so
 // goto_state() can plan a shortest TMS path from the current state and
 // current_state() stays valid across raw walks and scans. Tracking is per
@@ -18,12 +18,12 @@
 // TB-driven TRST pulse), re-align with sync_model(). Any five consecutive
 // TMS=1 steps self-correct the model regardless of prior drift.
 
-class ocah_jtag_base_sequence extends uvm_sequence #(ocah_jtag_item);
-    `uvm_object_utils(ocah_jtag_base_sequence)
+class ocah_jtag_master_sequence extends uvm_sequence #(ocah_jtag_item);
+    `uvm_object_utils(ocah_jtag_master_sequence)
 
     protected ocah_jtag_ref_model m_model;
 
-    function new(string name = "ocah_jtag_base_sequence");
+    function new(string name = "ocah_jtag_master_sequence");
         super.new(name);
         m_model = ocah_jtag_ref_model::type_id::create({name, ".model"});
     endfunction
@@ -48,7 +48,7 @@ class ocah_jtag_base_sequence extends uvm_sequence #(ocah_jtag_item);
     endfunction
 
     // Step the model through the exact TMS leg the driver drives for a scan
-    // (see ocah_jtag_driver::do_scan).
+    // (see ocah_jtag_master_driver::do_scan).
     protected function void model_scan(bit sel_ir, int unsigned nbits);
         void'(m_model.step(1'b1));                 // RTI       -> Select-DR
         if (sel_ir) void'(m_model.step(1'b1));     // Select-DR -> Select-IR
@@ -189,4 +189,4 @@ class ocah_jtag_base_sequence extends uvm_sequence #(ocah_jtag_item);
         model_scan(1'b0, pattern.size());
     endtask
 
-endclass : ocah_jtag_base_sequence
+endclass : ocah_jtag_master_sequence

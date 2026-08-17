@@ -5,7 +5,7 @@
 // cov/ocah_jtag_cov.sv (ocah_jtag_cov_if) from the monitor's per-TCK STEP
 // stream (state/transition/reset coverage, tracked through the VIP's TAP
 // reference model) and, when a scan reconstruction source is connected to
-// scan_export, per reconstructed IR/DR scan. Built by ocah_jtag_env only when
+// scan_export, per reconstructed IR/DR scan. Built by ocah_jtag_master_env only when
 // cfg.en_cov is set; the TB instantiates ocah_jtag_cov_if and publishes it as
 // "jtag_cov_vif". Commercial-simulator only (never in Verilator filelists),
 // like the interface it samples.
@@ -15,7 +15,7 @@
 class ocah_jtag_cov extends uvm_subscriber #(ocah_jtag_event);
     `uvm_component_utils(ocah_jtag_cov)
 
-    ocah_jtag_cfg cfg;
+    ocah_jtag_master_config cfg;
     virtual ocah_jtag_cov_if cov_vif;
 
     // Optional scan-item input (connect a scan builder's scan_ap here).
@@ -29,8 +29,8 @@ class ocah_jtag_cov extends uvm_subscriber #(ocah_jtag_event);
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(ocah_jtag_cfg)::get(this, "", "cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "ocah_jtag_cfg `cfg` not found in uvm_config_db")
+        if (!uvm_config_db#(ocah_jtag_master_config)::get(this, "", "cfg", cfg) || cfg == null)
+            `uvm_fatal(get_type_name(), "ocah_jtag_master_config `cfg` not found in uvm_config_db")
         if (!uvm_config_db#(virtual ocah_jtag_cov_if)::get(this, "", "jtag_cov_vif", cov_vif)
             || cov_vif == null)
             `uvm_fatal(get_type_name(), "virtual ocah_jtag_cov_if `jtag_cov_vif` not found")

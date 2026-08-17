@@ -10,9 +10,9 @@ testbenches. Tests import OCAH classes and plain dataclasses; backend
 
 | OCAH class | Backend / implementation |
 |---|---|
-| `OcahJtagTap` | `cocotbext-jtag` `JTAGBus` plus OCAH raw TAP stepping/scanning |
+| `OcahJtagMasterDriver` | `cocotbext-jtag` `JTAGBus` plus OCAH raw TAP stepping/scanning |
 | `OcahJtagDevice` | Plain wrapper convertible to `cocotbext-jtag` `JTAGDevice` |
-| `OcahJtagMonitor` | OCAH passive sampler that emits `OcahJtagScanItem` |
+| `OcahJtagMasterMonitor` | OCAH passive sampler that emits `OcahJtagScanItem` |
 | `OcahJtagChecker` | OCAH item-level checker |
 
 `cocotbext-jtag` is pinned in `pyproject.toml` as `>=0.4.0,<0.5`. Installed
@@ -93,15 +93,15 @@ file per component and the canonical suffix in each filename:
 ```text
 ocah_jtag_vip/
   __init__.py            - public exports
-  cocotb/ocah_jtag_agent.py     - composed driver/monitor/checker bundle
-  cocotb/ocah_jtag_config.py    - plain configuration dataclass
-  cocotb/ocah_jtag_driver.py    - active TAP driver (OcahJtagTap)
+  cocotb/ocah_jtag_master_agent.py     - composed driver/monitor/checker bundle
+  cocotb/ocah_jtag_master_config.py    - plain configuration dataclass
+  cocotb/ocah_jtag_master_driver.py    - active TAP driver (OcahJtagMasterDriver)
   cocotb/ocah_jtag_device.py    - device/register map
   cocotb/ocah_jtag_item.py      - scan/state item dataclasses
-  cocotb/ocah_jtag_monitor.py   - passive item-producing monitor
+  cocotb/ocah_jtag_master_monitor.py   - passive item-producing monitor
   cocotb/ocah_jtag_checker.py   - item-level checker with named TAP evidence
   cocotb/ocah_jtag_ref_model.py - pure-Python IEEE 1149.1 TAP reference model
-  cocotb/ocah_jtag_sequence.py  - checked scenario operations (sequence API)
+  cocotb/ocah_jtag_master_sequence.py  - checked scenario operations (sequence API)
   cocotb/ocah_jtag_state.py     - TAP state enum and TMS path helpers
   cocotb/examples/
     example_idcode.py    - PTAP/STAP/CPU TAP usage examples
@@ -122,17 +122,17 @@ ocah_jtag_vip/
 | Component | Role |
 |---|---|
 | `ocah_jtag_item` | Stimulus item: `TAP_RESET`, `IR_SCAN`, `DR_SCAN`, `RAW_TMS`; driver fills observed TDO in-place |
-| `ocah_jtag_cfg` | vif, `is_active`, TCK half-period, TRST reset cycles, `en_cov` (file: `ocah_jtag_config.svh`) |
+| `ocah_jtag_master_config` | vif, `is_active`, TCK half-period, TRST reset cycles, `en_cov` (file: `ocah_jtag_master_config.svh`) |
 | `ocah_jtag_ref_model` | IEEE 1149.1 TAP controller reference model (state tracking, BYPASS TDO prediction, one-hot helpers) |
-| `ocah_jtag_base_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset, and tracked-state navigation (`goto_state`, `goto_random_state`, `random_tms_walk`, `current_state`, `sync_model`) — DUT sequence libraries extend it |
-| `ocah_jtag_driver` | Pin-level TCK bit-bang; scans navigate RTI -> scan leg -> RTI |
-| `ocah_jtag_monitor` | Passive: per-TCK `STEP` events (published on the falling edge) + async `TRST` events via `event_ap` |
+| `ocah_jtag_master_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset, and tracked-state navigation (`goto_state`, `goto_random_state`, `random_tms_walk`, `current_state`, `sync_model`) — DUT sequence libraries extend it |
+| `ocah_jtag_master_driver` | Pin-level TCK bit-bang; scans navigate RTI -> scan leg -> RTI |
+| `ocah_jtag_master_monitor` | Passive: per-TCK `STEP` events (published on the falling edge) + async `TRST` events via `event_ap` |
 | `ocah_jtag_scan_builder` | Subscriber reconstructing IR/DR scans from the step stream (reference-FSM walk); publishes `ocah_jtag_scan_item` on `scan_ap` with bounded history |
 | `ocah_jtag_checker` | Named-evidence checker (`CHK-*`/`CHECKER_SUMMARY`, same grammar as `ocah_axi_checker`) over the reference model: `check_reset_to_tlr`, `check_state_step`, `check_tms_ones_to_tlr`, `check_bypass_latency` (`predict_bypass_tdo`), `check_scan_length` |
 | `ocah_jtag_cov` | Optional coverage subscriber (`cfg.en_cov`): samples `cov/ocah_jtag_cov.sv` covergroups from the step stream; `scan_export` accepts a scan builder's items |
-| `ocah_jtag_sequencer` | `uvm_sequencer #(ocah_jtag_item)` |
-| `ocah_jtag_agent` | Standard bundle; monitor when `en_monitor`, driver/sequencer when active |
-| `ocah_jtag_env` | VIP-level env: what DUTs instantiate and commercial integrations override |
+| `ocah_jtag_master_sequencer` | `uvm_sequencer #(ocah_jtag_item)` |
+| `ocah_jtag_master_agent` | Standard bundle; monitor when `en_monitor`, driver/sequencer when active |
+| `ocah_jtag_master_env` | VIP-level env: what DUTs instantiate and commercial integrations override |
 
 `sva/ocah_jtag_sva.sv` is the pin-level protocol assertion module (X-hygiene,
 TDO falling-edge timing, and — when a DUT exports its one-hot TAP state —
@@ -149,7 +149,7 @@ numbering, i.e. the bit index of one-hot RTL encodings) for DUT-side
 checkers. The base sequence tracks the predicted TAP state through an owned
 reference model, so `goto_state()` plans from wherever the previous
 operation ended — the same navigation semantics as the cocotb
-`OcahJtagTap.goto_state()`. Per-cycle pairing of monitor steps with a DUT's
+`OcahJtagMasterDriver.goto_state()`. Per-cycle pairing of monitor steps with a DUT's
 decoded TAP state stays DUT-side (DTP's `dtp_tap_fsm_checker`, which reports
 an aggregate `CHK-TAP-STATE` through the shared `ocah_jtag_checker`);
 scan-level reconstruction and the named TAP-contract evidence are VIP-owned,
@@ -184,7 +184,7 @@ does not hide that work, it gives it exactly one home per protocol:
    build the vendor system env (e.g. `svt_axi_system_env` +
    `svt_axi_system_configuration` via `cfg.vendor_cfg`) instead of the OCAH
    agent path. Select it with a single factory override:
-   `ocah_jtag_env::type_id::set_type_override(<vendor>_jtag_env::get_type())`.
+   `ocah_jtag_master_env::type_id::set_type_override(<vendor>_jtag_env::get_type())`.
 2. **Implement the API wrapper.** The vendor env owns all driving and
    monitoring. The integration implements translation (WR/RD-style tasks or
    a translator driver): convert each incoming `ocah_<proto>_item` into the
@@ -215,9 +215,9 @@ integration-tested against a real VC VIP installation.
 ## Quick Start
 
 ```python
-from ocah_jtag_vip import OcahJtagTap
+from ocah_jtag_vip import OcahJtagMasterDriver
 
-tap = OcahJtagTap.from_prefix(
+tap = OcahJtagMasterDriver.from_prefix(
     dut,
     "jtag",
     name="ptap",
@@ -234,7 +234,7 @@ For flattened signals with non-standard names, pass `signal_map` to the direct
 constructor:
 
 ```python
-tap = OcahJtagTap(
+tap = OcahJtagMasterDriver(
     dut,
     name="dtp_ptap",
     ir_width=6,
@@ -289,9 +289,9 @@ DTP-specific TDR packing and polling remain in the DTP agent/sequence layer.
 ## Monitor And Checker
 
 ```python
-from ocah_jtag_vip import OcahJtagChecker, OcahJtagMonitor
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
 
-monitor = OcahJtagMonitor(dut, signal_map={"tck": "jtag_tck", "tms": "jtag_tms"})
+monitor = OcahJtagMasterMonitor(dut, signal_map={"tck": "jtag_tck", "tms": "jtag_tms"})
 checker = OcahJtagChecker(ir_width=6)
 checker.attach_monitor(monitor)
 

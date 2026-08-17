@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Base JTAG sequence: extends the VIP-level ocah_jtag_base_sequence (which
+// Base JTAG sequence: extends the VIP-level ocah_jtag_master_sequence (which
 // owns the protocol-neutral stimulus API: raw steps/walks, IR/DR scans, TAP
 // reset) with the DTP-specific layer (pin-level driving lives in the VIP
 // driver; per-cycle FSM legality/closure checking lives in the env's
@@ -12,7 +12,7 @@
 //   * the BYPASS 1-TCK latency check (sanity_bypass_latency_chk), which
 //     compares spec-derived expected TDO with the DR_SCAN item response.
 
-class dtp_jtag_base_seq extends ocah_jtag_base_sequence;
+class dtp_jtag_base_seq extends ocah_jtag_master_sequence;
     `uvm_object_utils(dtp_jtag_base_seq)
 
     localparam int unsigned IrWidth = 6;

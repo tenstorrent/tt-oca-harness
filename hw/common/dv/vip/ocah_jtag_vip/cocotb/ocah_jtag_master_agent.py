@@ -2,9 +2,9 @@
 # Copyright 2026 Tenstorrent Inc.
 """Composed JTAG agent: active driver + passive monitor + checker.
 
-`OcahJtagAgent` is the cocotb analogue of a UVM agent bundle: it builds the
+`OcahJtagMasterAgent` is the cocotb analogue of a UVM agent bundle: it builds the
 active TAP driver, the passive monitor, and the item-level checker from one
-DUT handle and one `OcahJtagConfig`, and wires the checker to the monitor's
+DUT handle and one `OcahJtagMasterConfig`, and wires the checker to the monitor's
 item stream. Tests that want the pieces individually keep constructing them
 directly; the agent removes the wiring boilerplate for the common case.
 """
@@ -12,32 +12,32 @@ directly; the agent removes the wiring boilerplate for the common case.
 from __future__ import annotations
 
 from .ocah_jtag_checker import OcahJtagChecker
-from .ocah_jtag_config import OcahJtagConfig
-from .ocah_jtag_driver import OcahJtagTap
-from .ocah_jtag_monitor import OcahJtagMonitor
+from .ocah_jtag_master_config import OcahJtagMasterConfig
+from .ocah_jtag_master_driver import OcahJtagMasterDriver
+from .ocah_jtag_master_monitor import OcahJtagMasterMonitor
 
-__all__ = ["OcahJtagAgent"]
+__all__ = ["OcahJtagMasterAgent"]
 
 
-class OcahJtagAgent:
+class OcahJtagMasterAgent:
     """One TAP connection's driver/monitor/checker bundle."""
 
     def __init__(
         self,
         jtag_intf,
         *,
-        config: OcahJtagConfig | None = None,
+        config: OcahJtagMasterConfig | None = None,
         active: bool = True,
         en_monitor: bool = True,
         attach_checker: bool = True,
         checker: OcahJtagChecker | None = None,
     ) -> None:
-        self.config = config or OcahJtagConfig()
-        self.driver: OcahJtagTap | None = (
-            OcahJtagTap(jtag_intf, **self.config.driver_kwargs()) if active else None
+        self.config = config or OcahJtagMasterConfig()
+        self.driver: OcahJtagMasterDriver | None = (
+            OcahJtagMasterDriver(jtag_intf, **self.config.driver_kwargs()) if active else None
         )
-        self.monitor: OcahJtagMonitor | None = (
-            OcahJtagMonitor(jtag_intf, **self.config.monitor_kwargs())
+        self.monitor: OcahJtagMasterMonitor | None = (
+            OcahJtagMasterMonitor(jtag_intf, **self.config.monitor_kwargs())
             if en_monitor
             else None
         )
@@ -48,7 +48,7 @@ class OcahJtagAgent:
             self.checker.attach_monitor(self.monitor)
 
     @property
-    def tap(self) -> OcahJtagTap:
+    def tap(self) -> OcahJtagMasterDriver:
         """The active driver (raises when the agent was built passive)."""
         if self.driver is None:
             raise RuntimeError(f"{self.config.name}: agent was built passive")

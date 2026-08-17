@@ -2,9 +2,9 @@
 # Copyright 2026 Tenstorrent Inc.
 """Plain configuration object for the OCAH JTAG VIP components.
 
-One `OcahJtagConfig` describes a TAP connection (naming, IR width, timing,
-signal mapping, monitor bounds) and can be passed to `OcahJtagTap`,
-`OcahJtagMonitor`, and `OcahJtagAgent` instead of repeating keyword
+One `OcahJtagMasterConfig` describes a TAP connection (naming, IR width, timing,
+signal mapping, monitor bounds) and can be passed to `OcahJtagMasterDriver`,
+`OcahJtagMasterMonitor`, and `OcahJtagMasterAgent` instead of repeating keyword
 arguments. Explicit keyword arguments always override config fields, so
 existing call sites keep working unchanged.
 """
@@ -13,11 +13,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-__all__ = ["OcahJtagConfig"]
+__all__ = ["OcahJtagMasterConfig"]
 
 
 @dataclass
-class OcahJtagConfig:
+class OcahJtagMasterConfig:
     """Configuration for one IEEE 1149.1 TAP connection."""
 
     name: str = "OcahJtag"
@@ -32,7 +32,7 @@ class OcahJtagConfig:
     max_history: int = 2000
 
     def driver_kwargs(self) -> dict:
-        """Keyword arguments for `OcahJtagTap` construction."""
+        """Keyword arguments for `OcahJtagMasterDriver` construction."""
         return {
             "name": self.name,
             "tck_period_ns": self.tck_period_ns,
@@ -45,7 +45,7 @@ class OcahJtagConfig:
         }
 
     def monitor_kwargs(self) -> dict:
-        """Keyword arguments for `OcahJtagMonitor` construction."""
+        """Keyword arguments for `OcahJtagMasterMonitor` construction."""
         return {
             "name": f"{self.name}.monitor",
             "max_history": self.max_history,

@@ -158,10 +158,10 @@ Package: `hw/common/dv/vip/ocah_jtag_vip/`
 
 The cocotb API provides:
 
-* `OcahJtagTap` active TAP control and scanning;
+* `OcahJtagMasterDriver` active TAP control and scanning;
 * `OcahJtagDevice` / `OcahJtagRegister` maps;
 * `OcahJtagScanItem` / `OcahJtagStateItem`;
-* `OcahJtagMonitor` and `OcahJtagChecker`;
+* `OcahJtagMasterMonitor` and `OcahJtagChecker`;
 * `OcahJtagState`, `next_jtag_state()`, and `jtag_tms_path()`.
 
 The SystemVerilog UVM layer provides a pin-level interface, item, config,

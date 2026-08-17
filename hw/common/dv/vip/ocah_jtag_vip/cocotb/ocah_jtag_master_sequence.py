@@ -2,7 +2,7 @@
 # Copyright 2026 Tenstorrent Inc.
 """Sequence-level API over the JTAG driver with named checker evidence.
 
-`OcahJtagSequence` provides the scenario building blocks tests repeat around
+`OcahJtagMasterSequence` provides the scenario building blocks tests repeat around
 the raw driver: reset-to-TLR, checked IDCODE reads, reference-model BYPASS
 latency checks, and monitor-backed scan-length evidence. Every checked
 operation emits `CHK-*` named evidence through the wrapped `OcahJtagChecker`,
@@ -17,16 +17,16 @@ per-step `CHK-TAP-STATE`) stay in DUT-level sequences that can sample it.
 from __future__ import annotations
 
 from .ocah_jtag_checker import OcahJtagChecker
-from .ocah_jtag_driver import OcahJtagTap
-from .ocah_jtag_monitor import OcahJtagMonitor
+from .ocah_jtag_master_driver import OcahJtagMasterDriver
+from .ocah_jtag_master_monitor import OcahJtagMasterMonitor
 from .ocah_jtag_ref_model import TLR_TMS_ONES
 
-__all__ = ["OcahJtagSequence"]
+__all__ = ["OcahJtagMasterSequence"]
 
 IDCODE_DR_WIDTH = 32
 
 
-class OcahJtagSequence:
+class OcahJtagMasterSequence:
     """Checked scenario operations over one TAP driver.
 
     This class is the VIP's test-facing stimulus surface: tests drive the TAP
@@ -36,10 +36,10 @@ class OcahJtagSequence:
 
     def __init__(
         self,
-        tap: OcahJtagTap,
+        tap: OcahJtagMasterDriver,
         checker: OcahJtagChecker | None = None,
         *,
-        monitor: OcahJtagMonitor | None = None,
+        monitor: OcahJtagMasterMonitor | None = None,
     ) -> None:
         self.tap = tap
         self.checker = checker or OcahJtagChecker(

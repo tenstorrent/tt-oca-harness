@@ -83,7 +83,7 @@ OUT names may remain in `deferred.toml` / Appendix A — **not** part of P1–P4
 
 ## 2. Verification strategy
 
-1. **Stimulus:** `OcahJtagTap` (DTP TAP), cocotbext-axi / `ocah_axi_vip` (SMN + OTP),
+1. **Stimulus:** `OcahJtagMasterDriver` (DTP TAP), cocotbext-axi / `ocah_axi_vip` (SMN + OTP),
    OCAH-local models for xtrig; avoid DTP `env` on PYTHONPATH (clashes with SMU `env`).
 2. **Checking:** protocol/status/data scoreboard — not toggle-as-pass.
 3. **Lifecycle:** default operational; policy tests Force `feat_ctrl` under SEP=0
@@ -103,7 +103,7 @@ OUT names may remain in `deferred.toml` / Appendix A — **not** part of P1–P4
 
 | Interface | Replacement |
 |-----------|-------------|
-| Primary JTAG TAP | `OcahJtagTap` |
+| Primary JTAG TAP | `OcahJtagMasterDriver` |
 | External SMN AXI4 | AXI master + `AxiRam` |
 | OTP AXI-Lite | AXI-Lite VIP / responder (P2) |
 | Cross-trigger | OCAH-local / TB ports |

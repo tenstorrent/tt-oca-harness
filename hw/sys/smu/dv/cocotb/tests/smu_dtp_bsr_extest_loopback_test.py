@@ -19,7 +19,7 @@ Patterns whose retimed expectation is all-zero are forbidden: the JTAG driver's
 _logic_int maps X/Z TDO to 0, which would make an all-zero expect can't-fail.
 Nonzero expectations remain sensitive to stuck-0 / unresolved TDO.
 
-All TAP driving goes through the VIP sequence API (OcahJtagSequence); the raw
+All TAP driving goes through the VIP sequence API (OcahJtagMasterSequence); the raw
 driver built by make_smu_jtag_tap is wrapped, never called directly here.
 """
 
@@ -31,7 +31,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 
-from ocah_jtag_vip import OcahJtagSequence
+from ocah_jtag_vip import OcahJtagMasterSequence
 from seq_lib.smu_jtag_helpers import (
     DTP_BSR_MODEL_LEN,
     DTP_EXTEST_DECODED_BIT,
@@ -63,7 +63,7 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
         dut = cocotb.top
         sb = self.env.scoreboard
 
-        seq = OcahJtagSequence(make_smu_jtag_tap(dut, self.cfg.jtag_period_ns))
+        seq = OcahJtagMasterSequence(make_smu_jtag_tap(dut, self.cfg.jtag_period_ns))
         await self.cfg.reset_done.wait()
         await seq.reset_to_tlr()
         await ClockCycles(dut.clk_smu_i, 8)

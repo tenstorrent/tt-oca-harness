@@ -11,7 +11,7 @@ from __future__ import annotations
 import cocotb
 from env.dtp_jtag_bypass_model import DtpBypassRefModel, DtpBypassSuiteCfg
 from env.dtp_types import DTP_IR_WIDTH
-from ocah_jtag_vip import OcahJtagChecker, OcahJtagMonitor
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -50,7 +50,7 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
             logger=cocotb.log,
         )
         self.attach_tap_checker(checker)
-        monitor = OcahJtagMonitor(
+        monitor = OcahJtagMasterMonitor(
             cocotb.top,
             name=f"{self.get_name()}.monitor",
             signal_map=_DTP_JTAG_SIGNAL_MAP,

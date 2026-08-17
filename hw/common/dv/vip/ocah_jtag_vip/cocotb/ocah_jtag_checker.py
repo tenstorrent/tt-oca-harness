@@ -71,7 +71,7 @@ class OcahJtagChecker:
         )
 
     def attach_monitor(self, monitor) -> None:
-        """Attach checker to an `OcahJtagMonitor` item callback."""
+        """Attach checker to an `OcahJtagMasterMonitor` item callback."""
         monitor.add_item_callback(self.check_item)
 
     def clear(self) -> None:

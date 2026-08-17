@@ -3,10 +3,10 @@
 //
 // Agent configuration. The environment builds one, attaches the virtual
 // interface, and publishes it to the agent via
-// uvm_config_db#(ocah_jtag_cfg)::set(..., "cfg", ...).
+// uvm_config_db#(ocah_jtag_master_config)::set(..., "cfg", ...).
 
-class ocah_jtag_cfg extends uvm_object;
-    `uvm_object_utils(ocah_jtag_cfg)
+class ocah_jtag_master_config extends uvm_object;
+    `uvm_object_utils(ocah_jtag_master_config)
 
     virtual ocah_jtag_if vif;
 
@@ -35,8 +35,8 @@ class ocah_jtag_cfg extends uvm_object;
     // TAP_RESET op: TCK cycles with TRST asserted (TMS held 1) before release.
     int unsigned trst_reset_cycles = 3;
 
-    function new(string name = "ocah_jtag_cfg");
+    function new(string name = "ocah_jtag_master_config");
         super.new(name);
     endfunction
 
-endclass : ocah_jtag_cfg
+endclass : ocah_jtag_master_config

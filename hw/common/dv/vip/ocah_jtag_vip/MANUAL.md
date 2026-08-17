@@ -10,7 +10,7 @@ cocotb tests.
 Tests should import `ocah_jtag_vip` classes, not backend classes:
 
 ```python
-from ocah_jtag_vip import OcahJtagTap, OcahJtagMonitor, OcahJtagChecker
+from ocah_jtag_vip import OcahJtagMasterDriver, OcahJtagMasterMonitor, OcahJtagChecker
 ```
 
 The package uses `cocotbext-jtag` for bus/device compatibility and owns the raw
@@ -22,7 +22,7 @@ machine internals while preserving deterministic one-cycle TMS control.
 For flattened signal prefixes:
 
 ```python
-tap = OcahJtagTap.from_prefix(
+tap = OcahJtagMasterDriver.from_prefix(
     dut,
     "ptap",
     name="ptap",
@@ -34,7 +34,7 @@ tap = OcahJtagTap.from_prefix(
 For custom signal maps:
 
 ```python
-tap = OcahJtagTap(
+tap = OcahJtagMasterDriver(
     dut,
     name="dtp_ptap",
     ir_width=6,
@@ -103,7 +103,7 @@ fields = tap.decode_idcode(idcode)
 await tap.bypass()
 ```
 
-`read_idcode()` raises `OcahJtagTapError` for all-ones readback, which usually
+`read_idcode()` raises `OcahJtagMasterDriverError` for all-ones readback, which usually
 means the chain is in BYPASS or no TAP device responded.
 
 ## Device Register Maps
@@ -125,11 +125,11 @@ packing, polling, and scoreboard publication stay in DTP code.
 
 ## Monitor And Checker
 
-`OcahJtagMonitor` passively samples TCK/TMS/TDI/TDO and emits
+`OcahJtagMasterMonitor` passively samples TCK/TMS/TDI/TDO and emits
 `OcahJtagScanItem` records.
 
 ```python
-monitor = OcahJtagMonitor(dut, signal_map={"tck": "jtag_tck", "tms": "jtag_tms"})
+monitor = OcahJtagMasterMonitor(dut, signal_map={"tck": "jtag_tck", "tms": "jtag_tms"})
 checker = OcahJtagChecker(ir_width=6)
 checker.attach_monitor(monitor)
 
@@ -149,23 +149,23 @@ checker.assert_clean()
 
 ## Config, Agent, And Sequence API
 
-`OcahJtagConfig` is a plain dataclass describing one TAP connection; explicit
-keyword arguments always override its fields. `OcahJtagAgent` bundles driver,
-monitor, and checker from one DUT handle, and `OcahJtagSequence` provides
+`OcahJtagMasterConfig` is a plain dataclass describing one TAP connection; explicit
+keyword arguments always override its fields. `OcahJtagMasterAgent` bundles driver,
+monitor, and checker from one DUT handle, and `OcahJtagMasterSequence` provides
 checked scenario operations that emit the same `CHK-*` named evidence as
 hand-wired checker calls:
 
 ```python
-from ocah_jtag_vip import OcahJtagAgent, OcahJtagConfig, OcahJtagSequence
+from ocah_jtag_vip import OcahJtagMasterAgent, OcahJtagMasterConfig, OcahJtagMasterSequence
 
-config = OcahJtagConfig(name="ptap", ir_width=6, tck_period_ns=10,
+config = OcahJtagMasterConfig(name="ptap", ir_width=6, tck_period_ns=10,
                         signal_map={"tck": "jtag_tck", "tms": "jtag_tms",
                                     "tdi": "jtag_tdi", "tdo": "jtag_tdo",
                                     "trst": "jtag_trst"})
-agent = OcahJtagAgent(dut, config=config)
+agent = OcahJtagMasterAgent(dut, config=config)
 await agent.start()
 
-seq = OcahJtagSequence(agent.tap, agent.checker, monitor=agent.monitor)
+seq = OcahJtagMasterSequence(agent.tap, agent.checker, monitor=agent.monitor)
 await seq.reset_to_tlr()
 await seq.read_idcode_checked(expected_idcode)
 await seq.check_bypass_latency(pattern, width=64)
@@ -175,7 +175,7 @@ await agent.stop()
 seq.finalize()
 ```
 
-`OcahJtagSequence` is the VIP's test-facing stimulus surface: tests drive the
+`OcahJtagMasterSequence` is the VIP's test-facing stimulus surface: tests drive the
 TAP through it (or a DUT sequence layer built on it), never through the raw
 driver. Besides the checked operations above it exposes the pass-through scan
 API (`step_tms`, `goto_state`, `shift_ir`, `shift_dr`); missing operations
