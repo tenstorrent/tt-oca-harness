@@ -306,10 +306,23 @@ One exception to the ordinary warm-reset rules are specific to this trigger:
   `CMD_SRAM_LOAD_EXEC`. A state change therefore returns the device to
   ROM control and requires a mutable software handover re-run in full under the new state.
 
-`OTP_READ_LOCK_COLD` survives, as it does across any warm reset
-(<<km-cmd-otp-read-lock-cold>>), so a host that has already gated fuses off
-keeps that posture through the transition. The handover-inhibit flag from
-`CMD_EXEC_ROM` clears, as it does on any reset.
+The two OTP read-lock registers behave exactly as they do across any other warm
+reset, which means they behave differently from each other
+(<<km-cmd-otp-read-lock-cold>>):
+
+* *`OTP_READ_LOCK_COLD` survives untouched.* A host that gated fuses off with
+  `CMD_OTP_READ_LOCK_COLD` keeps that posture through the transition. Where the
+  surviving lock is `LC` or `D`, the KM re-enters boot unable to sample the
+  device state and so unable to derive any of the six `HW_ROOT` and `SW_ROOT`
+  values — a device retired before the state change stays retired after it,
+  rather than being handed fresh roots under the new state.
+* *The warm-domain `OTP_READ_LOCK` clears*, as any warm reset clears it, and ROM
+  re-applies its locks during the boot the reset re-enters, before control
+  passes onward. A warm-domain lock is therefore dropped and re-established
+  across the transition rather than continuously held, and a host cannot infer
+  from a lock bit alone that it was never clear.
+
+The handover-inhibit flag from `CMD_EXEC_ROM` clears, as it does on any reset.
 
 *What the SEP sees.* The KM resets underneath the SEP without warning and
 without a response to whatever command was in flight. The SEP observes an
@@ -703,13 +716,52 @@ and a return argument containing the KM status information.
 |===
 | Bit | Name | Description
 | `0` | `recov_fault` | The value of the `RECOVERABLE_ERR` register bit. Set to 1 if the KM is waiting for the SEP to acknowledge a recoverable fault.
-| `[31:1]` | `reserved` | All other fields reserved.
+| `1` | `lock_lc` | `OTP_LIFE_CYCLE` reads are locked.
+| `2` | `lock_d` | `OTP_DEMOTION_STATE` reads are locked.
+| `3` | `lock_cu` | `OTP_CHIPLET_UID_VAL/CPL` reads are locked.
+| `4` | `lock_siu` | `OTP_SIP_UID_VAL/CPL` reads are locked.
+| `5` | `lock_su` | `OTP_SYS_UID_VAL/CPL` reads are locked.
+| `6` | `lock_ck` | `OTP_CLASS_KEY_VAL/CPL` reads are locked.
+| `[31:7]` | `reserved` | All other fields reserved.
 |===
+
+[[km-stat-lock-bits]]
+*The lock bits*
+
+Bits `[6:1]` report the *effective* OTP read-lock for each field — the OR of the
+warm-domain `OTP_READ_LOCK` and the cold-domain `OTP_READ_LOCK_COLD`
+(<<km-cmd-otp-read-lock-cold>>). Effective rather than cold-only, because what a
+host needs to know here is whether a field is readable *now*, not which register
+made it unreadable. `CMD_OTP_READ_LOCK_COLD` reports the cold register alone in
+its own response, so a caller that needs to tell the two domains apart can still
+do so.
+
+The pair that matters most is `lock_lc` and `lock_d`. Either one set means key
+services are disabled *now*: every command that creates or mints key material
+returns _failure_ with `KM_ERR_LOCKED` (<<km-otp-lock-disables-keys>>). This is
+the one KM state that a host cannot discover by any other means without
+attempting an operation and interpreting its failure, which is why it is
+reported here.
+
+How long that lasts depends on which register carries the bit, and an effective
+bit does not say which. A cold-domain lock — the only kind
+`CMD_OTP_READ_LOCK_COLD` can set — holds for the rest of the power cycle, and no
+warm reset undoes it. A warm-domain bit in `OTP_READ_LOCK` disables the same
+commands while it stands, but clears with the rest of that register at the next
+warm reset. A host that needs to tell the two apart reads the cold register
+directly: an all-zero `CMD_OTP_READ_LOCK_COLD` request returns it without
+modifying anything (<<km-cmd-otp-read-lock-cold>>).
+
+The bits are still the natural thing to check after any KM restart, including
+the reset a device-state change forces (<<km-device-state-reset>>). The KM comes
+back with its cold-domain locks intact, so a `lock_lc` or `lock_d` that survives
+a restart *and* is confirmed in the cold register is a device deliberately
+retired earlier in this power cycle, not a transient condition.
 
 Only recoverable faults are report via status; when the KM encounters an 
 unrecoverable fault, we cannot rely on it to answer this command. An unrecoverable 
-fault asserts `unrecoverable_err_o`, which interrupts the SEP directly, wipes all KM
-state, and halts the core permanently (<<km-seq-error-recovery>>). Nothing
+fault asserts `unrecoverable_err_o`, which interrupts the SEP directly, wipes all 
+KM state, and halts the core permanently (<<km-seq-error-recovery>>). Nothing
 services the mailbox afterwards, so a status bit reporting the condition could
 never be read: any successful `CMD_STAT` response is itself proof that no
 unrecoverable fault has occurred.
@@ -1151,7 +1203,9 @@ payload word.
 If the KM rejects the request, this command has a `RESP_CMD` response with a
 return code of _failure_ and a single return argument carrying the `KM_ERR_*`
 status. This covers a full KPV, an unusable parent handle, a revoked root, and
-every request-validation failure.
+every request-validation failure. It also covers `KM_ERR_LOCKED`, returned for
+every opcode once `LC_STATE` or `DEMOTION` reads are locked
+(<<km-otp-lock-disables-keys>>).
 
 If the request is granted, this command has a `RESP_CMD` response with a return
 code of _success_ and the new key's 64-bit handle in two return-argument words,
@@ -1616,7 +1670,10 @@ before mutating any KPV state. If either resource is exhausted, the command
 returns `RESP_CMD` _failure_ with `KM_ERR_REGISTRY_FULL`; the two causes share
 one status because the caller's remedy is the same for both — revoke a key and
 retry. A _failure_ response with `KM_ERR_FAULT_PENDING` is returned instead,
-before the handler runs, whenever `RECOVERABLE_ERR` is set in the KMCSR. In
+before the handler runs, whenever `RECOVERABLE_ERR` is set in the KMCSR, and one
+with `KM_ERR_LOCKED` whenever `LC_STATE` or `DEMOTION` reads are locked — a
+loaded key records a live device-state sample in its descriptor, so it cannot be
+committed under a zeroed one (<<km-otp-lock-disables-keys>>). In
 every _failure_ case the KPV state and key registry are left exactly as they
 were before the command arrived; the load is atomic.
 
@@ -1796,7 +1853,9 @@ shared key. Only a request that passes every check reaches the read that clears
 If no shared key is currently available (the interface `KEY_VALID` is clear),
 the command returns `RESP_CMD` _failure_ with `KM_ERR_NO_SHARED_KEY`. If the KPV
 cannot allocate a slot for the key, or no descriptor is free, it returns
-_failure_ with `KM_ERR_REGISTRY_FULL`. The two are distinct because the remedies
+_failure_ with `KM_ERR_REGISTRY_FULL`. If `LC_STATE` or `DEMOTION` reads are
+locked it returns _failure_ with `KM_ERR_LOCKED` and leaves the pending shared
+key untouched (<<km-otp-lock-disables-keys>>). The two are distinct because the remedies
 differ: the first means wait for Adams Bridge to deliver one, the second means
 free capacity and reissue. In every _failure_ case the KPV, the key registry and
 the pending shared key are left exactly as they were before the command
@@ -1850,10 +1909,10 @@ the lifetime of a power cycle, regardless of subsequent warm resets.
 
 *Payload*
 
-A bitmask selecting which OTP fields to lock. Bits `[31:9]` are
-reserved and must be zero; a non-zero reserved field returns
-`invalid_arg`. Writing 0 is a no-op; already-set bits are unaffected
-(write-one-to-set, idempotent).
+A bitmask selecting which OTP fields to lock, followed by a two-word
+confirmation field. `PAYLOAD_LEN` is always 3; any other length returns
+_invalid_len_. Writing an all-zero mask is a no-op; already-set bits are
+unaffected (write-one-to-set, idempotent).
 
 .Command Payload
 [cols="32*^",options="header"]
@@ -1861,21 +1920,23 @@ reserved and must be zero; a non-zero reserved field returns
 | [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
 23+^| `RESERVED`
 ^| `SsI` | `SiI` | `cI` | `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
+32+^| `CONFIRM_LO[31:0]`
+32+^| `CONFIRM_HI[31:0]`
 |===
 
 .LOCK_BITS Field Encoding
-[cols="^10%,<20%,<70%",options="header"]
+[cols="^10%,<20%,^14%,<56%",options="header"]
 |===
-| Bit | Field | Description
-| `0` | `LC` | Lock `OTP_LIFE_CYCLE` reads.
-| `1` | `D` | Lock `OTP_DEMOTION_STATE` reads. Despite the register name this field is not fuse-backed; see the note below.
-| `2` | `cU` | Lock `OTP_CHIPLET_UID_VAL/CPL` reads.
-| `3` | `SiU` | Lock `OTP_SIP_UID_VAL/CPL` reads.
-| `4` | `SU` | Lock `OTP_SYS_UID_VAL/CPL` reads.
-| `5` | `CK` | Lock `OTP_CLASS_KEY_VAL/CPL` reads.
-| `6` | `cI` | Lock `OTP_SEP_CHIPLET_ID_VAL/CPL` reads.
-| `7` | `SiI` | Lock `OTP_SEP_SIP_ID_VAL/CPL` reads.
-| `8` | `SsI` | Lock `OTP_SEP_SYS_ID_VAL/CPL` reads.
+| Bit | Field | Confirm | Description
+| `0` | `LC` | *required* | Lock `OTP_LIFE_CYCLE` reads.
+| `1` | `D` | *required* | Lock `OTP_DEMOTION_STATE` reads. Despite the register name this field is not fuse-backed; see the note below.
+| `2` | `cU` | — | Lock `OTP_CHIPLET_UID_VAL/CPL` reads.
+| `3` | `SiU` | — | Lock `OTP_SIP_UID_VAL/CPL` reads.
+| `4` | `SU` | — | Lock `OTP_SYS_UID_VAL/CPL` reads.
+| `5` | `CK` | — | Lock `OTP_CLASS_KEY_VAL/CPL` reads.
+| `6` | `cI` | — | Lock `OTP_SEP_CHIPLET_ID_VAL/CPL` reads.
+| `7` | `SiI` | — | Lock `OTP_SEP_SIP_ID_VAL/CPL` reads.
+| `8` | `SsI` | — | Lock `OTP_SEP_SYS_ID_VAL/CPL` reads.
 |===
 
 The three identity fields (`cI`, `SiI`, `SsI`) hold per-owner public values, so
@@ -1891,9 +1952,42 @@ Locking `D` therefore gates the KM's *view* of a live input rather than the
 readback of a programmed field. Every other bit in this register does gate a
 fuse-backed field, `LC` included.
 
+[[km-otp-lock-confirm]]
+*The confirmation field*
+
+Setting `LC` or `D` disables key services for the remainder of the power cycle
+(below), and no warm reset undoes it. Those two bits therefore require an
+explicit confirmation that a mistyped or miscomputed bitmask cannot supply by
+accident: `CONFIRM_LO` and `CONFIRM_HI` must together spell the eight ASCII
+characters `KMLOCKED`, low word first, each word little-endian.
+
+.CONFIRM Field Values
+[cols="<24%,^20%,^20%,<36%",options="header"]
+|===
+| Condition | `CONFIRM_LO` | `CONFIRM_HI` | Bytes
+| `LC` or `D` set | `0x4F4C4D4B` | `0x44454B43` | `4B 4D 4C 4F 43 4B 45 44` — `KMLOCKED`
+| Neither set | `0x00000000` | `0x00000000` | Must be transmitted as zero
+|===
+
+The field is always present, so the payload has one fixed length and one
+validation path. When neither `LC` nor `D` is set it must be zero, following the
+same convention as every other reserved region in this ABI; a request that
+carries the confirmation without setting either bit is rejected rather than
+silently ignored, because it indicates the caller believes it is doing something
+it is not.
+
+This is a guard against accident, not against a hostile caller. Anything that
+can issue this command can also supply eight known bytes. What it buys is that
+the destructive bits cannot be reached by a bitmask error, an off-by-one in a
+shift, or an uninitialised word — the failure modes that would otherwise disable
+a device with no warning and no undo.
+
 *Response*
 
-If any reserved bit `[31:9]` is set, the command returns `RESP_CMD`
+If `PAYLOAD_LEN` is not 3, the command returns `RESP_CMD` _invalid_len_ with the
+received length.
+
+If any reserved bit `[31:6]` of the mask is set, the command returns `RESP_CMD`
 _invalid_arg_ with `return_arg` = the raw `lock_bits` word received.
 
 NOTE: This is a deliberate deviation from the word-index convention the other
@@ -2148,6 +2242,41 @@ If the request is granted, this command has a `RESP_CMD` response with a
 return code of _success_ and the (unchanged) handle echoed in two
 return-argument words.
 
+[[km-otp-lock-disables-keys]]
+*Locking `LC` or `D` disables key services*
+
+Either bit shuts down every command that creates or mints key material for as
+long as the effective lock stands — the rest of the power cycle for a bit in
+`OTP_READ_LOCK_COLD`, which is the only register this command writes, and until
+the next warm reset for one in the warm-domain `OTP_READ_LOCK`. The device-state
+sample is a PRF binding, and deriving against a zeroed sample would silently mint
+keys under a wrong binding — so the KM refuses rather than substituting zeroes.
+Every one of these returns _failure_ with `KM_ERR_LOCKED`:
+
+.Commands Disabled by an LC or D Lock
+[cols="<32%,<68%",options="header"]
+|===
+| Command | Why
+| `CMD_KEY_GENERATE` | All eight opcodes sample live `LC_STATE` and `DEMOTION` into the hashed request block.
+| `CMD_KEY_LOAD` | Every committed descriptor records a live device-state sample, so an import under a zeroed sample would be mislabelled.
+| `CMD_ABR_SK_INGEST` | Same as `CMD_KEY_LOAD`.
+| `CMD_INVOKE_ID_KEY` | Identity keys bind no device state, but minting one is a key service and an `LC`/`D` lock is a deliberate shutdown of all of them.
+| `CMD_BL_DECRYPT_KEY` | As above. Also independently gated by `CK`.
+|===
+
+Two commands deliberately keep working, because neither reads the locked
+registers and neither creates anything:
+
+* `CMD_KEY_TRANSFER` moves an already-stored key whose binding was fixed when it
+  was created. Refusing it would strand live keys the host is entitled to use.
+* `CMD_GEN_ML_KEM_MVAL` mints an ephemeral value from the DRBG alone, with no
+  device-state binding and no registry entry.
+
+Everything that only reads, revokes or shreds — `CMD_KEY_INFO`, `CMD_KEY_LIST`,
+`CMD_KEY_REVOKE`, `CMD_ENGINE_SHRED`, the `CMD_CLEAR_*` family — also keeps
+working. A locked-down KM can still be inspected and still be made *more*
+restrictive, which is the direction a host locking fuses is trying to travel.
+
 .RESP_CMD _Success_ Return Argument
 [cols="32*^",options="header"]
 |===
@@ -2256,8 +2385,11 @@ shorter seed and its zero-padded extension derive the same key.
 *Response*
 
 An invalid owner or a revoked identity root returns _failure_ with the
-`KM_ERR_*` status. Otherwise _success_, with the length in bytes of the material
-delivered to the engine port.
+`KM_ERR_*` status, as does an `LC_STATE` or `DEMOTION` read-lock, which returns
+`KM_ERR_LOCKED` — identity keys bind no device state, but minting one is a key
+service and an `LC`/`D` lock disables all of them
+(<<km-otp-lock-disables-keys>>). Otherwise _success_, with the length in bytes of
+the material delivered to the engine port.
 
 [[km-cmd-clear-id-root]]
 ====== 0x33 - CMD_CLEAR_ID_ROOT
@@ -2323,6 +2455,12 @@ The 64-byte context (typically the image-header nonce, zero-padded).
 
 _success_ with no return argument once the key has been streamed to the AES key
 port, or _failure_ with the `KM_ERR_*` status.
+
+`KM_ERR_LOCKED` is returned for either of two independent locks: a `CK` lock,
+which gates the CLASS_KEY fuse this command reads, or an `LC`/`DEMOTION` lock,
+which disables key services generally (<<km-otp-lock-disables-keys>>). The
+status does not distinguish them, and does not need to — both mean the command
+will not work again for the rest of the power cycle.
 
 [[km-cmd-assign-key-owner]]
 ====== 0x35 - CMD_ASSIGN_KEY_OWNER
@@ -2868,7 +3006,7 @@ The status value occupies bits `[7:0]` of the return-argument word; bits
 | `0x0C` | `KM_ERR_INVALID_CAPS` | `CAPS` is zero, sets a reserved bit, or names a capability outside the legal set for the class and type family. | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`
 | `0x0D` | `KM_ERR_INVALID_OPCODE` | `KDF_OPCODE` is outside the defined eight (<<km-kdf-opcodes>>). | `KEY_GENERATE`
 | `0x0E` | `KM_ERR_INVALID_DEST` | A requested `DEST_ENGINE` destination is not permitted by the key's capabilities. | `KEY_TRANSFER`
-| `0x0F` | `KM_ERR_LOCKED` | A required OTP field is read-locked, so the derivation would run against zeroed fuse reads. Refused rather than derived (<<km-cmd-otp-read-lock-cold>>). | `KEY_GENERATE`
+| `0x0F` | `KM_ERR_LOCKED` | A required OTP field is read-locked. An `LC` or `DEMOTION` lock disables key services outright (<<km-otp-lock-disables-keys>>); a `CLASS_KEY` lock disables `BL_DECRYPT_KEY` alone. | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`, `INVOKE_ID_KEY`, `BL_DECRYPT_KEY`
 | `0x10` | `KM_ERR_NO_SRAM_FW` | No mutable SRAM firmware is loaded or executing. | `SRAM_VER`
 | `0x11` | `KM_ERR_HANDOVER_DISABLED` | The handover decision has already been made in this warm-reset epoch, by this or another handover command (<<km-cmd-exec-rom>>). | `EXEC_ROM`, `SRAM_LOAD_EXEC`, `SRAM_EXEC`
 | `0x12` | `KM_ERR_NO_SHARED_KEY` | No Adams Bridge shared key is pending — the interface `KEY_VALID` is clear. | `ABR_SK_INGEST`
