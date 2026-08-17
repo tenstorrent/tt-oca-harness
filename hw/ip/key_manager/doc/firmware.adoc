@@ -702,22 +702,31 @@ and a return argument containing the KM status information.
 |===
 | Bit | Name | Description
 | `0` | `recov_fault` | The value of the `RECOVERABLE_ERR` register bit. Set to 1 if the KM is waiting for the SEP to acknowledge a recoverable fault.
-| `1` | `unrecov_fault` | Set to 1 if the KM has latched an unrecoverable fault. Only a reset clears it; see below.
-| `[31:2]` | `reserved` | All other fields reserved.
+| `[31:1]` | `reserved` | All other fields reserved.
 |===
 
-`unrecov_fault` is deliberately ONE aggregate bit with no per-component detail.
-The integrity failures that raise it — a key-derivation power-on self-test
-mismatch, a failed handle-sealing key draw, a key-revocation post-condition
-violation — MUST NOT be separately reportable: an attacker glitching the DRBG or
-the self-test would otherwise be able to ask the KM whether the attempt landed,
-turning the status word into a success oracle for fault injection. All the SEP
-may learn is that this KM is faulted and needs a reset.
+Only recoverable faults are report via status; when the KM encounters an 
+unrecoverable fault, we cannot rely on it to answer this command. An unrecoverable 
+fault asserts `unrecoverable_err_o`, which interrupts the SEP directly, wipes all KM
+state, and halts the core permanently (<<km-seq-error-recovery>>). Nothing
+services the mailbox afterwards, so a status bit reporting the condition could
+never be read: any successful `CMD_STAT` response is itself proof that no
+unrecoverable fault has occurred.
 
-The bit is a report, not an interlock. Each failing component independently fails
-closed on its own path — no sealing key means no key allocations, a failed
-self-test means no roots are derived — so clearing or glitching this bit does not
-re-enable anything.
+The SEP therefore learns about the two fault classes by two different routes,
+and should not look for either in the other's place:
+
+* *Recoverable* — reported in this word, and separately by the unsolicited
+  `RESP_RECOVERABLE_FAULT` (<<km-resp-recoverable-fault>>). The KM is alive,
+  restricted to the command allowlist, and waiting for `CMD_RECOV_ACK`.
+* *Unrecoverable* — reported by the `unrecoverable_err_o` signal and by the
+  unsolicited `RESP_UNRECOVERABLE_FAULT` (<<km-resp-unrecoverable-fault>>)
+  written directly to the outbound FIFO before the core halts. The KM is gone
+  until it is reset, and no command will be answered again.
+
+A SEP that has lost track of KM liveness should treat *silence* rather than a
+status bit as the unrecoverable indicator: if the interrupt has fired, or if
+commands stop being answered, the KM has halted and needs a hard reset.
 
 [[km-cmd-recov-ack]]
 ====== 0x04 - CMD_RECOV_ACK
@@ -3537,12 +3546,16 @@ firmware — is discarded here, so the ROM always resumes from a clean slate.
 .. Expand the sealing cipher's round-key schedule once, here, so that no later
 seal or open pays for it (<<km-handle-cipher-schedule>>). This step is a no-op
 in an XTEA build.
-.. A failed draw does not stop the boot: latch the unrecoverable fault and
-continue with the registry fail-closed, which leaves every command that would
-create a key failing for the rest of the boot.
+.. A failed draw raises an unrecoverable fault: the KM asserts
+`unrecoverable_err_o`, wipes its state and halts (<<km-seq-error-recovery>>).
+A KM that cannot name keys cannot serve its purpose, and continuing with a
+registry that refuses every allocation would leave the SEP talking to a KM that
+answers but can never create a key.
 . Derive and seal the roots (<<km-roots>>).
-.. Run the KDF known-answer test, failing closed if it does not pass. No real key
-material may be derived before this test has passed.
+.. Run the KDF known-answer test. A mismatch raises an unrecoverable fault and
+halts the KM; no real key material may be derived before this test has passed,
+and a KDF that fails its own known-answer vector cannot be trusted to fail
+safely on anything else.
 .. Sample `LC_STATE` and `DEMOTION` once, and mix that sample into the
 `HW_ROOT` and `SW_ROOT` derivations only. `ID_ROOT` binds no device state
 (<<km-roots>>). A read-locked `LC` or `D` field fails the six device-state root
@@ -4394,11 +4407,17 @@ The CRC-32C is computed over the input bytes in little endian order, from
 least significant byte to most significant byte.
 
 [[km-firmware-key-registry]]
-===== Key Registry
+===== Key/Root Registry
 
-KM firmware maintains the *key registry*: one *key descriptor* per live key,
-and the mapping between those descriptors and the KPV slots holding their
-material.
+KM firmware maintains the *key registry* and *root registry*: one *key descriptor* per 
+live key, and the mapping between those descriptors and the 64 discrete KPV slots holding
+their material.
+
+The registres are the *only* record of a key or root's existence. The KPV has no field
+describing how many slots a key spans or how many words of its final slot are
+meaningful (<<km-firmware-kpv-driver>>), so a key's length is recorded once here
+at generation time and the slot span is derived from it. That keeps the recorded
+length and the set of slots claimed for the key from ever disagreeing.
 
 [[km-registry-residency]]
 *Where the registries live*
@@ -4625,12 +4644,12 @@ Two costs come with holding the schedule, and firmware must account for both:
 * *Scrub before draw.* A reset scrubs the previous key *and* its expanded
   schedule before drawing the replacement, so a re-key that fails cannot leave
   the previous boot's key-equivalent material resident.
-* *Fail closed on a failed draw.* Without a valid key, no schedule is expanded
-  and the registry refuses every allocation for the rest of the boot; the
-  aggregate unrecoverable fault is latched (<<km-cmd-stat>>), which reports the
-  condition without confirming which component failed. There is no fixed or
-  zero fallback key. Sealing under a known key would make every handle
-  forgeable, which is strictly worse than issuing no handles at all.
+* *Fail closed on a failed draw.* Without a valid key, no schedule is expanded,
+  the registry refuses every allocation, and the KM raises an unrecoverable
+  fault and halts (<<km-seq-error-recovery>>). There is no fixed or zero
+  fallback key. Sealing under a known key would make every handle forgeable,
+  which is strictly worse than issuing no handles at all — and issuing no
+  handles at all is, in turn, worse than not running.
 * *Record validity in a fault-resistant form.* Whether the draw succeeded gates
   every allocation, so it must not be a lone bit that a single flipped state
   can turn from "the draw failed" into "the key is good".
@@ -4804,21 +4823,26 @@ belong to the roots and outlive a registry reset.
 . Clears the descriptor table and zeroes every per-descriptor issue counter.
 . Scrubs the previous sealing key *and* its expanded round-key schedule.
 . Draws a new 128-bit sealing key from the DRBG. On a failed draw, records the
-key as invalid, latches the unrecoverable fault, and returns without expanding a
-schedule.
+key as invalid and raises an unrecoverable fault, which halts the KM
+(<<km-seq-error-recovery>>); no schedule is expanded and the function does not
+return to its caller.
 . Expands the round-key schedule from the new key — a no-op for XTEA — and
 records the key as valid.
 . Returns whether the sealing key is valid.
 
-Steps 3 and 4 are in that order deliberately. The failure path in step 4 returns
-without reaching step 5, so a scrub placed after the draw would not run at all
-on that path, and a failed re-key would leave the previous boot's round-key
-schedule resident and still able to seal and open handles.
+Steps 3 and 4 are in that order deliberately. The failure path in step 4 never
+reaches step 5, so a scrub placed after the draw would not run at all on that
+path, and a failed re-key would leave the previous boot's round-key schedule
+resident and still able to seal and open handles when the fault handler wipes
+state.
 
-A caller that ignores the return value degrades the registry to "no new keys",
-never to "keys sealed under a known key": the recorded validity independently
-gates *Commit Descriptor*, which refuses every allocation while the key is
-invalid.
+The recorded validity from step 4 is kept even though a failed draw now halts,
+and firmware must keep both. The halt is what the KM does; the validity flag is
+what independently gates *Commit Descriptor*, which refuses every allocation
+while the key is invalid. Together they mean a glitch that skips the fault
+degrades the registry to "no new keys" rather than to "keys sealed under a known
+key" — the same defence-in-depth reasoning as the redundant zero-check and
+overwrite in <<km-firmware-key-management,Derive Key>>.
 
 *Resolve Handle*
 
@@ -4833,10 +4857,10 @@ the descriptor's current counter.
 if it does not match.
 . Returns the descriptor index.
 
-Every failure path returns the single undistinguished `KM_ERR_INVALID_HANDLE`,
-including the CRC failure (<<km-descriptor-crc>>). All other functions taking a
-handle resolve it through this one, so no caller can reach descriptor fields
-that have not just been
+Every failure path returns the single undistinguished `KM_ERR_INVALID_HANDLE` —
+including the CRC failure, so a corrupted descriptor is indistinguishable from
+one that never existed. All other functions taking a handle resolve it through
+this one, so no caller can reach descriptor fields that have not just been
 verified.
 
 *Get Key Slot*
