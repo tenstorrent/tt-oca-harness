@@ -37,12 +37,6 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     // KM types default to types from km_intf_pkg
     parameter type km_axil_req_t  = km_intf_pkg::km_axil_req_t,
     parameter type km_axil_resp_t = km_intf_pkg::km_axil_resp_t,
-    // KM channel types, needed to demux the KM port.
-    parameter type km_axil_aw_chan_t = km_intf_pkg::km_axil_aw_chan_t,
-    parameter type km_axil_w_chan_t  = km_intf_pkg::km_axil_w_chan_t,
-    parameter type km_axil_b_chan_t  = km_intf_pkg::km_axil_b_chan_t,
-    parameter type km_axil_ar_chan_t = km_intf_pkg::km_axil_ar_chan_t,
-    parameter type km_axil_r_chan_t  = km_intf_pkg::km_axil_r_chan_t,
 
     // SEP types must be provided explicitly (not defined in km_intf_pkg)
     parameter type sep_axil_req_t  = logic,
@@ -428,70 +422,12 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     // KM AXI Interface - Direct FIFO Access + Register Block
     //=========================================================================
 
-    localparam int unsigned KmNumSlaves = 2;  // 0 = mailbox, 1 = error slave
-
-    logic km_aw_in_range, km_ar_in_range;
-    assign km_aw_in_range = (km_axil_req_i.aw.addr >= MBOX_BASE_ADDR) &&
-                            (km_axil_req_i.aw.addr <  MBOX_BASE_ADDR +
-                                                      km_addr_t'(KM_MAILBOX_KM_SIZE));
-    assign km_ar_in_range = (km_axil_req_i.ar.addr >= MBOX_BASE_ADDR) &&
-                            (km_axil_req_i.ar.addr <  MBOX_BASE_ADDR +
-                                                      km_addr_t'(KM_MAILBOX_KM_SIZE));
-
-    km_axil_req_t  [KmNumSlaves-1:0] km_axil_reqs;
-    km_axil_resp_t [KmNumSlaves-1:0] km_axil_resps;
-
-    axi_lite_demux #(
-        .aw_chan_t       (km_axil_aw_chan_t),
-        .w_chan_t        (km_axil_w_chan_t),
-        .b_chan_t        (km_axil_b_chan_t),
-        .ar_chan_t       (km_axil_ar_chan_t),
-        .r_chan_t        (km_axil_r_chan_t),
-        .axi_req_t       (km_axil_req_t),
-        .axi_resp_t      (km_axil_resp_t),
-        .NoMstPorts      (KmNumSlaves),
-        .MaxTrans        (1),
-        .FallThrough     (1'b0),
-        .SpillAw         (1'b0),
-        .SpillW          (1'b0),
-        .SpillB          (1'b0),
-        .SpillAr         (1'b0),
-        .SpillR          (1'b0)
-    ) u_km_axil_demux (
-        .clk_i           (clk_i),
-        .rst_ni          (cold_rst_ni),
-        .test_i          (test_en_i),
-        .slv_req_i       (km_axil_req_i),
-        .slv_resp_o      (km_axil_resp_o),
-        .slv_aw_select_i (!km_aw_in_range),
-        .slv_ar_select_i (!km_ar_in_range),
-        .mst_reqs_o      (km_axil_reqs),
-        .mst_resps_i     (km_axil_resps)
-    );
-
-    prim_axil_err_slv #(
-        .AXI_DATA_WIDTH (32),
-        .AXI_ADDR_WIDTH (32),
-        .axil_req_t     (km_axil_req_t),
-        .axil_resp_t    (km_axil_resp_t)
-    ) u_km_axil_err_slv (
-        .clk_i       (clk_i),
-        .rst_ni      (cold_rst_ni),
-        .axil_req_i  (km_axil_reqs [KmNumSlaves-1]),
-        .axil_resp_o (km_axil_resps[KmNumSlaves-1])
-    );
-
-    km_axil_req_t  km_int_req;
-    km_axil_resp_t km_int_resp;
-    assign km_int_req        = km_axil_reqs[0];
-    assign km_axil_resps[0]  = km_int_resp;
-
     // Combinational address decode for KM (used for immediate routing decisions)
     logic [11:0] km_aw_addr, km_ar_addr;
     logic km_aw_is_write_data, km_ar_is_read_data, km_aw_is_reg_block, km_ar_is_reg_block;
 
-    assign km_aw_addr = 12'(km_int_req.aw.addr - MBOX_BASE_ADDR);
-    assign km_ar_addr = 12'(km_int_req.ar.addr - MBOX_BASE_ADDR);
+    assign km_aw_addr = km_axil_req_i.aw.addr[11:0];
+    assign km_ar_addr = km_axil_req_i.ar.addr[11:0];
 
     assign km_aw_is_write_data = (km_aw_addr == KM_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR);
     assign km_ar_is_read_data = (km_ar_addr == KM_MAILBOX_KM_KM_READ_DATA_BASE_ADDR);
@@ -561,9 +497,9 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
 
     // Handshake signals for FIFO write path
     logic km_fifo_aw_handshake, km_fifo_w_handshake;
-    assign km_fifo_aw_handshake = km_int_req.aw_valid && km_aw_is_write_data &&
+    assign km_fifo_aw_handshake = km_axil_req_i.aw_valid && km_aw_is_write_data &&
                                   !km_fifo_aw_pending_q && !km_fifo_b_valid_q;
-    assign km_fifo_w_handshake = km_int_req.w_valid &&
+    assign km_fifo_w_handshake = km_axil_req_i.w_valid &&
                                  (km_fifo_aw_pending_q || km_fifo_aw_handshake) &&
                                  !km_fifo_w_pending_q && !km_fifo_b_valid_q;
 
@@ -593,7 +529,7 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
             end
 
             // B handshake - clear response
-            if (km_fifo_b_valid_q && km_int_req.b_ready) begin
+            if (km_fifo_b_valid_q && km_axil_req_i.b_ready) begin
                 km_fifo_b_valid_q <= 1'b0;
             end
         end
@@ -601,7 +537,7 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
 
     // FIFO write happens on W handshake when not full; [32]=separator, [31:0]=data
     assign outbound_wvalid = km_fifo_w_handshake && !outbound_full;
-    assign outbound_wdata = { km_hwif_out.KM_WRITE_SEPARATOR.set.value, km_int_req.w.data };
+    assign outbound_wdata = { km_hwif_out.KM_WRITE_SEPARATOR.set.value, km_axil_req_i.w.data };
 
     // KM-side overflow detection signal
     logic km_outbound_overflow_detected;   // KM writes to full outbound FIFO
@@ -630,9 +566,9 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
 
     assign km_fifo_ar_ready =
         km_ar_is_read_data && (km_rd_state_q == KM_RD_IDLE) && !km_fifo_r_valid_q;
-    assign km_fifo_ar_handshake = km_int_req.ar_valid && km_fifo_ar_ready;
+    assign km_fifo_ar_handshake = km_axil_req_i.ar_valid && km_fifo_ar_ready;
 
-    assign km_fifo_r_handshake = km_fifo_r_valid_q && km_int_req.r_ready;
+    assign km_fifo_r_handshake = km_fifo_r_valid_q && km_axil_req_i.r_ready;
 
     // Pop FIFO only in POP state
     assign inbound_rready = (km_rd_state_q == KM_RD_POP);
@@ -758,17 +694,17 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     logic [1:0] km_reg_rresp;
 
     // Route to register block only for register addresses
-    assign km_reg_awvalid = km_int_req.aw_valid && km_aw_is_reg_block;
-    assign km_reg_awaddr  = km_aw_addr[km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH-1:0];
-    assign km_reg_awprot  = km_int_req.aw.prot;
-    assign km_reg_wvalid  = km_int_req.w_valid && km_aw_is_reg_block;
-    assign km_reg_wdata   = km_int_req.w.data;
-    assign km_reg_wstrb   = km_int_req.w.strb;
-    assign km_reg_bready  = km_int_req.b_ready;
-    assign km_reg_arvalid = km_int_req.ar_valid && km_ar_is_reg_block;
-    assign km_reg_araddr  = km_ar_addr[km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH-1:0];
-    assign km_reg_arprot  = km_int_req.ar.prot;
-    assign km_reg_rready  = km_int_req.r_ready;
+    assign km_reg_awvalid = km_axil_req_i.aw_valid && km_aw_is_reg_block;
+    assign km_reg_awaddr  = km_axil_req_i.aw.addr[km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH-1:0];
+    assign km_reg_awprot  = km_axil_req_i.aw.prot;
+    assign km_reg_wvalid  = km_axil_req_i.w_valid && km_aw_is_reg_block;
+    assign km_reg_wdata   = km_axil_req_i.w.data;
+    assign km_reg_wstrb   = km_axil_req_i.w.strb;
+    assign km_reg_bready  = km_axil_req_i.b_ready;
+    assign km_reg_arvalid = km_axil_req_i.ar_valid && km_ar_is_reg_block;
+    assign km_reg_araddr  = km_axil_req_i.ar.addr[km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH-1:0];
+    assign km_reg_arprot  = km_axil_req_i.ar.prot;
+    assign km_reg_rready  = km_axil_req_i.r_ready;
 
     // Drive warm reset into the KM-port regblock via hwif_in struct field
     assign km_hwif_in.WARM_RST_N = warm_rst_ni;
@@ -815,26 +751,26 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     // Mux between register block and FIFO state machines
 
     // Write address channel
-    assign km_int_resp.aw_ready = km_aw_is_reg_block ? km_reg_awready :
+    assign km_axil_resp_o.aw_ready = km_aw_is_reg_block ? km_reg_awready :
                                      km_aw_is_write_data ? km_fifo_aw_handshake : 1'b0;
 
     // Write data channel
-    assign km_int_resp.w_ready = km_aw_is_reg_block ? km_reg_wready :
+    assign km_axil_resp_o.w_ready = km_aw_is_reg_block ? km_reg_wready :
                                     km_fifo_w_handshake;
 
     // Write response channel
-    assign km_int_resp.b_valid = km_reg_bvalid || km_fifo_b_valid_q;
-    assign km_int_resp.b.resp = km_reg_bvalid ? km_reg_bresp :
+    assign km_axil_resp_o.b_valid = km_reg_bvalid || km_fifo_b_valid_q;
+    assign km_axil_resp_o.b.resp = km_reg_bvalid ? km_reg_bresp :
                                    km_fifo_b_resp_q ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
 
     // Read address channel
-    assign km_int_resp.ar_ready = km_ar_is_reg_block ? km_reg_arready :
+    assign km_axil_resp_o.ar_ready = km_ar_is_reg_block ? km_reg_arready :
                                      km_ar_is_read_data ? km_fifo_ar_ready : 1'b0;
 
     // Read data channel
-    assign km_int_resp.r_valid = km_reg_rvalid || km_fifo_r_valid_q;
-    assign km_int_resp.r.data = km_reg_rvalid ? km_reg_rdata : km_fifo_r_data_q;
-    assign km_int_resp.r.resp = km_reg_rvalid ? km_reg_rresp :
+    assign km_axil_resp_o.r_valid = km_reg_rvalid || km_fifo_r_valid_q;
+    assign km_axil_resp_o.r.data = km_reg_rvalid ? km_reg_rdata : km_fifo_r_data_q;
+    assign km_axil_resp_o.r.resp = km_reg_rvalid ? km_reg_rresp :
                                    km_fifo_r_resp_q ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
 
     //=========================================================================
