@@ -70,6 +70,31 @@ typedef union {
     uint32_t w;
 } efuse_mmr__TOKEN_MATCH_t;
 
+// reg - efuse_mmr::TOKEN_MATCH_FAULT
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bm 0x1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bp 0
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_reset 0x0
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bm 0x100
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bp 8
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_reset 0x0
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bm 0x10000
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bp 16
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t rma_sip_token_fault :1;
+        uint32_t :7;
+        uint32_t rma_chiplet_token_fault :1;
+        uint32_t :7;
+        uint32_t secure_disable_token_fault :1;
+        uint32_t :15;
+    } f;
+    uint32_t w;
+} efuse_mmr__TOKEN_MATCH_FAULT_t;
+
 // addrmap - efuse_mmr
 typedef struct __attribute__ ((__packed__)) {
     efuse_mmr__RMA_TOKEN_I_t RMA_SIP_TOKEN_I[8];
@@ -79,10 +104,11 @@ typedef struct __attribute__ ((__packed__)) {
     efuse_mmr__TOKEN_MATCH_t RMA_SIP_TOKEN_MATCH;
     efuse_mmr__TOKEN_MATCH_t RMA_CHIPLET_TOKEN_MATCH;
     efuse_mmr__TOKEN_MATCH_t SEC_DISABLE_TOKEN_MATCH;
+    efuse_mmr__TOKEN_MATCH_FAULT_t TOKEN_MATCH_FAULT;
 } efuse_mmr_t;
 
 
-static_assert(sizeof(efuse_mmr_t) == 0x70, "Packing error");
+static_assert(sizeof(efuse_mmr_t) == 0x74, "Packing error");
 
 #ifdef __cplusplus
 }

@@ -70,7 +70,10 @@ module sep_efuse_wrapper
 	output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,
 
 	// Locked Field Access Interrupt
-	output logic                               locked_field_access_interrupt_o
+	output logic                               locked_field_access_interrupt_o,
+
+	// Token Comparator Redundancy Fault Interrupt
+	output logic                               token_match_fault_o
 );
 
 	// Intermediate 32-bit AXI (after data-width conversion)
@@ -401,7 +404,9 @@ module sep_efuse_wrapper
 
 		.sec_disable_token_o          (),
 
-		.locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
+		.locked_field_access_interrupt_o  (locked_field_access_interrupt_o),
+
+		.token_match_fault_o              (token_match_fault_o)
 	);
 
 
