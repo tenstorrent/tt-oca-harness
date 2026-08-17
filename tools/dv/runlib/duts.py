@@ -6,6 +6,9 @@ directory convention (``hw/<name>/dv``, ``hw/{sys,ip,comp,periph}/<name>/dv``, o
 ``hw/common/prim/<name>/dv`` under the active DV root). Either way the resolved DUT DV root must contain
 a ``<name>_sim_cfg.toml``, which is loaded (and merged with its ``profile``) into a :class:`Dut`.
 
+Registry entries may set ``alias_of = "<canonical>"`` so a short or component-local name
+(e.g. ``smc``) resolves to an existing DUT (e.g. ``smc_wrapper``) without duplicating configs.
+
 The convention rules deliberately mirror ``tools/dv/sync_python_namespace.py`` so the import-name
 bridge and the runner agree on what counts as a DUT root.
 """
@@ -22,7 +25,7 @@ from .paths import configs_root, dv_path, dv_root as active_dv_root, repo_path, 
 _DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}
 # Grouping dirs whose children may carry a dv/ root.
 _NESTED_HW_GROUPS = ("sys", "ip", "comp", "periph")
-_REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg"}
+_REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg", "alias_of"}
 
 
 def registry_path(root: Path) -> Path:
@@ -40,11 +43,24 @@ def load_dut_registry(root: Path) -> dict[str, dict]:
         raise ConfigError(f"{path}: [duts] must be a table")
     out: dict[str, dict] = {}
     for name, entry in duts.items():
-        if not isinstance(entry, dict) or not isinstance(entry.get("root"), str):
-            raise ConfigError(f"{path}: [duts.{name}] needs a string `root`")
+        if not isinstance(entry, dict):
+            raise ConfigError(f"{path}: [duts.{name}] must be a table")
         unknown = sorted(set(entry) - _REGISTRY_KEYS)
         if unknown:
             raise ConfigError(f"{path}: [duts.{name}] unsupported key(s): {', '.join(unknown)}")
+        alias_of = entry.get("alias_of")
+        if alias_of is not None:
+            if not isinstance(alias_of, str) or not alias_of:
+                raise ConfigError(f"{path}: [duts.{name}].alias_of must be a non-empty string")
+            if alias_of == name:
+                raise ConfigError(f"{path}: [duts.{name}].alias_of cannot refer to itself")
+            extras = sorted(set(entry) - {"alias_of"})
+            if extras:
+                raise ConfigError(
+                    f"{path}: [duts.{name}] alias_of entry cannot also set {', '.join(extras)}"
+                )
+        elif not isinstance(entry.get("root"), str):
+            raise ConfigError(f"{path}: [duts.{name}] needs a string `root` (or `alias_of`)")
         out[name] = entry
     return out
 
@@ -97,11 +113,22 @@ def _cfg_for(dv_root: Path, name: str, mode: str, entry: dict, root: Path) -> Pa
     return dv_root / f"{name}_{suffix}.toml"
 
 
-def resolve_dut(root: Path, name: str, mode: str = "sim") -> Dut:
-    """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry first, then convention)."""
+def resolve_dut(root: Path, name: str, mode: str = "sim", *, _seen: frozenset[str] | None = None) -> Dut:
+    """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry first, then convention).
+
+    Registry ``alias_of`` entries redirect to the canonical DUT name so callers can use a
+    component-local name (e.g. ``smc``) without a separate sim_cfg.
+    """
     registry = load_dut_registry(root)
+    seen = _seen or frozenset()
+    if name in seen:
+        cycle = " -> ".join([*sorted(seen), name])
+        raise ConfigError(f"DUT alias cycle involving `{name}` ({cycle})")
     if name in registry:
         entry = registry[name]
+        alias_of = entry.get("alias_of")
+        if isinstance(alias_of, str):
+            return resolve_dut(root, alias_of, mode=mode, _seen=seen | {name})
         dv_root = dv_path(root, entry["root"])
         cfg = _cfg_for(dv_root, name, mode, entry, root)
     else:

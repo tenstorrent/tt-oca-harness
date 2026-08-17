@@ -10,11 +10,16 @@
 # (e.g. SMC/SEP) are discovered automatically once their `<name>_sim_cfg.toml` is ported.
 # Non-conventional aliases — such as `smu_wrapper` sharing hw/sys/smu/dv with a separate sim
 # config for the production-wrapper baseline flow — must be registered here when their
-# configs are added.
+# configs are added. Pure name aliases use `alias_of` (e.g. `smc` -> `smc_wrapper`) and do
+# not need a separate sim_cfg.
 
 schema_version = 1
 
-# SMC production-wrapper baseline (shares hw/sys/smc/dv; no bare `--dut smc`).
+# SMC production-wrapper baseline (shares hw/sys/smc/dv).
+# `--dut smc` is an alias of `smc_wrapper` so component-local naming matches SEP/SMU/DTP.
+[duts.smc]
+alias_of = "smc_wrapper"
+
 [duts.smc_wrapper]
 root = "hw/sys/smc/dv"
 sim_cfg = "hw/sys/smc/dv/smc_wrapper_sim_cfg.toml"

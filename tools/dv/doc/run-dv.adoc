@@ -162,6 +162,11 @@ python3 tools/dv/run_dv.py --help
 `hw/comp/<name>/dv`, `hw/periph/<name>/dv`, and
 `hw/common/prim/<name>/dv`.
 
+Registry entries may set `alias_of = "<canonical>"` so a component-local name
+selects an existing flow without a separate sim config. For example,
+`--dut smc` and `--dut smc_wrapper` resolve to the same SMC production-wrapper
+baseline.
+
 Simulation mode, the default, loads `<name>_sim_cfg.toml`. Formal mode loads
 `<name>_formal_cfg.toml` or the registry's `formal_cfg` override:
 
@@ -255,7 +260,7 @@ Configuration ownership is intentionally split:
 |Path |Owns
 
 |`hw/common/dv/configs/duts.toml`
-|Explicit DUT aliases and config-path overrides.
+|Explicit DUT aliases (`alias_of`), shared-root flows, and config-path overrides.
 
 |`hw/common/dv/configs/profiles/*.toml`
 |Shared framework, tool allowlist, scheduler policy, defaults, and stage graph.

@@ -81,11 +81,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
               python3 tools/dv/run_dv.py --list
               python3 tools/dv/run_dv.py --validate-configs
               python3 tools/dv/run_dv.py --doctor --dut dtp
-              python3 tools/dv/run_dv.py --dut smc_wrapper --list
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --tool verilator --dry-run
+              python3 tools/dv/run_dv.py --dut smc --list
+              python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator --dry-run
               python3 tools/dv/run_dv.py --dut smc_wrapper --build-only --dry-run
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --regress --reseed 10
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --waves-on-fail fst
+              python3 tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
+              python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
             """
         ),
     )
@@ -841,8 +841,10 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
 
 
 def list_flows(flows: dict[str, Flow]) -> None:
-    for flow in sorted(flows.values(), key=lambda item: item.name):
-        print(f"{flow.name:<16} {flow.kind:<3} {flow.framework:<8} {flow.description}")
+    # Print the selectable `--dut` key (may be an alias) rather than only the
+    # canonical flow.name, so entries like `smc` -> `smc_wrapper` are visible.
+    for name, flow in sorted(flows.items()):
+        print(f"{name:<16} {flow.kind:<3} {flow.framework:<8} {flow.description}")
 
 
 def list_flow_detail(flow: Flow, root: Path) -> None:

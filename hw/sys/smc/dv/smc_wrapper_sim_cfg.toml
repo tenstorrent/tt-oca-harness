@@ -1,8 +1,9 @@
 schema_version = 1
 
 # Launch entry: `--dut smc_wrapper` (registered in duts.toml).
+# `--dut smc` is an alias of `smc_wrapper` (same flow).
 # tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
-# smc_cpu_mem_integration). Bare `--dut smc` is not used.
+# smc_cpu_mem_integration).
 name = "smc_wrapper"
 profile = "native-cocotb"
 description = "SMC OSS cocotb: smc_wrapper under tb_top"
