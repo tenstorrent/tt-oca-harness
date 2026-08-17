@@ -22,15 +22,15 @@ cluster helpers — do not add silently in PRs.
 
 ## Single DUT
 
-**Launch entry: `--dut smc_wrapper`** (registered in
-`hw/common/dv/configs/duts.toml`). `tb/tb_top.sv` (`smc_uvm_top`) instantiates
-`hw/top/smc_wrapper.sv` (`smc` + `smc_ip_integration` + `smc_cpu_mem_integration`).
-Bare `--dut smc` is not supported.
+**Launch entry: `--dut smc`** (discovered by the runner's directory
+convention from `smc_sim_cfg.toml`). `tb/tb_top.sv` (`smc_uvm_top`) instantiates
+`hw/top/smc_wrapper.sv` (`smc` + `smc_ip_integration` + `smc_cpu_mem_integration`),
+so the bare DUT name selects the wrapper-based TB.
 
 | | |
 |---|---|
-| select | `--dut smc_wrapper` |
-| config | `smc_wrapper_sim_cfg.toml` |
+| select | `--dut smc` |
+| config | `smc_sim_cfg.toml` |
 | TB top | `smc_uvm_top` (`tb/tb_top.sv`) |
 | DUT | `smc_wrapper` |
 | cocotb | `cocotb/` (`SmcEnv`) |
@@ -60,7 +60,7 @@ hw/sys/smc/dv/
 ├── testlists/
 ├── assets/
 ├── docs/                   # VPLAN, test-development, porting, execution guides
-└── smc_wrapper_sim_cfg.toml
+└── smc_sim_cfg.toml
 ```
 
 ## Run
@@ -68,9 +68,9 @@ hw/sys/smc/dv/
 ```bash
 module load verilator/5.050 gcc/13.2.1   # C++20 for cocotb -fcoroutines; 5.050 fixes bad C++ init of nested unpacked structs seen with 5.046
 PY=tools/dv/run_dv.py
-python3 $PY --dut smc_wrapper --items smoke --tool verilator
-python3 $PY --dut smc_wrapper --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim
-python3 $PY --dut smc_wrapper --items all --stage sim --regress
+python3 $PY --dut smc --items smoke --tool verilator
+python3 $PY --dut smc --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim
+python3 $PY --dut smc --items all --stage sim --regress
 ```
 
 PASS/FAIL is classified by the global parser registry

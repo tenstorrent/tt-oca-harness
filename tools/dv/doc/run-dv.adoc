@@ -128,7 +128,7 @@ Run a tagged local regression:
 [source,bash]
 ----
 python3 tools/dv/run_dv.py \
-  --dut smc_wrapper \
+  --dut smc \
   --tag smoke \
   --sim-jobs 4
 ----
@@ -439,7 +439,7 @@ runs shared target builds first and then executes local leaves with up to
 [source,bash]
 ----
 python3 tools/dv/run_dv.py \
-  --dut smc_wrapper \
+  --dut smc \
   --items smoke \
   --regress \
   --reseed 10 \
@@ -455,7 +455,7 @@ with the recorded item and seed:
 [source,bash]
 ----
 python3 tools/dv/run_dv.py \
-  --dut smc_wrapper \
+  --dut smc \
   --items <failed-test> \
   --stage sim \
   --tool <recorded-tool> \
@@ -848,7 +848,7 @@ is); making it required is a deliberate follow-up once the workflow has a
 green scheduled run.
 
 |Configured, not CI-qualified
-|`dtp_uvm` + VCS; `sep`, `smc_wrapper`, `smu`, `smu_wrapper` cocotb flows
+|`dtp_uvm` + VCS; `sep`, `smc`, `smu`, `smu_wrapper` cocotb flows
 |Valid configs exercised by maintainers with licensed tools or carrying
 historical local results only. Not run by hosted CI; do not add to the
 workflow matrix without a qualifying run at head.

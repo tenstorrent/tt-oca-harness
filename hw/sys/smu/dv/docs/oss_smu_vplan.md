@@ -25,7 +25,7 @@
 | OUT / deferred | `testlists/deferred.toml` (+ `SMU_VPLAN.md` Appendix A) |
 | FCOV | `hw/sys/smu/dv/docs/SMU_FCOV.md` |
 | Legacy reference | `dv/smu/tb/doc/{smu_vplan,smu_all_testplan,SMU_INTEROP_*}.md` |
-| Child TBs | OSS SMC (`--dut smc_wrapper`), OSS DTP (`--dut dtp`), OSS SEP (`--dut sep`) |
+| Child TBs | OSS SMC (`--dut smc`), OSS DTP (`--dut dtp`), OSS SEP (`--dut sep`) |
 
 ---
 
