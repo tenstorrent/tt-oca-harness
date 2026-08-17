@@ -1270,7 +1270,7 @@ def _safe_build_component(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", value.strip()) or "default"
 
 
-def _cocotb_python_paths(root: Path, cocotb_data: dict[str, Any]) -> list[Path]:
+def cocotb_python_paths(root: Path, cocotb_data: dict[str, Any]) -> list[Path]:
     return [
         repo_path(root, str(cocotb_data.get("test_dir", ""))),
         repo_path(root, str(cocotb_data.get("python_root", ""))),
@@ -1466,7 +1466,7 @@ def _cocotb_vcs_makefile(
         )
         sim_args += ["-ucli", "-i", str(ucli_path)]
 
-    python_paths = _cocotb_python_paths(root, cocotb_data)
+    python_paths = cocotb_python_paths(root, cocotb_data)
     vcs_python = _vcs_cocotb_python(root)
     env = os.environ.copy()
     # cocotb's classic make flow runs the simulator as a separate process whose embedded
@@ -1857,7 +1857,7 @@ def cocotb_sim(
             )
             test_args += ["-input", str(tcl_path)]
 
-    python_paths = _cocotb_python_paths(root, cocotb_data)
+    python_paths = cocotb_python_paths(root, cocotb_data)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
     env["RANDOM_SEED"] = str(seed)
