@@ -175,6 +175,13 @@ await agent.stop()
 seq.finalize()
 ```
 
+`OcahJtagSequence` is the VIP's test-facing stimulus surface: tests drive the
+TAP through it (or a DUT sequence layer built on it), never through the raw
+driver. Besides the checked operations above it exposes the pass-through scan
+API (`step_tms`, `goto_state`, `shift_ir`, `shift_dr`); missing operations
+get added here first, never inlined in tests. The checker argument is
+optional — one is constructed when omitted.
+
 Sequence checks are pin-level (driven TDI/TMS vs captured TDO plus
 monitor-reconstructed scan shapes). Checks that need a DUT-side TAP-state
 observable stay in DUT-level sequences that can sample it.

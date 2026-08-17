@@ -27,23 +27,66 @@ IDCODE_DR_WIDTH = 32
 
 
 class OcahJtagSequence:
-    """Checked scenario operations over one TAP driver."""
+    """Checked scenario operations over one TAP driver.
+
+    This class is the VIP's test-facing stimulus surface: tests drive the TAP
+    through it (or a DUT sequence layer built on it), never through the raw
+    driver. Missing operations get added here first.
+    """
 
     def __init__(
         self,
         tap: OcahJtagTap,
-        checker: OcahJtagChecker,
+        checker: OcahJtagChecker | None = None,
         *,
         monitor: OcahJtagMonitor | None = None,
     ) -> None:
         self.tap = tap
-        self.checker = checker
+        self.checker = checker or OcahJtagChecker(
+            name=f"{getattr(tap, 'name', 'OcahJtag')}.seq_checker"
+        )
         self.monitor = monitor
+
+    # ------------------------------------------------------------------
+    # Pass-through stimulus operations (the sequence-level scan API).
+    # ------------------------------------------------------------------
 
     async def reset_to_tlr(self, cycles: int = 10) -> None:
         """Reset the TAP and re-baseline the checker's reference model."""
         await self.tap.reset_tap(cycles=max(cycles, TLR_TMS_ONES))
         self.checker.ref_model.reset()
+
+    async def step_tms(self, tms: int) -> int:
+        """Drive one raw TMS cycle and return sampled TDO."""
+        return await self.tap.step_tms(tms)
+
+    async def goto_state(self, state) -> None:
+        """Navigate to a TAP state using a shortest TMS path."""
+        await self.tap.goto_state(state)
+
+    async def shift_ir(
+        self,
+        value: int,
+        width: int | None = None,
+        *,
+        back_to_rti: bool = False,
+    ) -> int:
+        """Shift an instruction into IR and return captured TDO bits."""
+        return await self.tap.shift_ir(value, width, back_to_rti=back_to_rti)
+
+    async def shift_dr(
+        self,
+        value: int,
+        width: int,
+        *,
+        back_to_rti: bool = False,
+    ) -> int:
+        """Shift a pattern through DR and return captured TDO bits."""
+        return await self.tap.shift_dr(value, width, back_to_rti=back_to_rti)
+
+    # ------------------------------------------------------------------
+    # Checked scenario operations (emit CHK-* named evidence).
+    # ------------------------------------------------------------------
 
     async def read_idcode_checked(
         self,
