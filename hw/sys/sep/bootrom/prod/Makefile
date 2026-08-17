@@ -7,7 +7,7 @@ SHELL := /bin/bash
 #     the ROM skips the SPI manifest and boots from the SMC-SRAM manifest path.
 #
 # The manifest+BL1 image the ROM boots (from the SMC-SRAM path) is built entirely
-# from source in this tree: bl1_pass_test (../tests/bl1_pass_test) is compiled and
+# from source in this tree: bl1_pass_test (<sep>/dv/fw/tests/bl1_pass_test) is compiled and
 # packed by the real tt-boot-manifest packer from the tools/tt-boot-manifest
 # submodule, using configs/non_secure_boot_test.yaml, then rebased to the SMC-SRAM
 # base -> build/smc_mem.hex. The old flow that sed-rebased
@@ -29,10 +29,11 @@ SHELL := /bin/bash
 
 GCC_PREFIX ?= riscv64-unknown-elf
 
-# SEP DV root (bootcode is 2 dirs deep under it: <dv>/fw/bootcode).
-DV_ROOT := $(abspath $(CURDIR)/../..)
+# hw/sys/sep -- this ROM lives at <sep>/bootrom/prod, the DV tree is its sibling.
+SEP_ROOT := $(abspath $(CURDIR)/../..)
+DV_ROOT  := $(SEP_ROOT)/dv
 
-OCAH_ROOT := $(abspath $(DV_ROOT)/../../../..)
+OCAH_ROOT := $(abspath $(SEP_ROOT)/../../..)
 
 # Generated SEP register headers (sep.h umbrella, sep_addr.h, per-block headers),
 # emitted by the open register flow next to the RDL they come from
@@ -79,7 +80,7 @@ INSERT_SHA256 := $(TOOLS_DIR)/insert-rom-sha256.py
 ELF_TO_VMEM   := $(TOOLS_DIR)/elf-to-vmem.py
 
 # --- manifest+BL1 SMC image (built from source, packed by tt-boot-manifest) ---
-BL1_TEST_DIR := $(CURDIR)/../tests/bl1_pass_test
+BL1_TEST_DIR := $(DV_ROOT)/fw/tests/bl1_pass_test
 BL1_TEST_BIN := $(BL1_TEST_DIR)/build/bl1_pass_test.bin
 PACK_CONFIG  := $(CURDIR)/configs/non_secure_boot_test.yaml
 NS_BOOT_BIN  := $(BUILD_DIR)/non_secure_boot.bin
@@ -104,7 +105,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 # The secure-boot path verifies the manifest signature on OTBN, so the ROM links
 # the same generated RSA-3072 OTBN application the fw test engine builds. The
 # app (IMEM/DMEM images + DMEM symbol offsets) is emitted by the shared engine
-# under fw/build/otbn/; `make -C .. dv-fw-otbn-apps` regenerates it.
+# under <sep>/dv/fw/build/otbn/; the $(OTBN_APP_C) rule below regenerates it.
 OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
@@ -148,8 +149,25 @@ ROM_ELF_SECTIONS := --only-section=.text --only-section=.text.* --only-section=.
 DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=.sdata --only-section=.sdata.* \
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
 
-.PHONY: all clean bl1_test ensure-pack-deps toolchain-images pack-images
+.PHONY: all clean bl1_test ensure-pack-deps toolchain-images pack-images \
+        ot-toolchain-images ot-pio-toolchain-images
 all: toolchain-images pack-images
+
+# OpenTitan SPI-host ROM variants. Same sources, built with the OT transport
+# selected (boot_flash.h picks the driver on BOOT_SPI_CONTROLLER_OT) and each into
+# its own BUILD_DIR so the variants coexist instead of clobbering one another.
+# Named targets rather than raw knobs: the variant-to-directory mapping is the
+# thing that must not be got wrong, so it lives here and not in every caller.
+#
+# These build the ROM only. The packed flash image is transport- and
+# drain-agnostic -- the same manifest+BL1 bytes are what any of the three ROMs
+# read -- so it is built ONCE by `pack-images` into the default build/ and shared.
+# Packing it per variant would be pure duplication with three copies to drift.
+ot-toolchain-images:
+	$(MAKE) BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images
+ot-pio-toolchain-images:
+	$(MAKE) BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 \
+		toolchain-images
 
 # Split by tool dependency so callers can run each half in the right environment:
 # toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
@@ -161,6 +179,37 @@ pack-images: $(SMC_MEM_HEX)
 
 $(BUILD_DIR):
 	mkdir -p "$(BUILD_DIR)"
+
+# --- Rebuild on build-flag changes ---
+# Objects are keyed on source mtime only, but their content also depends on the
+# -D flags injected into CFLAGS/ASFLAGS. Without this, `make BOOT_OT_SPI_USE_PIO=1`
+# over an existing build dir finds every .o newer than its source, does nothing,
+# and hands back the PREVIOUS variant under the new name -- a ROM that boots and
+# passes, but is not the one asked for. Record the codegen-affecting flags in a
+# stamp, rewrite it only when they actually change (so unchanged builds stay
+# incremental), and make every object depend on it.
+BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
+	PROFILE=$(BOOT_OT_SPI_PROFILE) BUILD_TYPE=$(BUILD_TYPE) \
+	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
+	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
+	NONFREE=$(if $(NONFREE_ROOT),1,0)
+FLAGS_STAMP := $(BUILD_DIR)/.build_flags
+
+.PHONY: FORCE
+FORCE:
+
+# FORCE so the recipe runs every build; the cmp-and-move only bumps the stamp's
+# mtime when the flags differ, so an unchanged build rebuilds nothing.
+$(FLAGS_STAMP): FORCE | $(BUILD_DIR)
+	@echo '$(BUILD_FLAGS)' > "$@.tmp"
+	@if ! cmp -s "$@.tmp" "$@" 2>/dev/null; then \
+	  echo "  [build flags changed -> rebuilding objects]"; \
+	  mv "$@.tmp" "$@"; \
+	else \
+	  rm "$@.tmp"; \
+	fi
+
+$(OBJS): $(FLAGS_STAMP)
 
 # Static version header (the internal build derives this from git; not needed here).
 $(BUILD_DIR)/bl0_version.h: | $(BUILD_DIR)
@@ -181,6 +230,9 @@ $(BUILD_DIR)/rsa_3072_app_otbn.o: $(OTBN_APP_C) | $(BUILD_DIR)
 
 $(OTBN_APP_C):
 	$(MAKE) -C "$(DV_ROOT)/fw" -f fw.mk OCAH_ROOT="$(OCAH_ROOT)" dv-fw-otbn-apps
+
+# rsa_verify.c/otbn_driver.c include the generated header too (order-only).
+$(OBJS): | $(OTBN_APP_C)
 
 # Compile rule for NONFREE_BOOTCODE_SOURCES (static pattern rule so Make maps
 # each object back to its out-of-tree source path).
@@ -243,11 +295,13 @@ ensure-pack-deps:
 	  echo "ERROR: the tt-boot-manifest submodule is not checked out."; \
 	  echo "       Expected: $(CURDIR)/$(TT_BOOT_MANIFEST_DIR)"; \
 	  echo "       Run: git -C $(OCAH_ROOT) submodule update --init \\"; \
-	  echo "              hw/sys/sep/dv/fw/bootcode/tools/tt-boot-manifest"; \
+	  echo "              hw/sys/sep/bootrom/prod/tools/tt-boot-manifest"; \
 	  exit 1; }
 	@command -v uv >/dev/null || { \
 	  echo "ERROR: uv not found; it installs the manifest packer's Python deps."; \
-	  echo "       Source the env first (nonfree/setup_env.sh)."; exit 1; }
+	  echo "       Install it: https://docs.astral.sh/uv/getting-started/installation/"; \
+	  echo "       tools/dv/run_dv.py requires the same tool, so this is a one-off."; \
+	  exit 1; }
 
 # manifest+BL1 -> raw image -> Verilog hex -> rebased to the SMC-SRAM base.
 # OCH_ROOT resolves the config's payload file_path; ROOT (signing keys) is unused
@@ -293,6 +347,8 @@ $(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 		$(PACK_RUN) --config "$(SECURE_PACK_CONFIG)" --out "$(SECURE_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(SECURE_BOOT_BIN)" "$@"
 
+# Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
+# behind would let a stale OT image survive into the next run and boot silently.
 clean:
-	rm -rf "$(BUILD_DIR)"
+	rm -rf "$(BUILD_DIR)" build build_ot build_ot_pio
 	$(MAKE) -C "$(BL1_TEST_DIR)" clean 2>/dev/null || true
