@@ -319,22 +319,22 @@ typedef union {
 #define ENTROPY_SOURCE__FIFO_STATUS__LEVEL_bp 0
 #define ENTROPY_SOURCE__FIFO_STATUS__LEVEL_bw 7
 #define ENTROPY_SOURCE__FIFO_STATUS__LEVEL_reset 0x0
-#define ENTROPY_SOURCE__FIFO_STATUS__WPTR_bm 0x1f00
+#define ENTROPY_SOURCE__FIFO_STATUS__WPTR_bm 0x3f00
 #define ENTROPY_SOURCE__FIFO_STATUS__WPTR_bp 8
-#define ENTROPY_SOURCE__FIFO_STATUS__WPTR_bw 5
+#define ENTROPY_SOURCE__FIFO_STATUS__WPTR_bw 6
 #define ENTROPY_SOURCE__FIFO_STATUS__WPTR_reset 0x0
-#define ENTROPY_SOURCE__FIFO_STATUS__RPTR_bm 0x1f0000
+#define ENTROPY_SOURCE__FIFO_STATUS__RPTR_bm 0x3f0000
 #define ENTROPY_SOURCE__FIFO_STATUS__RPTR_bp 16
-#define ENTROPY_SOURCE__FIFO_STATUS__RPTR_bw 5
+#define ENTROPY_SOURCE__FIFO_STATUS__RPTR_bw 6
 #define ENTROPY_SOURCE__FIFO_STATUS__RPTR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t LEVEL :7;
         uint32_t :1;
-        uint32_t WPTR :5;
-        uint32_t :3;
-        uint32_t RPTR :5;
-        uint32_t :11;
+        uint32_t WPTR :6;
+        uint32_t :2;
+        uint32_t RPTR :6;
+        uint32_t :10;
     } f;
     uint32_t w;
 } entropy_source__FIFO_STATUS_t;
@@ -1280,22 +1280,22 @@ typedef union {
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_bp 0
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_bw 7
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__LEVEL_reset 0x0
-#define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bm 0x1f00
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bm 0x3f00
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bp 8
-#define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bw 5
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_bw 6
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__WPTR_reset 0x0
-#define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bm 0x1f0000
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bm 0x3f0000
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bp 16
-#define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bw 5
+#define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_bw 6
 #define ENTROPY_SOURCE__BIW_OBS_STATUS__RPTR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t LEVEL :7;
         uint32_t :1;
-        uint32_t WPTR :5;
-        uint32_t :3;
-        uint32_t RPTR :5;
-        uint32_t :11;
+        uint32_t WPTR :6;
+        uint32_t :2;
+        uint32_t RPTR :6;
+        uint32_t :10;
     } f;
     uint32_t w;
 } entropy_source__BIW_OBS_STATUS_t;
@@ -1341,22 +1341,22 @@ typedef union {
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_bp 0
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_bw 7
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__LEVEL_reset 0x0
-#define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bm 0x1f00
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bm 0x3f00
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bp 8
-#define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bw 5
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_bw 6
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__WPTR_reset 0x0
-#define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bm 0x1f0000
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bm 0x3f0000
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bp 16
-#define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bw 5
+#define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_bw 6
 #define ENTROPY_SOURCE__NOISE_OBS_STATUS__RPTR_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t LEVEL :7;
         uint32_t :1;
-        uint32_t WPTR :5;
-        uint32_t :3;
-        uint32_t RPTR :5;
-        uint32_t :11;
+        uint32_t WPTR :6;
+        uint32_t :2;
+        uint32_t RPTR :6;
+        uint32_t :10;
     } f;
     uint32_t w;
 } entropy_source__NOISE_OBS_STATUS_t;

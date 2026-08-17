@@ -59,6 +59,18 @@ The health test wrapper instantiates three OpenTitan-derived test modules. The r
 
 Health test thresholds, enable bits, and window sizes are all programmable through the CSR interface. Test status is reported as an 8-bit vector where bit 0 indicates a repetition count failure, bit 3 an adaptive proportion failure, and bits 4-5 Markov high/low failures.
 
+===== Health Test Watermark
+
+`HT_WATERMARK` is one shared register whose source and maximum/minimum direction are selected by `HT_WATERMARK_NUM`; there is no independent storage per selector. A selector write changes which counter updates the shared register but does not clear it, so changing only the selector carries the value recorded by the previous mode.
+
+The shared watermark is armed by a `CTRL.MODULE_ENABLE` 0-to-1 transition or by a `CTRL.RESET` pulse. High modes (`REPCNT_HI`, `APT_HI`, and `MARKOV_HI`) arm to `0x0000`; low modes (`APT_LO` and `MARKOV_LO`) arm to `0xFFFF`. The selector persists across `CTRL.RESET`, allowing the synchronous clear to use the selected mode. Software that needs a deterministic baseline must write `HT_WATERMARK_NUM` before the arming event. With the reset-default `MODULE_ENABLE=1`, the power-on enable pulse performs the first mode-aware arm automatically.
+
+===== Persistent Failure and AlertHang
+
+The health-test subsystem includes a persistent-failure path that halts entropy output when failures persist beyond a programmed threshold. A saturating counter (`ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT`) records one count per health-test window in which any test failed; a mid-window failure of the continuous repetition-count test is captured and counted once for that window. When the counter reaches `ALERT_THRESHOLD.THRESHOLD` (default 4, i.e. four failing windows, locked by `FIPS_LOCK`), `alert_thresh_fail` is asserted and the main FSM transitions through `AlertState` into `AlertHang`, halting entropy output. `AlertHang` persists until the FSM is reset — by a hardware reset (`rst_ni`), the `CTRL.RESET` soft reset, or clearing `CTRL.MODULE_ENABLE`. The event sets `MAIN_SM_STATUS.ALERT` and raises `INTR_STATUS.PERSISTENT_FAILURE`. The sticky `MAIN_SM_STATUS.ALERT` and `MAIN_SM_STATUS.ERR` status bits are cleared either by writing 1 (W1C) or by a `CTRL.RESET` soft reset, so that a firmware-issued reset returns the status to a consistent state alongside the FSM it reflects.
+
+Setting `ALERT_THRESHOLD.THRESHOLD` to zero disables the comparator, leaving the counter accumulating without ever asserting `alert_thresh_fail`.
+
 ===== SHA-256 Whitening
 
 When the SHA-256 whitener is enabled via the CSR, the 32-bit BIW output stream feeds into the `entropy_sha256_whitener` module. This module accumulates 16 consecutive 32-bit words (one SHA-256 block of 512 bits), computes the SHA-256 digest using the OpenTitan `prim_sha2_32` primitive, and emits the 8-word (256-bit) digest. The compression ratio is 2:1 (16 input words produce 8 output words). When the whitener is disabled, the BIW output passes through to the FIFO without modification.
