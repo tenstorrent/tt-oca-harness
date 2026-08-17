@@ -189,7 +189,9 @@ formal backends. A DUT still needs a formal configuration before either can be
 selected.
 
 The shared `native-uvm` profile (SystemVerilog UVM, `framework = "uvm"`) is a
-maintainer flow that currently allows VCS only; the UVM library comes from the
+maintainer flow that currently allows VCS only; it carries
+`license = "required-commercial"`, so `--list` marks it `(licensed)` and the
+launcher says so when the simulator is absent. The UVM library comes from the
 simulator via `-ntb_opts uvm`, tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
 policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium support is planned
@@ -568,7 +570,10 @@ warning and records it in the run's wave metadata.
 |Override the test/default run mode.
 
 |`--list`
-|List selectable DUTs, or details for `--dut`.
+|List selectable DUTs, or details for `--dut`. Each row shows the DUT's
+default tool; flows that cannot run on open-source tools are marked
+`(licensed)`. The per-DUT detail view adds the `license` and `runnability`
+fields from the merged config.
 
 |`--validate-configs`
 |Validate registries and every selectable simulation DUT. Exit `2` if any fail.

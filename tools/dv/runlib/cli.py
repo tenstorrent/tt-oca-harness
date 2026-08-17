@@ -904,6 +904,11 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         return 2
     if missing_required:
         print(f"Result: required tool `{required}` is NOT available — this flow cannot run here")
+        if flow is not None and flow.license == "required-commercial":
+            print(
+                f"Note: `{flow.name}` needs a commercially licensed simulator; "
+                "`--list` marks such flows (licensed) — the others run on open-source tools"
+            )
         return 2
     print(f"Result: required tool `{required}` is available")
     return 0
@@ -911,7 +916,10 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
 
 def list_flows(flows: dict[str, Flow]) -> None:
     for flow in sorted(flows.values(), key=lambda item: item.name):
-        print(f"{flow.name:<16} {flow.kind:<3} {flow.framework:<8} {flow.description}")
+        tool = flow.default_tool or (flow.tools[0] if flow.tools else "-")
+        if flow.license == "required-commercial":
+            tool += " (licensed)"
+        print(f"{flow.name:<16} {flow.kind:<3} {flow.framework:<8} {tool:<20} {flow.description}")
 
 
 def list_flow_detail(flow: Flow, root: Path) -> None:
@@ -922,6 +930,8 @@ def list_flow_detail(flow: Flow, root: Path) -> None:
     print(f"root       : {flow.root}")
     print(f"tools      : {', '.join(flow.tools)}")
     print(f"default    : {flow.default_tool}")
+    print(f"license    : {flow.license}")
+    print(f"runnability: {flow.runnability}")
     print(f"stages     : {', '.join(flow_stages(flow))}")
     if catalog.tests:
         print("tests      : " + ", ".join(sorted(catalog.tests)))
@@ -1081,16 +1091,27 @@ def selected_executor(flow: Flow, args: argparse.Namespace) -> str:
     return executor
 
 
-def validate_selected_tool_available(tool: str, simulators: dict[str, Any], args: argparse.Namespace) -> None:
+def validate_selected_tool_available(
+    tool: str,
+    simulators: dict[str, Any],
+    args: argparse.Namespace,
+    flow: Flow | None = None,
+) -> None:
     if args.dry_run:
         return
     cfg = simulators.get(tool, {})
     binary = str(cfg.get("binary", tool)) if isinstance(cfg, dict) else tool
     if shutil.which(binary):
         return
+    hint = ""
+    if flow is not None and flow.license == "required-commercial":
+        hint = (
+            f" DUT `{flow.name}` needs a commercially licensed simulator; "
+            "`--list` marks such flows (licensed) — the others run on open-source tools."
+        )
     raise ConfigError(
         f"selected tool `{tool}` requires `{binary}` in PATH. "
-        f"Load the simulator environment or run `--doctor --tool {tool}` for details."
+        f"Load the simulator environment or run `--doctor --tool {tool}` for details.{hint}"
     )
 
 
@@ -1415,7 +1436,7 @@ def run_flow(
     replay_run_dir, existing_result = _existing_run_result(root, flow, args)
     tool = selected_tool(flow, args)
     executor = selected_executor(flow, args)
-    validate_selected_tool_available(tool, simulators, args)
+    validate_selected_tool_available(tool, simulators, args, flow)
     if args.waves:
         wave_format = resolve_wave_format(args, simulators, tool)
         if not args.dry_run:
