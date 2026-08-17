@@ -129,13 +129,9 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
             rdata[i] = rbits[data_off + i];
     endfunction
 
-    // Wide DR scan (>64 bits) through the JTAG VIP wbits/rbits path.
+    // Wide DR scan (>64 bits) through the VIP sequence API's wbits/rbits path.
     task shift_dr_wide(input bit pattern[], output bit observed[]);
-        ocah_jtag_item it = ocah_jtag_item::type_id::create("dr_scan_wide");
-        it.op    = OCAH_JTAG_DR_SCAN;
-        it.wbits = pattern;
-        do_jtag(it);
-        observed = it.rbits;
+        dr_scan_wide(pattern, observed);
         check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after wide DR scan");
     endtask
 
