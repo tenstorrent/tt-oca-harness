@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Tenstorrent Inc.
-"""OCAH-stable IEEE 1149.1 TAP driver."""
+"""OCAH-stable IEEE 1149.1 TAP driver (the VIP's active driver component)."""
 
 from __future__ import annotations
 

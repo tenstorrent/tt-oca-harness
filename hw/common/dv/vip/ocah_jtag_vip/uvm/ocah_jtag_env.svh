@@ -27,6 +27,11 @@ class ocah_jtag_env extends uvm_env;
     ocah_jtag_cfg       cfg;
     ocah_jtag_agent     m_agent;
 
+    // Optional functional-coverage subscriber (cfg.en_cov; commercial-sim
+    // flows only). Its scan_export stays available for a DUT env that owns a
+    // scan builder.
+    ocah_jtag_cov       m_cov;
+
     // Frozen surface.
     ocah_jtag_sequencer m_sequencer;
     uvm_analysis_port #(ocah_jtag_event) event_ap;
@@ -43,6 +48,13 @@ class ocah_jtag_env extends uvm_env;
         event_ap = new("event_ap", this);
         uvm_config_db#(ocah_jtag_cfg)::set(this, "m_agent*", "cfg", cfg);
         m_agent = ocah_jtag_agent::type_id::create("m_agent", this);
+        if (cfg.en_cov) begin
+            if (!cfg.en_monitor)
+                `uvm_fatal(get_type_name(),
+                    "cfg.en_cov requires cfg.en_monitor (coverage samples the event stream)")
+            uvm_config_db#(ocah_jtag_cfg)::set(this, "m_cov*", "cfg", cfg);
+            m_cov = ocah_jtag_cov::type_id::create("m_cov", this);
+        end
     endfunction
 
     function void connect_phase(uvm_phase phase);
@@ -51,6 +63,8 @@ class ocah_jtag_env extends uvm_env;
             m_sequencer = m_agent.m_sequencer;
         if (cfg.en_monitor)
             m_agent.m_monitor.event_ap.connect(event_ap);
+        if (m_cov != null)
+            m_agent.m_monitor.event_ap.connect(m_cov.analysis_export);
     endfunction
 
 endclass : ocah_jtag_env

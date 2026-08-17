@@ -32,10 +32,12 @@ class ocah_jtag_checker extends uvm_object;
     protected bit m_seen_ids[string];
     protected bit m_finalized;
 
-    protected ocah_jtag_tap_state_e m_model = OCAH_JTAG_TEST_LOGIC_RESET;
+    // TAP reference model (shared instance may be injected after construction).
+    ocah_jtag_ref_model m_ref;
 
     function new(string name = "ocah_jtag_checker");
         super.new(name);
+        m_ref = ocah_jtag_ref_model::type_id::create({name, ".ref_model"});
     endfunction
 
     // ------------------------------------------------------------------
@@ -130,66 +132,49 @@ class ocah_jtag_checker extends uvm_object;
         fail_count  = 0;
         m_seen_ids.delete();
         m_finalized = 1'b0;
-        m_model     = OCAH_JTAG_TEST_LOGIC_RESET;
+        m_ref.reset_model();
     endfunction
 
     // ------------------------------------------------------------------
-    // TAP reference model.
+    // TAP reference model (owned ocah_jtag_ref_model; thin forwarders keep
+    // the checker's public API stable).
     // ------------------------------------------------------------------
 
     function ocah_jtag_tap_state_e model_state();
-        return m_model;
+        return m_ref.state();
     endfunction
 
-    // Model a TAP reset (TRST assertion or a TMS-high walk) to TLR.
     function void reset_model();
-        m_model = OCAH_JTAG_TEST_LOGIC_RESET;
+        m_ref.reset_model();
     endfunction
 
-    // Re-align the model after driver-internal navigation (e.g. the scan
-    // legs that return to Run-Test/Idle without per-step visibility).
     function void sync_state(ocah_jtag_tap_state_e state);
-        m_model = state;
+        m_ref.sync_state(state);
     endfunction
 
-    // Expected LSB-first TDO for a scan through the one-bit BYPASS register:
-    // bit 0 is the captured bit, bits [width-1:1] the first width-1 pattern
-    // bits (exactly one TCK of TDI-to-TDO delay).
     static function bit [63:0] predict_bypass_tdo(
         bit [63:0]   pattern,
         int unsigned width,
         bit          capture_bit = 1'b0
     );
-        bit [63:0] mask;
-        if (width == 0) return '0;
-        mask = (width < 64) ? ((64'h1 << width) - 1) : '1;
-        return (({pattern[62:0], capture_bit}) & mask);
+        return ocah_jtag_ref_model::predict_bypass_tdo(pattern, width, capture_bit);
     endfunction
 
     // ------------------------------------------------------------------
     // Named TAP-contract checks. Observed states arrive in the exported
-    // one-hot form; helpers label invalid encodings instead of aborting.
+    // one-hot form; the model's helpers label invalid encodings instead of
+    // aborting.
     // ------------------------------------------------------------------
 
     protected function string onehot_label(bit [15:0] onehot);
-        ocah_jtag_tap_state_e state;
-        if (onehot_to_state(onehot, state))
-            return $sformatf("%s(0x%04h)", state.name(), onehot);
-        return $sformatf("INVALID(0x%04h)", onehot);
+        return ocah_jtag_ref_model::onehot_label(onehot);
     endfunction
 
     protected function bit onehot_to_state(
         bit [15:0] onehot,
         output ocah_jtag_tap_state_e state
     );
-        if ($countones(onehot) != 1) return 1'b0;
-        for (int i = 0; i < 16; i++) begin
-            if (onehot[i]) begin
-                state = ocah_jtag_tap_state_e'(i);
-                return 1'b1;
-            end
-        end
-        return 1'b0;
+        return ocah_jtag_ref_model::onehot_to_state(onehot, state);
     endfunction
 
     // Named check: a TAP reset must leave the controller in TLR.
@@ -211,20 +196,21 @@ class ocah_jtag_checker extends uvm_object;
         string     context_s = "",
         string     check_id = "CHK-TAP-STATE"
     );
-        ocah_jtag_tap_state_e previous = m_model;
+        ocah_jtag_tap_state_e previous = m_ref.state();
+        ocah_jtag_tap_state_e predicted;
         ocah_jtag_tap_state_e observed;
         bit [15:0] expected_onehot;
         bit passed;
-        m_model = ocah_jtag_next_state(previous, tms);
-        expected_onehot = 16'h1 << int'(m_model);
+        predicted = m_ref.step(tms);
+        expected_onehot = 16'h1 << int'(predicted);
         passed = record(check_id, observed_onehot === expected_onehot,
-                        $sformatf("%s(0x%04h)", m_model.name(), expected_onehot),
+                        $sformatf("%s(0x%04h)", predicted.name(), expected_onehot),
                         onehot_label(observed_onehot),
                         $sformatf("prev=%s tms=%0b %s", previous.name(), tms, context_s));
         // Keep later predictions meaningful by re-aligning to what the DUT
         // actually did (matters when the run aggregates evidence failures).
         if (!passed && onehot_to_state(observed_onehot, observed))
-            m_model = observed;
+            m_ref.sync_state(observed);
         return passed;
     endfunction
 

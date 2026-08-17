@@ -18,6 +18,12 @@ class ocah_jtag_cfg extends uvm_object;
     // be re-pointed or adapted by the integration).
     bit en_monitor = 1;
 
+    // Optional functional-coverage subscriber (uvm/ocah_jtag_cov.svh). When
+    // set, the env builds ocah_jtag_cov, which requires the TB to instantiate
+    // ocah_jtag_cov_if and publish it as "jtag_cov_vif". Commercial-simulator
+    // flows only.
+    bit en_cov = 0;
+
     // Opaque extension hook for commercial-VIP env subclasses (e.g. an
     // svt_*_system_configuration built by the integration and consumed in
     // the subclass's build_phase). The OCAH implementation ignores it.

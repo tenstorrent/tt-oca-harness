@@ -147,6 +147,38 @@ checker.assert_clean()
 `bit_count`, `instruction`, `start_time_ns`, `end_time_ns`, `start_state`,
 `end_state`, and `source`.
 
+## Config, Agent, And Sequence API
+
+`OcahJtagConfig` is a plain dataclass describing one TAP connection; explicit
+keyword arguments always override its fields. `OcahJtagAgent` bundles driver,
+monitor, and checker from one DUT handle, and `OcahJtagSequence` provides
+checked scenario operations that emit the same `CHK-*` named evidence as
+hand-wired checker calls:
+
+```python
+from ocah_jtag_vip import OcahJtagAgent, OcahJtagConfig, OcahJtagSequence
+
+config = OcahJtagConfig(name="ptap", ir_width=6, tck_period_ns=10,
+                        signal_map={"tck": "jtag_tck", "tms": "jtag_tms",
+                                    "tdi": "jtag_tdi", "tdo": "jtag_tdo",
+                                    "trst": "jtag_trst"})
+agent = OcahJtagAgent(dut, config=config)
+await agent.start()
+
+seq = OcahJtagSequence(agent.tap, agent.checker, monitor=agent.monitor)
+await seq.reset_to_tlr()
+await seq.read_idcode_checked(expected_idcode)
+await seq.check_bypass_latency(pattern, width=64)
+seq.check_last_scan_length(is_ir=False, expected_width=64)
+
+await agent.stop()
+seq.finalize()
+```
+
+Sequence checks are pin-level (driven TDI/TMS vs captured TDO plus
+monitor-reconstructed scan shapes). Checks that need a DUT-side TAP-state
+observable stay in DUT-level sequences that can sample it.
+
 ## TAP Reference Model And Named TAP Checks
 
 `OcahJtagTapRefModel` is a pure-Python IEEE 1149.1 TAP controller model with

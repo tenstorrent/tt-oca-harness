@@ -84,20 +84,33 @@ the DTP `dtp_jtag_idcode_test`, `dtp_jtag_bypass_test`,
 
 ## Package Layout
 
+The package follows the OCAH VIP component contract — Agent (`_agent`),
+Configuration (`_config`), Driver (`_driver`), Monitor (`_monitor`),
+Reference Model (`_ref_model`), Coverage (`_cov`), SVA (`_sva`), Sequence API
+(`_sequence`), and Sequencer (`_sequencer`, UVM only) — with at least one
+file per component and the canonical suffix in each filename:
+
 ```text
 ocah_jtag_vip/
   __init__.py            - public exports
-  cocotb/ocah_jtag_tap.py       - active TAP driver
+  cocotb/ocah_jtag_agent.py     - composed driver/monitor/checker bundle
+  cocotb/ocah_jtag_config.py    - plain configuration dataclass
+  cocotb/ocah_jtag_driver.py    - active TAP driver (OcahJtagTap)
   cocotb/ocah_jtag_device.py    - device/register map
   cocotb/ocah_jtag_item.py      - scan/state item dataclasses
   cocotb/ocah_jtag_monitor.py   - passive item-producing monitor
   cocotb/ocah_jtag_checker.py   - item-level checker with named TAP evidence
   cocotb/ocah_jtag_ref_model.py - pure-Python IEEE 1149.1 TAP reference model
+  cocotb/ocah_jtag_sequence.py  - checked scenario operations (sequence API)
   cocotb/ocah_jtag_state.py     - TAP state enum and TMS path helpers
   cocotb/examples/
     example_idcode.py    - PTAP/STAP/CPU TAP usage examples
   interface/
     ocah_jtag_if.sv      - shared pin-level IEEE 1149.1 interface (JTAG pins only)
+  cov/
+    ocah_jtag_cov.sv     - covergroup interface (commercial simulators only)
+  sva/
+    ocah_jtag_sva.sv     - clean-room IEEE 1149.1 protocol assertions
   uvm/
     ocah_jtag_uvm_pkg.sv - SV-UVM agent package (see below)
 ```
@@ -109,14 +122,25 @@ ocah_jtag_vip/
 | Component | Role |
 |---|---|
 | `ocah_jtag_item` | Stimulus item: `TAP_RESET`, `IR_SCAN`, `DR_SCAN`, `RAW_TMS`; driver fills observed TDO in-place |
-| `ocah_jtag_cfg` | vif, `is_active`, TCK half-period, TRST reset cycles |
+| `ocah_jtag_cfg` | vif, `is_active`, TCK half-period, TRST reset cycles, `en_cov` (file: `ocah_jtag_config.svh`) |
+| `ocah_jtag_ref_model` | IEEE 1149.1 TAP controller reference model (state tracking, BYPASS TDO prediction, one-hot helpers) |
+| `ocah_jtag_base_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset — DUT sequence libraries extend it |
 | `ocah_jtag_driver` | Pin-level TCK bit-bang; scans navigate RTI -> scan leg -> RTI |
 | `ocah_jtag_monitor` | Passive: per-TCK `STEP` events (published on the falling edge) + async `TRST` events via `event_ap` |
 | `ocah_jtag_scan_builder` | Subscriber reconstructing IR/DR scans from the step stream (reference-FSM walk); publishes `ocah_jtag_scan_item` on `scan_ap` with bounded history |
-| `ocah_jtag_checker` | Named-evidence checker (`CHK-*`/`CHECKER_SUMMARY`, same grammar as `ocah_axi_checker`) with the TAP reference model: `check_reset_to_tlr`, `check_state_step`, `check_tms_ones_to_tlr`, `check_bypass_latency` (`predict_bypass_tdo`), `check_scan_length` |
+| `ocah_jtag_checker` | Named-evidence checker (`CHK-*`/`CHECKER_SUMMARY`, same grammar as `ocah_axi_checker`) over the reference model: `check_reset_to_tlr`, `check_state_step`, `check_tms_ones_to_tlr`, `check_bypass_latency` (`predict_bypass_tdo`), `check_scan_length` |
+| `ocah_jtag_cov` | Optional coverage subscriber (`cfg.en_cov`): samples `cov/ocah_jtag_cov.sv` covergroups from the step stream; `scan_export` accepts a scan builder's items |
 | `ocah_jtag_sequencer` | `uvm_sequencer #(ocah_jtag_item)` |
 | `ocah_jtag_agent` | Standard bundle; monitor when `en_monitor`, driver/sequencer when active |
 | `ocah_jtag_env` | VIP-level env: what DUTs instantiate and commercial integrations override |
+
+`sva/ocah_jtag_sva.sv` is the pin-level protocol assertion module (X-hygiene,
+TDO falling-edge timing, and — when a DUT exports its one-hot TAP state —
+state-encoding/transition legality, TRST/TMS-walk reset behavior, and the
+TDO-enable shift-only window, each citing its IEEE Std 1149.1 clause). It is
+instantiated at TB scope next to flattened nets or bound into a hierarchy,
+with a runtime `en_i` suppress knob; the DTP integration wires it to the
+primary TAP with `dtp_tb_if.jtag_sva_en`.
 
 The package also ships an encoding-agnostic IEEE 1149.1 TAP model
 (`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`; state values match the

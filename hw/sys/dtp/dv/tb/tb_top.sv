@@ -1009,6 +1009,22 @@ module dtp_uvm_top
     assign u_m_axi_if.rvalid   = m_axi_rvalid;
     assign u_m_axi_if.rready   = m_axi_rready;
 
+    // Clean-room JTAG protocol SVA checker (ocah_jtag_vip/sva) on the
+    // primary TAP pins + the exported one-hot TAP state, enabled via
+    // dtp_tb_if.jtag_sva_en.
+    ocah_jtag_sva #(
+        .EN_STATE_RULES (1'b1)
+    ) u_jtag_ptap_sva (
+        .tck         (jtag_tck),
+        .tms         (jtag_tms),
+        .tdi         (jtag_tdi),
+        .trst_n      (jtag_trst),
+        .tdo         (jtag_tdo),
+        .tdo_oen     (jtag_tdo_oen),
+        .en_i        (u_tb_if.jtag_sva_en),
+        .tap_state_i (jtag_ptap_state)
+    );
+
     // Clean-room AXI protocol SVA checkers (ocah_axi_vip/sva), enabled via
     // dtp_tb_if.axi_sva_en.
     ocah_axi_protocol_checker #(

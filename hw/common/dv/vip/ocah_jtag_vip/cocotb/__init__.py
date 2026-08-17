@@ -46,18 +46,23 @@ This package covers *IEEE 1149.1 only*.  IJTAG (IEEE 1687) instruments stay in
 ``bfm/ijtag_vip/``.  Boundary-scan (EXTEST/SAMPLE) is out of scope.
 """
 
+from .ocah_jtag_agent import OcahJtagAgent
 from .ocah_jtag_checker import OcahJtagChecker, OcahJtagCheckerError
+from .ocah_jtag_config import OcahJtagConfig
 from .ocah_jtag_device import OcahJtagDevice, OcahJtagRegister
+from .ocah_jtag_driver import OcahJtagTap, OcahJtagTapError
 from .ocah_jtag_item import OcahJtagScanItem, OcahJtagStateItem
 from .ocah_jtag_monitor import OcahJtagMonitor
 from .ocah_jtag_ref_model import TLR_TMS_ONES, OcahJtagTapRefModel
+from .ocah_jtag_sequence import OcahJtagSequence
 from .ocah_jtag_state import OcahJtagState, jtag_tms_path, next_jtag_state
-from .ocah_jtag_tap import OcahJtagTap, OcahJtagTapError
 
 # Standard IDCODE instruction — IEEE 1149.1 §12.1.1 mandates opcode 0x01.
 IDCODE_OPCODE: int = 0x01
 
 __all__ = [
+    "OcahJtagAgent",
+    "OcahJtagConfig",
     "OcahJtagTap",
     "OcahJtagTapError",
     "OcahJtagMonitor",
@@ -66,6 +71,7 @@ __all__ = [
     "OcahJtagDevice",
     "OcahJtagRegister",
     "OcahJtagScanItem",
+    "OcahJtagSequence",
     "OcahJtagStateItem",
     "OcahJtagState",
     "OcahJtagTapRefModel",
@@ -75,4 +81,4 @@ __all__ = [
     "IDCODE_OPCODE",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

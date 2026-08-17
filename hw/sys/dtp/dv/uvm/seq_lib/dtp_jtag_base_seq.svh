@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Base JTAG sequence: issues ocah_jtag_item transactions on the shared
-// ocah_jtag_vip agent's sequencer (pin-level driving lives in the VIP
+// Base JTAG sequence: extends the VIP-level ocah_jtag_base_sequence (which
+// owns the protocol-neutral stimulus API: raw steps/walks, IR/DR scans, TAP
+// reset) with the DTP-specific layer (pin-level driving lives in the VIP
 // driver; per-cycle FSM legality/closure checking lives in the env's
 // dtp_tap_fsm_checker subscriber). This base keeps:
 //   * DTP-local reset sequencing (por/sys via dtp_tb_if),
@@ -11,7 +12,7 @@
 //   * the BYPASS 1-TCK latency check (sanity_bypass_latency_chk), which
 //     compares spec-derived expected TDO with the DR_SCAN item response.
 
-class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
+class dtp_jtag_base_seq extends ocah_jtag_base_sequence;
     `uvm_object_utils(dtp_jtag_base_seq)
 
     localparam int unsigned IrWidth = 6;
@@ -30,31 +31,6 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
     function new(string name = "dtp_jtag_base_seq");
         super.new(name);
     endfunction
-
-    task do_jtag(ocah_jtag_item it);
-        start_item(it);
-        finish_item(it);
-    endtask
-
-    // One raw TCK step (tms/tdi) from any state.
-    task step(bit tms, bit tdi = 1'b0);
-        ocah_jtag_item it = ocah_jtag_item::type_id::create("step");
-        it.op       = OCAH_JTAG_RAW_TMS;
-        it.tms_bits = new[1];
-        it.tdi_bits = new[1];
-        it.tms_bits[0] = tms;
-        it.tdi_bits[0] = tdi;
-        do_jtag(it);
-    endtask
-
-    // Raw TMS/TDI walk, one TCK cycle per element.
-    task raw_walk(bit tms_bits[], bit tdi_bits[]);
-        ocah_jtag_item it = ocah_jtag_item::type_id::create("raw_walk");
-        it.op       = OCAH_JTAG_RAW_TMS;
-        it.tms_bits = tms_bits;
-        it.tdi_bits = tdi_bits;
-        do_jtag(it);
-    endtask
 
     // `checker_tag` because bare `checker` is an IEEE 1800 reserved word
     // (VCS tolerates it; Verilator lint does not).
@@ -84,10 +60,8 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
 
     // TAP reset: TRST pulse via the driver -> Test-Logic-Reset.
     task tap_reset();
-        ocah_jtag_item it = ocah_jtag_item::type_id::create("tap_reset");
         `uvm_info(get_type_name(), "asserting TRST for TAP reset", UVM_MEDIUM)
-        it.op = OCAH_JTAG_TAP_RESET;
-        do_jtag(it);
+        tap_reset_op();
         if (evidence != null)
             void'(evidence.check_reset_to_tlr(tb_vif.tap_state, "after TRST release"));
         check_state(TEST_LOGIC_RESET, "sanity_fsm_visit_chk", "after TRST release");
@@ -105,13 +79,10 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
 
     // IR scan from Run-Test/Idle (LSB-first), back to Run-Test/Idle.
     task load_ir(bit [IrWidth-1:0] instr);
-        ocah_jtag_item it = ocah_jtag_item::type_id::create("ir_scan");
+        bit [63:0] captured;
         `uvm_info(get_type_name(), $sformatf("IR scan: loading 0x%02h (%0d bits)", instr, IrWidth),
                   UVM_MEDIUM)
-        it.op    = OCAH_JTAG_IR_SCAN;
-        it.width = IrWidth;
-        it.wdata = 64'(instr);
-        do_jtag(it);
+        ir_scan(64'(instr), IrWidth, captured);
         check_state(RUN_TEST_IDLE, "sanity_scan_path_chk", "after IR scan");
         check_last_scan_length(1'b1, IrWidth, $sformatf("ir=0x%02h", instr));
     endtask
@@ -119,12 +90,7 @@ class dtp_jtag_base_seq extends uvm_sequence #(ocah_jtag_item);
     // DR scan from Run-Test/Idle (LSB-first), returning observed TDO.
     task shift_dr(input bit [63:0] pattern, input int unsigned width,
                   output bit [63:0] observed);
-        ocah_jtag_item it = ocah_jtag_item::type_id::create("dr_scan");
-        it.op    = OCAH_JTAG_DR_SCAN;
-        it.width = width;
-        it.wdata = pattern;
-        do_jtag(it);
-        observed = it.tdo;
+        dr_scan(pattern, width, observed);
         check_state(RUN_TEST_IDLE, "sanity_scan_path_chk", "after DR scan");
         check_last_scan_length(1'b0, width, $sformatf("pattern=0x%0h", pattern));
     endtask
