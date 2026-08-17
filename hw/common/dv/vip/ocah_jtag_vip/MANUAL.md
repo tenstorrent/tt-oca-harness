@@ -207,7 +207,7 @@ python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilat
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_sample_preload_test --tool vcs
 ```
 
-If time allows, run:
+For broader coverage, run the full `basic_jtag` group:
 
 ```bash
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator

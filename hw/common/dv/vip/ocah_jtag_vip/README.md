@@ -61,7 +61,7 @@ missing required IDs.
 
 The checker also carries an `OcahJtagTapRefModel` (a pure-Python IEEE 1149.1
 TAP controller model) and exposes reference-model-backed named checks for the
-core TAP contracts (issue tt-oca-hw#3296):
+core TAP contracts:
 
 | Method | Check ID | Contract |
 |---|---|---|
@@ -77,9 +77,10 @@ call `sync_state()` so predictions restart from the true controller state.
 
 Monitors deliberately log and catch callback exceptions. An attached checker
 therefore retains its protocol error before raising, and the owning test or
-scoreboard must call `finalize()` after traffic. Adopters: the DTP
-`dtp_jtag_idcode_test`, `dtp_jtag_bypass_test`, `dtp_jtag_tlr_reset_test`, and
-`dtp_jtag_trst_test` sequences (via `dtp_jtag_base_test_seq.attach_tap_checker`).
+scoreboard must call `finalize()` after traffic. For worked integrations, see
+the DTP `dtp_jtag_idcode_test`, `dtp_jtag_bypass_test`,
+`dtp_jtag_tlr_reset_test`, and `dtp_jtag_trst_test` sequences (via
+`dtp_jtag_base_test_seq.attach_tap_checker`).
 
 ## Package Layout
 
@@ -121,16 +122,16 @@ The package also ships an encoding-agnostic IEEE 1149.1 TAP model
 (`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`; state values match the
 conventional 0..15 numbering, i.e. the bit index of one-hot RTL encodings)
 for DUT-side checkers. Per-cycle pairing of monitor steps with a DUT's
-decoded TAP state stays DUT-side (DTP's `dtp_tap_fsm_checker`, which now
-reports an aggregate `CHK-TAP-STATE` through the shared `ocah_jtag_checker`);
-scan-level reconstruction and the named TAP-contract evidence are VIP-owned
-(issue tt-oca-hw#3296), mirroring the cocotb checker's check IDs. First user:
-the DTP SV-UVM flow (`--dut dtp_uvm`) `dtp_sanity_test`, which requires
+decoded TAP state stays DUT-side (DTP's `dtp_tap_fsm_checker`, which reports
+an aggregate `CHK-TAP-STATE` through the shared `ocah_jtag_checker`);
+scan-level reconstruction and the named TAP-contract evidence are VIP-owned,
+mirroring the cocotb checker's check IDs. For a full integration example, see
+the DTP SV-UVM flow's (`--dut dtp_uvm`) `dtp_sanity_test`, which requires
 `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`,
 `CHK-IDCODE-RAW/STABLE/MARKER`, `CHK-BYPASS-LATENCY`, and
-`CHK-SCAN-IR-LEN/DR-LEN`; `+DTP_JTAG_TAP_CHECKER_NEGATIVE` arms the must-FAIL
-negative validation. Like all SV-UVM collateral, compile sign-off is gated on
-a Linux VCS run.
+`CHK-SCAN-IR-LEN/DR-LEN`, and arms the must-FAIL negative validation via
+`+DTP_JTAG_TAP_CHECKER_NEGATIVE`. SV-UVM collateral compiles on commercial
+simulators (e.g. VCS) and is excluded from Verilator builds.
 
 ## Template Contract (per-protocol VIPs and commercial plug-ins)
 
@@ -178,7 +179,7 @@ does not hide that work, it gives it exactly one home per protocol:
    keys (e.g. `-ntb_opts svt`, DesignWare incdirs); license-env gating is
    already part of the commercial profile contract.
 
-Not yet exercised: no Synopsys VIP is integrated today, so this contract is
+No commercial-VIP integration exists in-tree, so this contract is
 architecture-verified (env-level override point, monitor-disable knob,
 vendor-cfg hook, and interface-nesting hook all exist) but not
 integration-tested against a real VC VIP installation.
@@ -281,7 +282,7 @@ Callbacks receive `OcahJtagScanItem` objects. The item also supports
 
 ## Validation
 
-GH #3289 acceptance should use DTP as the proof point:
+Validate changes against the DTP consumer:
 
 ```bash
 python3 tools/dv/run_dv.py --doctor --dut dtp
