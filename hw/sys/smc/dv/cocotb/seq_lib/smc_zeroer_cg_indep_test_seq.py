@@ -7,6 +7,8 @@ DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_rev
 
 from __future__ import annotations
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
 
@@ -17,7 +19,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 # hyst=0 so register-idle gate-off can open while axi busy is still high.
 HYST = 0

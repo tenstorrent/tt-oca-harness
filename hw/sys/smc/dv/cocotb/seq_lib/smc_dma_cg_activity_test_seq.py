@@ -23,11 +23,13 @@ import os
 import random
 from pathlib import Path
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 

@@ -1,9 +1,9 @@
 schema_version = 1
 
-# Launch entry: `--dut smc_wrapper` (registered in duts.toml).
+# Launch entry: `--dut smc` (discovered by the directory convention).
 # tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
-# smc_cpu_mem_integration). Bare `--dut smc` is not used.
-name = "smc_wrapper"
+# smc_cpu_mem_integration); the bare DUT name selects that wrapper-based TB.
+name = "smc"
 profile = "native-cocotb"
 description = "SMC OSS cocotb: smc_wrapper under tb_top"
 default_tool = "verilator"
