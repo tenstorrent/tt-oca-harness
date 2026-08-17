@@ -82,6 +82,50 @@ Values above `0x03` are invalid. Owner is fixed at key creation; the only thing
 that changes it afterwards is an explicit ownership transfer, which the KM records
 in the key's provenance flags.
 
+[[km-owner-invariant]]
+*Owner is never a free choice in a KDF request*
+
+No KDF request names the owner of the key it produces. `OUT_OWNER` in the
+request block (<<km-kdf-request-block>>) always carries the owner of the KDF
+*parent* — the root for a `GEN_*` opcode, the parent key for a `DERIVE_*` one.
+The SEP, as part of `GEN_*` command inputs, sets the desired root owner for derivation,
+and on the `DERIVE_*` path it has no owner input at all. Only material entering
+the KM from outside the derivation tree carries an owner the SEP states
+directly.
+
+.Where a New Key's Owner Comes From
+[cols="<30%,<24%,<46%",options="header"]
+|===
+| Creation path | Owner | Selected by
+| `GEN_*` opcodes | The selected root's owner | SEP, but only by selecting the root. `OUT_OWNER` is a *root selector* on this path: it names which owner's root the opcode reaches, and the derived key is owned by that root's owner. The two cannot disagree, because they are one value.
+| `DERIVE_*` opcodes | The parent key's owner | Nobody — inherited. `OUT_OWNER` is KM-forged and must be transmitted as zero.
+| `CMD_KEY_LOAD`, `CMD_ABR_SK_INGEST` | Declared in the payload | SEP. Imported material has no root ancestry to inherit from.
+|===
+
+That gives owner the same shape as domain (<<km-domains>>), and yields the
+matching invariant: **a key that has root ancestry is owned, at creation, by the
+owner whose root anchors its derivation chain** — to any chain depth. A
+`DERIVE_*` child can no more belong to a different owner than its parent than it
+can belong to a different domain, and a `GEN_*` child can belong only to the
+owner whose root it came from.
+
+Two qualifications, both narrow and both visible to the SEP:
+
+* *Imported keys are outside it.* A key from `CMD_KEY_LOAD` or
+  `CMD_ABR_SK_INGEST` has no root ancestry at all, so there is no anchor for its
+  owner to agree with. It carries the `IMPORTED` provenance flag, which is
+  exactly how a caller tells the two cases apart.
+* *An explicit transfer breaks it, on purpose.*
+  <<km-cmd-assign-key-owner,`CMD_ASSIGN_KEY_OWNER`>> re-owns an existing key and
+  is the only way a key's owner ever stops matching its anchor — there is no
+  derivation-time route to the same result. It sets the sticky `OWNER_XFERRED`
+  flag, so the departure is permanently recorded rather than silent.
+
+The practical consequence is that the invariant holds by default and fails only
+where a caller has deliberately and observably made it fail. A host auditing
+whether an owner's key population is really that owner's material needs to check
+one flag per key, not walk any chains.
+
 [[km-domains]]
 ====== Domains
 
@@ -898,13 +942,24 @@ opcode's class column, or the command returns `KM_ERR_CLASS_MISMATCH`.
 
 . *Root selection.* A `GEN_*` opcode reaches exactly one root, chosen by
   `OUT_OWNER` together with the domain the opcode itself fixes; roots are never
-  otherwise addressable (<<km-roots>>). If the selected root was never derived or
-  has been revoked, the command returns `KM_ERR_ROOT_CLEARED`.
+  otherwise addressable (<<km-roots>>). `OUT_OWNER` is a root selector here, not
+  an independent choice of owner: the derived key is owned by the owner whose
+  root produced it (<<km-owner-invariant>>). If the selected root was never
+  derived or has been revoked, the command returns `KM_ERR_ROOT_CLEARED`.
 
 . *`DERIVE_*` requires an eligible parent.* The parent must be a live SYMMETRIC
   key carrying the `SYM_KDF` capability; anything else returns
-  `KM_ERR_NOT_KDF_KEY`. The child inherits the parent's domain (<<km-domains>>),
-  and its own `OUT_OWNER` is a free choice among the valid owners.
+  `KM_ERR_NOT_KDF_KEY`. The child inherits *both* the parent's domain
+  (<<km-domains>>) and the parent's owner (<<km-owners>>); neither is
+  SEP-selectable on this path, and `OUT_OWNER` must be transmitted as zero.
+
+No KDF opcode can place a key under any owner but its KDF parent's. A caller
+that needs one performs the derivation first and then reassigns the result with
+<<km-cmd-assign-key-owner,`CMD_ASSIGN_KEY_OWNER`>>. That is deliberately a
+separate, explicit step: it leaves the `OWNER_XFERRED` provenance flag set
+(<<km-provenance>>), so a key that did not take its owner from its KDF parent is
+permanently distinguishable from one that did. Deriving straight into another
+owner would have produced the same key with no such record.
 
 . *The ephemeral opcodes consume DRBG entropy.* For `GEN_EPHEMERAL_SYM` and
   `GEN_EPHEMERAL_PRV`, and only for these, the KM fills the 64-byte entropy
@@ -947,11 +1002,11 @@ are little-endian.
 | 0   | 2  | `VERSION`   | SEP | Request ABI version. Must be `0x0001`; any other value returns `KM_ERR_BAD_VERSION`.
 | 2   | 1  | `OUT_CLASS` | SEP | Key class. `0x01` SYMMETRIC, `0x02` PRIVATE. Must match the opcode family.
 | 3   | 1  | `OUT_TYPE`  | SEP | Key type; see <<km-kdf-out-type>>.
-| 4   | 1  | `OUT_OWNER` | SEP | Owning agent; see <<km-owners>>. For `GEN_*` this ALSO selects which owner's root is used; for `DERIVE_*` it is only the child's owner and may be any valid owner. `0x00` and values above `0x03` return `KM_ERR_INVALID_OWNER`.
+| 4   | 1  | `OUT_OWNER` | `GEN_*`: SEP + `DERIVE_*`: KM | Owning agent, always the owner of the KDF parent; see <<km-owner-invariant>>. For a `GEN_*` opcode the SEP writes it, but as a *root selector*: it names which owner's root the opcode reaches, and the derived key is owned by that root's owner. `0x00` and values above `0x03` return `KM_ERR_INVALID_OWNER`. For a `DERIVE_*` opcode it is forged from the parent key's owner, and the field must be transmitted as zero like every other KM-written region.
 | 5   | 1  | `RESERVED`  | KM  | Domain. Forged: inherited from the parent, so a HW-rooted chain stays HW.
 | 6   | 2  | `RESERVED`  | KM  | Provenance flags. Forged: ephemeral, imported, ROM-created and ROM-lineage bits.
 | 8   | 2  | `PURPOSE`   | SEP | Free-form label, opaque to the KM, returned by `CMD_KEY_INFO`.
-| 10  | 2  | `OUT_BITS`  | SEP | SYMMETRIC: requested key length in bits, 8 to 512, a multiple of 8 (one KPV slot). This is a storage limit, not a transfer guarantee; see <<km-sideload-port-widths>>. PRIVATE: must be `0x0000` — the type dictates the width. Violations return `KM_ERR_INVALID_SIZE`.
+| 10  | 2  | `OUT_BITS`  | SEP | SYMMETRIC: requested key length in bits, 8 to 512, a multiple of 8 (one KPV slot). Note this is the STORAGE limit, not a transfer guarantee — the symmetric engine ports are 256 bits, so a key above that is derivable and usable as a KDF parent but not sideloadable; see <<km-sideload-port-widths>>. PRIVATE: must be `0x0000` — the type dictates the width. Violations return `KM_ERR_INVALID_SIZE`.
 | 12  | 4  | `CAPS`      | SEP | Requested capabilities; see <<km-kdf-caps>>.
 | 16  | 4  | `RESERVED`  | KM  | Device state. Forged: the KM samples live LC_STATE and DEMOTION immediately before deriving.
 | 20  | 12 | `RESERVED`  | —   | Future expansion.
@@ -962,6 +1017,18 @@ are little-endian.
 
 Every region marked "written by KM" MUST be transmitted as zero. A nonzero
 reserved region returns _failure_ with `KM_ERR_NONZERO_RESERVED`.
+
+`OUT_OWNER` is the one field whose author depends on the opcode, and the zero
+rule follows the authorship: a `GEN_*` request carries a valid owner there to
+select its root, while a `DERIVE_*` request must transmit zero and is rejected
+with `KM_ERR_NONZERO_RESERVED` if it does not. Neither path lets the SEP name
+the owner the key receives. On the `DERIVE_*` path the field is not the
+SEP's to write; on the `GEN_*` path writing it chooses a root, and the child
+takes that root's owner. Owner and domain are alike in this: both are properties
+of the KDF parent, hashed into the derivation, and neither can be steered away
+from it. Giving KDF-derived material a different owner takes
+<<km-cmd-assign-key-owner,`CMD_ASSIGN_KEY_OWNER`>> afterwards, which records the
+move in the key's provenance flags.
 
 That rule is what gives those fields their security value. Because the KM — not
 the SEP — writes the domain, the provenance flags, the live device state, the
@@ -2254,6 +2321,13 @@ a later transfer back — sets the sticky `OWNER_XFERRED` provenance flag,
 visible through `CMD_KEY_INFO`. The flag is never cleared: a key that has
 ever changed hands is permanently distinguishable from one that has not.
 
+This command is also the only way KDF-derived material ever carries an owner
+other than its KDF parent's. No `GEN_*` or `DERIVE_*` request can name one
+(<<km-owner-invariant>>) — a `GEN_*` key belongs to the owner whose root it came
+from, a `DERIVE_*` key to its parent's owner — so the sequence is derive, then
+assign, which leaves the `OWNER_XFERRED` record that deriving straight into the
+other owner would not have.
+
 *Payload*
 
 The 64-bit handle of the key, least-significant word first, followed by the
@@ -2410,6 +2484,161 @@ Revokes the named key and every live key whose KDF derivation chain passes
 through it, by walking the registry's stored parent references. Reachability is
 fully discovered over the untouched registry before anything is revoked, and the
 whole marked set is then swept, so the returned sweep count is exact.
+
+*Payload*
+
+The 64-bit handle of the tree root, least-significant word first.
+
+.Command Payload
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `KEY_HANDLE_LO[31:0]`
+32+^| `KEY_HANDLE_HI[31:0]`
+|===
+
+*Response*
+
+If the handle does not resolve, this command has a `RESP_CMD` response with a
+return code of _failure_ and a single return argument carrying
+`KM_ERR_INVALID_HANDLE`.
+
+If the request is granted, this command has a `RESP_CMD` response with a
+return code of _success_ and a return argument carrying the number of key
+descriptors revoked. The count includes the named key, so it is at least 1.
+
+.RESP_CMD _Success_ Return Argument
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `SWEPT_COUNT[31:0]`
+|===
+
+NOTE: `CMD_CLEAR_OWNER_KEYS` sweeps by the CURRENT owner field, so an assigned
+key moves between sweep sets when it changes hands.
+
+That interaction is deliberate and is the point of the command. Sweeping by the
+current owner is what lets a host *preserve a key while destroying its owner*.
+This allows eassigning a key that must outlive the owner, clearing the owner, and 
+then retained keys survive while the owner's roots are gone and nothing further can
+be minted for it. Reading the two commands together, ownership is the unit of
+revocation and reassignment is the escape hatch. A key is only as revocable as
+its current label, by design.
+
+The corollary is that a `CMD_CLEAR_OWNER_KEYS` sweep is complete with respect to
+the owner *label*, not with respect to everything that owner *ever* held. A caller
+that needs the stronger property has the evidence to check for it: every
+reassignment sets the sticky `OWNER_XFERRED` flag, so a key that has moved is
+permanently distinguishable through `CMD_KEY_INFO`.
+
+[[km-cmd-clear-owner-keys]]
+====== 0x36 - CMD_CLEAR_OWNER_KEYS
+
+*Description*
+
+Revokes every live key whose CURRENT owner field equals `OWNER` — the
+`CMD_KEY_REVOKE` semantics (wipe material, free slots, retire the handle
+immediately), applied in bulk — and then clears that owner's HW root, SW root
+and identity root, so nothing further can be created for the owner until the
+next ROM boot.
+
+The selection is owner-FIELD match, deliberately not root lineage: a key re-owned
+by `CMD_ASSIGN_KEY_OWNER` is swept with the owner it currently records, whoever's
+roots anchor its derivation chain.
+
+In practice the two coincide for everything the sweep has not been explicitly
+told to exclude. Every KDF-derived key takes its owner from its KDF parent
+(<<km-owner-invariant>>), so a derivation tree stays within the owner of the root
+that anchors it for its whole depth, and sweeping that owner takes the tree with
+it. The only keys that escape are ones a caller deliberately re-owned, and those
+are marked `OWNER_XFERRED`.
+
+*Payload*
+
+.Command Payload
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+24+^| `RESERVED`
+8+^| `OWNER[7:0]`
+|===
+
+*Response*
+
+If the reserved bits `[31:8]` are set, or `OWNER` is `0x00` or above `0x03`,
+this command has a `RESP_CMD` response with a return code of _invalid_arg_ and
+a return argument pointing to the index of the invalid payload word (`0`).
+
+Otherwise this command has a `RESP_CMD` response with a return code of
+_success_ and a return argument carrying the number of key descriptors
+revoked. Root clearing is not counted. The command is idempotent: a repeat
+returns _success_ with a count of zero.
+
+.RESP_CMD _Success_ Return Argument
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `SWEPT_COUNT[31:0]`
+|===
+
+NOTE: Engine sideload registers are not touched — a key already transferred to
+an engine survives there until `CMD_ENGINE_SHRED`.
+
+[[km-cmd-clear-hw-keys]]
+====== 0x37 - CMD_CLEAR_HW_KEYS
+
+*Description*
+
+Revokes every live HW-domain key in a single flat pass. The `CMD_KEY_REVOKE`
+semantics (wipe material, free slots, retire the handle immediately) are applied
+in bulk. Also clears all three `HW_ROOT` entries. The domain key parameter is 
+referenced for every key making the sweep exact with no chain walking.
+
+Once they are gone the `GEN_HW_*` opcodes return `KM_ERR_ROOT_CLEARED`
+(<<km-roots>>), so no new HW-domain key can be created until the next ROM boot
+and the HW domain cannot be repopulated behind the sweep. Roots are cleared for
+all three owners together; this command takes no owner and admits no partial
+form.
+
+What this command does NOT clear:
+
+* *`SW_ROOT`.* SW derivation is unaffected — the `GEN_SW_*` opcodes and every
+  `DERIVE_*` chain anchored in a software root keep working, and SW-domain keys
+  are not swept.
+* *`ID_ROOT`.* `CMD_INVOKE_ID_KEY` continues working. Only `CMD_CLEAR_ID_ROOT` or `CMD_CLEAR_OWNER_KEYS` clears it.
+
+*Payload*
+
+This command has no payload.
+
+*Response*
+
+This command has a `RESP_CMD` response with a return code of _success_ and a
+return argument carrying the number of key descriptors revoked. Root clearing
+is not counted. It always succeeds and is idempotent: a repeat returns a count
+of zero and leaves the roots cleared.
+
+.RESP_CMD _Success_ Return Argument
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `SWEPT_COUNT[31:0]`
+|===
+
+NOTE: Engine sideload registers are not touched — a key already transferred to
+an engine survives there until `CMD_ENGINE_SHRED`.
+
+[[km-cmd-clear-key-tree]]
+====== 0x38 - CMD_CLEAR_KEY_TREE
+
+*Description*
+
+Revokes the named key and every live key whose KDF derivation chain passes
+through it, by walking the registry's stored parent references. The walk is
+iterative — reachability is fully discovered over the untouched registry
+before anything is revoked, then the whole marked set is swept — so the
+firmware uses no recursion and no dynamic allocation, and the sweep count is
+exact.
 
 *Payload*
 
@@ -4019,7 +4248,7 @@ output-length fields are big-endian.
 | `0-1` | `version` | KM ABI version mixed into the derivation.
 | `2` | `out_class` | Class of the derived key.
 | `3` | `out_type` | Type of the derived key.
-| `4` | `out_owner` | Owner of the derived key.
+| `4` | `out_owner` | Owner of the derived key, always the KDF parent's: the selected root's owner for a `GEN_*` derivation, the parent key's owner for a `DERIVE_*` one.
 | `5` | `out_domain` | Parent-inherited domain, forged by the KM.
 | `6-7` | `flags` | Provenance and operational flags, forged by the KM.
 | `8-9` | `purpose` | Public purpose metadata.
@@ -4785,9 +5014,11 @@ It has the following execution flow:
 
 . Validates the request block (<<km-kdf-request-block>>): every KM-written
 region transmitted as zero, `OUT_CLASS` against the opcode, `OUT_TYPE` against
-the class, `CAPS` against the class and type family, and owner and length in
-range. Returns with an error at the first failure, before any resource is
-touched.
+the class, `CAPS` against the class and type family, and length in range.
+`OUT_OWNER` is checked according to the opcode — in range for a `GEN_*`
+request, where it selects the root, and zero for a `DERIVE_*` request, where it
+is a KM-written region. Returns with an error at the first failure, before any
+resource is touched.
 . Resolves the parent:
 .. For a `GEN_*` opcode, selects the one root named by the opcode's fixed domain
 together with the request's `OUT_OWNER`, and fetches it through *Check Root*
@@ -4807,6 +5038,15 @@ live `LC_STATE` and `DEMOTION` sample taken immediately before the derivation,
 the per-opcode domain-separation label, and — for the ephemeral opcodes only —
 64 bytes of fresh DRBG entropy. Fails closed with `KM_ERR_CRYPTO` if the DRBG
 cannot supply that entropy.
++
+For a `DERIVE_*` opcode this step also writes `OUT_OWNER`, taking it from the
+parent resolved in step 2 exactly as it takes the domain
+(<<km-owner-invariant>>). It must therefore run after step 2 and not before: the
+parent is where both values come from. For a `GEN_*` opcode the value received in
+step 1 already *is* the resolved parent's owner — selecting that root is what it
+did — so the KM leaves it in place, and what gets hashed is the root's owner
+either way. Neither path hashes an owner the SEP chose independently of the
+parent.
 . Runs the KDF over the completed 192-byte block to produce the key material.
 . Allocates key slots, writes the material, and write-locks the slots.
 . Commits a descriptor carrying the requested and forged metadata and the
