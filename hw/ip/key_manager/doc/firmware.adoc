@@ -115,17 +115,18 @@ fuse. "HW / SW / ID" names the three root kinds, not three domain values.
 ====== Roots
 
 
-A *root* is a 256-bit secret the KM derives at ROM boot from OTP fuse material and
-holds in a KPV slot reserved for roots (<<km-kpv-slot-map>>). There are nine, in
-three kinds:
+A *root* is a 256-bit secret the KM derives at ROM boot from OTP fuse material,
+and in some cases live device-state inputs as well. Roots are held in KPV slots
+reserved by firmware for roots (<<km-kpv-slot-map>>). There are nine, in three
+kinds:
 
 .Roots
 [cols="<16%,^12%,<32%,<40%",options="header"]
 |===
 | Kind | Count | Derived from | Reached by
-| `HW_ROOT` | 3, one per owner | that owner's secret UID fuse | the `GEN_HW_*` opcodes
-| `SW_ROOT` | 3, one per owner | that owner's secret UID fuse | the `GEN_SW_*` opcodes
-| `ID_ROOT` | 3, one per owner | that owner's secret UID fuse, personalized with the owner's *public* ID fuse | `CMD_INVOKE_ID_KEY`
+| `HW_ROOT` | 3, one per owner | that owner's secret UID fuse, bound to `LC_STATE` and `DEMOTION` | the `GEN_HW_*` opcodes
+| `SW_ROOT` | 3, one per owner | that owner's secret UID fuse, bound to `LC_STATE` and `DEMOTION` | the `GEN_SW_*` opcodes
+| `ID_ROOT` | 3, one per owner | that owner's secret UID fuse, personalized with the owner's *public* ID fuse, bound to no device state | `CMD_INVOKE_ID_KEY`
 |===
 
 The three kinds derive from the same UID fuse but under distinct
@@ -133,21 +134,21 @@ domain-separation labels, so they are cryptographically independent.
 
 **Roots are never host-addressable.** No command, field or handle names a root.
 Roots occupy KPV slots, but those slots are absent from the key registry, so no
-descriptor points at one and no handle can resolve to one. The SEP selects a root
-only implicitly, by naming an owner and choosing an opcode whose domain is fixed;
+descriptor points at one and no handle can resolve to one. The SEP selects a root 
+only implicitly, by naming an owner and choosing an opcode whose domain is fixed; 
 it can neither read a root nor derive at a label of its own choosing. A root that
-failed to derive, or that has been revoked, reports `KM_ERR_ROOT_CLEARED` when a
+failed to derive, or that has been revoked, reports `KM_ERR_ROOT_CLEARED` when a 
 command would have used it.
 
 Revoking a root is the same hardware operation as revoking a key: the KM asserts
-`ERASE` on the root's slot, which wipes the material. `CMD_CLEAR_ID_ROOT`,
-`CMD_CLEAR_OWNER_KEYS` and `CMD_CLEAR_HW_KEYS` all clear roots this way, in
-either mode. Because root slots are sealed from derivation onwards, clearing one
-retires its slot rather than freeing it (<<km-kpv-slot-map>>), so a revoked root
-cannot be replaced by a value of the caller's choosing. What distinguishes a root
-from a key is not the erase path but the registry: a cleared root frees no
-descriptor, because it never had one, and is reported through
-`KM_ERR_ROOT_CLEARED` rather than by a handle ceasing to resolve.
+`ERASE_KEY` on the root's slot, which wipes the material. `CMD_CLEAR_ID_ROOT`, 
+`CMD_CLEAR_OWNER_KEYS` and `CMD_CLEAR_HW_KEYS` all clear roots this way. Because 
+root slots are sealed from derivation onwards, clearing one retires its slot rather
+than freeing it (<<km-kpv-slot-map>>), so a revoked root cannot be replaced by a
+value of the caller's choosing. What distinguishes a root from a key is not the erase
+path but the registry: a cleared root frees no descriptor, because it never had
+one, and is reported through `KM_ERR_ROOT_CLEARED` rather than by a handle
+ceasing to resolve.
 
 Root derivation is per-owner fail-closed: one owner's root failing leaves the
 others usable. This matters because UID fuses can be read-locked independently, so
@@ -183,7 +184,7 @@ Which device state each derivation binds is deliberate and differs by flow:
 [cols="<36%,<64%",options="header"]
 |===
 | Derivation | Binds
-| `HW_ROOT` / `SW_ROOT` | `LC_STATE` only. DEMOTION is a software control — cleared by reset, ratcheted upward during boot — so it has no defined value at root-derivation time and is not part of root identity.
+| `HW_ROOT` / `SW_ROOT` | `LC_STATE` and `DEMOTION`, sampled at ROM boot immediately before the derivation.
 | `ID_ROOT`, and the identity keys minted from it | Nothing. Identity is deliberately lifecycle-independent, so an owner can still assert *who* a device is after demotion. Per-device variation comes from the SEP's seed input, not from device state.
 | CLASS_KEY bootloader-decrypt key | Nothing. It must reproduce in every lifecycle state, since an off-chip party derives the same key. Confidentiality rests on ROM gating the fuse off after first-stage decrypt.
 | The eight KDF opcodes | Full live `LC_STATE` and `DEMOTION`, sampled immediately before each derivation.
@@ -194,6 +195,92 @@ state at the moment it was created, so after a demotion the same request yields 
 different key. Anything that must prove *what state* a device is in should use a
 lifecycle-bound key from those opcodes; identity keys prove only *who* the device
 is.
+
+`DEMOTION` is *not* a fuse value. It is a live signal from the system Life Cycle
+Controller, driven by the SEP host CPU, and it can change at any point in a power
+cycle — including after the KM has already derived its roots. (The KMCSR exposes
+it as `OTP_DEMOTION_STATE`, but that prefix names the readout block, not the
+signal's source; see <<km-cmd-otp-read-lock-cold>>.)
+
+Binding a live signal into a root is sound only because a change to it resets the
+KM (<<km-device-state-reset>>). Without that interlock the sample would have no
+lasting meaning: a root derived early in boot could outlive the value it was
+derived under, and nothing about the root would say so. With it, the boot-time
+sample is authoritative — any later change re-enters the boot sequence and
+re-derives every root under the new value, so a root and the live device state
+can never disagree.
+
+What the binding buys is separation at the anchor rather than only at each leaf.
+An owner's `HW_ROOT` and `SW_ROOT` on a demoted device are cryptographically
+unrelated to that same owner's roots on the same device before demotion, so the
+entire derivation subtree beneath them is disjoint across demotion states. No key
+reachable in one state is reachable in the other, whatever an individual
+derivation binds. Downstream keys still sample the live state themselves; the
+root binding is what makes the separation hold without depending on every
+derivation getting its own binding right.
+
+The consequence for the SEP: a key from the KDF opcodes is bound to the device
+state at the moment it was created — twice over for a chain anchored in a
+`HW_ROOT` or `SW_ROOT`, once in the root and again in the derivation itself — so
+after a life-cycle transition or a demotion the same request yields a different
+key. Anything that must prove *what state* a device is in should use a
+state-bound key from those opcodes; identity keys prove only *who* the device
+is.
+
+[[km-device-state-reset]]
+*A device-state change resets the KM*
+
+Nothing in the KM has to detect a stale binding, because no key can outlive the
+device state it was bound to. `LC_STATE` and `DEMOTION` are monitored in
+hardware, and a change to either forces a warm reset of the KM core. The KM then
+comes back through the ordinary boot sequence (<<km-boot-sequence>>) and
+re-derives all nine roots from fuse material under the new state.
+
+This is a hardware interlock, not a firmware policy. It does not depend on
+firmware noticing the change, on the registry being walkable, or on the SEP
+cooperating, and it cannot be declined, deferred or masked. It fires whatever
+the KM was doing and whichever image was executing.
+
+What the reset destroys is everything derived under the old state:
+
+* Every KPV slot is shredded by the boot flow, so no key material survives.
+* Both registries are reinitialized in `rom_persist`
+  (<<km-registry-residency>>), so no descriptor, issue counter or root-registry
+  entry survives.
+* A fresh handle sealing key is drawn, so every handle the SEP holds is dead.
+* All nine roots are re-derived. The six `HW_ROOT` and `SW_ROOT` values always
+  come back different, because they bind both `LC_STATE` and `DEMOTION` and this
+  reset fires only when one of the two has changed; the three `ID_ROOT` values
+  bind neither and reproduce unchanged.
+
+One exception to the ordinary warm-reset rules are specific to this trigger:
+
+* *`sram_fw_size` is cleared.* Unlike an ordinary warm reset, a device-state
+  reset discards the record of any loaded mutable firmware image, so
+  `CMD_SRAM_EXEC` returns _invalid_arg_ afterwards
+  (<<km-cmd-sram-exec>>). Re-entering mutable firmware requires a fresh
+  `CMD_SRAM_LOAD_EXEC`. A state change therefore returns the device to
+  ROM control and requires a mutable software handover re-run in full under the new state.
+
+`OTP_READ_LOCK_COLD` survives, as it does across any warm reset
+(<<km-cmd-otp-read-lock-cold>>), so a host that has already gated fuses off
+keeps that posture through the transition. The handover-inhibit flag from
+`CMD_EXEC_ROM` clears, as it does on any reset.
+
+*What the SEP sees.* The KM resets underneath the SEP without warning and
+without a response to whatever command was in flight. The SEP observes an
+unsolicited `RESP_KM_READY` (<<km-resp-km-ready>>) arriving with no command
+outstanding, and must treat it as it would any KM restart: every handle it holds
+is stale, every sideloaded key is gone, and any non-ephemeral key it still needs
+must be re-derived by reissuing the original request. Because the sequence
+numbers reset with the KM, a `RESP_KM_READY` that arrives unexpectedly is also
+the SEP's signal to resynchronize its own counters.
+
+NOTE: This supersedes the registry-walk revocation described in the architecture
+specification, which had ROM detect a bound-field change and revoke the affected
+keys in software. A reset is both simpler and strictly stronger: it removes every
+key rather than the subset firmware believes is affected, and it re-anchors the
+roots, which a registry walk could not do.
 
 [[km-kpv-registry]]
 ====== The KPV and the key registry
@@ -745,7 +832,10 @@ If a firmware image is present (`sram_fw_size > 0`), the KM sends a
 `RESP_CMD` success response directly and then never returns.
 
 If no firmware has been loaded (`sram_fw_size == 0`), the command returns
-_invalid_arg_ via the normal dispatcher.
+_invalid_arg_ via the normal dispatcher. Note that a device-state change clears
+`sram_fw_size` in addition to resetting the KM, so this command also fails after
+an `LC_STATE` or `DEMOTION` transition even though an image was loaded earlier in
+the power cycle (<<km-device-state-reset>>).
 
 If the handover-disabled flag is set, the command returns _failure_.
 
@@ -1691,7 +1781,7 @@ reserved and must be zero; a non-zero reserved field returns
 |===
 | Bit | Field | Description
 | `0` | `LC` | Lock `OTP_LIFE_CYCLE` reads.
-| `1` | `D` | Lock `OTP_DEMOTION_STATE` reads.
+| `1` | `D` | Lock `OTP_DEMOTION_STATE` reads. Despite the register name this field is not fuse-backed; see the note below.
 | `2` | `cU` | Lock `OTP_CHIPLET_UID_VAL/CPL` reads.
 | `3` | `SiU` | Lock `OTP_SIP_UID_VAL/CPL` reads.
 | `4` | `SU` | Lock `OTP_SYS_UID_VAL/CPL` reads.
@@ -1700,6 +1790,19 @@ reserved and must be zero; a non-zero reserved field returns
 | `7` | `SiI` | Lock `OTP_SEP_SIP_ID_VAL/CPL` reads.
 | `8` | `SsI` | Lock `OTP_SEP_SYS_ID_VAL/CPL` reads.
 |===
+
+The three identity fields (`cI`, `SiI`, `SsI`) hold per-owner public values, so
+locking them conceals nothing. They carry locks so that the OTP block stays
+regular and so that firmware has the same means to gate their re-read as it has
+for the secret UID fields.
+
+NOTE: `D` is the one lock bit that does not gate a fuse. `OTP_DEMOTION_STATE` is
+named for the KMCSR readout block it sits in, not for its source: the demotion
+state is a live signal hardwired from the system Life Cycle Controller and
+managed by the SEP host CPU, and it can change at any point in a power cycle.
+Locking `D` therefore gates the KM's *view* of a live input rather than the
+readback of a programmed field. Every other bit in this register does gate a
+fuse-backed field, `LC` included.
 
 *Response*
 
@@ -1723,15 +1826,240 @@ The KM's consumers of a locked field fail closed rather than reading zeroes:
   are registers, not fuse reads); at the next warm boot into the KM ROM that
   owner's roots fail to derive, per-owner — the other owners keep working
   (see <<km-roots>>).
-* Locking `LC` fails all six HW/SW root derivations at the next warm boot;
-  the identity roots are LC-independent by design and survive. Locking `LC`
-  or `D` also makes every live host KDF operation return _failure_ with
-  `KM_ERR_LOCKED`. The device-state sample is a PRF binding, and deriving
-  against a zeroed sample would silently mint keys under a wrong binding. 
-  Locking these values disable the ability of the KM to mint new keys
+* Locking `LC` or `D` fails all six HW/SW root derivations at the next warm
+  boot, since those roots bind both fields (<<km-roots>>); the identity roots
+  bind neither by design and survive. Locking `LC` or `D` also makes every live
+  host KDF operation return _failure_ with `KM_ERR_LOCKED`. The device-state
+  sample is a PRF binding, and deriving against a zeroed sample would silently
+  mint keys under a wrong binding. Locking either field therefore disables the
+  KM's ability to mint new keys.
 * Locking an identity field (`cI`, `SiI`, `SsI`) conceals nothing — the values
   are public — but it does stop that owner's `ID_ROOT` from being re-derived at
   the next warm boot, in the same per-owner way as locking their UID.
+
+.RESP_CMD _Success_ Return Argument
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+26+^| `RESERVED`
+^| `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
+|===
+
+[[km-cmd-key-info]]
+====== 0x30 - CMD_KEY_INFO
+
+*Description*
+
+Reads the public metadata of one key. Returns nothing secret: no key material,
+no KPV slot number, and no parent reference.
+
+*Payload*
+
+The 64-bit key handle, least-significant word first.
+
+.Command Payload
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `KEY_HANDLE_LO[31:0]`
+32+^| `KEY_HANDLE_HI[31:0]`
+|===
+
+*Response*
+
+A handle that does not resolve returns _failure_ with `KM_ERR_INVALID_HANDLE`.
+Otherwise _success_, with the 24-byte public metadata block in six
+return-argument words: the ABI structure `km_key_info_t`, carrying the handle,
+key class, key type, owner, domain, logical key length, purpose, capabilities
+and provenance flags.
+
+[[km-cmd-key-list]]
+====== 0x31 - CMD_KEY_LIST
+
+*Description*
+
+Lists the handles of all live keys.
+
+*Payload*
+
+The caller's capacity, in handles.
+
+.Command Payload
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `MAX_HANDLES[31:0]`
+|===
+
+*Response*
+
+_success_, with a count word followed by that many 64-bit handles, each
+least-significant word first. The count is clamped to `MAX_HANDLES`; a caller
+that receives exactly `MAX_HANDLES` must assume the list was truncated and
+retry with more capacity.
+
+NOTE: This command enumerates every live key, not only those belonging to the
+requesting agent — the KM does not filter by requester (<<km-handles>>).
+
+[[km-cmd-invoke-id-key]]
+====== 0x32 - CMD_INVOKE_ID_KEY
+
+*Description*
+
+Mints a transient identity key for one owner from that owner's identity root.
+The result is a P-256 private-key seed streamed to the OTBN private-key port; it
+is never KPV-resident and is given no handle.
+
+Identity keys bind no device state, so they remain valid across lifecycle
+transitions; see <<km-roots>> for why, and for what to use instead when a
+credential must prove device *state* rather than device *identity*.
+
+This command is effectively ROM-mode only. The handover to mutable firmware
+erases all three identity roots (<<km-handover-domain-split>>), so every call
+afterwards returns `KM_ERR_ROOT_CLEARED`. Unlike `CMD_BL_DECRYPT_KEY` the
+restriction is not a mode check in the handler — it falls out of the root being
+gone, and it holds equally for an owner whose root `CMD_CLEAR_ID_ROOT` had
+already cleared.
+
+*Payload*
+
+The owner, the USER_SEED length in bytes, and the 64-byte USER_SEED field.
+
+.Command Payload
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+8+^| `RESERVED`
+16+^| `SEED_LEN[23:8]`
+8+^| `OWNER[7:0]`
+32+^| `USER_SEED_WORD[0][31:0]`
+32+^| `...`
+32+^| `USER_SEED_WORD[15][31:0]`
+|===
+
+A `SEED_LEN` greater than 64 is REJECTED with _invalid_arg_ rather than
+truncated: truncation would alias two distinct seeds that share a 64-byte prefix
+to the same identity key. Callers should send the full 64-byte field, because a
+shorter seed and its zero-padded extension derive the same key.
+
+*Response*
+
+An invalid owner or a revoked identity root returns _failure_ with the
+`KM_ERR_*` status. Otherwise _success_, with the length in bytes of the material
+delivered to the engine port.
+
+[[km-cmd-clear-id-root]]
+====== 0x33 - CMD_CLEAR_ID_ROOT
+
+*Description*
+
+Revokes one owner's identity root, so no further identity keys can be minted for
+that owner until the next ROM boot. Per-owner revocation of the whole
+identity-minting capability; other owners are unaffected.
+
+*Payload*
+
+.Command Payload
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+24+^| `RESERVED`
+8+^| `OWNER[7:0]`
+|===
+
+*Response*
+
+_invalid_arg_ for an owner outside the valid range, otherwise _success_ with no
+return argument.
+
+[[km-cmd-bl-decrypt-key]]
+====== 0x34 - CMD_BL_DECRYPT_KEY
+
+*Description*
+
+Derives the first-stage bootloader decryption key from the fused CLASS_KEY and a
+caller-supplied context, and streams it to the AES engine key port. The decryption
+key is never KPV-resident and has no handle.
+
+The derivation is deterministic and binds no device state, so an off-chip party
+holding CLASS_KEY derives the same key. That is what makes class-wide image
+encryption work. Its confidentiality therefore rests entirely on host ROM or bootloader 
+gating the CLASS_KEY fuse off after first-stage decrypt, not on device-state binding.
+
+Two properties follow and are normative:
+
+. This command MUST be ROM mode only. Running this commnad from mutable firmware creates an
+  unlimited chosen-context oracle on a class-wide pre-shared secret.
+. The fuse value read MUST check whether CLASS_KEY is still readable based on KM managed lock bit. 
+  This command MUST return _failure_ once it is gated off. A gated fuse that reads as
+  zeroes would otherwise derive a fully public key and report _success_.
+. CLASS_KEY fuse access must be read locked when exiting ROM mode. 
+
+*Payload*
+
+The 64-byte context (typically the image-header nonce, zero-padded).
+
+.Command Payload
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `CONTEXT_WORD[0][31:0]`
+32+^| `...`
+32+^| `CONTEXT_WORD[15][31:0]`
+|===
+
+*Response*
+
+_success_ with no return argument once the key has been streamed to the AES key
+port, or _failure_ with the `KM_ERR_*` status.
+
+[[km-cmd-assign-key-owner]]
+====== 0x35 - CMD_ASSIGN_KEY_OWNER
+
+*Description*
+
+Transfers ownership of an existing key to `NEW_OWNER`. The owner is the only
+mutable piece of key metadata: class, type, domain, capabilities, purpose and
+the provenance flags are untouched, the handle does not change, and the key
+material is not re-derived. Re-owning names a different agent for the
+_existing_ key — it does not produce that owner's key, because the creation
+owner remains bound inside the original derivation.
+
+Every successful assignment — including one that names the current owner, and
+a later transfer back — sets the sticky `OWNER_XFERRED` provenance flag,
+visible through `CMD_KEY_INFO`. The flag is never cleared: a key that has
+ever changed hands is permanently distinguishable from one that has not.
+
+*Payload*
+
+The 64-bit handle of the key, least-significant word first, followed by the
+new owner.
+
+.Command Payload
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `KEY_HANDLE_LO[31:0]`
+32+^| `KEY_HANDLE_HI[31:0]`
+24+^| `RESERVED`
+8+^| `NEW_OWNER[7:0]`
+|===
+
+*Response*
+
+If the reserved bits `[31:8]` of the owner word are set, or `NEW_OWNER` is
+`0x00` or above `0x03`, this command has a `RESP_CMD` response with a return
+code of _invalid_arg_ and a return argument pointing to the index of the
+invalid payload word (`2`).
+
+If the handle does not resolve to a live key, this command has a `RESP_CMD`
+response with a return code of _failure_ and a single return argument carrying
+`KM_ERR_INVALID_HANDLE` (the same non-distinguishing rationale as
+`CMD_KEY_REVOKE`).
+
+If the request is granted, this command has a `RESP_CMD` response with a
+return code of _success_ and the (unchanged) handle echoed in two
+return-argument words.
 
 .RESP_CMD _Success_ Return Argument
 [cols="32*^",options="header"]
@@ -2909,6 +3237,10 @@ CPU execution (jump to address 0).
 .. Shred the AES key registers.
 . Initialize the OTBN engine key interface.
 .. Shred the OTBN key registers.
+. Initialize the Adams Bridge engine key interface.
+.. Shred the four Adams Bridge seed sideload interfaces (ML-DSA seed, ML-KEM
+seed D, ML-KEM seed Z, ML-KEM message).
+.. Zeroize the Adams Bridge ML-KEM shared key.
 . Initialize the key registry (*Reset Registry*, <<km-firmware-key-registry>>).
 This runs on every boot, warm or cold, and reinitializes the registry in place
 in the `rom_persist` region (<<km-registry-residency>>). Any registry state left
@@ -2926,6 +3258,13 @@ create a key failing for the rest of the boot.
 . Derive and seal the roots (<<km-roots>>).
 .. Run the KDF known-answer test, failing closed if it does not pass. No real key
 material may be derived before this test has passed.
+.. Sample `LC_STATE` and `DEMOTION` once, and mix that sample into the
+`HW_ROOT` and `SW_ROOT` derivations only. `ID_ROOT` binds no device state
+(<<km-roots>>). A read-locked `LC` or `D` field fails the six device-state root
+derivations rather than deriving against zeroes
+(<<km-cmd-otp-read-lock-cold>>); the sample needs no revalidation afterwards,
+because a change to either field resets the KM and re-enters this sequence
+(<<km-device-state-reset>>).
 .. For each owner, derive that owner's `HW_ROOT`, `SW_ROOT` and `ID_ROOT` from
 the owner's UID fuse material and write each into its reserved slot. Derivation
 is per-owner fail-closed: one owner's fuses being unreadable leaves the other
@@ -3190,6 +3529,25 @@ execution flow:
 . Invoke the OTP change hook to take any firmware-defined action. The ROM's
 hook does nothing; mutable firmware may replace it with its own handler.
 . Clear (write-1-to-clear) the change status bits that were handled.
+
+The boot sequence does not enable this source, so the handler is dormant in ROM;
+leaving an informational interrupt masked keeps it from adding ISR entries during
+boot. Firmware that overrides the hook enables the source itself.
+
+`LC_STATE` and `DEMOTION` are among the monitored fields and reach this handler
+like any other. `DEMOTION` is the field most likely to change while the KM is
+running, since it is not fuse-backed at all: it is a live Life Cycle Controller
+signal driven by the SEP host CPU (<<km-cmd-otp-read-lock-cold>>). For both
+fields, however, the handler is *informational only* — the binding action is the
+hardware reset described in <<km-device-state-reset>>, which runs independently
+of it.
+
+Firmware must therefore not implement device-state revocation in this hook, and
+must not rely on the hook completing. The reset is asynchronous to it: the
+handler may run to completion, may be cut short at any instruction, or may not
+be entered at all, depending on when the trigger fires relative to interrupt
+delivery. Nothing that must happen before a state change takes effect can be
+placed here, because there is no ordering guarantee to place it behind.
 
 [[km-irq-mailbox]]
 ====== Mailbox
@@ -3667,7 +4025,7 @@ output-length fields are big-endian.
 | `8-9` | `purpose` | Public purpose metadata.
 | `10-11` | `out_bits` | Requested derived-key size in bits, recorded in the input.
 | `12-15` | `caps` | Capabilities requested for the derived key.
-| `16-19` | `device_state` | Live life-cycle and demotion state sampled by the KM.
+| `16-19` | `device_state` | Life-cycle and demotion state sampled by the KM: live samples for a host KDF operation
 | `20-31` | `rsvd` | Reserved; all bytes are zero.
 | `32-63` | `label` | Fixed operation label providing domain separation.
 | `64-127` | `context` | Caller- or ROM-provided derivation context.
