@@ -105,7 +105,7 @@ module entropy_source
     logic [31:0] fifo_wdata, fifo_rdata;
     logic [6:0]  fifo_level;
     /* verilator lint_off UNUSEDSIGNAL */
-    logic [5:0]  fifo_wptr, fifo_rptr;  // bit [5] unused — only [4:0] used in registers
+    logic [5:0]  fifo_wptr, fifo_rptr;
     /* verilator lint_on UNUSEDSIGNAL */
     logic        fifo_error;
     logic        fifo_overflow, fifo_underflow;
@@ -161,12 +161,13 @@ module entropy_source
 
     logic health_test_clr;
     logic alert_cntrs_clr;
+    logic module_en_q;
+    logic module_en_pulse;
     logic alert_cntr_clr_ok;
 
     logic repcnt_fail_pulse;
     logic apt_hi_fail_pulse,    apt_lo_fail_pulse;
     logic markov_hi_fail_pulse, markov_lo_fail_pulse;
-    logic any_fail_pulse;
 
     logic [31:0] repcnt_total_fails;
     logic [31:0] apt_hi_total_fails,    apt_lo_total_fails;
@@ -241,6 +242,7 @@ module entropy_source
     logic                    noise_obs_sample_stb;
     logic [31:0]             noise_obs_shift_q,  noise_obs_shift_d;
     logic [4:0]              noise_obs_bit_cnt_q, noise_obs_bit_cnt_d;
+    logic [3:0]              noise_obs_lane_sel_eff;
     logic [3:0]              noise_obs_lane_sel_q;
     logic                    noise_obs_word_push;
 
@@ -490,8 +492,8 @@ module entropy_source
 
     // BIW_OBS_STATUS feeds (mirrors FIFO_STATUS layout).
     assign reg_in.BIW_OBS_STATUS.LEVEL.next = biw_obs_level;
-    assign reg_in.BIW_OBS_STATUS.WPTR.next  = biw_obs_wptr[4:0];
-    assign reg_in.BIW_OBS_STATUS.RPTR.next  = biw_obs_rptr[4:0];
+    assign reg_in.BIW_OBS_STATUS.WPTR.next  = biw_obs_wptr;
+    assign reg_in.BIW_OBS_STATUS.RPTR.next  = biw_obs_rptr;
 
     // External auto-advancing read port (mirror of the FIFO_RDATA pattern):
     // reading BIW_OBS_RDATA pops one word. rd_ack is guarded with rst_ni so a
@@ -517,15 +519,16 @@ module entropy_source
     // full FIFO simply drops the word (never stalls capture or the datapath).
     // ----------------------------------------------------------------------
 
-    // Lane mux. LANE_SEL is 4 bits (0-15) but NRINGS==12, so zero-pad the
-    // monitor vectors to 16 entries before indexing: out-of-range selects
-    // (12-15) then read a constant 0 (no lane -> no sample strobe -> the raw
-    // observe FIFO simply never fills), and the index can never exceed the
-    // array bound (no SELRANGE lint warning).
+    // Lane mux. LANE_SEL is 4 bits (0-15) but NRINGS==12. Clamp out-of-range
+    // selects (>=12) to lane 0, matching the RDL contract. Zero-padding to 16
+    // entries keeps the index within array bounds (no SELRANGE lint warning).
+    assign noise_obs_lane_sel_eff =
+        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value >= 4'(NRINGS))
+        ? 4'd0 : reg_out.NOISE_OBS_CTRL.LANE_SEL.value;
     assign noise_bit_monitor_ext  = {{(16 - NRINGS){1'b0}}, noise_bit_monitor};
     assign sample_clk_monitor_ext = {{(16 - NRINGS){1'b0}}, sample_clk_monitor};
-    assign noise_obs_raw_bit  = noise_bit_monitor_ext [reg_out.NOISE_OBS_CTRL.LANE_SEL.value];
-    assign noise_obs_raw_sclk = sample_clk_monitor_ext[reg_out.NOISE_OBS_CTRL.LANE_SEL.value];
+    assign noise_obs_raw_bit  = noise_bit_monitor_ext [noise_obs_lane_sel_eff];
+    assign noise_obs_raw_sclk = sample_clk_monitor_ext[noise_obs_lane_sel_eff];
 
     // Rising-edge strobe on the selected lane's sample clock: a fresh raw bit
     // is available once per rising edge of the (async, divided) sample clock.
@@ -549,7 +552,7 @@ module entropy_source
         noise_obs_bit_cnt_d = noise_obs_bit_cnt_q;
 
         if (!reg_out.NOISE_OBS_CTRL.RAW_ENABLE.value ||
-            (reg_out.NOISE_OBS_CTRL.LANE_SEL.value != noise_obs_lane_sel_q)) begin
+            (noise_obs_lane_sel_eff != noise_obs_lane_sel_q)) begin
             // Disabled or lane switched: restart the packer so a word never
             // mixes samples from two lanes.
             noise_obs_shift_d   = 32'h0;
@@ -576,7 +579,7 @@ module entropy_source
             noise_obs_sclk_sync <= {noise_obs_sclk_sync[0], noise_obs_sclk_meta};
             noise_obs_shift_q    <= noise_obs_shift_d;
             noise_obs_bit_cnt_q  <= noise_obs_bit_cnt_d;
-            noise_obs_lane_sel_q <= reg_out.NOISE_OBS_CTRL.LANE_SEL.value;
+            noise_obs_lane_sel_q <= noise_obs_lane_sel_eff;
         end
     end
 
@@ -590,7 +593,7 @@ module entropy_source
     // software force a discard on demand. The packer already restarts on the
     // same lane-change edge (see above), so packer and FIFO stay consistent.
     assign noise_obs_flush =
-        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value != noise_obs_lane_sel_q)
+        (noise_obs_lane_sel_eff != noise_obs_lane_sel_q)
         || reg_out.NOISE_OBS_CTRL.FLUSH.value;
 
     entropy_fifo #(
@@ -616,8 +619,8 @@ module entropy_source
 
     // NOISE_OBS_STATUS feeds (mirrors FIFO_STATUS layout).
     assign reg_in.NOISE_OBS_STATUS.LEVEL.next = noise_obs_level;
-    assign reg_in.NOISE_OBS_STATUS.WPTR.next  = noise_obs_wptr[4:0];
-    assign reg_in.NOISE_OBS_STATUS.RPTR.next  = noise_obs_rptr[4:0];
+    assign reg_in.NOISE_OBS_STATUS.WPTR.next  = noise_obs_wptr;
+    assign reg_in.NOISE_OBS_STATUS.RPTR.next  = noise_obs_rptr;
 
     // External auto-advancing read port (mirror of the FIFO_RDATA pattern):
     // reading NOISE_OBS_RDATA pops one word. rd_ack is guarded with rst_ni so a
@@ -630,8 +633,9 @@ module entropy_source
     // Sequential
     ///////////////
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
+    // rst_n (= rst_ni & ~CTRL.RESET) so a soft reset also reloads the cadence.
+    always_ff @(posedge clk_i or negedge rst_n) begin
+        if (!rst_n) begin
             downsample_count <= reg_out.CTRL.DOWNSAMPLE_RATE.value;
         end else if (entropy_stream_valid_gated) begin
             if (downsample_count == 10'd0) begin
@@ -925,8 +929,8 @@ module entropy_source
     assign irq_o = reg_out.INTR_STATUS.intr;
 
     assign reg_in.FIFO_STATUS.LEVEL.next = fifo_level;
-    assign reg_in.FIFO_STATUS.WPTR.next  = fifo_wptr[4:0];
-    assign reg_in.FIFO_STATUS.RPTR.next  = fifo_rptr[4:0];
+    assign reg_in.FIFO_STATUS.WPTR.next  = fifo_wptr;
+    assign reg_in.FIFO_STATUS.RPTR.next  = fifo_rptr;
 
     assign reg_in.HEALTH_TEST_STATUS.HEALTH_STATUS.next = health_status;
 
@@ -981,13 +985,17 @@ module entropy_source
     assign markov_hi_fail_pulse = health_status[4];
     assign markov_lo_fail_pulse = health_status[5];
 
-    assign any_fail_pulse = repcnt_fail_pulse || apt_hi_fail_pulse || apt_lo_fail_pulse ||
-                            markov_hi_fail_pulse || markov_lo_fail_pulse;
+    // MODULE_ENABLE rising-edge detect (OpenTitan module_en_pulse).
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) module_en_q <= 1'b0;
+        else         module_en_q <= reg_out.CTRL.MODULE_ENABLE.value;
+    end
+    assign module_en_pulse = reg_out.CTRL.MODULE_ENABLE.value && !module_en_q;
 
-    assign health_test_clr  = reg_out.CTRL.RESET.value;
+    assign health_test_clr  = module_en_pulse || reg_out.CTRL.RESET.value;
     assign alert_cntr_clr_ok = alert_cntr_clr_ok_main_sm;
     assign alert_cntrs_clr  = health_test_clr ||
-                               (window_wrap_pulse && alert_cntr_clr_ok && !any_fail_pulse);
+                               (window_wrap_pulse && alert_cntr_clr_ok && !ht_fail_pulse);
 
     assign es_cntr_err = repcnt_fails_cntr_err    || apt_hi_fails_cntr_err  ||
                          apt_lo_fails_cntr_err     || markov_hi_fails_cntr_err ||
@@ -996,16 +1004,18 @@ module entropy_source
                          apt_lo_alert_cntr_err     || markov_hi_alert_cntr_err ||
                          markov_lo_alert_cntr_err;
 
-    // per-window sticky health-test-fail latch for the boot gate.
+    // per-window sticky health-test-fail latch.
     //
-    // ht_fail_pulse samples health only at window wrap. APT/Markov are
-    // window-aligned, but the RCT is *continuous* — a mid-window failure that
-    // is not coincident with the wrap cycle could otherwise slip the boot gate
-    // and let a stuck source pass startup. This sticky latch records any
-    // |health_status assertion occurring during the window and holds it until
-    // the wrap cycle samples it, then clears for the next window. The sampled
-    // sticky value is OR'd into ht_fail_pulse so any mid-window failure forces
-    // a boot-window restart in main_sm.
+    // ht_fail_pulse is the canonical "one assertion per failing window" signal:
+    // it drives the boot gate, the ANY_FAIL_COUNT failing-window counter, and
+    // the clean-window alert-counter clear. It samples health only at window
+    // wrap. APT/Markov are window-aligned, but the RCT is *continuous* — a
+    // mid-window failure that is not coincident with the wrap cycle would
+    // otherwise be missed (slipping the boot gate, or under-counting failing
+    // windows). This sticky latch records any |health_status assertion
+    // occurring during the window and holds it until the wrap cycle samples it,
+    // then clears for the next window. The sampled sticky value is OR'd into
+    // ht_fail_pulse so any mid-window failure counts as one failing window.
     always_ff @(posedge clk_i or negedge rst_n) begin
         if (!rst_n) begin
             ht_fail_sticky_q <= 1'b0;
@@ -1033,16 +1043,22 @@ module entropy_source
 
     // auto-detune fired.
     //
-    // AUTOTUNE_FAIL flags that an automatic per-lane retune ACTED, not that the
-    // autotune logic malfunctioned. When CTRL.AUTOTUNE_ENABLE=1, a health-test
-    // failure triggers a self-heal detune; that detune silently changes the
-    // noise-source geometry, which is a certification-relevant event. Pulsing
-    // autotune_fail on the triggering HT failure makes the otherwise-silent
-    // self-heal observable via INTR_STATUS.AUTOTUNE_FAIL. In the certified
-    // config AUTOTUNE_ENABLE is swwel-locked to 0, so this path stays idle and
-    // the geometry cannot self-adjust. autotune_fail feeds only the interrupt;
-    // any_fail_count and the ALERT_THRESHOLD persistent-halt path are separate.
-    assign autotune_fail = reg_out.CTRL.AUTOTUNE_ENABLE.value && ht_fail_pulse;
+    // AUTOTUNE_FAIL flags that an automatic per-lane retune acted. Each lane's
+    // tune FSM is driven by that lane's own health-test status, so the report is
+    // the OR of the twelve per-lane HT-fail signals gated by AUTOTUNE_ENABLE.
+    // When CTRL.AUTOTUNE_ENABLE=1 a per-lane HT failure triggers a self-heal
+    // detune that changes the noise-source geometry, a certification-relevant
+    // event surfaced via INTR_STATUS.AUTOTUNE_FAIL. In the certified config
+    // AUTOTUNE_ENABLE is swwel-locked to 0, so this path stays idle.
+    // autotune_fail feeds only the interrupt; the ALERT_THRESHOLD
+    // persistent-halt path is separate.
+    assign autotune_fail = reg_out.CTRL.AUTOTUNE_ENABLE.value &&
+                           |{generator_0_test_status,  generator_1_test_status,
+                             generator_2_test_status,  generator_3_test_status,
+                             generator_4_test_status,  generator_5_test_status,
+                             generator_6_test_status,  generator_7_test_status,
+                             generator_8_test_status,  generator_9_test_status,
+                             generator_10_test_status, generator_11_test_status};
 
     entropy_src_main_sm u_main_sm (
         .clk_i               (clk_i),
@@ -1078,6 +1094,11 @@ module entropy_source
     assign reg_in.MAIN_SM_STATUS.BOOT_PHASE_DONE.next   = boot_phase_done;
     assign reg_in.MAIN_SM_STATUS.ALERT_CNTR_CLR_OK.next = alert_cntr_clr_ok_main_sm;
 
+    // The sticky ALERT/ERR bits reset on rst_ni only, but the FSM that sets
+    // them also clears on CTRL.RESET; clear the status here so it tracks the FSM.
+    assign reg_in.MAIN_SM_STATUS.ALERT.hwclr = reg_out.CTRL.RESET.value;
+    assign reg_in.MAIN_SM_STATUS.ERR.hwclr   = reg_out.CTRL.RESET.value;
+
     assign ht_watermark_num_reg_if =
         watermark_test_e'(reg_out.HT_WATERMARK_NUM.WATERMARK_NUM.value);
 
@@ -1092,9 +1113,9 @@ module entropy_source
         endcase
     end
 
-    // Register the resolved value
-    always_ff @(posedge clk_i or negedge rst_n) begin
-        if (!rst_n) begin
+    // Register the resolved value (rst_ni: selector persists across CTRL.RESET).
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
             ht_watermark_num_q <= REPCNT_HI;
         end else begin
             ht_watermark_num_q <= ht_watermark_num_d;
@@ -1141,9 +1162,6 @@ module entropy_source
         endcase
     end
 
-    // Prevent watermark register updates while the module disabled. Upon enabling, we then clear
-    // the watermark register before we start recording.
-    // |ENABLE: reduce the 8-bit ENABLE field to a 1-bit enable (nonzero = enabled)
     assign ht_watermark_event = ht_watermark_event_pre && (|reg_out.HEALTH_TEST_CTRL.ENABLE.value);
 
     assign repcnt_event_cnt    = ctr_repetition;
@@ -1157,7 +1175,7 @@ module entropy_source
         .ResVal   (16'h0)
     ) u_entropy_src_ht_watermark_reg (
         .clk_i    (clk_i),
-        .rst_ni   (rst_n),
+        .rst_ni   (rst_ni),
         .high_i   (ht_watermark_high),
         .clear_i  (health_test_clr),
         .oneway_i (1'b1),
@@ -1232,7 +1250,7 @@ module entropy_source
         .clk_i   (clk_i),
         .rst_ni  (rst_n),
         .clear_i (alert_cntrs_clr),
-        .event_i (any_fail_pulse),
+        .event_i (ht_fail_pulse),
         .step_i  (16'd1),
         .value_o (any_fail_count),
         .err_o   (any_fails_cntr_err)

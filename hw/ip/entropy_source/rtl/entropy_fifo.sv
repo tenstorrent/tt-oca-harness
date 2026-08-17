@@ -148,7 +148,7 @@ module entropy_fifo #(
     assign read_data             = read_entry[31:0];
     assign stored_parity         = read_entry[35:32];
     assign expected_parity       = calc_word_parity(read_data);
-    assign parity_error_detected = expected_parity != stored_parity;
+    assign parity_error_detected = (expected_parity != stored_parity) & ~empty_prim;
 
     ///////////
     // Output
@@ -156,7 +156,7 @@ module entropy_fifo #(
 
     assign parity_error_o   = parity_error_detected;
     assign pointer_error_o  = counter_err;
-    assign rdata_o          = read_data;
+    assign rdata_o          = read_data & {32{~empty_prim}};
     assign wptr_o           = wptr_prim;
     assign rptr_o           = rptr_prim;
     assign level_o          = depth_prim;
