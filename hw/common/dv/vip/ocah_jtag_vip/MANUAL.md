@@ -186,6 +186,43 @@ Sequence checks are pin-level (driven TDI/TMS vs captured TDO plus
 monitor-reconstructed scan shapes). Checks that need a DUT-side TAP-state
 observable stay in DUT-level sequences that can sample it.
 
+## Slave Side (Reactive TAP Device)
+
+When the DUT is the JTAG **host**, instantiate the slave side: a behavioral
+TAP device that responds on TDO. Configure its identity and register map,
+start it, and judge the host's traffic through the slave sequence API:
+
+```python
+from ocah_jtag_vip import (
+    OcahJtagSlaveAgent, OcahJtagSlaveConfig, OcahJtagSlaveSequence,
+)
+
+config = OcahJtagSlaveConfig(
+    name="stap0", idcode=0x1B34_C0D1, ir_width=5,
+    registers={
+        "IDCODE": (32, 0x01),
+        "CTRL":   (16, 0x02, True),   # writable: latches on Update-DR
+        "STATUS": (8,  0x03),         # read-only: presents backdoor value
+    },
+)
+agent = OcahJtagSlaveAgent(dut.stap0_if, config=config)
+await agent.start()
+
+seq = OcahJtagSlaveSequence(agent.responder, agent.checker)
+seq.set_register("STATUS", 0xA5)      # value the host will read
+# ... DUT host traffic runs ...
+seq.check_last_update("CTRL", 0xBEEF) # CHK-SLAVE-DR-UPDATE evidence
+seq.check_update_count(1, reg_name="CTRL")
+seq.finalize()
+```
+
+Behavior implemented from the public IEEE Std 1149.1 clause descriptions:
+Test-Logic-Reset selects IDCODE (BYPASS when none), IR capture presents `01`
+in the LSBs, unknown instructions behave as BYPASS, BYPASS delays TDI to TDO
+by one TCK, TDO changes on the falling edge with `tdo_oen` asserted only
+while shifting. Registers are limited to 64 bits. The pure-logic engine is
+validated standalone by `examples/example_slave_selftest.py`.
+
 ## TAP Reference Model And Named TAP Checks
 
 `OcahJtagTapRefModel` is a pure-Python IEEE 1149.1 TAP controller model with

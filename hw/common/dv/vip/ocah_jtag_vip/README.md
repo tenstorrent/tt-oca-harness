@@ -13,6 +13,7 @@ testbenches. Tests import OCAH classes and plain dataclasses; backend
 | `OcahJtagMasterDriver` | `cocotbext-jtag` `JTAGBus` plus OCAH raw TAP stepping/scanning |
 | `OcahJtagDevice` | Plain wrapper convertible to `cocotbext-jtag` `JTAGDevice` |
 | `OcahJtagMasterMonitor` | OCAH passive sampler that emits `OcahJtagScanItem` |
+| `OcahJtagSlaveDriver` | Pure OCAH reactive TAP device (no backend dependency) |
 | `OcahJtagChecker` | OCAH item-level checker |
 
 `cocotbext-jtag` is pinned in `pyproject.toml` as `>=0.4.0,<0.5`. Installed
@@ -102,9 +103,15 @@ ocah_jtag_vip/
   cocotb/ocah_jtag_checker.py   - item-level checker with named TAP evidence
   cocotb/ocah_jtag_ref_model.py - pure-Python IEEE 1149.1 TAP reference model
   cocotb/ocah_jtag_master_sequence.py  - checked scenario operations (sequence API)
+  cocotb/ocah_jtag_slave_agent.py      - slave (device-side) agent bundle
+  cocotb/ocah_jtag_slave_config.py     - slave device configuration
+  cocotb/ocah_jtag_slave_driver.py     - reactive TAP device engine + pin pump
+  cocotb/ocah_jtag_slave_monitor.py    - slave-side passive monitor
+  cocotb/ocah_jtag_slave_sequence.py   - slave test-facing API (configure/inspect)
   cocotb/ocah_jtag_state.py     - TAP state enum and TMS path helpers
   cocotb/examples/
-    example_idcode.py    - PTAP/STAP/CPU TAP usage examples
+    example_idcode.py         - PTAP/STAP/CPU TAP usage examples
+    example_slave_selftest.py - standalone slave-engine selftest (runnable)
   interface/
     ocah_jtag_if.sv      - shared pin-level IEEE 1149.1 interface (JTAG pins only)
   cov/
@@ -133,6 +140,11 @@ ocah_jtag_vip/
 | `ocah_jtag_master_sequencer` | `uvm_sequencer #(ocah_jtag_item)` |
 | `ocah_jtag_master_agent` | Standard bundle; monitor when `en_monitor`, driver/sequencer when active |
 | `ocah_jtag_master_env` | VIP-level env: what DUTs instantiate and commercial integrations override |
+| `ocah_jtag_slave_config` | Slave device configuration: IDCODE, IR width, register map (`add_reg`), `drive_tdo_oen` |
+| `ocah_jtag_slave_driver` | Reactive TAP device responder: capture/shift/update per IEEE 1149.1, Update-DR latches recorded in `updates` |
+| `ocah_jtag_slave_monitor` | Slave-side passive observer (same `ocah_jtag_event` stream as the master monitor) |
+| `ocah_jtag_slave_sequence` | Slave test-facing API: `set_register`/`get_register`, `check_last_update`, `check_update_count` |
+| `ocah_jtag_slave_agent` | Slave bundle (reactive: no sequencer — the external host supplies all stimulus) |
 
 `sva/ocah_jtag_sva.sv` is the pin-level protocol assertion module (X-hygiene,
 TDO falling-edge timing, and — when a DUT exports its one-hot TAP state —
@@ -160,6 +172,25 @@ the DTP SV-UVM flow's (`--dut dtp_uvm`) `dtp_sanity_test`, which requires
 and `CHK-SCAN-IR-LEN/DR-LEN`, and arms the must-FAIL negative validation via
 `+DTP_JTAG_TAP_CHECKER_NEGATIVE`. SV-UVM collateral compiles on commercial
 simulators (e.g. VCS) and is excluded from Verilator builds.
+
+## Slave Side (Reactive TAP Device)
+
+The slave side is a behavioral IEEE 1149.1 TAP device for testing DUTs that
+act as JTAG **hosts** (e.g. downstream STAP host ports): it tracks the
+controller from TCK/TMS, implements IR capture (LSBs `01`), IDCODE, BYPASS,
+unknown-instruction-as-BYPASS, and a user data-register map, and responds on
+TDO (plus `tdo_oen` while shifting). Writable registers latch on Update-DR
+and every latch is recorded for test inspection; read-only registers present
+backdoor-set values on Capture-DR. Data registers are limited to 64 bits.
+
+The device is reactive — the external host supplies all TCK/TMS/TDI
+stimulus — so the slave agent has no sequencer; tests configure and judge it
+through the `_slave_sequence` API. The protocol engine
+(`OcahJtagSlaveEngine`) holds no simulator handles and is validated
+standalone against the master-side reference model by
+`cocotb/examples/example_slave_selftest.py` (runnable with plain Python).
+No DUT integration consumes the slave side yet; DUT host-port testbenches
+(STAP/BSR loopback replacements) are the intended first consumers.
 
 ## Template Contract (per-protocol VIPs and commercial plug-ins)
 

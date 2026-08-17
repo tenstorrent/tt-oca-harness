@@ -55,6 +55,15 @@ from .ocah_jtag_item import OcahJtagScanItem, OcahJtagStateItem
 from .ocah_jtag_master_monitor import OcahJtagMasterMonitor
 from .ocah_jtag_ref_model import TLR_TMS_ONES, OcahJtagTapRefModel
 from .ocah_jtag_master_sequence import OcahJtagMasterSequence
+from .ocah_jtag_slave_agent import OcahJtagSlaveAgent
+from .ocah_jtag_slave_config import OcahJtagSlaveConfig
+from .ocah_jtag_slave_driver import (
+    OcahJtagSlaveDriver,
+    OcahJtagSlaveEngine,
+    OcahJtagSlaveUpdate,
+)
+from .ocah_jtag_slave_monitor import OcahJtagSlaveMonitor
+from .ocah_jtag_slave_sequence import OcahJtagSlaveSequence
 from .ocah_jtag_state import OcahJtagState, jtag_tms_path, next_jtag_state
 
 # Standard IDCODE instruction — IEEE 1149.1 §12.1.1 mandates opcode 0x01.
@@ -72,6 +81,13 @@ __all__ = [
     "OcahJtagRegister",
     "OcahJtagScanItem",
     "OcahJtagMasterSequence",
+    "OcahJtagSlaveAgent",
+    "OcahJtagSlaveConfig",
+    "OcahJtagSlaveDriver",
+    "OcahJtagSlaveEngine",
+    "OcahJtagSlaveMonitor",
+    "OcahJtagSlaveSequence",
+    "OcahJtagSlaveUpdate",
     "OcahJtagStateItem",
     "OcahJtagState",
     "OcahJtagTapRefModel",
