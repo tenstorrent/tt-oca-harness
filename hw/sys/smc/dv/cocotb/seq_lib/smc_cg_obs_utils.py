@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
@@ -10,7 +12,7 @@ from cocotb.utils import get_sim_time
 from . import smc_addr_map as _addr
 from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 # Authoritative addresses / field masks (generated headers via smc_addr_map).
 CLOCK_GATE_CONTROL = _addr.CLOCK_GATE_CONTROL

@@ -891,9 +891,19 @@ python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>
 ----
 
 `--doctor` checks configured binaries on `PATH`, supported Python packages, and
-the presence count of configured license environment variables. It does not
-check out a license or comprehensively probe Bender, Make, coverage utilities,
-or every firmware toolchain.
+the presence count of configured license environment variables. For a cocotb
+DUT it also imports every testlist module in a child interpreter whose
+`PYTHONPATH` is rebuilt from the DUT config exactly as a run rebuilds it
+(`test_dir`, `python_root`, `python_paths`, and the generated namespace
+bridge), so an import failure reported here reproduces in a real run and an
+import that only works with extra ambient packages does not mask one. The
+probe assigns the simulation-time `cocotb.log` attribute the way cocotb's
+initialization does before importing test modules, so modules that touch it
+at import scope are not false-flagged. The
+shared VIP check imports `ocah_axi_vip` from its in-repo root
+(`hw/common/dv/vip`); no `pip install` of `hw/common/dv` is required. The
+doctor does not check out a license or comprehensively probe Bender, Make,
+coverage utilities, or every firmware toolchain.
 
 === A zero-return-code simulation is UNKNOWN
 

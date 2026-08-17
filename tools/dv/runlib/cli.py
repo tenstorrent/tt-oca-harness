@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import argparse
 import copy
-import importlib
 import importlib.metadata
 import json
 import os
 import secrets
 import shutil
+import subprocess
 import sys
 import textwrap
 import time
@@ -22,6 +22,7 @@ from .compat import UTC
 from .config import (
     CANONICAL_STAGES,
     as_str_list,
+    cocotb_cfg,
     default_target_name,
     flow_stages,
     load_executors,
@@ -49,7 +50,7 @@ from .results import (
     rollup_payload,
     write_result,
 )
-from .stages import item_artifact_dir, run_stage, seed_for_item
+from .stages import cocotb_python_paths, item_artifact_dir, run_stage, seed_for_item
 from .ui import Console
 from .waves import (
     WAVE_DEFAULT,
@@ -656,12 +657,55 @@ def _path_in_pythonpath(path: Path) -> bool:
     return False
 
 
-def _try_import(module_name: str) -> tuple[bool, str]:
+_PROBE_SCRIPT = """\
+import importlib, json, sys
+# cocotb assigns simulation-time attributes before importing test modules
+# (cocotb._init._setup_logging); mirror the one commonly touched at import
+# scope so this bare-interpreter probe matches the run's import context.
+try:
+    import cocotb, logging
+    cocotb.log = logging.getLogger("test")
+except ImportError:
+    pass
+out = {}
+for name in sys.argv[1:]:
     try:
-        importlib.import_module(module_name)
-        return True, "import OK"
-    except Exception as exc:  # noqa: BLE001 - doctor must report actionable import failures.
-        return False, f"{type(exc).__name__}: {exc}"
+        importlib.import_module(name)
+        out[name] = [True, "import OK"]
+    except Exception as exc:
+        out[name] = [False, f"{type(exc).__name__}: {exc}"]
+print(json.dumps(out))
+"""
+
+
+def _probe_imports(python_paths: list[Path], modules: list[str]) -> dict[str, tuple[bool, str]]:
+    """Import each module in a child interpreter whose PYTHONPATH is exactly `python_paths`.
+
+    Run stages rebuild PYTHONPATH for simulator children from the DUT config
+    (:func:`runlib.stages.cocotb_python_paths`) instead of inheriting the launcher's ambient
+    one, so probing through this process's ``sys.path`` reports failures runs never see.
+    """
+    if not modules:
+        return {}
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", _PROBE_SCRIPT, *modules],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {name: (False, f"import probe failed to run: {exc}") for name in modules}
+    try:
+        raw = json.loads(proc.stdout.strip().splitlines()[-1])
+        return {name: (bool(ok), str(detail)) for name, (ok, detail) in raw.items()}
+    except (ValueError, IndexError):
+        detail = (proc.stderr or proc.stdout).strip().splitlines()
+        tail = detail[-1] if detail else f"exit code {proc.returncode}"
+        return {name: (False, f"import probe crashed: {tail}") for name in modules}
 
 
 def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
@@ -683,7 +727,6 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         )
 
     distributions = [
-        ("shared dv package", "ocah-dv"),
         ("cocotb", "cocotb"),
         ("pyuvm", "pyuvm"),
         ("cocotbext-axi", "cocotbext-axi"),
@@ -703,6 +746,16 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             )
         else:
             _print_doctor_row(label, "OK", version)
+
+    # The shared VIP (`ocah-dv`) needs no installed distribution: every run rebuilds
+    # PYTHONPATH from the DUT config, which carries the in-repo VIP root.
+    ocah_dv_version = _dist_version("ocah-dv")
+    _print_doctor_row(
+        "shared dv package",
+        "OK" if ocah_dv_version else "WARN",
+        ocah_dv_version
+        or "distribution `ocah-dv` not installed; runs import the VIP from hw/common/dv/vip",
+    )
 
     namespace_root = root / "build/dv/python"
     if namespace_root.is_dir():
@@ -727,25 +780,41 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             "so its bootstrap exports it",
         )
 
-    ok, detail = _try_import("ocah_axi_vip")
+    # Probe the shared VIP from its in-repo root, the way DUT configs put it on PYTHONPATH.
+    vip_root = root / "hw" / "common" / "dv" / "vip"
+    vip_result = _probe_imports([vip_root, namespace_root], ["ocah_axi_vip"])
+    ok, detail = vip_result["ocah_axi_vip"]
     _print_doctor_row("import ocah_axi_vip", "OK" if ok else "FAIL", detail)
     failed |= not ok
 
     if flow is not None and flow.framework == "cocotb":
-        dut_module = flow.name
-        ok, detail = _try_import(dut_module)
-        _print_doctor_row(f"import {dut_module}", "OK" if ok else "FAIL", detail)
-        failed |= not ok
-
-        env_module = f"{dut_module}.cocotb.env"
+        # Import exactly what a run imports (each testlist `module`, cocotb's MODULE=) with
+        # exactly the PYTHONPATH a run rebuilds, so pass/fail here predicts pass/fail there.
+        run_paths = cocotb_python_paths(root, cocotb_cfg(flow, flow.raw))
         try:
-            env_spec = importlib.util.find_spec(env_module)
-        except ModuleNotFoundError:
-            env_spec = None
-        if env_spec is not None:
-            ok, detail = _try_import(env_module)
-            _print_doctor_row(f"import {env_module}", "OK" if ok else "FAIL", detail)
-            failed |= not ok
+            catalog = load_test_catalog(flow, root)
+        except ConfigError as exc:
+            _print_doctor_row("test modules", "FAIL", f"testlist did not load: {exc}")
+            print()
+            return True
+        modules = sorted({test.module for test in catalog.tests.values()})
+        results = _probe_imports(run_paths, modules)
+        failures = [(name, results[name][1]) for name in modules if not results[name][0]]
+        if not modules:
+            _print_doctor_row("test modules", "WARN", "testlist declares no tests")
+        elif not failures:
+            _print_doctor_row(
+                "test modules", "OK", f"{len(modules)} modules import with the run PYTHONPATH"
+            )
+        else:
+            failed = True
+            _print_doctor_row(
+                "test modules", "FAIL", f"{len(failures)}/{len(modules)} modules failed to import"
+            )
+            for name, why in failures[:5]:
+                _print_doctor_row(f"  {name}", "FAIL", why)
+            if len(failures) > 5:
+                _print_doctor_row("  ...", "FAIL", f"{len(failures) - 5} more (same run PYTHONPATH)")
     elif flow is not None:
         _print_doctor_row(
             "DUT-local import", "SKIP", f"framework `{flow.framework}` has no DUT Python package"
