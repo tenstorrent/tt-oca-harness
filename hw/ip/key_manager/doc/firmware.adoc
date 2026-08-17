@@ -2807,6 +2807,62 @@ The mailbox transport and the key registry are separate blocks, and neither
 silently drives the other: a protocol rejection leaves the KM untouched, and a
 latched KM fault does not stop the transport from framing and replying.
 
+[[km-status-codes]]
+====== KM Status Codes
+
+The return code above and the `KM_ERR_*` status are two different things at two
+different layers, and a client needs both:
+
+* `RETURN_CODE` is the *transport and dispatch* result — a signed 8-bit value in
+  the third payload word, covering framing, sequencing, command decode and
+  argument-shape checks. Its values are the seven above plus _success_.
+* `KM_ERR_*` is the *operation* result — an unsigned 8-bit value carried in
+  `RETURN_ARG[0]` when a command reached its handler and the handler refused.
+  It appears only alongside a `RETURN_CODE` of _failure_ (`-1`).
+
+A well-formed request that names an illegal key type therefore returns
+_failure_ with `KM_ERR_INVALID_TYPE`, while a request whose payload is the wrong
+length never reaches the handler at all and returns _invalid_len_ with no status
+word. The two namespaces are independent and their numeric values do not
+collide by accident — they are never carried in the same field.
+
+The status value occupies bits `[7:0]` of the return-argument word; bits
+`[31:8]` are reserved and read as zero.
+
+.KM Status Codes
+[cols="^10%,<26%,<40%,<24%",options="header"]
+|===
+| Value | Name | Meaning | Returned by
+| `0x00` | `KM_OK` | Success. Never appears in a return argument — success is signalled by `RETURN_CODE` = 0. Listed for completeness of the enumeration. | —
+| `0x01` | `KM_ERR_NONZERO_RESERVED` | A KM-written region of the KDF request block was not transmitted as zero (<<km-kdf-request-block>>). | `KEY_GENERATE`
+| `0x02` | `KM_ERR_BAD_VERSION` | Request ABI version is not `0x0001`. | `KEY_GENERATE`
+| `0x03` | `KM_ERR_INVALID_SIZE` | Length out of range, wrong for the declared type, or wider than a requested engine port. | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`, `KEY_TRANSFER`
+| `0x04` | `KM_ERR_INVALID_TYPE` | Unknown `OUT_TYPE`, or one of the reserved not-implemented parameter sets (<<km-kdf-out-type>>). | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`
+| `0x05` | `KM_ERR_CLASS_MISMATCH` | `OUT_CLASS` disagrees with `OUT_TYPE` or with the opcode family. | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`
+| `0x06` | `KM_ERR_INVALID_OWNER` | Owner is `0x00` or above `0x03`. | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`, `INVOKE_ID_KEY`
+| `0x07` | `KM_ERR_INVALID_HANDLE` | Handle does not resolve — forged, stale, already revoked, or failing its descriptor CRC. The four are deliberately indistinguishable (<<km-handles>>). | `KEY_REVOKE`, `KEY_TRANSFER`, `KEY_INFO`, `ASSIGN_KEY_OWNER`, `CLEAR_KEY_TREE`, `KEY_GENERATE`
+| `0x08` | `KM_ERR_NOT_KDF_KEY` | `DERIVE_*` parent is not a live SYMMETRIC key carrying `SYM_KDF`. | `KEY_GENERATE`
+| `0x09` | `KM_ERR_ROOT_CLEARED` | The required root was never derived, has been cleared, or failed its CRC. The three are deliberately indistinguishable (<<km-root-registry>>). | `KEY_GENERATE`, `INVOKE_ID_KEY`
+| `0x0A` | `KM_ERR_REGISTRY_FULL` | No free descriptor, or not enough free KPV slots. See the note below. | *see note*
+| `0x0B` | `KM_ERR_CRYPTO` | The DRBG could not supply required entropy. Fail-closed: nothing is created and nothing is retained. | `KEY_GENERATE`, `GEN_ML_KEM_MVAL`
+| `0x0C` | `KM_ERR_INVALID_CAPS` | `CAPS` is zero, sets a reserved bit, or names a capability outside the legal set for the class and type family. | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`
+| `0x0D` | `KM_ERR_INVALID_OPCODE` | `KDF_OPCODE` is outside the defined eight (<<km-kdf-opcodes>>). | `KEY_GENERATE`
+| `0x0E` | `KM_ERR_INVALID_DEST` | A requested `DEST_ENGINE` destination is not permitted by the key's capabilities. | `KEY_TRANSFER`
+| `0x0F` | `KM_ERR_LOCKED` | A required OTP field is read-locked, so the derivation would run against zeroed fuse reads. Refused rather than derived (<<km-cmd-otp-read-lock-cold>>). | `KEY_GENERATE`
+|===
+
+Values `0x10` and above are reserved. A client MUST treat an unrecognised status
+as a generic failure rather than rejecting the response, so that a KM revision
+may add codes without breaking an older host.
+
+NOTE: `KM_ERR_REGISTRY_FULL` is enumerated here because it is part of the status
+namespace and its value is fixed, but no command in this revision is documented
+as returning it — the capacity-exhaustion paths in `CMD_KEY_LOAD` and
+`CMD_ABR_SK_INGEST` are specified to return a bare _failure_ with no return
+argument. A client should accept the code if it arrives and must not depend on
+it, and should distinguish capacity failure by the absence of a status word
+rather than by its value.
+
 [[km-resp-km-ready]]
 ====== 0x55 - RESP_KM_READY
 
