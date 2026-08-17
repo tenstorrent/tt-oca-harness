@@ -648,8 +648,8 @@ Mutable SRAM firmware may now be loaded via `CMD_SRAM_LOAD_EXEC`.  If the
 KM has jumped to mutable firmware (via either `CMD_SRAM_LOAD_EXEC` or
 `CMD_SRAM_EXEC`), the mutable firmware is responsible for handling this
 command and returning its own version information.  While still in ROM, the
-ROM itself handles this command and returns _failure_ with no return
-argument, indicating no SRAM firmware is currently active.
+ROM itself handles this command and returns _failure_ with
+`KM_ERR_NO_SRAM_FW`, indicating no SRAM firmware is currently active.
 
 *Payload*
 
@@ -658,7 +658,8 @@ This command has no payload.
 *Response*
 
 If no SRAM firmware is loaded, this command has a `RESP_CMD` response with
-a return code of _failure_, and no return argument.
+a return code of _failure_ and a single return argument carrying
+`KM_ERR_NO_SRAM_FW`.
 
 If SRAM firmware is loaded and executing, this command has a `RESP_CMD`
 response with a return code of _success_, and a return argument
@@ -753,8 +754,9 @@ and no return argument.
 Commits the KM to continued ROM execution for the lifetime of the current
 warm-reset epoch.  Once this command succeeds, all subsequent
 `CMD_EXEC_ROM`, `CMD_SRAM_LOAD_EXEC`, and `CMD_SRAM_EXEC` commands return
-_failure_ without taking any action.  The inhibit flag is cleared on every
-warm or cold reset, so the SEP may choose again after reboot.
+_failure_ with `KM_ERR_HANDOVER_DISABLED` and take no action.  The inhibit
+flag is cleared on every warm or cold reset, so the SEP may choose again
+after reboot.
 
 *Payload*
 
@@ -806,7 +808,8 @@ for sending its own ready message to the SEP.
 *Notes*
 
 * If the handover-disabled flag is set (from a prior `CMD_EXEC_ROM`),
-  the command returns _failure_ immediately and the image is not requested.
+  the command returns _failure_ with `KM_ERR_HANDOVER_DISABLED` immediately
+  and the image is not requested.
 * `FW_WORDS` must be non-zero and the loaded image must fit entirely below
   the static load ceiling `__km_fw_load_limit` (the worst-case ROM stack
   bound, region-aligned to a 1 KB SRAM write-lock boundary), otherwise
@@ -890,7 +893,8 @@ _invalid_arg_ via the normal dispatcher. Note that a device-state change clears
 an `LC_STATE` or `DEMOTION` transition even though an image was loaded earlier in
 the power cycle (<<km-device-state-reset>>).
 
-If the handover-disabled flag is set, the command returns _failure_.
+If the handover-disabled flag is set, the command returns _failure_ with
+`KM_ERR_HANDOVER_DISABLED`.
 
 [[km-cmd-key-generate]]
 ====== 0x22 - CMD_KEY_GENERATE
@@ -1425,8 +1429,11 @@ a return code of _invalid_arg_, and a return argument pointing to the
 index of the invalid payload word.
 
 If the request cannot be satisfied for any other reason, this command has
-a `RESP_CMD` response with a return code of _failure_, and no return
-argument.
+a `RESP_CMD` response with a return code of _failure_ and a single return
+argument carrying the `KM_ERR_*` status. The only condition that reaches this
+path is `KM_ERR_CRYPTO`, when the PRNG cannot supply the overwrite data the
+purge requires; shredding is otherwise always permitted and always succeeds
+(<<km-cmd-engine-shred>>).
 
 If the request is granted, this command has a `RESP_CMD` response with a
 return code of _success_, and a return argument indicating the crypto
@@ -1606,10 +1613,12 @@ by step 9 rather than needing a check of its own.
 After argument validation, the KM checks that the KPV has enough eligible
 free slots for the stored width and that a descriptor is free,
 before mutating any KPV state. If either resource is exhausted, the command
-returns `RESP_CMD` _failure_ with no return argument. A _failure_ response is
-also returned, before the handler runs, whenever `RECOVERABLE_ERR` is set in the
-KMCSR. In every _failure_ case the KPV state and key registry are left exactly
-as they were before the command arrived; the load is atomic.
+returns `RESP_CMD` _failure_ with `KM_ERR_REGISTRY_FULL`; the two causes share
+one status because the caller's remedy is the same for both — revoke a key and
+retry. A _failure_ response with `KM_ERR_FAULT_PENDING` is returned instead,
+before the handler runs, whenever `RECOVERABLE_ERR` is set in the KMCSR. In
+every _failure_ case the KPV state and key registry are left exactly as they
+were before the command arrived; the load is atomic.
 
 *Success*
 
@@ -1785,9 +1794,11 @@ shared key. Only a request that passes every check reaches the read that clears
 *Response*
 
 If no shared key is currently available (the interface `KEY_VALID` is clear),
-the command returns `RESP_CMD` _failure_ with no return argument. A _failure_
-response is also returned if the KPV cannot allocate a slot for the key, or if
-no key handle is free. In every _failure_ case the KPV, the key registry and
+the command returns `RESP_CMD` _failure_ with `KM_ERR_NO_SHARED_KEY`. If the KPV
+cannot allocate a slot for the key, or no descriptor is free, it returns
+_failure_ with `KM_ERR_REGISTRY_FULL`. The two are distinct because the remedies
+differ: the first means wait for Adams Bridge to deliver one, the second means
+free capacity and reissue. In every _failure_ case the KPV, the key registry and
 the pending shared key are left exactly as they were before the command
 arrived; the ingest is atomic.
 
@@ -2858,19 +2869,41 @@ The status value occupies bits `[7:0]` of the return-argument word; bits
 | `0x0D` | `KM_ERR_INVALID_OPCODE` | `KDF_OPCODE` is outside the defined eight (<<km-kdf-opcodes>>). | `KEY_GENERATE`
 | `0x0E` | `KM_ERR_INVALID_DEST` | A requested `DEST_ENGINE` destination is not permitted by the key's capabilities. | `KEY_TRANSFER`
 | `0x0F` | `KM_ERR_LOCKED` | A required OTP field is read-locked, so the derivation would run against zeroed fuse reads. Refused rather than derived (<<km-cmd-otp-read-lock-cold>>). | `KEY_GENERATE`
+| `0x10` | `KM_ERR_NO_SRAM_FW` | No mutable SRAM firmware is loaded or executing. | `SRAM_VER`
+| `0x11` | `KM_ERR_HANDOVER_DISABLED` | The handover decision has already been made in this warm-reset epoch, by this or another handover command (<<km-cmd-exec-rom>>). | `EXEC_ROM`, `SRAM_LOAD_EXEC`, `SRAM_EXEC`
+| `0x12` | `KM_ERR_NO_SHARED_KEY` | No Adams Bridge shared key is pending — the interface `KEY_VALID` is clear. | `ABR_SK_INGEST`
+| `0x13` | `KM_ERR_FAULT_PENDING` | A recoverable fault is outstanding and this command is not in the allowlist. Acknowledge with `CMD_RECOV_ACK` and retry (<<km-seq-error-recovery>>). | any gated command
 |===
 
-Values `0x10` and above are reserved. A client MUST treat an unrecognised status
+Values `0x14` and above are reserved. A client MUST treat an unrecognised status
 as a generic failure rather than rejecting the response, so that a KM revision
 may add codes without breaking an older host.
 
-NOTE: `KM_ERR_REGISTRY_FULL` is enumerated here because it is part of the status
-namespace and its value is fixed, but no command in this revision is documented
-as returning it — the capacity-exhaustion paths in `CMD_KEY_LOAD` and
-`CMD_ABR_SK_INGEST` are specified to return a bare _failure_ with no return
-argument. A client should accept the code if it arrives and must not depend on
-it, and should distinguish capacity failure by the absence of a status word
-rather than by its value.
+[[km-status-code-rule]]
+*Every failure carries a status*
+
+A `RESP_CMD` whose `RETURN_CODE` is _failure_ MUST carry exactly one status word
+in `RETURN_ARG[0]`. There is no bare _failure_: a client can always read a
+reason, and never has to infer one from the absence of a return argument or from
+which command it happened to be issuing.
+
+Each distinct failure condition has its own status wherever the distinction is
+useful to the caller. Conditions are collapsed onto one status only where
+separating them would be actively harmful or would tell the caller nothing it
+could act on. There are exactly two such collapses in this revision, and both
+are deliberate:
+
+* `KM_ERR_INVALID_HANDLE` covers forged, stale, revoked and CRC-failed handles
+  alike, because distinguishing them would confirm to a caller that a handle it
+  does not hold nevertheless names a live key (<<km-handles>>).
+* `KM_ERR_ROOT_CLEARED` covers never-derived, deliberately cleared and
+  integrity-failed roots alike, for the same reason (<<km-root-registry>>).
+
+Everywhere else, a caller that gets _failure_ can tell what to do next from the
+status alone: `KM_ERR_REGISTRY_FULL` means revoke something and retry,
+`KM_ERR_FAULT_PENDING` means acknowledge and retry, `KM_ERR_INVALID_CAPS` means
+fix the request and retry, and `KM_ERR_HANDOVER_DISABLED` means the decision is
+already made and retrying will never help.
 
 [[km-resp-km-ready]]
 ====== 0x55 - RESP_KM_READY
@@ -3107,7 +3140,9 @@ until acknowledged. It has the following flow:
 the mailbox or message buffers.
 . The KM sends the `RESP_RECOVERABLE_FAULT` response message to the SEP
 with a code indicating the cause of the fault.
-. The KM will _not_ process any command *except*:
+. The KM will _not_ process any command *except* the following, answering
+every other command with `RESP_CMD` _failure_ and `KM_ERR_FAULT_PENDING` so the
+SEP can tell a gated command apart from one that genuinely failed:
 .. `CMD_HW_VER`
 .. `CMD_ROM_VER`
 .. `CMD_SRAM_VER`
@@ -3999,7 +4034,7 @@ return code and the handler returns.
 .. A `RESP_CMD` response is sent back to the SEP with the return code and
 return argument from the command handler.
 .. Respond to all other commands with a `RESP_CMD` response of _failure_
-and do not execute the command.
+carrying `KM_ERR_FAULT_PENDING`, and do not execute the command.
 . If the `RECOVERABLE_ERR` bit is _not_ set in the KMCSR:
 .. Call the command handler corresponding to the command ID and include
 the following arguments:
