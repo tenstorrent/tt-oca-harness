@@ -2220,6 +2220,14 @@ leave to their own engines.
 | `CHK-RW1C PASS: HMAC done event W1C-cleared (in run_keyed_mac)`
 | PROVEN
 
+| CHK5
+| The Key Manager draws real entropy beats from the shared bus while the key is staged.
+  Beats are counted, not value-compared — the same alive-mode scoring the AES and KMAC
+  members record.
+| `CHK5_km        observed_beats=24 (alive mode: no bit-exact compare)` — the count is
+  firmware-driven, so it is stable (identical across all 12 kept runs)
+| PARTIAL — alive-mode beat observation, no bit-exact per-sink compare
+
 | CHK1..CHK3
 | The entropy stack matches its golden bit-exactly.
 | `CHK1_decor` row of the scoreboard report with `mismatch=0` (item counts vary per run)
@@ -2336,7 +2344,8 @@ real entropy beats.
 
 | CHK-ENT
 | The engine draws real masking entropy. Beats are counted, not value-compared — the
-  same alive-mode scoring the AES member records as PARTIAL.
+  same alive-mode scoring the AES member records as PARTIAL. This row is the per-sink
+  entropy checker; the scoreboard reports it as `CHK5_km` / `CHK5_kmac`.
 | `CHK-ENT + CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)`
 | PARTIAL — alive-mode beat observation, no bit-exact per-sink compare
 
@@ -2517,7 +2526,8 @@ injection on this path does and does not cover.
 
 | CHK-ROUTING
 | Each AES beat equals the next word on its own feed, in order; both consumers' words
-  are members of the golden generated-bits set.
+  are members of the golden generated-bits set. This row is the per-sink entropy
+  checker; the scoreboard reports it as `CHK5_aes` / `CHK5_km` / `CHK5_axis1`.
 | `CHK1..CHK4 bit-exact + CHK5_aes per-sink ROUTING (AES==AXIS1) + CHK5_km/CHK5_axis1 genbits-membership + entropy alerts zero`
 | PROVEN
 
@@ -3210,7 +3220,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 == Audit summary
 
-32 testcases, 154 steps, 150 checkers.
+32 testcases, 154 steps, 151 checkers.
 
 [cols="2,1",options="header"]
 |===
@@ -3225,14 +3235,14 @@ not here. Every stage after the injection point is real logic and is golden-chec
 | Grade | Count
 
 | `PROVEN` | 142
-| `PARTIAL` | 7
+| `PARTIAL` | 8
 | `STALE` | 1
 | `INSUFFICIENT-EVIDENCE` | 0
 | `NOT-RUN` | 0
 | `FAILED` | 0
 |===
 
-Every testcase passes in this environment. The eight non-`PROVEN` checkers below are
+Every testcase passes in this environment. The nine non-`PROVEN` checkers below are
 not failures — they are places where the evidence is weaker than the checker's wording
 implies, recorded here rather than rounded up. One is graded `STALE`: it passes here,
 but its artefact cannot be rebuilt from the repository, so nobody else can reproduce
@@ -3253,7 +3263,7 @@ it.
   segmentation claim is separately tracked.
 
 | `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`,
-  `sep_km_kmac_sideload_kat_test`
+  `sep_km_kmac_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`
 | Per-consumer entropy checking is alive-mode only — beats are counted, not compared.
 | Bit-exact comparison needs a controllable pull order. The Key Manager's is
   firmware-driven, so this may stay accepted rather than closed.
