@@ -144,7 +144,7 @@ are combined into a single interrupt to the SEP CPU, and  firmware read
 the register to identify which comparators faulted. The fault bits clear only
 on reset, so a fault cannot be hidden by retrying with a valid token.
 
-image::SEP_Token_Matching.png[SEP_Token_Matching,scaledwidth=90.0%]
+image::SEP_Token_Processing.png[SEP_Token_Processing,scaledwidth=90.0%]
 
 The 6-bit matching signal is distributed as is to each individual point
 of use i.e. logic where individual features are enabled or disabled.
