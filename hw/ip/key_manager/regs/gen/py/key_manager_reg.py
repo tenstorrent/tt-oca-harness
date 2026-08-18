@@ -1445,22 +1445,30 @@ OTP_EFUSE_MAP_PUBLIC_KEY_0_REG_OFFSET = 0x00000194
 OTP_EFUSE_MAP_PUBLIC_KEY_0_REG_ADDR = 0x00011194
 OTP_EFUSE_MAP_PUBLIC_KEY_1_REG_OFFSET = 0x000001B4
 OTP_EFUSE_MAP_PUBLIC_KEY_1_REG_ADDR = 0x000111B4
-OTP_EFUSE_MAP_RESERVED_0_REG_OFFSET = 0x000001D4
-OTP_EFUSE_MAP_RESERVED_0_REG_ADDR = 0x000111D4
-OTP_EFUSE_MAP_RESERVED_1_REG_OFFSET = 0x00000214
-OTP_EFUSE_MAP_RESERVED_1_REG_ADDR = 0x00011214
-OTP_EFUSE_MAP_RESERVED_2_REG_OFFSET = 0x00000254
-OTP_EFUSE_MAP_RESERVED_2_REG_ADDR = 0x00011254
-OTP_EFUSE_MAP_RESERVED_3_REG_OFFSET = 0x00000294
-OTP_EFUSE_MAP_RESERVED_3_REG_ADDR = 0x00011294
-OTP_EFUSE_MAP_RESERVED_4_REG_OFFSET = 0x000002D4
-OTP_EFUSE_MAP_RESERVED_4_REG_ADDR = 0x000112D4
-OTP_EFUSE_MAP_RESERVED_5_REG_OFFSET = 0x00000314
-OTP_EFUSE_MAP_RESERVED_5_REG_ADDR = 0x00011314
-OTP_EFUSE_MAP_RESERVED_6_REG_OFFSET = 0x00000354
-OTP_EFUSE_MAP_RESERVED_6_REG_ADDR = 0x00011354
-OTP_EFUSE_MAP_RESERVED_7_REG_OFFSET = 0x00000394
-OTP_EFUSE_MAP_RESERVED_7_REG_ADDR = 0x00011394
+OTP_EFUSE_MAP_SPARE0_REG_OFFSET = 0x000001D4
+OTP_EFUSE_MAP_SPARE0_REG_ADDR = 0x000111D4
+OTP_EFUSE_MAP_SPARE1_REG_OFFSET = 0x000001F4
+OTP_EFUSE_MAP_SPARE1_REG_ADDR = 0x000111F4
+OTP_EFUSE_MAP_SPARE2_REG_OFFSET = 0x00000214
+OTP_EFUSE_MAP_SPARE2_REG_ADDR = 0x00011214
+OTP_EFUSE_MAP_SPARE3_REG_OFFSET = 0x00000234
+OTP_EFUSE_MAP_SPARE3_REG_ADDR = 0x00011234
+OTP_EFUSE_MAP_SPARE4_REG_OFFSET = 0x00000254
+OTP_EFUSE_MAP_SPARE4_REG_ADDR = 0x00011254
+OTP_EFUSE_MAP_SPARE5_REG_OFFSET = 0x00000274
+OTP_EFUSE_MAP_SPARE5_REG_ADDR = 0x00011274
+OTP_EFUSE_MAP_SPARE6_REG_OFFSET = 0x00000294
+OTP_EFUSE_MAP_SPARE6_REG_ADDR = 0x00011294
+OTP_EFUSE_MAP_SPARE7_REG_OFFSET = 0x000002B4
+OTP_EFUSE_MAP_SPARE7_REG_ADDR = 0x000112B4
+OTP_EFUSE_MAP_RESERVED_TAIL_0_REG_OFFSET = 0x000002D4
+OTP_EFUSE_MAP_RESERVED_TAIL_0_REG_ADDR = 0x000112D4
+OTP_EFUSE_MAP_RESERVED_TAIL_1_REG_OFFSET = 0x00000314
+OTP_EFUSE_MAP_RESERVED_TAIL_1_REG_ADDR = 0x00011314
+OTP_EFUSE_MAP_RESERVED_TAIL_2_REG_OFFSET = 0x00000354
+OTP_EFUSE_MAP_RESERVED_TAIL_2_REG_ADDR = 0x00011354
+OTP_EFUSE_MAP_RESERVED_TAIL_3_REG_OFFSET = 0x00000394
+OTP_EFUSE_MAP_RESERVED_TAIL_3_REG_ADDR = 0x00011394
 OTP_EFUSE_MAP_RESERVED_LAST_256_REG_OFFSET = 0x000003D4
 OTP_EFUSE_MAP_RESERVED_LAST_256_REG_ADDR = 0x000113D4
 OTP_EFUSE_MAP_RESERVED_LAST_64_REG_OFFSET = 0x000003F4
@@ -3373,22 +3381,22 @@ class SEP_EFUSE_MAP_LOCKS_reg_t(Structure):
         ('sep_public_key_hash_0_read_lock', c_uint64, 1),
         ('sep_public_key_hash_1_write_lock', c_uint64, 1),
         ('sep_public_key_hash_1_read_lock', c_uint64, 1),
-        ('reserved_0_write_lock', c_uint64, 1),
-        ('reserved_0_read_lock', c_uint64, 1),
-        ('reserved_1_write_lock', c_uint64, 1),
-        ('reserved_1_read_lock', c_uint64, 1),
-        ('reserved_2_write_lock', c_uint64, 1),
-        ('reserved_2_read_lock', c_uint64, 1),
-        ('reserved_3_write_lock', c_uint64, 1),
-        ('reserved_3_read_lock', c_uint64, 1),
-        ('reserved_4_write_lock', c_uint64, 1),
-        ('reserved_4_read_lock', c_uint64, 1),
-        ('reserved_5_write_lock', c_uint64, 1),
-        ('reserved_5_read_lock', c_uint64, 1),
-        ('reserved_6_write_lock', c_uint64, 1),
-        ('reserved_6_read_lock', c_uint64, 1),
-        ('reserved_7_write_lock', c_uint64, 1),
-        ('reserved_7_read_lock', c_uint64, 1),
+        ('spare0_write_lock', c_uint64, 1),
+        ('spare0_read_lock', c_uint64, 1),
+        ('spare1_write_lock', c_uint64, 1),
+        ('spare1_read_lock', c_uint64, 1),
+        ('spare2_write_lock', c_uint64, 1),
+        ('spare2_read_lock', c_uint64, 1),
+        ('spare3_write_lock', c_uint64, 1),
+        ('spare3_read_lock', c_uint64, 1),
+        ('spare4_write_lock', c_uint64, 1),
+        ('spare4_read_lock', c_uint64, 1),
+        ('spare5_write_lock', c_uint64, 1),
+        ('spare5_read_lock', c_uint64, 1),
+        ('spare6_write_lock', c_uint64, 1),
+        ('spare6_read_lock', c_uint64, 1),
+        ('spare7_write_lock', c_uint64, 1),
+        ('spare7_read_lock', c_uint64, 1),
         ('reserved_last_256_write_lock', c_uint64, 1),
         ('reserved_last_256_read_lock', c_uint64, 1),
         ('reserved_last_64_write_lock', c_uint64, 1),

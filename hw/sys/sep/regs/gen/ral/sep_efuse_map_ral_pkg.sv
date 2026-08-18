@@ -48,22 +48,22 @@
         rand uvm_reg_field SEP_PUBLIC_KEY_HASH_0_READ_LOCK;
         rand uvm_reg_field SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK;
         rand uvm_reg_field SEP_PUBLIC_KEY_HASH_1_READ_LOCK;
-        rand uvm_reg_field RESERVED_0_WRITE_LOCK;
-        rand uvm_reg_field RESERVED_0_READ_LOCK;
-        rand uvm_reg_field RESERVED_1_WRITE_LOCK;
-        rand uvm_reg_field RESERVED_1_READ_LOCK;
-        rand uvm_reg_field RESERVED_2_WRITE_LOCK;
-        rand uvm_reg_field RESERVED_2_READ_LOCK;
-        rand uvm_reg_field RESERVED_3_WRITE_LOCK;
-        rand uvm_reg_field RESERVED_3_READ_LOCK;
-        rand uvm_reg_field RESERVED_4_WRITE_LOCK;
-        rand uvm_reg_field RESERVED_4_READ_LOCK;
-        rand uvm_reg_field RESERVED_5_WRITE_LOCK;
-        rand uvm_reg_field RESERVED_5_READ_LOCK;
-        rand uvm_reg_field RESERVED_6_WRITE_LOCK;
-        rand uvm_reg_field RESERVED_6_READ_LOCK;
-        rand uvm_reg_field RESERVED_7_WRITE_LOCK;
-        rand uvm_reg_field RESERVED_7_READ_LOCK;
+        rand uvm_reg_field SPARE0_WRITE_LOCK;
+        rand uvm_reg_field SPARE0_READ_LOCK;
+        rand uvm_reg_field SPARE1_WRITE_LOCK;
+        rand uvm_reg_field SPARE1_READ_LOCK;
+        rand uvm_reg_field SPARE2_WRITE_LOCK;
+        rand uvm_reg_field SPARE2_READ_LOCK;
+        rand uvm_reg_field SPARE3_WRITE_LOCK;
+        rand uvm_reg_field SPARE3_READ_LOCK;
+        rand uvm_reg_field SPARE4_WRITE_LOCK;
+        rand uvm_reg_field SPARE4_READ_LOCK;
+        rand uvm_reg_field SPARE5_WRITE_LOCK;
+        rand uvm_reg_field SPARE5_READ_LOCK;
+        rand uvm_reg_field SPARE6_WRITE_LOCK;
+        rand uvm_reg_field SPARE6_READ_LOCK;
+        rand uvm_reg_field SPARE7_WRITE_LOCK;
+        rand uvm_reg_field SPARE7_READ_LOCK;
         rand uvm_reg_field RESERVED_LAST_256_WRITE_LOCK;
         rand uvm_reg_field RESERVED_LAST_256_READ_LOCK;
         rand uvm_reg_field RESERVED_LAST_64_WRITE_LOCK;
@@ -160,38 +160,38 @@
             this.SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK.configure(this, 1, 40, "W1S", 0, 'h0, 1, 1, 0);
             this.SEP_PUBLIC_KEY_HASH_1_READ_LOCK = uvm_reg_field::type_id::create("SEP_PUBLIC_KEY_HASH_1_READ_LOCK");
             this.SEP_PUBLIC_KEY_HASH_1_READ_LOCK.configure(this, 1, 41, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_0_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_0_WRITE_LOCK");
-            this.RESERVED_0_WRITE_LOCK.configure(this, 1, 42, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_0_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_0_READ_LOCK");
-            this.RESERVED_0_READ_LOCK.configure(this, 1, 43, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_1_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_1_WRITE_LOCK");
-            this.RESERVED_1_WRITE_LOCK.configure(this, 1, 44, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_1_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_1_READ_LOCK");
-            this.RESERVED_1_READ_LOCK.configure(this, 1, 45, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_2_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_2_WRITE_LOCK");
-            this.RESERVED_2_WRITE_LOCK.configure(this, 1, 46, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_2_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_2_READ_LOCK");
-            this.RESERVED_2_READ_LOCK.configure(this, 1, 47, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_3_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_3_WRITE_LOCK");
-            this.RESERVED_3_WRITE_LOCK.configure(this, 1, 48, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_3_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_3_READ_LOCK");
-            this.RESERVED_3_READ_LOCK.configure(this, 1, 49, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_4_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_4_WRITE_LOCK");
-            this.RESERVED_4_WRITE_LOCK.configure(this, 1, 50, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_4_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_4_READ_LOCK");
-            this.RESERVED_4_READ_LOCK.configure(this, 1, 51, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_5_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_5_WRITE_LOCK");
-            this.RESERVED_5_WRITE_LOCK.configure(this, 1, 52, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_5_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_5_READ_LOCK");
-            this.RESERVED_5_READ_LOCK.configure(this, 1, 53, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_6_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_6_WRITE_LOCK");
-            this.RESERVED_6_WRITE_LOCK.configure(this, 1, 54, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_6_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_6_READ_LOCK");
-            this.RESERVED_6_READ_LOCK.configure(this, 1, 55, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_7_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_7_WRITE_LOCK");
-            this.RESERVED_7_WRITE_LOCK.configure(this, 1, 56, "W1S", 0, 'h0, 1, 1, 0);
-            this.RESERVED_7_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_7_READ_LOCK");
-            this.RESERVED_7_READ_LOCK.configure(this, 1, 57, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE0_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE0_WRITE_LOCK");
+            this.SPARE0_WRITE_LOCK.configure(this, 1, 42, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE0_READ_LOCK = uvm_reg_field::type_id::create("SPARE0_READ_LOCK");
+            this.SPARE0_READ_LOCK.configure(this, 1, 43, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE1_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE1_WRITE_LOCK");
+            this.SPARE1_WRITE_LOCK.configure(this, 1, 44, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE1_READ_LOCK = uvm_reg_field::type_id::create("SPARE1_READ_LOCK");
+            this.SPARE1_READ_LOCK.configure(this, 1, 45, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE2_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE2_WRITE_LOCK");
+            this.SPARE2_WRITE_LOCK.configure(this, 1, 46, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE2_READ_LOCK = uvm_reg_field::type_id::create("SPARE2_READ_LOCK");
+            this.SPARE2_READ_LOCK.configure(this, 1, 47, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE3_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE3_WRITE_LOCK");
+            this.SPARE3_WRITE_LOCK.configure(this, 1, 48, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE3_READ_LOCK = uvm_reg_field::type_id::create("SPARE3_READ_LOCK");
+            this.SPARE3_READ_LOCK.configure(this, 1, 49, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE4_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE4_WRITE_LOCK");
+            this.SPARE4_WRITE_LOCK.configure(this, 1, 50, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE4_READ_LOCK = uvm_reg_field::type_id::create("SPARE4_READ_LOCK");
+            this.SPARE4_READ_LOCK.configure(this, 1, 51, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE5_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE5_WRITE_LOCK");
+            this.SPARE5_WRITE_LOCK.configure(this, 1, 52, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE5_READ_LOCK = uvm_reg_field::type_id::create("SPARE5_READ_LOCK");
+            this.SPARE5_READ_LOCK.configure(this, 1, 53, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE6_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE6_WRITE_LOCK");
+            this.SPARE6_WRITE_LOCK.configure(this, 1, 54, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE6_READ_LOCK = uvm_reg_field::type_id::create("SPARE6_READ_LOCK");
+            this.SPARE6_READ_LOCK.configure(this, 1, 55, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE7_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE7_WRITE_LOCK");
+            this.SPARE7_WRITE_LOCK.configure(this, 1, 56, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE7_READ_LOCK = uvm_reg_field::type_id::create("SPARE7_READ_LOCK");
+            this.SPARE7_READ_LOCK.configure(this, 1, 57, "W1S", 0, 'h0, 1, 1, 0);
             this.RESERVED_LAST_256_WRITE_LOCK = uvm_reg_field::type_id::create("RESERVED_LAST_256_WRITE_LOCK");
             this.RESERVED_LAST_256_WRITE_LOCK.configure(this, 1, 58, "W1S", 0, 'h0, 1, 1, 0);
             this.RESERVED_LAST_256_READ_LOCK = uvm_reg_field::type_id::create("RESERVED_LAST_256_READ_LOCK");
@@ -738,12 +738,132 @@
         endfunction : build
     endclass : sep_efuse_map__PUBLIC_KEY_1
 
-    // reg - sep_efuse_map.RESERVED_0
-    class sep_efuse_map__RESERVED_0 extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__RESERVED_0)
+    // reg - sep_efuse_map.SPARE0
+    class sep_efuse_map__SPARE0 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SPARE0)
         rand uvm_reg_field rsvd;
 
-        function new(string name = "sep_efuse_map__RESERVED_0");
+        function new(string name = "sep_efuse_map__SPARE0");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__SPARE0
+
+    // reg - sep_efuse_map.SPARE1
+    class sep_efuse_map__SPARE1 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SPARE1)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__SPARE1");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__SPARE1
+
+    // reg - sep_efuse_map.SPARE2
+    class sep_efuse_map__SPARE2 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SPARE2)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__SPARE2");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__SPARE2
+
+    // reg - sep_efuse_map.SPARE3
+    class sep_efuse_map__SPARE3 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SPARE3)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__SPARE3");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__SPARE3
+
+    // reg - sep_efuse_map.SPARE4
+    class sep_efuse_map__SPARE4 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SPARE4)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__SPARE4");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__SPARE4
+
+    // reg - sep_efuse_map.SPARE5
+    class sep_efuse_map__SPARE5 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SPARE5)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__SPARE5");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__SPARE5
+
+    // reg - sep_efuse_map.SPARE6
+    class sep_efuse_map__SPARE6 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SPARE6)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__SPARE6");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__SPARE6
+
+    // reg - sep_efuse_map.SPARE7
+    class sep_efuse_map__SPARE7 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SPARE7)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__SPARE7");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__SPARE7
+
+    // reg - sep_efuse_map.RESERVED_TAIL_0
+    class sep_efuse_map__RESERVED_TAIL_0 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__RESERVED_TAIL_0)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__RESERVED_TAIL_0");
             super.new(name, 512, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -751,14 +871,14 @@
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
             this.rsvd.configure(this, 512, 0, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : sep_efuse_map__RESERVED_0
+    endclass : sep_efuse_map__RESERVED_TAIL_0
 
-    // reg - sep_efuse_map.RESERVED_1
-    class sep_efuse_map__RESERVED_1 extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__RESERVED_1)
+    // reg - sep_efuse_map.RESERVED_TAIL_1
+    class sep_efuse_map__RESERVED_TAIL_1 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__RESERVED_TAIL_1)
         rand uvm_reg_field rsvd;
 
-        function new(string name = "sep_efuse_map__RESERVED_1");
+        function new(string name = "sep_efuse_map__RESERVED_TAIL_1");
             super.new(name, 512, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -766,14 +886,14 @@
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
             this.rsvd.configure(this, 512, 0, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : sep_efuse_map__RESERVED_1
+    endclass : sep_efuse_map__RESERVED_TAIL_1
 
-    // reg - sep_efuse_map.RESERVED_2
-    class sep_efuse_map__RESERVED_2 extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__RESERVED_2)
+    // reg - sep_efuse_map.RESERVED_TAIL_2
+    class sep_efuse_map__RESERVED_TAIL_2 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__RESERVED_TAIL_2)
         rand uvm_reg_field rsvd;
 
-        function new(string name = "sep_efuse_map__RESERVED_2");
+        function new(string name = "sep_efuse_map__RESERVED_TAIL_2");
             super.new(name, 512, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -781,14 +901,14 @@
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
             this.rsvd.configure(this, 512, 0, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : sep_efuse_map__RESERVED_2
+    endclass : sep_efuse_map__RESERVED_TAIL_2
 
-    // reg - sep_efuse_map.RESERVED_3
-    class sep_efuse_map__RESERVED_3 extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__RESERVED_3)
+    // reg - sep_efuse_map.RESERVED_TAIL_3
+    class sep_efuse_map__RESERVED_TAIL_3 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__RESERVED_TAIL_3)
         rand uvm_reg_field rsvd;
 
-        function new(string name = "sep_efuse_map__RESERVED_3");
+        function new(string name = "sep_efuse_map__RESERVED_TAIL_3");
             super.new(name, 512, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -796,67 +916,7 @@
             this.rsvd = uvm_reg_field::type_id::create("rsvd");
             this.rsvd.configure(this, 512, 0, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : sep_efuse_map__RESERVED_3
-
-    // reg - sep_efuse_map.RESERVED_4
-    class sep_efuse_map__RESERVED_4 extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__RESERVED_4)
-        rand uvm_reg_field rsvd;
-
-        function new(string name = "sep_efuse_map__RESERVED_4");
-            super.new(name, 512, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 512, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__RESERVED_4
-
-    // reg - sep_efuse_map.RESERVED_5
-    class sep_efuse_map__RESERVED_5 extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__RESERVED_5)
-        rand uvm_reg_field rsvd;
-
-        function new(string name = "sep_efuse_map__RESERVED_5");
-            super.new(name, 512, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 512, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__RESERVED_5
-
-    // reg - sep_efuse_map.RESERVED_6
-    class sep_efuse_map__RESERVED_6 extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__RESERVED_6)
-        rand uvm_reg_field rsvd;
-
-        function new(string name = "sep_efuse_map__RESERVED_6");
-            super.new(name, 512, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 512, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__RESERVED_6
-
-    // reg - sep_efuse_map.RESERVED_7
-    class sep_efuse_map__RESERVED_7 extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__RESERVED_7)
-        rand uvm_reg_field rsvd;
-
-        function new(string name = "sep_efuse_map__RESERVED_7");
-            super.new(name, 512, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.rsvd = uvm_reg_field::type_id::create("rsvd");
-            this.rsvd.configure(this, 512, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__RESERVED_7
+    endclass : sep_efuse_map__RESERVED_TAIL_3
 
     // reg - sep_efuse_map.RESERVED_LAST_256
     class sep_efuse_map__RESERVED_LAST_256 extends uvm_reg;
@@ -936,14 +996,18 @@
         rand sep_efuse_map__SPI_RB_VALID_TIME SPI_RB_VALID_TIME;
         rand sep_efuse_map__PUBLIC_KEY_0 PUBLIC_KEY_0;
         rand sep_efuse_map__PUBLIC_KEY_1 PUBLIC_KEY_1;
-        rand sep_efuse_map__RESERVED_0 RESERVED_0;
-        rand sep_efuse_map__RESERVED_1 RESERVED_1;
-        rand sep_efuse_map__RESERVED_2 RESERVED_2;
-        rand sep_efuse_map__RESERVED_3 RESERVED_3;
-        rand sep_efuse_map__RESERVED_4 RESERVED_4;
-        rand sep_efuse_map__RESERVED_5 RESERVED_5;
-        rand sep_efuse_map__RESERVED_6 RESERVED_6;
-        rand sep_efuse_map__RESERVED_7 RESERVED_7;
+        rand sep_efuse_map__SPARE0 SPARE0;
+        rand sep_efuse_map__SPARE1 SPARE1;
+        rand sep_efuse_map__SPARE2 SPARE2;
+        rand sep_efuse_map__SPARE3 SPARE3;
+        rand sep_efuse_map__SPARE4 SPARE4;
+        rand sep_efuse_map__SPARE5 SPARE5;
+        rand sep_efuse_map__SPARE6 SPARE6;
+        rand sep_efuse_map__SPARE7 SPARE7;
+        rand sep_efuse_map__RESERVED_TAIL_0 RESERVED_TAIL_0;
+        rand sep_efuse_map__RESERVED_TAIL_1 RESERVED_TAIL_1;
+        rand sep_efuse_map__RESERVED_TAIL_2 RESERVED_TAIL_2;
+        rand sep_efuse_map__RESERVED_TAIL_3 RESERVED_TAIL_3;
         rand sep_efuse_map__RESERVED_LAST_256 RESERVED_LAST_256;
         rand sep_efuse_map__RESERVED_LAST_64 RESERVED_LAST_64;
         rand sep_efuse_map__RESERVED_LAST_32 RESERVED_LAST_32;
@@ -1104,46 +1168,66 @@
 
             this.PUBLIC_KEY_1.build();
             this.default_map.add_reg(this.PUBLIC_KEY_1, 'h1b4);
-            this.RESERVED_0 = sep_efuse_map__RESERVED_0::type_id::create("RESERVED_0");
-            this.RESERVED_0.configure(this);
+            this.SPARE0 = sep_efuse_map__SPARE0::type_id::create("SPARE0");
+            this.SPARE0.configure(this);
 
-            this.RESERVED_0.build();
-            this.default_map.add_reg(this.RESERVED_0, 'h1d4);
-            this.RESERVED_1 = sep_efuse_map__RESERVED_1::type_id::create("RESERVED_1");
-            this.RESERVED_1.configure(this);
+            this.SPARE0.build();
+            this.default_map.add_reg(this.SPARE0, 'h1d4);
+            this.SPARE1 = sep_efuse_map__SPARE1::type_id::create("SPARE1");
+            this.SPARE1.configure(this);
 
-            this.RESERVED_1.build();
-            this.default_map.add_reg(this.RESERVED_1, 'h214);
-            this.RESERVED_2 = sep_efuse_map__RESERVED_2::type_id::create("RESERVED_2");
-            this.RESERVED_2.configure(this);
+            this.SPARE1.build();
+            this.default_map.add_reg(this.SPARE1, 'h1f4);
+            this.SPARE2 = sep_efuse_map__SPARE2::type_id::create("SPARE2");
+            this.SPARE2.configure(this);
 
-            this.RESERVED_2.build();
-            this.default_map.add_reg(this.RESERVED_2, 'h254);
-            this.RESERVED_3 = sep_efuse_map__RESERVED_3::type_id::create("RESERVED_3");
-            this.RESERVED_3.configure(this);
+            this.SPARE2.build();
+            this.default_map.add_reg(this.SPARE2, 'h214);
+            this.SPARE3 = sep_efuse_map__SPARE3::type_id::create("SPARE3");
+            this.SPARE3.configure(this);
 
-            this.RESERVED_3.build();
-            this.default_map.add_reg(this.RESERVED_3, 'h294);
-            this.RESERVED_4 = sep_efuse_map__RESERVED_4::type_id::create("RESERVED_4");
-            this.RESERVED_4.configure(this);
+            this.SPARE3.build();
+            this.default_map.add_reg(this.SPARE3, 'h234);
+            this.SPARE4 = sep_efuse_map__SPARE4::type_id::create("SPARE4");
+            this.SPARE4.configure(this);
 
-            this.RESERVED_4.build();
-            this.default_map.add_reg(this.RESERVED_4, 'h2d4);
-            this.RESERVED_5 = sep_efuse_map__RESERVED_5::type_id::create("RESERVED_5");
-            this.RESERVED_5.configure(this);
+            this.SPARE4.build();
+            this.default_map.add_reg(this.SPARE4, 'h254);
+            this.SPARE5 = sep_efuse_map__SPARE5::type_id::create("SPARE5");
+            this.SPARE5.configure(this);
 
-            this.RESERVED_5.build();
-            this.default_map.add_reg(this.RESERVED_5, 'h314);
-            this.RESERVED_6 = sep_efuse_map__RESERVED_6::type_id::create("RESERVED_6");
-            this.RESERVED_6.configure(this);
+            this.SPARE5.build();
+            this.default_map.add_reg(this.SPARE5, 'h274);
+            this.SPARE6 = sep_efuse_map__SPARE6::type_id::create("SPARE6");
+            this.SPARE6.configure(this);
 
-            this.RESERVED_6.build();
-            this.default_map.add_reg(this.RESERVED_6, 'h354);
-            this.RESERVED_7 = sep_efuse_map__RESERVED_7::type_id::create("RESERVED_7");
-            this.RESERVED_7.configure(this);
+            this.SPARE6.build();
+            this.default_map.add_reg(this.SPARE6, 'h294);
+            this.SPARE7 = sep_efuse_map__SPARE7::type_id::create("SPARE7");
+            this.SPARE7.configure(this);
 
-            this.RESERVED_7.build();
-            this.default_map.add_reg(this.RESERVED_7, 'h394);
+            this.SPARE7.build();
+            this.default_map.add_reg(this.SPARE7, 'h2b4);
+            this.RESERVED_TAIL_0 = sep_efuse_map__RESERVED_TAIL_0::type_id::create("RESERVED_TAIL_0");
+            this.RESERVED_TAIL_0.configure(this);
+
+            this.RESERVED_TAIL_0.build();
+            this.default_map.add_reg(this.RESERVED_TAIL_0, 'h2d4);
+            this.RESERVED_TAIL_1 = sep_efuse_map__RESERVED_TAIL_1::type_id::create("RESERVED_TAIL_1");
+            this.RESERVED_TAIL_1.configure(this);
+
+            this.RESERVED_TAIL_1.build();
+            this.default_map.add_reg(this.RESERVED_TAIL_1, 'h314);
+            this.RESERVED_TAIL_2 = sep_efuse_map__RESERVED_TAIL_2::type_id::create("RESERVED_TAIL_2");
+            this.RESERVED_TAIL_2.configure(this);
+
+            this.RESERVED_TAIL_2.build();
+            this.default_map.add_reg(this.RESERVED_TAIL_2, 'h354);
+            this.RESERVED_TAIL_3 = sep_efuse_map__RESERVED_TAIL_3::type_id::create("RESERVED_TAIL_3");
+            this.RESERVED_TAIL_3.configure(this);
+
+            this.RESERVED_TAIL_3.build();
+            this.default_map.add_reg(this.RESERVED_TAIL_3, 'h394);
             this.RESERVED_LAST_256 = sep_efuse_map__RESERVED_LAST_256::type_id::create("RESERVED_LAST_256");
             this.RESERVED_LAST_256.configure(this);
 

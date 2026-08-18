@@ -1735,22 +1735,30 @@ localparam int unsigned OTP_EFUSE_MAP_PUBLIC_KEY_0_REG_OFFSET                   
 localparam int unsigned OTP_EFUSE_MAP_PUBLIC_KEY_0_REG_ADDR                                                       = 32'h00011194;
 localparam int unsigned OTP_EFUSE_MAP_PUBLIC_KEY_1_REG_OFFSET                                                     = 32'h000001B4;
 localparam int unsigned OTP_EFUSE_MAP_PUBLIC_KEY_1_REG_ADDR                                                       = 32'h000111B4;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_0_REG_OFFSET                                                       = 32'h000001D4;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_0_REG_ADDR                                                         = 32'h000111D4;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_1_REG_OFFSET                                                       = 32'h00000214;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_1_REG_ADDR                                                         = 32'h00011214;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_2_REG_OFFSET                                                       = 32'h00000254;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_2_REG_ADDR                                                         = 32'h00011254;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_3_REG_OFFSET                                                       = 32'h00000294;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_3_REG_ADDR                                                         = 32'h00011294;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_4_REG_OFFSET                                                       = 32'h000002D4;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_4_REG_ADDR                                                         = 32'h000112D4;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_5_REG_OFFSET                                                       = 32'h00000314;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_5_REG_ADDR                                                         = 32'h00011314;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_6_REG_OFFSET                                                       = 32'h00000354;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_6_REG_ADDR                                                         = 32'h00011354;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_7_REG_OFFSET                                                       = 32'h00000394;
-localparam int unsigned OTP_EFUSE_MAP_RESERVED_7_REG_ADDR                                                         = 32'h00011394;
+localparam int unsigned OTP_EFUSE_MAP_SPARE0_REG_OFFSET                                                           = 32'h000001D4;
+localparam int unsigned OTP_EFUSE_MAP_SPARE0_REG_ADDR                                                             = 32'h000111D4;
+localparam int unsigned OTP_EFUSE_MAP_SPARE1_REG_OFFSET                                                           = 32'h000001F4;
+localparam int unsigned OTP_EFUSE_MAP_SPARE1_REG_ADDR                                                             = 32'h000111F4;
+localparam int unsigned OTP_EFUSE_MAP_SPARE2_REG_OFFSET                                                           = 32'h00000214;
+localparam int unsigned OTP_EFUSE_MAP_SPARE2_REG_ADDR                                                             = 32'h00011214;
+localparam int unsigned OTP_EFUSE_MAP_SPARE3_REG_OFFSET                                                           = 32'h00000234;
+localparam int unsigned OTP_EFUSE_MAP_SPARE3_REG_ADDR                                                             = 32'h00011234;
+localparam int unsigned OTP_EFUSE_MAP_SPARE4_REG_OFFSET                                                           = 32'h00000254;
+localparam int unsigned OTP_EFUSE_MAP_SPARE4_REG_ADDR                                                             = 32'h00011254;
+localparam int unsigned OTP_EFUSE_MAP_SPARE5_REG_OFFSET                                                           = 32'h00000274;
+localparam int unsigned OTP_EFUSE_MAP_SPARE5_REG_ADDR                                                             = 32'h00011274;
+localparam int unsigned OTP_EFUSE_MAP_SPARE6_REG_OFFSET                                                           = 32'h00000294;
+localparam int unsigned OTP_EFUSE_MAP_SPARE6_REG_ADDR                                                             = 32'h00011294;
+localparam int unsigned OTP_EFUSE_MAP_SPARE7_REG_OFFSET                                                           = 32'h000002B4;
+localparam int unsigned OTP_EFUSE_MAP_SPARE7_REG_ADDR                                                             = 32'h000112B4;
+localparam int unsigned OTP_EFUSE_MAP_RESERVED_TAIL_0_REG_OFFSET                                                  = 32'h000002D4;
+localparam int unsigned OTP_EFUSE_MAP_RESERVED_TAIL_0_REG_ADDR                                                    = 32'h000112D4;
+localparam int unsigned OTP_EFUSE_MAP_RESERVED_TAIL_1_REG_OFFSET                                                  = 32'h00000314;
+localparam int unsigned OTP_EFUSE_MAP_RESERVED_TAIL_1_REG_ADDR                                                    = 32'h00011314;
+localparam int unsigned OTP_EFUSE_MAP_RESERVED_TAIL_2_REG_OFFSET                                                  = 32'h00000354;
+localparam int unsigned OTP_EFUSE_MAP_RESERVED_TAIL_2_REG_ADDR                                                    = 32'h00011354;
+localparam int unsigned OTP_EFUSE_MAP_RESERVED_TAIL_3_REG_OFFSET                                                  = 32'h00000394;
+localparam int unsigned OTP_EFUSE_MAP_RESERVED_TAIL_3_REG_ADDR                                                    = 32'h00011394;
 localparam int unsigned OTP_EFUSE_MAP_RESERVED_LAST_256_REG_OFFSET                                                = 32'h000003D4;
 localparam int unsigned OTP_EFUSE_MAP_RESERVED_LAST_256_REG_ADDR                                                  = 32'h000113D4;
 localparam int unsigned OTP_EFUSE_MAP_RESERVED_LAST_64_REG_OFFSET                                                 = 32'h000003F4;
@@ -2973,53 +2981,53 @@ localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_WRITE_LOCK
 localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_READ_LOCK_MASK                              = 64'h20000000000;
 localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SEP_PUBLIC_KEY_HASH_1_READ_LOCK_SHIFT                             = 41;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_0_WRITE_LOCK_MASK                                        = 64'h40000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_0_WRITE_LOCK_SHIFT                                       = 42;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE0_WRITE_LOCK_MASK                                            = 64'h40000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE0_WRITE_LOCK_SHIFT                                           = 42;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_0_READ_LOCK_MASK                                         = 64'h80000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_0_READ_LOCK_SHIFT                                        = 43;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE0_READ_LOCK_MASK                                             = 64'h80000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE0_READ_LOCK_SHIFT                                            = 43;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_1_WRITE_LOCK_MASK                                        = 64'h100000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_1_WRITE_LOCK_SHIFT                                       = 44;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE1_WRITE_LOCK_MASK                                            = 64'h100000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE1_WRITE_LOCK_SHIFT                                           = 44;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_1_READ_LOCK_MASK                                         = 64'h200000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_1_READ_LOCK_SHIFT                                        = 45;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE1_READ_LOCK_MASK                                             = 64'h200000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE1_READ_LOCK_SHIFT                                            = 45;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_2_WRITE_LOCK_MASK                                        = 64'h400000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_2_WRITE_LOCK_SHIFT                                       = 46;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE2_WRITE_LOCK_MASK                                            = 64'h400000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE2_WRITE_LOCK_SHIFT                                           = 46;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_2_READ_LOCK_MASK                                         = 64'h800000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_2_READ_LOCK_SHIFT                                        = 47;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE2_READ_LOCK_MASK                                             = 64'h800000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE2_READ_LOCK_SHIFT                                            = 47;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_3_WRITE_LOCK_MASK                                        = 64'h1000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_3_WRITE_LOCK_SHIFT                                       = 48;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE3_WRITE_LOCK_MASK                                            = 64'h1000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE3_WRITE_LOCK_SHIFT                                           = 48;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_3_READ_LOCK_MASK                                         = 64'h2000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_3_READ_LOCK_SHIFT                                        = 49;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE3_READ_LOCK_MASK                                             = 64'h2000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE3_READ_LOCK_SHIFT                                            = 49;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_4_WRITE_LOCK_MASK                                        = 64'h4000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_4_WRITE_LOCK_SHIFT                                       = 50;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE4_WRITE_LOCK_MASK                                            = 64'h4000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE4_WRITE_LOCK_SHIFT                                           = 50;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_4_READ_LOCK_MASK                                         = 64'h8000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_4_READ_LOCK_SHIFT                                        = 51;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE4_READ_LOCK_MASK                                             = 64'h8000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE4_READ_LOCK_SHIFT                                            = 51;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_5_WRITE_LOCK_MASK                                        = 64'h10000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_5_WRITE_LOCK_SHIFT                                       = 52;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE5_WRITE_LOCK_MASK                                            = 64'h10000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE5_WRITE_LOCK_SHIFT                                           = 52;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_5_READ_LOCK_MASK                                         = 64'h20000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_5_READ_LOCK_SHIFT                                        = 53;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE5_READ_LOCK_MASK                                             = 64'h20000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE5_READ_LOCK_SHIFT                                            = 53;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_6_WRITE_LOCK_MASK                                        = 64'h40000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_6_WRITE_LOCK_SHIFT                                       = 54;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE6_WRITE_LOCK_MASK                                            = 64'h40000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE6_WRITE_LOCK_SHIFT                                           = 54;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_6_READ_LOCK_MASK                                         = 64'h80000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_6_READ_LOCK_SHIFT                                        = 55;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE6_READ_LOCK_MASK                                             = 64'h80000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE6_READ_LOCK_SHIFT                                            = 55;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_7_WRITE_LOCK_MASK                                        = 64'h100000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_7_WRITE_LOCK_SHIFT                                       = 56;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE7_WRITE_LOCK_MASK                                            = 64'h100000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE7_WRITE_LOCK_SHIFT                                           = 56;
 
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_7_READ_LOCK_MASK                                         = 64'h200000000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_7_READ_LOCK_SHIFT                                        = 57;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE7_READ_LOCK_MASK                                             = 64'h200000000000000;
+localparam     int unsigned SEP_EFUSE_MAP_LOCKS_SPARE7_READ_LOCK_SHIFT                                            = 57;
 
 localparam longint unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_256_WRITE_LOCK_MASK                                 = 64'h400000000000000;
 localparam     int unsigned SEP_EFUSE_MAP_LOCKS_RESERVED_LAST_256_WRITE_LOCK_SHIFT                                = 58;
@@ -3179,6 +3187,9 @@ localparam int unsigned SEP_EFUSE_MAP_SPI_RB_VALID_TIME_RB_VALID_TIME_SHIFT     
 
 localparam  bit [255:0] SEP_EFUSE_MAP_PUBLIC_KEY_KEY_HASH_MASK                                                    = 256'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 localparam int unsigned SEP_EFUSE_MAP_PUBLIC_KEY_KEY_HASH_SHIFT                                                   = 0;
+
+localparam  bit [255:0] SEP_EFUSE_MAP_SPARE_I_RSVD_MASK                                                           = 256'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+localparam int unsigned SEP_EFUSE_MAP_SPARE_I_RSVD_SHIFT                                                          = 0;
 
 localparam  bit [511:0] SEP_EFUSE_MAP_RESERVED_I_RSVD_MASK                                                        = 512'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 localparam int unsigned SEP_EFUSE_MAP_RESERVED_I_RSVD_SHIFT                                                       = 0;
@@ -3805,22 +3816,22 @@ typedef struct packed {
     logic [0:0]   reserved_last_64_write_lock ;
     logic [0:0]   reserved_last_256_read_lock ;
     logic [0:0]   reserved_last_256_write_lock ;
-    logic [0:0]   reserved_7_read_lock ;
-    logic [0:0]   reserved_7_write_lock ;
-    logic [0:0]   reserved_6_read_lock ;
-    logic [0:0]   reserved_6_write_lock ;
-    logic [0:0]   reserved_5_read_lock ;
-    logic [0:0]   reserved_5_write_lock ;
-    logic [0:0]   reserved_4_read_lock ;
-    logic [0:0]   reserved_4_write_lock ;
-    logic [0:0]   reserved_3_read_lock ;
-    logic [0:0]   reserved_3_write_lock ;
-    logic [0:0]   reserved_2_read_lock ;
-    logic [0:0]   reserved_2_write_lock ;
-    logic [0:0]   reserved_1_read_lock ;
-    logic [0:0]   reserved_1_write_lock ;
-    logic [0:0]   reserved_0_read_lock ;
-    logic [0:0]   reserved_0_write_lock ;
+    logic [0:0]   spare7_read_lock ;
+    logic [0:0]   spare7_write_lock ;
+    logic [0:0]   spare6_read_lock ;
+    logic [0:0]   spare6_write_lock ;
+    logic [0:0]   spare5_read_lock ;
+    logic [0:0]   spare5_write_lock ;
+    logic [0:0]   spare4_read_lock ;
+    logic [0:0]   spare4_write_lock ;
+    logic [0:0]   spare3_read_lock ;
+    logic [0:0]   spare3_write_lock ;
+    logic [0:0]   spare2_read_lock ;
+    logic [0:0]   spare2_write_lock ;
+    logic [0:0]   spare1_read_lock ;
+    logic [0:0]   spare1_write_lock ;
+    logic [0:0]   spare0_read_lock ;
+    logic [0:0]   spare0_write_lock ;
     logic [0:0]   sep_public_key_hash_1_read_lock ;
     logic [0:0]   sep_public_key_hash_1_write_lock ;
     logic [0:0]   sep_public_key_hash_0_read_lock ;
@@ -4046,6 +4057,12 @@ typedef struct packed {
 typedef struct packed {
     logic [255:0]   key_hash ;
 } sep_efuse_map_public_key_reg_t;
+
+
+
+typedef struct packed {
+    logic [255:0]   rsvd ;
+} sep_efuse_map_spare_i_reg_t;
 
 
 

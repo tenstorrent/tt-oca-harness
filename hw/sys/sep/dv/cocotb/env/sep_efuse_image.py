@@ -58,6 +58,7 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 #   "lc"       — LC_STATE: word holds raw code, shadow reads {~raw, raw}.
 #   "locks"    — LOCKS table: left unlocked by default so all fields read back.
 #   "reserved" — reserved tail: must stay 0.
+#   "spare"    — spare fuse region (SPARE0..7): unused, must stay 0.
 #   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.
 _FIELDS: Tuple[Tuple[str, int, int, str], ...] = (
     ("LOCKS",                     0x000,  2, "locks"),
@@ -90,14 +91,18 @@ _FIELDS: Tuple[Tuple[str, int, int, str], ...] = (
     ("SPI_RB_VALID_TIME",         0x190,  1, "data"),
     ("PUBLIC_KEY_0",              0x194,  8, "data"),
     ("PUBLIC_KEY_1",              0x1B4,  8, "data"),
-    ("RESERVED_0",                0x1D4, 16, "reserved"),
-    ("RESERVED_1",                0x214, 16, "reserved"),
-    ("RESERVED_2",                0x254, 16, "reserved"),
-    ("RESERVED_3",                0x294, 16, "reserved"),
-    ("RESERVED_4",                0x2D4, 16, "reserved"),
-    ("RESERVED_5",                0x314, 16, "reserved"),
-    ("RESERVED_6",                0x354, 16, "reserved"),
-    ("RESERVED_7",                0x394, 16, "reserved"),
+    ("SPARE0",                    0x1D4,  8, "spare"),
+    ("SPARE1",                    0x1F4,  8, "spare"),
+    ("SPARE2",                    0x214,  8, "spare"),
+    ("SPARE3",                    0x234,  8, "spare"),
+    ("SPARE4",                    0x254,  8, "spare"),
+    ("SPARE5",                    0x274,  8, "spare"),
+    ("SPARE6",                    0x294,  8, "spare"),
+    ("SPARE7",                    0x2B4,  8, "spare"),
+    ("RESERVED_TAIL_0",           0x2D4, 16, "reserved"),
+    ("RESERVED_TAIL_1",           0x314, 16, "reserved"),
+    ("RESERVED_TAIL_2",           0x354, 16, "reserved"),
+    ("RESERVED_TAIL_3",           0x394, 16, "reserved"),
     ("RESERVED_LAST_256",         0x3D4,  8, "reserved"),
     ("RESERVED_LAST_64",          0x3F4,  2, "reserved"),
     ("RESERVED_LAST_32",          0x3FC,  1, "reserved"),
@@ -248,7 +253,7 @@ class SepEfuseImage:
         """
         rng = random.Random(seed)
         for fld in self.fields:
-            if fld.kind == "reserved":
+            if fld.kind in ("reserved", "spare"):
                 continue  # must stay zero
             if fld.kind == "lc":
                 raw = lc_raw if lc_raw is not None else rng.choice(LEGAL_LC_RAW)

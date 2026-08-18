@@ -314,113 +314,113 @@ addrmap sep_efuse_map {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
-        } RESERVED_0_WRITE_LOCK[42:42] = 0x0;
+            desc = "SPARE0_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SPARE0_WRITE_LOCK[42:42] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
-        } RESERVED_0_READ_LOCK[43:43] = 0x0;
+            desc = "SPARE0_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SPARE0_READ_LOCK[43:43] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
-        } RESERVED_1_WRITE_LOCK[44:44] = 0x0;
+            desc = "SPARE1_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SPARE1_WRITE_LOCK[44:44] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
-        } RESERVED_1_READ_LOCK[45:45] = 0x0;
+            desc = "SPARE1_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SPARE1_READ_LOCK[45:45] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_2_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
-        } RESERVED_2_WRITE_LOCK[46:46] = 0x0;
+            desc = "SPARE2_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SPARE2_WRITE_LOCK[46:46] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_2_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
-        } RESERVED_2_READ_LOCK[47:47] = 0x0;
+            desc = "SPARE2_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SPARE2_READ_LOCK[47:47] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_3_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
-        } RESERVED_3_WRITE_LOCK[48:48] = 0x0;
+            desc = "SPARE3_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SPARE3_WRITE_LOCK[48:48] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_3_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
-        } RESERVED_3_READ_LOCK[49:49] = 0x0;
+            desc = "SPARE3_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SPARE3_READ_LOCK[49:49] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_4_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
-        } RESERVED_4_WRITE_LOCK[50:50] = 0x0;
+            desc = "SPARE4_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SPARE4_WRITE_LOCK[50:50] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_4_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
-        } RESERVED_4_READ_LOCK[51:51] = 0x0;
+            desc = "SPARE4_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SPARE4_READ_LOCK[51:51] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_5_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
-        } RESERVED_5_WRITE_LOCK[52:52] = 0x0;
+            desc = "SPARE5_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SPARE5_WRITE_LOCK[52:52] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_5_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
-        } RESERVED_5_READ_LOCK[53:53] = 0x0;
+            desc = "SPARE5_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SPARE5_READ_LOCK[53:53] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_6_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
-        } RESERVED_6_WRITE_LOCK[54:54] = 0x0;
+            desc = "SPARE6_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SPARE6_WRITE_LOCK[54:54] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_6_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
-        } RESERVED_6_READ_LOCK[55:55] = 0x0;
+            desc = "SPARE6_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SPARE6_READ_LOCK[55:55] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_7_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
-        } RESERVED_7_WRITE_LOCK[56:56] = 0x0;
+            desc = "SPARE7_WRITE_LOCK, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SPARE7_WRITE_LOCK[56:56] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "RESERVED_7_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
-        } RESERVED_7_READ_LOCK[57:57] = 0x0;
+            desc = "SPARE7_READ_LOCK, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SPARE7_READ_LOCK[57:57] = 0x0;
 
         field {
             sw = rw;
@@ -852,6 +852,24 @@ addrmap sep_efuse_map {
         } key_hash[255:0] = 0x0;
     };
 
+    // 256-bit spare region. Eight consecutive spares (SPARE0..7) occupy the
+    // range immediately after the public-key slots.  The SPI-controller fuse
+    // backup layout uses pairs of consecutive spares as independent copies:
+    //   bank 0 – primary:   SEP_SPI_CTRL_FIELD_EN  (288 b, offsets 0x00–0x23)
+    //   bank 1 – backup 0:  SPARE0 + SPARE1        (2 × 256 b = 512 b, fits 288 b)
+    //   bank 2 – backup 1:  SPARE2 + SPARE3        (2 × 256 b = 512 b, fits 288 b)
+    // Never start a bank on SPARE1 or SPARE3; the 288-bit copy would then alias
+    // the first word of the next spare.
+    reg SPARE_I {
+        regwidth = 256;
+        accesswidth = 256;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Spare fuse region, 256 bits";
+        } rsvd[255:0] = 0x0;
+    };
+
     reg RESERVED_I {
         regwidth = 512;
         accesswidth = 512;
@@ -927,14 +945,18 @@ addrmap sep_efuse_map {
     SPI_RB_VALID_TIME             SPI_RB_VALID_TIME         @0x190;
     PUBLIC_KEY                    PUBLIC_KEY_0              @0x194;
     PUBLIC_KEY                    PUBLIC_KEY_1              @0x1b4;
-    RESERVED_I                    RESERVED_0                @0x1d4;
-    RESERVED_I                    RESERVED_1                @0x214;
-    RESERVED_I                    RESERVED_2                @0x254;
-    RESERVED_I                    RESERVED_3                @0x294;
-    RESERVED_I                    RESERVED_4                @0x2d4;
-    RESERVED_I                    RESERVED_5                @0x314;
-    RESERVED_I                    RESERVED_6                @0x354;
-    RESERVED_I                    RESERVED_7                @0x394;
+    SPARE_I                       SPARE0                    @0x1d4;
+    SPARE_I                       SPARE1                    @0x1f4;
+    SPARE_I                       SPARE2                    @0x214;
+    SPARE_I                       SPARE3                    @0x234;
+    SPARE_I                       SPARE4                    @0x254;
+    SPARE_I                       SPARE5                    @0x274;
+    SPARE_I                       SPARE6                    @0x294;
+    SPARE_I                       SPARE7                    @0x2b4;
+    RESERVED_I                    RESERVED_TAIL_0           @0x2d4;
+    RESERVED_I                    RESERVED_TAIL_1           @0x314;
+    RESERVED_I                    RESERVED_TAIL_2           @0x354;
+    RESERVED_I                    RESERVED_TAIL_3           @0x394;
     RESERVED_LAST_256             RESERVED_LAST_256         @0x3d4;
     RESERVED_LAST_64              RESERVED_LAST_64          @0x3f4;
     RESERVED_LAST_32              RESERVED_LAST_32          @0x3fc;

@@ -364,7 +364,7 @@ package sep_efuse_pkg;
   `AXI_LITE_TYPEDEF_ALL(efuse_axil, addr_t, data_t, strb_t)
   `APB_TYPEDEF_ALL(efuse_apb, addr_t, data_t, strb_t)
 
-  localparam int unsigned NUM_EFUSE_FIELDS = 31;
+  localparam int unsigned NUM_EFUSE_FIELDS = 32;
   localparam logic [1:0] WRITE_LOCK = 2'b11;
   localparam logic [1:0] WRITE_UNLOCK = 2'b00;
   localparam logic [1:0] WRITE_SET_ONLY = 2'b10;
@@ -446,59 +446,65 @@ package sep_efuse_pkg;
         start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_LAST_256_BASE_ADDR),
         end_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE - 1
     },
-    '{ // RESERVED_7
-        idx: 5'd28,
+    '{ // RESERVED_TAIL (RESERVED_TAIL_0..3, four 512-bit slots freed when RESERVED_0..7 halved)
+        idx: 5'd29,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_7_BASE_ADDR),
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_TAIL_0_BASE_ADDR),
         end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_LAST_256_BASE_ADDR) - 1
     },
-    '{ // RESERVED_6
+    '{ // SPARE7
+        idx: 5'd28,
+        lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR),
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_TAIL_0_BASE_ADDR) - 1
+    },
+    '{ // SPARE6
         idx: 5'd27,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_6_BASE_ADDR),
-        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_7_BASE_ADDR) - 1
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE6_BASE_ADDR),
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR) - 1
     },
-    '{ // RESERVED_5
+    '{ // SPARE5
         idx: 5'd26,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_5_BASE_ADDR),
-        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_6_BASE_ADDR) - 1
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE5_BASE_ADDR),
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE6_BASE_ADDR) - 1
     },
-    '{ // RESERVED_4
+    '{ // SPARE4
         idx: 5'd25,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_4_BASE_ADDR),
-        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_5_BASE_ADDR) - 1
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE4_BASE_ADDR),
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE5_BASE_ADDR) - 1
     },
-    '{ // RESERVED_3
+    '{ // SPARE3
         idx: 5'd24,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_3_BASE_ADDR),
-        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_4_BASE_ADDR) - 1
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE3_BASE_ADDR),
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE4_BASE_ADDR) - 1
     },
-    '{ // RESERVED_2
+    '{ // SPARE2
         idx: 5'd23,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_2_BASE_ADDR),
-        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_3_BASE_ADDR) - 1
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE2_BASE_ADDR),
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE3_BASE_ADDR) - 1
     },
-    '{ // RESERVED_1
+    '{ // SPARE1
         idx: 5'd22,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_1_BASE_ADDR),
-        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_2_BASE_ADDR) - 1
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE1_BASE_ADDR),
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE2_BASE_ADDR) - 1
     },
-    '{ // RESERVED_0
+    '{ // SPARE0
         idx: 5'd21,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
-        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_0_BASE_ADDR),
-        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_1_BASE_ADDR) - 1
+        start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR),
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE1_BASE_ADDR) - 1
     },
     '{ // PUBK_HASH_1
         idx: 5'd20,
         lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
         start_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_PUBLIC_KEY_1_BASE_ADDR),
-        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_RESERVED_0_BASE_ADDR) - 1
+        end_addr: efuse_offset(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE0_BASE_ADDR) - 1
     },
        '{ // PUBK_HASH_0
            idx: 5'd19,
