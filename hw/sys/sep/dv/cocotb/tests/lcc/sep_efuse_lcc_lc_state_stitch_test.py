@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP eFuse -> Lifecycle-Controller lc_state stitch test (OSS).
 
-OSS port of the OCAH UVM ``sep_efuse_lcc_lc_state_stitch_test``. Walks the
+OSS port of the reference UVM ``sep_efuse_lcc_lc_state_stitch_test``. Walks the
 lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD -> RMA_SIP_1 ->
 RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is stitched into
 the lifecycle controller and decoded into the right feature-control vector
@@ -22,7 +22,7 @@ W1S-monotonic / valid-transition rules (the test-level mirror of the RTL SVA
 state checker); the fixed monotonic chain covers the SVA forward-only and
 terminal-stability properties implicitly.
 
-Scope vs the OCAH reference: differential-decode integrity (``lc_sigint_err``)
+Scope vs the reference reference: differential-decode integrity (``lc_sigint_err``)
 is not checked directly -- that port is internal to ``sep`` and unreachable from
 cocotb.top -- but it is covered indirectly, since a spurious sigint forces
 ``feat_ctrl`` to 0 and the exact feat_ctrl check would flag the mismatch.
@@ -49,7 +49,7 @@ from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# Monotonic lifecycle chain exercised (matches the OCAH test's PROD/RMA walk).
+# Monotonic lifecycle chain exercised (matches the reference test's PROD/RMA walk).
 _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
 
 # Distinct, non-zero disable vectors so each decoded FEAT_CTRL is a different,
@@ -221,17 +221,6 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
     """Stitch eFuse lc_state through the LCC and verify decoded FEAT_CTRL."""
 
-    def _read_signal(self, name: str) -> int | None:
-        """Best-effort read of an observable top-level DUT signal (None if the
-        port is not exposed on cocotb.top or resolves to X)."""
-        sig = getattr(cocotb.top, name, None)
-        if sig is None:
-            return None
-        try:
-            return int(sig.value)
-        except Exception:
-            return None
-
     async def _sense_initial_state(self, image: SepEfuseImage, raw: int) -> None:
         image.set_lc_state(raw)
         self.write_efuse_image(image)
@@ -271,26 +260,45 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         prev_raw: int | None = None
 
         for i, raw in enumerate(_LC_CHAIN):
+            # Guards the stimulus table itself; the DUT-side legality check is below.
             assert is_legal_lc(raw), f"test bug: illegal LC code 0x{raw:x}"
             if i == 0:
                 await self._sense_initial_state(image, raw)
             else:
                 await self._program_state_and_resense(image, raw)
 
-            # Test-level mirror of the SVA state checker on the observed walk.
-            if prev_raw is not None:
-                assert is_valid_lc_transition(prev_raw, raw), (
-                    f"illegal LC transition {lc_state_name(prev_raw)} -> "
-                    f"{lc_state_name(raw)}"
-                )
-
             # security_disable feeds the golden; default 0 if the port is not
             # exposed (a wrong value is still caught by the exact feat_ctrl check,
             # which would otherwise expect the all-ones sec_dis override).
-            sec_dis = self._read_signal("security_disable_o") or 0
+            # security_disable_o is not brought out to the testbench, so reading it
+            # would return 0 unconditionally while looking like a DUT observation.
+            # Pass the known value explicitly instead: this image never sets it, and a
+            # wrong assumption is caught anyway by the exact feat_ctrl compare, which
+            # would otherwise expect the all-ones security-disable override.
+            sec_dis = 0
             seq = sep_lcc_stitch_check_seq(image, secure_tm=0, sec_dis=sec_dis)
             await self.start_seq(seq)
-            prev_raw = raw
+
+            # Legality and transition rules are applied to the code the DUT
+            # returned over the frontdoor, not to the _LC_CHAIN literal we
+            # programmed. Checking the literal would compare two test-side
+            # constants and could never fail, whatever the DUT did.
+            observed = seq.observed_lc_raw
+            assert observed is not None, "sequence did not publish an observed LC code"
+            assert is_legal_lc(observed), (
+                f"DUT returned an illegal LC code 0x{observed:x} "
+                f"(programmed {lc_state_name(raw)})"
+            )
+            if prev_raw is not None:
+                assert is_valid_lc_transition(prev_raw, observed), (
+                    f"illegal LC transition {lc_state_name(prev_raw)} -> "
+                    f"{lc_state_name(observed)} (as observed on the DUT)"
+                )
+            self.logger.info(
+                "[lcc] observed LC code 0x%x (%s) after programming %s",
+                observed, lc_state_name(observed), lc_state_name(raw),
+            )
+            prev_raw = observed
 
         assert self._total_program_retries >= 1, (
             "OTP-program retry path never exercised: no program failures were "

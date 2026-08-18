@@ -9,8 +9,8 @@ and proves the OR-packing assembled EXACTLY those bits -- a 1:1 source->bit map
 with NO non-driven neighbor in [8:31] aliasing. This is the same packing/aliasing
 bug class that caught the mailbox 8->1 truncation, re-run for the crypto/KM region.
 
-OCAH ref: uvm_tests/system/sep_irq_extended_connectivity_test @ 9ec8f9f4b.
-Mapping: COVERED_STRONGER -- OCAH asserts connectivity one source at a time; this
+reference ref: uvm_tests/system/sep_irq_extended_connectivity_test @ 9ec8f9f4b.
+Mapping: COVERED_STRONGER -- reference suite asserts connectivity one source at a time; this
 test asserts a cross-IP set SIMULTANEOUSLY and proves no aggregator smear. Distinct
 from the single-source-at-a-time aggregator check (sep_irq_ip_to_aggregator_test)
 and from the CPU PIC/ISR delivery path. CPU-ISR delivery of the simultaneous set and
@@ -138,7 +138,7 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
         )
 
         # CHK-CLEAR: W1C every driven source's INTR_STATE -> the region returns to 0
-        # and each IP's INTR_STATE bit reads 0 (RW1C deassert path, AGENTS.md §7).
+        # and each IP's INTR_STATE bit reads 0 (RW1C deassert path).
         for src in sources:
             await self._drive(src, on=False)
         ok, vec = await self._poll_region(0)

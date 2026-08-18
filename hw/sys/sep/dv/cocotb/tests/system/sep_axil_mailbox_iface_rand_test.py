@@ -4,7 +4,7 @@
 no_cpu host-AXI test of the SEP axil_mailbox MECHANICS over the CPU-LSU master,
 on the outbound_mailbox_0 aperture (0x10A0_0000) -- the SEP/CPU side of the
 two-port cross-FIFO, reachable with NO inbound filter. This is the TX-path test,
-matching OCAH's "CPU not running -> RX FIFO always empty; verify the TX path"
+matching the reference suite's "CPU not running -> RX FIFO always empty; verify the TX path"
 intent. Distinct from the outbound->PIC->CPU delivery path
 (sep_mailbox_plic_test).
 
@@ -14,7 +14,7 @@ predicts the visible STATUS bits + the write-threshold IRQ from the TX occupancy
 (STATUS has no exact-depth field). Thresholds compare with strict > (RTL). Seed is
 logged; regression mode can sweep this via TOML ``reseed = N``.
 
-OCAH refs: fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test,
+reference refs: fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test,
 sep_fabric_mailbox_fifo_closure_test
 @ 9ec8f9f4b. Mapping: MERGED_INTO (one rep subsumes the TX FIFO/IRQ/error/flush family).
 RUN-MODE: no_cpu (CPU-LSU master). FUSE-MODE: +skip_fuse_sense (the local mailbox has
@@ -24,7 +24,7 @@ ACCEPTED DELTAS: (1) data round-trip readback and (2) read-threshold (RIRQT) nee
 RX FIFO filled from the peer side. A clean VCS repro proved the external smn_inbound
 frontdoor can fill inbound_mailbox_0 at 0x10A0_0800 and the CPU-LSU side can pop that
 value from outbound_mailbox_0. This rep intentionally stays TX-focused because the
-OCAH mailbox data test it ports is TX-focused; the external-inbound closure belongs
+reference suite mailbox data test it ports is TX-focused; the external-inbound closure belongs
 in a separate fabric/mailbox peer-path testcase if we keep it permanently.
 """
 

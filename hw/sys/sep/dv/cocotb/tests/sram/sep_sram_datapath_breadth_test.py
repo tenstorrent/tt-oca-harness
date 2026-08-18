@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP external-SRAM datapath-breadth test (PyUVM).
 
-Memory-subsystem Phase-2 rep SRAM datapath breadth. OCAH provenance: uvm_tests/sram
+Memory-subsystem Phase-2 rep SRAM datapath breadth. reference provenance: uvm_tests/sram
 sep_sram_uvm_byte_strobe / byte_pattern / data_pattern / addr_boundary /
 write_read / sequential_access. Exercises the external scratch SRAM
 (0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the Phase-1
@@ -18,11 +18,11 @@ seed-randomized:
     init/new/pattern data values, the sequential-window length, plus a few extra
     random data patterns -- all masked so they read back exactly.
 
-The SRAM port is 64-bit SINGLE-BEAT (no multi-beat burst feature; OCAH's burst
+The SRAM port is 64-bit SINGLE-BEAT (no multi-beat burst feature; the reference suite's burst
 tests are audit-only AWLEN=0/ARLEN=0). WSTRB=0x00 is excluded (undefined). NON-
 contiguous WSTRB masks (e.g. 0x05) are infra-gated: cocotbext-axi derives the
 strobe from addr+length (contiguous only), so they need a lower-level explicit-
-strobe write -- deferred (documented delta vs OCAH's full byte-strobe matrix).
+strobe write -- deferred (documented delta vs the reference suite's full byte-strobe matrix).
 
 Checks (each value-compares an exact read-back against the cfg golden + logs a
 positive PASS line):

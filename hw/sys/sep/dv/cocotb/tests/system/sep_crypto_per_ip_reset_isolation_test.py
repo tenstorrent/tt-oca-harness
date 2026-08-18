@@ -29,8 +29,8 @@ Isolation proof (both directions):
   * CHK-NEIGHBOR-SURVIVES  the sibling's held crypto result is bit-exact intact.
   * CHK-REVERSE     roles swapped (AES-victim then HMAC-victim).
 
-OCAH ref: clock sep_clock_uvm_sw_reset_per_ip_test @ 9ec8f9f4b --
-COVERED_STRONGER: OCAH proves only the SW_RESET_N register -> sep_sw_rst_no output
+reference ref: clock sep_clock_uvm_sw_reset_per_ip_test @ 9ec8f9f4b --
+COVERED_STRONGER: reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
 bit mapping (via an HDL backdoor); this test proves the reset actually lands in the
 IP and is domain-isolated at the level of a live crypto-datapath RESULT, frontdoor.
 no_cpu / +skip_fuse_sense (entropy + crypto are independent of OTP lifecycle) /

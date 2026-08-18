@@ -9,7 +9,7 @@ persist across reset/resense and are never un-set -- instead of a non-physical
 mid-run image replacement (the generic efuse model loads its bank once at time 0).
 
 Exercises the eFuse goals: sense + resense, specific-or-random init, field
-constraints, OCAH-aligned fuse map, shadow-vs-loaded-mem comparison, and multi-bit
+constraints, reference suite-aligned fuse map, shadow-vs-loaded-mem comparison, and multi-bit
 W1S program persistence across a resense.
 """
 

@@ -11,7 +11,7 @@ to its field). RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W
 CHK-WOSET). CSR layer only -- functional remap translation and outbound-filter
 enforcement are infra-gated (ledger GAP-deferred).
 
-OCAH refs: sep_fabric_64bit_regwidth_test (, 64-bit + locked/valid
+reference refs: sep_fabric_64bit_regwidth_test (, 64-bit + locked/valid
 woset), sep_outbound_filter_cfg_test (, FILTER_CONFIG incl. RO
 data_bus_width=3), sep_cpuctrl_misc_regs_test, and the System-block
 subset of sep_reg_sanity_test @ 9ec8f9f4b. Mapping: COVERED_BY. Distinct from
@@ -148,7 +148,7 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
     async def _chk_woset(self) -> None:
         """CHK-VALID-RW + CHK-WOSET on region/entry 1 (woset locks are permanent -> last).
 
-        Per OCAH sep_fabric_64bit_regwidth_test, woset is the FILTER FILTER_CONFIG[63]
+        Per reference sep_fabric_64bit_regwidth_test, woset is the FILTER FILTER_CONFIG[63]
         (locked) bit only; the alias-remap REGION_ATTRS valid[63] bit is plain R/W
         (set sticks, clear works), which this test confirms as a distinct contract.
         woset_probe returns (after_set, after_clear): (1,1)=woset, (1,0)=RW.

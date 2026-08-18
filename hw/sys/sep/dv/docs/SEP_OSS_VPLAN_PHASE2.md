@@ -5,8 +5,8 @@
 > Phase-1 baseline toward 100+ testcases so that **every IP has its basic functional
 > behavior covered**, treating OCAH SEP (`dv/sep`) as the 100% reference and aiming
 > for **≥60% (stretch 75%) of its basic feature intent**. The creation rules are in
-> `VPLAN_CREATION_RULES.md`; the closed Phase-1 record (smoke + TOP-20) is in
-> `SEP_OSS_VPLAN_PHASE1.md` + `SEP_OSS_VPLAN_PHASE1_DETAIL.txt`. Per-test detail
+> the VPLAN creation rules; the closed Phase-1 record (smoke + 21 subsystem tests,
+> 32 in total) is in `verification_plan_phase1.adoc`. Per-test detail
 > cards + the basic-feature ledger live in `SEP_OSS_VPLAN_PHASE2_DETAIL.txt`.
 
 > **OCAH main-sync — 2026-07-15.** After the OSS env last synced (2026-07-08), a sweep
@@ -20,7 +20,7 @@
 > list). The fixes landed VCS-green (reproduced-then-fixed) with a full Verilator
 > merge-gate regression.
 
-## Ground rules (summary — full text in VPLAN_CREATION_RULES.md)
+## Ground rules (summary)
 
 - **Coverage completeness is primary; compression is the technique.** No-overlap,
  merge, and randomized-representative rules are the *means* to reach ≥60% with ~100

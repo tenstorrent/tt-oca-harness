@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP eFuse JTAG-AXIL + EL2-CPU mux arbitration test (PyUVM).
 
-OSS port of the OCAH ``sep_efuse_jtag_axil_el2_cpu_mux_test`` (TEST 9.5). Boots
+OSS port of the reference suite ``sep_efuse_jtag_axil_el2_cpu_mux_test`` (TEST 9.5). Boots
 the VeeR EL2 core running the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR
 read loop) and, CONCURRENTLY, drives the DUT's real SEP-OTP JTAG AXI-Lite port
 (``axil_sep_otp_jtag``, brought out as ``j_axi_*`` in tb_top) via a cocotbext-axi
@@ -13,7 +13,7 @@ LC-restricted (sep_efuse_wrapper): a JTAG access to the MMR token region is
 allowed, but a JTAG access to the shadow map / interface CSRs is routed to an
 error slave returning ``0xbadcab1e``. So the single PROD image exercises BOTH the
 allowed-MMR coexistence AND the LC-gated deny -- with no backdoor lc_state force
-(the OCAH ``force_jtag_lc_state``).
+(the reference suite ``force_jtag_lc_state``).
 
 Checkers (each logged):
   * CHK-SENSE / firmware self-checks: real fuse-sense completed, the CPU eFuse-MMR
@@ -28,8 +28,8 @@ Checkers (each logged):
     scratch_cold_probe_o) advances across the JTAG burst -- the CPU was not stalled
     by the JTAG master.
 
-OSS deltas (documented): real PROD-sense replaces OCAH's backdoor
-``force_jtag_lc_state``; a fixed CPU loop window replaces OCAH's backdoor
+OSS deltas (documented): real PROD-sense replaces the reference suite's backdoor
+``force_jtag_lc_state``; a fixed CPU loop window replaces the reference suite's backdoor
 ``uvm_hdl_deposit`` UVM_DONE release (mirrors the #1 coexist port).
 """
 

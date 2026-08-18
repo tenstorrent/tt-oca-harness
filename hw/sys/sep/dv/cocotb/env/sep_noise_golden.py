@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP DRBG noise-source golden model.
 
-Pure-Python, bit-exact port of the OCAH DPI-C noise generator
+Pure-Python, bit-exact port of the reference DPI-C noise generator
 (dv/sep/tb/tb_uvm/common/dpi/drbg_noise_dpi.c). That C file is the GROUND
 TRUTH for every numeric behavior here.
 
@@ -96,7 +96,7 @@ def parse_mode(mode: str) -> _LaneCfg:
 
 
 class SepNoiseGolden:
-    """Bit-exact Python port of the OCAH DPI-C per-lane noise generator.
+    """Bit-exact Python port of the reference DPI-C per-lane noise generator.
 
     State (per lane): xorshift32 PRNG state + prev_bit, exactly as the C
     arrays prng_state[] / prev_bit[]. Lane configs default to unbiased.
@@ -162,7 +162,7 @@ class SepNoiseGolden:
 
     def get_state(self, lane: int) -> int:
         """Port of drbg_noise_get_state (debug/replay). Reference-model API kept for
-        OCAH golden parity; not invoked by the OSS checkers."""
+        reference golden parity; not invoked by the OSS checkers."""
         if lane < 0 or lane >= MAX_LANES:
             return 0
         return self._state[lane]

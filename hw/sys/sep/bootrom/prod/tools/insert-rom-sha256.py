@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Insert the SHA-256 hash of the ICCM (code) content into the ROM ELF.
 
-Insert and verify the ROM SHA-256 string for OCAH.
+Insert and verify the ROM SHA-256 string for reference suite.
 
 Key behavior:
   - Works with ELF files (not flat binary).

@@ -4,7 +4,7 @@
 # sep_compress_golden.py
 #
 # Pure-Python golden model for the SEP DRBG entropy compression / conditioning
-# datapath. Ported bit-exactly from the OCAH C DPI ground-truth models:
+# datapath. Ported bit-exactly from the reference C DPI ground-truth models:
 #
 #   * BIW compressor (GF(2^8) multiply-add extractor):
 #       dv/sep/tb/tb_uvm/common/dpi/drbg_compress_dpi.c

@@ -7,16 +7,16 @@ EXACT decode-error response (DECERR per fabric/port_table.adoc), while a
 known-mapped CSR on the SAME bus returns OKAY + its reset value -- proving the
 SEP local xbar error-slave path, not a wedge.
 
-OCAH refs: sep_cpu_lsu_negative_matrix_test,
+reference refs: sep_cpu_lsu_negative_matrix_test,
 sep_cpu_ifu_invalid_target_test,
 sep_fabric_xbar_error_closure_test @ 9ec8f9f4b.
-Mapping: COVERED_STRONGER. OCAH accepts any non-OKAY (a 50us timeout is tolerated
+Mapping: COVERED_STRONGER. reference suite accepts any non-OKAY (a 50us timeout is tolerated
 as "blocked"); this OSS port asserts the EXACT DECERR with allow_timeout=False, so
 a wedged/undecoded-but-non-responding bus FAILs instead of passing as "blocked".
 
 Accepted delta: kept SEPARATE from the owner-frozen sep_address_map_test
 (which walks mapped apertures expecting OKAY only) for negative-path failure
-isolation. The IFU invalid-target half of OCAH  uses the dedicated
+isolation. The IFU invalid-target half of reference suite  uses the dedicated
 CPU IFU ROM master, which is not separately brought out on the bare-sep no_cpu
 build; the LSU decode path proves the same xbar error-slave contract.
 """
@@ -41,7 +41,7 @@ from seq_lib.sep_fabric_decode_error_seq import (
 class sep_fabric_decode_error_response_test(sep_base_test):
     """Unmapped local address -> DECERR; mapped CSR -> OKAY, on one CPU-LSU bus.
 
-    RANDOMIZED: which unmapped local addresses are probed (OCAH-proven anchors +
+    RANDOMIZED: which unmapped local addresses are probed (reference suite-proven anchors +
     reserved-gap addresses) and which gets the write probe vary per seed
     (SepFabricDecErrCfg). The mapped-CSR anchor and the DECERR/OKAY contract are fixed.
     """

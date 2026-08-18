@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // SEP PIC interrupt-source MAP + multi-source delivery firmware test (OSS rep
-// PIC source-map delivery). OCAH provenance: fw/sep/tests/otbn_plic_test (OTBN done -> PIC src 30
+// PIC source-map delivery). reference provenance: fw/sep/tests/otbn_plic_test (OTBN done -> PIC src 30
 // -> ISR) + system/sep_irq_connectivity_test (source->PIC connectivity, no real
 // ISR claim).
 //
@@ -247,7 +247,7 @@ int main(void) {
         sep_mbx_puts("FAIL: spurious ISR before any source asserted\n");
         errors++;
     } else {
-        // Positively name the proven contract in the kept log (AGENTS.md §7/§9):
+        // Positively name the proven contract in the kept log:
         // absence of a FAIL is not auditable evidence on its own.
         sep_mbx_puts("CHK-NONVAC PASS: no spurious ISR before any trigger "
                      "(quiet window clean, counts 0/0/0)\n");

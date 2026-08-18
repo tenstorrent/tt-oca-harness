@@ -18,14 +18,14 @@
 // filter is NOT in the path. Every other DUT port is tied to a benign idle
 // value so nothing X-props.
 //
-// This mirrors the OCAH SEP UVM env, which force-splices a flat cocotb AXI
+// This mirrors the reference SEP UVM env, which force-splices a flat cocotb AXI
 // interface onto these same CPU master ports (sep_wrap_uvm_top.sv via the
 // SEP_FORCE_W_AXI_MST_VIP macro). The CPU LSU splice is the primary stimulus
 // path. `smn_inbound` is additionally brought out as the flat `m_axi_*` master
 // (the DUT's real external inbound port, which traverses the inbound filter);
 // it idles unless a test drives it, and is used by the inbound-filter-gating
 // test to prove external AXI is blocked/allowed by feat_ctrl.sep_debug. This is
-// the OSS analog of OCAH's ext_axi_sqr (axi_system[0].master[0]).
+// the OSS analog of the reference suite's ext_axi_sqr (axi_system[0].master[0]).
 //
 // Two run modes, selected by the `+cpu_boot` plusarg:
 //   * no-CPU (default): runs on the stub build; the core is held off
@@ -251,7 +251,7 @@ module sep_uvm_top
     // the dual-CPU eFuse-mux coexistence test can read the EL2 firmware's measured
     // summary (host loop count + KM-contention error counters) with no AXI master
     // -- the EL2 owns the LSU bus under +cpu_boot. The cold block survives the KM
-    // warm reset. Mirrors the OCAH UVM observer's uvm_hdl_read of the same registers.
+    // warm reset. Mirrors the reference UVM observer's uvm_hdl_read of the same registers.
     output logic [255:0]      scratch_cold_probe_o,
     output logic [31:0]       km_rom_req_count_o,
     output logic [31:0]       km_sram_req_count_o,
@@ -302,14 +302,14 @@ module sep_uvm_top
     // sequence the adapter hands to the crypto endpoints; with a single active
     // crypto sink the adapter is in-order so AES's post-adapter beats equal this
     // stream 1:1, and each word is also chained to the CHK4 genbits golden. Mirrors
-    // OCAH's hw_axis1_* tap (sep_entropy_noise_if.sv). Read-only XMR, no force.
+    // the reference suite's hw_axis1_* tap (sep_entropy_noise_if.sv). Read-only XMR, no force.
     output logic              axis1_tvalid_o,        // entropy_muxed_req[1].tvalid
     output logic              axis1_tready_o,        // entropy_muxed_rsp[1].tready
     output logic [31:0]       axis1_tdata_o,         // entropy_muxed_req[1].tdata (32b word)
     // IP-interrupt aggregator (E10): observation-only mirror of the 34-bit
     // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
     // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
-    // mapped bit here. Mirrors the OCAH sep_irq_probe_if wire-tap of
+    // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
@@ -828,13 +828,13 @@ module sep_uvm_top
 `undef BD_DCCM
 
     // ------------------------------------------------------------------
-    // CPU-LSU AXI splice (the OSS analog of SEP_FORCE_W_AXI_MST_VIP in OCAH).
+    // CPU-LSU AXI splice (the OSS analog of SEP_FORCE_W_AXI_MST_VIP in reference suite).
     //
     // Inject: assemble the LSU req struct from the flat cocotb master inputs into
     // `lsu_req_drive` (always_comb). The sep_cpu stub reads this by upward
     // reference and drives its lsu_axi_req from it (single driver, plain assign,
     // no force — see shims/cpu/sep_cpu_stub.sv). Whole-signal only; no per-field
-    // drive. (OCAH force-splices the equivalent CPU master ports; the OSS no_cpu
+    // drive. (reference suite force-splices the equivalent CPU master ports; the OSS no_cpu
     // build replaces the core with a stub, so the bus is single-driven and driven
     // rather than forced.)
     // ------------------------------------------------------------------
@@ -1052,7 +1052,7 @@ module sep_uvm_top
         `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[0].u_generator.u_decorrelator.noise_i;
 
     // Force the per-lane DECORRELATOR INPUT PORT (dcor.noise_i) directly -- the
-    // exact node the SR flop samples -- matching the OCAH UVM noise injection
+    // exact node the SR flop samples -- matching the reference UVM noise injection
     // (sep_entropy_noise_if::force_noise forces dcor.noise_i). Forcing the upstream
     // `noise_bit` wire instead lets the SR flop sample a different scheduling point
     // under Verilator, so the decorrelator golden cannot reproduce the RTL output.

@@ -21,7 +21,7 @@
 //   [C6]    lifecycle policy
 //   [C7]    chip ID identification (reads SMC CHIP_CONFIG_CHIP_ID)
 //   [V3]    DFT / MEM_REPAIR gate (reads DFX_CTRL_STATUS_SMU)
-//    —      peripheral/bus reset (OCAH-specific)
+//    —      peripheral/bus reset (reference suite-specific)
 //   [C8]    crypto/security init
 //   [C9a]   EXT SRAM clear
 //   [C9b]   ICCM clear
@@ -561,7 +561,7 @@ void rom_main(void) {
     // ── [V3] DFT / MBIST / MEM_REPAIR boot-gating (reads DFX_CTRL_STATUS register) ──
     dft_mem_repair_gate();
 
-    // ── Peripheral/Bus reset sequencing (OCAH-specific) ──
+    // ── Peripheral/Bus reset sequencing (reference suite-specific) ──
     rom_peripheral_reset();
 
     // ── [C8] Crypto/security init ──

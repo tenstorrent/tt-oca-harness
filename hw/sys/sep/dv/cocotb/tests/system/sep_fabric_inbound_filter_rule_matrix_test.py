@@ -14,10 +14,10 @@ Exercises the per-entry filter rule, not the whole-filter skip path
 filter wholly on/off). This test stays at sep_debug=0 the whole time and proves
 the PER-ENTRY allow-by-rule vs block-by-default policy.
 
-OCAH refs: fabric sep_inbound_filter_blockbydefault_test,
+reference refs: fabric sep_inbound_filter_blockbydefault_test,
 sep_inbound_filter_programming_ownership_test, sep_inbound_id_remap_test @ 9ec8f9f4b. Mapping: COVERED_STRONGER -- real external AXI master
-through the live filter with an exact rdata value-check, vs OCAH proxy / CSR-only.
-CHK-OWNERSHIP ports OCAH run_filter_ownership(): the external master is denied
+through the live filter with an exact rdata value-check, vs the reference suite proxy / CSR-only.
+CHK-OWNERSHIP ports reference suite run_filter_ownership(): the external master is denied
 read AND write of the filter's own config CSR (0x10A2_1000) with a completed
 DECERR, while the CPU-LSU reads the programmed rule -- the "only the SEP CPU can
 program these filters" asymmetry (hw/sys/sep/doc/fabric.adoc).
@@ -141,7 +141,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # the CPU-LSU path reads the programmed rule back (masked over the RW fields,
         # excluding the RO data_bus_width), but the EXTERNAL master is DENIED both read
         # and write of that CSR with a completed DECERR (not OKAY/SLVERR/timeout), and
-        # the denied write does not corrupt the rule. Direct port of OCAH
+        # the denied write does not corrupt the rule. Direct port of reference suite
         # sep_inbound_filter_programming_ownership_test run_filter_ownership(); the
         # external OKAY vs DECERR distinction is live in this same run (CHK-ALLOW-RULE
         # returned OKAY for the allowed addr), so the DECERR assertion is non-vacuous.

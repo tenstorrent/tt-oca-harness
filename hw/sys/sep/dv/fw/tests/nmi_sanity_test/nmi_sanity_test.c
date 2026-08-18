@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP NMI sanity firmware test (OSS port of the OCAH nmi_sanity_test). Verifies
+// SEP NMI sanity firmware test (OSS port of the reference suite nmi_sanity_test). Verifies
 // the VeeR EL2 NMI mechanism end-to-end on bare `sep`:
 //   * the NMI trampoline (start.S _nmi_handler) is 256-byte aligned;
 //   * SEP_NMI_VEC reads its reset default (0xC0000100);
@@ -16,8 +16,8 @@
 // standard return-code path (start.S emits the 0x8000_0000 mailbox magic).
 //
 // Checks accumulate into `errors`; main() returns it (0 -> PASS magic, non-zero
-// -> FAIL). Mirrors the OCAH checking; the only delta is signalling PASS by
-// returning from main (OCAH calls test_pass() inside the handler).
+// -> FAIL). Mirrors the reference suite checking; the only delta is signalling PASS by
+// returning from main (reference suite calls test_pass() inside the handler).
 
 #include <stdint.h>
 
@@ -26,7 +26,7 @@
 #include "sep_nmi.h"
 #include "sep_wdt.h"
 
-// Bark threshold in WDT-clock ticks. The OCAH value (100) is real-silicon timing;
+// Bark threshold in WDT-clock ticks. The reference value (100) is real-silicon timing;
 // clk_wdt_i is ~1000x slower than the core clock in sim, so 100 ticks would be
 // ~500 us sim time (~22 min on Verilator). A small threshold fires the same
 // bark->NMI path far sooner -- the mechanism under test is identical. Bite is set
@@ -38,11 +38,19 @@
 #define NMI_WAIT_ITERS 200000        // bound on the wait for the bark NMI
 
 static volatile uint32_t g_nmi_fired = 0;
+// INTR_STATE as sampled inside the NMI handler, before the W1C clear. Without
+// this the bark bit is only ever seen in its 0 state.
+static volatile uint32_t g_nmi_bark_state = 0;
 
 // NMI handler: clear the WDT bark (W1C) and disable the watchdog so nmi_int
 // deasserts before mret, then flag completion. Returns -> trampoline mret ->
 // resumes the spin loop in main().
 void nmi_handler(void) {
+    // Sample the bark status BEFORE clearing it. Otherwise the bit is only ever
+    // observed as 0, so "bark cleared" cannot be told apart from "bark never
+    // set", and nothing attributes this NMI to the watchdog rather than to any
+    // other NMI source that vectors to the same handler.
+    g_nmi_bark_state = wdt_get_intr_state();
     wdt_clear_bark();
     wdt_disable();
     g_nmi_fired = 1;
@@ -150,6 +158,14 @@ int main(void) {
     // CHK-WDT-CLEAR: prove the handler's clear/disable contract stuck -- the WDT
     // bark status bit reads back cleared (W1C) and WDOG_CTRL reads back disabled.
     if (g_nmi_fired) {
+        // The bark must have been SET when the handler ran; that is what ties
+        // this NMI to the watchdog.
+        if (!(g_nmi_bark_state & WDT_INTR_BARK)) {
+            sep_mbx_puts("FAIL: NMI taken but INTR_STATE.bark was not set in handler ");
+            sep_mbx_puthex(g_nmi_bark_state);
+            sep_mbx_putc('\n');
+            errors++;
+        }
         uint32_t intr_after = wdt_get_intr_state();
         uint32_t ctrl_after = wdt_get_ctrl();
         if (intr_after & WDT_INTR_BARK) {
@@ -163,7 +179,7 @@ int main(void) {
             sep_mbx_putc('\n');
             errors++;
         } else {
-            sep_mbx_puts("CHK-WDT-CLEAR PASS: INTR_STATE.bark cleared and WDOG_CTRL disabled\n");
+            sep_mbx_puts("CHK-WDT-CLEAR PASS: INTR_STATE.bark observed set in handler, cleared after, WDOG_CTRL disabled\n");
         }
     }
 

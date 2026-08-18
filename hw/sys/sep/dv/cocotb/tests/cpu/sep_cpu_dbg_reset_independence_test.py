@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP CPU debug-reset domain-isolation test (PyUVM).
 
-CPU-complex Phase-2 rep CPU debug-reset independence. OCAH provenance:
+CPU-complex Phase-2 rep CPU debug-reset independence. reference provenance:
 clock/sep_clock_uvm_reset_assertion_deassertion_test (dbg_rstb path) +
 clock/sep_clock_uvm_jtag_clock_independence_test.
 

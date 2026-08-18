@@ -1,14 +1,23 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # SEP OSS VPLAN — Phase 3 (deferred advanced / security / integration)
 
-> **Phase 3 — CANDIDATES ONLY (planning, not scheduled).** Phase 1 (smoke + TOP-20,
-> `SEP_OSS_VPLAN_PHASE1.md`) is closed and Phase 2 (basic-feature breadth,
+> **Phase 3 — CANDIDATES ONLY (planning, not scheduled).** Phase 1 (smoke + subsystem
+> tests, `verification_plan_phase1.adoc`) is closed and Phase 2 (basic-feature breadth,
 > `SEP_OSS_VPLAN_PHASE2.md`) is active. Phase 3 collects the work both earlier phases
 > explicitly *deferred* — advanced corner cases, error/security permutations, and
 > the deeper cross-IP integration edges that are not "basic feature." Nothing here is
 > implemented; each candidate needs a full No-Coding-Gate detail card (owner, toml,
 > OCAH-REFS, mapping outcome, checker boxes, run/fuse mode, DV-infra, deltas) before
-> coding, per `VPLAN_CREATION_RULES.md`. The creation/compression rules are unchanged.
+> coding, per the VPLAN creation rules. The creation/compression rules are unchanged.
+
+> **DIRECTION — 2026-08-18: Phase 3 moves to a NEW UVM testbench.** Phase 1 and Phase 2
+> stay on the existing cocotb/PyUVM env and are being finished there. Phase 3 will not
+> extend that env — it will be built on a brand-new UVM environment, and the first
+> deliverable is a **UVM env bring-up + smoke test**, not any of the candidates below.
+> The rationale is fit: Phase 3 is error injection, stress, and security-permutation
+> work, which wants constrained-random UVM infrastructure rather than the directed
+> cocotb flow. The testcase plan in this doc is therefore left **as-is and unscheduled**
+> — it will be revisited once the UVM env exists. Nothing below is committed scope.
 
 ## Qualification test for Phase 3
 
@@ -66,7 +75,7 @@ numbers).
   unless the KM path needs real sense.
 - **OSS delta (required):** replace OCAH's backdoor `KeyBusMonitor` (XMR of `sep_tb_km_intf`)
   with the frontdoor isolation proof already used by `sep_km_aes_sideload_kat_test`
-  (SW_RESET_N read-back + public-KEY_SHARE=0), per AGENTS.md §7 (no new backdoor without
+  (SW_RESET_N read-back + public-KEY_SHARE=0), (no new backdoor without
   sign-off). Infra already exists (km_rom_hex boot, `env/sep_aes_golden.py`, cpu-boot
   harness); AES-128 is a trivial golden extension.
 - **Effort:** large (new cpu-fw + SRAM↔AES orchestration + negative + isolation).

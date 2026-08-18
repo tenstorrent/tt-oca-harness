@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences + reusable helpers.
 
-Replicates the OCAH real-entropy bring-up order (sep_drbg_uvm_base_test_seq.sv):
+Replicates the reference suite real-entropy bring-up order (sep_drbg_uvm_base_test_seq.sv):
 PHASE-A configures ESRC with the generators off, resets/pulses ESRC, enables
 CSRNG, and stages the EDN commands but does NOT enable EDN; the caller then
 enables the generators and waits for a seed; PHASE-B enables EDN last. CSRNG/EDN
@@ -296,7 +296,7 @@ class SepEsrcFifoDrainSeq(uvm_sequence):
     """Drain the entropy FIFO via the AXI frontdoor (FIFO_RDATA), collecting every
     word into ``self.words`` in pop (= push) order for the CHK2 compare.
 
-    This is the OCAH-faithful CHK2 observation point: FIFO_RDATA is the ONLY thing
+    This is the reference suite-faithful CHK2 observation point: FIFO_RDATA is the ONLY thing
     that pops the FIFO, and the DRBG seed taps the pre-FIFO whitener output, so the
     frontdoor read is non-invasive to the CHK3..CHK5 chain AND reflects any FIFO
     churn the backdoor wire-tap would miss. Reads exactly FIFO_STATUS.LEVEL words so

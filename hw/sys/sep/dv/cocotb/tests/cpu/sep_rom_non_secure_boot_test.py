@@ -40,6 +40,22 @@ _DTCM_HEX = os.path.join(_FW_DIR, "boot_rom.dtcm.hex")  # ROM .rodata/.data/.bss
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 # The ROM runs a long init + manifest/DMA/handoff sequence; give it room.
 _MAX_RUN_CYCLES = 4_000_000
+
+# Markers that must appear on the ROM's scratch virtual console.
+#
+#   SMC_MEM_CHK        boot-ROM stage: the SMC memory check ran
+#   MANIFEST_HASH_OK   the ROM reports it validated the manifest hash
+#   PLD_HASH_OK        the ROM reports it validated the payload hash
+#   BL1, FUSE_CHK      emitted by the copied payload AFTER handoff
+#
+# The pair at the end is what evidences the transfer of control: those two strings
+# exist only in the BL1 source, nowhere in the boot-ROM sources. The two hash
+# markers are the closest this test comes to evidencing integrity checking -- note
+# they show the ROM *reports* the check, not that a corrupted manifest would be
+# rejected. Nothing here corrupts one, so the negative direction is untested.
+_REQUIRED_ROM_MARKERS = (
+    "SMC_MEM_CHK", "MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1", "FUSE_CHK",
+)
 _NO_BOOT_CYCLES = 200_000
 _PROGRESS_EVERY = 5_000
 
@@ -62,13 +78,14 @@ class sep_rom_non_secure_boot_test(sep_base_test):
         # 0xA5A55A5A->0xCAFEBABE mailbox magic) plus EL2 PC-advance. The ROM+BL1
         # boot markers (BL1/OBF/FUSE_OK/GO!) are visible in the scratch2 console log.
         self.sb.expected_line = ""
+        self._rom_markers: list[str] = []
         # The ROM's rom_lifecycle_policy validates the eFuse LC_STATE, so real
         # fuse-sense runs (no +skip_fuse_sense) with a golden image present.
         # TEST_DEV (raw 0x0) is in the manifest's allowed life_cycle_states (0x7).
         efuse_img = SepEfuseImage()
         efuse_img.set_lc_state(LC_TEST_DEV)
         self.write_efuse_image(efuse_img)
-        cocotb.start_soon(rom_console_task(self.logger))
+        cocotb.start_soon(rom_console_task(self.logger, sink=self._rom_markers))
         try:
             await self.boot_firmware(
                 self.sb, _ITCM_HEX, _DTCM_HEX,
@@ -76,6 +93,21 @@ class sep_rom_non_secure_boot_test(sep_base_test):
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,
+            )
+            # The stage markers are the only evidence that the ROM took the
+            # non-secure path at all, so require them rather than merely printing
+            # them. Without this the whole virtual console could go dark -- a
+            # dropped -DDEBUG, a broken cold_scratch write, a dead probe tap --
+            # and the run would still be green, because the PASS gate is fed from
+            # the outbound mailbox, a different target entirely.
+            missing = [m for m in _REQUIRED_ROM_MARKERS if m not in self._rom_markers]
+            assert not missing, (
+                f"ROM/BL1 stage markers missing from the scratch console: {missing}; "
+                f"saw {self._rom_markers}"
+            )
+            self.logger.info(
+                "CHK-ROM-STAGES PASS: all %d required ROM/BL1 stage markers observed (%s)",
+                len(_REQUIRED_ROM_MARKERS), ", ".join(_REQUIRED_ROM_MARKERS),
             )
         finally:
             log_scratch_cold(self.logger)

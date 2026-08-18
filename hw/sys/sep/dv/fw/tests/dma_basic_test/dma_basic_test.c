@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP Secure-DMA basic-breadth firmware test (OSS rep DMA basic breadth). OCAH provenance:
+// SEP Secure-DMA basic-breadth firmware test (OSS rep DMA basic breadth). reference provenance:
 // uvm_tests/dma sep_dma_uvm_reg_rw / reg_reset / cfg_regwen / range_regwen /
 // addr_fixed / addr_wrap / addr_combo / mem_copy(width sweep) / err_opcode.
 //
@@ -13,7 +13,7 @@
 //
 // main() returns the error count; start.S turns 0 -> PASS magic / non-zero ->
 // FAIL magic on the 0x8000_0000 mailbox. Every checker logs a positive PASS line
-// so the kept log is auditable (absence of FAIL is not evidence, AGENTS.md §7/§9).
+// so the kept log is auditable (absence of FAIL is not evidence).
 //
 // Checks:
 //   CHK-RESET      : DMA config registers read their documented reset values.
@@ -463,7 +463,7 @@ static int chk_err_opcode(void) {
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_INVALID);
     uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     // Exclusive: ONLY opcode_error must be set (no other ERROR_CODE bit), matching
-    // the OCAH err_opcode error-exclusivity check.
+    // the reference suite err_opcode error-exclusivity check.
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__OPCODE_ERROR_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-OPCODE invalid opcode did not set opcode_error "
                      "exclusively (status ");

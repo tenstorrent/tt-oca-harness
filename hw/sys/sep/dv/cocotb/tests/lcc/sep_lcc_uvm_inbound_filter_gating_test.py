@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP LCC sep_debug -> inbound-filter gating test (OSS).
 
-OSS port of the OCAH UVM ``sep_lcc_uvm_inbound_filter_gating_test`` (TEST 3.7,
-issue #2868). Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
+OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test`` (TEST 3.7,
+reference suite). Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
 PROD_DBG_1 (sep_debug=1, filter skipped). Datapath
 (``sep.sv``: ``inbound_filter_skip_i = feat_ctrl_o.sep_debug``):
@@ -20,7 +20,7 @@ Two masters (both real DUT ports, no backdoor):
   * CONTROL = CPU-LSU (``s_axi``, no inbound filter): reads FEAT_CTRL (exact 64-bit
     golden value-check via the scoreboard) and writes DEMOTE_1.
   * EXTERNAL = SMN-inbound (``m_axi``): the filtered path; the probe at FEAT_CTRL
-    is blocked (PROD) / allowed (PROD_DBG_1). The OSS analog of OCAH's
+    is blocked (PROD) / allowed (PROD_DBG_1). The OSS analog of the reference suite's
     ``ext_axi_sqr`` (``axi_system[0].master[0]``).
 
 Checkers (each logs positive evidence):
@@ -32,16 +32,16 @@ Checkers (each logs positive evidence):
   * CHK-DBG-ALLOW  external probe reads BOTH FEAT_CTRL halves OKAY and returns
     the distinctive golden value 0xf0f00000_ffffffff (proves the external path
     actually reached the LCC, not merely returned OKAY/all-ones).
-  * CHK-IDENTITY   filter_skip_i tracks sep_debug: blocked@0, allowed@1 -- the
-    frontdoor (FEAT_CTRL[0]) replacement for OCAH's backdoor filter_skip read.
+  * CHK-IDENTITY   external access follows sep_debug: blocked@0, allowed@1 -- the
+    frontdoor (FEAT_CTRL[0]) replacement for the reference suite's backdoor filter_skip read.
   * CHK-NONVAC     both block and allow outcomes observed (the A->B transition is
     real, not a single stuck state).
 
-Stronger than OCAH: OCAH reads ``filter_skip_i`` by backdoor ``uvm_hdl_read`` and
+Stronger than reference suite: reference suite reads ``filter_skip_i`` by backdoor ``uvm_hdl_read`` and
 checks only ``feat_ctrl[0]``; the OSS port reads FEAT_CTRL frontdoor with an exact
 64-bit golden value-check, requires the blocked external read to return DECERR,
 and proves the allowed external read returns the LCC's distinctive FEAT_CTRL high
-word. Scope delta: none functional. The OCAH async-flip ambiguity guard (firmware
+word. Scope delta: none functional. The reference suite async-flip ambiguity guard (firmware
 advances LC mid-probe) is unnecessary here -- sep_debug is driven deterministically
 between probes in the no_cpu flow.
 """
@@ -175,10 +175,13 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             "allowed (PROD_DBG_1, OKAY) external access"
         )
         self.logger.info(
-            "CHK-IDENTITY PASS: filter_skip_i tracks feat_ctrl.sep_debug "
+            # Do not name filter_skip_i here: nothing in this test samples that
+            # signal. The evidence is the external access flipping from DECERR to
+            # OKAY across the sep_debug change, which is a behavioural claim.
+            "CHK-IDENTITY PASS: external inbound access follows feat_ctrl.sep_debug "
             "(blocked@sep_debug=0 -> allowed@sep_debug=1)"
         )
         self.logger.info(
             "CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed"
         )
-        self.logger.info("SEP LCC inbound-filter-gating test PASS (TEST 3.7 / #2868)")
+        self.logger.info("SEP LCC inbound-filter-gating test PASS (TEST 3.7)")

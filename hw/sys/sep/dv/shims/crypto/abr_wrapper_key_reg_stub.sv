@@ -25,7 +25,7 @@
 // re-introduce the same const-fold bug in sep_crypto's hwif_out reads. It is a generic
 // word-addressed register file; W1C/RO per-field semantics of the real block are NOT
 // modelled (unnecessary -- the ABR path is un-exercised; the real block is covered by
-// the KM IP / OCAH testbenches). Keep the port list in sync with
+// the KM IP / reference testbenches). Keep the port list in sync with
 // hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv.
 module abr_wrapper_key_reg (
     input  wire                                           clk,

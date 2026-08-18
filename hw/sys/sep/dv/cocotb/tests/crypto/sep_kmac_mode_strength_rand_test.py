@@ -7,11 +7,11 @@ sideload KAT (#13, KMAC-256 keyed via keymgr, cross-check only) does not reach:
 
     SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256  (8 cells).
 
-OCAH parity: MERGED_INTO the OCAH kmac mode/strength directed set. The OCAH SEP
+reference parity: MERGED_INTO the reference suite kmac mode/strength directed set. The reference SEP
 KMAC coverage is a keyed KMAC cross-check (no standalone SHA3/SHAKE/cSHAKE digest
 golden), so the independent pure-Python Keccak golden (env/sep_kmac_golden.py:
 SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs NIST SP800-185) is the
-reference and this rep is stronger-than-OCAH. DISTINCT from #13 (KMAC-256 via
+reference and this rep is stronger-than-reference suite. DISTINCT from #13 (KMAC-256 via
 sideload, cross-check) -- KMAC mode/strength breadth is standalone SW-key with an exact golden.
 
 Entropy: the KMAC engine has masking hardwired on (EnMasking=1) and requires EDN
@@ -20,7 +20,7 @@ real ESRC->DRBG->EDN stack (+esrc_noise_force) or the engine stalls. The DRBG
 scoreboard runs non-strict (KMAC mode/strength breadth's contract is KMAC correctness, not the entropy
 golden); reaching the digest checks proves masking entropy flowed.
 
-RAND-REP contract (AGENTS.md §9): a SepKmacCfg config object is the single source
+RAND-REP contract: a SepKmacCfg config object is the single source
 of truth for BOTH DUT programming (CFG + KEY_LEN + PREFIX + key + message tail)
 AND the golden. The 8 discrete (mode, strength) cells are WALKED DETERMINISTICALLY
 in one invocation; the seed randomizes only the legal continuous knobs (message,

@@ -7,14 +7,14 @@ sideload KAT (#12, SHA-256 keyed via keymgr_key_i) does not reach:
 
     {SHA-256, SHA-384, SHA-512} x {keyed HMAC, plain SHA} x legal key-length.
 
-OCAH parity: this is a GAP (basic) rep -- the OCAH SEP tb has no SHA-384/512 HMAC
+reference parity: this is a GAP (basic) rep -- the reference SEP tb has no SHA-384/512 HMAC
 or key-length coverage (uvm_tests/hmac + fw hmac cover SHA-256 only). So the
 independent stdlib golden (env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 +
 plain SHA FIPS-180 self-tested) IS the reference and this rep is STRONGER than the
-directed OCAH set it merges. DISTINCT from #12 (SHA-256 via SIDELOAD) and the CPU
+directed reference suite set it merges. DISTINCT from #12 (SHA-256 via SIDELOAD) and the CPU
 crypto smoke (SHA-256): HMAC SHA-variant breadth is standalone SW-key across variants.
 
-RAND-REP contract (AGENTS.md §9): a SepHmacCfg config object is the single source
+RAND-REP contract: a SepHmacCfg config object is the single source
 of truth for BOTH the DUT programming (CFG + key) AND the golden. The required
 discrete cells are WALKED DETERMINISTICALLY in one invocation (every legal
 {sha_bits x mode x key_bits} cell), so a single seed never skips a required cell;

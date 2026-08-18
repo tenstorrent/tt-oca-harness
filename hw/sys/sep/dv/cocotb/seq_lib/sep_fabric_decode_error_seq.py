@@ -13,9 +13,9 @@ intentional non-OKAY; the test asserts the exact ``resp_code == DECERR`` and the
 s_axi monitor is armed (``arm_expected_decerr``) to tally rather than fail on the
 intentional DECERR (a DECERR on the CPU-LSU bus is otherwise a real decode bug).
 
-OCAH provenance: sep_cpu_lsu_negative_matrix_test,
+reference provenance: sep_cpu_lsu_negative_matrix_test,
 sep_cpu_ifu_invalid_target_test, and
-sep_fabric_xbar_error_closure_test. OCAH accepts any non-OKAY
+sep_fabric_xbar_error_closure_test. reference suite accepts any non-OKAY
 (including a tolerated timeout); the OSS port is COVERED_STRONGER -- it asserts
 the EXACT spec response (DECERR, per fabric/port_table.adoc "Tie to DECERR if
 unused") with allow_timeout=False so a wedge FAILs.
@@ -44,8 +44,8 @@ MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
 #
 # Unmapped LOCAL addresses (high nibble 0x10xx => SEP-local space, not routed out
 # to SMN/SMC alias) that the SEP local xbar decodes to its error slave:
-#   * 0x10FF_0000 -- OCAH INVALID_TARGET_ADDR (reserved invalid target).
-#   * 0x10FF_1000 -- OCAH bad_addr (reserved region).
+#   * 0x10FF_0000 -- reference suite INVALID_TARGET_ADDR (reserved invalid target).
+#   * 0x10FF_1000 -- reference suite bad_addr (reserved region).
 #   * reserved gap 0x1080_3008..0x108F_FFFF (memory_map.adoc) -- e.g. 0x1087_0000.
 # The reserved gap is the randomization window (see SepFabricDecErrCfg).
 RESERVED_GAP_LO = 0x1080_300C       # 4-aligned start of the reserved local gap
@@ -61,7 +61,7 @@ class SepFabricDecErrCfg:
     """Seeded selection of unmapped local addresses for the decode-error probes.
 
     Single source of truth for which addresses the test probes. Anchors on the two
-    OCAH-proven invalid targets (0x10FF_0000/0x10FF_1000) and adds N randomized
+    reference suite-proven invalid targets (0x10FF_0000/0x10FF_1000) and adds N randomized
     4-aligned addresses from the reserved local gap (0x1080_3008..0x108F_FFFF), which
     all decode to the SEP local xbar error slave (DECERR). One is chosen for the WRITE
     (B-channel) probe. The mapped-CSR anchor stays fixed (known reset value). The
@@ -79,7 +79,7 @@ class SepFabricDecErrCfg:
             a = rng.randint(RESERVED_GAP_LO, RESERVED_GAP_HI) & ~0x3
             if a not in rand:
                 rand.append(a)
-        # OCAH-proven invalid targets + randomized reserved-gap addresses.
+        # reference suite-proven invalid targets + randomized reserved-gap addresses.
         self.unmapped_reads = list(OCAH_INVALID_TARGETS) + rand
         self.unmapped_write = rng.choice(self.unmapped_reads)
 

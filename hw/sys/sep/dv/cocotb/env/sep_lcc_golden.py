@@ -3,17 +3,26 @@
 
 Pure-Python reference for what the SEP `sep_lifecycle_ctrl` block computes on its
 ``feat_ctrl`` output as a function of the eFuse-sensed lifecycle state and the
-DEMOTE / secure-test-mode / security-disable inputs. It is an independent port
-of the RTL combinational decode (``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv`` lines 61-154),
-cross-checked against the OCAH UVM golden model
-(``compute_expected_feature_ctrl`` in ``sep_lcc_uvm_base_test_seq.sv``). Because
-it is derived from the spec/RTL -- not from observed DUT output -- a feat_ctrl
-mismatch is a real failure, not a tautology.
+DEMOTE / secure-test-mode / security-disable inputs.
 
-Also holds the lifecycle-state encoding / transition validators that mirror the
-SVA state checker (``assertions/sep_lcc_state_checker.sv``): legal encoding, W1S
-monotonicity, valid transition, and terminal stability. These let a value-driven
-test reproduce the SVA intent on the observed lc_state sequence.
+PROVENANCE -- read this before trusting a pass. This model is a transcription of
+the RTL combinational decode in ``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv``, not an
+independent derivation from the lifecycle-controller specification. It is
+recomputed from the test's own inputs rather than read back from the DUT, so it
+does catch a decode that drifts, becomes input-insensitive, or regresses. What it
+cannot catch is the decode being wrong in the same way the RTL is wrong -- and
+for the PROD demotion branch the RTL and ``hw/sys/sep/doc/lifecycle_controller.adoc``
+disagree today, so this model follows the RTL. If the RTL is corrected to match the
+chapter, re-derive this model from the chapter's per-state table rather than
+transcribing the new RTL, or the same blind spot comes back in a new form. See the "Lifecycle decode: golden
+follows RTL" note in docs/verification_plan_phase1.adoc before extending it.
+
+Also holds the lifecycle-state encoding / transition validators: legal encoding,
+W1S monotonicity, valid transition, and terminal stability. These express the
+lifecycle walk rules in a value-driven form. There is no lifecycle SVA state
+checker in this repository, and assertions are compiled out of the acceptance
+build in any case, so these validators are the only thing enforcing the rules
+here -- feed them DUT-observed codes, never the codes the test programmed.
 """
 
 from __future__ import annotations
@@ -70,7 +79,7 @@ def is_w1s_superset(prev: int, cur: int) -> bool:
 
 
 def is_valid_lc_transition(prev: int, cur: int) -> bool:
-    """Mirror of the SVA transition truth table (sep_lcc_state_checker.sv).
+    """Lifecycle transition truth table.
 
     Forward-only lifecycle: TEST_DEV -> PROD -> RMA_SIP -> RMA_CHIPLET, plus the
     PROD_END terminal; RMA_CHIPLET and PROD_END are terminal (self only). A

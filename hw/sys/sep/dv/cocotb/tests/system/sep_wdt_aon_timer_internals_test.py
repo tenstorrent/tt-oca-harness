@@ -7,10 +7,10 @@ status, the WDOG counter advance + pet, and the WDOG_REGWEN config-lock. The WKU
 interrupt OUTPUT is unused in sep, so the expiry is proven via the polled
 INTR_STATE.wkup_expired CSR bit (full RW1C clear) -- no ISR/NMI needed.
 
-OCAH refs: clock sep_clock_uvm_aon_timer_operation_test (: counter advance
+reference refs: clock sep_clock_uvm_aon_timer_operation_test (: counter advance
 + bark), fw wdt_cfg_lock_test (WDOG_REGWEN lock), wdt_wkup_timer_test (:
 AON wakeup timer), wdt_pet_reset_test @ 9ec8f9f4b. Mapping:
-COVERED_STRONGER -- frontdoor CSR + full RW1C clear (OCAH reads WDOG_COUNT via
+COVERED_STRONGER -- frontdoor CSR + full RW1C clear (reference suite reads WDOG_COUNT via
 uvm_hdl_read). Distinct from the bark->NMI vec/lock path and the bark/pet/disable/
 re-bark + bite->wdt_timer_rst_req_o path: this test proves the OTHER aon_timer
 internals (WKUP timer, REGWEN config-lock, plain counter/pet), NOT bark/bite/NMI.
@@ -42,7 +42,7 @@ from seq_lib.sep_wdt_aon_seq import (
 WKUP_CAUSE_BIT = 1 << 0
 
 # How much faster than the silicon 1000x ratio we run clk_wdt for this CSR test
-# (sim-timing knob, AGENTS.md §8): clk_wdt = WDT_CLK_RATIO x the core period -- still
+# (sim-timing knob): clk_wdt = WDT_CLK_RATIO x the core period -- still
 # slower than the core (a valid CDC ratio) so the aon_timer clk_i->clk_aon register
 # CDC (prim_reg_cdc busy-stall on a WKUP_CTRL/WDOG enable write) and the counters
 # resolve within the AXI timeout, while still exercising the count/expiry/lock paths.

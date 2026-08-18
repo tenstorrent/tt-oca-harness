@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP Secure-DMA vs CPU-LSU SRAM contention firmware test (OSS port of the OCAH
+// SEP Secure-DMA vs CPU-LSU SRAM contention firmware test (OSS port of the reference suite
 // dma_cpu_contention_test). Interconnect edge E8: the Secure-DMA master and the
 // CPU-LSU master concurrently drive the SEP-local AXI xbar to the shared SRAM
 // slave (0x1000_0000). The EL2 CPU kicks off a long SRAM->SRAM DMA copy, then
@@ -14,14 +14,14 @@
 // mid-flight STATUS read is the non-vacuity proof that the two streams really
 // overlapped. (Sizes are kept small enough that the Verilator sim finishes well
 // inside the regression timeout; the E8 contention proof needs the imbalance and
-// the overlap, not a large transfer -- OCAH's 16 KiB/1 KiB is overkill here.)
+// the overlap, not a large transfer -- the reference suite's 16 KiB/1 KiB is overkill here.)
 //
 // Checks (every failure increments errors; main() returns it and start.S turns
 // 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
 //   * overlap (non-vacuity): mid-flight STATUS shows BUSY==1 && DONE==0;
 //   * the DMA reaches DONE with ERROR==0 and ERROR_CODE==0;
 //   * STATUS RW1C clear: W1C the DONE/CHUNK_DONE bits and read back 0 (AGENTS.md
-//     §7 -- the contract holds for polled status, not just ISR paths; OCAH does
+//     §7 -- the contract holds for polled status, not just ISR paths; reference suite does
 //     not clear, so this is a strengthening);
 //   * DMA data integrity: every copied dst word == the source pattern;
 //   * CPU data integrity: every CPU-written word == the CPU pattern (proves the
@@ -30,9 +30,9 @@
 //     reaches DONE (timeout FAIL) and a starved/corrupted CPU stream fails the
 //     CPU-integrity check.
 //
-// Polled, interrupt-free (mirrors OCAH): no PIC/ISR. The DMA clock is left as
+// Polled, interrupt-free (mirrors reference suite): no PIC/ISR. The DMA clock is left as
 // dma_hash_test leaves it (dynamic gating clocks the CSRs on access); the global
-// MRAC from start.S makes the SRAM stores real fabric traffic, so the OCAH
+// MRAC from start.S makes the SRAM stores real fabric traffic, so the reference suite
 // per-test `csrw 0x7c0` region write is subsumed (same as the SPI/DMA ports).
 
 #include <stdint.h>

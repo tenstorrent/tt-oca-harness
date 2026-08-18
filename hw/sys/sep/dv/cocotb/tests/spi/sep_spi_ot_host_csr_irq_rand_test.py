@@ -2,7 +2,7 @@
 """SEP OpenTitan-SPI host control-plane CSR / IRQ / error breadth (PyUVM, no_cpu).
 
 SPI-subsystem Phase-2 rep SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
-OCAH OT-SPI host-control directed family (fw spi_ot_reg / clock_config / tx_fifo /
+reference suite OT-SPI host-control directed family (fw spi_ot_reg / clock_config / tx_fifo /
 rx_fifo / cmd_queue / interrupt / error_handling / watermark / enable_disable /
 mux_select) into ONE rep. Drives the SEP-integrated spi_controller host CSRs
 (@0x10B0_0000, NUM_CS=1) directly over the CPU-LSU AXI splice (no_cpu, no
@@ -34,7 +34,7 @@ Deferred (documented, not silently dropped): ERROR_STATUS.CMDBUSY (needs a comma
 issued mid-busy -- timing) and .ACCESSINVAL (needs a non-contiguous TXDATA
 byte-enable, which cocotbext-axi cannot express) are [GAP (deferred)]; RXWM and
 the irq-line delivery are covered by the RX-path tests (#3, SPI flash command breadth) / delivery
-tests (#14). OCAH mux-select is an OSS no-op (the OT SPI path is already the
+tests (#14). reference suite mux-select is an OSS no-op (the OT SPI path is already the
 active bare-SEP path).
 
 no_cpu / +skip_fuse_sense.

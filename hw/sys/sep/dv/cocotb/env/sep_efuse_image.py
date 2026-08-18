@@ -7,7 +7,7 @@ loads at t=0 via ``+sep_efuse_hex`` (staged pre-sim by dv_sim_prestage.py). The
 field schema, offsets and widths mirror ``sep_efuse_pkg::EfuseFieldMap``
 (``hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv``, generated from
 ``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``); the constraints
-mirror the OCAH UVM ``sep_efuse_item`` golden model.
+mirror the reference UVM ``sep_efuse_item`` golden model.
 
 The same object is the golden reference for the shadow-readout checker:
 ``expected_shadow(field)`` returns the value software should read back from the
@@ -167,7 +167,7 @@ class SepEfuseImage:
         return self.set_words(name, words)
 
     def load(self, path: str | Path) -> "SepEfuseImage":
-        """Load a preload file, auto-detecting the format: a per-bit OCAH
+        """Load a preload file, auto-detecting the format: a per-bit reference suite
         ``*.preload`` (one 0/1 per line) vs a 256-word hex image."""
         toks = Path(path).read_text().split()
         if toks and all(t in ("0", "1") for t in toks) and len(toks) > NUM_FUSE_WORDS:
@@ -175,7 +175,7 @@ class SepEfuseImage:
         return self.load_hex(path)
 
     def load_hex(self, path: str | Path) -> "SepEfuseImage":
-        """Load a 256-word ``$readmemh`` image (our format, or an OCAH
+        """Load a 256-word ``$readmemh`` image (our format, or an reference suite
         ``*_shadow_reg.preload`` -- same LSB-first word layout) as the golden.
 
         LC_STATE may be stored raw or differential-encoded in the file; either
@@ -191,7 +191,7 @@ class SepEfuseImage:
         return self
 
     def load_preload_bits(self, path: str | Path) -> "SepEfuseImage":
-        """Load an OCAH OTP ``*.preload`` (one bit per line, LSB-first) as the
+        """Load an reference suite OTP ``*.preload`` (one bit per line, LSB-first) as the
         golden, packing 32 bits/word to match the fuse-array word layout."""
         path = Path(path)
         bits = [c for c in path.read_text().split() if c in ("0", "1")]
@@ -205,7 +205,7 @@ class SepEfuseImage:
         """Set LC_STATE by raw code (must be legal).
 
         Stores the full differential encoding ``{~raw, raw}`` in word[2][7:0] --
-        a valid differential value, matching the real OTP and the OCAH preload.
+        a valid differential value, matching the real OTP and the reference suite preload.
         A bare raw nibble (upper nibble 0) is itself a differential error, so LC
         is *always* constrained to a legal code AND a valid encoding.
         """
@@ -238,7 +238,7 @@ class SepEfuseImage:
     ) -> "SepEfuseImage":
         """Seeded randomization honoring the non-randomizable-field constraints.
 
-        Constraints (mirrors OCAH sep_efuse_item):
+        Constraints (mirrors reference sep_efuse_item):
           * LC_STATE is restricted to the 7 legal raw codes (never an illegal
             encoding) — pinned via ``lc_raw`` or drawn from the legal set.
           * RESERVED_* fields stay 0.

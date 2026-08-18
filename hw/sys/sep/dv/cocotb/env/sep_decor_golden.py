@@ -94,7 +94,7 @@ class SepDecorGolden:
         for i in range(MAX_LANES):
             self._lanes[i] = _Lane()
 
-    # Reference-model API kept for OCAH golden parity; not invoked by the OSS checkers.
+    # Reference-model API kept for golden parity; not invoked by the OSS checkers.
     def set_bypass(self, lane, bypass):
         if 0 <= lane < MAX_LANES:
             self._lanes[lane].bypass = 1 if bypass else 0
@@ -163,7 +163,7 @@ class SepDecorGolden:
             out |= (self._lanes[i].output_byte & 0xFF) << (i * 8)
         return out
 
-    # Reference-model API kept for OCAH golden parity; not invoked by the OSS checkers.
+    # Reference-model API kept for golden parity; not invoked by the OSS checkers.
     def get_sample_count(self, lane):
         if lane < 0 or lane >= MAX_LANES:
             return 0

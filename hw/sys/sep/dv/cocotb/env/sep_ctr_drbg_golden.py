@@ -269,7 +269,7 @@ class SepCtrDrbgGolden:
         self._update(additional_input & _SEED_MASK)
         self.reseed_counter += 1
 
-    # Reference-model API kept for OCAH golden parity; not invoked by the OSS checkers.
+    # Reference-model API kept for golden parity; not invoked by the OSS checkers.
     def uninstantiate(self) -> None:
         self.key = 0
         self.v = 0

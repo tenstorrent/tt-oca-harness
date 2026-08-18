@@ -5,8 +5,8 @@ SEP OSS VPLAN — PHASE 2 (basic-feature breadth) — LEDGER + DETAILED TEST CAR
 ================================================================================
 Phase 2 grows the 31-test Phase-1 baseline toward 100+ tests so every IP has its
 basic functional behavior covered (>=60% of OCAH SEP basic feature intent). Rules:
-VPLAN_CREATION_RULES.md. Summary + coverage matrix: SEP_OSS_VPLAN_PHASE2.md.
-Closed Phase-1 record: SEP_OSS_VPLAN_PHASE1_DETAIL.txt.
+the VPLAN creation rules. Summary + coverage matrix: SEP_OSS_VPLAN_PHASE2.md.
+Closed Phase-1 record: verification_plan_phase1.adoc.
 
 OCAH PROVENANCE GATE: every card's OCAH-REFS must name >=1 real OCAH test/seq/fw
 (1:1 port, merge, randomized rep, or stronger re-expression). Empty OCAH-REFS =>
@@ -986,7 +986,7 @@ COVERAGE : WDT/AON-timer peripheral internals (WKUP timer, config-lock, counter/
 DV-INFRA : reuse SepAxiAgent CSR R/W (SepAxiRegDriver) + bring_up_no_cpu. New seq_lib/
  sep_wdt_aon_seq.py (SepWdtAon driver + reg constants + a tolerant write reusing
  sep_axi_access_seq.allow_unverified_write_resp). NO NMI infra.
-RUNTIME : short (VCS sim ~24s). SIM-TIMING KNOB (AGENTS.md §8): clk_wdt run at 8x the core
+RUNTIME : short (VCS sim ~24s). SIM-TIMING KNOB: clk_wdt run at 8x the core
  period (vs silicon ~1000x) so the aon_timer clk_i->clk_aon register-CDC busy-stall
  (a WKUP_CTRL/WDOG enable write stalls the AXI bus until the slow-clock handshake)
  resolves within the 50us AXI timeout; still slower than core (valid CDC), counters

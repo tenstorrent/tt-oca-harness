@@ -58,7 +58,6 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
 
     async def body(self) -> None:
         lc_raw = self.image.lc_raw()
-        self.observed_lc_raw = lc_raw
         sip_dis = self.image.field_int("SIP_DIS")
         sys_dis = self.image.field_int("SYS_DIS")
         feat = feat_ctrl_expected(
@@ -67,9 +66,14 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         )
 
         # (1) sensed lc_state reached the software-visible shadow map.
-        await self._read_expect(
+        shadow_rdata = await self._read_expect(
             LC_STATE_SHADOW, self.image.shadow_word(2), "lc_state_shadow"
         )
+        # Publish the code the DUT actually returned, not the one the image was
+        # built with. The test's transition check consumes this, so that check is
+        # driven by DUT data; sourcing it from the image would make it a compare
+        # between two test-side constants and it could never fail.
+        self.observed_lc_raw = shadow_rdata & 0xF
 
         # (2) LCC decoded that lc_state into the expected feature-control vector.
         await self._read_expect(LCC_FEAT_CTRL, feat & 0xFFFF_FFFF, "feat_ctrl_lo")

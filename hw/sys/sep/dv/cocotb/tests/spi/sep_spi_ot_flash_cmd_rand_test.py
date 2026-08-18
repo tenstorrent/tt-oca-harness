@@ -2,16 +2,16 @@
 """SEP OpenTitan-SPI flash command-breadth test (PyUVM, cpu-firmware, randomized).
 
 SPI-subsystem Phase-2 rep SPI flash command breadth (lead of the dedicated OpenTitan-SPI sweep). A
-cpu-firmware port of the OCAH spi_ot_flash_write_read_test +
+cpu-firmware port of the reference spi_ot_flash_write_read_test +
 spi_ot_flash_sector_erase_test, upgraded to a randomized representative
-([RAND-REP], stronger than the directed OCAH source). Boots the VeeR EL2 core
+([RAND-REP], stronger than the directed reference suite source). Boots the VeeR EL2 core
 and runs the spi_ot_flash_cmd firmware, which drives the OT SPI host (@
 0x10B0_0000) against the OcahSpiFlash BFM:
 
     WREN -> PAGE PROGRAM -> READ + verify == pattern ->
     WREN -> SECTOR ERASE -> READ + verify == 0xFF, ERROR_STATUS == 0 throughout.
 
-cpu-firmware mode (not no_cpu): every OCAH spi_ot flash test + the Phase-1
+cpu-firmware mode (not no_cpu): every reference spi_ot flash test + the Phase-1
 sep_spi_ot_dma_rx run the multi-command SPI flash sequence from firmware.
 Distinct from #3 sep_spi_ot_dma_rx (RX+DMA) and the JEDEC smoke.
 

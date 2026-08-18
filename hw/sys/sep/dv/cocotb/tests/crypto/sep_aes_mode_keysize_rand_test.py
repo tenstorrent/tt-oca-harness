@@ -7,11 +7,11 @@ KAT (#11, ECB-256 via keymgr) does not reach:
 
     {ECB, CBC, CTR} x {128, 192, 256}  (9 cells).
 
-OCAH parity: MERGED_INTO rep of the OCAH aes mode/keylen directed set. The OCAH
+reference parity: MERGED_INTO rep of the reference suite aes mode/keylen directed set. The reference suite
 uvm_tests/aes suite is register/alert-centric with no standalone CBC/CTR/128/192
 ciphertext golden, so the independent pure-Python golden (env/sep_aes_golden.py:
 FIPS-197 ECB 128/192/256 + SP800-38A CBC/CTR self-tested) is the reference and
-this rep is stronger-than-OCAH for encryption breadth. DISTINCT from #11 (ECB-256
+this rep is stronger-than-reference suite for encryption breadth. DISTINCT from #11 (ECB-256
 via sideload) -- AES mode/key-size breadth is standalone SW-key across modes/sizes.
 
 Entropy: OpenTitan AES masking reseeds its PRNG from the crypto-EDN leg, so the
@@ -20,7 +20,7 @@ op or the engine stalls. The DRBG scoreboard runs non-strict (AES mode/key-size 
 AES correctness, not the entropy golden -- that is #15/KMAC mode/strength breadth/crypto-EDN multisink arbitration); simply
 reaching the ciphertext checks proves masking entropy flowed (CHK-ENTROPY).
 
-RAND-REP contract (AGENTS.md §9): a SepAesCfg config object is the single source
+RAND-REP contract: a SepAesCfg config object is the single source
 of truth for BOTH DUT programming (CTRL + key + IV + data) AND the golden. The 9
 discrete (mode, key-size) cells are WALKED DETERMINISTICALLY in one invocation;
 the seed randomizes only the legal continuous knobs (key, IV, plaintext content).

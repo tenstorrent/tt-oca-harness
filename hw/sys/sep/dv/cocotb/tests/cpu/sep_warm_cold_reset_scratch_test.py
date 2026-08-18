@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP warm/cold reset scratch-bank retention (PyUVM).
 
-OSS port of OCAH ``sep_clock_uvm_warm_reset_vs_cold_reset_test``.
+OSS port of reference suite ``sep_clock_uvm_warm_reset_vs_cold_reset_test``.
 Proves the SEP System-block dual scratch banks honor their reset domains:
 
   * SCRATCH_WARM (base 0x1080_2080) is in the WARM domain -- its register block is
@@ -12,23 +12,23 @@ Proves the SEP System-block dual scratch banks honor their reset domains:
     only (u_sep_scratch_reg_cold). A warm reset does NOT clear it; only a cold
     reset (rst_ni) does.
 
-Stronger than the OCAH ref: it adds the COLD-reset re-init half (OCAH only
+Stronger than the reference ref: it adds the COLD-reset re-init half (reference suite only
 warm-resets) and cross-checks the cold bank both FRONTDOOR (the CPU-LSU AXI
 readback) and BACKDOOR (the ``scratch_cold_probe_o`` XMR tap), proving they agree.
 
 Checks (each asserts an exact value, so a stuck/X register fails):
   CHK-NONVAC     : pre-reset AXI writes to SCRATCH_WARM[0]/SCRATCH_COLD[0] read
                    back the written patterns (the writes land + banks AXI-live;
-                   OCAH A.1/A.2). Cold bank cross-checked via scratch_cold_probe_o.
+                   reference suite A.1/A.2). Cold bank cross-checked via scratch_cold_probe_o.
   CHK-WARM-RST   : a wdt_rst_ni_i low pulse drives sep_cpu_reset_n 1->0->1 while
-                   the main sep_reset_n stays released (OCAH B.1/B.2 + isolation).
+                   the main sep_reset_n stays released (reference suite B.1/B.2 + isolation).
   CHK-WARM-CLEAR : after the warm reset, SCRATCH_WARM[0] == reset default 0x0
-                   (OCAH C.1).
+                   (reference suite C.1).
   CHK-WARM-RETAIN: after the warm reset, SCRATCH_COLD[0] == its written pattern
-                   (survives; OCAH D.1). Probe cross-check.
-  CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset (OCAH E.1).
+                   (survives; reference suite D.1). Probe cross-check.
+  CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset (reference suite E.1).
   CHK-COLD-REINIT: after a cold reset (rst_ni resense), BOTH banks == reset
-                   default (stronger than OCAH). Probe cross-check on the cold bank.
+                   default (stronger than reference suite). Probe cross-check on the cold bank.
 
 no_cpu / +skip_fuse_sense (the scratch banks are reached over the CPU-LSU AXI
 splice; the reset stimulus is the wdt_rst_ni_i / rst_ni primary inputs -- no OTP
@@ -79,7 +79,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.scr = SepScratchReset(self)
 
-        # --- CHK-NONVAC: writes land + banks AXI-live (OCAH A.1/A.2) ---
+        # --- CHK-NONVAC: writes land + banks AXI-live (reference suite A.1/A.2) ---
         await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN)
         await self.scr.write(SCRATCH_COLD_0, COLD_PATTERN)
         warm_rb = await self.scr.read(SCRATCH_WARM_0)
@@ -112,7 +112,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         self.logger.info(
             "CHK-WARM-RST PASS: warm reset asserted/released, cold reset isolated")
 
-        # --- CHK-WARM-CLEAR: warm bank cleared by the warm reset (OCAH C.1) ---
+        # --- CHK-WARM-CLEAR: warm bank cleared by the warm reset (reference suite C.1) ---
         warm_post = await self.scr.read(SCRATCH_WARM_0)
         assert warm_post == SCRATCH_RESET_DEFAULT, (
             f"CHK-WARM-CLEAR SCRATCH_WARM[0]=0x{warm_post:08x} != reset default "
@@ -120,7 +120,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         self.logger.info(
             "CHK-WARM-CLEAR PASS: SCRATCH_WARM[0] cleared to 0x%08x", warm_post)
 
-        # --- CHK-WARM-RETAIN: cold bank survives the warm reset (OCAH D.1) ---
+        # --- CHK-WARM-RETAIN: cold bank survives the warm reset (reference suite D.1) ---
         cold_post = await self.scr.read(SCRATCH_COLD_0)
         assert cold_post == COLD_PATTERN, (
             f"CHK-WARM-RETAIN SCRATCH_COLD[0]=0x{cold_post:08x} != 0x{COLD_PATTERN:08x}")
@@ -130,7 +130,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         self.logger.info(
             "CHK-WARM-RETAIN PASS: SCRATCH_COLD[0] retained 0x%08x (probe agrees)", cold_post)
 
-        # --- CHK-WARM-RECOVER: warm bank writable again post-warm-reset (OCAH E.1) ---
+        # --- CHK-WARM-RECOVER: warm bank writable again post-warm-reset (reference suite E.1) ---
         await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN2)
         warm_rec = await self.scr.read(SCRATCH_WARM_0)
         assert warm_rec == WARM_PATTERN2, (
@@ -138,7 +138,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         self.logger.info(
             "CHK-WARM-RECOVER PASS: SCRATCH_WARM[0] re-written 0x%08x", warm_rec)
 
-        # --- CHK-COLD-REINIT: a cold reset clears BOTH banks (stronger than OCAH) ---
+        # --- CHK-COLD-REINIT: a cold reset clears BOTH banks (stronger than reference suite) ---
         # State going in: SCRATCH_COLD[0]=COLD_PATTERN, SCRATCH_WARM[0]=WARM_PATTERN2.
         # resense() pulses rst_ni low->high and re-gates fuse-sense; the clocks keep
         # running and the cocotb-driven idle defaults persist across the pulse. Both

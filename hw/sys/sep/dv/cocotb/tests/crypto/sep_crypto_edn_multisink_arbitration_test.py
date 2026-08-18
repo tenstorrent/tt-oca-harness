@@ -10,14 +10,14 @@ and used KM (a different leg) as the second sink; the standalone AES/KMAC breadt
 tests are single-engine KATs. DISTINCT from all of those -- do NOT re-prove
 single-sink routing here.
 
-OCAH parity: COVERED_STRONGER re-expression of OCAH drbg/sep_drbg_real_sink_multi_
-rand_test at the crypto-endpoint arbiter (OCAH's per-IP tb cannot reach the SEP
+reference parity: COVERED_STRONGER re-expression of reference suite drbg/sep_drbg_real_sink_multi_
+rand_test at the crypto-endpoint arbiter (the reference suite's per-IP tb cannot reach the SEP
 integration where two crypto engines share one EDN adapter). No KM firmware / no
 rom_main / no real fuse-sense (+skip_fuse_sense), so it follows the standalone
 crypto-engine bring-up style.
 
 Per-sink bit-exact ROUTING (which word to which endpoint) is arbiter-determined
-for >1 concurrent crypto sink and needs OCAH's full per-endpoint assignment trace
+for >1 concurrent crypto sink and needs the reference suite's full per-endpoint assignment trace
 (documented delta, deferred). Instead each sink is scored bit-exact MEMBERSHIP:
 every word AES consumes AND every word KMAC consumes must be a genuine CHK4
 genbits-golden word (sep_drbg_scoreboard per-sink membership mode, removal tally).
