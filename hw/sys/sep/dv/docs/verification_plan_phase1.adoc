@@ -36,6 +36,13 @@ Verilator is the acceptance engine. A testcase is credited only when a kept Veri
 log shows the evidence named in its checker table. Faster commercial simulators may be
 used during development, but a result from one of them never closes a checker.
 
+One property of that flow shapes how every result in this document should be read: RTL
+assertions are compiled out. The shared cocotb build profile defines `DISABLE_ASSERT`
+and `COMMON_CELLS_ASSERTS_OFF`, so no SVA in the design or in the vendored IP
+participates in any run recorded here. Nothing is watching except the checks these
+tests make explicitly. Where an entry says a property is proven, that is the whole of
+the proof — there is no assertion layer underneath catching what the checkers miss.
+
 == How to read a testcase entry
 
 Every entry has the same three parts.
@@ -3281,6 +3288,16 @@ it.
   FIPS-202/SP800-185 model), not in the KM sideload test as previously recorded here —
   that one cross-checks two digests from the same engine. Either cross-reference the
   rand test or add a golden comparison.
++
+--
+Attaching a golden here has a prerequisite. `fw/drivers/sep_kmac.h` pushes
+`right_encode(256)` as the 32-bit word `0x00020001`, which puts four bytes into the
+message FIFO — `01 00 02 00` — where SP800-185 defines the encoding as the three bytes
+`01 00 02`. The stray trailing zero is part of the hashed message, so this leg's digest
+is not KMAC-conformant. Nothing notices today because nothing compares the digest to
+anything; attach a golden without fixing the encoding first and it will fail, correctly.
+Writing three bytes needs a byte-strobed FIFO write rather than a word write.
+--
 |===
 
 === Unlogged steps
