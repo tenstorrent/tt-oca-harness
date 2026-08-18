@@ -1484,7 +1484,7 @@ OTP_EFUSE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_ADDR = 0x00011414
 OTP_EFUSE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_OFFSET = 0x00000018
 OTP_EFUSE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR = 0x00011418
 OTP_EFUSE_MMR_REG_MAP_BASE_ADDR = 0x00011500
-OTP_EFUSE_MMR_REG_MAP_SIZE = 0x00000070
+OTP_EFUSE_MMR_REG_MAP_SIZE = 0x00000074
 OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_OFFSET = 0x00000000
 OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR = 0x00011500
 OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_OFFSET = 0x00000004
@@ -1541,6 +1541,8 @@ OTP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET = 0x00000068
 OTP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR = 0x00011568
 OTP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET = 0x0000006C
 OTP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR = 0x0001156C
+OTP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_OFFSET = 0x00000070
+OTP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR = 0x00011570
 OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR = 0x00018000
 OTBN_WRAPPER_KEY_REG_MAP_SIZE = 0x00000064
 OTBN_WRAPPER_KEY_KEY_SHARE0_0__REG_OFFSET = 0x00000000
@@ -4269,6 +4271,38 @@ class EFUSE_MMR_TOKEN_MATCH_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(EFUSE_MMR_TOKEN_MATCH_reg_u, self).__init__(*args, **kwargs)
         self.val = EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EFUSE_MMR_TOKEN_MATCH_FAULT_REG_DEFAULT = 0x00000000
+class EFUSE_MMR_TOKEN_MATCH_FAULT_reg_t(Structure):
+    _fields_ = [
+        ('rma_sip_token_fault', c_uint32, 1),
+        ('rsvd_0', c_uint32, 7),
+        ('rma_chiplet_token_fault', c_uint32, 1),
+        ('rsvd_1', c_uint32, 7),
+        ('secure_disable_token_fault', c_uint32, 1),
+    ]
+
+EFUSE_MMR_TOKEN_MATCH_FAULT_REG_DEFAULT = 0x00000000
+
+class EFUSE_MMR_TOKEN_MATCH_FAULT_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EFUSE_MMR_TOKEN_MATCH_FAULT_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EFUSE_MMR_TOKEN_MATCH_FAULT_reg_u, self).__init__(*args, **kwargs)
+        self.val = EFUSE_MMR_TOKEN_MATCH_FAULT_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

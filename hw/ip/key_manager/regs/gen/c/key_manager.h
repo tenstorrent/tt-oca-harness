@@ -1608,6 +1608,20 @@ typedef struct __attribute__ ((__packed__)) {
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_bw 6
 #define EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_STATUS_reset 0x0
 
+// reg - efuse_mmr::TOKEN_MATCH_FAULT
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bm 0x1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bp 0
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_SIP_TOKEN_FAULT_reset 0x0
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bm 0x100
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bp 8
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__RMA_CHIPLET_TOKEN_FAULT_reset 0x0
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bm 0x10000
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bp 16
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_bw 1
+#define EFUSE_MMR__TOKEN_MATCH_FAULT__SECURE_DISABLE_TOKEN_FAULT_reset 0x0
+
 // addrmap - efuse_mmr
 typedef struct __attribute__ ((__packed__)) {
     uint32_t RMA_SIP_TOKEN_I[8];
@@ -1617,6 +1631,7 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t RMA_SIP_TOKEN_MATCH;
     uint32_t RMA_CHIPLET_TOKEN_MATCH;
     uint32_t SEC_DISABLE_TOKEN_MATCH;
+    uint32_t TOKEN_MATCH_FAULT;
 } efuse_mmr_t;
 
 // reg - otbn_wrapper_key::key_word_reg
@@ -1801,7 +1816,7 @@ typedef struct __attribute__ ((__packed__)) {
     efuse_interface_ctrl_t otp_efuse_ctrl;
     uint8_t RESERVED_1141c_114ff[0xe4];
     efuse_mmr_t otp_efuse_mmr;
-    uint8_t RESERVED_11570_17fff[0x6a90];
+    uint8_t RESERVED_11574_17fff[0x6a8c];
     otbn_wrapper_key_t otbn_wrapper_key;
     uint8_t RESERVED_18064_18fff[0xf9c];
     aes_wrapper_key_t aes_wrapper_key;

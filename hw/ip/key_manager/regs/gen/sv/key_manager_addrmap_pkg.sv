@@ -32,7 +32,7 @@ localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR = 64'h11400;
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_CTRL_SIZE = 64'h1C;
 
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR = 64'h11500;
-localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_SIZE = 64'h70;
+localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_SIZE = 64'h74;
 
 localparam longint unsigned KEY_MANAGER_OTBN_WRAPPER_KEY_BASE_ADDR = 64'h18000;
 localparam longint unsigned KEY_MANAGER_OTBN_WRAPPER_KEY_SIZE = 64'h64;
@@ -245,6 +245,7 @@ localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR = 64'h
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR = 64'h11564;
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR = 64'h11568;
 localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR = 64'h1156C;
+localparam longint unsigned KEY_MANAGER_OTP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR = 64'h11570;
 function automatic longint unsigned KEY_MANAGER_OTBN_WRAPPER_KEY_KEY_SHARE0_BASE_ADDR(input int unsigned KEY_SHARE0_idx);
     return 64'h18000 + (KEY_SHARE0_idx * 64'h4);
 endfunction

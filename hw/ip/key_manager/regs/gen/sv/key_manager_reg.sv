@@ -275,9 +275,9 @@ module key_manager_reg (
         decoded_reg_strb.otp_efuse_ctrl = cpuif_req_masked & (cpuif_addr >= 17'h11400) & (cpuif_addr <= 17'h11400 + 17'h1b);
         is_external |= cpuif_req_masked & (cpuif_addr >= 17'h11400) & (cpuif_addr <= 17'h11400 + 17'h1b);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h11400) & (cpuif_addr <= 17'h11400 + 17'h1b);
-        decoded_reg_strb.otp_efuse_mmr = cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h6f);
-        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h6f);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h6f);
+        decoded_reg_strb.otp_efuse_mmr = cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h73);
+        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h73);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h73);
         decoded_reg_strb.otbn_wrapper_key = cpuif_req_masked & (cpuif_addr >= 17'h18000) & (cpuif_addr <= 17'h18000 + 17'h63);
         is_external |= cpuif_req_masked & (cpuif_addr >= 17'h18000) & (cpuif_addr <= 17'h18000 + 17'h63);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h18000) & (cpuif_addr <= 17'h18000 + 17'h63);
@@ -486,7 +486,7 @@ module key_manager_reg (
         if((rd_mux_addr >= 17'h11400) && (rd_mux_addr <= 17'h11400 + 17'h1b)) begin
             readback_data_var = hwif_in.otp_efuse_ctrl.rd_data;
         end
-        if((rd_mux_addr >= 17'h11500) && (rd_mux_addr <= 17'h11500 + 17'h6f)) begin
+        if((rd_mux_addr >= 17'h11500) && (rd_mux_addr <= 17'h11500 + 17'h73)) begin
             readback_data_var = hwif_in.otp_efuse_mmr.rd_data;
         end
         if((rd_mux_addr >= 17'h18000) && (rd_mux_addr <= 17'h18000 + 17'h63)) begin

@@ -868,7 +868,7 @@ localparam int unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR 
 
 
 localparam int unsigned EFUSE_MMR_REG_MAP_BASE_ADDR                                                               = 32'h10930500;
-localparam int unsigned EFUSE_MMR_REG_MAP_SIZE                                                                    = 32'h00000070;
+localparam int unsigned EFUSE_MMR_REG_MAP_SIZE                                                                    = 32'h00000074;
 
 
 localparam int unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_OFFSET                                                   = 32'h00000000;
@@ -927,6 +927,8 @@ localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET            
 localparam int unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR                                                = 32'h10930568;
 localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET                                              = 32'h0000006C;
 localparam int unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR                                                = 32'h1093056C;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_OFFSET                                                    = 32'h00000070;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR                                                      = 32'h10930570;
 
 
 //==============================================================================
@@ -3968,6 +3970,7 @@ localparam longint unsigned EFUSE_MMR_RMA_TOKEN_I_REG_DEFAULT                   
 localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_EOP_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_READ_DATA_REG_DEFAULT                                                    = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_STATUS_REG_DEFAULT                                                       = 64'h0000000000000000;
@@ -5251,6 +5254,15 @@ localparam int unsigned EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_SHIFT       
 
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_MASK                                             = 32'h3F;
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_SHIFT                                            = 0;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_MASK                                      = 32'h1;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_SHIFT                                     = 0;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_MASK                                  = 32'h100;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_SHIFT                                 = 8;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_MASK                               = 32'h10000;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_SHIFT                              = 16;
 
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned AXIL_MAILBOX_WRITE_DATA_WRITE_DATA_SHIFT                                              = 0;
@@ -7250,6 +7262,16 @@ typedef struct packed {
 typedef struct packed {
     logic [5:0]   token_match_status ;
 } efuse_mmr_token_match_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   secure_disable_token_fault ;
+    logic [6:0]   rsvd_1 ;
+    logic [0:0]   rma_chiplet_token_fault ;
+    logic [6:0]   rsvd_0 ;
+    logic [0:0]   rma_sip_token_fault ;
+} efuse_mmr_token_match_fault_reg_t;
 
 
 

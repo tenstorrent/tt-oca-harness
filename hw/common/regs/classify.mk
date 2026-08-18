@@ -47,7 +47,7 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 # latter gets a RAL.
 OCAH_REG_RAL_SUB_BLOCKS ?= \
   aes hmac kmac otbn aon_timer secure_dma spi_controller \
-  sep_efuse_map efuse_mmr \
+  sep_efuse_map \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
 OCAH_REG_RAL_LEAF_BLOCKS ?= \
   hw/common/axi/axi_alias_remap/regs/alias_remap \
@@ -55,6 +55,7 @@ OCAH_REG_RAL_LEAF_BLOCKS ?= \
   hw/common/axi/output_remap \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap \
   hw/ip/efuse/regs/efuse_interface_ctrl \
+  hw/ip/efuse/regs/efuse_mmr \
   hw/ip/entropy_source \
   hw/ip/key_manager/regs/km_mailbox_sep \
   vendor/lowRISC/opentitan/overlay/regs/csrng \

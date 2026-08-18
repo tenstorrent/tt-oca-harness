@@ -66,7 +66,7 @@ localparam longint unsigned OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR = 64'h109
 localparam longint unsigned OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE = 64'h1C;
 
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR = 64'h10930500;
-localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_SIZE = 64'h70;
+localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_SIZE = 64'h74;
 
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_BASE_ADDR = 64'h10A00000;
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_SIZE = 64'h7850;
@@ -450,6 +450,7 @@ localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR = 64'h1093
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR = 64'h10930564;
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR = 64'h10930568;
 localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR = 64'h1093056C;
+localparam longint unsigned OCH_SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR = 64'h10930570;
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR = 64'h10A00000;
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR = 64'h10A00008;
 localparam longint unsigned OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR = 64'h10A00010;
