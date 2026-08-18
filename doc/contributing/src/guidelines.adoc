@@ -1,20 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Guidelines
+= OCAH development guidelines
 :doctype: book
 :sectanchors:
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
 
-[WARNING]
-This document is currently under development.
-
 == Standards
 
-The OCAH design will follow industry or FOSS standards where
-appropriate:
+The OCAH design will follow industry or FOSS standards where appropriate:
 
 * SystemVerilog RTL
 * AMBA system buses
@@ -23,7 +19,7 @@ appropriate:
 
 The hardware design is written in a synthesizable subset of
 SystemVerilog RTL language. The coding standards are adopted from the
-lowRISC organization which are also used in OpenTitan.
+lowRISC organization and are also used in OpenTitan.
 
 System interconnect is implemented with AMBA standard buses. AXI4 and
 AXI4-lite is used for data interfaces and is generally configured with
@@ -35,7 +31,6 @@ Registers) are defined in SystemRDL. This is the single source of truth
 and all downstream representations are rendered from this source.
 Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
 SystemVerilog RTL.
-
 
 == Development Tools
 
@@ -74,16 +69,15 @@ memmap.adoc, index.adoc)
 
 The high level goals are:
 
-* avoid SystemVerilog constructs that are error prone or not
-consistently supported, particularly across open source tools
+* avoid SystemVerilog constructs that are error prone or not consistently supported, 
+particularly across open source tools
 * ensure that the code is tidy and easy to read
-* keep the code style consistent across the project's code base
-regardless of who authored it
+* keep the code style consistent across the project's code base regardless of who authored it
 
 OCAH will _mostly_ follow the OpenTitan SystemVerilog coding rules
 defined by lowRISC group in
 https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md[Verilog
-Coding Style] That document is locally copied for convenience.
+Coding Style]. That document is locally copied for convenience.
 
 This section highlights a few of the most important aspects as well as a
 few deviations from the OpenTitan rules. If there is a conflict between
@@ -119,11 +113,15 @@ computational elements
 
 == RTL Code Comments
 
-RTL code comments have a tendency to get out of sync with the code or
-simply be redundant, adding little or negative value. Hence, keep
-comments in the RTL as minimal as possible and prefer to make the code
-self explanatory. Include a description of the purpose and overall
-function of the module in the header. If there is a tricky bit of code
-with some nuance, it's fine to add a comment describing the overall goal
-or strategy of the code. However do not just add an English translation
-of what the Verilog code is doing as that is in best case redundant.
+Include a description of the purpose and overall function of the module 
+in the header. 
+
+RTL code comments may be redundant or add little value to the code.
+Keep comments in the RTL as minimal as possible and, where possible,
+make the code self explanatory. 
+
+Do not add a comment which describes the functionality of the code
+where the code is clear.
+
+If there is a tricky bit of code with some nuance, add a comment describing 
+the overall goal or strategy of the code. 

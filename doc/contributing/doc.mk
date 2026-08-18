@@ -11,6 +11,7 @@ OCAH_CONTRIBUTING_ASSETS ?= $(OCAH_CONTRIBUTING_DIR)/assets
 OCAH_CONTRIBUTING_BUILD ?= $(OCAH_CONTRIBUTING_DIR)/_build
 OCAH_CONTRIBUTING_DIST ?= $(OCAH_CONTRIBUTING_DIR)/dist
 OCAH_CONTRIBUTING_PLAYBOOK ?= $(OCAH_ROOT)/antora-contributing-playbook.yml
+OCAH_CONTRIBUTING_PDF ?= ocah-contributing.pdf
 
 .PHONY: ocah-doc-contributing-setup
 ocah-doc-contributing-setup: ocah-doc-reg-setup

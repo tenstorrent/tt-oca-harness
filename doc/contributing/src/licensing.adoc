@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Licensing
+= OCAH Licensing Guidelines
 :doctype: book
 :sectanchors:
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
 
-[WARNING]
-This document is currently under development.
-
-
 == Licensing
-The main license used is the Apache License, Version 2.0.
+The main license used in this project is the Apache License, Version 2.0.
 
 There are strict rules around the licenses used with open source RTL. 
 OCAH will only permit incorporation of material governed under the 
@@ -21,13 +17,12 @@ liberal Apache 2.0 or equivalent licenses such as Solderpad.
 
 This avoids the restrictions which come with licenses such as GPL.
 
-The licences discussed above are documented here. We may add others
-to this list over time.
+The licences discussed above are documented here. Others may be added to the project over time.
 
 * https://www.apache.org/licenses/LICENSE-2.0
 * https://solderpad.org/licenses/SHL-2.1/
 
-[WARNING]
+[CAUTION]
 Do not attempt to commit material which was distributed under any other license without discussing first with OCAH project managers.
 
 == Third Party Code
@@ -63,93 +58,33 @@ When adopting and potentially modifying third party modules, make sure
 to follow all of the license rules such as keeping all attribution
 comments in the file headers.
 
-== Development Tools
+== Use of CLAs
 
-We aim to primarily use open source tools for the development of OCAH in
-order to eliminate commercial dependencies and enabling open-sourcing
-not only the design, but also the associated tools.
+[WARNING]
+This section needs review and agreement
 
-The goal is to enable new adopters of OCAH to be able to immediately
-perform simulations and other analyses of the design using readily
-available free tools.
 
-For internal development and testing we will employ commercial tools to
-validate the OCAH design, proving readiness for chip deployment i.e.
-tapeout. This include:
+A Contributor License Agreement (CLA) defines the terms under which contributions can be made to a project.
 
-* UVM verification
-* lint tools for code quality
-* logic synthesis
+It is key to the successful functioning of an open source project such as OpenTitan. 
+It offers critical support to three separate groups:
 
-== Component Directory Organization
+- Ensures that the OpenTitan project has the right to distribute the contribution.
+- Confirms the contributor's ownership and grants licenses to the project.
+- Provides protection for recipients and users of the contributions.
 
-All components will have a uniform directory structure which has the
-following elements:
+=== What does the project CLA cover?
 
-* README.md : component overview and quick start guide in Markdown
-format
-* doc/ : detailed AsciiDoc documentation (architecture.adoc, interface.adoc,
-memmap.adoc, index.adoc)
-* rtl : all SystemVerilog modules <component>_*.sv
-* tb : unit level Verilator tests
-* regs/ : <component>.rdl SystemRDL CSR memory map definition and generated collateral
-* syn : logic synthesis constraints (optional)
-* lint : lint waiver files
+[WARNING]
+This section has no content
 
-== SystemVerilog Coding Guidelines
+=== How is the project CLA implemented?
 
-The high level goals are:
+[WARNING]
+This section has no content
 
-* avoid SystemVerilog constructs that are error prone or not
-consistently supported, particularly across open source tools
-* ensure that the code is tidy and easy to read
-* keep the code style consistent across the project's code base
-regardless of who authored it
+== Use of copyright messages
 
-OCAH will _mostly_ follow the OpenTitan SystemVerilog coding rules
-defined by lowRISC group in
-https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md[Verilog
-Coding Style] That document is locally copied for convenience.
+[WARNING]
+This section has no content
 
-This section highlights a few of the most important aspects as well as a
-few deviations from the OpenTitan rules. If there is a conflict between
-the two, the specification here takes precedence.
-
-* Use four spaces for indentation, rather than two for new files
-* Use all upper case letters to name enums, constants (localparam), and
-parameters instead of UpperCamelCase.
-* As stated in the lowRISC guidelines, SystemVerilog Interfaces can be
-limited in terms of tool support, so we _highly discourage_ their use as
-they are not uniformly supported by open source tools. As an
-alternative, struct types can be used instead to bundle groups of input
-or output signals to make ports more abstract.
-* Finite State Machines (FSMs) are powerful sequence control constructs
-but can spiral out of control quickly. Consequences are difficult to
-understand "next state" logic and long timing paths. Separate the
-combinatorial "next state" logic from the sequential state update into
-distinct always blocks. *Do not* combine the two into a single clocked
-always block. Opt for a
-https://en.wikipedia.org/wiki/Moore_machine[Moore machine]
-implementation when possible to aid in timing closure. If you have
-complexity of more than ten states or so, use a microsequencer approach.
-This is more scalable and maintainable.
-
-There will be additional rules that apply to security sensitive
-components such as ciphers. These will be documented in more detail, but
-here is a summary for now:
-
-* FSM state encodings are one-hot with error checking
-* Error detection is implemented on storage elements and some bus and
-computational elements
-* Secret data is transferred and stored in secret-split fashion
-
-== RTL Code Comments
-
-RTL code comments have a tendency to get out of sync with the code or
-simply be redundant, adding little or negative value. Hence, keep
-comments in the RTL as minimal as possible and prefer to make the code
-self explanatory. Include a description of the purpose and overall
-function of the module in the header. If there is a tricky bit of code
-with some nuance, it's fine to add a comment describing the overall goal
-or strategy of the code. However do not just add an English translation
-of what the Verilog code is doing as that is in best case redundant.

@@ -51,7 +51,7 @@ git clone git@github.com:tenstorrent/tt-oca.git
 cd tt-oca
 git checkout -b <your-branch>
 ....
-. Create a feature branch for your work.
+. Create a feature branch for your work (see below for branch management).
 +
 ....
 git checkout -b <your-branch>
@@ -65,9 +65,8 @@ that end, we use the following conventions and processes:
 === Management of Main branch
 
 [NOTE]
-Direct commits to `main` are not allowed. All changes must come
-through a PR. The main branch will be protected and no direct pushes are
-allowed.
+Direct commits to `main` are not allowed. All changes must come through a PR. 
+The main branch will be protected and no direct pushes are allowed.
 
 * Development of each feature should happen on its own, dedicated
 branch
@@ -123,14 +122,18 @@ another (generally the main codebase).  It lets developers ask team members
 to review, discuss, and approve updates before adding them to the released
 project.
 
-Code changes not strictly related to the target feature, major change or issue should go into a separate PR.
-We make use of this to document changes to the codebase and facilitate 
-code review.
+Code changes not strictly related to the target feature, major change or issue 
+should go into a separate PR.  We make use of this to document changes to the 
+codebase and facilitate code review.
 
-A pull request (PR) should contain all the code changes required to address an issue, or all the code changes leading to the implementation of a new feature or a major change in the design. 
-At the same time, a PR should be as small as possible to simplify and speed up the review process. It may thus make sense to break down larger contributions into multiple, self-contained PRs. 
+A pull request (PR) should contain all the code changes required to address 
+an issue, or all the code changes leading to the implementation of a new 
+feature or a major change in the design. 
+At the same time, a PR should be as small as possible to simplify and speed 
+up the review process. It may make sense to break down larger contributions 
+into multiple, self-contained PRs. 
 
-This does not hold for bug fixes: A single PR is ideal to fix a bug.
+For bug fixes - a single PR is ideal to fix a single bug.
 
 === Continuous Integration
 
@@ -139,8 +142,10 @@ All changes to the source code are tested thoroughly in a continuous
 integration system. 
 
 Tests run automatically when changes are proposed for inclusion by submitting 
-a pull request, and on the master branch after changes are merged. This ensures that the source code meets certain quality criteria at all points in time, 
-as defined by the tests which are executed.
+a pull request, and on the master branch after changes are merged. Changes
+which fail automated test cannot be submitted.  
+This ensures that the source code meets certain quality criteria at all points 
+in time, as defined by the tests which are executed.
 
 === Generated Content
 
@@ -149,10 +154,10 @@ Git. Makefiles and scripts should generate this content on-demand as
 part of build and simulation flows. Tracking generated content has many
 downsides including:
 
-* Repository bloat from constantly changing generated content
-(especially from binary files).
+* Repository bloat from constantly changing generated content.  This is
+especially true when binary files are added.
 * Unintended inconsistencies between source and generated content.  
-For example bad code could go to tapeout because a designer forgot to 
+For example incorrect code could go to tapeout because a designer forgot to 
 run the RTL code generation script before checking in critical source 
 script changes.
 Missing content is preferable to incorrect content.
@@ -160,7 +165,8 @@ Missing content is preferable to incorrect content.
 properly, potentially leading to the same sort of design errors
 mentioned above.
 
-There are exceptions for tracking generated content:
+There are exceptions where tracking generated content would be advisable,
+including:
 
 * Published specs and documentation generated from source for viewing
 directly from GitHub.
@@ -181,23 +187,31 @@ manner
 Additional labels for pre-release and build metadata are available as
 extensions to the MAJOR.MINOR.PATCH format.
 
-See https://semver.org[semver] for more details.
+See the documentation on https://semver.org[semver] for more details.
 
-[IMPORTANT]
-We need to adapt the idea of "API changes" to hardware components
-and document here.
+[WARNING]
+We need to document how semver is applied to hardware (not yet in OpenTitan).
 
 == Tracking Tasks and Bugs with GitHub
 
 === Working with Issues
 
-Development tasks are managed with GitHub issues. Issues may have parent
-and child issues, documenting task dependencies throughout the design.
+Development tasks are managed using GitHub issues. GitHub supports issue
+hierarchy, so Issues may have parent and child issues.  This allows grouping
+of related Issues which contribute to an overall goal.
 
-Issues are assigned to milestones to track overall development progress,
-and completion of milestones may trigger design reviews or progress
-updates as necessary. Tags help filter and sort issues that have certain
-properties.
+Labels are a valuable tool to group related tasks.  Care should be taken not
+to create too many new labels.  Always check first if there is an existing
+label to cover the topic on which you are working.
+
+=== Working with Milestones
+
+Milestones may be used to indicate a release point where a number of changes
+will be avaialble.  Assigning issues to milestones allows tracking of progress
+towards the overall goal.  Completion of milestones may trigger design reviews 
+or progress updates. 
+
+=== Working with Bugs
 
 Issues can also be used to track bugs. Design, verification, and firmware 
 engineers may file bug issues against the design. Bug issues should be 
@@ -213,8 +227,10 @@ of the referenced discussion and how the current PR/commit/issue relates
 to that. 
 
 === Who should respond to filed issues?
-Anyone who feels qualified to help, though if you’re working outside your 
-usual area of expertise and making a best-effort guess it’s polite to say so. 
+
+As a collaborative project, anyone who feels qualified to help is encouraged
+to get involved with issues.  If you’re working outside your usual area of 
+expertise it is polite to say so. 
 
 If you see an issue that might be of relevance for a particular team member, 
 you are welcome to ping this person by commenting on the issue mentioning 
