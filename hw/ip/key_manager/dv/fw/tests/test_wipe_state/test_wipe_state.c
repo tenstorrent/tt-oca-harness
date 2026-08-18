@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_wipe_state.c
- * @brief Wipe state test (FR-0000-142, FR-0000-143, SC-0000-019)
+ * @brief Wipe state test
  *
  * Subtest 1: Fill KPV with unscrambled data, verify readback, trigger wipe,
  *            verify WIPE_STATE IRQ and all KPV/scrambler zero.

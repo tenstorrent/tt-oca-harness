@@ -249,9 +249,9 @@
             this.LEVEL = uvm_reg_field::type_id::create("LEVEL");
             this.LEVEL.configure(this, 7, 0, "RO", 1, 'h0, 1, 1, 0);
             this.WPTR = uvm_reg_field::type_id::create("WPTR");
-            this.WPTR.configure(this, 5, 8, "RO", 1, 'h0, 1, 1, 0);
+            this.WPTR.configure(this, 6, 8, "RO", 1, 'h0, 1, 1, 0);
             this.RPTR = uvm_reg_field::type_id::create("RPTR");
-            this.RPTR.configure(this, 5, 16, "RO", 1, 'h0, 1, 1, 0);
+            this.RPTR.configure(this, 6, 16, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__FIFO_STATUS
 
@@ -1284,9 +1284,9 @@
             this.LEVEL = uvm_reg_field::type_id::create("LEVEL");
             this.LEVEL.configure(this, 7, 0, "RO", 1, 'h0, 1, 1, 0);
             this.WPTR = uvm_reg_field::type_id::create("WPTR");
-            this.WPTR.configure(this, 5, 8, "RO", 1, 'h0, 1, 1, 0);
+            this.WPTR.configure(this, 6, 8, "RO", 1, 'h0, 1, 1, 0);
             this.RPTR = uvm_reg_field::type_id::create("RPTR");
-            this.RPTR.configure(this, 5, 16, "RO", 1, 'h0, 1, 1, 0);
+            this.RPTR.configure(this, 6, 16, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__BIW_OBS_STATUS
 
@@ -1341,9 +1341,9 @@
             this.LEVEL = uvm_reg_field::type_id::create("LEVEL");
             this.LEVEL.configure(this, 7, 0, "RO", 1, 'h0, 1, 1, 0);
             this.WPTR = uvm_reg_field::type_id::create("WPTR");
-            this.WPTR.configure(this, 5, 8, "RO", 1, 'h0, 1, 1, 0);
+            this.WPTR.configure(this, 6, 8, "RO", 1, 'h0, 1, 1, 0);
             this.RPTR = uvm_reg_field::type_id::create("RPTR");
-            this.RPTR.configure(this, 5, 16, "RO", 1, 'h0, 1, 1, 0);
+            this.RPTR.configure(this, 6, 16, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__NOISE_OBS_STATUS
 

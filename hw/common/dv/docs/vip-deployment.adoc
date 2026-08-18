@@ -35,7 +35,7 @@ Always import the top-level OCAH package:
 [source,python]
 ----
 from ocah_axi_vip import OcahAxiMaster
-from ocah_jtag_vip import OcahJtagTap
+from ocah_jtag_vip import OcahJtagMasterDriver
 from ocah_checker import OcahChecker
 ----
 
@@ -159,7 +159,7 @@ initial begin
 end
 ----
 
-The DUT environment retrieves `jtag_vif`, assigns it to an `ocah_jtag_cfg`,
+The DUT environment retrieves `jtag_vif`, assigns it to an `ocah_jtag_master_config`,
 and publishes that config to the shared JTAG environment. DUT sequences consume
 OCAH items and sequencer handles. DUT scoreboards consume OCAH events or
 monitor items. They do not reach into driver internals.

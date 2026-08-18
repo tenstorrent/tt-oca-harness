@@ -4,35 +4,17 @@ A configurable crossbar for routing cross trigger pulses between M source ports 
 
 ## Quick Start
 
-### Generate IP Files
-
-The IP uses template-based generation to create register files based on the number of CT_Src and CT_Dst ports:
-
-```bash
-cd hw/ip/cross_trigger_matrix
-python3 generate_ip.py --num-ct-src <N> --num-ct-dst <M>
-```
-
-Where:
-- `<N>` is the number of CT_Src ports (1-32, default: 4)
-- `<M>` is the number of CT_Dst ports (1-32, default: 4)
-
-This script:
-1. Generates the SystemRDL register definition file from a Mako template
-2. Generates all register-related files (RTL, headers, documentation) using PeakRDL
-3. Generates the main RTL module (`cross_trigger_matrix.sv`) from a template
-4. Generates the RTL package and testbench from templates
-
 ### Build and Test
 
-```bash
-# Generate register files (if not already done)
-python3 generate_ip.py --num-ct-src 4
+The matrix is verified at the DTP level by the `dtp_ctm_*` and `dtp_xtrig_*`
+scenarios:
 
-# Run tests
-cd tb_vcs
-make test
+```bash
+python3 tools/dv/run_dv.py --dut dtp --items dtp_ctm_rand_all_scenarios_test
 ```
+
+A block-level VCS testbench is checked in under `dv/tb_vcs`, but its top module
+was never ported and cannot run yet; its README records what is missing.
 
 ### Register generation
 
@@ -43,81 +25,70 @@ committed `regs/cross_trigger_matrix.rdl` and writes `regs/gen/`:
 make -f ocah.mk ocah-regen-regs TARGET=cross_trigger_matrix
 ```
 
-Changing the port count means regenerating the RDL first, with the script
-documented below; the flow above does not take port-count arguments.
+## Port Counts
 
-## Generation Script
+The matrix is sized for the DTP cross-trigger topology of 26 CT_Src and 26
+CT_Dst ports, from `dtp_pkg::DEFAULT_NUM_CTP` (16) plus
+`dtp_pkg::DEFAULT_NUM_INT_CT` (10). Both counts are localparams in
+`rtl/cross_trigger_matrix_pkg.sv` read from the generated collateral, not
+module parameters:
 
-### Usage
+* `NUM_CT_SRC` is the number of `CT_SRC` array elements the register map
+  declares, from `CROSS_TRIGGER_MATRIX_CT_SRC_NUM` in the generated address
+  package.
+* `NUM_CT_DST` is the width of their `CT_DST_SELECT` field, from the register
+  package. `rtl/cross_trigger_matrix.sv` checks it against `$bits` of the field
+  the map actually generated.
 
-```bash
-python3 generate_ip.py [OPTIONS]
+Neither can be overridden at instantiation, because a matrix of a size the
+register map cannot address has nothing to program it. Both dimensions are
+parameters of the address map in `regs/cross_trigger_matrix.rdl`, so resizing
+the matrix is a change to its defaults there plus a rerun of the register flow
+above; the RTL follows without edit, since the select decode indexes the
+register array with its generate loop variable.
 
-Options:
-  -n, --num-ct-src <N>    Number of CT_Src ports (1-32, default: 4)
-  -m, --num-ct-dst <M>    Number of CT_Dst ports (1-32, default: 4)
-  -c, --clean              Remove all generated files
-  -h, --help               Show help message
-```
+A consequence for integrators: the register map must be generated for the port
+count the enclosing design wires up. `cross_trigger_network` connects
+`NUM_CTM_PORTS` signals and no longer sizes the matrix, so the two have to be
+resized together. `dtp_pkg` checks that they were, failing elaboration if the
+DTP's cross trigger port counts and this map disagree.
 
-### Examples
+Each port occupies 8 bytes whatever the port count, so selecting among more than 32
+destinations widens the select field to fill that space instead of moving any
+addresses. The register map switches form on `NUM_CT_DST`:
 
-Generate IP with 8 CT_Src ports and 16 CT_Dst ports:
-```bash
-python3 generate_ip.py --num-ct-src 8 --num-ct-dst 16
-```
+| `NUM_CT_DST` | Register | Writes |
+| --- | --- | --- |
+| 1 to 32 | 32 bits, second word unmapped | immediate |
+| 33 to 64 | 64 bits, accessed a word at a time | buffered |
 
-Generate IP with default 4 CT_Src and 4 CT_Dst ports:
-```bash
-python3 generate_ip.py
-```
-
-Generate IP with 4 CT_Src ports and 8 CT_Dst ports:
-```bash
-python3 generate_ip.py --num-ct-dst 8
-```
-
-Clean all generated files:
-```bash
-python3 generate_ip.py --clean
-```
+Buffering is required above 32 because the select mask then spans both words: it
+commits when the upper word is written, so a mask never takes effect
+half-programmed, and firmware must write both words, low first. Below that
+threshold nothing about the register or its programming changes, and at the DTP's
+26 destinations the generated collateral is identical either way.
 
 ## Generated Files
 
-After running the generation script, the following files are created:
+The register flow writes `regs/gen/` from `regs/cross_trigger_matrix.rdl`:
 
-**Register Files** (from SystemRDL):
-* `regs/cross_trigger_matrix.rdl` - SystemRDL register definition (generated from template)
-* `regs/rtl/cross_trigger_matrix_reg.sv` - Register RTL module
-* `regs/rtl/cross_trigger_matrix_reg_pkg.sv` - Register package
-* `regs/c/cross_trigger_matrix_reg.h` - C header
-* `regs/py_headers/cross_trigger_matrix_reg.py` - Python header
-* `regs/svh/cross_trigger_matrix_reg.svh` - SystemVerilog header
-* `regs/rst/cross_trigger_matrix_reg.rst` - reStructuredText documentation (for Sphinx)
-
-**RTL Files** (from templates):
-* `rtl/cross_trigger_matrix.sv` - Main RTL module with generated case statements matching NUM_CT_SRC
-* `rtl/cross_trigger_matrix_pkg.sv` - Package with parameterized defaults (DEFAULT_NUM_CT_SRC, DEFAULT_NUM_CT_DST)
-* `tb_vcs/tb_cross_trigger_matrix.sv` - Testbench with parameterized localparams (NUM_CT_SRC, NUM_CT_DST)
-
-**Note**: The main RTL module, package, and testbench are generated with parameters matching the generation script arguments. The main RTL module only includes case statements for the configured number of CT_SRC ports, ensuring the RTL matches the generated register definitions exactly.
-
-## Requirements
-
-* Python 3 with Mako template library: `pip install mako`
-* PeakRDL: `pip install systemrdl-compiler peakrdl-regblock`
-* OCH_ROOT environment variable set (see repository root README)
+* `regs/gen/sv/cross_trigger_matrix_reg.sv` - Register RTL module
+* `regs/gen/sv/cross_trigger_matrix_reg_pkg.sv` - Register package
+* `regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv` - Address and array-size constants
+* `regs/gen/c/cross_trigger_matrix.h` - Firmware C header
+* `regs/gen/c/cross_trigger_matrix_addr.h` - Raw address header
+* `regs/gen/py/cross_trigger_matrix_reg.py` - Python header used by the cocotb tests
+* `regs/gen/svh/cross_trigger_matrix_reg.svh` - Flattened SystemVerilog header
+* `regs/gen/adoc/cross_trigger_matrix.adoc` - Register documentation, included by the CTN memory map page
 
 ## Documentation
 
-Full documentation is available in the `doc/` directory. Build with:
+The `doc/` pages are AsciiDoc partials published through the tree-wide Antora
+site. Build the HTML books from the repository root:
 
 ```bash
-cd doc
-make html
+make -f ocah.mk ocah-doc-html
 ```
-
-Then open `_build/html/index.html` in your browser.
 
 ## Architecture
 
@@ -125,6 +96,6 @@ The CTM consists of:
 
 * **Register Interface**: AXI4-Lite interface for configuration
 * **Source Selector Modules**: One per CT_Src port, implements selection and OR logic
-* **Parameterized Design**: Supports 1-32 CT_Src and 1-32 CT_Dst ports
+* **26x26 Configuration**: both counts follow the register map, as described under Port Counts
 
 See `doc/` for detailed architecture and implementation documentation.

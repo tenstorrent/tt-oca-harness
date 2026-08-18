@@ -77,11 +77,30 @@ ocah_axi_vip/
   cocotb/ocah_axi_lite_slave.py         — OcahAxiLiteSlave / OcahAxiLiteRam
   cocotb/ocah_axi_item.py               — transaction item dataclasses
   cocotb/ocah_axi_monitor.py            — OcahAxiMonitor, OcahAxiLiteMonitor
-  cocotb/ocah_axi_checker.py            — OcahAxiChecker
-  ocah_axi_cov.sv                — commercial-simulator functional coverage
+  cocotb/ocah_axi_checker.py            — OcahAxiChecker (item rules + CHK-* evidence)
+  cocotb/ocah_axi_ref_model.py          — OcahAxiRefModel (shadow memory + response policy)
+  cocotb/ocah_axi_scoreboard.py         — OcahAxiScoreboard (evidence-emitting comparator)
+  cocotb/ocah_axi_protocol_watcher.py   — cycle-level protocol-rule watchers
+  interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
+  sva/ocah_axi_protocol_checker.sv — clean-room AXI protocol SVA (OCAH_AXI_* rules)
+  sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
+  sv/ocah_axi_ram_responder.sv   — behavioral AXI4 RAM responder (error-injectable)
+  uvm/ocah_axi_uvm_pkg.sv        — passive SV-UVM layer (monitor/ref-model/scoreboard)
+  cov/ocah_axi_cov.sv            — commercial-simulator functional coverage
   examples/
-    example_register_access.py — annotated usage snippets
+    example_register_access.py            — annotated usage snippets
+    example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
 ```
+
+The checker, reference model, and scoreboard follow the shared contract in
+`hw/common/dv/docs/vip-checker-model.adoc`: named
+`CHK-* PASS/FAIL` evidence with a `CHECKER_SUMMARY`, expected-vs-unexpected
+non-OKAY classification via armed credits, blocked-window/no-activity checks,
+and fail-closed finalization. Protocol rules are re-implemented clean-room
+from the public AMBA AXI4 specification (ARM IHI 0022) rule descriptions;
+no third-party protocol-checker source was consulted or copied. See
+`MANUAL.md` for the full rule and check-ID tables, the SV-UVM layer, and the
+DTP adoption pattern.
 
 ---
 

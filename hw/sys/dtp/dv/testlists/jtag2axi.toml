@@ -24,7 +24,7 @@ name = "dtp_jtag2axi_smc_axi_single_write_test"
 module = "dtp_jtag2axi_smc_axi_single_write_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -32,7 +32,7 @@ name = "dtp_jtag2axi_smc_axi_single_write_data_verify_test"
 module = "dtp_jtag2axi_smc_axi_single_write_data_verify_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -40,7 +40,7 @@ name = "dtp_jtag2axi_smc_axi_series_write_incr_test"
 module = "dtp_jtag2axi_smc_axi_series_write_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -48,7 +48,7 @@ name = "dtp_jtag2axi_smc_axi_series_write_no_incr_test"
 module = "dtp_jtag2axi_smc_axi_series_write_no_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -56,7 +56,7 @@ name = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test"
 module = "dtp_jtag2axi_smc_axi_series_write_incr_with_error_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -64,7 +64,7 @@ name = "dtp_jtag2axi_smc_axi_random_ops_test"
 module = "dtp_jtag2axi_smc_axi_random_ops_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -72,7 +72,7 @@ name = "dtp_jtag2axi_smc_axi_write_security_gating_test"
 module = "dtp_jtag2axi_smc_axi_write_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -80,7 +80,7 @@ name = "dtp_jtag2axi_smc_axi_single_write_read_test"
 module = "dtp_jtag2axi_smc_axi_single_write_read_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -88,7 +88,7 @@ name = "dtp_jtag2axi_smc_axi_series_write_read_incr_test"
 module = "dtp_jtag2axi_smc_axi_series_write_read_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -96,7 +96,7 @@ name = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test"
 module = "dtp_jtag2axi_smc_axi_series_write_read_no_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -104,7 +104,7 @@ name = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test"
 module = "dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -112,7 +112,7 @@ name = "dtp_jtag2axi_smc_axi_read_random_ops_test"
 module = "dtp_jtag2axi_smc_axi_read_random_ops_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -120,7 +120,7 @@ name = "dtp_jtag2axi_smc_axi_read_security_gating_test"
 module = "dtp_jtag2axi_smc_axi_read_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -128,7 +128,7 @@ name = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test"
 module = "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3210"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -136,7 +136,7 @@ name = "dtp_jtag2axi_smc_otp_axi_single_write_test"
 module = "dtp_jtag2axi_smc_otp_axi_single_write_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -144,7 +144,7 @@ name = "dtp_jtag2axi_smc_axi_error_single_write_test"
 module = "dtp_jtag2axi_smc_axi_error_single_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -152,7 +152,7 @@ name = "dtp_jtag2axi_smc_axi_error_single_read_test"
 module = "dtp_jtag2axi_smc_axi_error_single_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -160,7 +160,7 @@ name = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test"
 module = "dtp_jtag2axi_smc_axi_error_series_no_incr_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -168,7 +168,7 @@ name = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test"
 module = "dtp_jtag2axi_smc_axi_error_series_no_incr_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -176,7 +176,7 @@ name = "dtp_jtag2axi_smc_axi_error_series_incr_write_test"
 module = "dtp_jtag2axi_smc_axi_error_series_incr_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -184,7 +184,7 @@ name = "dtp_jtag2axi_smc_axi_error_series_incr_read_test"
 module = "dtp_jtag2axi_smc_axi_error_series_incr_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -192,7 +192,7 @@ name = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test"
 module = "dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -200,7 +200,7 @@ name = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test"
 module = "dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -208,7 +208,7 @@ name = "dtp_jtag2axi_smc_axi_error_security_gating_test"
 module = "dtp_jtag2axi_smc_axi_error_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -216,7 +216,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_single_write_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_single_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -224,7 +224,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_single_read_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_single_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -232,7 +232,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -240,7 +240,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_series_no_incr_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -248,7 +248,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -256,7 +256,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -264,7 +264,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -272,7 +272,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -280,7 +280,7 @@ name = "dtp_jtag2axi_smc_otp_axi_error_security_gating_test"
 module = "dtp_jtag2axi_smc_otp_axi_error_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -288,7 +288,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_single_write_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_single_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -296,7 +296,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_single_read_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_single_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -304,7 +304,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -312,7 +312,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_series_no_incr_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -320,7 +320,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -328,7 +328,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -336,7 +336,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -344,7 +344,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -352,7 +352,7 @@ name = "dtp_jtag2axi_sep_otp_axi_error_security_gating_test"
 module = "dtp_jtag2axi_sep_otp_axi_error_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -360,7 +360,7 @@ name = "dtp_jtag2axi_backpressure_aw_before_w_test"
 module = "dtp_jtag2axi_backpressure_aw_before_w_test"
 seed = 1
 timeout_sec = 3000
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -368,7 +368,7 @@ name = "dtp_jtag2axi_backpressure_long_stall_test"
 module = "dtp_jtag2axi_backpressure_long_stall_test"
 seed = 1
 timeout_sec = 3000
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -376,7 +376,7 @@ name = "dtp_jtag2axi_backpressure_abort_at_data_w_test"
 module = "dtp_jtag2axi_backpressure_abort_at_data_w_test"
 seed = 1
 timeout_sec = 3000
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -384,7 +384,7 @@ name = "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test"
 module = "dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -392,7 +392,7 @@ name = "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test"
 module = "dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -400,7 +400,7 @@ name = "dtp_jtag2axi_decode_error_decerr_write_test"
 module = "dtp_jtag2axi_decode_error_decerr_write_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -408,7 +408,7 @@ name = "dtp_jtag2axi_decode_error_decerr_read_test"
 module = "dtp_jtag2axi_decode_error_decerr_read_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -416,7 +416,7 @@ name = "dtp_jtag2axi_decode_error_mixed_test"
 module = "dtp_jtag2axi_decode_error_mixed_test"
 seed = 1
 timeout_sec = 3000
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -424,7 +424,7 @@ name = "dtp_jtag2axi_series_corner_all_bridges_test"
 module = "dtp_jtag2axi_series_corner_all_bridges_test"
 seed = 1
 timeout_sec = 3000
-tags = ["jtag2axi", "dtp_issue_3212"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -432,7 +432,7 @@ name = "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test"
 module = "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -440,7 +440,7 @@ name = "dtp_jtag2axi_smc_otp_axi_series_write_incr_test"
 module = "dtp_jtag2axi_smc_otp_axi_series_write_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -448,7 +448,7 @@ name = "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test"
 module = "dtp_jtag2axi_smc_otp_axi_series_write_no_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -456,7 +456,7 @@ name = "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test"
 module = "dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -464,7 +464,7 @@ name = "dtp_jtag2axi_smc_otp_axi_random_ops_test"
 module = "dtp_jtag2axi_smc_otp_axi_random_ops_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -472,7 +472,7 @@ name = "dtp_jtag2axi_smc_otp_axi_write_security_gating_test"
 module = "dtp_jtag2axi_smc_otp_axi_write_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -480,7 +480,7 @@ name = "dtp_jtag2axi_sep_otp_axi_single_write_test"
 module = "dtp_jtag2axi_sep_otp_axi_single_write_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -488,7 +488,7 @@ name = "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test"
 module = "dtp_jtag2axi_sep_otp_axi_single_write_data_verify_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -496,7 +496,7 @@ name = "dtp_jtag2axi_sep_otp_axi_series_write_incr_test"
 module = "dtp_jtag2axi_sep_otp_axi_series_write_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -504,7 +504,7 @@ name = "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test"
 module = "dtp_jtag2axi_sep_otp_axi_series_write_no_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -512,7 +512,7 @@ name = "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test"
 module = "dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -520,7 +520,7 @@ name = "dtp_jtag2axi_sep_otp_axi_random_ops_test"
 module = "dtp_jtag2axi_sep_otp_axi_random_ops_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -528,7 +528,7 @@ name = "dtp_jtag2axi_sep_otp_axi_write_security_gating_test"
 module = "dtp_jtag2axi_sep_otp_axi_write_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -536,7 +536,7 @@ name = "dtp_jtag2axi_smc_otp_axi_single_write_read_test"
 module = "dtp_jtag2axi_smc_otp_axi_single_write_read_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -544,7 +544,7 @@ name = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test"
 module = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -552,7 +552,7 @@ name = "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test"
 module = "dtp_jtag2axi_smc_otp_axi_series_write_read_no_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -560,7 +560,7 @@ name = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test"
 module = "dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -568,7 +568,7 @@ name = "dtp_jtag2axi_smc_otp_axi_read_random_ops_test"
 module = "dtp_jtag2axi_smc_otp_axi_read_random_ops_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -576,7 +576,7 @@ name = "dtp_jtag2axi_smc_otp_axi_read_security_gating_test"
 module = "dtp_jtag2axi_smc_otp_axi_read_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -584,7 +584,7 @@ name = "dtp_jtag2axi_sep_otp_axi_single_write_read_test"
 module = "dtp_jtag2axi_sep_otp_axi_single_write_read_test"
 seed = 1
 timeout_sec = 1800
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -592,7 +592,7 @@ name = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test"
 module = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -600,7 +600,7 @@ name = "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test"
 module = "dtp_jtag2axi_sep_otp_axi_series_write_read_no_incr_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -608,7 +608,7 @@ name = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test"
 module = "dtp_jtag2axi_sep_otp_axi_series_write_read_incr_with_error_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -616,7 +616,7 @@ name = "dtp_jtag2axi_sep_otp_axi_read_random_ops_test"
 module = "dtp_jtag2axi_sep_otp_axi_read_random_ops_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
 [[tests]]
@@ -624,5 +624,5 @@ name = "dtp_jtag2axi_sep_otp_axi_read_security_gating_test"
 module = "dtp_jtag2axi_sep_otp_axi_read_security_gating_test"
 seed = 1
 timeout_sec = 2400
-tags = ["jtag2axi", "dtp_issue_3211"]
+tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]

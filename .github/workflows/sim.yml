@@ -88,6 +88,18 @@ jobs:
             # SEP's `all` mixes cpu firmware tests; `no_cpu` is the toolchain-free
             # subset. The smoke tier is unaffected (sep_axi_smoke_test is no_cpu).
             nightly_items: no_cpu
+          - dut: smu
+            tool: verilator
+            runner: ubuntu-latest
+            # SMU has no `all` group; `sep0_all` is the enrolled SEP=0 release set
+            # (no c_compile / RISC-V toolchain stage on hosted runners).
+            nightly_items: sep0_all
+          - dut: smc
+            tool: verilator
+            runner: ubuntu-latest
+            # SMC has no `all` group; `smoke` is the enrolled CI set and has no
+            # firmware c_compile stage (cpu boot lives in other groups).
+            nightly_items: smoke
     env:
       # smoke: pull_request, push, and default manual dispatch.
       # nightly: daily schedule, or manual dispatch with tier=nightly.
@@ -200,68 +212,3 @@ jobs:
           path: ${{ env.RUN_DIR }}
           retention-days: 14
           if-no-files-found: ignore
-
-  # Sticky PR failure comment built from the smoke run's native results. The
-  # comment exists only while the smoke gate is failing: a passing run posts
-  # nothing (the green required check is the pass signal) and deletes a stale
-  # failure comment left by an earlier push, so a recovered PR carries no
-  # leftover red summary. Same-repo PRs only: fork PRs get a read-only token
-  # and cannot comment.
-  pr-comment:
-    needs: verilator-smoke
-    if: always() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      pull-requests: write
-    steps:
-      - name: Download smoke artifacts
-        if: needs.verilator-smoke.result != 'success'
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          pattern: dv-run-*-smoke
-          path: runs
-
-      - name: Sync sticky failure comment
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          marker='<!-- ocah-dv-smoke-summary -->'
-          pr=${{ github.event.pull_request.number }}
-          cid=$(gh api "repos/${{ github.repository }}/issues/$pr/comments" --paginate \
-            --jq "[.[] | select(.body | startswith(\"$marker\"))][0].id // empty")
-          if [ "${{ needs.verilator-smoke.result }}" = "success" ]; then
-            # Passing run: no comment traffic; drop a stale failure summary.
-            if [ -n "$cid" ]; then
-              gh api -X DELETE "repos/${{ github.repository }}/issues/comments/$cid"
-            fi
-            exit 0
-          fi
-          {
-            echo "$marker"
-            echo "### DV smoke summary"
-            found=false
-            for r in runs/*/result.json; do
-              [ -f "$r" ] || continue
-              found=true
-              jq -r '"- **\(.flow) / \(.tool)**: \(.status)"' "$r"
-              find "$(dirname "$r")" -path '*/attempt_*/result.json' | while read -r leaf; do
-                s=$(jq -r .status "$leaf")
-                if [ "$s" != "PASS" ]; then
-                  t=${leaf#"$(dirname "$r")"/}
-                  echo "  - \`${t%%/*}\`: $s"
-                fi
-              done
-            done
-            if [ "$found" = false ]; then
-              echo "- No native result was recorded (the run failed before results were written); see the workflow logs."
-            fi
-            echo ""
-            echo "_Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (job result: ${{ needs.verilator-smoke.result }})_"
-          } > comment.md
-          if [ -n "$cid" ]; then
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$cid" -F body=@comment.md
-          else
-            gh api -X POST "repos/${{ github.repository }}/issues/$pr/comments" -F body=@comment.md
-          fi

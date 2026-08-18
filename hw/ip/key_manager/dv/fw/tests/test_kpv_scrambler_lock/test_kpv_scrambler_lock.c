@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_kpv_scrambler_lock.c
- * @brief KPV scrambler lock test (FR-0000-113, FR-0000-116)
+ * @brief KPV scrambler lock test
  *
  * Provision key, set enable, set lock. Verify further writes to key and enable
  * are ignored (read back unchanged). Also verify key data registers are

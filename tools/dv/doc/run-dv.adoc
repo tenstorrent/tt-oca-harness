@@ -128,7 +128,7 @@ Run a tagged local regression:
 [source,bash]
 ----
 python3 tools/dv/run_dv.py \
-  --dut smc_wrapper \
+  --dut smc \
   --tag smoke \
   --sim-jobs 4
 ----
@@ -189,7 +189,9 @@ formal backends. A DUT still needs a formal configuration before either can be
 selected.
 
 The shared `native-uvm` profile (SystemVerilog UVM, `framework = "uvm"`) is a
-maintainer flow that currently allows VCS only; the UVM library comes from the
+maintainer flow that currently allows VCS only; it carries
+`license = "required-commercial"`, so `--list` marks it `(licensed)` and the
+launcher says so when the simulator is absent. The UVM library comes from the
 simulator via `-ntb_opts uvm`, tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
 policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium support is planned
@@ -439,7 +441,7 @@ runs shared target builds first and then executes local leaves with up to
 [source,bash]
 ----
 python3 tools/dv/run_dv.py \
-  --dut smc_wrapper \
+  --dut smc \
   --items smoke \
   --regress \
   --reseed 10 \
@@ -455,7 +457,7 @@ with the recorded item and seed:
 [source,bash]
 ----
 python3 tools/dv/run_dv.py \
-  --dut smc_wrapper \
+  --dut smc \
   --items <failed-test> \
   --stage sim \
   --tool <recorded-tool> \
@@ -568,7 +570,10 @@ warning and records it in the run's wave metadata.
 |Override the test/default run mode.
 
 |`--list`
-|List selectable DUTs, or details for `--dut`.
+|List selectable DUTs, or details for `--dut`. Each row shows the DUT's
+default tool; flows that cannot run on open-source tools are marked
+`(licensed)`. The per-DUT detail view adds the `license` and `runnability`
+fields from the merged config.
 
 |`--validate-configs`
 |Validate registries and every selectable simulation DUT. Exit `2` if any fail.
@@ -840,15 +845,14 @@ Explicit run directories never create or update the `latest` symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp` + Verilator
-|The only combination qualified at current head. Runs on every pull request
-and push to `main` (smoke) and in the reseeded nightly tier. The check is
-not currently required by the `main` ruleset (only the GitLab mirror check
-is); making it required is a deliberate follow-up once the workflow has a
-green scheduled run.
+|`dtp`, `sep`, `smu`, `smc` + Verilator
+|Hosted `sim` matrix at current head. Smoke runs on every pull request and
+push to `main`; nightly reseeds each DUT's `nightly_items` group (`all` /
+`no_cpu` / `sep0_all` / `smoke`). The checks are not currently required by
+the `main` ruleset (only the GitLab mirror check is).
 
 |Configured, not CI-qualified
-|`dtp_uvm` + VCS; `sep`, `smc_wrapper`, `smu`, `smu_wrapper` cocotb flows
+|`dtp_uvm` + VCS; `smu_wrapper` cocotb flow
 |Valid configs exercised by maintainers with licensed tools or carrying
 historical local results only. Not run by hosted CI; do not add to the
 workflow matrix without a qualifying run at head.
@@ -891,9 +895,19 @@ python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>
 ----
 
 `--doctor` checks configured binaries on `PATH`, supported Python packages, and
-the presence count of configured license environment variables. It does not
-check out a license or comprehensively probe Bender, Make, coverage utilities,
-or every firmware toolchain.
+the presence count of configured license environment variables. For a cocotb
+DUT it also imports every testlist module in a child interpreter whose
+`PYTHONPATH` is rebuilt from the DUT config exactly as a run rebuilds it
+(`test_dir`, `python_root`, `python_paths`, and the generated namespace
+bridge), so an import failure reported here reproduces in a real run and an
+import that only works with extra ambient packages does not mask one. The
+probe assigns the simulation-time `cocotb.log` attribute the way cocotb's
+initialization does before importing test modules, so modules that touch it
+at import scope are not false-flagged. The
+shared VIP check imports `ocah_axi_vip` from its in-repo root
+(`hw/common/dv/vip`); no `pip install` of `hw/common/dv` is required. The
+doctor does not check out a license or comprehensively probe Bender, Make,
+coverage utilities, or every firmware toolchain.
 
 === A zero-return-code simulation is UNKNOWN
 

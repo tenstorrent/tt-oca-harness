@@ -146,4 +146,15 @@ being public, need no read protection. Replaced the two coarse reserved blocks
 with eight individually lockable 256-bit spare fields (spare0-spare7) so an
 adopter can provision and lock spare storage one field at a time. The map
 remains 8192 bits.
+|0.5.23 |2026-08-11 |Alessandro Ottaviano |Aligned entropy-source documentation with the
+RTL: corrected the MAIN_SM_STATUS.ALERT / AlertHang description and the DRBG EDN endpoint count.
+|0.5.24 |2026-08-11 |Alessandro Ottaviano |Entropy source: the sticky
+MAIN_SM_STATUS.ALERT and ERR status bits are now also cleared by a CTRL.RESET
+soft reset, keeping the status consistent with the FSM it reflects.
+|0.5.25 |2026-08-12 |Alessandro Ottaviano |Surfaced the Entropy Source IP
+register reference in the SEP Detailed Register Map (previously only prose was
+included) and reconciled the generated register tables with the RDL. Completed
+the HT_WATERMARK description: each watermark arms when the entropy source is
+enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse -- high watermarks to
+0x0000 (running maximum), low watermarks to 0xFFFF (running minimum).
 |=======================================================================

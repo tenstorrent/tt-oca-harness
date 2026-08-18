@@ -16,13 +16,13 @@ OCAH_DOC_SITE_URL ?=
 
 ## Build the combined multi-book site (all four books, one Antora run).
 .PHONY: ocah-doc-combined-html
-ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup
+ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-contributing-setup
 	@command -v npx >/dev/null 2>&1 || { \
 		echo "error: node/npx is required to build the Antora site."; \
 		echo "install Node.js, or run: ./scripts/docker-run.sh doc-html combined"; \
 		exit 1; \
 	}
-	@echo "Building combined OCAH documentation site (Antora, all 4 books) with node $$(node --version 2>/dev/null)"
+	@echo "Building combined OCAH documentation site (Antora, all 5 books) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && SITE_SEARCH_PROVIDER=lunr $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
 		"$(OCAH_COMBINED_PLAYBOOK)"
