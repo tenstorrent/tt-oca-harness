@@ -91,6 +91,7 @@ int main(void) {
     // Release the KM, then handshake: receive READY, send GO. (Release BEFORE
     // waiting for READY, or the KM -- still in reset -- can never send it.)
     sep_reset_release_km();
+    sep_mbx_puts("STEP Key Manager released from software reset\n");
 
     uint32_t km_ready = 0;
     if (sep_km_mbox_get(&km_ready, MBOX_WAIT_LIMIT) != 0) {

@@ -162,6 +162,7 @@ int main(void) {
     wdt_set_bark(WDT_BARK_SIM);
     wdt_set_bite(WDT_BITE_SIM);
     wdt_enable();
+    sep_mbx_puts("STEP watchdog configured (small bark/bite thresholds) and enabled\n");
 
     // Wait for the 1st bark NMI (handler disables the WDT).
     int timeout = NMI_WAIT_ITERS;

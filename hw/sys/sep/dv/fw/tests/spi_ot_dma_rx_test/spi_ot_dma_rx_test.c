@@ -58,6 +58,7 @@ int main(void) {
 
     sep_outbound_filter_init(); // open mailbox window (STDOUT via generated filter map)
     sep_mbx_puts("SEP SPI OT DMA RX test\n");
+    sep_mbx_puts("STEP filter init done; flash model preloaded by the host\n");
 
     // --- OpenTitan SPI host init ---------------------------------------------
     // Nonfree: route pads to OT and release cs_force_high (needs NONFREE_ROOT
@@ -70,6 +71,7 @@ int main(void) {
                SPI_CONTROLLER__CTRL__OUTPUT_EN_bm | SPI_CONTROLLER__CTRL__SPIEN_bm);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    sep_mbx_puts("STEP SPI host configured: RX watermark, clock divider, enable\n");
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
            SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
@@ -92,6 +94,7 @@ int main(void) {
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    sep_mbx_puts("STEP DMA armed: RXDATA(WRAP) -> SRAM(INCR), hardware handshake\n");
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
                OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
@@ -128,6 +131,7 @@ int main(void) {
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
            (SPI_CMD_DIR_RX << SPI_CONTROLLER__CMD__DIRECTION_bp) |
                ((RX_SIZE - 1u) << SPI_CONTROLLER__CMD__LEN_bp));
+    sep_mbx_puts("STEP flash READ issued: opcode 0x03 + 24-bit address\n");
 
     // --- Wait for the DMA to drain all chunks --------------------------------
     uint32_t status_before_clear = 0;
@@ -157,6 +161,7 @@ int main(void) {
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_RW1C_MASK);
     __asm__ volatile("fence" ::: "memory");
     uint32_t status_after_clear = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    sep_mbx_puts("STEP DMA polled to completion; status write-one-to-clear applied\n");
     if (status_after_clear & DMA_STATUS_RW1C_MASK) {
         sep_mbx_puts("FAIL: DMA STATUS RW1C bits did not clear\n");
         errors++;

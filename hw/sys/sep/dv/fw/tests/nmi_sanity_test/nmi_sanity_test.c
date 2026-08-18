@@ -137,6 +137,7 @@ int main(void) {
     wdt_set_bark(WDT_BARK_SIM);
     wdt_set_bite(WDT_BITE_HIGH);
     wdt_enable();
+    sep_mbx_puts("STEP watchdog configured (small bark threshold) and enabled\n");
 
     // CHK-WDT-NMI: wait for the bark NMI. A wedged NMI path must surface as FAIL,
     // not a silent pass: bounded loop (and a never-firing NMI also stalls the boot,

@@ -765,11 +765,13 @@ module sep_uvm_top
         #0;  // let the default-fill initials settle first
         if ($value$plusargs("sep_boot_rom_hex=%s", img)) begin
             $readmemh(img, `SEP_IPI.u_sep_boot_rom.mem);
+            $display("[tb_backdoor_mem] boot ROM image loaded (%0s)", img);
         end else begin
             fd = $fopen("sep_boot_rom.hex", "r");
             if (fd != 0) begin
                 $fclose(fd);
                 $readmemh("sep_boot_rom.hex", `SEP_IPI.u_sep_boot_rom.mem);
+                $display("[tb_backdoor_mem] boot ROM image loaded (sep_boot_rom.hex)");
             end
         end
         if ($value$plusargs("sep_sram_hex=%s", img)) begin

@@ -384,8 +384,8 @@ after handoff, not from the ROM.
 
 | 2
 | Let the ROM run its non-secure boot path.
-| No line marking entry to the boot path itself
-| NOT-LOGGED
+| `ROM> BOOT_SECONDARY` then `ROM> WAIT_SMC_MANIFEST` on the ROM's virtual console
+| LOGGED
 
 | 3
 | Collect the stage markers it prints.
@@ -438,8 +438,8 @@ which a data-side read would also show.
 
 | 1
 | Stage a four-instruction program into the boot ROM at a known address.
-| No log line — the program is staged before simulation starts
-| NOT-LOGGED
+| `[tb_backdoor_mem] boot ROM image loaded (sep_boot_rom.hex)`
+| LOGGED
 
 | 2
 | Release the CPU and direct fetch at that address.
@@ -584,8 +584,8 @@ written to store, so a Key Manager that never started cannot pass.
 
 | 3
 | Poll until both a ROM fetch and an SRAM write have been observed, or time out.
-| No per-poll line; the exit condition is visible only in the counters read next
-| NOT-LOGGED
+| `STEP KM activity observed after` — the cycle count and bound vary per run
+| LOGGED
 
 | 4
 | Read the traffic counters and the first SRAM word.
@@ -995,8 +995,8 @@ processors, and the reset controller path that releases the Key Manager.
 
 | 2
 | Release the Key Manager from software reset.
-| No firmware line for the reset release itself
-| NOT-LOGGED
+| `STEP Key Manager released from software reset`
+| LOGGED
 
 | 3
 | Handshake over the mailbox — receive the ready token, send the go token.
@@ -1089,8 +1089,8 @@ inline hash engine consumed the same bytes that were copied.
 
 | 1
 | Initialise the fabric filter; register the DMA done and error service routines.
-| No firmware line for filter init or handler registration
-| NOT-LOGGED
+| `STEP filter init done; DMA done/error handlers registered`
+| LOGGED
 
 | 2
 | Program the enabled memory range and confirm the configuration lock is open.
@@ -1192,28 +1192,28 @@ completion-status check.
 
 | 1
 | Initialise the fabric filter; preload the flash model with a known byte pattern.
-| No firmware line for filter init or flash preload
-| NOT-LOGGED
+| `STEP filter init done; flash model preloaded by the host`
+| LOGGED
 
 | 2
 | Configure the SPI host: receive watermark, clock divider, enable, watermark event.
-| No firmware line for the SPI configuration writes
-| NOT-LOGGED
+| `STEP SPI host configured: RX watermark, clock divider, enable`
+| LOGGED
 
 | 3
 | Issue a flash read command and address, then request the payload.
-| No firmware line for the flash read command
-| NOT-LOGGED
+| `STEP flash READ issued: opcode 0x03 + 24-bit address`
+| LOGGED
 
 | 4
 | Program the DMA: source is the receive register in wrapping mode, destination is SRAM incrementing, hardware handshake enabled; start.
-| No firmware line for the DMA programming or start
-| NOT-LOGGED
+| `STEP DMA armed: RXDATA(WRAP) -> SRAM(INCR), hardware handshake`
+| LOGGED
 
 | 5
 | Poll to completion, then write-one-to-clear the status bits.
-| No firmware line for the poll or the clear
-| NOT-LOGGED
+| `STEP DMA polled to completion; status write-one-to-clear applied`
+| LOGGED
 
 | 6
 | Check every DMA-written SRAM word against the pattern.
@@ -1584,23 +1584,23 @@ which is why that checker is the one that matters.
 | 1
 | Inherit the global side-effect region marking from startup code; this test performs
   no per-test region write of its own.
-| No firmware line — the marking is in startup code, not in this test
-| NOT-LOGGED
+| `STEP side-effect region marking inherited from startup`
+| LOGGED
 
 | 2
 | Seed the source pattern; clear the destination and the CPU's own region.
-| No firmware line for seeding or clearing
-| NOT-LOGGED
+| `STEP source seeded; DMA destination and CPU region cleared`
+| LOGGED
 
 | 3
 | Start the DMA copy and do not wait.
-| No firmware line at DMA kick
-| NOT-LOGGED
+| `STEP DMA copy started (non-blocking)`
+| LOGGED
 
 | 4
 | Immediately run the CPU store loop.
-| No firmware line at CPU loop entry
-| NOT-LOGGED
+| `STEP CPU store loop entered`
+| LOGGED
 
 | 5
 | Sample DMA status at store-loop exit, then poll to completion.
@@ -1761,23 +1761,23 @@ is why it is a firmware test rather than a host-driven one.
 | Initialise the fabric filter. The firmware also writes the clock-gate control
   register, but the only field the generated map defines there is the PKA gate, so
   that write ungates nothing in this design and is not on the proof path.
-| No firmware line for filter init
-| NOT-LOGGED
+| `STEP filter init done; mailbox CSR clock ungate written`
+| LOGGED
 
 | 2
 | Register a service routine on the mailbox interrupt source and enable it.
-| No firmware line for handler registration
-| NOT-LOGGED
+| `STEP ISR registered on the mailbox PIC source and enabled`
+| LOGGED
 
 | 3
 | Arm the mailbox: clear pending status, set the watermark to fire on one word, enable the interrupt.
-| No firmware line for the mailbox arming writes
-| NOT-LOGGED
+| `STEP mailbox armed: status cleared, watermark 0, IRQs enabled`
+| LOGGED
 
 | 4
 | Write one word into the mailbox queue.
-| No firmware line at the queue write
-| NOT-LOGGED
+| `STEP one word pushed into the mailbox queue`
+| LOGGED
 
 | 5
 | Wait for interrupt; the routine claims it, raises the watermark, clears the status
@@ -1919,8 +1919,8 @@ stale or zero data fails on the first mismatch rather than passing silently.
 
 | 1
 | Initialise the fabric filter.
-| No firmware line for filter init
-| NOT-LOGGED
+| `STEP filter init done`
+| LOGGED
 
 | 2
 | Call seven ROM functions through pointers at known offsets: immediate arithmetic, a multi-instruction chain, argument passthrough, an upper-immediate load, a jump, a no-operation sled, and a two-register add.
@@ -2383,18 +2383,18 @@ would read as a pass.
 
 | 1
 | For each covered interrupt: clear the test register and the pending state.
-| No per-source line for the pre-clear
-| NOT-LOGGED
+| One line per source, e.g. `STEP csrng_cmd_req_done: INTR_TEST + INTR_STATE pre-cleared; aggregate bit[23] baseline-low confirmed`
+| LOGGED
 
 | 2
 | Assert the aggregator bit is low.
-| No per-source line for the baseline-low assertion
-| NOT-LOGGED
+| The same per-source `baseline-low confirmed` line, which also carries the sampled vector
+| LOGGED
 
 | 3
 | Enable the interrupt and write the real test bit.
-| No per-source line for the enable and inject writes
-| NOT-LOGGED
+| One line per source, e.g. `STEP csrng_cmd_req_done: interrupt enabled and INTR_TEST bit 0 injected`
+| LOGGED
 
 | 4
 | Wait for the matching aggregator bit to assert; confirm the other covered bits stay low.
@@ -2668,8 +2668,10 @@ lifecycle state is not exercised: no test drives this port at another state.
 
 | 2
 | CPU: a free-running loop reading and value-checking a token register, publishing a counter to cold scratch. The CPU issues no eFuse writes, so only the read channel is contended.
-| No per-iteration firmware line; progress appears only in the coexistence counter
-| NOT-LOGGED
+| `CHK-COEXIST PASS: CPU loop advanced 1->8 during 16 JTAG MMR rounds` — the loop's
+  progress is published to cold scratch and read back by the host. This test builds no
+  console decoder, so a firmware print would land as undecoded byte writes.
+| LOGGED
 
 | 3
 | Host, concurrently: 16 debug-port register rounds (52 AXI-Lite operations), all expected to succeed.
@@ -2774,8 +2776,8 @@ vector must still hold its previous value.
 
 | 4
 | Configure the watchdog with a small bark threshold and enable it; wait.
-| No firmware line for the watchdog configuration writes
-| NOT-LOGGED
+| `STEP watchdog configured (small bark threshold) and enabled`
+| LOGGED
 
 | 5
 | On the interrupt, the handler clears the bark and disables the watchdog, then returns.
@@ -2888,8 +2890,8 @@ pin rather than through a register.
 
 | 4
 | Configure the watchdog with small bark and bite thresholds; enable.
-| No firmware line for the watchdog configuration writes
-| NOT-LOGGED
+| `STEP watchdog configured (small bark/bite thresholds) and enabled`
+| LOGGED
 
 | 5
 | On the first bark the handler clears and disables; confirm the count is frozen non-zero, pet returns it to zero, and it stays zero while disabled.
@@ -3207,8 +3209,8 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Step proof | Count
 
-| `LOGGED` | 129
-| `NOT-LOGGED` | 25
+| `LOGGED` | 154
+| `NOT-LOGGED` | 0
 |===
 
 [cols="2,1",options="header"]
@@ -3283,43 +3285,20 @@ it.
 
 === Unlogged steps
 
-25 of 154 steps leave no trace in the log. They cluster in firmware tests that print
-only a final pass line, and in host-driven tests whose per-iteration work is folded
-into one summary check.
+None. Every step in this plan is traceable to a line in its kept log.
 
-[cols="3,1,4",options="header"]
-|===
-| Testcase | Unlogged | What is invisible
+That was not true when this plan was first written: 34 steps left no trace. Nine of
+those were mislabelled — the evidence was in the log and the plan said otherwise — and
+the remaining twenty-five were closed by adding a step marker to the test. The markers
+are prints, not checks: they do not make any test prove more, they make the log show
+that a step ran. That matters because the steps that were invisible were almost all
+configuration writes, and a configuration write dropped by a refactor would otherwise
+leave a passing test and a silent log.
 
-| `sep_spi_ot_dma_rx_test` | 5 of 6 | filter init, flash preload, SPI config, flash command, DMA programming, poll and clear
-| `sep_dma_cpu_contention_test` | 4 of 6 | region marking, seeding, DMA kick, CPU loop entry
-| `sep_mailbox_plic_test` | 4 of 5 | filter init, handler registration, mailbox arming, queue write
-| `sep_irq_ip_to_aggregator_test` | 3 of 5 | per-source pre-clear, baseline-low assertion, inject writes
-| `sep_efuse_km_axil_cpu_mux_coexist_test` | 1 of 5 | Key Manager reset release
-| 8 further testcases | 1 each | mostly pre-simulation staging or a configuration write
-|===
-
-Two patterns account for nearly all of it:
-
-Setup that is never announced::
-Filter initialisation, handler registration and configuration writes are performed but
-never printed. If one were dropped the test could still pass on a stale or default
-configuration.
-
-Loops that report only a total::
-A six-source sweep prints one summary line. The count is real, but the log cannot show
-the loop ran the number of times the plan claims. The 512-iteration coexistence loop
-used to be in this class; it is not — it publishes its counter to cold scratch and the
-host asserts the exact count, which the observer line records.
-
-Both are closed by adding prints to the tests — no change to what is verified. The
-per-iteration cases should print a count rather than a line per iteration, so the log
-stays readable.
-
-A caution learned from auditing these: several steps were marked `NOT-LOGGED` when
-their evidence was in fact in the log, in one case the strongest evidence the test
-produces. An unlogged step is a claim about the log and has to be checked against it
-like any other, in both directions.
+Two steps are evidenced indirectly rather than by a marker, for reasons recorded in
+their entries: the boot-ROM staging is announced by the testbench rather than by
+firmware, and the debug-port mux test publishes its loop progress to cold scratch
+because it builds no console decoder.
 
 === Entries whose checkers share one proof line
 

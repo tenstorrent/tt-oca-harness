@@ -59,6 +59,7 @@ int main(void) {
 
     sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP DMA/CPU contention test\n");
+    sep_mbx_puts("STEP side-effect region marking inherited from startup\n");
 
     volatile uint32_t *src = (volatile uint32_t *)DMA_SRC_ADDR;
     volatile uint32_t *dst = (volatile uint32_t *)DMA_DST_ADDR;
@@ -73,10 +74,13 @@ int main(void) {
         cont[i] = 0u;
     }
     __asm__ volatile("fence" ::: "memory");
+    sep_mbx_puts("STEP source seeded; DMA destination and CPU region cleared\n");
 
     // Kick off the long SRAM->SRAM copy (non-blocking), then immediately run the
     // CPU store loop into the disjoint region -- both masters now hit the SRAM.
     sep_dma_copy_start(DMA_SRC_ADDR, DMA_DST_ADDR, DMA_BYTES);
+    sep_mbx_puts("STEP DMA copy started (non-blocking)\n");
+    sep_mbx_puts("STEP CPU store loop entered\n");
     for (uint32_t i = 0; i < CONT_WORDS; i++) {
         cont[i] = CPU_SEED + i;
     }

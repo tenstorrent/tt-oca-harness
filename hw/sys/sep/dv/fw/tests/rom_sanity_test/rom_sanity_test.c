@@ -61,6 +61,7 @@ int main(void) {
     int errors = 0;
 
     sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
+    sep_mbx_puts("STEP filter init done\n");
     sep_mbx_puts("SEP ROM IFU sanity test\n");
 
     // Each call drives the IFU to fetch the function body from boot-ROM.

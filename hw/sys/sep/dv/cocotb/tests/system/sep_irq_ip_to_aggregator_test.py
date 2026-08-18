@@ -72,15 +72,23 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             # low (a stuck-high bit would fail here -> the SET check is non-vacuous).
             await self.irq.stop_inject(src)
             await self.irq.clear_state(src)
-            base_ok, _ = await self._poll_agg(src.agg_idx, 0)
+            base_ok, base_vec = await self._poll_agg(src.agg_idx, 0)
             assert base_ok, (
                 f"{src.name}: sep_internal_interrupts[{src.agg_idx}] not low at baseline"
+            )
+            self.logger.info(
+                "STEP %s: INTR_TEST + INTR_STATE pre-cleared; aggregate bit[%d] "
+                "baseline-low confirmed (vec=0x%08x)", src.name, src.agg_idx, base_vec,
             )
 
             # CHK-SET: enable then inject via INTR_TEST; the mapped aggregate bit must
             # go high and the IP's own INTR_STATE bit must set.
             await self.irq.enable(src)
             await self.irq.inject(src)
+            self.logger.info(
+                "STEP %s: interrupt enabled and INTR_TEST bit %d injected",
+                src.name, src.test_bit,
+            )
             set_ok, _ = await self._poll_agg(src.agg_idx, 1)
             assert set_ok, (
                 f"{src.name}: INTR_TEST did not propagate to "

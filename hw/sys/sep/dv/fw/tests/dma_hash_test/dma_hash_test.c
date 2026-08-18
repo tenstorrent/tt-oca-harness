@@ -107,6 +107,7 @@ int main(void) {
     pic_enable_source(EXT_INT_DMA_DONE);
     pic_enable_source(EXT_INT_DMA_ERROR);
     pic_enable_interrupts();
+    printf("STEP filter init done; DMA done/error handlers registered\n");
 
     int errors = 0;
 

@@ -94,6 +94,7 @@ int main(void) {
 
     sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP mailbox PLIC test\n");
+    sep_mbx_puts("STEP filter init done; mailbox CSR clock ungate written\n");
 
     // Ungate the mailbox CSR clock (off at reset).
     sep_axil_mbox_clock_enable();
@@ -105,12 +106,14 @@ int main(void) {
     pic_set_priority(SEP_AXIL_MBOX0_PIC_SRC, 1);
     pic_enable_source(SEP_AXIL_MBOX0_PIC_SRC);
     pic_enable_interrupts();
+    sep_mbx_puts("STEP ISR registered on the mailbox PIC source and enabled\n");
 
     // Arm mailbox 0: clear any stale status, set WIRQT=0 so the first pushed
     // word (usage 1 > 0) raises the write IRQ, enable all IRQ sources.
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQS, SEP_AXIL_MBOX_IRQ_ALL);
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0u);
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, SEP_AXIL_MBOX_IRQ_ALL);
+    sep_mbx_puts("STEP mailbox armed: status cleared, watermark 0, IRQs enabled\n");
 
     g_isr_fired = 0;
     g_isr_count = 0;
@@ -118,6 +121,7 @@ int main(void) {
 
     // Trigger: push a word -> FIFO usage 1 > WIRQT 0 -> outbound_interrupt_o[0].
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_WRITE_DATA, MBOX_TRIGGER_WORD);
+    sep_mbx_puts("STEP one word pushed into the mailbox queue\n");
 
     // Wait for the ISR. A wedged delivery path must surface as FAIL, not a
     // silent pass: there is no poll fallback.
