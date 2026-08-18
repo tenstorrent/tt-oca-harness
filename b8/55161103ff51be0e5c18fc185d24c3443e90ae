@@ -1,0 +1,27 @@
+AGENTS.md
+  s_12995a6c0a823c::t_85e73dba2baf69 36
+  s_12995a6c0a823c::t_1c337e894d491a 325-391
+  s_12995a6c0a823c::t_4e3047cee409a7 34-35,37
+doc/contributing/src/pull-requests.adoc
+  s_12995a6c0a823c::t_c5cbf49934e160 10-11
+.github/PULL_REQUEST_TEMPLATE.md
+  s_12995a6c0a823c::t_f843a8fde27d0f 8
+doc/contributing/src/index.adoc
+  s_12995a6c0a823c::t_dcab5f5a0c5789 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b855161103ff51be0e5c18fc185d24c3443e90ae",
+  "prompts": {},
+  "sessions": {
+    "s_12995a6c0a823c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cbbb28ad-843e-41c1-9efc-20eeb2fb3814",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
