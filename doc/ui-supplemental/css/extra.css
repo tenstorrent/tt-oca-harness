@@ -418,12 +418,12 @@
 .footer .oca-footer-text a {
     color: #ffffff !important;
     font-family: var(--oca-font-body);
+    align-items: center;
     font-size: 0.95rem;
 }
 
 .footer .footer-tt-link {
     display: inline-flex;
-    align-items: center;
     text-decoration: none;
 }
 

@@ -52,24 +52,4 @@ traffic
 delivery for 2D/2.5D/3D integration
 |===
 
-== Verification
 
-* cocotb/Verilator-based DV regression, with smoke (PR-gating) and nightly
-  (full-group, multi-seed) tiers
-* Native, schema-versioned result records, classifying failures as
-  infrastructure, design, or evidence-gap
-* A verification dashboard publishing nightly trend history
-
-== Open by design
-
-OCAH is released under the Apache-2.0 license as the Harness pillar of the
-OCA Ecosystem: an open-source, reusable design framework containing the
-non-application logic a chiplet needs, so designers can focus on their
-unique value-add while remaining automatically interoperable with the rest
-of the ecosystem.
-
-// NEEDS REVIEW: the AXI-Lite external window pattern used in the SMC
-// (mandatory vs. supplementary adopter-extension blocks) is a concrete,
-// already-documented example of how OCAH stays extensible for
-// adopter-specific silicon. Worth a short call-out here once we agree on
-// the right level of technical detail for a landing page.

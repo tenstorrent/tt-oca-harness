@@ -10,7 +10,10 @@ every chiplet needs -- security, boot, system management, debug, test, and
 die-to-die integration -- so adopters can focus their effort on their own
 value-differentiating application logic.
 
-NOTE: OCAH is the *Harness* pillar of the wider
+image::oca-banner.png[OCA banner,width=600]
+
+[NOTE] 
+OCAH is the *Harness* pillar of the wider
 https://www.openchipletatlas.org[Open Chiplet Atlas (OCA)] ecosystem,
 alongside the OCA Architecture specification and the OCA Compliance program.
 

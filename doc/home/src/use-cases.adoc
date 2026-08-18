@@ -3,6 +3,9 @@
 
 = Use Cases
 
+[WARNING]
+From TRM - should we remove this section from the TRM?
+
 The following use cases illustrate how OCAH provides value as a
 system-level framework for reusable chiplet infrastructure. Rather than
 focusing on individual internal blocks, these use cases highlight the
@@ -62,3 +65,24 @@ system architecture.
 Inter-chiplet coordination relies on standard protocols and transport
 mechanisms mandated by OCA, including I3C for early-stage boot image and
 configuration delivery.
+
+== Firmware Distribution and Control-Plane Coordination
+
+In many chiplet systems, not every chiplet owns an independent external 
+boot source or complete standalone management stack. OCAH enables a system-
+level model in which one chiplet or management endpoint can provision firmware, 
+coordinate initialization, and establish runtime policy across other chiplets.
+This makes OCAH especially useful in asymmetric systems where different chiplets 
+have different boot roles, capabilities, and trust responsibilities.
+
+== Cryptographic Services
+
+OCAH provides a physically isolated execution environment for cryptographic 
+operations through the SEP subsystem.
+Secure key services, hardware-accelerated symmetric and asymmetric cryptography, 
+and a True Random Number Generator (TRNG) are available to both SEP firmware and 
+the rest of the system.
+User authentication is another service the framework offers: the authentication 
+result can be tied to the secret key derivation so that bypassing authentication 
+renders the system unusable. These capabilities allow adopters to build security 
+features on top of OCAH without provisioning their own cryptographic infrastructure.
