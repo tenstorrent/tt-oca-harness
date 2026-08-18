@@ -12,15 +12,15 @@
 //   ocah_axi_types.svh      — resp/protocol/dir/burst enums (cocotb-matching
 //                             encodings) + worst-resp helpers
 //   ocah_axi_item.svh       — completed-transaction record (max-width fields)
-//   ocah_axi_cfg.svh        — vif, geometry, gating, expected-response arming
+//   ocah_axi_config.svh        — vif, geometry, gating, expected-response arming
 //   ocah_axi_checker.svh    — CHK-*/CHECKER_SUMMARY evidence mechanics
 //   ocah_axi_monitor.svh    — passive burst reconstruction (per-ID pairing)
 //   ocah_axi_ref_model.svh  — shadow memory + expected-item prediction
-//   ocah_axi_cov_sub.svh    — optional ocah_axi_cov_if sampler (VCS-only)
+//   ocah_axi_cov.svh    — optional ocah_axi_cov_if sampler (VCS-only)
 //   ocah_axi_scoreboard.svh — in-order pairing + evidence + finalization
 //   ocah_axi_env.svh        — cfg-gated bundle DUT environments instantiate
 //
-// The clean-room SVA protocol checker (sva/ocah_axi_protocol_checker.sv) and
+// The clean-room SVA protocol checker (sva/ocah_axi_sva.sv) and
 // the behavioral responders (sv/ocah_axi{l,}_ram_responder.sv) are module
 // collateral compiled alongside this package, not part of it.
 
@@ -33,11 +33,11 @@ package ocah_axi_uvm_pkg;
 
     `include "ocah_axi_types.svh"
     `include "ocah_axi_item.svh"
-    `include "ocah_axi_cfg.svh"
+    `include "ocah_axi_config.svh"
     `include "ocah_axi_checker.svh"
     `include "ocah_axi_monitor.svh"
     `include "ocah_axi_ref_model.svh"
-    `include "ocah_axi_cov_sub.svh"
+    `include "ocah_axi_cov.svh"
     `include "ocah_axi_scoreboard.svh"
     `include "ocah_axi_env.svh"
 

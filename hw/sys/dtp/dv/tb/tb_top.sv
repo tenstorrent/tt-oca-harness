@@ -1027,7 +1027,7 @@ module dtp_uvm_top
 
     // Clean-room AXI protocol SVA checkers (ocah_axi_vip/sva), enabled via
     // dtp_tb_if.axi_sva_en.
-    ocah_axi_protocol_checker #(
+    ocah_axi_sva #(
         .IS_LITE    (1'b1),
         .ADDR_WIDTH (32),
         .DATA_WIDTH (32),
@@ -1071,7 +1071,7 @@ module dtp_uvm_top
         .rready  (smc_otp_axil_rready)
     );
 
-    ocah_axi_protocol_checker #(
+    ocah_axi_sva #(
         .IS_LITE    (1'b0),
         .ADDR_WIDTH (56),
         .DATA_WIDTH (64),

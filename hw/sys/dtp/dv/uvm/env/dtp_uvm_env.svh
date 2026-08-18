@@ -26,9 +26,9 @@ class dtp_uvm_env extends uvm_env;
     // observed JTAG2AXI port. Always built (compile/runtime coverage on every
     // test); zero-check rejection is armed only by AXI-traffic tests via
     // cfg.require_checks.
-    ocah_axi_cfg m_smc_otp_axi_cfg;
+    ocah_axi_config m_smc_otp_axi_cfg;
     ocah_axi_env m_smc_otp_axi_env;
-    ocah_axi_cfg m_smc_axi_cfg;
+    ocah_axi_config m_smc_axi_cfg;
     ocah_axi_env m_smc_axi_env;
 
     virtual dtp_tb_if tb_vif;
@@ -59,7 +59,7 @@ class dtp_uvm_env extends uvm_env;
         m_fsm_checker.m_evidence = m_jtag_checker;
         m_scan_builder = ocah_jtag_scan_builder::type_id::create("m_scan_builder", this);
 
-        m_smc_otp_axi_cfg = ocah_axi_cfg::type_id::create("m_smc_otp_axi_cfg");
+        m_smc_otp_axi_cfg = ocah_axi_config::type_id::create("m_smc_otp_axi_cfg");
         if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "smc_otp_axil_vif",
                                                       m_smc_otp_axi_cfg.vif))
             `uvm_fatal(get_type_name(),
@@ -69,11 +69,11 @@ class dtp_uvm_env extends uvm_env;
         m_smc_otp_axi_cfg.data_width = 32;
         m_smc_otp_axi_cfg.id_width   = 0;
         m_smc_otp_axi_cfg.name_tag   = "dtp_smc_otp_axil";
-        uvm_config_db#(ocah_axi_cfg)::set(this, "m_smc_otp_axi_env*", "cfg",
+        uvm_config_db#(ocah_axi_config)::set(this, "m_smc_otp_axi_env*", "cfg",
                                           m_smc_otp_axi_cfg);
         m_smc_otp_axi_env = ocah_axi_env::type_id::create("m_smc_otp_axi_env", this);
 
-        m_smc_axi_cfg = ocah_axi_cfg::type_id::create("m_smc_axi_cfg");
+        m_smc_axi_cfg = ocah_axi_config::type_id::create("m_smc_axi_cfg");
         if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "m_axi_vif",
                                                       m_smc_axi_cfg.vif))
             `uvm_fatal(get_type_name(),
@@ -83,7 +83,7 @@ class dtp_uvm_env extends uvm_env;
         m_smc_axi_cfg.data_width = 64;
         m_smc_axi_cfg.id_width   = 2;
         m_smc_axi_cfg.name_tag   = "dtp_smc_axi";
-        uvm_config_db#(ocah_axi_cfg)::set(this, "m_smc_axi_env*", "cfg", m_smc_axi_cfg);
+        uvm_config_db#(ocah_axi_config)::set(this, "m_smc_axi_env*", "cfg", m_smc_axi_cfg);
         m_smc_axi_env = ocah_axi_env::type_id::create("m_smc_axi_env", this);
     endfunction
 

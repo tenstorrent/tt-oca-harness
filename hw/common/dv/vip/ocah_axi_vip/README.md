@@ -32,10 +32,10 @@ environment):
 
 | Wrapper | Backend |
 |---|---|
-| `OcahAxiMaster` | `cocotbext.axi.AxiMaster` |
-| `OcahAxiLiteMaster` | `cocotbext.axi.AxiLiteMaster` |
-| `OcahAxiSlave` / `OcahAxiRam` | OCAH fault-capable wrapper over `cocotbext-axi` RAM channels |
-| `OcahAxiLiteSlave` / `OcahAxiLiteRam` | OCAH fault-capable wrapper over `cocotbext-axi` AXI-Lite RAM channels |
+| `OcahAxiMasterAgent` | `cocotbext.axi.AxiMaster` |
+| `OcahAxiLiteMasterAgent` | `cocotbext.axi.AxiLiteMaster` |
+| `OcahAxiSlaveAgent` | OCAH fault-capable wrapper over `cocotbext-axi` RAM channels |
+| `OcahAxiLiteSlaveAgent` | OCAH fault-capable wrapper over `cocotbext-axi` AXI-Lite RAM channels |
 | `OcahAxiMonitor` / `OcahAxiLiteMonitor` | OCAH passive samplers that emit item dataclasses |
 | `OcahAxiChecker` | OCAH item-level protocol checker |
 
@@ -48,12 +48,12 @@ also uses `cocotbext-axi` (`ApbMaster`).
 
 | Scenario | Recommended class |
 |---|---|
-| Writing a new OCAH cocotb test | `OcahAxiMaster` / `OcahAxiLiteMaster` |
+| Writing a new OCAH cocotb test | `OcahAxiMasterAgent` / `OcahAxiLiteMasterAgent` |
 | Extending an existing test that already imports `axi4_vip` directly | Prefer migrating the touched path to `ocah_axi_vip` |
-| Burst AXI4 traffic (memory fills, DMA) | `OcahAxiMaster` |
-| Memory-backed AXI subordinate/responder | `OcahAxiSlave` / `OcahAxiRam` |
-| Control/status register access over AXI4-Lite | `OcahAxiLiteMaster` |
-| Memory-backed AXI4-Lite responder | `OcahAxiLiteSlave` / `OcahAxiLiteRam` |
+| Burst AXI4 traffic (memory fills, DMA) | `OcahAxiMasterAgent` |
+| Memory-backed AXI subordinate/responder | `OcahAxiSlaveAgent` |
+| Control/status register access over AXI4-Lite | `OcahAxiLiteMasterAgent` |
+| Memory-backed AXI4-Lite responder | `OcahAxiLiteSlaveAgent` |
 | APB peripheral register access | `OcahApbMaster` (in `ocah_apb_vip`) |
 | Passive observation without driving the bus | `OcahAxiMonitor` / `OcahAxiLiteMonitor` |
 | Item-level protocol sanity checks | `OcahAxiChecker` |
@@ -71,18 +71,25 @@ as part of GH #3288.
 ```
 ocah_axi_vip/
   __init__.py                  — exports all public symbols
-  cocotb/ocah_axi_master.py             — OcahAxiMaster (AXI4 full bus)
-  cocotb/ocah_axi_lite_master.py        — OcahAxiLiteMaster (AXI4-Lite)
-  cocotb/ocah_axi_slave.py              — OcahAxiSlave / OcahAxiRam (AXI4 responder)
-  cocotb/ocah_axi_lite_slave.py         — OcahAxiLiteSlave / OcahAxiLiteRam
-  cocotb/ocah_axi_item.py               — transaction item dataclasses
-  cocotb/ocah_axi_monitor.py            — OcahAxiMonitor, OcahAxiLiteMonitor
-  cocotb/ocah_axi_checker.py            — OcahAxiChecker (item rules + CHK-* evidence)
-  cocotb/ocah_axi_ref_model.py          — OcahAxiRefModel (shadow memory + response policy)
-  cocotb/ocah_axi_scoreboard.py         — OcahAxiScoreboard (evidence-emitting comparator)
-  cocotb/ocah_axi_protocol_watcher.py   — cycle-level protocol-rule watchers
+  cocotb/                      — cocotb flow (per-side files, x2 protocol stems
+                                 ocah_axi / ocah_axi_lite)
+    ocah_axi[_lite]_master_agent.py     — OcahAxi[Lite]MasterAgent (bundle)
+    ocah_axi[_lite]_master_config.py    — OcahAxi[Lite]MasterConfig
+    ocah_axi[_lite]_master_driver.py    — OcahAxi[Lite]MasterDriver (cocotbext engine)
+    ocah_axi[_lite]_master_sequence.py  — OcahAxi[Lite]MasterSequence (test-facing API)
+    ocah_axi[_lite]_slave_agent.py      — OcahAxi[Lite]SlaveAgent (bundle)
+    ocah_axi[_lite]_slave_config.py     — OcahAxi[Lite]SlaveConfig
+    ocah_axi[_lite]_slave_driver.py     — OcahAxi[Lite]SlaveDriver (fault-capable RAM engine)
+    ocah_axi[_lite]_slave_sequence.py   — OcahAxi[Lite]SlaveSequence (backdoor/inject API)
+    ocah_axi_item.py                    — transaction item dataclasses (side-neutral)
+    ocah_axi_monitor.py                 — OcahAxiMonitor, OcahAxiLiteMonitor (side-neutral)
+    ocah_axi_checker.py                 — OcahAxiChecker (item rules + CHK-* evidence)
+    ocah_axi_ref_model.py               — OcahAxiRefModel (shadow memory + response policy)
+    ocah_axi_scoreboard.py              — OcahAxiScoreboard (evidence-emitting comparator)
+    ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
+    ocah_axi_results.py                 — result dataclasses + response-code helpers
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
-  sva/ocah_axi_protocol_checker.sv — clean-room AXI protocol SVA (OCAH_AXI_* rules)
+  sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
   sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
   sv/ocah_axi_ram_responder.sv   — behavioral AXI4 RAM responder (error-injectable)
   uvm/ocah_axi_uvm_pkg.sv        — passive SV-UVM layer (monitor/ref-model/scoreboard)
@@ -91,6 +98,19 @@ ocah_axi_vip/
     example_register_access.py            — annotated usage snippets
     example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
 ```
+
+### Side-token naming
+
+The VIP is implemented per side (master = initiator, slave = responder), and
+side-specific components — agent, config, driver, sequence — carry the side
+token in their basenames. Tests consume each side ONLY through its
+`*Sequence` class (usually `agent.sequence`); missing operations get added to
+the sequence layer, never inlined in tests. The bus monitors and the passive
+UVM environment are deliberately side-NEUTRAL and carry no side token: they
+reconstruct traffic from the shared wires regardless of who generated it
+(a VIP master, a VIP responder, or the DUT itself — DTP observes purely
+DUT-generated traffic with no VIP master present), so a side token on them
+would be false labeling.
 
 The checker, reference model, and scoreboard follow the shared contract in
 `hw/common/dv/docs/vip-checker-model.adoc`: named
@@ -106,19 +126,19 @@ DTP adoption pattern.
 
 ## Public API Reference
 
-### OcahAxiMaster — AXI4 full bus
+### OcahAxiMasterAgent — AXI4 full bus
 
 ```python
-from ocah_axi_vip import OcahAxiMaster
+from ocah_axi_vip import OcahAxiMasterAgent
 
-master = OcahAxiMaster(
+master = OcahAxiMasterAgent(
     dut.axi_if,              # cocotb handle for axi4_intf.sv instance
     name="axi4_host",        # used in log messages
     timeout_cycles=1000,     # clock cycles before TimeoutError
     addr_width=32,           # address bus width (informational)
     data_width=32,           # data bus width; derives full_strb
     raise_on_error=True,     # raise OcahAxiMasterError on non-OKAY response
-)
+).sequence                   # tests consume the sequence surface
 ```
 
 | Method | Returns | Notes |
@@ -152,18 +172,18 @@ deterministic replay.
 
 ---
 
-### OcahAxiLiteMaster — AXI4-Lite (register access)
+### OcahAxiLiteMasterAgent — AXI4-Lite (register access)
 
 ```python
-from ocah_axi_vip import OcahAxiLiteMaster
+from ocah_axi_vip import OcahAxiLiteMasterAgent
 
-master = OcahAxiLiteMaster(
+master = OcahAxiLiteMasterAgent(
     dut.axil_if,
     name="axilite_host",
     timeout_cycles=500,
     data_width=32,
     raise_on_error=True,
-)
+).sequence
 ```
 
 | Method | Returns | Notes |
@@ -181,19 +201,19 @@ master = OcahAxiLiteMaster(
 
 ---
 
-### OcahAxiSlave / OcahAxiRam — AXI4 memory-backed responder
+### OcahAxiSlaveAgent — AXI4 memory-backed responder
 
 ```python
-from ocah_axi_vip import OcahAxiRam
+from ocah_axi_vip import OcahAxiSlaveAgent
 
-ram = OcahAxiRam.from_prefix(
+ram = OcahAxiSlaveAgent.from_prefix(
     dut,
-    prefix="m_axi",
-    clock=dut.clk_i,
-    reset=dut.rst_n_i,
+    "m_axi",
+    dut.clk_i,
+    dut.rst_n_i,
     reset_active_level=False,
     size=2**16,
-)
+).sequence
 
 ram.write64(0x40, 0x0123_4567_89AB_CDEF)
 observed = ram.read64(0x40)
@@ -201,7 +221,7 @@ observed = ram.read64(0x40)
 
 | Method | Returns | Notes |
 |---|---|---|
-| `from_prefix(dut, prefix, clock, reset, ...)` | `OcahAxiSlave` | Build from flattened AXI prefix |
+| `OcahAxiSlaveAgent.from_prefix(dut, prefix, clock, reset, ...).sequence` | `OcahAxiSlaveSequence` | Build from flattened AXI prefix |
 | `read(addr, length)` | `bytes` | Backdoor byte read |
 | `write(addr, data)` | `None` | Backdoor byte write |
 | `read32(addr)` / `read64(addr)` | `int` | Little-endian integer reads |
@@ -213,30 +233,25 @@ observed = ram.read64(0x40)
 | `disable_backpressure()` | `None` | Clear READY stalls |
 | `backend` | cocotbext-backed RAM | Advanced debug-only access |
 
-`OcahAxiRam` is an alias for `OcahAxiSlave` for tests that think of the
-responder as a memory model.
-
----
-
-### OcahAxiLiteSlave / OcahAxiLiteRam — AXI4-Lite memory-backed responder
+### OcahAxiLiteSlaveAgent — AXI4-Lite memory-backed responder
 
 ```python
-from ocah_axi_vip import OcahAxiLiteRam, RESP_DECERR
+from ocah_axi_vip import OcahAxiLiteSlaveAgent, RESP_DECERR
 
-ram = OcahAxiLiteRam.from_prefix(
+ram = OcahAxiLiteSlaveAgent.from_prefix(
     dut,
-    prefix="cfg_axil",
-    clock=dut.clk_i,
-    reset=dut.rst_ni,
+    "cfg_axil",
+    dut.clk_i,
+    dut.rst_ni,
     reset_active_level=False,
     size=2**16,
-)
+).sequence
 
 ram.write32(0x10, 0xA5A5_5A5A)
 ram.inject_error(0x20, RESP_DECERR, read=True, write=False)
 ```
 
-It has the same backdoor and fault-control helpers as `OcahAxiRam`.
+It has the same backdoor and fault-control helpers as `OcahAxiSlaveAgent`.
 
 ---
 
@@ -297,7 +312,7 @@ Read them in your test with:
 ```python
 import os
 timeout = int(os.environ.get("COCOTB_PLUSARG_OCAH_AXI_TIMEOUT", "1000"))
-master = OcahAxiLiteMaster(dut.axil_if, timeout_cycles=timeout)
+master = OcahAxiLiteMasterAgent(dut.axil_if, timeout_cycles=timeout).sequence
 ```
 
 Simulator plusarg forwarding varies by runner; see the cocotb documentation
@@ -325,15 +340,15 @@ from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, RESP_DECERR, RESP_EXOKAY
 By default (`raise_on_error=True`) all master methods raise a typed exception
 on non-OKAY responses:
 
-- `OcahAxiMasterError` — from `OcahAxiMaster`
-- `OcahAxiLiteMasterError` — from `OcahAxiLiteMaster`
+- `OcahAxiMasterError` — from `OcahAxiMasterAgent`
+- `OcahAxiLiteMasterError` — from `OcahAxiLiteMasterAgent`
 
 (`OcahApbMasterError` is exported by `ocah_apb_vip`.)
 
 To inspect the response code manually:
 
 ```python
-master = OcahAxiLiteMaster(dut.axil_if, raise_on_error=False)
+master = OcahAxiLiteMasterAgent(dut.axil_if, raise_on_error=False).sequence
 result = await master.read_result(0x1000, check_response=False)
 if not result.ok:
     cocotb.log.warning(f"read returned resp=0x{result.resp:X}")
@@ -380,9 +395,9 @@ AXI4 / AXI4-Lite master types and the passive monitor.
 
 | Legacy call | Replacement |
 |---|---|
-| `AXI4LiteMasterBFM(intf).write_transaction(txn)` | `OcahAxiLiteMaster(intf).write(addr, data)` |
-| `AXI4MasterBFM(intf).write_single(addr, data)` | `OcahAxiMaster(intf).write(addr, data)` |
-| `AXI4MasterBFM(intf).write_burst(txn)` | `OcahAxiMaster(intf).burst_write(addr, data_list)` |
+| `AXI4LiteMasterBFM(intf).write_transaction(txn)` | `OcahAxiLiteMasterAgent(intf).sequence.write(addr, data)` |
+| `AXI4MasterBFM(intf).write_single(addr, data)` | `OcahAxiMasterAgent(intf).sequence.write(addr, data)` |
+| `AXI4MasterBFM(intf).write_burst(txn)` | `OcahAxiMasterAgent(intf).sequence.burst_write(addr, data_list)` |
 | `create_axi4_monitor(intf, clk)` | `OcahAxiMonitor(intf, clk)` |
 
 (APB migration is documented in `bfm/ocah_apb_vip/README.md`.)

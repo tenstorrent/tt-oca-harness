@@ -49,7 +49,7 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
 
     // Plumbed by the test: the shared AXI VIP cfg for the target under test
     // (owns expected-response arming) and its scoreboard evidence recorder.
-    ocah_axi_cfg     axi_cfg;
+    ocah_axi_config     axi_cfg;
     ocah_axi_checker axi_evidence;
 
     function new(string name = "dtp_jtag2axi_base_seq");

@@ -12,7 +12,7 @@ The TB wraps unified OCAH BFMs in a UVM hierarchy:
 dtp_<scenario>_test (uvm_test, @pyuvm.test)
   └─ DtpEnv
        ├─ DtpJtagAgent   sequencer + driver (wraps ocah_jtag_vip) + analysis port
-       ├─ DtpAxiAgent    ocah_axi_vip OcahAxiRam responder + backdoor
+       ├─ DtpAxiAgent    ocah_axi_vip OcahAxiSlaveAgent responder + backdoor
        └─ DtpScoreboard  IDCODE / JTAG2AXI data-integrity checks
   seq_lib/ dtp_base_test_seq → dtp_sanity_test_seq, dtp_jtag_idcode_test_seq,
            dtp_jtag2axi_smc_axi_wr_test_seq, dtp_jtag2axi_smc_axi_rd_test_seq
@@ -40,8 +40,8 @@ protocol BFMs behind a stable API:
 | Interface | VIP | Rationale |
 |-----------|-----|-----------|
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
-| AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiRam`) | JTAG2AXI bridge drives it; memory model responds. |
-| AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteMaster`/future responder) | Standard AXI-Lite. |
+| AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiSlaveAgent`) | JTAG2AXI bridge drives it; memory model responds. |
+| AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteMasterAgent`/future responder) | Standard AXI-Lite. |
 | AXI4-Lite CSR subordinate (`axil_xtrig`) | DUT-local `DtpFlatAxiLiteMaster` | Implemented for the flattened XTRIG fixture; migrate needed behavior into `ocah_axi_vip` rather than promoting a second AXI-Lite VIP. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |

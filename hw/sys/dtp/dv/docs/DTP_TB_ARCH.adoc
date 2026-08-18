@@ -344,7 +344,7 @@ The UVM harness additionally consumes the shared `ocah_axi_vip` SV layer:
   tie-off and the undriven `m_axi_*` response inputs with the behavioral
   error-injectable responders (`ocah_axil_ram_responder` on `smc_otp_axil`,
   `ocah_axi_ram_responder` on `m_axi`), instantiates `ocah_axi_if` monitor
-  adapters and the clean-room `ocah_axi_protocol_checker` SVA on both ports,
+  adapters and the clean-room `ocah_axi_sva` SVA on both ports,
   and mirrors the request-activity pulse counters into `dtp_tb_if`. The
   `sep_otp_axil` port keeps its tie-off (documented stretch).
 * `tb/dtp_tb_if.sv` carries test-drivable lifecycle enables (init 0 preserves
@@ -358,7 +358,7 @@ The UVM harness additionally consumes the shared `ocah_axi_vip` SV layer:
   SINGLE_OP DR packing (LSB-first `OP|SIZE|WSTRB|DATA|ADDR`, 72b OTP / 132b
   SMC via the JTAG VIP wide-scan `wbits`/`rbits` path), busy polling,
   lifecycle sequencing, and `arm_target_error()` which drives the responder
-  error ports AND `ocah_axi_cfg.arm_expected_resp()` in one place — the
+  error ports AND `ocah_axi_config.arm_expected_resp()` in one place — the
   injected non-OKAY is therefore EXPECTED for the scoreboard.
 * `dtp_jtag2axi_single_op_seq` runs randomized write/readback, armed
   SLVERR/DECERR, recovery, and a security-gating no-activity case

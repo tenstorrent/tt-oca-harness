@@ -44,7 +44,7 @@ it incrementally, using unified OCAH BFM packages for standard interfaces.
 | SMU Interface | Preferred VIP | Modeling Approach | Notes |
 |---------------|---------------|-------------------|-------|
 | Primary JTAG TAP | `ocah_jtag_vip` `OcahJtagMasterDriver` | Unified OCAH BFM | Pin-level TAP driver/helper |
-| External SMN AXI4 (`smu_axi_out`) | `ocah_axi_vip` `OcahAxiRam` | Unified OCAH BFM | Memory responder with scoreboard backdoor |
+| External SMN AXI4 (`smu_axi_out`) | `ocah_axi_vip` `OcahAxiSlaveAgent` | Unified OCAH BFM | Memory responder with scoreboard backdoor |
 | External SMN AXI4 (`smu_axi_in`) | `ocah_axi_vip` master | Unified OCAH BFM | Drives inbound SMN traffic |
 | SMC/SEP OTP AXI-Lite | `ocah_axi_vip` AXI-Lite wrapper | Unified OCAH BFM | OTP-over-JTAG2AXI responders |
 | SMC scratch / mailbox | Backdoor + cocotb polling | OCAH-local | Firmware pass indication, challenge-response |
@@ -139,7 +139,7 @@ to cocotb-friendly scalar/vector ports.
 |---------------|-------------------|
 | Clocks/resets | cocotb drives `clk_smu_i`, `clk_ref_i`, `clk_periph_i`, `rst_cold_ni`, `powergood_i` |
 | JTAG TAP | Exposes `jtag_tck/tms/trst/tdi/tdo/tdo_oen` for `OcahJtagMasterDriver` |
-| External SMN AXI | Flattens `smu_axi_in_*` / `smu_axi_out_*` structs for `OcahAxiRam` / master BFM |
+| External SMN AXI | Flattens `smu_axi_in_*` / `smu_axi_out_*` structs for `OcahAxiSlaveAgent` / master BFM |
 | SMC scratch / mailbox | Exposes scratch words, `smc_test_pass`, and `ext_mailbox_interrupts` for the scoreboard |
 | Real SEP RTL | Exposes SEP PC and instruction count; SEP TCM loaded via `+SEP_ITCM_HEX_FILE`/`+SEP_DTCM_HEX_FILE` |
 | Cross-trigger / iJTAG | Looped back or tied idle until OCAH-local BFMs are added |
@@ -151,7 +151,7 @@ Wraps `ocah_jtag_vip.OcahJtagMasterDriver` for DTP TAP access through the SMU wr
 (IDCODE/BYPASS, DEBUG_CONTROL, IC_RESET, JTAG2AXI, cross-trigger CSR).
 
 ### `SmuAxiAgent`
-Wraps `ocah_axi_vip` on the external SMN ports: `OcahAxiRam` responder on
+Wraps `ocah_axi_vip` on the external SMN ports: `OcahAxiSlaveAgent` responder on
 `smu_axi_out` and a master on `smu_axi_in`, with a backdoor view for the
 scoreboard.
 
