@@ -19,7 +19,7 @@ OCAH_DOC_SITE_URL ?=
 ## in this prerequisite list from the earlier Contributing work -- not shown
 ## here since this uploaded file predates that change.
 .PHONY: ocah-doc-combined-html
-ocah-doc-combined-html: ocah-doc-home-setup ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup
+ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-contributing-setup ocah-doc-home-setup 
 	@command -v npx >/dev/null 2>&1 || { \
 		echo "error: node/npx is required to build the Antora site."; \
 		echo "install Node.js, or run: ./scripts/docker-run.sh doc-html combined"; \

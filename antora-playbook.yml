@@ -32,11 +32,10 @@ content:
       branches: HEAD
       start_path: doc/appnotes
       edit_url: false
-    # NOTE: your working copy should already have a doc/contributing
-    # entry here from the earlier Contributing work -- this uploaded
-    # copy of antora-playbook.yml predates that change, so it isn't
-    # shown in this diff. Keep it; only start_page and the new
-    # doc/home entry above are new for this pass.
+    - url: .
+      branches: HEAD
+      start_path: doc/contributing
+      edit_url: false
 ui:
   bundle:
     # Pinned 2026-07-24 to the latest antora-ui-default commit at the time

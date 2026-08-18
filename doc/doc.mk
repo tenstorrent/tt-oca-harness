@@ -53,6 +53,7 @@ endif
 -include $(OCAH_DOC_DIR)/appnotes/doc.mk
 -include $(OCAH_DOC_DIR)/contributing/doc.mk
 -include $(OCAH_DOC_DIR)/home/doc.mk
+
 # GitHub Pages publish.
 -include $(OCAH_DOC_DIR)/gh-pages.mk
 
