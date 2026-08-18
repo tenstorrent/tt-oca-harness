@@ -214,6 +214,119 @@ outputs = [
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
 ]
 
+[c_build.boot_rom]
+# The SEP Boot ROM (hw/sys/sep/bootrom/prod) is NOT built by the shared firmware
+# engine -- it drives its own Makefile, links to ROM_BASE instead of the TCMs, and
+# additionally packs a manifest+BL1 image. Tests select it with
+# `firmware = { name = "boot_rom", mode = "boot_rom" }`, which is what makes
+# `--stage sim` fail loudly with "firmware outputs missing" instead of silently
+# simulating against a stale or absent image.
+#
+# Two halves, split by TOOL dependency, so they cannot collapse into one command:
+#   toolchain-images  needs the RISC-V toolchain WITH picolibc (the generated
+#                     register headers close their packing checks with
+#                     static_assert, i.e. <assert.h>, which is not freestanding).
+#   pack-images       is pure Python and must run on the HOST: the packer's deps
+#                     come from the tt-boot-manifest submodule's pyproject.toml via
+#                     uv, and the ocah-toolchain image carries neither.
+#
+# Toolchain resolution and the picolibc probe are deliberately identical to
+# [c_build.default] above -- see that block for why the probe (not mere toolchain
+# presence) is the real gate. GCC_PREFIX differs from the engine's RISCV_PREFIX:
+# this Makefile spells `$(GCC_PREFIX)-gcc`, so the value carries no trailing dash.
+# Passing it as a full path prefix keeps PATH untouched. Make propagates
+# command-line variables to sub-makes, so the recursive OTBN-app and bl1_pass_test
+# builds inherit the same toolchain.
+#
+# NOTE: as in [c_build.default], argv goes through str.format() and the runlib
+# rejects every placeholder except {fw_target} -- braces of any kind, including
+# shell ${...} expansion, are unavailable here. Use "$VAR" and $(...) instead.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the boot ROM in the OCAH toolchain container\"; ./scripts/docker-run.sh run make -C \"$ROM_DIR\" toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" pack-images",
+]
+outputs = [
+  "hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build/boot_rom.itcm.hex",
+  "hw/sys/sep/bootrom/prod/build/boot_rom.dtcm.hex",
+  "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+]
+
+[c_build.boot_rom_ot]
+# The same Boot ROM sources built for the OpenTitan SPI host instead of the SPI
+# stub, landing in build_ot/ so both variants coexist. The variant knobs live in
+# the Makefile's ot-* targets, not here, so this template only owns the
+# host-vs-container decision -- see [c_build.boot_rom] for why that split exists
+# and for the no-braces constraint on argv (str.format rejects every placeholder
+# except {fw_target}, so use "$VAR" and $(...), never shell ${...}).
+#
+# The probe/fallback logic below is deliberately identical to [c_build.boot_rom].
+# FIXME(SEP-DV): three c_build templates now carry the same ~20-line shell; fold
+# them into a script under tools/dv/ and have argv call it, which also retires the
+# no-braces constraint.
+#
+# pack-images runs into build_ot/ too, so non_secure_boot.bin -- the raw image the
+# cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
+# default-variant image can never be picked up by mistake.
+#
+# NONFREE_ROOT= is load-bearing, not tidiness. reg_includes.mk puts the nonfree
+# register headers on the include path whenever a nonfree/ checkout exists, and
+# sep_ot_spi.c guards its SPI-mux write on a macro those headers define
+# (OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL__SPI_SEL_bm). The mux is a nonfree shim that
+# the open RTL does not implement, so with the guard satisfied the ROM stores to an
+# unmapped 0x20001000, the core takes an imprecise store bus error, and the NMI
+# lands in ICCM -- a boot failure whose reported mcause/mepc point at the ICCM copy
+# of the ROM and say nothing about SPI. Forcing a pure-open firmware build to match
+# the pure-open DUT is the fix; the guard's premise ("this symbol only exists when
+# the overlay supplies the block") is simply false in a workspace that has both.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= ot-toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OT boot ROM in the OCAH toolchain container\"; ./scripts/docker-run.sh run make -C \"$ROM_DIR\" NONFREE_ROOT= ot-toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= pack-images secure_boot_spi",
+]
+outputs = [
+  "hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_ot/boot_rom.itcm.hex",
+  "hw/sys/sep/bootrom/prod/build_ot/boot_rom.dtcm.hex",
+  "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/secure_boot.bin",
+]
+
+[c_build.boot_rom_ot_pio]
+# The OT-transport Boot ROM again, but with the RX FIFO drained by CPU programmed
+# I/O instead of the SECURE_DMA handshake (BOOT_OT_SPI_USE_PIO=1 -> build_ot_pio/).
+# boot_flash.h resolves the drain at compile time, so this is a genuinely separate
+# binary: build_ot_pio/boot_rom.elf does not even link ot_spi_flash_read_dma.
+#
+# Everything else -- toolchain probe, container fallback, NONFREE_ROOT= and the
+# no-braces argv constraint -- is character-for-character [c_build.boot_rom_ot].
+# See that block for why each part is the way it is.
+#
+# Only `pack-images` here, no `secure_boot_spi`: the PIO test boots the unsigned
+# image, and the signed one is the DMA variant's business. The packed bytes are
+# drain-agnostic and land in the shared build/, so this does not rebuild them.
+#
+# FIXME(SEP-DV): this is now the FOURTH template carrying the same ~20-line shell,
+# which is why it was produced by copy-substitution rather than by hand. Fold the
+# probe into a script under tools/dv/ and have every argv call it; that also
+# retires the no-braces constraint. The duplication is the reason a fix to the
+# toolchain probe has to be applied in four places today.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= ot-pio-toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OT-PIO boot ROM in the OCAH toolchain container\"; ./scripts/docker-run.sh run make -C \"$ROM_DIR\" NONFREE_ROOT= ot-pio-toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= pack-images",
+]
+outputs = [
+  "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.itcm.hex",
+  "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.dtcm.hex",
+  "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
+]
+
 [defaults]
 run_mode = "no_cpu"
 
