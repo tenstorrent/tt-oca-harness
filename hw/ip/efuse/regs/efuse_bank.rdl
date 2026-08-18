@@ -14,7 +14,7 @@ addrmap efuse_bank {
             onwrite = woset;
             hw = r;
             desc = "Read Data from eFuse";
-        } dout[31:0] = 0x0;
+        } dout[31:0];
     };
 
     EFUSE_BANK_REG        EFUSE_BANK_REG[1024]     @0x0;

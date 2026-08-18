@@ -27,12 +27,15 @@ OCAH_REG_PLACEHOLDER_BLOCKS ?= oca_i3c_wrap
 # Register RTL authored outside regblock: excluded from SV only, still docs + C header.
 # The vendored OpenTitan blocks (aes/hmac/kmac/otbn/csrng/edn/secure_dma/
 # spi_controller/aon_timer) get their reg RTL from upstream reggen, not peakrdl.
+# efuse_bank is simulation-only and its committed RTL carries a hand edit the
+# generator cannot express; the file itself documents it.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
-  el2_pic aon_timer dfd smc_cla dma_ctrl
+  el2_pic aon_timer dfd smc_cla dma_ctrl \
+  efuse_bank
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)

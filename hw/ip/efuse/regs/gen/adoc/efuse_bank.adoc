@@ -19,5 +19,5 @@
 .EFUSE_BANK_REG[1024] Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `dout` | RW | 0x0 a| Read Data from eFuse
+| 31:0 | `dout` | RW | - a| Read Data from eFuse
 |===
