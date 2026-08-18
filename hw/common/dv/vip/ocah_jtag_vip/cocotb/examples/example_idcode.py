@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2025 Tenstorrent Inc.
 """
-example_idcode.py — OcahJtagTap IDCODE read example.
+example_idcode.py — OcahJtagMasterDriver IDCODE read example.
 
 Demonstrates the minimal sequence to:
-  1. Construct an OcahJtagTap for the PTAP interface.
-  2. Attach a passive OcahJtagMonitor to log transactions.
+  1. Construct an OcahJtagMasterDriver for the PTAP interface.
+  2. Attach a passive OcahJtagMasterMonitor to log transactions.
   3. Reset the TAP.
   4. Shift the IDCODE instruction into the IR.
   5. Read back the 32-bit IDCODE from the DR.
@@ -29,9 +29,9 @@ from cocotb.triggers import Timer
 from ocah_jtag_vip import (
     IDCODE_OPCODE,
     OcahJtagChecker,
-    OcahJtagMonitor,
-    OcahJtagTap,
-    OcahJtagTapError,
+    OcahJtagMasterMonitor,
+    OcahJtagMasterDriver,
+    OcahJtagMasterDriverError,
 )
 
 
@@ -47,7 +47,7 @@ async def example_ptap_idcode(dut):
     cocotb.start_soon(Clock(dut.tck, 10, units="ns").start())
 
     # Construct the TAP driver for the PTAP.
-    tap = OcahJtagTap(
+    tap = OcahJtagMasterDriver(
         dut.jtag_ptap_if,       # jtag_intf.sv handle in the testbench
         name="ptap",
         tck_period_ns=10,
@@ -56,7 +56,7 @@ async def example_ptap_idcode(dut):
     )
 
     # Attach a passive monitor and checker before any activity.
-    monitor = OcahJtagMonitor(dut.jtag_ptap_if, name="ptap_mon")
+    monitor = OcahJtagMasterMonitor(dut.jtag_ptap_if, name="ptap_mon")
     checker = OcahJtagChecker(ir_width=5)
     checker.attach_monitor(monitor)
 
@@ -143,7 +143,7 @@ async def example_ptap_idcode(dut):
 async def example_stap_idcode(dut):
     """Read IDCODE from the Secondary TAP (STAP) via a custom signal map.
 
-    This shows how to reuse OcahJtagTap when the STAP interface uses
+    This shows how to reuse OcahJtagMasterDriver when the STAP interface uses
     different signal names (e.g., stap_tck instead of tck).
     """
 
@@ -159,7 +159,7 @@ async def example_stap_idcode(dut):
         "tdo_oen": "stap_tdo_oen",
     }
 
-    tap = OcahJtagTap(
+    tap = OcahJtagMasterDriver(
         dut.jtag_stap_if,
         name="stap",
         tck_period_ns=20,
@@ -174,7 +174,7 @@ async def example_stap_idcode(dut):
     try:
         idcode = await tap.read_idcode()
         cocotb.log.info(f"[stap] IDCODE = 0x{idcode:08X}")
-    except OcahJtagTapError as exc:
+    except OcahJtagMasterDriverError as exc:
         cocotb.log.warning(f"[stap] {exc}")
 
     # Return TAP to safe idle state.
@@ -197,7 +197,7 @@ async def example_cpu_tap_idcode(dut):
 
     cocotb.start_soon(Clock(dut.tck, 10, units="ns").start())
 
-    tap = OcahJtagTap(
+    tap = OcahJtagMasterDriver(
         dut.jtag_cpu_if,
         name="cpu_tap",
         tck_period_ns=10,

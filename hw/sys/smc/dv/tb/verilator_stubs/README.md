@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Verilator stubs (SMC)
 
-Listed in `smc_wrapper_sim_cfg.toml` `[build].stubs` ahead of the Bender
+Listed in `smc_sim_cfg.toml` `[build].stubs` ahead of the Bender
 filelist so `-Wno-MODDUP` first-wins under Verilator. VCS ignores this list.
 Also reused by `smu_wrapper` / bare `smu`.
 

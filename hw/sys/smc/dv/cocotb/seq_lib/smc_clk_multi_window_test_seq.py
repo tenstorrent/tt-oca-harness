@@ -10,6 +10,8 @@ from __future__ import annotations
 import os
 import random
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
@@ -19,7 +21,7 @@ from ._one_shot import _OneShot
 from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 # Legal programmed hysteresis for LIVE DMA-CG measure path.
 # Low end is 8 (not 0/1): hyst=0 never runs under cg_enable; hyst=1 loses the

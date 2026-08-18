@@ -20,7 +20,7 @@ Overview
 *Test framework*: cocotb + PyUVM, using the DTP/SEP three-layer pattern:
 `env/`, `seq_lib/`, and `tests/`.
 
-*Sim config*: `hw/sys/smc/dv/smc_wrapper_sim_cfg.toml` (`--dut smc_wrapper`)
+*Sim config*: `hw/sys/smc/dv/smc_sim_cfg.toml` (`--dut smc`)
 
 *Boundary responders under this DUT*:
 

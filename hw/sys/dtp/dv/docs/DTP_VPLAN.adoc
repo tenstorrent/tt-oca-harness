@@ -39,7 +39,7 @@ resets the primary TAP, and drives stimulus through the OCAH BFMs:
 
 [arabic]
 . *Stimulus*: standard protocols use the unified OCAH VIP wrappers — `ocah_jtag_vip`
-(`OcahJtagTap`) for the JTAG TAP, and `ocah_axi_vip` (`OcahAxiRam`, AXI-Lite wrappers,
+(`OcahJtagMasterDriver`) for the JTAG TAP, and `ocah_axi_vip` (`OcahAxiRam`, AXI-Lite wrappers,
 `OcahAxiLiteMaster`) for the SMC fabric / OTP debug and XTRIG CSR buses. DTP-specific
 protocols (boundary-scan / STAP loopbacks, IEEE 1687 iJTAG SIB networks, OCH CTP/CTM)
 use OCAH-local models in `env/` (see Open-Source BFM Policy).
@@ -71,7 +71,7 @@ selectable in the public testlists.
 [cols=",",options="header",]
 |===
 |Interface / Protocol |Open-Source Replacement
-|Primary JTAG TAP |`ocah_jtag_vip` `OcahJtagTap`
+|Primary JTAG TAP |`ocah_jtag_vip` `OcahJtagMasterDriver`
 |AXI4 SMC fabric debug |`ocah_axi_vip` `OcahAxiRam`
 |AXI4-Lite SMC/SEP OTP debug |`ocah_axi_vip` AXI-Lite wrappers
 |AXI4-Lite XTRIG CSR |`ocah_axi_vip` `OcahAxiLiteMaster`
@@ -311,7 +311,7 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 
 [arabic]
 . Reset the primary TAP to Test-Logic-Reset, then step to Run-Test/Idle.
-. Through `OcahJtagTap`, sequence TLR → RTI → Select-DR → Capture-DR → Shift-DR → Update-DR → RTI, sampling `jtag_ptap_state_o` after each TCK.
+. Through `OcahJtagMasterDriver`, sequence TLR → RTI → Select-DR → Capture-DR → Shift-DR → Update-DR → RTI, sampling `jtag_ptap_state_o` after each TCK.
 . Drive an IR scan RTI → Select-DR → Select-IR → Capture-IR → Shift-IR (6 bits, BYPASS 0x00) → Update-IR → RTI.
 . With BYPASS active, run a 1-bit DR scan and confirm the single-TCK TDI-to-TDO delay.
 . Drive randomized raw-TMS paths through DR/IR/pause/update legs until every IEEE 1149.1 state and legal transition is observed.
@@ -350,7 +350,7 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 *Test Procedure*:
 
 [arabic]
-. Load IR = 0x00 (BYPASS) via `OcahJtagTap`.
+. Load IR = 0x00 (BYPASS) via `OcahJtagMasterDriver`.
 . Shift a known 64-bit pattern (alternating 0/1) through DR and confirm TDO == TDI delayed by exactly 1 bit.
 . Verify Capture-DR loaded 0 into the bypass register (leading captured bit is 0).
 . Load IR = 0x3F (BYPASS all-ones) and repeat the same 64-bit pattern shift.
@@ -391,7 +391,7 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 
 [arabic]
 . For each reserved encoding in 0x10-0x17 and any other unused opcode:
-a. Load the reserved IR value through `OcahJtagTap`.
+a. Load the reserved IR value through `OcahJtagMasterDriver`.
 b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI delayed one TCK to TDO).
 . While iterating, confirm no other TDR is selected and no boundary/output side effects occur.
 . Verify no error/fault condition is raised for any reserved encoding.
@@ -431,7 +431,7 @@ b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI del
 
 [arabic]
 . Reset the primary TAP to Test-Logic-Reset so IDCODE auto-loads.
-. Without loading any IR, perform a 32-bit DR scan through `OcahJtagTap` and capture TDO.
+. Without loading any IR, perform a 32-bit DR scan through `OcahJtagMasterDriver` and capture TDO.
 . Decode and check fields `SI_REV[31:28]`, `PART_NUM[27:12]`, `MFR_ID[11:1]`, and `MARKER[0] == 1`.
 . Explicitly load IDCODE (IR=0x01); repeat the 32-bit DR scan.
 . Force TLR again and re-read; require an identical value on every read.
@@ -471,7 +471,7 @@ b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI del
 *Test Procedure*:
 
 [arabic]
-. Load RUNBIST (IR=0x02) through `OcahJtagTap` and enter Run-Test/Idle to execute BIST.
+. Load RUNBIST (IR=0x02) through `OcahJtagMasterDriver` and enter Run-Test/Idle to execute BIST.
 . Hold RTI for the required cycles, then Capture-DR/Shift-DR to read the BIST pass/fail result.
 . Security-gating scenario:
 a. Drive required enable `feat_ctrl_i.soc_debug = 0` (asserts `dft_nonsecure_security_disable`).
@@ -515,7 +515,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 [arabic]
 . Apply known values to the boundary-scan input pins via the OCAH-local BSR model.
-. Load SAMPLE/PRELOAD (IR=0x03) through `OcahJtagTap` and perform Capture-DR.
+. Load SAMPLE/PRELOAD (IR=0x03) through `OcahJtagMasterDriver` and perform Capture-DR.
 . Shift out captured data and compare against the applied stimulus in the BSR reference model.
 . Shift in a new preload pattern and perform Update-DR.
 . Confirm functional outputs remain unchanged (SAMPLE/PRELOAD does not drive pins) and the preload pattern is retained for later EXTEST use.
@@ -595,7 +595,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 [arabic]
 . Load SAMPLE/PRELOAD (IR=0x03) and shift a known input pattern into the BSR via DR.
-. Load INTEST (IR=0x09) through `OcahJtagTap` and perform Update-DR.
+. Load INTEST (IR=0x09) through `OcahJtagMasterDriver` and perform Update-DR.
 . Confirm the BSR drives the preloaded pattern onto the internal logic inputs via the OCAH-local BSR model.
 . Perform Capture-DR to latch the internal logic outputs into the BSR.
 . Shift out the captured values and verify they reflect the programmed internal observation points.
@@ -674,7 +674,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 [arabic]
 . Load EXTEST and drive known BSR outputs; confirm the outputs are actively driven.
-. Load HIGHZ (IR=0x08) through `OcahJtagTap`.
+. Load HIGHZ (IR=0x08) through `OcahJtagMasterDriver`.
 . Observe the boundary output-enable controls and confirm all BSR `+_oen_o+` signals deassert (high-impedance).
 . Run a DR scan and verify the 1-bit bypass behavior during HIGHZ.
 . Load a different (safe/functional) instruction and confirm outputs return to the driven state.
@@ -712,7 +712,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 *Test Procedure*:
 
 [arabic]
-. Load IR = 0x3D (ZERO_LENGTH_BYPASS) through `OcahJtagTap`.
+. Load IR = 0x3D (ZERO_LENGTH_BYPASS) through `OcahJtagMasterDriver`.
 . Attempt a DR scan and confirm the DR chain length measures exactly 0 bits.
 . Shift a known pattern and verify TDO reflects TDI with zero additional delay.
 . Confirm no extra scan bits are inserted and downstream chain alignment is preserved in a multi-TAP chain context.
@@ -751,7 +751,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 *Test Procedure*:
 
 [arabic]
-. Load IR = 0x3E (INV_BYPASS) through `OcahJtagTap`.
+. Load IR = 0x3E (INV_BYPASS) through `OcahJtagMasterDriver`.
 . Shift a known 64-bit alternating 0/1 pattern through DR and verify TDO = inverted TDI delayed by 1 bit.
 . Shift all-zeros and confirm TDO outputs all-ones after the 1-bit delay.
 . Shift all-ones and confirm TDO outputs all-zeros after the 1-bit delay.
@@ -793,7 +793,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 *Test Procedure*:
 
 [arabic]
-. Drive the TAP into a mid-operation non-reset state (e.g. Shift-DR) via `OcahJtagTap`.
+. Drive the TAP into a mid-operation non-reset state (e.g. Shift-DR) via `OcahJtagMasterDriver`.
 . Assert TRST_N asynchronously (independent of TCK).
 . Confirm `jtag_ptap_state_o` transitions to Test-Logic-Reset within one TCK edge and scan state is cleared.
 . Release TRST_N and verify the IR contains IDCODE.
@@ -873,7 +873,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 *Test Procedure*:
 
 [arabic]
-. Load various instructions and write non-default values into their TDRs through `OcahJtagTap`.
+. Load various instructions and write non-default values into their TDRs through `OcahJtagMasterDriver`.
 . Drive the TAP to Test-Logic-Reset via at least five TMS=1 cycles.
 . Confirm the instruction register resets to IDCODE and read IDCODE back via DR scan.
 . Verify DEBUG_CONTROL TDR reset to 0x00, 3DCR (CONFIG_HOLD=0) reset to 0x0, and IC_RESET (RESET_HOLD=0) reset to 0x0.
@@ -914,7 +914,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 [arabic]
 . Load EXTEST and drive known BSR outputs via the OCAH-local BSR model.
-. Load CLAMP_HOLD (IR=0x0A) through `OcahJtagTap` and perform a 2-bit DR scan.
+. Load CLAMP_HOLD (IR=0x0A) through `OcahJtagMasterDriver` and perform a 2-bit DR scan.
 . Confirm the TMP controller enters Persistence-On.
 . Load a different instruction (e.g. IDCODE) and verify the BSR outputs remain clamped.
 . Read TMP_STATUS and verify TMP_STATUS = 1 (Persistence-On); return to BYPASS and confirm the clamp persists.
@@ -954,7 +954,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 [arabic]
 . Engage CLAMP_HOLD (per the 0.15 setup) and confirm held boundary state with TMP_STATUS.TMP_STATUS = 1.
-. Load CLAMP_RELEASE (IR=0x0B) through `OcahJtagTap` and perform a 2-bit DR scan.
+. Load CLAMP_RELEASE (IR=0x0B) through `OcahJtagMasterDriver` and perform a 2-bit DR scan.
 . Confirm the TMP controller exits Persistence-On.
 . Read TMP_STATUS and verify TMP_STATUS = 0.
 . Issue the next functional instruction and verify the BSR outputs return to normal (no longer clamped).
@@ -994,7 +994,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 [arabic]
 . Load SAMPLE/PRELOAD and shift the training pattern into the BSR via the OCAH-local BSR model.
-. Load EXTEST_TRAIN (IR=0x05) through `OcahJtagTap`.
+. Load EXTEST_TRAIN (IR=0x05) through `OcahJtagMasterDriver`.
 . Enter Run-Test/Idle and confirm the training pattern is driven on the AC boundary outputs every TCK cycle.
 . Monitor the BSR scan control for correct launch/capture timing assertion.
 . Exit by loading a different instruction and confirm no spurious functional output changes occurred.
@@ -1034,7 +1034,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 [arabic]
 . Load SAMPLE/PRELOAD and shift the pulse (launch) pattern into the BSR via the OCAH-local BSR model.
-. Load EXTEST_PULSE (IR=0x06) through `OcahJtagTap`.
+. Load EXTEST_PULSE (IR=0x06) through `OcahJtagMasterDriver`.
 . Enter Run-Test/Idle and confirm a single pulse is driven on the AC boundary outputs.
 . Monitor the timing of the BSR scan-control assertions during the pulse sequence.
 . Re-enter RTI and confirm another single pulse on the next entry; verify the captured response bits.
@@ -1117,7 +1117,7 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 *Test Procedure*:
 
 [arabic]
-. Load TMP_STATUS (IR=0x0C) via `OcahJtagTap` and engage CLAMP_HOLD to enter Persistence-On.
+. Load TMP_STATUS (IR=0x0C) via `OcahJtagMasterDriver` and engage CLAMP_HOLD to enter Persistence-On.
 . Read TMP_STATUS and confirm TMP_STATUS[1] = 1 before the reset.
 . Pulse the chip reset input (`chrst_n_in`) while keeping the primary TAP clocked and accessible.
 . Re-select TMP_STATUS and re-read the 2-bit TDR.
@@ -1157,7 +1157,7 @@ a. Verify TMP_STATUS[1] remains 1, proving persistence bits that must survive ch
 *Test Procedure*:
 
 [arabic]
-. Engage CLAMP_HOLD via `OcahJtagTap` to place the TMP FSM in Persistence-On; confirm TMP_STATUS[1] = 1.
+. Engage CLAMP_HOLD via `OcahJtagMasterDriver` to place the TMP FSM in Persistence-On; confirm TMP_STATUS[1] = 1.
 . Load TMP_STATUS (IR=0x0C) and write BYPASS_ESCAPE[0] = 1 through the TMP_STATUS DR; Update-DR.
 . Read TMP_STATUS with preserve values that keep BYPASS_ESCAPE armed.
 . Load BYPASS twice to invoke the escape path; the second Update-IR observes BYPASS already selected.
@@ -1200,7 +1200,7 @@ a. Verify TMP_STATUS[1] = 0 after the escape.
 *Test Procedure*:
 
 [arabic]
-. Load IC_RESET (IR=0x0D) via `OcahJtagTap`.
+. Load IC_RESET (IR=0x0D) via `OcahJtagMasterDriver`.
 . Verify the default all-ones IC_RESET value and deasserted flattened SMC/SEP/EXT outputs.
 . For each SMC, SEP, and External slice, shift in RESET_ENABLE=0 (enable override) and RESET_CONTROL=0 (drive reset low); Update-DR.
 a. Verify `jtag_ic_reset_ovrd_o[0]` = 1 (= `!reset_enable[0]`) and `jtag_ic_reset_ctrl_n_o[0]` = 0.
@@ -1247,7 +1247,7 @@ a. Verify the programmed pattern is preserved.
 *Test Procedure*:
 
 [arabic]
-. Load JTAG_CAPS (IR=0x19) via `OcahJtagTap`.
+. Load JTAG_CAPS (IR=0x19) via `OcahJtagMasterDriver`.
 . Capture-DR / Shift-DR the full 60-bit TDR (`[59:0]`).
 . Compare each field against its compile-time parameter:
 a. NUM_XTRIG_INT_CT == `XTRIG_NUM_INT_CT`; NUM_XTRIG_CTP == `XTRIG_NUM_CTP`.
@@ -1293,7 +1293,7 @@ a. Verify the CAPS value is unchanged (read-only).
 *Test Procedure*:
 
 [arabic]
-. Load DEBUG_CONTROL (IR=0x18) via `OcahJtagTap`; read the 5-bit TDR and verify the reset value = 0x00.
+. Load DEBUG_CONTROL (IR=0x18) via `OcahJtagMasterDriver`; read the 5-bit TDR and verify the reset value = 0x00.
 . Write JTAG_CLOCK_STOP=1; Update-DR.
 a. Verify `stop_clks_o` = 1 (JTAG clock stop folds into the CTN functional halt).
 . Read DEBUG_CONTROL with a preserve shift value and verify JTAG_CLOCK_STOP=1 while CLA_CLOCK_STOP=0.
@@ -1334,7 +1334,7 @@ a. Verify `stop_clks_o` = 0 (clocks released).
 *Test Procedure*:
 
 [arabic]
-. Load DEBUG_CONTROL (IR=0x18) via `OcahJtagTap`; verify the reset value = 0x00.
+. Load DEBUG_CONTROL (IR=0x18) via `OcahJtagMasterDriver`; verify the reset value = 0x00.
 . Write CLA_CLOCK_STOP_EN=1; Update-DR.
 a. Verify `cla_clock_stop_en_o` = 1 (exported; does not itself gate `stop_clks_o`).
 . Drive `xtrig_clk_stop_req_i[0]` = 1 from the TB.
@@ -1379,7 +1379,7 @@ a. Verify `stop_clks_o` = 0; re-read DEBUG_CONTROL and verify CLA_CLOCK_STOP = 0
 
 [arabic]
 . Generate legal combinations of JTAG_CLOCK_STOP, CLA_CLOCK_STOP_EN, and `xtrig_clk_stop_req_i` vectors, including a directed pass that walks a single `1` across each `xtrig_clk_stop_req_i[i]` (`0..NUM_CLK_STOP_REQ-1`), multi-request masks, and seeded random request/control combinations.
-. For each combination, write DEBUG_CONTROL (IR=0x18) via `OcahJtagTap` and drive the corresponding `xtrig_clk_stop_req_i`; Update-DR.
+. For each combination, write DEBUG_CONTROL (IR=0x18) via `OcahJtagMasterDriver` and drive the corresponding `xtrig_clk_stop_req_i`; Update-DR.
 . Sample `stop_clks_o`, `cla_clock_stop_en_o`, and the DEBUG_CONTROL readback fields.
 . Compare against the bit-accurate reference model:
 a. `stop_clks_o` == registered(`jtag_clock_stop` | OR of `xtrig_clk_stop_req_i`).
@@ -1420,7 +1420,7 @@ c. CLA_CLOCK_STOP readback == OR of `xtrig_clk_stop_req_i` only.
 *Test Procedure*:
 
 [arabic]
-. Load DEBUG_CONTROL (IR=0x18) via `OcahJtagTap`; read the 5-bit TDR and verify reset value 0x00.
+. Load DEBUG_CONTROL (IR=0x18) via `OcahJtagMasterDriver`; read the 5-bit TDR and verify reset value 0x00.
 . Loop all four BOOT_STALL_OVRD / BOOT_STALL combinations and verify both flattened outputs plus DEBUG_CONTROL readback.
 . Keep BOOT_STALL_OVRD asserted and toggle BOOT_STALL through multiple values to confirm the data field changes independently.
 . Set JTAG_CLOCK_STOP and CLA_CLOCK_STOP_EN interaction combinations while BOOT_STALL_OVRD/BOOT_STALL remain asserted; verify boot-stall outputs and readback remain correct.
@@ -1462,7 +1462,7 @@ c. CLA_CLOCK_STOP readback == OR of `xtrig_clk_stop_req_i` only.
 *Test Procedure*:
 
 [arabic]
-. Load SMC_JTAG2AXI_CAPS (IR=0x27) via `OcahJtagTap`.
+. Load SMC_JTAG2AXI_CAPS (IR=0x27) via `OcahJtagMasterDriver`.
 . Capture-DR / Shift-DR the 14-bit CAPS TDR.
 . Compare each field against the SMC fabric AXI4 bridge parameters:
 a. BUS_TYPE == 0 (AXI4); ADDR_SIZE == 56; DATA_SIZE == 64.
@@ -1506,7 +1506,7 @@ b. RD_PL_DEPTH and WR_PL_DEPTH == their `+SMC_*+` pipeline-depth parameters.
 *Test Procedure*:
 
 [arabic]
-. Load SEP_OTP_JTAG2AXI_CAPS (IR=0x21) via `OcahJtagTap`.
+. Load SEP_OTP_JTAG2AXI_CAPS (IR=0x21) via `OcahJtagMasterDriver`.
 . Capture-DR / Shift-DR the 14-bit CAPS TDR.
 . Compare each field against the SEP OTP AXI-Lite bridge parameters:
 a. BUS_TYPE == 1 (AXI4-Lite); ADDR_SIZE == 32; DATA_SIZE == 32.
@@ -1550,7 +1550,7 @@ b. RD_PL_DEPTH and WR_PL_DEPTH == their `+SEP_OTP_*+` pipeline-depth parameters.
 *Test Procedure*:
 
 [arabic]
-. Load SMC_OTP_JTAG2AXI_CAPS (IR=0x1B) via `OcahJtagTap`.
+. Load SMC_OTP_JTAG2AXI_CAPS (IR=0x1B) via `OcahJtagMasterDriver`.
 . Capture-DR / Shift-DR the 14-bit CAPS TDR.
 . Compare each field against the SMC OTP AXI-Lite bridge parameters:
 a. BUS_TYPE == 1 (AXI4-Lite); ADDR_SIZE == 32; DATA_SIZE == 32.
@@ -1597,7 +1597,7 @@ b. RD_PL_DEPTH and WR_PL_DEPTH == their `+SMC_OTP_*+` pipeline-depth parameters.
 
 [arabic]
 . Load and verify the bridge CAPS:
-a. Load SMC_JTAG2AXI_CAPS (IR=0x27) via `OcahJtagTap` and read the 14-bit CAPS TDR.
+a. Load SMC_JTAG2AXI_CAPS (IR=0x27) via `OcahJtagMasterDriver` and read the 14-bit CAPS TDR.
 b. Verify bus_type = AXI4, ADDR_SIZE = 56, DATA_SIZE = 64.
 . Issue the single write:
 a. Load SMC_AXI_SINGLE_OP (IR=0x28).
@@ -1899,7 +1899,7 @@ b. Restore `feat_ctrl_i.soc_debug` = 1 and verify normal operation restored.
 
 [arabic]
 . Load and verify the bridge CAPS:
-a. Load SMC_OTP_JTAG2AXI_CAPS (IR=0x1B) via `OcahJtagTap` and read the 14-bit CAPS TDR.
+a. Load SMC_OTP_JTAG2AXI_CAPS (IR=0x1B) via `OcahJtagMasterDriver` and read the 14-bit CAPS TDR.
 b. Verify bus_type = AXI4-Lite, ADDR_SIZE = 32, DATA_SIZE = 32.
 . Issue the single write:
 a. Load SMC_OTP_AXI_SINGLE_OP (IR=0x1C).
@@ -2198,7 +2198,7 @@ a. With all required enables high, verify a legal write again completes with OKA
 
 [arabic]
 . Load and verify the bridge CAPS:
-a. Load SEP_OTP_JTAG2AXI_CAPS (IR=0x21) via `OcahJtagTap` and read the 14-bit CAPS TDR.
+a. Load SEP_OTP_JTAG2AXI_CAPS (IR=0x21) via `OcahJtagMasterDriver` and read the 14-bit CAPS TDR.
 b. Verify bus_type = AXI4-Lite, ADDR_SIZE = 32, DATA_SIZE = 32.
 . Issue the single write:
 a. Load SEP_OTP_AXI_SINGLE_OP (IR=0x22).
@@ -3290,7 +3290,7 @@ a. Verify the instruction selects BYPASS (DR length 1 bit) and no AXI-Lite trans
 
 [arabic]
 . Configure the `ocah_axi_vip` AXI4 subordinate (OcahAxiRam) to return SLVERR or DECERR on writes to the chosen error region.
-. Load SMC_AXI_SINGLE_OP via `OcahJtagTap` (IR=0x28):
+. Load SMC_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x28):
 a. Shift in the error-region target address, write data, wstrb = all-ones, size, op = 0b10 (Write).
 b. Update-DR to launch the AXI4 transaction on `axi_smc_dbg_req_o`.
 . Poll the op-status field via Capture-DR/Shift-DR until not Busy (op != 0b11).
@@ -3332,7 +3332,7 @@ b. Update-DR to launch the AXI4 transaction on `axi_smc_dbg_req_o`.
 
 [arabic]
 . Configure the `ocah_axi_vip` AXI4 subordinate to return SLVERR or DECERR on reads to the error region.
-. Load SMC_AXI_SINGLE_OP via `OcahJtagTap` (IR=0x28):
+. Load SMC_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x28):
 a. Shift in the error-region target address, data = 0, wstrb = 0, size, op = 0b01 (Read).
 b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 . Poll the op-status via Capture-DR/Shift-DR until not Busy.
@@ -3653,7 +3653,7 @@ b. Verify no AXI transaction is issued on `axi_smc_dbg_req_o` and no error-statu
 
 [arabic]
 . Configure the `ocah_axi_vip` AXI4-Lite subordinate (AXI-Lite wrapper) to return SLVERR/DECERR on writes to the error region.
-. Load SMC_OTP_AXI_SINGLE_OP via `OcahJtagTap` (IR=0x1C):
+. Load SMC_OTP_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x1C):
 a. Shift in the 32-bit error-region address, write data, wstrb = all-ones, op = 0b10 (Write).
 b. Update-DR to launch the AXI4-Lite transaction on `axil_smc_otp_jtag_req_o`.
 . Poll the op-status via Capture-DR/Shift-DR until not Busy.
@@ -3695,7 +3695,7 @@ b. Update-DR to launch the AXI4-Lite transaction on `axil_smc_otp_jtag_req_o`.
 
 [arabic]
 . Configure the `ocah_axi_vip` AXI4-Lite subordinate to return SLVERR/DECERR on reads to the error region.
-. Load SMC_OTP_AXI_SINGLE_OP via `OcahJtagTap` (IR=0x1C):
+. Load SMC_OTP_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x1C):
 a. Shift in the 32-bit error-region address, data = 0, wstrb = 0, op = 0b01 (Read).
 b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 . Poll the op-status until not Busy.
@@ -4015,7 +4015,7 @@ b. Verify no AXI-Lite transaction is issued on `axil_smc_otp_jtag_req_o` and no 
 
 [arabic]
 . Configure the `ocah_axi_vip` AXI4-Lite subordinate to return SLVERR/DECERR on writes to the error region.
-. Load SEP_OTP_AXI_SINGLE_OP via `OcahJtagTap` (IR=0x22):
+. Load SEP_OTP_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x22):
 a. Shift in the 32-bit error-region address, write data, wstrb = all-ones, op = 0b10 (Write).
 b. Update-DR to launch the AXI4-Lite transaction on `axil_sep_otp_jtag_req_o`.
 . Poll the op-status via Capture-DR/Shift-DR until not Busy.
@@ -4057,7 +4057,7 @@ b. Update-DR to launch the AXI4-Lite transaction on `axil_sep_otp_jtag_req_o`.
 
 [arabic]
 . Configure the `ocah_axi_vip` AXI4-Lite subordinate to return SLVERR/DECERR on reads to the error region.
-. Load SEP_OTP_AXI_SINGLE_OP via `OcahJtagTap` (IR=0x22):
+. Load SEP_OTP_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x22):
 a. Shift in the 32-bit error-region address, data = 0, wstrb = 0, op = 0b01 (Read).
 b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 . Poll the op-status until not Busy.
@@ -4376,7 +4376,7 @@ b. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no 
 *Test Procedure*:
 
 [arabic]
-. Drive a JTAG2AXI single-op write through `OcahJtagTap`:
+. Drive a JTAG2AXI single-op write through `OcahJtagMasterDriver`:
 a. Program the bridge address and data via the primary TAP and launch the write op.
 b. Configure the `ocah_axi_vip` subordinate to skew the channels: accept AW (ready high) while holding W ready low for an extended interval.
 . Observe the bridge FSM and channels under skew:
@@ -4421,10 +4421,10 @@ c. While W ready is low, confirm AW/W valid and payload remain stable and do not
 [arabic]
 . Set up stall stimulus on the `ocah_axi_vip` subordinate:
 a. Configure long, deterministic ready-low intervals on AW/W (write path) and AR/R (read path) that remain inside the architectural stall budget.
-. Issue write traffic through `OcahJtagTap`:
+. Issue write traffic through `OcahJtagMasterDriver`:
 a. Launch a single-op write while AW/W ready are stalled; observe valid/payload hold stable across the full stall window.
 b. Release the stall and confirm OKAY completion.
-. Issue read traffic through `OcahJtagTap`:
+. Issue read traffic through `OcahJtagMasterDriver`:
 a. Launch a single-op read while AR ready (then R ready) is stalled; observe AR valid/address hold stable.
 b. Release the stall and confirm the returned data matches the reference model.
 . Verify the bridge does not declare a timeout or error during any legal stall and that each operation reaches its expected terminal status after release.
@@ -4462,7 +4462,7 @@ b. Release the stall and confirm the returned data matches the reference model.
 *Test Procedure*:
 
 [arabic]
-. Stage a stalled write through `OcahJtagTap`:
+. Stage a stalled write through `OcahJtagMasterDriver`:
 a. Launch a single-op write and hold the subordinate W ready low so the bridge dwells in the reachable write FSM states (`AXI_SEND_ADDR_W` / `AXI_WAIT_BRESP`).
 . Assert reset/abort mid-flight:
 a. Drive the JTAG2AXI reset/abort while the operation is held, exercising the abort transition out of the reachable FSM state.
@@ -4505,7 +4505,7 @@ b. Verify the bridge status reports the abort/idle condition rather than a spuri
 *Test Procedure*:
 
 [arabic]
-. Launch a transaction across the CDC through `OcahJtagTap`:
+. Launch a transaction across the CDC through `OcahJtagMasterDriver`:
 a. Start a JTAG2AXI op so traffic is mid-flight across the TCK-to-ACLK `axi_cdc_clearable` path.
 . Apply a narrow reset pulse:
 a. Pulse the CDC clear/reset for a short interval timed to land mid-transaction, exercising the `cdc_reset_ctrlr_half` intermediate clear/isolate recovery states.
@@ -4546,7 +4546,7 @@ b. Sample the CDC controller state and confirm it passes through the expected in
 *Test Procedure*:
 
 [arabic]
-. Start active bridge traffic through `OcahJtagTap`.
+. Start active bridge traffic through `OcahJtagMasterDriver`.
 . Apply back-to-back CDC resets:
 a. Issue a second reset pulse before the first clear/isolate sequence has fully settled, forcing CDC reset re-entry.
 b. Sample the CDC controller and confirm it cycles through the IDLE / ISOLATE / CLEAR recovery states and does not deadlock on re-entry.
@@ -4712,7 +4712,7 @@ a. Confirm status and ordering are preserved across the interleave and that mapp
 *Test Procedure*:
 
 [arabic]
-. For each of the three enabled JTAG2AXI bridges, drive a sweep of series operations through `OcahJtagTap`:
+. For each of the three enabled JTAG2AXI bridges, drive a sweep of series operations through `OcahJtagMasterDriver`:
 a. Minimum-length and maximum-length series to exercise the series FIFO depth corners.
 b. Aligned and unaligned start addresses to exercise address bookkeeping.
 c. Fixed and incrementing series to exercise both address-progression modes.
@@ -4761,7 +4761,7 @@ d. For the pipelined reads, confirm the first `pl_depth{plus}1` reads return the
 *Test Procedure*:
 
 [arabic]
-. Load SELECT_IJTAG (IR=0x1A) into the PTAP via `OcahJtagTap`.
+. Load SELECT_IJTAG (IR=0x1A) into the PTAP via `OcahJtagMasterDriver`.
 . Shift a SIB pattern with all three SIB bits = 0 and pulse Update-DR.
 . Measure the active DR chain length.
 a. Shift a known marker pattern and count the bit delay through the chain.
@@ -4803,7 +4803,7 @@ b. Verify the length equals the 3 SIB-control bits only (no instrument register 
 *Test Procedure*:
 
 [arabic]
-. Load SELECT_IJTAG (IR=0x1A) via `OcahJtagTap`.
+. Load SELECT_IJTAG (IR=0x1A) via `OcahJtagMasterDriver`.
 . Shift a pattern enabling all SIBs (all bits = 1); Update-DR.
 . Measure DR chain length by shifting a known marker and counting the delay.
 a. Verify length equals the sum of SIB bits plus all three instrument register widths.
@@ -4849,7 +4849,7 @@ c. Verify chain length collapses to SIB bits only and no instrument scan control
 *Test Procedure*:
 
 [arabic]
-. Load SELECT_IJTAG (IR=0x1A) via `OcahJtagTap`.
+. Load SELECT_IJTAG (IR=0x1A) via `OcahJtagMasterDriver`.
 . Walk all 8 SIB patterns exhaustively:
 a. Shift each (sec_dft, dft, dfd) pattern; Update-DR.
 b. Measure chain length and verify it equals SIB bits plus the widths of enabled instruments.
@@ -4938,7 +4938,7 @@ a. Verify `jtag_dft_secure_host_scan_ctrl_o` asserts and shift a test pattern th
 *Test Procedure*:
 
 [arabic]
-. Load SELECT_IJTAG (IR=0x1A) via `OcahJtagTap`; open only the DFD SIB; Update-DR.
+. Load SELECT_IJTAG (IR=0x1A) via `OcahJtagMasterDriver`; open only the DFD SIB; Update-DR.
 . Verify `jtag_dfd_host_scan_ctrl_o` asserts; shift a known pattern out on `jtag_dfd_host_scan_out_o` and read it back through `jtag_dfd_host_scan_in_i` via the OCAH-local SIB model.
 . Drive `feat_ctrl_i.ap_debug=0`; attempt to open the DFD SIB.
 a. Verify the SIB stays closed (`security_disable_i` prevents it latching ON) and `jtag_dfd_host_scan_ctrl_o` does not assert.
@@ -4978,7 +4978,7 @@ a. Verify the SIB stays closed (`security_disable_i` prevents it latching ON) an
 *Test Procedure*:
 
 [arabic]
-. Load TAP_3DCR (IR=0x0E) into the PTAP via `OcahJtagTap`.
+. Load TAP_3DCR (IR=0x0E) into the PTAP via `OcahJtagMasterDriver`.
 . Configure the DS STAP: open the DS SIB, write DS 3DCR `stap_sel=1, tms_hold=1, config_hold=1`, then close the DS SIB in the same DR scan; SEP and extra STAPs stay bypassed.
 . Scan the extended IR: PTAP loaded with BYPASS, each STAP's SIB bit kept closed, DS downstream TAP IR included for the selected STAP.
 . For each of the 6 data patterns, scan the extended DR (PTAP BYPASS 1 bit {plus} STAP SIB bits {plus} DS downstream TAP DR), read the DS PTAP model, and verify the readback matches.
@@ -5022,7 +5022,7 @@ c. Reconfigure the DS STAP, re-scan extended IR/DR with new data, and verify the
 *Test Procedure*:
 
 [arabic]
-. Load TAP_3DCR (IR=0x0E) via `OcahJtagTap`.
+. Load TAP_3DCR (IR=0x0E) via `OcahJtagMasterDriver`.
 . Configure the SMC STAP: open the SMC SIB, write SMC 3DCR `stap_sel=1, tms_hold=1, config_hold=1`, then close the SMC SIB in the same DR scan; DS, SEP, and extra STAPs stay bypassed.
 . Scan the extended IR: PTAP BYPASS, STAP SIB bits kept closed, SMC downstream TAP IR included.
 . For each of the 6 data patterns, scan the extended DR through PTAP BYPASS {plus} STAP SIB bits {plus} SMC downstream TAP DR; read and verify the SMC PTAP model.
@@ -5066,7 +5066,7 @@ c. Reconfigure, re-scan extended IR/DR, and verify the SMC PTAP model updates (a
 *Test Procedure*:
 
 [arabic]
-. Load TAP_3DCR (IR=0x0E) via `OcahJtagTap`.
+. Load TAP_3DCR (IR=0x0E) via `OcahJtagMasterDriver`.
 . Configure extra STAP[0]: open its SIB, write extra STAP 3DCR `stap_sel=1, tms_hold=1, config_hold=1`, then close the SIB in the same DR scan.
 . Scan the extended IR (PTAP BYPASS, all STAP SIB bits kept closed) and verify `jtag_stap_extra_host_tap_ctrl_o[0]` forwards TAP control.
 . Scan the extended DR (PTAP BYPASS 1 bit {plus} STAP SIB bits {plus} downstream TAP DR) and verify the extra STAP[0] TDO is inserted; repeat for any additional configured extra STAPs.
@@ -5110,7 +5110,7 @@ c. Reconfigure extra STAP[0], re-scan extended IR/DR with new data, and verify t
 *Test Procedure*:
 
 [arabic]
-. Load TAP_3DCR (IR=0x0E) via `OcahJtagTap`.
+. Load TAP_3DCR (IR=0x0E) via `OcahJtagMasterDriver`.
 . Configure the SEP STAP: open the SEP SIB, write SEP 3DCR `stap_sel=1, tms_hold=1, config_hold=1`, then close the SEP SIB in the same DR scan; DS and extra STAPs stay bypassed.
 . Scan the extended IR: PTAP BYPASS, STAP SIB bits kept closed, SEP PTAP instruction `opcode=0x3A` through the chain.
 . For each of the 6 data patterns, scan the extended DR through PTAP BYPASS {plus} STAP SIB bits {plus} SEP downstream TAP DR; read and verify the SEP PTAP model.
@@ -5154,7 +5154,7 @@ c. Reconfigure, re-scan extended IR/DR, and verify the SEP PTAP model updates (a
 *Test Procedure*:
 
 [arabic]
-. Enable the extended STAP scan interface by writing PTAP_3DCR.SELECT=1 via `OcahJtagTap`.
+. Enable the extended STAP scan interface by writing PTAP_3DCR.SELECT=1 via `OcahJtagMasterDriver`.
 . Verify `jtag_stap_host_scan_ctrl_o` asserts during DR operations; shift a known pattern out on `jtag_stap_host_scan_out_o`.
 . Verify the data returned on `jtag_stap_host_scan_in_i` matches the expected loopback/known response.
 . Clear PTAP_3DCR.SELECT=0 and verify scan control deasserts.
@@ -5192,7 +5192,7 @@ c. Restore `ap_debug=1` and verify scan control and the data path are restored.
 * CONFIG_HOLD in both PTAP_3DCR and STAP 3DCR protects register contents across Test-Logic-Reset (TLR)
 * With CONFIG_HOLD=1, SELECT (PTAP) and SELECT/TMS_HOLD (STAP) survive a forced TLR
 * With CONFIG_HOLD=0, a TLR clears the affected 3DCR fields to 0
-* Configuration values are exercised through `OcahJtagTap` IR/DR scans against the STAP reference model
+* Configuration values are exercised through `OcahJtagMasterDriver` IR/DR scans against the STAP reference model
 
 *Test Procedure*:
 
@@ -5212,7 +5212,7 @@ a. Read both 3DCRs and verify all bits cleared to 0.
 |Checker Type |Description
 |`config_hold_preserve_chk` |CONFIG_HOLD=1 preserves PTAP SELECT and STAP SELECT/TMS_HOLD across TLR
 |`config_hold_clear_chk` |CONFIG_HOLD=0 lets TLR clear the 3DCR fields to 0
-|`config_hold_data_chk` |3DCR readback through `OcahJtagTap` matches the STAP reference model
+|`config_hold_data_chk` |3DCR readback through `OcahJtagMasterDriver` matches the STAP reference model
 |===
 
 *Pass Criteria*: CONFIG_HOLD=1 holds both 3DCRs across TLR while CONFIG_HOLD=0 allows TLR to clear them, matching the reference model, with zero scoreboard/reference-model errors.
@@ -5233,7 +5233,7 @@ a. Read both 3DCRs and verify all bits cleared to 0.
 * TMS_HOLD field in the STAP 3DCR sets the parked TMS value driven to a deselected STAP
 * TMS_HOLD=1 parks the deselected STAP TMS high (drives toward TLR); TMS_HOLD=0 parks it low (drives toward RTI)
 * Parked value is observed on the STAP TAP control output while the STAP is deselected (SELECT=0)
-* Both TMS_HOLD polarities are exercised through `OcahJtagTap` 3DCR scans
+* Both TMS_HOLD polarities are exercised through `OcahJtagMasterDriver` 3DCR scans
 
 *Test Procedure*:
 

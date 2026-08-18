@@ -20,6 +20,8 @@ no separate SPEC max-wait constant).
 
 from __future__ import annotations
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
 
@@ -27,7 +29,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 # hyst=0 so card within-1-cycle idle gate-off matches axi_cg_snoop (DenyDelay=1).
 HYST = 0
