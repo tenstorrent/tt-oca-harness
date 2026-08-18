@@ -1,0 +1,32 @@
+doc/contributing/src/issues.adoc
+  s_8a9b8e56b5dc3f::t_3586fb39d0d966 9,11-12,14,16-17
+.github/ISSUE_CURATION.md
+  s_8a9b8e56b5dc3f::t_cc6153855bac32 8-9,13,20-22,32-34
+.github/workflows/ocah-project-curator.md
+  s_8a9b8e56b5dc3f::t_32fe2b900a9c15 61,69-86,90-91,93-98,100-102,104-110,112,114,116-117,121
+  s_8a9b8e56b5dc3f::t_ef65556fb3d4ab 6
+doc/contributing/src/pull-requests.adoc
+  s_8a9b8e56b5dc3f::t_56c0c6ce2e6a0f 15-16
+AGENTS.md
+  s_8a9b8e56b5dc3f::t_af450dc9e210a8 389-390
+  s_8a9b8e56b5dc3f::t_858231d1f7749b 38
+  s_8a9b8e56b5dc3f::t_6eb6937b39e164 368-369
+doc/contributing/src/alignment.adoc
+  s_8a9b8e56b5dc3f::t_346d9061f133d4 6-9,11-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f3ba18de84b8807fdaa700b4afc87fb3bd7ce4bb",
+  "prompts": {},
+  "sessions": {
+    "s_8a9b8e56b5dc3f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "04203c6f-c215-4b0e-814b-5c8666884008",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
