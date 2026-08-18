@@ -8,7 +8,7 @@ from typing import Optional
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from ocah_jtag_vip import OcahJtagDevice, OcahJtagTap
+from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 
 # Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
 # SEP=0 ties sep_feat_ctrl='0'; Force-based helpers were removed.
@@ -135,8 +135,8 @@ def unpack_single_op(value: int) -> tuple[int, int]:
     return status, rdata
 
 
-def make_smu_jtag_tap(dut, period_ns: float) -> OcahJtagTap:
-    """Build OcahJtagTap with DEBUG_CONTROL + SMC JTAG2AXI register map."""
+def make_smu_jtag_tap(dut, period_ns: float) -> OcahJtagMasterDriver:
+    """Build OcahJtagMasterDriver with DEBUG_CONTROL + SMC JTAG2AXI register map."""
     device = OcahJtagDevice(
         name="smu_ptap",
         idcode=DTP_DEFAULT_IDCODE,
@@ -177,7 +177,7 @@ def make_smu_jtag_tap(dut, period_ns: float) -> OcahJtagTap:
         DTP_IR_SEP_OTP_AXI_SINGLE_OP,
         write=True,
     )
-    jtag = OcahJtagTap(
+    jtag = OcahJtagMasterDriver(
         dut,
         name="smu_ptap",
         tck_period_ns=period_ns,
@@ -311,7 +311,7 @@ def unpack_otp_single_op(value: int) -> tuple[int, int]:
 
 
 async def jtag2axi_single_write(
-    jtag: OcahJtagTap,
+    jtag: OcahJtagMasterDriver,
     addr: int,
     data: int,
     *,
@@ -339,7 +339,7 @@ async def jtag2axi_single_write(
 
 
 async def jtag2axi_single_read(
-    jtag: OcahJtagTap,
+    jtag: OcahJtagMasterDriver,
     addr: int,
     *,
     size: int = SMC_DBG_AXSIZE_8B,
@@ -364,7 +364,7 @@ async def jtag2axi_single_read(
 
 
 async def otp_jtag2axi_single_read(
-    jtag: OcahJtagTap,
+    jtag: OcahJtagMasterDriver,
     addr: int,
     *,
     size: int = SMC_OTP_AXSIZE_4B,
@@ -389,7 +389,7 @@ async def otp_jtag2axi_single_read(
 
 
 async def otp_jtag2axi_single_write(
-    jtag: OcahJtagTap,
+    jtag: OcahJtagMasterDriver,
     addr: int,
     data: int,
     *,
@@ -416,7 +416,7 @@ async def otp_jtag2axi_single_write(
 
 
 async def sep_otp_jtag2axi_single_read(
-    jtag: OcahJtagTap,
+    jtag: OcahJtagMasterDriver,
     addr: int,
     *,
     size: int = SMC_OTP_AXSIZE_4B,
@@ -436,7 +436,7 @@ async def sep_otp_jtag2axi_single_read(
     return status, rdata
 
 
-async def wdt_unlock(jtag: OcahJtagTap, magic: int = 0x51F15E) -> int:
+async def wdt_unlock(jtag: OcahJtagMasterDriver, magic: int = 0x51F15E) -> int:
     """Write WDT KEY (offset 0x1C, upper 32b of 8B lane) to unlock once."""
     st, _ = await jtag2axi_single_write(
         jtag,

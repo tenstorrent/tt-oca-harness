@@ -81,6 +81,14 @@ python3 tools/dv/run_dv.py --dut dtp \
 DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_jtag2axi_decode_error_decerr_read_test
 
+# TAP checker negative validation: a desynced TAP reference model must fail
+DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag_tlr_reset_test
+
+# SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
+python3 tools/dv/run_dv.py --dut dtp_uvm --items dtp_sanity_test \
+  --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
+
 # Smoke + functional group
 python3 tools/dv/run_dv.py --dut dtp --items functional
 

@@ -7,7 +7,7 @@
 //   ref_model.expected_ap -> scoreboard.expected
 //
 // Frozen surface for adopters and commercial-VIP overrides (same contract as
-// ocah_jtag_env): `cfg`, `item_ap` (pass-through of the monitor's stream),
+// ocah_jtag_master_env): `cfg`, `item_ap` (pass-through of the monitor's stream),
 // and `m_scoreboard.m_checker` (scenario-level named evidence). A commercial
 // integration may subclass this env, replace the monitor, and keep the
 // model/scoreboard/evidence surface intact.

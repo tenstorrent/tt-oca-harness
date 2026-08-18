@@ -61,7 +61,7 @@
 ## 3. Architecture (SEP=0)
 
 ```
-                    jtag_* (OcahJtagTap)
+                    jtag_* (OcahJtagMasterDriver)
                          |
                          v
    s_axi_*  --->  smu #(.SEP(0))  --->  smu_axi_out (TB RAM)
@@ -222,7 +222,7 @@ hw/sys/smu/dv/
 
 | Interface | VIP / model |
 |-----------|-------------|
-| Primary JTAG TAP | `ocah_jtag_vip.OcahJtagTap` |
+| Primary JTAG TAP | `ocah_jtag_vip.OcahJtagMasterDriver` |
 | External SMN AXI4 | `cocotbext.axi.AxiMaster` on `s_axi_*` + TB outbound RAM |
 | SMC CPU mem | `smc_cpu_mem_integration` (same as smc_wrapper / smu_wrapper) |
 | Cross-trigger / iJTAG | OCAH-local BFM (later) |

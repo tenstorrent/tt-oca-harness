@@ -31,6 +31,9 @@ interface dtp_tb_if;
     // Runtime enable for the shared AXI protocol SVA checkers.
     logic axi_sva_en = 1'b1;
 
+    // Runtime enable for the shared JTAG protocol SVA checker.
+    logic jtag_sva_en = 1'b1;
+
     // SMC OTP AXI-Lite responder error controls (beat-aligned address match).
     logic        smc_otp_err_arm      = 1'b0;
     logic [31:0] smc_otp_err_addr     = '0;

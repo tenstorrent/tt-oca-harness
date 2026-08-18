@@ -98,7 +98,7 @@ Tests import from the package root:
 [source,python]
 ----
 from ocah_axi_vip import OcahAxiMaster, OcahAxiReadResult
-from ocah_jtag_vip import OcahJtagTap, OcahJtagChecker
+from ocah_jtag_vip import OcahJtagMasterDriver, OcahJtagChecker
 from ocah_checker import OcahChecker
 ----
 

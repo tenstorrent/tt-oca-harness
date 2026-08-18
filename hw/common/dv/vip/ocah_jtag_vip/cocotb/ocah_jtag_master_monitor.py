@@ -16,7 +16,7 @@ from cocotbext.jtag import JTAGBus
 from .ocah_jtag_item import OcahJtagScanItem
 from .ocah_jtag_state import OcahJtagState, next_jtag_state
 
-__all__ = ["OcahJtagMonitor"]
+__all__ = ["OcahJtagMasterMonitor"]
 
 _MAX_HISTORY_DEFAULT = 2000
 _DEFAULT_SIGNAL_MAP: dict[str, str] = {
@@ -33,7 +33,7 @@ class _JtagIntfProxy:
     def __init__(self, intf, signal_map: dict[str, str]):
         object.__setattr__(self, "_intf", intf)
         object.__setattr__(self, "_map", signal_map)
-        object.__setattr__(self, "_log", logging.getLogger("OcahJtagMonitor._intf"))
+        object.__setattr__(self, "_log", logging.getLogger("OcahJtagMasterMonitor._intf"))
 
     def __getattr__(self, name: str):
         if name == "_log":
@@ -62,14 +62,14 @@ def _time_ns() -> float:
         return float(get_sim_time(unit="ns"))
 
 
-class OcahJtagMonitor:
+class OcahJtagMasterMonitor:
     """Passive TAP monitor that emits `OcahJtagScanItem` records."""
 
     def __init__(
         self,
         jtag_intf,
         *,
-        name: str = "OcahJtagMonitor",
+        name: str = "OcahJtagMasterMonitor",
         max_history: int = _MAX_HISTORY_DEFAULT,
         signal_map: dict[str, str] | None = None,
     ) -> None:
@@ -105,9 +105,9 @@ class OcahJtagMonitor:
         dut,
         prefix: str,
         *,
-        name: str = "OcahJtagMonitor",
+        name: str = "OcahJtagMasterMonitor",
         max_history: int = _MAX_HISTORY_DEFAULT,
-    ) -> "OcahJtagMonitor":
+    ) -> "OcahJtagMasterMonitor":
         """Construct from flattened JTAG signals."""
         return cls(JTAGBus.from_prefix(dut, prefix), name=name, max_history=max_history)
 
