@@ -3,13 +3,12 @@
 
 = Issue alignment
 
-On every issue open or edit, a deterministic Action copies picked
-Workstream / Subsystem / Component (and optional Priority / Target release)
-onto empty Project 291 fields.
+Ingest copies form picks onto empty
+https://github.com/orgs/tenstorrent/projects/291[Project 291]
+fields on every issue open or edit. It assigns a PR to its opener.
+It does not assign issues.
 
-A GitHub Agentic Workflow can later fill leftover empty fields, add stray
-issues to Project 291, flag conflicts as Needs review, and assign a PR to
-its opener. It is in the tree, *disabled*
-(`workflow_dispatch` only, `automation.enabled: false`). It must not
-overwrite set fields and must not set milestone or Target release. See
-`.github/ISSUE_CURATION.md`.
+The curator (`.github/ISSUE_CURATION.md`) can later fill leftover fields
+and assign an unassigned issue from a named person, the parent assignee,
+or the usual or majority owner of the title prefix. It is in the tree,
+*disabled*.

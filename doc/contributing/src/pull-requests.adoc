@@ -12,7 +12,6 @@ Open a pull request against `main`. The template asks for:
 * *Notes* — optional; delete if unused
 
 CI fails if Summary or Test plan is missing or still a placeholder.
-
-If nobody is assigned, the opener is assigned once and told they may reassign.
-A later unassign is left alone.
+Ingest assigns the opener when Assignees is empty; see
+xref:alignment.adoc[Issue alignment].
 Pull requests are reviewed weekly.

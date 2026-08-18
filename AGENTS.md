@@ -35,6 +35,7 @@ partial read costs far more time than a full one.
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
 | `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
+| `.github/ISSUE_CURATION.md` | Project curator kill switch and compile |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
@@ -364,9 +365,8 @@ Optional: **Priority** and **Target release** — omit those headings if you are
 sure; never invent a milestone or Target release. Description heading is **What
 happened** (Bug), **Goal** (Task), or **What and why** (Feature).
 
-Do not add labels, assignees, or a milestone. Ingest copies the three required picks
-onto empty Project 291 fields, applies matching Workstream / Subsystem / Component
-labels (skipping Component `General`), and prefixes the title.
+Do not add labels, assignees, or a milestone. Ingest copies the form onto
+Project 291; see `doc/contributing/src/alignment.adoc`.
 
 ### Pull requests
 
@@ -386,9 +386,8 @@ EOF
 )"
 ```
 
-Do not put Workstream / Subsystem / Component or labels on the PR. If Assignees
-is empty, the opener is assigned once (assignable humans only) and told they
-may reassign. A later unassign is left alone.
+Do not put Workstream / Subsystem / Component or labels on the PR.
+Ingest assigns the opener when Assignees is empty.
 
 ## Linting and Formatting
 

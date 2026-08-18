@@ -5,29 +5,23 @@ SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # OCAH project curator
 
-Disabled alignment for open issues and unassigned PRs on
-[Project 291](https://github.com/orgs/tenstorrent/projects/291).
+Kill switch and compile notes. The prompt is
+`.github/workflows/ocah-project-curator.md`.
 
 ## Files
 
-- `issue-taxonomy.yml` — allow-lists and `automation.enabled` kill switch
+- `issue-taxonomy.yml` — allow-lists and `automation.enabled`
 - `workflows/ocah-project-curator.md` — source (edit this)
 - `workflows/ocah-project-curator.lock.yml` — generated; do not edit
 - `aw/actions-lock.json` — compiler action pins
 
 ## Disabled
 
-The curator cannot run on a schedule:
-
-1. `on: workflow_dispatch` only
-2. `automation.enabled: false`
-3. `safe-outputs.staged: true`
-
-A manual dispatch with credentials installed still no-ops until `enabled` is true.
+It cannot run on a schedule: `on: workflow_dispatch` only,
+`automation.enabled: false`, and `safe-outputs.staged: true`.
+A dispatch still no-ops until `enabled` is true.
 
 ## Compile
-
-After changing the markdown source:
 
 ```bash
 gh aw compile ocah-project-curator --validate
@@ -35,11 +29,6 @@ gh aw compile ocah-project-curator --validate
 
 Commit the source and the lockfile together.
 
-## What it may do when enabled
-
-When enabled it may add stray issues to Project 291; fill **empty** Workstream,
-Subsystem, Component, Priority, or Curation state (`Needs review` or `Managed`);
-add a missing title prefix; and assign a PR to its opener
-(with the standard reassign comment and `<!-- github-auto-assign -->`
-marker). It must not overwrite set fields,
-and must not set milestone or Target release.
+Ingest (`.github/scripts/ingest_github.py`) is separate: it copies form
+fields on issue open or edit, and assigns a PR opener. It never assigns
+issues.
