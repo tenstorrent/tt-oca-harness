@@ -386,8 +386,9 @@ EOF
 )"
 ```
 
-Do not put Workstream / Subsystem / Component or labels on the PR. The opener is
-assigned if Assignees is empty.
+Do not put Workstream / Subsystem / Component or labels on the PR. If the opener
+is the sole committer and Assignees is empty, they are assigned and told they
+may reassign.
 
 ## Linting and Formatting
 

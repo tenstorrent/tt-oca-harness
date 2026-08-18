@@ -5,7 +5,7 @@ SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # OCAH project curator
 
-Disabled fill-empty alignment for open issues on
+Disabled alignment for open issues and unassigned PRs on
 [Project 291](https://github.com/orgs/tenstorrent/projects/291).
 
 ## Files
@@ -37,6 +37,8 @@ Commit the source and the lockfile together.
 
 ## What it may do when enabled
 
-Fill **empty** Workstream, Subsystem, Component, Priority, or Curation state, and add a
-missing title prefix. It must not overwrite set fields, and must not set milestone or
-Target release.
+When enabled it may add stray issues to Project 291; fill **empty** Workstream,
+Subsystem, Component, Priority, or Curation state (`Needs review` or `Managed`);
+add a missing title prefix; and assign a PR to its opener when they are the sole
+committer (with the standard reassign comment). It must not overwrite set fields,
+and must not set milestone or Target release.

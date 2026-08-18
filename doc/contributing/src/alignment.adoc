@@ -7,7 +7,9 @@ On every issue open or edit, a deterministic Action copies picked
 Workstream / Subsystem / Component (and optional Priority / Target release)
 onto empty Project 291 fields.
 
-A GitHub Agentic Workflow can later fill leftover empty fields on open
-issues. It is in the tree, *disabled* (`workflow_dispatch` only,
-`automation.enabled: false`). It must not overwrite set fields and must
-not set milestone or Target release. See `.github/ISSUE_CURATION.md`.
+A GitHub Agentic Workflow can later fill leftover empty fields, add stray
+issues to Project 291, flag conflicts as Needs review, and assign a PR to
+its opener when they are the sole committer. It is in the tree, *disabled*
+(`workflow_dispatch` only, `automation.enabled: false`). It must not
+overwrite set fields and must not set milestone or Target release. See
+`.github/ISSUE_CURATION.md`.
