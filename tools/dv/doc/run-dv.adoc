@@ -201,10 +201,14 @@ DTP SV-UVM smoke flow, `--dut dtp --framework uvm`.
 `--framework NAME` selects the test framework for a DUT that implements more
 than one (a DUT implements a framework by declaring a `[frameworks.<name>]`
 table in its sim config); without the flag the DUT's `default_framework` runs.
-A testlist scenario binds its per-framework entry points through `module` — a
-bare string binds the DUT's default framework only, a map
-(`module = { cocotb = "...", uvm = "..." }`) binds each framework explicitly.
-Selecting a scenario not implemented in the chosen framework is an error;
+In this model each testlist entry is a _scenario_: a framework-neutral test
+name that maps to a concrete implementation per framework. Error messages and
+`--skip-unimplemented` say "scenario" with exactly this meaning; `--items`
+takes the same names it always has. A scenario binds its per-framework entry
+points through `module` — a bare string binds the DUT's default framework
+only, a map (`module = { cocotb = "...", uvm = "..." }`) binds each framework
+explicitly. Selecting a scenario not implemented in the chosen framework is
+an error;
 `--skip-unimplemented` skips group/tag-derived unimplemented scenarios instead
 (the skipped names are printed and recorded in `result.json` under
 `selection.skipped_unimplemented`), while an explicitly named `--items` test
@@ -894,9 +898,10 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimpl
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
 ----
 
-CI matrices should enumerate (DUT, framework) pairs from configuration
-instead of hardcoding DUT names: `--list --json` emits one entry per
-(DUT, framework) view with its tool set, default tool, and license need, so
+Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
+resolved with that framework selected. CI matrices should enumerate views
+from configuration instead of hardcoding DUT names: `--list --json` emits one
+entry per view with its tool set, default tool, and license need, so
 a licensed UVM job selects `.duts[] | select(.framework == "uvm")` and a DUT
 joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
 — no CI edit. `--list --dut <dut> --json` additionally carries the
