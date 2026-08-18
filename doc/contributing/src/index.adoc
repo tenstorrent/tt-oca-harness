@@ -15,9 +15,8 @@ subsystems like Security Processor (SEP), System Management Controller (SMC),
 System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 (DTP), etc.
 
-This guide covers filing issues, opening pull requests, and how picks land on
-https://github.com/orgs/tenstorrent/projects/291[Project 291].
-License headers, lint, and vendor rules stay in
+This guide outlines the use of the repository, including licensing and guidelines
+for effective contribution. License headers, lint, and vendor rules are also in
 https://github.com/tenstorrent/tt-oca-harness/blob/main/CONTRIBUTING.md[`CONTRIBUTING.md`].
 By contributing you agree that your work is licensed under
 https://www.apache.org/licenses/LICENSE-2.0[Apache-2.0]. Follow the

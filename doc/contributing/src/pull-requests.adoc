@@ -7,8 +7,8 @@ Open a pull request against `main`. The template asks for:
 
 * *Summary* — what changed and why
 * *Test plan* — a command or check that proves the change
-* *Closes* — `Fixes #N` so GitHub closes the issue on merge
-  (or pick the issue under *Development* in the right sidebar)
+* *Closes* — `Fixes #N` only if this PR should close issues on merge
+  (or pick them under *Development*). Delete the section if nothing closes.
 * *Notes* — optional; delete if unused
 
 CI fails if Summary or Test plan is missing or still a placeholder.
