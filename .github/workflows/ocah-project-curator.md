@@ -95,16 +95,22 @@ Never comment on issues.
 
 ## Pull requests
 
-If Assignees is empty and the opener is a human, assign them with
-assign_to_user (the opener's login only) and add this comment. Always pass
-pr_number. Skip if that comment is already present.
+If Assignees is empty and the opener is a human who can be assigned on this
+repository, assign them with assign_to_user (the opener's login only), then
+add this comment. Always pass pr_number. Assign first; comment only if the
+assign stuck. Skip if Assignees is already set, if the opener is a bot or
+not assignable, or if any comment already contains the HTML marker.
 
 @LOGIN — you've been automatically assigned to this pull request because you opened it.
 
 If someone else is a better fit, please feel free to reassign.
 
+<!-- github-auto-assign -->
+
 Do not assign a bot opener.
+Do not assign someone who is not an assignable collaborator.
 Do not comment on a PR for any other reason.
+Do not comment if the assign failed.
 
 ## Summary
 

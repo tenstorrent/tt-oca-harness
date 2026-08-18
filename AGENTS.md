@@ -387,7 +387,8 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR. If Assignees
-is empty, the opener is assigned and told they may reassign.
+is empty, the opener is assigned once (assignable humans only) and told they
+may reassign. A later unassign is left alone.
 
 ## Linting and Formatting
 

@@ -346,11 +346,20 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
         print("title", new_title)
 
 
+ASSIGN_MARKER = "<!-- github-auto-assign -->"
 PR_ASSIGN_COMMENT = (
     "@{login} — you've been automatically assigned to this pull request "
     "because you opened it.\n\n"
-    "If someone else is a better fit, please feel free to reassign."
+    "If someone else is a better fit, please feel free to reassign.\n\n"
+    f"{ASSIGN_MARKER}"
 )
+UNSUBSCRIBE = """
+mutation($id:ID!){
+  updateSubscription(input:{subscribableId:$id, state:UNSUBSCRIBED}){
+    subscribable { viewerSubscription }
+  }
+}
+"""
 
 
 def pr_human_opener(pr: dict) -> str | None:
@@ -359,6 +368,44 @@ def pr_human_opener(pr: dict) -> str | None:
     if not login or author.get("is_bot") or login.endswith("[bot]"):
         return None
     return login
+
+
+def assignee_logins(pr: dict) -> set[str]:
+    return {person.get("login") for person in (pr.get("assignees") or []) if person.get("login")}
+
+
+def has_assign_marker(repo_full: str, number: int) -> bool:
+    try:
+        text = run(
+            [
+                "gh",
+                "api",
+                "--paginate",
+                f"repos/{repo_full}/issues/{number}/comments",
+                "-q",
+                ".[].body",
+            ]
+        )
+    except subprocess.CalledProcessError:
+        return False
+    return ASSIGN_MARKER in (text or "")
+
+
+def login_is_assignable(repo_full: str, login: str) -> bool:
+    try:
+        run(["gh", "api", f"repos/{repo_full}/assignees/{login}"])
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
+def unsubscribe_best_effort(node_id: str | None) -> None:
+    if not node_id:
+        return
+    try:
+        run(["gh", "api", "graphql", "-f", f"query={UNSUBSCRIBE}", "-F", f"id={node_id}"])
+    except subprocess.CalledProcessError as exc:
+        print("unsubscribe skipped:", exc.stderr, file=sys.stderr)
 
 
 def assign_pr_author(number: int) -> None:
@@ -371,28 +418,52 @@ def assign_pr_author(number: int) -> None:
             "--repo",
             repo_full,
             "--json",
-            "author,assignees",
+            "author,assignees,id",
         ]
     )
-    if pr.get("assignees"):
+    if assignee_logins(pr):
         print("PR already assigned")
+        return
+    if has_assign_marker(repo_full, number):
+        print("skip assign: assign comment already present")
         return
     login = pr_human_opener(pr)
     if not login:
         print("skip assign: opener is not a human")
         return
-    run(
+    if not login_is_assignable(repo_full, login):
+        print(f"skip assign: {login} is not an assignable collaborator")
+        return
+    try:
+        run(
+            [
+                "gh",
+                "pr",
+                "edit",
+                str(number),
+                "--repo",
+                repo_full,
+                "--add-assignee",
+                login,
+            ]
+        )
+    except subprocess.CalledProcessError as exc:
+        print("assign failed:", exc.stderr, file=sys.stderr)
+        return
+    check = gh_json(
         [
-            "gh",
             "pr",
-            "edit",
+            "view",
             str(number),
             "--repo",
             repo_full,
-            "--add-assignee",
-            login,
+            "--json",
+            "assignees,id",
         ]
     )
+    if login not in assignee_logins(check):
+        print("skip comment: assign did not stick")
+        return
     run(
         [
             "gh",
@@ -405,6 +476,7 @@ def assign_pr_author(number: int) -> None:
             PR_ASSIGN_COMMENT.format(login=login),
         ]
     )
+    unsubscribe_best_effort(check.get("id") or pr.get("id"))
     print("assigned", login)
 
 
