@@ -3259,8 +3259,12 @@ it.
   `sep_esrc_e2e_smoke_test`
 | Generated-bits segmentation is never exercised — no generate command completes
   within the run, so that half of the checker is untested.
-| Extend the run past one completed generate command, or split the checker so the
-  segmentation claim is separately tracked.
+| Not a "run it longer" fix. No test in the suite passes
+  `golden_kwargs["legal_gen_lengths"]`, so the scoreboard defaults the legal set to the
+  nominal `glen` and then takes each segment boundary from the DUT's own `gen_last` --
+  a DUT that segmented wrongly would be followed, not caught. Closing this needs the
+  expected length pinned by the stimulus, independent of `gen_last`. Until then the
+  segmentation half of the checker is untested however long the run goes.
 
 | `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`,
   `sep_km_kmac_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`
