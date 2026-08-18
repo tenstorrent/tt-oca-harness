@@ -39,7 +39,7 @@ module efuse_triple_redundant_comparator #(
     logic [5:0] match_bus;
     logic [2:0] pair_bad;
     logic [1:0] disagree_p, disagree_n;
-    logic       fault_lo, fault_hi, fault_raw;
+    logic       fault_comparator_collapse, fault_comparators_disagree, fault_raw;
 
     // Three independent token digest comparators.
     for (genvar i = 0; i < 3; i++) begin : gen_token_digest_comparators
@@ -70,13 +70,16 @@ module efuse_triple_redundant_comparator #(
     assign match_bus = {match_n[2], match_p[2], match_n[1], match_p[1], match_n[0], match_p[0]};
 
     //-------------------------------------------------------------------------
-    // Redundancy fault detection, built from the same hard-cell primitives as
-    // the compare cones so synthesis cannot merge the detector into them.
+    // Redundancy fault detection
     //
-    // With compute_comparison_vld_i asserted only two encodings are legal, so a
-    // fault is either an instance whose differential pair collapsed
-    // (match_p == match_n) or two instances that disagree.
+    // Two kinds of faults:
+    // - Differential pair collapsed (match_p[x] == match_n[x])
+    // - Two instances that disagree
     //-------------------------------------------------------------------------
+
+    // An instance whose differential pair collapsed, both rails at the same
+    // value. XNOR is 1 when the rails are equal, which is the illegal case.
+    // ex: match_bus = 6'b010100, instance 0 collapsed to 00
     for (genvar i = 0; i < 3; i++) begin : gen_pair_check
         prim_xnor2 #(
             .Width(1)
@@ -87,6 +90,19 @@ module efuse_triple_redundant_comparator #(
         );
     end
 
+    // If any instance's differential pair collapsed, then the fault is raised
+    prim_or4 u_fault_comparator_collapse_d0nt_touch (
+        .in0_i(pair_bad[0]),
+        .in1_i(pair_bad[1]),
+        .in2_i(pair_bad[2]),
+        .in3_i(1'b0),
+        .out_o(fault_comparator_collapse)
+    );
+
+    // Instances that disagree with each other.
+    // ex: match_bus = 6'b010110, instance 0 says differ, instances 1 and 2 say equal
+    //
+    // Equality is transitive, so comparing adjacent instances covers instance 0 against instance 2.
     for (genvar i = 0; i < 2; i++) begin : gen_disagree_check
         prim_xor2 #(
             .Width(1)
@@ -105,25 +121,17 @@ module efuse_triple_redundant_comparator #(
         );
     end
 
-    prim_or4 u_fault_lo_d0nt_touch (
-        .in0_i(pair_bad[0]),
-        .in1_i(pair_bad[1]),
-        .in2_i(pair_bad[2]),
-        .in3_i(disagree_p[0]),
-        .out_o(fault_lo)
-    );
-
-    prim_or4 u_fault_hi_d0nt_touch (
-        .in0_i(disagree_p[1]),
-        .in1_i(disagree_n[0]),
-        .in2_i(disagree_n[1]),
-        .in3_i(1'b0),
-        .out_o(fault_hi)
+    prim_or4 u_fault_comparators_disagree_d0nt_touch (
+        .in0_i(disagree_p[0]),
+        .in1_i(disagree_p[1]),
+        .in2_i(disagree_n[0]),
+        .in3_i(disagree_n[1]),
+        .out_o(fault_comparators_disagree)
     );
 
     prim_or2 u_fault_raw_d0nt_touch (
-        .in0_i(fault_lo),
-        .in1_i(fault_hi),
+        .in0_i(fault_comparator_collapse),
+        .in1_i(fault_comparators_disagree),
         .out_o(fault_raw)
     );
 
@@ -132,8 +140,8 @@ module efuse_triple_redundant_comparator #(
     prim_and2 #(
         .Width(1)
     ) u_fault_gate_d0nt_touch (
-        .in0_i(compute_comparison_vld_i),
-        .in1_i(fault_raw),
+        .in0_i(fault_raw),
+        .in1_i(compute_comparison_vld_i),
         .out_o(redundancy_fault_o)
     );
 
