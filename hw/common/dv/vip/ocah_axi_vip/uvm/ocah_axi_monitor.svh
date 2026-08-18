@@ -12,7 +12,7 @@
 // to cfg.{addr,data,id}_width. All pending state flushes while aresetn is low.
 //
 // Publishes raw observations only; checking belongs to the ref model and
-// scoreboard subscribers (same ownership split as ocah_jtag_monitor).
+// scoreboard subscribers (same ownership split as ocah_jtag_master_monitor).
 
 class ocah_axi_monitor extends uvm_monitor;
     `uvm_component_utils(ocah_axi_monitor)

@@ -11,21 +11,21 @@
 // Responses are written into the same item object before item_done, so the
 // issuing sequence reads observed TDO directly after finish_item().
 
-class ocah_jtag_driver extends uvm_driver #(ocah_jtag_item);
-    `uvm_component_utils(ocah_jtag_driver)
+class ocah_jtag_master_driver extends uvm_driver #(ocah_jtag_item);
+    `uvm_component_utils(ocah_jtag_master_driver)
 
-    ocah_jtag_cfg cfg;
+    ocah_jtag_master_config cfg;
 
-    function new(string name = "ocah_jtag_driver", uvm_component parent = null);
+    function new(string name = "ocah_jtag_master_driver", uvm_component parent = null);
         super.new(name, parent);
     endfunction
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(ocah_jtag_cfg)::get(this, "", "cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "ocah_jtag_cfg `cfg` not found in uvm_config_db")
+        if (!uvm_config_db#(ocah_jtag_master_config)::get(this, "", "cfg", cfg) || cfg == null)
+            `uvm_fatal(get_type_name(), "ocah_jtag_master_config `cfg` not found in uvm_config_db")
         if (cfg.vif == null)
-            `uvm_fatal(get_type_name(), "ocah_jtag_cfg.vif is null")
+            `uvm_fatal(get_type_name(), "ocah_jtag_master_config.vif is null")
     endfunction
 
     virtual task tck_cycle(bit tms, bit tdi, output bit tdo_s);
@@ -104,4 +104,4 @@ class ocah_jtag_driver extends uvm_driver #(ocah_jtag_item);
         end
     endtask
 
-endclass : ocah_jtag_driver
+endclass : ocah_jtag_master_driver
