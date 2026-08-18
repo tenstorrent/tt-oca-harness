@@ -1,0 +1,33 @@
+.github/workflows/ocah-project-curator.md
+  s_fb9f7e8713b3b3::t_51f46111c8684f 47
+  s_fb9f7e8713b3b3::t_9b589b6f3b6fa9 46,52,57,61
+  s_fb9f7e8713b3b3::t_394733ce7ecd75 1-45,48-50,54-55,59,62
+  s_fb9f7e8713b3b3::t_e33b26919649cb 51
+  s_fb9f7e8713b3b3::t_da539bc0b1d462 53
+  s_fb9f7e8713b3b3::t_d7134e438be170 56
+  s_fb9f7e8713b3b3::t_04b6274854aef0 58
+  s_fb9f7e8713b3b3::t_93881ad57feb56 60
+  s_fb9f7e8713b3b3::t_a0e3ad9e9f9fa7 63-65
+.github/ISSUE_CURATION.md
+  s_fb9f7e8713b3b3::t_16254a1cf11269 1-40
+  s_fb9f7e8713b3b3::t_9480a9cf95de73 41-42
+.github/issue-taxonomy.yml
+  s_fb9f7e8713b3b3::t_e156a16e261224 1-134
+  s_fb9f7e8713b3b3::t_905ecc65e32664 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5322b1fe1ac458a9cbe1b2ca5405806b5bb15cd0",
+  "prompts": {},
+  "sessions": {
+    "s_fb9f7e8713b3b3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b5ebe3c4-3269-4950-ab25-91fe2144850d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
