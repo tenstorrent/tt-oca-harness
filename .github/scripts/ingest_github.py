@@ -348,23 +348,15 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
 
 PR_ASSIGN_COMMENT = (
     "@{login} — you've been automatically assigned to this pull request "
-    "because you opened it and are the sole committer on the branch.\n\n"
+    "because you opened it.\n\n"
     "If someone else is a better fit, please feel free to reassign."
 )
 
 
-def pr_sole_human_opener(pr: dict) -> str | None:
+def pr_human_opener(pr: dict) -> str | None:
     author = pr.get("author") or {}
     login = author.get("login")
     if not login or author.get("is_bot") or login.endswith("[bot]"):
-        return None
-    authors: set[str] = set()
-    for commit in pr.get("commits") or []:
-        for person in commit.get("authors") or []:
-            name = person.get("login")
-            if name:
-                authors.add(name)
-    if authors != {login}:
         return None
     return login
 
@@ -379,15 +371,15 @@ def assign_pr_author(number: int) -> None:
             "--repo",
             repo_full,
             "--json",
-            "author,assignees,commits",
+            "author,assignees",
         ]
     )
     if pr.get("assignees"):
         print("PR already assigned")
         return
-    login = pr_sole_human_opener(pr)
+    login = pr_human_opener(pr)
     if not login:
-        print("skip assign: not a sole human opener")
+        print("skip assign: opener is not a human")
         return
     run(
         [

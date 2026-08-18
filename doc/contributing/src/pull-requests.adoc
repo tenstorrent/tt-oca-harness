@@ -13,6 +13,5 @@ Open a pull request against `main`. The template asks for:
 
 CI fails if Summary or Test plan is missing or still a placeholder.
 
-If the opener is the sole committer and nobody is assigned, they are assigned
-and told they may reassign.
+If nobody is assigned, the opener is assigned and told they may reassign.
 Pull requests are reviewed weekly.

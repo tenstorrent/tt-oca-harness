@@ -9,7 +9,7 @@ onto empty Project 291 fields.
 
 A GitHub Agentic Workflow can later fill leftover empty fields, add stray
 issues to Project 291, flag conflicts as Needs review, and assign a PR to
-its opener when they are the sole committer. It is in the tree, *disabled*
+its opener. It is in the tree, *disabled*
 (`workflow_dispatch` only, `automation.enabled: false`). It must not
 overwrite set fields and must not set milestone or Target release. See
 `.github/ISSUE_CURATION.md`.

@@ -39,6 +39,6 @@ Commit the source and the lockfile together.
 
 When enabled it may add stray issues to Project 291; fill **empty** Workstream,
 Subsystem, Component, Priority, or Curation state (`Needs review` or `Managed`);
-add a missing title prefix; and assign a PR to its opener when they are the sole
-committer (with the standard reassign comment). It must not overwrite set fields,
+add a missing title prefix; and assign a PR to its opener
+(with the standard reassign comment). It must not overwrite set fields,
 and must not set milestone or Target release.

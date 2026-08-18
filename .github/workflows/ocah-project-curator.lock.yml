@@ -23,7 +23,7 @@
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
-# Fill empty Project 291 fields, flag conflicts, and assign sole-committer PRs. Disabled until enabled in issue-taxonomy.yml.
+# Fill empty Project 291 fields, flag conflicts, and assign PR openers. Disabled until enabled in issue-taxonomy.yml.
 #
 # Secrets used:
 #   - GH_AW_GITHUB_MCP_SERVER_TOKEN
@@ -1451,7 +1451,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           WORKFLOW_NAME: "OCAH Project Curator"
-          WORKFLOW_DESCRIPTION: "Fill empty Project 291 fields, flag conflicts, and assign sole-committer PRs. Disabled until enabled in issue-taxonomy.yml."
+          WORKFLOW_DESCRIPTION: "Fill empty Project 291 fields, flag conflicts, and assign PR openers. Disabled until enabled in issue-taxonomy.yml."
           HAS_PATCH: ${{ needs.agent.outputs.has_patch }}
           GH_AW_DETECTION_CONTINUE_ON_ERROR: "true"
         with:

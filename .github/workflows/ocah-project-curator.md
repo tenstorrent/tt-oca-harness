@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 name: OCAH Project Curator
-description: Fill empty Project 291 fields, flag conflicts, and assign sole-committer PRs. Disabled until enabled in issue-taxonomy.yml.
+description: Fill empty Project 291 fields, flag conflicts, and assign PR openers. Disabled until enabled in issue-taxonomy.yml.
 
 on:
   workflow_dispatch:
@@ -95,16 +95,15 @@ Never comment on issues.
 
 ## Pull requests
 
-If Assignees is empty, the opener is a human, and that person is the sole
-committer on the branch, assign them with assign_to_user (the opener's login
-only) and add this comment. Always pass pr_number. Skip if that comment is
-already present.
+If Assignees is empty and the opener is a human, assign them with
+assign_to_user (the opener's login only) and add this comment. Always pass
+pr_number. Skip if that comment is already present.
 
-@LOGIN — you've been automatically assigned to this pull request because you opened it and are the sole committer on the branch.
+@LOGIN — you've been automatically assigned to this pull request because you opened it.
 
 If someone else is a better fit, please feel free to reassign.
 
-Do not assign a PR with multiple committers, no commits yet, or a bot opener.
+Do not assign a bot opener.
 Do not comment on a PR for any other reason.
 
 ## Summary
