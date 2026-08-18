@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Pull requests
+
+Open a pull request against `main`. The template asks for:
+
+* *Summary* — what changed and why
+* *Test plan* — a command or check that proves the change
+* *Closes* — `Fixes #N` so GitHub closes the issue on merge
+  (or pick the issue under *Development* in the right sidebar)
+* *Notes* — optional; delete if unused
+
+CI fails if Summary or Test plan is missing or still a placeholder.
+
+The opener is assigned on the PR if nobody is assigned yet.
+Pull requests are reviewed weekly.

@@ -15,18 +15,20 @@ subsystems like Security Processor (SEP), System Management Controller (SMC),
 System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 (DTP), etc.
 
-This guide outlines the use of the repository, including licensing and guidelines
-for effective contribution.
-
-[WARNING]
-This document is currently under development.
+This guide covers filing issues, opening pull requests, and how picks land on
+https://github.com/orgs/tenstorrent/projects/291[Project 291].
+License headers, lint, and vendor rules stay in
+https://github.com/tenstorrent/tt-oca-harness/blob/main/CONTRIBUTING.md[`CONTRIBUTING.md`].
+By contributing you agree that your work is licensed under
+https://www.apache.org/licenses/LICENSE-2.0[Apache-2.0]. Follow the
+https://github.com/tenstorrent/tt-oca-harness/blob/main/CODE_OF_CONDUCT.md[Code of Conduct].
 
 ifdef::backend-html5[]
-== Contribution Guide
+== In this guide
 
-This documentation is organized into the following sections:
-
-
+* xref:issues.adoc[Filing issues]
+* xref:pull-requests.adoc[Pull requests]
+* xref:alignment.adoc[Issue alignment]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]

@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Filing issues
+
+Open a new issue from
+https://github.com/tenstorrent/tt-oca-harness/issues/new/choose[New issue]
+and pick **Bug**, **Task**, or **Feature**. Blank issues are off.
+
+== What you pick
+
+Required, first:
+
+* *Workstream* — RTL, DV, ROM, SPEC, DOCS, INFRA, SYNTH, LINT, CDC, RDC, RDL, RELEASE
+* *Subsystem* — OCAH, SMU, SMC, SEP, DTP, AOU
+* *Component* — General if you are unsure; otherwise KM, TRNG, CRYPTO, LC, EFUSE, AXI, I3C, CI, BUILD, DEPS
+
+Optional (skip is fine):
+
+* *Priority* — P0, P1, P2
+* *Target release* — v0.5.0, Future, Not planned
+
+Then one description: what broke, what "done" means, or what and why.
+
+Do not pick labels. An ingest Action copies the three required picks onto
+https://github.com/orgs/tenstorrent/projects/291[Project 291]
+and applies matching Workstream / Subsystem / Component labels
+(Component *General* does not get a label).
+
+Assignees and Milestone stay on the GitHub issue sidebar.
+
+Security reports must not be public issues. Use
+https://github.com/tenstorrent/tt-oca-harness/security/advisories/new[private vulnerability reporting].
