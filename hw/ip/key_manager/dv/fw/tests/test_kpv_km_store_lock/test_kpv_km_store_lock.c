@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_kpv_km_store_lock.c
- * @brief KM store/read/lock flow (SC-0000-013)
+ * @brief KM store/read/lock flow
  *
  * KM writes key slot, reads back, sets lock_write/lock_use, verifies subsequent
  * key write/read blocked (SLVERR). Verifies lock_write blocks CTRL metadata

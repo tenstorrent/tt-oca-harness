@@ -14,11 +14,6 @@
 
 schema_version = 1
 
-# SMC production-wrapper baseline (shares hw/sys/smc/dv; no bare `--dut smc`).
-[duts.smc_wrapper]
-root = "hw/sys/smc/dv"
-sim_cfg = "hw/sys/smc/dv/smc_wrapper_sim_cfg.toml"
-
 # SMU production-wrapper baseline (shares hw/sys/smu/dv with bare `smu`,
 # but uses smu_wrapper_sim_cfg.toml).
 [duts.smu_wrapper]

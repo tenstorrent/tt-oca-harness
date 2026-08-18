@@ -10,9 +10,26 @@
 class dtp_uvm_env extends uvm_env;
     `uvm_component_utils(dtp_uvm_env)
 
-    ocah_jtag_cfg       m_jtag_cfg;
-    ocah_jtag_env       m_jtag_env;
-    dtp_tap_fsm_checker m_fsm_checker;
+    ocah_jtag_master_config          m_jtag_cfg;
+    ocah_jtag_master_env          m_jtag_env;
+    dtp_tap_fsm_checker    m_fsm_checker;
+
+    // Shared JTAG named-evidence checker + scan reconstruction (issue #3296).
+    // Always built: the FSM checker's aggregate CHK-TAP-STATE lands on every
+    // test; required-ID/zero-check rejection is armed only by JTAG-contract
+    // tests via jtag_require_checks.
+    ocah_jtag_checker      m_jtag_checker;
+    ocah_jtag_scan_builder m_scan_builder;
+    bit                    jtag_require_checks;
+
+    // Passive shared-VIP AXI observation (issue #3295): one cfg+env per
+    // observed JTAG2AXI port. Always built (compile/runtime coverage on every
+    // test); zero-check rejection is armed only by AXI-traffic tests via
+    // cfg.require_checks.
+    ocah_axi_cfg m_smc_otp_axi_cfg;
+    ocah_axi_env m_smc_otp_axi_env;
+    ocah_axi_cfg m_smc_axi_cfg;
+    ocah_axi_env m_smc_axi_env;
 
     virtual dtp_tb_if tb_vif;
 
@@ -25,22 +42,61 @@ class dtp_uvm_env extends uvm_env;
         if (!uvm_config_db#(virtual dtp_tb_if)::get(this, "", "tb_vif", tb_vif))
             `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not found in uvm_config_db")
 
-        m_jtag_cfg = ocah_jtag_cfg::type_id::create("m_jtag_cfg");
+        m_jtag_cfg = ocah_jtag_master_config::type_id::create("m_jtag_cfg");
         if (!uvm_config_db#(virtual ocah_jtag_if)::get(this, "", "jtag_vif", m_jtag_cfg.vif))
             `uvm_fatal(get_type_name(), "virtual ocah_jtag_if `jtag_vif` not found in uvm_config_db")
         m_jtag_cfg.is_active       = UVM_ACTIVE;
         m_jtag_cfg.en_monitor      = 1'b1;   // DTP checking rides the OCAH event stream
         m_jtag_cfg.tck_half_period = 50ns;   // 10 MHz TCK
-        uvm_config_db#(ocah_jtag_cfg)::set(this, "m_jtag_env*", "cfg", m_jtag_cfg);
+        uvm_config_db#(ocah_jtag_master_config)::set(this, "m_jtag_env*", "cfg", m_jtag_cfg);
 
-        m_jtag_env    = ocah_jtag_env::type_id::create("m_jtag_env", this);
+        m_jtag_env    = ocah_jtag_master_env::type_id::create("m_jtag_env", this);
         m_fsm_checker = dtp_tap_fsm_checker::type_id::create("m_fsm_checker", this);
         m_fsm_checker.tb_vif = tb_vif;
+
+        m_jtag_checker = ocah_jtag_checker::type_id::create("m_jtag_checker");
+        m_jtag_checker.name_tag = "dtp_jtag";
+        m_fsm_checker.m_evidence = m_jtag_checker;
+        m_scan_builder = ocah_jtag_scan_builder::type_id::create("m_scan_builder", this);
+
+        m_smc_otp_axi_cfg = ocah_axi_cfg::type_id::create("m_smc_otp_axi_cfg");
+        if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "smc_otp_axil_vif",
+                                                      m_smc_otp_axi_cfg.vif))
+            `uvm_fatal(get_type_name(),
+                "virtual ocah_axi_if `smc_otp_axil_vif` not found in uvm_config_db")
+        m_smc_otp_axi_cfg.protocol   = OCAH_AXI_PROTO_AXI4_LITE;
+        m_smc_otp_axi_cfg.addr_width = 32;
+        m_smc_otp_axi_cfg.data_width = 32;
+        m_smc_otp_axi_cfg.id_width   = 0;
+        m_smc_otp_axi_cfg.name_tag   = "dtp_smc_otp_axil";
+        uvm_config_db#(ocah_axi_cfg)::set(this, "m_smc_otp_axi_env*", "cfg",
+                                          m_smc_otp_axi_cfg);
+        m_smc_otp_axi_env = ocah_axi_env::type_id::create("m_smc_otp_axi_env", this);
+
+        m_smc_axi_cfg = ocah_axi_cfg::type_id::create("m_smc_axi_cfg");
+        if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "m_axi_vif",
+                                                      m_smc_axi_cfg.vif))
+            `uvm_fatal(get_type_name(),
+                "virtual ocah_axi_if `m_axi_vif` not found in uvm_config_db")
+        m_smc_axi_cfg.protocol   = OCAH_AXI_PROTO_AXI4;
+        m_smc_axi_cfg.addr_width = 56;
+        m_smc_axi_cfg.data_width = 64;
+        m_smc_axi_cfg.id_width   = 2;
+        m_smc_axi_cfg.name_tag   = "dtp_smc_axi";
+        uvm_config_db#(ocah_axi_cfg)::set(this, "m_smc_axi_env*", "cfg", m_smc_axi_cfg);
+        m_smc_axi_env = ocah_axi_env::type_id::create("m_smc_axi_env", this);
     endfunction
 
     function void connect_phase(uvm_phase phase);
         super.connect_phase(phase);
         m_jtag_env.event_ap.connect(m_fsm_checker.analysis_export);
+        m_jtag_env.event_ap.connect(m_scan_builder.analysis_export);
+    endfunction
+
+    function void check_phase(uvm_phase phase);
+        super.check_phase(phase);
+        m_fsm_checker.report_evidence();
+        m_jtag_checker.finalize(jtag_require_checks);
     endfunction
 
 endclass : dtp_uvm_env

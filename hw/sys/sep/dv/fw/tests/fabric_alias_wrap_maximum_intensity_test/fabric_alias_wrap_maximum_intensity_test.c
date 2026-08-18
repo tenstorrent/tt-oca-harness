@@ -608,7 +608,7 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    // runallmaximum intensity alias wrapscenario
+    // Run all maximum-intensity alias wrap scenarios
     if (test_exhaustive_alias_wrap_combinations() != 0) {
         test_fail("TC_FABRIC_072 - Exhaustive Alias Wrap Combinations");
         return TEST_FAIL;

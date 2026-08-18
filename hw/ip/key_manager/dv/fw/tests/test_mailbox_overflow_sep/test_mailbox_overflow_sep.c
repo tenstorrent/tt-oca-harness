@@ -15,8 +15,6 @@
  * - Status bits: Overflow status bits are write-1-to-clear (no read side-effects)
  * - IRQ routing: SEP-side IRQs go to testbench interface
  *
- * Requirements: FR-0000-054, FR-0000-057, FR-0000-059 through FR-0000-064, User Story 1
- *
  * Run with:
  *   make run_fw FW_TEST=test_mailbox_overflow_sep
  */

@@ -48,7 +48,10 @@ ${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_core.s
 ${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port.sv
 
 // Cross Trigger Matrix IP
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
 ${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
+${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
 ${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
 ${OCH_ROOT}/hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
 

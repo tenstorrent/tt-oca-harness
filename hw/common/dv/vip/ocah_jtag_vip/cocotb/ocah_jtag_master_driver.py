@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Tenstorrent Inc.
-"""OCAH-stable IEEE 1149.1 TAP driver."""
+"""OCAH-stable IEEE 1149.1 TAP driver (the VIP's active driver component)."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from .ocah_jtag_state import (
     random_jtag_state,
 )
 
-__all__ = ["OcahJtagTap", "OcahJtagTapError"]
+__all__ = ["OcahJtagMasterDriver", "OcahJtagMasterDriverError"]
 
 IDCODE_OPCODE: int = 0x01
 IDCODE_DR_WIDTH: int = 32
@@ -40,7 +40,7 @@ _DEFAULT_SIGNAL_MAP: dict[str, str] = {
 }
 
 
-class OcahJtagTapError(RuntimeError):
+class OcahJtagMasterDriverError(RuntimeError):
     """Raised when a TAP operation encounters an unexpected condition."""
 
 
@@ -74,7 +74,7 @@ class _JtagIntfProxy:
     def __init__(self, intf, signal_map: dict[str, str]):
         object.__setattr__(self, "_intf", intf)
         object.__setattr__(self, "_map", signal_map)
-        object.__setattr__(self, "_log", logging.getLogger("OcahJtagTap._intf"))
+        object.__setattr__(self, "_log", logging.getLogger("OcahJtagMasterDriver._intf"))
 
     def __getattr__(self, name: str):
         if name == "_log":
@@ -89,7 +89,7 @@ class _JtagIntfProxy:
         return sorted(set(dir(intf)) | set(smap))
 
 
-class OcahJtagTap:
+class OcahJtagMasterDriver:
     """OCAH-stable active TAP driver.
 
     The wrapper uses `cocotbext-jtag` `JTAGBus` for bus binding and keeps the
@@ -100,7 +100,7 @@ class OcahJtagTap:
         self,
         jtag_intf,
         *,
-        name: str = "OcahJtagTap",
+        name: str = "OcahJtagMasterDriver",
         tck_period_ns: int = 10,
         ir_width: int = 5,
         tap_type: str = "ptap",
@@ -160,13 +160,13 @@ class OcahJtagTap:
         dut,
         prefix: str,
         *,
-        name: str = "OcahJtagTap",
+        name: str = "OcahJtagMasterDriver",
         tck_period_ns: int = 10,
         ir_width: int = 5,
         tap_type: str = "ptap",
         trst_signal: str | None = "trst",
         **kwargs: Any,
-    ) -> "OcahJtagTap":
+    ) -> "OcahJtagMasterDriver":
         """Construct from flattened signals with the given prefix.
 
         ``trst_signal`` selects the DUT suffix for the optional reset net
@@ -208,12 +208,12 @@ class OcahJtagTap:
         cls,
         bus: JTAGBus,
         *,
-        name: str = "OcahJtagTap",
+        name: str = "OcahJtagMasterDriver",
         tck_period_ns: int = 10,
         ir_width: int = 5,
         tap_type: str = "ptap",
         **kwargs: Any,
-    ) -> "OcahJtagTap":
+    ) -> "OcahJtagMasterDriver":
         """Construct from an existing `cocotbext-jtag` bus object."""
         return cls(
             bus,
@@ -328,7 +328,7 @@ class OcahJtagTap:
         """Shift an integer into IR and return captured TDO bits."""
         width = self._ir_width if width is None else int(width)
         if width <= 0:
-            raise OcahJtagTapError(f"{self.name}: shift_ir width must be > 0")
+            raise OcahJtagMasterDriverError(f"{self.name}: shift_ir width must be > 0")
 
         await self.goto_state(OcahJtagState.SHIFT_IR)
         captured = await self._shift_bits(value, width, end_tms=1)
@@ -345,7 +345,7 @@ class OcahJtagTap:
         """Shift an integer into DR and return captured TDO bits."""
         width = int(width)
         if width < 0:
-            raise OcahJtagTapError(f"{self.name}: shift_dr width must be >= 0")
+            raise OcahJtagMasterDriverError(f"{self.name}: shift_dr width must be >= 0")
         if width == 0:
             return 0
 
@@ -386,7 +386,7 @@ class OcahJtagTap:
             idcode = await self.shift_dr(0, IDCODE_DR_WIDTH, back_to_rti=True)
 
         if idcode == 0xFFFF_FFFF:
-            raise OcahJtagTapError(
+            raise OcahJtagMasterDriverError(
                 f"{self.name}: read_idcode returned 0xffffffff; possible bypass or no device"
             )
         self.log.info("%s: IDCODE = 0x%08x", self.name, idcode)
@@ -431,7 +431,7 @@ class OcahJtagTap:
         try:
             return self._devices[int(index)]
         except IndexError as exc:
-            raise OcahJtagTapError(f"{self.name}: no JTAG device registered at index {index}") from exc
+            raise OcahJtagMasterDriverError(f"{self.name}: no JTAG device registered at index {index}") from exc
 
     async def _shift_bits(self, value: int, width: int, *, end_tms: int) -> int:
         captured = 0

@@ -12,8 +12,6 @@
  * 3. Verify interrupt status bit is set
  * 4. Clear interrupt and verify it clears
  *
- * Requirements: FR-0000-007, FR-0000-008
- *
  * Run with:
  *   make run_fw FW_TEST=test_rom_write_irq
  */

@@ -8,7 +8,7 @@
 // Real checkers consume:
 //   - rst_cold_stable_ref_clk_no / rst_primary_* after reset release
 //   - sep_global_base_o / sep_region_size_o (== 0 when SEP=0)
-//   - jtag_* IDCODE/BYPASS via OcahJtagTap
+//   - jtag_* IDCODE/BYPASS via OcahJtagMasterDriver
 //   - s_axi_* CSR frontdoor reads (VERSION_LO etc.)
 
 `timescale 1ps/1fs
@@ -28,7 +28,7 @@ module smu_uvm_top
     // External boot-sequence done gate (SMU_006); default-drive 1'b1 in base bring-up
     input  wire logic ext_boot_seq_done_i,
 
-    // Primary JTAG TAP (cocotb OcahJtagTap)
+    // Primary JTAG TAP (cocotb OcahJtagMasterDriver)
     input  wire logic jtag_tck,
     input  wire logic jtag_tms,
     input  wire logic jtag_trst,   // active-low

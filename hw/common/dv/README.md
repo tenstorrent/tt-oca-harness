@@ -90,8 +90,8 @@ a protocol already represented here; extend the existing stable wrapper.
 
 | Package | Maturity | Public example | Gating consumer / disposition |
 |---------|----------|----------------|-------------------------------|
-| `ocah_axi_vip` | **Promoted** | `ocah_axi_vip/cocotb/examples/example_register_access.py` | DTP, SEP, and SMC use the shared AXI/AXI-Lite engines; DUT-local agents retain address and scoreboard policy |
-| `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 | `ocah_jtag_vip/cocotb/examples/example_idcode.py` | DTP, SMC, and SMU consume the TAP API; iJTAG, boundary-scan, and DUT TDR maps remain local |
+| `ocah_axi_vip` | **Promoted** | `ocah_axi_vip/cocotb/examples/example_register_access.py`, `example_axi_scoreboard_selftest.py` | DTP, SEP, and SMC use the shared AXI/AXI-Lite engines; the checker/reference-model/scoreboard stack is gated by the DTP jtag2axi decode-error, security-gating, and SLVERR/DECERR injection tests; DUT-local agents retain address and scoreboard policy. SV layer (interface/SVA/responders/passive UVM) is consumed by `--dut dtp_uvm` |
+| `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 (master side) | `ocah_jtag_vip/cocotb/examples/example_idcode.py`, `example_slave_selftest.py` | DTP, SMC, and SMU consume the master TAP API; the slave side (reactive TAP device) ships selftest-validated with no gating DUT consumer yet — DUT JTAG host ports are the intended first integration; iJTAG, boundary-scan, and DUT TDR maps remain local |
 | `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | SEP is the gating DUT consumer; true quad/octal lanes, DDR, and vendor timing remain deferred |
 | `ocah_apb_vip` | Experimental / unadopted | No package-local example | No real DUT consumer; add an APB example and gating integration before promotion |
 | `ocah_entropy_vip` | Experimental | `ocah_entropy_vip/cocotb/examples/example_deterministic_entropy.py` | No real DUT consumer; retain until a subsystem gates deterministic source/monitor behavior |

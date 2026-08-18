@@ -11,21 +11,21 @@
 // Responses are written into the same item object before item_done, so the
 // issuing sequence reads observed TDO directly after finish_item().
 
-class ocah_jtag_driver extends uvm_driver #(ocah_jtag_item);
-    `uvm_component_utils(ocah_jtag_driver)
+class ocah_jtag_master_driver extends uvm_driver #(ocah_jtag_item);
+    `uvm_component_utils(ocah_jtag_master_driver)
 
-    ocah_jtag_cfg cfg;
+    ocah_jtag_master_config cfg;
 
-    function new(string name = "ocah_jtag_driver", uvm_component parent = null);
+    function new(string name = "ocah_jtag_master_driver", uvm_component parent = null);
         super.new(name, parent);
     endfunction
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(ocah_jtag_cfg)::get(this, "", "cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "ocah_jtag_cfg `cfg` not found in uvm_config_db")
+        if (!uvm_config_db#(ocah_jtag_master_config)::get(this, "", "cfg", cfg) || cfg == null)
+            `uvm_fatal(get_type_name(), "ocah_jtag_master_config `cfg` not found in uvm_config_db")
         if (cfg.vif == null)
-            `uvm_fatal(get_type_name(), "ocah_jtag_cfg.vif is null")
+            `uvm_fatal(get_type_name(), "ocah_jtag_master_config.vif is null")
     endfunction
 
     virtual task tck_cycle(bit tms, bit tdi, output bit tdo_s);
@@ -43,19 +43,26 @@ class ocah_jtag_driver extends uvm_driver #(ocah_jtag_item);
         tck_cycle(tms, tdi, unused);
     endtask
 
-    // From Run-Test/Idle: navigate to Shift-IR/DR, shift `width` LSB-first
-    // bits, return to Run-Test/Idle. Caller contract: TAP is in RTI.
+    // From Run-Test/Idle: navigate to Shift-IR/DR, shift LSB-first bits,
+    // return to Run-Test/Idle. Caller contract: TAP is in RTI. A non-empty
+    // it.wbits selects the wide path (bit count = wbits.size(), observed TDO
+    // in it.rbits); otherwise the classic <=64-bit width/wdata/tdo path runs.
     virtual task do_scan(ocah_jtag_item it);
         bit sel_ir = (it.op == OCAH_JTAG_IR_SCAN);
+        bit wide = (it.wbits.size() > 0);
+        int unsigned nbits = wide ? it.wbits.size() : it.width;
         it.tdo = '0;
+        if (wide) it.rbits = new[nbits];
         step(1'b1);                          // RTI       -> Select-DR
         if (sel_ir) step(1'b1);              // Select-DR -> Select-IR
         step(1'b0);                          // Select-x  -> Capture-x
         step(1'b0);                          // Capture-x -> Shift-x
-        for (int i = 0; i < it.width; i++) begin
+        for (int unsigned i = 0; i < nbits; i++) begin
             bit tdo_s;
-            tck_cycle(i == it.width - 1, it.wdata[i], tdo_s);  // last: -> Exit1-x
-            it.tdo[i] = tdo_s;
+            bit tdi_b = wide ? it.wbits[i] : it.wdata[i];
+            tck_cycle(i == nbits - 1, tdi_b, tdo_s);  // last: -> Exit1-x
+            if (wide) it.rbits[i] = tdo_s;
+            else      it.tdo[i]   = tdo_s;
         end
         step(1'b1);                          // Exit1-x   -> Update-x
         step(1'b0);                          // Update-x  -> RTI
@@ -97,4 +104,4 @@ class ocah_jtag_driver extends uvm_driver #(ocah_jtag_item);
         end
     endtask
 
-endclass : ocah_jtag_driver
+endclass : ocah_jtag_master_driver

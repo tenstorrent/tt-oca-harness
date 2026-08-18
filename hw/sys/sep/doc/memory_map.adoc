@@ -95,8 +95,9 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 === Detailed Register Map
 
 The following register tables are generated from the SEP register description
-(RDL) sub-blocks under `hw/sys/sep/regs/`. Each entry corresponds to a unit in
-the SEP memory map above.
+(RDL) sub-blocks under `hw/sys/sep/regs/`, plus the Entropy Source IP block
+under `hw/ip/entropy_source/regs/`. Each entry corresponds to a unit in the SEP
+memory map above.
 
 ==== CPU Control and Interrupts
 
@@ -170,5 +171,21 @@ include::../regs/gen/adoc/blocks/aes.adoc[]
 include::../regs/gen/adoc/blocks/hmac.adoc[]
 include::../regs/gen/adoc/blocks/kmac.adoc[]
 include::../regs/gen/adoc/blocks/otbn.adoc[]
+endif::backend-pdf[]
+
+==== Entropy Source
+
+The entropy source is an IP-level block (`hw/ip/entropy_source/regs/`) that
+feeds the DRBG. Its register map is generated from the IP RDL rather than the
+SEP aggregate.
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$entropy_source/regs/gen/html/entropy_source.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 

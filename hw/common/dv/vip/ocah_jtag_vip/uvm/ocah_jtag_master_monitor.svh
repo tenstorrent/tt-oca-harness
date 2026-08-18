@@ -20,25 +20,25 @@
 // Pause/Exit2 re-entries into scan transactions) is the next decode layer,
 // added when a scoreboard consumer exists.
 
-class ocah_jtag_monitor extends uvm_monitor;
-    `uvm_component_utils(ocah_jtag_monitor)
+class ocah_jtag_master_monitor extends uvm_monitor;
+    `uvm_component_utils(ocah_jtag_master_monitor)
 
-    ocah_jtag_cfg cfg;
+    ocah_jtag_master_config cfg;
 
     uvm_analysis_port #(ocah_jtag_event) event_ap;
 
     protected int unsigned m_step_index;
 
-    function new(string name = "ocah_jtag_monitor", uvm_component parent = null);
+    function new(string name = "ocah_jtag_master_monitor", uvm_component parent = null);
         super.new(name, parent);
     endfunction
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(ocah_jtag_cfg)::get(this, "", "cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "ocah_jtag_cfg `cfg` not found in uvm_config_db")
+        if (!uvm_config_db#(ocah_jtag_master_config)::get(this, "", "cfg", cfg) || cfg == null)
+            `uvm_fatal(get_type_name(), "ocah_jtag_master_config `cfg` not found in uvm_config_db")
         if (cfg.vif == null)
-            `uvm_fatal(get_type_name(), "ocah_jtag_cfg.vif is null")
+            `uvm_fatal(get_type_name(), "ocah_jtag_master_config.vif is null")
         event_ap = new("event_ap", this);
     endfunction
 
@@ -86,4 +86,4 @@ class ocah_jtag_monitor extends uvm_monitor;
         end
     endtask
 
-endclass : ocah_jtag_monitor
+endclass : ocah_jtag_master_monitor
