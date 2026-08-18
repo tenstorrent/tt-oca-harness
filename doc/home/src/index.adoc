@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Open Chiplet Atlas Harness (OCAH)
+
+The Open Chiplet Atlas Harness (OCAH) is an OCA-compliant, open-source chiplet
+framework: a reusable implementation vehicle for the Open Chiplet Architecture
+(OCA) standard. It packages the common, non-differentiating infrastructure
+every chiplet needs -- security, boot, system management, debug, test, and
+die-to-die integration -- so adopters can focus their effort on their own
+value-differentiating application logic.
+
+NOTE: OCAH is the *Harness* pillar of the wider
+https://www.openchipletatlas.org[Open Chiplet Atlas (OCA)] ecosystem,
+alongside the OCA Architecture specification and the OCA Compliance program.
+
+== Explore the documentation
+
+xref:ocah-docs::index.adoc[Technical Reference Manual]:: Architecture and
+register-level detail for every OCAH subsystem
+xref:ocah-integrator-guide::index.adoc[Integrator Guide]:: Bringing OCAH
+into your own SoC
+xref:ocah-programmer-guide::index.adoc[Programmer's Guide]:: Software and
+firmware interfaces
+xref:ocah-appnotes::index.adoc[Application Notes]:: Worked examples and
+integration patterns
+xref:ocah-contributing::index.adoc[Contributing]:: How to get involved
+with the project
+
+== Learn more
+
+* xref:features.adoc[Feature Overview] -- what OCAH provides today
+* xref:motivation.adoc[Motivation] -- why OCAH exists
+* xref:use-cases.adoc[Use Cases] -- how adopters use OCAH in practice
+* xref:license.adoc[License] -- OCAH's open-source license

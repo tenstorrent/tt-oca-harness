@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Feature Overview
+
+OCAH provides the non-application-specific framework logic that is common
+across chiplets built to the Open Chiplet Architecture (OCA) standard.
+
+== Architecture
+
+OCAH integrates the OCA-mandated system-layer functions so adopters get them
+by construction rather than rebuilding them per project:
+
+* Security Processor (SEP) -- secure boot, chain of trust, key management
+* System Management Controller (SMC) -- system bring-up, power/reset
+  coordination, telemetry
+* System Management Network (SMN) -- management-plane interconnect
+* Debug & Test Ports (DTP) -- IEEE 1838-based post-package debug and test
+  access
+* AXI-over-UCIe Bridge (AoU) -- die-to-die transport bridge (roadmap)
+
+== OCA Standard Layers
+
+OCAH is built to the OCA specification's five-layer model, from top to
+bottom: Software, System, Protocol, Transport, and Physical. Each layer
+abstracts the one below it, so adopters aren't locked to specific
+lower-layer choices.
+
+[cols="20%,80%",options="header"]
+|===
+|Layer |What it standardizes
+
+|Software
+|Open Chiplet Management Interface (OCMI), signed boot image format, and a
+standard device configuration data structure
+
+|System
+|Boot sequencing, security domains (SSID/DSID), the system management
+hierarchy, hardware-assisted time synchronization, FuSa/RAS, and debug/test
+
+|Protocol
+|Inter-chiplet communication protocols including AXI, CHI, and the Open
+Chiplet Configuration Protocol (OCCP)
+
+|Transport
+|UCIe and BoW for high-speed die-to-die links; I3C/I2C as auxiliary
+transport for boot configuration, firmware distribution, and management
+traffic
+
+|Physical
+|Packaging, physical interconnect, electrical signaling, and power
+delivery for 2D/2.5D/3D integration
+|===
+
+== Verification
+
+* cocotb/Verilator-based DV regression, with smoke (PR-gating) and nightly
+  (full-group, multi-seed) tiers
+* Native, schema-versioned result records, classifying failures as
+  infrastructure, design, or evidence-gap
+* A verification dashboard publishing nightly trend history
+
+== Open by design
+
+OCAH is released under the Apache-2.0 license as the Harness pillar of the
+OCA Ecosystem: an open-source, reusable design framework containing the
+non-application logic a chiplet needs, so designers can focus on their
+unique value-add while remaining automatically interoperable with the rest
+of the ecosystem.
+
+// NEEDS REVIEW: the AXI-Lite external window pattern used in the SMC
+// (mandatory vs. supplementary adopter-extension blocks) is a concrete,
+// already-documented example of how OCAH stays extensible for
+// adopter-specific silicon. Worth a short call-out here once we agree on
+// the right level of technical detail for a landing page.
