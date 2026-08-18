@@ -217,14 +217,18 @@ promotion gates are met. DUT addresses, hierarchy, lifecycle/security policy,
 scenario selection, and DUT-specific goldens remain under the DUT's
 `cocotb/env/`; pure hierarchy invariants remain under `cocotb/assertions/`.
 
-DUT-local packages are exposed by the OSS DV namespace bridge. In a clean shell,
-install the shared package and source the OSS DV environment before running tests:
+DUT-local packages are exposed by the OSS DV namespace bridge, which `run_dv.py`
+provisions along with the shared package: it re-execs under
+`uv run --project <root> --locked --group dv`, and this directory is the `ocah-dv`
+uv workspace member, so the shared package resolves from source. The only
+prerequisite is `uv` on PATH:
 
 ```bash
-python3 -m pip install -e hw/common/dv
-source bin/setup_env.sh
 python3 tools/dv/run_dv.py --doctor --dut dtp
 ```
+
+`OCAH_DV_SKIP_UV=1` skips the re-exec, for environments that already supply the
+`dv` dependency group.
 
 `--doctor --dut <name>` checks the shared package, required Python packages, the
 namespace bridge, one shared VIP import, and the selected DUT-local import. If an

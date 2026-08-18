@@ -23,7 +23,8 @@ hw/sys/sep/dv/
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
 │                        # + cov/sv/ (scaffold, empty)
 ├── docs/                # VPLANs, bring-up journals, model specs, audit report
-├── fw/                  # OSS-owned firmware (bootcode/ drivers/ tests/) — see fw/README.md
+├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
+│                        # the Boot ROM lives outside DV, at ../bootrom/prod/
 ├── models/              # SEP-local SystemRDL models (sep_axi_extension + generated)
 ├── shims/               # SEP-local behavioral sim-models (kept, accepted shims)
 │   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
@@ -72,7 +73,7 @@ macros, backdoor-loaded by `tb_backdoor_mem` in `tb/tb_top.sv`. Examples:
   mailbox (`tb/sep_outbound_mbx.sv`).
 - `sep_rom_non_secure_boot_test` — OSS port of the internal ROM non-secure boot
   test (target `rom_boot`). Boots VeeR EL2 from the **real production Boot ROM**
-  (`fw/bootcode`, at ROM_BASE 0x10040000) and runs the full non-secure boot: the
+  (`hw/sys/sep/bootrom/prod`, at ROM_BASE 0x10040000) and runs the full non-secure boot: the
   ROM reads the manifest, validates it (real SHA256), DMA-copies the `bl1_pass_test`
   BL1 to SRAM, jumps, and BL1 signals PASS. SPI is stubbed (the OSS `sep` has only
   the OpenTitan Quad `spi_host`, not the Cadence xSPI); instead a behavioral SMC
@@ -217,12 +218,26 @@ port, not a memory model.
 # Build the OSS firmware first (RISC-V GCC on PATH; no picolibc) — only for boot:
 make -C hw/sys/sep/dv/fw -f fw.mk dv-fw-tests TEST=hello_world OCAH_ROOT="$PWD"
 
-# For sep_rom_non_secure_boot_test, build the Boot ROM + manifest + BL1 image.
-# This compiles bl1_pass_test (fw/tests/bl1_pass_test) and packs it with the
-# vendored tt-boot-manifest packer (fw/bootcode/tools) -> build/smc_mem.hex,
-# entirely from source (no internal prebuilt blob). Packer needs Python
-# 'cryptography' + 'ruamel.yaml' (pip3 install --user cryptography ruamel.yaml).
-make -C hw/sys/sep/dv/fw/bootcode
+# sep_rom_non_secure_boot_test needs the Boot ROM + manifest + BL1 image, but does
+# NOT need a manual build step: the test declares `firmware = { mode = "boot_rom" }`,
+# so the c_compile stage runs [c_build.boot_rom] (hw/sys/sep/bootrom/prod/Makefile)
+# and its `outputs` are checked before sim -- a bare run_dv.py is self-contained.
+#
+# The one prerequisite it cannot do for you is the manifest packer submodule, because
+# a build step must not mutate git state. Without it the pack half dies with
+# "No module named tt_boot_manifest":
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+
+# Build it by hand only when iterating on the ROM sources themselves. The two halves
+# are split by tool dependency, so each runs where its tools are:
+#   toolchain-images needs the RISC-V toolchain WITH picolibc (the generated
+#     register headers close their packing checks with static_assert, i.e.
+#     <assert.h>, which is not a freestanding header) -> use the toolchain container.
+#   pack-images is pure Python; its deps come from the submodule's own
+#     pyproject.toml, installed on demand by uv (no pip3 install needed).
+# [c_build.boot_rom] performs exactly these two steps, probing for picolibc first.
+scripts/docker-run.sh run make -C hw/sys/sep/bootrom/prod toolchain-images
+make -C hw/sys/sep/bootrom/prod pack-images
 
 # Then run (model rebuilds on SV/config change; python-only changes reuse it).
 # `all` is the maximum group; tags select subsets.

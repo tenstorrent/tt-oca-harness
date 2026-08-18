@@ -88,6 +88,18 @@ jobs:
             # SEP's `all` mixes cpu firmware tests; `no_cpu` is the toolchain-free
             # subset. The smoke tier is unaffected (sep_axi_smoke_test is no_cpu).
             nightly_items: no_cpu
+          - dut: smu
+            tool: verilator
+            runner: ubuntu-latest
+            # SMU has no `all` group; `sep0_all` is the enrolled SEP=0 release set
+            # (no c_compile / RISC-V toolchain stage on hosted runners).
+            nightly_items: sep0_all
+          - dut: smc
+            tool: verilator
+            runner: ubuntu-latest
+            # SMC has no `all` group; `smoke` is the enrolled CI set and has no
+            # firmware c_compile stage (cpu boot lives in other groups).
+            nightly_items: smoke
     env:
       # smoke: pull_request, push, and default manual dispatch.
       # nightly: daily schedule, or manual dispatch with tier=nightly.
