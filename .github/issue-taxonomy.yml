@@ -28,6 +28,7 @@ project:
       - RDC
       - RDL
       - RELEASE
+      - NONFREE
     Subsystem:
       - OCAH
       - SMU
@@ -114,6 +115,7 @@ classification:
     - KM, TRNG, and CRYPTO use Subsystem SEP.
     - LC and EFUSE use the targeted Subsystem, SEP or SMC.
     - Cross-subsystem work must be proposed for human decomposition; never invent compound values.
+    - NONFREE is the Workstream when the work lands in the companion repository.
 
 title:
   general_component_format: "[WORKSTREAM/SUBSYSTEM] Imperative title"

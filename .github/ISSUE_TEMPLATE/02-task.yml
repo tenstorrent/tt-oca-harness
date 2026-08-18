@@ -28,6 +28,7 @@ body:
         - RDC
         - RDL
         - RELEASE
+        - NONFREE
     validations:
       required: true
   - type: dropdown
