@@ -747,6 +747,9 @@ def result_payload(
     targets = _targets_summary(stages)
     if targets:
         payload["targets"] = targets
+    skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
+    if skipped:
+        payload["selection"] = {"skipped_unimplemented": skipped}
     return payload
 
 

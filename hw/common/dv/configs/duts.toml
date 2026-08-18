@@ -15,16 +15,12 @@
 schema_version = 1
 
 # SMU production-wrapper baseline (shares hw/sys/smu/dv with bare `smu`,
-# but uses smu_wrapper_sim_cfg.toml).
+# but uses smu_wrapper_sim_cfg.toml). Frameworks are NOT registered here: a DUT
+# implementing both cocotb and SV-UVM (e.g. dtp) declares them as [frameworks.<name>]
+# tables in its one sim config and is selected with `--framework`.
 [duts.smu_wrapper]
 root = "hw/sys/smu/dv"
 sim_cfg = "hw/sys/smu/dv/smu_wrapper_sim_cfg.toml"
 
 [duts.dtp]
 root = "hw/sys/dtp/dv"
-
-# DTP SV-UVM flow (shares hw/sys/dtp/dv with the cocotb `dtp` flow; separate sim config,
-# testlist namespace, and build/uvm work dir).
-[duts.dtp_uvm]
-root = "hw/sys/dtp/dv"
-sim_cfg = "hw/sys/dtp/dv/dtp_uvm_sim_cfg.toml"

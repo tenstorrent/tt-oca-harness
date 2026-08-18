@@ -327,8 +327,9 @@ zero findings.
 
 ## SystemVerilog Layer (interface / sva / sv / uvm)
 
-The SV side of this package (compiled via `dtp_uvm_sim_cfg.toml`-style
-explicit sources, never Bender or Verilator filelists):
+The SV side of this package (compiled via `[frameworks.uvm.build].sources`-style
+explicit source lists in the consuming DUT's sim config, never Bender or
+Verilator filelists):
 
 - `interface/ocah_axi_if.sv` — flat AXI4/AXI4-Lite monitor interface
   (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
@@ -355,7 +356,7 @@ explicit sources, never Bender or Verilator filelists):
   `ocah_axi_env` (cfg-gated bundle). No driver/sequencer — the package is
   passive-only; active SV-UVM stimulus belongs to the BFM workstream.
 
-The DTP SV-UVM flow (`--dut dtp_uvm`) is the first consumer: tb_top
+The DTP SV-UVM flow (`--dut dtp --framework uvm`) is the first consumer: tb_top
 instantiates the responders and SVA checkers, and
 `dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
 JTAG VIP path.

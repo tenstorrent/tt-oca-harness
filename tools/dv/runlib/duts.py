@@ -97,8 +97,11 @@ def _cfg_for(dv_root: Path, name: str, mode: str, entry: dict, root: Path) -> Pa
     return dv_root / f"{name}_{suffix}.toml"
 
 
-def resolve_dut(root: Path, name: str, mode: str = "sim") -> Dut:
-    """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry first, then convention)."""
+def resolve_dut(root: Path, name: str, mode: str = "sim", framework: str | None = None) -> Dut:
+    """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry first, then convention).
+
+    ``framework`` is the CLI ``--framework`` request; ``None`` selects the DUT's default.
+    """
     registry = load_dut_registry(root)
     if name in registry:
         entry = registry[name]
@@ -113,7 +116,9 @@ def resolve_dut(root: Path, name: str, mode: str = "sim") -> Dut:
         cfg = _cfg_for(dv_root, name, mode, {}, root)
     if not cfg.is_file():
         raise ConfigError(f"DUT `{name}`: {mode} config not found: {cfg}")
-    return load_dut(cfg, configs_root(root), name=name, root_rel=str(repo_rel(root, dv_root)))
+    return load_dut(
+        cfg, configs_root(root), name=name, root_rel=str(repo_rel(root, dv_root)), framework=framework
+    )
 
 
 def list_dut_names(root: Path) -> list[str]:

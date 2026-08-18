@@ -86,7 +86,7 @@ DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_jtag_tlr_reset_test
 
 # SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
-python3 tools/dv/run_dv.py --dut dtp_uvm --items dtp_sanity_test \
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
   --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
 
 # Smoke + functional group
@@ -96,34 +96,39 @@ python3 tools/dv/run_dv.py --dut dtp --items functional
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --cov
 ```
 
-### SystemVerilog UVM flow (`--dut dtp_uvm`)
+### SystemVerilog UVM framework (`--framework uvm`)
 
-A separate SV-UVM smoke flow shares this DV root (same Bender RTL recipe and
-defines) via the `dtp_uvm` alias and the `native-uvm` profile. Logical item
-names match the VPLAN scenarios, so the same `--items` name selects the same
-scenario in either flow; the UVM class name lives in the testlist `module`
-field (`+UVM_TESTNAME`). VCS only for now (maintainer flow, commercial
-license); Xcelium support is planned but not yet signed off. `--cov` is not
-yet wired for this flow and is rejected up front.
+The SV-UVM smoke flow shares this DV root, sim config, and testlist with the
+cocotb flow: `dtp_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay
+(same Bender RTL recipe and defines), and `--dut dtp --framework uvm` selects
+it. A testlist scenario carries both implementations in its `module` binding
+map (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
+selects the same VPLAN scenario in either framework; the UVM class name is
+the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
+errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
+VCS only for now — a commercial simulator is required because Verilator has
+no SV-UVM support (see `frameworks` in `simulators.toml`); Xcelium support
+is planned but not yet signed off. `--cov` is not yet wired for this
+framework and is rejected up front.
 
 ```bash
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
-python3 tools/dv/run_dv.py --dut dtp     --items dtp_sanity_test --tool verilator
-python3 tools/dv/run_dv.py --dut dtp_uvm --items dtp_sanity_test --tool vcs --seed 1
+python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test --seed 1
 
-# SV-UVM build only / smoke group
-python3 tools/dv/run_dv.py --dut dtp_uvm --build-only
-python3 tools/dv/run_dv.py --dut dtp_uvm --items smoke --tool vcs
+# SV-UVM build only / smoke group (UVM-implemented subset)
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --build-only
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
 
 # SV-UVM JTAG2AXI checker proofs (shared ocah_axi_vip passive env)
-python3 tools/dv/run_dv.py --dut dtp_uvm --tool vcs --seed 1 \
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
   --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
-python3 tools/dv/run_dv.py --dut dtp_uvm --tool vcs --seed 1 \
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
   --items dtp_jtag2axi_smc_axi_single_write_read_test
 ```
 
-Both flows share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
-with `+define+DTP_UVM_TB` (set by the `dtp_uvm` config) switching it from the
+Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
+with `+define+DTP_UVM_TB` (set by the `[frameworks.uvm]` overlay) switching it from the
 cocotb ported shape to the self-contained SV-UVM shape. The class library
 mirrors the cocotb layout: `uvm/env/dtp_env_pkg.sv` (reusable environment:
 shared `ocah_jtag_vip` SV-UVM agent + `dtp_tap_fsm_checker` subscriber),

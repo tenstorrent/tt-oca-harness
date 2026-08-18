@@ -59,6 +59,11 @@ jobs:
         # pair. Extend this list only with combinations proven Verilator-clean
         # at head; see "Continuous integration" in tools/dv/doc/run-dv.adoc.
         #
+        # Entries omit `--framework`, so each DUT runs its default framework
+        # (cocotb). Licensed SV-UVM jobs live outside hosted CI; enumerate
+        # (DUT, framework) pairs with `run_dv.py --list --json` instead of
+        # hardcoding names (see "Framework-aware CI matrices" in the same doc).
+        #
         # nightly_items selects the nightly-tier group per DUT. It is NOT always
         # `all`: hosted runners have no RISC-V toolchain, so any DUT whose `all`
         # group contains firmware tests (a `c_compile` stage) must name a
