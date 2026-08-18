@@ -31,6 +31,12 @@ class dtp_uvm_env extends uvm_env;
     ocah_axi_config m_smc_axi_cfg;
     ocah_axi_env m_smc_axi_env;
 
+    // Active shared-VIP slave agent: the memory-backed responder answering
+    // the SMC OTP AXI-Lite port (replaces the plain-SV RAM responder module;
+    // sequences program error injection via m_smc_otp_slave_agent.seq).
+    ocah_axi_slave_config m_smc_otp_slave_cfg;
+    ocah_axi_slave_agent  m_smc_otp_slave_agent;
+
     virtual dtp_tb_if tb_vif;
 
     function new(string name = "dtp_uvm_env", uvm_component parent = null);
@@ -85,6 +91,22 @@ class dtp_uvm_env extends uvm_env;
         m_smc_axi_cfg.name_tag   = "dtp_smc_axi";
         uvm_config_db#(ocah_axi_config)::set(this, "m_smc_axi_env*", "cfg", m_smc_axi_cfg);
         m_smc_axi_env = ocah_axi_env::type_id::create("m_smc_axi_env", this);
+
+        m_smc_otp_slave_cfg = ocah_axi_slave_config::type_id::create("m_smc_otp_slave_cfg");
+        if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "smc_otp_slave_vif",
+                                                      m_smc_otp_slave_cfg.vif))
+            `uvm_fatal(get_type_name(),
+                "virtual ocah_axi_if `smc_otp_slave_vif` not found in uvm_config_db")
+        m_smc_otp_slave_cfg.protocol   = OCAH_AXI_PROTO_AXI4_LITE;
+        m_smc_otp_slave_cfg.addr_width = 32;
+        m_smc_otp_slave_cfg.data_width = 32;
+        m_smc_otp_slave_cfg.id_width   = 0;
+        m_smc_otp_slave_cfg.mem_bytes  = 65536;
+        m_smc_otp_slave_cfg.name_tag   = "dtp_smc_otp_slave";
+        uvm_config_db#(ocah_axi_slave_config)::set(this, "m_smc_otp_slave_agent*",
+                                                   "slave_cfg", m_smc_otp_slave_cfg);
+        m_smc_otp_slave_agent =
+            ocah_axi_slave_agent::type_id::create("m_smc_otp_slave_agent", this);
     endfunction
 
     function void connect_phase(uvm_phase phase);

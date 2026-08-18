@@ -356,21 +356,29 @@ explicit sources, never Bender or Verilator filelists):
 - `sv/ocah_axil_ram_responder.sv`, `sv/ocah_axi_ram_responder.sv` —
   behavioral error-injectable RAM responders (SV analogue of the cocotb
   fault RAMs) with port-driven arm/addr/resp/direction error controls.
-- `uvm/ocah_axi_uvm_pkg.sv` — passive UVM layer: `ocah_axi_item`,
-  `ocah_axi_config` (owns the `arm_expected_resp` table), `ocah_axi_checker`
-  (SV port of the CHK-*/CHECKER_SUMMARY evidence grammar; FAIL lines raise
-  `uvm_error`), `ocah_axi_monitor` (per-ID reconstruction over
-  `ocah_axi_if.mon_cb`), `ocah_axi_ref_model` (shadow memory + expected
+- `uvm/ocah_axi_uvm_pkg.sv` — the UVM layer. Side-neutral passive stack:
+  `ocah_axi_item`, `ocah_axi_config` (owns the `arm_expected_resp` table),
+  `ocah_axi_checker` (SV port of the CHK-*/CHECKER_SUMMARY evidence grammar;
+  FAIL lines raise `uvm_error`), `ocah_axi_monitor` (per-ID reconstruction
+  over `ocah_axi_if.mon_cb`), `ocah_axi_ref_model` (shadow memory + expected
   items), `ocah_axi_scoreboard` (in-order pairing; `CHK-AXI-RESP/RDATA/
-  BEATS/ADDR-ALIGN/ERR-INJ`; finalizes in `check_phase`),
-  `ocah_axi_cov` (optional `ocah_axi_cov_if` sampler), and
-  `ocah_axi_env` (cfg-gated bundle). No driver/sequencer — the package is
-  passive-only; the active sides are tracked on the AXI VIP agent issue.
+  BEATS/ADDR-ALIGN/ERR-INJ`; finalizes in `check_phase`), `ocah_axi_cov`
+  (optional `ocah_axi_cov_if` sampler), and `ocah_axi_env` (cfg-gated
+  passive bundle). Slave side: `ocah_axi_slave_config` (memory geometry +
+  one-shot error injection tables), `ocah_axi_slave_driver` (reactive
+  memory-backed responder — the class analogue of the RAM responder
+  modules; samples via `mon_cb`, drives the responder-side vif signals
+  procedurally), `ocah_axi_slave_sequence` (test-facing backdoor/inject
+  API), and `ocah_axi_slave_agent` (reactive bundle: no sequencer, by
+  design). The master side (active SV-UVM initiator) is not shipped yet.
 
-The DTP SV-UVM flow (`--dut dtp_uvm`) is the first consumer: tb_top
-instantiates the responders and SVA checkers, and
+The DTP SV-UVM flow (`--dut dtp_uvm`) is the first consumer: tb_top wires
+the slave agent onto the SMC OTP AXI-Lite port (a dedicated `ocah_axi_if`
+carries the connection) and keeps the behavioral RAM responder module on the
+`m_axi` fabric port, instantiates the SVA checkers on both, and
 `dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
-JTAG VIP path.
+JTAG VIP path, programming responder error injection via the slave agent's
+`ocah_axi_slave_sequence`.
 
 ## Functional Coverage Hook
 

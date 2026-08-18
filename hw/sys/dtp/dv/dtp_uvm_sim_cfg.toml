@@ -54,7 +54,6 @@ sources = [
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
-  "hw/common/dv/vip/ocah_axi_vip/sv/ocah_axil_ram_responder.sv",
   "hw/common/dv/vip/ocah_axi_vip/sv/ocah_axi_ram_responder.sv",
   "hw/common/dv/vip/ocah_axi_vip/cov/ocah_axi_cov.sv",
   "hw/common/dv/vip/ocah_jtag_vip/cov/ocah_jtag_cov.sv",

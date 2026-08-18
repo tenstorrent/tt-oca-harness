@@ -38,7 +38,7 @@ changes do not affect sequences or scoreboards.
 |===
 |DTP Interface |Preferred VIP |Modeling Approach |Notes
 |Primary JTAG TAP |`ocah_jtag_vip` `OcahJtagMasterDriver` |Unified OCAH BFM |Active JTAG transaction driver and TAP helper
-|SMC fabric AXI4 manager |`ocah_axi_vip` `OcahAxiRam` |Unified OCAH BFM |AXI memory responder with scoreboard backdoor access
+|SMC fabric AXI4 manager |`ocah_axi_vip` `OcahAxiSlaveAgent` |Unified OCAH BFM |AXI memory responder with scoreboard backdoor access
 |SMC/SEP OTP AXI-Lite managers |`ocah_axi_vip` AXI-Lite wrapper |Unified OCAH BFM |AXI-Lite responder model for OTP bridge scenarios
 |XTRIG AXI-Lite CSR subordinate |`DtpFlatAxiLiteMaster` |DUT-local adapter |Current flattened-fixture driver; required generic behavior should converge into `ocah_axi_vip`
 |BSR/STAP scan loopbacks |Minimal OCAH-local scan model |OCAH-local simple model |Compact scan loopback and observable model
@@ -111,7 +111,7 @@ DtpEnv
        DtpJtagDriver -> ocah_jtag_vip OcahJtagMasterDriver
        analysis port -> completed DtpJtagItem stream
   -> DtpAxiAgent
-       ocah_axi_vip OcahAxiRam
+       ocah_axi_vip OcahAxiSlaveAgent
        backdoor memory access for scoreboard checks
   -> DtpScoreboard
        IDCODE checks
@@ -166,7 +166,7 @@ between packed RTL structs and cocotb-friendly scalar/vector ports.
 |===
 |DUT Interface |`tb_top` Handling
 |JTAG TAP |Exposes `jtag_tck`, `jtag_tms`, `jtag_trst`, `jtag_tdi`, `jtag_tdo`, `jtag_tdo_oen` for `OcahJtagMasterDriver`
-|SMC fabric AXI4 |Flattens `+axi_smc_dbg_*+` structs into `+m_axi_*+` for `OcahAxiRam.from_prefix(dut, "m_axi")`
+|SMC fabric AXI4 |Flattens `+axi_smc_dbg_*+` structs into `+m_axi_*+` for `OcahAxiSlaveAgent.from_prefix(dut, "m_axi")`
 |Lifecycle |Drives enable-polarity `feat_ctrl_i` from TB; base bring-up uses the all-one/full-debug setting
 |BSR/STAP/iJTAG |Looped back or tied idle for scenarios that do not actively use these paths
 |SMC/SEP OTP AXI-Lite |Tied idle until OCAH AXI-Lite responder agents are added
@@ -192,7 +192,7 @@ TMP_STATUS, IC_RESET, or DEBUG_CONTROL fields across the read.
 
 ==== `DtpAxiAgent`
 
-The AXI agent wraps `ocah_axi_vip.OcahAxiRam` on the SMC fabric debug
+The AXI agent wraps `ocah_axi_vip.OcahAxiSlaveAgent` on the SMC fabric debug
 manager interface. It provides a memory responder for AXI writes/reads and a
 backdoor view used by the scoreboard.
 
@@ -341,12 +341,15 @@ Compile order is explicit and load-bearing: interfaces first, then
 The UVM harness additionally consumes the shared `ocah_axi_vip` SV layer:
 
 * `tb/tb_top.sv` (UVM block) replaces the historical never-responding OTP
-  tie-off and the undriven `m_axi_*` response inputs with the behavioral
-  error-injectable responders (`ocah_axil_ram_responder` on `smc_otp_axil`,
-  `ocah_axi_ram_responder` on `m_axi`), instantiates `ocah_axi_if` monitor
-  adapters and the clean-room `ocah_axi_sva` SVA on both ports,
-  and mirrors the request-activity pulse counters into `dtp_tb_if`. The
-  `sep_otp_axil` port keeps its tie-off (documented stretch).
+  tie-off and the undriven `m_axi_*` response inputs with error-injectable
+  responders: the shared `ocah_axi_vip` UVM slave agent answers
+  `smc_otp_axil` (reactive `ocah_axi_slave_driver` over a dedicated
+  `ocah_axi_if` instance, injection programmed via
+  `ocah_axi_slave_sequence`), and the behavioral `ocah_axi_ram_responder`
+  module answers `m_axi`. It instantiates `ocah_axi_if` monitor adapters and
+  the clean-room `ocah_axi_sva` SVA on both ports, and mirrors the
+  request-activity pulse counters into `dtp_tb_if`. The `sep_otp_axil` port
+  keeps its tie-off (documented stretch).
 * `tb/dtp_tb_if.sv` carries test-drivable lifecycle enables (init 0 preserves
   the old gated-off tie-off for the sanity test), responder error controls,
   the SVA `axi_sva_en` knob, and counter mirrors.

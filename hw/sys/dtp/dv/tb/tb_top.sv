@@ -833,40 +833,54 @@ module dtp_uvm_top
     assign feat_ctrl_sep_debug = u_tb_if.feat_ctrl_sep_debug;
     assign feat_ctrl_fuse_test = u_tb_if.feat_ctrl_fuse_test;
 
-    // SMC OTP AXI-Lite responder: error-injectable RAM (issue #3295) replacing
-    // the historical never-responding tie-off, so JTAG2AXI OTP traffic
-    // completes and the shared AXI checker observes real responses.
-    ocah_axil_ram_responder #(
-        .ADDR_WIDTH (32),
-        .DATA_WIDTH (32)
-    ) u_smc_otp_responder (
-        .clk_i          (clk_i),
-        .rst_ni         (rst_n_i),
-        .awaddr         (smc_otp_axil_awaddr),
-        .awprot         (smc_otp_axil_awprot),
-        .awvalid        (smc_otp_axil_awvalid),
-        .awready        (smc_otp_axil_awready),
-        .wdata          (smc_otp_axil_wdata),
-        .wstrb          (smc_otp_axil_wstrb),
-        .wvalid         (smc_otp_axil_wvalid),
-        .wready         (smc_otp_axil_wready),
-        .bresp          (smc_otp_axil_bresp),
-        .bvalid         (smc_otp_axil_bvalid),
-        .bready         (smc_otp_axil_bready),
-        .araddr         (smc_otp_axil_araddr),
-        .arprot         (smc_otp_axil_arprot),
-        .arvalid        (smc_otp_axil_arvalid),
-        .arready        (smc_otp_axil_arready),
-        .rdata          (smc_otp_axil_rdata),
-        .rresp          (smc_otp_axil_rresp),
-        .rvalid         (smc_otp_axil_rvalid),
-        .rready         (smc_otp_axil_rready),
-        .err_arm_i      (u_tb_if.smc_otp_err_arm),
-        .err_addr_i     (u_tb_if.smc_otp_err_addr),
-        .err_resp_i     (u_tb_if.smc_otp_err_resp),
-        .err_on_read_i  (u_tb_if.smc_otp_err_on_read),
-        .err_on_write_i (u_tb_if.smc_otp_err_on_write)
-    );
+    // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
+    // answers JTAG2AXI OTP traffic (issue #3295). The slave interface carries
+    // the connection: the TB wires only the master-driven signals in, and the
+    // agent's driver procedurally drives the responder-side signals, routed
+    // back to the DUT below. Error injection is programmed by sequences via
+    // the agent's ocah_axi_slave_sequence, not TB error ports.
+    ocah_axi_if u_smc_otp_slave_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_smc_otp_slave_if.awaddr   = 64'(smc_otp_axil_awaddr);
+    assign u_smc_otp_slave_if.awprot   = smc_otp_axil_awprot;
+    assign u_smc_otp_slave_if.awvalid  = smc_otp_axil_awvalid;
+    assign u_smc_otp_slave_if.awid     = '0;
+    assign u_smc_otp_slave_if.awlen    = '0;
+    assign u_smc_otp_slave_if.awsize   = 3'd2;
+    assign u_smc_otp_slave_if.awburst  = 2'b01;
+    assign u_smc_otp_slave_if.awlock   = 1'b0;
+    assign u_smc_otp_slave_if.awcache  = '0;
+    assign u_smc_otp_slave_if.awqos    = '0;
+    assign u_smc_otp_slave_if.awregion = '0;
+    assign u_smc_otp_slave_if.awuser   = '0;
+    assign u_smc_otp_slave_if.wdata    = 64'(smc_otp_axil_wdata);
+    assign u_smc_otp_slave_if.wstrb    = 8'(smc_otp_axil_wstrb);
+    assign u_smc_otp_slave_if.wlast    = 1'b1;
+    assign u_smc_otp_slave_if.wuser    = '0;
+    assign u_smc_otp_slave_if.wvalid   = smc_otp_axil_wvalid;
+    assign u_smc_otp_slave_if.bready   = smc_otp_axil_bready;
+    assign u_smc_otp_slave_if.araddr   = 64'(smc_otp_axil_araddr);
+    assign u_smc_otp_slave_if.arprot   = smc_otp_axil_arprot;
+    assign u_smc_otp_slave_if.arvalid  = smc_otp_axil_arvalid;
+    assign u_smc_otp_slave_if.arid     = '0;
+    assign u_smc_otp_slave_if.arlen    = '0;
+    assign u_smc_otp_slave_if.arsize   = 3'd2;
+    assign u_smc_otp_slave_if.arburst  = 2'b01;
+    assign u_smc_otp_slave_if.arlock   = 1'b0;
+    assign u_smc_otp_slave_if.arcache  = '0;
+    assign u_smc_otp_slave_if.arqos    = '0;
+    assign u_smc_otp_slave_if.arregion = '0;
+    assign u_smc_otp_slave_if.aruser   = '0;
+    assign u_smc_otp_slave_if.rready   = smc_otp_axil_rready;
+
+    // Responder-side signals: agent driver -> DUT response inputs.
+    assign smc_otp_axil_awready = u_smc_otp_slave_if.awready;
+    assign smc_otp_axil_wready  = u_smc_otp_slave_if.wready;
+    assign smc_otp_axil_bresp   = u_smc_otp_slave_if.bresp;
+    assign smc_otp_axil_bvalid  = u_smc_otp_slave_if.bvalid;
+    assign smc_otp_axil_arready = u_smc_otp_slave_if.arready;
+    assign smc_otp_axil_rdata   = u_smc_otp_slave_if.rdata[31:0];
+    assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
+    assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
     // SMC fabric AXI4 responder: drives the previously-undriven m_axi_*
     // response inputs so JTAG2AXI fabric traffic completes in the UVM flow.
@@ -1163,6 +1177,7 @@ module dtp_uvm_top
         uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
         uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "tb_vif", u_tb_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_axil_vif", u_smc_otp_axil_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_slave_vif", u_smc_otp_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "m_axi_vif", u_m_axi_if);
         run_test();
     end

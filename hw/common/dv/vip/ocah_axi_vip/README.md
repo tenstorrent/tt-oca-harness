@@ -92,7 +92,9 @@ ocah_axi_vip/
   sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
   sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
   sv/ocah_axi_ram_responder.sv   — behavioral AXI4 RAM responder (error-injectable)
-  uvm/ocah_axi_uvm_pkg.sv        — passive SV-UVM layer (monitor/ref-model/scoreboard)
+  uvm/ocah_axi_uvm_pkg.sv        — SV-UVM layer: side-neutral passive stack
+                                   (monitor/ref-model/scoreboard/env) + slave
+                                   agent (reactive memory-backed responder)
   cov/ocah_axi_cov.sv            — commercial-simulator functional coverage
   examples/
     example_register_access.py            — annotated usage snippets
