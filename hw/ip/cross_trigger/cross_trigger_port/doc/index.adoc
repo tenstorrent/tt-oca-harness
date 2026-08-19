@@ -43,3 +43,16 @@ endif::backend-pdf[]
 
 include::architecture.adoc[]
 include::interface.adoc[]
+
+==== Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$cross_trigger_port/regs/gen/html/cross_trigger_port.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/cross_trigger_port.adoc[]
+endif::backend-pdf[]
+
