@@ -30,6 +30,7 @@ body:
         - RDL
         - RELEASE
         - NONFREE
+        - FUSA
     validations:
       required: true
   - type: dropdown
