@@ -159,7 +159,11 @@ def collect(root) -> Collector:
 
 def write_adoc(root, out: str):
     data = collect(root)
-    lines: list[str] = []
+    lines: list[str] = [
+        "// SPDX-License-Identifier: Apache-2.0",
+        "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
+        "",
+    ]
     if data.arrays:
         lines += ["[NOTE]", "======", "*Register Arrays:* This register map contains the following register arrays:", ""]
         for name, (count, base, stride) in data.arrays.items():
@@ -183,6 +187,8 @@ def write_html(root, out: str, title: str | None = None):
     data = collect(root)
     title = title or first_addrmap_name(root)
     lines = [
+        "<!-- SPDX-License-Identifier: Apache-2.0 -->",
+        "<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->",
         '<div class="ocah-reg-html">',
         "<style>",
         ".ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}",

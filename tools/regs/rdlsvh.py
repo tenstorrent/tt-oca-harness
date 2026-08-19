@@ -59,6 +59,9 @@ class SvhListener(FieldCollector):
         if node.parent == self.root:
             header_def = self.target_addr_map.upper()
             self.header_text += f"""\
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 /*******************************************************************************
  * Header file for register addresses and fields
  *
