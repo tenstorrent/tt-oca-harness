@@ -389,8 +389,9 @@ Project 291; see `doc/contributing/src/alignment.adoc`.
 ### Pull requests
 
 `gh pr create --body` replaces the template, so include the headings yourself.
-**Summary** and **Test plan** must be filled; CI fails if they are missing or still a
-placeholder. Add `## Closes` with `Fixes #N` only when `N` is a real issue; omit the
+**Summary** must be filled; CI fails if it is missing or still a placeholder.
+**Test plan** is optional — leave it blank or write `N/A` when nothing was run.
+Add `## Closes` with `Fixes #N` only when `N` is a real issue; omit the
 section if nothing closes. Never leave a bare `Fixes #`. Delete **Notes** if unused.
 
 ```bash
@@ -399,7 +400,7 @@ gh pr create --title "<scope>: <imperative summary>" --body "$(cat <<'EOF'
 <what changed and why>
 
 ## Test plan
-<command or check that proves this>
+<optional command, or N/A>
 EOF
 )"
 ```

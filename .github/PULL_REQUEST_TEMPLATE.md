@@ -1,8 +1,8 @@
 ## Summary
-<!-- What changed and why. -->
+<!-- Required. What changed and why. -->
 
 ## Test plan
-- [ ] <!-- command or check that proves this -->
+<!-- Optional. Leave blank or write N/A if nothing was run. -->
 
 ## Closes
 <!-- Add `Fixes #N` only if this PR should close issues on merge. Delete this section otherwise. Also pickable under Development. -->

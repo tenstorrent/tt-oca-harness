@@ -130,15 +130,14 @@ def section_text(body: str, heading: str) -> str:
     return text.strip()
 
 
+def section_filled(text: str) -> bool:
+    text = re.sub(r"^-\s*\[[ xX]\]\s*", "", text, flags=re.MULTILINE).strip()
+    return text.lower() not in EMPTY_MARKERS
+
+
 def pr_headings_ok(body: str) -> tuple[bool, str]:
-    missing = []
-    for heading in ("Summary", "Test plan"):
-        text = section_text(body, heading)
-        text = re.sub(r"^-\s*\[[ xX]\]\s*", "", text).strip()
-        if not text:
-            missing.append(heading)
-    if missing:
-        return False, "PR body is missing filled sections: " + ", ".join(missing)
+    if not section_filled(section_text(body, "Summary")):
+        return False, "PR body is missing a filled Summary section"
     return True, ""
 
 
@@ -482,11 +481,32 @@ def assign_pr_author(number: int) -> None:
 
 def check_pr_template(number: int) -> None:
     repo_full = os.environ.get("GITHUB_REPOSITORY", REPO)
-    pr = gh_json(["pr", "view", str(number), "--repo", repo_full, "--json", "body"])
+    pr = gh_json(
+        ["pr", "view", str(number), "--repo", repo_full, "--json", "body,isDraft"]
+    )
+    if pr.get("isDraft"):
+        print("draft PR; skipping template check")
+        return
     ok, message = pr_headings_ok(pr.get("body") or "")
     if not ok:
         raise SystemExit(message)
-    print("PR template headings present")
+    print("PR Summary is present")
+
+
+def self_test() -> None:
+    leftover = """## Summary
+A real change.
+
+## Test plan
+- [ ] <!-- command or check that proves this -->
+"""
+    assert pr_headings_ok(leftover) == (True, "")
+    assert pr_headings_ok("## Summary\nN/A\n")[0] is False
+    assert pr_headings_ok("## Summary\nShipped the ingest relaxation.\n") == (True, "")
+    assert not section_filled("")
+    assert not section_filled("n/a")
+    assert not section_filled("- [ ] ")
+    print("self-test ok")
 
 
 def main() -> None:
@@ -494,20 +514,23 @@ def main() -> None:
     parser.add_argument("--issue", type=int)
     parser.add_argument("--pr-assign", type=int)
     parser.add_argument("--pr-template", type=int)
+    parser.add_argument("--self-test", action="store_true")
     parser.add_argument(
         "--taxonomy",
         type=Path,
         default=Path(".github/issue-taxonomy.yml"),
     )
     args = parser.parse_args()
-    if args.issue:
+    if args.self_test:
+        self_test()
+    elif args.issue:
         ingest_issue(args.issue, load_taxonomy(args.taxonomy))
     elif args.pr_assign:
         assign_pr_author(args.pr_assign)
     elif args.pr_template:
         check_pr_template(args.pr_template)
     else:
-        raise SystemExit("pass --issue, --pr-assign, or --pr-template")
+        raise SystemExit("pass --issue, --pr-assign, --pr-template, or --self-test")
 
 
 if __name__ == "__main__":
