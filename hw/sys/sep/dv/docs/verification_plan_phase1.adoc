@@ -3280,13 +3280,21 @@ it.
   that this plan keeps describing the RTL that is actually here.
 
 | `sep_rom_non_secure_boot_test`
-| The boot-ROM binary this test runs is not built by the DV flow. It is git-ignored,
-  was built from sources that have since changed, and a clean checkout cannot run the
-  test at all — it fails on the missing image. The testlist already carries a note
-  saying so.
-| Wire the bootcode build into the flow, or commit a pinned image with its hash, and
-  re-run. Until then this entry's grades describe an artefact that cannot be
-  reproduced, which by the rules above is closer to `STALE` than to `PROVEN`.
+| When this entry was graded, the boot-ROM binary was not built by the DV flow: it was
+  git-ignored, built by hand from sources that had since changed, and a clean checkout
+  could not run the test at all. PR #451 has since fixed exactly that — the ROM moved to
+  `hw/sys/sep/bootrom/prod` and `[c_build.boot_rom]` now declares its outputs, so
+  `--stage sim` fails with "firmware outputs missing" instead of simulating a stale
+  image. The reproducibility objection behind this grade is therefore addressed in the
+  tree; what is missing is a run that re-proves the checker against a flow-built image.
+| Re-grade to `PROVEN` once the entry has been re-run on a host that can build the ROM.
+  That build needs the RISC-V picolibc toolchain (or the OCAH container) plus the
+  `tt-boot-manifest` submodule, which the machine this plan was last run on does not
+  have — `sep_rom_non_secure_boot_test` and the three `sep_rom_ot_*_boot_test` entries
+  added by #451 all fail there at `c_compile`, on an unmodified `main` as much as here.
+  The grade stays `STALE` rather than being upgraded on the strength of the wiring
+  alone, because nothing has yet observed the markers coming out of an image this
+  repository built.
 
 | `sep_rom_non_secure_boot_test`
 | Only the all-good leg of the ROM's manifest and payload integrity checks is
