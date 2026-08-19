@@ -35,7 +35,7 @@ vendor_package:
   # OpenTitan: prim, per-IP rtl/hjson, and the reggen/mubi file set.
   - name: opentitan
     target_dir: vendor/lowRISC/opentitan/upstream
-    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "037f261895f7651a7cbcfabaa8b5e336c3f9576c" }
+    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "f08c244790918ab5b2908f7a58bebef3e5f33733" }
     include_from_upstream:
       - "hw/ip/prim/rtl"
       - "hw/ip/prim_generic/rtl"
@@ -105,7 +105,7 @@ vendor_package:
 
   - name: common_cells
     target_dir: "vendor/pulp-platform/common_cells/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-common_cells.git", rev: "f7fe931fe630ee0560ca793c482d26099e3a7645" }
+    upstream: { git: "https://github.com/tenstorrent/tt-common_cells.git", rev: "a4fdd4e426f0f087cbf87b90b602cb45844b8127" }
     include_from_upstream:
       - "src"
       - "include"
@@ -127,7 +127,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "890cc274200b5502ab601925659d618fa167f369" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "fecda238fbd047608e77cbd5ccf879d3b978b78e" }
     include_from_upstream:
       - "src"
       - "include"
@@ -136,7 +136,7 @@ vendor_package:
   # idma: vendored src with in-place edits; generated bundle lives in overlay/.
   - name: idma
     target_dir: "vendor/pulp-platform/idma/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "1f9c6687a512cb17ad0eb82a5bafa3e247c6f56b" }
+    upstream: { git: "https://github.com/tenstorrent/tt-iDMA.git", rev: "45d5f9d437cff7d8fbdec988c76a41186fdf0d25" }
     include_from_upstream:
       - "src"
     patch_dir: "vendor/pulp-platform/idma/patches"
