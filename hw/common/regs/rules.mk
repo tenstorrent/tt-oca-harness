@@ -8,6 +8,13 @@
 # twice, so the second is resolved via secondary expansion ($$*). A no-op elsewhere.
 .SECONDEXPANSION:
 
+# Local svpkg template: upstream peakrdl-rawheader 0.2.4 sizes enum widths by the
+# number of entries rather than the largest value, silently truncating any enum
+# whose largest value needs more bits than its entry count. Fixed in our copy; drop
+# this and the --template flag once the fix lands upstream. The separate `endpackage;`
+# empty-statement (W193) is deliberately left alone and stays waived per block.
+OCAH_SVPKG_TEMPLATE ?= $(OCAH_ROOT)/hw/common/regs/templates/svpkg.mako
+
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
 # input, output, name/bitfields, log.
 ocah_reg_run_cheader  = "$(UV)" run peakrdl c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical 2>&1 | tee "$(5)"
@@ -50,10 +57,10 @@ $(call ocah_reg_raw_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UD
 	@echo "Regenerating raw C address header for $(1)"
 	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format c --base-name "$(shell echo $(call ocah_reg_name,$(1))_addr | tr a-z A-Z)" -o "$(call ocah_reg_raw_c_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_c_header.log"'
 
-$(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
+$(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_SVPKG_TEMPLATE) | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating SystemVerilog address package for $(1)"
-	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format svpkg -o "$(call ocah_reg_svpkg_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_svpkg.log"'
+	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format svpkg --template "$(OCAH_SVPKG_TEMPLATE)" -o "$(call ocah_reg_svpkg_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_svpkg.log"'
 
 $(call ocah_reg_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/py" "$(call ocah_reg_build,$(1))"

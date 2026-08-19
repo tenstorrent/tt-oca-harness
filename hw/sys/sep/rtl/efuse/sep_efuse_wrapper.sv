@@ -327,14 +327,14 @@ module sep_efuse_wrapper
 
 		.SEP_SEC_DISABLE_TOKEN      (SEP_SEC_DISABLE_TOKEN),
 
-		.EFUSE_MAP_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR),
-		.EFUSE_MAP_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE),
+		.EFUSE_MAP_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)),
+		.EFUSE_MAP_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE)),
 
-		.EFUSE_MMR_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR),
-		.EFUSE_MMR_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE),
+		.EFUSE_MMR_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR)),
+		.EFUSE_MMR_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE)),
 
-		.EFUSE_CTRL_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
-		.EFUSE_CTRL_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE),
+		.EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
+		.EFUSE_CTRL_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
 
 		.SHADOW_REG_BITS            (sep_efuse_pkg::SHADOW_REG_BITS),
 		.EFUSE_MACRO_WORD_WIDTH     (sep_efuse_pkg::NumFuseWordWidth),

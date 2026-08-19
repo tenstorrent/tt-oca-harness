@@ -44,9 +44,9 @@ endfunction
 localparam longint unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_NUM = 64'hB;
 
 
-typedef enum logic [0:0] {
-    TRUE = 1'd6,
-    FALSE = 1'd9
+typedef enum logic [3:0] {
+    TRUE = 4'd6,
+    FALSE = 4'd9
 } MultiBitBool4_e;
 
 endpackage;

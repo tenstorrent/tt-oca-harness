@@ -155,6 +155,18 @@ module smc_efuse_wrapper
     // eFuse Interface Controller
     /////////////////////////////////////////////////////////////////////////
 
+    // PeakRDL emits address-map constants as 64-bit longint unsigned while
+    // efuse_interface_controller's parameters are 32-bit, so the bind truncates.
+    // Check at elaboration that the values actually fit.
+    `OCAH_OT_ASSERT_INIT(EfuseMapBaseFits_A,
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR < (64'd1 << 32))
+    `OCAH_OT_ASSERT_INIT(EfuseMapSizeFits_A,
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE < (64'd1 << 32))
+    `OCAH_OT_ASSERT_INIT(EfuseCtrlBaseFits_A,
+        smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR < (64'd1 << 32))
+    `OCAH_OT_ASSERT_INIT(EfuseCtrlSizeFits_A,
+        smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE < (64'd1 << 32))
+
     efuse_interface_controller #(
         .ADDR_WIDTH                  (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
         .DATA_WIDTH                  (smc_pkg::AXI_LITE_32_DATA_WIDTH),
@@ -181,14 +193,17 @@ module smc_efuse_wrapper
 
         .SEP_SEC_DISABLE_TOKEN       ('0), // Embedded in RTL (SEP only)
 
-        .EFUSE_MAP_REG_MAP_BASE_ADDR (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR),
-        .EFUSE_MAP_REG_MAP_SIZE      (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+        // efuse_interface_controller declares these as a bare bit [31:0] rather than
+        // via a named width constant, so the casts below are literal 32 rather than a
+        // package parameter. Asserts are next to the instantiation, above.
+        .EFUSE_MAP_REG_MAP_BASE_ADDR (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)),
+        .EFUSE_MAP_REG_MAP_SIZE      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE)),
 
         .EFUSE_MMR_REG_MAP_BASE_ADDR ('0),
         .EFUSE_MMR_REG_MAP_SIZE      ('0),
 
-        .EFUSE_CTRL_REG_MAP_BASE_ADDR(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
-        .EFUSE_CTRL_REG_MAP_SIZE     (smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE),
+        .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
+        .EFUSE_CTRL_REG_MAP_SIZE     (32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
 
         .SHADOW_REG_BITS             (smc_efuse_pkg::SHADOW_REG_BITS),
         .EFUSE_MACRO_WORD_WIDTH      (smc_efuse_pkg::NumFuseWordWidth),

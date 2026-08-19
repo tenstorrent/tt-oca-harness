@@ -183,10 +183,17 @@ module drbg_axil64_lane_adapter import drbg_pkg::*; import axi_pkg::*; #(
 
         case (state_q)
             StIdle: begin
+                // Read priority is expressed with ar_valid only. r_ready must not
+                // appear here: it is a master output that AXI permits to be held
+                // asserted permanently, so gating the write channel on it can block
+                // writes indefinitely. It also carries no information in StIdle - the
+                // FSM is single-threaded and r_valid is 0 here, so no read response is
+                // outstanding. Driving aw_ready/w_ready from r_ready additionally
+                // closed a combinational loop back through axi_to_axi_lite (CombLoop).
                 axil64_rsp_o.aw_ready =
-                    !aw_pending_q && !(axil64_req_i.ar_valid || axil64_req_i.r_ready);
+                    !aw_pending_q && !axil64_req_i.ar_valid;
                 axil64_rsp_o.w_ready =
-                    !w_pending_q && !(axil64_req_i.ar_valid || axil64_req_i.r_ready);
+                    !w_pending_q && !axil64_req_i.ar_valid;
                 axil64_rsp_o.ar_ready =
                     !aw_pending_q && !w_pending_q && !axil64_req_i.aw_valid && !axil64_req_i.w_valid;
 

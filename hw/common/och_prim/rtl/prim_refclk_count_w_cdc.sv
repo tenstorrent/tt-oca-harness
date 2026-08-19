@@ -72,25 +72,52 @@ module prim_refclk_count_w_cdc #(
 	ref_count_t cnt_update_value_sync;
 	logic       cnt_update_value_valid;
 
+	// Depth kept in a localparam so the occupancy-output widths below stay in step
+	// with the instantiation; prim_fifo_async derives DepthW = $clog2(Depth+1).
+	localparam int unsigned CntFifoDepth  = 1;
+	localparam int unsigned CntFifoDepthW = $clog2(CntFifoDepth + 1);
+
+	logic                       cnt_fifo_wready;
+	logic [CntFifoDepthW-1:0]   cnt_fifo_wdepth;
+	logic [CntFifoDepthW-1:0]   cnt_fifo_rdepth;
+
 	prim_fifo_async #(
 		.Width(REF_COUNT_WIDTH),
-		.Depth(1),
+		.Depth(CntFifoDepth),
 		.OutputZeroIfEmpty(0)
 	) cnt_update_async_fifo (
 		.clk_wr_i(i_out_clk),
 		.rst_wr_ni(prstb_synced_write), // async reset, should be okay to use same reset
 		.wvalid_i(i_cnt_update),
-		.wready_o(), // unused
+		.wready_o(cnt_fifo_wready),
 		.wdata_i(i_cnt_update_value),
-		.wdepth_o(), // unused
+		.wdepth_o(cnt_fifo_wdepth),
 
 		.clk_rd_i(i_refclk),
 		.rst_rd_ni(prstb_synced_rd),
 		.rvalid_o(cnt_update_value_valid),
 		.rready_i(1'b1), // always ready
 		.rdata_o(cnt_update_value_sync),
-		.rdepth_o() // unused
+		.rdepth_o(cnt_fifo_rdepth)
 	);
+
+	// The FIFO is Depth(1), so a counter update arriving before the previous one has
+	// crossed to i_refclk would be dropped with no error indication. No current writer
+	// does that (the only writes are single write-then-poll), but nothing enforces it,
+	// so catch it in simulation if it ever happens.
+	`OCAH_OT_ASSERT(CntUpdateAccepted_A, i_cnt_update |-> cnt_fifo_wready,
+	                i_out_clk, !prstb_synced_write)
+
+	// Occupancy outputs are unused: this counter is driven purely by the valid/ready
+	// handshake. Kept in separate reductions because wdepth is in the i_out_clk domain
+	// and rdepth is in the i_refclk domain. wready is read only by the assertion above,
+	// which structural lint does not count as a load, so it is tied off here too.
+	logic unused_cnt_fifo_wready;
+	logic unused_cnt_fifo_wdepth;
+	logic unused_cnt_fifo_rdepth;
+	assign unused_cnt_fifo_wready = ^cnt_fifo_wready;
+	assign unused_cnt_fifo_wdepth = ^cnt_fifo_wdepth;
+	assign unused_cnt_fifo_rdepth = ^cnt_fifo_rdepth;
 
 	always_ff @(posedge i_refclk or negedge prstb_synced_rd) begin
 		if (!prstb_synced_rd) begin

@@ -1324,7 +1324,7 @@ module sep_crypto #(
         .SRAM_SIZE_BYTES      (16384),
         .MAILBOX_DEPTH        (16),
         .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
-        .OTP_EFUSE_REMAP_BASE (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)
+        .OTP_EFUSE_REMAP_BASE (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
     ) u_key_manager_s3c_scan (
         .clk_i              (clk_i),
         // Cold reset: SEP system cold reset (AASD) resets the entire KM.

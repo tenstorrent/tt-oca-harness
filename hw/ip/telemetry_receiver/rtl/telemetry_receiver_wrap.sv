@@ -149,9 +149,17 @@ module telemetry_receiver_wrap
         assign at_req_telemetry.atdata = atdata_i[i];
         assign at_req_telemetry.atid   = atid_i  [i];
 
+        // Depth kept in a localparam so the occupancy-output widths stay in step with
+        // the instantiation; prim_fifo_async derives DepthW = $clog2(Depth+1).
+        localparam int unsigned AtFifoDepth  = 8;
+        localparam int unsigned AtFifoDepthW = $clog2(AtFifoDepth + 1);
+
+        logic [AtFifoDepthW-1:0] at_fifo_wdepth;
+        logic [AtFifoDepthW-1:0] at_fifo_rdepth;
+
         prim_fifo_async #(
             .Width               ($bits(telemetry_receiver_wrap_pkg::at_req_t)),
-            .Depth               (8),
+            .Depth               (AtFifoDepth),
             .OutputZeroIfEmpty   (1'b0),
             .OutputZeroIfInvalid (1'b0)
         ) at_req_fifo_async (
@@ -160,15 +168,24 @@ module telemetry_receiver_wrap
             .wvalid_i            (atvalid_i[i]),
             .wready_o            (atready_o[i]),
             .wdata_i             (at_req_telemetry),
-            .wdepth_o            (/* UNUSED */),
+            .wdepth_o            (at_fifo_wdepth),
 
             .clk_rd_i            (clk_i),
             .rst_rd_ni           (rst_ni),
             .rvalid_o            (atvalid),
             .rready_i            (atready),
             .rdata_o             (at_req),
-            .rdepth_o            (/* UNUSED */)
+            .rdepth_o            (at_fifo_rdepth)
         );
+
+        // Occupancy outputs are unused: the ATB path is driven purely by the
+        // valid/ready handshake, and wready_o is wired out to atready_o so
+        // backpressure is already handled. Kept in separate reductions because
+        // wdepth is in the clk_telemetry_i domain and rdepth is in clk_i.
+        logic unused_at_fifo_wdepth;
+        logic unused_at_fifo_rdepth;
+        assign unused_at_fifo_wdepth = ^at_fifo_wdepth;
+        assign unused_at_fifo_rdepth = ^at_fifo_rdepth;
 
 
         ////////////////

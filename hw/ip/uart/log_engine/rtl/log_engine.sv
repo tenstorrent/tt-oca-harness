@@ -74,6 +74,8 @@ module log_engine
         end
     end
 
+    logic [NUM_LOG_ENTRIES-1:0] arb_gnt;
+
     prim_arbiter_tree #(
         .N          (NUM_LOG_ENTRIES),
         .DW         (LOG_LEN_WIDTH),
@@ -84,12 +86,17 @@ module log_engine
         .req_chk_i  (1'b1),
         .req_i      (log_reqs),
         .data_i     (log_lens),
-        .gnt_o      (/* UNUSED */),
+        .gnt_o      (arb_gnt),
         .idx_o      (log_index),
         .valid_o    (log_pending),
         .data_o     (log_len),
         .ready_i    (log_write_done)
     );
+
+    // The one-hot grant vector is unused: this arbiter is consumed via idx_o,
+    // valid_o and data_o, which carry the same arbitration result.
+    logic unused_arb_gnt;
+    assign unused_arb_gnt = ^arb_gnt;
 
     /////////////////////
     // Log Fetch Logic //

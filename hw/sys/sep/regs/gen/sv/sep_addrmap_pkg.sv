@@ -723,10 +723,10 @@ endfunction
 localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_NUM = 64'h20;
 
 
-typedef enum logic [1:0] {
-    OT_ADDR = 2'd7,
-    SYS_ADDR = 2'd9,
-    SOC_ADDR = 2'd10
+typedef enum logic [3:0] {
+    OT_ADDR = 4'd7,
+    SYS_ADDR = 4'd9,
+    SOC_ADDR = 4'd10
 } asid_e_e;
 
 typedef enum logic [1:0] {
