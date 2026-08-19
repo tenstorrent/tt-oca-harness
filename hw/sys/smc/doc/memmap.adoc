@@ -359,4 +359,6 @@ Timer registers |periphs
 |Reset Management |Reset unit and system control registers |clk_rst
 
 |Clock Generation |PLL wrapper and clock generation registers |pll
+
+|DFD / CLA |Design-for-debug wrap and Core Logic Analyzer register map |dfd
 |=======================================================================

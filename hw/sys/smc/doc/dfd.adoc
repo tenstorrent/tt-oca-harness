@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smc-dfd-cla]]
+=== Design-for-Debug (DFD) and Core Logic Analyzer (CLA)
+
+The SMC instantiates `smc_dfd_wrap` from `smc_internal_regs`. The wrap
+clock-gates `dfd_top` and presents the CLA and trace path to the rest of
+the SMC. This chapter records the integration that is visible in that
+wrap, the memory map, and the interrupt table. It does not describe CLA
+node or EAP programming beyond the generated register map.
+
+==== Integration
+
+`smc_dfd_wrap` sits on the local-fabric APB window `smc_dfd_reg` and
+instantiates `dfd_top` with `NTRACE_SUPPORT` tied off. The wrap:
+
+* Clock-gates `dfd_top` from `clk_smc_i` using the `dfd_enables_i`
+  clock-gate and force-clock controls.
+* Presents an APB4 register interface at the CLA aperture
+  `BASE + 0x016_0000` (36 KB, see <<smc-memory-map>>).
+* Reduces the incoming debug bus through two `dfd_debug_bus_mux` levels
+  before driving `dfd_top` `hw0`–`hw15`.
+* Forwards cross-trigger I/O on `xtrigger_ss_*`.
+* Exports CLA actions that the SMC already wires: debug interrupt,
+  clock-stop status (qualified by `tdr_dbg_ctrl_clock_stop_en_i`), GPIO
+  enable, custom actions, and trace-memory ports.
+
+==== Interrupts
+
+The SMC interrupt table in <<interrupts>> already lists the two CLA
+sources driven through `u_smc_dfd_wrap`:
+
+* CLA Clock Stop — `tdr_dbg_ctrl_clocks_stopped_by_cla_o`
+  (1-core bit 96 / 4-core bit 320)
+* CLA Interrupt — `external_action_debug_interrupt_o`
+  (1-core bit 97 / 4-core bit 321)
+
+==== Register Map
+
+The generated `smc_cla` map is the programmer view of this aperture.
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$dfd/regs/gen/html/smc_cla.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[]
+endif::backend-pdf[]
