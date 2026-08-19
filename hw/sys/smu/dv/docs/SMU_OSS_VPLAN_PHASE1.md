@@ -155,7 +155,7 @@ Order matches `docs/SMU_TB_ARCH.md`, constrained to no-SEP:
 
 1. **Filelist + `tb_top.sv`** — elaborate `smu_uvm_top` with `SEP=0`
 2. **Clocks/resets + SMC scratch/pass observation**
-3. **External AXI agents** — `ocah_axi_vip` master on `smu_axi_in`, `OcahAxiRam` on `smu_axi_out`
+3. **External AXI agents** — `ocah_axi_vip` master on `smu_axi_in`, `OcahAxiSlaveAgent` on `smu_axi_out`
 4. **JTAG agent** — IDCODE/BYPASS → JTAG2AXI / IC_RESET
 5. **Mailbox / GPIO / eFuse observe** — backdoor + polling (no SEP peer)
 6. **Xtrig / clock-stop local BFM** — after JTAG path is stable

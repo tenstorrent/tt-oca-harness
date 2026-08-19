@@ -1,17 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Tenstorrent Inc.
-"""Fault-capable cocotbext AXI RAM responders exposed through OCAH APIs."""
+"""AXI4 slave driver: fault-capable memory-backed responder engine.
+
+`OcahAxiSlaveDriver` is the cocotbext-backed RAM responder that answers AXI4
+traffic on the wires, extended with the OCAH fault controls (one-shot
+non-OKAY response injection and bounded READY backpressure) shared through
+`OcahFaultMixin`. The test-facing backdoor/fault API lives in
+`OcahAxiSlaveSequence`; the AXI4-Lite variant lives in
+`ocah_axi_lite_slave_driver.py` and reuses the mixin from here.
+"""
 
 from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
 
-from cocotbext.axi import AxiBus, AxiLiteBus
+from cocotbext.axi import AxiBus
 from cocotbext.axi.axi_ram import AxiRamRead, AxiRamWrite
-from cocotbext.axi.axil_ram import AxiLiteRamRead, AxiLiteRamWrite
 from cocotbext.axi.constants import AxiBurstType, AxiProt, AxiResp
 from cocotbext.axi.memory import Memory
+
+__all__ = ["OcahAxiSlaveDriver", "OcahFaultMixin"]
 
 
 def _pause_pattern(stall_cycles: int):
@@ -196,10 +205,10 @@ class _FaultAxiRamRead(AxiRamRead):
                         cur_addr = lower_wrap_boundary
 
 
-class OcahFaultAxiRamBackend(Memory, OcahFaultMixin):
-    """cocotbext AXI RAM backend with OCAH fault-control APIs."""
+class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
+    """cocotbext AXI4 RAM responder engine with OCAH fault-control APIs."""
 
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahFaultAxiRam", **kwargs):
+    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahAxiSlaveDriver", **kwargs):
         self.write_if = None
         self.read_if = None
         self._init_fault_state(name)
@@ -226,95 +235,3 @@ class OcahFaultAxiRamBackend(Memory, OcahFaultMixin):
     @classmethod
     def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs):
         return cls(AxiBus.from_prefix(dut, prefix), clock, reset, **kwargs)
-
-
-class _FaultAxiLiteRamWrite(AxiLiteRamWrite):
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, *, fault_owner, **kwargs):
-        self.fault_owner = fault_owner
-        super().__init__(bus, clock, reset, reset_active_level=reset_active_level, **kwargs)
-
-    async def _process_write(self):
-        while True:
-            aw = await self.aw_channel.recv()
-            addr = (int(aw.awaddr) // self.byte_lanes) * self.byte_lanes
-            prot = AxiProt(int(getattr(aw, "awprot", AxiProt.NONSECURE)))
-            w = await self.w_channel.recv()
-            data = int(w.wdata).to_bytes(self.byte_lanes, "little")
-            strb = int(getattr(w, "wstrb", self.strb_mask)) if self.wstrb_present else self.strb_mask
-            b = self.b_channel._transaction_obj()
-            b.bresp = self.fault_owner.write_errors.pop(addr, AxiResp.OKAY)
-
-            if b.bresp == AxiResp.OKAY:
-                start_offset = None
-                for offset in range(self.byte_lanes + 1):
-                    enabled = offset < self.byte_lanes and ((strb >> offset) & 0x1)
-                    if enabled and start_offset is None:
-                        start_offset = offset
-                    if not enabled and start_offset is not None:
-                        if offset != start_offset:
-                            await self._write(addr + start_offset, data[start_offset:offset])
-                        start_offset = None
-
-            await self.b_channel.send(b)
-            self.log.info(
-                "AXI-Lite write addr=0x%08x awprot=%s strb=0x%x resp=%s",
-                addr,
-                prot,
-                strb,
-                AxiResp(b.bresp).name,
-            )
-
-
-class _FaultAxiLiteRamRead(AxiLiteRamRead):
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, *, fault_owner, **kwargs):
-        self.fault_owner = fault_owner
-        super().__init__(bus, clock, reset, reset_active_level=reset_active_level, **kwargs)
-
-    async def _process_read(self):
-        while True:
-            ar = await self.ar_channel.recv()
-            addr = (int(ar.araddr) // self.byte_lanes) * self.byte_lanes
-            prot = AxiProt(int(getattr(ar, "arprot", AxiProt.NONSECURE)))
-            r = self.r_channel._transaction_obj()
-            r.rresp = self.fault_owner.read_errors.pop(addr, AxiResp.OKAY)
-            data = bytes(self.byte_lanes) if r.rresp != AxiResp.OKAY else await self._read(addr, self.byte_lanes)
-            r.rdata = int.from_bytes(data, "little")
-            await self.r_channel.send(r)
-            self.log.info(
-                "AXI-Lite read addr=0x%08x arprot=%s resp=%s",
-                addr,
-                prot,
-                AxiResp(r.rresp).name,
-            )
-
-
-class OcahFaultAxiLiteRam(Memory, OcahFaultMixin):
-    """AXI-Lite RAM responder with deterministic error and READY-stall controls."""
-
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahFaultAxiLiteRam", **kwargs):
-        self.write_if = None
-        self.read_if = None
-        self._init_fault_state(name)
-        Memory.__init__(self, size, mem, **kwargs)
-        self.write_if = _FaultAxiLiteRamWrite(
-            bus.write,
-            clock,
-            reset,
-            reset_active_level=reset_active_level,
-            size=size,
-            mem=self.mem,
-            fault_owner=self,
-        )
-        self.read_if = _FaultAxiLiteRamRead(
-            bus.read,
-            clock,
-            reset,
-            reset_active_level=reset_active_level,
-            size=size,
-            mem=self.mem,
-            fault_owner=self,
-        )
-
-    @classmethod
-    def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs):
-        return cls(AxiLiteBus.from_prefix(dut, prefix), clock, reset, **kwargs)

@@ -28,7 +28,7 @@
 class ocah_axi_scoreboard extends uvm_scoreboard;
     `uvm_component_utils(ocah_axi_scoreboard)
 
-    ocah_axi_cfg cfg;
+    ocah_axi_config cfg;
     ocah_axi_checker m_checker;
 
     uvm_analysis_imp_ocah_axi_observed #(ocah_axi_item, ocah_axi_scoreboard) observed_export;
@@ -44,8 +44,8 @@ class ocah_axi_scoreboard extends uvm_scoreboard;
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(ocah_axi_cfg)::get(this, "", "cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "ocah_axi_cfg `cfg` not found in uvm_config_db")
+        if (!uvm_config_db#(ocah_axi_config)::get(this, "", "cfg", cfg) || cfg == null)
+            `uvm_fatal(get_type_name(), "ocah_axi_config `cfg` not found in uvm_config_db")
         observed_export = new("observed_export", this);
         expected_export = new("expected_export", this);
         m_checker = ocah_axi_checker::type_id::create("m_checker");
@@ -94,7 +94,7 @@ class ocah_axi_scoreboard extends uvm_scoreboard;
         bit [63:0] intent_strobes[$];
         bit [63:0] lane_mask;
         bit [63:0] intent_raddr;
-        ocah_axi_cfg::ocah_axi_write_intent_t intent;
+        ocah_axi_config::ocah_axi_write_intent_t intent;
         pair_count++;
 
         // Per-beat, position-exact response comparison.

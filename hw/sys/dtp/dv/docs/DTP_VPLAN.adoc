@@ -39,8 +39,8 @@ resets the primary TAP, and drives stimulus through the OCAH BFMs:
 
 [arabic]
 . *Stimulus*: standard protocols use the unified OCAH VIP wrappers — `ocah_jtag_vip`
-(`OcahJtagMasterDriver`) for the JTAG TAP, and `ocah_axi_vip` (`OcahAxiRam`, AXI-Lite wrappers,
-`OcahAxiLiteMaster`) for the SMC fabric / OTP debug and XTRIG CSR buses. DTP-specific
+(`OcahJtagMasterDriver`) for the JTAG TAP, and `ocah_axi_vip` (`OcahAxiSlaveAgent`, AXI-Lite wrappers,
+`OcahAxiLiteMasterAgent`) for the SMC fabric / OTP debug and XTRIG CSR buses. DTP-specific
 protocols (boundary-scan / STAP loopbacks, IEEE 1687 iJTAG SIB networks, OCH CTP/CTM)
 use OCAH-local models in `env/` (see Open-Source BFM Policy).
 . *Checking*: a scoreboard / reference model compares observed TAP scan data, AXI
@@ -72,9 +72,9 @@ selectable in the public testlists.
 |===
 |Interface / Protocol |Open-Source Replacement
 |Primary JTAG TAP |`ocah_jtag_vip` `OcahJtagMasterDriver`
-|AXI4 SMC fabric debug |`ocah_axi_vip` `OcahAxiRam`
+|AXI4 SMC fabric debug |`ocah_axi_vip` `OcahAxiSlaveAgent`
 |AXI4-Lite SMC/SEP OTP debug |`ocah_axi_vip` AXI-Lite wrappers
-|AXI4-Lite XTRIG CSR |`ocah_axi_vip` `OcahAxiLiteMaster`
+|AXI4-Lite XTRIG CSR |`ocah_axi_vip` `OcahAxiLiteMasterAgent`
 |Boundary scan / STAP loopbacks |OCAH-local scan responder in `env/`
 |IEEE 1687 iJTAG SIB networks |OCAH-local iJTAG SIB model in `env/`
 |OCH CTP protocol |OCAH-local CTP BFM in `env/`
@@ -1590,7 +1590,7 @@ b. RD_PL_DEPTH and WR_PL_DEPTH == their `+SMC_OTP_*+` pipeline-depth parameters.
 
 * JTAG2AXI single-op AXI4 write through the SMC fabric debug bridge (SMC_AXI_SINGLE_OP, IR=0x28)
 * 56-bit address / 64-bit data field formatting consistent with the SMC fabric CAPS TDR (IR=0x27, ADDR_SIZE=56, DATA_SIZE=64)
-* Address/data/wstrb delivery to the `OcahAxiRam` subordinate on `axi_smc_dbg_req_o` / `axi_smc_dbg_resp_i`
+* Address/data/wstrb delivery to the `OcahAxiSlaveAgent` subordinate on `axi_smc_dbg_req_o` / `axi_smc_dbg_resp_i`
 * Op-status transitions through Busy (0b11) and settles at OKAY (0b00) after the write completes
 
 *Test Procedure*:
@@ -1607,7 +1607,7 @@ a. Re-enter Capture-DR/Shift-DR and read the op-status field.
 b. Repeat until status is no longer Busy (0b11).
 c. Verify op = 0b00 (OKAY).
 . Verify the side effect:
-a. Confirm the `OcahAxiRam` subordinate received exactly one AW/W beat at the target address with the expected data and wstrb.
+a. Confirm the `OcahAxiSlaveAgent` subordinate received exactly one AW/W beat at the target address with the expected data and wstrb.
 b. Confirm the captured B-response is OKAY.
 
 *Checkers*:
@@ -1617,10 +1617,10 @@ b. Confirm the captured B-response is OKAY.
 |Checker Type |Description
 |`smc_axi_wr_caps_chk` |CAPS TDR reports bus_type=AXI4, ADDR_SIZE=56, DATA_SIZE=64
 |`smc_axi_wr_status_chk` |Op-status passes through Busy then returns OKAY (0b00)
-|`smc_axi_wr_data_chk` |`OcahAxiRam` subordinate holds the written address/data/wstrb
+|`smc_axi_wr_data_chk` |`OcahAxiSlaveAgent` subordinate holds the written address/data/wstrb
 |===
 
-*Pass Criteria*: The AXI4 single write completes with OKAY status and the `OcahAxiRam` subordinate captures the correct address, data, and wstrb, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The AXI4 single write completes with OKAY status and the `OcahAxiSlaveAgent` subordinate captures the correct address, data, and wstrb, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1673,7 +1673,7 @@ b. Confirm the captured B-response is OKAY.
 
 * A series of JTAG2AXI AXI4 writes through the SMC fabric bridge with monotonically incrementing addresses (base, base{plus}stride, ...)
 * Per-beat op-status reaching OKAY (0b00) before the next address is issued
-* Distinct data pattern per address landing at the correct `OcahAxiRam` location (no address aliasing)
+* Distinct data pattern per address landing at the correct `OcahAxiSlaveAgent` location (no address aliasing)
 * Address advance consistent with the 56-bit address / 64-bit data geometry
 
 *Test Procedure*:
@@ -1687,7 +1687,7 @@ a. Load SMC_AXI_SINGLE_OP (IR=0x28).
 b. For each beat i in 0..N-1: shift in address = base {plus} i*stride, the i-th data word, wstrb = all-ones, op = 0b10 (Write); Update-DR.
 c. After each Update-DR, poll Capture-DR/Shift-DR until not Busy (0b11) and verify op = 0b00 (OKAY).
 . Verify the resulting memory image:
-a. For each address in the series, confirm the `OcahAxiRam` subordinate holds the expected data and wstrb.
+a. For each address in the series, confirm the `OcahAxiSlaveAgent` subordinate holds the expected data and wstrb.
 b. Confirm no writes landed outside the addressed range.
 
 *Checkers*:
@@ -1716,7 +1716,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4 writes through the SMC fabric bridge all targeting one fixed address (no-incr mode)
-* Each beat re-uses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiRam` location
+* Each beat re-uses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiSlaveAgent` location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -1732,7 +1732,7 @@ b. For each beat i in 0..N-1: shift in the same target address, the i-th data wo
 c. After each Update-DR, poll Capture-DR/Shift-DR until not Busy (0b11) and verify op = 0b00 (OKAY).
 . Verify the single location:
 a. Confirm all N writes targeted exactly the one fixed address on `axi_smc_dbg_req_o`.
-b. Confirm the `OcahAxiRam` subordinate holds the last beat's data at that address.
+b. Confirm the `OcahAxiSlaveAgent` subordinate holds the last beat's data at that address.
 
 *Checkers*:
 
@@ -1759,7 +1759,7 @@ b. Confirm the `OcahAxiRam` subordinate holds the last beat's data at that addre
 
 *Test Coverage*:
 
-* An incrementing write series in which selected beats target an error-generating region of the `OcahAxiRam` subordinate
+* An incrementing write series in which selected beats target an error-generating region of the `OcahAxiSlaveAgent` subordinate
 * The non-OKAY op-status path (0b01 SLVERR / 0b10 DECERR) surfacing in the op-status TDR for the erroring beats
 * OKAY beats and erroring beats interleaved, confirming the bridge does not hang or corrupt state after an error
 * Recovery: a subsequent legal write completes with OKAY after an erroring beat
@@ -1768,7 +1768,7 @@ b. Confirm the `OcahAxiRam` subordinate holds the last beat's data at that addre
 
 [arabic]
 . Configure the error stimulus:
-a. Program the `OcahAxiRam` subordinate (or its AXI wrapper) to return a non-OKAY response for a designated error region.
+a. Program the `OcahAxiSlaveAgent` subordinate (or its AXI wrapper) to return a non-OKAY response for a designated error region.
 b. Choose an incrementing series in which some beats fall inside the error region and some are legal.
 . Issue the series and capture per-beat status:
 a. Load SMC_AXI_SINGLE_OP (IR=0x28).
@@ -1806,7 +1806,7 @@ b. Verify legal-beat data landed correctly and no spurious writes resulted from 
 
 * Constrained-random JTAG2AXI AXI4 writes through the SMC fabric bridge over randomized address, data, wstrb, and size
 * Stress of the 56-bit address / 64-bit data field packing across the SINGLE_OP TDR
-* A reference memory mirroring every issued write, compared against the `OcahAxiRam` subordinate at the end
+* A reference memory mirroring every issued write, compared against the `OcahAxiSlaveAgent` subordinate at the end
 * Op-status consistency (OKAY for in-range writes) across a long randomized sequence
 
 *Test Procedure*:
@@ -1820,7 +1820,7 @@ a. Load SMC_AXI_SINGLE_OP (IR=0x28).
 b. For each randomized op: shift in address, data, wstrb, size, op = 0b10 (Write); Update-DR.
 c. Poll Capture-DR/Shift-DR until not Busy (0b11) and verify op = 0b00 (OKAY).
 . Compare end state:
-a. Read back / inspect the `OcahAxiRam` subordinate and compare every written location against the reference memory.
+a. Read back / inspect the `OcahAxiSlaveAgent` subordinate and compare every written location against the reference memory.
 
 *Checkers*:
 
@@ -1855,7 +1855,7 @@ a. Read back / inspect the `OcahAxiRam` subordinate and compare every written lo
 
 [arabic]
 . Baseline write (un-gated):
-a. With both required enables high, issue one SMC_AXI_SINGLE_OP write (IR=0x28, op=0b10) and verify op = 0b00 (OKAY) and the `OcahAxiRam` subordinate captured it.
+a. With both required enables high, issue one SMC_AXI_SINGLE_OP write (IR=0x28, op=0b10) and verify op = 0b00 (OKAY) and the `OcahAxiSlaveAgent` subordinate captured it.
 . Gate via `ap_debug`:
 a. Drive required enable `feat_ctrl_i.ap_debug` = 0.
 b. Load SMC_AXI_SINGLE_OP (IR=0x28) and attempt a write; verify the instruction selects BYPASS (1-bit DR).
@@ -2495,7 +2495,7 @@ a. With all required enables high, verify a legal write again completes with OKA
 * SMC fabric AXI4 single-operation write followed by a read-back of the same address
 * SMC_AXI_SINGLE_OP (IR=0x28) DR field packing: address (56-bit), data, wstrb, size, op
 * Read op encoding `op=0b01` with data=0 and wstrb=0, and busy/terminal status polling
-* Data integrity between the written word and the value returned by `OcahAxiRam`
+* Data integrity between the written word and the value returned by `OcahAxiSlaveAgent`
 
 *Test Procedure*:
 
@@ -2510,7 +2510,7 @@ c. Poll via Capture-DR/Shift-DR until op status leaves Busy (0b11); verify op=0b
 a. Reload SMC_AXI_SINGLE_OP (IR=0x28).
 b. Shift in target address, data=0, wstrb=0, size, op=0b01 (Read); Update-DR.
 c. Poll op status until not Busy (0b11), then read returned data and status from the DR.
-. Compare the returned read word against the previously written value and the `OcahAxiRam` reference.
+. Compare the returned read word against the previously written value and the `OcahAxiSlaveAgent` reference.
 . Verify the terminal op status is 0b00 (OKAY) on both the write and the read.
 
 *Checkers*:
@@ -2519,8 +2519,8 @@ c. Poll op status until not Busy (0b11), then read returned data and status from
 |===
 |Checker Type |Description
 |`smc_axi_single_wr_rd_status_chk` |Write and read both reach op=0b00 (OKAY) after leaving Busy
-|`smc_axi_single_wr_rd_rdata_chk` |Returned read word equals the written value and the `OcahAxiRam` model
-|`smc_axi_single_wr_rd_mem_chk` |`OcahAxiRam` content at the target address matches the issued write
+|`smc_axi_single_wr_rd_rdata_chk` |Returned read word equals the written value and the `OcahAxiSlaveAgent` model
+|`smc_axi_single_wr_rd_mem_chk` |`OcahAxiSlaveAgent` content at the target address matches the issued write
 |===
 
 *Pass Criteria*: The write completes OKAY, the read-back returns the same word with OKAY status, and the memory side effect matches, with zero scoreboard/reference-model errors.
@@ -2540,20 +2540,20 @@ c. Poll op status until not Busy (0b11), then read returned data and status from
 
 * Sequential SMC fabric AXI4 accesses across a block of incrementing addresses
 * SMC_AXI_SINGLE_OP (IR=0x28) reuse across a series with per-op address advance
-* Per-beat read data integrity against an incrementing pattern in `OcahAxiRam`
+* Per-beat read data integrity against an incrementing pattern in `OcahAxiSlaveAgent`
 * Stable OKAY terminal status across the full series with no stuck-Busy condition
 
 *Test Procedure*:
 
 [arabic]
-. Build an incrementing reference pattern in `OcahAxiRam` over a contiguous SMC fabric address block.
+. Build an incrementing reference pattern in `OcahAxiSlaveAgent` over a contiguous SMC fabric address block.
 . Write the series through the SMC fabric AXI4 bridge.
 a. For each address, load SMC_AXI_SINGLE_OP (IR=0x28); shift in address{plus}i*stride, unique data, wstrb=all-ones, op=0b10 (Write); Update-DR.
 b. Poll each op until not Busy; verify op=0b00 (OKAY).
 . Read the series back in the same incrementing order.
 a. For each address, load SMC_AXI_SINGLE_OP (IR=0x28); shift in address{plus}i*stride, data=0, wstrb=0, op=0b01 (Read); Update-DR.
 b. Poll until not Busy; capture returned data and status.
-. Compare every returned beat with the `OcahAxiRam` reference and the written pattern.
+. Compare every returned beat with the `OcahAxiSlaveAgent` reference and the written pattern.
 
 *Checkers*:
 
@@ -2562,7 +2562,7 @@ b. Poll until not Busy; capture returned data and status.
 |Checker Type |Description
 |`smc_axi_series_incr_status_chk` |Every op in the series reaches op=0b00 (OKAY) after Busy clears
 |`smc_axi_series_incr_rdata_chk` |Each returned beat matches the incrementing-address reference value
-|`smc_axi_series_incr_mem_chk` |`OcahAxiRam` content over the block matches the issued write series
+|`smc_axi_series_incr_mem_chk` |`OcahAxiSlaveAgent` content over the block matches the issued write series
 |===
 
 *Pass Criteria*: Every incrementing-address write and read completes OKAY and all per-beat comparisons match the reference memory, with zero scoreboard/reference-model errors.
@@ -2588,7 +2588,7 @@ b. Poll until not Busy; capture returned data and status.
 *Test Procedure*:
 
 [arabic]
-. Choose a single fixed SMC fabric target address and seed it in `OcahAxiRam`.
+. Choose a single fixed SMC fabric target address and seed it in `OcahAxiSlaveAgent`.
 . Write the chosen value once through the SMC fabric AXI4 bridge.
 a. Load SMC_AXI_SINGLE_OP (IR=0x28); shift in the fixed address, write data, wstrb=all-ones, op=0b10 (Write); Update-DR.
 b. Poll until not Busy; verify op=0b00 (OKAY).
@@ -2604,7 +2604,7 @@ b. Poll until not Busy; capture returned data and status.
 |Checker Type |Description
 |`smc_axi_series_no_incr_status_chk` |Every fixed-address op reaches op=0b00 (OKAY) after Busy clears
 |`smc_axi_series_no_incr_rdata_chk` |Every returned beat equals the single repeated expected value
-|`smc_axi_series_no_incr_mem_chk` |`OcahAxiRam` at the fixed address remains the written value across the series
+|`smc_axi_series_no_incr_mem_chk` |`OcahAxiSlaveAgent` at the fixed address remains the written value across the series
 |===
 
 *Pass Criteria*: All fixed-address ops complete OKAY and every returned beat equals the repeated expected value, with zero scoreboard/reference-model errors.
@@ -2630,7 +2630,7 @@ b. Poll until not Busy; capture returned data and status.
 *Test Procedure*:
 
 [arabic]
-. Configure `OcahAxiRam` (or its error wrapper) so a subset of the incrementing block returns SLVERR/DECERR.
+. Configure `OcahAxiSlaveAgent` (or its error wrapper) so a subset of the incrementing block returns SLVERR/DECERR.
 . Issue the incrementing read series through the SMC fabric AXI4 bridge.
 a. For each address, load SMC_AXI_SINGLE_OP (IR=0x28); shift in address{plus}i*stride, data=0, wstrb=0, op=0b01 (Read); Update-DR.
 b. Poll until not Busy; capture returned data and status per op.
@@ -2645,7 +2645,7 @@ b. Poll until not Busy; capture returned data and status per op.
 |Checker Type |Description
 |`smc_axi_incr_error_status_chk` |Error-region ops report the expected SLVERR/DECERR op code
 |`smc_axi_incr_error_rdata_chk` |Good-region beats match the reference; error beats are not mistaken for valid data
-|`smc_axi_incr_error_mem_chk` |`OcahAxiRam` good-region content matches expectations
+|`smc_axi_incr_error_mem_chk` |`OcahAxiSlaveAgent` good-region content matches expectations
 |`smc_axi_incr_error_robustness_chk` |Bridge recovers and a post-error legal read completes OKAY
 |===
 
@@ -2672,12 +2672,12 @@ b. Poll until not Busy; capture returned data and status per op.
 *Test Procedure*:
 
 [arabic]
-. Preload `OcahAxiRam` with a randomized reference image over the SMC fabric read window.
+. Preload `OcahAxiSlaveAgent` with a randomized reference image over the SMC fabric read window.
 . Generate a constrained-random sequence of in-range read addresses (and legal sizes).
 . Issue each randomized read through the SMC fabric AXI4 bridge.
 a. Load SMC_AXI_SINGLE_OP (IR=0x28); shift in the random address, data=0, wstrb=0, size, op=0b01 (Read); Update-DR.
 b. Poll op status until not Busy (0b11); capture returned data and status.
-. Compare each returned word with the `OcahAxiRam` reference model at that address.
+. Compare each returned word with the `OcahAxiSlaveAgent` reference model at that address.
 
 *Checkers*:
 
@@ -2685,7 +2685,7 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 |===
 |Checker Type |Description
 |`smc_axi_random_status_chk` |Every randomized read reaches op=0b00 (OKAY) after Busy clears
-|`smc_axi_random_rdata_chk` |Each returned word matches the randomized `OcahAxiRam` reference
+|`smc_axi_random_rdata_chk` |Each returned word matches the randomized `OcahAxiSlaveAgent` reference
 |===
 
 *Pass Criteria*: All randomized reads complete OKAY and every returned word matches the reference model, with zero scoreboard/reference-model errors.
@@ -2710,7 +2710,7 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 *Test Procedure*:
 
 [arabic]
-. Establish a baseline SMC fabric read returning OKAY with expected data from `OcahAxiRam`.
+. Establish a baseline SMC fabric read returning OKAY with expected data from `OcahAxiSlaveAgent`.
 . Drive required enable `feat_ctrl_i.ap_debug=0`; load SMC_AXI_SINGLE_OP (IR=0x28) and attempt a read.
 a. Verify the instruction selects BYPASS (DR length 1 bit) and no AXI transaction issues on `axi_smc_dbg_req_o`.
 . Restore `ap_debug=1`; verify normal read restored.
@@ -3289,7 +3289,7 @@ a. Verify the instruction selects BYPASS (DR length 1 bit) and no AXI-Lite trans
 *Test Procedure*:
 
 [arabic]
-. Configure the `ocah_axi_vip` AXI4 subordinate (OcahAxiRam) to return SLVERR or DECERR on writes to the chosen error region.
+. Configure the `ocah_axi_vip` AXI4 subordinate (OcahAxiSlaveAgent) to return SLVERR or DECERR on writes to the chosen error region.
 . Load SMC_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x28):
 a. Shift in the error-region target address, write data, wstrb = all-ones, size, op = 0b10 (Write).
 b. Update-DR to launch the AXI4 transaction on `axi_smc_dbg_req_o`.
@@ -5283,7 +5283,7 @@ b. Verify the STAP TAP control output drives TMS=0 (parked low toward RTI).
 *Test Procedure*:
 
 [arabic]
-. Configure CTP[0] via `OcahAxiLiteMaster`: CONFIG.MODE=0 (Wire-OR), CONFIG.INVERT=0, STRETCH_MULT=0x000F (16 clocks).
+. Configure CTP[0] via `OcahAxiLiteMasterAgent`: CONFIG.MODE=0 (Wire-OR), CONFIG.INVERT=0, STRETCH_MULT=0x000F (16 clocks).
 . Drive a single-cycle internal cross-trigger request to CTP[0] (via CTM routing).
 a. Observe CT_Req_out on the CTP BFM; verify it asserts and remains asserted for exactly (STRETCH_MULT{plus}1) clock cycles.
 b. Read CTP[0] STATUS; verify BUSY=1 while the stretched pulse is active and BUSY=0 after it completes.
@@ -5325,7 +5325,7 @@ a. Verify the input is synchronized to `clk_i` and the resulting internal cross-
 *Test Procedure*:
 
 [arabic]
-. Configure CTP[0] via `OcahAxiLiteMaster`: CONFIG.MODE=1 (Point-to-Point), CONFIG.INVERT=0.
+. Configure CTP[0] via `OcahAxiLiteMasterAgent`: CONFIG.MODE=1 (Point-to-Point), CONFIG.INVERT=0.
 . Drive an internal cross-trigger request to CTP[0] (via CTM routing).
 a. Verify CT_Req_out asserts on the CTP BFM.
 b. Drive CT_Ack_in from the CTP BFM (simulate the external responder).
@@ -5373,7 +5373,7 @@ b. Verify the internal cross-trigger is delivered to the programmed CTM destinat
 a. Stall the external CT_Ack_in on the CTP BFM to simulate a deadlock.
 b. Read STATUS; verify BUSY=1 (handshake stuck).
 . Recover via CONFIG.RESET.
-a. Write CONFIG.RESET=1 via `OcahAxiLiteMaster`.
+a. Write CONFIG.RESET=1 via `OcahAxiLiteMasterAgent`.
 b. Verify the handshake is force-cleared: STATUS.BUSY=0 and CT_Req_out deasserts.
 c. Write CONFIG.RESET=0 to release; verify CTP returns to normal operation and a new handshake can proceed to completion.
 . Assert system reset (`rst_n_i`).
@@ -5418,7 +5418,7 @@ b. Verify no spurious GPIO toggles occur during the reset window.
 . For N iterations (e.g., 20):
 a. Randomly select a CTP index.
 b. Randomly choose a legal configuration: MODE (0/1), INVERT (0/1), STRETCH_MULT (random 16-bit).
-c. Write CONFIG and STRETCH_MULT via `OcahAxiLiteMaster`.
+c. Write CONFIG and STRETCH_MULT via `OcahAxiLiteMasterAgent`.
 d. Drive a cross-trigger event (internal via CTM routing or external via the CTP BFM).
 e. Verify behavior matches the reference model for the configured mode and settings.
 f. Verify INVERT correctly inverts the GPIO signal polarity.
@@ -5460,7 +5460,7 @@ f. Verify INVERT correctly inverts the GPIO signal polarity.
 [arabic]
 . Bring the XTRIG CSR path to idle after reset and disable all CTP routing.
 . Walk every CTP CSR field with deterministic values.
-a. Drive full-word and per-byte byte-enable writes through `OcahAxiLiteMaster` to exercise the regblock byte-enable / masked-write conditions.
+a. Drive full-word and per-byte byte-enable writes through `OcahAxiLiteMasterAgent` to exercise the regblock byte-enable / masked-write conditions.
 b. Cover single-bit, all-ones, and reserved-bit patterns per field.
 . Read back each write and verify the defined field reflects the programmed value and that reserved bits behave as specified.
 . Verify no CTP CSR aliases another (each offset is independent) and that the resulting routing state matches the reference model.
@@ -5502,7 +5502,7 @@ b. Cover single-bit, all-ones, and reserved-bit patterns per field.
 [arabic]
 . Disable all CTM/CTP routing and idle the CSR path after reset.
 . Sweep each destination port selection deterministically.
-a. Program one destination-port mask at a time via `OcahAxiLiteMaster`.
+a. Program one destination-port mask at a time via `OcahAxiLiteMasterAgent`.
 b. Drive a single source trigger via CTM routing.
 c. Observe the CTP/CTM BFM outputs and verify exactly the programmed destination toggles while all others remain idle.
 d. Exercise the internal CT ack toggle for that destination.
@@ -5544,7 +5544,7 @@ d. Exercise the internal CT ack toggle for that destination.
 
 [arabic]
 . Record, in the test header, the integration rationale that the XTRIG generated-regblock local stall (back-pressure) paths are expected to be structurally unreachable in this DTP integration because the upstream AXI-Lite path always presents the regblock with a ready interface; if confirmed, they are resolved by a documented waiver rather than additional stimulus.
-. Exercise representative XTRIG CSR writes and reads through `OcahAxiLiteMaster` to confirm the reachable accepted-access path.
+. Exercise representative XTRIG CSR writes and reads through `OcahAxiLiteMasterAgent` to confirm the reachable accepted-access path.
 a. Verify each write/read completes without corruption.
 b. Verify no trigger state changes until the access is accepted by the regblock.
 . Capture the XTRIG monitor trace as supporting evidence that the local stall condition is not asserted under the exercised stimulus, to back the waiver entry.
@@ -5709,7 +5709,7 @@ a. Verify ARVALID remains asserted and ARADDR remains stable while ARREADY is lo
 *Test Procedure*:
 
 [arabic]
-. Program the multicast route via `OcahAxiLiteMaster`:
+. Program the multicast route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with multiple CTP destination bits set (e.g. bits 0, 5, 16).
 b. Read the register back and confirm the multicast mask matches the written value.
 . Drive a cross-trigger request on the CLA source via the OCAH-local CTM BFM.
@@ -5755,7 +5755,7 @@ b. Pulse both sources and verify the overlapped destination ORs the contribution
 *Test Procedure*:
 
 [arabic]
-. Program the multicast route via `OcahAxiLiteMaster`:
+. Program the multicast route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with multiple CLA destination bits set.
 b. Read the register back and confirm the multicast mask matches.
 . Drive a cross-trigger request on the external CTP source via the OCAH-local CTP BFM.
@@ -5799,7 +5799,7 @@ b. Verify non-selected CLA destinations remain quiet.
 *Test Procedure*:
 
 [arabic]
-. Program the intra-CLA multicast route via `OcahAxiLiteMaster`:
+. Program the intra-CLA multicast route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with several CLA destination bits set.
 b. Read the register back and confirm the mask matches.
 . Pulse the source CLA via the OCAH-local CTM BFM.
@@ -5843,7 +5843,7 @@ b. Verify the routing mask behavior: non-selected CLA channels stay idle and the
 *Test Procedure*:
 
 [arabic]
-. Program the inter-CTP multicast route via `OcahAxiLiteMaster`:
+. Program the inter-CTP multicast route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with several CTP destination bits set.
 b. Read the register back and confirm the mask matches.
 . Pulse the source CTP via the OCAH-local CTP BFM.
@@ -5887,7 +5887,7 @@ c. Verify no feedback loop re-triggers the source.
 *Test Procedure*:
 
 [arabic]
-. Program the point-to-point route via `OcahAxiLiteMaster`:
+. Program the point-to-point route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << ctp_dst)+` so a single CTP destination bit is set.
 b. Read the register back and confirm only the one destination bit is set.
 . Drive a cross-trigger request on the CLA source via the OCAH-local CTM BFM.
@@ -5929,7 +5929,7 @@ b. Verify no other destination port observes the request.
 *Test Procedure*:
 
 [arabic]
-. Program the point-to-point route via `OcahAxiLiteMaster`:
+. Program the point-to-point route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << cla_dst)+` so a single CLA destination bit is set.
 b. Read the register back and confirm only the one destination bit is set.
 . Drive a cross-trigger request on the CTP source via the OCAH-local CTP BFM.
@@ -5971,7 +5971,7 @@ b. Verify no other destination observes the request.
 *Test Procedure*:
 
 [arabic]
-. Program the intra-CLA point-to-point route via `OcahAxiLiteMaster`:
+. Program the intra-CLA point-to-point route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << cla_dst)+` so a single CLA destination bit is set.
 b. Read the register back and confirm only the one destination bit is set.
 . Drive the source CLA request via the OCAH-local CTM BFM.
@@ -6013,7 +6013,7 @@ b. Verify no other CLA channel observes the request and the source is not fed ba
 *Test Procedure*:
 
 [arabic]
-. Program the inter-CTP point-to-point route via `OcahAxiLiteMaster`:
+. Program the inter-CTP point-to-point route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << ctp_dst)+` so a single CTP destination bit is set.
 b. Read the register back and confirm only the one destination bit is set.
 . Drive the source CTP request via the OCAH-local CTP BFM.
@@ -6056,7 +6056,7 @@ b. Verify no other CTP port observes the request and no feedback loop re-trigger
 
 [arabic]
 . Establish pre-reset wire-OR state:
-a. Program one or more `+CT_SRC[N]_CONFIG_0+` with multi-bit `CT_DST_SELECT` masks via `OcahAxiLiteMaster`.
+a. Program one or more `+CT_SRC[N]_CONFIG_0+` with multi-bit `CT_DST_SELECT` masks via `OcahAxiLiteMasterAgent`.
 b. Drive source pulses and confirm the multicast destinations respond.
 . Assert system reset (`rst_n_i`) while wire-OR routes are active, then wait for reset deassertion.
 . Verify clearing and quiescence:
@@ -6098,7 +6098,7 @@ b. Confirm the OCAH-local CTM/CTP monitors observe no spurious trigger on any de
 
 [arabic]
 . Establish pre-reset P2P state:
-a. Program one or more `+CT_SRC[N]_CONFIG_0+` with single-bit `CT_DST_SELECT` masks via `OcahAxiLiteMaster`.
+a. Program one or more `+CT_SRC[N]_CONFIG_0+` with single-bit `CT_DST_SELECT` masks via `OcahAxiLiteMasterAgent`.
 b. Start a point-to-point handshake on a configured source.
 . Assert system reset (`rst_n_i`) mid-handshake, then wait for deassertion.
 . Verify clearing and quiescence:
@@ -6140,7 +6140,7 @@ b. Confirm the in-flight handshake state is cleared and the monitors observe no 
 
 [arabic]
 . Establish a mixed pre-reset configuration:
-a. Program some sources with multi-bit (wire-OR) `CT_DST_SELECT` masks and others with single-bit (P2P) masks via `OcahAxiLiteMaster`.
+a. Program some sources with multi-bit (wire-OR) `CT_DST_SELECT` masks and others with single-bit (P2P) masks via `OcahAxiLiteMasterAgent`.
 b. Drive source pulses across both modes and confirm correct routing before reset.
 . Assert system reset (`rst_n_i`) while both route classes are active, then wait for deassertion.
 . Verify clearing and quiescence:
@@ -6184,7 +6184,7 @@ b. Confirm the monitors observe no spurious trigger on any destination during or
 [arabic]
 . For N iterations (e.g. 20):
 a. Generate random `CT_DST_SELECT` values for all CTM sources, mixing single-bit and multi-bit masks across CLA and CTP destinations.
-b. Write all `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back to confirm the programmed mask.
+b. Write all `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back to confirm the programmed mask.
 c. Drive random cross-trigger requests on random source ports via the OCAH-local CTM/CTP BFMs with randomized timing.
 d. Verify each request appears at exactly its configured destinations and that overlapping destinations OR correctly.
 e. Confirm no residual routing carries over from the previous iteration's configuration.
@@ -6225,7 +6225,7 @@ e. Confirm no residual routing carries over from the previous iteration's config
 [arabic]
 . For N iterations:
 a. Generate random `CT_DST_SELECT` values constrained to two or more set bits per active source (wire-OR-only).
-b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back.
+b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
 c. Drive random source pulses via the OCAH-local CTM/CTP BFMs.
 d. Verify each pulse asserts every selected destination simultaneously and the routing mask is honored.
 e. Where random masks overlap, verify the shared destination ORs the contributing sources; verify non-selected destinations stay idle.
@@ -6266,7 +6266,7 @@ e. Where random masks overlap, verify the shared destination ORs the contributin
 [arabic]
 . For N iterations:
 a. Generate random `CT_DST_SELECT` values constrained to exactly one set bit per active source (P2P-only).
-b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back to confirm a single destination bit is set.
+b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back to confirm a single destination bit is set.
 c. Drive randomized handshakes on random source ports via the OCAH-local CTM/CTP BFMs.
 d. Verify each request/ack completes only at its configured single destination.
 e. Verify no other route observes the request (no cross-route leakage).
@@ -6306,7 +6306,7 @@ e. Verify no other route observes the request (no cross-route leakage).
 [arabic]
 . For N iterations:
 a. Randomize `CT_DST_SELECT` masks for CLA sources, with destination bits restricted to CTP ports.
-b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back.
+b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
 c. Drive CLA triggers via the OCAH-local CTM BFM with randomized timing.
 d. Observe CTP destinations via the OCAH-local CTP monitor and verify the selected CTP ports respond.
 e. Sample the source x destination coverage of the exercised CLA-to-CTP combinations.
@@ -6346,7 +6346,7 @@ e. Sample the source x destination coverage of the exercised CLA-to-CTP combinat
 [arabic]
 . For N iterations:
 a. Randomize `CT_DST_SELECT` masks for CTP sources, with destination bits restricted to CLA channels.
-b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back.
+b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
 c. Drive CTP triggers via the OCAH-local CTP BFM with randomized timing.
 d. Observe CLA destinations via the OCAH-local CTM monitor and verify the selected CLA channels respond.
 e. Sample the source x destination coverage of the exercised CTP-to-CLA combinations.
@@ -6385,7 +6385,7 @@ e. Sample the source x destination coverage of the exercised CTP-to-CLA combinat
 
 [arabic]
 . Bring the XTRIG CSR path to idle and disable all CTM source routing.
-. Sweep the CTM routing CSR fields deterministically via `OcahAxiLiteMaster`:
+. Sweep the CTM routing CSR fields deterministically via `OcahAxiLiteMasterAgent`:
 a. Apply full-word writes, then per-byte-enable writes, then masked writes to `+CT_SRC[N]_CONFIG_0.CT_DST_SELECT+` to exercise each generated byte-enable and masked-write condition.
 b. Read back after each write and compare the defined destination-select field against the expected value.
 c. Confirm reserved bits remain zero and are not disturbed by adjacent writes.
@@ -6426,7 +6426,7 @@ c. Confirm reserved bits remain zero and are not disturbed by adjacent writes.
 
 [arabic]
 . Assert power-on reset, bring the XTRIG CSR path to idle, and disable all CTM source routing.
-. For every defined CTM source index, via `OcahAxiLiteMaster`:
+. For every defined CTM source index, via `OcahAxiLiteMasterAgent`:
 a. Write a single-destination `CT_DST_SELECT` mask, read back, and compare the defined destination-select field.
 b. Write a paired-destination mask, read back, and compare.
 c. Write an inverted-destination mask, read back, and compare.
