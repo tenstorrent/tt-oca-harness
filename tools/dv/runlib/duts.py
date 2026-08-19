@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """DUT registry + directory-convention resolution for the native DV runner.
 
 A run selects its device-under-test with ``--dut <name>``. The name is resolved against

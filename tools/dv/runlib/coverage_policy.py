@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Checked-in coverage closure policy loading, validation, and application."""
 
 from __future__ import annotations
