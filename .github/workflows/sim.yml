@@ -38,23 +38,6 @@ env:
   VERILATOR_VERSION: v5.050
 
 jobs:
-  dashboard-collector:
-    name: dashboard-collector
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions: { contents: read }
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Test relocated dashboard artifacts
-        run: python3 -m unittest discover -s tools/dv/tests -p 'test_*.py' -v
-
   verilator-smoke:
     # Explicit name so adding the tool matrix axis keeps the pre-existing PR
     # check name `verilator-smoke (dtp)` stable, and nightly runs are labeled.

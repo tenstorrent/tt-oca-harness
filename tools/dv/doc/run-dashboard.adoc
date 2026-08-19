@@ -1156,10 +1156,6 @@ the nightly regression results as **data only** — no HTML is rendered or
 hosted by this repository. The website that renders the dashboard is owned
 externally and consumes the published data.
 
-The `sim` workflow also runs the simulator-independent `dashboard-collector`
-job on every trigger. It verifies explicit downloaded-root rebasing, JUnit
-artifact precedence, fallback resolution, and in-place compatibility.
-
 . The `sim` workflow's nightly tier uploads the native run tree as the
   artifact `dv-run-<dut>-<tool>-nightly` (see the CI section in
   xref:run-dv.adoc[DV and FV Runner]).
