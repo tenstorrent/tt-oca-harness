@@ -38,6 +38,23 @@ env:
   VERILATOR_VERSION: v5.050
 
 jobs:
+  runner-checkpoints:
+    name: runner-checkpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Test interrupted-run checkpoints
+        run: python3 -m unittest discover -s tools/dv/tests -p 'test_*.py' -v
+
   verilator-smoke:
     # Explicit name so adding the tool matrix axis keeps the pre-existing PR
     # check name `verilator-smoke (dtp)` stable, and nightly runs are labeled.
@@ -189,7 +206,7 @@ jobs:
           # -j2 on the smoke tier. Pin it to the runner's core count so the model
           # build uses the whole machine, and so it scales automatically if this job
           # ever moves to a larger runner.
-          python3 tools/dv/run_dv.py \
+          exec python3 tools/dv/run_dv.py \
             --dut ${{ matrix.dut }} \
             --items "$items" \
             --tool ${{ matrix.tool }} \

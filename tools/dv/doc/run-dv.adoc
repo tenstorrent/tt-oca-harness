@@ -886,6 +886,29 @@ keys, or authentication data.
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
 
+=== Interrupted-run checkpoints
+
+Before executing the first planned leaf, the runner writes an atomic
+schema-version-1 checkpoint to the run-level `result.json`. The checkpoint has
+status `UNKNOWN`, so automation cannot mistake an incomplete run for a pass.
+It is replaced atomically after every completed leaf. An explicit `--result`
+copy follows the same lifecycle.
+
+The additive `progress` object records a stable identity for every planned leaf
+(`id`, stage, item, target, and seed) and partitions those identities into
+`completed`, `active`, `missing`, and `interrupted` lists with matching counts.
+Its `state`, `sequence`, and `updated_at` fields distinguish successive
+snapshots. A running checkpoint uses `active`; a handled interruption moves
+those identities to `interrupted`.
+
+SIGINT and SIGTERM produce an `ERROR` checkpoint with an `interruption` object
+that records the received signal and reason. External supervisors may use
+SIGTERM for either cancellation or a wall-clock timeout, so the runner records
+the signal rather than guessing which policy sent it. If termination prevents
+the final handler from running, the most recent atomic `UNKNOWN` checkpoint
+still preserves all completed leaves. Normal completion replaces all
+checkpoint-only fields with the ordinary final aggregate.
+
 === Status and exit codes
 
 [cols="<2,<2,<5",options="header"]
@@ -901,6 +924,10 @@ threshold failed.
 |`SKIP` |n/a |A scheduler leaf was intentionally skipped; not a run-level status.
 |===
 
+A handled SIGINT or SIGTERM checkpoint records the `ERROR` status code (`2`)
+in JSON, while the runner process exits with the conventional
+`128 + signal number` value (`130` or `143`).
+
 Run-level aggregation uses:
 
 [source,text]
@@ -915,8 +942,11 @@ ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
 
 == Continuous integration
 
-The `sim` GitHub workflow (`.github/workflows/sim.yml`) runs the runner on
-GitHub-hosted runners in two tiers:
+The `sim` GitHub workflow (`.github/workflows/sim.yml`) runs the
+simulator-independent `runner-checkpoints` job,
+which exercises atomic refresh, normal completion, SIGINT cancellation,
+SIGTERM timeout termination, and dashboard collection.
+Its simulator jobs run on GitHub-hosted runners in two tiers:
 
 [cols="<2,<4,<5",options="header"]
 |===
