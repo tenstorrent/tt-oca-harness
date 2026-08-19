@@ -320,15 +320,25 @@ downstream logic during test.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">LOCK</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">96</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lock control for each fuse field. There are
-two lock bits for each of the 32 fields. When write-locked, the
-corresponding shadow register is not writable. When read-locked, neither
-software nor JTAG can read the corresponding shadow register or fuse field. The
-fuse-sensing FSM is <em>always</em> able to read the fuses in order to populate
-the shadow registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock control for each fuse field. The 96-bit lock
+field is split across two RDL registers because PeakRDL requires power-of-2
+<code>regwidth</code>; all 96 bits are physically fused and mapped 1-to-1 to OTP words 0–2:</p>
+<p class="tableblock">* <code>LOCKS</code> (64-bit <code>@0x0</code>): slots 0–31 — two bits per field, write-lock at bit 2n, read-lock at 2n+1
+* <code>LOCKS_SPARE</code> (32-bit <code>@0x8</code>): slots 32–39 in bits [15:0]; slots 40–47 (unassigned) in bits [31:16]</p>
+<p class="tableblock">Firmware reads the complete 96-bit lock state as three consecutive 32-bit APB words.
+There are 40 lockable fields (slots 0–39). When write-locked, the corresponding
+shadow register is not writable. When read-locked, neither software nor JTAG can
+read the corresponding shadow register or fuse field. The fuse-sensing FSM is
+<em>always</em> able to read the fuses in order to populate the shadow registers.</p>
+<p class="tableblock">Per-field lock slots (v0.5.22):
+[none]
+* Slots  0–28: original fields (LC_STATE through SIP_PUBK_PQC_HASH1) — LOCKS[57:0]
+* Slots 29–31: v0.5.22 identity fuses (SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID) — LOCKS[63:58]
+* Slots 32–39: v0.5.22 spare fields (spare0–spare7) — LOCKS_SPARE[15:0]
+* Slots 40–47: unassigned — LOCKS_SPARE[31:16] (reserved for future fields)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">LC_STATE</p></td>
@@ -666,23 +676,104 @@ usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].</p></td>
 SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">reserved4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_CHIPLET_ID</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">30</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2048</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2048 bit reserved field with lock bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-owner chiplet public identity fuse
+(v0.5.22). Personalization input for the Key Manager identity root. Public;
+no read protection required. Lock slot 29 in LOCKS.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">reserved5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_SIP_ID</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">31</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">800</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">800 bit reserved field with lock bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SiP-owner public identity fuse (v0.5.22).
+Personalization input for the Key Manager identity root. Public; no read
+protection required. Lock slot 30 in LOCKS.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_SYS_ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System-owner public identity fuse (v0.5.22).
+Personalization input for the Key Manager identity root. Public; no read
+protection required. Lock slot 31 in LOCKS.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">33</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 0 for future use (v0.5.22). Lock slot 32 in LOCKS_SPARE[1:0].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">34</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 1 for future use (v0.5.22). Lock slot 33 in LOCKS_SPARE[3:2].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">35</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 2 for future use (v0.5.22). Lock slot 34 in LOCKS_SPARE[5:4].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 3 for future use (v0.5.22). Lock slot 35 in LOCKS_SPARE[7:6].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">37</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 4 for future use (v0.5.22). Lock slot 36 in LOCKS_SPARE[9:8].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">38</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 5 for future use (v0.5.22). Lock slot 37 in LOCKS_SPARE[11:10].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">39</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 6 for future use (v0.5.22). Lock slot 38 in LOCKS_SPARE[13:12].</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 7 for future use (v0.5.22). Lock slot 39 in LOCKS_SPARE[15:14].</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The fuse map is exactly 8192 bits ending at <code>0x400</code> (1024 bytes, 256 × 32-bit words).</p>
+</div>
 <div class="paragraph">
 <p>The JTAG_ID field has been removed from the fuse map and will be implemented as a top-level port.</p>
 </div>
@@ -711,7 +802,7 @@ fail signature verification and cannot be loaded.</p>
 <p>The eFuse subsystem in the SEP is implemented by <code>sep_efuse_wrapper</code>, which is instantiated inside <code>sep_crypto</code>. The wrapper converts the SEP-side AXI bus (64-bit) to AXI-Lite (32-bit) through an <code>axi_dw_converter</code> and <code>axi_to_axi_lite</code> bridge, and then connects to the shared <code>efuse_interface_controller</code> IP from <code>hw/periph/efuse/</code>. A separate JTAG AXI-Lite port provides debug and manufacturing access.</p>
 </div>
 <div class="paragraph">
-<p>The <code>efuse_interface_controller</code> is instantiated with the <code>HAS_LC_STATE</code> parameter set to <code>1&#8217;b1</code>. When this parameter is asserted, the controller implements special handling for the <code>LC_STATE</code> fuse field: the shadow register output for <code>LC_STATE</code> is driven to <code>4&#8217;b1111</code> (invalid) until fuse sensing completes, preventing downstream logic from acting on an incorrect life-cycle state during the boot sequence. The life-cycle state width is 4 bits (<code>sep_pkg::LC_STATE_BIT_WIDTH</code>), starting at bit position 64 in the shadow register map (<code>sep_pkg::LC_STATE_BIT_POSITION</code>).</p>
+<p>The <code>efuse_interface_controller</code> is instantiated with the <code>HAS_LC_STATE</code> parameter set to <code>1&#8217;b1</code>. When this parameter is asserted, the controller implements special handling for the <code>LC_STATE</code> fuse field: the shadow register output for <code>LC_STATE</code> is driven to <code>4&#8217;b1111</code> (invalid) until fuse sensing completes, preventing downstream logic from acting on an incorrect life-cycle state during the boot sequence. The life-cycle state width is 4 bits (<code>sep_pkg::LC_STATE_BIT_WIDTH</code>), starting at bit position 96 in the shadow register map (<code>sep_pkg::LC_STATE_BIT_POSITION</code>).</p>
 </div>
 <div class="paragraph">
 <p>After sensing, the shadow register map (<code>sep_efuse_pkg::efuse_map_t</code>) is exposed to the <code>sep_lifecycle_ctrl</code> module. The lifecycle controller decodes the differentially-encoded <code>LC_STATE</code> field using <code>prim_diff_decode_multi</code> and derives feature control vectors from the <code>SIP_DIS</code> and <code>SYS_DIS</code> fields. It also generates two demotion state outputs (<code>lcc_demote_state_1_o</code>, <code>lcc_demote_state_2_o</code>) through differential encoders.</p>
