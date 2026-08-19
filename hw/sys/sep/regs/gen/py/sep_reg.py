@@ -577,86 +577,104 @@ SEP_EFUSE_MAP_REG_MAP_BASE_ADDR = 0x10930000
 SEP_EFUSE_MAP_REG_MAP_SIZE = 0x00000400
 SEP_EFUSE_MAP_LOCKS_REG_OFFSET = 0x00000000
 SEP_EFUSE_MAP_LOCKS_REG_ADDR = 0x10930000
-SEP_EFUSE_MAP_LC_STATE_REG_OFFSET = 0x00000008
-SEP_EFUSE_MAP_LC_STATE_REG_ADDR = 0x10930008
-SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET = 0x0000000C
-SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR = 0x1093000C
-SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET = 0x00000010
-SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR = 0x10930010
-SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET = 0x00000014
-SEP_EFUSE_MAP_SIP_DIS_REG_ADDR = 0x10930014
-SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET = 0x0000001C
-SEP_EFUSE_MAP_SYS_DIS_REG_ADDR = 0x1093001C
-SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET = 0x00000024
-SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR = 0x10930024
-SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET = 0x00000044
-SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR = 0x10930044
-SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET = 0x00000064
-SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR = 0x10930064
-SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET = 0x00000084
-SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR = 0x10930084
-SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET = 0x00000088
-SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR = 0x10930088
-SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET = 0x000000A8
-SEP_EFUSE_MAP_BL2_VERSION_REG_ADDR = 0x109300A8
-SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET = 0x000000C8
-SEP_EFUSE_MAP_CHIPLET_UID_REG_ADDR = 0x109300C8
-SEP_EFUSE_MAP_SIP_PUBK_DIGEST_REG_OFFSET = 0x000000E8
-SEP_EFUSE_MAP_SIP_PUBK_DIGEST_REG_ADDR = 0x109300E8
-SEP_EFUSE_MAP_SIP_UID_REG_OFFSET = 0x00000108
-SEP_EFUSE_MAP_SIP_UID_REG_ADDR = 0x10930108
-SEP_EFUSE_MAP_SYS_PUBK_DIGEST_REG_OFFSET = 0x00000128
-SEP_EFUSE_MAP_SYS_PUBK_DIGEST_REG_ADDR = 0x10930128
-SEP_EFUSE_MAP_SYS_UID_REG_OFFSET = 0x00000148
-SEP_EFUSE_MAP_SYS_UID_REG_ADDR = 0x10930148
-SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET = 0x00000168
-SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR = 0x10930168
-SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_OFFSET = 0x0000016C
-SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_ADDR = 0x1093016C
-SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_OFFSET = 0x00000170
-SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_ADDR = 0x10930170
-SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_OFFSET = 0x00000174
-SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_ADDR = 0x10930174
-SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_OFFSET = 0x00000178
-SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_ADDR = 0x10930178
-SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_OFFSET = 0x0000017C
-SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_ADDR = 0x1093017C
-SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_OFFSET = 0x00000180
-SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_ADDR = 0x10930180
-SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_OFFSET = 0x00000184
-SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_ADDR = 0x10930184
-SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_OFFSET = 0x00000188
-SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_ADDR = 0x10930188
-SEP_EFUSE_MAP_SPI_PHY_MISC_REG_OFFSET = 0x0000018C
-SEP_EFUSE_MAP_SPI_PHY_MISC_REG_ADDR = 0x1093018C
-SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_OFFSET = 0x00000190
-SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_ADDR = 0x10930190
-SEP_EFUSE_MAP_PUBLIC_KEY_0_REG_OFFSET = 0x00000194
-SEP_EFUSE_MAP_PUBLIC_KEY_0_REG_ADDR = 0x10930194
-SEP_EFUSE_MAP_PUBLIC_KEY_1_REG_OFFSET = 0x000001B4
-SEP_EFUSE_MAP_PUBLIC_KEY_1_REG_ADDR = 0x109301B4
-SEP_EFUSE_MAP_RESERVED_0_REG_OFFSET = 0x000001D4
-SEP_EFUSE_MAP_RESERVED_0_REG_ADDR = 0x109301D4
-SEP_EFUSE_MAP_RESERVED_1_REG_OFFSET = 0x00000214
-SEP_EFUSE_MAP_RESERVED_1_REG_ADDR = 0x10930214
-SEP_EFUSE_MAP_RESERVED_2_REG_OFFSET = 0x00000254
-SEP_EFUSE_MAP_RESERVED_2_REG_ADDR = 0x10930254
-SEP_EFUSE_MAP_RESERVED_3_REG_OFFSET = 0x00000294
-SEP_EFUSE_MAP_RESERVED_3_REG_ADDR = 0x10930294
-SEP_EFUSE_MAP_RESERVED_4_REG_OFFSET = 0x000002D4
-SEP_EFUSE_MAP_RESERVED_4_REG_ADDR = 0x109302D4
-SEP_EFUSE_MAP_RESERVED_5_REG_OFFSET = 0x00000314
-SEP_EFUSE_MAP_RESERVED_5_REG_ADDR = 0x10930314
-SEP_EFUSE_MAP_RESERVED_6_REG_OFFSET = 0x00000354
-SEP_EFUSE_MAP_RESERVED_6_REG_ADDR = 0x10930354
-SEP_EFUSE_MAP_RESERVED_7_REG_OFFSET = 0x00000394
-SEP_EFUSE_MAP_RESERVED_7_REG_ADDR = 0x10930394
-SEP_EFUSE_MAP_RESERVED_LAST_256_REG_OFFSET = 0x000003D4
-SEP_EFUSE_MAP_RESERVED_LAST_256_REG_ADDR = 0x109303D4
-SEP_EFUSE_MAP_RESERVED_LAST_64_REG_OFFSET = 0x000003F4
-SEP_EFUSE_MAP_RESERVED_LAST_64_REG_ADDR = 0x109303F4
-SEP_EFUSE_MAP_RESERVED_LAST_32_REG_OFFSET = 0x000003FC
-SEP_EFUSE_MAP_RESERVED_LAST_32_REG_ADDR = 0x109303FC
+SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET = 0x00000008
+SEP_EFUSE_MAP_LOCKS_SPARE_REG_ADDR = 0x10930008
+SEP_EFUSE_MAP_LC_STATE_REG_OFFSET = 0x0000000C
+SEP_EFUSE_MAP_LC_STATE_REG_ADDR = 0x1093000C
+SEP_EFUSE_MAP_SBOOT_DIS_REG_OFFSET = 0x00000010
+SEP_EFUSE_MAP_SBOOT_DIS_REG_ADDR = 0x10930010
+SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_OFFSET = 0x00000014
+SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_ADDR = 0x10930014
+SEP_EFUSE_MAP_SIP_DIS_REG_OFFSET = 0x00000018
+SEP_EFUSE_MAP_SIP_DIS_REG_ADDR = 0x10930018
+SEP_EFUSE_MAP_SYS_DIS_REG_OFFSET = 0x00000020
+SEP_EFUSE_MAP_SYS_DIS_REG_ADDR = 0x10930020
+SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_OFFSET = 0x00000028
+SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR = 0x10930028
+SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_OFFSET = 0x00000048
+SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR = 0x10930048
+SEP_EFUSE_MAP_CLASS_KEY_REG_OFFSET = 0x00000068
+SEP_EFUSE_MAP_CLASS_KEY_REG_ADDR = 0x10930068
+SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_OFFSET = 0x00000088
+SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_ADDR = 0x10930088
+SEP_EFUSE_MAP_BL1_VERSION_REG_OFFSET = 0x0000008C
+SEP_EFUSE_MAP_BL1_VERSION_REG_ADDR = 0x1093008C
+SEP_EFUSE_MAP_BL2_VERSION_REG_OFFSET = 0x000000AC
+SEP_EFUSE_MAP_BL2_VERSION_REG_ADDR = 0x109300AC
+SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET = 0x000000CC
+SEP_EFUSE_MAP_CHIPLET_UID_REG_ADDR = 0x109300CC
+SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_OFFSET = 0x000000EC
+SEP_EFUSE_MAP_SIP_PUBK_HASH0_REG_ADDR = 0x109300EC
+SEP_EFUSE_MAP_SIP_UID_REG_OFFSET = 0x0000010C
+SEP_EFUSE_MAP_SIP_UID_REG_ADDR = 0x1093010C
+SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_OFFSET = 0x0000012C
+SEP_EFUSE_MAP_SYS_PUBK_HASH_REG_ADDR = 0x1093012C
+SEP_EFUSE_MAP_SYS_UID_REG_OFFSET = 0x0000014C
+SEP_EFUSE_MAP_SYS_UID_REG_ADDR = 0x1093014C
+SEP_EFUSE_MAP_STATUS_RPT_REG_OFFSET = 0x0000016C
+SEP_EFUSE_MAP_STATUS_RPT_REG_ADDR = 0x1093016C
+SEP_EFUSE_MAP_ROM_CTL_REG_OFFSET = 0x00000170
+SEP_EFUSE_MAP_ROM_CTL_REG_ADDR = 0x10930170
+SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_OFFSET = 0x00000174
+SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_ADDR = 0x10930174
+SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_OFFSET = 0x00000178
+SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_ADDR = 0x10930178
+SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_OFFSET = 0x0000017C
+SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_ADDR = 0x1093017C
+SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_OFFSET = 0x00000180
+SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_ADDR = 0x10930180
+SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_OFFSET = 0x00000184
+SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_ADDR = 0x10930184
+SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_OFFSET = 0x00000188
+SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_ADDR = 0x10930188
+SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_OFFSET = 0x0000018C
+SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_ADDR = 0x1093018C
+SEP_EFUSE_MAP_SPI_PHY_MISC_REG_OFFSET = 0x00000190
+SEP_EFUSE_MAP_SPI_PHY_MISC_REG_ADDR = 0x10930190
+SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_OFFSET = 0x00000194
+SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_ADDR = 0x10930194
+SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_OFFSET = 0x00000198
+SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_REG_ADDR = 0x10930198
+SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_OFFSET = 0x000001B8
+SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_REG_ADDR = 0x109301B8
+SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_OFFSET = 0x000001D8
+SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_ADDR = 0x109301D8
+SEP_EFUSE_MAP_REQUIRED_ALGS_REG_OFFSET = 0x000001DC
+SEP_EFUSE_MAP_REQUIRED_ALGS_REG_ADDR = 0x109301DC
+SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_OFFSET = 0x000001E0
+SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH0_REG_ADDR = 0x109301E0
+SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_OFFSET = 0x00000200
+SEP_EFUSE_MAP_CHIPLET_PUBK_PQC_HASH1_REG_ADDR = 0x10930200
+SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_OFFSET = 0x00000220
+SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH0_REG_ADDR = 0x10930220
+SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_OFFSET = 0x00000240
+SEP_EFUSE_MAP_SYS_PUBK_PQC_HASH_REG_ADDR = 0x10930240
+SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_OFFSET = 0x00000260
+SEP_EFUSE_MAP_SIP_PUBK_HASH1_REG_ADDR = 0x10930260
+SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_OFFSET = 0x00000280
+SEP_EFUSE_MAP_SIP_PUBK_PQC_HASH1_REG_ADDR = 0x10930280
+SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_OFFSET = 0x000002A0
+SEP_EFUSE_MAP_SEP_CHIPLET_ID_REG_ADDR = 0x109302A0
+SEP_EFUSE_MAP_SEP_SIP_ID_REG_OFFSET = 0x000002C0
+SEP_EFUSE_MAP_SEP_SIP_ID_REG_ADDR = 0x109302C0
+SEP_EFUSE_MAP_SEP_SYS_ID_REG_OFFSET = 0x000002E0
+SEP_EFUSE_MAP_SEP_SYS_ID_REG_ADDR = 0x109302E0
+SEP_EFUSE_MAP_SPARE0_REG_OFFSET = 0x00000300
+SEP_EFUSE_MAP_SPARE0_REG_ADDR = 0x10930300
+SEP_EFUSE_MAP_SPARE1_REG_OFFSET = 0x00000320
+SEP_EFUSE_MAP_SPARE1_REG_ADDR = 0x10930320
+SEP_EFUSE_MAP_SPARE2_REG_OFFSET = 0x00000340
+SEP_EFUSE_MAP_SPARE2_REG_ADDR = 0x10930340
+SEP_EFUSE_MAP_SPARE3_REG_OFFSET = 0x00000360
+SEP_EFUSE_MAP_SPARE3_REG_ADDR = 0x10930360
+SEP_EFUSE_MAP_SPARE4_REG_OFFSET = 0x00000380
+SEP_EFUSE_MAP_SPARE4_REG_ADDR = 0x10930380
+SEP_EFUSE_MAP_SPARE5_REG_OFFSET = 0x000003A0
+SEP_EFUSE_MAP_SPARE5_REG_ADDR = 0x109303A0
+SEP_EFUSE_MAP_SPARE6_REG_OFFSET = 0x000003C0
+SEP_EFUSE_MAP_SPARE6_REG_ADDR = 0x109303C0
+SEP_EFUSE_MAP_SPARE7_REG_OFFSET = 0x000003E0
+SEP_EFUSE_MAP_SPARE7_REG_ADDR = 0x109303E0
 EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR = 0x10930400
 EFUSE_INTERFACE_CTRL_REG_MAP_SIZE = 0x0000001C
 EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_OFFSET = 0x00000000
@@ -5409,46 +5427,46 @@ class SEP_EFUSE_MAP_LOCKS_reg_t(Structure):
         ('bl2_version_read_lock', c_uint64, 1),
         ('chiplet_uid_write_lock', c_uint64, 1),
         ('chiplet_uid_read_lock', c_uint64, 1),
-        ('sip_pubk_digest_write_lock', c_uint64, 1),
-        ('sip_pubk_digest_read_lock', c_uint64, 1),
+        ('sip_pubk_hash0_write_lock', c_uint64, 1),
+        ('sip_pubk_hash0_read_lock', c_uint64, 1),
         ('sip_uid_write_lock', c_uint64, 1),
         ('sip_uid_read_lock', c_uint64, 1),
-        ('sys_pubk_digest_write_lock', c_uint64, 1),
-        ('sys_pubk_digest_read_lock', c_uint64, 1),
+        ('sys_pubk_hash_write_lock', c_uint64, 1),
+        ('sys_pubk_hash_read_lock', c_uint64, 1),
         ('sys_uid_write_lock', c_uint64, 1),
         ('sys_uid_read_lock', c_uint64, 1),
         ('status_rpt_write_lock', c_uint64, 1),
         ('status_rpt_read_lock', c_uint64, 1),
-        ('sep_rom_ctrl_write_lock', c_uint64, 1),
-        ('sep_rom_ctrl_read_lock', c_uint64, 1),
-        ('sep_spi_ctrl_write_lock', c_uint64, 1),
-        ('sep_spi_ctrl_read_lock', c_uint64, 1),
-        ('sep_public_key_hash_0_write_lock', c_uint64, 1),
-        ('sep_public_key_hash_0_read_lock', c_uint64, 1),
-        ('sep_public_key_hash_1_write_lock', c_uint64, 1),
-        ('sep_public_key_hash_1_read_lock', c_uint64, 1),
-        ('reserved_0_write_lock', c_uint64, 1),
-        ('reserved_0_read_lock', c_uint64, 1),
-        ('reserved_1_write_lock', c_uint64, 1),
-        ('reserved_1_read_lock', c_uint64, 1),
-        ('reserved_2_write_lock', c_uint64, 1),
-        ('reserved_2_read_lock', c_uint64, 1),
-        ('reserved_3_write_lock', c_uint64, 1),
-        ('reserved_3_read_lock', c_uint64, 1),
-        ('reserved_4_write_lock', c_uint64, 1),
-        ('reserved_4_read_lock', c_uint64, 1),
-        ('reserved_5_write_lock', c_uint64, 1),
-        ('reserved_5_read_lock', c_uint64, 1),
-        ('reserved_6_write_lock', c_uint64, 1),
-        ('reserved_6_read_lock', c_uint64, 1),
-        ('reserved_7_write_lock', c_uint64, 1),
-        ('reserved_7_read_lock', c_uint64, 1),
-        ('reserved_last_256_write_lock', c_uint64, 1),
-        ('reserved_last_256_read_lock', c_uint64, 1),
-        ('reserved_last_64_write_lock', c_uint64, 1),
-        ('reserved_last_64_read_lock', c_uint64, 1),
-        ('reserved_last_32_write_lock', c_uint64, 1),
-        ('reserved_last_32_read_lock', c_uint64, 1),
+        ('rom_ctl_write_lock', c_uint64, 1),
+        ('rom_ctl_read_lock', c_uint64, 1),
+        ('spi_config_en_write_lock', c_uint64, 1),
+        ('spi_config_en_read_lock', c_uint64, 1),
+        ('chiplet_pubk_hash0_write_lock', c_uint64, 1),
+        ('chiplet_pubk_hash0_read_lock', c_uint64, 1),
+        ('chiplet_pubk_hash1_write_lock', c_uint64, 1),
+        ('chiplet_pubk_hash1_read_lock', c_uint64, 1),
+        ('required_signers_write_lock', c_uint64, 1),
+        ('required_signers_read_lock', c_uint64, 1),
+        ('required_algs_write_lock', c_uint64, 1),
+        ('required_algs_read_lock', c_uint64, 1),
+        ('chiplet_pubk_pqc_hash0_write_lock', c_uint64, 1),
+        ('chiplet_pubk_pqc_hash0_read_lock', c_uint64, 1),
+        ('chiplet_pubk_pqc_hash1_write_lock', c_uint64, 1),
+        ('chiplet_pubk_pqc_hash1_read_lock', c_uint64, 1),
+        ('sip_pubk_pqc_hash0_write_lock', c_uint64, 1),
+        ('sip_pubk_pqc_hash0_read_lock', c_uint64, 1),
+        ('sys_pubk_pqc_hash_write_lock', c_uint64, 1),
+        ('sys_pubk_pqc_hash_read_lock', c_uint64, 1),
+        ('sip_pubk_hash1_write_lock', c_uint64, 1),
+        ('sip_pubk_hash1_read_lock', c_uint64, 1),
+        ('sip_pubk_pqc_hash1_write_lock', c_uint64, 1),
+        ('sip_pubk_pqc_hash1_read_lock', c_uint64, 1),
+        ('sep_chiplet_id_write_lock', c_uint64, 1),
+        ('sep_chiplet_id_read_lock', c_uint64, 1),
+        ('sep_sip_id_write_lock', c_uint64, 1),
+        ('sep_sip_id_read_lock', c_uint64, 1),
+        ('sep_sys_id_write_lock', c_uint64, 1),
+        ('sep_sys_id_read_lock', c_uint64, 1),
     ]
 
 SEP_EFUSE_MAP_LOCKS_REG_DEFAULT = 0x0000000000000000
@@ -5462,6 +5480,50 @@ class SEP_EFUSE_MAP_LOCKS_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(SEP_EFUSE_MAP_LOCKS_reg_u, self).__init__(*args, **kwargs)
         self.val = SEP_EFUSE_MAP_LOCKS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+SEP_EFUSE_MAP_LOCKS_SPARE_REG_DEFAULT = 0x00000000
+class SEP_EFUSE_MAP_LOCKS_SPARE_reg_t(Structure):
+    _fields_ = [
+        ('spare0_write_lock', c_uint32, 1),
+        ('spare0_read_lock', c_uint32, 1),
+        ('spare1_write_lock', c_uint32, 1),
+        ('spare1_read_lock', c_uint32, 1),
+        ('spare2_write_lock', c_uint32, 1),
+        ('spare2_read_lock', c_uint32, 1),
+        ('spare3_write_lock', c_uint32, 1),
+        ('spare3_read_lock', c_uint32, 1),
+        ('spare4_write_lock', c_uint32, 1),
+        ('spare4_read_lock', c_uint32, 1),
+        ('spare5_write_lock', c_uint32, 1),
+        ('spare5_read_lock', c_uint32, 1),
+        ('spare6_write_lock', c_uint32, 1),
+        ('spare6_read_lock', c_uint32, 1),
+        ('spare7_write_lock', c_uint32, 1),
+        ('spare7_read_lock', c_uint32, 1),
+        ('spare_lock_rsvd', c_uint32, 16),
+    ]
+
+SEP_EFUSE_MAP_LOCKS_SPARE_REG_DEFAULT = 0x00000000
+
+class SEP_EFUSE_MAP_LOCKS_SPARE_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', SEP_EFUSE_MAP_LOCKS_SPARE_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(SEP_EFUSE_MAP_LOCKS_SPARE_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_EFUSE_MAP_LOCKS_SPARE_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -5564,17 +5626,15 @@ SEP_EFUSE_MAP_LC_DISABLE_REG_DEFAULT = 0x0000000000000000
 class SEP_EFUSE_MAP_LC_DISABLE_reg_t(Structure):
     _fields_ = [
         ('sep_debug', c_uint64, 1),
-        ('soc_debug', c_uint64, 1),
-        ('ap_debug', c_uint64, 1),
-        ('ap_trace', c_uint64, 1),
+        ('chiplet_dbg', c_uint64, 1),
+        ('debug_reserved_dbg1', c_uint64, 14),
         ('sip_debug', c_uint64, 1),
-        ('debug_reserved', c_uint64, 27),
-        ('fuse_test', c_uint64, 1),
-        ('sep_stest', c_uint64, 1),
-        ('sep_dtest', c_uint64, 1),
-        ('ap_stest', c_uint64, 1),
-        ('ap_dtest', c_uint64, 1),
-        ('test_reserved', c_uint64, 11),
+        ('debug_reserved_dbg2', c_uint64, 15),
+        ('sep_fuse_test', c_uint64, 1),
+        ('test_reserved_lo', c_uint64, 4),
+        ('smc_fuse_test', c_uint64, 1),
+        ('fuse_vendor_test', c_uint64, 1),
+        ('test_reserved', c_uint64, 9),
         ('func_reserved', c_uint64, 16),
     ]
 
@@ -5657,25 +5717,25 @@ class SEP_EFUSE_MAP_STATUS_RPT_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_DEFAULT = 0x00000000
-class SEP_EFUSE_MAP_SEP_ROM_CTRL_reg_t(Structure):
+SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT = 0x00000000
+class SEP_EFUSE_MAP_ROM_CTL_reg_t(Structure):
     _fields_ = [
         ('rom_endianness_ctrl', c_uint32, 1),
         ('rom_swap_ctrl', c_uint32, 5),
         ('reserved', c_uint32, 26),
     ]
 
-SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_DEFAULT = 0x00000000
+SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT = 0x00000000
 
-class SEP_EFUSE_MAP_SEP_ROM_CTRL_reg_u(Union):
+class SEP_EFUSE_MAP_ROM_CTL_reg_u(Union):
     _fields_ = [
         ('val', c_uint32),
-        ('f', SEP_EFUSE_MAP_SEP_ROM_CTRL_reg_t),
+        ('f', SEP_EFUSE_MAP_ROM_CTL_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(SEP_EFUSE_MAP_SEP_ROM_CTRL_reg_u, self).__init__(*args, **kwargs)
-        self.val = SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_DEFAULT
+        super(SEP_EFUSE_MAP_ROM_CTL_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_EFUSE_MAP_ROM_CTL_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -5941,23 +6001,24 @@ class SEP_EFUSE_MAP_SPI_RB_VALID_TIME_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SEP_EFUSE_MAP_RESERVED_LAST_64_REG_DEFAULT = 0x0000000000000000
-class SEP_EFUSE_MAP_RESERVED_LAST_64_reg_t(Structure):
+SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_DEFAULT = 0x00000000
+class SEP_EFUSE_MAP_REQUIRED_SIGNERS_reg_t(Structure):
     _fields_ = [
-        ('rsvd', c_uint64, 64),
+        ('required_signers', c_uint32, 2),
+        ('reserved', c_uint32, 30),
     ]
 
-SEP_EFUSE_MAP_RESERVED_LAST_64_REG_DEFAULT = 0x0000000000000000
+SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_DEFAULT = 0x00000000
 
-class SEP_EFUSE_MAP_RESERVED_LAST_64_reg_u(Union):
+class SEP_EFUSE_MAP_REQUIRED_SIGNERS_reg_u(Union):
     _fields_ = [
-        ('val', c_uint64),
-        ('f', SEP_EFUSE_MAP_RESERVED_LAST_64_reg_t),
+        ('val', c_uint32),
+        ('f', SEP_EFUSE_MAP_REQUIRED_SIGNERS_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(SEP_EFUSE_MAP_RESERVED_LAST_64_reg_u, self).__init__(*args, **kwargs)
-        self.val = SEP_EFUSE_MAP_RESERVED_LAST_64_REG_DEFAULT
+        super(SEP_EFUSE_MAP_REQUIRED_SIGNERS_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_EFUSE_MAP_REQUIRED_SIGNERS_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
@@ -5969,23 +6030,26 @@ class SEP_EFUSE_MAP_RESERVED_LAST_64_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SEP_EFUSE_MAP_RESERVED_LAST_32_REG_DEFAULT = 0x00000000
-class SEP_EFUSE_MAP_RESERVED_LAST_32_reg_t(Structure):
+SEP_EFUSE_MAP_REQUIRED_ALGS_REG_DEFAULT = 0x00000000
+class SEP_EFUSE_MAP_REQUIRED_ALGS_reg_t(Structure):
     _fields_ = [
-        ('rsvd', c_uint32, 32),
+        ('chiplet_algs', c_uint32, 4),
+        ('sip_algs', c_uint32, 4),
+        ('sys_algs', c_uint32, 4),
+        ('reserved', c_uint32, 20),
     ]
 
-SEP_EFUSE_MAP_RESERVED_LAST_32_REG_DEFAULT = 0x00000000
+SEP_EFUSE_MAP_REQUIRED_ALGS_REG_DEFAULT = 0x00000000
 
-class SEP_EFUSE_MAP_RESERVED_LAST_32_reg_u(Union):
+class SEP_EFUSE_MAP_REQUIRED_ALGS_reg_u(Union):
     _fields_ = [
         ('val', c_uint32),
-        ('f', SEP_EFUSE_MAP_RESERVED_LAST_32_reg_t),
+        ('f', SEP_EFUSE_MAP_REQUIRED_ALGS_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(SEP_EFUSE_MAP_RESERVED_LAST_32_reg_u, self).__init__(*args, **kwargs)
-        self.val = SEP_EFUSE_MAP_RESERVED_LAST_32_REG_DEFAULT
+        super(SEP_EFUSE_MAP_REQUIRED_ALGS_reg_u, self).__init__(*args, **kwargs)
+        self.val = SEP_EFUSE_MAP_REQUIRED_ALGS_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8
