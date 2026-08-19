@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // OROM memory clear implementation (Step N).
 //
 // Clears SEP EXT SRAM to zero for deterministic state before manifest load

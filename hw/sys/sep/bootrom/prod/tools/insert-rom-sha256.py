@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Insert the SHA-256 hash of the ICCM (code) content into the ROM ELF.
 
 Insert and verify the ROM SHA-256 string for reference suite.

@@ -1,2 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 `verilator_config
 public_flat_rw -module "smu_wrapper_uvm_top" -var "*"

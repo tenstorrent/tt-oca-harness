@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Convert ELF ROM sections to 64-bit VMEM format for $readmemh.
 
 Extracts allocatable ELF sections whose *load address* (LMA) falls in the Boot
