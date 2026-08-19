@@ -12,7 +12,7 @@
 |DUT |`dtp` (`hw/dtp/rtl/dtp.sv`)
 |Repository |`tt-oca`
 |Project |OCAH
-|Framework |PyUVM on cocotb (primary); SystemVerilog UVM smoke layer (`--dut dtp_uvm`, VCS)
+|Framework |PyUVM on cocotb (primary); SystemVerilog UVM smoke layer (`--framework uvm`, VCS)
 |Primary simulator |Verilator
 |Commercial simulator use |Coverage and CSR paths that Verilator cannot elaborate today; SV-UVM smoke flow (VCS)
 |Reference TB |`dv/dtp/` working DTP environment and docs
@@ -293,17 +293,20 @@ Bender supplies the HW-owned `prim_sync2` and generated
 DTP simulator flows. Verilator and VCS therefore compile the same synchronizer
 and CSR RTL selected by the subsystem source graph.
 
-=== SystemVerilog UVM Smoke Layer (`--dut dtp_uvm`)
+=== SystemVerilog UVM Smoke Layer (`--framework uvm`)
 
 Alongside the PyUVM environment, a compact SV-UVM smoke layer runs through the
-same native runner via the registered `dtp_uvm` alias (shared DV root,
-separate `dtp_uvm_sim_cfg.toml`, `testlists/uvm.toml`, and `build/uvm/` tree).
-It is a maintainer flow on VCS (`native-uvm` profile, `-ntb_opts uvm`);
-Xcelium is planned behind a real-run sign-off gate.
+same native runner: `dtp_sim_cfg.toml` declares it as the `[frameworks.uvm]`
+overlay (shared DV root, sim config, and testlist; `build/uvm/vcs/` build
+tree), and `--dut dtp --framework uvm` selects it. It is a maintainer flow on
+VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`); Xcelium is
+planned behind a real-run sign-off gate. Scenarios carry both implementations
+in their testlist `module` binding map; those without a `uvm` entry error at
+selection unless `--skip-unimplemented` is passed.
 
 There is exactly ONE testbench top module: `dtp_uvm_top` in `tb/tb_top.sv`,
-shared between both flows. `+define+DTP_UVM_TB` (set by the `dtp_uvm` sim
-config) switches its shape — without it the module exposes the cocotb pin
+shared between both frameworks. `+define+DTP_UVM_TB` (set by the
+`[frameworks.uvm]` overlay) switches its shape — without it the module exposes the cocotb pin
 port list; with it the ports become internal TB signals and an in-module
 harness adds the clock, interface instances, quiescent tie-offs, and
 `run_test()`. The class library mirrors the cocotb directory conventions
@@ -393,8 +396,8 @@ python3 tools/dv/run_dv.py --dut dtp --items functional
 python3 tools/dv/run_dv.py --dut dtp --items all --dry-run
 
 # SV-UVM smoke layer (VCS, maintainer flow)
-python3 tools/dv/run_dv.py --dut dtp_uvm --items dtp_sanity_test --tool vcs --seed 1
-python3 tools/dv/run_dv.py --dut dtp_uvm --items smoke --tool vcs
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test --seed 1
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
 ----
 
 The `smoke` group remains a fast two-test TAP/IDCODE gate. The `basic_jtag`
