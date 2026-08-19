@@ -42,6 +42,9 @@ OCAH_PHONY += ocah-nonfree-init
 ## Core hardware collateral and DV firmware build targets.
 include $(OCAH_ROOT)/hw/common/regs/regs.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/fw.mk
+## SEP virtual-platform (sep-vp) build and pytest harness targets (optional,
+## like nonfree: skipped silently when virtual_platform/ is absent).
+-include $(OCAH_ROOT)/virtual_platform/vp.mk
 ## Documentation build targets (after regs.mk so the register accessors exist).
 include $(OCAH_ROOT)/doc/doc.mk
 ## Open-source lint/synth/format flow targets (slang/verible native-or-fail;
