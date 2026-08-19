@@ -199,7 +199,21 @@ int main(void) {
 #endif
         for (uint32_t i = 0; i < RX_WORDS; i++) {
             if (!ok_pattern || dst[i] != w0) {
-                sep_mbx_puts("FAIL: SRAM data mismatch (expect 0xA5A5A5A5)\n");
+                // Name what was actually required. The accepted set widens when the
+                // pad mux is compiled in, so a message hardcoding 0xA5A5A5A5 would
+                // misdescribe the erased-NOR case it deliberately tolerates. Report
+                // the two failure modes apart: a wrong pattern is a data-path bug, a
+                // non-uniform window is a partial or misaligned transfer.
+                if (!ok_pattern) {
+#ifdef OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL__SPI_SEL_bm
+                    sep_mbx_puts("FAIL: SRAM pattern wrong (expect 0xA5A5A5A5, or "
+                                 "0xFFFFFFFF erased)\n");
+#else
+                    sep_mbx_puts("FAIL: SRAM pattern wrong (expect 0xA5A5A5A5)\n");
+#endif
+                } else {
+                    sep_mbx_puts("FAIL: SRAM window not uniform (partial transfer)\n");
+                }
                 errors++;
                 break;
             }

@@ -22,7 +22,7 @@ W1S-monotonic / valid-transition rules (the test-level mirror of the RTL SVA
 state checker); the fixed monotonic chain covers the SVA forward-only and
 terminal-stability properties implicitly.
 
-Scope vs the reference reference: differential-decode integrity (``lc_sigint_err``)
+Scope vs the reference suite: differential-decode integrity (``lc_sigint_err``)
 is not checked directly -- that port is internal to ``sep`` and unreachable from
 cocotb.top -- but it is covered indirectly, since a spurious sigint forces
 ``feat_ctrl`` to 0 and the exact feat_ctrl check would flag the mismatch.

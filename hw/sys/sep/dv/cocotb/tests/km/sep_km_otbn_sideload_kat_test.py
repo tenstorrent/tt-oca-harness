@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""KM -> OTBN sideload consume-proof KAT (reference suite , sep_km_otbn_sideload_kat_test).
+"""KM -> OTBN sideload consume-proof KAT (reference suite, sep_km_otbn_sideload_kat_test).
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 384-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -10,7 +10,7 @@ writes the 384-bit result to DMEM. The host asserts DMEM == the exact known key.
 This is a fully FRONTDOOR consume-proof with NO backdoor: because the host loaded
 the key value itself, the expected value is known without reading the wrapper
 shares (which are write-only / on the KM-private bus anyway). It is STRONGER than
-the reference reference, which generates a random key and reconstructs it by a read-only
+the reference suite, which generates a random key and reconstructs it by a read-only
 backdoor of the wrapper shares. Here the 12 distinct key words make an exact compare
 catch any truncation, word-swap, or share-defeat bug.
 

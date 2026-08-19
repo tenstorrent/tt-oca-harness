@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""KM -> KMAC sideload consume-proof KAT (reference suite , sep_km_kmac_sideload_kat_test).
+"""KM -> KMAC sideload consume-proof KAT (reference suite, sep_km_kmac_sideload_kat_test).
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
