@@ -3786,7 +3786,9 @@ Region Access Control Register (mrac)</p>
 </li>
 <li>
 <p>PIC (Programmable Interrupt Controller) is integrated supporting up to
-255 external interrupts</p>
+255 external interrupts; see
+<a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>
+for the complete source-by-source mapping</p>
 </li>
 <li>
 <p>Two independent or linked internal timers with standard RV <em>mip</em>
@@ -4245,7 +4247,284 @@ SEP</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cryptographic-subsystem"><a class="anchor" href="#cryptographic-subsystem"></a><a class="link" href="#cryptographic-subsystem">1.7. Cryptographic Subsystem</a></h3>
+<h3 id="sep-interrupts"><a class="anchor" href="#sep-interrupts"></a><a class="link" href="#sep-interrupts">1.7. Interrupts</a></h3>
+<div class="paragraph">
+<p>The SEP integrates a VeeR EL2 core with a built-in
+<strong>Programmable Interrupt Controller (PIC)</strong>. All maskable external interrupt
+sources feed a single <code>extintsrc_req</code> bus; the core&#8217;s <code>meipl</code>, <code>meie</code>, and
+<code>meigwctrl</code> CSRs configure priority, enable, and gateway polarity per source.</p>
+</div>
+<div class="paragraph">
+<p>The PIC base address is <code>0xC008_0000</code>; its register layout is described in the
+<a href="#sep-pic-registers">Register Interfaces</a> section below.</p>
+</div>
+<div class="paragraph">
+<p>Interrupt source IDs are <strong>1-based</strong> inside the PIC. Source 0 is permanently
+tied to zero inside the core. Firmware programs source <code>N</code> by writing the
+<code>meipl[N]</code> and <code>meie[N]</code> CSR entries and reading/clearing <code>meip[N]</code>.</p>
+</div>
+<div class="sect3">
+<h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.7.1. SEP CPU Interrupt Vector Map</a></h4>
+<div class="paragraph">
+<p>The PIC supports 255 external sources. Slots 1–38 are individually assigned to
+specific peripherals and subsystems connected to the SEP, including both
+SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
+(SMC mailboxes, SPI). Slots 39–255 are reserved for chip-level external inputs
+passed in at the SEP block boundary.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 35%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">PIC source</th>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 0 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 1 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 2 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 3 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>5</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 4 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>6</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 5 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 6 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 7 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>9</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA transfer done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA full-transfer-complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA chunk done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA chunk-transfer-complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>12</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA aggregated alert (fault)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>13</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timer aggregated alert. Note: the WDT <strong>bark</strong> goes to the NMI pin,
+not here; see <a href="#sep-non-pic-paths">Non-PIC Interrupt Paths</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>14</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI host controller interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>15</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM mailbox IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager-to-SEP mailbox interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>16</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy source IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan entropy source interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>17</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG interrupt; driven to zero in the current OSS integration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>18</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>19</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC FIFO empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC message FIFO empty interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>20</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>21</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>22</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC FIFO empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC message FIFO empty interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>23</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>24</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG command request done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG command request complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>25</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG entropy request</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG entropy request interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>26</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG HW instance exception</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG hardware instance exception interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>27</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG fatal error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG fatal error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>28</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN command request done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Distribution Network command request complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>29</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN fatal error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Distribution Network fatal error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>30</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan Big Number Accelerator operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>31</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM unrecoverable error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager unrecoverable error interrupt; also exported as a SEP output port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM recoverable error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager recoverable error interrupt; also exported as a SEP output port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>33</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aggregated crypto subsystem alert (fault)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>34</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Locked field access</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse locked-field access violation interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>35</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge (post-quantum accelerator) error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>36</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge notification</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge (post-quantum accelerator) operation notification interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>37</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO low-water condition (informational: pool draining faster than filling)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>38</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool fill stall</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO fill-path stall (fault: EDN not making progress)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[39–255]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved (external band)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level external interrupt inputs</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">1.7.2. Non-PIC Interrupt Paths</a></h4>
+<div class="paragraph">
+<p>Three CPU interrupt pins bypass the EL2 PIC entirely.</p>
+</div>
+<div class="sect4">
+<h5 id="nmi-watchdog-timer-bark"><a class="anchor" href="#nmi-watchdog-timer-bark"></a><a class="link" href="#nmi-watchdog-timer-bark">NMI — Watchdog Timer Bark</a></h5>
+<div class="paragraph">
+<p>The VeeR EL2 <code>nmi_int</code> pin is wired to the watchdog timer bark signal from
+<code>sep_wdt_wrap</code>. When the bark fires, the CPU jumps to the NMI vector address
+held in the <code>SEP_NMI_VEC</code> register. The <code>SEP_NMI_VEC_LOCK</code> register prevents
+runtime modification of the vector once locked.</p>
+</div>
+<div class="paragraph">
+<p>The NMI is non-maskable: it cannot be suppressed by <code>mstatus.MIE</code> or any PIC
+configuration register.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="timer-and-software-interrupts-tbd"><a class="anchor" href="#timer-and-software-interrupts-tbd"></a><a class="link" href="#timer-and-software-interrupts-tbd">Timer and Software Interrupts (TBD)</a></h5>
+<div class="paragraph">
+<p>The <code>timer_int</code> and <code>soft_int</code> pins of the VeeR EL2 core are both tied to zero
+at the SMU integration boundary; external CLINT-style delivery is not yet
+routed. The VeeR core contains independent internal timers that generate
+standard RISC-V <code>mip.MTIP</code> and <code>mip.MSIP</code> interrupts without requiring an
+external signal; those remain functional.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">1.7.3. Register Interfaces</a></h4>
+<div class="paragraph">
+<p>The EL2 PIC register block (<code>meipl</code>, <code>meie</code>, <code>meigwctrl</code>, <code>meigwclr</code>, and
+related registers) is documented with the full SEP address map in
+<a href="memory_map.html#sep-detailed-register-map" class="xref page">Memory Map — Detailed Register Map</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cryptographic-subsystem"><a class="anchor" href="#cryptographic-subsystem"></a><a class="link" href="#cryptographic-subsystem">1.8. Cryptographic Subsystem</a></h3>
 <div class="paragraph">
 <p>The cryptographic subsystem is composed of hardware and software. The
 hardware subsystem has a number of accelerators interconnected by two
@@ -4323,7 +4602,7 @@ is covered without per-register marking. The marked roots in <code>sep_crypto</c
 infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
 </div>
 <div class="sect3">
-<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.7.1. HMAC-SHA2</a></h4>
+<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.8.1. HMAC-SHA2</a></h4>
 <div class="paragraph">
 <p>The HMAC component is based on the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC</a> design.</p>
@@ -4359,7 +4638,7 @@ has no EDN connection.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.7.2. OTBN PKA Public Key Accelerator</a></h4>
+<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.8.2. OTBN PKA Public Key Accelerator</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan
@@ -4481,7 +4760,7 @@ documentation</a>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.7.3. AES Cipher</a></h4>
+<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.8.3. AES Cipher</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
@@ -4541,7 +4820,7 @@ exports an <code>idle_o</code> status output but no interrupt.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.7.4. KMAC-SHA3</a></h4>
+<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.8.4. KMAC-SHA3</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC</a> design.</p>
@@ -4578,7 +4857,7 @@ interrupts: <code>done</code>, <code>fifo_empty</code>, and <code>err</code>.</p
 </div>
 </div>
 <div class="sect3">
-<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.7.5. True Random Number Generator (TRNG)</a></h4>
+<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.8.5. True Random Number Generator (TRNG)</a></h4>
 <div class="paragraph">
 <p>Entropy bits are fundamental data for key generation as well as for
 attack countermeasure implementations. The entropy source must be high
@@ -4762,7 +5041,7 @@ integer width</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1.7.6. Fuse Controller (OTP)</a></h4>
+<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1.8.6. Fuse Controller (OTP)</a></h4>
 <div class="imageblock">
 <div class="content">
 <img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
@@ -5299,7 +5578,7 @@ interfaces.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">1.8. Peripheral Subsystem</a></h3>
+<h3 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">1.9. Peripheral Subsystem</a></h3>
 <div class="paragraph">
 <p>SEP will primarily rely on external serial IO peripherals resident in
 the SMC complex. SEP has an AXI4 extension port which has unfettered
@@ -5323,7 +5602,7 @@ to the SEP BL0 functionality.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">1.8.1. Serial Peripheral Interface (SPI)</a></h4>
+<h4 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">1.9.1. Serial Peripheral Interface (SPI)</a></h4>
 <div class="paragraph">
 <p>SEP will have one SPI host to support access to external NOR flash
 devices which are the primary BL1 image source. Modern devices are MT35
@@ -5398,7 +5677,7 @@ device present in the SEP peripheral subsystem.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">1.8.2. Watchdog Timer (WDT)</a></h4>
+<h4 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">1.9.2. Watchdog Timer (WDT)</a></h4>
 <div class="paragraph">
 <p>The Watchdog timer is a component used to enhance reliability and ensure
 that the system is notified if the SEP subsystem is ``hanging''. The SEP
@@ -5421,7 +5700,7 @@ that its timeout has expired and there is a problem within the SEP.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">1.8.3. SEP Reset Controller</a></h4>
+<h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">1.9.3. SEP Reset Controller</a></h4>
 <div class="paragraph">
 <p>The SEP Reset Controller provides software-controllable resets for the Key Manager and crypto accelerators. It is accessible via AXI4-Lite at base address <code>0x10A5_0000</code> within the System Peripherals crossbar.</p>
 </div>
@@ -5505,7 +5784,7 @@ released when the software bit deasserts.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="token-processing"><a class="anchor" href="#token-processing"></a><a class="link" href="#token-processing">1.8.4. Token Processing</a></h4>
+<h4 id="token-processing"><a class="anchor" href="#token-processing"></a><a class="link" href="#token-processing">1.9.4. Token Processing</a></h4>
 <div class="paragraph">
 <p>Maintaining a known, measurable state of the SEP system is a core
 requirement to ensure trust and security. Consequently, changing the
@@ -5709,7 +5988,7 @@ match and LC state transition is successful or not.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="security-disable-sec_dis"><a class="anchor" href="#security-disable-sec_dis"></a><a class="link" href="#security-disable-sec_dis">1.8.5. Security Disable (SEC_DIS)</a></h4>
+<h4 id="security-disable-sec_dis"><a class="anchor" href="#security-disable-sec_dis"></a><a class="link" href="#security-disable-sec_dis">1.9.5. Security Disable (SEC_DIS)</a></h4>
 <div class="paragraph">
 <p>Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
 silicon. On deassertion of power-on reset, the fuse sense logic runs before
@@ -5782,7 +6061,7 @@ post-layout extracted netlist with <strong><em>gate-level simulation</em></stron
 </div>
 </div>
 <div class="sect3">
-<h4 id="life-cycle-controller-lcc-life-cycle-controller-lcc"><a class="anchor" href="#life-cycle-controller-lcc-life-cycle-controller-lcc"></a><a class="link" href="#life-cycle-controller-lcc-life-cycle-controller-lcc">1.8.6. Life Cycle Controller (LCC)</a></h4>
+<h4 id="life-cycle-controller-lcc-life-cycle-controller-lcc"><a class="anchor" href="#life-cycle-controller-lcc-life-cycle-controller-lcc"></a><a class="link" href="#life-cycle-controller-lcc-life-cycle-controller-lcc">1.9.6. Life Cycle Controller (LCC)</a></h4>
 <div class="paragraph">
 <p>The Life Cycle Controller (LCC) supports multiple security domains in
 chiplet-based systems. It manages the device life cycle: it decodes the
@@ -7058,7 +7337,7 @@ in a future revision of this specification.
 </div>
 </div>
 <div class="sect2">
-<h3 id="test-mode-entry"><a class="anchor" href="#test-mode-entry"></a><a class="link" href="#test-mode-entry">1.9. Test Mode Entry</a></h3>
+<h3 id="test-mode-entry"><a class="anchor" href="#test-mode-entry"></a><a class="link" href="#test-mode-entry">1.10. Test Mode Entry</a></h3>
 <div class="paragraph">
 <p>Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
 latched when SEP fuse sensing is done if SEC_DIS is not asserted.

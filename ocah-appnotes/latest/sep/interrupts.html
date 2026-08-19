@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/register_tables.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+			<a class="navbar-item" href="../../../ocah-contributing/latest/index.html">Contributing to OCAH</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/02_tt_logo_standard_teal_black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-contributing/latest/index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-contributing/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-docs/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="sep-interrupts"><a class="anchor" href="#sep-interrupts"></a><a class="link" href="#sep-interrupts">1. Interrupts</a></h3>
+<div class="paragraph">
+<p>The SEP integrates a VeeR EL2 core with a built-in
+<strong>Programmable Interrupt Controller (PIC)</strong>. All maskable external interrupt
+sources feed a single <code>extintsrc_req</code> bus; the core&#8217;s <code>meipl</code>, <code>meie</code>, and
+<code>meigwctrl</code> CSRs configure priority, enable, and gateway polarity per source.</p>
+</div>
+<div class="paragraph">
+<p>The PIC base address is <code>0xC008_0000</code>; its register layout is described in the
+<a href="#sep-pic-registers">Register Interfaces</a> section below.</p>
+</div>
+<div class="paragraph">
+<p>Interrupt source IDs are <strong>1-based</strong> inside the PIC. Source 0 is permanently
+tied to zero inside the core. Firmware programs source <code>N</code> by writing the
+<code>meipl[N]</code> and <code>meie[N]</code> CSR entries and reading/clearing <code>meip[N]</code>.</p>
+</div>
+<div class="sect3">
+<h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.1. SEP CPU Interrupt Vector Map</a></h4>
+<div class="paragraph">
+<p>The PIC supports 255 external sources. Slots 1–38 are individually assigned to
+specific peripherals and subsystems connected to the SEP, including both
+SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
+(SMC mailboxes, SPI). Slots 39–255 are reserved for chip-level external inputs
+passed in at the SEP block boundary.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 35%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">PIC source</th>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 0 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 1 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 2 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 3 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>5</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 4 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>6</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 5 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 6 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt 7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP mailbox channel 7 interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>9</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA transfer done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA full-transfer-complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA chunk done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA chunk-transfer-complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>12</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA aggregated alert (fault)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>13</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WDT alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timer aggregated alert. Note: the WDT <strong>bark</strong> goes to the NMI pin,
+not here; see <a href="#sep-non-pic-paths">Non-PIC Interrupt Paths</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>14</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI host controller interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>15</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM mailbox IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager-to-SEP mailbox interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>16</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy source IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan entropy source interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>17</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG IRQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG interrupt; driven to zero in the current OSS integration</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>18</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>19</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC FIFO empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC message FIFO empty interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>20</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>21</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>22</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC FIFO empty</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC message FIFO empty interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>23</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>24</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG command request done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG command request complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>25</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG entropy request</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG entropy request interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>26</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG HW instance exception</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG hardware instance exception interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>27</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG fatal error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CSRNG fatal error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>28</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN command request done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Distribution Network command request complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>29</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EDN fatal error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Distribution Network fatal error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>30</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN done</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan Big Number Accelerator operation complete interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>31</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM unrecoverable error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager unrecoverable error interrupt; also exported as a SEP output port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM recoverable error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager recoverable error interrupt; also exported as a SEP output port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>33</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crypto alert</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aggregated crypto subsystem alert (fault)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>34</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Locked field access</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse locked-field access violation interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>35</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge (post-quantum accelerator) error interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>36</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge notification</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge (post-quantum accelerator) operation notification interrupt</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>37</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO low-water condition (informational: pool draining faster than filling)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>38</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool fill stall</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO fill-path stall (fault: EDN not making progress)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[39–255]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved (external band)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level external interrupt inputs</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">1.2. Non-PIC Interrupt Paths</a></h4>
+<div class="paragraph">
+<p>Three CPU interrupt pins bypass the EL2 PIC entirely.</p>
+</div>
+<div class="sect4">
+<h5 id="nmi-watchdog-timer-bark"><a class="anchor" href="#nmi-watchdog-timer-bark"></a><a class="link" href="#nmi-watchdog-timer-bark">NMI — Watchdog Timer Bark</a></h5>
+<div class="paragraph">
+<p>The VeeR EL2 <code>nmi_int</code> pin is wired to the watchdog timer bark signal from
+<code>sep_wdt_wrap</code>. When the bark fires, the CPU jumps to the NMI vector address
+held in the <code>SEP_NMI_VEC</code> register. The <code>SEP_NMI_VEC_LOCK</code> register prevents
+runtime modification of the vector once locked.</p>
+</div>
+<div class="paragraph">
+<p>The NMI is non-maskable: it cannot be suppressed by <code>mstatus.MIE</code> or any PIC
+configuration register.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="timer-and-software-interrupts-tbd"><a class="anchor" href="#timer-and-software-interrupts-tbd"></a><a class="link" href="#timer-and-software-interrupts-tbd">Timer and Software Interrupts (TBD)</a></h5>
+<div class="paragraph">
+<p>The <code>timer_int</code> and <code>soft_int</code> pins of the VeeR EL2 core are both tied to zero
+at the SMU integration boundary; external CLINT-style delivery is not yet
+routed. The VeeR core contains independent internal timers that generate
+standard RISC-V <code>mip.MTIP</code> and <code>mip.MSIP</code> interrupts without requiring an
+external signal; those remain functional.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">1.3. Register Interfaces</a></h4>
+<div class="paragraph">
+<p>The EL2 PIC register block (<code>meipl</code>, <code>meie</code>, <code>meigwctrl</code>, <code>meigwclr</code>, and
+related registers) is documented with the full SEP address map in
+<a href="memory_map.html#sep-detailed-register-map" class="xref page">Memory Map — Detailed Register Map</a>.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca-footer.png" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/02_tt_logo_standard_teal_white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>
