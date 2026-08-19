@@ -65,7 +65,9 @@ For AsciiDoc (`.adoc`), use line comments:
 
 For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
 
-Generated register collateral under `hw/**/regs/gen/` is produced by the repository generation flows and may use a different header format.
+Generated register collateral under `hw/**/regs/gen/` is produced by the
+repository generation flows and carries the same SPDX Apache-2.0 header as
+hand-authored files (emitted by the generators / `tools/regs/stamp_spdx.py`).
 
 ### Vendored code
 
