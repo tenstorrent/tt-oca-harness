@@ -5,14 +5,13 @@
 
 Open a pull request against `main`. The template asks for:
 
-* *Summary* — what changed and why (required)
+* *Summary* — optional. What changed and why
 * *Test plan* — optional. Leave blank or write `N/A` if nothing was run
 * *Closes* — `Fixes #N` only if this PR should close issues on merge
   (or pick them under *Development*). Delete the section if nothing closes.
 * *Notes* — optional; delete if unused
 
-CI fails if Summary is missing or still a placeholder. Draft PRs skip that
-check until they are marked ready for review.
+CI does not require those sections. Project taxonomy lives on issues, not PRs.
 Ingest assigns the opener when Assignees is empty; see
 xref:alignment.adoc[Issue alignment].
 Pull requests are reviewed weekly.

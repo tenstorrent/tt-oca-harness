@@ -7,7 +7,7 @@ on:
   issues:
     types: [opened, edited]
   pull_request:
-    types: [opened, edited, synchronize, reopened, ready_for_review]
+    types: [opened]
 
 permissions:
   contents: read
@@ -26,17 +26,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_AW_WRITE_PROJECT_TOKEN: ${{ secrets.GH_AW_WRITE_PROJECT_TOKEN }}
         run: python3 .github/scripts/ingest_github.py --issue "${{ github.event.issue.number }}"
-
-  pr-template:
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Require Summary
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 .github/scripts/ingest_github.py --pr-template "${{ github.event.pull_request.number }}"
 
   pr-assign:
     if: github.event_name == 'pull_request' && github.event.action == 'opened'

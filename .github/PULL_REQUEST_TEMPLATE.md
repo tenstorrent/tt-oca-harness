@@ -1,5 +1,5 @@
 ## Summary
-<!-- Required. What changed and why. -->
+<!-- Optional. What changed and why. -->
 
 ## Test plan
 <!-- Optional. Leave blank or write N/A if nothing was run. -->

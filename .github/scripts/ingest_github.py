@@ -23,7 +23,6 @@ EXTERNAL_CODE = re.compile(r"^(TRC|JPP|OBR)-([A-Za-z0-9]+)(?:\s*:\s*|\s+)(.*)$",
 ISSUE_TYPE_PREFIX = re.compile(r"^\[(Bug|Task|Feature)\]:\s*")
 TAXONOMY_PREFIX = re.compile(r"^\[[A-Z]+/")
 HEADING = re.compile(r"^### ([^\n]+)\n+([^\n#]+)", re.MULTILINE)
-HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 
 TAXONOMY_FIELDS = (
     "Workstream",
@@ -116,29 +115,6 @@ def title_with_prefix(title: str, workstream: str, subsystem: str, component: st
         body = f"{code}: {prefix} {rest}".rstrip()
         return f"{type_prefix}{body}".strip()
     return f"{type_prefix}{prefix} {raw}".strip()
-
-
-def section_text(body: str, heading: str) -> str:
-    pattern = re.compile(
-        rf"^## {re.escape(heading)}\s*\n(.*?)(?=^## |\Z)",
-        re.MULTILINE | re.DOTALL,
-    )
-    match = pattern.search(body or "")
-    if not match:
-        return ""
-    text = HTML_COMMENT.sub("", match.group(1))
-    return text.strip()
-
-
-def section_filled(text: str) -> bool:
-    text = re.sub(r"^-\s*\[[ xX]\]\s*", "", text, flags=re.MULTILINE).strip()
-    return text.lower() not in EMPTY_MARKERS
-
-
-def pr_headings_ok(body: str) -> tuple[bool, str]:
-    if not section_filled(section_text(body, "Summary")):
-        return False, "PR body is missing a filled Summary section"
-    return True, ""
 
 
 def gh_json(args: list[str], token: str | None = None) -> object:
@@ -479,33 +455,35 @@ def assign_pr_author(number: int) -> None:
     print("assigned", login)
 
 
-def check_pr_template(number: int) -> None:
-    repo_full = os.environ.get("GITHUB_REPOSITORY", REPO)
-    pr = gh_json(
-        ["pr", "view", str(number), "--repo", repo_full, "--json", "body,isDraft"]
-    )
-    if pr.get("isDraft"):
-        print("draft PR; skipping template check")
-        return
-    ok, message = pr_headings_ok(pr.get("body") or "")
-    if not ok:
-        raise SystemExit(message)
-    print("PR Summary is present")
-
-
 def self_test() -> None:
-    leftover = """## Summary
-A real change.
+    body = """### Workstream
 
-## Test plan
-- [ ] <!-- command or check that proves this -->
+DV
+
+### Subsystem
+
+SEP
+
+### Component
+
+General
+
+### Priority
+
+P2
+
+### Target release
+
+Future
 """
-    assert pr_headings_ok(leftover) == (True, "")
-    assert pr_headings_ok("## Summary\nN/A\n")[0] is False
-    assert pr_headings_ok("## Summary\nShipped the ingest relaxation.\n") == (True, "")
-    assert not section_filled("")
-    assert not section_filled("n/a")
-    assert not section_filled("- [ ] ")
+    fields = form_fields(body)
+    assert fields["Workstream"] == "DV"
+    assert fields["Subsystem"] == "SEP"
+    assert fields["Component"] == "General"
+    assert fields["Priority"] == "P2"
+    assert fields["Target release"] == "Future"
+    assert picked("n/a", ["P0", "P1", "P2"]) is None
+    assert picked("P1", ["P0", "P1", "P2"]) == "P1"
     print("self-test ok")
 
 
@@ -513,7 +491,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--issue", type=int)
     parser.add_argument("--pr-assign", type=int)
-    parser.add_argument("--pr-template", type=int)
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument(
         "--taxonomy",
@@ -527,10 +504,8 @@ def main() -> None:
         ingest_issue(args.issue, load_taxonomy(args.taxonomy))
     elif args.pr_assign:
         assign_pr_author(args.pr_assign)
-    elif args.pr_template:
-        check_pr_template(args.pr_template)
     else:
-        raise SystemExit("pass --issue, --pr-assign, --pr-template, or --self-test")
+        raise SystemExit("pass --issue, --pr-assign, or --self-test")
 
 
 if __name__ == "__main__":

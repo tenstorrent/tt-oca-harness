@@ -371,6 +371,14 @@ SEP
 
 General
 
+### Priority
+
+P2
+
+### Target release
+
+Future
+
 ### What happened
 
 <what broke, where, what you expected>
@@ -378,10 +386,10 @@ EOF
 )"
 ```
 
-Required: **Workstream**, **Subsystem**, **Component** (use `General` if unsure).
-Optional: **Priority** and **Target release** — omit those headings if you are not
-sure; never invent a milestone or Target release. Description heading is **What
-happened** (Bug), **Goal** (Task), or **What and why** (Feature).
+Required: **Workstream**, **Subsystem**, **Component** (use `General` if unsure),
+**Priority** (P2 if unsure), and **Target release** (`Future` if unscheduled).
+Do not set a GitHub milestone. Description heading is **What happened** (Bug),
+**Goal** (Task), or **What and why** (Feature); it is optional.
 
 Do not add labels, assignees, or a milestone. Ingest copies the form onto
 Project 291; see `doc/contributing/src/alignment.adoc`.
@@ -389,8 +397,7 @@ Project 291; see `doc/contributing/src/alignment.adoc`.
 ### Pull requests
 
 `gh pr create --body` replaces the template, so include the headings yourself.
-**Summary** must be filled; CI fails if it is missing or still a placeholder.
-**Test plan** is optional — leave it blank or write `N/A` when nothing was run.
+Summary and Test plan are optional guidance; CI does not fail on them.
 Add `## Closes` with `Fixes #N` only when `N` is a real issue; omit the
 section if nothing closes. Never leave a bare `Fixes #`. Delete **Notes** if unused.
 

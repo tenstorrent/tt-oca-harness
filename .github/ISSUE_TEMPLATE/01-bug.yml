@@ -9,8 +9,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Pick Workstream, Subsystem, and Component. Unsure on Component? leave **General**.
-        Priority and Target release are optional.
+        Pick Workstream, Subsystem, Component, Priority, and Target release.
+        These feed Project 291. Unsure on Component? leave **General**.
+        Unsure on schedule? pick **Future**. Description is optional.
   - type: dropdown
     id: workstream
     attributes:
@@ -67,25 +68,29 @@ body:
     id: priority
     attributes:
       label: Priority
-      description: Optional. Skip if you are not sure.
+      description: Project board. Pick P2 if you are not sure.
       options:
         - P0
         - P1
         - P2
+      default: 2
+    validations:
+      required: true
   - type: dropdown
     id: target_release
     attributes:
       label: Target release
-      description: Optional. Skip if you are not sure.
+      description: Project board. Pick Future if this is unscheduled. Do not set a GitHub milestone.
       options:
         - v0.5.0
         - Future
         - Not planned
+      default: 1
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:
       label: What happened
-      description: What broke, where (path, DUT, test), and what you expected if it matters.
+      description: Optional. What broke, where (path, DUT, test), and what you expected if it matters.
       placeholder: hw/sys/sep/... and test X failed because ...
-    validations:
-      required: true

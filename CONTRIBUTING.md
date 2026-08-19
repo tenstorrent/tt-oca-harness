@@ -24,7 +24,7 @@ See the [README](README.md) for vendor import conventions, register-generation f
 
 1. Create a topic branch off `main` for your change.
 2. Make focused commits that compile and pass relevant checks where possible.
-3. Open a pull request against `main`. Use the template: fill Summary; Test plan is optional (blank or N/A is fine). Add `Fixes #N` when the PR closes an issue.
+3. Open a pull request against `main`. The template is guidance only; CI does not require Summary or Test plan. Add `Fixes #N` when the PR closes an issue.
 4. Be responsive to review feedback.
 
 Pull requests are reviewed on a weekly basis. The full how-to is in [`doc/contributing/`](doc/contributing/).
