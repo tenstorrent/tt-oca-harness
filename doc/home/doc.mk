@@ -10,9 +10,7 @@ OCAH_HOME_MODULES ?= $(OCAH_HOME_DIR)/modules
 OCAH_HOME_ASSETS ?= $(OCAH_HOME_DIR)/assets
 OCAH_HOME_BUILD ?= $(OCAH_HOME_DIR)/_build
 OCAH_HOME_PLAYBOOK ?= $(OCAH_ROOT)/antora-home-playbook.yml
-# Web-only by design -- no PDF target for Home. If that changes later,
-# mirror doc/contributing/doc.mk's -pdf target and wire it into
-# doc/gh-pages.mk and scripts/docker-run.sh's doc_stage().
+# Web-only by design -- no PDF target for Home.
 
 .PHONY: ocah-doc-home-setup
 ocah-doc-home-setup: ocah-doc-reg-setup
