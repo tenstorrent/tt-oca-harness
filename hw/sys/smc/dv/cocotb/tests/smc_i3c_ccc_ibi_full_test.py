@@ -3,7 +3,7 @@
 
 TB I3C DAT/DCT prim_ram removed (no-placeholder policy). Re-enable when real
 DAT/DCT macros (or product-backed mem) are present. See
-hw/sys/smu/dv/docs/testlists/deferred.toml and testlists/deferred.toml.
+testlists/deferred.toml (needs_i3c_dat_dct).
 """
 
 from __future__ import annotations

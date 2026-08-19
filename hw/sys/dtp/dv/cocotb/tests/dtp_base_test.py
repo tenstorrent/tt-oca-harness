@@ -33,6 +33,13 @@ from env.dtp_env_cfg import DtpEnvCfg
 class dtp_base_test(uvm_test):
     """Shared DTP test: env build, clock/reset bring-up, scenario hook."""
 
+    # Shared-VIP AXI scoreboard adoption (issue #3295): opt-in per test.
+    # Tests that enable it declare the CHK-* IDs that must execute and the
+    # minimum compared-transaction count per JTAG2AXI stream.
+    use_axi_scoreboard = False
+    axi_checker_required_ids: tuple[str, ...] = ()
+    axi_checker_stream_minimums: dict[str, int] | None = None
+
     # JTAG2AXI scenarios with randomized address/data/series choices get more
     # default passes. Directed/exhaustive scenarios stay one-pass so group loop
     # knobs do not inflate simulation time without adding coverage.
@@ -162,6 +169,9 @@ class dtp_base_test(uvm_test):
             self.cfg.sys_clk_period_ns,
             self.random_seed(),
         )
+        self.cfg.axi_scoreboard_enabled = self.use_axi_scoreboard
+        self.cfg.axi_checker_required_ids = set(self.axi_checker_required_ids)
+        self.cfg.axi_checker_stream_minimums = dict(self.axi_checker_stream_minimums or {})
         ConfigDB().set(None, "*", "cfg", self.cfg)
         self.env = DtpEnv("env", self)
 

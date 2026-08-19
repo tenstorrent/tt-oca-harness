@@ -4,11 +4,11 @@
 Thin DUT-local facade over ``ocah_jtag_vip`` for the SMC CPU TAP brought out
 as ``tb_cpu_jtag_*``:
 
-* ``OcahJtagTap`` / ``OcahJtagDevice`` provide bus bind + register map.
+* ``OcahJtagMasterDriver`` / ``OcahJtagDevice`` provide bus bind + register map.
 * Active-high ``tb_cpu_jtag_reset`` is driven only by this wrapper — it is
   intentionally NOT exposed as bus ``trst`` because ``cocotbext-jtag`` assumes
   IEEE active-low TRST polarity.
-* Runtime IR/DR scans use ``OcahJtagTap`` bit-bang only (no ``JTAGDriver``).
+* Runtime IR/DR scans use ``OcahJtagMasterDriver`` bit-bang only (no ``JTAGDriver``).
   cocotbext-jtag's GatedClock + RX FSM desyncs after long DMI idle sequences
   (RX stuck in CAPTURE_IR), which makes DMI captures look like status=0/data=0.
 """
@@ -21,7 +21,7 @@ from typing import Optional
 import cocotb
 from cocotb.triggers import Timer
 
-from ocah_jtag_vip import OcahJtagDevice, OcahJtagTap, OcahJtagTapError
+from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver, OcahJtagMasterDriverError
 
 # IEEE 1149.1 / RISC-V Debug Spec opcodes (5-bit IR).
 _IDCODE_OPCODE = 0x01
@@ -34,7 +34,7 @@ _DMI_DR_WIDTH = 41
 EXPECTED_CPU_TAP_IDCODE = 0x10CA0555
 
 # Keep historical SMC error name.
-SmcJtagTapError = OcahJtagTapError
+SmcJtagTapError = OcahJtagMasterDriverError
 
 
 class SmcCpuTapDevice(OcahJtagDevice):
@@ -73,7 +73,7 @@ class SmcJtagTap:
         self._prefix = prefix
         self._reset_signal_name = reset_signal_name
         self._expected_idcode = expected_idcode
-        self._tap: Optional[OcahJtagTap] = None
+        self._tap: Optional[OcahJtagMasterDriver] = None
         self._device: Optional[SmcCpuTapDevice] = None
         self._dmi_selected: bool = False
 
@@ -84,14 +84,14 @@ class SmcJtagTap:
         getattr(cocotb.top, self._reset_signal_name).value = 1 if asserted else 0
 
     def init_signals(self) -> None:
-        """Drive TAP inputs to a safe idle state and bind OcahJtagTap."""
+        """Drive TAP inputs to a safe idle state and bind OcahJtagMasterDriver."""
         dut = cocotb.top
         getattr(dut, f"{self._prefix}_tck").value = 0
         getattr(dut, f"{self._prefix}_tms").value = 1
         getattr(dut, f"{self._prefix}_tdi").value = 0
         self._drive_reset(False)
 
-        self._tap = OcahJtagTap.from_prefix(
+        self._tap = OcahJtagMasterDriver.from_prefix(
             dut,
             self._prefix,
             name=self.name,
@@ -105,7 +105,7 @@ class SmcJtagTap:
         self._tap.init_signals()
         self._dmi_selected = False
         cocotb.log.info(
-            "%s: bound OcahJtagTap bit-bang (prefix=%s, ir_width=%d, tck=%d ns, "
+            "%s: bound OcahJtagMasterDriver bit-bang (prefix=%s, ir_width=%d, tck=%d ns, "
             "idcode=0x%08X, reset=%s active-high external)",
             self.name,
             self._prefix,
@@ -115,7 +115,7 @@ class SmcJtagTap:
             self._reset_signal_name,
         )
 
-    def _ensure(self) -> OcahJtagTap:
+    def _ensure(self) -> OcahJtagMasterDriver:
         if self._tap is None:
             self.init_signals()
         assert self._tap is not None

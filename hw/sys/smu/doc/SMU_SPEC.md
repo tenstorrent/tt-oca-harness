@@ -143,8 +143,7 @@ GB) to `SEP_SMC_REGION_ALIAS_BASE=0x0000_0000`.
 
 **Mailbox challenge-response**: SMC writes a token to an outbound mailbox; SEP
 reads it from its inbound mailbox, verifies, and writes the complement back; SMC
-pops the response. This is the primary real SMC↔SEP interoperability path (see
-`SMU_TB_ARCH.md` and `SMU_CSR.md`).
+pops the response. This is the primary real SMC↔SEP interoperability path.
 
 ## Interfaces
 
@@ -154,7 +153,7 @@ Directions/types from the `smu` core boundary (`smu.sv`).
 |-----------|------|-----------|---------------------------------|
 | Primary JTAG TAP | Pin-level (`tck`,`tms`,`trst_n`,`tdi`,`tdo`) via `jtag_ptap_client_*` | Client | Use `ocah_jtag_vip` |
 | External SMN AXI in | `smu_axi_in_req_i`/`resp_o` (`axi_56_64`, 8-bit ID) | Subordinate | Use `ocah_axi_vip` master |
-| External SMN AXI out | `smu_axi_out_req_o`/`resp_i` (`axi_out`, 10-bit ID) | Manager | Use `ocah_axi_vip` `OcahAxiRam` |
+| External SMN AXI out | `smu_axi_out_req_o`/`resp_i` (`axi_out`, 10-bit ID) | Manager | Use `ocah_axi_vip` `OcahAxiSlaveAgent` |
 | SMC/SEP OTP debug (over JTAG2AXI) | AXI4-Lite 32/32 | Manager | Use `ocah_axi_vip` AXI-Lite wrappers |
 | SMC AXI-Lite shims (PLL/PVT/GPIO/eFuse/extension) | `smc_axil_32_32` | Mixed | Use `ocah_axi_vip` AXI-Lite when exercised |
 | SMC mailbox interrupts | `ext_mailbox_interrupts_o [31:0]` | Output | Observe; scoreboard checks |
@@ -285,14 +284,11 @@ outbound filter (ISSUE-16); SEP eFuse `shadow_regs` tied `0` at the wrapper
 
 ## Verification Alignment
 
-The working reference plans in `dv/smu/tb/doc/` (`smu_all_testplan.md`,
-`smu_vplan.md`, `SMU_INTEROP_VERIFICATION_PLAN.md`, `smu_dev.md`,
-`SMU_INTEROP_VPLAN.md`) define the SMU test streams. The open-source `SMU_VPLAN.md`
-organizes them into SMU-level SMC/SEP/DTP, SMC/SEP and SMC/DTP interoperability,
-and AXI-fabric connectivity streams, plus the SMC dual/Master-BFM reference set
-and the OCAC-aligned compliance mapping. Coverage intent is in `SMU_FCOV.md`;
-register/address detail is in `SMU_CSR.md`; the testbench architecture is in
-`SMU_TB_ARCH.md`.
+Enrolled SMU open-source DV is defined by `hw/sys/smu/dv/testlists/*.toml`
+(primarily `all.toml` for SEP=0 density and `wrapper.toml` for the production
+wrapper baseline). Deferred / SEP=1 inventory lives in `testlists/deferred.toml`
+and is not reportable as PASS. Live stimulus and checkers are under
+`hw/sys/smu/dv/cocotb/` and `hw/sys/smu/dv/cocotb_wrapper/`.
 
 ## Revision History
 

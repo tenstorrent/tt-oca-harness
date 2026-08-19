@@ -11,7 +11,14 @@ from __future__ import annotations
 import cocotb
 from pyuvm import ConfigDB, uvm_agent
 
-from ocah_axi_vip import OcahAxiRam
+from ocah_axi_vip import (
+    OcahAxiLiteMonitor,
+    OcahAxiLiteProtocolWatcher,
+    OcahAxiMonitor,
+    OcahAxiProtocolWatcher,
+    OcahAxiSlaveAgent,
+    OcahAxiSlaveSequence,
+)
 
 from .dtp_fault_axi import DtpFaultAxiLiteRam, DtpFaultOcahAxiRam
 
@@ -19,13 +26,13 @@ from .dtp_fault_axi import DtpFaultAxiLiteRam, DtpFaultOcahAxiRam
 class DtpAxiAgent(uvm_agent):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
-        self.axi_ram: OcahAxiRam | None = None
+        self.axi_ram: OcahAxiSlaveSequence | None = None
         self.smc_otp_axil_ram = None
         self.sep_otp_axil_ram = None
 
     async def run_phase(self) -> None:
         dut = cocotb.top
-        self.axi_ram = OcahAxiRam.from_prefix(
+        self.axi_ram = OcahAxiSlaveAgent.from_prefix(
             dut,
             "m_axi",
             dut.clk_i,
@@ -36,7 +43,7 @@ class DtpAxiAgent(uvm_agent):
             addr_width=56,
             data_width=64,
             strb_width=8,
-        )
+        ).sequence
         # Publish for backdoor checks once the memory model exists.
         self.cfg.axi_ram = DtpFaultOcahAxiRam(self.axi_ram)
         self.smc_otp_axil_ram = DtpFaultAxiLiteRam.from_prefix(
@@ -67,6 +74,59 @@ class DtpAxiAgent(uvm_agent):
             "OTP AXI-Lite RAM responders ready (%d bytes each)",
             self.cfg.otp_axil_mem_size,
         )
+        if getattr(self.cfg, "axi_scoreboard_enabled", False):
+            await self.cfg.reset_done.wait()
+            await self._start_shared_monitors(dut)
+
+    async def _start_shared_monitors(self, dut) -> None:
+        """Attach shared-VIP monitors/watchers to the scoreboard (issue #3295)."""
+        scoreboard = self.cfg.axi_scoreboard
+        assert scoreboard is not None, "DtpAxiScoreboard did not publish a scoreboard"
+        monitors = {
+            "smc_axi": OcahAxiMonitor.from_prefix(
+                dut, "m_axi", dut.clk_i, name="dtp_smc_axi_monitor"
+            ),
+            "smc_otp": OcahAxiLiteMonitor.from_prefix(
+                dut, "smc_otp_axil", dut.clk_i, name="dtp_smc_otp_monitor"
+            ),
+            "sep_otp": OcahAxiLiteMonitor.from_prefix(
+                dut, "sep_otp_axil", dut.clk_i, name="dtp_sep_otp_monitor"
+            ),
+        }
+        watchers = {
+            "smc_axi": OcahAxiProtocolWatcher.from_prefix(
+                dut,
+                "m_axi",
+                dut.clk_i,
+                reset=dut.rst_n_i,
+                reset_active_level=False,
+                name="dtp_smc_axi_watcher",
+            ),
+            "smc_otp": OcahAxiLiteProtocolWatcher.from_prefix(
+                dut,
+                "smc_otp_axil",
+                dut.clk_i,
+                reset=dut.rst_n_i,
+                reset_active_level=False,
+                name="dtp_smc_otp_watcher",
+            ),
+            "sep_otp": OcahAxiLiteProtocolWatcher.from_prefix(
+                dut,
+                "sep_otp_axil",
+                dut.clk_i,
+                reset=dut.rst_n_i,
+                reset_active_level=False,
+                name="dtp_sep_otp_watcher",
+            ),
+        }
+        for target, monitor in monitors.items():
+            scoreboard.attach_monitor(monitor, stream=target)
+            await monitor.start()
+        for watcher in watchers.values():
+            await watcher.start()
+        self.cfg.axi_monitors = monitors
+        self.cfg.axi_watchers = watchers
+        self.logger.info("Shared AXI monitors/watchers attached to scoreboard")
 
     def backdoor_read64(self, addr: int) -> int:
         """Little-endian 64-bit backdoor read from the AXI memory."""

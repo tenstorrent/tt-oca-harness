@@ -11,7 +11,7 @@ schema_version = 1
 # Independent of the SEP=0 bare-`smu` catalog in smu_sim_cfg.toml; both configs
 # share this DV root and the build/runs evidence directory.
 name = "smu_wrapper"
-profile = "native-cocotb"
+profile = "native"
 description = "Production-wrapper OSS baseline: no-SEP and real-SEP smoke"
 default_tool = "verilator"
 tools = ["verilator", "vcs", "xcelium"]
@@ -121,7 +121,7 @@ ccache = true
 [build.options]
 build_jobs = 8
 
-[cocotb]
+[frameworks.cocotb]
 # Wrapper flow keeps its own PyUVM tree so module names stay independent of
 # the bare-smu cocotb/ catalog sharing this DV root.
 python_root = "hw/sys/smu/dv/cocotb_wrapper"

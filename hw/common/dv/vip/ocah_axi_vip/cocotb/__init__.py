@@ -11,29 +11,36 @@ APB lives in its own package (``ocah_apb_vip``) because it is a distinct
 protocol (one package per protocol); it also targets ``cocotbext-axi``, which
 provides ``ApbMaster``/``ApbBus``.
 
+The VIP is implemented per side with side-token naming
+(``ocah_axi[_lite]_master_*`` / ``ocah_axi[_lite]_slave_*``); tests consume
+each side through its ``*Sequence`` class (the mandated test-facing surface),
+usually obtained from the side's ``*Agent`` bundle. Wire-level bus
+observation (monitor, checker, reference model, scoreboard, watchers) is
+side-neutral shared collateral and carries no side token.
+
 Primary exports
 ---------------
-OcahAxiMaster         — AXI4 full-bus master (burst-capable, ID-tagged).
-OcahAxiLiteMaster     — AXI4-Lite master (single-beat, no IDs).
-OcahAxiSlave          — AXI4 memory-backed slave/responder.
-OcahAxiRam            — Alias for OcahAxiSlave.
-OcahAxiLiteSlave      — AXI4-Lite memory-backed slave/responder.
-OcahAxiLiteRam        — Alias for OcahAxiLiteSlave.
-OcahAxiMonitor      — Passive AXI4 transaction monitor with callbacks.
-OcahAxiLiteMonitor  — Passive AXI4-Lite transaction monitor with callbacks.
+OcahAxiMasterAgent / OcahAxiMasterSequence         — AXI4 full-bus master (burst-capable, ID-tagged).
+OcahAxiLiteMasterAgent / OcahAxiLiteMasterSequence — AXI4-Lite master (single-beat, no IDs).
+OcahAxiSlaveAgent / OcahAxiSlaveSequence           — AXI4 memory-backed responder.
+OcahAxiLiteSlaveAgent / OcahAxiLiteSlaveSequence   — AXI4-Lite memory-backed responder.
+OcahAxiMonitor / OcahAxiLiteMonitor  — Passive transaction monitors with callbacks.
+OcahAxiRefModel       — Shadow memory + expected-response reference model.
+OcahAxiScoreboard     — Evidence-emitting scoreboard over monitor item streams.
+OcahAxiProtocolWatcher / OcahAxiLiteProtocolWatcher — cycle-level rule watchers.
 
 Quick-start
 -----------
 ::
 
-    from ocah_axi_vip import OcahAxiLiteMaster
+    from ocah_axi_vip import OcahAxiLiteMasterAgent
 
     @cocotb.test()
     async def test_register_access(dut):
         clk = Clock(dut.aclk, 10, units="ns")
         cocotb.start_soon(clk.start())
 
-        master = OcahAxiLiteMaster(dut.axil_if, name="cfg_host")
+        master = OcahAxiLiteMasterAgent(dut.axil_if, name="cfg_host").sequence
         master.init_signals()
         await master.wait_for_reset()
 
@@ -52,9 +59,13 @@ from .ocah_axi_item import (
     OcahAxiReadItem,
     OcahAxiWriteItem,
 )
-from .ocah_axi_lite_slave import OcahAxiLiteRam, OcahAxiLiteSlave, OcahFaultAxiLiteRam
-from .ocah_axi_slave import OcahAxiRam, OcahAxiSlave, OcahAxiSlaveImportError, OcahFaultAxiRam
-from .results import (
+from .ocah_axi_ref_model import (
+    OcahAxiPrediction,
+    OcahAxiRefModel,
+    OcahAxiRegionExpectation,
+)
+from .ocah_axi_scoreboard import OcahAxiScoreboard
+from .ocah_axi_results import (
     RESP_DECERR,
     RESP_EXOKAY,
     RESP_OKAY,
@@ -82,15 +93,43 @@ def _unavailable_class(class_name: str, backend: str):
 
 
 try:
-    from .ocah_axi_master import OcahAxiMaster, OcahAxiMasterError
-    from .ocah_axi_lite_master import OcahAxiLiteMaster, OcahAxiLiteMasterError
+    from .ocah_axi_master_agent import OcahAxiMasterAgent
+    from .ocah_axi_master_config import OcahAxiMasterConfig
+    from .ocah_axi_master_driver import OcahAxiMasterDriver
+    from .ocah_axi_master_sequence import OcahAxiMasterError, OcahAxiMasterSequence
+    from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
+    from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
+    from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
+    from .ocah_axi_lite_master_sequence import OcahAxiLiteMasterError, OcahAxiLiteMasterSequence
+    from .ocah_axi_slave_agent import OcahAxiSlaveAgent
+    from .ocah_axi_slave_config import OcahAxiSlaveConfig
+    from .ocah_axi_slave_driver import OcahAxiSlaveDriver
+    from .ocah_axi_slave_sequence import OcahAxiSlaveSequence
+    from .ocah_axi_lite_slave_agent import OcahAxiLiteSlaveAgent
+    from .ocah_axi_lite_slave_config import OcahAxiLiteSlaveConfig
+    from .ocah_axi_lite_slave_driver import OcahAxiLiteSlaveDriver
+    from .ocah_axi_lite_slave_sequence import OcahAxiLiteSlaveSequence
 except ModuleNotFoundError as exc:
     if "cocotbext" not in str(exc):
         raise
-    OcahAxiMaster = _unavailable_class("OcahAxiMaster", "cocotbext-axi")
+    OcahAxiMasterAgent = _unavailable_class("OcahAxiMasterAgent", "cocotbext-axi")
+    OcahAxiMasterConfig = _unavailable_class("OcahAxiMasterConfig", "cocotbext-axi")
+    OcahAxiMasterDriver = _unavailable_class("OcahAxiMasterDriver", "cocotbext-axi")
+    OcahAxiMasterSequence = _unavailable_class("OcahAxiMasterSequence", "cocotbext-axi")
     OcahAxiMasterError = OcahAxiVipBackendError
-    OcahAxiLiteMaster = _unavailable_class("OcahAxiLiteMaster", "cocotbext-axi")
+    OcahAxiLiteMasterAgent = _unavailable_class("OcahAxiLiteMasterAgent", "cocotbext-axi")
+    OcahAxiLiteMasterConfig = _unavailable_class("OcahAxiLiteMasterConfig", "cocotbext-axi")
+    OcahAxiLiteMasterDriver = _unavailable_class("OcahAxiLiteMasterDriver", "cocotbext-axi")
+    OcahAxiLiteMasterSequence = _unavailable_class("OcahAxiLiteMasterSequence", "cocotbext-axi")
     OcahAxiLiteMasterError = OcahAxiVipBackendError
+    OcahAxiSlaveAgent = _unavailable_class("OcahAxiSlaveAgent", "cocotbext-axi")
+    OcahAxiSlaveConfig = _unavailable_class("OcahAxiSlaveConfig", "cocotbext-axi")
+    OcahAxiSlaveDriver = _unavailable_class("OcahAxiSlaveDriver", "cocotbext-axi")
+    OcahAxiSlaveSequence = _unavailable_class("OcahAxiSlaveSequence", "cocotbext-axi")
+    OcahAxiLiteSlaveAgent = _unavailable_class("OcahAxiLiteSlaveAgent", "cocotbext-axi")
+    OcahAxiLiteSlaveConfig = _unavailable_class("OcahAxiLiteSlaveConfig", "cocotbext-axi")
+    OcahAxiLiteSlaveDriver = _unavailable_class("OcahAxiLiteSlaveDriver", "cocotbext-axi")
+    OcahAxiLiteSlaveSequence = _unavailable_class("OcahAxiLiteSlaveSequence", "cocotbext-axi")
 
 try:
     from .ocah_axi_monitor import OcahAxiLiteMonitor, OcahAxiMonitor
@@ -100,17 +139,38 @@ except ModuleNotFoundError as exc:
     OcahAxiMonitor = _unavailable_class("OcahAxiMonitor", "cocotb")
     OcahAxiLiteMonitor = _unavailable_class("OcahAxiLiteMonitor", "cocotb")
 
+try:
+    from .ocah_axi_protocol_watcher import (
+        OcahAxiLiteProtocolWatcher,
+        OcahAxiProtocolWatcher,
+        OcahAxiWatchFinding,
+    )
+except ModuleNotFoundError as exc:
+    if "cocotb" not in str(exc):
+        raise
+    OcahAxiProtocolWatcher = _unavailable_class("OcahAxiProtocolWatcher", "cocotb")
+    OcahAxiLiteProtocolWatcher = _unavailable_class("OcahAxiLiteProtocolWatcher", "cocotb")
+    OcahAxiWatchFinding = None
+
 __all__ = [
-    # Master drivers
-    "OcahAxiMaster",
-    "OcahAxiLiteMaster",
-    # Slave/responders
-    "OcahAxiSlave",
-    "OcahAxiRam",
-    "OcahFaultAxiRam",
-    "OcahAxiLiteSlave",
-    "OcahAxiLiteRam",
-    "OcahFaultAxiLiteRam",
+    # Master side (AXI4 and AXI4-Lite)
+    "OcahAxiMasterAgent",
+    "OcahAxiMasterConfig",
+    "OcahAxiMasterDriver",
+    "OcahAxiMasterSequence",
+    "OcahAxiLiteMasterAgent",
+    "OcahAxiLiteMasterConfig",
+    "OcahAxiLiteMasterDriver",
+    "OcahAxiLiteMasterSequence",
+    # Slave side (AXI4 and AXI4-Lite)
+    "OcahAxiSlaveAgent",
+    "OcahAxiSlaveConfig",
+    "OcahAxiSlaveDriver",
+    "OcahAxiSlaveSequence",
+    "OcahAxiLiteSlaveAgent",
+    "OcahAxiLiteSlaveConfig",
+    "OcahAxiLiteSlaveDriver",
+    "OcahAxiLiteSlaveSequence",
     # Passive monitors
     "OcahAxiMonitor",
     "OcahAxiLiteMonitor",
@@ -122,10 +182,17 @@ __all__ = [
     "OcahAxiLiteReadItem",
     "OcahAxiChecker",
     "OcahAxiCheckerError",
+    # Reference model, scoreboard, and protocol watchers
+    "OcahAxiRefModel",
+    "OcahAxiRegionExpectation",
+    "OcahAxiPrediction",
+    "OcahAxiScoreboard",
+    "OcahAxiProtocolWatcher",
+    "OcahAxiLiteProtocolWatcher",
+    "OcahAxiWatchFinding",
     # Error types
     "OcahAxiMasterError",
     "OcahAxiLiteMasterError",
-    "OcahAxiSlaveImportError",
     "OcahAxiVipBackendError",
     "OcahAxiReadResult",
     "OcahAxiWriteResult",
@@ -137,4 +204,4 @@ __all__ = [
     "RESP_TIMEOUT",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

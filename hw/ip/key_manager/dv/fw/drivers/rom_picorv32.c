@@ -35,7 +35,7 @@ uint32_t rom_picorv32_maskirq(uint32_t new_mask) {
  * @brief Halt CPU until an interrupt arrives.
  *
  * Uses PicoRV32 custom instruction (waitirq).
- * Used by the main event loop when the message buffer is empty (FR-0000-243).
+ * Used by the main event loop when the message buffer is empty.
  */
 void rom_picorv32_waitirq(void) {
     __asm__ volatile(".word 0x0100000b" ::: "memory"); /* waitirq x0 */

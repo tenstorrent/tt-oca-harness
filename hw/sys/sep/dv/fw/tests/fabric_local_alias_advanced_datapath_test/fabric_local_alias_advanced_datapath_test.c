@@ -4,25 +4,25 @@
 /*
  * TC_FABRIC_071: fabric_local_alias_advanced_datapath_test
  *
- * 目標: axi_local_alias_remap 72.95% → 90%+ (需要 17.05% 改進)
- * 策略: Local別名進階datapath，深度信號覆蓋
- * 優先級: 第三輪 (精準優化，significant improvement needed)
+ * Goal: axi_local_alias_remap 72.95% -> 90%+ (needs 17.05% improvement)
+ * Strategy: Advanced local-alias datapath; deep signal coverage
+ * Priority: third pass (precision optimization; significant improvement needed)
  *
- * 專注於local alias remap的進階datapath和深度信號toggle覆蓋
+ * Focus on advanced local-alias-remap datapath and deep signal-toggle coverage
  */
 
 #include "sep_test_common.h"
 #include "sep_fabric.h"
 
-// Local alias advanced datapath 場景數量
+// Local alias advanced datapath scenario count
 #define LOCAL_ALIAS_ADVANCED_SCENARIOS 12
 
-// Advanced datapath測試定義
+// Advanced datapath test definitions
 #define ADVANCED_LOCAL_REGIONS 8
 #define DEEP_SIGNAL_PATTERNS 64
 #define COMPLEX_ROUTING_TESTS 32
 
-// Local alias進階地址空間
+// Local-alias advanced address space
 #define LOCAL_ADVANCED_BASE 0x30000000
 #define LOCAL_VIRTUAL_SPACE 0x38000000
 #define LOCAL_PHYSICAL_SPACE 0x40000000
@@ -37,7 +37,7 @@
 static int test_advanced_local_alias_datapath_matrix(void) {
     printf("Starting advanced local alias datapath matrix test...\n");
 
-    // 場景1: Advanced datapath matrix
+    // Scenario 1: Advanced datapath matrix
     for (int matrix_test = 0; matrix_test < 32; matrix_test++) {
         for (int region = 0; region < 8; region++) {
             // Complex local alias mapping configurations
@@ -102,7 +102,7 @@ static int test_advanced_local_alias_datapath_matrix(void) {
 static int test_deep_signal_toggle_coverage(void) {
     printf("Starting deep signal toggle coverage test...\n");
 
-    // 場景2: Deep signal toggle coverage
+    // Scenario 2: Deep signal toggle coverage
     for (int signal_test = 0; signal_test < 64; signal_test++) {
         for (int region = 0; region < 8; region++) {
             uint32_t signal_base =
@@ -186,7 +186,7 @@ static int test_deep_signal_toggle_coverage(void) {
 static int test_complex_routing_scenarios(void) {
     printf("Starting complex routing scenarios test...\n");
 
-    // 場景3: Complex routing scenarios
+    // Scenario 3: Complex routing scenarios
     for (int routing_test = 0; routing_test < 24; routing_test++) {
         // Multi-level routing setup
         for (int level = 0; level < 4; level++) {
@@ -301,7 +301,7 @@ static int test_complex_routing_scenarios(void) {
 static int test_timing_critical_datapath_sequences(void) {
     printf("Starting timing critical datapath sequences test...\n");
 
-    // 場景4: Timing critical datapath sequences
+    // Scenario 4: Timing critical datapath sequences
     for (int timing_test = 0; timing_test < 16; timing_test++) {
         for (int region = 0; region < 8; region++) {
             uint32_t timing_base =
@@ -388,7 +388,7 @@ static int test_timing_critical_datapath_sequences(void) {
 static int test_error_injection_advanced_recovery(void) {
     printf("Starting error injection advanced recovery test...\n");
 
-    // 場景5: Error injection advanced recovery
+    // Scenario 5: Error injection advanced recovery
     for (int error_test = 0; error_test < 20; error_test++) {
         for (int region = 0; region < 8; region++) {
             uint32_t error_base = LOCAL_ADVANCED_BASE + error_test * 0x1000000 + region * 0x200000;
@@ -498,16 +498,16 @@ static int test_error_injection_advanced_recovery(void) {
 
 int main(void) {
     printf("TC_FABRIC_071: Local Alias Advanced Datapath Test\n");
-    printf("Goals: axi_local_alias_remap 72.95%% -> 90%%+ (需要 17.05%% 改進)\n");
-    printf("Strategy: Local別名進階datapath，深度信號覆蓋\n\n");
+    printf("Goals: axi_local_alias_remap 72.95%% -> 90%%+ (needs 17.05%% improvement)\n");
+    printf("Strategy: Advanced local-alias datapath; deep signal coverage\n\n");
 
-    // 初始化fabric系統
+    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("TC_FABRIC_071");
         return TEST_FAIL;
     }
 
-    // 執行所有local alias advanced datapath場景
+    // Run all local-alias advanced datapath scenarios
     if (test_advanced_local_alias_datapath_matrix() != 0) {
         test_fail("TC_FABRIC_071 - Advanced Local Alias Datapath Matrix");
         return TEST_FAIL;

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+//-----------------------------------------------------------------------------
 // Efuse Interface Controller
+//
+//-----------------------------------------------------------------------------
 
 module efuse_interface_controller
 #(
@@ -407,14 +410,14 @@ module efuse_interface_controller
     generate
         if (HAS_LC_STATE) begin : gen_mmr_reg
 
-            efuse_security_tokens #(
+            efuse_token_processing #(
                 .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
                 .LC_STATE_WIDTH        (LC_STATE_WIDTH),
                 .TOKEN_MATCH_CODE      (TOKEN_MATCH_CODE),
                 .efuse_apb_req_t       (efuse_apb_req_t),
                 .efuse_apb_resp_t      (efuse_apb_resp_t),
                 .efuse_map_t           (efuse_map_t)
-            ) u_efuse_security_tokens (
+            ) u_efuse_token_processing (
                 .clk_i                      (clk_i),
                 .rst_ni                     (rst_ni),
                 .test_en_i                  (test_en_i),

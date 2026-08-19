@@ -1270,7 +1270,7 @@ def _safe_build_component(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", value.strip()) or "default"
 
 
-def _cocotb_python_paths(root: Path, cocotb_data: dict[str, Any]) -> list[Path]:
+def cocotb_python_paths(root: Path, cocotb_data: dict[str, Any]) -> list[Path]:
     return [
         repo_path(root, str(cocotb_data.get("test_dir", ""))),
         repo_path(root, str(cocotb_data.get("python_root", ""))),
@@ -1466,7 +1466,7 @@ def _cocotb_vcs_makefile(
         )
         sim_args += ["-ucli", "-i", str(ucli_path)]
 
-    python_paths = _cocotb_python_paths(root, cocotb_data)
+    python_paths = cocotb_python_paths(root, cocotb_data)
     vcs_python = _vcs_cocotb_python(root)
     env = os.environ.copy()
     # cocotb's classic make flow runs the simulator as a separate process whose embedded
@@ -1857,7 +1857,7 @@ def cocotb_sim(
             )
             test_args += ["-input", str(tcl_path)]
 
-    python_paths = _cocotb_python_paths(root, cocotb_data)
+    python_paths = cocotb_python_paths(root, cocotb_data)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
     env["RANDOM_SEED"] = str(seed)
@@ -2138,7 +2138,10 @@ def _vcs_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: ar
     if not top:
         raise ConfigError(f"{flow.path}: [build].top_module is required")
     filelist = repo_path(root, str(build.get("filelist", "")))
-    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path)))
+    # Uniform build-tree convention `build/<framework>/<tool>/`: the configured work_dir carries
+    # the framework segment (e.g. build/uvm), the runner appends the tool — mirroring how the
+    # cocotb build appends its tool subdir. Generated filelists stay directly under work_dir.
+    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path))) / "vcs"
 
     elab_args = [
         *_vcs_preamble(vcs_cfg, flow.framework),
@@ -2328,7 +2331,8 @@ def _xcelium_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args
     if not top:
         raise ConfigError(f"{flow.path}: [build].top_module is required")
     filelist = repo_path(root, str(build.get("filelist", "")))
-    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path)))
+    # Same `build/<framework>/<tool>/` convention as the VCS resolver above.
+    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path))) / "xcelium"
     snapshot = str(xcelium_cfg.get("snapshot", top))
 
     elab_args = [
@@ -2991,6 +2995,30 @@ def formal_run_stage(
     return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=cwd, verbose=args.verbose, timeout_sec=args.timeout)
 
 
+def _resolve_stage_kind(kind: str, framework: str, tool: str, where: Any) -> str:
+    """Map a generic stage kind to its concrete (tool, framework) adapter.
+
+    Generic kinds keep the profile stage graph framework-neutral; the concrete adapter is
+    picked here at dispatch time. `vcs_uvm_build` is internal-only (the folded analyze +
+    elaborate two-step for SV-UVM on VCS) and never appears in configs.
+    """
+    if kind == "filelist":
+        return "bender_filelist"
+    if kind == "hdl_compile":
+        if framework == "uvm":
+            if tool == "vcs":
+                return "vcs_uvm_build"
+            raise ConfigError(f"{where}: framework `uvm` has no `hdl_compile` adapter for tool `{tool}` yet")
+        return "cocotb_build"
+    if kind == "sim":
+        if framework == "uvm":
+            if tool == "vcs":
+                return "vcs_sim"
+            raise ConfigError(f"{where}: framework `uvm` has no `sim` adapter for tool `{tool}` yet")
+        return "cocotb_sim"
+    return kind
+
+
 def run_stage(
     flow: Flow,
     root: Path,
@@ -3009,7 +3037,7 @@ def run_stage(
 ) -> StageResult:
     setattr(args, "_simulators", simulators)
     stage = flow_stages(flow)[stage_name]
-    kind = str(stage.get("kind", ""))
+    kind = _resolve_stage_kind(str(stage.get("kind", "")), flow.framework, tool, flow.path)
     seed = seed_override if seed_override is not None else (seed_for_item(catalog, sim_cfg, args, item) if item else as_int(args.seed, "seed") or 1)
     stage_dir = artifact_root(run_dir, stage_name, item, seed=seed, attempt=attempt, nest=nest)
     if stage_name in {"c_compile", "formal"}:
@@ -3094,7 +3122,7 @@ def run_stage(
         elif kind == "formal_run":
             rc = formal_run_stage(flow, root, sim_cfg, catalog, item, args, tool, simulators, log_path, script_path, env_path)
         elif kind in {"bender_filelist", "verilator_filelist"}:
-            # The `native-cocotb` profile maps the logical `flist` stage to `bender_filelist` for
+            # The `native` profile's cocotb framework maps the logical `flist` stage to `bender_filelist` for
             # every tool (VCS runs via cocotb's classic make, not the dedicated vcs_* stages), so the
             # tool-dependent stub ordering has to key off the actual target tool here.
             rc = generate_filelist(
@@ -3161,6 +3189,27 @@ def run_stage(
             )
         elif kind == "vcs_elaborate":
             rc = vcs_build(flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=False)
+            info = _vcs_resolve_build(flow, root, sim_cfg, args)
+            metadata["target_build"] = _target_build_metadata(
+                target_name=info["target_name"],
+                tool="vcs",
+                build_dir=info["build_dir"],
+                fingerprint=info["fingerprint"],
+            )
+        elif kind == "vcs_uvm_build":
+            # Canonical two-step build for SV-UVM on VCS: analyze (vlogan + simulator-owned UVM
+            # library precompile) then elaborate to the reusable simv, folded into one
+            # `hdl_compile` stage. The analyze sub-step keeps the primary stage log/script; the
+            # elaborate sub-step writes alongside it so neither sub-step's evidence is
+            # overwritten, and a failing elaborate points the result at its own log.
+            rc = vcs_analyze(flow, root, sim_cfg, args, log_path, script_path, env_path)
+            if rc == 0:
+                elab_log = stage_dir / "logs" / f"{stage_suffix}.elaborate.log"
+                elab_script = stage_dir / "scripts" / f"{stage_suffix}.elaborate.sh"
+                elab_env = stage_dir / "env" / f"{stage_suffix}.elaborate.env"
+                rc = vcs_build(flow, root, sim_cfg, args, elab_log, elab_script, elab_env, include_filelist=False)
+                if rc != 0:
+                    log_path = elab_log
             info = _vcs_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
                 target_name=info["target_name"],

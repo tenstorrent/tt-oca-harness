@@ -476,9 +476,9 @@ class ENTROPY_SOURCE_FIFO_STATUS_reg_t(Structure):
     _fields_ = [
         ('level', c_uint32, 7),
         ('rsvd_0', c_uint32, 1),
-        ('wptr', c_uint32, 5),
-        ('rsvd_1', c_uint32, 3),
-        ('rptr', c_uint32, 5),
+        ('wptr', c_uint32, 6),
+        ('rsvd_1', c_uint32, 2),
+        ('rptr', c_uint32, 6),
     ]
 
 ENTROPY_SOURCE_FIFO_STATUS_REG_DEFAULT = 0x00000000
@@ -2274,9 +2274,9 @@ class ENTROPY_SOURCE_BIW_OBS_STATUS_reg_t(Structure):
     _fields_ = [
         ('level', c_uint32, 7),
         ('rsvd_0', c_uint32, 1),
-        ('wptr', c_uint32, 5),
-        ('rsvd_1', c_uint32, 3),
-        ('rptr', c_uint32, 5),
+        ('wptr', c_uint32, 6),
+        ('rsvd_1', c_uint32, 2),
+        ('rptr', c_uint32, 6),
     ]
 
 ENTROPY_SOURCE_BIW_OBS_STATUS_REG_DEFAULT = 0x00000000
@@ -2365,9 +2365,9 @@ class ENTROPY_SOURCE_NOISE_OBS_STATUS_reg_t(Structure):
     _fields_ = [
         ('level', c_uint32, 7),
         ('rsvd_0', c_uint32, 1),
-        ('wptr', c_uint32, 5),
-        ('rsvd_1', c_uint32, 3),
-        ('rptr', c_uint32, 5),
+        ('wptr', c_uint32, 6),
+        ('rsvd_1', c_uint32, 2),
+        ('rptr', c_uint32, 6),
     ]
 
 ENTROPY_SOURCE_NOISE_OBS_STATUS_REG_DEFAULT = 0x00000000

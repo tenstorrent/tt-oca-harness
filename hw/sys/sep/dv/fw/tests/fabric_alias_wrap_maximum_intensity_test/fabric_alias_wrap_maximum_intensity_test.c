@@ -4,31 +4,31 @@
 /*
  * TC_FABRIC_072: fabric_alias_wrap_maximum_intensity_test
  *
- * 目標: axi_alias_remap_wrap 39.13% → 90%+ (需要 50.87% 改進) [最關鍵]
- * 策略: 最大強度alias wrap測試，完整模組激活
- * 優先級: 第三輪 (最關鍵 - 超過50%的巨大改進需求)
+ * Goal: axi_alias_remap_wrap 39.13% -> 90%+ (needs 50.87% improvement) [critical]
+ * Strategy: Maximum-intensity alias-wrap test; full module activation
+ * Priority: third pass (critical - needs >50% improvement)
  *
- * 專注於axi alias remap wrap的最大強度測試，激活所有可能的信號和路徑
+ * Focus on max-intensity axi_alias_remap_wrap; activate all signals and paths
  */
 
 #include "sep_test_common.h"
 #include "sep_fabric.h"
 
-// Maximum intensity alias wrap 場景數量
+// Maximum intensity alias wrap scenario count
 #define MAXIMUM_INTENSITY_SCENARIOS 16
 
-// Maximum intensity 測試定義
+// Maximum-intensity test definitions
 #define MAX_ALIAS_WRAP_ENTRIES 16
 #define INTENSIVE_PATTERN_COUNT 128
 #define WRAP_STRESS_ROUNDS 64
 
-// Alias wrap地址空間定義
+// Alias-wrap address-space definitions
 #define ALIAS_WRAP_BASE_LOW 0x20000000
 #define ALIAS_WRAP_BASE_MID 0x60000000
 #define ALIAS_WRAP_BASE_HIGH 0xA0000000
 #define ALIAS_WRAP_DEST_SPACE 0xE0000000
 
-// Maximum intensity wrap模式
+// Maximum-intensity wrap mode
 #define WRAP_MODE_NONE 0x0
 #define WRAP_MODE_ADDRESS 0x1
 #define WRAP_MODE_SIZE 0x2
@@ -41,7 +41,7 @@
 static int test_exhaustive_alias_wrap_combinations(void) {
     printf("Starting exhaustive alias wrap combinations test...\n");
 
-    // 場景1: Exhaustive alias wrap combinations
+    // Scenario 1: Exhaustive alias wrap combinations
     for (int combo_test = 0; combo_test < 128; combo_test++) {
         // Configure all 16 alias wrap entries with different combinations
         for (int alias_idx = 0; alias_idx < 16; alias_idx++) {
@@ -144,7 +144,7 @@ static int test_exhaustive_alias_wrap_combinations(void) {
 static int test_maximum_wrap_frequency_stress(void) {
     printf("Starting maximum wrap frequency stress test...\n");
 
-    // 場景2: Maximum wrap frequency stress
+    // Scenario 2: Maximum wrap frequency stress
     for (int freq_test = 0; freq_test < 32; freq_test++) {
         for (int alias_idx = 0; alias_idx < 16; alias_idx++) {
             // Configure for maximum wrap frequency
@@ -204,7 +204,7 @@ static int test_maximum_wrap_frequency_stress(void) {
 static int test_pathological_wrap_scenarios(void) {
     printf("Starting pathological wrap scenarios test...\n");
 
-    // 場景3: Pathological wrap scenarios
+    // Scenario 3: Pathological wrap scenarios
     for (int pathological_test = 0; pathological_test < 24; pathological_test++) {
         // Pathological Scenario 1: Overlapping wraps with different modes
         for (int overlap_group = 0; overlap_group < 4; overlap_group++) {
@@ -330,7 +330,7 @@ static int test_pathological_wrap_scenarios(void) {
 static int test_wrap_state_machine_exhaustive(void) {
     printf("Starting wrap state machine exhaustive test...\n");
 
-    // 場景4: Wrap state machine exhaustive testing
+    // Scenario 4: Wrap state machine exhaustive testing
     for (int state_test = 0; state_test < 16; state_test++) {
         for (int alias_idx = 0; alias_idx < 16; alias_idx++) {
             uint32_t state_src =
@@ -421,7 +421,7 @@ static int test_wrap_state_machine_exhaustive(void) {
 static int test_maximum_concurrent_wrap_stress(void) {
     printf("Starting maximum concurrent wrap stress test...\n");
 
-    // 場景5: Maximum concurrent wrap stress
+    // Scenario 5: Maximum concurrent wrap stress
     for (int concurrent_test = 0; concurrent_test < 8; concurrent_test++) {
         // Configure all 16 aliases for maximum concurrent stress
         for (int alias_idx = 0; alias_idx < 16; alias_idx++) {
@@ -513,7 +513,7 @@ static int test_maximum_concurrent_wrap_stress(void) {
 static int test_wrap_edge_case_boundary_exhaustive(void) {
     printf("Starting wrap edge case boundary exhaustive test...\n");
 
-    // 場景6: Wrap edge case boundary exhaustive testing
+    // Scenario 6: Wrap edge case boundary exhaustive testing
     uint32_t critical_boundaries[] = {
         0x00000000, 0x00000001, 0x00000002, 0x00000003, // Zero boundary
         0x000000FC, 0x000000FD, 0x000000FE, 0x000000FF, // Byte boundary
@@ -599,16 +599,16 @@ static int test_wrap_edge_case_boundary_exhaustive(void) {
 
 int main(void) {
     printf("TC_FABRIC_072: Alias Wrap Maximum Intensity Test\n");
-    printf("Goals: axi_alias_remap_wrap 39.13%% -> 90%%+ (需要 50.87%% 改進) [最關鍵]\n");
-    printf("Strategy: 最大強度alias wrap測試，完整模組激活\n\n");
+    printf("Goals: axi_alias_remap_wrap 39.13%% -> 90%%+ (needs 50.87%% improvement) [critical]\n");
+    printf("Strategy: Maximum-intensity alias-wrap test; full module activation\n\n");
 
-    // 初始化fabric系統
+    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("TC_FABRIC_072");
         return TEST_FAIL;
     }
 
-    // 執行所有maximum intensity alias wrap場景
+    // Run all maximum-intensity alias wrap scenarios
     if (test_exhaustive_alias_wrap_combinations() != 0) {
         test_fail("TC_FABRIC_072 - Exhaustive Alias Wrap Combinations");
         return TEST_FAIL;
