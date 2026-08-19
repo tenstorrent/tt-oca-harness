@@ -4,10 +4,6 @@
 [[entropy-source]]
 ==== Entropy Source
 
-The detailed specification for the
-https://docs.google.com/document/d/18rMTZXuhGDrg3-JJvgf-i9arpEkRFo-ENc_KDa9HEmc/edit?tab=t.0#heading=h.64mahktte8qv[entropy
-source] is linked here. The summary is included here for convenience.
-
 The entropy source component is a random number generator which is based
 on multiple asynchronous ring oscillators sampled in such a way to
 generate random bits from the jitter noise and metastable latching
