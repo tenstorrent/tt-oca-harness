@@ -68,7 +68,7 @@ module sep_lifecycle_ctrl #(
   sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_sec_disable;
   sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_secure_tm;
 
-  // Security-disable feature control, all features disabled when security_disable_i is asserted
+  // Security-disable feature control
   assign feat_ctrl_sec_disable = security_disable_i ? 64'hffff_ffff_ffff_ffff : feat_ctrl;
 
   always_comb begin
@@ -222,10 +222,10 @@ module sep_lifecycle_ctrl #(
   assign dbg_disable_o.stap_extra        = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.stap_host         = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.dft_nonsecure     = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
-  assign dbg_disable_o.dft_secure        = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
+  assign dbg_disable_o.dft_secure        = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg; // Spec confirmation: #450
   assign dbg_disable_o.dfd               = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.smc_jtag2axi      = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
   assign dbg_disable_o.stap_sep          = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg || !feat_ctrl_secure_tm.sep_debug;
-  assign dbg_disable_o.smc_otp_jtag2axi  = 1'b0;
-  assign dbg_disable_o.sep_otp_jtag2axi  = 1'b0;
+  assign dbg_disable_o.smc_otp_jtag2axi  = 1'b0; // Spec confirmation: #452
+  assign dbg_disable_o.sep_otp_jtag2axi  = 1'b0; // Spec confirmation: #452
 endmodule
