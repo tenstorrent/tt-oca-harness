@@ -355,17 +355,23 @@ restating them. Allowed taxonomy values live in `.github/issue-taxonomy.yml`.
 
 Pick one form: Bug, Task, or Feature (`gh issue create --type Bug|Task|Feature`).
 `--template` is interactive, so in a non-interactive session pass `--body` that still
-uses the form headings ingest parses (`### Workstream`, and so on):
+uses the form headings ingest parses (`### Workstream`, and so on).
+
+Write a plain imperative title. Do not put `[Bug]:` or `[Task]:` in it, and do
+not invent the taxonomy prefix. Ingest prefixes from the form picks:
+`[WORKSTREAM/SUBSYSTEM]` when Component is General, or
+`[WORKSTREAM/SUBSYSTEM-COMPONENT]` otherwise. `[RTL/OCAH]` below is one
+example of that pattern, not a fixed string.
 
 ```bash
-gh issue create --type Bug --title "[Bug]: <short title>" --body "$(cat <<'EOF'
+gh issue create --type Bug --title "<plain imperative title>" --body "$(cat <<'EOF'
 ### Workstream
 
-DV
+RTL
 
 ### Subsystem
 
-SEP
+OCAH
 
 ### Component
 
@@ -391,8 +397,10 @@ Required: **Workstream**, **Subsystem**, **Component** (use `General` if unsure)
 Do not set a GitHub milestone. Description heading is **What happened** (Bug),
 **Goal** (Task), or **What and why** (Feature); it is optional.
 
-Do not add labels, assignees, or a milestone. Ingest copies the form onto
-Project 291; see `doc/contributing/src/alignment.adoc`.
+Do not add labels, assignees, or a milestone. Ingest copies those form picks
+onto empty Project 291 fields, applies matching labels, and prefixes the
+title. The curator (disabled until `gh aw` credentials exist) is what infers
+assignees and leftover fields; see `doc/contributing/src/alignment.adoc`.
 
 ### Pull requests
 

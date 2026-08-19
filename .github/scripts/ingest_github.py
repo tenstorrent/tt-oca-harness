@@ -96,13 +96,11 @@ def _taxonomy_from_simple_yaml(path: Path) -> dict:
 
 def title_with_prefix(title: str, workstream: str, subsystem: str, component: str) -> str:
     raw = title.strip()
-    type_prefix = ""
     type_match = ISSUE_TYPE_PREFIX.match(raw)
     if type_match:
-        type_prefix = type_match.group(0)
-        raw = raw[type_match.end():].lstrip()
+        raw = raw[type_match.end() :].lstrip()
     if TAXONOMY_PREFIX.match(raw):
-        return title.strip()
+        return raw
     prefix = f"[{workstream}/{subsystem}]"
     if component != "General":
         prefix = f"[{workstream}/{subsystem}-{component}]"
@@ -111,10 +109,9 @@ def title_with_prefix(title: str, workstream: str, subsystem: str, component: st
         code = f"{match.group(1)}-{match.group(2)}"
         rest = (match.group(3) or "").strip()
         if TAXONOMY_PREFIX.match(rest):
-            return title.strip()
-        body = f"{code}: {prefix} {rest}".rstrip()
-        return f"{type_prefix}{body}".strip()
-    return f"{type_prefix}{prefix} {raw}".strip()
+            return f"{code}: {rest}".strip()
+        return f"{code}: {prefix} {rest}".strip()
+    return f"{prefix} {raw}".strip()
 
 
 def gh_json(args: list[str], token: str | None = None) -> object:
@@ -536,6 +533,16 @@ Future
     taxonomy = load_taxonomy(github_dir() / "issue-taxonomy.yml")
     assert "AOU" in taxonomy["project"]["fields"]["Subsystem"]
     assert_templates_match_taxonomy(taxonomy)
+    assert (
+        title_with_prefix(
+            "[Task]: Use upstream versions of lc_*_pkg's", "RTL", "OCAH", "General"
+        )
+        == "[RTL/OCAH] Use upstream versions of lc_*_pkg's"
+    )
+    assert (
+        title_with_prefix("[Task]: [RTL/OCAH] already prefixed", "RTL", "OCAH", "General")
+        == "[RTL/OCAH] already prefixed"
+    )
     print("self-test ok")
 
 

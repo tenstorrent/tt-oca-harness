@@ -7,8 +7,9 @@ Ingest copies form picks onto empty
 https://github.com/orgs/tenstorrent/projects/291[Project 291]
 fields on every issue open or edit. It needs Workstream, Subsystem, and
 Component to run; it also copies Priority and Target release when present.
-It assigns a PR to its opener. It does not assign issues, and it does not
-police PR Summary or Test plan.
+It prefixes the title from those picks (`[WORKSTREAM/SUBSYSTEM]` or
+`[WORKSTREAM/SUBSYSTEM-COMPONENT]`). It assigns a PR to its opener. It
+does not assign issues, and it does not police PR Summary or Test plan.
 
 The curator (`.github/ISSUE_CURATION.md`) can later fill leftover fields
 and assign an unassigned issue from a named person, the parent assignee,
