@@ -65,6 +65,91 @@ ifdef::backend-pdf[]
 See <<dv-dashboard,DV and FV Dashboard>>.
 endif::backend-pdf[]
 
+[[runner-terminology]]
+== Terminology
+
+The runner's options, messages, and result files use a small fixed vocabulary.
+Every other section of this page assumes these meanings:
+
+DUT::
+The named unit under verification together with its checked-in DV environment
+(`<dut>_sim_cfg.toml`, testlists, and sources). `--dut` selects one by
+registry alias (`hw/common/dv/configs/duts.toml`) or by directory convention.
+
+Flow::
+One DUT resolved for one mode into a runnable configuration: simulator
+defaults, the shared profile, and the DUT configuration merged together. In
+JSON output the `flow` field always holds the DUT name.
+
+Mode::
+`sim` or `formal` (`--mode`). The mode chooses which DUT configuration file is
+loaded and which stages are meaningful.
+
+Profile::
+A shared configuration layer under `hw/common/dv/configs/profiles/` that a
+DUT selects with its `profile` key. It supplies the test framework, tool
+allowlist, stage graph, scheduler policy, and defaults that individual DUTs
+would otherwise repeat.
+
+Framework::
+The test framework a flow drives, for example cocotb or SystemVerilog UVM. It
+is supplied by the resolved configuration and recorded as `framework` in
+`result.json`.
+
+Tool::
+A simulator or formal engine registered in
+`hw/common/dv/configs/simulators.toml` (for example `verilator`, `vcs`,
+`xcelium`) and selected with `--tool`. The words _backend_ and _simulator_ in
+this guide refer to the same axis: "backend" names the stage implementation
+that renders and executes the tool's commands.
+
+Test::
+One entry in a DUT testlist. Its `module` field names the code that
+implements it. The test name is the stable identity used in results and
+reruns.
+
+Group::
+A named list of tests defined in the testlist. Groups expand in definition
+order.
+
+Tag::
+A label carried by tests, used by `--tag` as an OR filter.
+
+Item::
+Any name accepted by `--items`: a test name or a group name.
+
+Catalog::
+The complete set of tests, groups, and tags after loading every testlist file
+referenced by the DUT configuration — "the resolved test catalog".
+
+Target::
+A named build configuration (`[targets.<name>]`): the defines and flags that
+produce one distinct build image. Shared build stages run once per unique
+target.
+
+Run mode::
+A named bundle of runtime arguments and timeout (`[run_modes.<name>]`)
+applied to a test without changing which test runs.
+
+Stage::
+One named step of the execution plan (`flist`, `hdl_compile`, `sim`, ...). A
+stage's configured `kind` selects the backend implementation that performs
+it.
+
+Leaf::
+One scheduled simulation execution, identified by `(test, target, seed)`.
+Scheduler mode expands the selection into leaves; `--retry` adds attempts to
+a leaf without creating a new one.
+
+Label::
+The human-readable suffix of an automatically allocated run directory: the
+first selected group, the single test name, `multi`, or `build`. It is
+recorded in `result.json`.
+
+Executor::
+The dispatch mechanism for leaves, declared in `executors.toml`. Only `local`
+dispatch is implemented.
+
 == Prerequisites and bootstrap
 
 Run the launcher with Python 3:
