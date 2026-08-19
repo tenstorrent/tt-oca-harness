@@ -1,4 +1,6 @@
-# Shared profile for DUTs on the native runner.
+# Shared profile for DUTs on the native runner — "native" = the flow's stage
+# plan, tool invocation, and results are owned by this runner, not a
+# wrapped/external flow (e.g. the classic VCS Make/VPI path).
 #
 # Framework (cocotb | uvm) is a selectable dimension inside this one profile: shared launch
 # policy lives at the top level, per-framework residue in [frameworks.<fw>], and each DUT

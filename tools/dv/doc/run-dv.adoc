@@ -10,6 +10,10 @@ simulation and formal flows. It resolves a DUT, validates the configuration,
 builds a concrete stage plan, invokes the selected backend, and writes durable
 logs and schema-version-1 result files.
 
+_Native_ means the flow is owned by this runner end to end — stage plan,
+tool invocation, and results — in contrast to wrapped or external flows such
+as the classic VCS Make/VPI path.
+
 [NOTE]
 ====
 This page describes the implementation in the current source tree. The
