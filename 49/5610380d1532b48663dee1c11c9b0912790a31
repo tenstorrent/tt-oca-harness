@@ -1,0 +1,22 @@
+tools/docker/README.md
+  s_c8ce40a7fc1aa0::t_db5b5c8c409d27 107
+  s_c8ce40a7fc1aa0::t_2fee5acd36c9e0 27
+doc/trm/src/methodology.adoc
+  s_c8ce40a7fc1aa0::t_5fd9ed08a23313 244-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "495610380d1532b48663dee1c11c9b0912790a31",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
