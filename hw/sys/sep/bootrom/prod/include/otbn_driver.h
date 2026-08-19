@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // OTBN hardware driver for OROM.
 //
 // Provides low-level access to the OpenTitan OTBN coprocessor for

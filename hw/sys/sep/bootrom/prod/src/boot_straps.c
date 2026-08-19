@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Boot strap parsing implementation for OROM.
 //
 // Reads SMC straps via the SEP outbound window (SMC_LOCAL_BASE_ADDR + offset)

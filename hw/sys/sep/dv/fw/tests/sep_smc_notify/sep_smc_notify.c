@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * sep_smc_notify — minimal SEP firmware for SMC-SEP co-simulation boot test.
  *
