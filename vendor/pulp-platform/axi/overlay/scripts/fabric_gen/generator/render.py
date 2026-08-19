@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Mako template rendering for fabric generation."""
 from pathlib import Path
 from typing import Dict, Any, Optional

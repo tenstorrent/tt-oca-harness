@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* Copyright 2026 Tenstorrent Inc. */
 /* Key Manager Production Firmware Linker Script */
 /* ROM at 0x0000_0000, SRAM at 0x0000_4000, no VROM */
