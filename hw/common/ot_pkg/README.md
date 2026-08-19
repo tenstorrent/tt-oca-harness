@@ -31,10 +31,8 @@ Do not replace these files with vendor copies without a full interface and regre
 | `keymgr_reg_pkg.sv` | — |
 | `keymgr_pkg.sv` | — |
 | `otp_ctrl_pkg.sv` | — |
-| — | `csrng_pkg.sv` → `hw/comp/csrng/rtl/` |
-| — | `edn_pkg.sv` → `hw/comp/edn/rtl/` |
-
-Legacy filelists (`dv/smu/tb/tb_uvm/tt_smu.f`, `fv/smu/synopsys_vcf/filelist/smu_fv.fl`) still list **`ot_pkg` copies** of `csrng_pkg.sv` and `edn_pkg.sv`. SMC paths (`tt_smc.f`) already use `hw/comp` for CSRNG/EDN. The `ot_pkg` `csrng_pkg.sv` file is an **obsolete stub**; do not use it in new flows.
+| — | `csrng_pkg.sv` → `vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/` |
+| — | `edn_pkg.sv` → `vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/` |
 
 **OTBN** (`vendor/opentitan/upstream/hw/ip/otbn`) depends on `otp_ctrl_pkg` and is built on SEP after `sep_crypto_pkg` imports the OT packages.
 
@@ -51,11 +49,7 @@ lc_ctrl_state_pkg
 
 keymgr_reg_pkg ──► keymgr_pkg ──► AES / KMAC / HMAC / OTBN sideload
 
-entropy_src_pkg ──► CSRNG / EDN / DRBG entropy bus widths
-       ▲
-       │ (ot_pkg copy required in filelist before hw/comp/csrng)
-
-csrng_pkg (hw/comp) ──► edn_pkg (hw/comp)
+entropy_src_pkg ──► csrng_pkg / edn_pkg (vendor upstream) ──► DRBG / SEP crypto
 ```
 
 ## TT lifecycle vs OpenTitan lifecycle
@@ -77,8 +71,8 @@ TT product lifecycle (manufacturing states on SEP/SMC/efuse) uses **`sep_pkg::lc
 | Area | How it is used |
 |------|----------------|
 | `hw/ip/kmac`, `hw/ip/aes` | `lc_escalate_en_i` ports; FSMs gate operation on `lc_tx_test_*` |
-| `hw/comp/csrng` | `lc_hw_debug_en_i` for DRBG debug policy |
-| `hw/comp/drbg` | `lc_hw_debug_en_i` on the integrated DRBG top |
+| `vendor/.../csrng` | `lc_hw_debug_en_i` for DRBG debug policy |
+| `hw/ip/drbg` | `lc_hw_debug_en_i` on the integrated DRBG top |
 | `hw/sep/*_wrapper.sv`, `sep_crypto.sv` | Ports tied to **`lc_ctrl_pkg::Off`** (escalate / debug / RMA not driven from TT LC yet) |
 | `hw/sep/sep_crypto_otbn_wrapper.sv` | `lc_escalate_en_i`, `lc_rma_req_i` → `Off`; `lc_rma_ack_o` typed as `lc_tx_t` |
 
@@ -175,36 +169,12 @@ The OT **keymgr FSM** is not in the netlist; only the **package-level wire types
 
 | Consumer | Usage |
 |----------|--------|
-| `hw/comp/drbg` | `drbg_csrng_seed_adapter` — entropy bus to CSRNG seed path |
-| `hw/comp/csrng` | `entropy_src_hw_if_o/i` on `csrng` / `csrng_core` |
-| `hw/comp/edn` | `FIPS_BUS_WIDTH` in `edn_pkg` endpoint width math |
-| `hw/comp/csrng/rtl/csrng_pkg.sv` | `FIPS_GENBITS_BUS_WIDTH` uses `entropy_src_pkg::FIPS_BUS_WIDTH` |
+| `hw/ip/drbg` | `drbg_csrng_seed_adapter` — entropy bus to CSRNG seed path |
+| `vendor/.../csrng` | `entropy_src_hw_if_o/i` on `csrng` / `csrng_core` |
+| `vendor/.../edn` | `FIPS_BUS_WIDTH` in `edn_pkg` endpoint width math |
+| `vendor/.../csrng/rtl/csrng_pkg.sv` | `FIPS_GENBITS_BUS_WIDTH` uses `entropy_src_pkg::FIPS_BUS_WIDTH` |
 
 **Related but separate:** `hw/ip/entropy_source` is the TT entropy-source block (PeakRDL registers, `watermark_test_e` in block RTL). It does **not** import this package for HT watermark enums; the DRBG/CSRNG chain uses the **bus typedefs** from `entropy_src_pkg` only.
-
----
-
-### `csrng_pkg.sv` (in `ot_pkg` — legacy only)
-
-**Role:** CSRNG application command/status types.
-
-**TT usage:** **None** for current SMC/Bender builds. Active RTL uses **`hw/comp/csrng/rtl/csrng_pkg.sv`** (matches vendor). The file here is an old stub kept for SMU/FV filelists; prefer `hw/comp` paths for new work.
-
----
-
-### `edn_pkg.sv` (in `ot_pkg` — legacy duplicate)
-
-**Role:** EDN endpoint request/response types (`edn_req_t`, `edn_rsp_t`).
-
-**TT usage:**
-
-| Consumer | Usage |
-|----------|--------|
-| `hw/comp/edn`, `hw/comp/drbg` | Primary copies from **`hw/comp/edn/rtl/edn_pkg.sv`** (byte-identical to vendor) |
-| `hw/sep/sep_crypto.sv` | AXI-stream DRBG ↔ crypto client `edn_req_t` / `edn_rsp_t` arrays |
-| `hw/sep/*_wrapper.sv`, `sep_crypto_otbn_wrapper.sv` | Per-IP EDN randomness ports |
-
-The `ot_pkg` copy exists for legacy SMU filelists; Bender already compiles `hw/comp/edn/rtl/edn_pkg.sv`.
 
 ---
 
@@ -213,7 +183,7 @@ The `ot_pkg` copy exists for legacy SMU filelists; Bender already compiles `hw/c
 | Path | Relationship |
 |------|----------------|
 | `vendor/opentitan/upstream/hw/ip/<ip>/rtl/*_pkg.sv` | Upstream originals; compare before any merge |
-| `hw/comp/csrng`, `hw/comp/edn`, `hw/comp/drbg` | TT DRBG stack; uses `entropy_src_pkg` from here + local `csrng`/`edn` packages |
+| `vendor/.../csrng`, `vendor/.../edn`, `hw/ip/drbg` | TT DRBG stack; uses `entropy_src_pkg` from here + vendor `csrng`/`edn` packages |
 | `hw/ip/key_manager` | TT key delivery; drives `keymgr_pkg` interfaces |
 | `hw/ip/entropy_source` | TT physical entropy block (registers + RTL) |
 | `hw/sep/sep_pkg.sv` | TT lifecycle / fuse map — **not** `lc_ctrl_state_pkg` |
@@ -222,4 +192,4 @@ The `ot_pkg` copy exists for legacy SMU filelists; Bender already compiles `hw/c
 
 1. When updating from OpenTitan, diff each file against `vendor/opentitan/upstream/hw/ip/<ip>/rtl/<same_name>.sv` and preserve TT-specific seeds, renames, and added types.
 2. Keep **`entropy_src_pkg` → `lc_ctrl_*` → `otp_ctrl_pkg` → `keymgr_*`** compile order in filelists (as in `Bender.yml`).
-3. Prefer aligning SMU/FV filelists with SMC (`hw/comp` for CSRNG/EDN) to avoid compiling the obsolete `ot_pkg/csrng_pkg.sv` stub.
+3. Compile **`csrng_pkg`** and **`edn_pkg`** from vendor upstream (`vendor/lowRISC/opentitan/upstream/hw/ip/{csrng,edn}/rtl/`), not from `ot_pkg`.
