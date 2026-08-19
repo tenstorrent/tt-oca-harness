@@ -25,9 +25,7 @@ marker, ``test_bootcode_*`` name) so it is easy to identify and move as a unit.
 Skips cleanly if the RISC-V toolchain or sep-vp is absent.
 """
 
-import os
 import struct
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -108,37 +106,15 @@ CASES = [
 ]
 
 
-def _ot_env(request):
-    """Toolchain bin on PATH + the gcc-toolset runtime (mirrors conftest firmware env)."""
-    env = paths.vp_env(request.config.getoption("--gcc-toolset"))
-    tc_bin = Path(request.config.getoption("--riscv-toolchain")) / "bin"
-    if tc_bin.is_dir():
-        env["PATH"] = f"{tc_bin}{os.pathsep}{env.get('PATH', '')}"
-    return env
-
-
 @pytest.fixture(scope="session")
-def ot_bootcode_elf(request):
-    """Build (unless --no-build) the OpenTitan+DMA boot ROM into build_ot/ and return it.
+def ot_bootcode_elf(bootcode_elf):
+    """The OpenTitan+DMA boot ROM (build_ot/boot_rom.elf), via the shared plugin fixture.
 
-    Built into a separate BUILD_DIR so it coexists with the default (Cadence) build/
-    without a flag-driven relink."""
+    The plugin's bootcode_elf already builds the ot-toolchain-images variant (with
+    the container-toolchain fallback), so this is just a VP-availability gate."""
     if not paths.sep_vp_bin().is_file():
         pytest.skip(f"sep-vp not built ({paths.sep_vp_bin()})")
-    elf = paths.BOOTCODE_DIR / "build_ot" / "boot_rom.elf"
-    if request.config.getoption("build"):
-        tc = Path(request.config.getoption("--riscv-toolchain")) / "bin" / "riscv64-unknown-elf-gcc"
-        if not tc.exists():
-            pytest.skip(f"RISC-V toolchain not found ({tc})")
-        res = subprocess.run(
-            ["make", "-C", str(paths.BOOTCODE_DIR), "ot-toolchain-images"],
-            cwd=str(paths.OCAH_ROOT), env=_ot_env(request), capture_output=True, text=True,
-        )
-        if res.returncode != 0:
-            pytest.fail(f"OT bootcode build failed:\n{res.stdout[-2000:]}\n{res.stderr[-2000:]}")
-    if not elf.is_file():
-        pytest.skip(f"OT boot_rom.elf not present ({elf}); build it or drop --no-build")
-    return elf
+    return bootcode_elf
 
 
 @pytest.mark.parametrize("name,craft,expect_msg,expect_type", CASES,

@@ -85,6 +85,22 @@ PYTEST_ARGS   ?=
 FW_ENV = export PATH="$(dir $(PYTHON)):$$PATH"; \
          if [ -d "$(RISCV_TOOLCHAIN)/bin" ]; then export PATH="$(RISCV_TOOLCHAIN)/bin:$$PATH"; fi
 
+# ROM/DV-engine firmware builds need the RISC-V + picolibc toolchain from the
+# ocah-toolchain container (tools/docker/README.md). Run natively when the
+# toolchain on PATH can compile against picolibc; otherwise route through
+# scripts/docker-run.sh run-here (set OCAH_TOOLCHAIN_ROOTFS to an extracted
+# image rootfs for the engine-less bwrap path). The pack targets (uv) stay
+# native — the container does not carry uv.
+DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
+define fw_make
+if echo 'int main(void){return 0;}' | riscv64-unknown-elf-gcc --specs=picolibc.specs -x c -c - -o /dev/null 2>/dev/null; then \
+  $(MAKE) $(1); \
+else \
+  echo "[VP] native toolchain lacks picolibc; building via $(DOCKER_RUN) run-here"; \
+  "$(DOCKER_RUN)" run-here make $(1); \
+fi
+endef
+
 # ---- Dependency install prefixes (override to use an existing install) ------
 SYSTEMC_HOME ?= $(LOCAL_DIR)/systemc-$(SYSTEMC_VERSION)
 BOOST_ROOT   ?= $(LOCAL_DIR)/boost-$(BOOST_VERSION)
@@ -437,7 +453,7 @@ vp-py-deps:
 boot-build:
 	@echo "[VP] Building the SEP boot ROM, OpenTitan SPI variant..."
 	$(FW_ENV)
-	$(MAKE) -C $(BOOTCODE_DIR) ot-toolchain-images
+	$(call fw_make,-C $(BOOTCODE_DIR) ot-toolchain-images)
 	@echo "[VP] Built: $(BOOT_ELF)"
 
 # Generate the signed SPI image used by the OT-negative pytest suite.
@@ -465,7 +481,7 @@ fw-run: $(SEP_VP_BIN)
 	fi
 	$(FW_ENV)
 	echo "[VP] Building hw/sys/sep/dv/fw/tests/$(FW_TEST)..."
-	$(MAKE) -C $(OCAH_ROOT) ocah-dv-fw-tests TARGET=sep TEST=$(FW_TEST)
+	$(call fw_make,-C $(OCAH_ROOT) ocah-dv-fw-tests TARGET=sep TEST=$(FW_TEST))
 	echo "[VP] Running $(FW_TEST) on sep-vp ($(FW_ARGS))..."
 	cd $(VP_DIR) && $(PYTHON) -m sepvp.cli --bin $(OCAH_ROOT)/hw/sys/sep/dv/fw/build/tests/$(FW_TEST)/$(FW_TEST).tcm.elf $(FW_ARGS)
 
