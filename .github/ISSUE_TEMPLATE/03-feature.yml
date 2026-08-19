@@ -3,7 +3,6 @@
 
 name: Feature
 description: A new capability or externally meaningful behavior.
-title: "[Feature]: "
 type: Feature
 body:
   - type: markdown

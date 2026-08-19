@@ -3,7 +3,6 @@
 
 name: Bug
 description: Something is incorrect or unexpectedly broken.
-title: "[Bug]: "
 type: Bug
 body:
   - type: markdown

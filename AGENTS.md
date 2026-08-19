@@ -358,7 +358,7 @@ Pick one form: Bug, Task, or Feature (`gh issue create --type Bug|Task|Feature`)
 uses the form headings ingest parses (`### Workstream`, and so on):
 
 ```bash
-gh issue create --type Bug --title "[Bug]: <short title>" --body "$(cat <<'EOF'
+gh issue create --type Bug --title "[RTL/OCAH] <short title>" --body "$(cat <<'EOF'
 ### Workstream
 
 DV
