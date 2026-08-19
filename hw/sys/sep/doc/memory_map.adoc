@@ -197,3 +197,50 @@ ifdef::backend-pdf[]
 include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 
+==== Key Manager
+
+The Key Manager CSR window is at `0x1092_0000`. The generated maps live
+with the IP.
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/key_manager.html[]
+include::ip:partial$key_manager/regs/gen/html/km_csr.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../ip/key_manager/regs/gen/adoc/key_manager.adoc[]
+include::../../../ip/key_manager/regs/gen/adoc/km_csr.adoc[]
+endif::backend-pdf[]
+
+==== Secure DMA
+
+The DMA CSR window is at `0x1080_0000`.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/secure_dma.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/secure_dma.adoc[]
+endif::backend-pdf[]
+
+==== SPI Controller
+
+The local OpenTitan-derived `spi_controller` map is included here. The
+controller sits on the SEP IO peripheral bridge (`0x10B0_0000`). The
+Cadence xSPI path (`sep_cdns_spi_wrap`) is supplied by the nonfree
+overlay and is not documented in this open-source map.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/spi_controller.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/spi_controller.adoc[]
+endif::backend-pdf[]

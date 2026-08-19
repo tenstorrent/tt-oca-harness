@@ -16,7 +16,9 @@ distinct buses:
 The subsystem’s hardware components are modified versions of the
 OpenTitan components and the firmware is also based on the
 https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan
-cryptographic library].
+cryptographic library]. Generated PeakRDL maps for the Key Manager,
+entropy source, and the other crypto CSRs are included in
+<<sep-detailed-register-map>>.
 
 The primary modifications to the hardware is the separation of the key
 and data bus interfaces and the switch from TL-UL interface protocol to

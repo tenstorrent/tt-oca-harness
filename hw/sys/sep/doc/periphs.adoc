@@ -388,7 +388,7 @@ device present in the SEP peripheral subsystem.
 
 The SEP provides two SPI integration paths. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. A second path, `sep_cdns_spi_wrap` (provided by the nonfree overlay), integrates a vendor xSPI controller and PHY for high-performance octal DDR flash access. This module presents both an AXI-Lite register interface and a full AXI4 flash read window, along with dedicated PHY pad connections and initialization status outputs. The selection between these two SPI paths is determined by the system configuration.
 
-For the OpenTitan SPI host theory of operation and register map, refer to the https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host documentation].
+The local `spi_controller` register map is included in <<sep-detailed-register-map>>. Do not use the upstream OpenTitan SPI Host web map as the OCAH reference; the committed SEP overlay map is authoritative.
 
 [[watchdog-timer-wdt-watchdog-timer-wdt]]
 ==== Watchdog Timer (WDT)
