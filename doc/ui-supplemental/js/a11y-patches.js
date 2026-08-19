@@ -17,6 +17,14 @@
     }
   }
 
+  function applyScrollableCodeFix() {
+    document.querySelectorAll('.doc pre.highlight > code, .doc pre').forEach(function (el) {
+      if (el.scrollWidth > el.clientWidth && !el.hasAttribute('tabindex')) {
+        el.setAttribute('tabindex', '0');
+      }
+    });
+  }
+
   function applyPatches() {
     document.querySelectorAll('.home-link').forEach(function (el) {
       ensureAccessibleName(el, 'Home');
@@ -24,11 +32,13 @@
     document.querySelectorAll('.nav-item-toggle').forEach(function (el) {
       ensureAccessibleName(el, 'Toggle section');
     });
-    document.querySelectorAll('.doc pre.highlight > code, .doc pre').forEach(function (el) {
-      if (el.scrollWidth > el.clientWidth && !el.hasAttribute('tabindex')) {
-        el.setAttribute('tabindex', '0');
-      }
-    });
+    applyScrollableCodeFix();
+    // Custom monospace fonts (Berkeley Mono) use font-display: swap, so a
+    // code block's rendered width -- and therefore whether it overflows --
+    // can change after this initial pass, once the font actually loads.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(applyScrollableCodeFix);
+    }
   }
 
   if (document.readyState === 'loading') {

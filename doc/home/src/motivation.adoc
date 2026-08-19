@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Motivation
+= Why Open Chiplet Atlas Harness?
+
+[NOTE]
+For the full "About OCAH" chapter -- including OCA Standard Compliance 
+status -- see the xref:ocah-docs::about-ocah.adoc[Technical Reference Manual].
 
 == OCA-compliant
 
@@ -65,6 +69,3 @@ duplicated engineering work, lowers the barrier to interoperable chiplet
 design, and gives partners a concrete foundation on which to build
 OCA-compliant chiplets and systems.*
 
-[NOTE]
-For the full "About OCAH" chapter -- including OCA Standard Compliance 
-status -- see the xref:ocah-docs::about-ocah.adoc[Technical Reference Manual].

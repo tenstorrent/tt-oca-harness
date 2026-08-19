@@ -17,6 +17,13 @@ OCAH is the *Harness* pillar of the wider
 https://www.openchipletatlas.org[Open Chiplet Atlas (OCA)] ecosystem,
 alongside the OCA Architecture specification and the OCA Compliance program.
 
+== Learn more
+
+* xref:features.adoc[Feature Overview] -- what OCAH provides today
+* xref:motivation.adoc[Motivation] -- why OCAH exists
+* xref:use-cases.adoc[Use Cases] -- how adopters use OCAH in practice
+* xref:license.adoc[License] -- OCAH's open-source license
+
 == Explore the documentation
 
 xref:ocah-docs::index.adoc[Technical Reference Manual]:: Architecture and
@@ -29,10 +36,3 @@ xref:ocah-appnotes::index.adoc[Application Notes]:: Worked examples and
 integration patterns
 xref:ocah-contributing::index.adoc[Contributing]:: How to get involved
 with the project
-
-== Learn more
-
-* xref:features.adoc[Feature Overview] -- what OCAH provides today
-* xref:motivation.adoc[Motivation] -- why OCAH exists
-* xref:use-cases.adoc[Use Cases] -- how adopters use OCAH in practice
-* xref:license.adoc[License] -- OCAH's open-source license

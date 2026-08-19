@@ -3,8 +3,7 @@
 
 = License
 
-OCAH is licensed under the Apache License 2.0, consistent with every file
-in this repository:
+The Open Chiplet Atlas Harness (OCAH) is licensed under the Apache License 2.0:
 
 [source]
 ----
