@@ -156,11 +156,7 @@ package smc_efuse_pkg;
   `EFUSE_COMMAND_REQ_T(fuse_command_req_t, efuse_addr_bit_t, efuse_data_t, efuse_word_counter_t, efuse_pkg::fuse_command_e)
   `EFUSE_COMMAND_RESP_T(fuse_command_resp_t, efuse_data_t)
 
-  // 15 real lockable fields (idx 0-14) + LOCKS meta-field (idx 6'h3F).
-  //   LOCKS_META_IDX: fixed sentinel for the LOCKS meta-entry. Hardware never
-  //                   applies lock bits to this entry. The idx is the max value
-  //                   of efuse_pkg::rule_t.idx so it cannot collide with a real
-  //                   field slot, regardless of how many fields are added later.
+  // 15 real lockable fields (idx 0-14) + LOCKS meta-field (idx 6'h3F)
   localparam int unsigned NUM_EFUSE_FIELDS = 16;
   localparam logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] LOCKS_META_IDX = '1;
   localparam logic [1:0] WRITE_UNLOCK = 2'b00;
@@ -169,12 +165,9 @@ package smc_efuse_pkg;
   localparam logic READ_UNLOCK = 1'b0;
   localparam logic READ_LOCK = 1'b1;
 
-  // Physical OTP bits covered by LOCKS. SMC has no LOCKS_SPARE register, so the
-  // lock field is the 64-bit LOCKS register occupying OTP words 0-1.
+  // Physical OTP bits covered by LOCKS
   localparam int unsigned LockFieldBits = $bits(smc_efuse_map_locks_reg_t); // 64
 
-  // efuse_lock_view_t presents the efuse_map_t union with the lock field at the
-  // LSB end, mirroring where LOCKS sits in the packed struct.
   typedef struct packed {
       logic [NumEfuseBits-LockFieldBits-1:0] reserved;
       logic [LockFieldBits-1:0]              locks;
