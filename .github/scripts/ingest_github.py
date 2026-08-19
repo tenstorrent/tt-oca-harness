@@ -273,19 +273,27 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
         return
 
     if project_token:
-        project_id, catalog = field_catalog(project_token)
-        item = ensure_item(issue["url"], owner, repo, number, project_token)
-        for name, value in values.items():
-            if not value:
-                continue
-            if item["fields"].get(name):
-                print(f"leave {name}={item['fields'][name]}")
-                continue
-            if name not in catalog or value not in catalog[name]["options"]:
-                print(f"skip unknown {name}={value}")
-                continue
-            set_select(project_id, item["id"], catalog[name], value, project_token)
-            print(f"set {name}={value}")
+        try:
+            project_id, catalog = field_catalog(project_token)
+            item = ensure_item(issue["url"], owner, repo, number, project_token)
+            for name, value in values.items():
+                if not value:
+                    continue
+                if item["fields"].get(name):
+                    print(f"leave {name}={item['fields'][name]}")
+                    continue
+                if name not in catalog or value not in catalog[name]["options"]:
+                    print(f"skip unknown {name}={value}")
+                    continue
+                set_select(project_id, item["id"], catalog[name], value, project_token)
+                print(f"set {name}={value}")
+        except (subprocess.CalledProcessError, RuntimeError, json.JSONDecodeError) as exc:
+            detail = (getattr(exc, "stderr", None) or str(exc)).strip()
+            print(
+                "project write skipped (org Project 291 needs GH_AW_WRITE_PROJECT_TOKEN):",
+                detail,
+                file=sys.stderr,
+            )
     else:
         print("no project token; skipped Project field writes")
 
