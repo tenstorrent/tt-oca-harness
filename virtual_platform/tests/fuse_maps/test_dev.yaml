@@ -1,0 +1,3 @@
+# TEST_DEV lifecycle (all features enabled), secure boot disabled.
+lc_state: TEST_DEV
+sboot_dis: 1

@@ -1,0 +1,95 @@
+"""SPI mux register + flash-loader checks on sep-vp.
+
+Drives the in-repo bare-metal test firmware (sw/sep-vp-tests/sep-spi-mux-test) through its own
+Makefile targets, which build with the RISC-V toolchain and run the in-tree sep-vp:
+
+  * sim          : no image staged -> mux RW/reset checks pass; flash reads erased 0xFF; the
+                   loader logs the "... not found" no-op line.
+  * sim STAGED=1 : the fixture is staged to data/flash_memory.bin -> the controller read returns
+                   the fixture bytes and the loader logs "loaded N bytes from ...".
+
+The firmware self-checks and prints "All tests PASSED!"; we assert that plus the loader's log
+line for each mode. Skips cleanly if the RISC-V toolchain or the sep-vp binary is absent.
+"""
+
+import os
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from sepvp import paths
+
+pytestmark = pytest.mark.spi_mux
+
+FW_DIR = paths.SIM_DIR / "sw" / "sep-vp-tests" / "sep-spi-mux-test"
+TIMEOUT = 180
+
+PASS_MARK = "All tests PASSED!"
+LOADED_MARK = "Backdoor: loaded"           # staged: "[spi_flash] Backdoor: loaded N bytes ..."
+NOT_FOUND_MARK = "not found"               # unstaged: "... data/flash_memory.bin not found ..."
+
+
+def _env(request):
+    """Toolchain bin on PATH + the gcc-toolset runtime for sep-vp."""
+    env = paths.vp_env(request.config.getoption("--gcc-toolset"))
+    tc_bin = Path(request.config.getoption("--riscv-toolchain")) / "bin"
+    if tc_bin.is_dir():
+        env["PATH"] = f"{tc_bin}{os.pathsep}{env.get('PATH', '')}"
+    return env
+
+
+def _require_prereqs(request):
+    tc_bin = Path(request.config.getoption("--riscv-toolchain")) / "bin"
+    if not (tc_bin / "riscv64-unknown-elf-gcc").exists():
+        pytest.skip(f"RISC-V toolchain not found at {tc_bin}")
+    if not paths.sep_vp_bin().is_file():
+        pytest.skip(f"sep-vp not built ({paths.sep_vp_bin()})")
+    if not FW_DIR.is_dir():
+        pytest.skip(f"test firmware dir missing ({FW_DIR})")
+
+
+# Number of seconds the VP is allowed to run. sep-vp never self-terminates: tt-oca-sim 0ec43f9cc
+# replaced the self-timing sim-unstaged/sim-staged targets with a plain `sim` that runs the
+# VP directly, so the timeout has to come from here. Mirrors the upstream default this test
+# used to get for free.
+SIM_TIMEOUT = 20
+
+
+def _run_make(request, *make_args):
+    """Run a test-Makefile target with the VP wrapped in a timeout.
+
+    The Makefile declares `VP = ...` (a plain recursive assignment), so a command-line value
+    wins. Overriding it puts the timeout on the *VP process*, not on make -- killing make
+    alone would orphan a running sep-vp. A timeout exit is expected and not an error: the
+    assertions are on the captured output, not the return code.
+    """
+    vp = f"timeout -k 5 {SIM_TIMEOUT} {paths.sep_vp_bin()}"
+    res = subprocess.run(
+        ["make", *make_args, f"VP={vp}"], cwd=str(FW_DIR), env=_env(request),
+        capture_output=True, text=True, timeout=TIMEOUT,
+    )
+    return res.stdout + "\n" + res.stderr
+
+
+@pytest.fixture(autouse=True)
+def _cleanup(request):
+    yield
+    subprocess.run(["make", "distclean"], cwd=str(FW_DIR),
+                   env=_env(request), capture_output=True, text=True)
+
+
+def test_mux_rw_and_flash_noop_unstaged(request):
+    """Mux store/load + reset default pass; flash is erased 0xFF; loader no-ops when unstaged."""
+    _require_prereqs(request)
+    out = _run_make(request, "sim")
+    assert PASS_MARK in out, f"firmware self-check failed:\n{out[-3000:]}"
+    assert NOT_FOUND_MARK in out, f"expected the loader no-op line:\n{out[-2000:]}"
+
+
+def test_flash_loaded_staged(request):
+    """With the fixture staged, the controller read returns staged bytes and the loader logs."""
+    _require_prereqs(request)
+    out = _run_make(request, "sim", "STAGED=1")
+    assert PASS_MARK in out, f"firmware self-check failed:\n{out[-3000:]}"
+    assert LOADED_MARK in out, f"expected the loader 'loaded N bytes' line:\n{out[-2000:]}"
