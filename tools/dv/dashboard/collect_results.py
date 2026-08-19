@@ -539,6 +539,10 @@ def stage_coverage_artifacts(
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dut", required=True, help="DUT name (duts.toml or hw/** convention)")
+    parser.add_argument(
+        "--framework",
+        help="framework view to resolve (e.g. uvm); default: the DUT's default_framework",
+    )
     parser.add_argument("--run-dir", help="run directory or result.json to parse")
     parser.add_argument("--output", help="output result.json path")
     return parser.parse_args(argv)
@@ -548,9 +552,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         repo_root_path = repo_root(Path(__file__))
-        flow = resolve_dut(repo_root_path, args.dut)
+        flow = resolve_dut(repo_root_path, args.dut, framework=args.framework)
         run_dir = Path(args.run_dir).resolve() if args.run_dir else None
         result = collect_flow_result(repo_root_path, flow, run_dir)
+        collected_framework = str(result.get("framework", ""))
+        if (
+            args.framework
+            and (result.get("source") or {}).get("collector") == "run_dv-result"
+            and collected_framework != args.framework
+        ):
+            # Fail loudly on a mispaired run dir instead of publishing a run under the
+            # wrong framework view.
+            raise ConfigError(
+                f"--framework {args.framework} was requested but the collected result.json "
+                f"records framework `{collected_framework}` — wrong --run-dir pairing?"
+            )
         output = Path(args.output).resolve() if args.output else dv_root(repo_root_path) / "reports" / "latest" / f"{flow.name}.result.json"
         stage_coverage_artifacts(repo_root_path, result, output)
         write_json(result, output)

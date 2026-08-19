@@ -260,7 +260,7 @@ c. **Run the no_cpu parity sweep on `lsu_stub` vs full CPU**: address_map / deco
 d. **Stand up the cpu-fw firmware / `c_compile` path** so the cpu smokes (hello_world, jtag)
    validate end-to-end through the new target machinery. Today a standalone `--stage sim` for a
    cpu test hits a `c_compile` ConfigError: the SEP cfg declares
-   `[native.stages.c_compile] kind="c_compile"` (`native-cocotb.toml:78-79`) but there is **no
+   `[native.stages.c_compile] kind="c_compile"` (the `native` profile's cocotb framework) but there is **no
    `[c_build.<mode>]` template** in `sep_sim_cfg.toml` or the profile, and `c_compile_stage` raises
    `ConfigError` when `[c_build]` is absent (`stages.py:812-816`). Firmware is currently built by
    the separate `cgen`/Makefile flow, not the runlib c_compile stage.

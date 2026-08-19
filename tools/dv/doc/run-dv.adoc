@@ -10,6 +10,10 @@ simulation and formal flows. It resolves a DUT, validates the configuration,
 builds a concrete stage plan, invokes the selected backend, and writes durable
 logs and schema-version-1 result files.
 
+_Native_ means the flow is owned by this runner end to end — stage plan,
+tool invocation, and results — in contrast to wrapped or external flows such
+as the classic VCS Make/VPI path.
+
 [NOTE]
 ====
 This page describes the implementation in the current source tree. The
@@ -60,6 +64,91 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 See <<dv-dashboard,DV and FV Dashboard>>.
 endif::backend-pdf[]
+
+[[runner-terminology]]
+== Terminology
+
+The runner's options, messages, and result files use a small fixed vocabulary.
+Every other section of this page assumes these meanings:
+
+DUT::
+The named unit under verification together with its checked-in DV environment
+(`<dut>_sim_cfg.toml`, testlists, and sources). `--dut` selects one by
+registry alias (`hw/common/dv/configs/duts.toml`) or by directory convention.
+
+Flow::
+One DUT resolved for one mode into a runnable configuration: simulator
+defaults, the shared profile, and the DUT configuration merged together. In
+JSON output the `flow` field always holds the DUT name.
+
+Mode::
+`sim` or `formal` (`--mode`). The mode chooses which DUT configuration file is
+loaded and which stages are meaningful.
+
+Profile::
+A shared configuration layer under `hw/common/dv/configs/profiles/` that a
+DUT selects with its `profile` key. It supplies the test framework, tool
+allowlist, stage graph, scheduler policy, and defaults that individual DUTs
+would otherwise repeat.
+
+Framework::
+The test framework a flow drives, for example cocotb or SystemVerilog UVM. It
+is supplied by the resolved configuration and recorded as `framework` in
+`result.json`.
+
+Tool::
+A simulator or formal engine registered in
+`hw/common/dv/configs/simulators.toml` (for example `verilator`, `vcs`,
+`xcelium`) and selected with `--tool`. The words _backend_ and _simulator_ in
+this guide refer to the same axis: "backend" names the stage implementation
+that renders and executes the tool's commands.
+
+Test::
+One entry in a DUT testlist. Its `module` field names the code that
+implements it. The test name is the stable identity used in results and
+reruns.
+
+Group::
+A named list of tests defined in the testlist. Groups expand in definition
+order.
+
+Tag::
+A label carried by tests, used by `--tag` as an OR filter.
+
+Item::
+Any name accepted by `--items`: a test name or a group name.
+
+Catalog::
+The complete set of tests, groups, and tags after loading every testlist file
+referenced by the DUT configuration — "the resolved test catalog".
+
+Target::
+A named build configuration (`[targets.<name>]`): the defines and flags that
+produce one distinct build image. Shared build stages run once per unique
+target.
+
+Run mode::
+A named bundle of runtime arguments and timeout (`[run_modes.<name>]`)
+applied to a test without changing which test runs.
+
+Stage::
+One named step of the execution plan (`flist`, `hdl_compile`, `sim`, ...). A
+stage's configured `kind` selects the backend implementation that performs
+it.
+
+Leaf::
+One scheduled simulation execution, identified by `(test, target, seed)`.
+Scheduler mode expands the selection into leaves; `--retry` adds attempts to
+a leaf without creating a new one.
+
+Label::
+The human-readable suffix of an automatically allocated run directory: the
+first selected group, the single test name, `multi`, or `build`. It is
+recorded in `result.json`.
+
+Executor::
+The dispatch mechanism for leaves, declared in `executors.toml`. Only `local`
+dispatch is implemented.
 
 == Prerequisites and bootstrap
 
@@ -188,7 +277,7 @@ The simulator registry also defines Jasper (`jg`) and VC Formal (`vcf`) as
 formal backends. A DUT still needs a formal configuration before either can be
 selected.
 
-The shared `native-uvm` profile (SystemVerilog UVM, `framework = "uvm"`) is a
+The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow that currently allows VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
 launcher says so when the simulator is absent. The UVM library comes from the
@@ -196,7 +285,23 @@ simulator via `-ntb_opts uvm`, tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
 policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium support is planned
 behind a real-run sign-off gate; Questa is unsupported. The first user is the
-DTP SV-UVM smoke flow, `--dut dtp_uvm`.
+DTP SV-UVM smoke flow, `--dut dtp --framework uvm`.
+
+`--framework NAME` selects the test framework for a DUT that implements more
+than one (a DUT implements a framework by declaring a `[frameworks.<name>]`
+table in its sim config); without the flag the DUT's `default_framework` runs.
+In this model each testlist entry is a _scenario_: a framework-neutral test
+name that maps to a concrete implementation per framework. Error messages and
+`--skip-unimplemented` say "scenario" with exactly this meaning; `--items`
+takes the same names it always has. A scenario binds its per-framework entry
+points through `module` — a bare string binds the DUT's default framework
+only, a map (`module = { cocotb = "...", uvm = "..." }`) binds each framework
+explicitly. Selecting a scenario not implemented in the chosen framework is
+an error;
+`--skip-unimplemented` skips group/tag-derived unimplemented scenarios instead
+(the skipped names are printed and recorded in `result.json` under
+`selection.skipped_unimplemented`), while an explicitly named `--items` test
+always errors.
 
 === Tests, groups, and tags
 
@@ -326,13 +431,16 @@ clean
 ----
 
 The actual stage set is supplied by the selected profile and DUT. A logical
-stage's configured `kind` chooses its backend implementation. For example, the
-shared cocotb profile maps `flist` to `bender_filelist`, `hdl_compile` to
-`cocotb_build`, and `sim` to `cocotb_sim`. The `native-uvm` profile is the
-first shipped user of the direct VCS kinds: `flist` to `bender_filelist`,
-`hdl_compile` to `vcs_analyze` (vlogan), `elaborate` to `vcs_elaborate`
-(reusable `simv`), and `sim` to `vcs_sim` (one `simv` invocation per
-test/seed).
+stage's configured `kind` chooses its backend implementation. The shared
+`native` profile declares ONE canonical graph with generic kinds (`filelist`,
+`hdl_compile`, `sim`) that dispatch per (tool, framework) at run time: for
+cocotb, `hdl_compile` builds the simulator model and `sim` launches the cocotb
+test; for SV-UVM on VCS, `hdl_compile` runs the folded two-step build —
+analyze (vlogan, with the simulator-owned UVM library precompiled first) then
+elaborate to the reusable `simv` — and `sim` is one `simv` invocation per
+test/seed (`+UVM_TESTNAME`). There is no separate `elaborate` stage in the
+shared graph; the elaborate sub-step logs alongside the `hdl_compile` log as
+`hdl_compile.elaborate.log`.
 
 Without explicit `--stage`, simulation selects the available stages from:
 
@@ -377,7 +485,7 @@ delete cached models and all prior runs. Inspect the `REMOVE` plan with
 === Coverage stages
 
 `--cov` requires the flow to declare coverage stages: on a flow whose stage
-graph has no `cov_merge`/`cov_report` (for example `native-uvm`, whose
+graph has no `cov_merge`/`cov_report` (for example the `uvm` framework, whose
 instrumentation wiring is a documented follow-up), the runner rejects `--cov`
 before any stage executes instead of failing after a full compile and
 simulation with a missing coverage artifact.
@@ -852,7 +960,7 @@ push to `main`; nightly reseeds each DUT's `nightly_items` group (`all` /
 the `main` ruleset (only the GitLab mirror check is).
 
 |Configured, not CI-qualified
-|`dtp_uvm` + VCS; `smu_wrapper` cocotb flow
+|`dtp --framework uvm` + VCS; `smu_wrapper` cocotb flow
 |Valid configs exercised by maintainers with licensed tools or carrying
 historical local results only. Not run by hosted CI; do not add to the
 workflow matrix without a qualifying run at head.
@@ -864,6 +972,31 @@ workflow matrix without a qualifying run at head.
 configs. The real-SEP `smu_wrapper` items stay out of the default `all`
 group. Non-local executor dispatch is not implemented.
 |===
+
+=== Framework-aware CI matrices
+
+Hosted invocations omit `--framework`, so every DUT runs its default
+framework (cocotb today) — adding a second framework to a DUT changes
+nothing for existing jobs. The canonical invocation for a licensed SV-UVM
+job maps a group to its UVM-implemented subset:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
+----
+
+Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
+resolved with that framework selected. CI matrices should enumerate views
+from configuration instead of hardcoding DUT names: `--list --json` emits one
+entry per view with its tool set, default tool, and license need, so
+a licensed UVM job selects `.duts[] | select(.framework == "uvm")` and a DUT
+joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
+— no CI edit. `--list --dut <dut> --json` additionally carries the
+per-scenario binding matrix (`tests.<name>.bindings`) and per-framework
+implemented counts for dashboards. `--validate-configs` validates every
+framework view a DUT implements, so a broken UVM overlay fails config
+validation even in cocotb-only CI.
 
 === Qualification and limits
 

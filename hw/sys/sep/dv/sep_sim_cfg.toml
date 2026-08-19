@@ -9,9 +9,9 @@ schema_version = 1
 # Launch entry: selected by `--dut sep`. Two run modes: no_cpu, where a cocotbext-axi
 # AxiMaster drives the CPU LSU bus (the stub is its sole driver) to exercise the SEP
 # register/fabric map, and cpu, where VeeR EL2 boots firmware. The shared stage
-# graph + tool list come from profile = "native-cocotb" (Verilator is the verified OSS backend).
+# graph + tool list come from profile = "native" (Verilator is the verified OSS backend).
 name = "sep"
-profile = "native-cocotb"
+profile = "native"
 description = "SEP (Security Processor) OSS cocotb DV flow (no_cpu AXI + cpu firmware boot)"
 # Verilator remains the pre-merge acceptance backend. VCS/Xcelium are supported by
 # the native cocotb runner for development iteration and share the same OSS-safe
@@ -158,7 +158,7 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # it lets the write-path loop settle to the same fixed point VCS/trace reach.
 extra_args = ["-fno-dfg"]
 
-[cocotb]
+[frameworks.cocotb]
 # Flow-first layout: cocotb env/seq_lib/tests live under cocotb/ (room for a
 # future uvm/ sibling). python_root puts env/ + seq_lib/ on the import path.
 python_root = "hw/sys/sep/dv/cocotb"
@@ -356,7 +356,7 @@ args = ["+cpu_boot"]
 # -Wno-MODDUP/REDEFMACRO allow the override stubs to shadow real modules.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
-# [target_defaults.default] (native-cocotb.toml). Do NOT redefine [target_defaults.default]
+# [target_defaults.default] (native.toml). Do NOT redefine [target_defaults.default]
 # here -- the profile->DUT merge REPLACES that array, which would drop the profile flags.
 # Each target below therefore re-states the SEP-specific common bits (SYNTHESIS + the
 # three SEP -Wno flags); the profile's [target_defaults.default] is still inherited
@@ -382,7 +382,7 @@ args = ["+cpu_boot"]
 # speedup.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
-# [target_defaults.default] (native-cocotb.toml). Each target re-states the SEP-specific
+# [target_defaults.default] (native.toml). Each target re-states the SEP-specific
 # common bits (SYNTHESIS + the three SEP -Wno flags); do NOT redefine [target_defaults.default].
 [targets.default]
 description = "cpu_all_live: full VeeR EL2 CPU; m_axi + j_axi always live (fallback for all cpu tests)"
