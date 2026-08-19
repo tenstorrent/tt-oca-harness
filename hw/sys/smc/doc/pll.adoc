@@ -4,3 +4,7 @@
 [[pll]]
 PLL
 ---
+
+Open-source OCAH does not include a PLL IP block. An adopter attaches
+their own PLL at the reserved AXI-Lite window at `BASE + 0x040_1000`
+(see <<smc-memory-map>>). OCAH provides the bus and address space only.
