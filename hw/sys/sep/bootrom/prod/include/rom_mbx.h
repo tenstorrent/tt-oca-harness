@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // ROM mailbox (STDOUT) interface for Phase 1 bring-up.
 //
 // This is intentionally tiny:

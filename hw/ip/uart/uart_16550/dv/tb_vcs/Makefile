@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Try git first, fall back to OCH_ROOT, fail if neither available
 _OCH_ROOT_GIT := $(shell git rev-parse --show-toplevel 2>/dev/null)
 ifneq ($(_OCH_ROOT_GIT),)

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // OROM manifest loading and validation.
 //
 // Manifest format uses manifest_t (1184 bytes), TOC header

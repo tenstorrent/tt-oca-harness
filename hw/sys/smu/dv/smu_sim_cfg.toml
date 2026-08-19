@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Phase-1 track is SEP=0 only (SMC + DTP + external SMN path; no real SEP RTL).

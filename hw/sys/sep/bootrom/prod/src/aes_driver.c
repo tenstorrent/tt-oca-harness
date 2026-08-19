@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // AES-128-CBC decryption driver for OROM.
 //
 // Drives the OpenTitan AES IP at OCH_SEP_TOP_AES_BASE_ADDR (0x10910000).

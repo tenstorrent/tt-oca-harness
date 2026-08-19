@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* OCH OTBN Linker Script - Static Version of OpenTitan Layout
  *
  * Based on OpenTitan OTBN memory layout (otbn.hjson):

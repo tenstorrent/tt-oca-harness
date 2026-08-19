@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Status ring buffer implementation.
 //
 // Implements a lock-free ring buffer in SMC SRAM for SEP → SMC status

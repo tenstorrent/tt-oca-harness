@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 #define SEP_MSG_LIFECYCLE_INVALID 0x01
 #define SEP_MSG_SPI_TLV_INVALID 0x03
 #define SEP_MSG_SPI_NOT_DETECTED_SLOW 0x04
