@@ -121,8 +121,12 @@ module jtag_ptap
     // Power-on reset (for JTAG logic)
     input  logic                     pwr_on_rst_ni,         // Power-on reset (active low), combined with trst_n
 
-    // Lifecycle feature control
-    input  sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t  feat_ctrl_i,
+    // Per-bridge debug-disable bits (active-high; 1 = bridge disabled).
+    // Derived in the SEP lifecycle controller, synchronized to TCK in
+    // jtag_intf_unit, and consumed here as ready-to-gate signals.
+    input  logic  smc_jtag2axi_security_disable_i,
+    input  logic  smc_otp_jtag2axi_security_disable_i,
+    input  logic  sep_otp_jtag2axi_security_disable_i,
 
     // SMC fabric debug AXI manager interface
     output smc_jtag_axi_req_t        axi_smc_dbg_req_o,
@@ -230,13 +234,12 @@ module jtag_ptap
     // Any-slice enable drives TAP-level IC_RESET instruction decode and CAPS reporting.
     localparam bit IC_RESET_ENABLE = IC_RESET_SMC_ENABLE | IC_RESET_SEP_ENABLE | IC_RESET_EXT_ENABLE;
 
-    // feat_ctrl_i is enable-polarity (1 = feature enabled): a bridge is disabled
-    // whenever any one of its required enables is deasserted.
-    assign smc_jtag2axi_security_disable = !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug;
-    assign smc_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug ||
-                                               !feat_ctrl_i.ap_debug;
-    assign sep_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug ||
-                                               !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug;
+    // Bridge disables are derived in the LCC (see sep_lifecycle_ctrl.sv).
+    // Local wire names preserved so downstream instances and DV probe paths
+    // are unaffected.
+    assign smc_jtag2axi_security_disable     = smc_jtag2axi_security_disable_i;
+    assign smc_otp_jtag2axi_security_disable = smc_otp_jtag2axi_security_disable_i;
+    assign sep_otp_jtag2axi_security_disable = sep_otp_jtag2axi_security_disable_i;
 
     //--------------------------------------------------------------------------
     // JTAG TAP Controller Instance

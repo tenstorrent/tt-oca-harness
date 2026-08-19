@@ -215,17 +215,34 @@ module efuse_shadow_regs
   efuse_apb_req_t   apb_req_from_ac;
   efuse_apb_resp_t  apb_resp_from_ac;
 
+  // Extract the hardware lock vector from the unmasked shadow register.
+  // Two bits per real field slot (write-lock at 2n, read-lock at 2n+1).
+  // The LOCKS meta-field uses the fixed sentinel idx '1 (all-ones = 6'h3F)
+  // and is excluded from this vector; its slot always returns 0 (never hw-locked).
+  // Taken from the unmasked shadow_efuse view so a Class-1a secure_tm mask cannot
+  // clear lock bits and open a field for scanning.
+  localparam int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1);
+  // Number of 32-bit shadow words that cover LOCK_VECTOR_BITS (ceiling divide).
+  localparam int unsigned LOCK_WORDS = (LOCK_VECTOR_BITS + 31) / 32;
+
+  logic [LOCK_WORDS*32-1:0] lock_words_concat;
+  logic [LOCK_VECTOR_BITS-1:0] lock_vector;
+
+  always_comb begin : gen_lock_vector
+    for (int w = 0; w < int'(LOCK_WORDS); w++) begin
+      lock_words_concat[w*32 +: 32] = shadow_efuse.values[w];
+    end
+    lock_vector = lock_words_concat[LOCK_VECTOR_BITS-1:0];
+  end
+
   efuse_shadow_reg_access_control #(
-      .EFUSE_ADDR_WIDTH(REG_ADDR_WIDTH),
-      .EFUSE_FIELDS(EFUSE_FIELDS),
-      .HAS_LC_STATE(HAS_LC_STATE),
-      .efuse_map_t(efuse_map_t),
-
-      .efuse_apb_req_t(efuse_apb_req_t),
-      .efuse_apb_resp_t(efuse_apb_resp_t),
-
-      .efuse_addr_t(efuse_addr_t),
-      .efuse_data_t(efuse_data_t)
+      .EFUSE_ADDR_WIDTH (REG_ADDR_WIDTH),
+      .EFUSE_FIELDS     (EFUSE_FIELDS),
+      .HAS_LC_STATE     (HAS_LC_STATE),
+      .efuse_apb_req_t  (efuse_apb_req_t),
+      .efuse_apb_resp_t (efuse_apb_resp_t),
+      .efuse_addr_t     (efuse_addr_t),
+      .efuse_data_t     (efuse_data_t)
   ) efuse_shadow_reg_access_control (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
@@ -252,7 +269,7 @@ module efuse_shadow_regs
       .lc_state_access_o(is_lc_state_access),
       .read_locked_o(read_locked),
 
-      .shadow_regs_i(shadow_efuse),
+      .locks_i(lock_vector),
 
       .locked_field_access_interrupt_o(locked_field_access_interrupt_o)
   );
