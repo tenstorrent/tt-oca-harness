@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Patterns skipped by tenstorrent/tt-github-actions spdx-checker.
+# Remaining header gaps after #329–#333: vendored snapshots, accepted
+# dual/foreign attribution, and CC0 cocotb templates.
+
+ignore:
+  perform_check: false
+  include:
+    - vendor/
+    - build/
+    - __pycache__/
+    - .pytest_cache/
+    - .git/
+    - .venv/
+    - venv/
+    - node_modules/
+    - .bender/
+    - .bender-kg/
