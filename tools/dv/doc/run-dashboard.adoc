@@ -122,6 +122,7 @@ The dashboard CLI has four file-oriented operations:
 ----
 run_dashboard.py collect
   --dut DUT
+  [--framework FRAMEWORK]
   [--run-dir RUN_DIR_OR_RESULT_JSON]
   [--output NORMALIZED_RESULT_JSON]
 
@@ -316,6 +317,7 @@ An abbreviated normalized `dtp.result.json` has this form:
 {
   "schema_version": "0.1",
   "flow": "dtp",
+  "framework": "cocotb",
   "status": "PASS",
   "source": {
     "collector": "run_dv-result",
@@ -497,6 +499,17 @@ the collector treats the file's parent as the run root. An exported copy loses
 automatic discovery of regression, leaf, JUnit, and optional `run.json`
 material.
 
+`--framework` names the framework view to collect for a DUT that implements
+more than one test framework (for example `--dut dtp --framework uvm`); when
+omitted, the DUT's `default_framework` is resolved. The flag must be paired
+with a run of that framework: when the collected `result.json` records a
+different `framework`, collection fails with a mispairing error instead of
+publishing the run under the wrong view. The default `--output` name is
+derived from the DUT name alone, so collect each framework view from its own
+run directory and give each view its own `--output` name (for example
+`dtp_uvm.result.json`) — otherwise the second collection overwrites the
+first.
+
 [CAUTION]
 ====
 `collect` has no `--mode` option and resolves the DUT's simulation
@@ -668,6 +681,13 @@ The static page and summary include:
 * merged failure buckets;
 * optional coverage trend rows;
 * original normalized results under `summary.json.results`.
+
+One DUT can contribute one record per framework view (for example `dtp`
+collected once as cocotb and once as UVM). Each record counts as its own flow
+in `flows.total`, and such records share a `flow` name; the `framework` field
+on each normalized record — surfaced in `dut_status` rows, coverage-closure
+`by_dut` rows, and trend `per_dut` entries — is what disambiguates them.
+Parsers grouping by DUT must key on `(flow, framework)`, not `flow` alone.
 
 No aggregate coverage average is computed, even when all inputs use one tool.
 Coverage remains per DUT because simulator, target, instrumentation, and policy
@@ -1006,6 +1026,11 @@ jq -r '.source.native_status' dtp.result.json
 |Required
 |Resolve and collect one DUT.
 
+|`--framework NAME`
+|Default: the DUT's `default_framework`
+|Framework view to collect for a multi-framework DUT. Errors when the
+collected result records a different framework.
+
 |`--run-dir PATH`
 |Default: DUT `build/runs/latest`
 |Native run directory or a file named `result.json`.
@@ -1187,6 +1212,14 @@ Check that `--run-dir` resolves from the current directory and contains
 `result.json`, or pass the full path to that file. Also confirm that the JSON is
 an object with a `status` field. Collection deliberately creates an UNKNOWN
 record when no native result can be consumed.
+
+=== Collection failed with a framework mispairing error
+
+`collect --framework` verifies that the collected `result.json` records the
+requested framework. The error means `--run-dir` (or the DUT's `latest` run)
+points at a run of a different framework — most often a `--framework uvm`
+collection while `latest` holds a cocotb run. Pass the `--run-dir` of the
+matching run explicitly.
 
 === Dashboard generated no DUT rows
 

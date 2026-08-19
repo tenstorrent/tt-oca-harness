@@ -5,7 +5,7 @@
 //
 //   * default (cocotb, `--dut dtp`): the module exposes the full pin-level
 //     port list below and cocotb drives/samples the toplevel ports.
-//   * `DTP_UVM_TB` (SV-UVM, `--dut dtp_uvm`): the port list is replaced by
+//   * `DTP_UVM_TB` (SV-UVM, `--dut dtp --framework uvm`): the port list is replaced by
 //     internal TB signals, and the harness block at the end of the module
 //     adds the clock, ocah_jtag_if/dtp_tb_if instances, quiescent tie-offs,
 //     and run_test(). Test classes are compiled via `include "dtp_tests.sv".
@@ -796,7 +796,7 @@ module dtp_uvm_top
 
 `ifdef DTP_UVM_TB
     // ------------------------------------------------------------------
-    // SV-UVM harness (`--dut dtp_uvm`): clock, interface instances,
+    // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
     // quiescent tie-offs, config_db publication, and run_test(). Compiled
     // only when the native-uvm flow defines DTP_UVM_TB; the cocotb flow
     // sees only the ported module above.

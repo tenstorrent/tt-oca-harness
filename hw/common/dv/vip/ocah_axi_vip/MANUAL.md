@@ -339,8 +339,9 @@ zero findings.
 
 ## SystemVerilog Layer (interface / sva / sv / uvm)
 
-The SV side of this package (compiled via `dtp_uvm_sim_cfg.toml`-style
-explicit sources, never Bender or Verilator filelists):
+The SV side of this package (compiled via `[frameworks.uvm.build].sources`-style
+explicit source lists in the consuming DUT's sim config, never Bender or
+Verilator filelists):
 
 - `interface/ocah_axi_if.sv` — flat AXI4/AXI4-Lite monitor interface
   (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
@@ -372,10 +373,10 @@ explicit sources, never Bender or Verilator filelists):
   API), and `ocah_axi_slave_agent` (reactive bundle: no sequencer, by
   design). The master side (active SV-UVM initiator) is not shipped yet.
 
-The DTP SV-UVM flow (`--dut dtp_uvm`) is the first consumer: tb_top wires
-the slave agent onto the SMC OTP AXI-Lite port (a dedicated `ocah_axi_if`
-carries the connection) and keeps the behavioral RAM responder module on the
-`m_axi` fabric port, instantiates the SVA checkers on both, and
+The DTP SV-UVM flow (`--dut dtp --framework uvm`) is the first consumer:
+tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
+`ocah_axi_if` carries the connection) and keeps the behavioral RAM responder
+module on the `m_axi` fabric port, instantiates the SVA checkers on both, and
 `dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
 JTAG VIP path, programming responder error injection via the slave agent's
 `ocah_axi_slave_sequence`.

@@ -70,23 +70,48 @@ _COVERAGE_STAGES = {"cov_merge", "cov_report"}
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        usage="%(prog)s [options]",
-        description=(
-            "Native OSS DV/FV launcher for listing DUTs, validating configs, "
-            "and running simulation or formal flows."
+        usage=(
+            "%(prog)s --dut NAME [--framework NAME] [--items ITEM ...] [options]\n"
+            "       %(prog)s --list | --validate-configs | --doctor [options]"
+        ),
+        description=textwrap.dedent(
+            """\
+            Native OSS DV/FV launcher.
+
+            Select a DUT (--dut) and, when it implements more than one test framework,
+            a framework (--framework); pick tests or groups from its testlist
+            (--items/--tag); run them on a simulator (--tool). Start with --list to see
+            what exists and --doctor to check this machine can run it.
+            """
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
             """\
             Examples:
-              python3 tools/dv/run_dv.py --list
-              python3 tools/dv/run_dv.py --validate-configs
-              python3 tools/dv/run_dv.py --doctor --dut dtp
-              python3 tools/dv/run_dv.py --dut smc --list
-              python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator --dry-run
-              python3 tools/dv/run_dv.py --dut smc --build-only --dry-run
-              python3 tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
-              python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
+
+              Discover what exists:
+                python3 tools/dv/run_dv.py --list                    # DUTs, frameworks, tools
+                python3 tools/dv/run_dv.py --dut dtp --list          # one DUT's tests and groups
+                python3 tools/dv/run_dv.py --doctor --dut dtp        # can this machine run it?
+                python3 tools/dv/run_dv.py --validate-configs        # are all configs consistent?
+
+              Run tests (the DUT's default framework and tool):
+                python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
+                python3 tools/dv/run_dv.py --dut smc --items smoke --tool vcs
+                python3 tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
+                python3 tools/dv/run_dv.py --dut smc --build-only --dry-run
+
+              Pick a framework (same scenario names, different implementation):
+                python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test
+                python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
+
+              Debug a failure:
+                python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
+                python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --stage sim --seed 7
+
+              Feed CI or the dashboard:
+                python3 tools/dv/run_dv.py --list --json             # (DUT, framework) matrix
+                python3 tools/dv/run_dv.py --dut dtp --list --json   # scenario binding matrix
             """
         ),
     )
@@ -104,10 +129,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Verification mode: simulation (default) or formal",
     )
     common.add_argument(
+        "--framework",
+        metavar="NAME",
+        help="Test framework (e.g. cocotb, uvm); defaults to the DUT's default_framework",
+    )
+    common.add_argument(
         "--items",
         nargs="+",
         metavar="ITEM",
-        help="Test/check names or groups",
+        help="Test or group names from the DUT's testlist (default: the `smoke` group)",
     )
     common.add_argument(
         "--tag",
@@ -120,14 +150,38 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Keep duplicate items when selected groups overlap",
     )
-    common.add_argument("--tool", metavar="TOOL", help="Backend tool override")
-    common.add_argument("--run-mode", metavar="NAME", help="Named run mode from sim cfg")
+    common.add_argument(
+        "--skip-unimplemented",
+        action="store_true",
+        help=(
+            "Skip group/tag-selected scenarios not implemented in the selected framework "
+            "(default: error); explicitly named --items tests still error"
+        ),
+    )
+    common.add_argument(
+        "--tool",
+        metavar="TOOL",
+        help="Simulator from simulators.toml (verilator, vcs, xcelium); defaults to the framework's default tool",
+    )
+    common.add_argument(
+        "--run-mode",
+        metavar="NAME",
+        help="Run mode from the DUT sim config [run_modes.<name>] (default: the test's first run mode)",
+    )
 
     actions = parser.add_argument_group("Actions And Introspection")
     actions.add_argument(
         "--list",
         action="store_true",
         help="List configured DUTs or selected DUT details",
+    )
+    actions.add_argument(
+        "--json",
+        action="store_true",
+        help=(
+            "With --list: emit machine-readable JSON — one entry per (DUT, framework) view "
+            "globally, or the full scenario binding matrix with --dut"
+        ),
     )
     actions.add_argument(
         "--validate-configs",
@@ -146,7 +200,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     stages = parser.add_argument_group("Stage And Build Control")
-    stages.add_argument("--stage", action="append", metavar="NAME", help="Native stage to run")
+    stages.add_argument(
+        "--stage",
+        action="append",
+        metavar="NAME",
+        help="Run one named stage (repeatable), e.g. --stage flist --stage hdl_compile; `--dut X --list` shows a DUT's stages",
+    )
     stages.add_argument("--build-only", action="store_true", help="Run build stages only")
     stages.add_argument("--run-only", action="store_true", help="Run sim/regress stages only")
     stages.add_argument(
@@ -162,8 +221,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     output = parser.add_argument_group("Output And UI")
-    output.add_argument("--run-dir", metavar="DIR", help="Run output directory")
-    output.add_argument("--result", metavar="PATH", help="Result JSON output path")
+    output.add_argument(
+        "--run-dir",
+        metavar="DIR",
+        help="Run output directory (default: <dut-dv-root>/build/runs/<stamp>__<tool>__<label>)",
+    )
+    output.add_argument(
+        "--result",
+        metavar="PATH",
+        help="Write an extra copy of the run-level result JSON here (primary stays <run-dir>/result.json)",
+    )
     output.add_argument(
         "--quiet",
         action="store_true",
@@ -196,7 +263,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="N",
         help="Backend compile/build job count; uses --sim-jobs when omitted",
     )
-    parallel.add_argument("--executor", default=None, metavar="NAME", help="Executor backend")
+    parallel.add_argument(
+        "--executor",
+        default=None,
+        metavar="NAME",
+        help="Executor from executors.toml (`local` is the implemented dispatch)",
+    )
     parallel.add_argument("--queue", metavar="NAME", help="Executor queue/partition metadata")
     parallel.add_argument("--cores", type=int, metavar="N", help="Executor CPU-core request")
     parallel.add_argument("--mem-mb", type=int, metavar="MB", help="Executor memory request")
@@ -208,7 +280,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Run selected items through the local regression scheduler",
     )
-    regression.add_argument("--seed", type=int, metavar="N", help="Seed override")
+    regression.add_argument(
+        "--seed",
+        type=int,
+        metavar="N",
+        help="Single-simulation seed override (integer; rejected in regression mode — use --reseed there)",
+    )
     regression.add_argument(
         "--reseed",
         type=int,
@@ -235,7 +312,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         nargs="?",
         const=WAVE_DEFAULT,
         metavar="FMT",
-        help="Enable waves, optionally naming a format",
+        help="Enable waves; FMT defaults to the tool's native format (fst/vpd/shm)",
     )
     waves.add_argument(
         "--waves-on-fail",
@@ -271,7 +348,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     coverage = parser.add_argument_group("Coverage")
-    coverage.add_argument("--cov", action="store_true", help="Enable coverage where supported")
+    coverage.add_argument(
+        "--cov",
+        action="store_true",
+        help="Enable simulator-native coverage and append the cov_merge/cov_report stages",
+    )
     coverage.add_argument(
         "--fail-under",
         type=float,
@@ -283,8 +364,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     backend.add_argument(
         "--define",
         action="append",
-        metavar="VALUE",
-        help="Extra +define+ value",
+        metavar="NAME[=VALUE]",
+        help="Extra Verilog define for compile/elaboration",
     )
     backend.add_argument(
         "--comp-arg",
@@ -496,6 +577,12 @@ def validate_flow(
     for tool in flow.tools:
         if tool not in simulators:
             raise ConfigError(f"{flow.path}: tool `{tool}` missing from simulators.toml")
+        capable = _tool_frameworks(simulators, tool)
+        if flow.framework and capable and flow.framework not in capable:
+            raise ConfigError(
+                f"{flow.path}: tool `{tool}` does not support framework `{flow.framework}` "
+                f"(supports: {', '.join(capable)})"
+            )
     stages = flow_stages(flow)
     for stage_name, stage in stages.items():
         if stage_name not in CANONICAL_STAGES:
@@ -589,16 +676,25 @@ def cmd_validate_configs(root: Path) -> int:
         return 2
 
     failures = 0
+    rows = 0
     for name in sorted(duts):
-        try:
-            validate_flow(duts[name], root, simulators, policies, executors)
-            print(f"  {name:<16} OK")
-        except ConfigError as exc:
-            failures += 1
-            print(f"  {name:<16} FAIL: {exc}")
+        flow = duts[name]
+        # Validate every framework view a DUT implements, not only its default: the default row
+        # keeps the bare DUT name; additional frameworks get their own `name (fw)` row.
+        views: list[tuple[str, str | None]] = [(name, None)]
+        views += [(f"{name} ({fw})", fw) for fw in flow.frameworks if fw != flow.framework]
+        for label, fw in views:
+            rows += 1
+            try:
+                view = flow if fw is None else resolve_dut(root, name, framework=fw)
+                validate_flow(view, root, simulators, policies, executors)
+                print(f"  {label:<16} OK")
+            except ConfigError as exc:
+                failures += 1
+                print(f"  {label:<16} FAIL: {exc}")
 
     total = len(duts)
-    print(f"\nResult: {total} DUT(s): {total - failures} OK, {failures} FAILED")
+    print(f"\nResult: {total} DUT(s), {rows} framework view(s): {rows - failures} OK, {failures} FAILED")
     return 0 if failures == 0 else 2
 
 
@@ -848,7 +944,7 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     flow: Flow | None = None
     if args.dut:
         try:
-            flow = resolve_dut(root, args.dut, mode=args.mode)
+            flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
             validate_flow(flow, root, simulators, policies, executors)
         except ConfigError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
@@ -857,7 +953,7 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     required: str | None = None
     if flow is not None:
         tools = list(flow.tools)
-        required = selected_tool(flow, args)
+        required = selected_tool(flow, args, simulators)
         scope = f"DUT `{flow.name}` (would run with: {required})"
     elif args.tool:
         tools = [args.tool]
@@ -919,14 +1015,29 @@ def list_flows(flows: dict[str, Flow]) -> None:
         tool = flow.default_tool or (flow.tools[0] if flow.tools else "-")
         if flow.license == "required-commercial":
             tool += " (licensed)"
-        print(f"{flow.name:<16} {flow.kind:<3} {flow.framework:<8} {tool:<20} {flow.description}")
+        frameworks = ",".join(flow.frameworks) or flow.framework or "-"
+        print(f"{flow.name:<16} {flow.kind:<3} {frameworks:<12} {tool:<20} {flow.description}")
+
+
+def _implemented_counts(flow: Flow, catalog: TestCatalog) -> dict[str, int]:
+    """Scenario count per implemented framework — the binding-matrix summary."""
+    frameworks = flow.frameworks or ([flow.framework] if flow.framework else [])
+    return {
+        fw: sum(1 for test in catalog.tests.values() if fw in test.bindings)
+        for fw in frameworks
+    }
 
 
 def list_flow_detail(flow: Flow, root: Path) -> None:
     catalog = load_test_catalog(flow, root)
+    multi_framework = bool(flow.frameworks) and flow.frameworks != [flow.framework]
     print(f"name       : {flow.name}")
     print(f"kind       : {flow.kind}")
     print(f"framework  : {flow.framework}")
+    if multi_framework:
+        print(f"frameworks : {', '.join(flow.frameworks)} (default: {flow.default_framework})")
+        counts = _implemented_counts(flow, catalog)
+        print("implemented: " + ", ".join(f"{fw} {n}/{len(catalog.tests)}" for fw, n in counts.items()))
     print(f"root       : {flow.root}")
     print(f"tools      : {', '.join(flow.tools)}")
     print(f"default    : {flow.default_tool}")
@@ -934,13 +1045,91 @@ def list_flow_detail(flow: Flow, root: Path) -> None:
     print(f"runnability: {flow.runnability}")
     print(f"stages     : {', '.join(flow_stages(flow))}")
     if catalog.tests:
-        print("tests      : " + ", ".join(sorted(catalog.tests)))
+        # Scenarios implemented beyond the default framework are marked (+fw): the compact
+        # human view of the binding matrix (--json carries the full per-scenario map).
+        default = flow.default_framework or flow.framework
+        names = []
+        for name in sorted(catalog.tests):
+            extras = sorted(set(catalog.tests[name].bindings) - {default})
+            names.append(name + (f" (+{','.join(extras)})" if extras else ""))
+        print("tests      : " + ", ".join(names))
     if catalog.groups:
         print("groups     : " + ", ".join(f"{name}={','.join(items)}" for name, items in sorted(catalog.groups.items())))
 
 
-def selected_tool(flow: Flow, args: argparse.Namespace) -> str:
+def _flow_view_dict(flow: Flow) -> dict[str, Any]:
+    return {
+        "name": flow.name,
+        "kind": flow.kind,
+        "framework": flow.framework,
+        "default": flow.framework == flow.default_framework,
+        "frameworks": list(flow.frameworks),
+        "default_framework": flow.default_framework,
+        "tools": list(flow.tools),
+        "default_tool": flow.default_tool,
+        "visibility": flow.visibility,
+        "runnability": flow.runnability,
+        "license": flow.license,
+        "root": flow.root,
+        "description": flow.description,
+    }
+
+
+def list_flows_json(root: Path, flows: dict[str, Flow]) -> None:
+    """Machine-readable enumeration: one entry per (DUT, framework) view.
+
+    CI matrices consume this instead of hardcoding DUT names — e.g. a licensed UVM job selects
+    `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need.
+    """
+    views: list[dict[str, Any]] = []
+    for name in sorted(flows):
+        flow = flows[name]
+        views.append(_flow_view_dict(flow))
+        for fw in flow.frameworks:
+            if fw != flow.framework:
+                views.append(_flow_view_dict(resolve_dut(root, name, framework=fw)))
+    print(json.dumps({"schema_version": 1, "duts": views}, indent=2))
+
+
+def list_flow_detail_json(flow: Flow, root: Path) -> None:
+    """Machine-readable DUT detail: the selected view plus the full scenario binding matrix."""
+    catalog = load_test_catalog(flow, root)
+    payload = {"schema_version": 1, **_flow_view_dict(flow)}
+    payload["stages"] = list(flow_stages(flow))
+    payload["total_scenarios"] = len(catalog.tests)
+    payload["implemented"] = _implemented_counts(flow, catalog)
+    payload["tests"] = {
+        name: {"bindings": dict(test.bindings), "tags": list(test.tags or [])}
+        for name, test in sorted(catalog.tests.items())
+    }
+    payload["groups"] = {name: list(members) for name, members in sorted(catalog.groups.items())}
+    print(json.dumps(payload, indent=2))
+
+
+def _tool_frameworks(simulators: dict[str, Any], tool: str) -> list[str]:
+    cfg = simulators.get(tool)
+    if not isinstance(cfg, dict):
+        return []
+    return as_str_list(cfg.get("frameworks"), f"{tool}.frameworks")
+
+
+def selected_tool(flow: Flow, args: argparse.Namespace, simulators: dict[str, Any] | None = None) -> str:
     tool = args.tool or flow.default_tool
+    if simulators is not None and flow.framework:
+        capable = _tool_frameworks(simulators, tool)
+        if capable and flow.framework not in capable:
+            others = sorted(
+                name for name in flow.tools if flow.framework in _tool_frameworks(simulators, name)
+            )
+            hint = (
+                f"; `{flow.framework}`-capable tools for dut `{flow.name}`: {', '.join(others)}"
+                if others
+                else ""
+            )
+            raise ConfigError(
+                f"tool `{tool}` does not support framework `{flow.framework}` "
+                f"(`{tool}` supports: {', '.join(capable)}){hint}"
+            )
     if tool not in flow.tools:
         raise ConfigError(f"tool `{tool}` is not allowed for flow `{flow.name}`")
     return tool
@@ -1221,6 +1410,46 @@ def expand_items(
     return expanded
 
 
+def validate_item_bindings(
+    flow: Flow, catalog: TestCatalog, items: list[str], args: argparse.Namespace
+) -> list[str]:
+    """Enforce that every selected scenario is implemented in the selected framework.
+
+    A selected scenario with no `module` entry for the selected framework is a config error.
+    `--skip-unimplemented` skips group/tag-derived unimplemented scenarios instead — loudly, and
+    recorded in run metadata — while an explicitly named `--items` test always errors.
+    """
+    if not flow.framework:
+        return items
+    unimplemented = [name for name in items if name in catalog.tests and not catalog.tests[name].module]
+    if not unimplemented:
+        return items
+    explicit = [name for name in unimplemented if name in set(args.items or [])]
+    if explicit or not args.skip_unimplemented:
+        width = max(len(name) for name in unimplemented)
+        lines = "\n".join(
+            f"  {name:<{width}}  (implemented: {', '.join(sorted(catalog.tests[name].bindings)) or 'none'})"
+            for name in unimplemented
+        )
+        fix = (
+            f"  fix: add a `{flow.framework}` module entry or narrow the selection"
+            if explicit
+            else f"  fix: add a `{flow.framework}` module entry, narrow the selection, or pass --skip-unimplemented"
+        )
+        raise ConfigError(
+            f"{len(unimplemented)} selected scenario(s) are not implemented for framework "
+            f"`{flow.framework}`:\n{lines}\n{fix}"
+        )
+    kept = [name for name in items if name not in set(unimplemented)]
+    if not kept:
+        raise ConfigError(
+            "--skip-unimplemented left no runnable scenarios: none of the selected tests are "
+            f"implemented for framework `{flow.framework}`"
+        )
+    setattr(args, "_skipped_unimplemented", unimplemented)
+    return kept
+
+
 def select_by_tags(catalog: TestCatalog, candidates: list[str], tags: list[str]) -> list[str]:
     """Keep candidate test names whose tags intersect any of `tags`, preserving order."""
     wanted = set(tags)
@@ -1434,7 +1663,7 @@ def run_flow(
     args: argparse.Namespace,
 ) -> int:
     replay_run_dir, existing_result = _existing_run_result(root, flow, args)
-    tool = selected_tool(flow, args)
+    tool = selected_tool(flow, args, simulators)
     executor = selected_executor(flow, args)
     validate_selected_tool_available(tool, simulators, args, flow)
     if args.waves:
@@ -1465,6 +1694,7 @@ def run_flow(
             items = select_by_tags(catalog, items, args.tag)
             if not items:
                 raise ConfigError(f"no tests match tag(s): {', '.join(args.tag)}")
+        items = validate_item_bindings(flow, catalog, items, args)
 
     if need_items and not args.stage and "c_compile" in flow_stages(flow):
         if any(catalog.tests[item].firmware is not None for item in items):
@@ -1519,6 +1749,13 @@ def run_flow(
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console
     args._ui_leaf_mode = "compact" if scheduler else "full"
+    skipped_unimplemented = list(getattr(args, "_skipped_unimplemented", []) or [])
+    if skipped_unimplemented:
+        console.event(
+            "selection",
+            f"skipped_unimplemented={len(skipped_unimplemented)} framework={flow.framework} "
+            f"tests={','.join(skipped_unimplemented)}",
+        )
     run_started = time.monotonic()
     results: list[StageResult] = []
     runs_by_item: dict[str, list[tuple[int, StageResult]]] = {}
@@ -1969,9 +2206,16 @@ def run_flow(
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    if not raw_argv:
+        # A bare invocation is a person exploring, not a run: show the full help page
+        # (with the examples) instead of the --dut-required error.
+        parse_args(["--help"])
+    args = parse_args(raw_argv)
     try:
         validate_mode_options(args)
+        if args.json and not args.list:
+            raise ConfigError("--json applies to --list only")
         root = repo_root(Path(__file__))
 
         # Diagnostics report their own findings (and must not be pre-empted by the fail-fast
@@ -1985,18 +2229,26 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.list:
             if args.dut:
-                flow = resolve_dut(root, args.dut, mode=args.mode)
+                flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
                 validate_flow(flow, root, simulators, policies, executors)
-                list_flow_detail(flow, root)
+                if args.json:
+                    list_flow_detail_json(flow, root)
+                else:
+                    list_flow_detail(flow, root)
+            elif args.json:
+                list_flows_json(root, duts)
             else:
                 list_flows(duts)
             return 0
 
         if not args.dut:
-            raise ConfigError("--dut is required unless --list, --validate-configs, or --doctor is used")
+            raise ConfigError(
+                "--dut is required unless --list, --validate-configs, or --doctor is used "
+                "(start with --list to see the selectable DUTs)"
+            )
         if args.dut not in duts:
             raise ConfigError(f"unknown DUT `{args.dut}`")
-        flow = resolve_dut(root, args.dut, mode=args.mode)
+        flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
         validate_flow(flow, root, simulators, policies, executors)
         return run_flow(root=root, flow=flow, simulators=simulators, policies=policies, args=args)
     except ConfigError as exc:
