@@ -98,11 +98,43 @@ def _fw_env(config):
     return env
 
 
-def _make(config, *make_args, cwd):
-    return subprocess.run(
-        ["make", *make_args], cwd=str(cwd), env=_fw_env(config),
-        capture_output=True, text=True,
-    )
+_NATIVE_TOOLCHAIN_OK = None
+
+
+def _native_fw_toolchain(env):
+    """True when the toolchain on PATH can compile against picolibc (cached).
+
+    The ROM and DV-engine builds need riscv64-unknown-elf-gcc WITH picolibc,
+    which the ocah-toolchain container provides (tools/docker/README.md); bare
+    riscv-gnu-toolchain installs typically lack it."""
+    global _NATIVE_TOOLCHAIN_OK
+    if _NATIVE_TOOLCHAIN_OK is None:
+        try:
+            r = subprocess.run(
+                ["riscv64-unknown-elf-gcc", "--specs=picolibc.specs",
+                 "-x", "c", "-c", "-", "-o", os.devnull],
+                input="int main(void){return 0;}", env=env,
+                capture_output=True, text=True, timeout=60,
+            )
+            _NATIVE_TOOLCHAIN_OK = r.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            _NATIVE_TOOLCHAIN_OK = False
+    return _NATIVE_TOOLCHAIN_OK
+
+
+def _make(config, *make_args, cwd, container_ok=True):
+    """Run a firmware make, routing through the ocah-toolchain container
+    (scripts/docker-run.sh run-here; set OCAH_TOOLCHAIN_ROOTFS for the
+    engine-less bwrap path) when the native toolchain lacks picolibc.
+
+    container_ok=False keeps the make native — needed for the uv-based pack
+    targets, which the container does not carry uv for."""
+    env = _fw_env(config)
+    argv = ["make", *make_args]
+    if container_ok and not _native_fw_toolchain(env):
+        argv = [str(paths.OCAH_ROOT / "scripts" / "docker-run.sh"),
+                "run-here", "make", *make_args]
+    return subprocess.run(argv, cwd=str(cwd), env=env, capture_output=True, text=True)
 
 
 @pytest.fixture(scope="session")
@@ -140,7 +172,7 @@ def secure_boot_preload(request):
     hw/sys/sep/bootrom/prod/tools/tt-boot-manifest)."""
     if request.config.getoption("build"):
         res = _make(request.config, "-C", str(paths.BOOTCODE_DIR),
-                    "secure_boot_spi", cwd=paths.OCAH_ROOT)
+                    "secure_boot_spi", cwd=paths.OCAH_ROOT, container_ok=False)
         if res.returncode != 0:
             pytest.skip(
                 "secure_boot_spi build failed (tt-boot-manifest submodule initialized? "
