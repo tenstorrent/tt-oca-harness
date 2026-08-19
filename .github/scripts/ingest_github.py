@@ -455,6 +455,47 @@ def assign_pr_author(number: int) -> None:
     print("assigned", login)
 
 
+def github_dir() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def issue_form_options(path: Path) -> dict[str, list[str]]:
+    found: dict[str, list[str]] = {}
+    current: str | None = None
+    in_options = False
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("label:"):
+            current = stripped[len("label:") :].strip()
+            in_options = False
+            continue
+        if current and stripped == "options:":
+            in_options = True
+            found[current] = []
+            continue
+        if in_options and stripped.startswith("- "):
+            found[current].append(stripped[2:].strip())
+            continue
+        if in_options and stripped:
+            in_options = False
+            current = None
+    return found
+
+
+def assert_templates_match_taxonomy(taxonomy: dict) -> None:
+    fields = taxonomy["project"]["fields"]
+    forms = sorted((github_dir() / "ISSUE_TEMPLATE").glob("0*.yml"))
+    if not forms:
+        raise AssertionError("no issue forms under .github/ISSUE_TEMPLATE")
+    for form in forms:
+        options = issue_form_options(form)
+        for name in TAXONOMY_FIELDS:
+            assert name in options, f"{form.name} missing {name}"
+            assert options[name] == fields[name], (
+                f"{form.name} {name} {options[name]!r} != taxonomy {fields[name]!r}"
+            )
+
+
 def self_test() -> None:
     body = """### Workstream
 
@@ -484,6 +525,9 @@ Future
     assert fields["Target release"] == "Future"
     assert picked("n/a", ["P0", "P1", "P2"]) is None
     assert picked("P1", ["P0", "P1", "P2"]) == "P1"
+    taxonomy = load_taxonomy(github_dir() / "issue-taxonomy.yml")
+    assert "AOU" in taxonomy["project"]["fields"]["Subsystem"]
+    assert_templates_match_taxonomy(taxonomy)
     print("self-test ok")
 
 

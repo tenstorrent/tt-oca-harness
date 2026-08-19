@@ -27,20 +27,16 @@ jobs:
           GH_AW_WRITE_PROJECT_TOKEN: ${{ secrets.GH_AW_WRITE_PROJECT_TOKEN }}
         run: python3 .github/scripts/ingest_github.py --issue "${{ github.event.issue.number }}"
 
-  pr-assign:
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+  pull-request:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Check ingest script and issue-form taxonomy
+        run: python3 .github/scripts/ingest_github.py --self-test
       - name: Assign PR author
+        if: github.event.action == 'opened'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/ingest_github.py --pr-assign "${{ github.event.pull_request.number }}"
-
-  pr-no-body-gate:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: PR bodies are not gated
-        run: echo "issue-pr-ingest does not require Summary or Test plan; project fields live on issues."
