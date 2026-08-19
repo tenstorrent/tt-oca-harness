@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Passive AXI transaction record, mirroring the cocotb OcahAxiItem fields at
-// maximum storage widths (actual bus geometry lives in ocah_axi_cfg). One
+// maximum storage widths (actual bus geometry lives in ocah_axi_config). One
 // object represents one completed transaction: a write published at its B
 // handshake, or a read published at its RLAST beat.
 

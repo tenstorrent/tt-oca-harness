@@ -19,7 +19,7 @@ outcome. That carve-out applies ONLY to CHK-ZEROER-AXICLK-COMPLETION's
 protocol-outcome verdict.
 
 AMENDMENT (revision 2, supersedes revision 1, owner decision minshaoho
-standing order "都簽署繼續" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
+standing order "approve-and-continue" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
 revision 1's CHK-ZEROER-AXICLK-NOGLITCH required zero axi_clk_enable deassert
 across the WHOLE busy-to-idle boundary, including the real ~26-28 clk_smc_i
 cycle turnaround of the documented 3-write DEST_ADDR->SIZE->CTRL_STATUS

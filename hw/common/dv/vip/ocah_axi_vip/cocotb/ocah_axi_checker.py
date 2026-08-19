@@ -22,7 +22,7 @@ from typing import Any
 from ocah_checker import OcahChecker
 
 from .ocah_axi_item import OcahAxiItem
-from .results import RESP_DECERR, RESP_EXOKAY, RESP_OKAY, RESP_SLVERR, RESP_TIMEOUT
+from .ocah_axi_results import RESP_DECERR, RESP_EXOKAY, RESP_OKAY, RESP_SLVERR, RESP_TIMEOUT
 
 LEGAL_RESPONSES = {RESP_OKAY, RESP_EXOKAY, RESP_SLVERR, RESP_DECERR, RESP_TIMEOUT}
 

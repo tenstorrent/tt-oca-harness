@@ -17,7 +17,7 @@
 class ocah_axi_monitor extends uvm_monitor;
     `uvm_component_utils(ocah_axi_monitor)
 
-    ocah_axi_cfg cfg;
+    ocah_axi_config cfg;
     uvm_analysis_port #(ocah_axi_item) item_ap;
 
     int unsigned item_count;
@@ -65,10 +65,10 @@ class ocah_axi_monitor extends uvm_monitor;
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(ocah_axi_cfg)::get(this, "", "cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "ocah_axi_cfg `cfg` not found in uvm_config_db")
+        if (!uvm_config_db#(ocah_axi_config)::get(this, "", "cfg", cfg) || cfg == null)
+            `uvm_fatal(get_type_name(), "ocah_axi_config `cfg` not found in uvm_config_db")
         if (cfg.vif == null)
-            `uvm_fatal(get_type_name(), "ocah_axi_cfg.vif is null")
+            `uvm_fatal(get_type_name(), "ocah_axi_config.vif is null")
         item_ap = new("item_ap", this);
     endfunction
 

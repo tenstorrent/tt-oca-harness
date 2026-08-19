@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP AXI UVM agent.
 
-Owns the AXI master mechanics via ``ocah_axi_vip.OcahAxiMaster``: the driver
+Owns the AXI master mechanics via ``ocah_axi_vip.OcahAxiMasterSequence``: the driver
 translates ``SepAxiItem`` transactions into AXI reads/writes against a SEP
 master bus, and broadcasts completed transactions (with results) on an analysis
 port for the scoreboard. The sequence item lives here too so the whole AXI
@@ -32,7 +32,7 @@ from pyuvm import (
     uvm_sequencer,
 )
 
-from ocah_axi_vip import OcahAxiMaster
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 
 try:  # cocotb < 2.0
     from cocotb.result import SimTimeoutError
@@ -98,12 +98,12 @@ class SepAxiItem(uvm_sequence_item):
 
 
 class SepAxiDriver(uvm_driver):
-    """Drives SepAxiItem transactions through ocah_axi_vip.OcahAxiMaster."""
+    """Drives SepAxiItem transactions through ocah_axi_vip.OcahAxiMasterSequence."""
 
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
-        self.axi: OcahAxiMaster | None = None
+        self.axi: OcahAxiMasterSequence | None = None
 
     async def run_phase(self) -> None:
         dut = cocotb.top
@@ -115,16 +115,16 @@ class SepAxiDriver(uvm_driver):
         # from time 0 (the CPU-LSU splice drives the bus from t=0; the external
         # m_axi master must also idle from t=0 so the inbound port never X-props).
         # Only the transaction loop waits for reset release.
-        self.axi = OcahAxiMaster.from_prefix(
+        self.axi = OcahAxiMasterAgent.from_prefix(
             dut,
             self.prefix,
             dut.clk_i,
             dut.rst_ni,
             name=f"sep_{self.prefix}",
             reset_active_level=False,
-        )
+        ).sequence
         await self.cfg.reset_done.wait()
-        self.logger.info("OcahAxiMaster ready on %s bus", self.prefix)
+        self.logger.info("OcahAxiMasterSequence ready on %s bus", self.prefix)
 
         while True:
             item = await self.seq_item_port.get_next_item()

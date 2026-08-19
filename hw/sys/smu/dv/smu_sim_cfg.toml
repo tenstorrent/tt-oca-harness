@@ -1,10 +1,10 @@
 schema_version = 1
 
 # Phase-1 track is SEP=0 only (SMC + DTP + external SMN path; no real SEP RTL).
-# Executable plan: docs/SMU_OSS_VPLAN_PHASE1.md
+# Executable plan: enrolled groups in testlists/all.toml
 # DUT parameter SEP=0 is hardcoded in tb/tb_top.sv (smu #(.SEP(0))).
 name = "smu"
-profile = "native-cocotb"
+profile = "native"
 description = "SMU OSS Phase-1 SEP=0 (SMC + DTP + external fabric) — VCS first"
 
 [testlist]
@@ -87,7 +87,7 @@ ccache = true
 build_jobs = 8
 
 
-[cocotb]
+[frameworks.cocotb]
 python_root = "hw/sys/smu/dv/cocotb"
 test_dir = "hw/sys/smu/dv/cocotb/tests"
 python_paths = [
