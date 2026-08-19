@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 #==============================================================================
 # Cross Trigger Matrix Documentation Build System
 # Makefile for Sphinx documentation generation
