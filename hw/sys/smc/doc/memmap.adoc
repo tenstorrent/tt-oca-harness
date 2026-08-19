@@ -288,6 +288,62 @@ privileges
 reporting
 |=======================================================================
 
+==== Additional SMC CSR Maps
+
+The following PeakRDL maps are generated for programmer-visible SMC
+blocks that were not already included from another chapter
+(`reset_unit`, `dma_ctrl`, `plic`, `debug_module`, `bus_error_unit`,
+`wdt`, and `smc_efuse_map` are documented in those chapters). `oca_i3c_wrap`
+is omitted here: I3C remains deferred with the wording in <<peripherals>>.
+
+===== CPU Control and CLINT
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/cpu_ctrl.html[]
+include::partial$smc/regs/gen/html/blocks/clint.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/clint.adoc[]
+endif::backend-pdf[]
+
+===== Chip Config, Scratch, NDM Reset, and Misc Wrap
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/chip_config.html[]
+include::partial$smc/regs/gen/html/blocks/scratch.html[]
+include::partial$smc/regs/gen/html/blocks/ndm_reset.html[]
+include::partial$smc/regs/gen/html/blocks/misc_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/chip_config.adoc[]
+include::../regs/gen/adoc/blocks/scratch.adoc[]
+include::../regs/gen/adoc/blocks/ndm_reset.adoc[]
+include::../regs/gen/adoc/blocks/misc_wrap.adoc[]
+endif::backend-pdf[]
+
+===== Base Config, DFX Status, and GPIO POC/PBias
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/smc_base_config.html[]
+include::partial$smc/regs/gen/html/blocks/dfx_ctrl_status.html[]
+include::partial$smc/regs/gen/html/blocks/gpio_poc_pbias_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/smc_base_config.adoc[]
+include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[]
+include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[]
+endif::backend-pdf[]
+
 ==== Component-Specific Register Documentation
 
 For detailed register-level documentation of each SMC component, refer
