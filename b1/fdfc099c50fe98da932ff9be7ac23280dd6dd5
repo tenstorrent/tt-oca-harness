@@ -1,0 +1,21 @@
+AGENTS.md
+  s_c8ce40a7fc1aa0::t_caf6831615af19 358-364,367,370,374,400-403
+doc/contributing/src/alignment.adoc
+  s_c8ce40a7fc1aa0::t_b4206a7179ab82 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b1fdfc099c50fe98da932ff9be7ac23280dd6dd5",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
