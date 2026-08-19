@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Pre-computed render context for fabric Mako templates.
 
 Each builder returns plain dataclasses / lists keyed for direct consumption by
