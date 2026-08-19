@@ -942,11 +942,8 @@ ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
 
 == Continuous integration
 
-The `sim` GitHub workflow (`.github/workflows/sim.yml`) runs the
-simulator-independent `runner-checkpoints` job,
-which exercises atomic refresh, normal completion, SIGINT cancellation,
-SIGTERM timeout termination, and dashboard collection.
-Its simulator jobs run on GitHub-hosted runners in two tiers:
+The `sim` GitHub workflow (`.github/workflows/sim.yml`) runs simulator jobs on
+GitHub-hosted runners in two tiers:
 
 [cols="<2,<4,<5",options="header"]
 |===
