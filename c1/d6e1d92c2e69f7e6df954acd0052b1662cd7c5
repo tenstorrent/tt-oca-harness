@@ -1,0 +1,46 @@
+hw/ip/axi_lite_mailbox_unit/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/cross_trigger/cross_trigger_matrix/README.md
+  h_1abe2da33d4938 1,3,6,8-10,12-13
+hw/ip/cross_trigger/cross_trigger_network/README.md
+  h_1abe2da33d4938 1,3,6,8-10,12-13
+hw/ip/cross_trigger/cross_trigger_port/README.md
+  h_1abe2da33d4938 1,3,6,8-10,12-13
+hw/ip/drbg/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/efuse/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/entropy_source/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/gpio/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/i2c/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/idma_wrapper/README.md
+  h_1abe2da33d4938 3,5-6,8-10,12-13
+hw/ip/jtag/jtag_stap/README.md
+  h_1abe2da33d4938 1,3,6,8-10,12-13
+hw/ip/key_manager/README.md
+  h_1abe2da33d4938 1,3,6,8-10,12-13
+hw/ip/scrambler/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/system_timer_octs/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/telemetry_receiver/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/uart/log_engine/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+hw/ip/uart/uart_16550/README.md
+  h_1abe2da33d4938 1,3,5-6,8-10,12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c1d6e1d92c2e69f7e6df954acd0052b1662cd7c5",
+  "prompts": {},
+  "humans": {
+    "h_1abe2da33d4938": {
+      "author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
