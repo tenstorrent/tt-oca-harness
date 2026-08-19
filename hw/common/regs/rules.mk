@@ -11,8 +11,7 @@
 # Local svpkg template: upstream peakrdl-rawheader 0.2.4 sizes enum widths by the
 # number of entries rather than the largest value, silently truncating any enum
 # whose largest value needs more bits than its entry count. Fixed in our copy; drop
-# this and the --template flag once the fix lands upstream. The separate `endpackage;`
-# empty-statement (W193) is deliberately left alone and stays waived per block.
+# this and the --template flag once the fix lands upstream.
 OCAH_SVPKG_TEMPLATE ?= $(OCAH_ROOT)/hw/common/regs/templates/svpkg.mako
 
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are

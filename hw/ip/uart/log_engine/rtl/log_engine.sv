@@ -93,8 +93,7 @@ module log_engine
         .ready_i    (log_write_done)
     );
 
-    // The one-hot grant vector is unused: this arbiter is consumed via idx_o,
-    // valid_o and data_o, which carry the same arbitration result.
+    // Tie off unused signal to satisfy lint
     logic unused_arb_gnt;
     assign unused_arb_gnt = ^arb_gnt;
 

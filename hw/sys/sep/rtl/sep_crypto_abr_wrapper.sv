@@ -146,8 +146,7 @@ module sep_crypto_abr_wrapper
         .ahb_hresp     (ab_hresp)
     );
 
-    // axi4_to_ahb has no AXI USER ports (the VeeR bridge predates the optional
-    // USER sideband), so the B/R user fields of the response struct would
+    // axi4_to_ahb has no AXI USER ports, so the B/R user fields of the response struct would
     // otherwise be left undriven. This slave produces no sideband data, so
     // return zero - the same value the axi_err_slv on the other `ifdef branch
     // emits for this port.

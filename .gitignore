@@ -98,13 +98,3 @@ vendor/**/Bender.lock
 # npm install target for a11y
 tools/a11y/node_mo#dules/
 tools/a11y/report/
-# VC Static / SpyGlass run droppings (written into the repo root by vc_static_shell)
-/.vc_env_*.txt
-/.vcstPref
-/vcst_session.log
-/vcst_session.log.bak
-/vcst_rtdb/
-
-# cocotb/VCS testbench build products
-**/dv/tb_vcs/sim_build/
-**/dv/tb_vcs/*.f

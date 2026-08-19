@@ -14,15 +14,6 @@
 package smc_efuse_pkg;
   import smc_top_addrmap_pkg::*;
 
-  // Returns an offset relative to the efuse map base, so the result is bounded by
-  // SMC_TOP_SMC_EFUSE_MAP_SIZE rather than by the address space. The address
-  // arithmetic stays 64-bit; the result is narrowed once here because every
-  // consumer is 32-bit (rule_t.start_addr/end_addr are logic [31:0], and
-  // efuse_pkg::make_shadow_word_range takes int unsigned).
-  // NOTE: hw/ip/efuse/dv/testbench/smc_efuse_pkg.sv is a stale duplicate of this
-  // package, still on the old 64-bit signature. It is in no Bender manifest and no
-  // flist, so nothing compiles it - Bender.yml supplies this file to every
-  // consumer. Flagged for deletion rather than kept in sync.
   function automatic int unsigned efuse_offset(input longint unsigned addr);
     return int'(addr - smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR);
   endfunction

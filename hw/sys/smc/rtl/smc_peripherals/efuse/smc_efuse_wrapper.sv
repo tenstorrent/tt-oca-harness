@@ -193,9 +193,6 @@ module smc_efuse_wrapper
 
         .SEP_SEC_DISABLE_TOKEN       ('0), // Embedded in RTL (SEP only)
 
-        // efuse_interface_controller declares these as a bare bit [31:0] rather than
-        // via a named width constant, so the casts below are literal 32 rather than a
-        // package parameter. Asserts are next to the instantiation, above.
         .EFUSE_MAP_REG_MAP_BASE_ADDR (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)),
         .EFUSE_MAP_REG_MAP_SIZE      (32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE)),
 

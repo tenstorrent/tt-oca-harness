@@ -178,9 +178,7 @@ module telemetry_receiver_wrap
             .rdepth_o            (at_fifo_rdepth)
         );
 
-        // Occupancy outputs are unused: the ATB path is driven purely by the
-        // valid/ready handshake, and wready_o is wired out to atready_o so
-        // backpressure is already handled. Kept in separate reductions because
+        // Tie off unused signals to satisfy lint. Kept in separate reductions because
         // wdepth is in the clk_telemetry_i domain and rdepth is in clk_i.
         logic unused_at_fifo_wdepth;
         logic unused_at_fifo_rdepth;

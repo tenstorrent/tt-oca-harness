@@ -4,11 +4,6 @@
 package sep_efuse_pkg;
   import och_sep_top_addrmap_pkg::*;
 
-  // Returns an offset relative to the efuse map base, so the result is bounded by
-  // OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE (0x400) rather than by the address space. The
-  // address arithmetic stays 64-bit; the result is narrowed once here because every
-  // consumer is 32-bit (rule_t.start_addr/end_addr are logic [31:0], and
-  // efuse_pkg::make_shadow_word_range takes int unsigned).
   function automatic int unsigned efuse_offset(input longint unsigned addr);
     return int'(addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR);
   endfunction

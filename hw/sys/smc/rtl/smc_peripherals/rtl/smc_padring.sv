@@ -434,8 +434,7 @@ module smc_padring #(
 
 		// SMC_TOP_GPIO_INTF_SIZE is a 64-bit PeakRDL constant while the parameter is
 		// gpio_pkg::ADDR_WIDTH wide, so the bind truncates; cast it explicitly and
-		// check at elaboration that it fits. BASE_ADDR needs neither - both operands
-		// are already ADDR_WIDTH-wide parameters of this module.
+		// check at elaboration that it fits.
 		`OCAH_OT_ASSERT_INIT(GpioIntfSizeFits_A,
 		    smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::ADDR_WIDTH))
 

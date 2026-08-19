@@ -108,10 +108,7 @@ module prim_refclk_count_w_cdc #(
 	`OCAH_OT_ASSERT(CntUpdateAccepted_A, i_cnt_update |-> cnt_fifo_wready,
 	                i_out_clk, !prstb_synced_write)
 
-	// Occupancy outputs are unused: this counter is driven purely by the valid/ready
-	// handshake. Kept in separate reductions because wdepth is in the i_out_clk domain
-	// and rdepth is in the i_refclk domain. wready is read only by the assertion above,
-	// which structural lint does not count as a load, so it is tied off here too.
+	// Tie off unused signals to satisfy lint. Keep in separate reductions because they live in diff clk domains
 	logic unused_cnt_fifo_wready;
 	logic unused_cnt_fifo_wdepth;
 	logic unused_cnt_fifo_rdepth;
