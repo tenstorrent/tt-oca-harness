@@ -6,9 +6,7 @@
 
 [WARNING]
 ====
-This section is currently under development. *Content has been taken
-verbatim from existing documentation.* More content will be added as the
-project matures.
+This section is currently under development.
 ====
 
 === Document formats
@@ -16,15 +14,6 @@ project matures.
 OCAH primarily uses AsciiDoc (.adoc) for structured documentation.
 
 Native README files in GitHub which are intended to be read in isolation are written in Markdown (.md)
-
-
-
-* *Component README files*: Written in Markdown (.md) format for GitHub
-compatibility
-* *Detailed documentation*: Written in AsciiDoc (.adoc) format for structured
-documentation
-* *Auto-generated registers*: Generated as AsciiDoc (.adoc) files from SystemRDL
-sources
 
 This approach provides:
 
@@ -34,47 +23,58 @@ This approach provides:
 * Multiple output formats (PDF, HTML) with cross-referencing
 capabilities
 
-=== 
+=== Updating documentation
 
+Documentation is authored in AsciiDoc.  In most cases it is built in two formats:
+- Using Antora for the HTML site
+- Using asciidoctor-pdf for downloadable PDFs
 
+Material specific to the website may not be built as downloadable PDFs
 
-=== Asciidoctor Setup
+Documents are published in GitHub Pages at [https://tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
 
-Asciidoctor processes the AsciiDoc documentation. Install the documentation toolchain:
-
-For Asciidoctor (Ruby gem):
-
-```
-gem install asciidoctor asciidoctor-pdf
-```
-
-For Antora (Node.js):
-
-```
-npm install -g @antora/cli @antora/site-generator-default
-```
-
-Asciidoctor is also available via the system environment:
-
-```
-apt install asciidoctor asciidoctor-pdf
-```
+Document updates are made by pushing changes to `main`.
+The CI process deploys to the published site on all pushes to `main` (see `.github/workflows/doc.yml`).
 
 === Build Process
 
-Generate HTML documentation:
+Documentation may also be built locally for development.
 
-```
-cd doc && make html
-```
+To avoid the need to install local tools, the toolchain is included as container images.
+The two commands below may be executed from the root of the checked out repository.  They generate the built material in subfolders under each book.
 
-Generate PDF documentation:
-
-```
-cd doc && make pdf
+```bash
+scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
+scripts/docker-run.sh doc-pdf  all    # PDF       → doc/XXXX/dist/ocah-trm.pdf
 ```
 
-=== Diagrams
+Once the documents are built they can be staged with the command below.
+This builds the site in the location shown.
+```bash
+scripts/docker-run.sh doc-stage       # site → doc/_build/html_antora
+```
+
+The build can then be served locally for viewing
+```bash
+cd doc/_build/html_antora
+python3 -m http.server
+```
+
+=== Embedding Images
+
+All images are stored in the repository at `doc/trm/assets` regardless of which document they
+appear in.  This allows images to be reused across documents without requiring a copy for each
+document.
+
+Images are copied to the `assets` directory of every document as part of the build process.
+
+Any image can then be embedded in an Asciidoc document with:
+
+```
+image::<my_image>.png[Alternative Text]
+```
+
+=== Creating Diagrams
 
 Diagrams are most easily created using the DrawIO program. Generate SVG
 files and embed them directly in the AsciiDoc document.

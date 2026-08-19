@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= OCAH Code of Conduct
+== OCAH Code of Conduct
 :doctype: book
 :sectanchors:
 :sectlinks:
@@ -11,7 +11,7 @@
 [WARNING]
 Simplified version of the OpenTitan Code of Conduct.  Needs review.
 
-== Code of Conduct
+=== Code of Conduct
 
 This code of conduct applies to all spaces managed on behalf of the OCAH project. 
 
@@ -45,9 +45,12 @@ This includes, but is not limited to:
 +
 Disagreements, both social and technical, happen all the time. It is important that we resolve disagreements and differing views constructively.  Different people have different perspectives on issues. Being unable to understand why someone holds a viewpoint doesn’t mean that they’re wrong. Focus on helping to resolve issues and learning from mistakes.
 
-== Reporting Problems
+=== Reporting Problems
 
 [WARNING]
+This section may wait until governance is defined 
+
+[NOTE]
 If you believe someone is violating the code of conduct you can report it to the Code of Conduct team by emailing XXXXXX.
 
 All reports will be kept confidential. This isn’t a public list and only members of the Code of Conduct team will receive the report.  If the violation occurs at an event such as a conference or workshop and requires immediate attention, you can also reach out to any of the event organisers or staff.
@@ -65,6 +68,32 @@ If you feel comfortable, please consider including:
 * If you believe this incident is ongoing.
 * Any other information you believe we should have.
 
-== Attribution
-This text is based on the OpenTitan Code of Conduct.
+=== What happens after you file a report?
+
+[WARNING]
+This section may wait until governance is defined 
+
+You will receive an email from the Code of Conduct team acknowledging receipt within 24 hours (and we will aim to respond much quicker than that). 
+The Code of Conduct team will immediately meet to review the incident and try to determine:
+
+- What happened and who was involved.
+- Whether this event constitutes a code of conduct violation.
+- Whether this is an ongoing situation, or if there is a threat to anyone’s physical safety.
+- Whether the incident requires escalation to the OpenTitan Governing Board
+
+If this is determined to be an ongoing incident or a threat to physical safety, the working groups’ immediate priority will be to protect everyone involved. This means we may delay an "official" response until we believe that the situation has ended and that everyone is physically safe. 
+
+The Code of Conduct team will try to contact other parties involved or witnessing the event to gain clarity on what happened and understand different perspectives. Once the Code of Conduct team has a complete account of the events they will make a decision as to how to respond. 
+
+The Code of Conduct team may make any of the responses below, notifying the OpenTitan Governing Board of the action taken:
+
+- No action, if we determine no violation occurred or it has already been appropriately resolved.
+- Moderation or mediation to ongoing interactions (where appropriate, safe, and desired by both parties).
+- A private reprimand from the working group to the individuals involved.
+
+[WARNING]
+More serious escalation will need to be managed through the Governance structure which is TBD.
+
+=== Attribution
+This text is based on the https://opentitan.org/code-of-conduct/[OpenTitan Code of Conduct] which is based on the LLVM Code of Conduct.
 

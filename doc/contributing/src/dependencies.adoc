@@ -2,8 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[dependencies]]
-Dependencies
-------------
+== Dependencies
 
 [WARNING]
 ====
