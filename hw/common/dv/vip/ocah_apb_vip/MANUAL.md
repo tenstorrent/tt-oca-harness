@@ -19,7 +19,7 @@ items, monitors, checkers, and coverage hooks:
 | `OcahApbChecker` | OCAH item-level checker |
 
 APB remains in a separate package from AXI because it is a distinct protocol,
-but the public API mirrors `OcahAxiLiteMaster` where practical.
+but the public API mirrors `OcahAxiLiteMasterAgent` where practical.
 
 ## Import Pattern
 

@@ -97,9 +97,9 @@ Package: `hw/common/dv/vip/ocah_axi_vip/`
 
 Primary classes:
 
-* `OcahAxiMaster`, `OcahAxiLiteMaster`;
-* `OcahAxiSlave`, `OcahAxiRam`, `OcahFaultAxiRam`;
-* `OcahAxiLiteSlave`, `OcahAxiLiteRam`, `OcahFaultAxiLiteRam`;
+* `OcahAxiMasterAgent`, `OcahAxiLiteMasterAgent`;
+* `OcahAxiSlaveAgent`, `OcahAxiSlaveAgent`, `OcahAxiSlaveAgent`;
+* `OcahAxiLiteSlaveAgent`, `OcahAxiLiteSlaveAgent`, `OcahAxiLiteSlaveAgent`;
 * `OcahAxiReadResult`, `OcahAxiWriteResult`;
 * `OcahAxiItem` and direction/protocol-specific item subclasses;
 * `OcahAxiMonitor`, `OcahAxiLiteMonitor`, `OcahAxiChecker`;
@@ -109,7 +109,7 @@ Primary classes:
 
 SystemVerilog layer (compiled by explicit sim-cfg sources, never Verilator
 filelists): `interface/ocah_axi_if.sv`, the clean-room
-`sva/ocah_axi_protocol_checker.sv` (`OCAH_AXI_*` rules from IHI 0022 rule
+`sva/ocah_axi_sva.sv` (`OCAH_AXI_*` rules from IHI 0022 rule
 descriptions), behavioral error-injectable responders under `sv/`, and the
 passive `uvm/ocah_axi_uvm_pkg.sv` (monitor, reference model, scoreboard with
 `CHK-*`/`CHECKER_SUMMARY` evidence, optional coverage subscriber, env).

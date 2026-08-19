@@ -4,26 +4,26 @@
 /*
  * TC_FABRIC_062: fabric_alias_remap_datapath_p3_test
  *
- * 目標: axi_alias_remap_wrap 2.18% → 90%+ [最關鍵], axi_alias_remap 50.57% → 90%+
- * 策略: Local-master 別名 hit/miss/boundary 案例，完整AXI datapath覆蓋
- * 優先級: 第一輪 (關鍵 - 87.82% 巨大改進需求)
+ * Goal: axi_alias_remap_wrap 2.18% -> 90%+ [critical], axi_alias_remap 50.57% -> 90%+
+ * Strategy: Local-master alias hit/miss/boundary cases; full AXI datapath coverage
+ * Priority: first pass (critical - needs ~87.82% improvement)
  *
- * 專注於alias remap的完整datapath矩陣和所有AXI信號toggle
+ * Focus on full alias-remap datapath matrix and all AXI signal toggles
  */
 
 #include "sep_test_common.h"
 #include "sep_fabric.h"
 
-// Alias datapath 場景數量
+// Alias datapath scenario count
 #define ALIAS_DATAPATH_SCENARIOS 9
 
-// Alias 測試基礎定義
+// Alias base definitions
 #define ALIAS_SRC_BASE 0x40000000
 #define ALIAS_DEST_BASE 0x80000000
 #define LOCAL_MASTER_BASE 0x10000000
 #define GLOBAL_ALIAS_BASE 0x20000000
 
-// AXI 信號完整覆蓋定義
+// AXI signal full-coverage definitions
 #define AXI_BURST_FIXED 0x0
 #define AXI_BURST_INCR 0x1
 #define AXI_BURST_WRAP 0x2
@@ -36,9 +36,9 @@
 static int test_alias_hit_miss_comprehensive(void) {
     printf("Starting alias hit/miss comprehensive tests...\n");
 
-    // 場景1: Alias hit/miss 完整覆蓋
+    // Scenario 1: Full alias hit/miss coverage
     for (int test_round = 0; test_round < 16; test_round++) {
-        // 設置16個別名區域，覆蓋不同範圍
+        // Program 16 alias regions covering different ranges
         for (int alias_idx = 0; alias_idx < 16; alias_idx++) {
             uint32_t src_start = ALIAS_SRC_BASE + alias_idx * 0x100000;
             uint32_t src_end = src_start + 0x80000;
@@ -53,11 +53,11 @@ static int test_alias_hit_miss_comprehensive(void) {
             }
         }
 
-        // 測試hit場景 - 應該命中別名
+        // Hit scenario - should hit alias
         for (int alias_idx = 0; alias_idx < 16; alias_idx++) {
             uint32_t hit_addr = ALIAS_SRC_BASE + alias_idx * 0x100000 + 0x10000;
 
-            // 不同AXI burst模式
+            // Different AXI burst modes
             if (test_axi_transaction(hit_addr, 4, AXI_READ) != 0) {
                 printf("ERROR: Alias hit failed for region %d\n", alias_idx);
                 return -1;
@@ -69,13 +69,13 @@ static int test_alias_hit_miss_comprehensive(void) {
             }
         }
 
-        // 測試miss場景 - 應該miss別名
+        // Miss scenario - should miss alias
         for (int miss_test = 0; miss_test < 8; miss_test++) {
             uint32_t miss_addr =
-                ALIAS_SRC_BASE + 0x1000000 + miss_test * 0x100000; // 超出所有別名範圍
+                ALIAS_SRC_BASE + 0x1000000 + miss_test * 0x100000; // beyond all alias ranges
 
-            test_axi_transaction(miss_addr, 4, AXI_READ);           // 預期miss
-            test_axi_transaction(miss_addr + 0x1000, 4, AXI_WRITE); // 預期miss
+            test_axi_transaction(miss_addr, 4, AXI_READ); // expect miss
+            test_axi_transaction(miss_addr + 0x1000, 4, AXI_WRITE); // expect miss
         }
     }
 
@@ -86,30 +86,30 @@ static int test_alias_hit_miss_comprehensive(void) {
 static int test_overlapping_priority_scenarios(void) {
     printf("Starting overlapping priority scenarios...\n");
 
-    // 場景2: Overlapping priority 測試
+    // Scenario 2: Overlapping priority test
     for (int overlap_test = 0; overlap_test < 8; overlap_test++) {
         uint32_t base_addr = LOCAL_MASTER_BASE + overlap_test * 0x1000000;
 
-        // 設置重疊的別名區域，測試優先級
+        // Program overlapping alias regions; test priority
         for (int priority = 0; priority < 8; priority++) {
             uint32_t region_start = base_addr + priority * 0x80000;
-            uint32_t region_size = 0x100000 + priority * 0x40000; // 創建重疊
+            uint32_t region_size = 0x100000 + priority * 0x40000; // create overlap
             uint32_t dest_addr = ALIAS_DEST_BASE + priority * 0x200000;
 
             if (setup_output_remap_region_extended(priority, region_start, dest_addr,
                                                    1, // enable
                                                    priority % 2,
-                                                   0xFFE00000 | (priority << 16), // 不同mask模式
+                                                   0xFFE00000 | (priority << 16), // different mask modes
                                                    CACHE_ATTR_NORMAL_NC + priority) != 0) {
                 return -1;
             }
         }
 
-        // 測試重疊區域，應該根據優先級選擇
+        // Overlapping regions should resolve by priority
         for (int priority = 0; priority < 8; priority++) {
             uint32_t overlap_addr = base_addr + priority * 0x80000 + 0x40000;
 
-            // 測試不同大小的存取
+            // Access with different sizes
             test_axi_transaction(overlap_addr, 1 << (priority % 4), AXI_READ);
             test_axi_transaction(overlap_addr + 0x100, 1 << ((priority + 2) % 4), AXI_WRITE);
         }
@@ -122,7 +122,7 @@ static int test_overlapping_priority_scenarios(void) {
 static int test_cacheable_non_cacheable_conversion(void) {
     printf("Starting cacheable/non-cacheable conversion tests...\n");
 
-    // 場景3: Cacheable/Non-cacheable 轉換
+    // Scenario 3: Cacheable/non-cacheable transition
     uint32_t cache_attributes[] = {CACHE_ATTR_DEVICE, CACHE_ATTR_NORMAL_NC, CACHE_ATTR_NORMAL_WT,
                                    CACHE_ATTR_NORMAL_WB, CACHE_ATTR_INSTRUCTION};
 
@@ -140,15 +140,15 @@ static int test_cacheable_non_cacheable_conversion(void) {
                 return -1;
             }
 
-            // 測試不同cache屬性的存取
+            // Access with different cache attributes
             uint32_t test_addr = region_base + 0x8000;
 
-            // Cacheable 存取
+            // Cacheable access
             if (cache_attr & CACHE_ATTR_WRITEBACK) {
-                test_axi_transaction(test_addr, 64, AXI_READ); // 大burst cacheable
+                test_axi_transaction(test_addr, 64, AXI_READ); // large cacheable burst
                 test_axi_transaction(test_addr + 0x1000, 64, AXI_WRITE);
             } else {
-                test_axi_transaction(test_addr, 4, AXI_READ); // 小存取 non-cacheable
+                test_axi_transaction(test_addr, 4, AXI_READ); // small non-cacheable access
                 test_axi_transaction(test_addr + 0x100, 4, AXI_WRITE);
             }
         }
@@ -161,7 +161,7 @@ static int test_cacheable_non_cacheable_conversion(void) {
 static int test_address_translation_edge_cases(void) {
     printf("Starting address translation edge cases...\n");
 
-    // 場景4: Address translation edge cases
+    // Scenario 4: Address translation edge cases
     uint32_t edge_patterns[] = {
         0x00000FFF, 0x00001000, 0x00001FFF, 0x00002000, // 4KB boundaries
         0x0000FFFF, 0x00010000, 0x0001FFFF, 0x00020000, // 64KB boundaries
@@ -183,7 +183,7 @@ static int test_address_translation_edge_cases(void) {
                 continue; // Skip invalid configurations
             }
 
-            // 測試邊界附近的存取
+            // Access near boundaries
             test_axi_transaction(src_edge, 1, AXI_READ);
             test_axi_transaction(src_edge + 1, 1, AXI_WRITE);
             test_axi_transaction(src_edge + 0xFFF, 1, AXI_READ);
@@ -198,7 +198,7 @@ static int test_address_translation_edge_cases(void) {
 static int test_axi_signal_comprehensive_toggle(void) {
     printf("Starting AXI signal comprehensive toggle...\n");
 
-    // 場景5: 完整AXI信號toggle覆蓋
+    // Scenario 5: Full AXI signal-toggle coverage
     uint32_t axi_id_patterns[] = {0x0000, 0x000F, 0x00F0, 0x0F00, 0xF000, 0x5555, 0xAAAA, 0xFFFF};
     uint32_t axi_sizes[] = {AXI_SIZE_1BYTE, AXI_SIZE_2BYTE, AXI_SIZE_4BYTE, AXI_SIZE_8BYTE};
     uint32_t burst_types[] = {AXI_BURST_FIXED, AXI_BURST_INCR, AXI_BURST_WRAP};
@@ -212,7 +212,7 @@ static int test_axi_signal_comprehensive_toggle(void) {
             uint32_t test_base = ALIAS_SRC_BASE + axi_combo * 0x100000 + region * 0x10000;
             uint32_t dest_base = ALIAS_DEST_BASE + axi_combo * 0x100000 + region * 0x10000;
 
-            // 設置對應的別名
+            // Program matching alias
             if (setup_output_remap_region_extended(region, test_base, dest_base,
                                                    1, // enable
                                                    region % 2,
@@ -221,7 +221,7 @@ static int test_axi_signal_comprehensive_toggle(void) {
                 continue;
             }
 
-            // 模擬不同AXI信號組合的存取
+            // Simulate accesses with different AXI signal mixes
             uint32_t test_addr = test_base + 0x1000;
             uint32_t access_size = 1 << axi_size;
 
@@ -245,16 +245,16 @@ static int test_axi_signal_comprehensive_toggle(void) {
 int main(void) {
     printf("TC_FABRIC_062: Alias Remap Datapath P3 Test\n");
     printf(
-        "Goals: axi_alias_remap_wrap 2.18%% -> 90%%+ [最關鍵], axi_alias_remap 50.57%% -> 90%%+\n");
-    printf("Strategy: Local-master 別名 hit/miss/boundary 案例，完整AXI datapath覆蓋\n\n");
+        "Goals: axi_alias_remap_wrap 2.18%% -> 90%%+ [critical], axi_alias_remap 50.57%% -> 90%%+\n");
+    printf("Strategy: Local-master alias hit/miss/boundary cases; full AXI datapath coverage\n\n");
 
-    // 初始化fabric系統
+    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("TC_FABRIC_062");
         return TEST_FAIL;
     }
 
-    // 執行所有alias datapath場景
+    // Run all alias datapath scenarios
     if (test_alias_hit_miss_comprehensive() != 0) {
         test_fail("TC_FABRIC_062 - Alias Hit Miss Comprehensive");
         return TEST_FAIL;

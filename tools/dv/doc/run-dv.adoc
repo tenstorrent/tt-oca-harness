@@ -930,15 +930,14 @@ Explicit run directories never create or update the `latest` symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp` + Verilator
-|The only combination qualified at current head. Runs on every pull request
-and push to `main` (smoke) and in the reseeded nightly tier. The check is
-not currently required by the `main` ruleset (only the GitLab mirror check
-is); making it required is a deliberate follow-up once the workflow has a
-green scheduled run.
+|`dtp`, `sep`, `smu`, `smc` + Verilator
+|Hosted `sim` matrix at current head. Smoke runs on every pull request and
+push to `main`; nightly reseeds each DUT's `nightly_items` group (`all` /
+`no_cpu` / `sep0_all` / `smoke`). The checks are not currently required by
+the `main` ruleset (only the GitLab mirror check is).
 
 |Configured, not CI-qualified
-|`dtp_uvm` + VCS; `sep`, `smc`, `smu`, `smu_wrapper` cocotb flows
+|`dtp_uvm` + VCS; `smu_wrapper` cocotb flow
 |Valid configs exercised by maintainers with licensed tools or carrying
 historical local results only. Not run by hosted CI; do not add to the
 workflow matrix without a qualifying run at head.

@@ -1,9 +1,9 @@
 schema_version = 1
 
 # Aggregate Phase-1 (SEP=0) testlist for --dut smu.
-# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
+# Executable contract: enrolled groups in this file / testlists/all.toml
 # SEP=1 / interop / depth inventory: testlists/deferred.toml (not included).
-# Result-reporting policy: docs/SMU_VPLAN.md §13.
+# Result-reporting policy: only enrolled groups report PASS; deferred.toml never does.
 # Only groups in this file (and testlists/wrapper.toml for --dut smu_wrapper)
 # produce reportable passing results; deferred.toml names never do.
 
