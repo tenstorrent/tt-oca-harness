@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Contributing to OCAH
-:doctype: book
-:sectanchors:
-:sectlinks:
-:sectnums:
-:source-highlighter: highlight.js
-
 == Getting started with the repository
 
 OCAH development is hosted on GitHub under the Tenstorrent organization.

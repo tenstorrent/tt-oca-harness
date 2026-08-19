@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= OCAH Licensing Guidelines
-:doctype: book
-:sectanchors:
-:sectlinks:
-:sectnums:
-:source-highlighter: highlight.js
-
 == Licensing
 The main license used in this project is the Apache License, Version 2.0.
 
