@@ -22,7 +22,7 @@ smu_<scenario>_test
   └─ SmuEnv (planned)
        ├─ SMC boot / scratch + mailbox observation
        ├─ DTP JTAG TAP BFM
-       ├─ External SMN AXI master / OcahAxiRam
+       ├─ External SMN AXI master / OcahAxiSlaveAgent
        └─ SmuScoreboard
 ```
 
@@ -46,7 +46,7 @@ smu_<scenario>_test
 | Interface | VIP / Model |
 |-----------|-------------|
 | Primary JTAG TAP | `ocah_jtag_vip` |
-| External SMN AXI4 | `ocah_axi_vip` (`OcahAxiRam` / master) |
+| External SMN AXI4 | `ocah_axi_vip` (`OcahAxiSlaveAgent` / master) |
 | SMC OTP AXI-Lite (over JTAG2AXI) | `ocah_axi_vip` AXI-Lite |
 | SMC scratch / mailbox | Backdoor + cocotb polling |
 | Cross-trigger / iJTAG | OCAH-local BFM (later) |

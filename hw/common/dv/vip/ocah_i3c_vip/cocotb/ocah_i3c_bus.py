@@ -193,7 +193,7 @@ class OcahI3cBus:
         Call this immediately after construction, before any clock edges,
         to avoid X-propagation on the bus.  The underlying I3cController
         already sets these in its __init__; this method is provided so the
-        OCAH wrapper API is consistent with OcahAxiMaster.
+        OCAH wrapper API is consistent with the AXI master sequence API.
         """
         # I3cController.__init__ already calls setimmediatevalue(1) on both
         # outputs.  This call is a no-op but keeps the API surface consistent.

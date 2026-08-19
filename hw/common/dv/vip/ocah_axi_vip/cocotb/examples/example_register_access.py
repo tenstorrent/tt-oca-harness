@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2025 Tenstorrent Inc.
 """
-example_register_access.py — OcahAxiMaster wrapper usage examples.
+example_register_access.py — AXI master/slave agent usage examples.
 
 Demonstrates:
-  1. AXI4-Lite single-beat register read/write  (OcahAxiLiteMaster)
-  2. AXI4 full-bus single and burst transactions (OcahAxiMaster)
+  1. AXI4-Lite single-beat register read/write  (OcahAxiLiteMasterAgent)
+  2. AXI4 full-bus single and burst transactions (OcahAxiMasterAgent)
   3. APB register access                         (OcahApbMaster)
-  4. Slave/RAM responder setup                   (OcahAxiLiteRam, OcahApbRam)
+  4. Slave/RAM responder setup                   (OcahAxiLiteSlaveAgent, OcahApbRam)
   5. Passive monitoring with checker callbacks   (OcahAxiMonitor)
 
 These are not stand-alone cocotb tests; they show the API patterns that a real
@@ -32,11 +32,10 @@ from cocotb.triggers import Timer
 
 from ocah_axi_vip import (
     OcahAxiChecker,
-    OcahAxiLiteRam,
-    OcahAxiMaster,
-    OcahAxiLiteMaster,
+    OcahAxiLiteMasterAgent,
+    OcahAxiLiteSlaveAgent,
+    OcahAxiMasterAgent,
     OcahAxiMonitor,
-    OcahAxiLiteMonitor,
     RESP_OKAY,
     RESP_DECERR,
     RESP_SLVERR,
@@ -55,13 +54,14 @@ async def example_axilite_register_access(dut):
     # Start the clock.  10 ns period = 100 MHz.
     cocotb.start_soon(Clock(dut.aclk, 10, units="ns").start())
 
-    # Construct the master wrapper once.  Pass the SV interface handle.
-    master = OcahAxiLiteMaster(
+    # Construct the master agent once (SV interface handle in, test-facing
+    # sequence API out).  Tests drive the VIP through the sequence surface.
+    master = OcahAxiLiteMasterAgent(
         dut.axil_if,            # must match interface name in testbench SV
         name="axilite_host",
         timeout_cycles=500,
         data_width=32,
-    )
+    ).sequence
 
     # Initialise all master output signals to idle before the first clock edge.
     master.init_signals()
@@ -102,12 +102,12 @@ async def example_axilite_error_response(dut):
     """Inspect a non-OKAY read response without leaking backend enum types."""
 
     cocotb.start_soon(Clock(dut.aclk, 10, units="ns").start())
-    master = OcahAxiLiteMaster(
+    master = OcahAxiLiteMasterAgent(
         dut.axil_if,
         name="axilite_host",
         timeout_ns=50_000,
         raise_on_error=False,
-    )
+    ).sequence
     await master.wait_for_reset()
 
     result = await master.read_result(0xFFFF_0000, check_response=False)
@@ -126,13 +126,13 @@ async def example_axi4_burst_access(dut):
 
     cocotb.start_soon(Clock(dut.aclk, 10, units="ns").start())
 
-    master = OcahAxiMaster(
+    master = OcahAxiMasterAgent(
         dut.axi_if,
         name="axi4_host",
         timeout_cycles=1000,
         addr_width=32,
         data_width=32,
-    )
+    ).sequence
     master.init_signals()
     await master.wait_for_reset()
 
@@ -200,14 +200,14 @@ async def example_memory_backed_responders(dut):
     cocotb.start_soon(Clock(dut.aclk, 10, units="ns").start())
     cocotb.start_soon(Clock(dut.pclk, 20, units="ns").start())
 
-    axil_ram = OcahAxiLiteRam.from_prefix(
+    axil_ram = OcahAxiLiteSlaveAgent.from_prefix(
         dut,
         "cfg_axil",
         dut.aclk,
         dut.aresetn,
         reset_active_level=False,
         size=2**16,
-    )
+    ).sequence
     axil_ram.write32(0x10, 0xA5A5_5A5A)
     axil_ram.inject_error(0x20, RESP_DECERR, read=True, write=False)
 
@@ -236,7 +236,7 @@ async def example_axi4_monitor_checker(dut):
 
     cocotb.start_soon(Clock(dut.aclk, 10, units="ns").start())
 
-    master = OcahAxiMaster(dut.axi_if, name="master")
+    master = OcahAxiMasterAgent(dut.axi_if, name="master").sequence
     master.init_signals()
     await master.wait_for_reset()
 

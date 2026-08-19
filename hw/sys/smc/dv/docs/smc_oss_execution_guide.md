@@ -176,7 +176,7 @@ the SEP_IN AXI ingress:
 ```text
 smc_output_filter_remap_security_test
   -> SmcCsrSeq / SmcSysAxiItem / SmcSysAxiDriver
-  -> ocah_axi_vip.OcahAxiMaster
+  -> ocah_axi_vip.OcahAxiMasterAgent
   -> tb_top.sv s_axi_*
   -> smc.sep_axi_in_req_i
   -> SMC filter/remap CSRs
@@ -447,7 +447,7 @@ convention:
 
 | Wrapper | Underlying VIP | Adapter reason |
 |---------|----------------|----------------|
-| `env.smc_sys_axi_agent.SmcSysAxiDriver` | `ocah_axi_vip.OcahAxiMaster` | Binds `s_axi_*`, `sys_axi_*`, or `jtag_axi_*` flattened ports and maps the shared AXI completion into SMC PyUVM items, timeout/error policy, scoreboard, and CSR helpers |
+| `env.smc_sys_axi_agent.SmcSysAxiDriver` | `ocah_axi_vip.OcahAxiMasterAgent` | Binds `s_axi_*`, `sys_axi_*`, or `jtag_axi_*` flattened ports and maps the shared AXI completion into SMC PyUVM items, timeout/error policy, scoreboard, and CSR helpers |
 | `smc_jtag_protocol_vip.SmcJtagTap` | `cocotbext.jtag` (`JTAGBus` + `JTAGDriver`) | `ocah_jtag_vip` depends on an uninstalled `jtag_vip` package; `cocotbext.jtag` binds cleanly to the public `tb_cpu_jtag_{tck,tms,tdi,tdo,reset}` pins. `SmcCpuTapDevice(idcode=0x10CA0555, ir_len=5)` mirrors the JEP106 straps hard-coded in `tb_top.sv` |
 | `smc_i2c_protocol_vip.SmcI2cEepromSlave` / `SmcI2cBusMonitor` | `cocotbext.i2c` (`I2cMemory` / `I2cDevice`) | `ocah_i2c_vip.OcahI2cMaster` uses an older single-signal 2-arg form that cannot bind to the split-port TB. `cocotbext.i2c` exposes 4-arg `sda/sda_o/scl/scl_o`; an `_InvertedPolarityMixin` overrides `_set_sda/_set_scl` because `sda_o=0` (VIP: pull low) maps to `tb_i2c0_sda_ext_low=1` (TB: pull low) |
 | `smc_i3c_protocol_vip.SmcI3cSlaveVip` | `cocotbext_i3c.I3CTarget` | Upstream ships as a bundled submodule rather than a PyPI package, so the wrapper augments `sys.path` at import time and degrades gracefully when absent. Overrides the `sda`/`scl` property setters with the same polarity inversion |

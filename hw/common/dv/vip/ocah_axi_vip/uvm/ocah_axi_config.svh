@@ -10,8 +10,8 @@
 // model consumes the one-shot when predicting, and the scoreboard reports the
 // consumed expectation as CHK-AXI-ERR-INJ evidence.
 
-class ocah_axi_cfg extends uvm_object;
-    `uvm_object_utils(ocah_axi_cfg)
+class ocah_axi_config extends uvm_object;
+    `uvm_object_utils(ocah_axi_config)
 
     // Observation surface. The virtual interface uses ocah_axi_if's DEFAULT
     // (maximum) parameterization; the real bus geometry is set below and used
@@ -58,7 +58,7 @@ class ocah_axi_cfg extends uvm_object;
     // Stimulus-intent read addresses (one entry per expected read).
     protected bit [63:0] m_expected_reads[$];
 
-    function new(string name = "ocah_axi_cfg");
+    function new(string name = "ocah_axi_config");
         super.new(name);
     endfunction
 
@@ -188,4 +188,4 @@ class ocah_axi_cfg extends uvm_object;
         return resp;
     endfunction
 
-endclass : ocah_axi_cfg
+endclass : ocah_axi_config
