@@ -67,7 +67,11 @@ def test_recovery_strap(vp, bootcode_elf):
 
 
 def test_rotate_update_strap(vp, bootcode_elf):
-    """--rotate-update -> the primary path reports ROTATE_UPDATE after the chiplet role."""
+    """--rotate-update -> the primary path reports ROTATE_UPDATE after the chiplet role.
+
+    NOTE: the ROM reports SEP_MSG_ROTATE_UPDATE unconditionally (the latched value
+    follows in an INFO_EXT), so this proves the report point is reached — the strap
+    VALUE itself is not asserted."""
     t = vp(_cfg("boot_rotate", bootcode_elf, boot="primary", rotate_update=True))
     t.spawn()
     shared.expect_common_early(t, timeout=TIMEOUT)
@@ -78,11 +82,14 @@ def test_rotate_update_strap(vp, bootcode_elf):
 
 @pytest.mark.needs_debug
 def test_strap_readback_sim_out(vp, bootcode_elf):
-    """DEBUG build: the SIM_OUT console echoes the latched straps (extra detail channel)."""
-    t = vp(_cfg("boot_straps_simout", bootcode_elf, boot="primary", recovery=True))
+    """DEBUG build: the SIM_OUT console echoes the latched primary strap.
+
+    This repo's ROM echoes only `STRAP primary=` (the old repo's ROM also echoed
+    recovery/rotate); asserting the primary echo still proves the SIM_OUT strap
+    readback channel end-to-end."""
+    t = vp(_cfg("boot_straps_simout", bootcode_elf, boot="primary"))
     t.spawn()
     t.expect(SIM_OUT_PREFIX + r"STRAP primary=1", timeout=TIMEOUT)
-    t.expect(SIM_OUT_PREFIX + r" recovery=1", timeout=TIMEOUT)
     t.close()
 
 

@@ -48,5 +48,12 @@ Requirements: `gcc-toolset-11` (VeeR-ISS does not compile under gcc-13/14), a RI
 cross toolchain for the firmware builds (`RISCV_TOOLCHAIN=...`), `uv` for the Python
 environment, and network access (or pre-seeded `downloads/`) for the dependency tarballs.
 
+The boot ROM and DV-engine firmware compile against picolibc, which bare
+riscv-gnu-toolchain installs typically lack; those builds fall back automatically to
+the `ocah-toolchain` container via `scripts/docker-run.sh run-here` (build it once
+with `./scripts/docker-run.sh build`; see `tools/docker/README.md`). On hosts where
+rootless podman's `--userns=keep-id` fails, extract the image rootfs once and set
+`OCAH_TOOLCHAIN_ROOTFS=<dir>` to use the engine-less bubblewrap backend instead.
+
 The `sepvp` runner's design — status channels, overlay `.ini` generation, fuse maps —
 is documented in [`sepvp/README.md`](sepvp/README.md).

@@ -7,11 +7,15 @@ production ``[SEP_STATUS]`` stream. Each case tampers the generated secure-boot
 image (the ``secure_boot_preload`` fixture builds it via the bootrom's
 ``secure_boot_spi`` target) to drive one rejection:
 
-  * both_bad          - primary magic corrupted, backup erased -> MANIFEST_LOAD_FAILED
-                        (halt only when BOTH slots fail)
+  * both_bad          - primary AND backup magic corrupted -> MANIFEST_LOAD_FAILED
+                        (halt only when BOTH slots fail; the generated image ships a
+                        VALID backup slot, so it must be corrupted explicitly)
   * hash_tamper       - one byte flipped inside the hashed region -> INVALID_MANIFEST_HASH
+                        (reported on the primary reject, before the backup rotate)
   * payload_overlap   - payload_offset points into the manifest header -> PAYLOAD_OVERLAPS
-  * payload_too_large - payload_offset+length exceeds SRAM -> (silent reject) -> halt
+                        (likewise reported on the primary reject)
+  * payload_too_large - payload_offset+length exceeds SRAM on the primary, backup magic
+                        corrupted -> (silent reject) -> halt
   * rotate_to_backup  - primary corrupted, a valid slot copied to the backup offset
                         -> rotate -> backup boots -> STARTING_BL1
 
@@ -64,7 +68,8 @@ def _preload_raw(preload: Path) -> bytes:
 
 def _craft_both_bad(raw: bytes) -> bytes:
     b = bytearray(raw)
-    b[PRIMARY_OFFSET + OFF_MAGIC] ^= 0xFF   # corrupt primary magic; backup is erased 0x00
+    b[PRIMARY_OFFSET + OFF_MAGIC] ^= 0xFF   # corrupt primary magic
+    b[BACKUP_OFFSET + OFF_MAGIC] ^= 0xFF    # corrupt backup magic too (image ships a valid one)
     return bytes(b)
 
 
@@ -83,6 +88,7 @@ def _craft_payload_overlap(raw: bytes) -> bytes:
 def _craft_payload_too_large(raw: bytes) -> bytes:
     b = bytearray(raw)
     struct.pack_into("<q", b, PRIMARY_OFFSET + OFF_PAYLOAD_OFFSET, 0x3F000)  # off+len > SRAM
+    b[BACKUP_OFFSET + OFF_MAGIC] ^= 0xFF    # kill the valid backup so the ROM halts
     return bytes(b)
 
 
