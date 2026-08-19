@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Open Chiplet Atlas Harness (OCAH): Starting with OCAH
+= Open Chiplet Atlas Harness (OCAH): Contributing to OCAH
 :doctype: book
 :sectanchors:
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 
 The Open Chiplet Atlas Harness (OCAH) is a chiplet design IP where the
 non-application-specific functions are integrated to form a chiplet design
@@ -16,46 +15,21 @@ subsystems like Security Processor (SEP), System Management Controller (SMC),
 System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 (DTP), etc.
 
-This guide outlines how to get started with OCAH, including the use of the repository, 
-licensing and guidelines for effective contribution.
+This guide outlines the use of the repository, including licensing and guidelines
+for effective contribution.
 
 [WARNING]
-This document is currently under development.  
-There are a number of outstanding decisions to be made.
-
+This document is currently under development.
 
 ifdef::backend-html5[]
-== Starting with OCAH
+== Contribution Guide
 
 This documentation is organized into the following sections:
 
-* Getting Started Guide
-** xref:dependencies.adoc[Dependencies] - System requirements and dependencies
-** xref:workflows.adoc[Workflows] - OCAH development methodology
-** xref:guidelines.adoc[Guidelines] - OCAH development guidelines
-** xref:documentation.adoc[Documentation] - OCAH documentation
-* Contribution Guide
-** xref:licensing.adoc[Licensing] - OCAH Licensing Guidelines
-** xref:contribution.adoc[Contributions] - Making contributions to OCAH
-** xref:defects.adoc[Defect Reporting] - Managing OCAH Defects
-** xref:code_of_conduct.adoc[Code of Conduct] - OCAH Project Code of Conduct
 
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: ../assets
-== Getting Started Guide
-
-include::dependencies.adoc[leveloffset=+2]
-include::workflows.adoc[leveloffset=+2]
-include::guidelines.adoc[leveloffset=+2]
-include::documentation.adoc[leveloffset=+2]
-
-== Contribution Guide
-
-include::licensing.adoc[leveloffset=+2]
-include::contribution.adoc[leveloffset=+2]
-include::defects.adoc[leveloffset=+2]
-include::code_of_conduct.adoc[leveloffset=+2]
-
+include::contribution.adoc[]
 endif::backend-pdf[]
