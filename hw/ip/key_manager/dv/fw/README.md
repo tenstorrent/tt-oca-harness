@@ -36,15 +36,22 @@ flowchart TD
 | ROM | 0x0000_0000 – 0x0000_3FFF | 16KB | Boot code + constants |
 | Reserved | 0x0000_4000 – 0x0000_7FFF | 16KB | Unmapped (DECERR) |
 | SRAM | 0x0000_8000 – 0x0000_FFFF | 32KB | Runtime `.data`, `.bss`, main stack, IRQ stack, `rom_persist` |
-| Mailbox | 0x0001_0000 – 0x0001_0FFF | 4KB | Mailbox FIFOs |
+| Mailbox | 0x0001_0000 – 0x0001_001F | 32B | Mailbox FIFOs |
+| OTP/eFuse | 0x0001_1000 – 0x0001_1FFF | 4KB | eFuse pass-through, remapped by hardware |
 | KPV | 0x0001_2000 – 0x0001_3FFF | 8KB | Key Provisioning Vault |
-| KMCSR | 0x0001_4000 – 0x0001_4FFF | 4KB | KM Control/Status |
-| DRBG | 0x0001_5000 – 0x0001_5FFF | 4KB | DRBG Sampler |
-| OTBN | 0x0001_8000 – 0x0001_8FFF | 4KB | OTBN key wrapper |
-| AES | 0x0001_9000 – 0x0001_9FFF | 4KB | AES key wrapper |
-| KMAC | 0x0001_A000 – 0x0001_AFFF | 4KB | KMAC key wrapper |
-| HMAC | 0x0001_B000 – 0x0001_BFFF | 4KB | HMAC key wrapper |
-| ABR | 0x0001_C000 – 0x0001_CFFF | 4KB | ABR key wrapper |
+| KMCSR | 0x0001_4000 – 0x0001_47FF | 2KB | KM Control/Status |
+| DRBG | 0x0001_5000 – 0x0001_500F | 16B | DRBG Sampler |
+| OTBN | 0x0001_8000 – 0x0001_807F | 128B | OTBN key wrapper |
+| AES | 0x0001_9000 – 0x0001_907F | 128B | AES key wrapper |
+| KMAC | 0x0001_A000 – 0x0001_A07F | 128B | KMAC key wrapper |
+| HMAC | 0x0001_B000 – 0x0001_B07F | 128B | HMAC key wrapper |
+| ABR | 0x0001_C000 – 0x0001_C7FF | 2KB | ABR key wrapper |
+
+Each peripheral window is only as wide as its register block decodes, so no
+register is reachable from a second address. An address between two windows is
+routed nowhere and answers DECERR; an unmapped offset inside a window reaches
+its register block and answers SLVERR. `test_km_addr_alias` sweeps the whole map
+to hold that invariant.
 
 ### SRAM Packing
 

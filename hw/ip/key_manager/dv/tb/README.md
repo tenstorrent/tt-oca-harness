@@ -254,17 +254,21 @@ The `PRINT_ENABLE` bit in `VUART_STATUS` register (bit 2) controls whether firmw
 | ROM | 0x0000_0000 - 0x0000_3FFF | 16KB instruction ROM |
 | Reserved | 0x0000_4000 - 0x0000_7FFF | Unmapped (DECERR) |
 | SRAM | 0x0000_8000 - 0x0000_FFFF | 32KB data SRAM |
-| Mailbox KM | 0x0001_0000 - 0x0001_0FFF | Mailbox KM-side interface (4KB decode; registers in lower 2KB) |
+| Mailbox KM | 0x0001_0000 - 0x0001_001F | Mailbox KM-side interface (32B) |
 | **OTP/eFuse** | **0x0001_1000 - 0x0001_1FFF** | **eFuse AXI-Lite responder model (testbench only; see below)** |
 | KPV | 0x0001_2000 - 0x0001_3FFF | Key and Policy Vault (8KB) |
-| KMCSR | 0x0001_4000 - 0x0001_4FFF | Control/Status registers (4KB) |
-| DRBG Sampler | 0x0001_5000 - 0x0001_5FFF | DRBG data/config/status (4KB) |
-| Reserved | 0x0001_6000 - 0x0001_7FFF | Reserved (8KB) |
-| OTBN | 0x0001_8000 - 0x0001_8FFF | OTBN accelerator port (4KB) |
-| AES | 0x0001_9000 - 0x0001_9FFF | AES accelerator port (4KB) |
-| KMAC | 0x0001_A000 - 0x0001_AFFF | KMAC accelerator port (4KB) |
-| HMAC | 0x0001_B000 - 0x0001_BFFF | HMAC accelerator port (4KB) |
+| KMCSR | 0x0001_4000 - 0x0001_47FF | Control/Status registers (2KB) |
+| DRBG Sampler | 0x0001_5000 - 0x0001_500F | DRBG data/config/status (16B) |
+| OTBN | 0x0001_8000 - 0x0001_807F | OTBN accelerator port (128B) |
+| AES | 0x0001_9000 - 0x0001_907F | AES accelerator port (128B) |
+| KMAC | 0x0001_A000 - 0x0001_A07F | KMAC accelerator port (128B) |
+| HMAC | 0x0001_B000 - 0x0001_B07F | HMAC accelerator port (128B) |
+| ABR | 0x0001_C000 - 0x0001_C7FF | Adams Bridge accelerator port (2KB) |
 | **VROM** | **0x1000_0000 - 0x1000_FFFF** | **64KB Virtual ROM (testbench only; main code + rodata)** |
+
+Each peripheral window is only as wide as its register block decodes. Addresses
+between windows return DECERR and unmapped offsets inside a window return
+SLVERR, which `test_km_addr_alias` sweeps the map to confirm.
 
 ### eFuse AXI-Lite Responder Model (OTP/eFuse window)
 
