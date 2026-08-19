@@ -4,4 +4,4 @@
 [submodule "virtual_platform/tt-oca-sim"]
 	path = virtual_platform/tt-oca-sim
 	url = git@github.com:tenstorrent/tt-oca-sim.git
-	branch = cmccoy/sep_status_code_build_time_support
+	branch = cmccoy/harness_repo_port_fixups
