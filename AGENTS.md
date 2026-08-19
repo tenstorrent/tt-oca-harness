@@ -31,7 +31,11 @@ partial read costs far more time than a full one.
 | Document | What it answers |
 |---|---|
 | `README.md` | Repository layout, doc builds, register generation, DV firmware targets, vendoring |
-| `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents |
+| `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents, issue/PR pointers |
+| `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
+| `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
+| `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
+| `.github/ISSUE_CURATION.md` | Project curator kill switch and compile |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
@@ -336,6 +340,80 @@ doc: Regenerate stale uart and smc reset_unit register collaterals (#282)
 - Keep pull requests focused; unrelated changes belong in separate PRs.
 - Every hand-authored file needs an SPDX header — see `CONTRIBUTING.md` for the exact form
   per file type.
+
+## Issues and pull requests
+
+When you open an issue or pull request on behalf of the user — `gh issue create`,
+`gh pr create`, or the GitHub API — follow the same templates humans get in the UI.
+Do not invent a free-form body. Blank issues are off; security reports are not public
+issues (see `SECURITY.md`).
+
+Read `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md` rather than
+restating them. Allowed taxonomy values live in `.github/issue-taxonomy.yml`.
+
+### Issues
+
+Pick one form: Bug, Task, or Feature (`gh issue create --type Bug|Task|Feature`).
+`--template` is interactive, so in a non-interactive session pass `--body` that still
+uses the form headings ingest parses (`### Workstream`, and so on):
+
+```bash
+gh issue create --type Bug --title "[Bug]: <short title>" --body "$(cat <<'EOF'
+### Workstream
+
+DV
+
+### Subsystem
+
+SEP
+
+### Component
+
+General
+
+### Priority
+
+P2
+
+### Target release
+
+Future
+
+### What happened
+
+<what broke, where, what you expected>
+EOF
+)"
+```
+
+Required: **Workstream**, **Subsystem**, **Component** (use `General` if unsure),
+**Priority** (P2 if unsure), and **Target release** (`Future` if unscheduled).
+Do not set a GitHub milestone. Description heading is **What happened** (Bug),
+**Goal** (Task), or **What and why** (Feature); it is optional.
+
+Do not add labels, assignees, or a milestone. Ingest copies the form onto
+Project 291; see `doc/contributing/src/alignment.adoc`.
+
+### Pull requests
+
+`gh pr create --body` replaces the template, so include the headings yourself.
+Summary and Test plan are optional guidance; CI does not fail on them.
+Add `## Closes` with `Fixes #N` only when `N` is a real issue; omit the
+section if nothing closes. Never leave a bare `Fixes #`. Delete **Notes** if unused.
+
+```bash
+gh pr create --title "<scope>: <imperative summary>" --body "$(cat <<'EOF'
+## Summary
+<what changed and why>
+
+## Test plan
+<optional command, or N/A>
+EOF
+)"
+```
+
+Do not put Workstream / Subsystem / Component or labels on the PR.
+Ingest assigns the opener when Assignees is empty.
 
 ## Linting and Formatting
 
