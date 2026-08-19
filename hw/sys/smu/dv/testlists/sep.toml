@@ -6,9 +6,9 @@ schema_version = 1
 #   Manual_SMU_Blocked_SEP_Exec_Regression → group sep_exec_blocked
 #
 # Bodies live in deferred.toml (name registry). This file only groups them for
-# listing / future enrollment. See docs/SMU_VPLAN.md Appendix A.1–A.1b.
+# listing / future enrollment. See testlists/deferred.toml.
 # Result-reporting: nothing here is reportable as PASS until enrolled into
-# all.toml or wrapper.toml green groups (SMU_VPLAN.md §13).
+# all.toml or wrapper.toml green groups (enrolled only).
 
 includes = ["deferred.toml"]
 
