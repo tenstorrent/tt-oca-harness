@@ -11,7 +11,7 @@
 //
 // Shape: a module with explicit flat ports so it can be instantiated at TB
 // scope next to flattened DUT nets (the DTP integration) or bound into a
-// hierarchy (`bind <module> ocah_axi_protocol_checker #(...) u_sva (...)`).
+// hierarchy (`bind <module> ocah_axi_sva #(...) u_sva (...)`).
 // Set IS_LITE=1 for AXI4-Lite: burst/ID/exclusive rules are excluded and the
 // Lite response-legality rules are included. `en_i` is a runtime suppress
 // knob (tie to 1'b1, or drive from a TB interface bit for legitimate
@@ -36,7 +36,7 @@
 
 `include "ocah_assert.svh"
 
-module ocah_axi_protocol_checker #(
+module ocah_axi_sva #(
     parameter bit          IS_LITE         = 1'b0,
     parameter int unsigned ADDR_WIDTH      = 32,
     parameter int unsigned DATA_WIDTH      = 32,
@@ -437,4 +437,4 @@ module ocah_axi_protocol_checker #(
 
     end endgenerate
 
-endmodule : ocah_axi_protocol_checker
+endmodule : ocah_axi_sva

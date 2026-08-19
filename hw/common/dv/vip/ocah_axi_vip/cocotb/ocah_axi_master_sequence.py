@@ -1,30 +1,30 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Tenstorrent Inc.
-"""OCAH-stable AXI4 master wrapper backed by cocotbext-axi."""
+"""AXI4 master sequence API: the VIP's test-facing stimulus surface.
+
+`OcahAxiMasterSequence` wraps one `OcahAxiMasterDriver` and provides the
+blocking, checked transaction API tests consume: compatibility helpers
+(``write``/``read``), result helpers (``*_result``), burst variants, timeout
+handling, and typed non-OKAY raising. Tests and DUT sequence layers drive the
+VIP through this class (or the agent's ``sequence``), never through the raw
+driver; missing operations get added here first.
+"""
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
-from cocotbext.axi import AxiBus, AxiMaster
-from cocotbext.axi.constants import AxiBurstType, AxiLockType, AxiProt
-
-from .results import (
-    RESP_OKAY,
-    RESP_EXOKAY,
-    RESP_SLVERR,
-    RESP_DECERR,
+from .ocah_axi_master_driver import OcahAxiMasterDriver
+from .ocah_axi_results import (
     OcahAxiReadResult,
     OcahAxiWriteResult,
     axi_resp_ok,
-    bytes_to_int,
     normalize_resp_list,
     words_from_bytes,
     worst_resp,
 )
 
-__all__ = ["OcahAxiMaster", "OcahAxiMasterError"]
+__all__ = ["OcahAxiMasterSequence", "OcahAxiMasterError"]
 
 
 class OcahAxiMasterError(RuntimeError):
@@ -49,168 +49,63 @@ async def _wait_event(event, timeout_ns: int | None):
     return event.data
 
 
-class OcahAxiMaster:
-    """OCAH-stable AXI4 master BFM.
+class OcahAxiMasterSequence:
+    """Checked AXI4 transaction operations over one master driver.
 
-    The wrapper returns plain Python values from compatibility methods and
-    plain result dataclasses from ``*_result`` methods. It also exposes
-    ``init_read`` and ``init_write`` for SEP-style explicit event handling.
+    Compatibility methods return plain Python values and ``*_result`` methods
+    return plain result dataclasses; ``init_read``/``init_write`` pass through
+    to the driver for explicit event-style timeout flows.
     """
 
     def __init__(
         self,
-        axi4_intf,
-        clock=None,
-        reset=None,
+        driver: OcahAxiMasterDriver,
         *,
-        name: str = "OcahAxiMaster",
         timeout_cycles: int = 1000,
         timeout_ns: int | None = None,
-        addr_width: int = 32,
-        data_width: int = 32,
-        reset_active_level: bool = False,
-        max_burst_len: int = 256,
         raise_on_error: bool = True,
-        **kwargs: Any,
     ) -> None:
-        self.name = name
-        self.addr_width = addr_width
-        self.data_width = data_width
+        self.driver = driver
         self.timeout_cycles = timeout_cycles
         self.timeout_ns = timeout_ns
         self.raise_on_error = raise_on_error
-        self._bytes_per_beat = data_width // 8
-        self._full_strb = (1 << self._bytes_per_beat) - 1
         self._read_count = 0
         self._write_count = 0
 
-        self.log = logging.getLogger(name)
-        self._bus, self._clock, self._reset = self._resolve_bus_clock_reset(axi4_intf, clock, reset)
-        self._master = AxiMaster(
-            self._bus,
-            self._clock,
-            self._reset,
-            reset_active_level=reset_active_level,
-            max_burst_len=max_burst_len,
-            **kwargs,
-        )
+    @property
+    def name(self) -> str:
+        return self.driver.name
 
-    @classmethod
-    def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs: Any) -> "OcahAxiMaster":
-        """Construct from flattened AXI4 signals using ``AxiBus``."""
-        return cls(AxiBus.from_prefix(dut, prefix), clock, reset, **kwargs)
-
-    @staticmethod
-    def _resolve_bus_clock_reset(axi4_intf, clock, reset):
-        if isinstance(axi4_intf, AxiBus):
-            bus = axi4_intf
-        else:
-            bus = AxiBus.from_entity(axi4_intf)
-
-        resolved_clock = clock
-        if resolved_clock is None:
-            resolved_clock = getattr(axi4_intf, "aclk", None)
-        if resolved_clock is None:
-            resolved_clock = getattr(axi4_intf, "clk", None)
-        if resolved_clock is None:
-            raise ValueError("OcahAxiMaster requires a clock or an interface with aclk/clk")
-
-        resolved_reset = reset
-        if resolved_reset is None:
-            resolved_reset = getattr(axi4_intf, "aresetn", None)
-        if resolved_reset is None:
-            resolved_reset = getattr(axi4_intf, "rst_ni", None)
-        return bus, resolved_clock, resolved_reset
-
-    def init_signals(self) -> None:
-        """Compatibility no-op; cocotbext-axi drives idle values at construction."""
-
-    async def wait_for_reset(self) -> None:
-        """Wait until reset deassertion if a reset signal was provided."""
-        if self._reset is None:
-            return
-        from cocotb.triggers import RisingEdge
-
-        while int(self._reset.value) == 0:
-            await RisingEdge(self._clock)
+    @property
+    def log(self):
+        return self.driver.log
 
     @property
     def backend(self):
         """Return the underlying cocotbext ``AxiMaster`` for debug only."""
-        return self._master
+        return self.driver.backend
 
-    def init_write(
-        self,
-        address: int | None = None,
-        data: int | bytes | bytearray = 0,
-        *,
-        addr: int | None = None,
-        awid: int | None = None,
-        id: int | None = None,
-        burst: int = int(AxiBurstType.INCR),
-        size: int | None = None,
-        lock: int = int(AxiLockType.NORMAL),
-        cache: int = 0b0011,
-        prot: int = int(AxiProt.NONSECURE),
-        qos: int = 0,
-        region: int = 0,
-        user: int = 0,
-        wuser=None,
-        event=None,
-    ):
-        """Start a write and return the cocotb event."""
-        target = self._coalesce_addr(address, addr)
-        return self._master.init_write(
-            target,
-            self._data_bytes(data, size=size),
-            awid=self._coalesce_id(awid, id),
-            burst=AxiBurstType(int(burst)),
-            size=size,
-            lock=AxiLockType(int(lock)),
-            cache=cache,
-            prot=AxiProt(int(prot)),
-            qos=qos,
-            region=region,
-            user=user,
-            wuser=wuser,
-            event=event,
-        )
+    # ------------------------------------------------------------------
+    # Driver pass-throughs (pin/bus management and event-style access).
+    # ------------------------------------------------------------------
 
-    def init_read(
-        self,
-        address: int | None = None,
-        length: int | None = None,
-        *,
-        addr: int | None = None,
-        arid: int | None = None,
-        id: int | None = None,
-        burst: int = int(AxiBurstType.INCR),
-        size: int | None = None,
-        lock: int = int(AxiLockType.NORMAL),
-        cache: int = 0b0011,
-        prot: int = int(AxiProt.NONSECURE),
-        qos: int = 0,
-        region: int = 0,
-        user: int = 0,
-        event=None,
-    ):
-        """Start a read and return the cocotb event."""
-        target = self._coalesce_addr(address, addr)
-        transfer_length = self._bytes_for_beats(1, size) if length is None else int(length)
-        return self._master.init_read(
-            target,
-            transfer_length,
-            arid=self._coalesce_id(arid, id),
-            burst=AxiBurstType(int(burst)),
-            size=size,
-            lock=AxiLockType(int(lock)),
-            cache=cache,
-            prot=AxiProt(int(prot)),
-            qos=qos,
-            region=region,
-            user=user,
-            event=event,
-        )
+    def init_signals(self) -> None:
+        self.driver.init_signals()
+
+    async def wait_for_reset(self) -> None:
+        await self.driver.wait_for_reset()
+
+    def init_write(self, *args: Any, **kwargs: Any):
+        """Start a write and return the cocotb event (see the driver)."""
+        return self.driver.init_write(*args, **kwargs)
+
+    def init_read(self, *args: Any, **kwargs: Any):
+        """Start a read and return the cocotb event (see the driver)."""
+        return self.driver.init_read(*args, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Blocking checked transactions.
+    # ------------------------------------------------------------------
 
     async def write_result(
         self,
@@ -219,18 +114,18 @@ class OcahAxiMaster:
         *,
         strb: int | None = None,
         size: int | None = 2,
-        burst: int = int(AxiBurstType.INCR),
+        burst: int | None = None,
         id: int = 0,
-        prot: int = int(AxiProt.NONSECURE),
+        prot: int | None = None,
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
     ) -> OcahAxiWriteResult:
         """Issue a single-beat write and return a plain response object."""
-        self._check_strb(strb, size)
+        self.driver.check_strb(strb, size)
         return await self._write_bytes_result(
             addr,
-            self._data_bytes(data, size=size),
+            self.driver.data_bytes(data, size=size),
             size=size,
             burst=burst,
             id=id,
@@ -249,9 +144,9 @@ class OcahAxiMaster:
         addr: int,
         *,
         size: int | None = 2,
-        burst: int = int(AxiBurstType.INCR),
+        burst: int | None = None,
         id: int = 0,
-        prot: int = int(AxiProt.NONSECURE),
+        prot: int | None = None,
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
@@ -259,7 +154,7 @@ class OcahAxiMaster:
         """Issue a single-beat read and return data plus response information."""
         return await self._read_bytes_result(
             addr,
-            self._bytes_for_beats(1, size),
+            self.driver.bytes_for_beats(1, size),
             size=size,
             burst=burst,
             id=id,
@@ -280,9 +175,9 @@ class OcahAxiMaster:
         *,
         strb_list: list[int] | None = None,
         size: int | None = 2,
-        burst: int = int(AxiBurstType.INCR),
+        burst: int | None = None,
         id: int = 0,
-        prot: int = int(AxiProt.NONSECURE),
+        prot: int | None = None,
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
@@ -310,9 +205,9 @@ class OcahAxiMaster:
         *,
         strb_list: list[int] | None = None,
         size: int | None = 2,
-        burst: int = int(AxiBurstType.INCR),
+        burst: int | None = None,
         id: int = 0,
-        prot: int = int(AxiProt.NONSECURE),
+        prot: int | None = None,
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
@@ -322,8 +217,8 @@ class OcahAxiMaster:
             raise ValueError(f"{self.name}: burst_write called with empty data_list")
         if strb_list is not None:
             for strb in strb_list:
-                self._check_strb(strb, size)
-        payload = b"".join(self._data_bytes(data, size=size) for data in data_list)
+                self.driver.check_strb(strb, size)
+        payload = b"".join(self.driver.data_bytes(data, size=size) for data in data_list)
         return await self._write_bytes_result(
             addr,
             payload,
@@ -342,9 +237,9 @@ class OcahAxiMaster:
         length: int,
         *,
         size: int | None = 2,
-        burst: int = int(AxiBurstType.INCR),
+        burst: int | None = None,
         id: int = 0,
-        prot: int = int(AxiProt.NONSECURE),
+        prot: int | None = None,
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
@@ -369,9 +264,9 @@ class OcahAxiMaster:
         length: int,
         *,
         size: int | None = 2,
-        burst: int = int(AxiBurstType.INCR),
+        burst: int | None = None,
         id: int = 0,
-        prot: int = int(AxiProt.NONSECURE),
+        prot: int | None = None,
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
@@ -381,7 +276,7 @@ class OcahAxiMaster:
             raise ValueError(f"{self.name}: burst_read length must be >= 1, got {length}")
         return await self._read_bytes_result(
             addr,
-            self._bytes_for_beats(length, size),
+            self.driver.bytes_for_beats(length, size),
             size=size,
             burst=burst,
             id=id,
@@ -413,20 +308,24 @@ class OcahAxiMaster:
         self._write_count = 0
         self._read_count = 0
 
+    # ------------------------------------------------------------------
+    # Completion, result packaging, and response checking.
+    # ------------------------------------------------------------------
+
     async def _write_bytes_result(
         self,
         addr: int,
         payload: bytes,
         *,
         size: int | None,
-        burst: int,
+        burst: int | None,
         id: int,
-        prot: int,
+        prot: int | None,
         check_response: bool,
         timeout_ns: int | None,
         allow_timeout: bool,
     ) -> OcahAxiWriteResult:
-        event = self.init_write(addr, payload, id=id, size=size, burst=burst, prot=prot)
+        event = self.driver.init_write(addr, payload, id=id, size=size, **self._axkwargs(burst, prot))
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
@@ -443,7 +342,7 @@ class OcahAxiMaster:
             raw=raw,
         )
         self._write_count += 1
-        self._maybe_raise_write(addr, result, check_response)
+        self._maybe_raise("write to", addr, result.ok, result.resp, check_response)
         return result
 
     async def _read_bytes_result(
@@ -452,14 +351,14 @@ class OcahAxiMaster:
         length: int,
         *,
         size: int | None,
-        burst: int,
+        burst: int | None,
         id: int,
-        prot: int,
+        prot: int | None,
         check_response: bool,
         timeout_ns: int | None,
         allow_timeout: bool,
     ) -> OcahAxiReadResult:
-        event = self.init_read(addr, length, id=id, size=size, burst=burst, prot=prot)
+        event = self.driver.init_read(addr, length, id=id, size=size, **self._axkwargs(burst, prot))
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
@@ -468,7 +367,7 @@ class OcahAxiMaster:
             raise AssertionError(f"{self.name}: read from 0x{addr:08X} timed out") from exc
 
         data_bytes = bytes(getattr(raw, "data", b""))
-        beat_bytes = self._bytes_for_beats(1, size)
+        beat_bytes = self.driver.bytes_for_beats(1, size)
         words = words_from_bytes(data_bytes, beat_bytes)
         result = OcahAxiReadResult(
             address=int(getattr(raw, "address", addr)),
@@ -481,51 +380,20 @@ class OcahAxiMaster:
             raw=raw,
         )
         self._read_count += 1
-        self._maybe_raise_read(addr, result, check_response)
+        self._maybe_raise("read from", addr, result.ok, result.resp, check_response)
         return result
 
-    def _data_bytes(self, data: int | bytes | bytearray, *, size: int | None) -> bytes:
-        if isinstance(data, int):
-            beat_bytes = self._bytes_for_beats(1, size)
-            return (data & ((1 << (8 * beat_bytes)) - 1)).to_bytes(beat_bytes, "little")
-        return bytes(data)
-
-    def _bytes_for_beats(self, beats: int, size: int | None) -> int:
-        beat_bytes = self._bytes_per_beat if size is None else 2 ** int(size)
-        return beats * beat_bytes
-
     @staticmethod
-    def _coalesce_addr(address: int | None, addr: int | None) -> int:
-        if address is None and addr is None:
-            raise TypeError("address or addr is required")
-        if address is not None and addr is not None and int(address) != int(addr):
-            raise ValueError(f"conflicting address={address} and addr={addr}")
-        return int(address if address is not None else addr)
+    def _axkwargs(burst: int | None, prot: int | None) -> dict[str, int]:
+        kwargs: dict[str, int] = {}
+        if burst is not None:
+            kwargs["burst"] = burst
+        if prot is not None:
+            kwargs["prot"] = prot
+        return kwargs
 
-    @staticmethod
-    def _coalesce_id(primary: int | None, alias: int | None) -> int | None:
-        if primary is not None and alias is not None and int(primary) != int(alias):
-            raise ValueError(f"conflicting AXI IDs {primary} and {alias}")
-        value = primary if primary is not None else alias
-        return None if value is None else int(value)
-
-    def _check_strb(self, strb: int | None, size: int | None) -> None:
-        beat_bytes = self._bytes_for_beats(1, size)
-        full_strb = (1 << beat_bytes) - 1
-        if strb is not None and int(strb) != full_strb:
-            raise ValueError(
-                f"{self.name}: cocotbext AXI master supports contiguous writes only; "
-                f"got strb=0x{int(strb):X}, expected 0x{full_strb:X}"
-            )
-
-    def _maybe_raise_write(self, addr: int, result: OcahAxiWriteResult, check_response: bool) -> None:
-        if check_response and self.raise_on_error and not result.ok:
+    def _maybe_raise(self, verb: str, addr: int, ok: bool, resp: int, check_response: bool) -> None:
+        if check_response and self.raise_on_error and not ok:
             raise OcahAxiMasterError(
-                f"{self.name}: write to 0x{addr:08X} returned response=0x{result.resp:X}"
-            )
-
-    def _maybe_raise_read(self, addr: int, result: OcahAxiReadResult, check_response: bool) -> None:
-        if check_response and self.raise_on_error and not result.ok:
-            raise OcahAxiMasterError(
-                f"{self.name}: read from 0x{addr:08X} returned response=0x{result.resp:X}"
+                f"{self.name}: {verb} 0x{addr:08X} returned response=0x{resp:X}"
             )

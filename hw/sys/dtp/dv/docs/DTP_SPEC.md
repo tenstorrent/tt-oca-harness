@@ -120,10 +120,10 @@ point-to-point handshake mode.
 | Interface | Type | Direction | Open-Source Verification Policy |
 |-----------|------|-----------|-------------------------|
 | Primary JTAG TAP | Pin-level JTAG (`tck`, `tms`, `trst_n`, `tdi`, `tdo`) | Client | Use `ocah_jtag_vip` |
-| SMC fabric debug | AXI4, 56-bit address, 64-bit data | Manager | Use `ocah_axi_vip` `OcahAxiRam` |
+| SMC fabric debug | AXI4, 56-bit address, 64-bit data | Manager | Use `ocah_axi_vip` `OcahAxiSlaveAgent` |
 | SMC OTP debug | AXI4-Lite, 32-bit address/data | Manager | Use `ocah_axi_vip` when enabled |
 | SEP OTP debug | AXI4-Lite, 32-bit address/data | Manager | Use `ocah_axi_vip` when enabled |
-| XTRIG CSR | AXI4-Lite, 32-bit address/data | Subordinate | Use `ocah_axi_vip` `OcahAxiLiteMaster` when enabled |
+| XTRIG CSR | AXI4-Lite, 32-bit address/data | Subordinate | Use `ocah_axi_vip` `OcahAxiLiteMasterAgent` when enabled |
 | BSR / STAP scan | `jtag_scan_ctrl_t` plus scan in/out | Host | Loopback first, then OCAH-local scan model |
 | iJTAG scan | `jtag_scan_ctrl_t` plus scan in/out | Host | OCAH-local model; no mature public IEEE 1687 VIP identified |
 | CTM internal CT | Request/ack arrays | Mixed | OCAH-local BFM; custom OCH protocol |

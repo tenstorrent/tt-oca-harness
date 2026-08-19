@@ -110,7 +110,7 @@ Agents are split by **honesty class** — this is the defining SMC structure:
   `reset_agent`, `clk_agent`, `irq_agent`, `gpio_agent`, `axil_agent`.
 - **Protocol / traffic**: `sys_axi_agent` (SEP_IN, prefix `s_axi`),
   `sys_in_axi_agent` (`sys_axi`), `jtag_axi_agent` (`jtag_axi`) — all
-  `SmcSysAxiDriver` subclasses over `ocah_axi_vip.OcahAxiMaster`, differing only
+  `SmcSysAxiDriver` subclasses over `ocah_axi_vip.OcahAxiMasterAgent`, differing only
   by `bus_prefix`; plus `protocol_vip_agent` (records scenario evidence items).
 - **Passive monitors**: `axi_monitor` (SEP_IN), `output_axi_monitor` (SYS_OUT).
 

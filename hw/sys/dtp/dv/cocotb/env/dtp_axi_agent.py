@@ -16,7 +16,8 @@ from ocah_axi_vip import (
     OcahAxiLiteProtocolWatcher,
     OcahAxiMonitor,
     OcahAxiProtocolWatcher,
-    OcahAxiRam,
+    OcahAxiSlaveAgent,
+    OcahAxiSlaveSequence,
 )
 
 from .dtp_fault_axi import DtpFaultAxiLiteRam, DtpFaultOcahAxiRam
@@ -25,13 +26,13 @@ from .dtp_fault_axi import DtpFaultAxiLiteRam, DtpFaultOcahAxiRam
 class DtpAxiAgent(uvm_agent):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
-        self.axi_ram: OcahAxiRam | None = None
+        self.axi_ram: OcahAxiSlaveSequence | None = None
         self.smc_otp_axil_ram = None
         self.sep_otp_axil_ram = None
 
     async def run_phase(self) -> None:
         dut = cocotb.top
-        self.axi_ram = OcahAxiRam.from_prefix(
+        self.axi_ram = OcahAxiSlaveAgent.from_prefix(
             dut,
             "m_axi",
             dut.clk_i,
@@ -42,7 +43,7 @@ class DtpAxiAgent(uvm_agent):
             addr_width=56,
             data_width=64,
             strb_width=8,
-        )
+        ).sequence
         # Publish for backdoor checks once the memory model exists.
         self.cfg.axi_ram = DtpFaultOcahAxiRam(self.axi_ram)
         self.smc_otp_axil_ram = DtpFaultAxiLiteRam.from_prefix(
