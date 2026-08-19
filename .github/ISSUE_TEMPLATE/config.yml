@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/tenstorrent/tt-oca-harness/security/advisories/new
+    about: Do not file security reports as public issues. Use private vulnerability reporting.
