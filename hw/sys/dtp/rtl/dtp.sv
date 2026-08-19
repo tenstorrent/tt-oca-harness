@@ -44,7 +44,7 @@ module dtp
 
     localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (JTAG_NUM_EXTRA_STAPS > 0) ? JTAG_NUM_EXTRA_STAPS : 1,  // Minimum of 1 for tie-off case
 
-    // Cross trigger configuration parameters (templated, not configurable)
+    // Cross trigger port counts, from dtp_pkg
     localparam int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,           // The number of cross trigger ports
                              XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT,        // Number of internal cross triggers
                              XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ,  // The number of incoming clock stop requests

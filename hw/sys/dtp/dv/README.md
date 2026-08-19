@@ -12,7 +12,7 @@ The TB wraps unified OCAH BFMs in a UVM hierarchy:
 dtp_<scenario>_test (uvm_test, @pyuvm.test)
   └─ DtpEnv
        ├─ DtpJtagAgent   sequencer + driver (wraps ocah_jtag_vip) + analysis port
-       ├─ DtpAxiAgent    ocah_axi_vip OcahAxiRam responder + backdoor
+       ├─ DtpAxiAgent    ocah_axi_vip OcahAxiSlaveAgent responder + backdoor
        └─ DtpScoreboard  IDCODE / JTAG2AXI data-integrity checks
   seq_lib/ dtp_base_test_seq → dtp_sanity_test_seq, dtp_jtag_idcode_test_seq,
            dtp_jtag2axi_smc_axi_wr_test_seq, dtp_jtag2axi_smc_axi_rd_test_seq
@@ -40,8 +40,8 @@ protocol BFMs behind a stable API:
 | Interface | VIP | Rationale |
 |-----------|-----|-----------|
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
-| AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiRam`) | JTAG2AXI bridge drives it; memory model responds. |
-| AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteMaster`/future responder) | Standard AXI-Lite. |
+| AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiSlaveAgent`) | JTAG2AXI bridge drives it; memory model responds. |
+| AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteMasterAgent`/future responder) | Standard AXI-Lite. |
 | AXI4-Lite CSR subordinate (`axil_xtrig`) | DUT-local `DtpFlatAxiLiteMaster` | Implemented for the flattened XTRIG fixture; migrate needed behavior into `ocah_axi_vip` rather than promoting a second AXI-Lite VIP. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
@@ -71,6 +71,24 @@ python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
 
+# JTAG2AXI checker-enabled tests (shared ocah_axi_vip scoreboard)
+python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_decode_error_decerr_read_test \
+          dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test \
+          dtp_jtag2axi_smc_axi_error_single_write_test
+
+# Checker negative validation: deliberately wrong arming must fail the run
+DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_decode_error_decerr_read_test
+
+# TAP checker negative validation: a desynced TAP reference model must fail
+DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag_tlr_reset_test
+
+# SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
+python3 tools/dv/run_dv.py --dut dtp_uvm --items dtp_sanity_test \
+  --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
+
 # Smoke + functional group
 python3 tools/dv/run_dv.py --dut dtp --items functional
 
@@ -96,6 +114,12 @@ python3 tools/dv/run_dv.py --dut dtp_uvm --items dtp_sanity_test --tool vcs --se
 # SV-UVM build only / smoke group
 python3 tools/dv/run_dv.py --dut dtp_uvm --build-only
 python3 tools/dv/run_dv.py --dut dtp_uvm --items smoke --tool vcs
+
+# SV-UVM JTAG2AXI checker proofs (shared ocah_axi_vip passive env)
+python3 tools/dv/run_dv.py --dut dtp_uvm --tool vcs --seed 1 \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
+python3 tools/dv/run_dv.py --dut dtp_uvm --tool vcs --seed 1 \
+  --items dtp_jtag2axi_smc_axi_single_write_read_test
 ```
 
 Both flows share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —

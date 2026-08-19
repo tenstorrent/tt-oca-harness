@@ -4,8 +4,7 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-# Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>
-#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
 #   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build     (re)build firmware image + publish to shared tarball cache
 #   ensure    make firmware image available (local -> cache -> build); auto-run
@@ -71,8 +70,17 @@ case "${1:-}" in
         fi ;;
 esac
 
-if command -v podman >/dev/null 2>&1; then ENGINE=podman VOL=":Z"
-elif command -v docker >/dev/null 2>&1; then ENGINE=docker VOL=""
+if command -v podman >/dev/null 2>&1; then
+    ENGINE=podman
+    VOL=":Z"
+    PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true \
+        --storage-opt=mount_program=$(which fuse-overlayfs)"
+    PODMAN_RUN_FLAGS="--userns=keep-id"
+elif command -v docker >/dev/null 2>&1; then
+    ENGINE=docker
+    VOL=""
+    PODMAN_STORAGE_FLAGS=""
+    PODMAN_RUN_FLAGS = ""
 elif [[ "$NEEDS_ENGINE" == 0 ]]; then ENGINE=none VOL=""
 else echo "error: podman or docker is required" >&2; exit 1; fi
 
@@ -144,12 +152,14 @@ image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
 # failure is a warning, not a build failure.
 build_image() {
     local hash; hash="$(image_hash)"
-    "$ENGINE" build --label "ocah.dockerfile.sha=${hash}" -t "$IMAGE" "$DOCKER_CTX"
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} build --label "ocah.dockerfile.sha=${hash}" \
+        -t "$IMAGE" "$DOCKER_CTX"
     [[ -n "$DOCKER_CACHE_DIR" ]] || return 0
     local tar; tar="$(image_cache_tar)"
     if mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
         local tmp="${tar}.$$.tmp"
-        if "$ENGINE" save -o "$tmp" "$IMAGE" 2>/dev/null && mv -f "$tmp" "$tar" 2>/dev/null; then
+        if "$ENGINE" ${PODMAN_STORAGE_FLAGS} save -o "$tmp" "$IMAGE" 2>/dev/null \
+            && mv -f "$tmp" "$tar" 2>/dev/null; then
             echo "docker-run: published image cache $tar" >&2
         else
             rm -f "$tmp" 2>/dev/null || true
@@ -166,14 +176,15 @@ build_image() {
 ensure_image() {
     local hash tar
     hash="$(image_hash)"
-    if [ "$("$ENGINE" image inspect --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
+    if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image ${PODMAN_RUN_FLAGS} inspect \
+        --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
         return 0
     fi
     if [[ -n "$DOCKER_CACHE_DIR" ]]; then
         tar="$(image_cache_tar)"
         if [ -r "$tar" ]; then
             echo "docker-run: loading $IMAGE from cache $tar" >&2
-            "$ENGINE" load -i "$tar"
+            "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$tar"
             return 0
         fi
     fi
@@ -185,7 +196,8 @@ ensure_image() {
 run_image() {
     local image="$1"; shift
     local f=(); [[ "${1:-}" == "-it" ]] && { f=(-it); shift; }
-    "$ENGINE" run --rm "${f[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
+        "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
 }
 
 # --- bubblewrap backend -----------------------------------------------------
@@ -293,7 +305,8 @@ run_here() {
 run_image_1to1() {
     local image="$1"; shift
     local f=(); [[ "${1:-}" == "-it" ]] && { f=(-it); shift; }
-    "$ENGINE" run --rm "${f[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
+        "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
 # hpretl/iic-osic-tools's entrypoint launches a UI (X11/VNC) by default;
@@ -301,6 +314,7 @@ run_image_1to1() {
 eda_run() {
     local f=(); [[ "${1:-}" == "-it" ]] && { f=(-it); shift; }
     run_image_1to1 "$EDA_IMAGE" "${f[@]}" --skip "$@"
+    exit 0
 }
 
 doc_product_paths() {
@@ -309,7 +323,8 @@ doc_product_paths() {
         integrator)  echo "doc/integrator antora-integrator-playbook.yml ocah-doc-integrator-setup ocah-doc-integrator-pdf" ;;
         programmer)  echo "doc/programmer antora-programmer-playbook.yml ocah-doc-programmer-setup ocah-doc-programmer-pdf" ;;
         appnotes)    echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
-        *) echo "error: unknown doc product '$1' (expected trm, integrator, programmer, or appnotes)" >&2; exit 1 ;;
+        contributing) echo "doc/contributing antora-contributing-playbook.yml ocah-doc-contributing-setup ocah-doc-contributing-pdf" ;;
+        *) echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, or contributing)" >&2; exit 1 ;;
     esac
 }
 
@@ -323,7 +338,8 @@ doc_html() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
     doc_setup "$product"
-    "$ENGINE" run --rm "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}"\
+        -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
         --attribute "basedir=${basedir}" "$playbook"
 }
 
@@ -333,6 +349,7 @@ doc_html_all() {
     doc_setup integrator
     doc_setup programmer
     doc_setup appnotes
+	doc_setup contributing
     # The prebuilt antora/antora:3.1.10 image has Antora pre-installed but
     # NOT @antora/lunr-extension (that's only added to the npx-based
     # OCAH_ANTORA path in doc/doc.mk, which real CI uses via `make
@@ -340,7 +357,8 @@ doc_html_all() {
     # needs its own install). `npm install` here writes into the
     # bind-mounted repo root, so it only needs to happen once per checkout
     # (harmless to repeat). Make sure node_modules/ is gitignored.
-    "$ENGINE" run --rm -e SITE_SEARCH_PROVIDER=lunr -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm -e SITE_SEARCH_PROVIDER=lunr \
+        -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
         sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora antora-playbook.yml'
 }
 

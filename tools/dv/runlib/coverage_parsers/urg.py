@@ -8,6 +8,7 @@ import re
 import shlex
 from pathlib import Path
 
+from ..coverage import parse_urg_summary_table
 from ..coverage_model import (
     CoverageDetails,
     CoverageObservation,
@@ -44,6 +45,26 @@ def _text(path: Path) -> str:
 
 def _summary_metrics(paths: list[Path]) -> list[MetricRecord]:
     values: dict[str, tuple[str, float]] = {}
+    # Prefer the dashboard's `Total Coverage Summary`: it is the only URG
+    # table guaranteed to hold pure percentages, whereas the loose scan below
+    # can mistake covered/total counts in other report files for percentages.
+    for path in paths:
+        if path.name.lower() != "dashboard.txt":
+            continue
+        for native, value in parse_urg_summary_table(_text(path)).items():
+            family = URG_METRIC_MAP.get(native)
+            if family:
+                values.setdefault(family, (native, value))
+    if values:
+        return [
+            MetricRecord(
+                metric_family=family,
+                native_metric=native,
+                raw_percent=value,
+                effective_percent=value,
+            )
+            for family, (native, value) in sorted(values.items())
+        ]
     for path in paths:
         text = _text(path)
         for match in re.finditer(

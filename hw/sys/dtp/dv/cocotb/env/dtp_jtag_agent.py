@@ -18,7 +18,7 @@ from pyuvm import (
     uvm_sequencer,
 )
 
-from ocah_jtag_vip import OcahJtagTap
+from ocah_jtag_vip import OcahJtagMasterDriver
 
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from .dtp_tap_device import DtpTapDevice
@@ -40,13 +40,13 @@ class DtpJtagDriver(uvm_driver):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
-        self.jtag: OcahJtagTap | None = None
+        self.jtag: OcahJtagMasterDriver | None = None
         self.tap_device = DtpTapDevice(idle_delay=self.cfg.idle_tck)
         self.dut = None
 
     async def run_phase(self) -> None:
         self.dut = cocotb.top
-        self.jtag = OcahJtagTap(
+        self.jtag = OcahJtagMasterDriver(
             self.dut,
             name="dtp_ptap",
             tck_period_ns=self.cfg.jtag_period_ns,

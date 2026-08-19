@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
-from ocah_axi_vip import OcahAxiLiteMaster
+from ocah_axi_vip import OcahAxiLiteMasterAgent
 
 try:
     from cocotb.result import SimTimeoutError
@@ -34,10 +34,12 @@ import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from smc_base_test import smc_base_test
 
-# JTAG-side eFuse (full SMC-local) addresses (smc_reg.svh).
-EFUSE_MAP_NON_ID = 0xC000_B000  # EFUSE_MAP entry 0 (outside the ID windows)
-EFUSE_MAP_CHIPLET_ID = 0xC000_B008
-EFUSE_MAP_PACKAGE_ID = 0xC000_B028
+from seq_lib.smc_addr_map import smc_addr
+
+# JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
+EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+EFUSE_MAP_CHIPLET_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR")
+EFUSE_MAP_PACKAGE_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR")
 
 BLOCK_SIGNATURE = 0xBADCAB1E  # prim_axi_lite_err_slv RESP_DATA (wrapper override)
 
@@ -74,14 +76,14 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         # Idle the JTAG-side eFuse master control and start at TEST_DEV.
         dut.tb_lc_state.value = pack_lc_state(LC_TEST_DEV)
 
-        self.ejm = OcahAxiLiteMaster.from_prefix(
+        self.ejm = OcahAxiLiteMasterAgent.from_prefix(
             dut,
             "ej_axi",
             dut.clk_smc_i,
             dut.rst_primary_smc_clk_no,
             name="smc_ej_axil",
             reset_active_level=False,
-        )
+        ).sequence
         await ClockCycles(dut.clk_smc_i, 5)
 
         # (raw, sigint, label): expected read-block per address class and

@@ -44,18 +44,19 @@ class SmuScoreboard(uvm_component):
     def _resolve_token(self, name: str, evidence: Optional[str]) -> str:
         if evidence:
             return _normalize_token(evidence)
-        # Prefer unused canonical FEATURE_LIST tokens when the check name
-        # fuzzy-matches TOKEN / CHK id / EXPECT keywords. Never invent a
-        # mapped TOKEN without a name match (aidv: no invent-after-green).
+        # Auto-attach mapped FEATURE tokens only when the check name contains
+        # the TOKEN or CHK id itself. Do NOT fuzzy-match expect-string keywords
+        # (e.g. "ovrd"/"stall"/"reset") — that prematurely logged FEATURE tokens
+        # on idle/bring-up compares (EVIDENCE-TOKEN-CONDITIONAL).
         rows = TEST_EVIDENCE.get(self.testcase_name or "", [])
         name_u = str(name).upper().replace("-", "_")
-        for chk_id, token, expect in rows:
+        for chk_id, token, _expect in rows:
             if token in self._feature_tokens_used:
                 continue
             keys = [
-                token,
-                chk_id.replace("CHK-", "").replace("-", "_"),
-                *(w for w in re.split(r"[^A-Za-z0-9]+", expect.upper()) if len(w) > 3),
+                token.upper().replace("-", "_"),
+                chk_id.upper().replace("-", "_"),
+                chk_id.replace("CHK-", "").upper().replace("-", "_"),
             ]
             if any(k and k in name_u for k in keys):
                 return token

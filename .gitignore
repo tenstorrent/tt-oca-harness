@@ -9,7 +9,7 @@ __pycache__/
 nonfree/
 
 # Transient per-block build outputs. The build_ot* variants come from the SEP
-# bootcode BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images).
+# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images).
 **/build/
 **/build_ot/
 **/build_ot_pio/
@@ -94,3 +94,7 @@ vendor/**/Bender.lock
 /flow_runs_*.tar.gz
 /packaged_ip/
 /weekly_packaged_ip/
+
+# npm install target for a11y
+tools/a11y/node_mo#dules/
+tools/a11y/report/

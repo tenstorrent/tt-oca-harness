@@ -241,7 +241,7 @@ The following are intentionally out of scope for this BFM:
 - **Health-test logic** — TRNG health counters and diagnostic registers.
   Use the `trng_wrapper` CSR path (AXI-Lite) for health-test tests.
 - **CSR access** — AXI-Lite CSR programming of `trng_wrapper` registers.
-  Use `OcahAxiLiteMaster` from `ocah_axi_vip` for that path.
+  Use `OcahAxiLiteMasterAgent` from `ocah_axi_vip` for that path.
 - **Multi-stream simultaneous drive** — instantiate one `OcahEntropySource`
   per stream lane and assign `stream_idx` accordingly.
 

@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Open Chiplet Atlas Harness (OCAH): Contributing to OCAH
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+The Open Chiplet Atlas Harness (OCAH) is a chiplet design IP where the
+non-application-specific functions are integrated to form a chiplet design
+framework. These non-application-specific functions include common chiplet
+subsystems like Security Processor (SEP), System Management Controller (SMC),
+System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
+(DTP), etc.
+
+This guide outlines the use of the repository, including licensing and guidelines
+for effective contribution.
+
+[WARNING]
+This document is currently under development.
+
+ifdef::backend-html5[]
+== Contribution Guide
+
+This documentation is organized into the following sections:
+
+
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+:imagesdir: ../assets
+include::contribution.adoc[]
+endif::backend-pdf[]

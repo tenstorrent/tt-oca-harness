@@ -28,7 +28,7 @@ bridge on `PYTHONPATH`. There is nothing to source.
 
 ```bash
 python3 tools/dv/run_dv.py --list          # confirm the DUT resolves
-python3 tools/dv/run_dv.py --doctor --dut smc_wrapper   # confirm simulators/licenses
+python3 tools/dv/run_dv.py --doctor --dut smc   # confirm simulators/licenses
 ```
 
 Set `OCAH_DV_SKIP_UV=1` only when running inside a pre-provisioned environment
@@ -63,8 +63,8 @@ Two extensions are **not** declared and degrade rather than hard-fail:
 ### Full smoke
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag smoke --tool xcelium
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag smoke --tool verilator
+python3 tools/dv/run_dv.py --dut smc --tag smoke --tool xcelium
+python3 tools/dv/run_dv.py --dut smc --tag smoke --tool verilator
 ```
 
 Reference timings: Xcelium ~80 s incremental / ~430 s with `--rebuild`;
@@ -79,7 +79,7 @@ loaded host.
 | Feature subset | `--tag reset` / `axil` / `clock` / `i2c` / `irq` / `gpio` / `combined` / `batch_b` / `batch_c` / `batch_d` / `project_p0` / `mailbox_depth` |
 | Multi-seed | `--seed N` (exported as `RANDOM_SEED` → `randomize_timing(seed)`) |
 | Force clean rebuild | `--rebuild` |
-| List tests / DUTs | `--list` (combine with `--dut smc_wrapper` for SMC details) |
+| List tests / DUTs | `--list` (combine with `--dut smc` for SMC details) |
 | Validate configs | `--validate-configs` |
 | Dry-run | `--dry-run` |
 | Coverage | `--cov` |
@@ -159,10 +159,10 @@ After the one-time Verilator model build for the `tb_top` AXI bridge, Python-onl
 edits to sequences, scoreboards, or testlists should use `--stage sim`:
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag canonical_top6  --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag canonical_top20 --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag project_p0      --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag mailbox_depth   --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag canonical_top6  --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag canonical_top20 --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag project_p0      --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag mailbox_depth   --tool verilator --stage sim
 ```
 
 Use `--rebuild` only after changing SystemVerilog TB/stubs, Bender/filelist
@@ -176,7 +176,7 @@ the SEP_IN AXI ingress:
 ```text
 smc_output_filter_remap_security_test
   -> SmcCsrSeq / SmcSysAxiItem / SmcSysAxiDriver
-  -> ocah_axi_vip.OcahAxiMaster
+  -> ocah_axi_vip.OcahAxiMasterAgent
   -> tb_top.sv s_axi_*
   -> smc.sep_axi_in_req_i
   -> SMC filter/remap CSRs
@@ -210,7 +210,7 @@ removed.
 Focused validation:
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc_wrapper \
+python3 tools/dv/run_dv.py --dut smc \
   --items smc_output_filter_remap_security_test --tool verilator --seed 1
 ```
 
@@ -375,27 +375,27 @@ cwd and hit `*F,C58EXS` ("database already exists") on the second run.
 ```bash
 # Validate sim_cfg + list testlists
 python3 tools/dv/run_dv.py --validate-configs
-python3 tools/dv/run_dv.py --dut smc_wrapper --list
+python3 tools/dv/run_dv.py --dut smc --list
 
 # Single test, either simulator
-python3 tools/dv/run_dv.py --dut smc_wrapper --items smc_cold_reset_test --tool xcelium
-python3 tools/dv/run_dv.py --dut smc_wrapper --items smc_cold_reset_test --tool verilator
+python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --tool xcelium
+python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --tool verilator
 
 # Feature subset / full smoke
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag reset --tool xcelium
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag smoke --tool verilator
+python3 tools/dv/run_dv.py --dut smc --tag reset --tool xcelium
+python3 tools/dv/run_dv.py --dut smc --tag smoke --tool verilator
 
 # Canonical tiers (sim-only after the one-time model build)
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag canonical_top6  --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag canonical_top20 --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag canonical_top6  --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag canonical_top20 --tool verilator --stage sim
 
 # GitHub Project 335 / #2891 P0 names (14 tests) and category triplets
-python3 tools/dv/run_dv.py --dut smc_wrapper --tag project_p0 --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc_wrapper --items project_p0_triplets --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag project_p0 --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items project_p0_triplets --tool verilator --stage sim
 
 # VPLAN migration triplets (16 functional modules x 3 tests) and gap slate
-python3 tools/dv/run_dv.py --dut smc_wrapper --items vplan_triplets --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc_wrapper --items vplan_gaps --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items vplan_triplets --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items vplan_gaps --tool verilator --stage sim
 
 # Static checks before running any sim
 python3 -m py_compile \
@@ -447,7 +447,7 @@ convention:
 
 | Wrapper | Underlying VIP | Adapter reason |
 |---------|----------------|----------------|
-| `env.smc_sys_axi_agent.SmcSysAxiDriver` | `ocah_axi_vip.OcahAxiMaster` | Binds `s_axi_*`, `sys_axi_*`, or `jtag_axi_*` flattened ports and maps the shared AXI completion into SMC PyUVM items, timeout/error policy, scoreboard, and CSR helpers |
+| `env.smc_sys_axi_agent.SmcSysAxiDriver` | `ocah_axi_vip.OcahAxiMasterAgent` | Binds `s_axi_*`, `sys_axi_*`, or `jtag_axi_*` flattened ports and maps the shared AXI completion into SMC PyUVM items, timeout/error policy, scoreboard, and CSR helpers |
 | `smc_jtag_protocol_vip.SmcJtagTap` | `cocotbext.jtag` (`JTAGBus` + `JTAGDriver`) | `ocah_jtag_vip` depends on an uninstalled `jtag_vip` package; `cocotbext.jtag` binds cleanly to the public `tb_cpu_jtag_{tck,tms,tdi,tdo,reset}` pins. `SmcCpuTapDevice(idcode=0x10CA0555, ir_len=5)` mirrors the JEP106 straps hard-coded in `tb_top.sv` |
 | `smc_i2c_protocol_vip.SmcI2cEepromSlave` / `SmcI2cBusMonitor` | `cocotbext.i2c` (`I2cMemory` / `I2cDevice`) | `ocah_i2c_vip.OcahI2cMaster` uses an older single-signal 2-arg form that cannot bind to the split-port TB. `cocotbext.i2c` exposes 4-arg `sda/sda_o/scl/scl_o`; an `_InvertedPolarityMixin` overrides `_set_sda/_set_scl` because `sda_o=0` (VIP: pull low) maps to `tb_i2c0_sda_ext_low=1` (TB: pull low) |
 | `smc_i3c_protocol_vip.SmcI3cSlaveVip` | `cocotbext_i3c.I3CTarget` | Upstream ships as a bundled submodule rather than a PyPI package, so the wrapper augments `sys.path` at import time and degrades gracefully when absent. Overrides the `sda`/`scl` property setters with the same polarity inversion |
@@ -611,8 +611,8 @@ Closure evidence: Xcelium `p2_phase_a` **6/6 PASS 80.1 s**; Verilator
 `p2_phase_a` **6/6 PASS 157.9 s**.
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc_wrapper --items p2_phase_a --tool xcelium
-python3 tools/dv/run_dv.py --dut smc_wrapper --items p2_phase_a --tool verilator
+python3 tools/dv/run_dv.py --dut smc --items p2_phase_a --tool xcelium
+python3 tools/dv/run_dv.py --dut smc --items p2_phase_a --tool verilator
 ```
 
 The full pin-driven SPI byte-level loopback and full pin-driven sideband external
@@ -837,7 +837,7 @@ p1_coverage_gap_r2 + p2_phase_a` (71 tests, deduplicated): Xcelium **71/71 PASS
 375.7 s**; Verilator **71/71 PASS 707.7 s**.
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc_wrapper \
+python3 tools/dv/run_dv.py --dut smc \
   --items canonical_top20 vplan_triplets p1_coverage_gap p1_coverage_gap_r2 p2_phase_a \
   --tool verilator
 ```
@@ -850,8 +850,8 @@ problems, not TB or RTL defects; once the extensions were importable all eleven
 passed. See §1 for the current dependency surface.
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc_wrapper \
-  --items $(python3 tools/dv/run_dv.py --dut smc_wrapper --list \
+python3 tools/dv/run_dv.py --dut smc \
+  --items $(python3 tools/dv/run_dv.py --dut smc --list \
             | sed -n 's/^tests *: //p' | tr ',' ' ') \
   --tool verilator --stage sim
 ```

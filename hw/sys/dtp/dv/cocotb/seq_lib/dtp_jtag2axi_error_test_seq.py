@@ -36,6 +36,27 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         return base + idx * max(cfg.beat_bytes, 0x20)
 
+    def _emit_error_nonvacuity(self, label: str) -> None:
+        """CHK-AXI-NONVAC: every armed SLVERR/DECERR was consumed by a real
+        bus response and each injection was followed by an OKAY recovery.
+
+        An always-OKAY, tied-off, or wedged bridge cannot satisfy this: the
+        armed credits would stay unconsumed (also failing CHK-AXI-CREDITS)
+        or the recovery accesses would not complete.
+        """
+        scoreboard = self.axi_scoreboard
+        if scoreboard is None:
+            return
+        unconsumed = scoreboard.unconsumed_credits()
+        scoreboard.expect_nonvacuous(
+            self.operation_count >= len(ERROR_RESPONSES) and unconsumed == 0,
+            context=(
+                f"scenario={label} target={self.target} "
+                f"injections={self.operation_count} resp_set=SLVERR+DECERR "
+                f"credits_unconsumed={unconsumed}"
+            ),
+        )
+
     async def _expect_error_write(self, addr: int, data: int, resp: int, context: str) -> None:
         expected = self.configure_target_error(self.target, addr, resp, read=False, write=True)
         before = self.read_target_mem_int(self.target, addr, self.target_cfg(self.target).default_size)
@@ -91,6 +112,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             data = rng.getrandbits(self.target_cfg(self.target).data_width)
             self.log_iteration(idx, len(ERROR_RESPONSES), "write error addr=0x%08x resp=%d", addr, resp)
             await self._expect_error_write(addr, data, resp, f"single_write_error#{idx}")
+        self._emit_error_nonvacuity("error_single_write")
         self.status = DtpJtag2AxiStatus.SUCCESS
 
     async def run_error_single_read(self) -> None:
@@ -102,6 +124,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             data = rng.getrandbits(self.target_cfg(self.target).data_width)
             self.log_iteration(idx, len(ERROR_RESPONSES), "read error addr=0x%08x resp=%d", addr, resp)
             await self._expect_error_read(addr, data, resp, f"single_read_error#{idx}")
+        self._emit_error_nonvacuity("error_single_read")
         self.status = DtpJtag2AxiStatus.SUCCESS
 
     async def run_error_series_write(self, *, increment: bool, with_status: bool) -> None:

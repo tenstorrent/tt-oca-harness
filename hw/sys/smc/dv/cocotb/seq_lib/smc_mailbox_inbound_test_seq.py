@@ -2,21 +2,22 @@
 """P1 coverage-gap: inbound mailbox 0 CSR precheck (TC_SMC_P1CG_01).
 
 The existing mailbox tests (P0/P1 P1-5) only touch outbound mailbox 0
-at 0xC001_8000. RTL exposes 30 outbound + 30 inbound mailboxes; this
+at smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR"). RTL exposes 30 outbound + 30 inbound mailboxes; this
 test covers the inbound-mailbox 0 STATUS/ERROR/IRQ CSR surface after
 enabling the mailbox clock-gate.
 """
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-CLOCK_GATE_CONTROL = 0xC001_0018  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
 MAILBOX_CG_EN = 1 << 1
 
-MAILBOX0_INBOUND_STATUS      = 0xC001_8810
-MAILBOX0_INBOUND_ERROR_FLAGS = 0xC001_8818
-MAILBOX0_INBOUND_IRQEN       = 0xC001_8838
+MAILBOX0_INBOUND_STATUS      = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR") + 0x10
+MAILBOX0_INBOUND_ERROR_FLAGS = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR") + 0x18
+MAILBOX0_INBOUND_IRQEN       = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR") + 0x38
 
 
 class smc_mailbox_inbound_test_seq(SmcCsrSeq):

@@ -1,9 +1,9 @@
 schema_version = 1
 
 # Aggregate Phase-1 (SEP=0) testlist for --dut smu.
-# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
+# Executable contract: enrolled groups in this file / testlists/all.toml
 # SEP=1 / interop / depth inventory: testlists/deferred.toml (not included).
-# Result-reporting policy: docs/SMU_VPLAN.md §13.
+# Result-reporting policy: only enrolled groups report PASS; deferred.toml never does.
 # Only groups in this file (and testlists/wrapper.toml for --dut smu_wrapper)
 # produce reportable passing results; deferred.toml names never do.
 
@@ -57,6 +57,7 @@ tests = [
     "smc_reset_ctrl_test",
     "smu_clock_stop_coordination_test",
     "smu_xtrig_ctm_remap_test",
+    "smu_sep_smoke_test",
     "smu_dft_gpio_boot_stall_test",
     "smu_axi_external_port_connectivity_test",
     "smu_axi_atomic_operation_test",
@@ -74,6 +75,7 @@ tests = [
     "smu_ext_boot_seq_gate_test",
     "smc_reset_ctrl_test",
     "smc_security_demote_pm_test",
+    "smc_mailbox_int_test",
 ]
 
 [[groups]]
@@ -84,6 +86,7 @@ tests = [
     "smu_dft_gpio_boot_stall_test",
     "smu_clock_stop_coordination_test",
     "smu_xtrig_ctm_remap_test",
+    "smu_sep_smoke_test",
     "smu_jtag_reset_override_test",
     "smu_boot_stall_jtag_cold_reset_matrix_test",
     "smu_ic_reset_smc_multi_domain_test",
@@ -111,6 +114,7 @@ tests = [
     "smc_reset_ctrl_test",
     "smu_clock_stop_coordination_test",
     "smu_xtrig_ctm_remap_test",
+    "smu_sep_smoke_test",
     "smu_dft_gpio_boot_stall_test",
     "smu_axi_external_port_connectivity_test",
     "smu_axi_atomic_operation_test",
@@ -172,6 +176,7 @@ tests = [
     "smc_reset_ctrl_test",
     "smu_clock_stop_coordination_test",
     "smu_xtrig_ctm_remap_test",
+    "smu_sep_smoke_test",
     "smu_dft_gpio_boot_stall_test",
     "smu_axi_external_port_connectivity_test",
     "smu_axi_atomic_operation_test",
@@ -187,7 +192,7 @@ tests = [
     "smu_xtrig_ctm_illegal_phase_test",
 ]
 
-# SEP=0 + P4: sep0_all (19) + phase4_sep0 (2) = 21
+# SEP=0 + P4: sep0_all + phase4_sep0
 [[groups]]
 name = "sep0_p4_all"
 tests = [
@@ -200,6 +205,7 @@ tests = [
     "smc_reset_ctrl_test",
     "smu_clock_stop_coordination_test",
     "smu_xtrig_ctm_remap_test",
+    "smu_sep_smoke_test",
     "smu_dft_gpio_boot_stall_test",
     "smu_axi_external_port_connectivity_test",
     "smu_axi_atomic_operation_test",

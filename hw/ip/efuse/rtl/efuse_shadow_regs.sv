@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+//-----------------------------------------------------------------------------
 // Efuse Shadow Regs
+//
+//-----------------------------------------------------------------------------
 
 `include "prim_assert.sv"
 

@@ -1,4 +1,6 @@
-/* Hide placeholder navbar items -- explicit exceptions for every real item we've added. */
+/* Hide placeholder navbar items (upstream demo content only: any leftover
+   Home/Products/Services/Download not otherwise replaced) -- explicit
+   exceptions for every real item we've added. */
 .navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu),
 .navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu) {
     display: none !important;
@@ -77,12 +79,15 @@
    Menu structure is left unchanged; this block only touches color,
    background, and typography.
    ======================================== */
-/* Each family is declared once per    weight/style actually supplied; 
-	the system-font fallback in each --oca-font-* stack below only applies 
-	if a given font file fails to load. */
+/* Fonts, served from the sibling fonts/    folder under ui-supplemental. 
+   Each family is declared once per
+   weight/style actually supplied; the system-font fallback in each
+   --oca-font-* stack below only applies if a given font file fails
+   to load.*/
 @font-face {
     font-family: "Degular Display";
-    src: url("../fonts/DegularDisplay-Light.otf") format("opentype");
+    src: url("../fonts/DegularDisplay-Light.woff2") format("woff2"),
+         url("../fonts/DegularDisplay-Light.woff") format("woff");
     font-weight: 300;
     font-style: normal;
     font-display: swap;
@@ -90,47 +95,17 @@
 
 @font-face {
     font-family: "Degular Display";
-    src: url("../fonts/DegularDisplay-Medium.otf") format("opentype");
+    src: url("../fonts/DegularDisplay-Medium.woff2") format("woff2"),
+         url("../fonts/DegularDisplay-Medium.woff") format("woff");
     font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Degular Display";
-    src: url("../fonts/DegularDisplay-Semibold.otf") format("opentype");
-    font-weight: 600;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Degular Text";
-    src: url("../fonts/DegularText-Medium.otf") format("opentype");
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Degular Text";
-    src: url("../fonts/DegularText-MediumItalic.otf") format("opentype");
-    font-weight: 500;
-    font-style: italic;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Degular Text";
-    src: url("../fonts/DegularText-Bold.otf") format("opentype");
-    font-weight: 700;
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Neue Haas Unica Pro";
-    src: url("../fonts/NeueHaasUnicaPro-Regular.otf") format("opentype");
+    src: url("../fonts/NeueHaasUnicaProRegular.woff2") format("woff2"),
+         url("../fonts/NeueHaasUnicaProRegular.woff") format("woff");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -138,7 +113,8 @@
 
 @font-face {
     font-family: "Neue Haas Unica Pro";
-    src: url("../fonts/NeueHaasUnicaPro-Medium.otf") format("opentype");
+    src: url("../fonts/NeueHaasUnicaProMedium.woff2") format("woff2"),
+         url("../fonts/NeueHaasUnicaProMedium.woff") format("woff");
     font-weight: 500;
     font-style: normal;
     font-display: swap;
@@ -146,7 +122,7 @@
 
 @font-face {
     font-family: "Berkeley Mono";
-    src: url("../fonts/BerkeleyMono-Regular.otf") format("opentype");
+    src: url("../fonts/BerkeleyMono-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -154,7 +130,7 @@
 
 @font-face {
     font-family: "Berkeley Mono";
-    src: url("../fonts/BerkeleyMono-Bold.otf") format("opentype");
+    src: url("../fonts/BerkeleyMono-Bold.woff2") format("woff2");
     font-weight: 700;
     font-style: normal;
     font-display: swap;
@@ -162,8 +138,16 @@
 
 @font-face {
     font-family: "Berkeley Mono";
-    src: url("../fonts/BerkeleyMono-Oblique.otf") format("opentype");
+    src: url("../fonts/BerkeleyMono-Oblique.woff2") format("woff2");
     font-weight: 400;
+    font-style: oblique;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Berkeley Mono";
+    src: url("../fonts/BerkeleyMono-Bold-Oblique.woff2") format("woff2");
+    font-weight: 700;
     font-style: oblique;
     font-display: swap;
 }
@@ -173,11 +157,14 @@
     --oca-cream: #EEEAE0;
     --oca-cream-light: #F8F4EB;
     --oca-gold: #F6BC42;
+    /* Darkened variant of --oca-gold for use as text color on light/white
+       backgrounds. Only needed where gold is used as foreground text on a 
+	   light background. */
+    --oca-gold-accessible: #937027;
     --oca-orange: #F6931E;
     --oca-text: #484848;
     --oca-font-display: "Degular Display", Georgia, "Iowan Old Style", serif;
     --oca-font-body: "Neue Haas Unica Pro", -apple-system, "Segoe UI", sans-serif;
-    --oca-font-emphasis: "Degular Text", -apple-system, "Segoe UI", sans-serif;
     --oca-font-mono: "Berkeley Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
@@ -256,8 +243,7 @@
 }
 
 /* Version "pill" buttons inside the switcher -- fixed-width font + orange
-   accent, matching Tenstorrent's own button convention, replacing the
-   default dark-grey. */
+   accent */
 .nav-panel-explore .versions .version a,
 .nav-panel-explore .version.is-current a {
     font-family: var(--oca-font-mono);
@@ -305,12 +291,22 @@
     white-space: nowrap;
 }
 
-/* Headings -> OCA display font + green */
+/* Headings -> OCA display font + green. Large headers (h1/h2) use the
+   Light weight; subheaders (h3-h6) use Medium, per the supplied font's
+   intended usage. */
 .doc h1,
-.doc h2,
-.doc h3 {
+.doc h2 {
     font-family: var(--oca-font-display);
     font-weight: 300;
+    color: var(--oca-green);
+}
+
+.doc h3,
+.doc h4,
+.doc h5,
+.doc h6 {
+    font-family: var(--oca-font-display);
+    font-weight: 500;
     color: var(--oca-green);
 }
 
@@ -320,27 +316,54 @@
     color: var(--oca-text);
 }
 
-/* Emphasis (bold/italic inline text) -> Degular Text, distinct from the
-   Neue Haas Unica Pro body face. */
+/* Emphasis (bold inline text) -> body font at Medium weight, used in
+   place of a true bold face.*/
 .doc strong,
 .doc b {
-    font-family: var(--oca-font-emphasis);
-    font-weight: 700;
+    font-weight: 500;
 }
 
-.doc em,
-.doc i {
-    font-family: var(--oca-font-emphasis);
-    font-style: italic;
-}
-
-/* Links / accents -> green base, gold hover, matching OCA's CTA buttons */
+/* Links / accents -> green base, gold hover, matching OCA's CTA buttons.
+   Uses --oca-gold-accessible rather than --oca-gold: this text sits on
+   the white/light doc content background */
 .doc a {
     color: var(--oca-green);
+    text-decoration: underline;
 }
 
 .doc a:hover {
-    color: var(--oca-gold);
+    color: var(--oca-gold-accessible);
+}
+
+/* ========================================
+   ACCESSIBILITY FIXES -- STOCK ANTORA UI DEFAULTS
+   These three colors are antora-ui-default bundle's own toolbar and 
+   syntax-highlight    theme colors, which fail WCAG AA contrast. 
+   Overridden here since the underlying
+   bundle isn't ours to edit directly.
+   ======================================== */
+
+/* Stock "Edit this Page" toolbar link: #8e8e8e on #fafafa measured
+   3.14:1, below the 4.5:1 minimum for text. */
+.toolbar .edit-this-page a {
+    color: #737373;
+}
+
+/* Stock highlight.js theme's comment/quote color: #999988 on the
+   #fafafa code-block background measured 2.77:1. */
+.hljs-comment,
+.hljs-quote {
+    color: #747467;
+}
+
+/* Stock sidebar nav-tree expand/collapse toggle: rendered at 20.9x20.9px,
+   below the 24px WCAG 2.5.8 minimum target size. min-width/min-height
+   (rather than a fixed size) only enlarges the box where it currently
+   falls short, without otherwise touching this element's position or
+   background-image sizing. */
+.nav-item-toggle {
+    min-width: 24px;
+    min-height: 24px;
 }
 
 /* Code/mono elements */
@@ -359,10 +382,9 @@
     padding: 20px;
 }
 
-/* Grid keeps the message block centered on the full footer width (matching
-   the previous centered layout) while pinning the OCA logo to the left
-   edge, using an empty mirrored third column rather than justify-content
-   tricks that would recenter the logo. */
+/* Grid keeps the message block centered on the full footer width 
+   while pinning the OCA logo to the left edge, using an empty mirrored 
+   third column */
 .footer-inner {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -403,11 +425,11 @@
     display: inline-flex;
     align-items: center;
     text-decoration: none;
-    vertical-align: middle;
 }
 
 .footer .footer-tt-icon {
     height: 20px;
+    vertical-align: middle;
 }
 
 /* De-emphasized license attribution, kept for MPL-2.0 compliance rather
@@ -453,8 +475,9 @@
     background-color: #fafafa;
 }
 
+/* dash-pass/dash-fail backgrounds are darkened. */
 .dash-pass {
-    background-color: #4caf50;
+    background-color: #3A863D;
     color: #ffffff;
 }
 
@@ -464,7 +487,7 @@
 }
 
 .dash-fail {
-    background-color: #e05c5c;
+    background-color: #C55050;
     color: #ffffff;
 }
 

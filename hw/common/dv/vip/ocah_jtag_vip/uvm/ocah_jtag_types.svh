@@ -50,3 +50,42 @@ function automatic ocah_jtag_tap_state_e ocah_jtag_next_state(
         default:                    return OCAH_JTAG_TEST_LOGIC_RESET;
     endcase
 endfunction
+
+// Shortest TMS-bit path between two TAP states: breadth-first search over
+// the 16-state IEEE 1149.1 graph (tms=0 explored before tms=1, matching the
+// cocotb jtag_tms_path helper so both flows drive identical paths). Empty
+// when start == target; the graph is strongly connected, so a path always
+// exists.
+function automatic void ocah_jtag_tms_path(
+    input  ocah_jtag_tap_state_e from_state,
+    input  ocah_jtag_tap_state_e to_state,
+    output bit                   path[$]
+);
+    bit          visited[16];
+    int unsigned prev_state[16];
+    bit          prev_tms[16];
+    int unsigned bfs_queue[$];
+    path.delete();
+    if (from_state == to_state) return;
+    visited[int'(from_state)] = 1'b1;
+    bfs_queue.push_back(int'(from_state));
+    while (bfs_queue.size() > 0) begin
+        int unsigned cur = bfs_queue.pop_front();
+        for (int unsigned t = 0; t <= 1; t++) begin
+            int unsigned nxt =
+                int'(ocah_jtag_next_state(ocah_jtag_tap_state_e'(cur), bit'(t)));
+            if (visited[nxt]) continue;
+            visited[nxt]    = 1'b1;
+            prev_state[nxt] = cur;
+            prev_tms[nxt]   = bit'(t);
+            if (nxt == int'(to_state)) begin
+                while (nxt != int'(from_state)) begin
+                    path.push_front(prev_tms[nxt]);
+                    nxt = prev_state[nxt];
+                end
+                return;
+            end
+            bfs_queue.push_back(nxt);
+        end
+    end
+endfunction

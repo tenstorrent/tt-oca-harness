@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import argparse
 import copy
-import importlib
 import importlib.metadata
 import json
 import os
 import secrets
 import shutil
+import subprocess
 import sys
 import textwrap
 import time
@@ -22,6 +22,7 @@ from .compat import UTC
 from .config import (
     CANONICAL_STAGES,
     as_str_list,
+    cocotb_cfg,
     default_target_name,
     flow_stages,
     load_executors,
@@ -36,6 +37,7 @@ from .config import (
     validate_native_config_shape,
 )
 from .duts import load_duts, resolve_dut
+from .junit import materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
@@ -48,12 +50,13 @@ from .results import (
     rollup_payload,
     write_result,
 )
-from .stages import item_artifact_dir, run_stage, seed_for_item
+from .stages import cocotb_python_paths, item_artifact_dir, run_stage, seed_for_item
 from .ui import Console
 from .waves import (
     WAVE_DEFAULT,
     find_failure_time_ps,
     parse_time_ps,
+    require_verdi_home,
     resolve_wave_format,
     waves_on_fail_requested,
 )
@@ -79,11 +82,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
               python3 tools/dv/run_dv.py --list
               python3 tools/dv/run_dv.py --validate-configs
               python3 tools/dv/run_dv.py --doctor --dut dtp
-              python3 tools/dv/run_dv.py --dut smc_wrapper --list
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --tool verilator --dry-run
-              python3 tools/dv/run_dv.py --dut smc_wrapper --build-only --dry-run
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --regress --reseed 10
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --waves-on-fail fst
+              python3 tools/dv/run_dv.py --dut smc --list
+              python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator --dry-run
+              python3 tools/dv/run_dv.py --dut smc --build-only --dry-run
+              python3 tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
+              python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
             """
         ),
     )
@@ -654,12 +657,55 @@ def _path_in_pythonpath(path: Path) -> bool:
     return False
 
 
-def _try_import(module_name: str) -> tuple[bool, str]:
+_PROBE_SCRIPT = """\
+import importlib, json, sys
+# cocotb assigns simulation-time attributes before importing test modules
+# (cocotb._init._setup_logging); mirror the one commonly touched at import
+# scope so this bare-interpreter probe matches the run's import context.
+try:
+    import cocotb, logging
+    cocotb.log = logging.getLogger("test")
+except ImportError:
+    pass
+out = {}
+for name in sys.argv[1:]:
     try:
-        importlib.import_module(module_name)
-        return True, "import OK"
-    except Exception as exc:  # noqa: BLE001 - doctor must report actionable import failures.
-        return False, f"{type(exc).__name__}: {exc}"
+        importlib.import_module(name)
+        out[name] = [True, "import OK"]
+    except Exception as exc:
+        out[name] = [False, f"{type(exc).__name__}: {exc}"]
+print(json.dumps(out))
+"""
+
+
+def _probe_imports(python_paths: list[Path], modules: list[str]) -> dict[str, tuple[bool, str]]:
+    """Import each module in a child interpreter whose PYTHONPATH is exactly `python_paths`.
+
+    Run stages rebuild PYTHONPATH for simulator children from the DUT config
+    (:func:`runlib.stages.cocotb_python_paths`) instead of inheriting the launcher's ambient
+    one, so probing through this process's ``sys.path`` reports failures runs never see.
+    """
+    if not modules:
+        return {}
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", _PROBE_SCRIPT, *modules],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {name: (False, f"import probe failed to run: {exc}") for name in modules}
+    try:
+        raw = json.loads(proc.stdout.strip().splitlines()[-1])
+        return {name: (bool(ok), str(detail)) for name, (ok, detail) in raw.items()}
+    except (ValueError, IndexError):
+        detail = (proc.stderr or proc.stdout).strip().splitlines()
+        tail = detail[-1] if detail else f"exit code {proc.returncode}"
+        return {name: (False, f"import probe crashed: {tail}") for name in modules}
 
 
 def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
@@ -681,7 +727,6 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         )
 
     distributions = [
-        ("shared dv package", "ocah-dv"),
         ("cocotb", "cocotb"),
         ("pyuvm", "pyuvm"),
         ("cocotbext-axi", "cocotbext-axi"),
@@ -701,6 +746,16 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             )
         else:
             _print_doctor_row(label, "OK", version)
+
+    # The shared VIP (`ocah-dv`) needs no installed distribution: every run rebuilds
+    # PYTHONPATH from the DUT config, which carries the in-repo VIP root.
+    ocah_dv_version = _dist_version("ocah-dv")
+    _print_doctor_row(
+        "shared dv package",
+        "OK" if ocah_dv_version else "WARN",
+        ocah_dv_version
+        or "distribution `ocah-dv` not installed; runs import the VIP from hw/common/dv/vip",
+    )
 
     namespace_root = root / "build/dv/python"
     if namespace_root.is_dir():
@@ -725,25 +780,41 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             "so its bootstrap exports it",
         )
 
-    ok, detail = _try_import("ocah_axi_vip")
+    # Probe the shared VIP from its in-repo root, the way DUT configs put it on PYTHONPATH.
+    vip_root = root / "hw" / "common" / "dv" / "vip"
+    vip_result = _probe_imports([vip_root, namespace_root], ["ocah_axi_vip"])
+    ok, detail = vip_result["ocah_axi_vip"]
     _print_doctor_row("import ocah_axi_vip", "OK" if ok else "FAIL", detail)
     failed |= not ok
 
     if flow is not None and flow.framework == "cocotb":
-        dut_module = flow.name
-        ok, detail = _try_import(dut_module)
-        _print_doctor_row(f"import {dut_module}", "OK" if ok else "FAIL", detail)
-        failed |= not ok
-
-        env_module = f"{dut_module}.cocotb.env"
+        # Import exactly what a run imports (each testlist `module`, cocotb's MODULE=) with
+        # exactly the PYTHONPATH a run rebuilds, so pass/fail here predicts pass/fail there.
+        run_paths = cocotb_python_paths(root, cocotb_cfg(flow, flow.raw))
         try:
-            env_spec = importlib.util.find_spec(env_module)
-        except ModuleNotFoundError:
-            env_spec = None
-        if env_spec is not None:
-            ok, detail = _try_import(env_module)
-            _print_doctor_row(f"import {env_module}", "OK" if ok else "FAIL", detail)
-            failed |= not ok
+            catalog = load_test_catalog(flow, root)
+        except ConfigError as exc:
+            _print_doctor_row("test modules", "FAIL", f"testlist did not load: {exc}")
+            print()
+            return True
+        modules = sorted({test.module for test in catalog.tests.values()})
+        results = _probe_imports(run_paths, modules)
+        failures = [(name, results[name][1]) for name in modules if not results[name][0]]
+        if not modules:
+            _print_doctor_row("test modules", "WARN", "testlist declares no tests")
+        elif not failures:
+            _print_doctor_row(
+                "test modules", "OK", f"{len(modules)} modules import with the run PYTHONPATH"
+            )
+        else:
+            failed = True
+            _print_doctor_row(
+                "test modules", "FAIL", f"{len(failures)}/{len(modules)} modules failed to import"
+            )
+            for name, why in failures[:5]:
+                _print_doctor_row(f"  {name}", "FAIL", why)
+            if len(failures) > 5:
+                _print_doctor_row("  ...", "FAIL", f"{len(failures) - 5} more (same run PYTHONPATH)")
     elif flow is not None:
         _print_doctor_row(
             "DUT-local import", "SKIP", f"framework `{flow.framework}` has no DUT Python package"
@@ -833,6 +904,11 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         return 2
     if missing_required:
         print(f"Result: required tool `{required}` is NOT available — this flow cannot run here")
+        if flow is not None and flow.license == "required-commercial":
+            print(
+                f"Note: `{flow.name}` needs a commercially licensed simulator; "
+                "`--list` marks such flows (licensed) — the others run on open-source tools"
+            )
         return 2
     print(f"Result: required tool `{required}` is available")
     return 0
@@ -840,7 +916,10 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
 
 def list_flows(flows: dict[str, Flow]) -> None:
     for flow in sorted(flows.values(), key=lambda item: item.name):
-        print(f"{flow.name:<16} {flow.kind:<3} {flow.framework:<8} {flow.description}")
+        tool = flow.default_tool or (flow.tools[0] if flow.tools else "-")
+        if flow.license == "required-commercial":
+            tool += " (licensed)"
+        print(f"{flow.name:<16} {flow.kind:<3} {flow.framework:<8} {tool:<20} {flow.description}")
 
 
 def list_flow_detail(flow: Flow, root: Path) -> None:
@@ -851,6 +930,8 @@ def list_flow_detail(flow: Flow, root: Path) -> None:
     print(f"root       : {flow.root}")
     print(f"tools      : {', '.join(flow.tools)}")
     print(f"default    : {flow.default_tool}")
+    print(f"license    : {flow.license}")
+    print(f"runnability: {flow.runnability}")
     print(f"stages     : {', '.join(flow_stages(flow))}")
     if catalog.tests:
         print("tests      : " + ", ".join(sorted(catalog.tests)))
@@ -1010,16 +1091,27 @@ def selected_executor(flow: Flow, args: argparse.Namespace) -> str:
     return executor
 
 
-def validate_selected_tool_available(tool: str, simulators: dict[str, Any], args: argparse.Namespace) -> None:
+def validate_selected_tool_available(
+    tool: str,
+    simulators: dict[str, Any],
+    args: argparse.Namespace,
+    flow: Flow | None = None,
+) -> None:
     if args.dry_run:
         return
     cfg = simulators.get(tool, {})
     binary = str(cfg.get("binary", tool)) if isinstance(cfg, dict) else tool
     if shutil.which(binary):
         return
+    hint = ""
+    if flow is not None and flow.license == "required-commercial":
+        hint = (
+            f" DUT `{flow.name}` needs a commercially licensed simulator; "
+            "`--list` marks such flows (licensed) — the others run on open-source tools."
+        )
     raise ConfigError(
         f"selected tool `{tool}` requires `{binary}` in PATH. "
-        f"Load the simulator environment or run `--doctor --tool {tool}` for details."
+        f"Load the simulator environment or run `--doctor --tool {tool}` for details.{hint}"
     )
 
 
@@ -1344,11 +1436,15 @@ def run_flow(
     replay_run_dir, existing_result = _existing_run_result(root, flow, args)
     tool = selected_tool(flow, args)
     executor = selected_executor(flow, args)
-    validate_selected_tool_available(tool, simulators, args)
+    validate_selected_tool_available(tool, simulators, args, flow)
     if args.waves:
-        resolve_wave_format(args, simulators, tool)
+        wave_format = resolve_wave_format(args, simulators, tool)
+        if not args.dry_run:
+            require_verdi_home(tool, wave_format)
     if args.waves_on_fail:
-        resolve_wave_format(args, simulators, tool, on_fail=True)
+        wave_format = resolve_wave_format(args, simulators, tool, on_fail=True)
+        if not args.dry_run:
+            require_verdi_home(tool, wave_format)
     sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
     catalog = load_test_catalog(flow, root)
     stages = selected_stages(flow, args)
@@ -1813,6 +1909,23 @@ def run_flow(
                 elapsed_sec=time.monotonic() - run_started,
             )
 
+        replaying_coverage = existing_result is not None and replay_run_dir == run_dir
+        # Structured-result guarantee, leafless case: a non-passing run in which no sim
+        # leaf executed (compile/elaboration/filelist failure) gets one run-level stage
+        # XML so the failure is visible to JUnit consumers. Runs before result_payload
+        # so the failing stage's artifact pointer lands in result.json; skipped on
+        # coverage replay, which re-enters a run dir whose leaves did not rerun.
+        if not args.dry_run and not replaying_coverage:
+            try:
+                materialize_stage_junit(
+                    flow=flow,
+                    root=root,
+                    run_dir=run_dir,
+                    tool=tool,
+                    stages=results,
+                )
+            except Exception as exc:  # noqa: BLE001
+                console.event("warning", f"junit synthesis failed: {exc}", force=True)
         payload = result_payload(
             flow=flow,
             root=root,
@@ -1825,7 +1938,7 @@ def run_flow(
             args=args,
             executor=executor,
         )
-        if existing_result is not None and replay_run_dir == run_dir:
+        if replaying_coverage:
             payload = _merge_coverage_replay_result(existing_result, payload)
         result_path = run_dir / "result.json"
         if not args.dry_run:
@@ -1836,7 +1949,7 @@ def run_flow(
                     export_path = root / export_path
                 if export_path != result_path:
                     write_result(export_path, payload)
-            if existing_result is not None and replay_run_dir == run_dir:
+            if replaying_coverage:
                 _update_regression_coverage(
                     run_dir,
                     payload.get("coverage", {}),

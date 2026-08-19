@@ -39,6 +39,23 @@ module smc_uvm_top
 
     output logic [3:0] tb_i2c_debug_lo /*verilator public_flat_rw*/,
     output logic       tb_i2c_cg_en /*verilator public_flat_rw*/,
+    // DMA clock-gating LIVE observability (SMC_DMA_CG_ACTIVITY_TEST).
+    // Lifted to TB top because smc_public_scope.vlt only publishes smc_uvm_top.
+    output logic       tb_dma_cg_en /*verilator public_flat_rw*/,
+    output logic       tb_dma_gated_clk /*verilator public_flat_rw*/,
+    output logic       tb_dma_busy /*verilator public_flat_rw*/,
+    output logic       tb_dma_frontend_busy /*verilator public_flat_rw*/,
+    output logic       tb_dma_backend_busy /*verilator public_flat_rw*/,
+    // Gater busy_i (frontend_wakeup | backend_busy) — T0 for hyst measure.
+    output logic       tb_dma_gater_busy /*verilator public_flat_rw*/,
+    // Zeroer clock-gating LIVE observability + DFT test_en drive.
+    output logic       tb_zeroer_cg_en /*verilator public_flat_rw*/,
+    output logic       tb_zeroer_gated_axi_clk /*verilator public_flat_rw*/,
+    output logic       tb_zeroer_gated_reg_clk /*verilator public_flat_rw*/,
+    output logic       tb_zeroer_busy /*verilator public_flat_rw*/,
+    // Zeroer AXI-Lite snoop bus_active — T0 for reg_clk resume / access window.
+    output logic       tb_zeroer_bus_active /*verilator public_flat_rw*/,
+    input  wire logic  tb_test_en_i /*verilator public_flat_rw*/,
     input  wire logic  tb_i2c0_scl_ext_low /*verilator public_flat_rw*/,
     input  wire logic  tb_i2c0_sda_ext_low /*verilator public_flat_rw*/,
     output logic       tb_i2c0_scl /*verilator public_flat_rw*/,
@@ -116,8 +133,9 @@ module smc_uvm_top
     output logic tb_octs_cnt_credit_from_dut /*verilator public_flat_rw*/,
     // Runtime primary/secondary strap (smc.chiplet_is_primary_i). Default 1.
     input  wire logic tb_chiplet_is_primary /*verilator public_flat_rw*/,
-    // Secondary inject into pads 58/59 (padring enables pad2core only when
-    // chiplet_is_primary_i==0). Idle low when unused.
+    // Secondary inject into pads 55/56 (smc_padring OCTS; was 58/59 before
+    // the 68->65 GPIO shrink). pad2core enabled only when
+    // chiplet_is_primary_i==0. Idle low when unused.
     input  wire logic tb_octs_sync_load_ext /*verilator public_flat_rw*/,
     input  wire logic tb_octs_cnt_credit_ext /*verilator public_flat_rw*/,
     input  wire logic [7:0] tb_sep_mailbox_interrupts /*verilator public_flat_rw*/,
@@ -332,12 +350,14 @@ module smc_uvm_top
     output logic        tb_cpu_debug_dmactive_ack /*verilator public_flat_rw*/,
 
     // U7-1: ECC SBE/DBE inject into scratch bank0 reads + fire count.
-    // tb_cpu_ecc_inject_probe pulses a synthetic bank0 read so inject can be
-    // scored without depending on live CPU fetch traffic.
+    // fire_count tracks DUT cpu_scratch0_inject_fire only (real bank0 reads
+    // with inject armed). tb_cpu_ecc_inject_probe is retained for API compat
+    // but is not scored (synthetic probe path removed).
     input  wire logic   tb_cpu_ecc_inject_sbe /*verilator public_flat_rw*/,
     input  wire logic   tb_cpu_ecc_inject_dbe /*verilator public_flat_rw*/,
     input  wire logic   tb_cpu_ecc_inject_probe /*verilator public_flat_rw*/,
     output logic [31:0] tb_cpu_ecc_inject_fire_count /*verilator public_flat_rw*/,
+    output logic        tb_cpu_scratch0_inject_fire /*verilator public_flat_rw*/,
 
     // U7-2: DFD/DBS fault inject + debug-bus capture latch.
     input  wire logic   tb_dfd_fault_inject /*verilator public_flat_rw*/,
@@ -346,6 +366,10 @@ module smc_uvm_top
 
     // U7-5: eFuse behavioral responder observability.
     output logic        tb_fuse_sense_done /*verilator public_flat_rw*/,
+    // Warm-reset domain release (feeds SCRATCH_COLD_WARM etc.). Wait on this —
+    // not only tb_fuse_sense_done — before warm-domain CSR traffic.
+    output logic        tb_fuse_reset_n /*verilator public_flat_rw*/,
+    output logic        tb_rst_warm_smc_clk_n /*verilator public_flat_rw*/,
     output logic [31:0] tb_efuse_otp_word0 /*verilator public_flat_rw*/,
     output logic [31:0] tb_efuse_programmed_word0 /*verilator public_flat_rw*/,
     output logic [smc_efuse_pkg::NumEfuseBits-1:0] efuse_shadow_probe_o /*verilator public_flat_rw*/,
@@ -467,17 +491,16 @@ module smc_uvm_top
     //   pad 11 = UART0 RX (pad -> core), pad 12 = UART0 TX (core -> pad).
     localparam int unsigned UART0_RX_PAD = 11;
     localparam int unsigned UART0_TX_PAD = 12;
-    // smc_padring.sv pad 60 = boot_stall (active-high). Default pad2core='1
-    // would sticky-stall fuse_reset_n and keep the CPU in mem-init forever.
-    // +smc_hold_cpu_boot keeps stall asserted from time-0 so FW-boot tests can
-    // program RESET_VECTOR before the Rocket tiles ever fetch from ROM.
-    localparam int unsigned BOOT_STALL_PAD = 60;
+    // smc_padring.sv: boot_stall is lsio pad 57 (active-high; was pad 60).
+    // Default pullup/'1 would sticky-stall fuse_reset_n and hold the warm
+    // reset domain (SCRATCH_COLD_WARM hang). Drive 0 unless +smc_hold_cpu_boot.
+    localparam int unsigned BOOT_STALL_PAD = 57;
     bit tb_hold_cpu_boot;
     initial begin
         tb_hold_cpu_boot = 1'b0;
         if ($test$plusargs("smc_hold_cpu_boot")) begin
             tb_hold_cpu_boot = 1'b1;
-            $display("[tb_top] +smc_hold_cpu_boot: pad60 boot_stall held until TB release");
+            $display("[tb_top] +smc_hold_cpu_boot: pad57 boot_stall held until TB release");
         end
     end
 
@@ -560,7 +583,7 @@ module smc_uvm_top
         tb_pad_drive_val[UART0_RX_PAD] = tb_uart0_rx_ext_drive;
 
         // Boot stall: released by default; held when +smc_hold_cpu_boot is set
-        // unless a test explicitly drives pad 60 via GPIO override.
+        // unless a test explicitly drives pad 57 via GPIO override.
         if (!tb_gpio_ext_drive_en[BOOT_STALL_PAD]) begin
             tb_pad_drive_en[BOOT_STALL_PAD]  = 1'b1;
             tb_pad_drive_val[BOOT_STALL_PAD] = tb_hold_cpu_boot;
@@ -576,12 +599,12 @@ module smc_uvm_top
         tb_pad_drive_en[51]  = 1'b1;
         tb_pad_drive_val[51] = tb_avs_sdata_ext;
 
-        // OCTS dual-chiplet secondary inject (pads 58/59). Harmless when
+        // OCTS dual-chiplet secondary inject (pads 55/56). Harmless when
         // primary (padring disables pad2core on these pads).
-        tb_pad_drive_en[58]  = 1'b1;
-        tb_pad_drive_val[58] = tb_octs_sync_load_ext;
-        tb_pad_drive_en[59]  = 1'b1;
-        tb_pad_drive_val[59] = tb_octs_cnt_credit_ext;
+        tb_pad_drive_en[55]  = 1'b1;
+        tb_pad_drive_val[55] = tb_octs_sync_load_ext;
+        tb_pad_drive_en[56]  = 1'b1;
+        tb_pad_drive_val[56] = tb_octs_cnt_credit_ext;
     end
 
     for (genvar gpio_idx = 0; gpio_idx < smc_pkg::NUM_GPIO_WRAPS; gpio_idx++) begin : gen_gpio_pad_drive
@@ -598,11 +621,11 @@ module smc_uvm_top
     assign tb_i2c0_smbalert = u_dut.u_smc.core2pad_en_o[I2C0_SMBALERT_PAD]
                               ? u_dut.u_smc.core2pad_o[I2C0_SMBALERT_PAD]
                               : 1'b1;
-    // AVSBus pads 49/50 (clk/mdata) and OCTS pads 58/59 (sync/credit) observe.
+    // AVSBus pads 49/50 (clk/mdata) and OCTS pads 55/56 (sync/credit) observe.
     assign tb_avs_clk_from_dut = u_dut.u_smc.core2pad_o[49];
     assign tb_avs_mdata_from_dut = u_dut.u_smc.core2pad_o[50];
-    assign tb_octs_sync_load_from_dut = u_dut.u_smc.core2pad_o[58];
-    assign tb_octs_cnt_credit_from_dut = u_dut.u_smc.core2pad_o[59];
+    assign tb_octs_sync_load_from_dut = u_dut.u_smc.core2pad_o[55];
+    assign tb_octs_cnt_credit_from_dut = u_dut.u_smc.core2pad_o[56];
 
     assign sep_axi_in_req.aw.id     = s_axi_awid;
     assign sep_axi_in_req.aw.addr   = s_axi_awaddr;
@@ -899,20 +922,21 @@ module smc_uvm_top
     // prim_*.mem inside smc_cpu_mem_integration (SEP posture).
     // ------------------------------------------------------------------
     logic        cpu_scratch0_inject_fire;
-    logic        ecc_probe_fire;
     logic [31:0] ecc_inject_fire_count_q;
 
-    assign ecc_probe_fire = tb_cpu_ecc_inject_probe &&
-        (tb_cpu_ecc_inject_sbe || tb_cpu_ecc_inject_dbe);
+    // Probe pin kept for cocotb init compatibility; do not OR into the score.
+    logic unused_ecc_probe;
+    assign unused_ecc_probe = tb_cpu_ecc_inject_probe;
 
     always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
         if (!rst_cold_ni) begin
             ecc_inject_fire_count_q <= '0;
-        end else if (cpu_scratch0_inject_fire || ecc_probe_fire) begin
+        end else if (cpu_scratch0_inject_fire) begin
             ecc_inject_fire_count_q <= ecc_inject_fire_count_q + 32'd1;
         end
     end
     assign tb_cpu_ecc_inject_fire_count = ecc_inject_fire_count_q;
+    assign tb_cpu_scratch0_inject_fire = cpu_scratch0_inject_fire;
 
     // ------------------------------------------------------------------
     // DTP CSR boundary (smc_wrapper only): NO TB err_slv (policy: no
@@ -997,7 +1021,7 @@ module smc_uvm_top
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (1'b1),
         .fuse_sense_done_o,
-        .fuse_reset_n_delayed_o     (),
+        .fuse_reset_n_delayed_o     (tb_fuse_reset_n),
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
         .sep_security_disable_i     (1'b0),
@@ -1040,9 +1064,9 @@ module smc_uvm_top
         .trace_mem_req_o            (),
         .trace_mem_resp_i           ('0),
         .ext_debug_bus_i            ('0),
-        // DFT scan controls: functional mode (scan disabled), scan reset
-        // deasserted -- matches smc.sv port names (test_en_i / scan_rst_ni).
-        .test_en_i                  (1'b0),
+        // DFT scan controls: cocotb drives tb_test_en_i (default 0 in bring-up).
+        // scan reset deasserted -- matches smc.sv port names (test_en_i / scan_rst_ni).
+        .test_en_i                  (tb_test_en_i),
         .scan_rst_ni                (1'b1),
         .captured_straps_i          ('0),
         // Without an external BISR/MBIST agent the boot sequencer would wait
@@ -1080,6 +1104,8 @@ module smc_uvm_top
     // Sense-done + sensed shadow probe (XMR into controller shadow regs, one
     // level deeper than bare tb_top: u_dut.u_smc.u_smc_peripherals...).
     assign tb_fuse_sense_done = fuse_sense_done_o;
+    // Warm domain leave-reset (post sync). Hierarchical observe for CSR waits.
+    assign tb_rst_warm_smc_clk_n = u_dut.u_smc.rst_warm_smc_clk_n;
     assign efuse_shadow_probe_o =
         u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller
             .u_efuse_shadow_regs.shadow_efuse_o;
@@ -1094,6 +1120,30 @@ module smc_uvm_top
 
     assign tb_i2c_debug_lo    = u_dut.u_smc.i2c_debug[0];
     assign tb_i2c_cg_en       = u_dut.u_smc.cg_ctrl_i2c_cg_en;
+    // Shared DMA gated clock = prim_clk_gater_hysteresis in idma_wrapper
+    // (request_manager + backend domain). Passive-only assign; no force/deposit.
+    assign tb_dma_cg_en = u_dut.u_smc.u_smc_base.cg_ctrl_dma_cg_en;
+    assign tb_dma_gated_clk =
+        u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
+            .request_maneger_cg.gated_clk_o;
+    assign tb_dma_busy = u_dut.u_smc.u_smc_base.dma_busy;
+    assign tb_dma_frontend_busy =
+        u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
+            .dma_frontend_busy;
+    assign tb_dma_backend_busy =
+        u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
+            .dma_backend_busy;
+    assign tb_dma_gater_busy =
+        u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
+            .dma_busy;
+    // Zeroer gated clocks / busy / enable — read-only assign; no force/deposit.
+    assign tb_zeroer_cg_en = u_dut.u_smc.u_smc_base.cg_ctrl_zeroer_cg_en;
+    assign tb_zeroer_gated_axi_clk =
+        u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.axi_clk;
+    assign tb_zeroer_gated_reg_clk =
+        u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.reg_clk;
+    assign tb_zeroer_busy = u_dut.u_smc.u_smc_base.zeroer_busy;
+    assign tb_zeroer_bus_active = u_dut.u_smc.u_smc_base.zeroer_bus_active;
     assign tb_sync_irq        = sync_irq;
     assign tb_gpio_irq_any    = |gpio_interrupt;
     assign tb_uart_irq_any    = |uart_interrupt;

@@ -232,6 +232,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"decerr_write.{target}",
             )
             self.operation_count += 1
+        self._emit_decode_error_nonvacuity("decerr_write")
 
     async def run_decode_error_decerr_read(self) -> None:
         self.log_banner("JTAG2AXI DECERR read decode path")
@@ -254,6 +255,26 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"decerr_read.{target}",
             )
             self.operation_count += 1
+        self._emit_decode_error_nonvacuity("decerr_read")
+
+    def _emit_decode_error_nonvacuity(self, label: str) -> None:
+        """CHK-AXI-NONVAC: every target returned exact DECERR and recovered.
+
+        A tied-off, idle, or always-OKAY bridge cannot satisfy this: each armed
+        DECERR credit must have been consumed by a real bus response, and each
+        target completed an OKAY recovery access afterwards.
+        """
+        scoreboard = self.axi_scoreboard
+        if scoreboard is None:
+            return
+        unconsumed = scoreboard.unconsumed_credits()
+        scoreboard.expect_nonvacuous(
+            self.operation_count >= len(ROBUST_TARGETS) and unconsumed == 0,
+            context=(
+                f"scenario={label} targets={self.operation_count} "
+                f"resp=DECERR credits_unconsumed={unconsumed}"
+            ),
+        )
 
     async def run_decode_error_mixed(self) -> None:
         self.log_banner("JTAG2AXI mixed mapped/unmapped decode access")

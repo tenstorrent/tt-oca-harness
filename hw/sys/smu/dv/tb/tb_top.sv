@@ -8,7 +8,7 @@
 // Real checkers consume:
 //   - rst_cold_stable_ref_clk_no / rst_primary_* after reset release
 //   - sep_global_base_o / sep_region_size_o (== 0 when SEP=0)
-//   - jtag_* IDCODE/BYPASS via OcahJtagTap
+//   - jtag_* IDCODE/BYPASS via OcahJtagMasterDriver
 //   - s_axi_* CSR frontdoor reads (VERSION_LO etc.)
 
 `timescale 1ps/1fs
@@ -28,7 +28,7 @@ module smu_uvm_top
     // External boot-sequence done gate (SMU_006); default-drive 1'b1 in base bring-up
     input  wire logic ext_boot_seq_done_i,
 
-    // Primary JTAG TAP (cocotb OcahJtagTap)
+    // Primary JTAG TAP (cocotb OcahJtagMasterDriver)
     input  wire logic jtag_tck,
     input  wire logic jtag_tms,
     input  wire logic jtag_trst,   // active-low
@@ -72,7 +72,7 @@ module smu_uvm_top
     output logic [1:0]      lcc_demote_state_2_o,
     // GPIO strap capture (reset-unit STRAPS_* readback source)
     input  wire logic [63:0] captured_straps_i,
-    // GPIO boot-stall pad bit[60] drive (OR'd into pad2core; Verilator-safe)
+    // GPIO boot-stall pad bit[57] drive (OR'd into pad2core; Verilator-safe)
     input  wire logic        gpio_boot_stall_drive_i,
     output logic [31:0] ext_mailbox_interrupts,
     output logic [31:0] jtag_ptap_state,
@@ -599,10 +599,11 @@ module smu_uvm_top
     assign jtag_ic_reset_smc_ovrd   = u_dut.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
     assign jtag_ic_reset_smc_ctrl_n = u_dut.jtag_smc_reset_ctrl.val.cold_reset_n_val;
 
-    // Loopback unused GPIO; OR TB drive for boot-stall pad bit[60].
+    // Loopback unused GPIO; OR TB drive for boot-stall pad bit[57]
+    // (smc_padring: boot_stall_o = lsio_pad2core_data[57]).
     // Continuous Force on pad2core is unreliable under Verilator.
     assign pad2core = core2pad |
         ({{(smc_pkg::NUM_GPIO_WRAPS-1){1'b0}}, gpio_boot_stall_drive_i}
-         << 60);
+         << 57);
 
 endmodule : smu_uvm_top

@@ -1,8 +1,8 @@
 schema_version = 1
 
 # SMU Phase-1 (SEP=0) — SMC / no-SEP stream.
-# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
-# Universe / deferred names: testlists/deferred.toml + docs/SMU_VPLAN.md
+# Executable contract: enrolled groups in this file / testlists/all.toml
+# Universe / deferred names: testlists/deferred.toml
 
 [[tests]]
 name = "smu_smc_smoke_test"
@@ -36,7 +36,13 @@ timeout_sec = 1800
 tags = ["smc", "reset", "phase1"]
 run_modes = ["smc"]
 
-# smc_mailbox_int_test → testlists/deferred.toml
+[[tests]]
+name = "smc_mailbox_int_test"
+module = "smc_mailbox_int_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "mailbox", "phase1", "smu_all_004"]
+run_modes = ["smc"]
 
 # smc_gpio_strap_sanity_test → testlists/deferred.toml
 

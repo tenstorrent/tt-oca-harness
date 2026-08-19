@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_drbg_tstrb_assembly.c
- * @brief DRBG Sampler partial-TSTRB (FR-0000-124) byte-assembly test
+ * @brief DRBG Sampler partial-TSTRB byte-assembly test
  *
  * Exposes the RTL bug where the active DATA-read and prefetch FSMs discarded
  * partial-TSTRB beats instead of accumulating them into a 32-bit word.
@@ -21,8 +21,6 @@
  *   - Use TB_CMD_DRBG_QUEUE_BEAT(tstrb) to enqueue that beat (value+tstrb pair).
  *   - Queue multiple beats before triggering the DATA read; the driver delivers
  *     them in order before resuming the default deterministic-random stream.
- *
- * Requirements: FR-0000-124, FR-0000-125, FR-0000-132.
  *
  * Run with:
  *   make run_fw FW_TEST=test_drbg_tstrb_assembly

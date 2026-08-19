@@ -15,6 +15,8 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
+
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
@@ -28,8 +30,8 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
+        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -48,18 +50,17 @@ static int run_kmac_with_prefix(const uint32_t *prefix, uint32_t *digest_out) {
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 1;
-    cfg.f.mode = 0x3; // cSHAKE = value 3 per hjson (sha3_mode_e::CShake = 2'b11); KMAC requires
-                      // cSHAKE for PREFIX
-    cfg.f.kstrength = 0x0;
-    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.mode = SEP_KMAC_MODE_CSHAKE;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
+    cfg.f.entropy_ready = 0;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-
-    setup_entropy();
 
     cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    setup_entropy();
 
     kmac__KEY_LEN_t kl = {.w = 0};
     kl.f.len = 0;
@@ -73,25 +74,26 @@ static int run_kmac_with_prefix(const uint32_t *prefix, uint32_t *digest_out) {
     for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), prefix[i]);
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29;
+    cmd.f.cmd = SEP_KMAC_CMD_START;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
 
     WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001);
 
-    cmd.f.cmd = 46;
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
         uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
-        uint32_t s1 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (0x100 + (i * 4))));
+        uint32_t s1 =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
         digest_out[i] = s0 ^ s1;
     }
 
-    cmd.f.cmd = 22;
+    cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
@@ -152,7 +154,26 @@ static int test_prefix(void) {
     for (int i = 0; i < 8; i++) printf("%08x ", digest_cust[i]);
     printf("\n");
 
-    printf("=== Step 5: Compare digests ===\n");
+    /* Kept-log goldens for this exact key/msg/prefix/right_encode stimulus. */
+    static const uint32_t expected_std[8] = {0xf7322bbcu, 0x1effb4fcu, 0xfb8f2dd6u, 0x4b997277u,
+                                             0xe64719abu, 0x8f73efe1u, 0x03f46236u, 0xb8a6f3deu};
+    static const uint32_t expected_cust[8] = {0x419b4f29u, 0xc62b44b6u, 0x4c0e0ed9u, 0x2d75e9bau,
+                                              0x83c8ef15u, 0x93c28ee2u, 0x1d96571eu, 0x55b49d09u};
+
+    printf("=== Step 5: Exact digest compare ===\n");
+    for (int i = 0; i < 8; i++) {
+        if (digest_std[i] != expected_std[i]) {
+            printf("FAIL: std DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_std[i],
+                   expected_std[i]);
+            errors++;
+        }
+        if (digest_cust[i] != expected_cust[i]) {
+            printf("FAIL: cust DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_cust[i],
+                   expected_cust[i]);
+            errors++;
+        }
+    }
+
     int same = 1;
     for (int i = 0; i < 8; i++) {
         if (digest_std[i] != digest_cust[i]) {

@@ -7,8 +7,8 @@
  * @brief DRBG Sampler timeout precise-boundary regression test
  *
  * Verifies that a DRBG DATA read times out after EXACTLY CFG.TIMEOUT active
- * wait cycles in StRequest/StByteAssembly (FR-0000-122), with no off-by-one
- * extension and no underflow of `timeout_cnt`.
+ * wait cycles in StRequest/StByteAssembly, with no off-by-one extension and no
+ * underflow of `timeout_cnt`.
  *
  * Method (firmware-observable, deterministic on a single-issue in-order CPU):
  *

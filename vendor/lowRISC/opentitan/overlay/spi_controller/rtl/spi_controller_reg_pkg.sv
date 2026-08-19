@@ -112,36 +112,36 @@ package spi_controller_reg_pkg;
 
     typedef struct {
         logic next;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CMDBUSY_hwenable_ec86ccc8__in_t;
+    } spi_controller__ERROR_STATUS__CMDBUSY__in_t;
 
     typedef struct {
         logic next;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__OVERFLOW_hwenable_482c2b88__in_t;
+    } spi_controller__ERROR_STATUS__OVERFLOW__in_t;
 
     typedef struct {
         logic next;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__UNDERFLOW_hwenable_a9bfcad2__in_t;
+    } spi_controller__ERROR_STATUS__UNDERFLOW__in_t;
 
     typedef struct {
         logic next;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CMDINVAL_hwenable_36cd7167__in_t;
+    } spi_controller__ERROR_STATUS__CMDINVAL__in_t;
 
     typedef struct {
         logic next;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CSIDINVAL_hwenable_f60f276e__in_t;
+    } spi_controller__ERROR_STATUS__CSIDINVAL__in_t;
 
     typedef struct {
         logic next;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__ACCESSINVAL__in_t;
+    } spi_controller__ERROR_STATUS__ACCESSINVAL__in_t;
 
     typedef struct {
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CMDBUSY_hwenable_ec86ccc8__in_t CMDBUSY;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__OVERFLOW_hwenable_482c2b88__in_t OVERFLOW;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__UNDERFLOW_hwenable_a9bfcad2__in_t UNDERFLOW;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CMDINVAL_hwenable_36cd7167__in_t CMDINVAL;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CSIDINVAL_hwenable_f60f276e__in_t CSIDINVAL;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__ACCESSINVAL__in_t ACCESSINVAL;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__in_t;
+        spi_controller__ERROR_STATUS__CMDBUSY__in_t CMDBUSY;
+        spi_controller__ERROR_STATUS__OVERFLOW__in_t OVERFLOW;
+        spi_controller__ERROR_STATUS__UNDERFLOW__in_t UNDERFLOW;
+        spi_controller__ERROR_STATUS__CMDINVAL__in_t CMDINVAL;
+        spi_controller__ERROR_STATUS__CSIDINVAL__in_t CSIDINVAL;
+        spi_controller__ERROR_STATUS__ACCESSINVAL__in_t ACCESSINVAL;
+    } spi_controller__ERROR_STATUS__in_t;
 
     typedef struct {
         spi_controller__INTR_STATUS__in_t INTR_STATUS;
@@ -149,7 +149,7 @@ package spi_controller_reg_pkg;
         spi_controller__CMD__external__in_t CMD;
         spi_controller__RXDATA__external__in_t RXDATA;
         spi_controller__TXDATA__external__in_t TXDATA;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__in_t ERROR_STATUS;
+        spi_controller__ERROR_STATUS__in_t ERROR_STATUS;
     } spi_controller__in_t;
 
     typedef struct {
@@ -285,37 +285,65 @@ package spi_controller_reg_pkg;
 
     typedef struct {
         logic value;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CMDBUSY_hwenable_ec86ccc8__out_t;
+    } spi_controller__ERROR_ENABLE__CMDBUSY__out_t;
 
     typedef struct {
         logic value;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__OVERFLOW_hwenable_482c2b88__out_t;
+    } spi_controller__ERROR_ENABLE__OVERFLOW__out_t;
 
     typedef struct {
         logic value;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__UNDERFLOW_hwenable_a9bfcad2__out_t;
+    } spi_controller__ERROR_ENABLE__UNDERFLOW__out_t;
 
     typedef struct {
         logic value;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CMDINVAL_hwenable_36cd7167__out_t;
+    } spi_controller__ERROR_ENABLE__CMDINVAL__out_t;
 
     typedef struct {
         logic value;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CSIDINVAL_hwenable_f60f276e__out_t;
+    } spi_controller__ERROR_ENABLE__CSIDINVAL__out_t;
+
+    typedef struct {
+        spi_controller__ERROR_ENABLE__CMDBUSY__out_t CMDBUSY;
+        spi_controller__ERROR_ENABLE__OVERFLOW__out_t OVERFLOW;
+        spi_controller__ERROR_ENABLE__UNDERFLOW__out_t UNDERFLOW;
+        spi_controller__ERROR_ENABLE__CMDINVAL__out_t CMDINVAL;
+        spi_controller__ERROR_ENABLE__CSIDINVAL__out_t CSIDINVAL;
+    } spi_controller__ERROR_ENABLE__out_t;
 
     typedef struct {
         logic value;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__ACCESSINVAL__out_t;
+    } spi_controller__ERROR_STATUS__CMDBUSY__out_t;
 
     typedef struct {
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CMDBUSY_hwenable_ec86ccc8__out_t CMDBUSY;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__OVERFLOW_hwenable_482c2b88__out_t OVERFLOW;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__UNDERFLOW_hwenable_a9bfcad2__out_t UNDERFLOW;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CMDINVAL_hwenable_36cd7167__out_t CMDINVAL;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__CSIDINVAL_hwenable_f60f276e__out_t CSIDINVAL;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__ACCESSINVAL__out_t ACCESSINVAL;
+        logic value;
+    } spi_controller__ERROR_STATUS__OVERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } spi_controller__ERROR_STATUS__UNDERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } spi_controller__ERROR_STATUS__CMDINVAL__out_t;
+
+    typedef struct {
+        logic value;
+    } spi_controller__ERROR_STATUS__CSIDINVAL__out_t;
+
+    typedef struct {
+        logic value;
+    } spi_controller__ERROR_STATUS__ACCESSINVAL__out_t;
+
+    typedef struct {
+        spi_controller__ERROR_STATUS__CMDBUSY__out_t CMDBUSY;
+        spi_controller__ERROR_STATUS__OVERFLOW__out_t OVERFLOW;
+        spi_controller__ERROR_STATUS__UNDERFLOW__out_t UNDERFLOW;
+        spi_controller__ERROR_STATUS__CMDINVAL__out_t CMDINVAL;
+        spi_controller__ERROR_STATUS__CSIDINVAL__out_t CSIDINVAL;
+        spi_controller__ERROR_STATUS__ACCESSINVAL__out_t ACCESSINVAL;
         logic intr;
-    } spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__out_t;
+    } spi_controller__ERROR_STATUS__out_t;
 
     typedef struct {
         logic value;
@@ -359,7 +387,8 @@ package spi_controller_reg_pkg;
         spi_controller__CMD__external__out_t CMD;
         spi_controller__RXDATA__external__out_t RXDATA;
         spi_controller__TXDATA__external__out_t TXDATA;
-        spi_controller__ERROR_STATUS_CMDBUSY_610d1fb8_CMDINVAL_5f890e60_CSIDINVAL_52ab238c_OVERFLOW_b3d067e6_UNDERFLOW_cfe1cef2__out_t ERROR_STATUS;
+        spi_controller__ERROR_ENABLE__out_t ERROR_ENABLE;
+        spi_controller__ERROR_STATUS__out_t ERROR_STATUS;
         spi_controller__EVENT_ENABLE__out_t EVENT_ENABLE;
     } spi_controller__out_t;
 endpackage

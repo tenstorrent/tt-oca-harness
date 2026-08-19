@@ -113,13 +113,23 @@ class smu_no_sep_configuration_test_seq:
         self._step_ts["PASS"] = time.monotonic()
         self._log("SMU_005 sequence complete (PASS term recorded for NONVAC fence)")
 
+        # Measured ordered-fence pairs (not True/True literals).
         order = ["S1", "S2", "PASS"]
-        for step_id in order:
-            if step_id not in self._step_ts:
-                raise AssertionError(f"CHK-NONVAC missing step term: {step_id}")
-        for a, b in zip(order, order[1:]):
-            if self._step_ts[a] >= self._step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        chk_nonvac = "CHK-NONVAC: ordered fence S2<PASS all present"
+        pairs_ok = sum(
+            1
+            for a, b in zip(order, order[1:])
+            if a in self._step_ts
+            and b in self._step_ts
+            and self._step_ts[a] < self._step_ts[b]
+        )
+        chk_nonvac = (
+            f"CHK-NONVAC: ordered fence S1<S2<PASS "
+            f"(pairs_ok={pairs_ok} expect={len(order) - 1})"
+        )
         self._log(chk_nonvac)
-        sb.expect_eq("CHK-NONVAC ordered fence", True, True, evidence="CHK-NONVAC")
+        sb.expect_eq(
+            "CHK-NONVAC ordered fence",
+            pairs_ok,
+            len(order) - 1,
+            evidence="CHK-NONVAC",
+        )

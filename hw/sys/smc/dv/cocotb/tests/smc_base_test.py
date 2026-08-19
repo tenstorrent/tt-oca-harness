@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared PyUVM base test for SMC OSS (`--dut smc_wrapper`).
+"""Shared PyUVM base test for SMC OSS (`--dut smc`).
 
 Builds `SmcEnv`, runs power-good + cold-reset bring-up, and delegates scenario
 work to `run_scenario()`.
@@ -191,6 +191,9 @@ class smc_base_test(uvm_test):
             dut.tb_i3c0_scl_ext_low.value = 0
         if hasattr(dut, "tb_i3c0_sda_ext_low"):
             dut.tb_i3c0_sda_ext_low.value = 0
+        # DFT test_en defaults deasserted (functional mode).
+        if hasattr(dut, "tb_test_en_i"):
+            dut.tb_test_en_i.value = 0
         if hasattr(dut, "tb_cpu_jtag_tck"):
             dut.tb_cpu_jtag_tck.value = 0
             dut.tb_cpu_jtag_tms.value = 1

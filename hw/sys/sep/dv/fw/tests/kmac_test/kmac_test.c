@@ -19,7 +19,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
-
+#include "sep_kmac.h"
 // Simple test: all zeros for now to verify hardware works
 static const uint32_t test_key[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -48,9 +48,8 @@ static int wait_for_done(void) {
     uint32_t intr_state;
     while (timeout-- > 0) {
         intr_state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
-        if (intr_state & 0x1) { // kmac_done interrupt
-            // Clear interrupt
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
+        if (intr_state & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -70,35 +69,29 @@ static int kmac128_simple_test(void) {
     // Step 2: Configure for KMAC-128 BEFORE setting key
     printf("Step 2: Configuring for KMAC-128...\n");
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
-    cfg.f.kmac_en = 1;          // KMAC mode
-    cfg.f.mode = 0x2;           // cSHAKE mode (required for KMAC)
-    cfg.f.kstrength = 0x0;      // L128 (128-bit security strength)
+    cfg.f.kmac_en = 1; // KMAC mode
+    cfg.f.mode = SEP_KMAC_MODE_CSHAKE;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
     cfg.f.msg_endianness = 0;   // Little-endian
     cfg.f.state_endianness = 0; // Little-endian
-    cfg.f.entropy_mode = 0x1;   /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
-    cfg.f.entropy_ready = 0;    // Will set separately
-    cfg.f.msg_mask = 0;         // No message masking
-    cfg.f.sideload = 0;         // Use SW key (KEY_SHARE0/1); deprecated, DV only
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
+    cfg.f.entropy_ready = 0;
+    cfg.f.msg_mask = 0;
+    cfg.f.sideload = 0;
 
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w); // Write twice (shadowed)
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     printf("  CFG written (entropy_mode=SW)\n");
 
-    // Step 2b: Provide entropy seed for SW mode
-    printf("Step 2b: Providing entropy seed...\n");
-    // Write ENTROPY_SEED register 6 times (each write loads 32-bit chunk)
-    // Using a simple pattern for testing
-    for (int i = 0; i < 6; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
-    }
-    printf("  Entropy seed written (6 x 32-bit chunks)\n");
-
-    // Step 2c: Signal that entropy is ready (required for EnMasking=1)
-    printf("Step 2c: Setting entropy_ready...\n");
-    cfg.f.entropy_ready = 1; // Signal entropy is ready
+    // entropy_ready first, then 6 SW seed words (StSwSeedWait)
+    printf("Step 2b: Setting entropy_ready then seeding...\n");
+    cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w); // Write twice (shadowed)
-    printf("  entropy_ready set\n");
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
+        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + (uint32_t)i);
+    }
+    printf("  entropy_ready + seed done\n");
 
     // Step 3: Set key length (deprecated SW path for DV)
     printf("Step 3: Setting KEY_LEN to Key128...\n");
@@ -124,7 +117,7 @@ static int kmac128_simple_test(void) {
     // Step 6: Issue START
     printf("Step 6: Issuing START...\n");
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29; // CmdStart
+    cmd.f.cmd = SEP_KMAC_CMD_START; // CmdStart
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     print_status("  After START");
 
@@ -143,7 +136,7 @@ static int kmac128_simple_test(void) {
 
     // Step 9: Issue PROCESS
     printf("Step 9: Issuing PROCESS...\n");
-    cmd.f.cmd = 46; // CmdProcess
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS; // CmdProcess
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     print_status("  After PROCESS");
 
@@ -163,10 +156,10 @@ static int kmac128_simple_test(void) {
         share0[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
     }
 
-    // Read share 1 (offset by 256 bytes = 0x100 from share0)
-    // According to OpenTitan: "0x500 - 0x5C7: Mask share of the state"
+    // Read share 1 (SEP_KMAC_STATE_SHARE1_OFFSET into STATE window)
     for (int i = 0; i < 8; i++) {
-        share1[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (0x100 + (i * 4))));
+        share1[i] =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
     }
 
     // XOR shares to get actual digest
@@ -194,21 +187,26 @@ static int kmac128_simple_test(void) {
 
     // Step 12: Issue DONE
     printf("Step 12: Issuing DONE...\n");
-    cmd.f.cmd = 22; // CmdDone
+    cmd.f.cmd = SEP_KMAC_CMD_DONE; // CmdDone
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     print_status("  After DONE");
 
-    // Check if we got non-zero digest
-    int non_zero = 0;
+    /* Kept-log golden for this exact stimulus (zero Key128, "test", right_encode word). */
+    static const uint32_t expected[8] = {0xddfe0cb1u, 0x2d03e2e8u, 0x599a8018u, 0xb3142692u,
+                                         0x342fa6a8u, 0xcb802413u, 0x00c7694fu, 0x92934aa6u};
+    int mismatch = 0;
     for (int i = 0; i < 8; i++) {
-        if (digest[i] != 0) non_zero = 1;
+        if (digest[i] != expected[i]) {
+            printf("FAIL: DIGEST_%d=0x%08x expected=0x%08x\n", i, digest[i], expected[i]);
+            mismatch = 1;
+        }
     }
 
-    if (non_zero) {
-        printf("\n*** KMAC-128 TEST PASSED (got non-zero digest) ***\n");
+    if (!mismatch) {
+        printf("\n*** KMAC-128 TEST PASSED (exact digest match) ***\n");
         return 0;
     } else {
-        printf("\n*** KMAC-128 TEST FAILED (digest is all zeros) ***\n");
+        printf("\n*** KMAC-128 TEST FAILED (digest mismatch) ***\n");
         return -1;
     }
 }

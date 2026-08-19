@@ -10,7 +10,60 @@
 
 [WARNING]
 ====
-This section is currently under development. Placeholder for the future
-OCAH Programmer's Guide documentation product. More content will be added as the
-project matures.
+This documentation product is currently under development. More content will be
+added as the project matures.
 ====
+
+ifdef::backend-html5[]
+== Documentation Overview
+
+* xref:index.adoc#sep-cpu-bring-up[SEP CPU Bring-Up] - Firmware bring-up requirements for the SEP VeeR-EL2 core
+endif::backend-html5[]
+
+[[sep-cpu-bring-up]]
+== SEP CPU Bring-Up
+
+[[sep-nmi-vector-programming]]
+=== NMI Vector Programming
+
+The Security Processor (SEP) runs a VeeR-EL2 core whose Non-Maskable Interrupt
+is driven by the watchdog timer bark (`sep.sv` wires `nmi_int` to
+`intr_wdog_timer_bark`). When the NMI asserts, the core jumps to the address
+held in the `SEP_NMI_VEC` register of the `sep_cpu_ctrl` block (offset `0x180`).
+
+Software reads and writes `SEP_NMI_VEC` as a byte address. The register's
+`nmi_vec` field occupies bits 31:1, so bit 0 is reserved and always reads back
+as zero; the hardware imposes no stricter alignment than that. The reference DV
+firmware nevertheless aligns its NMI trampoline to 256 bytes, which the linker
+script enforces.
+
+[WARNING]
+====
+The `SEP_NMI_VEC` reset value (`0xC000_0100`) is a placeholder. It does not
+point at a valid handler, and no part of the boot flow makes it one. Firmware
+must complete the following sequence before enabling the watchdog timer or any
+other NMI source:
+
+. Place an NMI handler in ICCM.
+. Write the handler's address to `SEP_NMI_VEC`.
+. Set `SEP_NMI_VEC_LOCK` (offset `0x188`) to freeze the vector until the next
+  reset.
+. Only then enable the WDT.
+
+If a bark arrives while the reset value is still in place, the core jumps to
+`0xC000_0100` and executes whatever occupies that location: arbitrary
+instructions if the loaded image covers it, or an uncorrectable ICCM ECC error
+if it does not. The ECC case re-raises NMI, so the core makes no forward
+progress.
+====
+
+Because `SEP_NMI_VEC_LOCK` is write-one-to-set and sticky until reset, the
+vector cannot be repointed once locked. Firmware that needs to install a
+different handler after lock must do so through its own indirection — the
+reference firmware keeps a runtime-writable handler pointer that the trampoline
+dispatches through, so the locked vector always targets the trampoline.
+
+If the watchdog bite threshold is also enabled, an unserviced bark still
+escalates to the watchdog reset path and resets the SEP. A mis-programmed
+vector therefore degrades to a watchdog reset rather than a silent hang, but it
+does so only after the bite interval and without running any handler.

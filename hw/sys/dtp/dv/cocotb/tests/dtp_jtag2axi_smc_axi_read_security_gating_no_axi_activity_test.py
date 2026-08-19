@@ -12,6 +12,24 @@ from seq_lib.dtp_jtag2axi_smc_axi_rd_test_seq import dtp_jtag2axi_smc_axi_rd_tes
 class dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test(dtp_base_test):
     """Run the `read_security_gating_no_axi_activity` SMC fabric JTAG2AXI scenario."""
 
+    # Directed one-pass scenario: security gating is a deterministic
+    # must-NOT-happen property checked per lifecycle bit with baseline/restore
+    # positive controls; randomized read traffic on the same port lives in
+    # dtp_jtag2axi_smc_axi_read_random_ops_test.
+    #
+    # Shared AXI checker: gated attempts must show zero request activity
+    # (pulse counters plus a blocked window held across lifecycle re-enable,
+    # and an exact activity delta through the restore read), while
+    # baseline/restore reads prove the observation path is alive.
+    use_axi_scoreboard = True
+    axi_checker_required_ids = (
+        "CHK-AXI-NOACT",
+        "CHK-AXI-RESP",
+        "CHK-AXI-RDATA",
+        "CHK-AXI-NONVAC",
+    )
+    axi_checker_stream_minimums = {"smc_axi": 2}
+
     async def run_scenario(self) -> None:
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_smc_axi_rd_test_seq,

@@ -44,12 +44,58 @@ async def axi_read32_resp_ids(
     *,
     arid: int | None = None,
 ) -> tuple[int, object, int, int]:
-    """Return (rdata32, AxiResp, arid_issued, rid_returned)."""
+    """Return (rdata32, AxiResp, arid_issued, rid_returned).
+
+    RID comes from the live R-channel id on the completing beat. Never fall back
+    to the issued ARID — that made RID==ARID compares tautological under
+    cocotbext.axi AxiReadResp (no id field).
+    """
     issued = 0 if arid is None else int(arid)
-    beat = await master.read(addr, 4, arid=arid)
+    read_if = master.read_if
+    bus_r = read_if.bus.r
+    clock = read_if.clock
+    captured: dict[str, int | None] = {"rid": None}
+
+    async def _watch_rid() -> None:
+        while True:
+            await RisingEdge(clock)
+            try:
+                if int(bus_r.rvalid.value) == 0 or int(bus_r.rready.value) == 0:
+                    continue
+            except ValueError:
+                continue
+            rid_val = bus_r.rid.value
+            if not rid_val.is_resolvable:
+                raise AssertionError(f"X/Z on rid during beat: {rid_val}")
+            captured["rid"] = int(rid_val)
+            try:
+                if int(bus_r.rlast.value) == 1:
+                    return
+            except ValueError:
+                return
+
+    watcher = cocotb.start_soon(_watch_rid())
+    try:
+        beat = await master.read(addr, 4, arid=arid)
+    except Exception:
+        if not watcher.done():
+            watcher.kill()
+        raise
+
+    if not watcher.done():
+        for _ in range(8):
+            if watcher.done():
+                break
+            await RisingEdge(clock)
+        if not watcher.done():
+            watcher.kill()
+
+    if captured["rid"] is None:
+        raise AssertionError(
+            f"RID capture miss after read addr=0x{addr:08x} arid=0x{issued:x}"
+        )
     value = int.from_bytes(bytes(beat.data), byteorder="little")
-    rid = int(beat.id) if hasattr(beat, "id") else issued
-    return value, beat.resp, issued, rid
+    return value, beat.resp, issued, int(captured["rid"])
 
 
 async def axi_read32_resp_ids_bounded(
@@ -67,6 +113,8 @@ async def axi_read32_resp_ids_bounded(
             timeout_time=timeout_ns,
             timeout_unit="ns",
         )
+    except AssertionError:
+        raise
     except Exception:
         raise AssertionError(
             f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp addr=0x{addr:08x}"
@@ -96,11 +144,53 @@ async def axi_write32_resp_ids(
     *,
     awid: int | None = None,
 ) -> tuple[object, int, int]:
-    """Return (AxiResp, awid_issued, bid_returned)."""
+    """Return (AxiResp, awid_issued, bid_returned).
+
+    BID is sampled from the live B-channel id — never fall back to issued AWID.
+    """
     issued = 0 if awid is None else int(awid)
-    beat = await master.write(addr, value.to_bytes(4, byteorder="little"), awid=awid)
-    bid = int(beat.id) if hasattr(beat, "id") else issued
-    return beat.resp, issued, bid
+    write_if = master.write_if
+    bus_b = write_if.bus.b
+    clock = write_if.clock
+    captured: dict[str, int | None] = {"bid": None}
+
+    async def _watch_bid() -> None:
+        while True:
+            await RisingEdge(clock)
+            try:
+                if int(bus_b.bvalid.value) == 0 or int(bus_b.bready.value) == 0:
+                    continue
+            except ValueError:
+                continue
+            bid_val = bus_b.bid.value
+            if not bid_val.is_resolvable:
+                raise AssertionError(f"X/Z on bid during beat: {bid_val}")
+            captured["bid"] = int(bid_val)
+            return
+
+    watcher = cocotb.start_soon(_watch_bid())
+    try:
+        beat = await master.write(
+            addr, value.to_bytes(4, byteorder="little"), awid=awid
+        )
+    except Exception:
+        if not watcher.done():
+            watcher.kill()
+        raise
+
+    if not watcher.done():
+        for _ in range(8):
+            if watcher.done():
+                break
+            await RisingEdge(clock)
+        if not watcher.done():
+            watcher.kill()
+
+    if captured["bid"] is None:
+        raise AssertionError(
+            f"BID capture miss after write addr=0x{addr:08x} awid=0x{issued:x}"
+        )
+    return beat.resp, issued, int(captured["bid"])
 
 
 async def wait_signal_high(signal, clk, timeout_cycles: int = 5000, name: str = "sig") -> None:

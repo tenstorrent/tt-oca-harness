@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_kpv_km_access.c
- * @brief KPV KM port access test (FR-0000-100, SC-0000-011)
+ * @brief KPV KM port access test
  *
  * Verifies KM port: write/read key slot and control; lock_write/lock_use
  * cause access violations (SLVERR). This test does basic read/write and
@@ -43,7 +43,7 @@ int main(void) {
     KPV_KEY_WORD_REG(0, 2).w = 0x33333333u;
     KPV_KEY_WORD_REG(0, 3).w = 0x44444444u;
     KPV_KEY_WORD_REG(0, 4).w = 0x55555555u;
-    /* Set last_dword = 2 so words 0..2 are valid; words 3+ must read as 0 (FR-0000-105) */
+    /* Set last_dword = 2 so words 0..2 are valid; words 3+ must read as 0 */
     KPV_CTRL_REG(0).f.last_dword = 2u;
 
     /* Read back within range: must see written values */
@@ -122,8 +122,7 @@ int main(void) {
         }
     }
 
-    TEST_LOG(
-        "KPV KM access test done (lock_use/lock_write set; SLVERR on violation per SC-0000-011)");
+    TEST_LOG("KPV KM access test done (lock_use/lock_write set; SLVERR on violation)");
     TEST_PASS();
     return 0;
 }

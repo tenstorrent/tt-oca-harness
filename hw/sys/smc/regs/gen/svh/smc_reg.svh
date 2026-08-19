@@ -8032,7 +8032,7 @@ localparam int unsigned RESET_UNIT_SS_FORCE_TO_REF_CLK_FORCE_SS_TO_REF_CLK_N_SHI
 localparam int unsigned RESET_UNIT_STRAPS_LO_STRAPS_MASK                                                          = 32'hFFFFFFFF;
 localparam int unsigned RESET_UNIT_STRAPS_LO_STRAPS_SHIFT                                                         = 0;
 
-localparam int unsigned RESET_UNIT_STRAPS_HI_STRAPS_MASK                                                          = 32'hFFFFFFFF;
+localparam int unsigned RESET_UNIT_STRAPS_HI_STRAPS_MASK                                                          = 32'h1FFFFFFF;
 localparam int unsigned RESET_UNIT_STRAPS_HI_STRAPS_SHIFT                                                         = 0;
 
 localparam int unsigned RESET_UNIT_SYNC_REG_SYNC_MASK                                                             = 32'h1;
@@ -12051,7 +12051,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   straps ;
+    logic [28:0]   straps ;
 } reset_unit_straps_hi_reg_t;
 
 
