@@ -16,9 +16,8 @@ or serve the generated pages.
 [NOTE]
 ====
 The product-facing dashboard page in the OCAH TRM is a separate visual
-placeholder. This command implements static report generation, but no
-repository CI workflow currently invokes the complete collect-to-publish
-pipeline automatically.
+placeholder. Repository CI publishes normalized nightly data for the external
+website pipeline, but it does not render or host dashboard HTML.
 ====
 
 == Architecture
@@ -494,10 +493,13 @@ When `--run-dir` is omitted, collection reads:
 The explicit path is current-working-directory-relative, not
 repository-root-relative.
 
-When passing a file, it must still be the result inside its original run tree:
-the collector treats the file's parent as the run root. An exported copy loses
-automatic discovery of regression, leaf, JUnit, and optional `run.json`
-material.
+The collector treats the selected file's parent as the available run root.
+When a downloaded artifact has been relocated, native paths that begin under
+the recorded `run_dir` are rebased onto this available root. The original
+`run_dir` string remains the recorded run identity; normalized
+`artifacts.run_dir` carries it into trend-point identity and `run_metadata`
+retains it for inspection. A standalone exported copy still loses automatic discovery of
+regression, leaf, and JUnit material because those files are not beside it.
 
 `--framework` names the framework view to collect for a DUT that implements
 more than one test framework (for example `--dut dtp --framework uvm`); when
@@ -522,8 +524,11 @@ Collection performs these steps:
 
 . Load the native run-level result.
 . Load `stages/regress/regression.json` when present.
+. Rebase recorded run-tree paths onto the selected run root.
 . Load leaf fragments and test metadata to build `tests_detail`.
-. Record JUnit/xUnit paths and whether they exist.
+. Prefer each leaf's `artifacts.results_xml`, then parser evidence, then
+  log-layout inference when locating JUnit/xUnit files.
+. Record the resolved JUnit/xUnit paths and whether they exist.
 . Convert the native result to dashboard schema version `"0.1"`.
 . Copy selected coverage output beside the normalized result.
 . Write the normalized result.
@@ -543,7 +548,9 @@ Coverage staging uses:
 
 Only coverage report and manifest material is copied. Native logs, result
 fragments, JUnit files, waveforms, and run directories remain references to
-their original paths.
+the selected run tree. Collection resolves those references correctly while
+that tree is available; durable packaging/publication of the referenced files
+is a separate pipeline concern.
 
 [WARNING]
 ====
@@ -612,7 +619,10 @@ rewritten to their staged locations.
 |Native tool, versions, executor, generated time, overrides, and Git
 information are nested under `run_metadata`. `run_metadata.selection` comes
 only from `regression.json`; selected native artifacts are instead copied into
-the dashboard record's top-level `artifacts`.
+the dashboard record's top-level `artifacts`. `run_metadata.run_dir` preserves
+the original run identity even when artifact paths are rebased to an explicit
+download root; top-level `artifacts.run_dir` preserves the same value for
+dashboard/trend consumers.
 |===
 
 The collector performs only shallow native validation: the input must be a JSON
@@ -869,7 +879,7 @@ collection found per-test material.
 `failure_buckets`, `artifacts`. Present for scheduler runs.
 
 |`warnings` |array |Collector warning strings, for example missing JUnit
-files.
+files. Absence of optional `run.json` is not a warning.
 |===
 
 Coverage staging rewrites: when `collect` copies coverage output into the
@@ -884,7 +894,10 @@ percentages, and each metric is duplicated as a top-level
 `artifacts` keys: `result_json` (always present), `run_dir`, `run_json`,
 `regression_json`, `log` (a failing test's log when one exists, else the
 first simulation log), and `coverage_`-prefixed keys mirroring the staged
-coverage paths above. All are repository- or bundle-relative path strings.
+coverage paths above. Paths inside the checkout are repository-relative;
+paths in an explicit out-of-tree download root are absolute.
+`artifacts.run_dir` is the exception: it intentionally remains the native
+recorded identity rather than the selected download path.
 
 `run_metadata` keys: `run_dir`, `result_json`, `run_json`, `label`, `items`,
 `stages` (stage-name list), `tool`, `tool_version`, `tool_versions`,
@@ -1143,6 +1156,10 @@ the nightly regression results as **data only** — no HTML is rendered or
 hosted by this repository. The website that renders the dashboard is owned
 externally and consumes the published data.
 
+The `sim` workflow also runs the simulator-independent `dashboard-collector`
+job on every trigger. It verifies explicit downloaded-root rebasing, JUnit
+artifact precedence, fallback resolution, and in-place compatibility.
+
 . The `sim` workflow's nightly tier uploads the native run tree as the
   artifact `dv-run-<dut>-<tool>-nightly` (see the CI section in
   xref:run-dv.adoc[DV and FV Runner]).
@@ -1187,8 +1204,6 @@ Operational rules:
   `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
   provisioned; the step self-disables while they are absent, and GitHub's
   native scheduled-workflow failure notification covers the interim.
-* Pull requests get a sticky smoke-summary comment from the `sim` workflow's
-  `pr-comment` job instead of an email.
 
 == Troubleshooting
 
@@ -1199,12 +1214,13 @@ repository root through the locked `uv` command shown in
 <<dashboard-environment,Environment and path rules>>, or activate an equivalent Python
 environment.
 
-=== Collection reports missing `run.json`
+=== Collection reports missing JUnit XML after artifact download
 
-The collector looks for optional `<run>/run.json`, but the current runner does
-not emit it. The warning is expected and does not change collection status.
-Use native `result.json`, stage records, and regression metadata for
-reproducibility.
+Pass the downloaded run-tree root with `--run-dir`, not a copied
+`result.json` by itself. The collector rebases recorded paths beneath native
+`run_dir`, prefers `artifacts.results_xml`, and checks the corresponding file
+under the explicit root. A remaining warning means the referenced file is
+actually absent or the input is no longer a complete run tree.
 
 === Collection produced UNKNOWN but exited zero
 
