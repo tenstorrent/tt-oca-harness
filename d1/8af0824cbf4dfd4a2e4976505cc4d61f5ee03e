@@ -1,0 +1,21 @@
+hw/sys/smc/doc/periphs.adoc
+  s_c8ce40a7fc1aa0::t_7331468b3d3b1f 57-58,102-103
+hw/sys/smc/doc/memmap.adoc
+  s_c8ce40a7fc1aa0::t_fb5f94a9b811c4 291-346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d18af0824cbf4dfd4a2e4976505cc4d61f5ee03e",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
