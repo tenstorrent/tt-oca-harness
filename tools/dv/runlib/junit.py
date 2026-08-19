@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Derived JUnit XML: the structured-result guarantee for simulation leaves.
 
 Framework-neutral rule: every executed simulation leaf ends with xUnit XML at
