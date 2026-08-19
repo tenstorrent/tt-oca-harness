@@ -7,7 +7,7 @@ on:
   issues:
     types: [opened, edited]
   pull_request:
-    types: [opened]
+    types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
@@ -37,3 +37,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/ingest_github.py --pr-assign "${{ github.event.pull_request.number }}"
+
+  pr-no-body-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR bodies are not gated
+        run: echo "issue-pr-ingest does not require Summary or Test plan; project fields live on issues."
