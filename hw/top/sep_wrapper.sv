@@ -94,7 +94,7 @@ module sep_wrapper
         input  logic spi_irq_i,
 
         output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
-        output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
+        output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
         output logic lc_sigint_err_o,
         output logic security_disable_o,
 
