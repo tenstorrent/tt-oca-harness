@@ -128,6 +128,7 @@ CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
 # not a freestanding header, and in the toolchain container it only resolves
 # through the picolibc spec file - hence the specs on the compile line only.
 CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
+	-MMD -MP \
 	--specs=picolibc.specs \
 	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
@@ -212,6 +213,13 @@ $(FLAGS_STAMP): FORCE | $(BUILD_DIR)
 	fi
 
 $(OBJS): $(FLAGS_STAMP)
+
+# Header dependencies (gcc -MMD -MP). Without these, a header edit that changes a
+# shared struct layout (e.g. bl0_state.h) leaves stale objects with the old layout —
+# a split-brain link where one .o writes a field at the old offset and another reads
+# it at the new one (seen: bl0_state.lc_state read as garbage after a rebase, failing
+# the manifest usage-constraint check). Header edits now rebuild dependents.
+-include $(OBJS:.o=.d)
 
 # Static version header (the internal build derives this from git; not needed here).
 $(BUILD_DIR)/bl0_version.h: | $(BUILD_DIR)
