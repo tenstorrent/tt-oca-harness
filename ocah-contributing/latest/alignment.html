@@ -181,10 +181,15 @@ It prefixes the title from those picks (<code>[WORKSTREAM/SUBSYSTEM]</code> or
 does not assign issues, and it does not police PR Summary or Test plan.</p>
 </div>
 <div class="paragraph">
-<p>The curator (<code>.github/ISSUE_CURATION.md</code>) can later fill leftover fields
-and assign an unassigned issue from a named person, the parent assignee,
-or the usual or majority owner of the title prefix. It is in the tree,
-<strong>disabled</strong>.</p>
+<p>The curator (<code>.github/ISSUE_CURATION.md</code>) later fills leftover fields,
+assigns an unassigned issue from a named person, the parent assignee,
+or the usual or majority owner of the title prefix, and copy-edits
+issue and PR titles and bodies for capitalization, imperative mood,
+and grammatical English without adding or removing content. It runs
+at 05:00 and 16:00 PDT, and on dispatch of
+<code>ocah-project-curator.lock.yml</code>. Each run covers items opened at or
+after the last successful run; the first successful run covers every
+open issue and PR.</p>
 </div>
 </article>
   </div>
