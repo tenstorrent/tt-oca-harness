@@ -77,28 +77,29 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         target_blocks = SEGMENTATION_GLEN * 5
         for _ in range(400):
             if (sb.results["CHK4_genbits"].dut_items >= target_blocks
-                    and sum(sb._gen_lengths.values()) >= 2):
+                    and sum(sb.completed_generate_lengths().values()) >= 2):
                 break
             await ClockCycles(cocotb.top.clk_i, 200)
 
         await self.check_entropy_alerts_zero()
         await self.stop_fifo_drain()
 
-        completed = sum(sb._gen_lengths.values())
+        seg_hist = sb.completed_generate_lengths()
+        completed = sum(seg_hist.values())
         # The whole point of the test: if this is 0 the run proved nothing about
         # segmentation, and CHK4's legality check silently did not execute.
         assert completed > 0, (
             f"no Generate command completed at glen={SEGMENTATION_GLEN} "
             f"({sb.results['CHK4_genbits'].dut_items} genbits observed, "
-            f"{sb._genbits_in_gen} left in the open command). gen_last was never "
+            f"{sb.open_generate_remaining()} left in the open command). gen_last was never "
             f"seen asserted, so this test did not exercise what it exists for."
         )
         # Every completed command must be exactly glen blocks. report() also
         # checks this against legal_gen_lengths; assert here so the failure names
         # the segmentation contract directly rather than a generic scoreboard error.
-        assert set(sb._gen_lengths) == {SEGMENTATION_GLEN}, (
+        assert set(seg_hist) == {SEGMENTATION_GLEN}, (
             f"Generate commands did not all carry glen={SEGMENTATION_GLEN} blocks: "
-            f"observed blocks/cmd {dict(sorted(sb._gen_lengths.items()))}"
+            f"observed blocks/cmd {dict(sorted(seg_hist.items()))}"
         )
         self.logger.info(
             "CHK4-SEGMENTATION PASS: %d Generate command(s) completed, each exactly "

@@ -5,14 +5,14 @@ One real DRBG/ESRC/EDN stream feeds TWO real entropy sinks concurrently -- edge 
 (multi-rand): the KM AXIS endpoint (real KM firmware rom_main pulls the DRBG sampler)
 and the AES native crypto-EDN leg (ECB-256 reseed+encrypt). KM and AES are driven as a
 TRUE cocotb fork so both contend at the EDN arbiter in the same window. The CHK5 proof
-is BIT-EXACT and genbits-anchored (stronger tha reference-suite):
+is BIT-EXACT and genbits-anchored (stronger than the reference suite):
 
   * AES (per-sink ROUTING, golden): each AES post-adapter beat == the next word on the
     AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], new tb_top probe).
     The drbg_axis_edn_adapter is round-robin, so this in-order equality holds because
     AES is the ONLY active crypto sink (OTBN/KMAC parked -> never request -> AES is
     granted every word in order). This is exactly the reference suite's AXIS1 routing proof.
-  * Genbits chain (stronger tha reference-suite): every AXIS1 word AND every KM AXIS word must be
+  * Genbits chain (stronger than the reference suite): every AXIS1 word AND every KM AXIS word must be
     a member of the CHK4 CTR_DRBG genbits-golden word multiset (report() tally, with
     removal) -- proving the one verified DRBG stream PARTITIONS into the two sinks.
     the reference suite treats the AXIS1 tap as its own golden; here it is anchored back to the
@@ -97,7 +97,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
 
     def _km_beats(self) -> int:
         """Live count of KM AXIS beats (membership stash grows per beat)."""
-        return len(self.drbg_sb._km_words)
+        return self.drbg_sb.km_beats()
 
     def _aes_beats(self) -> int:
         """Live count of AES crypto-EDN beats (CHK5_aes golden compare, per beat)."""
@@ -123,7 +123,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # order is firmware-driven so not order-scored) and AES = "golden" (bit-exact
         # per-sink ROUTING: each AES post-adapter beat == the next AXIS1 pre-adapter
         # word -- the single-active-crypto-sink in-order case). Both are chained to the
-        # CHK4 genbits golden in report(). STRONGER than observe, and tha reference-suite (which
+        # CHK4 genbits golden in report(). STRONGER than observe, and than the reference suite (which
         # treats the AXIS1 tap as its own golden; here AXIS1 is anchored to genbits).
         await self.bring_up_entropy(
             strict=True, score_km="membership", score_sinks={"aes": "golden"})

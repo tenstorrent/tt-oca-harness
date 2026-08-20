@@ -59,7 +59,7 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # ECB-256 encryptions and proves AES consumed the exact key: ct_side equals an
 # independent AES-256-ECB golden (env/sep_aes_golden.py, self-tested vs FIPS-197)
 # AND the SW-key reference encryption, and differs from a dummy-key encryption.
-# Frontdoor (no backdoor) and stronger than the value-agnostic the reference suite cross-check.
+# Frontdoor (no backdoor) and stronger than the value-agnostic reference-suite cross-check.
 # no_cpu mode; +esrc_noise_force makes the ring oscillators alive under Verilator.
 # REAL fuse-sense (no +skip_fuse_sense): the KM firmware reads OTP/lifecycle at
 # boot, so the test stages a valid PROD OTP image and senses it. rom_main.rom.parhex

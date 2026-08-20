@@ -19,7 +19,7 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # OT SPI flash command breadth (the reference suite spi_ot flash_write_read + sector_erase).
 # cpu-firmware port: the OT spi_host multi-command flash sequence runs from the
-# CPU, like every the reference suite spi_ot flash test. [RAND-REP] -- the cocotb test seeds
+# CPU, like every reference-suite spi_ot flash test. [RAND-REP] -- the cocotb test seeds
 # legal flash address/word-count/data and patches them into the firmware param
 # block per run (+spi1_directed pins the directed defaults). WREN/PROGRAM/READ +
 # ERASE against the OcahSpiFlash BFM, value-checked. dual/quad opcode+lane path

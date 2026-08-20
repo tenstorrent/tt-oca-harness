@@ -661,6 +661,37 @@ class SepDrbgScoreboard:
                 self._genbits_in_gen = 0
 
     # --------------------------------------------------------------- accessors
+    def km_beats(self):
+        """Live count of Key-Manager AXIS entropy beats tapped so far.
+
+        The KM counterpart of sink_beats(), which covers only the crypto-EDN sinks.
+        Callable mid-run to snapshot the KM leg before and after a window.
+        """
+        return len(self._km_words)
+
+    def completed_generate_lengths(self):
+        """Observed blocks-per-Generate histogram: {blocks_in_command: how_many_commands}.
+
+        A command is counted only when the DUT asserts `gen_last`, and the key is the
+        number of genbits beats COUNTED before that boundary -- not the commanded
+        length. That is what lets a caller assert segmentation against its own stimulus
+        instead of against the DUT's own `gen_last`, which would follow a wrongly
+        segmenting DUT rather than catch it.
+
+        Live: callable mid-run. Returns a copy, so a caller cannot perturb scoreboard
+        state. Empty until the first command completes.
+        """
+        return Counter(self._gen_lengths)
+
+    def open_generate_remaining(self):
+        """Genbits beats seen so far in the Generate command still in flight (0 if none).
+
+        Only useful for diagnostics: a run that ends with this non-zero and
+        `completed_generate_lengths()` empty never saw `gen_last`, so its segmentation
+        evidence does not exist rather than being weak.
+        """
+        return self._genbits_in_gen
+
     def sink_beats(self, name):
         """Public count of post-adapter crypto-EDN beats delivered to crypto sink
         `name` (aes/kmac/otbn_rnd/otbn_urnd) so far -- the membership-stash length.

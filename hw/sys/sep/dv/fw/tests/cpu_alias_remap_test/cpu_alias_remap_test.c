@@ -37,7 +37,7 @@
 //   CHK-IFU    IFU fetch+execute through the alias: write a tiny function
 //              ("li a0,42; ret") to SRAM 0x1000_0000, then CALL it via the alias
 //              0xD000_0000 -> IFU fetch remaps to 0x1000_0000 -> returns 42.
-//              (Stronger tha reference-suite, which drives a synthetic write on the IFU port
+//              (Stronger than the reference suite, which drives a synthetic write on the IFU port
 //              rather than a real instruction fetch through the remap.)
 
 #include <stdint.h>
