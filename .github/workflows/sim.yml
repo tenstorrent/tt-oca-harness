@@ -39,8 +39,9 @@ env:
 
 jobs:
   verilator-smoke:
-    # Explicit name so adding the tool matrix axis keeps the pre-existing PR
-    # check name `verilator-smoke (dtp)` stable, and nightly runs are labeled.
+    # Explicit name keeps the main-protection contexts
+    # `verilator-smoke (dtp)` / `verilator-smoke (sep)` stable if the matrix
+    # gains another axis, while nightly runs remain visibly labeled.
     # (The env context is unavailable here, so the tier expression is inlined.)
     name: verilator-smoke (${{ matrix.dut }})${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && ' nightly' || '' }}
     # Per-DUT runner size (matrix.runner). DTP stays on the 4-vCPU standard
