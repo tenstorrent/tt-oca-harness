@@ -25,6 +25,19 @@ from sep_reg_meta import sym
 # sys.path as an import side effect, so it has to come first.
 import sep_reg  # noqa: E402
 
+# Stimulus randomness is deliberately the seeded, NON-cryptographic Mersenne Twister
+# from ``random``, and must stay that way. This generator is run TWICE per simulation
+# from two different processes -- once by dv_sim_prestage.py to stage the t=0 OTP image
+# the RTL $readmemh reads, and once inside the cocotb test to build the golden that the
+# post-sense backdoor compare checks that image against. The two runs agree only because
+# ``random.Random(seed)`` is reproducible from RANDOM_SEED. A cryptographically secure
+# source (``secrets``, ``random.SystemRandom``, ``os.urandom``) cannot be seeded, so
+# adopting one here would make every real-fuse-sense test fail its own shadow compare.
+#
+# Nothing this module produces is a secret, a token, or an access-control decision: the
+# values are fuse-array contents for a simulated DUT, written to a plaintext hex file in
+# the run directory and printed to the log. Static analysers flag the module on sight
+# (Cycode "weak PRNG"); this is the triage answer, not an oversight.
 import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -87,6 +100,10 @@ LOCK_FIELD_BITS = 96
 LOCK_SLOTS = 40
 LOCK_BITS_PER_SLOT = 2
 LOCK_SENTINEL_IDX = 0x3F
+
+# Resolution of the per-slot lock probability draw in randomize(). 32 bits puts the
+# quantisation error at 2^-32, far below any probability a test would ask for.
+_PROB_BITS = 32
 
 # Spec-stated anchors, asserted against the generated map below.
 #
@@ -328,6 +345,36 @@ class SepEfuseImage:
           * ``fixed`` pins named fields to explicit values after randomization.
         """
         rng = random.Random(seed)
+        # LOCKS and LOCKS_SPARE are one 96-bit vector, not two independent
+        # fields. Build it once, then slice each register by its bit offset
+        # from the LOCKS base: LOCKS <- [63:0], LOCKS_SPARE <- [95:64]
+        # (slots 32-39 in [79:64]; [95:80] are unassigned and stay 0).
+        # Drawing per kind=="locks" field would write a fresh 80-bit vector
+        # into each, so LOCKS_SPARE received bits [31:0] of a second draw
+        # instead of [95:64] of the first.
+        #
+        # The vector holds TWO bits per protected field -- a write lock and a
+        # read lock -- so 40 slots cover 80 bits. Index 6'h3F is the no-lock
+        # sentinel. Lock ENFORCEMENT (read-lock -> 0xbadcab1e, write-lock
+        # rejecting a program) is still not checked by the shadow checkers, so
+        # expected_shadow() assumes fields stay readable. Extend both
+        # together, and add a plan row, before relying on this.
+        lock_bits = 0
+        if lock_prob > 0.0:
+            # Bernoulli draw as an integer comparison rather than a float one:
+            # exact at the probability boundaries, and reproducible across
+            # Python versions without depending on float formatting.
+            threshold = int(lock_prob * (1 << _PROB_BITS))
+
+            def _draw() -> bool:
+                return rng.getrandbits(_PROB_BITS) < threshold
+
+            for slot in range(LOCK_SLOTS):
+                if _draw():
+                    lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT)      # write lock
+                if _draw():
+                    lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT + 1)  # read lock
+        locks_base_word = self.field("LOCKS").word
         for fld in self.fields:
             if fld.kind == "lc":
                 raw = lc_raw if lc_raw is not None else rng.choice(LEGAL_LC_RAW)
@@ -336,32 +383,10 @@ class SepEfuseImage:
             if fld.kind == "locks":
                 if lock_prob <= 0.0:
                     continue
-                # The lock field is 96 bits wide, not 32: LOCKS supplies bits [63:0]
-                # and LOCKS_SPARE bits [95:64]. It holds TWO bits per protected field
-                # -- a write lock and a read lock -- so 40 slots cover 80 bits, with
-                # slots 32-39 (the spare fields) living in LOCKS_SPARE. The sentinel
-                # index 6'h3F means "no lock".
-                #
-                # The previous model set one bit per "region" over range(32) in LOCKS
-                # word 0 only, which is wrong on width, on slot count, on the two-bit
-                # encoding and on where the spare slots live. It was also dormant --
-                # nothing in this environment passes lock_prob > 0 -- so it was an
-                # unexercised wrong model, which is the kind that gets trusted the
-                # first time someone writes a lock test against it.
-                #
-                # Lock ENFORCEMENT (read-lock returning the 0xbadcab1e sentinel,
-                # write-lock rejecting a program) is still not checked by the shadow
-                # checkers, so expected_shadow() assumes fields stay readable. Extend
-                # both together, and add a plan row, before relying on this.
-                lock_bits = 0
-                for slot in range(LOCK_SLOTS):
-                    if rng.random() < lock_prob:
-                        lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT)      # write lock
-                    if rng.random() < lock_prob:
-                        lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT + 1)  # read lock
+                bit_off = (fld.word - locks_base_word) * WORD_BITS
                 for i in range(fld.n_words):
                     self.words[fld.word + i] = (
-                        (lock_bits >> (i * WORD_BITS)) & WORD_MASK)
+                        (lock_bits >> (bit_off + i * WORD_BITS)) & WORD_MASK)
                 continue
             # generic data field: random per word
             for i in range(fld.n_words):
@@ -402,3 +427,31 @@ class SepEfuseImage:
     def check_fields(self) -> List[str]:
         """Field names the shadow checker should read back (all readable)."""
         return [f.name for f in self.fields]
+
+
+def _selftest_lock_pack() -> None:
+    """LOCKS and LOCKS_SPARE must slice one 96-bit vector, not two draws.
+
+    lock_prob=1.0 forces every assigned slot. 40 slots x 2 bits = 80 ones;
+    LOCKS is [63:0], LOCKS_SPARE is [95:64] with [95:80] unassigned and 0.
+    A per-field redraw writes [31:0] of a second vector into LOCKS_SPARE
+    (0xffffffff) and is the packing bug this pins.
+    """
+    ones = SepEfuseImage().randomize(7, lock_prob=1.0)
+    locks = ones.field_int("LOCKS")
+    spare = ones.field_int("LOCKS_SPARE")
+    if locks != (1 << 64) - 1:
+        raise RuntimeError(
+            f"lock_prob=1.0 packed LOCKS {locks:#018x}, expected 0xffffffffffffffff"
+        )
+    if spare != 0x0000FFFF:
+        raise RuntimeError(
+            f"lock_prob=1.0 packed LOCKS_SPARE {spare:#010x}, expected 0x0000ffff "
+            "(bits [79:64] of the 96-bit lock vector; [95:80] unassigned)"
+        )
+    zeros = SepEfuseImage().randomize(7, lock_prob=0.0)
+    if zeros.field_int("LOCKS") != 0 or zeros.field_int("LOCKS_SPARE") != 0:
+        raise RuntimeError("lock_prob=0 must leave LOCKS and LOCKS_SPARE clear")
+
+
+_selftest_lock_pack()
