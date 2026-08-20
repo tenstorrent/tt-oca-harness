@@ -32,6 +32,7 @@ partial read costs far more time than a full one.
 |---|---|
 | `README.md` | Repository layout, doc builds, register generation, DV firmware targets, vendoring |
 | `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents, issue/PR pointers |
+| `doc/trm/src/methodology.adoc` | SystemVerilog coding rules, the deviations from the lowRISC guide they derive from, RTL comment policy |
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
 | `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
@@ -311,7 +312,13 @@ behaviour, not the RTL that implements them. Naming a module, a package or an ad
 an RDL comment ties the specification to one implementation of it; leave those details to the
 RTL.
 
-## Code Comments
+## Coding Guidance
+
+`doc/trm/src/methodology.adoc` is authoritative for RTL: it carries the SystemVerilog coding
+rules and the places the project departs from the lowRISC guide they derive from, naming case
+among them. What follows holds for every language in the tree.
+
+### Comments
 
 Write a comment only to tell the reader something the code cannot: a constraint, an ordering
 that matters, a hardware behaviour a maintainer would otherwise have to rediscover. State it in
@@ -326,13 +333,15 @@ Three kinds of comment are not worth their space.
 - **Justification.** Arguing that a change is correct addresses a reviewer who is gone once the
   pull request merges.
 
-Names carry the same obligation. An identifier that describes what changed — a field named for
-the size a region used to have, a constant named after a mode that was replaced — dates as
-quickly as a breadcrumb, and it forces a comment to explain a concept the code no longer has.
-Name what exists.
-
 Where a test can carry the constraint instead, prefer the test: it fails when the constraint is
 broken, and a comment does not.
+
+### Names
+
+A name is held to the same rule as a comment. An identifier that describes what changed — a
+field named for the size a region used to have, a constant named after a mode that was
+replaced — dates as quickly as a breadcrumb, and it forces a comment to explain a concept the
+code no longer has. Name what exists.
 
 ## Commit Conventions
 
