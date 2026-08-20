@@ -8,12 +8,14 @@ import importlib.metadata
 import json
 import os
 import secrets
+import signal
 import shutil
 import subprocess
 import sys
 import textwrap
+import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -45,12 +47,21 @@ from .results import (
     aggregate_status,
     exit_code_for_status,
     fragment_payload,
+    git_info,
     regression_payload,
     result_payload,
     rollup_payload,
+    tool_versions,
     write_result,
 )
-from .stages import cocotb_python_paths, item_artifact_dir, run_stage, seed_for_item
+from .stages import (
+    cocotb_python_paths,
+    item_artifact_dir,
+    request_stage_cancellation,
+    reset_stage_cancellation,
+    run_stage,
+    seed_for_item,
+)
 from .ui import Console
 from .waves import (
     WAVE_DEFAULT,
@@ -66,6 +77,14 @@ REGRESSION_SEED_MAX = 2_147_483_647
 SUPPORTED_PYTHON_MIN = (3, 11)
 SUPPORTED_PYTHON_MAX_EXCLUSIVE = (3, 14)
 _COVERAGE_STAGES = {"cov_merge", "cov_report"}
+
+
+class RunInterrupted(BaseException):
+    """Raised by the main-thread signal handler after recording the signal."""
+
+    def __init__(self, signum: int):
+        self.signum = signum
+        super().__init__(signal.Signals(signum).name)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -1209,9 +1228,14 @@ def _merge_coverage_replay_result(
         stage for stage in current.get("stages", []) if isinstance(stage, dict)
     ]
     stages = [*old_stages, *new_stages]
-    status = _status_from_values(
-        [str(stage.get("status", "UNKNOWN")) for stage in stages]
-    )
+    status_values = [str(stage.get("status", "UNKNOWN")) for stage in stages]
+    progress = existing.get("progress")
+    if (
+        isinstance(progress, dict)
+        and progress.get("state") != "final"
+    ) or existing.get("interruption"):
+        status_values.append(str(existing.get("status", "UNKNOWN")))
+    status = _status_from_values(status_values)
     payload.update(
         {
             "status": status,
@@ -1601,6 +1625,12 @@ def write_regression_summary(
     args: argparse.Namespace,
     items: list[str],
     elapsed_sec: float,
+    *,
+    status_override: str | None = None,
+    progress: dict[str, Any] | None = None,
+    interruption: dict[str, Any] | None = None,
+    versions: dict[str, str] | None = None,
+    git_metadata: dict[str, str] | None = None,
 ) -> None:
     path = run_dir / "stages" / "regress" / "regression.json"
     write_result(
@@ -1615,6 +1645,11 @@ def write_regression_summary(
             args=args,
             items=items,
             elapsed_sec=elapsed_sec,
+            status_override=status_override,
+            progress=progress,
+            interruption=interruption,
+            versions=versions,
+            git_metadata=git_metadata,
         ),
     )
 
@@ -1662,6 +1697,7 @@ def run_flow(
     policies: dict[str, Any],
     args: argparse.Namespace,
 ) -> int:
+    reset_stage_cancellation()
     replay_run_dir, existing_result = _existing_run_result(root, flow, args)
     tool = selected_tool(flow, args, simulators)
     executor = selected_executor(flow, args)
@@ -1746,6 +1782,49 @@ def run_flow(
         run_dir = reserve_run_dir(run_dir, args.dry_run)
         update_latest_symlink(run_dir, args.dry_run)
 
+    result_path = run_dir / "result.json"
+    export_path: Path | None = None
+    if args.result:
+        export_path = Path(args.result).expanduser()
+        if not export_path.is_absolute():
+            export_path = root / export_path
+        if export_path == result_path:
+            export_path = None
+
+    leaf_plans_by_stage: dict[int, list[dict[str, Any]]] = {}
+    expected_leaves: list[dict[str, Any]] = []
+    next_leaf_id = 0
+    for stage_index, stage in enumerate(stages):
+        if stage not in {"sim", "regress", "formal"}:
+            continue
+        seen_regression_seeds: set[int] = set()
+        stage_plans: list[dict[str, Any]] = []
+        for item in items:
+            for seed in seed_plan(
+                catalog,
+                sim_cfg,
+                args,
+                item,
+                scheduler and stage in {"sim", "regress"},
+                seen_regression_seeds,
+            ):
+                identity = {
+                    "id": next_leaf_id,
+                    "stage": stage,
+                    "item": item,
+                    "target": target_by_item.get(item),
+                    "seed": seed,
+                }
+                stage_plans.append(identity)
+                expected_leaves.append(identity)
+                next_leaf_id += 1
+        leaf_plans_by_stage[stage_index] = stage_plans
+
+    replaying_coverage = existing_result is not None and replay_run_dir == run_dir
+    checkpoint_enabled = bool(expected_leaves) and not args.dry_run and not replaying_coverage
+    run_versions = tool_versions(root)
+    run_git = git_info(root)
+
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console
     args._ui_leaf_mode = "compact" if scheduler else "full"
@@ -1761,6 +1840,105 @@ def run_flow(
     runs_by_item: dict[str, list[tuple[int, StageResult]]] = {}
     regression_jobs: list[dict[str, Any]] = []
     final_failures = 0
+    progress_lock = threading.Lock()
+    interruption_requested = threading.Event()
+    args._cancellation_event = interruption_requested
+    active_leaf_ids: set[int] = set()
+    completed_leaves_by_id: dict[int, dict[str, Any]] = {}
+    checkpoint_sequence = 0
+
+    def checkpoint_progress(state: str) -> dict[str, Any]:
+        nonlocal checkpoint_sequence
+        with progress_lock:
+            checkpoint_sequence += 1
+            completed_ids = set(completed_leaves_by_id)
+            active_ids = set(active_leaf_ids) - completed_ids
+            completed = [
+                completed_leaves_by_id[int(leaf["id"])]
+                for leaf in expected_leaves
+                if int(leaf["id"]) in completed_ids
+            ]
+            active = [
+                dict(leaf)
+                for leaf in expected_leaves
+                if int(leaf["id"]) in active_ids
+            ]
+            missing = [
+                dict(leaf)
+                for leaf in expected_leaves
+                if int(leaf["id"]) not in completed_ids | active_ids
+            ]
+        interrupted = active if state == "interrupted" else []
+        visible_active = [] if state == "interrupted" else active
+        return {
+            "state": state,
+            "sequence": checkpoint_sequence,
+            "updated_at": datetime.now(UTC).isoformat(),
+            "expected_count": len(expected_leaves),
+            "completed_count": len(completed),
+            "active_count": len(visible_active),
+            "missing_count": len(missing),
+            "interrupted_count": len(interrupted),
+            "expected": [dict(leaf) for leaf in expected_leaves],
+            "completed": completed,
+            "active": visible_active,
+            "missing": missing,
+            "interrupted": interrupted,
+        }
+
+    def mark_leaf_active(leaf: dict[str, Any]) -> bool:
+        with progress_lock:
+            if interruption_requested.is_set():
+                return False
+            active_leaf_ids.add(int(leaf["id"]))
+            return True
+
+    def mark_leaf_completed(leaf: dict[str, Any], result: StageResult) -> None:
+        leaf_id = int(leaf["id"])
+        completed = {
+            **leaf,
+            "status": result.status,
+            "return_code": result.return_code,
+        }
+        with progress_lock:
+            active_leaf_ids.discard(leaf_id)
+            completed_leaves_by_id[leaf_id] = completed
+
+    def leaf_is_completed(leaf: dict[str, Any]) -> bool:
+        with progress_lock:
+            return int(leaf["id"]) in completed_leaves_by_id
+
+    def write_checkpoint(
+        *,
+        state: str = "running",
+        status: str = "UNKNOWN",
+        progress: dict[str, Any] | None = None,
+        interruption: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        if not checkpoint_enabled:
+            return None
+        progress = progress or checkpoint_progress(state)
+        payload = result_payload(
+            flow=flow,
+            root=root,
+            tool=tool,
+            run_dir=run_dir,
+            stages=list(results),
+            dry_run=False,
+            items=items,
+            label=label,
+            args=args,
+            executor=executor,
+            status_override=status,
+            progress=progress,
+            interruption=interruption,
+            versions=run_versions,
+            git_metadata=run_git,
+        )
+        write_result(result_path, payload)
+        if export_path is not None:
+            write_result(export_path, payload)
+        return payload
 
     def regression_job(
         stage: str,
@@ -1844,7 +2022,14 @@ def run_flow(
             )
         return debug_result, result_json
 
-    def run_leaf(stage: str, item: str, seed: int) -> tuple[str, int, StageResult, list[dict[str, Any]]]:
+    def run_leaf(
+        leaf: dict[str, Any],
+    ) -> tuple[dict[str, Any], StageResult, list[dict[str, Any]]]:
+        if not mark_leaf_active(leaf):
+            raise RuntimeError("run interrupted before leaf execution")
+        stage = str(leaf["stage"])
+        item = str(leaf["item"])
+        seed = int(leaf["seed"])
         attempt_results: list[StageResult] = []
         jobs: list[dict[str, Any]] = []
         for attempt in range((args.retry or 0) + 1):
@@ -1908,12 +2093,23 @@ def run_flow(
                 jobs[-1]["artifacts"]["debug_result_json"] = debug_json
                 final.artifacts = dict(final.artifacts or {})
                 final.artifacts["debug_result_json"] = debug_json
-        return item, seed, attempt_results[-1], jobs
+        return leaf, attempt_results[-1], jobs
 
-    def record_leaf(item: str, seed: int, result: StageResult, jobs: list[dict[str, Any]]) -> bool:
+    def record_leaf(
+        leaf: dict[str, Any],
+        result: StageResult,
+        jobs: list[dict[str, Any]],
+        *,
+        refresh_checkpoint: bool = True,
+    ) -> bool:
+        item = str(leaf["item"])
+        seed = int(leaf["seed"])
         results.append(result)
         runs_by_item.setdefault(item, []).append((seed, result))
         regression_jobs.extend(jobs)
+        mark_leaf_completed(leaf, result)
+        if refresh_checkpoint:
+            write_checkpoint()
         return scheduler and result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
 
     def needs_parallel_cocotb_prebuild(stage: str, target: str) -> bool:
@@ -1933,7 +2129,18 @@ def run_flow(
             and target not in getattr(args, "_cocotb_prebuilt_targets", set())
         )
 
+    previous_signal_handlers: dict[int, Any] = {}
+
+    def interrupt_handler(signum: int, _frame: Any) -> None:
+        interruption_requested.set()
+        raise RunInterrupted(signum)
+
     try:
+        if checkpoint_enabled:
+            for signum in (signal.SIGINT, signal.SIGTERM):
+                previous_signal_handlers[signum] = signal.getsignal(signum)
+                signal.signal(signum, interrupt_handler)
+            write_checkpoint()
         console.run_header(
             flow=flow.name,
             tool=tool,
@@ -1946,7 +2153,7 @@ def run_flow(
             mode="regression" if scheduler else None,
         )
         emit_dry_run_config_summary(console, flow, root, sim_cfg, simulators, tool, args)
-        for stage in stages:
+        for stage_index, stage in enumerate(stages):
             if stage in {"flist", "hdl_compile", "elaborate"}:
                 for target in build_targets:
                     result = run_stage(
@@ -1969,21 +2176,15 @@ def run_flow(
                 if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
                     break
             elif stage in {"sim", "regress", "formal"}:
-                seen_regression_seeds: set[int] = set()
-                leaves = [
-                    (item, seed)
-                    for item in items
-                    for seed in seed_plan(
-                        catalog,
-                        sim_cfg,
-                        args,
-                        item,
-                        scheduler and stage in {"sim", "regress"},
-                        seen_regression_seeds,
-                    )
-                ]
-                leaf_item_width = max((len(item) for item, _ in leaves), default=44)
-                leaf_seed_width = max((len(str(seed)) for _, seed in leaves), default=8)
+                leaves = leaf_plans_by_stage.get(stage_index, [])
+                leaf_item_width = max(
+                    (len(str(leaf["item"])) for leaf in leaves),
+                    default=44,
+                )
+                leaf_seed_width = max(
+                    (len(str(leaf["seed"])) for leaf in leaves),
+                    default=8,
+                )
                 completed_leaves = 0
                 parallel = (
                     scheduler
@@ -2023,16 +2224,26 @@ def run_flow(
                         total=len(leaves),
                         jobs=args.sim_jobs,
                         executor=executor,
-                        seeds=regression_seed_label(leaves),
+                        seeds=regression_seed_label([
+                            (str(leaf["item"]), int(leaf["seed"]))
+                            for leaf in leaves
+                        ]),
                         retry=args.retry or 0,
                         item_width=leaf_item_width,
                         seed_width=leaf_seed_width,
                     )
-                    with ThreadPoolExecutor(max_workers=args.sim_jobs) as pool:
-                        futures = {pool.submit(run_leaf, stage, item, seed): (item, seed) for item, seed in leaves}
+                    pool = ThreadPoolExecutor(max_workers=args.sim_jobs)
+                    futures: dict[Any, dict[str, Any]] = {}
+                    try:
+                        futures = {
+                            pool.submit(run_leaf, leaf): leaf
+                            for leaf in leaves
+                        }
                         for future in as_completed(futures):
-                            item, seed, result, jobs = future.result()
-                            failed = record_leaf(item, seed, result, jobs)
+                            leaf, result, jobs = future.result()
+                            item = str(leaf["item"])
+                            seed = int(leaf["seed"])
+                            failed = record_leaf(leaf, result, jobs)
                             completed_leaves += 1
                             console.regression_leaf_done(
                                 index=completed_leaves,
@@ -2048,18 +2259,49 @@ def run_flow(
                             )
                             if failed:
                                 final_failures += 1
+                    except BaseException:
+                        completed_before_interrupt = [
+                            future
+                            for future in futures
+                            if future.done() and not future.cancelled()
+                        ]
+                        for future in futures:
+                            future.cancel()
+                        request_stage_cancellation()
+                        wait(futures, timeout=3)
+                        for future in completed_before_interrupt:
+                            try:
+                                leaf, result, jobs = future.result()
+                            except BaseException:
+                                continue
+                            if not leaf_is_completed(leaf):
+                                record_leaf(
+                                    leaf,
+                                    result,
+                                    jobs,
+                                    refresh_checkpoint=False,
+                                )
+                        pool.shutdown(wait=False, cancel_futures=True)
+                        raise
+                    else:
+                        pool.shutdown()
                 else:
                     if scheduler:
                         console.regression_start(
                             total=len(leaves),
                             jobs=args.sim_jobs,
                             executor=executor,
-                            seeds=regression_seed_label(leaves),
+                            seeds=regression_seed_label([
+                                (str(leaf["item"]), int(leaf["seed"]))
+                                for leaf in leaves
+                            ]),
                             retry=args.retry or 0,
                             item_width=leaf_item_width,
                             seed_width=leaf_seed_width,
                         )
-                    for item, seed in leaves:
+                    for leaf in leaves:
+                        item = str(leaf["item"])
+                        seed = int(leaf["seed"])
                         if scheduler and args.max_failures is not None and final_failures >= args.max_failures:
                             skipped = StageResult(
                                 stage=stage,
@@ -2071,9 +2313,11 @@ def run_flow(
                                 ended_at=datetime.now(UTC).isoformat(),
                                 reason="skipped after --max-failures threshold",
                             )
-                            results.append(skipped)
-                            runs_by_item.setdefault(item, []).append((seed, skipped))
-                            regression_jobs.append(regression_job(stage, item, seed, 0, skipped))
+                            record_leaf(
+                                leaf,
+                                skipped,
+                                [regression_job(stage, item, seed, 0, skipped)],
+                            )
                             completed_leaves += 1
                             console.regression_leaf_done(
                                 index=completed_leaves,
@@ -2089,8 +2333,8 @@ def run_flow(
                             )
                             continue
 
-                        item, seed, result, jobs = run_leaf(stage, item, seed)
-                        failed = record_leaf(item, seed, result, jobs)
+                        leaf, result, jobs = run_leaf(leaf)
+                        failed = record_leaf(leaf, result, jobs)
                         if scheduler:
                             completed_leaves += 1
                             console.regression_leaf_done(
@@ -2138,6 +2382,8 @@ def run_flow(
                 args,
                 items,
                 time.monotonic() - run_started,
+                versions=run_versions,
+                git_metadata=run_git,
             )
         if scheduler:
             console.regression_summary(
@@ -2146,7 +2392,6 @@ def run_flow(
                 elapsed_sec=time.monotonic() - run_started,
             )
 
-        replaying_coverage = existing_result is not None and replay_run_dir == run_dir
         # Structured-result guarantee, leafless case: a non-passing run in which no sim
         # leaf executed (compile/elaboration/filelist failure) gets one run-level stage
         # XML so the failure is visible to JUnit consumers. Runs before result_payload
@@ -2174,18 +2419,15 @@ def run_flow(
             label=label,
             args=args,
             executor=executor,
+            versions=run_versions,
+            git_metadata=run_git,
         )
         if replaying_coverage:
             payload = _merge_coverage_replay_result(existing_result, payload)
-        result_path = run_dir / "result.json"
         if not args.dry_run:
             write_result(result_path, payload)
-            if args.result:
-                export_path = Path(args.result).expanduser()
-                if not export_path.is_absolute():
-                    export_path = root / export_path
-                if export_path != result_path:
-                    write_result(export_path, payload)
+            if export_path is not None:
+                write_result(export_path, payload)
             if replaying_coverage:
                 _update_regression_coverage(
                     run_dir,
@@ -2201,7 +2443,53 @@ def run_flow(
             result_json=repo_rel(root, result_path),
         )
         return exit_code_for_status(status)
+    except RunInterrupted as exc:
+        request_stage_cancellation()
+        signal_name = signal.Signals(exc.signum).name
+        interruption = {
+            "kind": "signal",
+            "signal": signal_name,
+            "signal_number": exc.signum,
+            "reason": f"run interrupted by {signal_name}",
+            "recorded_at": datetime.now(UTC).isoformat(),
+        }
+        progress = checkpoint_progress("interrupted")
+        elapsed_sec = time.monotonic() - run_started
+        if nest and checkpoint_enabled:
+            write_regression_summary(
+                root,
+                run_dir,
+                flow,
+                tool,
+                regression_jobs,
+                results,
+                args,
+                items,
+                elapsed_sec,
+                status_override="ERROR",
+                progress=progress,
+                interruption=interruption,
+                versions=run_versions,
+                git_metadata=run_git,
+            )
+        write_checkpoint(
+            state="interrupted",
+            status="ERROR",
+            progress=progress,
+            interruption=interruption,
+        )
+        console.event("error", interruption["reason"], force=True)
+        console.result(
+            status="ERROR",
+            elapsed_sec=elapsed_sec,
+            tests=len(items) if need_items else 0,
+            run_dir=repo_rel(root, run_dir),
+            result_json=repo_rel(root, result_path),
+        )
+        return 128 + exc.signum
     finally:
+        for signum, previous_handler in previous_signal_handlers.items():
+            signal.signal(signum, previous_handler)
         console.close()
 
 

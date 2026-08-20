@@ -16,20 +16,12 @@
 |Primary simulator |Verilator
 |Reference SPEC |`DTP_SPEC.md`
 |Reference CSR |`DTP_CSR.md`
-|Internal reference plan |`dv/dtp/doc/DTP_VPLAN.md` (internal full plan; not shipped in the public OCAH package)
-|Reference logical tests |72
 |Open-source scenario-expanded test cases |147
 |===
 
-This OCAH open-source VPLAN is the public, standalone DTP verification plan. It is
-derived from the internal full DTP reference plan and includes all of its tests,
-expanding multi-scenario CocoTB modules into separate, named test cases. The
-open-source implementation uses unified OCAH BFM wrappers for standard protocols and
+This standalone VPLAN defines 147 public scenario-level test cases. The
+implementation uses unified OCAH BFM wrappers for standard protocols and
 OCAH-local DTP BFMs for DTP-specific protocols.
-
-This plan is synced to the verified closed-source DTP reference VPLAN as of
-2026-06-15. The closed-source plan remains the 72 logical-test source of truth;
-this OSS document expands those logical tests into 147 public scenario-level entries.
 
 === Verification Strategy
 
@@ -6453,7 +6445,6 @@ d. Confirm the written value affects only this source register and no neighborin
 [cols=",",options="header",]
 |===
 |Metric |Count
-|Reference logical tests |72
 |Scenario-expanded open-source test cases |147
 |===
 
@@ -6486,16 +6477,4 @@ temporary testlist aliases.
 |iJTAG and OCH cross-trigger protocols do not have established public cocotb VIP |No public protocol VIP identified |Implement OCAH-local DTP BFMs in `env/`
 |Lifecycle is commonly held in all-one/full-debug mode for base bring-up |Security-gating scenarios require explicit lifecycle stimulus |Add directed lifecycle scenarios for security-gating coverage
 |SV covergroups are not supported by Verilator |Functional coverage must be Python-side or commercial-sim |See `DTP_FCOV.adoc`
-|===
-
-=== Revision History
-
-[cols=",,,",options="header",]
-|===
-|Version |Date |Author |Description
-|0.0 |2026-06-09 |DV Team |Initial pre-release open-source DTP VPLAN derived from the full reference plan, including public VIP strategy and scenario-expanded test inventory
-|0.1 |2026-06-14 |DV Team |Add verification strategy and scenario inventory reconciliation
-|0.2 |2026-06-15 |DV Team |Sync with verified closed-source DTP VPLAN: keep 72 logical reference tests, expand OSS scenario inventory from 142 to 147, and add POR independence, write-data read-back, and no-AXI-activity security scenarios
-|0.3 |2026-06-15 |DV Team |Add Smoke and Basic JTAG procedures with generic IR/DR scan helpers, DTP-local scan model, and `basic_jtag` regression group
-|0.4 |2026-06-22 |DV Team |Add debug TDR procedures for TMP_STATUS, IC_RESET, DEBUG_CONTROL, CAPS quality scenarios, and `debug_tdr`/`all` regression groups
 |===

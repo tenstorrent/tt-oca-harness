@@ -1,10 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP DRBG noise-source golden model.
 
-Pure-Python, bit-exact port of the reference DPI-C noise generator
-(dv/sep/tb/tb_uvm/common/dpi/drbg_noise_dpi.c). That C file is the GROUND
-TRUTH for every numeric behavior here.
-
 This model is the SINGLE SOURCE of entropy noise for the cocotb env: each
 cycle cocotb calls ``step_all()`` once, drives the returned 12-bit word into
 the DUT noise inputs, AND feeds the identical word into the decorrelator
@@ -12,7 +8,7 @@ golden. Because the PRNG state lives only in this object and advances exactly
 one bit per lane per ``step_all()`` call, the DUT and the golden chain consume
 an identical noise sequence by construction.
 
-Per-lane noise model (mirrors RO_Jitter_Model, drbg_noise_bit in the C):
+Per-lane noise model:
   1. If stuck_en      -> return stuck_val (prev_bit also latched to stuck_val)
   2. draw r_corr = xorshift32(state) % PROB_SCALE; if r_corr < p_corr
                       -> return prev_bit (correlation: repeat last bit)
@@ -33,7 +29,7 @@ Mode vocabulary (see configure()):
 
   The "NN" in biasNN / corrNN is parsed generically as an integer percent in
   [0, 100] and multiplied by 10_000 to land on the PROB_SCALE grid; this
-  matches the C/SV testbench convention (noise_p_bias = pct * PROB_SCALE/100).
+  uses ``noise_p_bias = percent * PROB_SCALE / 100``.
 
 Per-lane modes: configure() takes either a single mode string (applied to all
 12 lanes) or a list/dict of per-lane modes, so a fault (e.g. stuck0) can be
@@ -45,7 +41,7 @@ PROB_SCALE = 1_000_000
 
 
 def xorshift32(s: int) -> int:
-    """xorshift32 PRNG, exact port of drbg_noise_dpi.c lines 32-38.
+    """Advance the 32-bit xorshift PRNG.
 
         s ^= s << 13;
         s ^= s >> 17;
@@ -96,10 +92,10 @@ def parse_mode(mode: str) -> _LaneCfg:
 
 
 class SepNoiseGolden:
-    """Bit-exact Python port of the reference DPI-C per-lane noise generator.
+    """Deterministic per-lane noise generator.
 
-    State (per lane): xorshift32 PRNG state + prev_bit, exactly as the C
-    arrays prng_state[] / prev_bit[]. Lane configs default to unbiased.
+    Each lane owns a xorshift32 PRNG state and previous bit. Lane
+    configurations default to unbiased.
     """
 
     MAX_LANES = MAX_LANES
@@ -112,7 +108,7 @@ class SepNoiseGolden:
 
     # ---------------------------------------------------------------- core
     def init_lane(self, lane: int, seed: int) -> None:
-        """Port of drbg_noise_init: state = seed, or (lane+1) when seed==0."""
+        """Set state to the seed, or ``lane + 1`` when the seed is zero."""
         if lane < 0 or lane >= MAX_LANES:
             return
         seed &= 0xFFFFFFFF
@@ -120,9 +116,9 @@ class SepNoiseGolden:
         self._prev[lane] = 0
 
     def reset_all(self) -> None:
-        """Port of drbg_noise_reset_all: zero all PRNG state + prev_bit.
+        """Clear every PRNG state and previous bit.
 
-        Note (matches C): leaves state[]==0; a subsequent bit() on a lane that
+        A subsequent bit() on a lane that
         was never re-init'd would feed 0 into xorshift32, which maps 0->0->1.
         Always init_lane() (or configure(), which inits) before stepping.
         """
@@ -131,28 +127,28 @@ class SepNoiseGolden:
             self._prev[i] = 0
 
     def bit(self, lane, p_bias, p_corr, stuck_en, stuck_val) -> int:
-        """Port of drbg_noise_bit. Returns 0/1; advances this lane's state."""
+        """Return one bit and advance the selected lane's state."""
         if lane < 0 or lane >= MAX_LANES:
             return 0
 
-        # Stuck-at mode (C lines 78-81)
+        # Stuck-at mode.
         if stuck_en:
             self._prev[lane] = 1 if stuck_val else 0
             return self._prev[lane]
 
-        # Clamp probabilities (C lines 84-85)
+        # Clamp probabilities.
         if p_bias > PROB_SCALE:
             p_bias = PROB_SCALE
         if p_corr > PROB_SCALE:
             p_corr = PROB_SCALE
 
-        # Correlation check (C lines 88-92): keep prev with prob p_corr
+        # Keep the previous bit with probability p_corr.
         self._state[lane] = xorshift32(self._state[lane])
         r_corr = self._state[lane] % PROB_SCALE
         if r_corr < p_corr:
             result = self._prev[lane]
         else:
-            # Independent biased bit (C lines 95-97)
+            # Generate an independent biased bit.
             self._state[lane] = xorshift32(self._state[lane])
             r_ind = self._state[lane] % PROB_SCALE
             result = 1 if r_ind < p_bias else 0
@@ -161,8 +157,7 @@ class SepNoiseGolden:
         return result
 
     def get_state(self, lane: int) -> int:
-        """Port of drbg_noise_get_state (debug/replay). Reference-model API kept for
-        reference golden parity; not invoked by the OSS checkers."""
+        """Return lane PRNG state for debug or replay."""
         if lane < 0 or lane >= MAX_LANES:
             return 0
         return self._state[lane]

@@ -128,7 +128,6 @@ python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
-  "dv/vip/cocotb",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"

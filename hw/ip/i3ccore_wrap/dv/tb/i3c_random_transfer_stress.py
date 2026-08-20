@@ -7,10 +7,9 @@ I3C Random Transfer Stress  (Test Plan #44)
 Directed-random private write/read transfers with random direction/length/data,
 checked for integrity each iteration via the built-in scoreboard.
 
-Uses the shared constrained-random framework (dv/common/cocotb + i3c_rand):
-the seed is resolved from +seed=<n> / SEED=<n> / default and logged, so each
-regression run varies the sequence and accumulates coverage (run multiple seeds
-and merge). A fixed default keeps local runs reproducible.
+The seed is resolved by i3c_rand from +seed=<n> / SEED=<n> / default and
+logged, so each regression run varies the sequence and accumulates coverage.
+A fixed default keeps local runs reproducible.
 """
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -29,11 +28,17 @@ async def test_random_transfer_stress(dut):
     await ctrl.setmrl(MWL, ibi_payload_size=0xFF, dat_idx=0)
 
     r = RandMgr(name="random_transfer")          # seed logged; +seed/SEED override
+    tb.log.info(
+        f"Random transfer stress: seed=0x{r.seed:08X} "
+        f"iterations={N_ITERS} mwl={MWL}"
+    )
 
     for i in range(N_ITERS):
         t = I3CTransfer().randomize(r, mwl=MWL)   # constrained: len<=MWL, data follows
         await do_transfer(ctrl, tgt, t)           # drives + self-checks (scoreboard)
-        tb.log.info(f"[{i}] {t.dir.upper()} {t.length}B ok")
+        tb.log.info(
+            f"[{i}] {t.dir.upper()} {t.length}B data={t.data.hex()} ok"
+        )
         await ClockCycles(dut.clk, 30)
 
     tb.log.info(f"Random transfer stress ({N_ITERS} iters, seed=0x{r.seed:08X}) complete")

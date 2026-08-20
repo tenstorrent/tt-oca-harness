@@ -2050,10 +2050,10 @@ STATUS : Done; Verilator merge-gate green (`20260630_132742__verilator`, 9/9 CHK
 
 
 ################################################################################
-# TOP-DOWN INTEGRATION / HOLE-HUNT REPS (TD-1..TD-4, planned 2026-06-25)
-# OSS-unique value: cross-IP seams + holes OCAH's per-IP tb structurally cannot
-# reach. Each re-expresses a VERIFIED real OCAH test (provenance confirmed in
-# dv/sep 2026-06-25). All in Phase-2 scope: basic cross-subsystem happy-path +
+# TOP-DOWN INTEGRATION / HOLE-HUNT REPS (TD-1..TD-4)
+# These scenarios target cross-IP seams and holes that per-IP testbenches cannot
+# reach. Each maps to public RTL or specification sources. Scope includes basic
+# cross-subsystem happy-path +
 # access-control/status-clear; deep fairness/starvation STRESS is deferred.
 # Same bug class as the bugs OSS already caught (mailbox 8->1 trunc, filter polarity).
 ################################################################################
@@ -2066,8 +2066,7 @@ SUBSYSTEM : Crypto and entropy
 LEDGER : closes the crypto "EDN endpoint arbitration across >1 live sink" GAP (CRY ledger marks the
  per-endpoint arbiter trace DEFERRED). The crypto EDN endpoint round-robin-serves AES/KMAC/
  OTBN-RND/OTBN-URND; Phase-1 #15 only ever drew AES as the single crypto sink.
-OCAH-REFS : uvm_tests/drbg/sep_drbg_real_sink_multi_rand_test (+ sep_drbg_real_sink_multi_km_aes_test)
- @ 9ec8f9f4b / 2026-06-25 (provenance VERIFIED in dv/sep; re-grep exact names at impl)
+OCAH-REFS : hw/sys/sep/rtl/sep_crypto.sv; public DRBG and EDN tests
 MAPPING : COVERED_STRONGER -- routes the contention through the REAL crypto-endpoint arbiter
  (u_axis_edn_crypto), where OCAH's drbg tb stubs each sink at the DRBG level.
 RELATION : DISTINCT from #15 sep_drbg_real_sink_multi_km_aes_test (KM-AXIS + AES = ONE crypto sink + the KM
@@ -2158,8 +2157,7 @@ SUBSYSTEM : Fabric & security routing (interrupt aggregator -- sep-top connectiv
 LEDGER : closes the interrupt-aggregator "simultaneous multi-source fan-in + anti-alias" GAP on
  sep_internal_interrupts[8:31] (crypto/KM/DMA region). #14/CPU-2 assert one source at a time;
  the packing/aliasing of MULTIPLE concurrent sources is unproven for the non-mailbox bits.
-OCAH-REFS : uvm_tests/system/sep_irq_extended_connectivity_test (the test that caught the mailbox 8->1
- truncation) @ 9ec8f9f4b / 2026-06-25 (VERIFIED in dv/sep)
+OCAH-REFS : hw/sys/sep/rtl/sep.sv; public interrupt-connectivity tests
 MAPPING : COVERED_STRONGER -- simultaneous multi-source assertion + anti-alias (vs OCAH one-at-a-time
  connectivity), the exact bug class that found the mailbox truncation, re-run for bits 8-31.
 RELATION : DISTINCT from CPU-2 (source-id MAP id==idx+1 + real ISR claim, CPU PIC path) and #14
@@ -2289,8 +2287,7 @@ SUBSYSTEM : eFuse/lifecycle/security state
 LEDGER : closes the "locked_field_access interrupt DELIVERY" GAP -- sep_internal_interrupts[31]
  (sep.sv:466,787) is an ORPHAN source with no delivery test in either plan. OCAH checks the
  DENIAL of a locked-field access, not the resulting interrupt path.
-OCAH-REFS : uvm_tests/efuse/sep_efuse_uvm_shadow_permission_neg_test (+ sep_efuse_uvm_otp_permission_neg_test)
- @ 9ec8f9f4b / 2026-06-25 (VERIFIED in dv/sep)
+OCAH-REFS : hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv; public eFuse permission tests
 MAPPING : COVERED_STRONGER -- proves the ISR-DELIVERY path (bit 31 asserts on a real locked-field access),
  where OCAH's permission_neg proves only the denial. Delivery/aggregation is SEP-integration only.
 RELATION : DISTINCT from EFL-2 (locked-field write BLOCKED / read-lock->0xbadcab1e -- the denial) and TD-2

@@ -15,13 +15,11 @@
 |Framework |PyUVM on cocotb (primary); SystemVerilog UVM smoke layer (`--framework uvm`, VCS)
 |Primary simulator |Verilator
 |Commercial simulator use |Coverage and CSR paths that Verilator cannot elaborate today; SV-UVM smoke flow (VCS)
-|Reference TB |`dv/dtp/` working DTP environment and docs
 |===
 
 The OCAH open-source DTP testbench follows the canonical `hw/sys/<system>/dv/` layout under
-`hw/sys/dtp/dv/`. It ports the working reference plan from `dv/dtp/` into
-a public PyUVM environment using the unified OCAH BFM packages for standard
-interfaces.
+`hw/sys/dtp/dv/`. It uses a PyUVM environment and the unified OCAH BFM
+packages for standard interfaces.
 
 === VIP Selection Policy
 
@@ -262,9 +260,8 @@ coverage value:
 |JTAG2AXI read |Backdoor-preload OCAH AXI RAM, shift a single-op read request, poll completion, compare data
 |===
 
-Additional stimulus categories are derived from the reference
-`dv/dtp/doc/DTP_VPLAN.md`: OTP bridge operations, STAP/3DCR, iJTAG, XTRIG CSR,
-CTP, and CTM.
+Additional stimulus categories cover OTP bridge operations, STAP/3DCR, iJTAG,
+XTRIG CSR, CTP, and CTM.
 
 === Checking Strategy
 
@@ -405,17 +402,3 @@ group runs all 19 Smoke and Basic JTAG scenarios. The `debug_tdr` group runs 12
 TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS scenarios. The `functional` group
 runs the legacy four public DTP smoke/JTAG2AXI tests, while `all` collects the
 included public DTP testlists.
-
-=== Revision History
-
-[cols=",,,",options="header",]
-|===
-|Version |Date |Author |Description
-|1.0 |2026-06-09 |DV Team |OCAH open-source PyUVM architecture aligned with the DTP reference plan and public-VIP-first policy
-|1.1 |2026-06-14 |DV Team |Corrected the functional regression examples to four public tests, including `dtp_jtag_idcode_test`, while reconciling against the OCAH design spec
-|1.2 |2026-06-15 |DV Team |Added Basic JTAG group architecture: generic IR/DR scan transactions, DTP-local scan model, flattened scan observables, and 19-test `basic_jtag` regression
-|1.3 |2026-06-22 |DV Team |Added debug TDR architecture coverage: flattened DEBUG_CONTROL/IC_RESET observables, clock-stop stimulus, writable-TDR preserve reads, shared quality helpers, and `debug_tdr`/`all` run examples
-|1.4 |2026-06-23 |DV Team |Documented PR #3190 hierarchical sequence architecture: generic base sequence, focused JTAG/debug-TDR/JTAG2AXI base sequences, command-library composition for random/stress tests, and `+_test+`/`+_test_seq+` naming boundaries
-|1.5 |2026-08-04 |DV Team |Added the SystemVerilog UVM smoke layer: `dtp_uvm` runner alias on the `native-uvm` profile (VCS), single shared `tb_top.sv` module with `DTP_UVM_TB` ifdef harness, shared `ocah_jtag_if` VIP interface, `uvm/{env,seq_lib,tests}` package structure mirroring the cocotb layout, VPLAN 0.1 sanity checkers, and framework-neutral item naming
-|1.6 |2026-08-04 |DV Team |Migrated the SV-UVM layer onto the shared `ocah_jtag_vip` SV-UVM agent: pin-level driving moved into the VIP driver, sequences issue `ocah_jtag_item`s on the agent sequencer, and per-cycle FSM legality/closure moved into the `dtp_tap_fsm_checker` monitor-event subscriber
-|===

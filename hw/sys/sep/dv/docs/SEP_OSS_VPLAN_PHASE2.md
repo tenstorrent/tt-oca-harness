@@ -1,33 +1,20 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # SEP OSS VPLAN — Phase 2 (basic-feature breadth)
 
-> **Phase 2 — ACTIVE.** Breadth-first basic functional coverage: grow the 31-test
-> Phase-1 baseline toward 100+ testcases so that **every IP has its basic functional
-> behavior covered**, treating OCAH SEP (`dv/sep`) as the 100% reference and aiming
-> for **≥60% (stretch 75%) of its basic feature intent**. The creation rules are in
-> the VPLAN creation rules; the closed Phase-1 record (smoke + 21 subsystem tests,
-> 32 in total) is in `verification_plan_phase1.adoc`. Per-test detail
-> cards + the basic-feature ledger live in `SEP_OSS_VPLAN_PHASE2_DETAIL.txt`.
-
-> **OCAH main-sync — 2026-07-15.** After the OSS env last synced (2026-07-08), a sweep
-> of ~26 SEP-relevant OCAH commits found: (1) #3711 alias-remap RTL change re-synced in
-> two Phase-1 tests (see the Phase-1 main-sync note); (2) FAB-2 hardened with
-> **CHK-OWNERSHIP** (external master denied the filter's own config CSR — real port of
-> OCAH `run_filter_ownership()`; see the FAB-2 row). Two OCAH changes became Phase-3
-> *candidates* (deferred, not scheduled) — KM software emergency-wipe (#3719) and the
-> cpu-fw AES SRAM↔SRAM test — recorded with qualification in `SEP_OSS_VPLAN_PHASE3.md`.
-> All other audited OCAH changes needed no OSS work (see the Phase-3 doc's "Not carried"
-> list). The fixes landed VCS-green (reproduced-then-fixed) with a full Verilator
-> merge-gate regression.
+> **Phase 2 — ACTIVE.** Breadth-first basic functional coverage: grow the Phase-1
+> baseline of 32 testcases so that **every IP has its basic functional behavior
+> covered**. Coverage intent comes from public RTL, specifications, and current
+> tests. The closed Phase-1 record is in `verification_plan_phase1.adoc`. Per-test
+> detail cards and the basic-feature ledger live in `SEP_OSS_VPLAN_PHASE2_DETAIL.txt`.
 
 ## Ground rules (summary)
 
 - **Coverage completeness is primary; compression is the technique.** No-overlap,
  merge, and randomized-representative rules are the *means* to reach ≥60% with ~100
  tests, not the goal. When they conflict, completeness wins.
-- **OCAH Provenance Gate.** Every Phase-2 basic-feature test traces to ≥1 real OCAH
- test in its `OCAH-REFS` (1:1 port, merge, randomized rep, or stronger re-expression).
- Empty `OCAH-REFS` ⇒ rejected. Carve-out: OSS bring-up/responder/smoke infra.
+- **Source traceability gate.** Every Phase-2 basic-feature test traces to at
+  least one public RTL, specification, test, sequence, or firmware source.
+  Empty `OCAH-REFS` fields are rejected except for harness smoke tests.
 - **In scope (Phase 2):** smoke/CSR/status sanity, real datapath/mode, the cross-
  subsystem happy path, plus the basic access-control and status-clear/RW1C contracts
  that make a basic test truthful.
@@ -85,8 +72,8 @@ These are integration-only / hole-hunt seams the 22 basic-breadth reps DON'T cov
 shared-resource / fan-in-out-packing bug class as the already-found bugs (mailbox 8→1 truncation, filter
 polarity). **All four are in Phase-2 scope** — basic cross-subsystem happy-path + access-control/status-clear
 contracts (TD-1 scoped to the basic "both complete + both take real EDN beats + membership" check; deep
-fairness/starvation *stress* is deferred). Every one re-expresses a **verified real OCAH test** at the
-integration level OCAH's per-IP tb structurally can't reach (provenance confirmed in `dv/sep` 2026-06-25).
+fairness/starvation *stress* is deferred). Every one maps to a public source and
+targets integration behavior that per-IP testbenches cannot reach.
 Each has a full No-Coding-Gate card in the DETAIL file + a mapping row below.
 
 | # | OSS test | Bucket | Seam / hole | OCAH provenance (verified) | Scenario steps | Checker idea | Stimulable now? |

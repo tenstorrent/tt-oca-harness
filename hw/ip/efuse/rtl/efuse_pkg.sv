@@ -13,7 +13,8 @@ package efuse_pkg;
     `include "apb/typedef.svh"
     `include "efuse_typedef.svh"
 
-    localparam int unsigned LOCK_FIELD_BIT_WIDTH = 64;
+    // Physical OTP bits allocated to the LOCK field
+    localparam int unsigned LOCK_FIELD_BIT_WIDTH = 96;
     localparam int unsigned EFUSE_FIELD_MAP_IDX_WIDTH = $clog2(LOCK_FIELD_BIT_WIDTH/2);
 
     //////////////////////////////
@@ -67,8 +68,11 @@ package efuse_pkg;
     // Shadow Register Indices  //
     //////////////////////////////
 
-    localparam int unsigned SHADOW_IDX_LC_STATE         = 2;
-    localparam int unsigned SHADOW_IDX_TRANSIENT_RMA_EN = 4;
+    // Shadow-register word indices (32-bit words from address 0).
+    // LOCKS (64-bit) occupies words 0-1, LOCKS_SPARE (32-bit) word 2.
+    // LC_STATE at byte offset 0xC is word 3, TRANSIENT_RMA_EN at 0x14 is word 5.
+    localparam int unsigned SHADOW_IDX_LC_STATE         = 3;
+    localparam int unsigned SHADOW_IDX_TRANSIENT_RMA_EN = 5;
 
     localparam int unsigned MAX_CLASS1_SHADOW_RANGES = 10;
 
