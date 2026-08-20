@@ -32,7 +32,6 @@ partial read costs far more time than a full one.
 |---|---|
 | `README.md` | Repository layout, doc builds, register generation, DV firmware targets, vendoring |
 | `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents, issue/PR pointers |
-| `doc/trm/src/methodology.adoc` | SystemVerilog coding rules, the deviations from the lowRISC guide they derive from, RTL comment policy |
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
 | `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
@@ -314,9 +313,9 @@ RTL.
 
 ## Coding Guidance
 
-`doc/trm/src/methodology.adoc` is authoritative for RTL: it carries the SystemVerilog coding
-rules and the places the project departs from the lowRISC guide they derive from, naming case
-among them. What follows holds for every language in the tree.
+These rules hold for every language in the tree. Where the file being edited already has a
+convention — a comment style, a case for constants — follow it rather than one carried in from
+elsewhere.
 
 ### Comments
 
