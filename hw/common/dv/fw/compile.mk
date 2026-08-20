@@ -79,13 +79,17 @@ ifeq ($(filter -j% --jobs%,$(MAKEFLAGS)),)
 MAKEFLAGS += -j$(OCAH_DV_FW_JOBS)
 endif
 
-# Toolchain resolution. RISCV_TOOLCHAIN = dir of riscv64-unknown-elf-* tools, or
-# empty to use the toolchain on PATH (provisioned via Docker).
+# Toolchain resolution. RISCV_TOOLCHAIN = an install PREFIX (containing bin/)
+# or the dir of the riscv64-unknown-elf-* tools themselves; empty to use the
+# toolchain on PATH (provisioned via Docker). Accepting both spellings keeps
+# one environment variable working across the DV engine and the VP harness.
 RISCV_TOOLCHAIN ?=
 RISCV_PREFIX ?= riscv64-unknown-elf-
 
 ifeq ($(strip $(RISCV_TOOLCHAIN)),)
 OCAH_FW_TOOL_PREFIX := $(RISCV_PREFIX)
+else ifneq ($(wildcard $(patsubst %/,%,$(RISCV_TOOLCHAIN))/bin/$(RISCV_PREFIX)gcc),)
+OCAH_FW_TOOL_PREFIX := $(patsubst %/,%,$(RISCV_TOOLCHAIN))/bin/$(RISCV_PREFIX)
 else
 OCAH_FW_TOOL_PREFIX := $(patsubst %/,%,$(RISCV_TOOLCHAIN))/$(RISCV_PREFIX)
 endif

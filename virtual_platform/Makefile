@@ -39,8 +39,11 @@ CCI_VERSION     ?= 1.0.2
 NPROC           ?= $(shell nproc)
 # SW_TEST: used by the optional `smoke` target
 SW_TEST         ?= sep-gpio-test
-# RISCV_TOOLCHAIN: prepended to PATH for the firmware builds
-RISCV_TOOLCHAIN ?= /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10
+# RISCV_TOOLCHAIN: optional RISC-V cross-toolchain prefix; its bin/ is
+# prepended to PATH for the firmware builds when set. Leave unset when
+# riscv64-unknown-elf-gcc is already on PATH — ROM/DV builds fall back to the
+# ocah-toolchain container regardless (see fw_make below).
+RISCV_TOOLCHAIN ?=
 # SMOKE_TIMEOUT: seconds to let the VP run (it does not self-terminate)
 SMOKE_TIMEOUT   ?= 20
 
@@ -83,7 +86,7 @@ PYTEST_ARGS   ?=
 # Prepend the venv (python3 with pyelftools for the OTBN codegen) and the RISC-V
 # toolchain (if present) for the firmware builds.
 FW_ENV = export PATH="$(dir $(PYTHON)):$$PATH"; \
-         if [ -d "$(RISCV_TOOLCHAIN)/bin" ]; then export PATH="$(RISCV_TOOLCHAIN)/bin:$$PATH"; fi
+         if [ -n "$(RISCV_TOOLCHAIN)" ] && [ -d "$(RISCV_TOOLCHAIN)/bin" ]; then export PATH="$(RISCV_TOOLCHAIN)/bin:$$PATH"; fi
 
 # ROM/DV-engine firmware builds need the RISC-V + picolibc toolchain from the
 # ocah-toolchain container (tools/docker/README.md). Run natively when the
@@ -522,8 +525,8 @@ export LD_LIBRARY_PATH="$(SYSTEMC_LIBDIR):$(CCI_LIBDIR):$(BOOST_LIBDIR):$(OPENSS
 # Put sep-vp on PATH.
 export PATH="$(VP_BUILD_DIR)/bin:$$PATH"
 
-# RISC-V cross toolchain for building/running SEP firmware (added if present).
-if [ -d "$(RISCV_TOOLCHAIN)/bin" ]; then
+# RISC-V cross toolchain for building/running SEP firmware (added if set).
+if [ -n "$(RISCV_TOOLCHAIN)" ] && [ -d "$(RISCV_TOOLCHAIN)/bin" ]; then
     export PATH="$(RISCV_TOOLCHAIN)/bin:$$PATH"
 fi
 
@@ -565,7 +568,7 @@ smoke: vp
 	  exit 0
 	fi
 	# Make the RISC-V cross toolchain available for the firmware build.
-	if [ -x "$(RISCV_TOOLCHAIN)/bin/riscv64-unknown-elf-gcc" ]; then
+	if [ -n "$(RISCV_TOOLCHAIN)" ] && [ -x "$(RISCV_TOOLCHAIN)/bin/riscv64-unknown-elf-gcc" ]; then
 	  export PATH="$(RISCV_TOOLCHAIN)/bin:$$PATH"
 	fi
 	if ! command -v riscv64-unknown-elf-gcc >/dev/null 2>&1; then

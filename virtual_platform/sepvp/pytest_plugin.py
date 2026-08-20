@@ -57,8 +57,9 @@ def pytest_addoption(parser):
     g.addoption("--build-type", choices=["test", "release"], default="test",
                 help="firmware build type: test (DEBUG/SIM_OUT) or release")
     g.addoption("--stream", action="store_true", help="tee sep-vp stdout to the console")
-    g.addoption("--riscv-toolchain", default=str(paths.DEFAULT_RISCV_TOOLCHAIN),
-                help="RISC-V toolchain dir (its bin/ is prepended to PATH for firmware builds)")
+    g.addoption("--riscv-toolchain", default=paths.default_riscv_toolchain(),
+                help="RISC-V toolchain prefix dir (its bin/ is prepended to PATH for firmware "
+                     "builds; default: $RISCV_TOOLCHAIN, empty = use PATH as-is)")
 
 
 def pytest_configure(config):
@@ -90,9 +91,9 @@ def _fw_env(config):
     # not the shared system python3.
     venv_bin = Path(sys.executable).parent
     env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
-    tc_bin = Path(config.getoption("--riscv-toolchain")) / "bin"
-    if tc_bin.is_dir():
-        env["PATH"] = f"{tc_bin}{os.pathsep}{env.get('PATH', '')}"
+    tc = config.getoption("--riscv-toolchain")
+    if tc and (Path(tc) / "bin").is_dir():
+        env["PATH"] = f"{Path(tc) / 'bin'}{os.pathsep}{env.get('PATH', '')}"
     return env
 
 

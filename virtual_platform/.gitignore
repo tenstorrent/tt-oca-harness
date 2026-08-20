@@ -9,3 +9,4 @@ __pycache__/
 downloads/
 local/
 setup_environment.sh
+.vp-config-stamp

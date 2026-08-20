@@ -50,8 +50,14 @@ FW_TEST_BUILD_DIR = FW_DIR / "build" / "tests"
 # Default per-run working-directory root (logs + staged artifacts land here).
 LOGS_DIR = VP_DIR / "logs" / "sepvp"
 
-# RISC-V cross toolchain used to build SEP firmware.
-DEFAULT_RISCV_TOOLCHAIN = Path("/tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10")
+def default_riscv_toolchain() -> str:
+    """Optional RISC-V cross-toolchain prefix for firmware builds.
+
+    Honors the RISCV_TOOLCHAIN environment variable; empty means "use whatever
+    is already on PATH" (the plugin's --riscv-toolchain option and all consumers
+    tolerate an empty value, and ROM/DV builds fall back to the ocah-toolchain
+    container regardless)."""
+    return os.environ.get("RISCV_TOOLCHAIN", "")
 
 
 def sep_vp_bin() -> Path:
