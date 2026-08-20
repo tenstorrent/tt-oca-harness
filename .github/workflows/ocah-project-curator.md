@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 name: OCAH Project Curator
-description: Fill empty Project 291 fields and assign owners. Disabled until enabled in issue-taxonomy.yml.
+description: Fill empty Project 291 fields and assign owners.
 
 on:
   workflow_dispatch:

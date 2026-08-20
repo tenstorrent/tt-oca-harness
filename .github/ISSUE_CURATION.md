@@ -5,8 +5,7 @@ SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # OCAH project curator
 
-Kill switch and compile notes. The prompt is
-`.github/workflows/ocah-project-curator.md`.
+The prompt is `.github/workflows/ocah-project-curator.md`.
 
 ## Files
 
@@ -15,11 +14,12 @@ Kill switch and compile notes. The prompt is
 - `workflows/ocah-project-curator.lock.yml` — generated; do not edit
 - `aw/actions-lock.json` — compiler action pins
 
-## Disabled
+## Run
 
-It cannot run on a schedule: `on: workflow_dispatch` only,
-`automation.enabled: false`, and `safe-outputs.staged: true`.
-A dispatch still no-ops until `enabled` is true.
+`automation.enabled` in `issue-taxonomy.yml` is true. The workflow is
+`.github/workflows/ocah-project-curator.lock.yml`. It triggers on
+`workflow_dispatch`. `safe-outputs.staged` is true: proposals appear in
+the Actions run summary and are not applied.
 
 ## Compile
 

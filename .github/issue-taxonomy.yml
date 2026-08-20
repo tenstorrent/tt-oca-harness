@@ -3,9 +3,9 @@
 
 schema_version: 1
 
-# Kill switch for the project curator. Leave false until OSPO credentials exist.
+# When false, the project curator emits no safe outputs.
 automation:
-  enabled: false
+  enabled: true
   mode: staged
   maximum_issues_per_run: 20
 
