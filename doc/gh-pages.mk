@@ -15,9 +15,6 @@ OCAH_COMBINED_PLAYBOOK ?= $(OCAH_ROOT)/antora-playbook.yml
 OCAH_DOC_SITE_URL ?=
 
 ## Build the combined multi-book site (Home + every book, one Antora run).
-## NOTE: your working copy should also already have ocah-doc-contributing-setup
-## in this prerequisite list from the earlier Contributing work -- not shown
-## here since this uploaded file predates that change.
 .PHONY: ocah-doc-combined-html
 ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-contributing-setup ocah-doc-home-setup 
 	@command -v npx >/dev/null 2>&1 || { \

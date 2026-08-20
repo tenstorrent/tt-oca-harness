@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[security-processor-sep]]
-== Security Processor (SEP)
+== Security Enclave Processor (SEP)
 
 :imagesdir: assets
 

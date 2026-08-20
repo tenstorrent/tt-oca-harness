@@ -8,15 +8,18 @@ across chiplets built to the Open Chiplet Architecture (OCA) standard.
 
 == Architecture
 
-OCAH integrates the OCA-mandated system-layer functions so adopters get them
-by construction rather than rebuilding them per project:
+OCAH implements the common non-application functions an OCA chiplet
+needs, so adopters get them by construction rather than rebuilding
+them per project::
 
-* Security Processor (SEP) -- secure boot, chain of trust, key management
-* System Management Controller (SMC) -- system bring-up, power/reset
-  coordination, telemetry
-* System Management Network (SMN) -- management-plane interconnect
-* Debug & Test Ports (DTP) -- IEEE 1838-based post-package debug and test
-  access
+* Security Enclave Processor (SEP) -- secure boot, chain of trust, key management
+* System Management Controller (SMC) -- system bring-up, clock control,
+  power/thermal management, reset coordination, telemetry
+* System Management Unit (SMU) -- composite of SEP, SMC, and DTP
+* System Management Network (SMN) -- management-plane fabric
+* Debug & Test Ports (DTP) -- post-package debug and test access over JTAG
+  (IEEE 1149.1), iJTAG instrument access (IEEE 1687), and package-level TAP
+  chaining (IEEE 1838), plus OCA cross-trigger management
 * AXI-over-UCIe Bridge (AoU) -- die-to-die transport bridge (roadmap)
 
 == OCA Standard Layers
