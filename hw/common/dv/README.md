@@ -40,7 +40,7 @@ monitor, checker, and commercial-simulator coverage hook files when the
 protocol shape supports them. For example:
 
 ```python
-from ocah_axi_vip import OcahAxiLiteMaster
+from ocah_axi_vip import OcahAxiLiteMasterAgent
 ```
 
 ## VIP Ownership and Promotion Policy
@@ -90,8 +90,8 @@ a protocol already represented here; extend the existing stable wrapper.
 
 | Package | Maturity | Public example | Gating consumer / disposition |
 |---------|----------|----------------|-------------------------------|
-| `ocah_axi_vip` | **Promoted** | `ocah_axi_vip/cocotb/examples/example_register_access.py`, `example_axi_scoreboard_selftest.py` | DTP, SEP, and SMC use the shared AXI/AXI-Lite engines; the checker/reference-model/scoreboard stack is gated by the DTP jtag2axi decode-error, security-gating, and SLVERR/DECERR injection tests; DUT-local agents retain address and scoreboard policy. SV layer (interface/SVA/responders/passive UVM) is consumed by `--dut dtp_uvm` |
-| `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 | `ocah_jtag_vip/cocotb/examples/example_idcode.py` | DTP, SMC, and SMU consume the TAP API; iJTAG, boundary-scan, and DUT TDR maps remain local |
+| `ocah_axi_vip` | **Promoted** (both sides) | `ocah_axi_vip/cocotb/examples/example_register_access.py`, `example_axi_scoreboard_selftest.py` | DTP, SEP, and SMC use the shared AXI/AXI-Lite master and slave agents through the per-side `*Sequence` APIs; the checker/reference-model/scoreboard stack is gated by the DTP jtag2axi decode-error, security-gating, and SLVERR/DECERR injection tests; DUT-local agents retain address and scoreboard policy. SV layer (interface/SVA/responder modules/passive UVM stack/UVM slave agent) is consumed by `--dut dtp --framework uvm`, where the UVM slave agent answers the SMC OTP AXI-Lite port; the UVM master side is not shipped yet |
+| `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 (master side) | `ocah_jtag_vip/cocotb/examples/example_idcode.py`, `example_slave_selftest.py` | DTP, SMC, and SMU consume the master TAP API; the slave side (reactive TAP device) ships selftest-validated with no gating DUT consumer yet — DUT JTAG host ports are the intended first integration; iJTAG, boundary-scan, and DUT TDR maps remain local |
 | `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | SEP is the gating DUT consumer; true quad/octal lanes, DDR, and vendor timing remain deferred |
 | `ocah_apb_vip` | Experimental / unadopted | No package-local example | No real DUT consumer; add an APB example and gating integration before promotion |
 | `ocah_entropy_vip` | Experimental | `ocah_entropy_vip/cocotb/examples/example_deterministic_entropy.py` | No real DUT consumer; retain until a subsystem gates deterministic source/monitor behavior |
@@ -130,7 +130,7 @@ Two examples define the ownership boundary:
 - **DUT-local:** `hw/sys/dtp/dv/cocotb/env/dtp_scan_model.py` models the
   DTP testbench's compact BSR loopback. Its fixed topology and fixture semantics
   are not a reusable IEEE boundary-scan VIP.
-- **Shared:** `ocah_axi_vip.OcahAxiMaster` provides protocol-neutral AXI
+- **Shared:** `ocah_axi_vip.OcahAxiMasterAgent` provides protocol-neutral AXI
   transactions and plain results. DTP, SEP, and SMC keep only their bindings,
   addresses, expected-response policy, and scoreboards locally.
 
@@ -217,14 +217,18 @@ promotion gates are met. DUT addresses, hierarchy, lifecycle/security policy,
 scenario selection, and DUT-specific goldens remain under the DUT's
 `cocotb/env/`; pure hierarchy invariants remain under `cocotb/assertions/`.
 
-DUT-local packages are exposed by the OSS DV namespace bridge. In a clean shell,
-install the shared package and source the OSS DV environment before running tests:
+DUT-local packages are exposed by the OSS DV namespace bridge, which `run_dv.py`
+provisions along with the shared package: it re-execs under
+`uv run --project <root> --locked --group dv`, and this directory is the `ocah-dv`
+uv workspace member, so the shared package resolves from source. The only
+prerequisite is `uv` on PATH:
 
 ```bash
-python3 -m pip install -e hw/common/dv
-source bin/setup_env.sh
 python3 tools/dv/run_dv.py --doctor --dut dtp
 ```
+
+`OCAH_DV_SKIP_UV=1` skips the re-exec, for environments that already supply the
+`dv` dependency group.
 
 `--doctor --dut <name>` checks the shared package, required Python packages, the
 namespace bridge, one shared VIP import, and the selected DUT-local import. If an
@@ -237,7 +241,7 @@ packages instead of directly importing backend packages. Remaining audited
 notes:
 
 - SEP/SMC AXI agents and Lite masters now use `ocah_axi_vip`
-  (`OcahAxiMaster` / `OcahAxiLiteMaster`). Prefer `from_prefix` +
+  (`OcahAxiMasterAgent` / `OcahAxiLiteMasterAgent`). Prefer `from_prefix` +
   `init_read`/`init_write` (or `*_result`) over direct `cocotbext.axi` imports.
 - `hw/sys/sep/dv/cocotb/env/__init__.py` still patches cocotbext stream
   initialization before SEP AXI masters are constructed.
@@ -249,7 +253,7 @@ notes:
   `cocotbext-jtag` assumes IEEE active-low TRST.
 - `hw/sys/smc/dv/cocotb/tests/smc_register_sanity_test.py` drives real
   `s_axi_*` traffic into the SMC SEP_IN AXI port through the DUT-local
-  `SmcSysAxiDriver`, which binds the shared `ocah_axi_vip.OcahAxiMaster`.
+  `SmcSysAxiDriver`, which binds the shared `ocah_axi_vip.OcahAxiMasterAgent`.
   The local layer owns SMC/PyUVM sequencing and policy; the AXI protocol engine
   remains shared.
 - `ocah_axi_vip.OcahAxiMonitor`, `OcahAxiLiteMonitor`, and

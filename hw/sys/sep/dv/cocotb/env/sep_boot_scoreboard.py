@@ -85,4 +85,12 @@ class SepBootScoreboard(uvm_component):
             errors.append(f"firmware console missing {self.expected_line!r}")
 
         assert not errors, "SEP boot scoreboard: " + "; ".join(errors)
-        self.logger.info("SEP boot PASS: core booted, console banner seen, firmware PASS")
+        # Name only the checks that actually ran. expected_line is empty for tests
+        # that have no banner (the ROM boot test clears it), and claiming "console
+        # banner seen" there told an auditor a comparison had happened when none
+        # had -- on a run whose console was in fact empty.
+        done = ["core booted"]
+        if self.expected_line:
+            done.append("console banner seen")
+        done.append("firmware PASS")
+        self.logger.info("SEP boot PASS: %s", ", ".join(done))

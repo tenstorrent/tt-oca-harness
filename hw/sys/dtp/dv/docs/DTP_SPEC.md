@@ -7,9 +7,8 @@ block. It aggregates the primary JTAG TAP, downstream STAP/iJTAG scan paths,
 JTAG-to-AXI debug bridges, and the cross-trigger network used for external and
 internal trigger routing.
 
-This OCAH open-source verification plan follows the working reference plan in
-`dv/dtp/doc/DTP_SPEC.md`, but scopes implementation to the public `tt-oca`
-repository using the PyUVM, cocotb, and Verilator environment in
+This specification describes the public `tt-oca` implementation and its
+PyUVM, cocotb, and Verilator environment in
 `hw/sys/dtp/dv/`. Standard protocol interfaces use the unified OCAH BFM
 packages; custom OCH protocols are modeled by OCAH-local BFMs when no shared
 wrapper exists.
@@ -21,7 +20,6 @@ wrapper exists.
 | Package | `dtp_pkg` (`hw/sys/dtp/rtl/dtp_pkg.sv`) |
 | Repository | `tt-oca` |
 | Open-source DV location | `hw/sys/dtp/dv/` |
-| Reference plan | `dv/dtp/doc/` |
 | Standards | IEEE 1149.1-2013 (JTAG), IEEE 1687-2014 (iJTAG), IEEE 1838-2019 (3DIC); OCH Cross Trigger v1.0 (OCCT) |
 
 ## Specifications
@@ -120,10 +118,10 @@ point-to-point handshake mode.
 | Interface | Type | Direction | Open-Source Verification Policy |
 |-----------|------|-----------|-------------------------|
 | Primary JTAG TAP | Pin-level JTAG (`tck`, `tms`, `trst_n`, `tdi`, `tdo`) | Client | Use `ocah_jtag_vip` |
-| SMC fabric debug | AXI4, 56-bit address, 64-bit data | Manager | Use `ocah_axi_vip` `OcahAxiRam` |
+| SMC fabric debug | AXI4, 56-bit address, 64-bit data | Manager | Use `ocah_axi_vip` `OcahAxiSlaveAgent` |
 | SMC OTP debug | AXI4-Lite, 32-bit address/data | Manager | Use `ocah_axi_vip` when enabled |
 | SEP OTP debug | AXI4-Lite, 32-bit address/data | Manager | Use `ocah_axi_vip` when enabled |
-| XTRIG CSR | AXI4-Lite, 32-bit address/data | Subordinate | Use `ocah_axi_vip` `OcahAxiLiteMaster` when enabled |
+| XTRIG CSR | AXI4-Lite, 32-bit address/data | Subordinate | Use `ocah_axi_vip` `OcahAxiLiteMasterAgent` when enabled |
 | BSR / STAP scan | `jtag_scan_ctrl_t` plus scan in/out | Host | Loopback first, then OCAH-local scan model |
 | iJTAG scan | `jtag_scan_ctrl_t` plus scan in/out | Host | OCAH-local model; no mature public IEEE 1687 VIP identified |
 | CTM internal CT | Request/ack arrays | Mixed | OCAH-local BFM; custom OCH protocol |
@@ -154,9 +152,8 @@ extra STAPs (scan-output lockup on the last) — and exposes three cascaded iJTA
 SIB chains: DFT Secure, DFT Non-Secure, and DFD (Debug Forensics Dump). The PTAP
 holds a 2-bit 3DCR (`TAP_3DCR`) that bypasses the whole STAP chain, and each STAP
 holds its own 3-bit 3DCR (`config_hold`, `stap_sel`, `tms_hold`). The full
-reference plan covers SIB combinations, 3DCR select/config-hold/TMS-hold behavior,
-and lifecycle gating. The open-source scenario inventory keeps these scan-routing
-categories alongside the standard JTAG/JTAG2AXI flows.
+verification plan covers SIB combinations, 3DCR select/config-hold/TMS-hold
+behavior, and lifecycle gating alongside the standard JTAG/JTAG2AXI flows.
 
 ### Feature 4: JTAG2AXI Debug Bridges
 
@@ -260,18 +257,8 @@ features are always enabled.
 
 ## Verification Alignment
 
-The working reference plan in `dv/dtp/doc/` contains 72 logical tests. The
-open-source VPLAN expands multi-scenario CocoTB modules into 147 named OCAH
-open-source test cases. Scenario groups cover smoke, Basic JTAG, SMC-fabric
+The VPLAN defines 147 named OCAH test cases. Scenario groups cover smoke,
+Basic JTAG, SMC-fabric
 JTAG2AXI read/write, debug TDR scenarios (TMP_STATUS, IC_RESET, DEBUG_CONTROL,
 JTAG_CAPS, and JTAG2AXI_CAPS), STAP/iJTAG scan routing, XTRIG, CTP, and CTM while
 using unified OCAH BFM wrappers for standard protocols.
-
-## Revision History
-
-| Version | Date | Author | Description |
-|---------|------|--------|-------------|
-| 1.0 | 2026-06-09 | DV Team | OCAH open-source verification specification aligned with the DTP reference plan |
-| 1.1 | 2026-06-14 | DV Team | Aligned with OCAH design spec (ocah-documentation.pdf, Chapter 7): added specifications/config-parameter tables, STAP hierarchy + 3DCR widths, authoritative lifecycle-gating table, clock-stop aggregation, and RTL dependencies |
-| 1.2 | 2026-06-22 | DV Team | Updated verification alignment for Basic JTAG, JTAG2AXI single-op, and debug TDR public scenarios |
-| 1.3 | 2026-07-29 | DV Team | Corrected stale RTL paths to the `hw/sys/` and `hw/ip/<family>/` layout, renamed the bridge to `jtag2axi`, and fixed the `NUM_EXTRA_STAPS` and `IC_RESET_{SMC,SEP,EXT}_ENABLE` defaults to the values `dtp.sv` actually elaborates |

@@ -16,9 +16,8 @@ or serve the generated pages.
 [NOTE]
 ====
 The product-facing dashboard page in the OCAH TRM is a separate visual
-placeholder. This command implements static report generation, but no
-repository CI workflow currently invokes the complete collect-to-publish
-pipeline automatically.
+placeholder. Repository CI publishes normalized nightly data for the external
+website pipeline, but it does not render or host dashboard HTML.
 ====
 
 == Architecture
@@ -69,6 +68,50 @@ and `latest` destinations.
 |Escape values and provide the embedded stylesheet and HTML helpers.
 |===
 
+[[dashboard-terminology]]
+=== Terminology
+
+The pipeline's options, JSON files, and rendered pages use this vocabulary:
+
+Native result::
+The `result.json` written by `run_dv.py` at the root of a run directory
+(integer `schema_version` `1`). It is the pipeline's only input.
+
+Normalized result::
+The per-DUT record produced by `collect` (string `schema_version` `"0.1"`,
+conventionally named `<dut>.result.json`). Every downstream command consumes
+only this format.
+
+Flow::
+In dashboard JSON, `flow` holds the DUT name of one collected record, and the
+aggregate `flows` counters count collected records. A "failing flow" is a
+record whose overall status is `FAIL`, independent of how many of its
+individual tests passed.
+
+Bundle::
+The static directory handed to `publish`: normalized results, generated HTML,
+`summary.json`, and staged coverage artifacts.
+
+Category::
+A per-test grouping label derived from the test's tags or groups (for example
+`smoke`, `ci`). A test without a recognized tag falls back to its first group,
+then to the flow name.
+
+Failure bucket::
+A group of failures sharing one `(kind, signature)` classification, carrying a
+count and bounded example paths.
+
+Hole::
+An uncovered coverage point or point group. Holes are reported as `open`
+(needs work), `accepted` (waived by policy), or `unclassified`.
+
+Trend point::
+One aggregate snapshot appended to `history.json`, identified by a hash of the
+ordered input list (see <<Trend history>>).
+
+The complete field-by-field JSON contract is in
+<<dashboard-json-reference,JSON field reference>>.
+
 [[dashboard-syntax-overview]]
 === Syntax at a Glance
 
@@ -78,6 +121,7 @@ The dashboard CLI has four file-oriented operations:
 ----
 run_dashboard.py collect
   --dut DUT
+  [--framework FRAMEWORK]
   [--run-dir RUN_DIR_OR_RESULT_JSON]
   [--output NORMALIZED_RESULT_JSON]
 
@@ -272,6 +316,7 @@ An abbreviated normalized `dtp.result.json` has this form:
 {
   "schema_version": "0.1",
   "flow": "dtp",
+  "framework": "cocotb",
   "status": "PASS",
   "source": {
     "collector": "run_dv-result",
@@ -448,10 +493,24 @@ When `--run-dir` is omitted, collection reads:
 The explicit path is current-working-directory-relative, not
 repository-root-relative.
 
-When passing a file, it must still be the result inside its original run tree:
-the collector treats the file's parent as the run root. An exported copy loses
-automatic discovery of regression, leaf, JUnit, and optional `run.json`
-material.
+The collector treats the selected file's parent as the available run root.
+When a downloaded artifact has been relocated, native paths that begin under
+the recorded `run_dir` are rebased onto this available root. The original
+`run_dir` string remains the recorded run identity; normalized
+`artifacts.run_dir` carries it into trend-point identity and `run_metadata`
+retains it for inspection. A standalone exported copy still loses automatic discovery of
+regression, leaf, and JUnit material because those files are not beside it.
+
+`--framework` names the framework view to collect for a DUT that implements
+more than one test framework (for example `--dut dtp --framework uvm`); when
+omitted, the DUT's `default_framework` is resolved. The flag must be paired
+with a run of that framework: when the collected `result.json` records a
+different `framework`, collection fails with a mispairing error instead of
+publishing the run under the wrong view. The default `--output` name is
+derived from the DUT name alone, so collect each framework view from its own
+run directory and give each view its own `--output` name (for example
+`dtp_uvm.result.json`) — otherwise the second collection overwrites the
+first.
 
 [CAUTION]
 ====
@@ -465,8 +524,11 @@ Collection performs these steps:
 
 . Load the native run-level result.
 . Load `stages/regress/regression.json` when present.
+. Rebase recorded run-tree paths onto the selected run root.
 . Load leaf fragments and test metadata to build `tests_detail`.
-. Record JUnit/xUnit paths and whether they exist.
+. Prefer each leaf's `artifacts.results_xml`, then parser evidence, then
+  log-layout inference when locating JUnit/xUnit files.
+. Record the resolved JUnit/xUnit paths and whether they exist.
 . Convert the native result to dashboard schema version `"0.1"`.
 . Copy selected coverage output beside the normalized result.
 . Write the normalized result.
@@ -486,7 +548,9 @@ Coverage staging uses:
 
 Only coverage report and manifest material is copied. Native logs, result
 fragments, JUnit files, waveforms, and run directories remain references to
-their original paths.
+the selected run tree. Collection resolves those references correctly while
+that tree is available; durable packaging/publication of the referenced files
+is a separate pipeline concern.
 
 [WARNING]
 ====
@@ -555,7 +619,10 @@ rewritten to their staged locations.
 |Native tool, versions, executor, generated time, overrides, and Git
 information are nested under `run_metadata`. `run_metadata.selection` comes
 only from `regression.json`; selected native artifacts are instead copied into
-the dashboard record's top-level `artifacts`.
+the dashboard record's top-level `artifacts`. `run_metadata.run_dir` preserves
+the original run identity even when artifact paths are rebased to an explicit
+download root; top-level `artifacts.run_dir` preserves the same value for
+dashboard/trend consumers.
 |===
 
 The collector performs only shallow native validation: the input must be a JSON
@@ -565,6 +632,9 @@ required fields, or agreement between the native `flow` and `--dut`.
 `report` and `dashboard` likewise do not enforce schema version `"0.1"` or
 required field types. The version is the intended contract, but a wrong-schema
 dictionary can still produce misleading successful output.
+
+The complete field-by-field contract of every generated JSON file is in
+<<dashboard-json-reference,JSON field reference>>.
 
 == Generate a per-DUT report
 
@@ -621,6 +691,13 @@ The static page and summary include:
 * merged failure buckets;
 * optional coverage trend rows;
 * original normalized results under `summary.json.results`.
+
+One DUT can contribute one record per framework view (for example `dtp`
+collected once as cocotb and once as UVM). Each record counts as its own flow
+in `flows.total`, and such records share a `flow` name; the `framework` field
+on each normalized record — surfaced in `dut_status` rows, coverage-closure
+`by_dut` rows, and trend `per_dut` entries — is what disambiguates them.
+Parsers grouping by DUT must key on `(flow, framework)`, not `flow` alone.
 
 No aggregate coverage average is computed, even when all inputs use one tool.
 Coverage remains per DUT because simulator, target, instrumentation, and policy
@@ -728,6 +805,228 @@ The publisher does not scan for credentials or enforce a public-artifact
 allowlist. Review the complete source tree before publishing it.
 ====
 
+[[dashboard-json-reference]]
+== JSON field reference
+
+The machine-readable outputs are the contract for external consumers: CI
+assertions, website pipelines, and scripts. This section lists the fields a
+parser may rely on, per file. Fields not listed are either absent, copied
+verbatim from tool-specific native material, or subject to change.
+
+Two parsing rules apply everywhere:
+
+* Percentages (`pass_rate`, `total_percent`, metric values) are rounded to two
+  decimals and are JSON `null` when the denominator is zero or the value is
+  unavailable. `null` means "no data", never "0%".
+* Statuses are uppercase strings. Normalized records and aggregate rows use
+  only `PASS`, `FAIL`, and `UNKNOWN`; per-test detail records additionally use
+  `SKIP`. The unreduced native status survives in `source.native_status`.
+
+=== Normalized result: `<dut>.result.json` (schema `"0.1"`)
+
+[cols="<2,<1,<6",options="header"]
+|===
+|Field |Type |Meaning
+
+|`schema_version` |string |Always `"0.1"`.
+
+|`generated_at` |string |Collection time, UTC ISO-8601.
+
+|`flow` |string |DUT name.
+
+|`kind` |string |Flow kind from the DUT configuration (for example `sim`).
+
+|`tool` |string |Simulator or engine recorded by the native run.
+
+|`framework` |string |Test framework recorded by the native run (for example
+`cocotb`).
+
+|`status` |string |`PASS`, `FAIL`, or `UNKNOWN` after the
+<<dashboard-status-formation,status reduction>>.
+
+|`git` |object |`sha`, `short_sha`, `branch` — queried at collection time; the
+run-time values remain in `run_metadata.git`.
+
+|`timing` |object |`start_time` and `end_time` (ISO strings, possibly empty)
+plus `duration_sec`: the sum of native stage durations, not wall-clock time.
+
+|`tests` |object |`total`, `passing`, `failing` (computed as
+`total - passing`), `pass_rate`.
+
+|`coverage` |object |The native coverage object (see
+<<dashboard-coverage-formation,coverage fields>>) with staged-path rewrites
+described below.
+
+|`artifacts` |object |Paths to source material, described below.
+
+|`failure_buckets` |array |Merged native buckets: `kind`, `signature`,
+`count`, and optional `affected` and `examples` lists.
+
+|`source` |object |`collector` (`run_dv-result`, or `none` when no native
+result was found), `label`, and `native_status`.
+
+|`run_metadata` |object |Native run identity, described below. Present when a
+native result was collected.
+
+|`tests_detail` |array |Per-test records, described below. Present when
+collection found per-test material.
+
+|`junit_xml` |array |One entry per recorded JUnit file: `item`, `seed`,
+`attempt`, `path`, `exists`.
+
+|`regression` |object |The native `regression.json` passed through:
+`executor`, `selection`, `jobs`, `failed_tests`, `flaky_tests`,
+`failure_buckets`, `artifacts`. Present for scheduler runs.
+
+|`warnings` |array |Collector warning strings, for example missing JUnit
+files. Absence of optional `run.json` is not a warning.
+|===
+
+Coverage staging rewrites: when `collect` copies coverage output into the
+bundle, `coverage.report`, `coverage.manifest`, `coverage.summary`,
+`coverage.coverage_details`, `coverage.coverage_details_raw`, and
+`coverage.policy_application` become bundle-relative staged paths, and each
+original value is preserved under the same name with a `source_` prefix
+(`coverage.source_report`, ...). `coverage.metrics` maps metric names to
+percentages, and each metric is duplicated as a top-level
+`coverage.<name>_percent` convenience field.
+
+`artifacts` keys: `result_json` (always present), `run_dir`, `run_json`,
+`regression_json`, `log` (a failing test's log when one exists, else the
+first simulation log), and `coverage_`-prefixed keys mirroring the staged
+coverage paths above. Paths inside the checkout are repository-relative;
+paths in an explicit out-of-tree download root are absolute.
+`artifacts.run_dir` is the exception: it intentionally remains the native
+recorded identity rather than the selected download path.
+
+`run_metadata` keys: `run_dir`, `result_json`, `run_json`, `label`, `items`,
+`stages` (stage-name list), `tool`, `tool_version`, `tool_versions`,
+`executor`, `generated_at` (native run time), `dry_run`, `overrides`, `git`
+(the native run's Git metadata), `selection` (from `regression.json`), and
+`invocation` (the optional `run.json` content, else an empty object).
+
+Each `tests_detail` entry carries: `name`, `module`, `category`, `tags`,
+`groups`, `target`, `seed`, `attempt`, `stage`, `status` (may be `SKIP`),
+`duration_sec`, `reason`, `log`, `result_json`, `junit_xml`, `artifacts`,
+`failure_buckets`, and `parser` (`policy`, `status_source`, and up to five
+`evidence` entries). Retried leaves appear once per
+`(name, seed, attempt)` combination.
+
+=== Aggregate summary: `summary.json` (schema `"0.1"`)
+
+[cols="<2,<1,<6",options="header"]
+|===
+|Field |Type |Meaning
+
+|`schema_version` |string |Always `"0.1"`.
+
+|`generated_at` |string |Aggregation time, UTC ISO-8601.
+
+|`flows` |object |`total`, `passing`, `failing`, `unknown`, `pass_rate` over
+collected records.
+
+|`tests` |object |`total`, `passing`, `failing`, `skipped`, `unknown`,
+`pass_rate` summed across records (see the
+<<dashboard-counter-semantics,counter caveat>>).
+
+|`coverage` |object |`average_total_percent` (always `null`),
+`cross_tool_average_disabled` (always `true`), `available`, `missing`. No
+cross-DUT average is ever computed.
+
+|`coverage_closure` |object |`details_available`, `details_missing`,
+`threshold_failures`, plus `by_dut` and `by_category` rows described below.
+
+|`regression` |object |`failed_tests` and `flaky_tests` counts summed across
+records.
+
+|`junit_xml` |object |`total` recorded JUnit files and how many are `missing`.
+
+|`warnings` |object |`total` collector warnings across records.
+
+|`dut_status` |array |One row per record, described below. This is the
+primary table for per-DUT parsing.
+
+|`categories` |array |Per-category rollups: `category`, `total`, `passing`,
+`failing`, `skipped`, `unknown`, `flows`, `pass_rate`.
+
+|`failure_buckets` |array |Buckets merged across records: `kind`,
+`signature`, `count`, `flows`, `affected`, and up to five `examples`.
+
+|`results` |array |The complete normalized input records, embedded verbatim.
+`summary.json` is therefore self-contained — and grows with its inputs.
+|===
+
+Each `dut_status` row carries: `flow`, `kind`, `tool`, `status`,
+`tests_total`, `tests_passing`, `tests_failing`, `tests_skipped`,
+`tests_unknown`, `pass_rate`, `category_count`, `categories`, `failed_tests`,
+`flaky_tests`, `coverage_total_percent`, `coverage_status`,
+`coverage_threshold`, `coverage_threshold_met`,
+`coverage_details_available`, `coverage_open_holes`,
+`coverage_accepted_holes`, `coverage_unclassified_holes`,
+`coverage_comparison_key`, `report`, and `run_dir`.
+
+Each `coverage_closure.by_dut` row carries: `dut`, `tool`,
+`details_available`, `open`, `accepted`, `unclassified`,
+`native_point_count`, `hole_group_count`, `threshold_failures`, and
+`comparison_key`. Each `by_category` row carries `category`,
+`native_point_count`, and the contributing `duts`.
+
+=== Trend history: `history.json` (schema `"0.2"`)
+
+[cols="<2,<1,<6",options="header"]
+|===
+|Field |Type |Meaning
+
+|`schema_version` |string |Always `"0.2"`.
+
+|`generated_at` |string |Last update time, UTC ISO-8601.
+
+|`points` |array |Trend points, oldest first, unbounded (see
+<<Trend history>>).
+|===
+
+Each point carries: `id` (16 hex characters hashed from the ordered input
+identities — regenerating identical inputs replaces the point),
+`generated_at`, `flow_pass_rate`, `test_pass_rate`, `failed_tests`,
+`flaky_tests`, and `per_dut`. Each `per_dut` entry carries: `flow`, `tool`,
+`target`, `comparison_key`, `status`, `coverage_status`, `threshold_met`,
+`raw_metrics`, `effective_metrics`, and `holes_summary`. Compare trend points
+only when their `comparison_key` values match.
+
+=== Publication manifest: `manifest.json` (schema `"0.1"`)
+
+Written into the source directory by `publish`: `schema_version`,
+`generated_at` (local time, no timezone offset), `publish_name`, `timestamp`,
+`source` (the absolute source directory), `source_result_files` (the
+`artifacts.result_json` paths found in `summary.json`), and `output_files`
+(the file inventory of the source directory, which may omit the manifest
+itself on first write).
+
+=== Parsing examples
+
+Gate a CI job on the aggregate:
+
+[source,bash]
+----
+jq -e '.flows.total == 2 and .flows.failing == 0 and .flows.unknown == 0' \
+  summary.json
+----
+
+List per-DUT outcomes:
+
+[source,bash]
+----
+jq -r '.dut_status[] | [.flow, .tool, .status, (.pass_rate // "n/a")] | @tsv' \
+  summary.json
+----
+
+Distinguish an infrastructure error from a test failure in one record:
+
+[source,bash]
+----
+jq -r '.source.native_status' dtp.result.json
+----
+
 == CLI reference
 
 === `collect`
@@ -739,6 +1038,11 @@ allowlist. Review the complete source tree before publishing it.
 |`--dut NAME`
 |Required
 |Resolve and collect one DUT.
+
+|`--framework NAME`
+|Default: the DUT's `default_framework`
+|Framework view to collect for a multi-framework DUT. Errors when the
+collected result records a different framework.
 
 |`--run-dir PATH`
 |Default: DUT `build/runs/latest`
@@ -896,8 +1200,6 @@ Operational rules:
   `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
   provisioned; the step self-disables while they are absent, and GitHub's
   native scheduled-workflow failure notification covers the interim.
-* Pull requests get a sticky smoke-summary comment from the `sim` workflow's
-  `pr-comment` job instead of an email.
 
 == Troubleshooting
 
@@ -908,12 +1210,13 @@ repository root through the locked `uv` command shown in
 <<dashboard-environment,Environment and path rules>>, or activate an equivalent Python
 environment.
 
-=== Collection reports missing `run.json`
+=== Collection reports missing JUnit XML after artifact download
 
-The collector looks for optional `<run>/run.json`, but the current runner does
-not emit it. The warning is expected and does not change collection status.
-Use native `result.json`, stage records, and regression metadata for
-reproducibility.
+Pass the downloaded run-tree root with `--run-dir`, not a copied
+`result.json` by itself. The collector rebases recorded paths beneath native
+`run_dir`, prefers `artifacts.results_xml`, and checks the corresponding file
+under the explicit root. A remaining warning means the referenced file is
+actually absent or the input is no longer a complete run tree.
 
 === Collection produced UNKNOWN but exited zero
 
@@ -921,6 +1224,14 @@ Check that `--run-dir` resolves from the current directory and contains
 `result.json`, or pass the full path to that file. Also confirm that the JSON is
 an object with a `status` field. Collection deliberately creates an UNKNOWN
 record when no native result can be consumed.
+
+=== Collection failed with a framework mispairing error
+
+`collect --framework` verifies that the collected `result.json` records the
+requested framework. The error means `--run-dir` (or the DUT's `latest` run)
+points at a run of a different framework — most often a `--framework uvm`
+collection while `latest` holds a cocotb run. Pass the `--run-dir` of the
+matching run explicitly.
 
 === Dashboard generated no DUT rows
 

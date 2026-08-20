@@ -6,6 +6,9 @@
 # Built via the DV firmware dispatcher: make dv-fw-libs TARGET=sep
 FW_NAME := sep
 FW_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+# The SEP boot ROM sits outside the DV tree (hw/sys/sep/bootrom/prod, mirroring
+# hw/sys/smc/bootrom/); this engine borrows its headers and elf-to-vmem tool.
+SEP_BOOTROM_DIR := $(abspath $(FW_DIR)/../../bootrom/prod)
 include $(FW_DIR)/../../../../common/dv/fw/preamble.mk
 
 # Runtime sources. Tests supply their own main() and link against libsep.a.
@@ -20,11 +23,11 @@ FW_REG_SYS := sep
 # Test discovery is unified in compile.mk; declare only the SEP deltas.
 FW_TEST_EXCLUDE_NAMES := bl1_pass_test
 # drivers/ carries runtime headers (sep_mailbox.h etc.) that tests include directly.
-# bootcode/include holds the rom_*/boot_* headers that the sep_smc_* and
+# The boot ROM's include/ holds the rom_*/boot_* headers that the sep_smc_* and
 # sep_smu_* tests include directly. The register headers are not here:
 # compile.mk already puts the generated regs/gen/c dirs on the path.
 FW_TEST_INCLUDES := -I$(FW_DIR)/tests/common -I$(FW_DIR)/drivers \
-                    -I$(FW_DIR)/bootcode/include
+                    -I$(SEP_BOOTROM_DIR)/include
 FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
 
 # OTBN applications.
@@ -142,7 +145,7 @@ SEP_ROM_BASE := 0x10040000
 
 define FW_TEST_POSTPROCESS
 $(if $(filter rom_only,$(3)),
-	python3 "$(FW_DIR)/bootcode/tools/elf-to-vmem.py" \
+	python3 "$(SEP_BOOTROM_DIR)/tools/elf-to-vmem.py" \
 	  --base $(SEP_ROM_BASE) --gcc-prefix $(patsubst %-,%,$(OCAH_FW_TOOL_PREFIX)) \
 	  -o "$(4).vmem" "$(1)"
 ,

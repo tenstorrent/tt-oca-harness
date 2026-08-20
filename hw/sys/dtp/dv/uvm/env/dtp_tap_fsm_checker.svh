@@ -18,9 +18,15 @@ class dtp_tap_fsm_checker extends uvm_subscriber #(ocah_jtag_event);
 
     virtual dtp_tb_if tb_vif;
 
+    // Shared named-evidence sink (set by the env); report_evidence() turns
+    // the per-cycle legality result into one aggregate CHK-TAP-STATE record.
+    ocah_jtag_checker m_evidence;
+
     protected ocah_jtag_tap_state_e m_model = OCAH_JTAG_TEST_LOGIC_RESET;
     protected bit m_state_seen [16];
     protected bit m_edge_seen  [16][2];
+    protected int unsigned m_cycles;
+    protected int unsigned m_mismatches;
 
     function new(string name = "dtp_tap_fsm_checker", uvm_component parent = null);
         super.new(name, parent);
@@ -54,18 +60,33 @@ class dtp_tap_fsm_checker extends uvm_subscriber #(ocah_jtag_event);
             m_edge_seen[int'(m_model)][t.tms] = 1'b1;
         end
         expected_onehot = 16'h1 << int'(expected);
+        m_cycles++;
 
-        if (!is_onehot(tb_vif.tap_state) || !is_valid_tap_state(tb_vif.tap_state))
+        if (!is_onehot(tb_vif.tap_state) || !is_valid_tap_state(tb_vif.tap_state)) begin
+            m_mismatches++;
             `uvm_error("sanity_fsm_visit_chk", $sformatf(
                 "step %0d: TAP state not a valid one-hot IEEE 1149.1 state: got 0x%04h (from %s, tms=%0b)",
                 t.index, tb_vif.tap_state, m_model.name(), t.tms))
-        else if (tb_vif.tap_state !== expected_onehot)
+        end
+        else if (tb_vif.tap_state !== expected_onehot) begin
+            m_mismatches++;
             `uvm_error("sanity_fsm_visit_chk", $sformatf(
                 "step %0d: illegal TAP transition: from %s with tms=%0b expected %s (0x%04h), got 0x%04h",
                 t.index, m_model.name(), t.tms, expected.name(), expected_onehot, tb_vif.tap_state))
+        end
 
         m_model = expected;
         m_state_seen[int'(m_model)] = 1'b1;
+    endfunction
+
+    // One aggregate named-evidence record for the always-on per-cycle
+    // reference-model comparison (each mismatch already errored inline with
+    // the exact broken transition).
+    function void report_evidence();
+        if (m_evidence == null) return;
+        void'(m_evidence.expect_true("CHK-TAP-STATE",
+            (m_cycles > 0) && (m_mismatches == 0),
+            $sformatf("tck_cycles=%0d mismatches=%0d", m_cycles, m_mismatches)));
     endfunction
 
     // Scenario-invoked closure gate: all 16 states visited AND all 32 legal

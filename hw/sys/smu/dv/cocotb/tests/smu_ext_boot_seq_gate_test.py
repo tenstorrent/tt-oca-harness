@@ -3,7 +3,7 @@
 
 DV-CARD:          SMU_006   ANCHOR: smu_ext_boot_seq_gate_test
 DV-CARD-REVISION: 2   RECORD-SHA256: a7180c7f652446a8174b377245bc231220635de7c287395585b8e42869bb7899
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_VPLAN_DETAIL.md @ artifact_revision 2   ENV: cocotb
+DV-CARD-SOURCE:   testlists/all.toml (card source retired) @ artifact_revision 2   ENV: cocotb
 """
 
 from __future__ import annotations

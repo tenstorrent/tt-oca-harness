@@ -7,7 +7,7 @@
 //   ref_model.expected_ap -> scoreboard.expected
 //
 // Frozen surface for adopters and commercial-VIP overrides (same contract as
-// ocah_jtag_env): `cfg`, `item_ap` (pass-through of the monitor's stream),
+// ocah_jtag_master_env): `cfg`, `item_ap` (pass-through of the monitor's stream),
 // and `m_scoreboard.m_checker` (scenario-level named evidence). A commercial
 // integration may subclass this env, replace the monitor, and keep the
 // model/scoreboard/evidence surface intact.
@@ -15,11 +15,11 @@
 class ocah_axi_env extends uvm_env;
     `uvm_component_utils(ocah_axi_env)
 
-    ocah_axi_cfg cfg;
+    ocah_axi_config cfg;
     ocah_axi_monitor    m_monitor;
     ocah_axi_ref_model  m_ref_model;
     ocah_axi_scoreboard m_scoreboard;
-    ocah_axi_cov_sub    m_cov_sub;
+    ocah_axi_cov    m_cov_sub;
 
     uvm_analysis_port #(ocah_axi_item) item_ap;
 
@@ -29,9 +29,9 @@ class ocah_axi_env extends uvm_env;
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(ocah_axi_cfg)::get(this, "", "cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "ocah_axi_cfg `cfg` not found in uvm_config_db")
-        uvm_config_db#(ocah_axi_cfg)::set(this, "*", "cfg", cfg);
+        if (!uvm_config_db#(ocah_axi_config)::get(this, "", "cfg", cfg) || cfg == null)
+            `uvm_fatal(get_type_name(), "ocah_axi_config `cfg` not found in uvm_config_db")
+        uvm_config_db#(ocah_axi_config)::set(this, "*", "cfg", cfg);
         item_ap = new("item_ap", this);
         if (cfg.en_monitor)
             m_monitor = ocah_axi_monitor::type_id::create("m_monitor", this);
@@ -44,7 +44,7 @@ class ocah_axi_env extends uvm_env;
             m_scoreboard = ocah_axi_scoreboard::type_id::create("m_scoreboard", this);
         end
         if (cfg.en_cov)
-            m_cov_sub = ocah_axi_cov_sub::type_id::create("m_cov_sub", this);
+            m_cov_sub = ocah_axi_cov::type_id::create("m_cov_sub", this);
     endfunction
 
     function void connect_phase(uvm_phase phase);

@@ -217,7 +217,7 @@ package sep_pkg;
     parameter int unsigned CPU_SLV_ID_WIDTH  = SEP_32_64_6_12_ID_WIDTH; // 6-bit
 
     // Misc parameters
-    localparam int unsigned LC_STATE_BIT_POSITION = 64;
+    localparam int unsigned LC_STATE_BIT_POSITION = 96;
     localparam int unsigned LC_STATE_BIT_WIDTH = 4;
 
     //////////////////////////////////

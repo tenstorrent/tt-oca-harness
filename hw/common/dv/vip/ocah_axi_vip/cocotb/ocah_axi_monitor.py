@@ -15,7 +15,7 @@ from cocotb.utils import get_sim_time
 from cocotbext.axi import AxiBus, AxiLiteBus
 
 from .ocah_axi_item import OcahAxiItem
-from .results import RESP_OKAY
+from .ocah_axi_results import RESP_OKAY
 
 __all__ = ["OcahAxiMonitor", "OcahAxiLiteMonitor"]
 

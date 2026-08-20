@@ -65,9 +65,10 @@ module sep_crypto #(
     // Efuse signals
     input  sep_pkg::sep_straps_t  	           sep_straps_i,
     input  logic                               ext_boot_seq_done_i,
-    output logic                               security_disable_o,    // To SMC
-    output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,      // To SMC
-    output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o, // To SMC / DTP
+    output logic                               security_disable_o,       // To SMC
+    output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
+    output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,    
+    output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
     output logic                               lc_sigint_err_o,
     output sep_efuse_pkg::efuse_map_t 		   shadow_regs_o,
     output logic                               fuse_sense_done_o,
@@ -824,6 +825,7 @@ module sep_crypto #(
         .secure_tm_i(secure_tm_o), // From efuse wrapper
         .shadow_regs_i(shadow_regs_o), // From efuse wrapper
         .feat_ctrl_o(feat_ctrl_o),
+        .dbg_disable_o(dbg_disable_o),
         .lcc_demote_state_1_o(lcc_demote_state_1_o),
         .lcc_demote_state_2_o(lcc_demote_state_2_o),
         .lc_sigint_err_o(lc_sigint_err_o),
@@ -848,7 +850,7 @@ module sep_crypto #(
 
     // LC state and demotion state arrive already differentially encoded from
     // their respective sources (shadow register and LCC output).
-    assign km_otp_data.life_cycle       = shadow_regs_o.f.lc_state.lc_state;
+    assign km_otp_data.life_cycle       = shadow_regs_o.fields.lc_state.lc_state;
     assign km_otp_data.demotion_state_1 = lcc_demote_state_1_o;
     assign km_otp_data.demotion_state_2 = lcc_demote_state_2_o;
 
@@ -860,7 +862,7 @@ module sep_crypto #(
     ) u_chiplet_uid_enc (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
-        .data_i (shadow_regs_o.f.chiplet_uid.uid),
+        .data_i (shadow_regs_o.fields.chiplet_uid.uid),
         .data_o (km_otp_data.chiplet_uid)
     );
 
@@ -870,7 +872,7 @@ module sep_crypto #(
     ) u_class_key_enc (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
-        .data_i (shadow_regs_o.f.class_key.key),
+        .data_i (shadow_regs_o.fields.class_key.key),
         .data_o (km_otp_data.class_key)
     );
 
@@ -880,7 +882,7 @@ module sep_crypto #(
     ) u_sip_uid_enc (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
-        .data_i (shadow_regs_o.f.sip_uid.uid),
+        .data_i (shadow_regs_o.fields.sip_uid.uid),
         .data_o (km_otp_data.sip_uid)
     );
 
@@ -890,7 +892,7 @@ module sep_crypto #(
     ) u_sys_uid_enc (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
-        .data_i (shadow_regs_o.f.sys_uid.uid),
+        .data_i (shadow_regs_o.fields.sys_uid.uid),
         .data_o (km_otp_data.sys_uid)
     );
 

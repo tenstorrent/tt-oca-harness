@@ -12,11 +12,14 @@
 //   NOT the AXI resp encoding), rdata at the DATA offset.
 // Wide (>64-bit) TDR scans use the ocah_jtag_item wbits/rbits extension.
 //
-// Error arming discipline: arm_target_error() drives the tb_if responder
-// error ports AND cfg.arm_expected_resp() in one place, so the injected
+// Error arming discipline: arm_target_error() programs the responder error
+// injection AND cfg.arm_expected_resp() in one place, so the injected
 // non-OKAY is EXPECTED for the shared AXI scoreboard; clear_target_error()
-// reverses both. Lifecycle enables must be raised before any JTAG2AXI op
-// (they reset to the gated-off tie-off value).
+// reverses both. The smc_otp responder is the shared ocah_axi_vip UVM slave
+// agent (one-shot injection via its ocah_axi_slave_sequence); the smc_axi
+// responder remains the plain-SV RAM module driven through tb_if error
+// ports. Lifecycle enables must be raised before any JTAG2AXI op (they
+// reset to the gated-off tie-off value).
 
 class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
     `uvm_object_utils(dtp_jtag2axi_base_seq)
@@ -49,8 +52,12 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
 
     // Plumbed by the test: the shared AXI VIP cfg for the target under test
     // (owns expected-response arming) and its scoreboard evidence recorder.
-    ocah_axi_cfg     axi_cfg;
+    ocah_axi_config     axi_cfg;
     ocah_axi_checker axi_evidence;
+
+    // Plumbed by the test for smc_otp targets: the slave agent's test-facing
+    // API (error injection / backdoor memory on the responder).
+    ocah_axi_slave_sequence otp_slave_seq;
 
     function new(string name = "dtp_jtag2axi_base_seq");
         super.new(name);
@@ -129,13 +136,9 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
             rdata[i] = rbits[data_off + i];
     endfunction
 
-    // Wide DR scan (>64 bits) through the JTAG VIP wbits/rbits path.
+    // Wide DR scan (>64 bits) through the VIP sequence API's wbits/rbits path.
     task shift_dr_wide(input bit pattern[], output bit observed[]);
-        ocah_jtag_item it = ocah_jtag_item::type_id::create("dr_scan_wide");
-        it.op    = OCAH_JTAG_DR_SCAN;
-        it.wbits = pattern;
-        do_jtag(it);
-        observed = it.rbits;
+        dr_scan_wide(pattern, observed);
         check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after wide DR scan");
     endtask
 
@@ -265,11 +268,10 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
         bit             for_write
     );
         if (t.name == "smc_otp") begin
-            tb_vif.smc_otp_err_addr     <= addr[31:0];
-            tb_vif.smc_otp_err_resp     <= resp[1:0];
-            tb_vif.smc_otp_err_on_read  <= for_read;
-            tb_vif.smc_otp_err_on_write <= for_write;
-            tb_vif.smc_otp_err_arm      <= 1'b1;
+            if (otp_slave_seq == null)
+                `uvm_fatal(get_type_name(),
+                    "smc_otp error arming needs otp_slave_seq (slave agent API) plumbed")
+            otp_slave_seq.inject_error(addr, resp, for_read, for_write);
         end else begin
             tb_vif.smc_axi_err_addr     <= addr[55:0];
             tb_vif.smc_axi_err_resp     <= resp[1:0];
@@ -286,10 +288,12 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
     endtask
 
     task clear_target_error(j2a_target_t t);
-        if (t.name == "smc_otp")
-            tb_vif.smc_otp_err_arm <= 1'b0;
-        else
+        if (t.name == "smc_otp") begin
+            if (otp_slave_seq != null)
+                otp_slave_seq.clear_errors();
+        end else begin
             tb_vif.smc_axi_err_arm <= 1'b0;
+        end
         #20ns;
     endtask
 

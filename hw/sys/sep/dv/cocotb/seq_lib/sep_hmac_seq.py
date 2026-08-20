@@ -2,7 +2,7 @@
 """OpenTitan HMAC run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Configures the HMAC engine for keyed HMAC-SHA256, pushes a message through the
-MSG FIFO, waits for done, and reads the digest -- mirroring the OCAH
+MSG FIFO, waits for done, and reads the digest -- mirroring the reference suite
 sep_km_hmac_sideload_kat_test_seq op helpers (RAL there; direct AXI here, like
 SepAes/SepOtbn). 32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
 
@@ -128,10 +128,27 @@ class SepHmac(SepAxiRegDriver):
         await self._wr(HMAC_CFG, HMAC_CFG_KEYED_256)
         self.log.info("HMAC configured keyed-SHA256 256b (CFG=0x%08x)", HMAC_CFG_KEYED_256)
 
-    async def read_public_key(self) -> list[int]:
-        """Read the 32 public KEY CSRs (frontdoor). With a sideloaded key these stay
-        write-only and read back zero -- the sideload key is not exposed here."""
-        return [await self._rd(HMAC_KEY_0 + i * 4) for i in range(HMAC_NUM_PUBLIC_KEY)]
+    async def read_public_key(self) -> tuple[list[int], int]:
+        """Read the 32 public KEY CSRs, plus a positive control.
+
+        These key registers are declared write-only and the generated register
+        block ties their read data to a constant '0. Reading them back as zero is
+        therefore NOT evidence that the sideloaded key is unexposed -- they read
+        zero whether the key is protected, mirrored elsewhere, or never delivered.
+        What the readback can do is catch the day they become readable. (The KMAC
+        sibling can demonstrate this directly, because it writes a decoy to its key
+        registers earlier in the run; nothing writes these HMAC ones, so here the
+        claim rests on the generated register block rather than on an observation.)
+
+        For that to be worth anything the read path must be known alive, so this
+        also returns STATUS, a readable register in the same window over the same
+        bus. A caller asserting the keys are zero must also assert the control
+        read is non-zero; otherwise a dead read path returning zeros for everything
+        would look identical to a pass.
+        """
+        keys = [await self._rd(HMAC_KEY_0 + i * 4) for i in range(HMAC_NUM_PUBLIC_KEY)]
+        control = await self._rd(HMAC_STATUS)
+        return keys, control
 
     async def run_keyed_mac(self, msg_words: list[int]) -> list[int]:
         """Run one keyed HMAC over msg_words; return the 8 DIGEST words (word0=MSB).

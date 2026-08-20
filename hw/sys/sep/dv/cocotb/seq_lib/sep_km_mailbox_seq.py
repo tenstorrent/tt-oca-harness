@@ -3,7 +3,7 @@
 
 Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
 (`hw/ip/key_manager/dv/fw`, `rom_main`) implements, so an OSS cocotb test
-can drive the KM the same way the OCAH `sep_subsystem_km_consume_base_seq` does:
+can drive the KM the same way the reference suite `sep_subsystem_km_consume_base_seq` does:
 send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse the responses.
 
 Frame format (32-bit words, little-endian on the wire):
@@ -97,7 +97,7 @@ class SepKmMailbox:
     """Drives the KM mailbox over the SEP AXI agent.
 
     The test owns one instance (``self.km = SepKmMailbox(self)``) and calls the
-    high-level command methods. ``seq_num`` is tracked here exactly like the OCAH
+    high-level command methods. ``seq_num`` is tracked here exactly like the reference suite
     base sequence (incremented per command, must match the firmware's expected
     sequence counter).
     """
@@ -297,7 +297,7 @@ class SepKmMailbox:
         silently polling an empty mailbox for milliseconds of sim time.
 
         The 8000-poll budget is 400k core cycles (~460 us), roughly 1.5x the
-        ~300 us the KM ROM needs to reach RESP_KM_READY in the OCAH subsystem tb.
+        ~300 us the KM ROM needs to reach RESP_KM_READY in the reference subsystem tb.
         Generous for a healthy boot, but bounded enough that a KM which never
         boots fails in minutes instead of running the test to its 7200 s cap.
         """

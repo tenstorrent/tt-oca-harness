@@ -26,13 +26,13 @@
 # feed_noise() / feed_decor_sample() from DUT-observed strobes, so the DUT and
 # golden consume the same externally-driven raw-noise sequence.
 #
-# Inter-stage framing (honored exactly, per the OCAH scoreboard analysis):
+# Inter-stage framing (honored exactly, per the reference scoreboard analysis):
 #   - sample_clk_div=7 (/8): each lane emits a byte every 8 cycles; the 12 lane
 #     bytes pack into a 96b decor word (lane0 -> [7:0]) on a decor-valid event.
 #   - one BIW 32b word per decor-valid event (out[0] -> word[31:24]).
 #   - whitening ON: 16 BIW words -> one SHA block -> 8x32b digest words.
 #   - seed: accumulate 12 consecutive 32b compressor-output words (post-SHA when
-#     whitening) -> 384b es_bits (word0 -> bits[31:0]). The OCAH scoreboard skips
+#     whitening) -> 384b es_bits (word0 -> bits[31:0]). The reference scoreboard skips
 #     the first INGRESS_FIFO_DEPTH=12 compressor words before seed accumulation
 #     (distribution FIFO absorption); modeled as ``ingress_skip``.
 #   - CTR_DRBG: first 384b seed -> instantiate; generate glen 128b blocks.
@@ -205,7 +205,7 @@ class SepEntropyGolden:
         self.expected_compress_words.append(word)
         self.n_compress_words += 1
 
-        # OCAH scoreboard skips the first ingress_skip words (FIFO absorption).
+        # reference scoreboard skips the first ingress_skip words (FIFO absorption).
         if self._ingress_seen < self.ingress_skip:
             self._ingress_seen += 1
             return

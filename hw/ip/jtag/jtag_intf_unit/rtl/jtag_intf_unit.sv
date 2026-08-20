@@ -75,8 +75,8 @@ module jtag_intf_unit
     // Power-on reset (for JTAG logic)
     input  logic pwr_on_rst_ni,  // Power-on reset for JTAG logic
 
-    // Lifecycle feature control
-    input  sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t  feat_ctrl_i,
+    // Debug-disable bits from the SEP lifecycle controller
+    input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,
 
     // Primary JTAG TAP interface
     input  jtag_tap_ctrl_t  ptap_client_tap_ctrl_i,
@@ -169,6 +169,11 @@ module jtag_intf_unit
 );
 
     //--------------------------------------------------------------------------
+    // Local parameters
+    //--------------------------------------------------------------------------
+    localparam int unsigned DBG_DISABLE_WIDTH = $bits(sep_lifecycle_ctrl_pkg::dbg_disable_t);
+
+    //--------------------------------------------------------------------------
     // Internal Signals
     //--------------------------------------------------------------------------
 
@@ -194,25 +199,26 @@ module jtag_intf_unit
     logic dft_secure_security_disable;
     logic dft_nonsecure_security_disable;
     logic dfd_security_disable;
-    logic [63:0] feat_ctrl_bits;
-    logic [63:0] feat_ctrl_bits_q_n0_scan;
-    sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_q;
 
-    assign feat_ctrl_bits = feat_ctrl_i;
-    assign feat_ctrl_q = sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t'(feat_ctrl_bits_q_n0_scan);
+    logic [DBG_DISABLE_WIDTH-1:0]           dbg_disable_bits;
+    logic [DBG_DISABLE_WIDTH-1:0]           dbg_disable_bits_q_n0_scan;
+    sep_lifecycle_ctrl_pkg::dbg_disable_t   dbg_disable_q;
+
+    assign dbg_disable_bits = dbg_disable_i;
+    assign dbg_disable_q    = sep_lifecycle_ctrl_pkg::dbg_disable_t'(dbg_disable_bits_q_n0_scan);
 
     // These synchronizers are downstream of the Class 1 LC_STATE, SIP_DIS, and
     // SYS_DIS fields and directly control JTAG/test enablement. Both stages
     // must therefore remain outside scan.
-    for (genvar i = 0; i < 64; i++) begin : gen_feat_ctrl_sync_n0_scan
+    for (genvar i = 0; i < DBG_DISABLE_WIDTH; i++) begin : gen_feat_ctrl_sync_n0_scan
         prim_flop_2sync #(
             .Width(1),
-            .ResetValue(1'b0)
+            .ResetValue(1'b1)
         ) u_feat_ctrl_sync_n0_scan (
             .clk_i  (ptap_client_tap_ctrl_i.tck),
             .rst_ni (pwr_on_rst_ni),
-            .d_i    (feat_ctrl_bits[i]),
-            .q_o    (feat_ctrl_bits_q_n0_scan[i])
+            .d_i    (dbg_disable_bits[i]),
+            .q_o    (dbg_disable_bits_q_n0_scan[i])
         );
     end
 
@@ -307,8 +313,10 @@ module jtag_intf_unit
         // Power-on reset (for JTAG logic)
         .pwr_on_rst_ni                  (pwr_on_rst_ni),
 
-        // Lifecycle feature control
-        .feat_ctrl_i                    (feat_ctrl_q),
+        // Per-bridge debug-disable bits (TCK-synced, active-high)
+        .smc_jtag2axi_security_disable_i     (dbg_disable_q.smc_jtag2axi),
+        .smc_otp_jtag2axi_security_disable_i (dbg_disable_q.smc_otp_jtag2axi),
+        .sep_otp_jtag2axi_security_disable_i (dbg_disable_q.sep_otp_jtag2axi),
 
         // SMC fabric debug AXI manager interface
         .axi_smc_dbg_req_o              (axi_smc_dbg_req_o),
@@ -327,17 +335,15 @@ module jtag_intf_unit
     // STAP I/O Port Instantiation (Chiplet-to-Chiplet Connectivity)
     //--------------------------------------------------------------------------
 
-    // feat_ctrl_q is enable-polarity (1 = feature enabled): a STAP/SIB is disabled
-    // whenever any one of its required enables is deasserted.
-    assign stap_io_security_disable = !feat_ctrl_q.sip_debug;
-    assign stap_smc_security_disable = !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
-    assign stap_sep_security_disable = !feat_ctrl_q.sep_debug || !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
-    assign stap_extra_security_disable = !feat_ctrl_q.ap_debug;
-    assign stap_host_security_disable = !feat_ctrl_q.ap_debug;
-    assign dft_secure_security_disable = !feat_ctrl_q.fuse_test || !feat_ctrl_q.sep_debug ||
-                                         !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
-    assign dft_nonsecure_security_disable = !feat_ctrl_q.soc_debug || !feat_ctrl_q.ap_debug;
-    assign dfd_security_disable = !feat_ctrl_q.ap_debug;
+    // TODO: Local wire names preserved so downstream instances and DV probe paths are unchanged for now.
+    assign stap_io_security_disable       = dbg_disable_q.stap_io;
+    assign stap_smc_security_disable      = dbg_disable_q.stap_smc;
+    assign stap_sep_security_disable      = dbg_disable_q.stap_sep;
+    assign stap_extra_security_disable    = dbg_disable_q.stap_extra;
+    assign stap_host_security_disable     = dbg_disable_q.stap_host;
+    assign dft_secure_security_disable    = dbg_disable_q.dft_secure;
+    assign dft_nonsecure_security_disable = dbg_disable_q.dft_nonsecure;
+    assign dfd_security_disable           = dbg_disable_q.dfd;
 
     if (STAP_IO_ENABLE) begin : gen_stap_io
         jtag_stap #(

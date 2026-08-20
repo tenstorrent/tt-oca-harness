@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """CTR_DRBG (AES-256, no derivation function) golden model for the SEP OSS flow.
 
-Bit-exact Python port of the SystemVerilog golden
-``dv/sep/tb/tb_uvm/common/dpi/drbg_ctr_drbg_pkg.sv`` (itself lifted from the
-OpenTitan csrng_scoreboard), which implements NIST SP 800-90A Section 10.2.1
-CTR_DRBG with **no derivation function**. Cross-checked against the synthesizable
+Implements NIST SP 800-90A Section 10.2.1 CTR_DRBG with **no derivation
+function**. Cross-checked against the synthesizable
 RTL ``vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_ctr_drbg.sv`` (no-df, AES-256, CtrLen < BlkLen).
 
 Self-contained: includes a minimal pure-Python AES (128/192/256 ECB encrypt) so
@@ -12,31 +10,31 @@ this has no dependency on pycryptodome/cryptography. Because the reference is
 derived from the spec/RTL -- not from observed DUT output -- a genbits mismatch
 is a real failure, not a tautology.
 
-Determined parameters (SV lines 31-35, RTL line 524):
-  * AES key size : 256 bits  (KEY_LEN, SV:31)
-  * BlkLen       : 128 bits  (SV:32)
-  * SeedLen      : 384 bits  (KEY_LEN + BlkLen, SV:33)
-  * CtrLen       : 32 bits   (SV:34); CtrLen < BlkLen so only V[31:0] increments
-                              and wraps mod 2**32 (SV:88-92, RTL assert line 524)
+Determined parameters:
+  * AES key size : 256 bits
+  * BlkLen       : 128 bits
+  * SeedLen      : 384 bits
+  * CtrLen       : 32 bits; CtrLen < BlkLen so only V[31:0] increments
+                              and wraps mod 2**32
   * Derivation function : NONE (RTL line 5; seed consumed directly)
   * Block output ordering : MSB-first chain. In update(), the i-th cipher block
                             is shifted into the high end of `temp`
-                            (`temp = {temp, output_block}`, SV:100), so the first
+                            (`temp = {temp, output_block}`), so the first
                             encrypted block ends up as the most-significant block
                             of the 384-bit `temp`. In generate(), each cipher
                             block is emitted as one 128-bit big-endian word
-                            (SV:172-173) in the order produced.
+                            in the order produced.
 
-Faithful-to-SV deviations from a textbook SP800-90A description:
+RTL-specific behavior relative to a textbook SP800-90A description:
   * instantiate() does NOT apply a derivation function. The 384-bit entropy is
-    XORed with the 384-bit additional_input (SV:118) and fed straight into
+    XORed with the 384-bit additional_input and fed straight into
     ctr_drbg_update as the provided_data / seed_material. (CAVP "use df = false".)
   * generate() unconditionally runs the final update(additional_input) after the
-    block loop (SV:176), matching SP800-90A step 6. With additional_input == 0,
+    block loop, matching SP800-90A step 6. With additional_input == 0,
     update still mutates Key and V (it is NOT skipped) -- the all-zero seed is a
     valid provided_data, exactly as the SV does it.
   * V counter increment: only the low CtrLen (32) bits increment and wrap mod
-    2**32; the high (BlkLen-CtrLen) bits of V are preserved (SV:88-92 / 161-165).
+    2**32; the high (BlkLen-CtrLen) bits of V are preserved.
 """
 
 from __future__ import annotations
@@ -44,7 +42,7 @@ from __future__ import annotations
 from typing import List
 
 # ---------------------------------------------------------------------------
-# Parameters (mirror SV localparams, drbg_ctr_drbg_pkg.sv lines 31-34)
+# CTR_DRBG parameters.
 # ---------------------------------------------------------------------------
 KEY_LEN = 256
 BLOCK_LEN = 128
@@ -175,7 +173,7 @@ def _aes_ecb_encrypt_int(key_int: int, key_len_bits: int, block_int: int) -> int
 
 
 # ===========================================================================
-# CTR_DRBG golden (AES-256, no df) -- port of drbg_ctr_drbg_pkg.sv
+# CTR_DRBG golden (AES-256, no derivation function).
 # ===========================================================================
 class SepCtrDrbgGolden:
     """NIST SP 800-90A CTR_DRBG, AES-256, no derivation function.
@@ -193,14 +191,14 @@ class SepCtrDrbgGolden:
     def _block_encrypt(self, key: int, input_block: int) -> int:
         return _aes_ecb_encrypt_int(key & ((1 << KEY_LEN) - 1), KEY_LEN, input_block & _BLK_MASK)
 
-    # -- V counter increment (CtrLen < BlkLen branch, SV lines 88-92) --------
+    # -- V counter increment (CtrLen < BlkLen branch) ------------------------
     def _v_increment(self) -> None:
         low = (self.v & _CTR_MASK)
         inc = (low + 1) & _CTR_MASK            # wrap mod 2**CTR_LEN
         self.v = (self.v & ~_CTR_MASK) | inc   # preserve high (BlkLen-CtrLen) bits
         self.v &= _BLK_MASK
 
-    # -- ctr_drbg_update (SV lines 78-106) ----------------------------------
+    # -- ctr_drbg_update ------------------------------------------------------
     def _update(self, provided_data: int) -> None:
         provided_data &= _SEED_MASK
         temp = 0
@@ -213,7 +211,7 @@ class SepCtrDrbgGolden:
         self.key = (temp >> BLOCK_LEN) & ((1 << KEY_LEN) - 1)   # temp[SEED_LEN-1 : BLOCK_LEN]
         self.v = temp & _BLK_MASK                               # temp[BLOCK_LEN-1 : 0]
 
-    # -- ctr_drbg_instantiate (SV lines 111-124) ----------------------------
+    # -- ctr_drbg_instantiate -------------------------------------------------
     def instantiate(self, entropy_384b: int, additional_input: int = 0) -> None:
         """Instantiate with a 384-bit entropy input (no df). additional_input is
         a 384-bit value XORed into the seed material (default 0)."""
@@ -224,13 +222,13 @@ class SepCtrDrbgGolden:
         self._update(seed_material)
         self.reseed_counter = 1
 
-    # -- ctr_drbg_reseed (SV lines 129-139) ---------------------------------
+    # -- ctr_drbg_reseed ------------------------------------------------------
     def reseed(self, entropy_384b: int, additional_input: int = 0) -> None:
         seed_material = (entropy_384b ^ additional_input) & _SEED_MASK
         self._update(seed_material)
         self.reseed_counter = 1
 
-    # -- ctr_drbg_generate (SV lines 147-178) -------------------------------
+    # -- ctr_drbg_generate ----------------------------------------------------
     def generate(self, num_128b_blocks: int, additional_input: int = 0) -> List[int]:
         """Generate ``num_128b_blocks`` blocks of 128-bit output.
 
@@ -269,7 +267,7 @@ class SepCtrDrbgGolden:
         self._update(additional_input & _SEED_MASK)
         self.reseed_counter += 1
 
-    # Reference-model API kept for OCAH golden parity; not invoked by the OSS checkers.
+    # Reference-model API kept for golden parity; not invoked by the OSS checkers.
     def uninstantiate(self) -> None:
         self.key = 0
         self.v = 0

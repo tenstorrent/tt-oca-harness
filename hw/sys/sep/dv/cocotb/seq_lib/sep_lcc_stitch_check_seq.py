@@ -22,12 +22,13 @@ import cocotb
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from env.sep_efuse_image import SepEfuseImage, SHADOW_BASE
+from sep_reg_meta import sym
+from env.sep_efuse_image import SepEfuseImage, SHADOW_BASE, LC_WORD_IDX
 from env.sep_lcc_golden import LCC_FEAT_CTRL, feat_ctrl_expected, lc_state_name
 
 # SEP local fabric addresses (sep_local_axi_xbar / sep_addr.h). The LCC
 # register map lives in env.sep_lcc_golden (single source of truth).
-LC_STATE_SHADOW = SHADOW_BASE + 0x8     # 0x1093_0008, eFuse shadow word 2
+LC_STATE_SHADOW = sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
 
 
 class sep_lcc_stitch_check_seq(uvm_sequence):
@@ -58,7 +59,6 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
 
     async def body(self) -> None:
         lc_raw = self.image.lc_raw()
-        self.observed_lc_raw = lc_raw
         sip_dis = self.image.field_int("SIP_DIS")
         sys_dis = self.image.field_int("SYS_DIS")
         feat = feat_ctrl_expected(
@@ -67,9 +67,14 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         )
 
         # (1) sensed lc_state reached the software-visible shadow map.
-        await self._read_expect(
-            LC_STATE_SHADOW, self.image.shadow_word(2), "lc_state_shadow"
+        shadow_rdata = await self._read_expect(
+            LC_STATE_SHADOW, self.image.shadow_word(LC_WORD_IDX), "lc_state_shadow"
         )
+        # Publish the code the DUT actually returned, not the one the image was
+        # built with. The test's transition check consumes this, so that check is
+        # driven by DUT data; sourcing it from the image would make it a compare
+        # between two test-side constants and it could never fail.
+        self.observed_lc_raw = shadow_rdata & 0xF
 
         # (2) LCC decoded that lc_state into the expected feature-control vector.
         await self._read_expect(LCC_FEAT_CTRL, feat & 0xFFFF_FFFF, "feat_ctrl_lo")

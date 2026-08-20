@@ -12,7 +12,7 @@ SMC and SEP differ, this doc describes **SMC** and notes the SEP contrast.
   and models are Python.
 - **Verilator** is the functional backend; VCS/Xcelium run the same cocotb tests
   for coverage. Driven by `tools/dv/run_dv.py`.
-- **Single DUT**: `--dut smc_wrapper` → `smc_wrapper_sim_cfg.toml`, top
+- **Single DUT**: `--dut smc` → `smc_sim_cfg.toml`, top
   `smc_uvm_top` (`tb/tb_top.sv`) instantiating `hw/top/smc_wrapper.sv`.
   PLL/PVT/eFuse/pads/CPU mem live inside the wrapper; TB still provides
   SYS_OUT AXI + I3C DAT/DCT responders and a DTP CSR err_slv.
@@ -26,7 +26,7 @@ hw/sys/smc/dv/
 ├── tb/                     # tb_top.sv, verilator_stubs/
 ├── testlists/              # per-feature TOML leaves + all.toml
 ├── assets/                 # ROM/eFuse/shadow preload images
-├── smc_wrapper_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper)
+├── smc_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper)
 └── docs/                   # SMC_VPLAN.adoc + this guide
 ```
 
@@ -110,7 +110,7 @@ Agents are split by **honesty class** — this is the defining SMC structure:
   `reset_agent`, `clk_agent`, `irq_agent`, `gpio_agent`, `axil_agent`.
 - **Protocol / traffic**: `sys_axi_agent` (SEP_IN, prefix `s_axi`),
   `sys_in_axi_agent` (`sys_axi`), `jtag_axi_agent` (`jtag_axi`) — all
-  `SmcSysAxiDriver` subclasses over `ocah_axi_vip.OcahAxiMaster`, differing only
+  `SmcSysAxiDriver` subclasses over `ocah_axi_vip.OcahAxiMasterAgent`, differing only
   by `bus_prefix`; plus `protocol_vip_agent` (records scenario evidence items).
 - **Passive monitors**: `axi_monitor` (SEP_IN), `output_axi_monitor` (SYS_OUT).
 
@@ -192,11 +192,11 @@ run_modes = ["smoke"]
 
 ```bash
 PY=tools/dv/run_dv.py
-python3 $PY --dut smc_wrapper --items smc_canonical_smoke_test --stage flist --stage sim
-python3 $PY --dut smc_wrapper --items all --tag smoke --stage sim
-python3 $PY --dut smc_wrapper --items all --tag smoke --tool vcs --cov
-python3 $PY --dut smc_wrapper --items all --stage sim --regress
-python3 $PY --dut smc_wrapper --items all
+python3 $PY --dut smc --items smc_canonical_smoke_test --stage flist --stage sim
+python3 $PY --dut smc --items all --tag smoke --stage sim
+python3 $PY --dut smc --items all --tag smoke --tool vcs --cov
+python3 $PY --dut smc --items all --stage sim --regress
+python3 $PY --dut smc --items all
 ```
 
 Prereqs: Python 3.11+ with the OSS DV BFM installed

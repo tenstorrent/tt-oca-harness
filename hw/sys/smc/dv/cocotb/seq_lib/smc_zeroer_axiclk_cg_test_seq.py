@@ -19,7 +19,7 @@ outcome. That carve-out applies ONLY to CHK-ZEROER-AXICLK-COMPLETION's
 protocol-outcome verdict.
 
 AMENDMENT (revision 2, supersedes revision 1, owner decision minshaoho
-standing order "都簽署繼續" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
+standing order "approve-and-continue" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
 revision 1's CHK-ZEROER-AXICLK-NOGLITCH required zero axi_clk_enable deassert
 across the WHOLE busy-to-idle boundary, including the real ~26-28 clk_smc_i
 cycle turnaround of the documented 3-write DEST_ADDR->SIZE->CTRL_STATUS
@@ -43,6 +43,8 @@ under test.
 
 from __future__ import annotations
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
 
@@ -53,7 +55,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 HYST = 8
 IDLE_OBSERVE = 16

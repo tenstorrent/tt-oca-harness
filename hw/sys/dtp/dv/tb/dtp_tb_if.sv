@@ -31,14 +31,12 @@ interface dtp_tb_if;
     // Runtime enable for the shared AXI protocol SVA checkers.
     logic axi_sva_en = 1'b1;
 
-    // SMC OTP AXI-Lite responder error controls (beat-aligned address match).
-    logic        smc_otp_err_arm      = 1'b0;
-    logic [31:0] smc_otp_err_addr     = '0;
-    logic [1:0]  smc_otp_err_resp     = 2'b00;
-    logic        smc_otp_err_on_read  = 1'b0;
-    logic        smc_otp_err_on_write = 1'b0;
+    // Runtime enable for the shared JTAG protocol SVA checker.
+    logic jtag_sva_en = 1'b1;
 
-    // SMC fabric AXI4 responder error controls.
+    // SMC fabric AXI4 responder error controls (beat-aligned address match).
+    // The SMC OTP AXI-Lite port has no error ports here: its responder is the
+    // ocah_axi_vip UVM slave agent, programmed via ocah_axi_slave_sequence.
     logic        smc_axi_err_arm      = 1'b0;
     logic [55:0] smc_axi_err_addr     = '0;
     logic [1:0]  smc_axi_err_resp     = 2'b00;

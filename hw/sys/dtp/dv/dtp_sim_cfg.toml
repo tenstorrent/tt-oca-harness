@@ -1,11 +1,14 @@
 schema_version = 1
 
-# Launch entry: selected by `--dut dtp`. The DTP TB uses open-source VIP (cocotbext-jtag for the
-# JTAG TAP, cocotbext-axi for the JTAG2AXI debug/OTP AXI targets); iJTAG/CTP/CTM stay on in-house
-# BFMs (wired in later phases). Shared stage graph + tool list come from profile = "native-cocotb".
+# Launch entry: selected by `--dut dtp`. Two frameworks share this config and one tb_top:
+# cocotb/PyUVM (default; open-source VIP — cocotbext-jtag for the JTAG TAP, cocotbext-axi for the
+# JTAG2AXI debug/OTP AXI targets; iJTAG/CTP/CTM stay on in-house BFMs) and SV-UVM
+# (`--framework uvm`, VCS; see the [frameworks.uvm] overlay at the bottom). Shared stage graph +
+# tool list come from profile = "native".
 name = "dtp"
-profile = "native-cocotb"
-description = "DTP (Debug & Test Ports) OSS PyUVM smoke and functional flow"
+profile = "native"
+default_framework = "cocotb"
+description = "DTP (Debug & Test Ports) OSS DV flow (cocotb/PyUVM default, SV-UVM via --framework uvm)"
 
 [testlist]
 path = "testlists/all.toml"
@@ -34,19 +37,18 @@ common_bender_targets = [
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/sys/dtp/dv/tb"]
 
-[cocotb]
+[frameworks.cocotb]
 # Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.
 python_root = "hw/sys/dtp/dv/cocotb"
 test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
-  "dv/vip/cocotb",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
 [run_modes.smoke]
-description = "PyUVM DTP smoke tests for TAP FSM and IDCODE contributor bring-up"
+description = "DTP smoke tests for TAP FSM and IDCODE contributor bring-up"
 timeout_sec = 1800
 args = []
 
@@ -77,3 +79,54 @@ flags = [
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
 ]
+
+# --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
+# profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
+# for both frameworks: +define+DTP_UVM_TB (below) switches tb/tb_top.sv from the ported cocotb
+# shape to the self-contained SV-UVM shape, which `include`s uvm/tests/dtp_tests.sv.
+[frameworks.uvm]
+description = "DTP SV-UVM smoke flow (VCS)"
+
+[frameworks.uvm.build]
+# Compile order is load-bearing and explicit — the generated filelist emits `sources` in listed
+# order AFTER the bender filelist (DUT packages visible), then `top_file` last:
+#   ocah_jtag_if (shared VIP) -> ocah_axi_if -> dtp_tb_if
+#   -> AXI protocol SVA + behavioral responders (module collateral)
+#   -> ocah_jtag_uvm_pkg -> ocah_axi_uvm_pkg (shared VIP agents/passive env)
+#   -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
+filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_compile.f"
+bender_filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_bender.f"
+work_dir = "hw/sys/dtp/dv/build/uvm"
+incdirs = [
+  "hw/sys/dtp/dv/tb",
+  "hw/common/assert",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm",
+  "hw/common/dv/vip/ocah_axi_vip/uvm",
+  "hw/sys/dtp/dv/uvm/env",
+  "hw/sys/dtp/dv/uvm/seq_lib",
+  "hw/sys/dtp/dv/uvm/tests",
+]
+sources = [
+  "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sv/ocah_axi_ram_responder.sv",
+  "hw/common/dv/vip/ocah_axi_vip/cov/ocah_axi_cov.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/cov/ocah_jtag_cov.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_uvm_pkg.sv",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv",
+  "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
+  "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+[frameworks.uvm.targets.default]
+description = "DTP SV-UVM default target"
+build_dir = "hw/sys/dtp/dv/build/uvm"
+# Appends to the native profile's [target_defaults.default] defines (dedup-merge):
+# selects the SV-UVM shape of the shared tb_top.sv.
+defines = ["DTP_UVM_TB"]
