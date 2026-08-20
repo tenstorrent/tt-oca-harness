@@ -597,9 +597,7 @@ module smc_base
   // Data Accelerator Wrap //
   ///////////////////////////
 
-  // PeakRDL emits address-map constants as 64-bit longint unsigned while these
-  // parameters are smc_pkg::SMC_LOCAL_ADDR_WIDTH wide, so the bind truncates. The
-  // casts make that explicit; the asserts check the values actually fit.
+  // Assertions to protect against truncation on casts
   `OCAH_OT_ASSERT_INIT(DmaCtrlBaseFits_A,
       smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR
           < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))

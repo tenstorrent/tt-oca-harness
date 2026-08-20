@@ -146,10 +146,7 @@ module sep_crypto_abr_wrapper
         .ahb_hresp     (ab_hresp)
     );
 
-    // axi4_to_ahb has no AXI USER ports, so the B/R user fields of the response struct would
-    // otherwise be left undriven. This slave produces no sideband data, so
-    // return zero - the same value the axi_err_slv on the other `ifdef branch
-    // emits for this port.
+    // axi4_to_ahb has no AXI USER ports
     assign abr_axi_resp_o.b.user = '0;
     assign abr_axi_resp_o.r.user = '0;
 
@@ -498,10 +495,7 @@ module sep_crypto_abr_wrapper
     // AHB writer or a CSR-mux) for automatic per-op reseed.
     // =========================================================================
 
-    // The shared abr_mem_ch_req_t address fields are sized to the widest channel
-    // (INST2), so the narrower inst0/inst1 addresses above are zero-extended into
-    // them by explicit casts. Those casts would silently TRUNCATE if a narrower
-    // channel ever grew past INST2, so pin the ordering at elaboration.
+    // Assertion to protect against truncation on casts
     `OCAH_OT_ASSERT_INIT(AbrChanAddrFits_A,
         (SEP_CRYPTO_ABR_INST0_ADDR_W <= SEP_CRYPTO_ABR_INST2_ADDR_W) &&
         (SEP_CRYPTO_ABR_INST1_ADDR_W <= SEP_CRYPTO_ABR_INST2_ADDR_W))

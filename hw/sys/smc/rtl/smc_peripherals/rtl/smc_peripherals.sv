@@ -482,10 +482,7 @@ module smc_peripherals #(
 	// Padring //
 	/////////////
 
-	// PeakRDL emits address-map constants as 64-bit longint unsigned while the
-	// receiving parameters are declared at the block's own address width, so the
-	// bind truncates. The casts make that explicit; the asserts check at elaboration
-	// that the values actually fit, rather than relying on them happening to.
+	// Protect against truncation from casts
 	`OCAH_OT_ASSERT_INIT(PadringGpioSizeFits_A,
 	    smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::ADDR_WIDTH))
 	`OCAH_OT_ASSERT_INIT(PadringGpioBaseFits_A,
