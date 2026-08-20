@@ -6,8 +6,7 @@ schema_version: 1
 # When false, the project curator emits no safe outputs.
 automation:
   enabled: true
-  mode: staged
-  maximum_issues_per_run: 20
+  mode: apply
 
 repository: tenstorrent/tt-oca-harness
 
