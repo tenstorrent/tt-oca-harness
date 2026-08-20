@@ -14,9 +14,8 @@ statement of the rules — grade definitions, the rejection criteria, the proof-
 requirements. They are not restated here. Read it first if you are auditing this one.
 
 The short form of the contract: *a row exists only if a run can prove it.* Every checker
-names log text a kept Verilator run actually contains, and the proof strings are checked
-mechanically rather than by eye — `docs/tools/verify_plan_proofs.py` greps each backticked
-evidence string against that entry's newest kept log and exits non-zero on a miss.
+names log text a kept Verilator run actually contains. A matching tag in that log is not
+the proof — an independent audit still has to show the checker can fail.
 
 What this document is *not*: a coverage percentage, and not a forward contract. Phase 2
 names 112 testcase-shaped identifiers. One of those, `sep_base_test`, is a base class
@@ -1664,9 +1663,8 @@ here so this document is self-contained.
 | `sep_system_uvm_jtag_rst_ctrl_test`
 |===
 
-The count is checked against the testlists by `docs/tools/verify_plan_proofs.py`, so a name
-that gets implemented without being promoted to an entry above surfaces as a mismatch
-rather than sitting quietly in this table.
+A name that gets implemented without being promoted to an entry above is backlog
+drift: promote it to a graded entry rather than leaving it in this table.
 
 
 == Audit summary
@@ -1692,9 +1690,6 @@ that cannot fail on any DUT because they guard a build precondition or a deferre
 infrastructure gap, kept for the regression they do catch and excluded from the proof
 count.
 
-`docs/tools/verify_plan_proofs.py` checks every quoted proof string in this document and
-in Phase 1 against the newest kept log for its entry. It requires a log corpus:
-`build/runs/` is git-ignored, so a fresh clone has nothing to check against and must
-produce one first. The script also reports how many quoted strings it *skipped* as
-non-log text — a string it declines to classify is neither verified nor missing, so
-without that count a clean result would over-read.
+A keyword match against a kept log is not the proof. An independent audit still has
+to read the checker and confirm a broken DUT would fail it — a printed check tag with
+no comparison is otherwise indistinguishable from a real pass.

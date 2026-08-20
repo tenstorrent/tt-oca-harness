@@ -138,11 +138,11 @@ A proof string must also be *reproducible*. Quote text that any correct run prod
 never a value that belongs to one particular run — a seed, anything derived from a seed
 such as the clock period, or a count that depends on how much traffic happened to flow.
 Where the interesting thing is a number that varies, quote the invariant instead and say
-that the number varies. Reproduce spacing and column padding exactly, since a proof that
-does not match under a literal search is not a proof anybody can check. After editing
-this file, check every string it quotes against the corresponding kept log — mechanically,
-not by eye. A whole class of the proofs in an earlier revision of this document could never
-have matched any run, and nobody noticed because nobody grepped them.
+that the number varies. Reproduce spacing and column padding exactly, so an auditor can
+find the line. After editing this file, check every string it quotes against the
+corresponding kept log. A whole class of the proofs in an earlier revision of this
+document could never have matched any run. A matching tag is not the proof: the checker
+still has to be able to fail.
 
 The same obligation applies to stimulus. Every step must be traceable to a line in the
 kept log, so the plan can be checked against what the test actually did rather than

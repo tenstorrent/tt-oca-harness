@@ -23,7 +23,7 @@ verification plans:
 
 Phase 1 states the contract these documents share: a test passing is the entry condition
 for reading its checkers, never a substitute for them, and a checker row exists only if a
-run can prove it. Proof strings are checked mechanically, not by eye.
+run can prove it. A log tag is not the proof; an independent audit of the checker is.
 
 ## Layout
 
