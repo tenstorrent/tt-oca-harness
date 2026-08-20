@@ -3,13 +3,17 @@
 
 == Reporting Bugs and Defects
 
+[WARNING]
+====
+This document is currently under development. 
+
+- Do we need a Coordinated Vulnerability Disclosure (CVD) Policy?
+====
+
 [NOTE]
 The words "Bug" and "Defect" are here used interchangeably to represent any behaviour which is not compliant to specification.
 
 === Reporting Vulnerabilities
-
-[WARNING]
-Do we need a Coordinated Vulnerability Disclosure (CVD) Policy?
 
 We are dedicated to maintaining the security, integrity and reliability of our hardware and software designs, and we actively encourage responsible security vulnerability reporting from the user community.
 

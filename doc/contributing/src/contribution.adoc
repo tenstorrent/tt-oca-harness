@@ -3,6 +3,14 @@
 
 == Getting started with the repository
 
+[WARNING]
+====
+This document is currently under development. 
+
+- Contribution documentation may not be required at this point.
+- Semantic Versioning may need considering in a silicon context
+====
+
 OCAH development is hosted on GitHub under the Tenstorrent organization.
 Clone the public repository and use standard GitHub workflows for issues,
 pull requests, and code review.
@@ -181,9 +189,6 @@ Additional labels for pre-release and build metadata are available as
 extensions to the MAJOR.MINOR.PATCH format.
 
 See the documentation on https://semver.org[semver] for more details.
-
-[WARNING]
-We need to document how semver is applied to hardware (not yet in OpenTitan).
 
 == Tracking Tasks and Bugs with GitHub
 

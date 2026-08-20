@@ -26,7 +26,7 @@ endif::backend-html5[]
 [[sep-nmi-vector-programming]]
 === NMI Vector Programming
 
-The Security Processor (SEP) runs a VeeR-EL2 core whose Non-Maskable Interrupt
+The Security Enclave Processor (SEP) runs a VeeR-EL2 core whose Non-Maskable Interrupt
 is driven by the watchdog timer bark (`sep.sv` wires `nmi_int` to
 `intr_wdog_timer_bark`). When the NMI asserts, the core jumps to the address
 held in the `SEP_NMI_VEC` register of the `sep_cpu_ctrl` block (offset `0x180`).

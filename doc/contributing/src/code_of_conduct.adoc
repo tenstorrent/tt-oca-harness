@@ -9,7 +9,13 @@
 :source-highlighter: highlight.js
 
 [WARNING]
-Simplified version of the OpenTitan Code of Conduct.  Needs review.
+====
+This document is currently under development. 
+
+- Simplified version of the OpenTitan Code of Conduct.
+- Contribution documentation may not be required at this point.
+- Some sections depend on governance structure
+====
 
 === Code of Conduct
 
@@ -47,9 +53,6 @@ Disagreements, both social and technical, happen all the time. It is important t
 
 === Reporting Problems
 
-[WARNING]
-This section may wait until governance is defined 
-
 [NOTE]
 If you believe someone is violating the code of conduct you can report it to the Code of Conduct team by emailing XXXXXX.
 
@@ -70,9 +73,6 @@ If you feel comfortable, please consider including:
 
 === What happens after you file a report?
 
-[WARNING]
-This section may wait until governance is defined 
-
 You will receive an email from the Code of Conduct team acknowledging receipt within 24 hours (and we will aim to respond much quicker than that). 
 The Code of Conduct team will immediately meet to review the incident and try to determine:
 
@@ -90,9 +90,6 @@ The Code of Conduct team may make any of the responses below, notifying the Open
 - No action, if we determine no violation occurred or it has already been appropriately resolved.
 - Moderation or mediation to ongoing interactions (where appropriate, safe, and desired by both parties).
 - A private reprimand from the working group to the individuals involved.
-
-[WARNING]
-More serious escalation will need to be managed through the Governance structure which is TBD.
 
 === Attribution
 This text is based on the https://opentitan.org/code-of-conduct/[OpenTitan Code of Conduct] which is based on the LLVM Code of Conduct.

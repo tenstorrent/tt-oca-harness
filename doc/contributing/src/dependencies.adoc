@@ -6,9 +6,8 @@
 
 [WARNING]
 ====
-This section is currently under development. *Content has been taken
-verbatim from existing documentation.* More content will be added as the
-project matures.
+This document is currently under development. 
+
 ====
 
 This section outlines the system requirements and dependencies for the

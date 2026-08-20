@@ -9,6 +9,13 @@
 :source-highlighter: highlight.js
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 
+[WARNING]
+====
+This document is currently under development. 
+
+- The material on contribution may not be required at this point.
+====
+
 == About this Guide
 
 The Open Chiplet Atlas Harness (OCAH) is a chiplet design IP where the
@@ -16,18 +23,12 @@ non-application-specific functions are integrated to form a chiplet design
 framework. 
 
 These non-application-specific functions include common chiplet
-subsystems like Security Processor (SEP), System Management Controller (SMC),
+subsystems like Security Enclave Processor (SEP), System Management Controller (SMC),
 System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 (DTP), etc.
 
 This guide outlines how to get started with OCAH, including the use of the repository, 
 licensing and guidelines for effective contribution.
-
-[WARNING]
-This document is currently under development.
-
-[WARNING]
-The contribution guide may not be required at this point.
 
 == Repository structure
 

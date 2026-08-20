@@ -2,6 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 == Licensing
+[WARNING]
+====
+This document is currently under development. 
+
+- Use of CLAs needs discussion
+- Use of copyright messages needs discussion
+====
+
 The main license used in this project is the Apache License, Version 2.0.
 
 There are strict rules around the licenses used with open source RTL. 
@@ -15,7 +23,7 @@ The licences discussed above are documented here. Others may be added to the pro
 * https://www.apache.org/licenses/LICENSE-2.0
 * https://solderpad.org/licenses/SHL-2.1/
 
-[CAUTION]
+[NOTE]
 Do not attempt to commit material which was distributed under any other license without discussing first with OCAH project managers.
 
 == Third Party Code
@@ -53,10 +61,6 @@ comments in the file headers.
 
 == Use of CLAs
 
-[WARNING]
-This section needs review and agreement
-
-
 A Contributor License Agreement (CLA) defines the terms under which contributions can be made to a project.
 
 It is key to the successful functioning of an open source project such as OpenTitan. 
@@ -68,16 +72,13 @@ It offers critical support to three separate groups:
 
 === What does the project CLA cover?
 
-[WARNING]
-This section has no content
+TODO
 
 === How is the project CLA implemented?
 
-[WARNING]
-This section has no content
+TODO
 
 == Use of copyright messages
 
-[WARNING]
-This section has no content
+TODO
 
