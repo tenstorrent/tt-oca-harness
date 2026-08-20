@@ -27,6 +27,7 @@ RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_deb
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
 
 from sep_base_test import sep_base_test
@@ -68,7 +69,12 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # effect is the FEAT_CTRL read below, value-checked against feat_ctrl_expected.
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
-        feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
+        # security_disable read from the DUT rather than passed as a literal. This
+        # entry value-checks FEAT_CTRL against the Phase 1 lifecycle golden, so every
+        # input to that golden should be observed where it can be; sec_dis can be, via
+        # lcc_security_disable_probe_o.
+        sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
+        feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
         assert ctl.sep_debug == 0, (

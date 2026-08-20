@@ -48,6 +48,7 @@ between probes in the no_cpu flow.
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
 
 from sep_base_test import sep_base_test
@@ -91,12 +92,12 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             lc_state_name(image.lc_raw()), _SIP_DIS, _SYS_DIS,
         )
 
-        # security_disable (the LCC SEC_DIS override that forces feat_ctrl all-1s)
-        # is 0 by construction: it asserts only after a SEC_DIS token match, which
-        # this no-token PROD flow never performs. The exact 64-bit golden compare
-        # below is the safety net -- if it were actually 1, FEAT_CTRL would read
-        # all-1s and the PROD check (expecting sep_debug=0) would fail.
-        sec_dis = 0
+        # security_disable read from the DUT, not assumed. It asserts only after a
+        # SEC_DIS token match, which this no-token PROD flow never performs, so the
+        # expected value is 0 -- but "expected 0" and "observed 0" are different
+        # claims, and the probe makes it the second one. The exact 64-bit golden
+        # compare below remains the safety net either way.
+        sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
 
         # ---- PROD: sep_debug=0, inbound filter active -> external blocked ----
         feat_prod = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
