@@ -12,10 +12,12 @@ under this tree so the build, tests, shims, and docs are easy to review and reus
 What each test proves, and the exact log evidence that proves it, is recorded in the
 verification plans:
 
+* [`docs/oss_dv_plan.adoc`](docs/oss_dv_plan.adoc) — the high-level plan: three
+  phases, coverage model, quality bar.
 * [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) — the
   Phase 1 baseline, closed.
 * [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) — Phase 2
-  basic-feature breadth, active.
+  iconic-feature contract, active.
 * [`docs/verification_plan_phase3.adoc`](docs/verification_plan_phase3.adoc) — Phase 3
   candidates, unscheduled and moving to a new UVM environment.
 
@@ -36,7 +38,7 @@ hw/sys/sep/dv/
 │                        # uvm/  — future sibling, not created
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
 │                        # + cov/sv/ (scaffold, empty)
-├── docs/                # verification plans (phases 1-3, AsciiDoc)
+├── docs/                # verification plans (oss_dv_plan + phases 1-3, AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
 ├── models/              # SEP-local SystemRDL models (sep_axi_extension + generated)

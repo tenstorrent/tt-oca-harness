@@ -1142,7 +1142,7 @@ inline hash engine consumed the same bytes that were copied.
 
 | 7
 | Read the hardware digest; compute the software digest; compare. Compare source against destination word for word.
-| `Expected (HW) = 0x34b27328` and `Computed (SW) = 0x34b27328` (each followed by the remaining digest words), then `PASS: SRAM and DCCM data matches!`
+| `Expected (HW) = 0x` and `Computed (SW) = 0x` (each followed by the 32-byte digest), then `PASS: SRAM and DCCM data matches!`
 | LOGGED
 
 |===
@@ -1169,8 +1169,12 @@ inline hash engine consumed the same bytes that were copied.
 
 | CHK-DIGEST
 | The hardware digest equals an independent software SHA-256 over the same data.
-| `Expected (HW) = 0x34b27328bc6f15b6dd89f32af34b0ad1d491582006e4ca14ec258112239a842a` +
-  `Computed (SW) = 0x34b27328bc6f15b6dd89f32af34b0ad1d491582006e4ca14ec258112239a842a`
+| `Expected (HW) = 0x` and `Computed (SW) = 0x`, then `All SHA-256 hash tests PASSED` --
+  the firmware `memcmp`s the two 32-byte digests and increments its error count on a
+  mismatch, and that verdict line prints only when the count is zero, so the equality is
+  enforced rather than eyeballed. The digest VALUE is deliberately not quoted: it depends
+  on the firmware build, and a run on 2026-08-20 produced
+  `0x1f816c9c...` where an earlier build produced `0x34b27328...`
 | PROVEN
 
 | CHK-COPY
@@ -1181,9 +1185,10 @@ inline hash engine consumed the same bytes that were copied.
 | CHK-NONVAC
 | The software digest is recomputed from the actual SRAM contents on every run and no
   digest literal exists anywhere in the firmware or the testbench, so the comparison
-  cannot be satisfied by a constant. Note the data vector itself does not vary: `rand()`
-  is never seeded, so every run and every seed hashes the same 256 bytes. The seed
-  randomises only the clock period.
+  cannot be satisfied by a constant. `rand()` is never seeded, so the byte vector is the
+  same for every seed within one firmware build -- the seed randomises only the clock
+  period -- but it is NOT stable across builds, which is why no digest literal is quoted
+  above.
 | `Generating random data in SRAM...` followed by the computed digest on the `Expected (HW)` line
 | PROVEN
 |===
@@ -2569,7 +2574,8 @@ injection on this path does and does not cover.
   done nothing. This is a transaction floor, not a comparison count — the cited line
   reports zero value-verified reads, because the value comparisons for this test live
   in the entropy scoreboard rather than the AXI scoreboard.
-| `SEP scoreboard: 3863 checks (0 value-verified, 0 expected-error), 0 errors`
+| `SEP scoreboard:` ... `(0 value-verified, 0 expected-error), 0 errors` -- the check
+  total varies per run and is deliberately not quoted
 | PROVEN
 |===
 
@@ -3308,13 +3314,14 @@ to say.
 | `sep_km_otbn_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`,
   `sep_esrc_e2e_smoke_test`
 | Generated-bits segmentation is never exercised — no generate command completes
-  within the run, so that half of the checker is untested.
-| Not a "run it longer" fix. No test in the suite passes
-  `golden_kwargs["legal_gen_lengths"]`, so the scoreboard defaults the legal set to the
-  nominal `glen` and then takes each segment boundary from the DUT's own `gen_last` --
-  a DUT that segmented wrongly would be followed, not caught. Closing this needs the
-  expected length pinned by the stimulus, independent of `gen_last`. Until then the
-  segmentation half of the checker is untested however long the run goes.
+  within the run, so that half of the checker is untested. These entries keep their
+  `glen=32` budgets; stretching them would retune every consumer that shares the
+  one-Generate-per-seed golden.
+| Closed by Phase 2 `sep_drbg_gen_segmentation_test`: it programs `glen=4` into
+  both `EDN.BOOT_GEN_CMD` (what `BOOT_REQ` actually issues; reset is 4095) and
+  `GENERATE_CMD` from the same `SepEntropyCfg` that feeds the golden, waits for
+  completed Generates, and requires every completed command to carry exactly that
+  length. The Phase 1 rows stay `PARTIAL` on purpose.
 
 | `sep_efuse_jtag_axil_el2_cpu_mux_test`
 | The JTAG *deny* set in PROD. `hw/sys/sep/doc/periphs.adoc` says that in PROD and
@@ -3352,13 +3359,6 @@ to say.
 | Bit-exact comparison needs a controllable pull order. The Key Manager's is
   firmware-driven, so this may stay accepted rather than closed.
 
-| `sep_lcc_uvm_inbound_filter_gating_test`, `sep_efuse_lcc_lc_state_stitch_test`
-| The lifecycle golden transcribes RTL that is known to be wrong for the demoted-PROD
-  case, and the eFuse map these entries stage against is being restructured. Both are
-  correct against the RTL currently in the tree; both change when PR #242 lands.
-| See <<lcc-golden-follows-rtl>> for the specific edits. Not done ahead of the PR, so
-  that this plan keeps describing the RTL that is actually here.
-
 | `sep_rom_non_secure_boot_test`
 | Only the all-good leg of the ROM's manifest and payload integrity checks is
   exercised. No test anywhere corrupts a manifest, and secure boot is off on this
@@ -3384,6 +3384,12 @@ anything; attach a golden without fixing the encoding first and it will fail, co
 Writing three bytes needs a byte-strobed FIFO write rather than a word write.
 --
 |===
+
+One item has been closed since this table was first written. The lifecycle golden and
+the eFuse map it stages against were both listed here as pending PR #242; #242 landed,
+the golden is now derived from the lifecycle-controller chapter rather than transcribed
+from the RTL, and the field table is derived from the generated map. See
+<<lcc-golden-follows-rtl>>.
 
 === Unlogged steps
 

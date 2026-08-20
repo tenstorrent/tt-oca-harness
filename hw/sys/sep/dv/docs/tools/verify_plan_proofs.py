@@ -44,7 +44,15 @@ for _path in _DOCS:
         continue
     _lines = _f.read_text().splitlines()
     _marks = [(i, l[4:].strip()) for i, l in enumerate(_lines) if l.startswith('=== sep_')]
-    _ENTRIES.append((_lines, _marks))
+    # The LAST entry must stop at the next level-2 section, not at end-of-file. Without
+    # this, everything after the final testcase -- the audit summary, the open-items
+    # table, the document history -- was attributed to that entry and demanded from its
+    # log. That is how `glen=4`, prose in an open-items row describing a DIFFERENT test,
+    # was reported missing from sep_esrc_e2e_smoke_test's log. Same bug the comment above
+    # describes across documents, recurring within one.
+    _stop = next((i for i, l in enumerate(_lines)
+                  if l.startswith('== ') and _marks and i > _marks[-1][0]), len(_lines))
+    _ENTRIES.append((_lines[:_stop], _marks))
 logs = {}
 for r in sorted(pathlib.Path('build/runs').iterdir(), key=lambda x: x.name):
     for lg in r.rglob('*.log'):
@@ -66,8 +74,23 @@ STIMULUS_CLAIMS = {
 NEGATIVE_EVIDENCE = {
     'ERROR: CFG_REGWEN not unlocked',   # sep_dma_hash_test CHK-CFG: the failure line
 }
+
+# Register reset values and other design constants a Description cites to explain WHY an
+# entry exists. They are facts about the DUT, not text the run emits, so demanding them
+# from the log is a false positive -- which is what this script reported on a clean tree
+# before they were listed.
+DESIGN_CONSTANTS = {
+    'glen=4095',   # sep_drbg_gen_segmentation_test: EDN.BOOT_GEN_CMD reset value
+}
+# A quoted constructor / function call with keyword arguments -- SepEntropyCfg(glen=4,
+# program_boot_generate=True) -- is checked-in source being named, not log text. Matched
+# structurally rather than by listing each one, because a Description naming the object
+# that drives an entry is a pattern that recurs.
+_CALL_SIGNATURE = re.compile(r'^[A-Za-z_]\w*\([^()]*=[^()]*\)$')
+
 def evidence(x):
-    if x in STIMULUS_CLAIMS or x in NEGATIVE_EVIDENCE: return False
+    if x in STIMULUS_CLAIMS or x in NEGATIVE_EVIDENCE or x in DESIGN_CONSTANTS: return False
+    if _CALL_SIGNATURE.match(x): return False
     if x.startswith(('+', '--')): return False
     if ' = "' in x: return False
     # Single-token quotes are usually a signal name or a register, not log text — except
@@ -80,7 +103,11 @@ def evidence(x):
     # placeholder in them, which is the class most worth catching.
     return any(t in x for t in ('PASS', ' -> ', ' <- ', '->', '=', 'dut_items', 'checks',
                                 'counters', 'beats', 'word', 'cycle', 'OK', '0x',
-                                'R/W', 'SLVERR', 'DECERR', 'locked', 'golden'))
+                                'R/W', 'SLVERR', 'DECERR', 'locked', 'golden',
+                                # scoreboard tail lines: "..., 0 errors" is log text, and
+                                # without this a row whose only stable quote is the error
+                                # count was silently SKIPPED rather than checked.
+                                'errors'))
 tot = miss_n = skipped = 0; out = []; n_entries = 0
 for adoc, marks in _ENTRIES:
   n_entries += len(marks)
@@ -128,7 +155,12 @@ if _tl.is_dir():
     ungraded = sorted(implemented - graded)
     print(f"entries: {len(graded)} graded, {len(implemented)} implemented in testlists, "
           f"{len(ungraded)} implemented but ungraded")
-sys.exit(1 if (miss_n or count_err) else 0)
+# Print the detail BEFORE exiting. This loop used to sit after sys.exit(), so it was
+# unreachable: the script reported "N not found" and then died without ever saying
+# WHICH strings were missing, which is a CI failure nobody can act on.
 for name, lg, miss in out:
+    if not miss: continue
     print(f"### {name}\n    log: {lg}")
     for m in miss: print(f"    MISSING: {m}")
+
+sys.exit(1 if (miss_n or count_err) else 0)

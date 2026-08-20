@@ -21,16 +21,17 @@ evidence string against that entry's newest kept log and exits non-zero on a mis
 What this document is *not*: a coverage percentage, and not a forward contract. Phase 2
 names 112 testcase-shaped identifiers. One of those, `sep_base_test`, is a base class
 rather than a testcase, so there are *111* real candidates: 42 implemented and 69 not.
-Three further entries added by PR #451 are implemented but were named in no plan at all,
-giving 45 covered here and in Phase 1 together. Only implemented entries are graded; the
-69 unimplemented ones are listed in <<backlog>> as names, with no rows and no claims.
+Three further entries added by PR #451, plus `sep_drbg_gen_segmentation_test` (named in
+no original plan), give 46 covered here and in Phase 1 together. Only implemented
+entries are graded; the 69 unimplemented ones are listed in <<backlog>> as names, with
+no rows and no claims.
 
-(42 + 69 = 111, and 111 + 1 base class = 112. An earlier revision of this section stated
-112 candidates against a 69-name backlog, which did not reconcile.)
+(42 + 69 = 111, and 111 + 1 base class = 112. The 46 covered = 42 + 3 from PR #451 +
+`sep_drbg_gen_segmentation_test`.)
 
-=== Scope: 45 implemented, 23 graded here
+=== Scope: 46 implemented, 24 graded here
 
-Phase 2 builds on the Phase 1 baseline rather than replacing it, so 22 of the 45 are
+Phase 2 builds on the Phase 1 baseline rather than replacing it, so 22 of the 46 are
 already graded in `verification_plan_phase1.adoc`. Those are *not* duplicated here. A
 checker with two rows in two documents is a maintenance hazard, and this branch has been
 bitten by that shape twice already — an eFuse field map held in both Python and C, and a
@@ -46,7 +47,7 @@ and stayed consistent with the other.
 | `verification_plan_phase1.adoc`
 
 | Net-new Phase 2 entries
-| 20
+| 21
 | this document
 
 | OpenTitan SPI boot entries added by PR #451
@@ -74,10 +75,13 @@ these grades should know what was wrong before:
 orders reproduced its digest, and used the winner as the golden for all fourteen keyed
 cells. A key-word-order RTL bug would have been selected into the golden and every cell
 would have passed — and key word order is exactly the bug class those cells exist to
-catch. The convention is now derived from the RTL contract
-(`hmac.sv:219-221` assigns the key CSRs into the secret-key vector in reverse index
-order, so `KEY_0` is the
-most-significant word and the software path needs no reversal), and the two-candidate
+catch. The convention is now taken from the IP's own register specification --
+`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:446-447` states
+`key[1023:0] = {KEY0, KEY1, ... , KEY31}`, so `KEY_0` is the most-significant word and
+the software path needs no reversal. The RTL agrees (`hmac.sv:219-221` assigns the key
+CSRs into the secret-key vector in reverse index order), and that agreement is
+corroboration rather than the source: a golden transcribed from the RTL cannot disagree
+with the RTL, which is the same defect class this section is about. The two-candidate
 scan survives only as a failure diagnostic that distinguishes a word-order regression
 from a general digest fault.
 
@@ -200,13 +204,14 @@ self-tests against RFC 4231 and FIPS-180 vectors at import.
 | ID | Check | Proof | Status
 
 | CHK-CONV
-| The engine honours the *documented RTL* software-key register convention. `hmac.sv:219`
-  assigns the key CSRs into the secret-key vector in reverse index order, so `KEY_0` is
-  the most-significant word and no word reversal is needed. The convention is pinned from that contract, not
-  discovered by asking the engine which one it agrees with — see <<audit>>. On mismatch
+| The engine honours the *specified* software-key register convention.
+  `hmac.hjson:446-447` defines `key[1023:0] = {KEY0, ... , KEY31}`, so `KEY_0` is the
+  most-significant word and no word reversal is needed; `hmac.sv:219` implements it.
+  The convention is pinned from the specification, not discovered by asking the engine
+  which one it agrees with, and not transcribed from the RTL it checks — see <<audit>>. On mismatch
   the failure reports whether the reversed order would have matched, which separates a
   key word-order regression from a general digest fault.
-| `CHK-CONV PASS: engine honours the RTL SW-key convention`
+| `CHK-CONV PASS: engine honours the specified SW-key convention`
 | PROVEN
 
 | CHK-CELL
@@ -332,13 +337,101 @@ insufficient evidence, FIPS violation or illegal segmentation.
 | CHK1..CHK4
 | The entropy stack matches its golden bit-exactly at each stage, strict mode, reported.
 | `CHK4_genbits` row of the scoreboard report with `mismatch=0`
-| PARTIAL — Generate segmentation is not exercised; see the Phase 1 note on the same gap
+| PARTIAL — Generate segmentation is not exercised on this budget; closed by
+  `sep_drbg_gen_segmentation_test`
 |===
 
 NOTE: CHK1's golden initial state is seeded from the live RTL shift-register after reset,
 so CHK1 verifies the *recurrence* rather than the reset phase, and CHK2..CHK4 take the
 previous verified stage's DUT output as their input. That is the standard chained-stage
 methodology, recorded here so the chain of custody is explicit.
+
+[[sep_drbg_gen_segmentation_test]]
+=== sep_drbg_gen_segmentation_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force +km_rom_hex=km_rom_entropy.parhex`
+Testlist:: `crypto.toml`
+Randomization:: RAND-NONE — directed `glen=4`. One length is the feature.
+
+==== Description
+
+Phase 2 DRBG iconic feature: a CSRNG Generate command completes at the commanded
+length, `gen_last` asserts, and the trailing CTR_DRBG Update runs. Every other
+entropy test leaves that half of CHK4 unexercised because `EDN.BOOT_GEN_CMD`
+resets to `glen=4095` and `EDN_CTRL_AUTO` sets `BOOT_REQ` — so the first Generate
+is the boot command, not `GENERATE_CMD`.
+
+`SepEntropyCfg(glen=4, program_boot_generate=True)` is the single source of truth:
+it writes `BOOT_GEN_CMD`, `GENERATE_CMD`, and the golden. Existing tests leave
+`program_boot_generate` False so their one-open-command CHK4 budgets stay put.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring up in `no_cpu` mode with fuse sense skipped.
+| `SEP timing: sys_clk_period=` then `Skipping fuse sense`
+| LOGGED
+
+| 2
+| Release the Key Manager with the small entropy-consuming ROM image.
+| `AXI write 0x10803000 <- 0x1f (ok=True resp=0)`
+| LOGGED
+
+| 3
+| Program the boot Generate and the auto Generate to `glen=4` from the same config
+  object that feeds the golden.
+| `AXI write 0x1091581c <- 0x4903 (ok=True resp=0)` and `AXI write 0x10915830 <- 0x4903 (ok=True resp=0)`
+| LOGGED
+
+| 4
+| Bring up the entropy stack, drain the source queue through the front door, and
+  wait for generated bits and a Key Manager consume.
+| `CHK1 golden seeded from live ff_stage` and `CHK2 frontdoor: drained`
+| LOGGED
+
+| 5
+| Require at least one completed Generate of exactly four blocks, then report the
+  strict CHK1..CHK5 scoreboard.
+| `CHK4-SEGMENTATION PASS:` then `==== sep_drbg_scoreboard CHK1..CHK5 report ====`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-SEGMENTATION
+| At least one Generate command completed, and every completed command carried exactly
+  the commanded `glen=4` blocks — so `gen_last` was observed, the trailing Update ran,
+  and a segment of any other length would fail.
+| `CHK4-SEGMENTATION PASS:`
+| PROVEN
+
+| CHK1..CHK4
+| The entropy stack matches its golden bit-exactly at each stage, including across the
+  Update boundary this entry forces, strict mode, reported.
+| `CHK4_genbits   dut_items=4 match=4 mismatch=0`
+| PROVEN
+
+| CHK5
+| The Key Manager consumes an entropy word (post-mux handshake and SRAM landing), same
+  consumer close as the e2e smoke.
+| `CHK5_km        dut_items=1 match=1 mismatch=0`
+| PROVEN
+|===
+
+NOTE: the kept run completes the *boot* Generate (one command, four blocks) and
+then stops producing genbits -- the Key Manager ROM reads one word and parks.
+That is enough for the legality check to execute. A second AUTO Generate after
+the Update is not claimed.
 
 [[sep_crypto_per_ip_reset_isolation_test]]
 === sep_crypto_per_ip_reset_isolation_test
@@ -1578,13 +1671,13 @@ rather than sitting quietly in this table.
 
 == Audit summary
 
-23 testcases, 103 checkers.
+24 testcases, 106 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 67
+| `PROVEN` | 70
 | `PARTIAL` | 31
 | `GUARD` | 5
 | `INSUFFICIENT-EVIDENCE` | 0

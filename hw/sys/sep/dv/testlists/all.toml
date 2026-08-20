@@ -61,6 +61,7 @@ tests = [
     "sep_rom_sanity_test",
     "sep_spi_ot_dma_rx_test",
     "sep_esrc_e2e_smoke_test",
+    "sep_drbg_gen_segmentation_test",
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_efuse_km_axil_cpu_mux_coexist_test",
     "sep_irq_ip_to_aggregator_test",
@@ -140,6 +141,7 @@ tests = [
     "sep_efuse_lcc_lc_state_stitch_test",
     "sep_clock_uvm_wdt_rst_input_reset_path_test",
     "sep_esrc_e2e_smoke_test",
+    "sep_drbg_gen_segmentation_test",
     "sep_irq_ip_to_aggregator_test",
     "sep_drbg_real_sink_multi_km_aes_test",
 

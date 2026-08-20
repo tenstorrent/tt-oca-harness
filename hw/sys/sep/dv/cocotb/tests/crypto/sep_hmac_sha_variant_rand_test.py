@@ -22,8 +22,9 @@ the seed only randomizes the legal continuous knobs (key + message content/
 length). The SHA-256 x Key_1024 keyed cell is illegal (hmac.sv:819) and excluded.
 
 Checkers:
-  CHK-CONV     SW-key byte convention pinned on SHA-256 keyed-256 (exactly one of
-               the candidate register conventions reproduces the engine digest)
+  CHK-CONV     SW-key register convention pinned on SHA-256 keyed-256 from the IP
+               register spec (hmac.hjson:446), asserted against the engine -- NOT
+               selected by asking which candidate convention the engine agrees with
   CHK-CELL     per cell: engine DIGEST == independent golden (8/12/16 words)
   CHK-RW1C     per cell: INTR_STATE.hmac_done W1C-clears to 0 (in run_mac)
   CHK-ERR      per cell: ERR_CODE == 0 and INTR_STATE.hmac_err == 0
@@ -128,7 +129,7 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
     _SW_KEY_CONV = dict(key_word_rev=False, key_be=True, msg_be=False, digest_swap=False)
 
     async def _check_key_convention(self) -> dict:
-        """Verify the engine honours the RTL's documented SW-key convention.
+        """Verify the engine honours the SPECIFIED SW-key convention (hmac.hjson:446).
 
         Asserts against the pinned convention. On mismatch, reports whether the
         reversed convention would have matched, because that distinguishes a key
@@ -153,13 +154,14 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
                     if digest == also else
                     " -- neither word order matches, so this is not a word-order issue")
             raise AssertionError(
-                f"CHK-CONV: engine digest does not honour the RTL SW-key convention "
+                f"CHK-CONV: engine digest does not honour the specified SW-key convention "
                 f"{self._SW_KEY_CONV}{hint}\n"
                 f"  engine  ={[hex(w) for w in digest]}\n"
                 f"  expected={[hex(w) for w in expected]}")
         self.logger.info(
-            "CHK-CONV PASS: engine honours the RTL SW-key convention "
-            "(key_word_rev=False, KEY_0 is the most-significant word per hmac.sv:219)")
+            "CHK-CONV PASS: engine honours the specified SW-key convention "
+            "(key_word_rev=False, KEY_0 is the most-significant word "
+            "per hmac.hjson:446)")
         return dict(self._SW_KEY_CONV)
 
     async def _run_cell(self, sha_bits: int, hmac_en: bool,

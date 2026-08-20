@@ -73,6 +73,7 @@ CSRNG_ERR_CODE = 0x1091_5054
 CSRNG_RECOV_ALERT = 0x1091_5050
 EDN_CTRL = 0x1091_5814
 EDN_BOOT_INS_CMD = 0x1091_5818
+EDN_BOOT_GEN_CMD = 0x1091_581C
 EDN_RESEED_CMD = 0x1091_582C
 EDN_GENERATE_CMD = 0x1091_5830
 EDN_MAX_REQS = 0x1091_5834
@@ -140,6 +141,11 @@ class SepEntropyCfg:
     bypass: bool = False               # decorrelator feedback bypass
     sha_whitening: bool = True         # ESRC_CTRL.SHA256_WHITENING_ENABLE
     glen: int = 32                     # EDN/CSRNG Generate length (128b genbits blocks)
+    # EDN_CTRL_AUTO also sets BOOT_REQ. The boot Generate uses BOOT_GEN_CMD, which
+    # resets to glen=4095 (0xfff003), not GENERATE_CMD. Leave False so existing
+    # tests keep one open command for the whole run; set True when the test needs
+    # completed Generates (the segmentation contract).
+    program_boot_generate: bool = False
     reseed_interval: int = 8           # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
     # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
     # before the CSRNG seed packer starts. ZERO for this DRBG -- drbg.sv wires the
@@ -266,6 +272,8 @@ class SepEsrcConfigSeq(uvm_sequence):
         await _wr(self, ESRC_CTRL, cfg.esrc_ctrl_whiten)        # RESET=0
         await _wr(self, CSRNG_CTRL, CSRNG_CTRL_ENABLE)
         await _wr(self, EDN_BOOT_INS_CMD, CMD_INSTANTIATE)
+        if cfg.program_boot_generate:
+            await _wr(self, EDN_BOOT_GEN_CMD, cfg.edn_generate_cmd)
         await _wr(self, EDN_RESEED_CMD, CMD_RESEED)
         await _wr(self, EDN_GENERATE_CMD, cfg.edn_generate_cmd)
         await _wr(self, EDN_MAX_REQS, cfg.reseed_interval)
