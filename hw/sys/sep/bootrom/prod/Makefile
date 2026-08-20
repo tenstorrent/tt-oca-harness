@@ -297,8 +297,21 @@ TT_BOOT_MANIFEST_DIR := $(TOOLS_DIR)/tt-boot-manifest
 
 # --no-project keeps this off the repo-root uv project: the root lockfile must
 # stay resolvable in a checkout where submodules were never init'd.
+ifneq ($(shell command -v uv 2>/dev/null),)
 PACK_RUN := uv run --no-project --with-editable "$(TT_BOOT_MANIFEST_DIR)" \
 	python -m tt_boot_manifest.pack_images
+else
+# uv-less fallback (e.g. the ocah-toolchain container, which carries the
+# packer's deps as distro packages: python3-{cryptography,ruamel.yaml,tomlkit,
+# bitarray}). The submodule maps package-dir {tt_boot_manifest = "src"}, which
+# plain PYTHONPATH can't express — a symlink shim reproduces it. Kept a single
+# sh -c command so callers' `OCH_ROOT=... ROOT=... $(PACK_RUN) args` env
+# prefixes still bind to the packer, not to a leading mkdir.
+PACK_SHIM := $(BUILD_DIR)/.pack-shim
+PACK_RUN = sh -c 'mkdir -p "$(PACK_SHIM)" && \
+	ln -sfn "$(abspath $(TT_BOOT_MANIFEST_DIR))/src" "$(PACK_SHIM)/tt_boot_manifest" && \
+	PYTHONPATH="$(PACK_SHIM)" exec python3 -m tt_boot_manifest.pack_images "$$@"' tt-pack
+endif
 
 # A submodule nobody init'd is the likely failure here, and the packer's own error
 # for it ("No module named tt_boot_manifest") does not point at the cause.
@@ -309,10 +322,12 @@ ensure-pack-deps:
 	  echo "       Run: git -C $(OCAH_ROOT) submodule update --init \\"; \
 	  echo "              hw/sys/sep/bootrom/prod/tools/tt-boot-manifest"; \
 	  exit 1; }
-	@command -v uv >/dev/null || { \
-	  echo "ERROR: uv not found; it installs the manifest packer's Python deps."; \
-	  echo "       Install it: https://docs.astral.sh/uv/getting-started/installation/"; \
-	  echo "       tools/dv/run_dv.py requires the same tool, so this is a one-off."; \
+	@command -v uv >/dev/null || python3 -c 'import cryptography, ruamel.yaml, tomlkit, bitarray' 2>/dev/null || { \
+	  echo "ERROR: uv not found and the packer's Python deps are not importable."; \
+	  echo "       Either install uv (https://docs.astral.sh/uv/getting-started/installation/,"; \
+	  echo "       tools/dv/run_dv.py requires the same tool, so this is a one-off), or"; \
+	  echo "       provide python3 with cryptography, ruamel.yaml, tomlkit and bitarray"; \
+	  echo "       (the ocah-toolchain container carries them as distro packages)."; \
 	  exit 1; }
 
 # manifest+BL1 -> raw image -> Verilog hex -> rebased to the SMC-SRAM base.
