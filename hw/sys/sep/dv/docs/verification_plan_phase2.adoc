@@ -1,0 +1,299 @@
+// SPDX-License-Identifier: Apache-2.0
+= SEP verification plan — Phase 2 (basic functional breadth)
+:toc: left
+:toclevels: 3
+:sectnums:
+:icons: font
+:source-highlighter: rouge
+
+== What this document is
+
+The record of what Phase 2 verifies and what evidence backs each claim. It follows the
+same contract as `verification_plan_phase1.adoc`, and that document holds the full
+statement of the rules — grade definitions, the rejection criteria, the proof-string
+requirements. They are not restated here. Read it first if you are auditing this one.
+
+The short form of the contract: *a row exists only if a run can prove it.* Every checker
+names log text a kept Verilator run actually contains, and the proof strings are checked
+mechanically rather than by eye — `docs/audit/verify_proofs.py` greps each backticked
+evidence string against that entry's newest kept log and exits non-zero on a miss.
+
+What this document is *not*: a coverage percentage, and not a forward contract. Phase 2
+names 112 candidate testcases, of which 42 are implemented; three further entries added
+by PR #451 are implemented but were named in no plan at all, giving 45 covered. Only
+implemented entries are graded. The remaining 69 are listed in <<backlog>> as names, with
+no rows and no claims.
+
+=== Scope: 45 implemented, 23 graded here
+
+Phase 2 builds on the Phase 1 baseline rather than replacing it, so 22 of the 45 are
+already graded in `verification_plan_phase1.adoc`. Those are *not* duplicated here. A
+checker with two rows in two documents is a maintenance hazard, and this branch has been
+bitten by that shape twice already — an eFuse field map held in both Python and C, and a
+set of disable vectors held in both a test and its prestage. Both went stale in one place
+and stayed consistent with the other.
+
+[cols="3,1,4",options="header"]
+|===
+| Group | Count | Where graded
+
+| Phase 1 baseline, re-run under Phase 2
+| 22
+| `verification_plan_phase1.adoc`
+
+| Net-new Phase 2 entries
+| 20
+| this document
+
+| OpenTitan SPI boot entries added by PR #451
+| 3
+| this document — they had no plan entry at all before
+
+| Named in Phase 2 planning, not implemented
+| 69
+| <<backlog>> — names only
+|===
+
+[[audit]]
+== The audit behind these grades
+
+Every entry graded here was audited against a kept log by an agent that had not written
+the test, with one instruction: find checks that cannot fail. That produced 26 findings
+across the 23 entries. All 26 are fixed; the fixes are in this branch's history, one
+commit per group.
+
+Recording the classes, because they recur and because a reader deciding how much to trust
+these grades should know what was wrong before:
+
+*An expectation that shares a source with the thing it measures.* The worst instance:
+`sep_hmac_sha_variant_rand_test` ran the engine, asked which of two candidate key word
+orders reproduced its digest, and used the winner as the golden for all fourteen keyed
+cells. A key-word-order RTL bug would have been selected into the golden and every cell
+would have passed — and key word order is exactly the bug class those cells exist to
+catch. The convention is now derived from the RTL contract
+(`hmac.sv:219-221` assigns the key CSRs into the secret-key vector in reverse index
+order, so `KEY_0` is the
+most-significant word and the software path needs no reversal), and the two-candidate
+scan survives only as a failure diagnostic that distinguishes a word-order regression
+from a general digest fault.
+
+*Golden compared against golden.* Nine asserts across the crypto entries compared a
+result already pinned bit-exact to its golden against another output of the same Python
+model. Those hold with the simulator switched off. One was weaker still: a KMAC
+wrong-mode golden returned four words against an eight-word digest, so the assert
+compared list lengths rather than separating domains.
+
+*A guard whose own constructor makes it unfalsifiable.* `sep_sram_datapath_breadth_test`
+wrote one address and required a second, *unwritten* address to differ from the written
+pattern — but that address holds zero-initialised memory and the pattern is built as
+`getrandbits(64) | 1`, so the check was `0 != nonzero`. It could not detect the stuck read
+path it names. `sep_fabric_remap_filter_csr_bank_test` anchored non-vacuity on
+`start_lo != 0` where the config builds that value as `(random & ~0xFFF) or 0x1000`.
+
+*A stimulus with no fan-out.* `sep_cpu_dbg_reset_independence_test` pulsed `dbg_rstb_i`
+and asserted two reset observables stayed released. There is no netlist path from that pin
+to either signal — the entry runs the CPU-stub target, where `dbg_rstb_i` is a declared
+and unread port, and even against the real CPU `sep_reset_ctrl` has no such port. The
+assert was the baseline check repeated with a no-op write between. See
+<<dbg-reset-isolation>>.
+
+*A tolerance wider than the signal.* `sep_wdt_aon_timer_internals_test` allowed a post-pet
+count of up to `0x100` while the pre-pet count only reached 57, so a pet that was ignored
+passed. The window is now long enough that the count reaches `0x400`+ first.
+
+*A check that reads back nothing.* `sep_dma_basic_test`'s width walk set `TRANSFER_WIDTH`
+to three encodings and never read it back; 16 bytes is a whole multiple of 1, 2 and 4, so
+a register stuck at its reset produced byte-identical output all three times.
+
+*Entailed guards.* Several "forbids X" checks were entailed by their own "requires Y" —
+both markers on complementary arms of one predicate in a single boot. Those are kept as
+cheap guards but labelled, so no row banks them as independent evidence.
+
+== Grades used here
+
+The same set as Phase 1, with the same meanings. Two are worth repeating because they
+carry most of the non-`PROVEN` weight in this document:
+
+`PARTIAL`:: The checker holds, but a named sub-condition was not exercised. The
+unexercised part is stated in the row — not left for a reader to infer.
+
+`GUARD`:: The checker cannot fail on any DUT, because it guards a build precondition or a
+generated-register tie-off rather than a hardware property. Kept because it catches a
+regression in what it does cover, graded separately so it is never read as evidence about
+the design, and excluded from the proof count.
+
+include::verification_plan_phase2_entries.adoc[leveloffset=+0]
+
+[[dbg-reset-isolation]]
+== Open item: debug-reset isolation is not covered
+
+`sep_cpu_dbg_reset_independence_test` no longer claims it. The entry proves its two reset
+observables are released at rest and that a real reset source drops and restores
+`sep_cpu_reset_n` — so the observables are live, not stuck. It does *not* prove
+`dbg_rstb_i` is isolated from the system reset domain, because in this environment that
+pin reaches nothing:
+
+* the entry runs `target = "lsu_stub_all_live"`, which excludes `hw/sys/sep/rtl/sep_cpu.sv`
+  and substitutes `dv/shims/cpu/sep_cpu_stub.sv`, where `dbg_rstb_i` appears once as a
+  port declaration and is never read;
+* `sep.sv:582` routes `dbg_rstb_i` only into `sep_cpu`, and `sep_reset_ctrl` — which
+  produces both observables — has no `dbg_rstb` port at all.
+
+Closing it needs two changes, and both are design decisions rather than repairs: move the
+entry to the `cpu` run mode so the pin reaches `sep_cpu`, and add a positive observable in
+the debug domain — something `dbg_rstb_i` is supposed to reset — so the pulse has an
+asserted consequence instead of only a non-consequence. A pulse-and-check assert without
+that observable is vacuous however it is targeted.
+
+[[open-items]]
+== Open items
+
+[cols="2,3,3",options="header"]
+|===
+| Entry | What is not covered | What would close it
+
+| `sep_cpu_dbg_reset_independence_test`
+| The `dbg_rstb_i` isolation claim itself. See <<dbg-reset-isolation>>.
+| A `cpu`-mode run plus a positive debug-domain observable.
+
+| `sep_crypto_edn_multisink_arbitration_test`
+| The arbitration *decision*. `CHK-OVERLAP` proves interval-span containment, which is
+  satisfied even when one client's whole burst falls in a gap between two of the other's
+  beats — and that is what the kept runs show. No same-cycle two-client request is
+  observed, so the round-robin grant the entry is named for is never exercised.
+| Assert at least one beat of each client falls strictly inside the other's window, and
+  count cycles where both request bits are high. The probes already exist in `tb_top.sv`.
+
+| `sep_rom_ot_secure_boot_test`
+| The `entropy_source -> CSRNG -> EDN` chain. OTBN's RND/URND responses are supplied by
+  the `+sep_crypto_edn_force` testbench force. The force is confined to the EDN response
+  structs and does not touch the RSA datapath, so the signature verification is genuine —
+  but the entropy path behind it is not exercised. Version rollback and key revocation
+  also execute only in their zero-fuse pass-through configuration.
+| A run with the real entropy chain brought up before the ROM reaches RSA, and non-zero
+  version and revocation fuses.
+
+| `sep_rom_ot_dma_boot_test`, `sep_rom_ot_pio_boot_test`
+| Which RX-FIFO drain served the boot. The two binaries genuinely differ — only the DMA
+  build links the DMA drain — but nothing in either entry asserts it, so the distinction
+  rests on binary identity and retired-instruction count.
+| Assert the ROM build hash the image already prints, or a drain-specific console marker.
+
+| All three `sep_rom_ot_*_boot_test`
+| Any negative path. No entry corrupts a signature, tampers with a payload, revokes the
+  signing key, or clears the boot strap.
+| A companion entry per rejection path, each required to fail with its own ROM error
+  marker.
+
+| `sep_spi_ot_dma_tx_test`
+| Mid-transfer `CHUNK_DONE` set-and-clear. The polling loop has never caught it in any
+  kept run; the entry reports that honestly and proves the `DONE` RW1C instead.
+| A slower drain or an interrupt-driven observation of the chunk boundary.
+
+| `sep_spi_ot_dma_tx_test`, `sep_spi_ot_flash_cmd_rand_test`
+| Flash busy (`WIP`) behaviour. The BFM models no busy bit, so `SR1` is always zero once
+  `WEL` clears and there is no transition to observe. Both entries report `CHK-WIP` as
+  `DEFERRED` rather than passing on an all-zero read.
+| A BFM status-register callback that holds `WIP` for a bounded number of reads after a
+  page program.
+|===
+
+[[backlog]]
+== Backlog: named, not implemented
+
+69 testcases are named in the Phase 2 planning material but not implemented,
+so they have no rows above and this document makes no claim about them. When one is
+implemented it gets an entry, graded on its evidence like everything else — a detail
+card is not evidence and does not carry across.
+
+The per-test detail cards live in `SEP_OSS_VPLAN_PHASE2_DETAIL.txt`, which is kept
+locally rather than published: it is planning material, and it carries references to an
+internal test suite that have no meaning outside it. The names themselves are listed
+here so this document is self-contained.
+
+[cols="1",options="header"]
+|===
+| Named, not implemented
+
+| `sep_clock_uvm_aon_timer_operation_test`
+| `sep_clock_uvm_clock_gate_control_test`
+| `sep_clock_uvm_jtag_clock_independence_test`
+| `sep_clock_uvm_reset_assertion_deassertion_test`
+| `sep_clock_uvm_sw_reset_per_ip_test`
+| `sep_clock_uvm_warm_reset_vs_cold_reset_test`
+| `sep_cpu_dbg_target_matrix_test`
+| `sep_cpu_ifu_invalid_target_test`
+| `sep_cpu_lsu_negative_matrix_test`
+| `sep_cpu_lsu_target_matrix_test`
+| `sep_cpuctrl_misc_regs_test`
+| `sep_direct_smn_routing_test`
+| `sep_dma_uvm_reg_rw_test`
+| `sep_drbg_km_vs_crypto_endpoint_concurrency_test`
+| `sep_drbg_real_sink_multi_rand_test`
+| `sep_efuse_program_lock_matrix_test`
+| `sep_efuse_strap_secure_tm_latch_test`
+| `sep_efuse_uvm_direct_read_test`
+| `sep_efuse_uvm_permission_matrix_test`
+| `sep_efuse_uvm_program_test`
+| `sep_efuse_uvm_shadow_permission_neg_test`
+| `sep_efuse_uvm_shadow_strap_secure_tm_test`
+| `sep_fabric_64bit_regwidth_test`
+| `sep_fabric_gap_matrix_test`
+| `sep_fabric_inbound_mailbox_64bit_mapping_test`
+| `sep_fabric_mailbox_fifo_closure_test`
+| `sep_fabric_outbound_tail_closure_test`
+| `sep_fabric_output_remap_datapath_proxy_test`
+| `sep_fabric_xbar_error_closure_test`
+| `sep_global_alias_remap_uvm_test`
+| `sep_inbound_filter_blockbydefault_test`
+| `sep_inbound_filter_programming_ownership_test`
+| `sep_inbound_id_remap_test`
+| `sep_irq_connectivity_test`
+| `sep_irq_extended_connectivity_test`
+| `sep_km_command_set_rand_test`
+| `sep_km_mailbox_protocol_rand_test`
+| `sep_km_sram_lock_warm_reset_domain_test`
+| `sep_km_uvm_cmd_hw_ver_test`
+| `sep_km_uvm_mailbox_cmd_test`
+| `sep_lcc_demote_feat_ctrl_matrix_test`
+| `sep_lcc_uvm_demote_comprehensive_test`
+| `sep_lcc_uvm_prod_dbg_flavour_test`
+| `sep_lcc_uvm_screening_vs_diagnostic_test`
+| `sep_locked_field_access_irq_path_test`
+| `sep_mailbox_64bit_data_test`
+| `sep_mailbox_irq_status_test`
+| `sep_mailbox_misc_regs_test`
+| `sep_outbound_filter_cfg_test`
+| `sep_outbound_path_selection_test`
+| `sep_outbound_source_id_policy_test`
+| `sep_reg_sanity_test`
+| `sep_reset_ctrl_csr_test`
+| `sep_rom_uvm_addr_boundary_test`
+| `sep_rom_uvm_basic_read_test`
+| `sep_rom_uvm_content_verify_test`
+| `sep_rom_uvm_cpu_ifu_test`
+| `sep_rom_uvm_sequential_read_test`
+| `sep_rom_uvm_write_ignore_test`
+| `sep_smc_alias_region_routing_test`
+| `sep_sram_uvm_addr_boundary_test`
+| `sep_sram_uvm_burst_write_test`
+| `sep_sram_uvm_byte_pattern_test`
+| `sep_sram_uvm_byte_strobe_test`
+| `sep_sram_uvm_data_pattern_test`
+| `sep_sram_uvm_sanity_test`
+| `sep_sram_uvm_sequential_access_test`
+| `sep_sram_uvm_write_read_test`
+| `sep_system_uvm_jtag_rst_ctrl_test`
+|===
+
+The count is checked against the testlists by `docs/audit/verify_proofs.py`, so a name
+that gets implemented without being promoted to an entry above surfaces as a mismatch
+rather than sitting quietly in this table.
+
+
+== Audit summary
+
+See the entries section for per-testcase grades. Totals are generated from the entry
+tables rather than maintained by hand; `docs/audit/verify_proofs.py` checks every proof
+string in this document against the newest kept log for its entry, and the entry count
+against the implemented testlist set.

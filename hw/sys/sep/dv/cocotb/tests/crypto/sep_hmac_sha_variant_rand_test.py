@@ -71,16 +71,26 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         # CHK-CONV: pin the SW-key register byte convention once (bring-up).
         conv = await self._check_key_convention()
 
-        walked = 0
+        # Collect each cell's DUT result so the matrix claim rests on observed
+        # output, not on the loop's own trip count. The former guard compared
+        # `walked` against a product of file-scope constants -- it asserted its
+        # own arithmetic. Distinct results additionally show the cells really did
+        # program different configurations.
+        results: dict[str, tuple[int, ...]] = {}
         for sha_bits in SHA_VARIANTS:
             for key_bits in KEYED_MATRIX[sha_bits]:
-                await self._run_cell(sha_bits, True, key_bits, conv)
-                walked += 1
-            await self._run_cell(sha_bits, False, None, conv)
-            walked += 1
+                results[f"hmac{sha_bits}-k{key_bits}"] = await self._run_cell(
+                    sha_bits, True, key_bits, conv)
+            results[f"sha{sha_bits}"] = await self._run_cell(
+                sha_bits, False, None, conv)
 
+        walked = len(results)
         expected = sum(len(v) for v in KEYED_MATRIX.values()) + len(SHA_VARIANTS)
         assert walked == expected, f"walked {walked} cells != {expected} required"
+        assert len(set(results.values())) == expected, (
+            "HMAC cells produced duplicate digests, so they did not all run distinct "
+            "configurations: "
+            + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
             "({SHA256,384,512} x keyed[all legal key-len] + plain-SHA) in one "
@@ -174,3 +184,4 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         await self.hmac.check_status_clean(mode)  # CHK-ERR
         self.logger.info("CHK-CELL PASS %s: DIGEST==golden, RW1C done, ERR clean, "
                          "non-vacuous (msg=%d words)", mode, len(msg))
+        return tuple(digest)

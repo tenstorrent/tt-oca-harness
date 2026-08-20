@@ -77,12 +77,22 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         self.rng = random.Random(seed)
         self.logger.info("KMAC mode/strength breadth KMAC mode x strength breadth: seed=%d", seed)
 
-        walked = 0
+        # Collect each cell's DUT result so the matrix claim rests on observed
+        # output, not on the loop's own trip count. The former guard compared
+        # `walked` against a product of file-scope constants -- it asserted its
+        # own arithmetic. Distinct results additionally show the cells really did
+        # program different configurations.
+        results: dict[str, tuple[int, ...]] = {}
         for mode, sec, outb, key_bits, s in CELLS:
-            await self._run_cell(mode, sec, outb, key_bits, s)
-            walked += 1
+            results[f"{mode}-{sec}-{outb}"] = await self._run_cell(
+                mode, sec, outb, key_bits, s)
 
+        walked = len(results)
         assert walked == len(CELLS), f"walked {walked} cells != {len(CELLS)}"
+        assert len(set(results.values())) == len(CELLS), (
+            "KMAC cells produced duplicate digests, so they did not all run distinct "
+            "configurations: "
+            + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
         await self.check_entropy_alerts_zero()
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
@@ -120,3 +130,4 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         await self.kmac.check_status_clean(cell)   # CHK-ERR
         self.logger.info("CHK-CELL PASS %s: digest==golden, DONE-RW1C, ERR clean, "
                          "non-vacuous (out=%dB, msg=%d words)", cell, outb, len(msg))
+        return tuple(digest)

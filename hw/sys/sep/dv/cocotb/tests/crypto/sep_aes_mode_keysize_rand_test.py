@@ -66,14 +66,25 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         self.logger.info("AES mode/key-size breadth AES mode x key-size breadth: seed=%d", seed)
         await self.aes.trigger_prng_reseed()   # seed the masking PRNG from EDN
 
-        walked = 0
+        # Collect each cell's DUT ciphertext, so the matrix claim rests on observed
+        # output rather than on the loop's own trip count. The former guard was
+        # `walked == len(MODES) * len(KEY_SIZES)` -- both sides file-scope constants,
+        # incremented once per iteration by the loop structure, so it asserted its own
+        # arithmetic. Distinct results also show the nine cells really did program nine
+        # different configurations: two cells that silently ran the same mode and key
+        # size on the same random inputs would collide here.
+        results: dict[str, tuple[int, ...]] = {}
         for mode in MODES:
             for key_bits in KEY_SIZES:
-                await self._run_cell(mode, key_bits)
-                walked += 1
+                results[f"{mode}-{key_bits}"] = await self._run_cell(mode, key_bits)
 
+        walked = len(results)
         expected = len(MODES) * len(KEY_SIZES)
         assert walked == expected, f"walked {walked} cells != {expected}"
+        assert len(set(results.values())) == expected, (
+            "AES cells produced duplicate ciphertexts, so they did not all run distinct "
+            "configurations: "
+            + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
         await self.check_entropy_alerts_zero()
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells ({ECB,CBC,CTR} x "
@@ -83,7 +94,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
     def _rand_words(self, n: int) -> list[int]:
         return [self.rng.getrandbits(32) for _ in range(n)]
 
-    async def _run_cell(self, mode: str, key_bits: int) -> None:
+    async def _run_cell(self, mode: str, key_bits: int) -> tuple[int, ...]:
         key = self._rand_words(key_bits // 32)
         pt = self._rand_words(4 * NUM_BLOCKS)
         iv = self._rand_words(4) if mode != "ecb" else None
@@ -126,3 +137,4 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
 
         self.logger.info("CHK-CELL PASS %s: ct==golden, round-trip==pt, no alert, "
                          "non-vacuous (%d blocks)", cell, NUM_BLOCKS)
+        return tuple(ct)

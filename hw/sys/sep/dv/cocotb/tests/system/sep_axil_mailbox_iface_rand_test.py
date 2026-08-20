@@ -76,7 +76,9 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         await self._chk_64b_status_threshold()
         await self._chk_write_full_error()
         await self._chk_flush()
-        self.logger.info("CHK-ALL PASS: axil_mailbox TX 64b + STATUS + WIRQT + error + flush")
+        # No CHK-ALL summary: it asserted nothing, and every facet above already
+        # logs its own PASS line. A plan row keyed on a bare summary string would
+        # record coverage with no checker behind it.
 
     async def _chk_read_empty_error(self) -> None:
         """CHK-ERR-RD: READ_DATA on the empty RX FIFO -> 0xFEEDDEAD + SLVERR +

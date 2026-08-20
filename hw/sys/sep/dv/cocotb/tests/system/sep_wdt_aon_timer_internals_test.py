@@ -98,7 +98,9 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wkup_expire()
         await self._chk_wdog_pet()
         await self._chk_regwen_lock_and_nonvac()
-        self.logger.info("CHK-ALL PASS: WDT aon_timer WKUP count+expiry, WDOG pet, REGWEN lock")
+        # No CHK-ALL summary: it asserted nothing, and every facet above already
+        # logs its own PASS line. A plan row keyed on a bare summary string would
+        # record coverage with no checker behind it.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""

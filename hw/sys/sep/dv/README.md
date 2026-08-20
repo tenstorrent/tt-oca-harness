@@ -9,10 +9,20 @@ the OpenTitan SPI mux). Flow = cocotb/PyUVM on Verilator and VCS, driven by
 `tools/dv/run_dv.py` (`--dut sep`). The environment is kept self-contained
 under this tree so the build, tests, shims, and docs are easy to review and reuse.
 
-What each Phase 1 test proves, and the exact log evidence that proves it, is recorded
-in [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc). That
-document is the verification contract for this environment: a test passing is the entry
-condition for reading its checkers, never a substitute for them.
+What each test proves, and the exact log evidence that proves it, is recorded in the
+verification plans:
+
+* [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) — the
+  Phase 1 baseline, closed.
+* [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) — Phase 2
+  basic-feature breadth, active. Entries live in the included
+  `verification_plan_phase2_entries.adoc`.
+* [`docs/verification_plan_phase3.adoc`](docs/verification_plan_phase3.adoc) — Phase 3
+  candidates, unscheduled and moving to a new UVM environment.
+
+Phase 1 states the contract these documents share: a test passing is the entry condition
+for reading its checkers, never a substitute for them, and a checker row exists only if a
+run can prove it. Proof strings are checked mechanically, not by eye.
 
 ## Layout
 
@@ -27,7 +37,7 @@ hw/sys/sep/dv/
 │                        # uvm/  — future sibling, not created
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
 │                        # + cov/sv/ (scaffold, empty)
-├── docs/                # verification plans (Phase 1 contract, Phase 2/3 planning)
+├── docs/                # verification plans (phases 1-3, AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
 ├── models/              # SEP-local SystemRDL models (sep_axi_extension + generated)

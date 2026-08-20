@@ -207,5 +207,5 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self.drbg_sb.report()
 
         self.logger.info(
-            "CHK-ALL PASS: per-IP SW-reset domain isolation with live crypto results "
+            "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
             "(HMAC<->AES, both directions, entropy-backed: CHK5_aes beats reported)")
