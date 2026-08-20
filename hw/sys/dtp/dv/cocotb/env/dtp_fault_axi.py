@@ -5,11 +5,15 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from ocah_axi_vip import OcahFaultAxiLiteRam
+from ocah_axi_vip import OcahAxiLiteSlaveAgent, OcahAxiLiteSlaveSequence
 
 
-class DtpFaultAxiLiteRam(OcahFaultAxiLiteRam):
+class DtpFaultAxiLiteRam:
     """DTP-local alias kept for existing JTAG2AXI environment imports."""
+
+    @classmethod
+    def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs) -> OcahAxiLiteSlaveSequence:
+        return OcahAxiLiteSlaveAgent.from_prefix(dut, prefix, clock, reset, **kwargs).sequence
 
 
 class DtpFaultOcahAxiRam:

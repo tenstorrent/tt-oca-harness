@@ -1,25 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
-"""SEP DRBG entropy-decorrelator golden model (pure-Python port).
+"""SEP DRBG entropy-decorrelator golden model.
 
-Faithful, bit-exact port of the C DPI reference model
-``dv/sep/tb/tb_uvm/common/dpi/drbg_decor_dpi.c`` (GROUND TRUTH), which itself
-mirrors RTL ``hw/ip/entropy_source/rtl/entropy_decorrelator.sv``.
+The model mirrors ``hw/ip/entropy_source/rtl/entropy_decorrelator.sv``.
 
 The decorrelator reduces serial correlation in ring-oscillator noise. Each of
 12 lanes owns a 29-bit shift register (a prime length) with MSB->LSB XOR
 feedback. Every ``sample_clk_div+1`` cycles, the top 8 bits are sampled (masked
 by ``byte_mask``) and emitted as one entropy byte, downsampling the bit rate.
 
-Transform per lane, per clock (matches C drbg_decor_step, lines 81-122):
+Transform per lane, per clock:
   1. SAMPLE (when clk_divider==0, BEFORE the shift -- non-blocking semantics):
-         raw_byte     = (ff_stage >> 21) & 0xFF      # C line 107  (bits[28:21])
-         output_byte  = raw_byte & byte_mask          # C line 108
-         clk_divider  = sample_clk_div                # C line 110 (reload)
-     else: clk_divider -= 1                           # C line 113
+         raw_byte     = (ff_stage >> 21) & 0xFF
+         output_byte  = raw_byte & byte_mask
+         clk_divider  = sample_clk_div
+     else: clk_divider -= 1
   2. SHIFT (always, uses CURRENT/pre-edge ff_stage for feedback):
-         feedback = 0 if bypass else (ff_stage >> 28) & 1   # C line 118 (SR_LENGTH-1=28)
-         new_bit  = noise_bit ^ feedback                    # C line 119
-         ff_stage = ((ff_stage << 1) | new_bit) & 0x1FFFFFFF # C lines 120-121 (29-bit mask)
+         feedback = 0 if bypass else (ff_stage >> 28) & 1
+         new_bit  = noise_bit ^ feedback
+         ff_stage = ((ff_stage << 1) | new_bit) & 0x1FFFFFFF
 
 Smoke config (documented per task): sample_clk_div=7 (i.e. /8 downsample,
 one byte every 8 cycles), byte_mask=0xFF, bypass=0.
@@ -33,7 +31,7 @@ SAMPLE_SHIFT = SR_LENGTH - 8           # 21
 
 
 class _Lane:
-    """Per-lane decorrelator state (mirrors C decor_lane_t)."""
+    """Per-lane decorrelator state."""
 
     __slots__ = (
         "ff_stage", "clk_divider", "sample_clk_div", "byte_mask",
@@ -53,17 +51,14 @@ class _Lane:
 
 
 class SepDecorGolden:
-    """Pure-Python golden model of the 12-lane DRBG entropy decorrelator.
-
-    Bit-exact with drbg_decor_dpi.c. No external dependencies.
-    """
+    """Pure-Python golden model of the 12-lane DRBG entropy decorrelator."""
 
     def __init__(self):
         self._lanes = [_Lane() for _ in range(MAX_LANES)]
 
     # ----- configuration -----------------------------------------------------
     def init(self, lane, sample_clk_div, bypass, byte_mask):
-        """Initialize one lane (mirrors C drbg_decor_init, lines 58-70).
+        """Initialize one lane.
 
         sample_clk_div : reload value = actual_period - 1 (e.g. 7 for /8).
         bypass         : 1 => feedback path broken (raw shift).
@@ -90,11 +85,11 @@ class SepDecorGolden:
             self.init(i, sample_clk_div, bypass, byte_mask)
 
     def reset_all(self):
-        """Zero every lane (mirrors C drbg_decor_reset_all, line 182)."""
+        """Zero every lane."""
         for i in range(MAX_LANES):
             self._lanes[i] = _Lane()
 
-    # Reference-model API kept for OCAH golden parity; not invoked by the OSS checkers.
+    # Reference-model control API.
     def set_bypass(self, lane, bypass):
         if 0 <= lane < MAX_LANES:
             self._lanes[lane].bypass = 1 if bypass else 0
@@ -107,35 +102,33 @@ class SepDecorGolden:
 
     # ----- stepping ----------------------------------------------------------
     def step(self, lane, noise_bit):
-        """Advance one lane by one clock (mirrors C drbg_decor_step, 81-122)."""
+        """Advance one lane by one clock."""
         if lane < 0 or lane >= MAX_LANES:
             return
         L = self._lanes[lane]
 
-        L.output_valid = 0          # clear previous valid (C line 89)
-        if not L.enable:            # C line 91
+        L.output_valid = 0
+        if not L.enable:
             return
 
-        # Step 1: sample BEFORE shift (reads CURRENT ff_stage). C lines 105-114.
+        # Sample before shifting so the pre-edge state is observed.
         if L.clk_divider == 0:
-            raw_byte = (L.ff_stage >> SAMPLE_SHIFT) & 0xFF     # C line 107
-            L.output_byte = raw_byte & L.byte_mask             # C line 108
-            L.output_valid = 1                                 # C line 109
-            L.clk_divider = L.sample_clk_div                   # C line 110
-            L.sample_count += 1                                # C line 111
+            raw_byte = (L.ff_stage >> SAMPLE_SHIFT) & 0xFF
+            L.output_byte = raw_byte & L.byte_mask
+            L.output_valid = 1
+            L.clk_divider = L.sample_clk_div
+            L.sample_count += 1
         else:
-            L.clk_divider -= 1                                 # C line 113
+            L.clk_divider -= 1
 
-        # Step 2: shift register update (uses CURRENT ff_stage). C lines 116-121.
+        # Shift using the current register state.
         nb = 1 if noise_bit else 0
-        feedback = 0 if L.bypass else ((L.ff_stage >> FEEDBACK_SHIFT) & 1)  # C 118
-        new_bit = nb ^ feedback                                              # C 119
-        L.ff_stage = ((L.ff_stage << 1) | new_bit) & SR_MASK                # C 120-121
+        feedback = 0 if L.bypass else ((L.ff_stage >> FEEDBACK_SHIFT) & 1)
+        new_bit = nb ^ feedback
+        L.ff_stage = ((L.ff_stage << 1) | new_bit) & SR_MASK
 
     def step_all(self, noise_bits_12):
         """Step all 12 lanes; noise_bits_12 is a packed int, bit i -> lane i.
-
-        Mirrors C drbg_decor_step_all (lines 129-135).
         """
         bits = noise_bits_12 & 0xFFFFFFFF
         for i in range(MAX_LANES):
@@ -155,15 +148,14 @@ class SepDecorGolden:
     def get_all_outputs(self):
         """Pack all 12 output bytes: lane0 in [7:0] .. lane11 in [95:88].
 
-        Mirrors C drbg_decor_get_all_outputs (lines 154-165). Returns a
-        96-bit Python int.
+        Returns a 96-bit Python int.
         """
         out = 0
         for i in range(MAX_LANES):
             out |= (self._lanes[i].output_byte & 0xFF) << (i * 8)
         return out
 
-    # Reference-model API kept for OCAH golden parity; not invoked by the OSS checkers.
+    # Reference-model observation API.
     def get_sample_count(self, lane):
         if lane < 0 or lane >= MAX_LANES:
             return 0

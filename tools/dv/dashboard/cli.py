@@ -16,6 +16,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     collect = subparsers.add_parser("collect", help="collect one DUT result")
     collect.add_argument("--dut", required=True)
+    collect.add_argument("--framework", help="framework view to resolve (e.g. uvm); default: the DUT's default_framework")
     collect.add_argument("--run-dir")
     collect.add_argument("--output")
 
@@ -45,6 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "collect":
         return collect_results.main([
             "--dut", args.dut,
+            *(["--framework", args.framework] if args.framework else []),
             *(["--run-dir", args.run_dir] if args.run_dir else []),
             *(["--output", args.output] if args.output else []),
         ])

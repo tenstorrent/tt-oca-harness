@@ -5,7 +5,7 @@
 //
 //   * default (cocotb, `--dut dtp`): the module exposes the full pin-level
 //     port list below and cocotb drives/samples the toplevel ports.
-//   * `DTP_UVM_TB` (SV-UVM, `--dut dtp_uvm`): the port list is replaced by
+//   * `DTP_UVM_TB` (SV-UVM, `--dut dtp --framework uvm`): the port list is replaced by
 //     internal TB signals, and the harness block at the end of the module
 //     adds the clock, ocah_jtag_if/dtp_tb_if instances, quiescent tie-offs,
 //     and run_test(). Test classes are compiled via `include "dtp_tests.sv".
@@ -103,7 +103,8 @@ module dtp_uvm_top
     output logic jtag_ic_reset_ext_ovrd,
     output logic jtag_ic_reset_ext_ctrl_n,
 
-    // Lifecycle feature-control stimulus. These bits are active-high enables.
+    // Lifecycle feature-control stimulus. These bits are active-high enables and
+    // are combined into DTP's active-high dbg_disable_i port below.
     input  wire logic feat_ctrl_sip_debug,
     input  wire logic feat_ctrl_soc_debug,
     input  wire logic feat_ctrl_ap_debug,
@@ -378,7 +379,7 @@ module dtp_uvm_top
     jtag_ic_reset_default_t jtag_ic_reset_smc;
     jtag_ic_reset_default_t jtag_ic_reset_sep;
     jtag_ic_reset_default_t jtag_ic_reset_ext;
-    sep_efuse_map_lc_disable_reg_t feat_ctrl;
+    sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable;
 
     assign jtag_bsr_select     = jtag_bsr_host_scan_ctrl.select;
     assign jtag_bsr_shift_en   = jtag_bsr_host_scan_ctrl.shift_en;
@@ -424,13 +425,28 @@ module dtp_uvm_top
     assign jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext.ovrd;
     assign jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext.val;
 
+    // The five tb_if bits are active-high enables; DTP now takes eleven
+    // pre-resolved active-high disables (dbg_disable_i) instead of the five
+    // raw lifecycle enables it used to combine internally. Replicate the
+    // derivation the RTL used to do (now in sep_lifecycle_ctrl) so the
+    // lifecycle-gating tests keep their meaning.
     always_comb begin
-        feat_ctrl = '0;
-        feat_ctrl.sip_debug = feat_ctrl_sip_debug;
-        feat_ctrl.soc_debug = feat_ctrl_soc_debug;
-        feat_ctrl.ap_debug = feat_ctrl_ap_debug;
-        feat_ctrl.sep_debug = feat_ctrl_sep_debug;
-        feat_ctrl.fuse_test = feat_ctrl_fuse_test;
+        dbg_disable = '0;
+        dbg_disable.stap_io          = !feat_ctrl_sip_debug;
+        dbg_disable.stap_smc         = !feat_ctrl_soc_debug || !feat_ctrl_ap_debug;
+        dbg_disable.stap_sep         = !feat_ctrl_sep_debug || !feat_ctrl_soc_debug ||
+                                       !feat_ctrl_ap_debug;
+        dbg_disable.stap_extra       = !feat_ctrl_ap_debug;
+        dbg_disable.stap_host        = !feat_ctrl_ap_debug;
+        dbg_disable.dft_secure       = !feat_ctrl_fuse_test || !feat_ctrl_sep_debug ||
+                                       !feat_ctrl_soc_debug || !feat_ctrl_ap_debug;
+        dbg_disable.dft_nonsecure    = !feat_ctrl_soc_debug || !feat_ctrl_ap_debug;
+        dbg_disable.dfd              = !feat_ctrl_ap_debug;
+        dbg_disable.smc_jtag2axi     = !feat_ctrl_soc_debug || !feat_ctrl_ap_debug;
+        dbg_disable.smc_otp_jtag2axi = !feat_ctrl_fuse_test || !feat_ctrl_soc_debug ||
+                                       !feat_ctrl_ap_debug;
+        dbg_disable.sep_otp_jtag2axi = !feat_ctrl_fuse_test || !feat_ctrl_sep_debug ||
+                                       !feat_ctrl_soc_debug || !feat_ctrl_ap_debug;
     end
 
     // ------------------------------------------------------------------
@@ -677,9 +693,9 @@ module dtp_uvm_top
         .rst_n_i                          (rst_n_i),
         .pwr_on_rst_ni                    (pwr_on_rst_ni),
 
-        // Lifecycle feature control is enable-polarity: all required bits set
-        // to 1 enables full debug access.
-        .feat_ctrl_i                      (feat_ctrl),
+        // Lifecycle debug gating: active-high disables pre-resolved per
+        // interface; '0 == nothing disabled (full debug access).
+        .dbg_disable_i                    (dbg_disable),
 
         // Primary JTAG TAP client
         .jtag_ptap_client_tap_ctrl_i      (jtag_ptap_client_tap_ctrl),
@@ -796,7 +812,7 @@ module dtp_uvm_top
 
 `ifdef DTP_UVM_TB
     // ------------------------------------------------------------------
-    // SV-UVM harness (`--dut dtp_uvm`): clock, interface instances,
+    // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
     // quiescent tie-offs, config_db publication, and run_test(). Compiled
     // only when the native-uvm flow defines DTP_UVM_TB; the cocotb flow
     // sees only the ported module above.
@@ -833,40 +849,54 @@ module dtp_uvm_top
     assign feat_ctrl_sep_debug = u_tb_if.feat_ctrl_sep_debug;
     assign feat_ctrl_fuse_test = u_tb_if.feat_ctrl_fuse_test;
 
-    // SMC OTP AXI-Lite responder: error-injectable RAM (issue #3295) replacing
-    // the historical never-responding tie-off, so JTAG2AXI OTP traffic
-    // completes and the shared AXI checker observes real responses.
-    ocah_axil_ram_responder #(
-        .ADDR_WIDTH (32),
-        .DATA_WIDTH (32)
-    ) u_smc_otp_responder (
-        .clk_i          (clk_i),
-        .rst_ni         (rst_n_i),
-        .awaddr         (smc_otp_axil_awaddr),
-        .awprot         (smc_otp_axil_awprot),
-        .awvalid        (smc_otp_axil_awvalid),
-        .awready        (smc_otp_axil_awready),
-        .wdata          (smc_otp_axil_wdata),
-        .wstrb          (smc_otp_axil_wstrb),
-        .wvalid         (smc_otp_axil_wvalid),
-        .wready         (smc_otp_axil_wready),
-        .bresp          (smc_otp_axil_bresp),
-        .bvalid         (smc_otp_axil_bvalid),
-        .bready         (smc_otp_axil_bready),
-        .araddr         (smc_otp_axil_araddr),
-        .arprot         (smc_otp_axil_arprot),
-        .arvalid        (smc_otp_axil_arvalid),
-        .arready        (smc_otp_axil_arready),
-        .rdata          (smc_otp_axil_rdata),
-        .rresp          (smc_otp_axil_rresp),
-        .rvalid         (smc_otp_axil_rvalid),
-        .rready         (smc_otp_axil_rready),
-        .err_arm_i      (u_tb_if.smc_otp_err_arm),
-        .err_addr_i     (u_tb_if.smc_otp_err_addr),
-        .err_resp_i     (u_tb_if.smc_otp_err_resp),
-        .err_on_read_i  (u_tb_if.smc_otp_err_on_read),
-        .err_on_write_i (u_tb_if.smc_otp_err_on_write)
-    );
+    // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
+    // answers JTAG2AXI OTP traffic (issue #3295). The slave interface carries
+    // the connection: the TB wires only the master-driven signals in, and the
+    // agent's driver procedurally drives the responder-side signals, routed
+    // back to the DUT below. Error injection is programmed by sequences via
+    // the agent's ocah_axi_slave_sequence, not TB error ports.
+    ocah_axi_if u_smc_otp_slave_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_smc_otp_slave_if.awaddr   = 64'(smc_otp_axil_awaddr);
+    assign u_smc_otp_slave_if.awprot   = smc_otp_axil_awprot;
+    assign u_smc_otp_slave_if.awvalid  = smc_otp_axil_awvalid;
+    assign u_smc_otp_slave_if.awid     = '0;
+    assign u_smc_otp_slave_if.awlen    = '0;
+    assign u_smc_otp_slave_if.awsize   = 3'd2;
+    assign u_smc_otp_slave_if.awburst  = 2'b01;
+    assign u_smc_otp_slave_if.awlock   = 1'b0;
+    assign u_smc_otp_slave_if.awcache  = '0;
+    assign u_smc_otp_slave_if.awqos    = '0;
+    assign u_smc_otp_slave_if.awregion = '0;
+    assign u_smc_otp_slave_if.awuser   = '0;
+    assign u_smc_otp_slave_if.wdata    = 64'(smc_otp_axil_wdata);
+    assign u_smc_otp_slave_if.wstrb    = 8'(smc_otp_axil_wstrb);
+    assign u_smc_otp_slave_if.wlast    = 1'b1;
+    assign u_smc_otp_slave_if.wuser    = '0;
+    assign u_smc_otp_slave_if.wvalid   = smc_otp_axil_wvalid;
+    assign u_smc_otp_slave_if.bready   = smc_otp_axil_bready;
+    assign u_smc_otp_slave_if.araddr   = 64'(smc_otp_axil_araddr);
+    assign u_smc_otp_slave_if.arprot   = smc_otp_axil_arprot;
+    assign u_smc_otp_slave_if.arvalid  = smc_otp_axil_arvalid;
+    assign u_smc_otp_slave_if.arid     = '0;
+    assign u_smc_otp_slave_if.arlen    = '0;
+    assign u_smc_otp_slave_if.arsize   = 3'd2;
+    assign u_smc_otp_slave_if.arburst  = 2'b01;
+    assign u_smc_otp_slave_if.arlock   = 1'b0;
+    assign u_smc_otp_slave_if.arcache  = '0;
+    assign u_smc_otp_slave_if.arqos    = '0;
+    assign u_smc_otp_slave_if.arregion = '0;
+    assign u_smc_otp_slave_if.aruser   = '0;
+    assign u_smc_otp_slave_if.rready   = smc_otp_axil_rready;
+
+    // Responder-side signals: agent driver -> DUT response inputs.
+    assign smc_otp_axil_awready = u_smc_otp_slave_if.awready;
+    assign smc_otp_axil_wready  = u_smc_otp_slave_if.wready;
+    assign smc_otp_axil_bresp   = u_smc_otp_slave_if.bresp;
+    assign smc_otp_axil_bvalid  = u_smc_otp_slave_if.bvalid;
+    assign smc_otp_axil_arready = u_smc_otp_slave_if.arready;
+    assign smc_otp_axil_rdata   = u_smc_otp_slave_if.rdata[31:0];
+    assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
+    assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
     // SMC fabric AXI4 responder: drives the previously-undriven m_axi_*
     // response inputs so JTAG2AXI fabric traffic completes in the UVM flow.
@@ -1027,7 +1057,7 @@ module dtp_uvm_top
 
     // Clean-room AXI protocol SVA checkers (ocah_axi_vip/sva), enabled via
     // dtp_tb_if.axi_sva_en.
-    ocah_axi_protocol_checker #(
+    ocah_axi_sva #(
         .IS_LITE    (1'b1),
         .ADDR_WIDTH (32),
         .DATA_WIDTH (32),
@@ -1071,7 +1101,7 @@ module dtp_uvm_top
         .rready  (smc_otp_axil_rready)
     );
 
-    ocah_axi_protocol_checker #(
+    ocah_axi_sva #(
         .IS_LITE    (1'b0),
         .ADDR_WIDTH (56),
         .DATA_WIDTH (64),
@@ -1163,6 +1193,7 @@ module dtp_uvm_top
         uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
         uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "tb_vif", u_tb_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_axil_vif", u_smc_otp_axil_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_slave_vif", u_smc_otp_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "m_axi_vif", u_m_axi_if);
         run_test();
     end

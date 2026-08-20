@@ -166,7 +166,7 @@ decoded TAP state stays DUT-side (DTP's `dtp_tap_fsm_checker`, which reports
 an aggregate `CHK-TAP-STATE` through the shared `ocah_jtag_checker`);
 scan-level reconstruction and the named TAP-contract evidence are VIP-owned,
 mirroring the cocotb checker's check IDs. For a full integration example, see
-the DTP SV-UVM flow's (`--dut dtp_uvm`) `dtp_sanity_test`, which requires
+the DTP SV-UVM flow's (`--dut dtp --framework uvm`) `dtp_sanity_test`, which requires
 `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO`,
 `CHK-TAP-TLR-IDCODE`, `CHK-IDCODE-RAW/STABLE/MARKER`, `CHK-BYPASS-LATENCY`,
 and `CHK-SCAN-IR-LEN/DR-LEN`, and arms the must-FAIL negative validation via

@@ -7,8 +7,7 @@
 === Overview
 
 This document defines functional coverage intent for the OCAH open-source DTP
-testbench. It mirrors the coverage categories from the working reference model in
-`dv/dtp/doc/DTP_FCOV.md`, adapted for the public PyUVM/Verilator flow.
+testbench and its PyUVM/Verilator flow.
 
 Verilator does not compile SystemVerilog `covergroup`, `coverpoint`, or `cross`.
 The OCAH open-source path should therefore use Python-side coverage/observation counters in
@@ -20,7 +19,6 @@ and full code coverage are collected with commercial simulators.
 |Field |Value
 |Reference SPEC |`DTP_SPEC.md`
 |Reference VPLAN |`DTP_VPLAN.adoc`
-|Reference full FCOV |`dv/dtp/doc/DTP_FCOV.md`
 |Open-source framework |PyUVM on cocotb
 |Open-source simulator |Verilator
 |===
@@ -135,7 +133,7 @@ SMC fabric READ and WRITE scenarios sample SUCCESS response status.
 ==== `jtag2axi_robustness_cg`
 
 *Description*: Covers series operations, backpressure, and CDC clear/abort
-paths from the working reference plan.
+paths.
 
 [cols=",",options="header",]
 |===
@@ -312,16 +310,5 @@ configuration change.
 |SV covergroups in Verilator |Unsupported by the tool
 |CTP/CTM CSR functional bins in Verilator flows that use CSR stubs |Generated CSR behavior is unavailable
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage
-|Legacy non-public VIP internals |Replaced by public VIP or OCAH-local DTP BFMs in the open-source flow
-|===
-
-=== Revision History
-
-[cols=",,,",options="header",]
-|===
-|Version |Date |Author |Description
-|1.0 |2026-06-09 |DV Team |OCAH open-source functional coverage plan aligned with DTP reference coverage and Verilator constraints
-|1.1 |2026-06-14 |DV Team |Annotated iJTAG SIB chains (DFT Secure/Non-Secure/DFD) and the CTM 26-port default per the OCAH design spec
-|1.2 |2026-06-15 |DV Team |Added Basic JTAG instruction/reset Python-side coverage notes and flattened DTP observables
-|1.3 |2026-06-22 |DV Team |Added debug TDR coverage notes for TMP/IC_RESET, DEBUG_CONTROL, and CAPS checks in `debug_tdr`
+|Protocol-specific behavior without shared VIP support |Covered by OCAH-local DTP BFMs
 |===

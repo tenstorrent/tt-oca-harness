@@ -8,10 +8,8 @@
  * firmware can reach SMC CPU_CTRL (reset CSRs, scratch) and SMC SRAM directly. The SEP's
  * OWN outbound egress filter must first be opened over this region (sep_smc_open_window()).
  *
- * This is a SIMULATION bring-up path (root-of-trust SEP releasing the SMC). It stands in
- * for the production SMC-ROM-loads-SRAM + SEP-validates-manifest boot; it does NOT verify
- * the secure-boot / OCCP / manifest / BL1-handoff flow. See dv/smu/tb/tb_uvm/sim/
- * SMU_SEP_TEST_CREATE.md.
+ * This simulation bring-up path lets SEP release SMC. It does not verify the
+ * secure-boot, OCCP, manifest, or BL1-handoff flow.
  *
  * Typical use (SEP test firmware):
  *   #include "sep_smc_bringup.h"

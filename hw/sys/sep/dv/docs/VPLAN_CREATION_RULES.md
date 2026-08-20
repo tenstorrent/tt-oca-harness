@@ -6,11 +6,10 @@ Testcase creation and implementation rules live in `../AGENTS.md`; testcase work
 must follow the VPLAN after coverage intent, overlap, and ownership are
 understood.
 
-The goal of VPLAN creation is not to mirror `dv/sep` testcase-for-testcase. The
-goal is to use OCAH SEP as the golden reference, build a full-picture subsystem
-coverage map, then choose an OSS regression that proves the same feature intent
-with stronger, frontdoor, evidence-backed checks — broad enough to cover every
-IP's basic behavior, compact enough to stay auditable.
+VPLAN creation starts from the public SEP RTL, specifications, and current
+testlists. It builds a subsystem coverage map, then chooses a regression that
+proves each feature intent with frontdoor, evidence-backed checks — broad enough
+to cover every IP's basic behavior and compact enough to stay auditable.
 
 **Where these artifacts live.** This doc refers to "the VPLAN/detail/tracker"
 throughout. There is one VPLAN pair per phase; **Phase 2 (current) is the active
@@ -35,8 +34,8 @@ VPLAN creation happens in phases, and the phase decides which way the rules lean
   so "fewest tests for the most coverage" was the primary driver.
 - **Phase 2 (current): breadth-first basic coverage.** Grow the baseline toward
   100+ testcases so that **every IP has its basic functional behavior covered**.
-  Treat OCAH SEP (`dv/sep`) as the 100% reference and aim to cover **at least 60%
-  (stretch 75%) of its basic feature intent**. The risk now *inverts* to
+  Use the public SEP RTL and specifications to define basic feature intent and
+  aim to cover **at least 60% (stretch 75%)**. The risk now *inverts* to
   *under-coverage*, so the primary driver is **coverage completeness**, measured
   against the per-IP basic-feature ledger (see "Basic-Feature Coverage Ledger").
 
@@ -206,10 +205,10 @@ is unique, the test should not be created.
 
 ## OCAH Provenance Gate
 
-**Every Phase-2 basic-feature coverage test must trace to at least one real OCAH
-SEP test/sequence/firmware in its `OCAH-REFS` field. There is no purely-invented
-coverage test.** OCAH SEP (`dv/sep`) is the 100% reference, so a Phase-2 test with
-an empty `OCAH-REFS` field fails the No-Coding Gate. Provenance may take any of
+**Every Phase-2 basic-feature coverage test must trace to at least one public
+RTL, specification, test, sequence, or firmware source in its `OCAH-REFS`
+field.** A Phase-2 test with an empty `OCAH-REFS` field fails the No-Coding
+Gate. Traceability may take any of
 these forms (record which one in the `MAPPING` outcome):
 
 - A 1:1 port of one OCAH test (`COVERED_BY` / `COVERED_STRONGER`).

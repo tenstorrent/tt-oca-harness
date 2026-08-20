@@ -2,7 +2,8 @@ schema_version = 1
 
 [[tests]]
 name = "dtp_sanity_test"
-module = "dtp_sanity_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "dtp_sanity_test", uvm = "dtp_uvm_sanity_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "ci"]
