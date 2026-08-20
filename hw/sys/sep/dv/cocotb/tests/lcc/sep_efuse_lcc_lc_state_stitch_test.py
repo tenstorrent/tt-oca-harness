@@ -40,7 +40,7 @@ from cocotb.triggers import ClockCycles
 
 from sep_base_test import sep_base_test
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from env.sep_efuse_image import SepEfuseImage
+from env.sep_efuse_image import SepEfuseImage, LC_WORD_IDX
 from env.sep_lcc_golden import (
     LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1,
     is_legal_lc, is_valid_lc_transition, lc_state_name,
@@ -68,9 +68,12 @@ _RMA_SIP_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x64
 _RMA_CHIPLET_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x68
 _TOKEN_MATCH = 0x15
 
-_RMA_SIP_TOKEN_DIGEST = _SHADOW_BASE + 0x024
-_RMA_CHIPLET_TOKEN_DIGEST = _SHADOW_BASE + 0x044
-_LC_STATE_BIT_BASE = 2 * 32
+_RMA_SIP_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR")
+_RMA_CHIPLET_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR")
+# sep_pkg::LC_STATE_BIT_POSITION -- efuse_guard gates program addresses BASE+1
+# (RMA_SIP token) and BASE+2 (RMA_CHIPLET token) on a token match. Derived, because
+# the literal 64 silently addressed LOCKS_SPARE once LC_STATE moved to word 3.
+_LC_STATE_BIT_BASE = LC_WORD_IDX * 32
 
 _TOKEN_RMA_SIP = 0
 _TOKEN_RMA_CHIPLET = 1

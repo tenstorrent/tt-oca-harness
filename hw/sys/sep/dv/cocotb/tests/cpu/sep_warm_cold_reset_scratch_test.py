@@ -28,7 +28,7 @@ Checks (each asserts an exact value, so a stuck/X register fails):
                    (survives; reference suite D.1). Probe cross-check.
   CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset (reference suite E.1).
   CHK-COLD-REINIT: after a cold reset (rst_ni resense), BOTH banks == reset
-                   default (stronger than reference suite). Probe cross-check on the cold bank.
+                   default (stronger tha reference-suite). Probe cross-check on the cold bank.
 
 no_cpu / +skip_fuse_sense (the scratch banks are reached over the CPU-LSU AXI
 splice; the reset stimulus is the wdt_rst_ni_i / rst_ni primary inputs -- no OTP
@@ -138,7 +138,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         self.logger.info(
             "CHK-WARM-RECOVER PASS: SCRATCH_WARM[0] re-written 0x%08x", warm_rec)
 
-        # --- CHK-COLD-REINIT: a cold reset clears BOTH banks (stronger than reference suite) ---
+        # --- CHK-COLD-REINIT: a cold reset clears BOTH banks (stronger tha reference-suite) ---
         # State going in: SCRATCH_COLD[0]=COLD_PATTERN, SCRATCH_WARM[0]=WARM_PATTERN2.
         # resense() pulses rst_ni low->high and re-gates fuse-sense; the clocks keep
         # running and the cocotb-driven idle defaults persist across the pulse. Both

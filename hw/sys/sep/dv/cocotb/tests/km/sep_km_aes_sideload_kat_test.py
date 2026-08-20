@@ -34,11 +34,9 @@ VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
            the KM-delivered key is not exposed through software-readable CSRs
   CHK-F    ct_side == AES(known_key, PT) golden: sideload delivered the exact key
            (replaces the reference suite's backdoor SHARE0^SHARE1 non-degeneracy proof)  (P5/P6, stronger)
-  CHK-G    ct_side != ct_dummy: a real distinct key was delivered (not stale/zero) (P6)
   CHK-RT   DEC(ct_side) with the SIDELOAD key == original PT: the sideloaded key
            drives a full ECB-256 ENC/DEC round-trip, not just encryption    (reference P6b)
   CHK-H    ct_swref == AES(known_key, PT) golden: SW-key path is correct          (P7)
-  CHK-I    ct_side == ct_swref: sideload and SW paths agree (reference consume-proof)  (P7)
   CHK1..CHK4 strict golden proof via the DRBG scoreboard; CHK5_km alive/observed
            (rom_main pull order not golden-predictable) + CHK5_aes alive/observed:
            the released AES masking PRNG reseeds from the crypto EDN leg, so a
@@ -211,11 +209,12 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         )
         self.logger.info("CHK-F KM->AES sideload KAT PASS: ct_side == AES(known_key, PT) golden")
 
-        # CHK-G: the sideload ciphertext differs from the dummy-key ciphertext, so a
-        # real, distinct key was delivered (not stale/zero/the previous SW key).
-        assert ct_side != ct_dummy, \
-            "sideload ciphertext equals the dummy-key ciphertext (no distinct key delivered)"
-        self.logger.info("CHK-G PASS: ct_side != ct_dummy (distinct delivered key)")
+        # No ct_side != ct_dummy check here. Both are already pinned to their own
+        # goldens above, so the inequality reduces to AES(KAT_KEY) != AES(DUMMY_KEY)
+        # -- a property of two file-scope constants that holds with the simulator
+        # switched off. CHK-F proves the delivered key bit-exactly, which is
+        # strictly stronger. The HMAC sibling dropped the same check for the same
+        # reason; see sep_km_hmac_sideload_kat_test.
 
         # CHK-RT (reference P6b): decrypt ct_side with the SIDELOAD key and prove it
         # recovers the original plaintext -- the sideloaded key drives a full
@@ -233,7 +232,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info(
             "CHK-RT sideload round-trip PASS: DEC(ct_side) == original PT")
 
-        # CHK-H/I: write the KNOWN key through the SW KEY_SHARE path and prove it
+        # CHK-H: write the KNOWN key through the SW KEY_SHARE path and prove it
         # matches both the golden (SW path correct) and the sideload ciphertext
         # (the reference consume cross-check: sideload and SW paths agree).
         await self.aes.configure_ecb_enc_256(sideload=False)
@@ -244,13 +243,10 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             "SW-key ciphertext != AES(known_key, PT) golden:\n"
             f"  ct_swref={[hex(w) for w in ct_swref]} golden={[hex(w) for w in golden]}"
         )
-        assert ct_side == ct_swref, (
-            "sideload vs SW-key ciphertext mismatch (consume cross-check):\n"
-            f"  ct_side ={[hex(w) for w in ct_side]}\n"
-            f"  ct_swref={[hex(w) for w in ct_swref]}"
-        )
+        # No ct_side == ct_swref check: both are pinned to `golden` above, so the
+        # equality is entailed by those two asserts rather than observed.
         self.logger.info(
-            "CHK-H/I consume-proof PASS: ct_swref == golden and ct_side == ct_swref")
+            "CHK-H consume-proof PASS: ct_swref == AES(known_key, PT) golden")
 
         # --- EOT: entropy health + clean shutdown ------------------------------
         await self.km.check_outbound_empty("EOT")

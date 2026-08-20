@@ -15,7 +15,7 @@ intentional DECERR (a DECERR on the CPU-LSU bus is otherwise a real decode bug).
 
 reference provenance: sep_cpu_lsu_negative_matrix_test,
 sep_cpu_ifu_invalid_target_test, and
-sep_fabric_xbar_error_closure_test. reference suite accepts any non-OKAY
+sep_fabric_xbar_error_closure_test. the reference suite accepts any non-OKAY
 (including a tolerated timeout); the OSS port is COVERED_STRONGER -- it asserts
 the EXACT spec response (DECERR, per fabric/port_table.adoc "Tie to DECERR if
 unused") with allow_timeout=False so a wedge FAILs.
@@ -50,7 +50,7 @@ MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
 # The reserved gap is the randomization window (see SepFabricDecErrCfg).
 RESERVED_GAP_LO = 0x1080_300C       # 4-aligned start of the reserved local gap
 RESERVED_GAP_HI = 0x108F_FFFC       # 4-aligned end
-OCAH_INVALID_TARGETS = (0x10FF_0000, 0x10FF_1000)
+REFERENCE_INVALID_TARGETS = (0x10FF_0000, 0x10FF_1000)
 
 # axi_pkg response codes.
 RESP_OKAY = 0
@@ -80,7 +80,7 @@ class SepFabricDecErrCfg:
             if a not in rand:
                 rand.append(a)
         # reference suite-proven invalid targets + randomized reserved-gap addresses.
-        self.unmapped_reads = list(OCAH_INVALID_TARGETS) + rand
+        self.unmapped_reads = list(REFERENCE_INVALID_TARGETS) + rand
         self.unmapped_write = rng.choice(self.unmapped_reads)
 
     def summary(self) -> str:

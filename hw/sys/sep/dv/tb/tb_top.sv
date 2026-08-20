@@ -830,13 +830,13 @@ module sep_uvm_top
 `undef BD_DCCM
 
     // ------------------------------------------------------------------
-    // CPU-LSU AXI splice (the OSS analog of SEP_FORCE_W_AXI_MST_VIP in reference suite).
+    // CPU-LSU AXI splice (the OSS analog of SEP_FORCE_W_AXI_MST_VIP in the reference suite).
     //
     // Inject: assemble the LSU req struct from the flat cocotb master inputs into
     // `lsu_req_drive` (always_comb). The sep_cpu stub reads this by upward
     // reference and drives its lsu_axi_req from it (single driver, plain assign,
     // no force — see shims/cpu/sep_cpu_stub.sv). Whole-signal only; no per-field
-    // drive. (reference suite force-splices the equivalent CPU master ports; the OSS no_cpu
+    // drive. (the reference suite force-splices the equivalent CPU master ports; the OSS no_cpu
     // build replaces the core with a stub, so the bus is single-driven and driven
     // rather than forced.)
     // ------------------------------------------------------------------

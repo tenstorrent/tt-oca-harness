@@ -13,8 +13,8 @@ that equality, since both goldens are pure functions of file-scope constants.
 HMAC has NO CFG sideload bit and KEY_VALID is set on the KM's private key bus
 (the host cannot clear it), so the AES-style sideload-vs-SW-key cross-check is
 impossible -- the consume-proof IS the digest-vs-golden compare (this is how reference suite
-does it too). This OSS port is a FRONTDOOR known-key variant, STRONGER than reference suite:
-reference suite generates a random key, reconstructs it by a read-only backdoor of the
+does it too). This OSS port is a FRONTDOOR known-key variant, STRONGER tha reference-suite:
+the reference suite generates a random key, reconstructs it by a read-only backdoor of the
 wrapper shares, then SEARCHES 8 byte/word representations for the one that
 reproduces the engine digest; here the key is known a priori and the digest is
 checked directly against the golden under the RTL-pinned convention

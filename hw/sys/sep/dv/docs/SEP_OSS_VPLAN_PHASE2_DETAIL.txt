@@ -90,8 +90,7 @@ Cross-sweep handoff (CPU survey surfaced these; owned by OTHER sweeps):
 SUBSYSTEM: Fabric and security routing [toml: system]
 --------------------------------------------------------------------------------
 Scope: address map, xbar (master->slave routing), local/global remap, alias/output
-remap, inbound/outbound filters, blocked vs allowed responses. RTL anchors (pinned
-@ 9ec8f9f4b): sep.sv:384 xbar masters = IFU-SRAM, LSU, DBG, DMA, ext(SMN-inbound);
+remap, inbound/outbound filters, blocked vs allowed responses. RTL anchors (pinned): sep.sv:384 xbar masters = IFU-SRAM, LSU, DBG, DMA, ext(SMN-inbound);
 sep.sv:820-821 inbound filter gated by feat_ctrl_o.sep_debug, outbound_filter_skip_i
 tied 1'b0 (always active). tb_top hookup gates several features: smc_global_base_addr_i
 / smc_region_size_i tied '0 (tb_top:506-507) => global<->local remap is IDENTITY;
@@ -165,7 +164,7 @@ SUBSYSTEM: Memory subsystem [toml: memory]
 Scope: external scratch SRAM (0x1000_0000), boot ROM AXI read-port (0x1004_0000),
 memory responders, DMA<->memory visibility (CPU-visible TCM/ICCM/DCCM is CPU complex,
 not here). OCAH categories: uvm_tests/sram/* (~24), uvm_tests/rom/* (~21), fw
-memory_sanity/rom_sanity. RTL anchors (pinned @ 9ec8f9f4b): SRAM reached via the xbar
+memory_sanity/rom_sanity. RTL anchors (pinned): SRAM reached via the xbar
 sram port (no_cpu CPU-LSU splice reaches it). Boot ROM is on a DEDICATED CPU port
 (sep.sv:566/621 lsu_rom_axi via u_boot_rom_axi_mux, SEPARATE from the xbar-bound
 lsu_axi_req_o the no_cpu splice forces) => ROM is reachable ONLY by the REAL CPU
@@ -206,7 +205,7 @@ clock-gating distribution, the WDT/AON-timer peripheral internals (counter/thres
 CSRs), the AXI/fabric timeout-interrupt mechanism, reset-sync/CDC, JTAG reset-ctrl.
 (CPU-facing PIC/NMI/CPU-reset + warm/cold scratch are CPU complex, not here.) OCAH
 categories that map here: uvm_tests/clock/* (12 tests), system/sep_system_uvm_jtag_rst_ctrl_test,
-subsystem reset bits, fw wdt_*/reset_ctrl. RTL anchors (pinned @ 9ec8f9f4b): WDT block @
+subsystem reset bits, fw wdt_*/reset_ctrl. RTL anchors (pinned): WDT block @
 0x1080_1000 is a full aon_timer (WKUP 0x04-0x14, WDOG_REGWEN 0x18, WDOG 0x1c-0x2c);
 sep_wdt_wrap ties lc_escalate_en_i=Off (l.146) and leaves wkup_req_o/intr_wkup_timer_expired_o
 UNUSED (l.147,151); sep.sv:322 ties wdt_debug_sleep_mode=1'b0; sep_system_csr.sv:832-841 ties
@@ -259,7 +258,7 @@ Scope: the Secure DMA engine (CSR @ 0x1080_0000) -- copy/hash datapath, address 
 transfer widths, status/done/error + RW1C interrupts, CFG/RANGE REGWEN locks,
 peripheral-triggered (lsio_trigger) handshake, DMA/CPU contention. OCAH category:
 uvm_tests/dma/* (~50) + fw dma_test/dma_hash/dma_cpu_contention/dma_path. RTL/tb anchors
-(pinned @ 9ec8f9f4b): DMA CSRs reached via xbar dma_csr port; DMA master issues to SRAM via
+(pinned): DMA CSRs reached via xbar dma_csr port; DMA master issues to SRAM via
 xbar and reaches DCCM (AGENTS.md SS10, sep_dma_hash proven); lsio_trigger[0]=SPI is internal
 (sep.sv:952-953); SYS/SOC address-space ASIDs egress via smn_outbound (console-only) / ext_to_smc
 (unconnected) => SYS/SOC DMA paths are infra-gated, only OT(internal) ASID is exercisable.
@@ -304,7 +303,7 @@ fully-built shared infra (SepEfuseImage golden, sep_lcc_golden.feat_ctrl_expecte
 select/write_efuse_image, bring_up_and_wait_fuse_sense, resense, shadow_check_seq,
 lcc_stitch_check_seq). MERGE-HEAVY: the OCAH ~63-test set collapses to 8 OSS reps
 (5 Phase-1 + EFL-1/2/3) by merging adjacent contracts and deferring the advanced tail.
-RTL/scope anchors (@ 9ec8f9f4b): LCC @ 0x1091_8000 (FEAT_CTRL RO, DEMOTE_1 @ 0x08,
+RTL/scope anchors (): LCC @ 0x1091_8000 (FEAT_CTRL RO, DEMOTE_1 @ 0x08,
 DEMOTE_2 @ 0x10); eFuse @ 0x1093_0000 (shadow + EFUSE_PROGRAM_CTRL/READ_CTRL + MMR tokens);
 SEC_DIS is A0-only (SEC_DIS_ENABLE param); Samsung OTP macro/ECC excluded (use +skip or the
 behavioral responder); read-lock denial returns 0xbadcab1e.
@@ -358,7 +357,7 @@ CRC framing, SepSwReset park/release, sep_otbn/aes/hmac/kmac seqs + goldens, sep
 observe/membership/golden, tb_km_mem_responder, rom_main.parhex via +km_rom_hex). MERGE-HEAVY +
 RAND-REP: OCAH ~102 KM tests collapse to 8 OSS reps (6 Phase-1 + KM-1/KM-2) -- the random
 weapon does the heavy lifting (KM-1 subsumes ~15-20 command directed tests, KM-2 ~10 mailbox).
-RTL/scope anchors (@ 9ec8f9f4b): KM CSR/mailbox @ SEP 0x1092_0000; SW_RESET_N[0]=KM (reset 0x1E,
+RTL/scope anchors (): KM CSR/mailbox @ SEP 0x1092_0000; SW_RESET_N[0]=KM (reset 0x1E,
 KM held); wipe_state_i tied low at SEP (residue-wipe IP-level only); KM KDF Phase-2 firmware
 designer-active (not yet implemented).
 
@@ -412,7 +411,7 @@ strict/observe/membership). The crypto ENGINES are each proven for ONE mode via 
 (HMAC-SHA256 + KMAC-128). The BREADTH GAP is the standalone engine mode x key-size matrices ->
 ideal `RAND-REP` families. Engine seqs (sep_aes/hmac/kmac/otbn_seq) already expose the
 mode/keylen fields; sep_aes_golden(ECB-256)/sep_hmac_golden(SHA256) need mode/variant extension.
-RTL anchors (@ 9ec8f9f4b): AES @ 0x1091_0000, HMAC @ 0x1091_1000, KMAC @ 0x1091_3000; entropy mux
+RTL anchors (): AES @ 0x1091_0000, HMAC @ 0x1091_1000, KMAC @ 0x1091_3000; entropy mux
 EXT_TRNG_SRC_SEL only 00(internal-DRBG)/11(ext-TRNG) supported (hybrid 01/10 is a waive, not a gap);
 ext_trng source tied off -> sel=11 path infra-gated.
 
@@ -713,8 +712,7 @@ GITHUB : #3226
 LEDGER : closes fabric "blocked/allowed responses -- xbar decode error" basic row
  (Phase-1 #2 sep_address_map_test walks mapped apertures expecting OKAY only;
  the unmapped-addr -> exact DECERR contract is the missing negative half).
-OCAH-REFS : sep_cpu_lsu_negative_matrix_test; sep_cpu_ifu_invalid_target_test; sep_fabric_xbar_error_closure_test
- @ 9ec8f9f4b / 2026-06-24 planning audit.
+OCAH-REFS : sep_cpu_lsu_negative_matrix_test; sep_cpu_ifu_invalid_target_test; sep_fabric_xbar_error_closure_test / 2026-06-24 planning audit.
  PROVENANCE NOTE: these are MACRO-GENERATED uvm test classes
  (`SEP_FABRIC_GAP_TEST_CLASS(...)`) in uvm_tests/fabric/sep_fabric_gap_matrix_tests.sv
  (l.58-101), registered + runnable-by-name in yaml/testlist_sep.yaml -- they are NOT
@@ -784,8 +782,7 @@ LEDGER : closes fabric "inbound filter -- per-entry RULE (block-by-default + all
  gate (filter wholly on/off); FAB-2 proves a programmed per-entry allow vs the
  block-by-default policy with the filter ACTIVE (sep_debug=0).
 OCAH-REFS : uvm_tests/fabric/sep_inbound_filter_blockbydefault_test;
- sep_inbound_filter_programming_ownership_test
- @ 9ec8f9f4b / 2026-06-24 planning audit
+ sep_inbound_filter_programming_ownership_test / 2026-06-24 planning audit
 MAPPING : COVERED_STRONGER -- real external AXI master through u_inbound_filter vs OCAH
  proxy / CSR-only programming check.
 RELATION : #20 sep_lcc_uvm_inbound_filter_gating_test proves the sep_debug skip GATE
@@ -862,8 +859,7 @@ OCAH-REFS : uvm_tests/fabric/sep_fabric_64bit_regwidth_test (: 64-bit upper-word
  uvm_tests/system/sep_reg_sanity_test (RAL bit_bash/hw_reset over the System block:
  Alias Remap local, Output Remap AP/STEE, Filters in/out, CPU Ctrl, Scratch, Reset
  Ctrl, Mailbox -- the System-block subset is this card's provenance; the test is
- whole-DUT cross-cutting, its crypto/efuse/spi/lcc RAL belongs to those IP sweeps)
- @ 9ec8f9f4b / 2026-06-24 planning audit
+ whole-DUT cross-cutting, its crypto/efuse/spi/lcc RAL belongs to those IP sweeps) / 2026-06-24 planning audit
 MAPPING : COVERED_BY -- CSR R/W + woset behavior on the bare-sep CSR banks.
 TOML : system
 RUN-MODE : no_cpu
@@ -931,8 +927,7 @@ LEDGER : closes "WDT/AON-timer peripheral internals (WKUP timer + WDOG_REGWEN co
  bark/bite/NMI story.
 OCAH-REFS : uvm_tests/clock/sep_clock_uvm_aon_timer_operation_test (: counter advance +
  bark); fw/sep/tests/wdt_cfg_lock_test (WDOG_REGWEN lock); wdt_wkup_timer_test
- (: AON wakeup timer); wdt_pet_reset_test
- @ 9ec8f9f4b / 2026-06-24 planning audit
+ (: AON wakeup timer); wdt_pet_reset_test / 2026-06-24 planning audit
 MAPPING : COVERED_STRONGER -- frontdoor CSR + full RW1C clear; OCAH aon_timer_operation reads
  WDOG_COUNT via uvm_hdl_read.
 RELATION : Distinct from #18 sep_nmi_sanity (WDT bark->NMI vec/lock) and #19 sep_reset_wdt_sanity
@@ -1009,8 +1004,7 @@ LEDGER : closes "SRAM datapath breadth (byte-strobe, patterns, boundary, single-
  (Phase-1 sep_sram_smoke does a single 64-bit R/W + one 32-bit partial only).
 OCAH-REFS : uvm_tests/sram/sep_sram_uvm_byte_strobe_test, sep_sram_uvm_byte_pattern_test,
  sep_sram_uvm_data_pattern_test, sep_sram_uvm_addr_boundary_test,
- sep_sram_uvm_write_read_test, sep_sram_uvm_sequential_access_test
- @ 9ec8f9f4b / 2026-06-24 planning audit
+ sep_sram_uvm_write_read_test, sep_sram_uvm_sequential_access_test / 2026-06-24 planning audit
  NOTE: OCAH sep_sram_uvm_burst_write_test/burst_read_test are AUDIT-ONLY no-burst tests
  (AWLEN=0/ARLEN=0, "single-beat 64-bit word ... no burst allowed") => the SRAM port is
  single-beat (AXI4-Lite-like); there is NO multi-beat burst feature to test. Do not cite
@@ -1085,7 +1079,7 @@ LEDGER : closes "Boot ROM LSU data-read content + write-silently-ignored" basic 
  write-reject negative contract are not covered).
 OCAH-REFS : uvm_tests/rom/sep_rom_uvm_basic_read_test, sep_rom_uvm_sequential_read_test,
  sep_rom_uvm_content_verify_test, sep_rom_uvm_addr_boundary_test,
- sep_rom_uvm_write_ignore_test @ 9ec8f9f4b / 2026-06-24 planning audit
+ sep_rom_uvm_write_ignore_test / 2026-06-24 planning audit
 MAPPING : COVERED_STRONGER -- real CPU LSU data reads of ROM content + write-reject, vs OCAH
  AXI-VIP/proxy read-port (the OSS ROM AXI port is internal, reachable only by the CPU).
 TOML : memory
@@ -1140,7 +1134,7 @@ LEDGER : closes the DMA basic-breadth rows NOT covered by the Phase-1 DMA trio
  one basic opcode-error. Combined-per-group breadth workhorse.
 OCAH-REFS : uvm_tests/dma/sep_dma_uvm_reg_rw_test, reg_reset_test, cfg_regwen_test,
  range_regwen_test, addr_fixed_test, addr_wrap_test, addr_combo_test,
- mem_copy_test (width sweep), err_opcode_test @ 9ec8f9f4b / 2026-06-24 planning audit
+ mem_copy_test (width sweep), err_opcode_test / 2026-06-24 planning audit
 MAPPING : COVERED_BY -- DMA CSR + copy-datapath breadth; Phase-1 already covers the heavy
  hash/contention/handshake paths COVERED_STRONGER.
 RELATION : DISTINCT from sep_dma_hash_test (SHA-256 + SRAM->DCCM + interrupt), sep_dma_cpu_
@@ -1217,7 +1211,7 @@ LEDGER : closes "FEAT_CTRL DEMOTE matrix (DEMOTE_2/PROD_DBG_2 + DEMOTE_LOCK)" ba
  DEMOTE_LOCK-blocks-assertion contract are the uncovered demote breadth.
 OCAH-REFS : uvm_tests/lcc/sep_lcc_uvm_demote_comprehensive_test (TEST 2.1: DEMOTE in all states),
  sep_lcc_uvm_prod_dbg_flavour_test (TEST 2.4: PROD vs PROD_DBG flavor),
- sep_lcc_uvm_screening_vs_diagnostic_test (TEST 3.5) @ 9ec8f9f4b / 2026-06-24 planning audit
+ sep_lcc_uvm_screening_vs_diagnostic_test (TEST 3.5) / 2026-06-24 planning audit
 MAPPING : COVERED_BY -- volatile DEMOTE feat_ctrl decode breadth via the existing LCC golden.
 RELATION : DISTINCT from #20 sep_lcc_uvm_inbound_filter_gating (PROD vs DEMOTE_1->PROD_DBG_1, sep_debug
  gate) and #3 lc_state_stitch (per-LC-state feat_ctrl on a sensed image). EFL-1 walks the
@@ -1288,7 +1282,7 @@ LEDGER : closes "eFuse OTP program breadth + write-once + direct read + per-fiel
  direct-read path (EFUSE_READ_CTRL), and per-field read/write LOCKS are uncovered.
 OCAH-REFS : uvm_tests/efuse/sep_efuse_uvm_program_test (TEST 1.1: OTP program + write-once + lock-block),
  sep_efuse_uvm_direct_read_test (TEST 0.5: EFUSE_READ_CTRL), sep_efuse_uvm_permission_matrix_test
- (TEST 1.3: per-field read/write LOCKS) @ 9ec8f9f4b / 2026-06-24 planning audit
+ (TEST 1.3: per-field read/write LOCKS) / 2026-06-24 planning audit
 MAPPING : COVERED_BY -- eFuse OTP program + lock + direct-read breadth (program persistence from the
  SV responder; lock ENFORCEMENT from the RTL guard).
 RELATION : DISTINCT from sep_efuse_image_test (sense/resense/shadow read) and #3 (LC_STATE W1S only).
@@ -1362,7 +1356,7 @@ SUBSYSTEM : eFuse/lifecycle/security state
 LEDGER : closes "STRAP-driven secure_tm latch (TEST_EN strap -> SECURE_TM at fuse-sense)" basic row --
  the ONE genuine basic gap surfaced by the 2026-06-24 exhaustive OCAH sweep. Distinct from the
  dynamic-CSR secure_tm permutation (which stays deferred/advanced).
-OCAH-REFS : uvm_tests/efuse/sep_efuse_uvm_shadow_strap_secure_tm_test (TEST 2.3) @ 9ec8f9f4b /
+OCAH-REFS : uvm_tests/efuse/sep_efuse_uvm_shadow_strap_secure_tm_test (TEST 2.3) /
  2026-06-24 exhaustive sweep (re-verify exact name + seq at impl -- OCAH is a moving target)
 MAPPING : COVERED_BY -- the strap->SECURE_TM capture contract + its FEAT_CTRL test-field gating, driven
  through a REAL top-level strap pin (no backdoor force/deposit).
@@ -1433,8 +1427,7 @@ LEDGER : closes "KM command-set breadth" basic row -- the commands beyond the KA
  (CMD_HW_VER/ROM_VER/STAT/RECOV_ACK/KEY_GENERATE/KEY_REVOKE/ENGINE_SHRED).
 OCAH-REFS : uvm_tests/km/sep_km_uvm_cmd_hw_ver_test, cmd_rom_ver_test, cmd_stat_test,
  cmd_recov_ack_test, cmd_key_generate_test, cmd_key_revoke_test, cmd_engine_shred_test
- (+ engine_shred_verify_test) (~10 directed)
- @ 9ec8f9f4b / 2026-06-24 planning audit (re-verify exact `cmd_`-prefixed names at impl)
+ (+ engine_shred_verify_test) (~10 directed) / 2026-06-24 planning audit (re-verify exact `cmd_`-prefixed names at impl)
 MAPPING : MERGED_INTO -- ONE randomized representative subsumes the directed command family
  (Randomized Representative Rule).
 RELATION : DISTINCT from the sideload KATs (#4/#11/#12/#13 prove LOAD+TRANSFER+sideload KAT) and
@@ -1503,7 +1496,7 @@ LEDGER : closes "KM mailbox interface mechanics" basic row -- STATUS/separator/f
  KATs only use happy-path.
 OCAH-REFS : uvm_tests/km/sep_km_uvm_mailbox_cmd_test, mailbox_resp_test, mailbox_separator_test,
  mailbox_flush_test, mailbox_irq_test, mailbox_overflow_test, mailbox_underflow_test
- (~10 directed) @ 9ec8f9f4b / 2026-06-24 planning audit
+ (~10 directed) / 2026-06-24 planning audit
 MAPPING : MERGED_INTO -- ONE randomized representative subsumes the mailbox directed family.
 RELATION : the KATs use the KM mailbox happy-path framing; KM-2 proves the mailbox-IP MECHANICS
  -- do NOT re-prove command semantics (that is KM-1). The KM mailbox is KM-owned and
@@ -1574,8 +1567,7 @@ GITHUB : #3238
 SUBSYSTEM : Crypto and entropy
 LEDGER : closes "AES standalone mode x key-size breadth" basic row -- the modes/sizes beyond the
  sideload KAT's ECB-256 (#11).
-OCAH-REFS : uvm_tests/aes/* + fw aes mode/keylen tests (AES ECB/CBC/CTR x 128/192/256, ~5-8 directed)
- @ 9ec8f9f4b / 2026-06-24 planning audit
+OCAH-REFS : uvm_tests/aes/* + fw aes mode/keylen tests (AES ECB/CBC/CTR x 128/192/256, ~5-8 directed) / 2026-06-24 planning audit
 MAPPING : MERGED_INTO -- ONE randomized representative subsumes the AES mode x key-size directed matrix.
 RELATION : DISTINCT from #11 sep_km_aes_sideload_kat (ECB-256 via KM SIDELOAD key). CRY-1 is STANDALONE
  SW-key AES across modes/sizes -- do NOT re-prove the sideload path or ECB-256 specifically.
@@ -1645,8 +1637,7 @@ STATUS : implemented [RAND-REP]; Verilator merge-gate green on
 GITHUB : #3239
 SUBSYSTEM : Crypto and entropy
 LEDGER : closes "HMAC SHA-variant breadth" basic row -- the digests/modes beyond #12's SHA-256.
-OCAH-REFS : uvm_tests/hmac + fw hmac (SHA-256/384/512, HMAC-vs-plain-SHA, key-length, ~7-10 directed)
- @ 9ec8f9f4b / 2026-06-24 planning audit
+OCAH-REFS : uvm_tests/hmac + fw hmac (SHA-256/384/512, HMAC-vs-plain-SHA, key-length, ~7-10 directed) / 2026-06-24 planning audit
 MAPPING : MERGED_INTO -- ONE randomized rep subsumes the HMAC SHA-variant x mode directed matrix.
 RELATION : DISTINCT from #12 sep_km_hmac_sideload_kat (SHA-256 via SIDELOAD) and #9 CPU smoke (SHA256).
  CRY-2 is STANDALONE SW-key HMAC across SHA-variants + plain-SHA -- do NOT re-prove SHA-256-sideload.
@@ -1704,8 +1695,7 @@ STATUS : implemented [RAND-REP]; Verilator merge-gate green on
 GITHUB : #3240
 SUBSYSTEM : Crypto and entropy
 LEDGER : closes "KMAC mode/strength breadth" basic row -- the modes beyond #13's KMAC-256 keyed.
-OCAH-REFS : uvm_tests/kmac + fw kmac (SHA3/SHAKE/cSHAKE/KMAC x 256/512 + keylen, ~6-8 directed)
- @ 9ec8f9f4b / 2026-06-24 planning audit
+OCAH-REFS : uvm_tests/kmac + fw kmac (SHA3/SHAKE/cSHAKE/KMAC x 256/512 + keylen, ~6-8 directed) / 2026-06-24 planning audit
 MAPPING : MERGED_INTO -- ONE randomized rep subsumes the KMAC mode/strength directed matrix.
 RELATION : DISTINCT from #13 sep_km_kmac_sideload_kat (KMAC-256 keyed via SIDELOAD, cross-check only)
  and #9 smoke (KMAC-128). CRY-3 is STANDALONE SW-key KMAC/SHA3 across modes/strengths with
@@ -1778,8 +1768,7 @@ SUBSYSTEM : SPI (OpenTitan spi_ot) -- the dedicated SPI sweep (in-scope OSS; the
 LEDGER : closes the OT SPI flash TX command path -- WREN + PROGRAM + READ + ERASE,
  beyond #3's RX READ-only. Full flash-command breadth remains open for dual/quad
  and RDSR/WIP-poll.
-OCAH-REFS : fw spi_ot_flash_write_read + sector_erase
- @ 9ec8f9f4b / 2026-06-24 planning audit
+OCAH-REFS : fw spi_ot_flash_write_read + sector_erase / 2026-06-24 planning audit
 MAPPING : COVERED_STRONGER -- CPU-firmware port of the in-scope OpenTitan SPI flash
  PROGRAM/READ/ERASE path, upgraded with seeded legal address/word-count/data and a
  cocotb BFM-side golden. OpenTitan SPI ONLY (the Cadence xSPI path is licensed-excluded,
@@ -1842,8 +1831,7 @@ LEDGER : closes the OT SPI host control-plane breadth -- register reset/RW, inte
  The historical mux-select path is an OSS-tb no-op because the OpenTitan SPI path is
  already the active bare-SEP path.
 OCAH-REFS : fw spi_ot_reg/clock_config/tx_fifo/rx_fifo/cmd_queue/interrupt/
- error_handling/watermark/enable_disable/mux_select
- @ 9ec8f9f4b / 2026-06-24
+ error_handling/watermark/enable_disable/mux_select / 2026-06-24
 MAPPING : MERGED_INTO -- one combined-per-group rep folds the OT SPI host-control directed family.
 RELATION : DISTINCT from SPI-1 (flash command datapath) and #3 (flash READ + DMA). SPI-2 is the host
  CONTROL/STATUS/IRQ/error register breadth -- do NOT re-prove flash commands here.
@@ -1909,8 +1897,7 @@ GITHUB : #3244
 SUBSYSTEM : SPI (OpenTitan spi_ot) -- the SPI sweep
 LEDGER : closes "OT SPI DMA-TX path" -- TX-watermark-correlated lsio_trigger -> DMA refills
  TXFIFO -> flash, the complement of #3's DMA-RX.
-OCAH-REFS : fw spi_ot_dma_tx_test, spi_ot_dma_trigger_test
- @ 9ec8f9f4b / 2026-06-24
+OCAH-REFS : fw spi_ot_dma_tx_test, spi_ot_dma_trigger_test / 2026-06-24
 MAPPING : COVERED_STRONGER -- DMA-TX datapath is proven via a flash-BFM value check,
  the merged OCAH `dma_trigger` TXWM/HANDSHAKE_INTR_ENABLE intent has Verilator
  evidence, and the expected [RAND-REP] policy walks the required length/trigger cells.
@@ -1980,7 +1967,7 @@ SUBSYSTEM : Peripheral IO
 LEDGER : closes "axil_mailbox interface breadth" basic row for the bare-SEP reachable TX side:
  native 64b WRITE_DATA, visible STATUS bits, WIRQT/error IRQ RW1C, read-empty/write-full
  error handling, and CTRL flush. (Handed from the fabric sweep.)
-OCAH-REFS : uvm_tests/fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test, sep_fabric_mailbox_fifo_closure_test @ 9ec8f9f4b / 2026-06-24
+OCAH-REFS : uvm_tests/fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test, sep_fabric_mailbox_fifo_closure_test / 2026-06-24
 MAPPING : MERGED_INTO -- ONE randomized rep subsumes the axil_mailbox FIFO/IRQ directed family.
 RELATION : DISTINCT from #8 sep_mailbox_plic_test (outbound write-threshold IRQ -> PIC -> CPU ISR, the
  DELIVERY path). PIO-1 proves the mailbox-IP MECHANICS (64b TX data, visible STATUS bits,
@@ -2220,7 +2207,7 @@ LEDGER : closes the reset "STATEFUL neighbor survival during LIVE crypto operati
  proves per-IP SW-reset pulses fire and gives some non-corruption coverage via reset probes; what
  it does NOT do is hold a neighbor engine in a stateful frontdoor-observable condition (held
  golden crypto result) and prove that state survives a sibling's reset pulse.
-OCAH-REFS : uvm_tests/clock/sep_clock_uvm_sw_reset_per_ip_test @ 9ec8f9f4b / 2026-06-25 (VERIFIED)
+OCAH-REFS : uvm_tests/clock/sep_clock_uvm_sw_reset_per_ip_test / 2026-06-25 (VERIFIED)
 MAPPING : COVERED_STRONGER -- stateful cross-IP survival (neighbor's held crypto result preserved) on top
  of #19's pulse + static non-corruption. OCAH observes the SW_RESET_N->sep_sw_rst_no mapping via
  HDL/backdoor; TD-3 proves the reset lands in the IP and stays domain-isolated through frontdoor

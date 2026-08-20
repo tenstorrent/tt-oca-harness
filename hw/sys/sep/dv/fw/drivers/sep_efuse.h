@@ -13,9 +13,14 @@
 
 #include <stdint.h>
 
-// eFuse MAP shadow block (sensed OTP), CHIPLET_UID at byte offset 0xC8 (8 words).
+#include "sep.h"
+
+// eFuse MAP shadow block (sensed OTP). CHIPLET_UID's offset comes from the generated
+// map, not a literal: it moved when LOCKS_SPARE was inserted ahead of it, and the
+// hardcoded copy here stayed consistent with the equally-stale copy in the cocotb
+// image model -- so the UID check passed while both sides read the wrong word.
 #define SEP_EFUSE_MAP_BASE 0x10930000u
-#define SEP_EFUSE_CHIPLET_UID0 (SEP_EFUSE_MAP_BASE + 0xC8u) // 0x109300C8 (word0)
+#define SEP_EFUSE_CHIPLET_UID0 OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
 
 // eFuse interface-control STATUS: bit0 = efuse_sense_done.
 #define SEP_EFUSE_IFC_STATUS 0x10930400u

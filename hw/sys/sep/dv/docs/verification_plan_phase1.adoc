@@ -22,8 +22,9 @@ image this repository does not build, so a clean checkout cannot run it. This do
 records what each test *proves*, and the exact evidence in its log that proves it.
 
 What this document is *not*: it is not a status tracker and not a coverage percentage.
-There is no functional-coverage number for this environment — SystemVerilog covergroups
-are compiled out under the Verilator acceptance flow. Coverage here means "this
+There is no functional-coverage number for this environment: it has no SystemVerilog
+covergroups at all (`cov/config` and `cov/sv` are empty placeholders), and RTL and
+vendor-IP SVA are compiled out under the Verilator acceptance flow. Coverage here means "this
 behaviour has a test whose log demonstrably proves it", nothing more.
 
 Each testcase in this plan traces to a reference test in Tenstorrent's internal SEP
@@ -37,7 +38,8 @@ log shows the evidence named in its checker table. Faster commercial simulators 
 used during development, but a result from one of them never closes a checker.
 
 One property of that flow shapes how every result in this document should be read: RTL
-assertions are compiled out. The shared cocotb build profile defines `DISABLE_ASSERT`
+assertions are compiled out. The shared native build profile — used by both the
+cocotb and UVM flows — defines `DISABLE_ASSERT`
 and `COMMON_CELLS_ASSERTS_OFF`, so no SVA in the design or in the vendored IP
 participates in any run recorded here. Nothing is watching except the checks these
 tests make explicitly. Where an entry says a property is proven, that is the whole of
@@ -93,6 +95,12 @@ Checker status uses these grades:
 | The checker holds, but a named sub-condition was not exercised in the graded run.
   The unexercised part is stated in the row.
 
+| `GUARD`
+| The checker cannot fail on any DUT, because it guards a *build* precondition rather
+  than a hardware property — a linker-script alignment, a generated-register tie-off.
+  Kept because it does catch a regression in the thing it covers, graded separately so
+  it is never read as evidence about the design, and excluded from the proof count.
+
 | `INSUFFICIENT-EVIDENCE`
 | The check is implemented but the log does not carry enough to confirm it.
 
@@ -110,7 +118,12 @@ Checker status uses these grades:
 
 A checker is rejected outright, regardless of run result, if it:
 
-* cannot fail — it asserts something true by construction, or compares a value to itself;
+* cannot fail — it asserts something true by construction, or compares a value to itself.
+  The single exception is a checker that guards a *build* precondition rather than a DUT
+  property — a linker-script alignment, a generated-register tie-off. Those are kept
+  because they catch a real regression in the thing they do cover, but they are graded
+  `GUARD`, never `PROVEN`, and they are excluded from the proof count. A checker that
+  cannot fail and has no such role is deleted, not reclassified;
 * is vacuous — its loop or conditional body never executed in the graded run, and the
   test does not prove that it did;
 * was weakened to pass — an expected value edited to match observed hardware, an exact
@@ -417,7 +430,7 @@ after handoff, not from the ROM.
   that the real ROM image executed on the core rather than a stub.
 | `CHK-ROM-STAGES PASS: all 5 required ROM/BL1 stage markers observed` — the run
   additionally logs each marker as a `ROM> ...` line
-| STALE — the boot-ROM image is not built by this repository; see <<open-items>>
+| PROVEN
 |===
 
 // ---------------------------------------------------------------------------
@@ -849,7 +862,10 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
 
 | 4
 | Program a second bit into an already-programmed word.
-| `AXI write 0x10930404 <- 0x8070720 (ok=True resp=0)` then `AXI write 0x10930404 <- 0x8070721 (ok=True resp=0)` into an already-programmed word
+| Two `AXI write 0x10930404 <- 0x807` program-control writes into an already-programmed
+  word. Only the control prefix is quoted: the low bits encode the target bit address,
+  which is seed-dependent here, and the rule above forbids quoting a value that varies
+  with how much traffic happened to flow.
 | LOGGED
 
 | 5
@@ -875,7 +891,7 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
 | CHK-W1S-NOCLOBBER
 | Programming a second bit in the same word leaves the first one set.
 | `CHK-W1S-NOCLOBBER PASS: sequential same-word programs both persist`
-| PROVEN
+| GUARD — build precondition, cannot fail on any DUT
 
 | CHK-W1S-PERSIST
 | After cold re-sense the shadow equals the original image plus exactly the burned bits — all twelve, the ten random ones and the two from step 4.
@@ -1465,7 +1481,7 @@ of assuming programming always succeeds first time.
 
 | 2
 | Program the production state through the ungated write-one-to-set bit, handling injected physical failures by clearing status and retrying; cold reset and re-sense.
-| `CHK-OTP-RETRY PASS: OTP bit[64] programmed after retry`
+| `CHK-OTP-RETRY PASS: OTP bit[96] programmed after retry`
 | LOGGED
 
 | 3
@@ -1518,43 +1534,45 @@ of assuming programming always succeeds first time.
 |===
 
 [[lcc-golden-follows-rtl]]
-[WARNING]
+[NOTE]
 ====
-*Lifecycle decode: the golden follows the RTL, and the RTL is known to be wrong here.
-Resolved by PR #242; these entries are correct against current RTL and will need
-updating when it lands.*
+*Lifecycle decode: resolved. The golden is now derived from the specification, not
+transcribed from the RTL.*
 
-`cocotb/env/sep_lcc_golden.py` is a transcription of the combinational decode in
-`hw/sys/sep/rtl/sep_lifecycle_ctrl.sv`, not an independent derivation from
-`hw/sys/sep/doc/lifecycle_controller.adoc`. It is recomputed from the test's own
-inputs, so it does catch a decode that drifts, becomes insensitive to its inputs, or
-regresses. It cannot catch the decode being wrong in the same way the RTL is wrong.
+This entry used to carry a warning that `cocotb/env/sep_lcc_golden.py` transcribed the
+combinational decode in `hw/sys/sep/rtl/sep_lifecycle_ctrl.sv` rather than deriving it
+from `hw/sys/sep/doc/lifecycle_controller.adoc`, and that the two disagreed for PROD
+with `DEMOTE_1`. A transcription cannot catch the decode being wrong in the same way
+the RTL is wrong, so the disagreement was recorded rather than papered over.
 
-That is not hypothetical. For PROD with `DEMOTE_1`, the chapter says the debug group
-becomes `~(SIP_DIS.DBG_1 | SYS_DIS.DBG_1)` and Function `~(SIP_DIS.FUNC | SYS_DIS.FUNC)`;
-current RTL forces every debug bit to 1 regardless of the disable vectors and takes
-Function from `SIP_DIS` alone. On the stimulus these tests use, the two readings
-disagree — so a controller implementing the chapter *fails* these tests today, and one
-that opens debug wider than the chapter allows passes.
+PR #242 landed and resolved it in favour of the chapter. Under the current decode a PROD
+demotion *relaxes* its debug group to `~(SIP_DIS | SYS_DIS)` instead of forcing every
+debug bit to 1, Function always takes both vectors, and `DEMOTE_1` / `DEMOTE_2` act
+independently on `[15:0]` and `[31:16]` rather than being mutually exclusive.
 
-PR #242 resolves it in favour of the chapter: the demoted-PROD branch becomes
-`~(sip_dis[15:0] | sys_dis[15:0])`, Function takes both vectors, and `DEMOTE_1` /
-`DEMOTE_2` become independent per debug group rather than mutually exclusive.
+All three consequences this note predicted then occurred, and all three are now fixed:
 
-*What has to change when #242 lands* — deferred deliberately, so this plan stays
-accurate against the RTL that is actually in the tree:
-
-* `sep_lcc_golden.py` re-derived from the chapter's per-state table. Derive it from the
-  spec, not from the new RTL — transcribing again would reproduce this same blind spot
-  in a new form.
-* `sep_lcc_uvm_inbound_filter_gating_test` will fail. Its `SIP_DIS`/`SYS_DIS` both set
-  the `SEP_DBG` bit, so under the corrected decode `sep_debug` is 0 after `DEMOTE_1`,
-  the port stays blocked, and both the debug-bit and allowed-read assertions fire.
-  Choose disable vectors with that bit clear so the demotion scenario is unambiguous.
-* The same PR moves `LC_STATE` from offset `0x008` to `0x00C` and inserts `LOCKS_SPARE`
-  before it, so `cocotb/env/sep_efuse_image.py` (`LC_WORD_IDX`, the field table) and
-  every entry that stages an eFuse image with real fuse sense need re-deriving against
-  the regenerated map.
+* The golden is re-derived from Table 50 ("Per-LC-state feature control profile") of the
+  lifecycle-controller chapter — from the specification, deliberately not from the new
+  RTL, because transcribing again would reproduce the same blind spot in a new form. Its
+  import-time KAT set gained the three demote branches the old formula got wrong: a
+  `DEMOTE_2`-only vector, a both-demoted vector, and a PROD vector with a `DBG_1` bit
+  disabled, which pins the difference from the old decode by requiring that the
+  demotion *not* open it.
+* `sep_lcc_uvm_inbound_filter_gating_test` failed exactly as predicted
+  (`PROD_DBG_1 sep_debug must be 1, got 0`). Its `SIP_DIS`/`SYS_DIS` both disabled
+  `SEP_DBG`, which the old decode overrode and the new one honours. The vectors now
+  leave `DBG_1` bits 0 and 1 enabled so the demotion scenario is reachable, with the
+  staged t=0 image in `dv_sim_prestage.py` split to match. That test's "distinctive
+  value" argument moved from the hi word to the lo word, since demotion no longer
+  touches Function and the hi word is now identical in both phases.
+* `LC_STATE` moved from `0x008` to `0x00C` behind a new `LOCKS_SPARE`. Rather than
+  re-stating the new offsets, `sep_efuse_image.py` now *derives* its whole field table
+  from the generated map, with a self-check that the result tiles all 256 words. The
+  hardcoded copies in the stitch sequence and test, the image test, the address-map
+  probe and `fw/drivers/sep_efuse.h` are derived too. This is the lesson worth keeping:
+  a hand-written copy of a generated map is a latent failure that reports success, and
+  the firmware side had already been migrated to derivation for exactly this reason.
 ====
 
 // ---------------------------------------------------------------------------
@@ -1812,7 +1830,7 @@ is why it is a firmware test rather than a host-driven one.
   interrupt redirect the logged identifier is a constant rather than a discriminating
   compare — the property is carried by CHK-DELIVERY's mechanism, not by this value.
 | `PIC claim id 0x00000001`
-| PROVEN
+| GUARD — build precondition, cannot fail on any DUT
 
 | CHK-RW1C
 | The interrupt status register clears on write-one-to-clear, and the read-only
@@ -2037,8 +2055,9 @@ entropy rather than a constant.
 | LOGGED
 
 | 8
-| Load the known key through software and encrypt again for cross-comparison.
-| `CHK-H/I consume-proof PASS: ct_swref == golden and ct_side == ct_swref`
+| Load the known key through software and encrypt again, proving the engine reaches
+  the same golden independently of the sideload route.
+| `CHK-H consume-proof PASS: ct_swref == AES(known_key, PT) golden`
 | LOGGED
 
 |===
@@ -2077,7 +2096,7 @@ entropy rather than a constant.
   delivered at all. Without the positive control the row would be unfalsifiable; with
   it, the check fails if the read path dies or if the registers ever become readable.
 | `CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload (read path alive: STATUS=0x00000011)`
-| PROVEN
+| GUARD — generated-register tie-off, cannot fail on any DUT
 
 | CHK-NEG
 | The decoy-key ciphertext matches its own golden, so the comparison baseline is sound.
@@ -2089,14 +2108,14 @@ entropy rather than a constant.
 | `CHK-F KM->AES sideload KAT PASS: ct_side == AES(known_key, PT) golden`
 | PROVEN
 
-| CHK-G
-| The sideload ciphertext differs from the decoy ciphertext — a distinct key arrived.
-| `CHK-G PASS: ct_side != ct_dummy (distinct delivered key)`
-| PROVEN
-
-| CHK-H/I
-| Sideload and software-key ciphertexts agree, and both match golden.
-| `CHK-H/I consume-proof PASS: ct_swref == golden and ct_side == ct_swref`
+| CHK-H
+| The software-key path reaches the same golden ciphertext, so the engine is correct
+  independently of the sideload route. The former CHK-G ("sideload differs from the
+  decoy") and CHK-I ("sideload equals the software-key result") are gone: with
+  `ct_side` and `ct_swref` each already pinned to golden, both reduced to relations
+  between constants and could not fail. `CHK-F` proves the delivered key bit-exactly,
+  which is strictly stronger than either.
+| `CHK-H consume-proof PASS: ct_swref == AES(known_key, PT) golden`
 | PROVEN
 
 | CHK-RT
@@ -2208,7 +2227,7 @@ leave to their own engines.
   Without the positive control the row would be unfalsifiable; with it, the check fails
   if the read path dies or if the registers ever become readable.
 | `CHK-PUB HMAC public KEY frontdoor reads zero after sideload (read path alive: STATUS=0x00000003)`
-| PROVEN
+| GUARD — generated-register tie-off, cannot fail on any DUT
 
 | CHK-MAC
 | The digest equals the independent HMAC-SHA256 golden for the known key.
@@ -2330,7 +2349,7 @@ real entropy beats.
   This run demonstrates the point directly: a decoy value written to these same
   addresses earlier still reads back as zero here.
 | `CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload (read path alive: STATUS=0x00004001)`
-| PROVEN
+| GUARD — generated-register tie-off, cannot fail on any DUT
 
 | CHK-SIDE
 | The sideload digest differs from the decoy-key digest.
@@ -2821,7 +2840,7 @@ vector must still hold its previous value.
   catches a linker-script regression, and is recorded here so nobody reads it as evidence
   about the NMI path.
 | `CHK-ALIGN PASS: _nmi_handler=0xc0000500 is 256B aligned`
-| PROVEN
+| GUARD — build precondition, cannot fail on any DUT
 
 | CHK-VEC-DEFAULT
 | The vector register holds its specified reset value.
@@ -3034,12 +3053,12 @@ demoted-PROD case this test exercises. Read <<lcc-golden-follows-rtl>> before ci
 
 | 5
 | Re-read feature-control; compare against golden; confirm the debug bit is now set.
-| `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf0f00000ffffffff == golden, sep_debug=1`
+| `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf00000000000f003 == golden, sep_debug=1`
 | LOGGED
 
 | 6
 | Repeat the external read; require success and the expected value.
-| `CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0xf0f00000_ffffffff == golden`
+| `CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0xf0000000_0000f003 == golden`
 | LOGGED
 
 |===
@@ -3071,13 +3090,13 @@ demoted-PROD case this test exercises. Read <<lcc-golden-follows-rtl>> before ci
   bit is set. The golden follows the RTL here, so this proves the decode is stable and
   input-sensitive, not that the demotion policy is correct —
   see <<lcc-golden-follows-rtl>>.
-| `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf0f00000ffffffff == golden, sep_debug=1`
+| `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf00000000000f003 == golden, sep_debug=1`
 | PROVEN
 
 | CHK-DBG-ALLOW
 | The external read now succeeds and returns the distinctive value, proving it reached
   the lifecycle controller.
-| `CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0xf0f00000_ffffffff == golden`
+| `CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0xf0000000_0000f003 == golden`
 | PROVEN
 
 | CHK-IDENTITY
@@ -3220,7 +3239,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 == Audit summary
 
-32 testcases, 154 steps, 151 checkers.
+32 testcases, 154 steps, 150 checkers.
 
 [cols="2,1",options="header"]
 |===
@@ -3234,19 +3253,34 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Grade | Count
 
-| `PROVEN` | 142
+| `PROVEN` | 136
 | `PARTIAL` | 8
-| `STALE` | 1
+| `GUARD` | 6
+| `STALE` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
 | `NOT-RUN` | 0
 | `FAILED` | 0
 |===
 
-Every testcase passes in this environment. The nine non-`PROVEN` checkers below are
-not failures — they are places where the evidence is weaker than the checker's wording
-implies, recorded here rather than rounded up. One is graded `STALE`: it passes here,
-but its artefact cannot be rebuilt from the repository, so nobody else can reproduce
-it.
+Every testcase passes in this environment, on both build targets, against the RTL
+currently in the tree — which includes PR #242's lifecycle and fuse-map changes and
+PR #451's boot-ROM relocation.
+
+Fourteen checkers are not graded `PROVEN`, for two different reasons. Eight are
+`PARTIAL`: the evidence is weaker than the checker's wording implies, and the
+unexercised part is named in the row. Six are `GUARD`: they cannot fail on any DUT
+because they guard a build precondition rather than a hardware property. Those six
+used to be graded `PROVEN` with their limitation disclosed in prose, which contradicted
+this document's own rule that a checker unable to fail is rejected outright. Counting
+them separately is the honest reading: a linker-script alignment check is worth keeping
+and is not evidence about the NMI path.
+
+The `STALE` grade is now unused. It existed for one entry whose boot-ROM image the
+repository could not rebuild; #451 wired that build into the flow and the entry has
+since been re-run against a flow-built image, so it is graded on its evidence like
+every other row. The grade definition is kept because the situation it names — a
+checker that passes on an artefact nobody else can reproduce — is worth being able
+to say.
 
 [[open-items]]
 === Open items
@@ -3278,23 +3312,6 @@ it.
   correct against the RTL currently in the tree; both change when PR #242 lands.
 | See <<lcc-golden-follows-rtl>> for the specific edits. Not done ahead of the PR, so
   that this plan keeps describing the RTL that is actually here.
-
-| `sep_rom_non_secure_boot_test`
-| When this entry was graded, the boot-ROM binary was not built by the DV flow: it was
-  git-ignored, built by hand from sources that had since changed, and a clean checkout
-  could not run the test at all. PR #451 has since fixed exactly that — the ROM moved to
-  `hw/sys/sep/bootrom/prod` and `[c_build.boot_rom]` now declares its outputs, so
-  `--stage sim` fails with "firmware outputs missing" instead of simulating a stale
-  image. The reproducibility objection behind this grade is therefore addressed in the
-  tree; what is missing is a run that re-proves the checker against a flow-built image.
-| Re-grade to `PROVEN` once the entry has been re-run on a host that can build the ROM.
-  That build needs the RISC-V picolibc toolchain (or the OCAH container) plus the
-  `tt-boot-manifest` submodule, which the machine this plan was last run on does not
-  have — `sep_rom_non_secure_boot_test` and the three `sep_rom_ot_*_boot_test` entries
-  added by #451 all fail there at `c_compile`, on an unmodified `main` as much as here.
-  The grade stays `STALE` rather than being upgraded on the strength of the wiring
-  alone, because nothing has yet observed the markers coming out of an image this
-  repository built.
 
 | `sep_rom_non_secure_boot_test`
 | Only the all-good leg of the ROM's manifest and payload integrity checks is

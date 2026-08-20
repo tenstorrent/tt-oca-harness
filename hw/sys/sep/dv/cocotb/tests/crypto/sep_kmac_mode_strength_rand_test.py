@@ -11,7 +11,7 @@ reference parity: MERGED_INTO the reference suite kmac mode/strength directed se
 KMAC coverage is a keyed KMAC cross-check (no standalone SHA3/SHAKE/cSHAKE digest
 golden), so the independent pure-Python Keccak golden (env/sep_kmac_golden.py:
 SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs NIST SP800-185) is the
-reference and this rep is stronger-than-reference suite. DISTINCT from #13 (KMAC-256 via
+reference and this rep is stronger than the reference suite. DISTINCT from #13 (KMAC-256 via
 sideload, cross-check) -- KMAC mode/strength breadth is standalone SW-key with an exact golden.
 
 Entropy: the KMAC engine has masking hardwired on (EnMasking=1) and requires EDN

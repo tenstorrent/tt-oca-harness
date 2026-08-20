@@ -11,7 +11,7 @@ reference parity: MERGED_INTO rep of the reference suite aes mode/keylen directe
 uvm_tests/aes suite is register/alert-centric with no standalone CBC/CTR/128/192
 ciphertext golden, so the independent pure-Python golden (env/sep_aes_golden.py:
 FIPS-197 ECB 128/192/256 + SP800-38A CBC/CTR self-tested) is the reference and
-this rep is stronger-than-reference suite for encryption breadth. DISTINCT from #11 (ECB-256
+this rep is stronger than the reference suite for encryption breadth. DISTINCT from #11 (ECB-256
 via sideload) -- AES mode/key-size breadth is standalone SW-key across modes/sizes.
 
 Entropy: OpenTitan AES masking reseeds its PRNG from the crypto-EDN leg, so the

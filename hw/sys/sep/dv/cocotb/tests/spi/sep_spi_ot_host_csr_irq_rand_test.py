@@ -34,7 +34,7 @@ Deferred (documented, not silently dropped): ERROR_STATUS.CMDBUSY (needs a comma
 issued mid-busy -- timing) and .ACCESSINVAL (needs a non-contiguous TXDATA
 byte-enable, which cocotbext-axi cannot express) are [GAP (deferred)]; RXWM and
 the irq-line delivery are covered by the RX-path tests (#3, SPI flash command breadth) / delivery
-tests (#14). reference suite mux-select is an OSS no-op (the OT SPI path is already the
+tests (#14). the reference suite's mux-select is an OSS no-op (the OT SPI path is already the
 active bare-SEP path).
 
 no_cpu / +skip_fuse_sense.

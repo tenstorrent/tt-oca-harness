@@ -14,7 +14,7 @@ the reference suite, which generates a random key and reconstructs it by a read-
 backdoor of the wrapper shares. Here the 12 distinct key words make an exact compare
 catch any truncation, word-swap, or share-defeat bug.
 
-VPLAN-parity checkers (mapped to the reference suite  checker list):
+VPLAN-parity checkers (mapped to the reference suite's checker list):
   CHK0       boot KM on real DRBG -> RESP_KM_READY                 (reference P1)
   CHK-A      CMD_KEY_LOAD known key (replaces the reference suite's CMD_KEY_GENERATE+backdoor)
   CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN                          (reference P4 transfer)

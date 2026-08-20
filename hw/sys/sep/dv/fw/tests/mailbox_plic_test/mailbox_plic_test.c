@@ -25,9 +25,9 @@
 //   * no interrupt storm -- the ISR count stays put once the line is deasserted.
 //
 // Deliberate strengthening vs the reference suite original (documented, not a silent skip):
-// reference suite sprays a candidate PIC-source set {1,2,3} and passes if ANY fires; this
+// the reference suite sprays a candidate PIC-source set {1,2,3} and passes if ANY fires; this
 // port registers ONLY source 1 and asserts the claim id == 1, so a regression of
-// the mailbox->PIC wiring fails the test. reference suite deasserts by masking IRQEN and
+// the mailbox->PIC wiring fails the test. the reference suite deasserts by masking IRQEN and
 // only checks for no re-fire; this port additionally proves the IRQS/IRQP W1C
 // readback is 0 (the RW1C contract, which applies to polled and ISR
 // status paths alike).

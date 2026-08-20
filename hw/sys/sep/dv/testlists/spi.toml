@@ -17,9 +17,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# OT SPI flash command breadth (OCAH spi_ot flash_write_read + sector_erase).
+# OT SPI flash command breadth (the reference suite spi_ot flash_write_read + sector_erase).
 # cpu-firmware port: the OT spi_host multi-command flash sequence runs from the
-# CPU, like every OCAH spi_ot flash test. [RAND-REP] -- the cocotb test seeds
+# CPU, like every the reference suite spi_ot flash test. [RAND-REP] -- the cocotb test seeds
 # legal flash address/word-count/data and patches them into the firmware param
 # block per run (+spi1_directed pins the directed defaults). WREN/PROGRAM/READ +
 # ERASE against the OcahSpiFlash BFM, value-checked. dual/quad opcode+lane path
@@ -37,7 +37,7 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # OT SPI host control-plane breadth: CSR reset/R-W, INTR test+W1C, ERROR_STATUS
 # W1C (underflow/cmdinval/csidinval), TX watermark, SPIEN enable-gate. [RAND-REP]
-# folds the OCAH OT-SPI host-control directed family. no_cpu (AXI drives the host
+# folds the reference suite OT-SPI host-control directed family. no_cpu (AXI drives the host
 # CSRs); pure control plane, no flash BFM. DISTINCT from SPI flash command breadth (flash datapath).
 name = "sep_spi_ot_host_csr_irq_rand_test"
 module = "spi.sep_spi_ot_host_csr_irq_rand_test"

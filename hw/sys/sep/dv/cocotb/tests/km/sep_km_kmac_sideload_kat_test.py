@@ -39,7 +39,7 @@ VPLAN-parity checkers:
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (KM boot/load consumer)
 
 Accepted scope deltas vs the reference suite (documented; no silent skips):
-  * Like reference suite, no bit-exact KMAC golden -- the consume-proof is the cross-check.
+  * Like the reference suite, no bit-exact KMAC golden -- the consume-proof is the cross-check.
     The OSS port strengthens it with a KNOWN distinct-word key (vs the reference suite's
     backdoor-reconstructed KM-generated key), so no backdoor and no key/mask
     non-degeneracy guards are needed (the known key is non-degenerate by
@@ -128,7 +128,19 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         # CHK-NEG: negative reference -- keyed MAC with an unrelated DUMMY SW key.
         c_dummy = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=False,
                                             sw_key=list(KMAC_DUMMY_KEY))
-        self.logger.info("CHK-NEG dummy-key KMAC PASS: c_dummy=%s", [hex(w) for w in c_dummy])
+        # c_dummy is the negative reference CHK-SIDE compares against, so it has to be
+        # a real observation before that comparison means anything: an all-zero garbage
+        # read would satisfy `a_side != c_dummy` while proving nothing. There is no
+        # bit-exact KMAC golden wired up here (see the module docstring), so this is an
+        # alive-check, not a value check -- but it is a check, where before the line
+        # printed PASS with nothing asserted at all.
+        assert any(w != 0 for w in c_dummy), (
+            "dummy-key KMAC returned an all-zero digest -- the negative reference is "
+            f"not a real observation, so CHK-SIDE below would be vacuous: {[hex(w) for w in c_dummy]}"
+        )
+        self.logger.info(
+            "CHK-NEG dummy-key KMAC PASS: non-zero digest observed (alive, not "
+            "value-compared): c_dummy=%s", [hex(w) for w in c_dummy])
 
         # CHK-ISO: only KMAC (of the four sideload targets) is released; others parked.
         rst = await self.swrst.read_back()

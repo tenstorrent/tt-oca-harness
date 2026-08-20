@@ -47,7 +47,7 @@ because they would latch permanently. The scoreboard checks the AXI response on
 every access and the value on every checked read.
 
 This goes beyond the reference suite's reg-walk: it runs on the external AXI master, which cannot
-reach SW_RESET_N (so reference suite delegates the reset controller to a directed test). The
+reach SW_RESET_N (so the reference suite delegates the reset controller to a directed test). The
 CPU LSU master reaches it, so we value-verify SW_RESET_N's reset value directly.
 """
 
@@ -168,7 +168,7 @@ FABRIC_BLOCKS = [
     ("ENTROPY_SRC", 0x1091_6000, None),             # INTR_STATE hw-driven
     ("SEP_LIFECYCLE", 0x1091_8000, None),           # FEAT_CTRL (RO, hw-driven)
     ("KM_MAILBOX", 0x1092_000C, None),              # SEP_STATUS (offset 0 is write-only)
-    ("SEP_EFUSE_SHADOW", 0x1093_0008, None),        # LC_STATE shadow (not the OTP path)
+    ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),  # LC_STATE shadow
     ("AXIL_MAILBOX", 0x10A0_0000, None),
     ("ALIAS_REMAP", 0x10A1_0000, None),             # region_start
     ("AP_OUTPUT_REMAP", 0x10A1_0200, None),         # output-remap region

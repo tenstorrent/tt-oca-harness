@@ -20,6 +20,11 @@ from __future__ import annotations
 
 from sep_reg_meta import sym
 
+# The generated map itself, for enumerating the eFuse register set rather than
+# naming each entry. Import order matters: sep_reg_meta puts regs/gen/py on
+# sys.path as an import side effect, so it has to come first.
+import sep_reg  # noqa: E402
+
 import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -29,15 +34,22 @@ NUM_FUSE_WORDS = 256
 WORD_BITS = 32
 WORD_MASK = (1 << WORD_BITS) - 1
 
-# Software-visible shadow-register block base (LC_STATE reads at base+0x08).
+# Software-visible shadow-register block base.
 SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 # SEP CPU-ctrl fuse-sense-done status (separate block).
 SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL_BASE + 0x150
 
-# LC_STATE lives in shadow word 2 (efuse_pkg::SHADOW_IDX_LC_STATE); the OTP word
-# carries the 4-bit raw code in [3:0] and the FSM differential-encodes it.
-LC_WORD_IDX = 2
+# LC_STATE's shadow word (efuse_pkg::SHADOW_IDX_LC_STATE). The OTP word carries the
+# 4-bit raw code in [3:0] and the FSM differential-encodes it.
+#
+# Derived, never written down. This index moved 2 -> 3 when LOCKS_SPARE was inserted
+# ahead of LC_STATE, and every hardcoded copy of it in this environment then pointed
+# at LOCKS_SPARE while still claiming to read the lifecycle state -- which the shadow
+# checkers could not flag, because a wrong-but-self-consistent differential pair looks
+# exactly like a healthy one. Read it out of the generated map so the map is the only
+# place it is stated.
+LC_WORD_IDX = sym("SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
 LC_RAW_WIDTH = 4
 # efuse_pkg::lc_state_raw_e — only these 7 codes are legal.
 LC_TEST_DEV = 0x0
@@ -57,55 +69,56 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 # randomization + the expected-shadow transform:
 #   "lc"       — LC_STATE: word holds raw code, shadow reads {~raw, raw}.
 #   "locks"    — LOCKS table: left unlocked by default so all fields read back.
-#   "reserved" — reserved tail: must stay 0.
 #   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.
-_FIELDS: Tuple[Tuple[str, int, int, str], ...] = (
-    ("LOCKS",                     0x000,  2, "locks"),
-    ("LC_STATE",                  0x008,  1, "lc"),
-    ("SBOOT_DIS",                 0x00C,  1, "data"),
-    ("TRANSIENT_RMA_EN",          0x010,  1, "data"),
-    ("SIP_DIS",                   0x014,  2, "data"),
-    ("SYS_DIS",                   0x01C,  2, "data"),
-    ("RMA_SIP_TOKEN_DIGEST",      0x024,  8, "data"),
-    ("RMA_CHIPLET_TOKEN_DIGEST",  0x044,  8, "data"),
-    ("CLASS_KEY",                 0x064,  8, "data"),
-    ("CHIPLET_PUBK_REVOKE",       0x084,  1, "data"),
-    ("BL1_VERSION",               0x088,  8, "data"),
-    ("BL2_VERSION",               0x0A8,  8, "data"),
-    ("CHIPLET_UID",               0x0C8,  8, "data"),
-    ("SIP_PUBK_DIGEST",           0x0E8,  8, "data"),
-    ("SIP_UID",                   0x108,  8, "data"),
-    ("SYS_PUBK_DIGEST",           0x128,  8, "data"),
-    ("SYS_UID",                   0x148,  8, "data"),
-    ("STATUS_RPT",                0x168,  1, "data"),
-    ("SEP_ROM_CTRL",              0x16C,  1, "data"),
-    ("SEP_SPI_CTRL_FIELD_EN",     0x170,  1, "data"),
-    ("SPI_DISCOVERY_CTRL",        0x174,  1, "data"),
-    ("SPI_PHY_DQ_TIMING",         0x178,  1, "data"),
-    ("SPI_PHY_DQS_TIMING",        0x17C,  1, "data"),
-    ("SPI_PHY_GATE_LPBK",         0x180,  1, "data"),
-    ("SPI_PHY_DLL_SLAVE",         0x184,  1, "data"),
-    ("SPI_PHY_DLL_MASTER",        0x188,  1, "data"),
-    ("SPI_PHY_MISC",              0x18C,  1, "data"),
-    ("SPI_RB_VALID_TIME",         0x190,  1, "data"),
-    ("PUBLIC_KEY_0",              0x194,  8, "data"),
-    ("PUBLIC_KEY_1",              0x1B4,  8, "data"),
-    ("RESERVED_0",                0x1D4, 16, "reserved"),
-    ("RESERVED_1",                0x214, 16, "reserved"),
-    ("RESERVED_2",                0x254, 16, "reserved"),
-    ("RESERVED_3",                0x294, 16, "reserved"),
-    ("RESERVED_4",                0x2D4, 16, "reserved"),
-    ("RESERVED_5",                0x314, 16, "reserved"),
-    ("RESERVED_6",                0x354, 16, "reserved"),
-    ("RESERVED_7",                0x394, 16, "reserved"),
-    ("RESERVED_LAST_256",         0x3D4,  8, "reserved"),
-    ("RESERVED_LAST_64",          0x3F4,  2, "reserved"),
-    ("RESERVED_LAST_32",          0x3FC,  1, "reserved"),
-)
+# Kinds, keyed by generated register name. Everything not named here is "data":
+# freely randomizable. Only the semantics live here -- offsets and lengths are read
+# out of the generated map below, because a hand-written copy of the map is exactly
+# what went stale when LOCKS_SPARE was inserted at 0x008 and shifted every field
+# after it by one word.
+_LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
+_LC_REGS = ("LC_STATE",)
+
+
+def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
+    """Build the field table from the generated eFuse map.
+
+    Lengths come from the gap to the next register, so an inserted or resized field
+    cannot leave this environment describing a map the DUT no longer has. The result
+    is asserted to tile the array exactly, which is what lets the backdoor checker
+    claim it covered all 256 words.
+    """
+    pfx, sfx = "SEP_EFUSE_MAP_", "_REG_OFFSET"
+    regs = sorted(
+        (int(getattr(sep_reg, n)), n[len(pfx):-len(sfx)])
+        for n in dir(sep_reg)
+        if n.startswith(pfx) and n.endswith(sfx)
+    )
+    if not regs:
+        raise RuntimeError(
+            f"no {pfx}*{sfx} symbols in the generated register header; "
+            "regenerate it before running the eFuse tests"
+        )
+    out, total_bytes = [], NUM_FUSE_WORDS * (WORD_BITS // 8)
+    for i, (off, name) in enumerate(regs):
+        end = regs[i + 1][0] if i + 1 < len(regs) else total_bytes
+        kind = "lc" if name in _LC_REGS else "locks" if name in _LOCK_REGS else "data"
+        out.append((name, off, (end - off) // 4, kind))
+    first, last = out[0], out[-1]
+    if first[1] != 0:
+        raise RuntimeError(f"eFuse map does not start at 0: {first[0]} @ {first[1]:#x}")
+    covered = sum(f[2] for f in out)
+    if covered != NUM_FUSE_WORDS:
+        raise RuntimeError(
+            f"derived eFuse map covers {covered} words, expected {NUM_FUSE_WORDS}"
+        )
+    return tuple(out)
+
+
+_FIELDS: Tuple[Tuple[str, int, int, str], ...] = _derive_fields()
 
 
 def lc_encode(raw: int) -> int:
-    """Differential LC encoding stored in shadow word 2: {~raw[3:0], raw[3:0]}."""
+    """Differential LC encoding stored in the LC_STATE shadow word: {~raw, raw}."""
     raw &= (1 << LC_RAW_WIDTH) - 1
     return (((~raw) & 0xF) << LC_RAW_WIDTH) | raw
 
@@ -175,11 +188,11 @@ class SepEfuseImage:
         return self.load_hex(path)
 
     def load_hex(self, path: str | Path) -> "SepEfuseImage":
-        """Load a 256-word ``$readmemh`` image (our format, or an reference suite
+        """Load a 256-word ``$readmemh`` image (our format, or a reference-suite
         ``*_shadow_reg.preload`` -- same LSB-first word layout) as the golden.
 
         LC_STATE may be stored raw or differential-encoded in the file; either
-        works because only word[2][3:0] (== the raw nibble) is significant.
+        works because only the LC_STATE word's [3:0] (== the raw nibble) is significant.
         """
         path = Path(path)
         words = [int(tok, 16) for tok in path.read_text().split()]
@@ -191,7 +204,7 @@ class SepEfuseImage:
         return self
 
     def load_preload_bits(self, path: str | Path) -> "SepEfuseImage":
-        """Load an reference suite OTP ``*.preload`` (one bit per line, LSB-first) as the
+        """Load a reference-suite OTP ``*.preload`` (one bit per line, LSB-first) as the
         golden, packing 32 bits/word to match the fuse-array word layout."""
         path = Path(path)
         bits = [c for c in path.read_text().split() if c in ("0", "1")]
@@ -204,7 +217,7 @@ class SepEfuseImage:
     def set_lc_state(self, raw: int) -> "SepEfuseImage":
         """Set LC_STATE by raw code (must be legal).
 
-        Stores the full differential encoding ``{~raw, raw}`` in word[2][7:0] --
+        Stores the full differential encoding ``{~raw, raw}`` in LC_STATE[7:0] --
         a valid differential value, matching the real OTP and the reference suite preload.
         A bare raw nibble (upper nibble 0) is itself a differential error, so LC
         is *always* constrained to a legal code AND a valid encoding.
@@ -288,7 +301,7 @@ class SepEfuseImage:
     def shadow_word(self, word_idx: int) -> int:
         """Expected software-readback value for shadow word ``word_idx``.
 
-        Only LC_STATE (word 2) is transformed by the sense FSM; all other
+        Only LC_STATE is transformed by the sense FSM; all other
         readable words read back verbatim (secure_tm=0, LOCKS unlocked).
         """
         if word_idx == LC_WORD_IDX:

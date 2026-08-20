@@ -64,7 +64,7 @@ and drives `lsu_axi_req` from `tb_top`'s `lsu_req_drive` with a plain `assign` �
 not a `force`. Examples:
 - `sep_axi_smoke_test` — read `sep_cpu_ctrl.CLOCK_GATE_CTRL` + write/readback RW regs.
 - `sep_address_map_test` — field-aware `sep_cpu_ctrl` sweep + a SEP-local fabric
-  walk (ported from OCAH `sep_reg_walk_seq`) across the LSU-reachable, OSS-clean
+  walk (ported from the reference suite's register-walk sequence) across the LSU-reachable, OSS-clean
   blocks (DMA, WDT, reset_ctrl, OTBN/AES/HMAC/KMAC, CSRNG/EDN/entropy, lifecycle,
   KM/AXIL mailbox, eFuse shadow, alias/output-remap, OT SPI host).
 

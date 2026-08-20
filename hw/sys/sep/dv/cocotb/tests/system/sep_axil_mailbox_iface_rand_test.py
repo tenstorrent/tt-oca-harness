@@ -15,8 +15,7 @@ predicts the visible STATUS bits + the write-threshold IRQ from the TX occupancy
 logged; regression mode can sweep this via TOML ``reseed = N``.
 
 reference refs: fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test,
-sep_fabric_mailbox_fifo_closure_test
-@ 9ec8f9f4b. Mapping: MERGED_INTO (one rep subsumes the TX FIFO/IRQ/error/flush family).
+sep_fabric_mailbox_fifo_closure_test. Mapping: MERGED_INTO (one rep subsumes the TX FIFO/IRQ/error/flush family).
 RUN-MODE: no_cpu (CPU-LSU master). FUSE-MODE: +skip_fuse_sense (the local mailbox has
 no OTP/LC dependency).
 

@@ -15,7 +15,7 @@ filter wholly on/off). This test stays at sep_debug=0 the whole time and proves
 the PER-ENTRY allow-by-rule vs block-by-default policy.
 
 reference refs: fabric sep_inbound_filter_blockbydefault_test,
-sep_inbound_filter_programming_ownership_test, sep_inbound_id_remap_test @ 9ec8f9f4b. Mapping: COVERED_STRONGER -- real external AXI master
+sep_inbound_filter_programming_ownership_test, sep_inbound_id_remap_test. Mapping: COVERED_STRONGER -- real external AXI master
 through the live filter with an exact rdata value-check, vs the reference suite proxy / CSR-only.
 CHK-OWNERSHIP ports reference suite run_filter_ownership(): the external master is denied
 read AND write of the filter's own config CSR (0x10A2_1000) with a completed

@@ -14,7 +14,7 @@ enforcement are infra-gated (ledger GAP-deferred).
 reference refs: sep_fabric_64bit_regwidth_test (, 64-bit + locked/valid
 woset), sep_outbound_filter_cfg_test (, FILTER_CONFIG incl. RO
 data_bus_width=3), sep_cpuctrl_misc_regs_test, and the System-block
-subset of sep_reg_sanity_test @ 9ec8f9f4b. Mapping: COVERED_BY. Distinct from
+subset of sep_reg_sanity_test. Mapping: COVERED_BY. Distinct from
 sep_address_map_test (which only read-touched alias/AP remap for decode
 reachability -- no field R/W, no 64-bit upper word, no woset, no filter banks) and
 from the inbound-filter rule matrix test (real PROD fuse + external master; this is

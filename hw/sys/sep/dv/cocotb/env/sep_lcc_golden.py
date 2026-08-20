@@ -5,17 +5,18 @@ Pure-Python reference for what the SEP `sep_lifecycle_ctrl` block computes on it
 ``feat_ctrl`` output as a function of the eFuse-sensed lifecycle state and the
 DEMOTE / secure-test-mode / security-disable inputs.
 
-PROVENANCE -- read this before trusting a pass. This model is a transcription of
-the RTL combinational decode in ``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv``, not an
-independent derivation from the lifecycle-controller specification. It is
-recomputed from the test's own inputs rather than read back from the DUT, so it
-does catch a decode that drifts, becomes input-insensitive, or regresses. What it
-cannot catch is the decode being wrong in the same way the RTL is wrong -- and
-for the PROD demotion branch the RTL and ``hw/sys/sep/doc/lifecycle_controller.adoc``
-disagree today, so this model follows the RTL. If the RTL is corrected to match the
-chapter, re-derive this model from the chapter's per-state table rather than
-transcribing the new RTL, or the same blind spot comes back in a new form. See the "Lifecycle decode: golden
-follows RTL" note in docs/verification_plan_phase1.adoc before extending it.
+PROVENANCE -- read this before trusting a pass. This model is derived from Table 50
+("Per-LC-state feature control profile") of ``hw/sys/sep/doc/lifecycle_controller.adoc``,
+NOT transcribed from ``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv``. That direction is
+deliberate and it matters: an expectation that shares a source with the thing it
+measures cannot disagree with it.
+
+Earlier revisions of this file did transcribe the RTL, because the RTL and the chapter
+disagreed on the PROD demotion branch and the RTL was what shipped. That disagreement
+is resolved -- the spec updates behind PR #242 changed the RTL to match the chapter --
+so the model is now taken from the chapter, as the note in this file used to instruct.
+Keep it that way. If a future decode change makes them disagree again, follow the
+chapter and let the test fail; do not re-transcribe the RTL.
 
 Also holds the lifecycle-state encoding / transition validators: legal encoding,
 W1S monotonicity, valid transition, and terminal stability. These express the
@@ -54,13 +55,19 @@ LCC_FEAT_CTRL = SEP_LCC_BASE + 0x0    # 64-bit RO, hw-driven from lc_state; [0]=
 LCC_DEMOTE_1 = SEP_LCC_BASE + 0x8     # demote [0:0], lock [1:1]
 LCC_DEMOTE_2 = SEP_LCC_BASE + 0x10
 
-# -- feat_ctrl bit layout (sep_efuse_map_lc_disable_reg_t) ---------------------
-#   [31:0]  Debug  (sep_debug, soc_debug, ap_debug, ap_trace, sip_debug, rsvd)
-#   [47:32] Test   (fuse_test, sep_stest, sep_dtest, ap_stest, ap_dtest, rsvd)
-#   [63:48] Func   (func_reserved[15:0])
+# -- feat_ctrl bit layout (sep_efuse_pkg, and Table 50's four groups) ---------
+# Feature control is per GROUP, and demotion acts on one debug group at a time --
+# which is why DBG_1 and DBG_2 need separate masks rather than one Debug mask.
+#   [15:0]  DBG_1    bit 0 sep_debug, bit 1 chiplet_dbg, [15:2] reserved
+#   [31:16] DBG_2    bit 16 sip_debug, [31:17] reserved
+#   [47:32] DFT      bit 32 sep_fuse_test, [36:33] reserved, 37 smc_fuse_test,
+#                    38 fuse_vendor_test, [47:39] reserved
+#   [63:48] Function func_reserved[15:0]
 M64 = (1 << 64) - 1
-DEBUG_MASK = (1 << 32) - 1            # bits [31:0]
-TEST_MASK = ((1 << 16) - 1) << 32     # bits [47:32]
+DBG1_MASK = (1 << 16) - 1             # bits [15:0]
+DBG2_MASK = ((1 << 16) - 1) << 16     # bits [31:16]
+DEBUG_MASK = DBG1_MASK | DBG2_MASK    # bits [31:0], both debug groups
+TEST_MASK = ((1 << 16) - 1) << 32     # bits [47:32] -- the DFT group
 FUNC_MASK = ((1 << 16) - 1) << 48     # bits [63:48]
 
 
@@ -123,36 +130,45 @@ def feat_ctrl_expected(
 ) -> int:
     """Expected 64-bit FEAT_CTRL for the given lifecycle state and inputs.
 
-    Faithful port of sep_lifecycle_ctrl.sv: the unique-case decode (lines 78-154)
-    followed by the security_disable override (line 61) and the secure_tm test-bit
-    clear (lines 65-73). ``sip_dis``/``sys_dis`` are the 64-bit sensed shadow
-    values; ``demote_*``/``secure_tm``/``sec_dis`` default to the no-CPU image
-    case (DEMOTE regs at reset, normal non-secure image).
+    Derived from Table 50 of the lifecycle-controller chapter. ``sip_dis``/``sys_dis``
+    are the 64-bit sensed shadow values; ``demote_*``/``secure_tm``/``sec_dis``
+    default to the no-CPU image case (DEMOTE regs at reset, normal non-secure image).
+
+    DEMOTE_1 and DEMOTE_2 are independent and act only on their own debug group:
+    DEMOTE_1 on DBG_1 [15:0], DEMOTE_2 on DBG_2 [31:16]. Neither touches DFT or
+    Function. In TEST_DEV a demotion forces its group fully open, overriding the DIS
+    vectors; in PROD it only relaxes its group to honour them ("one level down from
+    disabled"), so a DIS bit set in both vectors keeps that feature off even when
+    demoted.
     """
     sip_dis &= M64
     sys_dis &= M64
 
     if sigint_err:
         feat = 0
-    elif lc_raw == LC_TEST_DEV:                       # 4'b0000
-        feat = (~(sip_dis | sys_dis)) & M64
-        if demote_1 or demote_2:
-            feat |= DEBUG_MASK                        # re-enable all debug
-    elif lc_raw == LC_PROD:                           # 4'b0001
-        if demote_1:                                  # PROD_DBG_1: {T,F,~SIP.FUNC}
-            feat = DEBUG_MASK | ((~sip_dis) & FUNC_MASK)
-        elif demote_2:                                # PROD_DBG_2: {T,F,~SYS.FUNC}
-            feat = DEBUG_MASK | ((~sys_dis) & FUNC_MASK)
-        else:                                         # PROD: {F,F,~(SIP|SYS).FUNC}
-            feat = (~(sip_dis | sys_dis)) & FUNC_MASK
-    elif lc_raw == LC_PROD_END:                       # 4'b1000
-        feat = (~(sip_dis | sys_dis)) & FUNC_MASK
-    elif lc_raw in (LC_RMA_SIP_0, LC_RMA_SIP_1):      # 4'b001?
-        feat = (~sip_dis) & M64
-    elif lc_raw in (LC_RMA_CHIP_0, LC_RMA_CHIP_1):    # 4'b011?
-        feat = M64
-    else:                                             # INVALID/others
-        feat = 0
+    else:
+        both = (~(sip_dis | sys_dis)) & M64           # both vectors bind
+        sip_only = (~sip_dis) & M64                   # SIP_DIS alone binds the SiP owner
+        if lc_raw == LC_TEST_DEV:                     # 4'b0000
+            feat = both
+            if demote_1:                              # DBG_1 forced open
+                feat = (feat & ~DBG1_MASK) | DBG1_MASK
+            if demote_2:                              # DBG_2 forced open
+                feat = (feat & ~DBG2_MASK) | DBG2_MASK
+        elif lc_raw == LC_PROD:                       # 4'b0001
+            feat = both & FUNC_MASK                   # debug + DFT off unless demoted
+            if demote_1:                              # DBG_1 relaxed to the DIS vectors
+                feat |= both & DBG1_MASK
+            if demote_2:                              # DBG_2 relaxed to the DIS vectors
+                feat |= both & DBG2_MASK
+        elif lc_raw == LC_PROD_END:                   # 4'b1000, demotion has no effect
+            feat = both & FUNC_MASK
+        elif lc_raw in (LC_RMA_SIP_0, LC_RMA_SIP_1):  # 4'b001?, demotion has no effect
+            feat = sip_only
+        elif lc_raw in (LC_RMA_CHIP_0, LC_RMA_CHIP_1):  # 4'b011?, all features enabled
+            feat = M64
+        else:                                         # INVALID/others -- chip not live
+            feat = 0
 
     if sec_dis:
         feat = M64
@@ -162,11 +178,11 @@ def feat_ctrl_expected(
 
 
 # -- import-time KAT self-test -------------------------------------------------
-# Hand-computed (input -> expected) vectors pinning each decode branch, so a
-# transcription error in the formula above (wrong mask, dropped branch, inverted
-# override) fails loudly here at import rather than as a silent feat_ctrl mismatch
-# deep in a sim. Independent of DUT output: the expected values are derived by
-# hand from sep_lifecycle_ctrl.sv, not observed. Note secure_tm=0 (the no-CPU
+# Hand-computed (input -> expected) vectors pinning each decode branch, so an error
+# in the formula above (wrong mask, dropped branch, inverted override) fails loudly
+# here at import rather than as a silent feat_ctrl mismatch deep in a sim.
+# Independent of DUT output AND of the RTL: every expected value is worked out by
+# hand from Table 50 of the lifecycle-controller chapter. Note secure_tm=0 (the no-CPU
 # image default) clears TEST_MASK ([47:32]), so a full-ones result reads
 # 0xFFFF_0000_FFFF_FFFF.
 _FULL_NO_TEST = 0xFFFF_0000_FFFF_FFFF       # M64 with TEST_MASK cleared
@@ -177,7 +193,18 @@ _LCC_GOLDEN_VECTORS = (
     (LC_TEST_DEV, 0, 0, {}, _FULL_NO_TEST),                       # all-enable, test bits cleared
     (LC_TEST_DEV, 0, 0, {"secure_tm": 1}, M64),                   # secure_tm keeps test bits
     (LC_PROD, 0, 0, {}, _FUNC_ALL),                               # PROD: func only, debug off
-    (LC_PROD, 0, 0, {"demote_1": 1}, 0xFFFF_0000_FFFF_FFFF),      # PROD_DBG_1: debug + func
+    (LC_PROD, 0, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFF),      # PROD+DEMOTE_1: DBG_1 only
+    (LC_PROD, 0, 0, {"demote_2": 1}, 0xFFFF_0000_FFFF_0000),      # PROD+DEMOTE_2: DBG_2 only
+    # DEMOTE in PROD only RELAXES its group to the DIS vectors -- it does not force
+    # them open. sep_debug (bit 0) is disabled here, so DEMOTE_1 must leave it off.
+    # This is the vector that pins the difference from the pre-#242 decode, where
+    # the branch forced all of [31:0] to 1 regardless of the DIS bits.
+    (LC_PROD, 0x1, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFE),
+    # In TEST_DEV a demotion DOES force its group open over the DIS vectors, and
+    # only its own group -- so an all-ones SIP_DIS still leaves the other group off.
+    (LC_TEST_DEV, M64, 0, {"demote_1": 1}, 0x0000_0000_0000_FFFF),
+    (LC_TEST_DEV, M64, 0, {"demote_2": 1}, 0x0000_0000_FFFF_0000),
+    (LC_TEST_DEV, M64, 0, {"demote_1": 1, "demote_2": 1}, 0x0000_0000_FFFF_FFFF),
     (LC_PROD, 0x000A_0000_0000_0000, 0, {}, 0xFFF5_0000_0000_0000),  # func-bit masking by SIP
     (LC_RMA_CHIP_1, 0, 0, {}, _FULL_NO_TEST),                     # RMA_CHIPLET: all ones
     (LC_PROD, 0, 0, {"sec_dis": 1, "secure_tm": 1}, M64),        # SEC_DIS override = all ones

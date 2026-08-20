@@ -5,7 +5,7 @@ OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test`` (TEST 3
 reference suite). Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
 PROD_DBG_1 (sep_debug=1, filter skipped). Datapath
-(``sep.sv``: ``inbound_filter_skip_i = feat_ctrl_o.sep_debug``):
+(``sep.sv``: ``inbound_filter_skip_i = feat_ctrl.sep_debug``):
 
     eFuse OTP (LC_STATE=PROD) --sense--> LCC --feat_ctrl[0]=sep_debug-->
         u_inbound_filter.filter_skip_i --gates--> smn_inbound external AXI
@@ -30,14 +30,14 @@ Checkers (each logs positive evidence):
   * CHK-DEMOTE     DEMOTE_1.demote write -> read-back == 1.
   * CHK-DBG-FEAT   FEAT_CTRL == golden(PROD_DBG_1), sep_debug==1 (scoreboard).
   * CHK-DBG-ALLOW  external probe reads BOTH FEAT_CTRL halves OKAY and returns
-    the distinctive golden value 0xf0f00000_ffffffff (proves the external path
+    the distinctive golden value 0xf0000000_0000f003 (proves the external path
     actually reached the LCC, not merely returned OKAY/all-ones).
   * CHK-IDENTITY   external access follows sep_debug: blocked@0, allowed@1 -- the
     frontdoor (FEAT_CTRL[0]) replacement for the reference suite's backdoor filter_skip read.
   * CHK-NONVAC     both block and allow outcomes observed (the A->B transition is
     real, not a single stuck state).
 
-Stronger than reference suite: reference suite reads ``filter_skip_i`` by backdoor ``uvm_hdl_read`` and
+Stronger than the reference suite: the reference suite reads ``filter_skip_i`` by backdoor ``uvm_hdl_read`` and
 checks only ``feat_ctrl[0]``; the OSS port reads FEAT_CTRL frontdoor with an exact
 64-bit golden value-check, requires the blocked external read to return DECERR,
 and proves the allowed external read returns the LCC's distinctive FEAT_CTRL high
@@ -64,8 +64,14 @@ _MAX_SENSE_CYCLES = 20_000
 
 # Distinct non-zero disable vectors so the decoded FEAT_CTRL is a non-trivial
 # value in BOTH states (guards the golden checks against a vacuous all-zero pass).
-_SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
-_SYS_DIS = 0x00FF_00FF_00FF_00FF
+# DBG_1 bits 0 (sep_debug) and 1 (chiplet_dbg) are deliberately LEFT ENABLED in both
+# vectors. Under the per-group decode a PROD demotion only relaxes its debug group to
+# honour SIP_DIS|SYS_DIS -- it no longer forces the group open -- so a vector that
+# disables sep_debug would make this test's own property unreachable: DEMOTE_1 would
+# be honoured correctly and sep_debug would still read 0. Every other DIS bit stays
+# set, so the value remains distinctive rather than all-ones.
+_SIP_DIS = 0x0F0F_0F0F_0F0F_0F0C
+_SYS_DIS = 0x00FF_00FF_00FF_00FC
 
 
 @pyuvm.test()
@@ -142,12 +148,15 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             ctl_dbg.feat_ctrl,
         )
 
-        # Read BOTH FEAT_CTRL halves over the external master. The lo word is
-        # 0xffffffff (all debug bits) -- proves OKAY but is not distinctive. The
-        # hi word (~SIP_DIS & FUNC_MASK = 0xf0f00000 here) is a DISTINCTIVE value:
-        # a dummy responder returning all-ones (or any unrelated OKAY slave) would
-        # fail it, so matching it proves the external read actually reached the
-        # LCC FEAT_CTRL register.
+        # Read BOTH FEAT_CTRL halves over the external master. The DISTINCTIVE half is
+        # now the LO word: demotion acts only on DBG_1, so the hi (Function) word is
+        # identical in PROD and PROD_DBG_1 and cannot distinguish them. The lo word
+        # is ~(SIP_DIS|SYS_DIS).DBG_1 = 0x0000f003 -- neither all-ones nor zero, so a
+        # dummy responder or any unrelated OKAY slave fails it, and matching it proves
+        # the external read actually reached the LCC FEAT_CTRL register.
+        #
+        # This argument was previously made about the hi word, which was correct only
+        # while the old decode let a demotion rewrite Function as well.
         exp_lo = feat_dbg & 0xFFFF_FFFF
         exp_hi = (feat_dbg >> 32) & 0xFFFF_FFFF
         probe_lo = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
@@ -165,8 +174,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         )
         self.logger.info(
             "CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0x%08x_%08x == golden "
-            "(hi word 0x%08x is distinctive -> external read reached the LCC)",
-            probe_hi.rdata, probe_lo.rdata, exp_hi,
+            "(lo word 0x%08x is distinctive -> external read reached the LCC)",
+            probe_hi.rdata, probe_lo.rdata, exp_lo,
         )
 
         # ---- filter_skip_i identity + non-vacuity ----
