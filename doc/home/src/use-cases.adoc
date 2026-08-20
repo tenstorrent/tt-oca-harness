@@ -3,9 +3,6 @@
 
 = Use Cases
 
-[WARNING]
-From TRM - should we remove this section from the TRM?
-
 The following use cases illustrate how OCAH provides value as a
 system-level framework for reusable chiplet infrastructure. Rather than
 focusing on individual internal blocks, these use cases highlight the
