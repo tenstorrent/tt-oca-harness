@@ -15,8 +15,7 @@ verification plans:
 * [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) — the
   Phase 1 baseline, closed.
 * [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) — Phase 2
-  basic-feature breadth, active. Entries live in the included
-  `verification_plan_phase2_entries.adoc`.
+  basic-feature breadth, active.
 * [`docs/verification_plan_phase3.adoc`](docs/verification_plan_phase3.adoc) — Phase 3
   candidates, unscheduled and moving to a new UVM environment.
 
