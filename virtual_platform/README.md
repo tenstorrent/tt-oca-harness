@@ -44,9 +44,24 @@ make fw-run FW_TEST=hello_world              # a hw/sys/sep/dv/fw test on the VP
 make vp-test PYTEST_ARGS="--no-build -k bootcode"
 ```
 
-Requirements: `gcc-toolset-11` (VeeR-ISS does not compile under gcc-13/14), a RISC-V
-cross toolchain for the firmware builds (`RISCV_TOOLCHAIN=...`), `uv` for the Python
-environment, and network access (or pre-seeded `downloads/`) for the dependency tarballs.
+Requirements:
+
+- **A C++20-capable compiler on PATH** (g++ ≥ 10; `make check-cxx` verifies, `CXX=...`
+  overrides). Activate it yourself — e.g. on RHEL via `scl enable gcc-toolset-<N> bash`.
+  g++ 11/12 are known good; 13/14 have been seen to miscompile tt-oca-sim's VeeR-ISS
+  on some hosts.
+- **Boost ≥ 1.74** (`iostreams`, `program_options`) and **OpenSSL ≥ 3.0**: used from
+  the system when adequate, otherwise downloaded and built into `local/` automatically.
+  `make deps-info` shows what was chosen and why; `VP_SYS_DEPS=0` forces hermetic
+  local builds. SystemC and CCI are always built into `local/` (rarely system-installed).
+- **A RISC-V cross toolchain** for the firmware builds: on PATH, or point
+  `RISCV_TOOLCHAIN=<prefix>` at an install (its `bin/` is prepended). Optional — the
+  ROM/DV builds fall back to the container (below), and firmware-dependent tests skip
+  cleanly without it.
+- `uv` for the Python environment, and network access (or a pre-seeded `downloads/`)
+  for the dependency tarballs.
+
+No internal tool mounts are required anywhere in the flow.
 
 The boot ROM and DV-engine firmware compile against picolibc, which bare
 riscv-gnu-toolchain installs typically lack; those builds fall back automatically to

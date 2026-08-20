@@ -1,18 +1,22 @@
 # =============================================================================
 # SEP Virtual Platform build (CI-aligned)
 #
-# Mirrors tt-oca-sim/.github/workflows/ci-rhel8.yml: builds SystemC, Boost,
-# OpenSSL, and CCI from source into ./local, then
+# Mirrors tt-oca-sim/.github/workflows/ci-rhel8.yml: resolves or builds the
+# SystemC, Boost, OpenSSL, and CCI dependencies (system installs are used when
+# adequate; otherwise they are built from source into ./local), then
 # configures the VP via tt-oca-sim/vp/configure_vp.sh and builds the sep-vp
 # executable.
 #
 # Quick start:
 #   make scratch-build   # clean rebuild of everything (deps + sep-vp)
 #   make vp              # rebuild just sep-vp (deps assumed built; incremental)
+#   make deps-info       # show where each dependency resolves and why
 #   make clean           # wipe downloads/, local/, and tt-oca-sim/vp/build
 #
-# Run "make help" for the full target/variable list. The repo-level entry
-# points are the ocah-vp-* targets in vp.mk (included by ocah.mk).
+# A C++20-capable compiler (g++ >= 10) must be on PATH (or set CXX=...);
+# `make check-cxx` verifies it. Run "make help" for the full target/variable
+# list. The repo-level entry points are the ocah-vp-* targets in vp.mk
+# (included by ocah.mk).
 # =============================================================================
 
 SHELL       := /bin/bash
@@ -22,15 +26,11 @@ SHELL       := /bin/bash
 .DEFAULT_GOAL := help
 
 # ---- Overridable configuration ---------------------------------------------
-# GCC_TOOLSET: CI builds with gcc-toolset-12, which is NOT installed here
-# (this box has 9/11/13/14). gcc-toolset-13/14 fail to compile VeeR-ISS
-# (sep/cpu/VeeR-ISS/Tlb.cpp: "partial specialization of std::hash<basic_string>
-# after instantiation" — a GCC-13 libstdc++ header-ordering strictness). GCC 11
-# compiles the full C++20 tree cleanly, so it is the default here. Override if
-# gcc-toolset-12 becomes available: make vp GCC_TOOLSET=gcc-toolset-12
-# (Keep comments on their own lines: an inline comment bakes trailing
-#  whitespace into the variable value, which breaks `source .../enable`.)
-GCC_TOOLSET     ?= gcc-toolset-11
+# Compiler: whatever $(CXX) resolves to on PATH (make's default is g++).
+# C++20 needs g++ >= 10. NOTE: g++ 13/14 have been seen to miscompile
+# tt-oca-sim's VeeR-ISS (sep/cpu/VeeR-ISS/Tlb.cpp: "partial specialization of
+# std::hash<basic_string> after instantiation") on some hosts; g++ 11/12 are
+# known good.
 CXX_STD         ?= 20
 SYSTEMC_VERSION ?= 3.0.2
 BOOST_VERSION   ?= 1.84.0
@@ -65,7 +65,7 @@ BOOTCODE_DIR  := $(OCAH_ROOT)/hw/sys/sep/bootrom/prod
 # without it the VP falls back to its vendored snapshot, which lags this repo's table
 # and decodes newer codes as SEP_MSG_UNKNOWN. The checked-in bootrom header is the
 # exact table the boot ROM compiles against, so decoder and firmware cannot drift.
-# Changing this value requires a reconfigure: `make vp-clean` (baked in at configure time).
+# Changing this value triggers a clean reconfigure (see the config stamp below).
 STATUS_VALUES_PATH ?= $(BOOTCODE_DIR)/include/status_values.h
 # The SEP VP models the OpenTitan SPI host only. The Cadence xSPI controller is
 # closed-source IP that was removed from the open SEP; it is not (and will not be)
@@ -101,28 +101,118 @@ else \
 fi
 endef
 
-# ---- Dependency install prefixes (override to use an existing install) ------
-SYSTEMC_HOME ?= $(LOCAL_DIR)/systemc-$(SYSTEMC_VERSION)
-BOOST_ROOT   ?= $(LOCAL_DIR)/boost-$(BOOST_VERSION)
-OPENSSL_ROOT ?= $(LOCAL_DIR)/openssl-$(OPENSSL_VERSION)
-CCI_HOME     ?= $(LOCAL_DIR)/cci-$(CCI_VERSION)
+# ---- Dependency install prefixes ---------------------------------------------
+# Resolution order for Boost/OpenSSL (SystemC/CCI: always ./local unless
+# explicitly overridden — rarely system-installed):
+#   1. explicit BOOST_ROOT/OPENSSL_ROOT (environment or command line; set the
+#      variable EMPTY, e.g. `make vp BOOST_ROOT=`, to re-enable auto-resolution)
+#   2. a complete, already-built ./local install (keeps the CCI<->Boost ODR
+#      pairing and existing checkouts' behavior stable)
+#   3. an adequate system install under /usr (only with VP_SYS_DEPS=auto)
+#   4. otherwise: built from source into ./local by the recipes below.
+VP_SYS_DEPS ?= auto
+# Minimum acceptable system Boost, as BOOST_VERSION from boost/version.hpp
+# (107400 = 1.74.0, the oldest C++20-clean Boost we accept; e.g. RHEL 8's 1.66
+# fails: std::allocator::allocate(n, hint) was removed in C++20).
+BOOST_MIN   ?= 107400
 
-# Sentinel files that mark a dependency as installed (an existing install that
-# already has these will be detected, so its build step is skipped).
+SYSTEMC_LOCAL := $(LOCAL_DIR)/systemc-$(SYSTEMC_VERSION)
+BOOST_LOCAL   := $(LOCAL_DIR)/boost-$(BOOST_VERSION)
+OPENSSL_LOCAL := $(LOCAL_DIR)/openssl-$(OPENSSL_VERSION)
+CCI_LOCAL     := $(LOCAL_DIR)/cci-$(CCI_VERSION)
+
+SYSTEMC_HOME ?= $(SYSTEMC_LOCAL)
+CCI_HOME     ?= $(CCI_LOCAL)
+SYSTEMC_WHY  := $(if $(filter $(SYSTEMC_HOME),$(SYSTEMC_LOCAL)),local (default),explicit ($(origin SYSTEMC_HOME)))
+CCI_WHY      := $(if $(filter $(CCI_HOME),$(CCI_LOCAL)),local (default),explicit ($(origin CCI_HOME)))
+
+# --- Boost ---
+ifeq ($(strip $(BOOST_ROOT)),)
+  # "Complete" local install = headers AND the static libs sep-vp links.
+  ifneq ($(and $(wildcard $(BOOST_LOCAL)/include/boost/version.hpp),$(wildcard $(BOOST_LOCAL)/lib/libboost_program_options.a)),)
+    override BOOST_ROOT := $(BOOST_LOCAL)
+    BOOST_WHY := already built in local/
+  else
+    ifeq ($(VP_SYS_DEPS),auto)
+      # Adequate system Boost = version floor met AND the compiled components
+      # sep-vp needs (iostreams, program_options) actually link.
+      BOOST_SYS_OK := $(shell \
+        v=$$(sed -n 's/^\#define BOOST_VERSION \([0-9][0-9]*\)$$/\1/p' /usr/include/boost/version.hpp 2>/dev/null); \
+        [ -n "$$v" ] && [ "$$v" -ge $(BOOST_MIN) ] \
+        && echo 'int main(){return 0;}' | $(CXX) -x c++ - -lboost_iostreams -lboost_program_options -o /dev/null 2>/dev/null \
+        && echo yes)
+    endif
+    ifeq ($(BOOST_SYS_OK),yes)
+      override BOOST_ROOT := /usr
+      BOOST_WHY := system install (BOOST_VERSION >= $(BOOST_MIN); iostreams+program_options linkable)
+    else
+      override BOOST_ROOT := $(BOOST_LOCAL)
+      BOOST_WHY := will build from source $(if $(filter auto,$(VP_SYS_DEPS)),(no adequate system Boost),(VP_SYS_DEPS=$(VP_SYS_DEPS)))
+    endif
+  endif
+else
+  BOOST_WHY := explicit ($(origin BOOST_ROOT))
+endif
+
+# --- OpenSSL ---
+ifeq ($(strip $(OPENSSL_ROOT)),)
+  ifneq ($(and $(wildcard $(OPENSSL_LOCAL)/include/openssl/ssl.h),$(wildcard $(OPENSSL_LOCAL)/lib64/libssl.a)),)
+    override OPENSSL_ROOT := $(OPENSSL_LOCAL)
+    OPENSSL_WHY := already built in local/
+  else
+    ifeq ($(VP_SYS_DEPS),auto)
+      # core_names.h is the actual >= 3.0 requirement (EVP_MAC API for the
+      # hmac/kmac peripherals) — no version parsing needed. Dev headers imply
+      # the dev libs on mainstream distros.
+      OPENSSL_SYS_OK := $(if $(and $(wildcard /usr/include/openssl/ssl.h),$(wildcard /usr/include/openssl/core_names.h)),yes)
+    endif
+    ifeq ($(OPENSSL_SYS_OK),yes)
+      override OPENSSL_ROOT := /usr
+      OPENSSL_WHY := system install (OpenSSL >= 3.0: core_names.h present)
+    else
+      override OPENSSL_ROOT := $(OPENSSL_LOCAL)
+      OPENSSL_WHY := will build from source $(if $(filter auto,$(VP_SYS_DEPS)),(system OpenSSL missing or < 3.0),(VP_SYS_DEPS=$(VP_SYS_DEPS)))
+    endif
+  endif
+else
+  OPENSSL_WHY := explicit ($(origin OPENSSL_ROOT))
+endif
+
+# Sentinels that mark a dependency as usable. Local installs use the
+# last-installed artifact (robust against an interrupted install); explicit or
+# system prefixes use the probe file their layout is guaranteed to have (their
+# recipes must never fire — hence the order-only tarball prereqs below).
 SYSTEMC_SENTINEL := $(SYSTEMC_HOME)/include/systemc.h
-BOOST_SENTINEL   := $(BOOST_ROOT)/include/boost/version.hpp
-OPENSSL_SENTINEL := $(OPENSSL_ROOT)/include/openssl/ssl.h
 CCI_SENTINEL     := $(CCI_HOME)/lib/libcci.a
+ifeq ($(BOOST_ROOT),$(BOOST_LOCAL))
+  BOOST_SENTINEL := $(BOOST_ROOT)/lib/libboost_program_options.a
+else
+  BOOST_SENTINEL := $(BOOST_ROOT)/include/boost/version.hpp
+endif
+ifeq ($(OPENSSL_ROOT),$(OPENSSL_LOCAL))
+  # The recipe pins the linux-x86_64 Configure target, whose libdir is lib64.
+  OPENSSL_SENTINEL := $(OPENSSL_ROOT)/lib64/libssl.a
+else
+  OPENSSL_SENTINEL := $(OPENSSL_ROOT)/include/openssl/ssl.h
+endif
+
+define DEPS_INFO
+echo "[VP] Dependency prefixes (VP_SYS_DEPS=$(VP_SYS_DEPS)):"
+echo "[VP]   SYSTEMC_HOME = $(SYSTEMC_HOME)   [$(SYSTEMC_WHY)]"
+echo "[VP]   CCI_HOME     = $(CCI_HOME)   [$(CCI_WHY)]"
+echo "[VP]   BOOST_ROOT   = $(BOOST_ROOT)   [$(BOOST_WHY)]"
+echo "[VP]   OPENSSL_ROOT = $(OPENSSL_ROOT)   [$(OPENSSL_WHY)]"
+endef
 
 # ---- Runtime env script (generated by `make env`) ---------------------------
 # Resolve each dependency's library subdir robustly (lib-linux64 / lib64 / lib),
 # falling back to the canonical default when the dep is not built yet. This is
-# also where an overridden prefix (e.g. a /tools_soc install) gets its layout right.
+# also where an overridden prefix gets its layout right.
 ENV_SCRIPT      := $(VP_DIR)/setup_environment.sh
 SYSTEMC_LIBDIR  := $(or $(firstword $(wildcard $(SYSTEMC_HOME)/lib-linux64 $(SYSTEMC_HOME)/lib64 $(SYSTEMC_HOME)/lib)),$(SYSTEMC_HOME)/lib-linux64)
 CCI_LIBDIR      := $(or $(firstword $(wildcard $(CCI_HOME)/lib $(CCI_HOME)/lib64 $(CCI_HOME)/lib-linux64)),$(CCI_HOME)/lib)
-BOOST_LIBDIR    := $(or $(firstword $(wildcard $(BOOST_ROOT)/lib $(BOOST_ROOT)/lib64)),$(BOOST_ROOT)/lib)
-OPENSSL_LIBDIR  := $(or $(firstword $(wildcard $(OPENSSL_ROOT)/lib64 $(OPENSSL_ROOT)/lib)),$(OPENSSL_ROOT)/lib64)
+BOOST_LIBDIR    := $(or $(firstword $(wildcard $(BOOST_ROOT)/lib $(BOOST_ROOT)/lib64 $(BOOST_ROOT)/lib/x86_64-linux-gnu)),$(BOOST_ROOT)/lib)
+OPENSSL_LIBDIR  := $(or $(firstword $(wildcard $(OPENSSL_ROOT)/lib64 $(OPENSSL_ROOT)/lib $(OPENSSL_ROOT)/lib/x86_64-linux-gnu)),$(OPENSSL_ROOT)/lib64)
 
 # ---- Download artifacts -----------------------------------------------------
 BOOST_USCORE    := boost_$(subst .,_,$(BOOST_VERSION))
@@ -131,12 +221,20 @@ BOOST_TARBALL   := $(DOWNLOAD_DIR)/$(BOOST_USCORE).tar.gz
 OPENSSL_TARBALL := $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VERSION).tar.gz
 CCI_TARBALL     := $(DOWNLOAD_DIR)/cci_v$(CCI_VERSION).tar.gz
 
-# Activate the C++20 toolchain at the top of each build recipe.
-ACTIVATE := source /opt/rh/$(GCC_TOOLSET)/enable
+# ---- Configure stamp ---------------------------------------------------------
+# Reconfigure (with a clean build dir) whenever the dep prefixes, C++ standard,
+# effective compiler, or the configure-baked status table change. Content-stamp
+# pattern: the stamp is only rewritten when the signature differs, so its mtime
+# is stable across no-op runs.
+# Fingerprint by target+version (not the $(CXX) spelling) so `CXX=/path/to/g++`
+# and an activated-PATH `g++` of the same compiler don't ping-pong reconfigures.
+CXX_ID        := $(shell $(CXX) -dumpmachine 2>/dev/null)-$(shell $(CXX) -dumpversion 2>/dev/null)
+VP_CONFIG_SIG := $(SYSTEMC_HOME)|$(CCI_HOME)|$(BOOST_ROOT)|$(OPENSSL_ROOT)|c++$(CXX_STD)|$(CXX_ID)|$(STATUS_VALUES_PATH)
+DEP_STAMP     := $(VP_DIR)/.vp-config-stamp
 
-.PHONY: help scratch-build download deps vp vp-clean clean env enable_vp \
-        systemc boost openssl cci submodule-init check-tt-oca-sim smoke \
-        boot-build boot-secure-image boot-run fw-run vp-test vp-py-deps
+.PHONY: help scratch-build download deps deps-info vp vp-clean clean env enable_vp \
+        systemc boost openssl cci submodule-init check-tt-oca-sim check-cxx smoke \
+        boot-build boot-secure-image boot-run fw-run vp-test vp-py-deps FORCE
 
 # =============================================================================
 # Help
@@ -149,12 +247,14 @@ help:
 	@echo "  vp             - build/rebuild sep-vp (incremental; deps assumed built)"
 	@echo "  vp-clean       - wipe vp/build and reconfigure + rebuild sep-vp"
 	@echo "  clean          - remove downloads/, local/, and tt-oca-sim/vp/build"
+	@echo "  deps-info      - show where each dependency resolves and why"
+	@echo "  check-cxx      - verify the compiler on PATH can build C++$(CXX_STD)"
 	@echo "  env/enable_vp  - write setup_environment.sh to source for running sep-vp standalone"
 	@echo ""
 	@echo "Phase targets:"
-	@echo "  download       - fetch the 4 dependency source tarballs into downloads/"
-	@echo "  deps           - build+install SystemC, Boost, OpenSSL, CCI into local/"
-	@echo "  systemc boost openssl cci - build a single dependency"
+	@echo "  download       - fetch the dependency source tarballs into downloads/"
+	@echo "  deps           - resolve or build SystemC, Boost, OpenSSL, CCI"
+	@echo "  systemc boost openssl cci - resolve/build a single dependency"
 	@echo "  submodule-init - init the tt-oca-sim submodule (recursive)"
 	@echo "  smoke          - (optional) build+run a sw/sep-vp-tests test in sep-vp"
 	@echo ""
@@ -167,15 +267,18 @@ help:
 	@echo "  vp-py-deps       - sync harness Python deps into the uv venv (uv sync --group vp)"
 	@echo ""
 	@echo "Key variables (override on the command line):"
-	@echo "  GCC_TOOLSET=$(GCC_TOOLSET)   CXX_STD=$(CXX_STD)   NPROC=$(NPROC)"
+	@echo "  CXX=$(CXX)   CXX_STD=$(CXX_STD)   NPROC=$(NPROC)"
+	@echo "  VP_SYS_DEPS=$(VP_SYS_DEPS) (auto: use adequate system Boost/OpenSSL; 0: hermetic local builds)"
+	@echo "  BOOST_MIN=$(BOOST_MIN) (minimum acceptable system BOOST_VERSION)"
 	@echo "  SYSTEMC_VERSION=$(SYSTEMC_VERSION)  BOOST_VERSION=$(BOOST_VERSION)  OPENSSL_VERSION=$(OPENSSL_VERSION)  CCI_VERSION=$(CCI_VERSION)"
-	@echo "  SYSTEMC_HOME / BOOST_ROOT / OPENSSL_ROOT / CCI_HOME  (point at an existing install to skip its build)"
+	@echo "  SYSTEMC_HOME / BOOST_ROOT / OPENSSL_ROOT / CCI_HOME  (point at an existing install;"
+	@echo "    set one EMPTY, e.g. 'make vp BOOST_ROOT=', to re-enable auto-resolution)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make scratch-build"
 	@echo "  make vp"
 	@echo "  make env && source setup_environment.sh   # then run sep-vp directly"
-	@echo "  make deps BOOST_ROOT=/tools_soc/opensrc/boost/1.87.0 OPENSSL_ROOT=/tools_soc/opensrc/openssl/3.5.4"
+	@echo "  make deps BOOST_ROOT=/path/to/boost OPENSSL_ROOT=/path/to/openssl-3"
 
 # =============================================================================
 # Aggregate phases
@@ -192,6 +295,10 @@ scratch-build:
 download: $(SYSTEMC_TARBALL) $(BOOST_TARBALL) $(OPENSSL_TARBALL) $(CCI_TARBALL)
 
 deps: $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(OPENSSL_SENTINEL) $(CCI_SENTINEL)
+	@$(DEPS_INFO)
+
+deps-info:
+	@$(DEPS_INFO)
 
 systemc: $(SYSTEMC_SENTINEL)
 boost:   $(BOOST_SENTINEL)
@@ -199,6 +306,19 @@ openssl: $(OPENSSL_SENTINEL)
 cci:     $(CCI_SENTINEL)
 
 vp: vp-build
+
+# =============================================================================
+# Compiler capability check (order-only prereq of every compile step)
+# =============================================================================
+check-cxx:
+	@if ! echo 'int main(){return 0;}' | $(CXX) -std=c++$(CXX_STD) -x c++ - -o /dev/null 2>/dev/null; then
+	  echo "[VP] ERROR: '$(CXX)' cannot compile C++$(CXX_STD)." >&2
+	  echo "[VP]   Effective compiler: $$(command -v $(CXX) 2>/dev/null || echo '<not found>') ($$($(CXX) --version 2>/dev/null | head -1))" >&2
+	  echo "[VP]   Fix: install g++ >= 10 (e.g. apt install g++; on RHEL install a" >&2
+	  echo "[VP]        gcc-toolset and activate it in your shell, e.g. 'scl enable gcc-toolset-12 bash')," >&2
+	  echo "[VP]        or point CXX=/path/to/modern/g++." >&2
+	  exit 1
+	fi
 
 # =============================================================================
 # Directories
@@ -227,10 +347,19 @@ $(CCI_TARBALL): | $(DOWNLOAD_DIR)
 
 # =============================================================================
 # Dependency builds (commands lifted from ci-rhel8.yml Job 1)
+#
+# Sentinel prereqs are ORDER-ONLY: the sentinels have pure existence semantics
+# (an explicit/system prefix must never look "out of date" against a freshly
+# downloaded tarball and trigger an install into it). Each recipe also refuses
+# to install outside ./local as defense in depth.
 # =============================================================================
-$(SYSTEMC_SENTINEL): $(SYSTEMC_TARBALL) | $(LOCAL_DIR)
+define REFUSE_NON_LOCAL
+case "$(1)" in $(LOCAL_DIR)/*) ;; *) echo "[VP] refusing to build into non-local prefix $(1)" >&2; exit 1;; esac
+endef
+
+$(SYSTEMC_SENTINEL): | $(SYSTEMC_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building SystemC $(SYSTEMC_VERSION)..."
-	$(ACTIVATE)
+	$(call REFUSE_NON_LOCAL,$(SYSTEMC_HOME))
 	rm -rf $(DOWNLOAD_DIR)/systemc-$(SYSTEMC_VERSION)
 	tar zxf $(SYSTEMC_TARBALL) -C $(DOWNLOAD_DIR)
 	cd $(DOWNLOAD_DIR)/systemc-$(SYSTEMC_VERSION)
@@ -241,9 +370,9 @@ $(SYSTEMC_SENTINEL): $(SYSTEMC_TARBALL) | $(LOCAL_DIR)
 	make -j$(NPROC)
 	make install
 
-$(BOOST_SENTINEL): $(BOOST_TARBALL) | $(LOCAL_DIR)
+$(BOOST_SENTINEL): | $(BOOST_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building Boost $(BOOST_VERSION)..."
-	$(ACTIVATE)
+	$(call REFUSE_NON_LOCAL,$(BOOST_ROOT))
 	rm -rf $(DOWNLOAD_DIR)/$(BOOST_USCORE)
 	tar zxf $(BOOST_TARBALL) -C $(DOWNLOAD_DIR)
 	cd $(DOWNLOAD_DIR)/$(BOOST_USCORE)
@@ -252,11 +381,12 @@ $(BOOST_SENTINEL): $(BOOST_TARBALL) | $(LOCAL_DIR)
 	  --with-atomic --with-chrono --with-date_time --with-filesystem \
 	  --with-iostreams --with-log --with-program_options --with-regex \
 	  --with-system --with-thread \
+	  cxxflags=-fPIC cflags=-fPIC \
 	  link=static threading=multi variant=release cxxstd=17 -j$(NPROC)
 
-$(OPENSSL_SENTINEL): $(OPENSSL_TARBALL) | $(LOCAL_DIR)
+$(OPENSSL_SENTINEL): | $(OPENSSL_TARBALL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building OpenSSL $(OPENSSL_VERSION)..."
-	$(ACTIVATE)
+	$(call REFUSE_NON_LOCAL,$(OPENSSL_ROOT))
 	rm -rf $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VERSION)
 	tar zxf $(OPENSSL_TARBALL) -C $(DOWNLOAD_DIR)
 	cd $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VERSION)
@@ -264,10 +394,11 @@ $(OPENSSL_SENTINEL): $(OPENSSL_TARBALL) | $(LOCAL_DIR)
 	make -j$(NPROC)
 	make install_sw
 
-# CCI links against SystemC and Boost, so both must be built first.
-$(CCI_SENTINEL): $(CCI_TARBALL) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) | $(LOCAL_DIR)
+# CCI links against SystemC and Boost, so both must be resolved first (order-only:
+# their timestamps are irrelevant, their existence is the contract).
+$(CCI_SENTINEL): | $(CCI_TARBALL) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(LOCAL_DIR) check-cxx
 	@echo "[VP] Building CCI $(CCI_VERSION)..."
-	$(ACTIVATE)
+	$(call REFUSE_NON_LOCAL,$(CCI_HOME))
 	rm -rf $(DOWNLOAD_DIR)/cci_v$(CCI_VERSION)
 	tar zxf $(CCI_TARBALL) -C $(DOWNLOAD_DIR)
 	cd $(DOWNLOAD_DIR)/cci_v$(CCI_VERSION)
@@ -294,16 +425,38 @@ submodule-init:
 # =============================================================================
 # VP configure + build (delegates to configure_vp.sh, deps passed via env)
 # =============================================================================
-# Configure runs once; the generated vp/build/Makefile is the sentinel.
-$(VP_BUILD_DIR)/Makefile: $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(OPENSSL_SENTINEL) $(CCI_SENTINEL) | check-tt-oca-sim
+FORCE:
+
+$(DEP_STAMP): FORCE
+	@if [ "$$(cat '$@' 2>/dev/null)" != '$(VP_CONFIG_SIG)' ]; then
+	  if [ ! -e '$@' ] && [ -f '$(VP_BUILD_DIR)/Makefile' ]; then
+	    # Migration: adopt a build configured before this stamp existed
+	    # (assumed consistent) without retriggering a reconfigure.
+	    printf '%s' '$(VP_CONFIG_SIG)' > '$@'
+	    touch -r '$(VP_BUILD_DIR)/Makefile' '$@'
+	  else
+	    printf '%s' '$(VP_CONFIG_SIG)' > '$@'
+	  fi
+	fi
+
+# Configure runs once per configuration; the generated vp/build/Makefile is the
+# sentinel, and the config stamp forces a CLEAN reconfigure when the dep
+# prefixes / compiler / status table change (a stale CMakeCache pinning old
+# paths is worse than a rebuild).
+$(VP_BUILD_DIR)/Makefile: $(DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(OPENSSL_SENTINEL) $(CCI_SENTINEL) | check-tt-oca-sim check-cxx
 	@echo "[VP] Preparing source (submodules)..."
-	$(ACTIVATE)
+	if [ -f "$(VP_BUILD_DIR)/CMakeCache.txt" ]; then
+	  echo "[VP] Build configuration changed — wiping $(VP_BUILD_DIR) for a clean reconfigure."
+	  rm -rf "$(VP_BUILD_DIR)"
+	fi
 	cd $(SIM_DIR)
 	git submodule update --init --recursive
 	echo "[VP] Configuring sep-vp via configure_vp.sh..."
+	$(DEPS_INFO)
 	cd $(VP_SRC_DIR)
 	SYSTEMC_HOME=$(SYSTEMC_HOME) CCI_HOME=$(CCI_HOME) \
 	BOOST_ROOT=$(BOOST_ROOT) OPENSSL_ROOT=$(OPENSSL_ROOT) \
+	VP_BOOST_MIN=$(BOOST_MIN) \
 	CMAKE_BUILD_TYPE=Release CMAKE_CXX_STANDARD=$(CXX_STD) \
 	  ./configure_vp.sh -- -DSEP_SCRATCH_COLD_STATUS_VALUES_PATH=$(STATUS_VALUES_PATH)
 
@@ -313,9 +466,8 @@ $(VP_BUILD_DIR)/Makefile: $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(OPENSSL_SENTIN
 # tracking, so a pulled tt-oca-sim source/header change (e.g. the boot-ROM LMA fix)
 # would be silently skipped. The configure sentinel is an order-only prereq so
 # configure still runs exactly once.
-vp-build: | $(VP_BUILD_DIR)/Makefile
+vp-build: | $(VP_BUILD_DIR)/Makefile check-cxx
 	@echo "[VP] Building sep-vp (incremental, via CMake)..."
-	$(ACTIVATE)
 	$(MAKE) -C $(VP_BUILD_DIR) -j$(NPROC) sep-vp
 	@echo "[VP] Built: $(SEP_VP_BIN)"
 
@@ -333,16 +485,16 @@ vp-clean:
 # =============================================================================
 clean:
 	@echo "[VP] Removing downloads/, local/, and tt-oca-sim/vp/build..."
-	rm -rf $(DOWNLOAD_DIR) $(LOCAL_DIR) $(VP_BUILD_DIR)
+	rm -rf $(DOWNLOAD_DIR) $(LOCAL_DIR) $(VP_BUILD_DIR) $(DEP_STAMP)
 	echo "[VP] Clean complete (tt-oca-sim source untouched)."
 
 # =============================================================================
 # Environment script (run sep-vp outside the Make environment)
 # =============================================================================
 # `make env` (alias `make enable_vp`) writes setup_environment.sh; source it to
-# get SYSTEMC_HOME/CCI_HOME/BOOST_ROOT/OPENSSL_ROOT, the C++ runtime, sep-vp on
-# PATH, and the dep library paths. It lands at the same path the
-# sw/sep-vp-tests run.sh scripts already source.
+# get SYSTEMC_HOME/CCI_HOME/BOOST_ROOT/OPENSSL_ROOT, sep-vp on PATH, and the
+# dep library paths. It lands at the same path the sw/sep-vp-tests run.sh
+# scripts already source.
 # Built with $(file >...) so $$ -> literal '$' in the generated script and
 # $(...) make-vars are interpolated (no shell heredoc / $-escaping pitfalls).
 define ENV_SCRIPT_BODY
@@ -350,12 +502,10 @@ define ENV_SCRIPT_BODY
 # Generated by virtual_platform/Makefile ('make env'). Do not edit by hand.
 # Source this to run sep-vp outside the build environment:
 #     source $(ENV_SCRIPT)
-# Regenerate after a (re)build or when changing deps/toolset:  make env
-
-# C++ runtime + toolchain used to build sep-vp (libstdc++, PATH).
-if [ -f /opt/rh/$(GCC_TOOLSET)/enable ]; then
-    source /opt/rh/$(GCC_TOOLSET)/enable
-fi
+# Regenerate after a (re)build or when changing deps:  make env
+#
+# NOTE: activate the C++ toolchain sep-vp was built with (if its runtime is
+# newer than the system one) before sourcing this script.
 
 # Dependency install prefixes.
 export SYSTEMC_HOME="$(SYSTEMC_HOME)"
@@ -409,7 +559,6 @@ check-tt-oca-sim:
 # =============================================================================
 smoke: vp
 	@echo "[VP] Smoke: build + run sw/sep-vp-tests/$(SW_TEST) in sep-vp"
-	$(ACTIVATE)
 	TESTDIR="$(SIM_DIR)/sw/sep-vp-tests/$(SW_TEST)"
 	if [ ! -d "$$TESTDIR" ]; then
 	  echo "[VP] WARNING: test '$(SW_TEST)' not found under sw/sep-vp-tests; skipping." >&2
