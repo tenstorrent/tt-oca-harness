@@ -74,7 +74,7 @@
 
 #define MBOX_TRIGGER_WORD 0x4700CAFEu
 #define ISR_WAIT_ITERS 200000
-#define STORM_CHECK_ITERS 256
+#define STORM_CHECK_ITERS 4096
 
 // Per-source observation slots, indexed by SRC_*.
 enum { SRC_MBOX = 0, SRC_OTBN = 1, SRC_CSRNG = 2, SRC_N = 3 };
@@ -158,7 +158,7 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src, uint3
     int errors = 0;
     uint32_t snap[SRC_N];
 
-    wr32(intr_enable, bit); // unmask the done interrupt
+    wr32(intr_enable, bit); // unmask the done interrupt (already armed at start)
     for (int j = 0; j < SRC_N; j++) {
         snap[j] = g_count[j];
     }
@@ -234,6 +234,14 @@ int main(void) {
 
     pic_enable_interrupts();
 
+    // Arm every representative source before the quiet window so CHK-NONVAC and
+    // CHK-ONEHOT run with armed neighbours, not with the other IPs still masked.
+    wr32(OTBN_INTR_ENABLE, OTBN_DONE_BIT);
+    wr32(CSRNG_INTR_ENABLE, CSRNG_CMD_DONE_BIT);
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQS, SEP_AXIL_MBOX_IRQ_ALL);
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0xFFu); // usage 0 is not above 0xFF
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, SEP_AXIL_MBOX_IRQ_ALL);
+
     // CHK-NONVAC: nothing asserted yet -> a quiet window must see no ISR.
     for (volatile int i = 0; i < STORM_CHECK_ITERS; i++) {
         __asm__ volatile("nop");
@@ -283,7 +291,9 @@ int main(void) {
         } else {
             sep_mbx_puts("CHK-IP-RW1C PASS: mailbox IRQS read back 0 after W1C\n");
         }
-        sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, 0u); // belt: mask after clear
+        // Keep IRQEN armed. Raise WIRQT past occupancy so the still-full FIFO cannot
+        // re-fire; OTBN/CSRNG one-hot then has the mailbox as an armed neighbour.
+        sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0xFFu);
     }
 
     // --- Source 2: OTBN done -> PIC source 30 (INTR_TEST; CHK-DELIVER) ---

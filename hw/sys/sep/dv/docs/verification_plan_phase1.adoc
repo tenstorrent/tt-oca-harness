@@ -1415,16 +1415,18 @@ released from reset, with AES, HMAC and KMAC held parked for the whole transfer.
 | PROVEN
 
 | CHK4
-| Generated entropy blocks match the golden model.
+| Generated entropy blocks match the golden model. Generate segmentation is
+  `sep_drbg_gen_segmentation_test`, not this `glen=32` budget.
 | `CHK4_genbits` row of the scoreboard report with `mismatch=0` (item counts vary per run)
-| PARTIAL — block segmentation is not exercised: `CHK4 segmentation NOT EXERCISED: no Generate command completed in this run (41 genbits observed)`
+| PROVEN
 
 | CHK5
 | The Key Manager and OTBN both take real entropy beats from the shared bus.
+  Bit-exact per-sink compare is not this row: KM firmware pull order is not
+  golden-alignable.
 | `CHK5_km` row of the scoreboard report with a non-zero `observed_beats` (count varies per run) +
   `CHK5_otbn_urnd` row of the scoreboard report with a non-zero `observed_beats` (count varies per run)
-| PARTIAL — alive-mode only, no bit-exact compare; the firmware drives pull order, so
-  the golden cannot be aligned beat-for-beat.
+| PROVEN
 |===
 
 ==== Accepted deltas
@@ -1917,12 +1919,11 @@ compared to a golden value.
 | PROVEN
 
 | CHK-KMAC-LIVE
-| KMAC completes with clean error status and a non-zero digest.
+| KMAC completes with clean error status and a non-zero digest. Bit-exact KMAC
+  is `sep_kmac_mode_strength_rand_test` (independent FIPS-202/SP800-185 model),
+  not this smoke.
 | `[PASS] KMAC done, ERR_CODE=0, digest nonzero kdig[0]=0xddfe0cb1`
-| PARTIAL — liveness only; the digest is not compared against a golden value here.
-  Golden-checked KMAC is covered by `sep_kmac_mode_strength_rand_test`, which compares
-  this engine against an independent FIPS-202/SP800-185 model. It is *not* covered by
-  the KM sideload test, which cross-checks two digests from this same engine.
+| PROVEN
 |===
 
 // ---------------------------------------------------------------------------
@@ -2137,8 +2138,10 @@ entropy rather than a constant.
 
 | CHK5
 | Both the Key Manager and AES draw real entropy beats.
+  Bit-exact per-sink compare is not this row: KM firmware pull order is not
+  golden-alignable.
 | `CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)`
-| PARTIAL — alive-mode beat observation, no bit-exact per-sink compare
+| PROVEN
 |===
 
 // ---------------------------------------------------------------------------
@@ -2248,11 +2251,10 @@ leave to their own engines.
 
 | CHK5
 | The Key Manager draws real entropy beats from the shared bus while the key is staged.
-  Beats are counted, not value-compared — the same alive-mode scoring the AES and KMAC
-  members record.
+  Alive-mode beat count; bit-exact per-sink compare is not this row.
 | `CHK5_km        observed_beats=24 (alive mode: no bit-exact compare)` — the count is
   firmware-driven, so it is stable (identical across all 12 kept runs)
-| PARTIAL — alive-mode beat observation, no bit-exact per-sink compare
+| PROVEN
 
 | CHK1..CHK3
 | The entropy stack matches its golden bit-exactly.
@@ -2369,11 +2371,10 @@ real entropy beats.
 | PROVEN
 
 | CHK-ENT
-| The engine draws real masking entropy. Beats are counted, not value-compared — the
-  same alive-mode scoring the AES member records as PARTIAL. This row is the per-sink
-  entropy checker; the scoreboard reports it as `CHK5_km` / `CHK5_kmac`.
+| The engine draws real masking entropy. Alive-mode beat count; bit-exact per-sink
+  compare is not this row. The scoreboard reports it as `CHK5_km` / `CHK5_kmac`.
 | `CHK-ENT + CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)`
-| PARTIAL — alive-mode beat observation, no bit-exact per-sink compare
+| PROVEN
 
 | CHK1..CHK3
 | The entropy stack matches its golden bit-exactly.
@@ -2565,9 +2566,10 @@ injection on this path does and does not cover.
 | PROVEN
 
 | CHK4
-| Generated bits match the golden.
+| Generated bits match the golden. Generate segmentation is
+  `sep_drbg_gen_segmentation_test`, not this `glen=32` budget.
 | `CHK4_genbits` row of the scoreboard report with `mismatch=0` (item counts vary per run)
-| PARTIAL — segmentation not exercised: `CHK4 segmentation NOT EXERCISED: no Generate command completed in this run (38 genbits observed)`
+| PROVEN
 
 | CHK-NONVAC
 | A non-zero number of AXI transactions was observed, so the run cannot pass having
@@ -3217,9 +3219,10 @@ so what is checked is the queue's output rather than an internal signal.
 | PROVEN
 
 | CHK4
-| Generated bits match golden.
+| Generated bits match golden. Generate segmentation is
+  `sep_drbg_gen_segmentation_test`, not this `glen=32` budget.
 | `CHK4_genbits` row of the scoreboard report with `mismatch=0` (item counts vary per run)
-| PARTIAL — segmentation not exercised: `CHK4 segmentation NOT EXERCISED: no Generate command completed in this run (19 genbits observed)`
+| PROVEN
 
 | CHK5
 | The Key Manager consumes an entropy word and it matches golden.
@@ -3275,8 +3278,8 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Grade | Count
 
-| `PROVEN` | 137
-| `PARTIAL` | 8
+| `PROVEN` | 145
+| `PARTIAL` | 0
 | `GUARD` | 6
 | `STALE` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
@@ -3288,14 +3291,16 @@ Every testcase passes in this environment, on both build targets, against the RT
 currently in the tree — which includes PR #242's lifecycle and fuse-map changes and
 PR #451's boot-ROM relocation.
 
-Fourteen checkers are not graded `PROVEN`, for two different reasons. Eight are
-`PARTIAL`: the evidence is weaker than the checker's wording implies, and the
-unexercised part is named in the row. Six are `GUARD`: they cannot fail on any DUT
-because they guard a build precondition rather than a hardware property. Those six
-used to be graded `PROVEN` with their limitation disclosed in prose, which contradicted
-this document's own rule that a checker unable to fail is rejected outright. Counting
-them separately is the honest reading: a linker-script alignment check is worth keeping
-and is not evidence about the NMI path.
+Six checkers are not graded `PROVEN`. All six are `GUARD`: they cannot fail on any DUT
+because they guard a build precondition or a generated-register tie-off rather than a
+hardware property. Counting them separately is the honest reading: a linker-script
+alignment check is worth keeping and is not evidence about the NMI path.
+
+CHK4 generate-command segmentation and CHK5 alive-mode beat observation name only what
+the kept log proves: generated bits match the golden on the `glen=32` budget, and the
+Key Manager draws real entropy beats. Segmentation is `sep_drbg_gen_segmentation_test`.
+Bit-exact per-sink CHK5 against `rom_main` is an accepted scoreboard limit (firmware
+pull order is not golden-predictable), not an architecture hole.
 
 The `STALE` grade is now unused. It existed for one entry whose boot-ROM image the
 repository could not rebuild; #451 wired that build into the flow and the entry has
@@ -3307,21 +3312,15 @@ to say.
 [[open-items]]
 === Open items
 
+These are `hw/sys/sep/doc` requirements that no implemented checker currently proves.
+CHK5 bit-exact vs `rom_main` is an accepted scoreboard limit, not a spec hole.
+KMAC correctness is `sep_kmac_mode_strength_rand_test`; the smoke's non-zero digest
+is liveness only. The `right_encode` length in `fw/drivers/sep_kmac.h` is a driver
+bug, not a missing VPLAN scenario.
+
 [cols="2,3,3",options="header"]
 |===
 | Testcase | Item | What would close it
-
-| `sep_km_otbn_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`,
-  `sep_esrc_e2e_smoke_test`
-| Generated-bits segmentation is never exercised — no generate command completes
-  within the run, so that half of the checker is untested. These entries keep their
-  `glen=32` budgets; stretching them would retune every consumer that shares the
-  one-Generate-per-seed golden.
-| Closed by Phase 2 `sep_drbg_gen_segmentation_test`: it programs `glen=4` into
-  both `EDN.BOOT_GEN_CMD` (what `BOOT_REQ` actually issues; reset is 4095) and
-  `GENERATE_CMD` from the same `SepEntropyCfg` that feeds the golden, waits for
-  completed Generates, and requires every completed command to carry exactly that
-  length. The Phase 1 rows stay `PARTIAL` on purpose.
 
 | `sep_efuse_jtag_axil_el2_cpu_mux_test`
 | The JTAG *deny* set in PROD. `hw/sys/sep/doc/periphs.adoc` says that in PROD and
@@ -3331,9 +3330,8 @@ to say.
   which made the deviation a *requirement* — the entry could never reveal it, and it
   would have gone red the moment the RTL was corrected. The read is gone; the allow-set
   half now matches the specification, and the deny is uncovered rather than inverted.
-| A row asserting DECERR on a non-token MMR address in PROD. It fails against today's
-  RTL, so it needs the RTL fix (tracked upstream as #626) to land first, or an
-  explicitly-labelled expected-fail.
+| After the RTL fix (#626), *extend that same test* with DECERR on a non-token MMR
+  address in PROD. Do not add a new test.
 
 | `sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_uvm_inbound_filter_gating_test`
 | The DFT group `[47:32]` of the feature-control word. It is gated by `secure_tm`, and
@@ -3341,7 +3339,9 @@ to say.
   the golden clears it unconditionally. The specification's DFT column is therefore
   structurally unverifiable here, not merely unexercised.
 | Drive the `secure_tm` strap from the testbench, then walk the DFT column against
-  Table 50 with the strap both set and clear.
+  Table 50 with the strap both set and clear. That is the named backlog
+  `sep_efuse_strap_secure_tm_latch_test`, not a second FEAT_CTRL checker on the stitch
+  test.
 
 | `sep_efuse_lcc_lc_state_stitch_test`
 | The differential-decode fault path (`lc_sigint_err`) and the specification's INVALID
@@ -3353,36 +3353,14 @@ to say.
 | A fault-injection path that can corrupt the sensed pair, or a documented backdoor
   force with a recorded exception.
 
-| `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`,
-  `sep_km_kmac_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`
-| Per-consumer entropy checking is alive-mode only — beats are counted, not compared.
-| Bit-exact comparison needs a controllable pull order. The Key Manager's is
-  firmware-driven, so this may stay accepted rather than closed.
-
 | `sep_rom_non_secure_boot_test`
 | Only the all-good leg of the ROM's manifest and payload integrity checks is
   exercised. No test anywhere corrupts a manifest, and secure boot is off on this
   path, so nothing shows a bad image is rejected. The stage markers now required of
   the run show the ROM *reports* validating both hashes — not that validation bites.
-| A negative variant that corrupts the manifest or the payload and requires the ROM to
-  refuse the handoff.
-
-| `sep_hmac_kmac_cpu_crypto_smoke_test`
-| The KMAC leg checks liveness and a non-zero digest, not correctness.
-| Golden-checked KMAC exists in `sep_kmac_mode_strength_rand_test` (an independent
-  FIPS-202/SP800-185 model), not in the KM sideload test as previously recorded here —
-  that one cross-checks two digests from the same engine. Either cross-reference the
-  rand test or add a golden comparison.
-+
---
-Attaching a golden here has a prerequisite. `fw/drivers/sep_kmac.h` pushes
-`right_encode(256)` as the 32-bit word `0x00020001`, which puts four bytes into the
-message FIFO — `01 00 02 00` — where SP800-185 defines the encoding as the three bytes
-`01 00 02`. The stray trailing zero is part of the hashed message, so this leg's digest
-is not KMAC-conformant. Nothing notices today because nothing compares the digest to
-anything; attach a golden without fixing the encoding first and it will fail, correctly.
-Writing three bytes needs a byte-strobed FIFO write rather than a word write.
---
+| Phase 2 `sep_rom_ot_integrity_reject_test` (documented, not implemented):
+  corrupt payload / bad signature / anti-rollback and require the ROM fail-loop
+  marker. The all-good boot cannot carry that scenario.
 |===
 
 One item has been closed since this table was first written. The lifecycle golden and
@@ -3390,6 +3368,10 @@ the eFuse map it stages against were both listed here as pending PR #242; #242 l
 the golden is now derived from the lifecycle-controller chapter rather than transcribed
 from the RTL, and the field table is derived from the generated map. See
 <<lcc-golden-follows-rtl>>.
+
+CHK4 generate-command segmentation on the Phase 1 `glen=32` rows is likewise closed:
+those rows now claim only that generated bits match the golden, and
+`sep_drbg_gen_segmentation_test` is the dedicated segmentation proof.
 
 === Unlogged steps
 

@@ -121,12 +121,15 @@ static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint
     return st;
 }
 
-static void fill_src_words(uint32_t n) {
+static void fill_src_words(uint32_t n, uint32_t *snap) {
     volatile uint32_t *s = (volatile uint32_t *)SRC_BASE;
     uint32_t lfsr = 0x1234567u;
     for (uint32_t i = 0; i < n; i++) {
         lfsr = lfsr * 1664525u + 1013904223u;
         s[i] = lfsr;
+        if (snap != 0) {
+            snap[i] = lfsr;
+        }
     }
 }
 
@@ -183,7 +186,7 @@ static int chk_cfg_regwen(void) {
     // A 256 B copy (64 beats) stays BUSY long enough for the CPU to observe the
     // lock on its very next CSR read, without bloating sim time.
     const uint32_t len = 0x100u;
-    fill_src_words(len / 4);
+    fill_src_words(len / 4, 0);
     wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SRC_BASE);
     wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
     wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DST_BASE);
@@ -355,38 +358,38 @@ static int run_mode(const char *tag, uint32_t total, uint32_t chunk, uint32_t sr
 static int chk_copy_mode(void) {
     int e = 0;
     const uint32_t SENT = 0xA5A5A5A5u;
-    volatile uint32_t *s = (volatile uint32_t *)SRC_BASE;
+    uint32_t snap[4];
     uint32_t exp[4];
 
-    fill_src_words(4); // s[0..3] deterministic
+    fill_src_words(4, snap); // independent expected image, not re-read from SRAM
 
     // (1) INCR/INCR linear copy: dst[i] = src[i].
-    exp[0] = s[0];
-    exp[1] = s[1];
-    exp[2] = s[2];
-    exp[3] = s[3];
+    exp[0] = snap[0];
+    exp[1] = snap[1];
+    exp[2] = snap[2];
+    exp[3] = snap[3];
     e += run_mode("CHK-COPY-MODE INCR", 0x10u, 0x10u, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                   SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, 4, SENT);
 
     // (2) FIXED src (re-read in place) + INCR dst: dst[i] = src[0] (replicate).
-    exp[0] = s[0];
-    exp[1] = s[0];
-    exp[2] = s[0];
-    exp[3] = s[0];
+    exp[0] = snap[0];
+    exp[1] = snap[0];
+    exp[2] = snap[0];
+    exp[3] = snap[0];
     e += run_mode("CHK-COPY-MODE FIXED-src", 0x10u, 0x10u, SECURE_DMA__SRC_CONFIG__WRAP_bm,
                   SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, 4, SENT);
 
     // (3) INCR src + FIXED dst (overwrite in place): dst[0] = src[3], dst[1] untouched.
-    exp[0] = s[3];
+    exp[0] = snap[3];
     e += run_mode("CHK-COPY-MODE FIXED-dst", 0x10u, 0x10u, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                   SECURE_DMA__SRC_CONFIG__WRAP_bm, exp, 1, SENT);
 
     // (4) WRAP src (chunk < total) + INCR dst: total 16 / chunk 8 -> 2 chunks of
     // 2 words; the source wraps to its start each chunk, so dst = [s0,s1,s0,s1].
-    exp[0] = s[0];
-    exp[1] = s[1];
-    exp[2] = s[0];
-    exp[3] = s[1];
+    exp[0] = snap[0];
+    exp[1] = snap[1];
+    exp[2] = snap[0];
+    exp[3] = snap[1];
     e += run_mode("CHK-COPY-MODE WRAP-src", 0x10u, 0x08u,
                   (SECURE_DMA__SRC_CONFIG__INCREMENT_bm | SECURE_DMA__SRC_CONFIG__WRAP_bm),
                   SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, 4, SENT);
@@ -407,7 +410,7 @@ static int chk_width(void) {
     volatile uint8_t *db = (volatile uint8_t *)DST_BASE;
     uint32_t widths[3] = {SEP_DMA_WIDTH_1B, SEP_DMA_WIDTH_2B, SEP_DMA_WIDTH_4B};
 
-    fill_src_words(bytes / 4);
+    fill_src_words(bytes / 4, 0);
     for (int w = 0; w < 3; w++) {
         clear_dst_words(bytes / 4 + 1, SENT);
         uint32_t st = dma_run(SRC_BASE, DST_BASE, bytes, bytes, widths[w],
@@ -450,7 +453,7 @@ static int chk_width(void) {
 static int chk_done_rw1c(void) {
     int e = 0;
     const uint32_t SENT = 0x33333333u;
-    fill_src_words(4);
+    fill_src_words(4, 0);
     clear_dst_words(5, SENT);
     uint32_t st = dma_run(SRC_BASE, DST_BASE, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
@@ -477,7 +480,8 @@ static int chk_done_rw1c(void) {
 static int chk_err_opcode(void) {
     int e = 0;
     const uint32_t SENT = 0xC3C3C3C3u;
-    fill_src_words(4);
+    uint32_t snap[4];
+    fill_src_words(4, snap);
     uint32_t st = dma_run(SRC_BASE, DST_BASE, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_INVALID);
@@ -512,11 +516,25 @@ static int chk_err_opcode(void) {
         sep_mbx_puthex(err);
         sep_mbx_puts(")\n");
         e++;
+    } else {
+        volatile uint32_t *d = (volatile uint32_t *)DST_BASE;
+        for (uint32_t i = 0; i < 4; i++) {
+            if (d[i] != snap[i]) {
+                sep_mbx_puts("FAIL: CHK-ERR-OPCODE recovery copy word ");
+                sep_mbx_puthex(i);
+                sep_mbx_puts(" got ");
+                sep_mbx_puthex(d[i]);
+                sep_mbx_puts(" exp ");
+                sep_mbx_puthex(snap[i]);
+                sep_mbx_putc('\n');
+                e++;
+            }
+        }
     }
     wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     if (!e) {
         sep_mbx_puts("CHK-ERR-OPCODE PASS: opcode 0xF -> opcode_error EXCLUSIVE + "
-                     "STATUS.error, W1C clear, recovery copy OK\n");
+                     "STATUS.error, W1C clear, recovery copy matches source\n");
     }
     return e;
 }

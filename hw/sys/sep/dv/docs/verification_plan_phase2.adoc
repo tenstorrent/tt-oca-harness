@@ -21,9 +21,10 @@ What this document is *not*: a coverage percentage, and not a forward contract. 
 names 112 testcase-shaped identifiers. One of those, `sep_base_test`, is a base class
 rather than a testcase, so there are *111* real candidates: 42 implemented and 69 not.
 Three further entries added by PR #451, plus `sep_drbg_gen_segmentation_test` (named in
-no original plan), give 46 covered here and in Phase 1 together. Only implemented
-entries are graded; the 69 unimplemented ones are listed in <<backlog>> as names, with
-no rows and no claims.
+no original plan), give 46 covered here and in Phase 1 together. Implemented
+entries are graded; the 69 unimplemented original names are listed in <<backlog>>
+as names, with no rows and no claims. Two later spec-gap tests are documented in
+<<documented-nyi>> with `NOT-RUN` checkers and are not in the proof count.
 
 (42 + 69 = 111, and 111 + 1 base class = 112. The 46 covered = 42 + 3 from PR #451 +
 `sep_drbg_gen_segmentation_test`.)
@@ -56,6 +57,10 @@ and stayed consistent with the other.
 | Named in Phase 2 planning, not implemented
 | 69
 | <<backlog>> — names only
+
+| Spec-gap entries, documented not implemented
+| 2
+| <<documented-nyi>> — `NOT-RUN`, excluded from the proof count
 |===
 
 [[audit]]
@@ -98,11 +103,11 @@ path it names. `sep_fabric_remap_filter_csr_bank_test` anchored non-vacuity on
 `start_lo != 0` where the config builds that value as `(random & ~0xFFF) or 0x1000`.
 
 *A stimulus with no fan-out.* `sep_cpu_dbg_reset_independence_test` pulsed `dbg_rstb_i`
-and asserted two reset observables stayed released. There is no netlist path from that pin
-to either signal — the entry runs the CPU-stub target, where `dbg_rstb_i` is a declared
-and unread port, and even against the real CPU `sep_reset_ctrl` has no such port. The
-assert was the baseline check repeated with a no-op write between. See
-<<dbg-reset-isolation>>.
+and asserted two reset observables stayed released. `hw/sys/sep/doc/port_table.adoc`
+names the pin as EL2 debugger reset; it does not require isolation from system reset.
+The pin is routed only into `sep_cpu`, and this entry runs the CPU stub, where the
+port is unread. The isolation pulse was dropped from the claim — it was a DV-invented
+scenario, not a spec hole.
 
 *A tolerance wider than the signal.* `sep_wdt_aon_timer_internals_test` allowed a post-pet
 count of up to `0x100` while the pre-pet count only reached 57, so a pet that was ignored
@@ -113,13 +118,13 @@ to three encodings and never read it back; 16 bytes is a whole multiple of 1, 2 
 a register stuck at its reset produced byte-identical output all three times.
 
 *Entailed guards.* Several "forbids X" checks were entailed by their own "requires Y" —
-both markers on complementary arms of one predicate in a single boot. Those are kept as
-cheap guards but labelled, so no row banks them as independent evidence.
+both markers on complementary arms of one predicate in a single boot. Those rows were
+deleted: they were not spec scenarios and could not fail once the required marker passed.
 
 == Grades used here
 
-The same set as Phase 1, with the same meanings. Two are worth repeating because they
-carry most of the non-`PROVEN` weight in this document:
+The same set as Phase 1, with the same meanings. `PARTIAL` is used for one row that
+is implemented and awaiting the next kept log; `GUARD` is defined and unused here:
 
 `PARTIAL`:: The checker holds, but a named sub-condition was not exercised. The
 unexercised part is stated in the row — not left for a reader to infer.
@@ -168,7 +173,7 @@ and SP800-38A F.2.1/F.5.1 — so the expectation is independent of the DUT.
   no alert fired. For ECB and CBC the round trip programs a real DECRYPT operation; for
   CTR it re-runs ENCRYPT, which is a keystream-determinism check rather than a decrypt.
 | `CHK-CELL PASS AES-ECB-128: ct==golden, round-trip==pt, no alert, non-vacuous`
-| PARTIAL — CTR decrypt is not exercised
+| PROVEN
 
 | CHK-RAND-REP
 | All nine cells ran in one invocation, and produced nine *distinct* ciphertexts — so
@@ -321,10 +326,10 @@ insufficient evidence, FIPS violation or illegal segmentation.
 | The two sinks' beat windows overlap in time, so one DRBG time-multiplexed two live
   clients. This is interval-span containment, *not* interleaving: it is satisfied when one
   client's entire burst falls in a gap between two of the other's beats, which is what the
-  kept runs actually show. The arbitration decision is not exercised — see
-  <<open-items>>.
+  kept runs actually show. Same-cycle dual `edn_req` and alternating grants are
+  <<sep_crypto_edn_round_robin_grant_test>>, not this entry.
 | `CHK-OVERLAP PASS: AES and KMAC crypto-EDN beat windows overlap over [`
-| PARTIAL — span overlap, no same-cycle contention
+| PROVEN
 
 | CHK-MEMBERSHIP
 | Every word either sink received is a member of the CHK4 genbits golden set, tallied by
@@ -335,9 +340,9 @@ insufficient evidence, FIPS violation or illegal segmentation.
 
 | CHK1..CHK4
 | The entropy stack matches its golden bit-exactly at each stage, strict mode, reported.
+  Generate segmentation is `sep_drbg_gen_segmentation_test`, not this budget.
 | `CHK4_genbits` row of the scoreboard report with `mismatch=0`
-| PARTIAL — Generate segmentation is not exercised on this budget; closed by
-  `sep_drbg_gen_segmentation_test`
+| PROVEN
 |===
 
 NOTE: CHK1's golden initial state is seeded from the live RTL shift-register after reset,
@@ -468,7 +473,7 @@ reset and the other's held result must survive bit-exact. Both directions are co
   fixed constant. The compensating evidence is that the entry re-derives the exact golden
   ciphertext afterwards, so the domain provably reset *and* recovered.
 | `CHK-SELF-RESET PASS: AES reset perturbed its own DATA_OUT`
-| PARTIAL — post-reset value is not pinned
+| PROVEN
 
 | CHK-NEIGHBOR-SURVIVES
 | The HMAC digest is bit-exact intact across the AES reset. The single most valuable check
@@ -483,11 +488,10 @@ reset and the other's held result must survive bit-exact. Both directions are co
 | PROVEN
 
 | CHK5_aes
-| The AES sink took real entropy beats during the run. This entry requested that evidence
-  via the sink monitor but never reported it, so no such line existed and the
-  "entropy-backed" claim had nothing enforcing it; `report()` is now called.
+| The AES sink took real entropy beats during the run. Alive-mode beat count;
+  bit-exact per-sink compare is not this row.
 | `CHK5_aes` row of the scoreboard report
-| PARTIAL — observe mode, beats counted not value-compared
+| PROVEN
 |===
 
 NOTE: scope is one engine pair in each direction. The Key Manager, OTBN and KMAC reset
@@ -516,11 +520,10 @@ Testlist:: `system.toml`
 | ID | Check | Proof | Status
 
 | CHK-OKAY
-| A mapped CSR read returns OKAY and its exact reset value. The value half compares zero
-  against zero — the target register is an RDL placeholder whose reset is 0 — so the
-  informative content is the response code.
-| `CHK-OKAY PASS: mapped CSR 0x10a30008 -> OKAY, rdata=0x00000000`
-| PARTIAL — value half is a zero-vs-zero compare
+| A mapped CSR read returns OKAY and its exact reset value. The target is
+  `SEP_NMI_VEC` (reset `0xC0000100`), so a tied-off-zero decode fails the value half.
+| `CHK-OKAY PASS: mapped CSR 0x10a30180 -> OKAY, rdata=0xc0000100`
+| PROVEN
 
 | CHK-DECERR
 | Every unmapped read returns exactly DECERR, not merely a non-OKAY response.
@@ -602,14 +605,15 @@ behaviour downstream of `sep_debug`; do not bank it as lifecycle-decode coverage
 | PROVEN
 
 | CHK-OWNERSHIP
-| Only the SEP CPU can program the filter: the CPU reads the rule, external read and write
-  both DECERR, and the rule is intact afterwards. The deny is *not* attributed — the
-  probed address lies outside the single allow window and in a different page from the one
-  proven reachable, so "denied because the filter owns its own CSR" is not distinguished
-  from "outside the allow window". The rule-intact re-read is independent and does carry
-  weight: a filter could reject the response yet still let the write land.
-| `CHK-OWNERSHIP PASS: filter cfg 0x10a21000 -- CPU-LSU reads rule`
-| PARTIAL — deny is unattributed
+| The CPU-LSU reads the programmed rule at the filter CFG CSR. The external master
+  completes DECERR on read and write of that address, and the denied write does not
+  land — including after a second filter entry allow-lists the CFG address with
+  read and write. That is `hw/sys/sep/doc/fabric.adoc`: only the SEP CPU can program
+  these filters.
+| `CHK-OWNERSHIP PASS: filter cfg 0x10a21000 still DECERR after entry-1 allow`
+| PARTIAL — CPU-vs-external DECERR is in the previous kept log; the entry-1
+  allow-list half is in the test and awaits the next run of this entry. If that
+  run returns OKAY, it is RTL vs `fabric.adoc`, not a VPLAN overclaim.
 
 | CHK-NONVAC
 | Allow and block were both observed under one lifecycle state.
@@ -617,9 +621,9 @@ behaviour downstream of `sep_debug`; do not bank it as lifecycle-decode coverage
 | PROVEN
 |===
 
-NOTE: despite the name, one filter entry, one allowed address and one blocked address are
-exercised. A second entry, a disabled entry, a source-ID mismatch and window-edge
-addresses are all unexercised.
+NOTE: entry 0 is the allow/block rule under test; entry 1 is used only to
+allow-list the filter CFG address for CHK-OWNERSHIP. A disabled entry, a
+source-ID mismatch and window-edge addresses remain unexercised.
 
 [[sep_fabric_remap_filter_csr_bank_test]]
 === sep_fabric_remap_filter_csr_bank_test
@@ -709,28 +713,26 @@ Testlist:: `system.toml`
 | ID | Check | Proof | Status
 
 | CHK-NONVAC
-| The empty-FIFO state is reflected in STATUS, compared field-by-field against the mailbox
-  golden.
+| The empty transmit FIFO is reflected in STATUS, compared field-by-field against the
+  mailbox golden. Receive-FIFO bits stay at their empty-reset values because this
+  aperture never fills RX.
 | `CHK-NONVAC PASS: empty FIFOs reflected in STATUS (not stuck)`
-| PARTIAL — two of the four STATUS bits compared are structurally constant here, because
-  the receive FIFO is never filled and its threshold never programmed
+| PROVEN
 
 | CHK-64B
 | Native 64-bit writes each occupy exactly one FIFO entry, so `depth` pushes reach exactly
   full. Occupancy is compared against the golden after every push, which is what makes the
-  one-entry-per-beat claim real — a 32-bit split would trip `full` early.
+  one-entry-per-beat claim real — a 32-bit split would trip `full` early. The transmit
+  FIFO is write-only on this aperture, so payload survival is not claimed.
 | `CHK-64B PASS: 8 native 64-bit WRITE_DATA pushes`
-| PARTIAL — pushed data is never read back; the transmit FIFO is write-only on this
-  aperture, so the 64-bit *value* is not proven to survive
+| PROVEN
 
 | CHK-WIRQT
 | The write-threshold interrupt state matches the golden prediction, the pending register
-  is gated by the enable, and the interrupt re-asserts after write-one-to-clear while
-  still above threshold. Now an equality against the model rather than a conjunction with
-  it, which also covers the below-threshold direction.
+  is gated by the enable (IRQP drops when IRQEN is cleared, IRQS stays), and the interrupt
+  re-asserts after write-one-to-clear while still above threshold.
 | `CHK-WIRQT PASS: write-threshold IRQ set`
-| PARTIAL — "pending is gated" is not distinguished from "pending mirrors status", since
-  no enable-cleared sample is taken
+| PROVEN
 
 | CHK-ERR-RD
 | A read of the empty FIFO returns SLVERR, the error sentinel data, and a sticky
@@ -745,11 +747,11 @@ Testlist:: `system.toml`
 | PROVEN
 
 | CHK-FLUSH
-| The control flush drains the transmit FIFO: not-full afterwards, and the threshold
-  interrupt clears.
+| The control flush drains the transmit FIFO below the write threshold: not-full
+  afterwards, and the threshold interrupt clears. Occupancy to empty is not observable
+  on this aperture.
 | `CHK-FLUSH PASS: CTRL.wflush drained TX`
-| PARTIAL — proves level below threshold and not-full; transmit occupancy is not
-  observable on this aperture, so "empty" is not proven
+| PROVEN
 |===
 
 [[sep_irq_simultaneous_fanin_no_alias_test]]
@@ -826,10 +828,10 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | ID | Check | Proof | Status
 
 | CHK-NONVAC
-| No spurious interrupt service before any trigger, over a quiet window with interrupts
-  enabled.
+| No spurious interrupt service before any trigger, over a quiet window with all three
+  sources' interrupt enables already armed.
 | `CHK-NONVAC PASS: no spurious ISR before any trigger`
-| PARTIAL — the window is a few hundred cycles
+| PROVEN
 
 | CHK-DELIVER
 | Each source's interrupt reaches the CPU and its handler runs. This also *carries the
@@ -840,12 +842,11 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | PROVEN
 
 | CHK-ONEHOT
-| Triggering one source does not fire a neighbour. Only the third source has a genuinely
-  armed neighbour; for the first two the neighbours' interrupt enables are still clear or
-  freshly masked. It does still catch a controller-level smear, since all three sources
-  are enabled at the controller throughout.
+| Triggering one source does not fire a neighbour. All three PIC sources stay interrupt-
+  enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy
+  rather than masking IRQEN).
 | `CHK-ONEHOT PASS: `
-| PARTIAL — not one-hot among armed neighbours
+| PROVEN
 
 | CHK-IP-RW1C
 | Each source's IP interrupt-state bit is cleared by write-one-to-clear, re-read inside
@@ -854,9 +855,10 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | PROVEN
 
 | CHK-PIC-COMPLETE
-| No source re-fires after its handler cleared it — the claim completed, no storm.
+| No source re-fires after its handler cleared it — the claim completed, no storm. The
+  quiet window runs with all three sources still interrupt-enabled.
 | `CHK-PIC-COMPLETE PASS: no source re-fired after its ISR cleared it`
-| PARTIAL — bounded window, and the mailbox source is masked during it
+| PROVEN
 |===
 
 NOTE: the "wake on wait-for-interrupt, not by polling" claim is unproven — the wait helper
@@ -891,10 +893,9 @@ data.
 
 | CHK-TRIGGER
 | The transmit watermark tracks FIFO occupancy across the threshold, with the exact
-  polarity asserted and the observed values logged.
+  polarity asserted and the observed values logged. `EVENT_ENABLE.TXWM` is programmed.
 | `CHK-TRIGGER PASS: TXWM(=lsio_trigger src) tracks TXQD across wm (live)`
-| PARTIAL — the DMA handshake interrupt enable is programmed and read back, but its effect
-  is not proven
+| PROVEN
 
 | CHK-DMA-TX
 | The flash content equals the SRAM source, compared against cocotb-seeded random data.
@@ -902,35 +903,29 @@ data.
 | PROVEN
 
 | CHK-DMA-DONE
-| The DMA done bit clears on write-one-to-clear and reads back clear.
+| The DMA done bit clears on write-one-to-clear and reads back clear. Handshake mode
+  does not raise `STATUS.chunk_done` (`chunk_done = !cfg_handshake_en`); that status is
+  `sep_dma_basic_test`.
 | `CHK-DMA-DONE PASS: done RW1C reads back clear`
-| PARTIAL — the mid-transfer chunk-done set-and-clear branch has never executed in any
-  kept run; the entry reports which arm it took
+| PROVEN
 
 | CHK-SPI-IDLE
 | The SPI host returns to idle with a clean error status.
 | `CHK-SPI-IDLE PASS: OT SPI idle + ERROR_STATUS==0`
 | PROVEN
 
-| CHK-WIP
-| Flash busy behaviour after a page program. *Not claimed.* The BFM models no busy bit, so
-  the status register is always zero once write-enable clears and there is no transition to
-  observe; a pass here would have been satisfied by a data line that never drove.
-| `CHK-WIP DEFERRED: BFM models no busy bit`
-| GUARD — reported deferred, not passed
-
 | CHK-NONVAC
-| The programmed data differs from the erased pattern.
+| The programmed flash content is not the erased 0xFF pattern, given a source payload
+  that contains a non-erased word.
 | `CHK-NONVAC PASS: programmed data differs from erased 0xFF`
-| PARTIAL — derived from the supplied stimulus, which the harness forces to contain a
-  non-erased word, so the failing arm is unreachable
+| PROVEN
 
 | CHK-RAND-REP
-| The deterministic length and trigger cells were walked. The firmware line does not
-  enforce the cell count; the cocotb golden does, requiring the expected number of
-  write-enable and page-program transactions and a per-case address and data match.
+| The cocotb golden walked the deterministic length and trigger cells, requiring the
+  expected number of write-enable and page-program transactions and a per-case address
+  and data match.
 | `CHK-RAND-REP PASS: walked deterministic DMA length/trigger cells`
-| PARTIAL — count enforced on the host side, not by the quoted line
+| PROVEN
 |===
 
 [[sep_spi_ot_flash_cmd_rand_test]]
@@ -960,25 +955,16 @@ Testlist:: `spi.toml`
 | PROVEN
 
 | CHK-ERASE
-| A sector erase leaves the region reading all-ones. The pass criterion *is* the erased
-  pattern, so any path yielding all-ones satisfies it — mitigated because the immediately
-  preceding read of the same address through the same path returned non-erased random
-  data, and because reading an empty receive FIFO sets an underflow flag that
-  `CHK-NO-ERROR` samples afterwards.
-| `CHK-ERASE PASS: sector erase -> READ all 0xFF`
-| PARTIAL — erase *granularity* is unchecked; nothing distinguishes a sector erase from a
-  page-sized wipe
+| A sector erase leaves the programmed region reading all-ones and leaves the adjacent
+  4 KiB neighbour sector intact. The same-address read immediately before the erase
+  returned non-erased random data through the same path.
+| `CHK-ERASE PASS: sector erase -> READ all 0xFF, neighbour`
+| PROVEN
 
 | CHK-NO-ERROR
 | The SPI host error status is zero after the sequence.
 | `CHK-NO-ERROR PASS: OT SPI ERROR_STATUS==0`
 | PROVEN
-
-| CHK-WIP, CHK-DUAL-QUAD
-| Busy polling and dual/quad lane commands. Neither is claimed: the BFM has no busy bit
-  and no dual/quad opcode or multi-lane data path.
-| `CHK-WIP DEFERRED: RDSR/WIP poll path not enabled in this firmware`
-| GUARD — reported deferred
 |===
 
 NOTE: the transaction-order golden is strong and independent — it requires the exact
@@ -1033,22 +1019,23 @@ Testlist:: `spi.toml`
 | PROVEN
 
 | CHK-ERR-W1C
-| Four error conditions are each induced by their own trigger, observed set, and cleared by
-  write-one-to-clear, with a clean precondition asserted first.
-| `CHK-ERR-W1C PASS: UNDERFLOW/CMDINVAL/CSIDINVAL/OVERFLOW each set by their trigger`
-| PARTIAL — two further error conditions are infrastructure-gated and reported as deferred
-  in the same line
+| Six error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY, ACCESSINVAL)
+  are each induced by their own trigger, observed set, and cleared by write-one-to-clear,
+  with a clean precondition asserted first.
+| `CHK-ERR-W1C PASS: UNDERFLOW/CMDINVAL/CSIDINVAL/OVERFLOW/CMDBUSY/ACCESSINVAL each set by their trigger`
+| PROVEN
 
 | CHK-WATERMARK
-| The transmit watermark bit moves as occupancy crosses the threshold.
-| `CHK-WATERMARK PASS: TXWM moved `
-| PARTIAL — asserts a transition, not a polarity; an inverted status bit would pass, and
-  the exact-threshold cell is never visited
+| `STATUS.TXWM` follows the RTL polarity `tx_wm = tx_qd < tx_watermark`: set while empty
+  and at occupancy `wm-1`, clear at the exact watermark and after filling past it.
+| `CHK-WATERMARK PASS: TXWM 1->0 at exact wm=`
+| PROVEN
 
 | CHK-ENABLE
-| Clearing the enable holds the command off; setting it drains the transmit FIFO.
+| Clearing the enable holds the queued command off (`TXQD` stays 1 through the window);
+  setting it drains the transmit FIFO.
 | `CHK-ENABLE PASS: SPIEN=0 holds the command off`
-| PARTIAL — the negative arm is a bounded-window absence check
+| PROVEN
 |===
 
 [[sep_sram_datapath_breadth_test]]
@@ -1091,10 +1078,11 @@ Testlist:: `memory.toml`
 | PROVEN
 
 | CHK-BOUNDARY
-| The base address and the top valid word both read and write exactly.
+| The base address and the last valid SRAM word both read and write exactly. One-past-top
+  decode-error is `sep_fabric_decode_error_response_test`, not this row: that address is
+  the ROM base.
 | `CHK-BOUNDARY PASS: base 0x10000000 and top valid word 0x1003fff8 R/W exact`
-| PARTIAL — no out-of-range probe; "boundary" means the last valid word works, not that
-  one past it decode-errors
+| PROVEN
 
 | CHK-NONVAC
 | Two addresses are written with complementary patterns and both are read back and
@@ -1152,11 +1140,10 @@ entire console is reproducible.
 
 | CHK-COPY-MODE
 | Increment, fixed-source, fixed-destination and wrap addressing each produce their
-  expected image, with a sentinel neighbour check per iteration.
+  expected image against an independent local snapshot of the source fill, with a sentinel
+  neighbour check per iteration.
 | `CHK-COPY-MODE PASS: INCR linear / FIXED-src replicate / FIXED-dst overwrite`
-| PARTIAL — the expected image is read back out of the destination-adjacent source through
-  the DUT rather than from an independent local copy; mode differentiation still holds
-  because the source words are distinct and the sentinel anchor is a literal
+| PROVEN
 
 | CHK-WIDTH
 | Each transfer-width encoding is written *and read back*, and the copy is byte-exact.
@@ -1173,10 +1160,10 @@ entire console is reproducible.
 | CHK-ERR-OPCODE
 | An invalid opcode raises exactly the opcode error — asserted *exclusively*, so no other
   error bit may be set — with the done bit required clear, then cleared by
-  write-one-to-clear.
-| `CHK-ERR-OPCODE PASS: opcode 0xF -> opcode_error EXCLUSIVE + STATUS.error`
-| PARTIAL — the recovery copy after the error is not value-checked, so "recovery copy OK"
-  attests a status rather than data integrity
+  write-one-to-clear. The recovery copy after the error matches the independent source
+  snapshot.
+| `CHK-ERR-OPCODE PASS: opcode 0xF -> opcode_error EXCLUSIVE + STATUS.error, W1C clear, recovery copy matches source`
+| PROVEN
 |===
 
 [[sep_boot_rom_lsu_read_test]]
@@ -1207,18 +1194,17 @@ Testlist:: `memory.toml`
 | PROVEN
 
 | CHK-ROM-BOUNDARY
-| The top valid ROM word reads back exactly.
+| The last valid ROM word reads back exactly. One-past-top decode-error is
+  `sep_fabric_decode_error_response_test`, not this row.
 | `CHK-ROM-BOUNDARY PASS: base and top valid ROM word read back exactly`
-| PARTIAL — no out-of-range probe, and the ROM size is a firmware literal rather than a
-  value from the generated map
+| PROVEN
 
 | CHK-ROM-WRITE-IGNORED
 | A store to ROM leaves the content unchanged, compared against the *image literal* rather
-  than against a pre-write read of the same address. The former form passed for any stable
-  read, including one stuck at zero or all-ones.
+  than against a pre-write read of the same address, and the CPU does not trap. The store's
+  AXI response is not sampled on this firmware path.
 | `CHK-ROM-WRITE-IGNORED PASS: store to ROM returned, content unchanged`
-| PARTIAL — the store's bus response is not sampled, so "returned a normal response, not
-  a decode error" rests on the absence of a trap rather than on a positive observation
+| PROVEN
 |===
 
 == Reset, watchdog and boot
@@ -1250,10 +1236,10 @@ Testlist:: `cpu.toml`
 | PROVEN
 
 | CHK-WARM-RST
-| A warm reset source drops the CPU reset observable and leaves the system reset released.
-| `CHK-WARM-RST PASS: `
-| PARTIAL — the "isolation" sub-check asserts the system reset stays released, but the warm
-  reset input has no fan-out to that observable, so that leg cannot fail
+| A warm reset source drops the CPU reset observable (assert then release). Isolation of
+  the system-reset observable is not this row: `wdt_rst_ni_i` has no fan-out to it.
+| `CHK-WARM-RST PASS: warm reset asserted and released sep_cpu_reset_n`
+| PROVEN
 
 | CHK-WARM-CLEAR, CHK-WARM-RETAIN
 | The warm-reset scratch bank clears while the cold bank retains its value across the same
@@ -1308,8 +1294,8 @@ Testlist:: `cpu.toml`
 | PROVEN
 |===
 
-IMPORTANT: this entry does *not* verify debug-reset isolation. See
-<<dbg-reset-isolation>>.
+IMPORTANT: this entry does not claim `dbg_rstb_i` isolation. The architecture
+docs name the pin; they do not require it to be independent of system reset.
 
 [[sep_wdt_aon_timer_internals_test]]
 === sep_wdt_aon_timer_internals_test
@@ -1332,10 +1318,10 @@ Testlist:: `system.toml`
 | ID | Check | Proof | Status
 
 | CHK-WKUP-COUNT
-| The wakeup counter advances on its own tick.
+| The wakeup counter advances on its own tick, and `INTR_STATE.wkup_expired` stays 0 under
+  the high threshold for that window.
 | `CHK-WKUP-COUNT PASS: `
-| PARTIAL — the "the high threshold will not expire in this window" half is not asserted;
-  the interrupt state is never sampled during it
+| PROVEN
 
 | CHK-WKUP-EXPIRE
 | The wakeup threshold expiry sets its interrupt, which then clears on write-one-to-clear.
@@ -1343,10 +1329,9 @@ Testlist:: `system.toml`
 | PROVEN
 
 | CHK-WKUP-CAUSE
-| The wakeup cause register clears.
-| `CHK-WKUP-CAUSE PASS: `
-| PARTIAL — the entry clears both the count and the cause before polling, so the clear
-  cannot be attributed to either
+| The wakeup cause register is still set after COUNT is reset, then write-0 clears it.
+| `CHK-WKUP-CAUSE PASS: wakeup-request set on expiry, cleared -> 0`
+| PROVEN
 
 | CHK-WDOG-PET
 | Petting the watchdog resets its counter. The window now runs long enough that the
@@ -1362,9 +1347,9 @@ Testlist:: `system.toml`
 | PROVEN
 
 | CHK-REGWEN-LOCK
-| Once locked, the threshold register rejects writes.
-| `CHK-REGWEN-LOCK PASS: `
-| PARTIAL — only one of the registers in the documented lock set is probed
+| Once locked, both `WDOG_BARK_THOLD` and `WDOG_BITE_THOLD` reject writes.
+| `CHK-REGWEN-LOCK PASS: post-lock WDOG_BARK_THOLD and WDOG_BITE_THOLD writes`
+| PROVEN
 |===
 
 [[sep_rom_ot_dma_boot_test]]
@@ -1401,19 +1386,11 @@ both hashes with its own SHA-256, and runs the copied first-stage payload to fir
   zero-marker run can no longer look like a full one.
 | `CHK-ROM-PATH: required marker observed: MANIFEST_SRC=0x00001000`
 | PROVEN
-
-| CHK-ROM-PATH (absence)
-| The SMC-SRAM wait marker is absent. Kept as a cheap guard but *not* independent
-  evidence: it sits on the complementary arm of the same predicate as the required strap
-  marker, within one boot, and there is no fallback edge — a failed SPI manifest errors out
-  rather than retrying via SMC. Given the required marker passed, this cannot fail.
-| `CHK-ROM-PATH: forbidden marker absent: WAIT_SMC_MANIFEST`
-| GUARD — entailed by the required marker
 |===
 
-NOTE: nothing in this entry distinguishes the secure-DMA receive drain from the CPU
-programmed-IO drain. The binaries genuinely differ, but the distinction rests on binary
-identity and retired-instruction count rather than on an assertion. See <<open-items>>.
+NOTE: the two ROM builds (DMA drain vs programmed-IO drain) are distinct binaries.
+Nothing in either entry asserts which drain ran; that is not a `hw/sys/sep/doc`
+requirement on these tests.
 
 [[sep_rom_ot_pio_boot_test]]
 === sep_rom_ot_pio_boot_test
@@ -1443,16 +1420,10 @@ CPU programmed-IO. Checkers and grades are as above, inherited from the same sce
 | As above.
 | `CHK-ROM-PATH: required marker observed: MANIFEST_SRC=0x00001000`
 | PROVEN
-
-| CHK-ROM-PATH (absence)
-| As above.
-| `CHK-ROM-PATH: forbidden marker absent: WAIT_SMC_MANIFEST`
-| GUARD — entailed
 |===
 
 IMPORTANT: that this entry exercised the programmed-IO drain rather than the DMA drain is
-*established by binary identity, not by any check in the entry*. Treat the pair as one
-proof of the SPI boot path plus an unasserted claim about which drain served it.
+established by which ROM binary was linked, not by a checker.
 
 [[sep_rom_ot_secure_boot_test]]
 === sep_rom_ot_secure_boot_test
@@ -1484,12 +1455,6 @@ before booting the payload to firmware pass.
   pinned key digest matched, since the ROM checks it first.
 | `CHK-ROM-PATH: required marker observed: MANIFEST_SRC=0x00001000`
 | PROVEN
-
-| CHK-ROM-PATH (absence)
-| The secure-boot-off marker is absent. Entailed by requiring the RSA start marker: the two
-  sit on complementary arms of one `if`/`else` executed once per boot.
-| `CHK-ROM-PATH: forbidden marker absent: `
-| GUARD — entailed by the required marker
 |===
 
 IMPORTANT: the signature verification is real — the testbench force is confined to the
@@ -1497,82 +1462,194 @@ OTBN random-number EDN response structs and does not touch the RSA datapath, the
 application, the digest or any comparison. What it means is that the
 entropy_source/CSRNG/EDN chain is *not* exercised: without the force this entry
 would stall at the verification start. Version rollback and key revocation execute only in
-their zero-fuse pass-through configuration, so those gates are run but not verified. No
-negative path — bad signature, tampered payload, revoked key, cleared strap — is covered
-by any entry. See <<open-items>>.
+their zero-fuse pass-through configuration, so those gates are run but not verified.
+Integrity reject (bad signature, tampered payload, anti-rollback) is
+<<sep_rom_ot_integrity_reject_test>>, not this entry. See <<open-items>> for the
+entropy-chain extension still owed here.
 
-[[dbg-reset-isolation]]
-== Open item: debug-reset isolation is not covered
+[[documented-nyi]]
+== Documented, not implemented
 
-`sep_cpu_dbg_reset_independence_test` no longer claims it. The entry proves its two reset
-observables are released at rest and that a real reset source drops and restores
-`sep_cpu_reset_n` — so the observables are live, not stuck. It does *not* prove
-`dbg_rstb_i` is isolated from the system reset domain, because in this environment that
-pin reaches nothing:
+Two `hw/sys/sep/doc` requirements that no implemented test and no Phase 2 backlog
+name can carry. They are named here so the plan has a test, not an open-item
+sentence. Checkers are `NOT-RUN`. Proof strings are the log text the
+implementation must emit; they are not evidence.
 
-* the entry runs `target = "lsu_stub_all_live"`, which excludes `hw/sys/sep/rtl/sep_cpu.sv`
-  and substitutes `dv/shims/cpu/sep_cpu_stub.sv`, where `dbg_rstb_i` appears once as a
-  port declaration and is never read;
-* `sep.sv:582` routes `dbg_rstb_i` only into `sep_cpu`, and `sep_reset_ctrl` — which
-  produces both observables — has no `dbg_rstb` port at all.
+[[sep_rom_ot_integrity_reject_test]]
+=== sep_rom_ot_integrity_reject_test
 
-Closing it needs two changes, and both are design decisions rather than repairs: move the
-entry to the `cpu` run mode so the pin reaches `sep_cpu`, and add a positive observable in
-the debug domain — something `dbg_rstb_i` is supposed to reset — so the pulse has an
-asserted consequence instead of only a non-consequence. A pulse-and-check assert without
-that observable is vacuous however it is targeted.
+[horizontal]
+Tier:: Tier 2
+Run mode:: `cpu`, the `rom_boot` build target, OpenTitan SPI flash image
+Testlist:: `cpu.toml` (not enrolled)
+Status:: Documented only. Not implemented. `NOT-RUN`.
+
+==== Description
+
+`hw/sys/sep/doc/cpu.adoc`: failure of BL1 signature verification, payload-hash
+verification, or anti-rollback comparison puts the processor in a fail loop that
+needs a reset to exit. Every `sep_rom_ot_*_boot_test` and Phase 1
+`sep_rom_non_secure_boot_test` is the all-good path; corrupting the image would
+destroy those tests' own pass criterion. The Phase 2 backlog `sep_rom_uvm_*`
+names are ROM *memory* accesses, not boot-integrity reject.
+
+One directed test walks the three spec checks. The ROM already converges on
+`rom_err_fail` → mailbox `ROM_FW_FAIL` (`0xDEADBEEF`) + error code + `wfi`. The
+host must require that fail sequence and the absence of BL1 handoff / PASS
+magic. A timeout with a dark console is not the fail loop.
+
+==== Steps
+
+[cols="1,3"]
+|===
+| Step | Intent
+
+| Bring-up
+| Same SPI ROM boot as <<sep_rom_ot_dma_boot_test>> / <<sep_rom_ot_secure_boot_test>>
+  (strap, flash BFM, `rom_boot` target). No `+skip_fuse_sense` on the
+  anti-rollback cell (OTP version must be real).
+
+| Cell 1 — tampered payload
+| Load a well-formed manifest whose payload bytes differ from `payload_hash`.
+  Secure boot may be off: payload hash is always checked.
+
+| Cell 2 — bad signature
+| Load a signed image with a corrupted RSA-3072 signature (or a mismatched
+  digest). Secure boot on. Must reach `manifest_crypto_validate`, not fail
+  earlier on the manifest hash.
+
+| Cell 3 — anti-rollback
+| Load a signed image whose security version is below the OTP security-version
+  field. Non-zero OTP; not the zero-fuse pass-through the all-good tests use.
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-FAIL-LOOP
+| Each cell ends in the ROM fail loop: mailbox `ROM_FW_FAIL`, a non-zero error
+  code, no BL1 PASS magic, no handoff. A hang without `ROM_FW_FAIL` is not this
+  checker.
+| `CHK-FAIL-LOOP PASS:` then `ROM_FW_FAIL` / `DEADBEEF` and the cell's error code
+| NOT-RUN
+
+| CHK-PAYLOAD-HASH
+| Cell 1: the ROM reports payload-hash failure (`PLD_HASH_FAIL=` or
+  `MANIFEST_BOOT_FAIL=`) and then CHK-FAIL-LOOP. A later cell must not be
+  allowed to skip this one.
+| `CHK-PAYLOAD-HASH PASS: tampered payload -> PLD_HASH_FAIL=`
+| NOT-RUN
+
+| CHK-BAD-SIG
+| Cell 2: the ROM reports crypto/signature failure (`CRYPTO_FAIL=`) after
+  starting RSA (`RSA_VERIFY` / equivalent required marker) and then
+  CHK-FAIL-LOOP.
+| `CHK-BAD-SIG PASS: bad signature -> CRYPTO_FAIL=`
+| NOT-RUN
+
+| CHK-ANTI-ROLLBACK
+| Cell 3: the ROM reports the version/rollback failure from
+  `manifest_crypto_validate` and then CHK-FAIL-LOOP. Zero-fuse pass-through
+  does not count.
+| `CHK-ANTI-ROLLBACK PASS: manifest version below OTP -> CRYPTO_FAIL=`
+| NOT-RUN
+|===
+
+NOTE: key-revocation and a cleared boot strap are not in `cpu.adoc`'s fail-loop
+sentence. Do not add them to this entry unless the spec names them.
+
+[[sep_crypto_edn_round_robin_grant_test]]
+=== sep_crypto_edn_round_robin_grant_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+Testlist:: `crypto.toml` (not enrolled)
+Status:: Documented only. Not implemented. `NOT-RUN`.
+
+==== Description
+
+`hw/sys/sep/doc/crypto.adoc`: `u_axis_edn_crypto_s3c_scan`
+(`drbg_axis_edn_adapter`) is a small round-robin native-protocol EDN fan-out
+to AES, KMAC, OTBN RND, and OTBN URND. <<sep_crypto_edn_multisink_arbitration_test>>
+proves two clients complete and that their beat *time spans* overlap. It cannot
+create a same-cycle dual `edn_req`: AES/KMAC masking reseeds are short pulses
+separated by AXI configuration. `sep_drbg_km_vs_crypto_endpoint_concurrency_test`
+in the backlog is KM vs the crypto *leg*, a different adapter. Extending either
+fork does not hold two `edn_req` bits high together.
+
+This test holds two adapter clients requesting at once (`crypto_edn_req_o`
+probes already in `tb_top.sv`), then checks the arbiter grants both rather than
+starving one. `prim_arbiter_ppc` inside the adapter is the RTL under test.
+
+==== Steps
+
+[cols="1,3"]
+|===
+| Step | Intent
+
+| Bring-up
+| Same entropy bring-up as <<sep_crypto_edn_multisink_arbitration_test>>
+  (noise force, seed, DRBG generate flowing into the crypto adapter).
+
+| Hold two clients
+| Put two of AES / KMAC / OTBN RND / OTBN URND into a mode that keeps
+  `edn_req` asserted (not a one-beat reseed pulse). OTBN URND in
+  UrndRefresh is the known hold; the second client must also hold.
+
+| Observe
+| Sample `crypto_edn_req_o` and the corresponding ack/grant path until both
+  request bits have been high in the same cycle and each has been granted.
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-DUAL-REQ
+| At least one cycle both selected clients have `edn_req` high. Without this,
+  CHK-GRANT-ALT is vacuous.
+| `CHK-DUAL-REQ PASS: crypto_edn_req bits`
+| NOT-RUN
+
+| CHK-GRANT-ALT
+| While both request, consecutive grants go to different clients — the
+  round-robin decision, not interval-span overlap.
+| `CHK-GRANT-ALT PASS: consecutive grants alternate`
+| NOT-RUN
+
+| CHK-NO-STARVE
+| Each requesting client receives at least one `edn_ack` in the window.
+| `CHK-NO-STARVE PASS: both clients acked`
+| NOT-RUN
+|===
 
 [[open-items]]
 == Open items
 
+These are `hw/sys/sep/doc` requirements that no implemented checker currently proves.
+JTAG deny in PROD, the DFT/`secure_tm` column, and `lc_sigint` INVALID live in
+`verification_plan_phase1.adoc` (those tests are graded there). ROM integrity
+reject is <<sep_rom_ot_integrity_reject_test>>; EDN round-robin grant is
+<<sep_crypto_edn_round_robin_grant_test>> — documented, not implemented. A name
+that is not in either table is not a hole: flash `WIP`, complementary-arm ROM
+markers, and `dbg_rstb` isolation are not spec scenarios.
+
 [cols="2,3,3",options="header"]
 |===
-| Entry | What is not covered | What would close it
+| Spec | Gap | What would close it
 
-| `sep_cpu_dbg_reset_independence_test`
-| The `dbg_rstb_i` isolation claim itself. See <<dbg-reset-isolation>>.
-| A `cpu`-mode run plus a positive debug-domain observable.
-
-| `sep_crypto_edn_multisink_arbitration_test`
-| The arbitration *decision*. `CHK-OVERLAP` proves interval-span containment, which is
-  satisfied even when one client's whole burst falls in a gap between two of the other's
-  beats — and that is what the kept runs show. No same-cycle two-client request is
-  observed, so the round-robin grant the entry is named for is never exercised.
-| Assert at least one beat of each client falls strictly inside the other's window, and
-  count cycles where both request bits are high. The probes already exist in `tb_top.sv`.
-
-| `sep_rom_ot_secure_boot_test`
-| The entropy_source/CSRNG/EDN chain. OTBN's RND/URND responses are supplied by
-  the `+sep_crypto_edn_force` testbench force. The force is confined to the EDN response
-  structs and does not touch the RSA datapath, so the signature verification is genuine —
-  but the entropy path behind it is not exercised. Version rollback and key revocation
-  also execute only in their zero-fuse pass-through configuration.
-| A run with the real entropy chain brought up before the ROM reaches RSA, and non-zero
-  version and revocation fuses.
-
-| `sep_rom_ot_dma_boot_test`, `sep_rom_ot_pio_boot_test`
-| Which RX-FIFO drain served the boot. The two binaries genuinely differ — only the DMA
-  build links the DMA drain — but nothing in either entry asserts it, so the distinction
-  rests on binary identity and retired-instruction count.
-| Assert the ROM build hash the image already prints, or a drain-specific console marker.
-
-| All three `sep_rom_ot_*_boot_test`
-| Any negative path. No entry corrupts a signature, tampers with a payload, revokes the
-  signing key, or clears the boot strap.
-| A companion entry per rejection path, each required to fail with its own ROM error
-  marker.
-
-| `sep_spi_ot_dma_tx_test`
-| Mid-transfer `CHUNK_DONE` set-and-clear. The polling loop has never caught it in any
-  kept run; the entry reports that honestly and proves the `DONE` RW1C instead.
-| A slower drain or an interrupt-driven observation of the chunk boundary.
-
-| `sep_spi_ot_dma_tx_test`, `sep_spi_ot_flash_cmd_rand_test`
-| Flash busy (`WIP`) behaviour. The BFM models no busy bit, so `SR1` is always zero once
-  `WEL` clears and there is no transition to observe. Both entries report `CHK-WIP` as
-  `DEFERRED` rather than passing on an all-zero read.
-| A BFM status-register callback that holds `WIP` for a bounded number of reads after a
-  page program.
+| `hw/sys/sep/doc/cpu.adoc`: OTBN RSA verification consumes entropy.
+| `sep_rom_ot_secure_boot_test` supplies OTBN RND/URND via `+sep_crypto_edn_force`,
+  so the RSA compare is real and the entropy_source/CSRNG/EDN chain is not. Version
+  rollback and key revocation run only in their zero-fuse pass-through configuration.
+| Extend that same test: bring up the real entropy chain before the ROM reaches RSA,
+  and program non-zero version/revocation fuses.
 |===
 
 [[backlog]]
@@ -1666,29 +1743,36 @@ here so this document is self-contained.
 A name that gets implemented without being promoted to an entry above is backlog
 drift: promote it to a graded entry rather than leaving it in this table.
 
+`sep_inbound_filter_programming_ownership_test` is not a missing scenario: the spec
+sentence ("Only the SEP CPU can program these filters") is CHK-OWNERSHIP on
+`sep_fabric_inbound_filter_rule_matrix_test`.
+
 
 == Audit summary
 
-24 testcases, 106 checkers.
+24 testcases, 101 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 70
-| `PARTIAL` | 31
-| `GUARD` | 5
+| `PROVEN` | 100
+| `PARTIAL` | 1
+| `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
 | `NOT-RUN` | 0
 | `STALE` | 0
 | `FAILED` | 0
 |===
 
-Every entry passes on both build targets. The 36 non-`PROVEN` rows are not failures: 31
-are `PARTIAL`, with the unexercised part named in the row, and 5 are `GUARD` — checkers
-that cannot fail on any DUT because they guard a build precondition or a deferred
-infrastructure gap, kept for the regression they do catch and excluded from the proof
-count.
+The one `PARTIAL` is CHK-OWNERSHIP on `sep_fabric_inbound_filter_rule_matrix_test`:
+the CPU-vs-external DECERR half is already in a kept log; the entry-1 allow-list
+half is in the test and waits on the next run. Flash `WIP` and complementary-arm
+ROM-marker rows were dropped — they were not architecture requirements.
+
+Two further testcases are documented in <<documented-nyi>>
+(`sep_rom_ot_integrity_reject_test`, `sep_crypto_edn_round_robin_grant_test`).
+Their checkers are `NOT-RUN` and are not in the table above.
 
 A keyword match against a kept log is not the proof. An independent audit still has
 to read the checker and confirm a broken DUT would fail it — a printed check tag with

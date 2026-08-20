@@ -20,8 +20,10 @@ Checks (each asserts an exact value, so a stuck/X register fails):
   CHK-NONVAC     : pre-reset AXI writes to SCRATCH_WARM[0]/SCRATCH_COLD[0] read
                    back the written patterns (the writes land + banks AXI-live;
                    reference suite A.1/A.2). Cold bank cross-checked via scratch_cold_probe_o.
-  CHK-WARM-RST   : a wdt_rst_ni_i low pulse drives sep_cpu_reset_n 1->0->1 while
-                   the main sep_reset_n stays released (reference suite B.1/B.2 + isolation).
+  CHK-WARM-RST   : a wdt_rst_ni_i low pulse drives sep_cpu_reset_n 1->0->1.
+                   Cold-domain isolation is CHK-WARM-CLEAR / CHK-WARM-RETAIN
+                   (warm bank clears, cold bank retains) -- dbg_sep_reset_n_o has
+                   no fan-out from wdt_rst_ni_i, so asserting it stays 1 cannot fail.
   CHK-WARM-CLEAR : after the warm reset, SCRATCH_WARM[0] == reset default 0x0
                    (reference suite C.1).
   CHK-WARM-RETAIN: after the warm reset, SCRATCH_COLD[0] == its written pattern
@@ -102,15 +104,12 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset_obs(
             dut.sep_cpu_reset_n_o, "CHK-WARM-RST asserted sep_cpu_reset_n", 0)
-        # Isolation: a warm reset must NOT touch the main SEP (cold) reset.
-        await self._check_reset_obs(
-            dut.dbg_sep_reset_n_o, "CHK-WARM-RST isolation sep_reset_n", 1)
         dut.wdt_rst_ni_i.value = 1
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset_obs(
             dut.sep_cpu_reset_n_o, "CHK-WARM-RST released sep_cpu_reset_n", 1)
         self.logger.info(
-            "CHK-WARM-RST PASS: warm reset asserted/released, cold reset isolated")
+            "CHK-WARM-RST PASS: warm reset asserted and released sep_cpu_reset_n")
 
         # --- CHK-WARM-CLEAR: warm bank cleared by the warm reset (reference suite C.1) ---
         warm_post = await self.scr.read(SCRATCH_WARM_0)
