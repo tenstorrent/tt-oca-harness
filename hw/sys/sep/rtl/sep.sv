@@ -23,8 +23,6 @@ module sep
         input  logic dbg_rstb_i,          // EL2 debugger reset
         input  logic wdt_rst_ni,          // Aggregated WDT Resets from SMC and SEP
 
-        output logic sep_reset_n_o,       // SEP reset (efuse-sense-done, after JTAG override)
-        output logic sep_cpu_reset_n_o,   // sep_reset_n & WDT reset; resets CPU + SEP IP integration
         output logic wdt_timer_rst_req_o, // SEP WDT bite reset request (active-high) to SMC reset unit
 
         input  logic jtag_tck,    // JTAG clk
@@ -1123,8 +1121,6 @@ module sep
     );
 
     assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
-    assign sep_reset_n_o        = sep_reset_n;
-    assign sep_cpu_reset_n_o    = sep_cpu_reset_n;
     assign security_disable_o   = security_disable;
 
     // External debug bus assignment (384 bits, 16-bit aligned fields)

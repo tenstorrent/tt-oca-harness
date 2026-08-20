@@ -12,7 +12,6 @@
 |`rst_ni` |`logic` |Input |1 |Primary reset (active low). Asynchronous assertion, synchronous deassertion. |System reset |N/A
 |`dbg_rstb_i` |`logic` |Input |1 |EL2 debugger reset (active low). |JTAG debug infrastructure |N/A
 |`wdt_rst_ni` |`logic` |Input |1 |Watchdog timer reset from SMC (active low). |SMC reset unit |N/A
-|`sep_reset_n_o` |`logic` |Output |1 |Reset for SEP IP integration block (active low). |`sep_ip_integration` |N/A
 |`wdt_timer_rst_req_o` |`logic` |Output |1 |WDT reset request output. Triggers memory interface reset in `sep_wrapper`. |SEP wrapper |N/A
 
 |`jtag_tck` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
