@@ -5,8 +5,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# sepvp Build Artifacts
+# sepvp Build Artifacts (env-tagged variants included: local-ctr/, ...)
 downloads/
 local/
-setup_environment.sh
-.vp-config-stamp
+local-*/
+setup_environment*.sh
+.vp-config-stamp*
