@@ -8,6 +8,7 @@ import os
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
 
+from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable, update_enables
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_types import (
     SMC_DBG_AXSIZE_8B,
@@ -771,14 +772,16 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
     # --- lifecycle and AXI activity helpers ----------------------------------
     async def set_lifecycle(self, **bits: int) -> None:
-        """Drive TB lifecycle enable bits; 1 means the feature is enabled."""
+        """Interim five-enable API: derive and drive the eleven direct disables."""
         dut = cocotb.top
-        for name, value in bits.items():
-            signal = f"feat_ctrl_{name}"
-            if not hasattr(dut, signal):
-                raise AttributeError(f"{signal} is not exposed by tb_top")
-            getattr(dut, signal).value = value & 0x1
-            self.log.info("Lifecycle enable %s=%d", signal, value & 0x1)
+        disables = update_enables(**bits)
+        for name in DBG_DISABLE_FIELDS:
+            getattr(dut, f"dbg_disable_{name}").value = disables[name]
+        self.log.info(
+            "Lifecycle enables %s -> dbg_disable %s",
+            {name: value & 0x1 for name, value in bits.items()},
+            format_dbg_disable(disables),
+        )
         await self.wait_sys_cycles(4)
 
     async def enable_all_lifecycle(self) -> None:

@@ -6,6 +6,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable, update_enables
 from env.dtp_scan_ref_model import (
     DtpIjtagSibModel,
     DtpStap3dcrModel,
@@ -28,15 +29,18 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
 
     # --- lifecycle -----------------------------------------------------------
     async def set_lifecycle(self, **bits: int) -> None:
-        """Drive active-high lifecycle enable bits exposed by tb_top."""
+        """Interim five-enable API: derive and drive the eleven direct disables."""
         dut = cocotb.top
-        for name, value in bits.items():
-            signal = f"feat_ctrl_{name}"
-            if not hasattr(dut, signal):
-                raise AttributeError(f"{signal} is not exposed by tb_top")
-            getattr(dut, signal).value = value & 0x1
-            self.log.info("Lifecycle enable %s=%d", signal, value & 0x1)
-        # Feature-control bits cross into TCK through two sync flops.
+        disables = update_enables(**bits)
+        for name in DBG_DISABLE_FIELDS:
+            getattr(dut, f"dbg_disable_{name}").value = disables[name]
+        self.log.info(
+            "Lifecycle enables %s -> dbg_disable %s",
+            {name: value & 0x1 for name, value in bits.items()},
+            format_dbg_disable(disables),
+        )
+        # Disable bits cross into TCK through two sync flops; step TCK so
+        # they propagate before the next operation.
         for _ in range(4):
             await self.tms_step(0)
         await ClockCycles(dut.clk_i, 4)

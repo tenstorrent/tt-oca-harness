@@ -236,17 +236,29 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
                 UVM_MEDIUM)
     endfunction
 
-    // --- lifecycle enables (must precede any JTAG2AXI op) ------------------
+    // --- lifecycle debug disables (must precede any JTAG2AXI op) -----------
+    // Interim five-enable API over the typed dbg_disable_t: derive the eleven
+    // pre-resolved active-high disables the way the DTP RTL used to (the
+    // derivation now lives in sep_lifecycle_ctrl), so the existing gating
+    // sequences keep their meaning until they drive disables directly.
     task set_lifecycle(bit sip, bit soc, bit ap, bit sep, bit fuse);
-        tb_vif.feat_ctrl_sip_debug <= sip;
-        tb_vif.feat_ctrl_soc_debug <= soc;
-        tb_vif.feat_ctrl_ap_debug  <= ap;
-        tb_vif.feat_ctrl_sep_debug <= sep;
-        tb_vif.feat_ctrl_fuse_test <= fuse;
+        sep_lifecycle_ctrl_pkg::dbg_disable_t d;
+        d.stap_io          = !sip;
+        d.stap_smc         = !soc || !ap;
+        d.stap_sep         = !sep || !soc || !ap;
+        d.stap_extra       = !ap;
+        d.stap_host        = !ap;
+        d.dft_secure       = !fuse || !sep || !soc || !ap;
+        d.dft_nonsecure    = !soc || !ap;
+        d.dfd              = !ap;
+        d.smc_jtag2axi     = !soc || !ap;
+        d.smc_otp_jtag2axi = !fuse || !soc || !ap;
+        d.sep_otp_jtag2axi = !fuse || !sep || !soc || !ap;
+        tb_vif.dbg_disable <= d;
         #100ns;  // settle in the system-clock domain (10ns period)
         `uvm_info(get_type_name(), $sformatf(
-            "lifecycle sip=%0d soc=%0d ap=%0d sep=%0d fuse=%0d",
-            sip, soc, ap, sep, fuse), UVM_MEDIUM)
+            "lifecycle sip=%0d soc=%0d ap=%0d sep=%0d fuse=%0d -> dbg_disable=0x%03h",
+            sip, soc, ap, sep, fuse, d), UVM_MEDIUM)
     endtask
 
     task enable_all_lifecycle();
@@ -254,9 +266,7 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
     endtask
 
     function bit lifecycle_all_enabled();
-        return tb_vif.feat_ctrl_sip_debug && tb_vif.feat_ctrl_soc_debug
-            && tb_vif.feat_ctrl_ap_debug && tb_vif.feat_ctrl_sep_debug
-            && tb_vif.feat_ctrl_fuse_test;
+        return tb_vif.dbg_disable == '0;
     endfunction
 
     // --- error arming (responder ports + shared checker, one place) --------
