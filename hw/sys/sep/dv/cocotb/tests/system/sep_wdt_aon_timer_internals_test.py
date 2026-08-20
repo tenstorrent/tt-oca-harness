@@ -168,14 +168,23 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self.wdt.write(WDOG_BITE_THOLD, 0x00FF_FFFF)
         await self.wdt.write(WDOG_COUNT, 0)
         await self.wdt.write(WDOG_CTRL, WDOG_ENABLE)
-        await ClockCycles(cocotb.top.clk_i, 60 * self._tick)
+        # Run long enough that the pre-pet count dominates the CDC tolerance. With the
+        # old 60-tick window the count reached ~57 while the tolerance was 0x100 (256),
+        # so a pet that did nothing left count2 ~= 57 and still passed -- the check could
+        # not distinguish "pet reset the counter" from "pet was ignored".
+        await ClockCycles(cocotb.top.clk_i, 1200 * self._tick)
         count1 = await self.wdt.read(WDOG_COUNT)
-        assert count1 > 0, f"WDOG_COUNT did not advance (={count1})"
+        assert count1 >= 0x400, (
+            f"WDOG_COUNT only reached {count1} in the pre-pet window; it must exceed the "
+            f"CDC tolerance by a wide margin or the pet check below is vacuous")
         await self.wdt.write(WDOG_COUNT, 0)                    # pet
         count2 = await self.wdt.read(WDOG_COUNT)
         assert count2 <= 0x100, (
             f"WDOG_COUNT not reset by pet: was {count1}, after pet {count2} (>0x100 CDC tol)"
         )
+        assert count2 < count1 // 8, (
+            f"WDOG_COUNT after pet ({count2}) is not clearly below the pre-pet count "
+            f"({count1}) -- consistent with the pet being ignored")
         self.logger.info("CHK-WDOG-PET PASS: WDOG_COUNT %d -> pet -> %d (reset)", count1, count2)
 
     async def _chk_regwen_lock_and_nonvac(self) -> None:
