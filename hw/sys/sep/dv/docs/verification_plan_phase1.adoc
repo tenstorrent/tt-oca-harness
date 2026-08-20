@@ -3053,12 +3053,12 @@ demoted-PROD case this test exercises. Read <<lcc-golden-follows-rtl>> before ci
 
 | 5
 | Re-read feature-control; compare against golden; confirm the debug bit is now set.
-| `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf00000000000f003 == golden, sep_debug=1`
+| `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf0000000f000f003 == golden, sep_debug=1`
 | LOGGED
 
 | 6
 | Repeat the external read; require success and the expected value.
-| `CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0xf0000000_0000f003 == golden`
+| `CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0xf0000000_f000f003 == golden`
 | LOGGED
 
 |===
@@ -3080,6 +3080,20 @@ demoted-PROD case this test exercises. Read <<lcc-golden-follows-rtl>> before ci
 | `CHK-PROD-BLOCK PASS: external AXI @0x10918000 blocked with DECERR (resp=3)`
 | PROVEN
 
+| CHK-DEMOTE-INDEP
+| `DEMOTE_2` alone opens DBG_2 `[31:16]` and leaves DBG_1 `[15:0]` closed, so the two
+  demote registers act per-group rather than sharing a priority. `sep_debug` is bit 0,
+  inside DBG_1, so it must still read 0 — and the external port must still be blocked,
+  which is a second, independent consequence of the same property. `DEMOTE_2` is driven
+  first deliberately: the demote field is write-once-set and cannot be cleared, so this is the
+  only order in which this DUT can show one group opening without the other. Before this
+  row existed, `DEMOTE_2` was never written by any test here — it appeared only in the
+  golden, so the specification's DEMOTE_2 column rested on the golden's import-time KAT
+  comparing the model against itself.
+| `CHK-DEMOTE-INDEP PASS: DEMOTE_2 alone opened DBG_2 and left DBG_1 closed` and
+  `CHK-DEMOTE-INDEP PASS: external AXI still DECERR under DEMOTE_2 alone`
+| PROVEN
+
 | CHK-DEMOTE
 | The demote register accepts a write and reads back.
 | `CHK-DEMOTE PASS: DEMOTE_1.demote write -> read-back == 1`
@@ -3090,13 +3104,13 @@ demoted-PROD case this test exercises. Read <<lcc-golden-follows-rtl>> before ci
   bit is set. The golden follows the RTL here, so this proves the decode is stable and
   input-sensitive, not that the demotion policy is correct —
   see <<lcc-golden-follows-rtl>>.
-| `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf00000000000f003 == golden, sep_debug=1`
+| `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf0000000f000f003 == golden, sep_debug=1`
 | PROVEN
 
 | CHK-DBG-ALLOW
 | The external read now succeeds and returns the distinctive value, proving it reached
   the lifecycle controller.
-| `CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0xf0000000_0000f003 == golden`
+| `CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0xf0000000_f000f003 == golden`
 | PROVEN
 
 | CHK-IDENTITY
@@ -3239,7 +3253,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 == Audit summary
 
-32 testcases, 154 steps, 150 checkers.
+32 testcases, 154 steps, 151 checkers.
 
 [cols="2,1",options="header"]
 |===
@@ -3253,7 +3267,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Grade | Count
 
-| `PROVEN` | 136
+| `PROVEN` | 137
 | `PARTIAL` | 8
 | `GUARD` | 6
 | `STALE` | 0
@@ -3299,6 +3313,36 @@ to say.
   a DUT that segmented wrongly would be followed, not caught. Closing this needs the
   expected length pinned by the stimulus, independent of `gen_last`. Until then the
   segmentation half of the checker is untested however long the run goes.
+
+| `sep_efuse_jtag_axil_el2_cpu_mux_test`
+| The JTAG *deny* set in PROD. `hw/sys/sep/doc/periphs.adoc` says that in PROD and
+  RMA_SIP the JTAG port can only read and write `RMA_SIP_TOKEN_I` and
+  `RMA_CHIPLET_TOKEN_I`; the RTL currently opens the whole MMR window. This entry used
+  to read `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH` inside its allow-set loop and assert OKAY,
+  which made the deviation a *requirement* — the entry could never reveal it, and it
+  would have gone red the moment the RTL was corrected. The read is gone; the allow-set
+  half now matches the specification, and the deny is uncovered rather than inverted.
+| A row asserting DECERR on a non-token MMR address in PROD. It fails against today's
+  RTL, so it needs the RTL fix (tracked upstream as #626) to land first, or an
+  explicitly-labelled expected-fail.
+
+| `sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_uvm_inbound_filter_gating_test`
+| The DFT group `[47:32]` of the feature-control word. It is gated by `secure_tm`, and
+  `secure_tm` has no testbench connection at all, so the group reads 0 in every run and
+  the golden clears it unconditionally. The specification's DFT column is therefore
+  structurally unverifiable here, not merely unexercised.
+| Drive the `secure_tm` strap from the testbench, then walk the DFT column against
+  Table 50 with the strap both set and clear.
+
+| `sep_efuse_lcc_lc_state_stitch_test`
+| The differential-decode fault path (`lc_sigint_err`) and the specification's INVALID
+  row. The status is now observed via a probe and asserted to stay 0, which is a health
+  guard rather than coverage: the sense FSM regenerates the `{~raw, raw}` pair from the
+  raw nibble in OTP, so no staged image can present a broken pair to the decode. An
+  earlier docstring claimed this was "covered indirectly" — it was not, and that claim
+  is gone.
+| A fault-injection path that can corrupt the sensed pair, or a documented backdoor
+  force with a recorded exception.
 
 | `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`,
   `sep_km_kmac_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`

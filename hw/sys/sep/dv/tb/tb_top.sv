@@ -312,6 +312,12 @@ module sep_uvm_top
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
+    // Lifecycle status observability. Both of these were previously left open on the
+    // sep instance, which meant every LCC checker ASSUMED security-disable was 0 and
+    // ASSUMED no differential-decode fault had fired. Bringing them out turns two
+    // assumptions into measurements. Read-only taps, no force.
+    output logic              lcc_security_disable_probe_o,
+    output logic              lcc_sigint_err_probe_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
     // asserted when the WDT count reaches BITE_THOLD). Brought out so the
     // reset/WDT sanity test (#19) can observe the bite -> reset-request edge. This
@@ -564,8 +570,8 @@ module sep_uvm_top
         // New wrapper status/debug outputs: observability only, left open.
         .lc_state_o                   (),
         .dbg_disable_o                (),
-        .lc_sigint_err_o              (),
-        .security_disable_o           (),
+        .lc_sigint_err_o              (lcc_sigint_err_probe_o),
+        .security_disable_o           (lcc_security_disable_probe_o),
         .km_unrecoverable_err_o       (),
         .km_recoverable_err_o         (),
         .efuse_debug_bus_o            (),

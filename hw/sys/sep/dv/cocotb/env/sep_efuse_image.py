@@ -78,6 +78,35 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
+# Lock-field geometry, from sep_efuse_pkg. LOCKS (64-bit, OTP words 0-1) plus
+# LOCKS_SPARE (32-bit, word 2) form one 96-bit field holding two bits per protected
+# field -- a write lock and a read lock -- across 40 slots (idx 0-39). locks[79:0] are
+# the meaningful pair bits; [95:80] are unassigned slots 40-47. Index 6'h3F is the
+# no-lock sentinel.
+LOCK_FIELD_BITS = 96
+LOCK_SLOTS = 40
+LOCK_BITS_PER_SLOT = 2
+LOCK_SENTINEL_IDX = 0x3F
+
+# Spec-stated anchors, asserted against the generated map below.
+#
+# Deriving the field table from the map is what stopped a hand-written copy going stale,
+# but it introduced a subtler failure: DV takes each field's length from the gap to the
+# next base, and efuse_guard derives its end address the same way, both reading the same
+# generated map. A wrong RDL therefore moves the expectation and the DUT together and
+# nothing disagrees. Pinning the handful of offsets and widths the specification states
+# outright gives the derivation an independent anchor -- the same reason
+# sep_reg_meta._selftest() exists in this environment.
+_SPEC_ANCHORS = {
+    # name:          (byte offset, width in bits)
+    "LOCKS":         (0x000, 64),
+    "LOCKS_SPARE":   (0x008, 32),
+    "LC_STATE":      (0x00C, 32),
+    "SIP_DIS":       (0x018, 64),
+    "SYS_DIS":       (0x020, 64),
+}
+_SPEC_TOTAL_BITS = 8192
+
 
 def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
     """Build the field table from the generated eFuse map.
@@ -103,13 +132,40 @@ def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
         end = regs[i + 1][0] if i + 1 < len(regs) else total_bytes
         kind = "lc" if name in _LC_REGS else "locks" if name in _LOCK_REGS else "data"
         out.append((name, off, (end - off) // 4, kind))
-    first, last = out[0], out[-1]
+    first = out[0]
     if first[1] != 0:
         raise RuntimeError(f"eFuse map does not start at 0: {first[0]} @ {first[1]:#x}")
     covered = sum(f[2] for f in out)
     if covered != NUM_FUSE_WORDS:
         raise RuntimeError(
             f"derived eFuse map covers {covered} words, expected {NUM_FUSE_WORDS}"
+        )
+    if covered * WORD_BITS != _SPEC_TOTAL_BITS:
+        raise RuntimeError(
+            f"derived eFuse array is {covered * WORD_BITS} bits, but the specification "
+            f"states {_SPEC_TOTAL_BITS}"
+        )
+    # Independent anchor: the offsets and widths the specification states outright must
+    # match what the generator produced. Without this the derivation and the DUT read the
+    # same map, so a wrong RDL would move both and nothing would disagree.
+    by_name = {f[0]: f for f in out}
+    for name, (want_off, want_bits) in _SPEC_ANCHORS.items():
+        if name not in by_name:
+            raise RuntimeError(
+                f"spec-stated field {name} is absent from the generated eFuse map"
+            )
+        _, got_off, got_words, _ = by_name[name]
+        got_bits = got_words * WORD_BITS
+        if (got_off, got_bits) != (want_off, want_bits):
+            raise RuntimeError(
+                f"{name} is at {got_off:#05x}/{got_bits}b in the generated map but the "
+                f"specification states {want_off:#05x}/{want_bits}b"
+            )
+    lock_bits = sum(by_name[n][2] for n in _LOCK_REGS) * WORD_BITS
+    if lock_bits != LOCK_FIELD_BITS:
+        raise RuntimeError(
+            f"LOCKS + LOCKS_SPARE span {lock_bits} bits, but sep_efuse_pkg states "
+            f"LockFieldBits = {LOCK_FIELD_BITS}"
         )
     return tuple(out)
 
@@ -217,10 +273,17 @@ class SepEfuseImage:
     def set_lc_state(self, raw: int) -> "SepEfuseImage":
         """Set LC_STATE by raw code (must be legal).
 
-        Stores the full differential encoding ``{~raw, raw}`` in LC_STATE[7:0] --
-        a valid differential value, matching the real OTP and the reference suite preload.
-        A bare raw nibble (upper nibble 0) is itself a differential error, so LC
-        is *always* constrained to a legal code AND a valid encoding.
+        Stores the full differential encoding ``{~raw, raw}`` in LC_STATE[7:0],
+        matching the real OTP and the reference-suite preload.
+
+        Storing the encoded form is a convenience, not a requirement. An earlier version
+        of this docstring claimed a bare raw nibble was "itself a differential error",
+        contradicting ``load_hex`` one screen up, which says either form works because
+        only ``[3:0]`` is significant. The runs settle it in load_hex's favour: the sense
+        FSM reads the raw nibble out of OTP and regenerates ``{~raw, raw}`` into the
+        shadow itself, so a staged image carrying a bare nibble still senses as a valid
+        pair. That is also why no staged image can present a BROKEN pair to the DUT --
+        see the lc_sigint_err note in the Phase 1 plan.
         """
         if raw not in LEGAL_LC_RAW:
             raise ValueError(f"illegal LC raw code 0x{raw:x}")
@@ -254,15 +317,18 @@ class SepEfuseImage:
         Constraints (mirrors reference sep_efuse_item):
           * LC_STATE is restricted to the 7 legal raw codes (never an illegal
             encoding) — pinned via ``lc_raw`` or drawn from the legal set.
-          * RESERVED_* fields stay 0.
+          * There are no RESERVED_* fields any more. The v0.5.22 map replaced the
+            whole reserved tail with real registers (PQC hashes, SEP_*_ID,
+            SPARE0-7), and every one of them is randomized like any other data
+            field. An earlier revision of this docstring still promised they
+            stayed zero, and the loop below still tested for a ``reserved`` kind
+            that _derive_fields never emits.
           * LOCKS stays unlocked unless ``lock_prob`` > 0, so every field reads
             back (read-locks would return 0xbadcab1e instead of data).
           * ``fixed`` pins named fields to explicit values after randomization.
         """
         rng = random.Random(seed)
         for fld in self.fields:
-            if fld.kind == "reserved":
-                continue  # must stay zero
             if fld.kind == "lc":
                 raw = lc_raw if lc_raw is not None else rng.choice(LEGAL_LC_RAW)
                 self.set_lc_state(raw)
@@ -270,16 +336,32 @@ class SepEfuseImage:
             if fld.kind == "locks":
                 if lock_prob <= 0.0:
                     continue
-                # NOTE: only the low 32 lock regions (LOCKS word 0) are modeled
-                # here; word 1 stays 0. Lock *enforcement* (read-lock -> 0xbadcab1e,
-                # write-lock) is not yet checked by the shadow checkers, so the
-                # golden assumes fields stay readable. Extend both this and
-                # expected_shadow() together when a lock-enforcement test is added.
-                bits = 0
-                for region in range(32):
+                # The lock field is 96 bits wide, not 32: LOCKS supplies bits [63:0]
+                # and LOCKS_SPARE bits [95:64]. It holds TWO bits per protected field
+                # -- a write lock and a read lock -- so 40 slots cover 80 bits, with
+                # slots 32-39 (the spare fields) living in LOCKS_SPARE. The sentinel
+                # index 6'h3F means "no lock".
+                #
+                # The previous model set one bit per "region" over range(32) in LOCKS
+                # word 0 only, which is wrong on width, on slot count, on the two-bit
+                # encoding and on where the spare slots live. It was also dormant --
+                # nothing in this environment passes lock_prob > 0 -- so it was an
+                # unexercised wrong model, which is the kind that gets trusted the
+                # first time someone writes a lock test against it.
+                #
+                # Lock ENFORCEMENT (read-lock returning the 0xbadcab1e sentinel,
+                # write-lock rejecting a program) is still not checked by the shadow
+                # checkers, so expected_shadow() assumes fields stay readable. Extend
+                # both together, and add a plan row, before relying on this.
+                lock_bits = 0
+                for slot in range(LOCK_SLOTS):
                     if rng.random() < lock_prob:
-                        bits |= 1 << region
-                self.words[fld.word] = bits & WORD_MASK
+                        lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT)      # write lock
+                    if rng.random() < lock_prob:
+                        lock_bits |= 1 << (slot * LOCK_BITS_PER_SLOT + 1)  # read lock
+                for i in range(fld.n_words):
+                    self.words[fld.word + i] = (
+                        (lock_bits >> (i * WORD_BITS)) & WORD_MASK)
                 continue
             # generic data field: random per word
             for i in range(fld.n_words):

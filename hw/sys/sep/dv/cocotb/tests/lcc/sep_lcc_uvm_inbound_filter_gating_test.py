@@ -30,7 +30,7 @@ Checkers (each logs positive evidence):
   * CHK-DEMOTE     DEMOTE_1.demote write -> read-back == 1.
   * CHK-DBG-FEAT   FEAT_CTRL == golden(PROD_DBG_1), sep_debug==1 (scoreboard).
   * CHK-DBG-ALLOW  external probe reads BOTH FEAT_CTRL halves OKAY and returns
-    the distinctive golden value 0xf0000000_0000f003 (proves the external path
+    the distinctive golden value 0xf0000000_f000f003 (proves the external path
     actually reached the LCC, not merely returned OKAY/all-ones).
   * CHK-IDENTITY   external access follows sep_debug: blocked@0, allowed@1 -- the
     frontdoor (FEAT_CTRL[0]) replacement for the reference suite's backdoor filter_skip read.
@@ -55,7 +55,7 @@ from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from seq_lib.sep_lcc_inbound_filter_gating_seq import (
     LCC_FEAT_CTRL,
     RESP_DECERR,
-    SepLccDemote1Seq,
+    SepLccDemoteSeq,
     SepLccFeatCtrlCheckSeq,
     SepExtAxiProbeSeq,
 )
@@ -129,14 +129,66 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             LCC_FEAT_CTRL, probe_prod.resp_code,
         )
 
+        # ---- CHK-DEMOTE-INDEP: DEMOTE_2 alone must open DBG_2 and NOT DBG_1 ----
+        #
+        # Under the post-#242 decode DEMOTE_1 and DEMOTE_2 are independent and act only
+        # on their own debug group: DEMOTE_1 on DBG_1 [15:0], DEMOTE_2 on DBG_2 [31:16].
+        # Before this phase existed, DEMOTE_2 was never written by any test in this
+        # environment -- it appeared only in the golden, so Table 50's DEMOTE_2 column
+        # and the independence property rested entirely on the golden's import-time KAT
+        # comparing the model against itself.
+        #
+        # DEMOTE_2 is driven FIRST and deliberately: the demote field is `onwrite=woset`
+        # (sep_lifecycle_ctrl.rdl:27), so it cannot be cleared once set. Driving DEMOTE_2
+        # while DEMOTE_1 is still 0 is therefore the only order in which this DUT can
+        # show one group opening without the other. sep_debug is bit 0, inside DBG_1, so
+        # it must still read 0 here -- and the external port must still be blocked, which
+        # is a second, independent consequence of the same property.
+        demote2 = SepLccDemoteSeq(group=2)
+        await self.start_seq(demote2)
+        assert demote2.demote == 1, f"DEMOTE_2.demote read back {demote2.demote}, expected 1"
+
+        feat_d2 = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS,
+                                     demote_1=0, demote_2=1, sec_dis=sec_dis)
+        ctl_d2 = SepLccFeatCtrlCheckSeq(feat_d2)
+        await self.start_seq(ctl_d2)
+        assert ctl_d2.sep_debug == 0, (
+            f"DEMOTE_2 alone must NOT open sep_debug (a DBG_1 bit), got "
+            f"{ctl_d2.sep_debug} (FEAT_CTRL=0x{ctl_d2.feat_ctrl:016x}) -- the two demote "
+            f"registers are not independent"
+        )
+        assert (ctl_d2.feat_ctrl & 0xFFFF) == 0, (
+            f"DEMOTE_2 alone opened DBG_1 bits [15:0]=0x{ctl_d2.feat_ctrl & 0xFFFF:04x}, "
+            f"expected 0 -- demotion is not per-group"
+        )
+        assert (ctl_d2.feat_ctrl >> 16) & 0xFFFF, (
+            f"DEMOTE_2 did not open any DBG_2 bit [31:16]=0x"
+            f"{(ctl_d2.feat_ctrl >> 16) & 0xFFFF:04x} -- the write had no effect"
+        )
+        self.logger.info(
+            "CHK-DEMOTE-INDEP PASS: DEMOTE_2 alone opened DBG_2 and left DBG_1 closed "
+            "(sep_debug=0), so the two demote registers act per-group")
+
+        probe_d2 = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
+        await self.start_ext_seq(probe_d2)
+        assert probe_d2.resp_code == RESP_DECERR, (
+            f"DEMOTE_2 alone must leave the inbound filter active (sep_debug=0), but the "
+            f"external probe returned resp={probe_d2.resp_code}"
+        )
+        self.logger.info(
+            "CHK-DEMOTE-INDEP PASS: external AXI still DECERR under DEMOTE_2 alone "
+            "(filter follows DBG_1, not DBG_2)")
+
         # ---- flip PROD -> PROD_DBG_1 via DEMOTE_1 ----
-        demote = SepLccDemote1Seq()
+        demote = SepLccDemoteSeq(group=1)
         await self.start_seq(demote)
         assert demote.demote == 1, f"DEMOTE_1.demote read back {demote.demote}, expected 1"
         self.logger.info("CHK-DEMOTE PASS: DEMOTE_1.demote write -> read-back == 1")
 
         # ---- PROD_DBG_1: sep_debug=1, inbound filter skipped -> external allowed ----
-        feat_dbg = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=1, sec_dis=sec_dis)
+        # demote_2 stays 1: the field is write-once-set, so the golden must carry both.
+        feat_dbg = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS,
+                                      demote_1=1, demote_2=1, sec_dis=sec_dis)
         ctl_dbg = SepLccFeatCtrlCheckSeq(feat_dbg)
         await self.start_seq(ctl_dbg)
         assert ctl_dbg.sep_debug == 1, (
@@ -151,7 +203,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         # Read BOTH FEAT_CTRL halves over the external master. The DISTINCTIVE half is
         # now the LO word: demotion acts only on DBG_1, so the hi (Function) word is
         # identical in PROD and PROD_DBG_1 and cannot distinguish them. The lo word
-        # is ~(SIP_DIS|SYS_DIS).DBG_1 = 0x0000f003 -- neither all-ones nor zero, so a
+        # is ~(SIP_DIS|SYS_DIS) over both debug groups = 0xf000f003 -- neither all-ones
+        # nor zero, so a
         # dummy responder or any unrelated OKAY slave fails it, and matching it proves
         # the external read actually reached the LCC FEAT_CTRL register.
         #

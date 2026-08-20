@@ -134,12 +134,23 @@ contract forbids quoting a value that varies with the run.
 [[sep_aes_mode_keysize_rand_test]]
 === sep_aes_mode_keysize_rand_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+Testlist:: `crypto.toml`
+
+==== Description
 
 Walks the nine-cell product of {ECB, CBC, CTR} x {128, 192, 256} in one invocation, with
 key, IV and plaintext randomised per cell. Each cell's ciphertext is compared bit-exact
 against `env/sep_aes_golden.py`, which self-tests at import against FIPS-197 C.1/C.2/C.3
 and SP800-38A F.2.1/F.5.1 — so the expectation is independent of the DUT.
+
+==== Steps
+
+@@STEPS:sep_aes_mode_keysize_rand_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -163,11 +174,22 @@ and SP800-38A F.2.1/F.5.1 — so the expectation is independent of the DUT.
 [[sep_hmac_sha_variant_rand_test]]
 === sep_hmac_sha_variant_rand_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+Testlist:: `crypto.toml`
+
+==== Description
 
 Walks 17 cells: keyed HMAC over every legal key length for each of SHA-256/384/512, plus
 plain SHA for each variant. Digests are compared against `env/sep_hmac_golden.py`, which
 self-tests against RFC 4231 and FIPS-180 vectors at import.
+
+==== Steps
+
+@@STEPS:sep_hmac_sha_variant_rand_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -202,12 +224,23 @@ positive control that the register can ever be non-zero on this path.
 [[sep_kmac_mode_strength_rand_test]]
 === sep_kmac_mode_strength_rand_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+Testlist:: `crypto.toml`
+
+==== Description
 
 Eight cells across SHA3-256/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256. Digests
 are read as `STATE share0 ^ share1` and compared against `env/sep_kmac_golden.py`, a
 self-contained Keccak-f[1600] implementation cross-checked at import against `hashlib`
 and the NIST SP800-185 samples.
+
+==== Steps
+
+@@STEPS:sep_kmac_mode_strength_rand_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -238,11 +271,22 @@ KATs exercise those same encoders against NIST samples.
 [[sep_crypto_edn_multisink_arbitration_test]]
 === sep_crypto_edn_multisink_arbitration_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`, 3 seeds
+Testlist:: `crypto.toml`
+
+==== Description
 
 The strongest entry in Phase 2. Runs the entropy scoreboard in strict mode with
 `report()` called, so CHK1..CHK4 are bit-exact chained goldens that raise on any mismatch,
 insufficient evidence, FIPS violation or illegal segmentation.
+
+==== Steps
+
+@@STEPS:sep_crypto_edn_multisink_arbitration_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -295,11 +339,22 @@ methodology, recorded here so the chain of custody is explicit.
 [[sep_crypto_per_ip_reset_isolation_test]]
 === sep_crypto_per_ip_reset_isolation_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+Testlist:: `system.toml`
+
+==== Description
 
 Proves the per-IP software reset domains are isolated, using live crypto results rather
 than a poked status bit: each engine computes a golden-checked value, then one engine is
 reset and the other's held result must survive bit-exact. Both directions are covered.
+
+==== Steps
+
+@@STEPS:sep_crypto_per_ip_reset_isolation_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -347,7 +402,18 @@ bits are not exercised, so "per-IP" here means two of five domains.
 [[sep_fabric_decode_error_response_test]]
 === sep_fabric_decode_error_response_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Testlist:: `system.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_fabric_decode_error_response_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -386,11 +452,22 @@ wedge property is enforced there rather than by an assert in the entry.
 [[sep_fabric_inbound_filter_rule_matrix_test]]
 === sep_fabric_inbound_filter_rule_matrix_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), *real PROD fuse sense* — no `+skip_fuse_sense`
+Testlist:: `system.toml`
+
+==== Description
 
 Brings the lifecycle controller up in PROD so the inbound filter is genuinely active
 (`sep_debug=0`, value-checked against the lifecycle golden), then exercises the allow and
 deny directions.
+
+==== Steps
+
+@@STEPS:sep_fabric_inbound_filter_rule_matrix_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -443,7 +520,18 @@ addresses are all unexercised.
 [[sep_fabric_remap_filter_csr_bank_test]]
 === sep_fabric_remap_filter_csr_bank_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Testlist:: `system.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_fabric_remap_filter_csr_bank_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -499,7 +587,18 @@ nothing records which indices a regression covered.
 [[sep_axil_mailbox_iface_rand_test]]
 === sep_axil_mailbox_iface_rand_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Testlist:: `system.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_axil_mailbox_iface_rand_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -552,7 +651,18 @@ Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 [[sep_irq_simultaneous_fanin_no_alias_test]]
 === sep_irq_simultaneous_fanin_no_alias_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Testlist:: `system.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_irq_simultaneous_fanin_no_alias_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -590,11 +700,22 @@ later sample would pass. The wording reads as an always-property.
 [[sep_pic_irq_source_map_delivery_test]]
 === sep_pic_irq_source_map_delivery_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `cpu`, firmware `pic_irq_source_map_test`, `+skip_fuse_sense`
+Testlist:: `cpu.toml`
+
+==== Description
 
 Firmware-driven. The verdict arrives through the outbound mailbox magic and is gated on
 the firmware error counter, with the boot scoreboard independently requiring the console
 banner, `fw_done`, and a minimum number of distinct retired program counters.
+
+==== Steps
+
+@@STEPS:sep_pic_irq_source_map_delivery_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -643,11 +764,22 @@ poll and yields the same pass.
 [[sep_spi_ot_dma_tx_test]]
 === sep_spi_ot_dma_tx_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `cpu`, firmware `spi_ot_dma_tx_test`, 3 seeds
+Testlist:: `spi.toml`
+
+==== Description
 
 Drives SRAM through the secure DMA into the OpenTitan SPI host transmit FIFO and on to the
 flash BFM, then reads the flash back and compares against the cocotb-seeded random source
 data.
+
+==== Steps
+
+@@STEPS:sep_spi_ot_dma_tx_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -700,7 +832,18 @@ data.
 [[sep_spi_ot_flash_cmd_rand_test]]
 === sep_spi_ot_flash_cmd_rand_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `cpu`, firmware `spi_ot_flash_cmd_test`, 3 seeds
+Testlist:: `spi.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_spi_ot_flash_cmd_rand_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -741,7 +884,18 @@ address and payload.
 [[sep_spi_ot_host_csr_irq_rand_test]]
 === sep_spi_ot_host_csr_irq_rand_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Testlist:: `spi.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_spi_ot_host_csr_irq_rand_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -796,7 +950,18 @@ Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 [[sep_sram_datapath_breadth_test]]
 === sep_sram_datapath_breadth_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Testlist:: `memory.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_sram_datapath_breadth_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -841,10 +1006,21 @@ strobe from address and length — and are recorded as deferred rather than chec
 [[sep_dma_basic_test]]
 === sep_dma_basic_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `cpu`, firmware `dma_basic_test`, seed pinned
+Testlist:: `cpu.toml`
+
+==== Description
 
 Fully deterministic: the seed is pinned and the source fill uses a fixed generator, so the
 entire console is reproducible.
+
+==== Steps
+
+@@STEPS:sep_dma_basic_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -902,7 +1078,18 @@ entire console is reproducible.
 [[sep_boot_rom_lsu_read_test]]
 === sep_boot_rom_lsu_read_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `cpu`, firmware `rom_lsu_read_test`
+Testlist:: `memory.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_boot_rom_lsu_read_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -935,7 +1122,18 @@ Run mode:: `cpu`, firmware `rom_lsu_read_test`
 [[sep_warm_cold_reset_scratch_test]]
 === sep_warm_cold_reset_scratch_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+Testlist:: `cpu.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_warm_cold_reset_scratch_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -977,7 +1175,18 @@ not an independent confirmation that the reset landed.
 [[sep_cpu_dbg_reset_independence_test]]
 === sep_cpu_dbg_reset_independence_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+Testlist:: `cpu.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_cpu_dbg_reset_independence_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -1001,7 +1210,18 @@ IMPORTANT: this entry does *not* verify debug-reset isolation. See
 [[sep_wdt_aon_timer_internals_test]]
 === sep_wdt_aon_timer_internals_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Testlist:: `system.toml`
+
+==== Description
+
+==== Steps
+
+@@STEPS:sep_wdt_aon_timer_internals_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -1046,12 +1266,23 @@ Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 [[sep_rom_ot_dma_boot_test]]
 === sep_rom_ot_dma_boot_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `cpu`, the `rom_boot` build target, boot-from-SPI strap seeded
+Testlist:: `cpu.toml`
+
+==== Description
 
 Added by PR #451 and previously undocumented. With the strap seeded, the production boot
 ROM built for the OpenTitan SPI controller takes its SPI branch, fetches the primary
 manifest and its payload over the real `spi_host` from the flash BFM into SRAM, validates
 both hashes with its own SHA-256, and runs the copied first-stage payload to firmware pass.
+
+==== Steps
+
+@@STEPS:sep_rom_ot_dma_boot_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -1083,11 +1314,22 @@ identity and retired-instruction count rather than on an assertion. See <<open-i
 [[sep_rom_ot_pio_boot_test]]
 === sep_rom_ot_pio_boot_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `cpu`, the `rom_boot` build target, programmed-IO ROM build
+Testlist:: `cpu.toml`
+
+==== Description
 
 The same end-to-end SPI manifest and payload boot as <<sep_rom_ot_dma_boot_test>>, from
 the ROM build whose binary does not link the DMA drain — so the receive FIFO drain must be
 CPU programmed-IO. Checkers and grades are as above, inherited from the same scenario.
+
+==== Steps
+
+@@STEPS:sep_rom_ot_pio_boot_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===
@@ -1111,11 +1353,22 @@ proof of the SPI boot path plus an unasserted claim about which drain served it.
 [[sep_rom_ot_secure_boot_test]]
 === sep_rom_ot_secure_boot_test
 
+[horizontal]
+Tier:: Tier 2
 Run mode:: `cpu`, the `rom_boot` build target, signed flash image, `+sep_crypto_edn_force`
+Testlist:: `cpu.toml`
+
+==== Description
 
 With an RSA-3072 PKCS#1 v1.5 signed image, the ROM enters its secure-boot arm and completes
 a genuine signature verification on OTBN against the ROM-pinned development key digest
 before booting the payload to firmware pass.
+
+==== Steps
+
+@@STEPS:sep_rom_ot_secure_boot_test@@
+
+==== Checkers
 
 [cols="1,4,4,1",options="header"]
 |===

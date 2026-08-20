@@ -22,10 +22,14 @@ W1S-monotonic / valid-transition rules (the test-level mirror of the RTL SVA
 state checker); the fixed monotonic chain covers the SVA forward-only and
 terminal-stability properties implicitly.
 
-Scope vs the reference suite: differential-decode integrity (``lc_sigint_err``)
-is not checked directly -- that port is internal to ``sep`` and unreachable from
-cocotb.top -- but it is covered indirectly, since a spurious sigint forces
-``feat_ctrl`` to 0 and the exact feat_ctrl check would flag the mismatch.
+Scope: differential-decode integrity (``lc_sigint_err``) is NOT covered, and the
+earlier claim here that it was "covered indirectly" was an overclaim. It is now
+observed via ``lcc_sigint_err_probe_o`` and asserted to stay 0, but that is a health
+guard, not a test of the fault path: the runs establish that the sense FSM regenerates
+the ``{~raw, raw}`` pair from the raw nibble in OTP, so no staged image can present a
+broken pair to the decode. The golden's ``sigint_err`` branch and the specification's
+INVALID row therefore have no frontdoor stimulus in this environment. Proving the run
+did not trip a fault is not the same as proving the fault detection works.
 """
 
 from __future__ import annotations
@@ -58,8 +62,12 @@ _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
 _SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
-_EFUSE_CTRL_BASE = _SHADOW_BASE + 0x400
-_EFUSE_MMR_BASE = _SHADOW_BASE + 0x500
+# Block bases from the generated map. These are separate register blocks, not offsets
+# within the shadow map, so deriving them as _SHADOW_BASE + 0x400 / + 0x500 was a
+# hand-copied adjacency that happens to hold today -- the same defect class as the
+# field offsets above, one level up.
+_EFUSE_CTRL_BASE = sym("EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")
+_EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
 _EFUSE_PROGRAM_CTRL = _EFUSE_CTRL_BASE + 0x4
 _RMA_SIP_TOKEN_I = _EFUSE_MMR_BASE + 0x00
 _RMA_CHIPLET_TOKEN_I = _EFUSE_MMR_BASE + 0x20
@@ -270,15 +278,27 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             else:
                 await self._program_state_and_resense(image, raw)
 
-            # security_disable feeds the golden; default 0 if the port is not
-            # exposed (a wrong value is still caught by the exact feat_ctrl check,
-            # which would otherwise expect the all-ones sec_dis override).
-            # security_disable_o is not brought out to the testbench, so reading it
-            # would return 0 unconditionally while looking like a DUT observation.
-            # Pass the known value explicitly instead: this image never sets it, and a
-            # wrong assumption is caught anyway by the exact feat_ctrl compare, which
-            # would otherwise expect the all-ones security-disable override.
-            sec_dis = 0
+            # sec_dis is now OBSERVED, not assumed. security_disable_o used to be left
+            # open on the sep instance, so every checker here passed a literal 0 and a
+            # comment explaining that reading it would return 0 unconditionally. It is
+            # brought out as lcc_security_disable_probe_o, so the golden is fed the
+            # value the DUT actually presents.
+            sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
+
+            # The differential-decode fault status, likewise observed rather than
+            # inferred. No stimulus in this environment can present a BROKEN {~raw, raw}
+            # pair -- the sense FSM regenerates the pair from the raw nibble, so a staged
+            # image cannot produce one -- which means lc_sigint_err has no positive
+            # coverage here and the golden's sigint branch is unreachable from the
+            # frontdoor. Asserting it stays 0 is therefore NOT a test of the fault path;
+            # it is a guard that the decode is healthy while the checks below run, and it
+            # is what lets those checks attribute a feat_ctrl mismatch to the decode
+            # rather than to a silent sigint. The plan records the gap.
+            sigint = int(cocotb.top.lcc_sigint_err_probe_o.value) & 0x1
+            assert sigint == 0, (
+                f"lc_sigint_err is set at LC=0x{raw:x}: the differential LC decode "
+                f"reported a fault, so every feat_ctrl expectation below is void"
+            )
             seq = sep_lcc_stitch_check_seq(image, secure_tm=0, sec_dis=sec_dis)
             await self.start_seq(seq)
 

@@ -57,7 +57,6 @@ _ICCM_BASE = 0xC000_0000
 _EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")   # shadow map -> DENIED to JTAG at PROD
 _EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")    # MMR token region -> ALLOWED
 _EFUSE_MMR_TOKEN3 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR")
-_EFUSE_MMR_LAST = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 _BADCAB1E = 0xBADC_AB1E
 # The JTAG LC-gated denial routes to prim_axi_lite_err_slv, whose default RESP is
 # RESP_DECERR (=3); the sep_efuse_wrapper instance does not override it. So a
@@ -159,9 +158,20 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             assert rdata == token3_value, (
                 f"JTAG MMR token3 readback {i} got 0x{rdata:08x}, "
                 f"expected 0x{token3_value:08x}")
-            if (i % 4) == 0:
-                code, _ = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_LAST)
-                assert code == 0, f"JTAG MMR last read {i} not OKAY (resp={code})"
+            # No EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH read here, deliberately.
+            #
+            # periphs.adoc: in PROD and RMA_SIP the JTAG port "can only read and write
+            # RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I". SEC_DISABLE_TOKEN_MATCH is
+            # neither, so the spec DENIES it. The RTL currently opens the whole MMR
+            # window and answers OKAY, which the nonfree suite tracks as harness #626.
+            #
+            # This loop used to read that address and assert OKAY, which turned the
+            # deviation into a requirement: the entry could never reveal #626, and it
+            # would have gone red the moment #626 was fixed. Certifying a spec
+            # violation as required behaviour is worse than not covering it. The two
+            # reads that remain (RMA_SIP_TOKEN_I_1 and _3) are spec-allowed, so the
+            # allow-set half of this checker is now true to the specification. The
+            # uncovered deny is recorded as an open item in the Phase 1 plan.
             rounds = i + 1
             cnt_after = self._scratch(_SCRATCH_COUNT)
             if rounds >= _JTAG_MIN_ROUNDS and cnt_after > cnt_before:
