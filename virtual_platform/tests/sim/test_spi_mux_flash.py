@@ -31,8 +31,8 @@ NOT_FOUND_MARK = "not found"               # unstaged: "... data/flash_memory.bi
 
 
 def _env(request):
-    """Toolchain bin on PATH + the gcc-toolset runtime for sep-vp."""
-    env = paths.vp_env(request.config.getoption("--gcc-toolset"))
+    """Toolchain bin on PATH for the firmware build."""
+    env = paths.vp_env()
     tc_bin = Path(request.config.getoption("--riscv-toolchain")) / "bin"
     if tc_bin.is_dir():
         env["PATH"] = f"{tc_bin}{os.pathsep}{env.get('PATH', '')}"

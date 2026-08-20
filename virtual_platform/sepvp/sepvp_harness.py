@@ -58,7 +58,6 @@ class SepVpHarness(Harness):
         sep_vp_bin: Path | None = None,
         base_ini: Path | None = None,
         stream: bool = False,
-        gcc_toolset: str = "gcc-toolset-11",
     ):
         super().__init__(config)
         self.sep_vp_bin = Path(sep_vp_bin) if sep_vp_bin else paths.sep_vp_bin()
@@ -66,7 +65,6 @@ class SepVpHarness(Harness):
         self.run_root = Path(run_root) if run_root else paths.LOGS_DIR
         self.run_dir = self.run_root / config.name
         self.stream = stream
-        self.gcc_toolset = gcc_toolset
         self.log_path = self.run_dir / "sep-vp.log"
         self.overlay_path = self.run_dir / "overlay.ini"
         self._log_file = None
@@ -174,7 +172,7 @@ class SepVpHarness(Harness):
             str(self.sep_vp_bin),
             argv,
             cwd=str(self.run_dir),
-            env=paths.vp_env(self.gcc_toolset),
+            env=paths.vp_env(),
             encoding="utf-8",
             codec_errors="replace",
             timeout=self.config.boot_timeout,

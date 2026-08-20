@@ -68,18 +68,12 @@ def fw_test_elf(test_name: str) -> Path:
     return FW_TEST_BUILD_DIR / test_name / f"{test_name}.tcm.elf"
 
 
-def vp_env(gcc_toolset: str = "gcc-toolset-11") -> dict:
+def vp_env() -> dict:
     """Environment for launching sep-vp.
 
     sep-vp runs standalone: libsystemc resolves via RPATH and Boost/CCI/OpenSSL are
-    static, with the gcc-toolset libstdc++ statically satisfied. We therefore inherit
-    the current environment and, as cheap insurance for hosts where the system
-    libstdc++ is older, prepend the gcc-toolset runtime lib dir to LD_LIBRARY_PATH
-    when it exists.
+    static. The caller's environment is the contract — whoever built sep-vp with a
+    non-default toolchain is responsible for having its runtime (LD_LIBRARY_PATH or
+    an activated toolset shell) in the environment pytest/the CLI runs under.
     """
-    env = dict(os.environ)
-    toolset_lib = f"/opt/rh/{gcc_toolset}/root/usr/lib64"
-    if os.path.isdir(toolset_lib):
-        prev = env.get("LD_LIBRARY_PATH", "")
-        env["LD_LIBRARY_PATH"] = toolset_lib + (os.pathsep + prev if prev else "")
-    return env
+    return dict(os.environ)

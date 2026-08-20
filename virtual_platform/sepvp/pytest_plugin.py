@@ -9,7 +9,6 @@ lives with the rest of the runner logic inside the ``sepvp`` package. The test s
 
 Options (mirroring the example bootcode harness where it makes sense):
   --vp-bin PATH        sep-vp executable (default: the in-tree build)
-  --gcc-toolset NAME   gcc-toolset providing the C++ runtime (default gcc-toolset-11)
   --vp-timeout N       default per-run boot timeout in seconds (default 120)
   --no-build           do not (re)build firmware; use whatever ELF already exists
   --build-type T       'test' (DEBUG: SIM_OUT on) or 'release' (default test)
@@ -52,7 +51,6 @@ _MARKERS = [
 def pytest_addoption(parser):
     g = parser.getgroup("sepvp", "SEP virtual-platform harness")
     g.addoption("--vp-bin", default=None, help="path to the sep-vp executable")
-    g.addoption("--gcc-toolset", default="gcc-toolset-11", help="gcc-toolset for the C++ runtime")
     g.addoption("--vp-timeout", type=int, default=120, help="default per-run boot timeout (s)")
     g.addoption("--no-build", dest="build", action="store_false", default=True,
                 help="do not rebuild firmware before running")
@@ -218,7 +216,6 @@ def vp(request):
         h = SepVpHarness(
             config,
             sep_vp_bin=request.config.getoption("--vp-bin"),
-            gcc_toolset=request.config.getoption("--gcc-toolset"),
             stream=request.config.getoption("--stream"),
         )
         created.append(h)
