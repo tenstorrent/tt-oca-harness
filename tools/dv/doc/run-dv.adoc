@@ -983,8 +983,11 @@ Explicit run directories never create or update the `latest` symlink.
 |`dtp`, `sep`, `smu`, `smc` + Verilator
 |Hosted `sim` matrix at current head. Smoke runs on every pull request and
 push to `main`; nightly reseeds each DUT's `nightly_items` group (`all` /
-`no_cpu` / `sep0_all` / `smoke`). The checks are not currently required by
-the `main` ruleset (only the GitLab mirror check is).
+`no_cpu` / `sep0_all` / `smoke`). Main protection requires the stable
+`verilator-smoke (dtp)` and `verilator-smoke (sep)` pull-request contexts in
+addition to the GitLab mirror context. A failed, cancelled, or missing DTP or
+SEP smoke result blocks merge. SMU and SMC smoke run in the same matrix but
+are not required contexts.
 
 |Configured, not CI-qualified
 |`dtp --framework uvm` + VCS; `smu_wrapper` cocotb flow
