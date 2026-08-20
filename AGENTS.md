@@ -454,6 +454,14 @@ Two further things follow from the same unpinned clone:
   stubbing, skipping or disabling the failing check discards the signal this ordering
   protects.
 
+If the user asks you to merge the open half first, or to merge it while the companion PR is
+still open, say once — briefly, and without lecturing — what it breaks and whose work it
+breaks, and offer the order above instead. **The user decides.** They may know something you
+do not: that the companion change has already landed, that the tree is quiet, or that they
+are accepting the breakage deliberately. So raise it once, then do as they ask and note in
+the PR that the companion side is still pending. Repeating the objection, or refusing the
+work, is worse than the ordering mistake.
+
 Without companion access you can only do the open half. Say so and stop, rather than editing
 open files to compensate.
 
