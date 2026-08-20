@@ -68,9 +68,8 @@ addrmap key_manager {
     // Register-Based Peripherals (AXI-Lite Access)
     //=========================================================================
 
-    // Every window below is 2^MIN_ADDR_WIDTH bytes, the low address bits its
-    // register block keeps, so no register is reachable from a second address.
-    // The crossbar rules in km_intf_pkg.sv are derived from the same widths.
+    // Each window below is the power of two that covers its block's registers,
+    // so no register is reachable from a second address.
 
     // KPV (Key and Policy Vault) - KM port
     // Base Address: 0x0001_2000
@@ -159,8 +158,6 @@ addrmap key_manager {
     // Size: 4KB decode window; only MAP/CTRL/MMR sub-regions are decoded by
     //       efuse_interface_controller (offsets 0x000-0x3FF / 0x400 / 0x500).
     //       efuse_shim_ctrl is intentionally excluded (not in the AXIL path).
-    //       The remap keeps addr[11:0] and the sub-regions run to 0x56F, so
-    //       unlike the register-block ports this one needs the whole page.
     //
     // Instantiated as 'external' — the KM crossbar forwards transactions to
     // sep_efuse_wrapper; no KM-side register RTL is generated.
@@ -193,10 +190,8 @@ addrmap key_manager {
     // 0x0001_C000-0x0001_C7FF| 2KB     | ABR Key Storage                | AXI-Lite
     // Every other address    | -       | Reserved/Unmapped              | DECERR
     //
-    // A window covers only the addresses its block decodes, so the crossbar
-    // routes nothing between them: those addresses answer DECERR, while an
-    // unmapped offset inside a window reaches its register block and answers
-    // SLVERR.
+    // Addresses between two windows answer DECERR; an unmapped offset inside a
+    // window answers SLVERR.
     //
     //=========================================================================
     // Access Notes

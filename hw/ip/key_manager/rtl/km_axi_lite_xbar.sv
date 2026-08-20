@@ -153,9 +153,8 @@ module km_axi_lite_xbar import km_intf_pkg::*; import axi_pkg::*; #(
     // A slave keeps only the low address bits of its own decode window, so a
     // rule has to be a power of two and aligned to its base, or the slave's
     // registers repeat under a second set of addresses inside the same rule.
-    // The window sizes now come from the generated register packages and cannot
-    // drift on their own; a base moved to an address it no longer aligns to, or
-    // a new rule laid over an existing one, still can.
+    // The window sizes come from the generated register packages, but a moved
+    // base or an added rule can still break either property.
 
     /** @brief Every rule is a power of two in size and aligned to that size. */
     function automatic bit km_addr_map_aligned();

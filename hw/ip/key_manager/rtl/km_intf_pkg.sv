@@ -113,8 +113,7 @@ package km_intf_pkg;
      * @details Every register-block port spans exactly the window its block
      *          decodes, 2^MIN_ADDR_WIDTH bytes taken from the generated
      *          register package, so no register is reachable from more than one
-     *          address. The sizes below are what those widths yield today; they
-     *          follow the register model rather than being fixed here.
+     *          address. The sizes below are what those widths yield today.
      *
      *  | Region | Base        | End         | Size  | Notes                                   |
      *  |--------|-------------|-------------|-------|-----------------------------------------|
@@ -186,9 +185,8 @@ package km_intf_pkg;
     // is reached correctly.
     // Accessible sub-regions: MAP/shadow (offset 0x000-0x3FF),
     //   CTRL (offset 0x400-0x41B), MMR (offset 0x500-0x56F).
-    // This rule stays a full 4 KB page: the remap keeps addr[11:0] and the
-    // sub-regions run to 0x56F, so the page is structurally required rather
-    // than derived from one register block's window.
+    // This rule is a full 4 KB page: the remap keeps addr[11:0] and the
+    // sub-regions run to 0x56F.
     localparam km_addr_t OTP_BASE_ADDR = 32'h0001_1000;
     localparam km_addr_t OTP_END_ADDR = 32'h0001_1FFF;
 

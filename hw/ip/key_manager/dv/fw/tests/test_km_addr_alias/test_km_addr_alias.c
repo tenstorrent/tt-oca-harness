@@ -20,15 +20,9 @@
  *   - Beyond the decode window the crossbar must not route the access at all,
  *     so it must raise DECERR from the crossbar's own error slave.
  *
- * Enumerating each block's registers is unnecessary to make that airtight: a
- * clean read inside the decode window can only come from the register block,
- * which decodes every offset in the window and errors on the ones it does not
- * implement.
- *
- * The sweep runs to each port's *former* crossbar aperture, which is where the
- * aliases lived: the rules used to hand almost every port 4KB while the block
- * kept only its own low address bits, so its registers repeated through the
- * rest of the aperture.
+ * A clean read inside a decode window can only come from the register block,
+ * which decodes every offset in the window, so holding that invariant needs no
+ * per-block register list.
  *
  * Requirements: KM fabric address decode (#592)
  *
@@ -46,10 +40,10 @@
 #define BUS_ERR_SLVERR 0x1U
 #define BUS_ERR_DECERR 0x2U
 
-/* Crossbar rule size each port had before #592; the sweep runs this far so the
- * offsets that used to alias are covered along with the gaps between them. */
-#define APERTURE_4KB 0x1000U
-#define APERTURE_8KB 0x2000U
+/* The map spaces peripheral ports 4KB apart, 8KB for the KPV. Sweeping a port's
+ * whole slot covers the addresses above its decode window. */
+#define SLOT_4KB 0x1000U
+#define SLOT_8KB 0x2000U
 
 /* Sweeping the whole map is ~9k probes, well past the 100k-cycle default */
 #define TEST_TIMEOUT_CYCLES 4000000U
@@ -60,52 +54,50 @@
 
 typedef struct {
     const char *name;
-    uint32_t base;      /* crossbar rule base, unchanged by the fix */
+    uint32_t base;      /* crossbar rule base */
     uint32_t span;      /* generated <BLOCK>_SIZE: bytes covered by registers */
-    uint32_t aperture;  /* crossbar rule size before the fix */
-    uint32_t probe_min; /* first offset swept; see the per-port comments */
+    uint32_t slot;      /* bytes to the next port in the map; the sweep bound */
+    uint32_t probe_min; /* first offset swept */
     uint32_t witness;   /* offset of a register that reads without side effects */
     const char *witness_name;
 } km_port_t;
 
-/* Every crossbar port except OTP/eFuse, which keeps its 4KB rule because
- * key_manager.sv remaps it as {OTP_EFUSE_REMAP_BASE[31:12], addr[11:0]} and its
- * sub-regions run to 0x56F, so the full page is structurally required. */
+/* Every crossbar port except OTP/eFuse, whose rule is a full page because the
+ * port remaps the low 12 bits of the address and its sub-regions run to 0x56F. */
 static const km_port_t KM_PORTS[] = {
     /* The two FIFO portals below KM_STATUS pop and push on access, so the sweep
-     * starts above them; their aliases higher in the aperture are still swept,
-     * and reach the register block rather than the portals. */
-    {"mailbox_km", KEY_MANAGER_MAILBOX_KM_BASE_ADDR, KEY_MANAGER_MAILBOX_KM_SIZE, APERTURE_4KB,
-     0x00CU, 0x00CU, "KM_STATUS"},
+     * starts above them; the addresses higher in the slot that repeat their
+     * offsets are still swept, and reach the register block instead. */
+    {"mailbox_km", KEY_MANAGER_MAILBOX_KM_BASE_ADDR, KEY_MANAGER_MAILBOX_KM_SIZE, SLOT_4KB, 0x00CU,
+     0x00CU, "KM_STATUS"},
     /* KEY_ENTRY[64] at 0x000-0xFFF is an external register file with its own
-     * lock and erase policy, exercised by the KPV tests; the sweep starts at
-     * CTRL[0] rather than reading key state. */
-    {"kpv", KEY_MANAGER_KPV_BASE_ADDR, KEY_MANAGER_KPV_SIZE, APERTURE_8KB, 0x1000U, 0x1000U,
-     "CTRL[0]"},
-    {"kmcsr", KEY_MANAGER_KMCSR_BASE_ADDR, KEY_MANAGER_KMCSR_SIZE, APERTURE_4KB, 0x000U, 0x1FCU,
+     * lock and erase policy, so the sweep starts at CTRL[0] rather than reading
+     * key state. */
+    {"kpv", KEY_MANAGER_KPV_BASE_ADDR, KEY_MANAGER_KPV_SIZE, SLOT_8KB, 0x1000U, 0x1000U, "CTRL[0]"},
+    {"kmcsr", KEY_MANAGER_KMCSR_BASE_ADDR, KEY_MANAGER_KMCSR_SIZE, SLOT_4KB, 0x000U, 0x1FCU,
      "DEBUG"},
-    /* Reading DATA at 0x000 starts a DRBG request, so the sweep starts at CFG.
-     * Its aliases are swept and do start requests, which is why main() seeds
-     * the testbench DRBG before sweeping. */
-    {"drbg_sampler", KEY_MANAGER_DRBG_SAMPLER_BASE_ADDR, KEY_MANAGER_DRBG_SAMPLER_SIZE,
-     APERTURE_4KB, 0x004U, 0x004U, "CFG"},
+    /* Reading DATA at 0x000 starts a DRBG request, so the sweep starts at CFG;
+     * the addresses that repeat its offset are swept and do start requests,
+     * which is why main() seeds the testbench DRBG first. */
+    {"drbg_sampler", KEY_MANAGER_DRBG_SAMPLER_BASE_ADDR, KEY_MANAGER_DRBG_SAMPLER_SIZE, SLOT_4KB,
+     0x004U, 0x004U, "CFG"},
     {"otbn_wrapper_key", KEY_MANAGER_OTBN_WRAPPER_KEY_BASE_ADDR, KEY_MANAGER_OTBN_WRAPPER_KEY_SIZE,
-     APERTURE_4KB, 0x000U, 0x060U, "KEY_CTRL"},
+     SLOT_4KB, 0x000U, 0x060U, "KEY_CTRL"},
     {"aes_wrapper_key", KEY_MANAGER_AES_WRAPPER_KEY_BASE_ADDR, KEY_MANAGER_AES_WRAPPER_KEY_SIZE,
-     APERTURE_4KB, 0x000U, 0x040U, "KEY_CTRL"},
+     SLOT_4KB, 0x000U, 0x040U, "KEY_CTRL"},
     {"kmac_wrapper_key", KEY_MANAGER_KMAC_WRAPPER_KEY_BASE_ADDR, KEY_MANAGER_KMAC_WRAPPER_KEY_SIZE,
-     APERTURE_4KB, 0x000U, 0x040U, "KEY_CTRL"},
+     SLOT_4KB, 0x000U, 0x040U, "KEY_CTRL"},
     {"hmac_wrapper_key", KEY_MANAGER_HMAC_WRAPPER_KEY_BASE_ADDR, KEY_MANAGER_HMAC_WRAPPER_KEY_SIZE,
-     APERTURE_4KB, 0x000U, 0x040U, "KEY_CTRL"},
+     SLOT_4KB, 0x000U, 0x040U, "KEY_CTRL"},
     {"abr_wrapper_key", KEY_MANAGER_ABR_WRAPPER_KEY_BASE_ADDR, KEY_MANAGER_ABR_WRAPPER_KEY_SIZE,
-     APERTURE_4KB, 0x000U, 0x040U, "MLDSA_SEED.KEY_CTRL"},
+     SLOT_4KB, 0x000U, 0x040U, "MLDSA_SEED.KEY_CTRL"},
 };
 
 #define KM_PORT_COUNT (sizeof(KM_PORTS) / sizeof(KM_PORTS[0]))
 
 /**
- * Decode window of a register block: the block keeps MIN_ADDR_WIDTH low
- * address bits, and the generator sets that to clog2 of the register span.
+ * A block keeps MIN_ADDR_WIDTH low address bits, which the generator sets to
+ * clog2 of the register span.
  */
 static uint32_t decode_window(uint32_t span) {
     uint32_t window = 1U;
@@ -138,9 +130,9 @@ static const char *bus_err_name(uint32_t err) {
 }
 
 /**
- * Read and clear the sticky bus error bits, returning what the last access saw.
- * SLVERR and DECERR only set these bits and the access still retires, so a long
- * sweep survives as long as the fault enables stay clear.
+ * SLVERR and DECERR only set the sticky status bits and the access still
+ * retires, so the sweep survives its own probes while the fault enables stay
+ * clear.
  */
 static uint32_t bus_err_take(void) {
     km_csr__irq_status_reg_t status;
@@ -175,9 +167,6 @@ static uint32_t probe_write(uint32_t addr, uint32_t data) {
     return bus_err_take();
 }
 
-/**
- * Probe one offset of a port and hold it to the invariant for its region.
- */
 static void check_offset(const km_port_t *port, uint32_t window, uint32_t off) {
     uint32_t addr = port->base + off;
     uint32_t data = 0;
@@ -206,10 +195,6 @@ static void check_offset(const km_port_t *port, uint32_t window, uint32_t off) {
     }
 }
 
-/**
- * Confirm nothing in this test can turn a probe into an unrecoverable fault,
- * and that the sticky bits start clear so the first probe is readable.
- */
 static void check_bus_err_reporting_usable(void) {
     km_csr__irq_enable_reg_t enable;
     uint32_t err;
@@ -226,9 +211,8 @@ static void check_bus_err_reporting_usable(void) {
 }
 
 /**
- * Read each port's witness register, then the address that mirrors it one
- * decode window higher. The witness read is the positive control; the mirror is
- * the alias, and reporting the value it echoes names the bug directly.
+ * Each port's witness register reads cleanly; the address one decode window
+ * above it must not.
  */
 static void check_witnesses(void) {
     for (uint32_t i = 0; i < KM_PORT_COUNT; i++) {
@@ -240,11 +224,11 @@ static void check_witnesses(void) {
 
         TEST_ASSERT(err == BUS_ERR_NONE, "%s %s at 0x%08X must read without an error; got %s",
                     port->name, port->witness_name, addr, bus_err_name(err));
-        TEST_LOG("  %s %s at 0x%08X reads 0x%08X, window 0x%X of aperture 0x%X", port->name,
-                 port->witness_name, addr, data, window, port->aperture);
+        TEST_LOG("  %s %s at 0x%08X reads 0x%08X, window 0x%X of slot 0x%X", port->name,
+                 port->witness_name, addr, data, window, port->slot);
 
-        if (window >= port->aperture) {
-            continue; /* nothing above the window to alias it */
+        if (window >= port->slot) {
+            continue; /* the window fills the slot */
         }
 
         uint32_t alias = addr + window;
@@ -263,10 +247,7 @@ static void check_witnesses(void) {
 }
 
 /**
- * A write that lands on a live register is the dangerous half of aliasing, so
- * probe it directly: DRBG CFG is the one benign read/write register on the
- * aliasing ports, and the KPV, whose window already matches its aperture, shows
- * a write to an unmapped offset erroring without being routed away.
+ * A write above a decode window must not reach the register it would repeat.
  */
 static void check_write_probes(void) {
     const km_port_t *drbg = port_by_base(KEY_MANAGER_DRBG_SAMPLER_BASE_ADDR);
@@ -337,11 +318,11 @@ int main(void) {
         const km_port_t *port = &KM_PORTS[i];
         uint32_t window = decode_window(port->span);
 
-        for (uint32_t off = port->probe_min; off < port->aperture; off += 4U) {
+        for (uint32_t off = port->probe_min; off < port->slot; off += 4U) {
             check_offset(port, window, off);
         }
         TEST_LOG("  %s: 0x%04X-0x%04X held the invariant", port->name, port->probe_min,
-                 port->aperture - 4U);
+                 port->slot - 4U);
     }
 
     TEST_LOG("  No address outside a block's decode window returned data");
