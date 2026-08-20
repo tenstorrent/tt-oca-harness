@@ -132,8 +132,8 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         # a real observation before that comparison means anything: an all-zero garbage
         # read would satisfy `a_side != c_dummy` while proving nothing. There is no
         # bit-exact KMAC golden wired up here (see the module docstring), so this is an
-        # alive-check, not a value check -- but it is a check, where before the line
-        # printed PASS with nothing asserted at all.
+        # alive-check, not a value check. An all-zero dummy digest would make CHK-SIDE
+        # vacuous.
         assert any(w != 0 for w in c_dummy), (
             "dummy-key KMAC returned an all-zero digest -- the negative reference is "
             f"not a real observation, so CHK-SIDE below would be vacuous: {[hex(w) for w in c_dummy]}"

@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC Interrupt Generation and Masking Test - TC_HMAC_005 (P0)
+ * HMAC Interrupt Generation and Masking Test
  *
  * Verifies INTR_TEST forcing, INTR_STATE reflection, W1C clearing,
  * INTR_ENABLE masking behavior, and real hmac_done interrupt generation.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_interrupt_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_interrupt_test STACK=sim
  */
 
 #include <stdint.h>
@@ -62,7 +62,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("HMAC Interrupt Test (TC_HMAC_005)\n");
+    printf("HMAC Interrupt Test ()\n");
     printf("========================================\n\n");
 
     int pass = 1;

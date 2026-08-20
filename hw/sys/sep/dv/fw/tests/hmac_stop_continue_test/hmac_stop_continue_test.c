@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_HMAC_010 (P1) - Hash stop/continue for multi-part hashing
+ * Hash stop/continue for multi-part hashing
  *
  * Steps:
- *   1) Single-pass: hash "Hello World!" in one shot, save digest
- *   2) Multi-part: hash_start, feed "Hello ", hash_stop, verify idle,
- *      hash_continue, feed "World!", hash_process, read digest
- *   3) Compare: both digests must match
+ * 1) Single-pass: hash "Hello World!" in one shot, save digest
+ * 2) Multi-part: hash_start, feed "Hello ", hash_stop, verify idle,
+ * hash_continue, feed "World!", hash_process, read digest
+ * 3) Compare: both digests must match
  */
 
 #include <stdint.h>
@@ -87,11 +87,11 @@ static void cleanup(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("=== TC_HMAC_010: Hash stop/continue multi-part test ===\n");
+    printf("=== Hash stop/continue multi-part test ===\n");
 
     /* Part1 must be exactly 64 bytes (SHA-256 block boundary) for hash_stop to work:
-     *   1) Packer only flushes on hash_process, not hash_stop; partial words cause idle deadlock.
-     *   2) digest_on_blk requires message_length mod 512 == 0; otherwise hmac_done never fires.
+     * 1) Packer only flushes on hash_process, not hash_stop; partial words cause idle deadlock.
+     * 2) digest_on_blk requires message_length mod 512 == 0; otherwise hmac_done never fires.
      * Part2 can be any length since hash_process triggers packer flush automatically. */
     const uint8_t full_msg[69] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
                                  "Hello";
@@ -209,7 +209,7 @@ int main(void) {
 
     char hex_multi[65];
     to_hex(digest_multi, hex_multi, 32);
-    printf("Multi-part digest:  %s\n", hex_multi);
+    printf("Multi-part digest: %s\n", hex_multi);
 
     /* Independent SHA-256 of the exact 69-byte stimulus (64×'A' || "Hello"). */
     static const char expected_hex[] =
@@ -233,7 +233,7 @@ int main(void) {
     }
 
     if (pass) {
-        printf("=== TC_HMAC_010 PASSED ===\n");
+        printf("=== PASSED ===\n");
         test_pass(0);
     } else {
         test_fail(1);

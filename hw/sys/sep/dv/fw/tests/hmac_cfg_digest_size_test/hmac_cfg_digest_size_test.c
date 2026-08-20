@@ -2,12 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC CFG Digest Size Test - TC_HMAC_003 (P0)
+ * HMAC CFG Digest Size Test
  *
  * Verifies CFG.digest_size field for all SHA variants and CFG field independence.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_cfg_digest_size_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_cfg_digest_size_test STACK=sim
  *
  */
 
@@ -29,7 +29,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n============================================\n");
-    printf("HMAC CFG Digest Size Test (TC_HMAC_003)\n");
+    printf("HMAC CFG Digest Size Test ()\n");
     printf("============================================\n\n");
 
     int pass = 1;

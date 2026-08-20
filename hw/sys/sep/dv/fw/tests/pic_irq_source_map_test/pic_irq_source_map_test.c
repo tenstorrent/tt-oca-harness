@@ -36,8 +36,8 @@
 //                     registered/PIC-enabled sources (the other two counts hold). Scope
 //                     note: only these three sources are PIC-enabled, so an untracked
 //                     source cannot deliver an ISR here; full 32-bit sep_internal_interrupts
-//                     vector isolation is COVERED_BY the no_cpu sep_irq_ip_to_aggregator_test
-//                     (#14), which probes the whole aggregate vector.
+//                     vector isolation is COVERED_BY the no_cpu sep_irq_ip_to_aggregator_test,
+//                     which probes the whole aggregate vector.
 
 #include <stdint.h>
 
@@ -181,11 +181,6 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src, uint3
     // otbn_isr running already means the PIC claimed 30 -- reading claim_id() inside
     // it and comparing against 30 cannot disagree. CHK-DELIVER above is what carries
     // the source->PIC-id map: the handler at index N ran, therefore the PIC claimed N.
-    //
-    // To make the map a separately falsifiable check, register ONE shared handler on
-    // all three slots and bucket by claim_id(); a mis-mapped delivery would then land
-    // in the wrong bucket and fail CHK-DELIVER for the expected source. That is a
-    // firmware restructure, not a repair, so it is recorded rather than done here.
     (void)g_claim;
     if (!only_one_fired(s, snap)) { // CHK-ONEHOT
         sep_mbx_puts("FAIL: ");

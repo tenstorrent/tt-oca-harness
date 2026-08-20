@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_065: fabric_alias_csr_toggle_p3_test
+ * fabric_alias_csr_toggle_p3_test
  *
  * Goal: alias_remap_reg 82.81% -> 90%+ (needs 7.19% improvement)
  * Strategy: Precise Alias CSR field toggles; full register coverage
@@ -273,7 +273,7 @@ static int test_read_only_write_only_field_coverage(void) {
             uint32_t after_ro_test = 0;
             read_alias_csr_register(reg_idx, &after_ro_test);
 
-            // Read-only bitsshouldkeepunchanged ( or perHWlogicupdate)
+            // Read-only bitsshouldkeepunchanged (or perHWlogicupdate)
             printf("RO test reg %d: before=0x%04X, after=0x%04X\n", reg_idx, before_ro_test,
                    after_ro_test);
         }
@@ -457,55 +457,55 @@ static int test_register_address_mapping_coverage(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_065: Alias CSR Toggle P3 Test\n");
+    printf("Alias CSR Toggle P3 Test\n");
     printf("Goals: alias_remap_reg 82.81%% -> 90%%+ (needs 7.19%% improvement)\n");
     printf("Strategy: Precise Alias CSR field toggles; full register coverage\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_065");
+        test_fail("fabric_alias_csr_toggle_p3_test");
         return TEST_FAIL;
     }
 
     // Run all alias CSR-toggle scenarios
     if (test_csr_field_exhaustive_toggle() != 0) {
-        test_fail("TC_FABRIC_065 - CSR Field Exhaustive Toggle");
+        test_fail("CSR Field Exhaustive Toggle");
         return TEST_FAIL;
     }
 
     if (test_register_state_transition_matrix() != 0) {
-        test_fail("TC_FABRIC_065 - Register State Transition Matrix");
+        test_fail("Register State Transition Matrix");
         return TEST_FAIL;
     }
 
     if (test_concurrent_register_access_patterns() != 0) {
-        test_fail("TC_FABRIC_065 - Concurrent Register Access Patterns");
+        test_fail("Concurrent Register Access Patterns");
         return TEST_FAIL;
     }
 
     if (test_read_only_write_only_field_coverage() != 0) {
-        test_fail("TC_FABRIC_065 - Read-Only Write-Only Field Coverage");
+        test_fail("Read-Only Write-Only Field Coverage");
         return TEST_FAIL;
     }
 
     if (test_register_reset_and_default_values() != 0) {
-        test_fail("TC_FABRIC_065 - Register Reset and Default Values");
+        test_fail("Register Reset and Default Values");
         return TEST_FAIL;
     }
 
     if (test_register_field_interaction_matrix() != 0) {
-        test_fail("TC_FABRIC_065 - Register Field Interaction Matrix");
+        test_fail("Register Field Interaction Matrix");
         return TEST_FAIL;
     }
 
     if (test_register_address_mapping_coverage() != 0) {
-        test_fail("TC_FABRIC_065 - Register Address Mapping Coverage");
+        test_fail("Register Address Mapping Coverage");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_065: ALIAS CSR TOGGLE P3 TEST PASSED ===\n");
+    printf("\n=== ALIAS CSR TOGGLE P3 TEST PASSED ===\n");
     printf("Expected improvement: alias_remap_reg 82.81%% -> 90%%+ (7.19%% improvement)\n");
 
-    test_pass("TC_FABRIC_065");
+    test_pass("fabric_alias_csr_toggle_p3_test");
     return TEST_PASS;
 }

@@ -2,12 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC Register Sanity Test - TC_HMAC_001 (P0)
+ * HMAC Register Sanity Test
  *
  * Verifies register default readback and basic RW access for HMAC.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_reg_sanity_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_reg_sanity_test STACK=sim
  *
  */
 
@@ -34,7 +34,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("HMAC Register Sanity Test (TC_HMAC_001)\n");
+    printf("HMAC Register Sanity Test ()\n");
     printf("========================================\n\n");
 
     int pass = 1;

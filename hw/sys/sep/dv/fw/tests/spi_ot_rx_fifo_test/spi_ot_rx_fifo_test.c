@@ -2,25 +2,25 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT RX FIFO Test - TC_SPIOT_006 (P0)
+ * SPI OT RX FIFO Test
  *
  * Verifies RX FIFO fill, status monitoring (RXQD, RXEMPTY, RXFULL, RXWM),
  * underflow error detection, and RX watermark behavior.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Verify RXEMPTY=1, RXQD=0 initially
- *   3. Issue 16-byte RX command (MISO=0xFF without flash model)
- *   4. Verify RXQD=4, RXEMPTY=0 after transaction
- *   5. Drain RX FIFO, verify RXQD→0, RXEMPTY=1
- *   6. Test UNDERFLOW (read RXDATA when empty → ERROR_STATUS.underflow=1)
- *   7. Test RXWM: issue RX again with RX_WATERMARK=2, check RXWM=1
+ * 1. Configure SPI mux, enable controller
+ * 2. Verify RXEMPTY=1, RXQD=0 initially
+ * 3. Issue 16-byte RX command (MISO=0xFF without flash model)
+ * 4. Verify RXQD=4, RXEMPTY=0 after transaction
+ * 5. Drain RX FIFO, verify RXQD→0, RXEMPTY=1
+ * 6. Test UNDERFLOW (read RXDATA when empty → ERROR_STATUS.underflow=1)
+ * 7. Test RXWM: issue RX again with RX_WATERMARK=2, check RXWM=1
  *
  * Note: Without a flash model MISO is 0xFF, so RX words will be 0xFFFFFFFF.
- *   The test verifies FIFO behavior (RXQD, RXEMPTY, RXWM), not data content.
+ * The test verifies FIFO behavior (RXQD, RXEMPTY, RXWM), not data content.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_rx_fifo_test STACK=cgen,sim
+ * make test-sep TEST_NAME=sep_spi_ot_rx_fifo_test STACK=cgen,sim
  *
  */
 
@@ -72,7 +72,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT RX FIFO Test (TC_SPIOT_006)\n");
+    printf("SPI OT RX FIFO Test ()\n");
     printf("========================================\n\n");
 
     int pass = 1;

@@ -111,8 +111,7 @@ class sep_base_test(uvm_test):
         dut.ext_boot_seq_done_i.value = 1
         dut.mpc_reset_run_req.value = 1 if cpu_run else 0
         # eFuse program-fail injection is seeded via the +sep_efuse_prog_fail_seed
-        # plusarg inside the generic efuse model (the old efuse_prog_fail_seed_i port
-        # was retired with the bare-sep responders).
+        # plusarg inside the generic efuse model.
         self._set_if_exists(dut, "i_cpu_run_req_i", 0)
         self._set_if_exists(dut, "tcm_load_i", 0)
         # WDT reset input deasserted by default (sep_cpu_reset_n then follows
@@ -207,7 +206,7 @@ class sep_base_test(uvm_test):
         self.logger.info("Bringing up clocks and reset (CPU run, rst_vec=0x%x)", rst_vec)
         dut.rst_ni.value = 0
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
-        # Match the old tb wiring for CPU boot: EL2 debug reset followed cold reset.
+        # CPU boot: EL2 debug reset follows cold reset.
         self._set_if_exists(dut, "dbg_rstb_i", 0)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)

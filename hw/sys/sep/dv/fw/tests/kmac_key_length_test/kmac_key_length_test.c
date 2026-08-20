@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_009 - Key Length Test (P1)
+ * Key Length Test (P1)
  *
  * Runs KMAC-128 with Key128 (4-word key), saves digest.
  * Runs KMAC-128 with Key256 (8-word key), saves digest.
@@ -183,7 +183,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_009: Key Length Test\n");
+    printf("  Key Length Test\n");
     printf("========================================\n\n");
 
     int result = test_key_length();

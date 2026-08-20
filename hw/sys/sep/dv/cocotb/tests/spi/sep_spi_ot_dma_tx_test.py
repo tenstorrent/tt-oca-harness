@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP OpenTitan-SPI DMA-TX test (PyUVM, cpu-firmware, randomized).
 
-SPI-subsystem Phase-2 rep SPI DMA-TX breadth: the TX complement of Phase-1 #3
-sep_spi_ot_dma_rx (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
+SPI-subsystem Phase-2 rep SPI DMA-TX breadth: the TX complement of
+`sep_spi_ot_dma_rx_test` (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
 handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
 lsio_trigger, which refills the TX FIFO from SRAM a 16-byte chunk at a time. RX is
 held quiescent so the single lsio_trigger (= tx_wm | rx_wm) is TX-watermark-driven.
@@ -11,8 +11,8 @@ COVERED_STRONGER vs the reference spi_ot_dma_tx_test (raw-byte stream, done+no-e
 only): the DMA feeds a REAL flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr +
 data) from SRAM; the firmware then reads the flash back over SPI and value-checks
 it; and an independent cocotb BFM golden confirms the flash memory == the SRAM
-source. DISTINCT from #3 (RX direction) -- reuses the #3 lsio_trigger / DMA
-hardware-handshake bring-up.
+source. DISTINCT from `sep_spi_ot_dma_rx_test` (RX direction) -- reuses that
+test's lsio_trigger / DMA hardware-handshake bring-up.
 
 Randomization ([RAND-REP], SINGLE source of truth): SepSpiDmaTxCfg walks all
 required discrete DMA length / trigger cells in one run (nwords={7,11,15}, all

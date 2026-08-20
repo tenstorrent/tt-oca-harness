@@ -30,7 +30,8 @@
 // clk_wdt_i is ~1000x slower than the core clock in sim, so 100 ticks would be
 // ~500 us sim time (~22 min on Verilator). A small threshold fires the same
 // bark->NMI path far sooner -- the mechanism under test is identical. Bite is set
-// high so the bite/reset path never trips here (that is exercised by #19).
+// high so the bite/reset path never trips here (that is exercised by
+// `sep_reset_wdt_sanity_test`).
 #define WDT_BARK_SIM 4u
 #define WDT_BITE_HIGH 0x10000u
 

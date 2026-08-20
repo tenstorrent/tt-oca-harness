@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_011 - CFG_REGWEN Protection Test (P1)
+ * CFG_REGWEN Protection Test (P1)
  *
  * Verifies that CFG_REGWEN locks CFG_SHADOWED when KMAC is active
  * and unlocks after operation completes.
@@ -140,7 +140,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_011: CFG_REGWEN Test\n");
+    printf("  CFG_REGWEN Test\n");
     printf("========================================\n\n");
 
     int result = test_cfg_regwen();

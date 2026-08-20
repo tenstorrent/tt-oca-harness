@@ -162,16 +162,10 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             #
             # periphs.adoc: in PROD and RMA_SIP the JTAG port "can only read and write
             # RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I". SEC_DISABLE_TOKEN_MATCH is
-            # neither, so the spec DENIES it. The RTL currently opens the whole MMR
-            # window and answers OKAY, which the nonfree suite tracks as harness #626.
-            #
-            # This loop used to read that address and assert OKAY, which turned the
-            # deviation into a requirement: the entry could never reveal #626, and it
-            # would have gone red the moment #626 was fixed. Certifying a spec
-            # violation as required behaviour is worse than not covering it. The two
-            # reads that remain (RMA_SIP_TOKEN_I_1 and _3) are spec-allowed, so the
-            # allow-set half of this checker is now true to the specification. The
-            # uncovered deny is recorded as an open item in the Phase 1 plan.
+            # neither, so the spec DENIES it. Do not assert OKAY on a denied address:
+            # that would make the spec violation a requirement. The two reads that
+            # remain (RMA_SIP_TOKEN_I_1 and _3) are spec-allowed. The uncovered deny
+            # is an open item in the Phase 1 plan.
             rounds = i + 1
             cnt_after = self._scratch(_SCRATCH_COUNT)
             if rounds >= _JTAG_MIN_ROUNDS and cnt_after > cnt_before:

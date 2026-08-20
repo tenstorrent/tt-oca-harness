@@ -2,16 +2,16 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC Error Detection Test - TC_HMAC_006 (P0)
+ * HMAC Error Detection Test
  *
  * Verifies ERR_CODE reporting for three error conditions plus a clean-path
  * positive control before each negative:
- *   - Push MSG_FIFO when sha_en=0 -> SwPushMsgWhenDisallowed
- *   - hash_start when sha_en=0 -> SwHashStartWhenShaDisabled
- *   - second hash_start while active -> SwHashStartWhenActive
+ * - Push MSG_FIFO when sha_en=0 -> SwPushMsgWhenDisallowed
+ * - hash_start when sha_en=0 -> SwHashStartWhenShaDisabled
+ * - second hash_start while active -> SwHashStartWhenActive
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_error_handling_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_error_handling_test STACK=sim
  */
 
 #include <stdint.h>
@@ -96,7 +96,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("HMAC Error Handling Test (TC_HMAC_006)\n");
+    printf("HMAC Error Handling Test ()\n");
     printf("========================================\n\n");
 
     int pass = 1;

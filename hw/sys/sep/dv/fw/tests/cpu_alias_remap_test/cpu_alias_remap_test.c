@@ -9,8 +9,9 @@
 //
 // The alias window is a FIXED 768 MiB:
 // SEP_LOCAL_BASE_ADDR resets to 0xD000_0000, the size is the fixed localparam
-// sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE = 0x3000_0000 (no longer the REGION_SIZE CSR),
-// and target_base is sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE = 0x1000_0000. So the
+// sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE = 0x3000_0000 (REGION_SIZE does not size
+// this window), and target_base is sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE =
+// 0x1000_0000. So the
 // alias 0xD000_0000 maps to physical 0x1000_0000 (SEP SRAM). The firmware uses
 // 0xD000_xxxx (NOT the 0xC000_03xx the reference suite VIP drives on the raw pre-remap port):
 // a real CPU access to 0xC000_03xx would hit ICCM (TCM, internal) and never reach

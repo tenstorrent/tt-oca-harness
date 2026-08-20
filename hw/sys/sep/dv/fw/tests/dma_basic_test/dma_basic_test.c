@@ -268,8 +268,7 @@ static int chk_range_regwen(void) {
     // (b) Program a full valid range, then lock it via RANGE_REGWEN rw0c.
     // Positive control first: write a NON-reset value and prove it lands. Otherwise the
     // post-lock "still reads the old value" check below is satisfied identically by a
-    // working REGWEN, a read-only register and a missing decode -- the pre-lock write
-    // used to be 0x0, which is also this register's reset value.
+    // working REGWEN, a read-only register, and a missing decode.
     wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00001000u);
     if (rd(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR) != 0x00001000u) {
         sep_mbx_puts("FAIL: CHK-RANGE-REGWEN RANGE_BASE not writable before lock\n");

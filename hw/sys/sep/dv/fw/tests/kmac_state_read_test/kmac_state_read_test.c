@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_013 - STATE Share Verification Test (P1)
+ * STATE Share Verification Test (P1)
  *
  * Runs SHA3-256 of "abc", reads both STATE shares (share0 and share1),
  * verifies that both are non-zero, they differ (masking is active),
@@ -163,7 +163,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_013: STATE Share Verify Test\n");
+    printf("  STATE Share Verify Test\n");
     printf("========================================\n\n");
 
     int result = test_state_read();

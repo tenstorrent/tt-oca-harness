@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Fabric Filter Default Deny Reset Test - TC_FABRIC_052
+ * Fabric Filter Default Deny Reset Test
  *
  * Verifies reset/default filter configuration and that a narrow programmed
  * window can be restored back to the disabled default state.
@@ -51,7 +51,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n==============================================\n");
-    printf("Fabric Filter Default Deny Reset Test (TC_FABRIC_052)\n");
+    printf("Fabric Filter Default Deny Reset Test ()\n");
     printf("==============================================\n\n");
 
     cfg_lo = READ_REG(in_cfg_addr);

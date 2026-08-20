@@ -2,27 +2,27 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT DMA Trigger Test - TC_SPIOT_018 (P0)
+ * SPI OT DMA Trigger Test
  *
  * Verifies the DMA trigger signal path (lsio_trigger_o) by exercising
  * TX/RX FIFO watermark conditions and confirming the Secure DMA
  * HANDSHAKE_INTR_ENABLE register is accessible for SPI trigger[0].
  *
  * lsio_trigger_o = tx_wm | rx_wm
- *   tx_wm: asserted when TXQD < SPI_TX_WATERMARK (TX FIFO needs data)
- *   rx_wm: asserted when RXQD >= SPI_RX_WATERMARK (RX FIFO has data)
+ * tx_wm: asserted when TXQD < SPI_TX_WATERMARK (TX FIFO needs data)
+ * rx_wm: asserted when RXQD >= SPI_RX_WATERMARK (RX FIFO has data)
  *
  * Test Flow:
- *   1. Configure SPI mux for OpenTitan, enable controller
- *   2. Set SPI_TX_WATERMARK=4, verify STATUS.TXWM=1 (empty FIFO < 4)
- *   3. Write 8 words to TX FIFO, verify TXWM clears (TXQD >= 4)
- *   4. Drain via SW_RST, verify TXWM re-asserts
- *   5. Verify HANDSHAKE_INTR_ENABLE register write-readback
- *   6. Verify CLEAR_INTR_SRC register is writable
- *   7. Verify INTR_SRC_ADDR_0 register is writable
+ * 1. Configure SPI mux for OpenTitan, enable controller
+ * 2. Set SPI_TX_WATERMARK=4, verify STATUS.TXWM=1 (empty FIFO < 4)
+ * 3. Write 8 words to TX FIFO, verify TXWM clears (TXQD >= 4)
+ * 4. Drain via SW_RST, verify TXWM re-asserts
+ * 5. Verify HANDSHAKE_INTR_ENABLE register write-readback
+ * 6. Verify CLEAR_INTR_SRC register is writable
+ * 7. Verify INTR_SRC_ADDR_0 register is writable
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_dma_trigger_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_dma_trigger_test STACK=sim
  *
  */
 
@@ -58,7 +58,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT DMA Trigger Test (TC_SPIOT_018)\n");
+    printf("SPI OT DMA Trigger Test ()\n");
     printf("========================================\n\n");
 
     int pass = 1;

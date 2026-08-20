@@ -80,9 +80,7 @@ READ_CHECK = [
     "SMU_REGION_SIZE",
     "SMC_FUSE_SENSE_STATUS",
     "SEP_STRAPS",
-    # Field-packed reset (0xC000_0100) — value-checked here rather than
-    # resp-only, now that the reset comes from the generated header instead of a
-    # hand-copied literal. Stronger than the previous resp-only check.
+    # Field-packed reset (0xC000_0100) — value-checked against the generated header.
     "SEP_NMI_VEC",
     "SEP_NMI_VEC_LOCK",
     "EXT_TRNG_SRC_SEL",

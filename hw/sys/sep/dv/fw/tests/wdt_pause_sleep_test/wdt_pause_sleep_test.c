@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_003 (V2, P1) - WDT Pause in Sleep Test
+ * WDT Pause in Sleep Test
  *
  * Verifies WDOG_CTRL.pause_in_sleep (bit 1) register configuration.
  * Full functional pause verification requires TB to assert wdt_debug_sleep_mode_i;
@@ -38,7 +38,7 @@ static void wdt_disable(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_003: WDT Pause in Sleep Test\n");
+    printf("WDT Pause in Sleep Test\n");
     printf("=====================================\n\n");
 
     int errors = 0;
@@ -137,11 +137,11 @@ int main(void) {
 
     printf("\n=====================================\n");
     if (errors == 0) {
-        printf("TC_WDT_003: PASS\n");
+        printf("PASS\n");
         printf("Note: Full sleep-pause requires TB to assert wdt_debug_sleep_mode_i\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_003: FAIL (errors=%d)\n", errors);
+        printf("FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("=====================================\n");

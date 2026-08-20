@@ -127,7 +127,7 @@ module sep_uvm_top
     // real DUT port. Unlike the CPU-LSU splice (s_axi), which attaches to the
     // internal LSU bus, this path traverses the SEP inbound filter
     // (u_inbound_filter), which is block-by-default and is skipped
-    // only when feat_ctrl.sep_debug=1. The inbound-filter-gating test (#20) drives
+    // only when feat_ctrl.sep_debug=1. `sep_lcc_uvm_inbound_filter_gating_test` drives
     // it to prove external AXI is blocked (PROD) / allowed (PROD_DBG_1). Idle for
     // every other test (the agent drives these to a clean idle from t=0).
     // ------------------------------------------------------------------
@@ -188,7 +188,7 @@ module sep_uvm_top
     // which arbitrates with the CPU's eFuse-MMR path at the eFuse AXI-Lite mux and
     // is LC-state-gated (in PROD/RMA_SIP the JTAG path may read/write only the MMR
     // token region; a shadow/CSR access is routed to an error slave -> 0xbadcab1e).
-    // Used by the JTAG/eFuse mux test (#17). Idle for every other test.
+    // Used by `sep_efuse_jtag_axil_el2_cpu_mux_test`. Idle for every other test.
     // ------------------------------------------------------------------
     input  wire logic [31:0]  j_axi_awaddr,
     input  wire logic [2:0]   j_axi_awprot,
@@ -312,15 +312,15 @@ module sep_uvm_top
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
-    // Lifecycle status observability. Both of these were previously left open on the
-    // sep instance, which meant every LCC checker ASSUMED security-disable was 0 and
-    // ASSUMED no differential-decode fault had fired. Bringing them out turns two
-    // assumptions into measurements. Read-only taps, no force.
+    // Lifecycle status observability. Read-only taps so checkers measure
+    // security-disable and differential-decode fault rather than assume them.
+    // No force.
     output logic              lcc_security_disable_probe_o,
     output logic              lcc_sigint_err_probe_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
     // asserted when the WDT count reaches BITE_THOLD). Brought out so the
-    // reset/WDT sanity test (#19) can observe the bite -> reset-request edge. This
+    // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
+    // reset-request edge. This
     // is a DUT output (frontdoor), not an internal-signal probe.
     output logic              wdt_timer_rst_req_o,
     output logic              spi_cs_n_o,
@@ -1168,8 +1168,9 @@ module sep_uvm_top
     assign km_entropy_tdata_o   = `SEP_CORE.sep_crypto.entropy_muxed_req[0].tdata;
     // CHK5 per-sink routing golden: the crypto-leg (mux endpoint [1]) AXIS word
     // stream feeding drbg_axis_edn_adapter. tvalid && tready = one word handed to a
-    // crypto endpoint (in #15 only AES requests, so this equals AES's post-adapter
-    // beats in order). Each word is also a CHK4 genbits-golden word (chained).
+    // crypto endpoint (in `sep_drbg_real_sink_multi_km_aes_test` only AES
+    // requests, so this equals AES's post-adapter beats in order). Each word is
+    // also a CHK4 genbits-golden word (chained).
     assign axis1_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tvalid;
     assign axis1_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[1].tready;
     assign axis1_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tdata;

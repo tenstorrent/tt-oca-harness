@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_014 (V3, P2) - WDT BITE Before BARK Test
+ * WDT BITE Before BARK Test
  *
  * When BITE_THOLD < BARK_THOLD, prove count reaches BITE without the bark
  * interrupt bit setting (bite ordering). Cocotb remains sep_hello_test; the
@@ -27,7 +27,7 @@
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_014: WDT Bite Before Bark Test\n");
+    printf("WDT Bite Before Bark Test\n");
     printf("========================================\n\n");
 
     int errors = 0;
@@ -67,7 +67,7 @@ int main(void) {
     }
 
     if (errors != 0) {
-        printf("TC_WDT_014: FAIL (errors=%d)\n", errors);
+        printf("FAIL (errors=%d)\n", errors);
         test_fail(1);
         while (1) {
             __asm__ volatile("wfi");
@@ -108,10 +108,10 @@ int main(void) {
     /* STEP 4: Signal before/as bite reset request propagates */
     printf("\n// STEP 4: Signal test result\n");
     if (errors == 0) {
-        printf("TC_WDT_014: PASS\n");
+        printf("PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_014: FAIL (errors=%d)\n", errors);
+        printf("FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
 

@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC FIFO Status Monitoring Test - TC_HMAC_004 (P0)
+ * HMAC FIFO Status Monitoring Test
  *
  * Verifies MSG FIFO accepts data (MSG_LENGTH) and drains after hash_process.
  * Note: fifo_full@32 is not required under CPU MMIO (Pass-through absorb).
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_fifo_status_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_fifo_status_test STACK=sim
  */
 
 #include <stdint.h>
@@ -55,7 +55,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("HMAC FIFO Status Test (TC_HMAC_004)\n");
+    printf("HMAC FIFO Status Test ()\n");
     printf("========================================\n\n");
 
     int pass = 1;

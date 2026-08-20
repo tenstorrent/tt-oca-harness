@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_009 (V3, P2) - WDT CDC Sync / Register Consistency Test
+ * WDT CDC Sync / Register Consistency Test
  *
  * Verifies that register writes to WDT registers (in SYS domain) propagate
  * correctly through CDC synchronization to the AON domain and are readable
@@ -43,7 +43,7 @@ static int check_reg(uint32_t addr, uint32_t expected, const char *name) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_009: WDT CDC Sync / Register Consistency Test\n");
+    printf("WDT CDC Sync / Register Consistency Test\n");
     printf("======================================================\n\n");
 
     int errors = 0;
@@ -161,10 +161,10 @@ int main(void) {
 
     printf("\n======================================================\n");
     if (errors == 0) {
-        printf("TC_WDT_009: PASS\n");
+        printf("PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_009: FAIL (errors=%d)\n", errors);
+        printf("FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("======================================================\n");

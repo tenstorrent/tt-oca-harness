@@ -2,30 +2,30 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Watermark Test - TC_SPIOT_018 (P1)
+ * SPI OT Watermark Test
  *
  * Verifies TX and RX watermark configuration and status bit transitions.
  *
  * CTRL register watermark fields:
- *   CTRL[7:0]  = RX_WATERMARK (8-bit): RXWM=1 when RXQD > RX_WATERMARK
- *   CTRL[15:8] = TX_WATERMARK (8-bit): TXWM=1 when TXQD < TX_WATERMARK
+ * CTRL[7:0]  = RX_WATERMARK (8-bit): RXWM=1 when RXQD > RX_WATERMARK
+ * CTRL[15:8] = TX_WATERMARK (8-bit): TXWM=1 when TXQD < TX_WATERMARK
  *
  * Default: CTRL_REG_DEFAULT=0x7F → RX_WM=0x7F=127, TX_WM=0x00=0
- *   - Default TXWM=0 (TXQD=0 is not < 0)
- *   - Default RXWM=0 (RXQD=0 is not > 127)
+ * - Default TXWM=0 (TXQD=0 is not < 0)
+ * - Default RXWM=0 (RXQD=0 is not > 127)
  *
  * Test Flow:
- *   1. Verify default watermarks (RX_WM=127, TX_WM=0), TXWM=0, RXWM=0
- *   2. Set TX_WM=1: TXWM=1 (empty FIFO: TXQD=0 < 1)
- *   3. Write 2 words to TX FIFO: TXWM=0 (TXQD=2 >= 1)
- *   4. Set TX_WM=4: TXWM=1 (TXQD=2 < 4)
- *   5. Write 2 more words (TXQD=4): TXWM=0 (TXQD=4 >= 4)
- *   6. Set TX_WM=0: TXWM=0 always (0 < 0 is false)
- *   7. Verify RX_WM write-readback (min=0, max=0xFF, restore default)
- *   8. SW_RST to drain TX FIFO
+ * 1. Verify default watermarks (RX_WM=127, TX_WM=0), TXWM=0, RXWM=0
+ * 2. Set TX_WM=1: TXWM=1 (empty FIFO: TXQD=0 < 1)
+ * 3. Write 2 words to TX FIFO: TXWM=0 (TXQD=2 >= 1)
+ * 4. Set TX_WM=4: TXWM=1 (TXQD=2 < 4)
+ * 5. Write 2 more words (TXQD=4): TXWM=0 (TXQD=4 >= 4)
+ * 6. Set TX_WM=0: TXWM=0 always (0 < 0 is false)
+ * 7. Verify RX_WM write-readback (min=0, max=0xFF, restore default)
+ * 8. SW_RST to drain TX FIFO
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_watermark_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_watermark_test STACK=sim
  *
  */
 
@@ -43,7 +43,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Watermark Test (TC_SPIOT_018)\n");
+    printf("SPI OT Watermark Test ()\n");
     printf("========================================\n\n");
 
     int pass = 1;

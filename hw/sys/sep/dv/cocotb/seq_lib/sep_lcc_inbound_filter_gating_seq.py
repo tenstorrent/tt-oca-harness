@@ -74,10 +74,10 @@ class SepLccFeatCtrlCheckSeq(uvm_sequence):
 class SepLccDemoteSeq(uvm_sequence):
     """Write DEMOTE_{1,2}.demote on the CONTROL bus and read it back.
 
-    Under the post-#242 decode the two demote registers act INDEPENDENTLY, on their
-    own debug group: DEMOTE_1 relaxes DBG_1 ([15:0]) and DEMOTE_2 relaxes DBG_2
-    ([31:16]). Which register this sequence drives is therefore load-bearing, not a
-    detail -- so it is a parameter rather than being baked into the class.
+    The two demote registers act independently, each on its own debug group:
+    DEMOTE_1 relaxes DBG_1 ([15:0]) and DEMOTE_2 relaxes DBG_2 ([31:16]). Which
+    register this sequence drives is therefore load-bearing, not a detail -- so
+    it is a parameter rather than being baked into the class.
 
     ``group`` is 1 or 2. ``value`` allows clearing as well as setting, which is what
     lets a caller show one group's demote does not move the other group's bits.

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_011 (V3, P2) - WDT Interrupt Clear Test
+ * WDT Interrupt Clear Test
  *
  * Verifies INTR_STATE W1C mechanism:
  * - Bark fires → INTR_STATE bark sets
@@ -82,7 +82,7 @@ void wdt_nmi_handler(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_011: WDT Interrupt Clear Test\n");
+    printf("WDT Interrupt Clear Test\n");
     printf("======================================\n\n");
 
     nmi_register_handler(wdt_nmi_handler);
@@ -169,10 +169,10 @@ int main(void) {
 
     printf("\n======================================\n");
     if (errors == 0) {
-        printf("TC_WDT_011: PASS\n");
+        printf("PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_011: FAIL (errors=%d)\n", errors);
+        printf("FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("======================================\n");

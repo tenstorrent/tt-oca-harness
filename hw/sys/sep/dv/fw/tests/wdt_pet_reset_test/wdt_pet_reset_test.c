@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_005 (V2, P1) - WDT Pet/Reset Test
+ * WDT Pet/Reset Test
  *
  * Verifies watchdog pet operation (write 0 to WDOG_COUNT).
  *
@@ -11,7 +11,7 @@
  * 2. Pet (write 0 to WDOG_COUNT) → verify counter resets to ~0
  * 3. Repeat pet at various counts (100, 500, 900)
  * 4. Positive control (bark NMI can fire), then pet below high threshold
- *    and verify no unexpected NMI
+ * and verify no unexpected NMI
  * 5. Verify counter resumes incrementing after pet
  *
  ******************************************************************************/
@@ -43,7 +43,7 @@ static void wait_for_count(uint32_t target) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_005: WDT Pet/Reset Test\n");
+    printf("WDT Pet/Reset Test\n");
     printf("================================\n\n");
 
     int errors = 0;
@@ -186,10 +186,10 @@ int main(void) {
 
     printf("\n================================\n");
     if (errors == 0 && unexpected_nmi == 0) {
-        printf("TC_WDT_005: PASS\n");
+        printf("PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_005: FAIL (errors=%d, unexpected_nmi=%d)\n", errors, unexpected_nmi);
+        printf("FAIL (errors=%d, unexpected_nmi=%d)\n", errors, unexpected_nmi);
         test_fail(1);
     }
     printf("================================\n");

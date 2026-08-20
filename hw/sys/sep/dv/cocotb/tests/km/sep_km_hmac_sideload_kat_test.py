@@ -37,11 +37,10 @@ VPLAN-parity checkers:
             HMAC is not an EDN consumer, so no crypto EDN sink is scored.
 
 Accepted scope deltas vs the reference suite (documented; no silent skips):
-  * the reference suite's backdoor SHARE0^SHARE1 reconstruction + key/mask non-degeneracy guards
-    + 8-representation search are replaced by the known-key golden value-compare
-    under the RTL-pinned convention (stronger: proves the exact key flowed). The
-    HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is out of frontdoor scope
-    (covered frontdoor by the OTBN KAT's CHK-F, as for the AES sideload KAT).
+  * known-key golden value-compare under the RTL-pinned convention (proves the
+    exact key flowed). The HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is
+    out of frontdoor scope (covered frontdoor by the OTBN KAT's CHK-F, as for the
+    AES sideload KAT).
   * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's
     key-bus AW monitor); CHK-MAC additionally proves HMAC got the correct key.
 

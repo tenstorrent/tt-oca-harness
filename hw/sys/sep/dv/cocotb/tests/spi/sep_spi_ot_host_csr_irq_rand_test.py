@@ -7,7 +7,7 @@ rx_fifo / cmd_queue / interrupt / error_handling / watermark / enable_disable /
 mux_select) into ONE rep. Drives the SEP-integrated spi_controller host CSRs
 (@0x10B0_0000, NUM_CS=1) directly over the CPU-LSU AXI splice (no_cpu, no
 firmware, no flash BFM) -- this is the host CONTROL plane, DISTINCT from SPI flash command breadth
-(flash command datapath) and #3 sep_spi_ot_dma_rx (flash READ + DMA).
+(flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
 
 Randomization (SINGLE source of randomness; AGENTS.md s9/s11): SepSpiHostCfg seeds
 legal field values for the register R/W walk + the watermark threshold from the
@@ -33,8 +33,9 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
 Deferred (documented, not silently dropped): ERROR_STATUS.CMDBUSY (needs a command
 issued mid-busy -- timing) and .ACCESSINVAL (needs a non-contiguous TXDATA
 byte-enable, which cocotbext-axi cannot express) are [GAP (deferred)]; RXWM and
-the irq-line delivery are covered by the RX-path tests (#3, SPI flash command breadth) / delivery
-tests (#14). the reference suite's mux-select is an OSS no-op (the OT SPI path is already the
+the irq-line delivery are covered by the RX-path tests
+(`sep_spi_ot_flash_cmd_rand_test` / `sep_spi_ot_dma_rx_test`) / delivery
+tests (`sep_irq_ip_to_aggregator_test`). the reference suite's mux-select is an OSS no-op (the OT SPI path is already the
 active bare-SEP path).
 
 no_cpu / +skip_fuse_sense.
@@ -111,12 +112,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def _chk_reg_rw(self) -> None:
         nonvac_seen = False
         for name, addr, wmask, val in self.scfg.rw_regs:
-            # Observe the pre-write value rather than trusting the RESET_VALUES table.
-            # CHK-NONVAC used to compare the readback against that table, but the
-            # readback had already been asserted == val, so it reduced to
-            # `val != RESET_VALUES[name]` -- this run's seeded random number against a
-            # file-scope constant, with no DUT term left. Anchoring on an observed read
-            # makes it a real statement about the register.
+            # Observe the pre-write value. Comparing the post-write readback against
+            # RESET_VALUES would drop the DUT: the readback is already asserted == val.
             pre = await self.spi.rd(addr)
             await self.spi.wr(addr, val)
             rb = await self.spi.rd(addr)

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_008 - Entropy Configuration Test (P1)
+ * Entropy Configuration Test (P1)
  *
  * Verifies KMAC entropy period register, entropy seed provisioning,
  * and entropy_ready flow. Runs KMAC-128 (keyblock) so HASH_CNT increments,
@@ -109,7 +109,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_008: Entropy Config Test\n");
+    printf("  Entropy Config Test\n");
     printf("========================================\n\n");
 
     int result = test_entropy_config();

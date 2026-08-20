@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_015 (V3, P2) - WDT Counter 32-bit Overflow Test
+ * WDT Counter 32-bit Overflow Test
  *
  * Verifies WDOG_COUNT wraps correctly from 0xFFFFFFFF back to 0x00000000.
  *
@@ -10,18 +10,18 @@
  * 1. Write WDOG_COUNT near 0xFFFFFFFF, set BARK_THOLD just below max
  * 2. Enable WDT — count reaches BARK_THOLD quickly, BARK fires (NMI)
  * 3. In NMI handler: immediately pet (count = 0) before count reaches
- *    BITE_THOLD=0xFFFFFFFF, preventing system reset
+ * BITE_THOLD=0xFFFFFFFF, preventing system reset
  * 4. After pet: verify count is small (far below BARK_THOLD)
  * 5. Wait and verify no second BARK fires (count << BARK_THOLD after pet)
  * 6. Direct overflow: sample FE→FF (bark at FF expected), disable before bite,
- *    then one more enable tick to wrap FF→~0 without software pet
+ * then one more enable tick to wrap FF→~0 without software pet
  *
  * RTL note:
- *   wdog_count_wr_data_o = reg2hw.wdog_count.q + 32'd1
- *   At count=0xFFFFFFFF: +1 = 0x00000000 (32-bit wrap, no saturation).
- *   bark/bite use count >= thold on the same incr that advances the counter.
- *   Free-running with bark=bite=0xFFFFFFFF and no pet level-reasserts bark and
- *   pulses bite every AON tick at FF — that hangs this TB; STEP 5 avoids it.
+ * wdog_count_wr_data_o = reg2hw.wdog_count.q + 32'd1
+ * At count=0xFFFFFFFF: +1 = 0x00000000 (32-bit wrap, no saturation).
+ * bark/bite use count >= thold on the same incr that advances the counter.
+ * Free-running with bark=bite=0xFFFFFFFF and no pet level-reasserts bark and
+ * pulses bite every AON tick at FF — that hangs this TB; STEP 5 avoids it.
  *
  ******************************************************************************/
 
@@ -91,7 +91,7 @@ void wdt_nmi_handler(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_015: WDT Counter 32-bit Overflow Test\n");
+    printf("WDT Counter 32-bit Overflow Test\n");
     printf("===============================================\n\n");
 
     nmi_register_handler(wdt_nmi_handler);
@@ -162,11 +162,11 @@ int main(void) {
      * STEP 5: Direct overflow without free-running at FF with bark=bite=FF.
      *
      * 5a) FE→FF: the incr that lands on FF also satisfies count>=bark (FF), so
-     *     bark may fire; phase==3 accepts that. Disable as soon as FF is
-     *     sampled (before the wrap/bite incr). Bite also arms at FF; disable
-     *     before the next tick.
+     * bark may fire; phase==3 accepts that. Disable as soon as FF is
+     * sampled (before the wrap/bite incr). Bite also arms at FF; disable
+     * before the next tick.
      * 5b) FF→0: one enable tick; bark+wrap (+bite pulse) share that incr.
-     *     phase==2 NMI disables immediately and must not pet.
+     * phase==2 NMI disables immediately and must not pet.
      */
     printf("\n// STEP 5: Direct overflow — FE→FF then one-tick wrap to ~0\n");
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
@@ -246,10 +246,10 @@ finish:
 
     printf("\n===============================================\n");
     if (errors == 0) {
-        printf("TC_WDT_015: PASS\n");
+        printf("PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_015: FAIL (errors=%d)\n", errors);
+        printf("FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("===============================================\n");

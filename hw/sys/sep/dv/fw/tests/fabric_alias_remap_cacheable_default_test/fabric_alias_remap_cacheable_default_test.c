@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Fabric Alias Remap Cacheable Default Test - TC_FABRIC_051
+ * Fabric Alias Remap Cacheable Default Test
  *
  * Verifies cpu_ctrl alias defaults and a local alias remap entry's cacheable
  * attribute through the normal SEP firmware MMIO path.
@@ -45,7 +45,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
-    printf("Fabric Alias Remap Cacheable Default Test (TC_FABRIC_051)\n");
+    printf("Fabric Alias Remap Cacheable Default Test ()\n");
     printf("====================================================\n\n");
 
     if (!check_eq32("SEP_LOCAL_BASE_ADDR",

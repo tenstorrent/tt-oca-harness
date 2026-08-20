@@ -13,7 +13,7 @@ and runs the spi_ot_flash_cmd firmware, which drives the OT SPI host (@
 
 cpu-firmware mode (not no_cpu): every reference spi_ot flash test + the Phase-1
 sep_spi_ot_dma_rx run the multi-command SPI flash sequence from firmware.
-Distinct from #3 sep_spi_ot_dma_rx (RX+DMA) and the JEDEC smoke.
+Distinct from `sep_spi_ot_dma_rx_test` (RX+DMA) and the JEDEC smoke.
 
 Randomization (this test is the SINGLE source of randomness; AGENTS.md s9/s11):
   The scenario -- flash address (page-aligned), word count (1..16), and the data

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Dual SPI Test - TC_SPIOT_017 (P1)
+ * SPI OT Dual SPI Test
  *
  * Verifies Dual SPI (x2) mode transmit, dummy cycles, and receive using
  * CMD.SPEED=1. Also verifies that DIRECTION=3 (bidirectional) at Dual speed
@@ -13,15 +13,15 @@
  * Two data lines (SD[1:0]) are active in Dual mode.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
- *   2. Dual TX: SPEED=1, DIRECTION=2, LEN=3 (4 bytes), CSAAT=1
- *   3. Dual Dummy: SPEED=1, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
- *   4. Dual RX: SPEED=1, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
- *   5. CMDINVAL test: SPEED=1 + DIRECTION=3 (bidirectional) must fail
- *   6. Verify bidirectional (DIRECTION=3) accepted at Standard speed (SPEED=0)
+ * 1. Configure SPI mux, enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
+ * 2. Dual TX: SPEED=1, DIRECTION=2, LEN=3 (4 bytes), CSAAT=1
+ * 3. Dual Dummy: SPEED=1, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
+ * 4. Dual RX: SPEED=1, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
+ * 5. CMDINVAL test: SPEED=1 + DIRECTION=3 (bidirectional) must fail
+ * 6. Verify bidirectional (DIRECTION=3) accepted at Standard speed (SPEED=0)
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_dual_spi_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_dual_spi_test STACK=sim
  *
  */
 
@@ -68,7 +68,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Dual SPI Test (TC_SPIOT_017)\n");
+    printf("SPI OT Dual SPI Test ()\n");
     printf("========================================\n\n");
 
     int pass = 1;

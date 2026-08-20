@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_007 (V3, P2) - WDT LC Escalate Test
+ * WDT LC Escalate Test
  *
  * NOTE: lc_escalate_en_i is permanently tied to lc_ctrl_pkg::Off in
  * sep_wdt_wrap.sv. LC escalate halt is NOT testable from firmware.
@@ -38,7 +38,7 @@ void wdt_nmi_handler(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_007: WDT LC Escalate Test\n");
+    printf("WDT LC Escalate Test\n");
     printf("==================================\n\n");
 
     printf("NOTE: lc_escalate_en_i is tied to lc_ctrl_pkg::Off in sep_wdt_wrap.sv.\n");
@@ -95,16 +95,16 @@ int main(void) {
         printf("  PASS: Bark fired normally with lc_escalate=Off (bark_fired=%d)\n", bark_fired);
     }
 
-    printf("\n// DOCUMENTED LIMITATION: TC_WDT_007 LC escalate halt not testable\n");
+    printf("\n// DOCUMENTED LIMITATION: LC escalate halt not testable\n");
     printf("//   sep_wdt_wrap.sv:145: .lc_escalate_en_i ({3{lc_ctrl_pkg::Off}})\n");
     printf("//   Functional halt via lc_escalate requires RTL change or TB backdoor.\n");
 
     printf("\n==================================\n");
     if (errors == 0) {
-        printf("TC_WDT_007: PASS (normal operation verified; escalate halt N/A)\n");
+        printf("PASS (normal operation verified; escalate halt N/A)\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_007: FAIL (errors=%d)\n", errors);
+        printf("FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("==================================\n");

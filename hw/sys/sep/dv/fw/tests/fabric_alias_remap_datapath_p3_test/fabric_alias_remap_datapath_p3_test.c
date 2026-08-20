@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_062: fabric_alias_remap_datapath_p3_test
+ * fabric_alias_remap_datapath_p3_test
  *
  * Goal: axi_alias_remap_wrap 2.18% -> 90%+ [critical], axi_alias_remap 50.57% -> 90%+
  * Strategy: Local-master alias hit/miss/boundary cases; full AXI datapath coverage
@@ -243,46 +243,46 @@ static int test_axi_signal_comprehensive_toggle(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_062: Alias Remap Datapath P3 Test\n");
+    printf("Alias Remap Datapath P3 Test\n");
     printf(
         "Goals: axi_alias_remap_wrap 2.18%% -> 90%%+ [critical], axi_alias_remap 50.57%% -> 90%%+\n");
     printf("Strategy: Local-master alias hit/miss/boundary cases; full AXI datapath coverage\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_062");
+        test_fail("fabric_alias_remap_datapath_p3_test");
         return TEST_FAIL;
     }
 
     // Run all alias datapath scenarios
     if (test_alias_hit_miss_comprehensive() != 0) {
-        test_fail("TC_FABRIC_062 - Alias Hit Miss Comprehensive");
+        test_fail("Alias Hit Miss Comprehensive");
         return TEST_FAIL;
     }
 
     if (test_overlapping_priority_scenarios() != 0) {
-        test_fail("TC_FABRIC_062 - Overlapping Priority");
+        test_fail("Overlapping Priority");
         return TEST_FAIL;
     }
 
     if (test_cacheable_non_cacheable_conversion() != 0) {
-        test_fail("TC_FABRIC_062 - Cacheable Non-Cacheable");
+        test_fail("Cacheable Non-Cacheable");
         return TEST_FAIL;
     }
 
     if (test_address_translation_edge_cases() != 0) {
-        test_fail("TC_FABRIC_062 - Address Translation Edge Cases");
+        test_fail("Address Translation Edge Cases");
         return TEST_FAIL;
     }
 
     if (test_axi_signal_comprehensive_toggle() != 0) {
-        test_fail("TC_FABRIC_062 - AXI Signal Comprehensive Toggle");
+        test_fail("AXI Signal Comprehensive Toggle");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_062: ALIAS REMAP DATAPATH P3 TEST PASSED ===\n");
+    printf("\n=== ALIAS REMAP DATAPATH P3 TEST PASSED ===\n");
     printf("Expected improvement: axi_alias_remap_wrap 2.18%% -> 90%%+ (87.82%% improvement!)\n");
 
-    test_pass("TC_FABRIC_062");
+    test_pass("fabric_alias_remap_datapath_p3_test");
     return TEST_PASS;
 }

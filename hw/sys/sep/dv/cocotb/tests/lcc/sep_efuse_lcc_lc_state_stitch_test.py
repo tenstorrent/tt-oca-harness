@@ -278,11 +278,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             else:
                 await self._program_state_and_resense(image, raw)
 
-            # sec_dis is now OBSERVED, not assumed. security_disable_o used to be left
-            # open on the sep instance, so every checker here passed a literal 0 and a
-            # comment explaining that reading it would return 0 unconditionally. It is
-            # brought out as lcc_security_disable_probe_o, so the golden is fed the
-            # value the DUT actually presents.
+            # sec_dis is OBSERVED on lcc_security_disable_probe_o, not assumed.
             sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
 
             # The differential-decode fault status, likewise observed rather than

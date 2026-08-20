@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Fabric HMAC Sanity Test - TC_FABRIC_012
+ * Fabric HMAC Sanity Test
  *
  * Lightweight firmware check for the SEP fabric path to HMAC registers.
  */
@@ -26,7 +26,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("Fabric HMAC Sanity Test (TC_FABRIC_012)\n");
+    printf("Fabric HMAC Sanity Test ()\n");
     printf("========================================\n\n");
 
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};

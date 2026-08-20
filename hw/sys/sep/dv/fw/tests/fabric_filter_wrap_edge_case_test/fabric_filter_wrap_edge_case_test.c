@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_070: fabric_filter_wrap_edge_case_test
+ * fabric_filter_wrap_edge_case_test
  *
  * Goal: axi_filter_wrap 79.75% -> 90%+ (needs 10.25% improvement)
  * Strategy: Precise filter-wrap boundary and anomaly cases
@@ -264,16 +264,16 @@ static int test_wrap_mode_state_transitions(void) {
 
                 // State-specific testing
                 switch (current_wrap_mode) {
-                case 0:                                                      // No wrap
+                case 0: // No wrap
                     test_axi_transaction(trans_base + 0x7FFFC, 4, AXI_READ); // Near end
                     break;
-                case 1:                                                      // Address wrap
+                case 1: // Address wrap
                     test_axi_transaction(trans_base + 0x80000, 4, AXI_READ); // Beyond end
                     break;
-                case 2:                                                   // Size wrap
+                case 2: // Size wrap
                     test_axi_transaction(state_test_addr, 128, AXI_READ); // Large burst
                     break;
-                case 3:                                                       // Full wrap
+                case 3: // Full wrap
                     test_axi_transaction(trans_base + 0x100000, 4, AXI_READ); // Far beyond
                     break;
                 }
@@ -516,55 +516,55 @@ static int test_wrap_performance_corner_cases(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_070: Filter Wrap Edge Case Test\n");
+    printf("Filter Wrap Edge Case Test\n");
     printf("Goals: axi_filter_wrap 79.75%% -> 90%%+ (needs 10.25%% improvement)\n");
     printf("Strategy: Precise filter-wrap boundary and anomaly cases\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_070");
+        test_fail("fabric_filter_wrap_edge_case_test");
         return TEST_FAIL;
     }
 
     // Run all filter-wrap edge-case scenarios
     if (test_address_wrap_boundary_precision() != 0) {
-        test_fail("TC_FABRIC_070 - Address Wrap Boundary Precision");
+        test_fail("Address Wrap Boundary Precision");
         return TEST_FAIL;
     }
 
     if (test_filter_overflow_underflow_cases() != 0) {
-        test_fail("TC_FABRIC_070 - Filter Overflow Underflow Cases");
+        test_fail("Filter Overflow Underflow Cases");
         return TEST_FAIL;
     }
 
     if (test_concurrent_filter_wrap_conflicts() != 0) {
-        test_fail("TC_FABRIC_070 - Concurrent Filter Wrap Conflicts");
+        test_fail("Concurrent Filter Wrap Conflicts");
         return TEST_FAIL;
     }
 
     if (test_wrap_mode_state_transitions() != 0) {
-        test_fail("TC_FABRIC_070 - Wrap Mode State Transitions");
+        test_fail("Wrap Mode State Transitions");
         return TEST_FAIL;
     }
 
     if (test_burst_wrap_edge_cases() != 0) {
-        test_fail("TC_FABRIC_070 - Burst Wrap Edge Cases");
+        test_fail("Burst Wrap Edge Cases");
         return TEST_FAIL;
     }
 
     if (test_wrap_error_injection_recovery() != 0) {
-        test_fail("TC_FABRIC_070 - Wrap Error Injection Recovery");
+        test_fail("Wrap Error Injection Recovery");
         return TEST_FAIL;
     }
 
     if (test_wrap_performance_corner_cases() != 0) {
-        test_fail("TC_FABRIC_070 - Wrap Performance Corner Cases");
+        test_fail("Wrap Performance Corner Cases");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_070: FILTER WRAP EDGE CASE TEST PASSED ===\n");
+    printf("\n=== FILTER WRAP EDGE CASE TEST PASSED ===\n");
     printf("Expected improvement: axi_filter_wrap 79.75%% -> 90%%+ (10.25%% improvement)\n");
 
-    test_pass("TC_FABRIC_070");
+    test_pass("fabric_filter_wrap_edge_case_test");
     return TEST_PASS;
 }
