@@ -16,6 +16,7 @@ Skips cleanly if the RISC-V toolchain or the sep-vp binary is absent.
 """
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -35,16 +36,17 @@ FAIL_MARK = "SEP_SPI_DMA_TEST: FAIL"
 def _env(request):
     """Toolchain bin on PATH for the firmware build."""
     env = paths.vp_env()
-    tc_bin = Path(request.config.getoption("--riscv-toolchain")) / "bin"
-    if tc_bin.is_dir():
-        env["PATH"] = f"{tc_bin}{os.pathsep}{env.get('PATH', '')}"
+    tc = request.config.getoption("--riscv-toolchain")
+    if tc and (Path(tc) / "bin").is_dir():
+        env["PATH"] = f"{Path(tc) / 'bin'}{os.pathsep}{env.get('PATH', '')}"
     return env
 
 
 def _require_prereqs(request):
-    tc_bin = Path(request.config.getoption("--riscv-toolchain")) / "bin"
-    if not (tc_bin / "riscv64-unknown-elf-gcc").exists():
-        pytest.skip(f"RISC-V toolchain not found at {tc_bin}")
+    tc = request.config.getoption("--riscv-toolchain")
+    if not ((tc and (Path(tc) / "bin" / "riscv64-unknown-elf-gcc").exists())
+            or shutil.which("riscv64-unknown-elf-gcc")):
+        pytest.skip("RISC-V toolchain not found (PATH or --riscv-toolchain/RISCV_TOOLCHAIN)")
     if not paths.sep_vp_bin().is_file():
         pytest.skip(f"sep-vp not built ({paths.sep_vp_bin()})")
     if not FW_DIR.is_dir():

@@ -278,12 +278,16 @@ bwrap_run() {
     # --die-with-parent: killing the outer bwrap (e.g. a test harness
     # terminating a spawned simulator) must not orphan the sandboxed process,
     # which may never exit on its own.
+    # RISCV_TOOLCHAIN is unset for the same reason PATH is replaced: it names a
+    # host toolchain path that is not bound here; the sandbox's own toolchain
+    # (on the reset PATH) is the one to use.
     bwrap "${binds[@]}" --chdir "$workdir" \
         --die-with-parent \
         --setenv PATH /usr/local/bin:/usr/bin:/bin \
         --setenv HOME /tmp \
         --unsetenv PYTHONHOME \
         --unsetenv PYTHONPATH \
+        --unsetenv RISCV_TOOLCHAIN \
         "$@"
 }
 
