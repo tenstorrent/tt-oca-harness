@@ -114,12 +114,22 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         # with RANDOM 64-bit payloads. STATUS tracks the golden TX depth after each push.
         for i in range(self.cfg_mb.first_batch):
             assert await self.mb.push64(self.cfg_mb.payloads[i]) == RESP_OKAY
-            assert self.gold.push()
+            # Advance the model. Not asserted: gold.push() only returns False when the
+            # model is already full, which a range(first_batch < depth) loop cannot
+            # reach, so asserting it tests the model's arithmetic rather than the DUT.
+            # _check_status below is what compares the model against the DUT.
+            self.gold.push()
             await self._check_status("push64")
         # CHK-WIRQT: tx = first_batch > WIRQT -> wtirq set; IRQP gated by IRQEN; level-held.
         irqs = await self.mb.rd_csr(IRQS)
-        assert (irqs & IRQ_WTIRQ) and self.gold.wtirq(), (
-            f"IRQS.wtirq not set at tx={self.gold.tx}>wirqt={self.gold.wirqt} (0x{irqs:08x})"
+        # DUT vs model, not DUT and model. `self.gold.wtirq()` is tx > wirqt, and the
+        # config draws first_batch from randint(wirqt+1, depth), so that conjunct was
+        # always True -- a dead term whose failure message blamed the DUT. As an
+        # equality it also covers the below-threshold direction.
+        assert bool(irqs & IRQ_WTIRQ) == self.gold.wtirq(), (
+            f"IRQS.wtirq={bool(irqs & IRQ_WTIRQ)} but golden expects "
+            f"{self.gold.wtirq()} at tx={self.gold.tx} wirqt={self.gold.wirqt} "
+            f"(IRQS=0x{irqs:08x})"
         )
         irqp = await self.mb.rd_csr(IRQP)
         assert irqp & IRQ_WTIRQ, f"IRQP.wtirq not gated-set by IRQEN+IRQS (0x{irqp:08x})"
@@ -133,7 +143,7 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         # Phase 2 -- top up to full.
         for i in range(self.cfg_mb.first_batch, self.cfg_mb.depth):
             assert await self.mb.push64(self.cfg_mb.payloads[i]) == RESP_OKAY
-            assert self.gold.push()
+            self.gold.push()
             await self._check_status("push64-fill")
         st = await self.mb.rd_csr(STATUS)
         assert st & ST_FULL, f"TX FIFO not full after {self.cfg_mb.depth} pushes (STATUS=0x{st:08x})"
@@ -141,15 +151,15 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             "CHK-64B PASS: %d native 64-bit WRITE_DATA pushes (random data, first batch=%d) "
             "-> exactly full (1 entry/beat)", self.cfg_mb.depth, self.cfg_mb.first_batch,
         )
-        self.logger.info("CHK-STATUS PASS: full/write_level_above tracked golden TX depth")
+        # No separate CHK-STATUS line: the STATUS comparison is _check_status, called
+        # after every push above, and a bare summary log with no assert behind it reads
+        # as a checker in a plan while enforcing nothing.
 
     async def _chk_write_full_error(self) -> None:
         """CHK-ERR-WR: a push to the full TX FIFO -> SLVERR +
         ERROR_FLAGS.write_error + IRQS.eirq W1C."""
-        assert self.gold.tx == self.cfg_mb.depth, "test bug: TX not full before write-full check"
         resp = await self.mb.push64(self.cfg_mb.payloads[self.cfg_mb.depth], expect_error=True)
         assert resp == RESP_SLVERR, f"write-to-full resp={resp}, expected SLVERR"
-        assert not self.gold.push()                          # golden: push on full fails
         err = await self.mb.rd_csr(ERROR_FLAGS)
         assert err & ERR_WRITE, f"ERROR_FLAGS.write_error not set after write-full (0x{err:08x})"
         self.logger.info("CHK-ERR-WR PASS: write-to-full -> SLVERR + ERROR_FLAGS.write_error")

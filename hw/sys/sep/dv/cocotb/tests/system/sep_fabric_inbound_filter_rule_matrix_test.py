@@ -62,7 +62,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         """Real-sense a PROD image -> sep_debug=0 (inbound filter active)."""
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS})
-        assert image.lc_raw() == LC_PROD, "test bug: image LC_STATE is not PROD"
+        # No image.lc_raw() == LC_PROD assert here: select_efuse_image was called with
+        # lc_raw=LC_PROD and randomize() pins the field to exactly that, so the check
+        # compares a value to itself. The DUT-side evidence that PROD actually took
+        # effect is the FEAT_CTRL read below, value-checked against feat_ctrl_expected.
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
@@ -175,4 +178,5 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # observed under the SAME sep_debug=0 (filter active) -- the rule, not the global gate.
         self.logger.info(
             "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)")
-        self.logger.info("CHK-ALL PASS: inbound-filter per-entry rule (allow/block/read_allowed/write_allowed)")
+        # No CHK-ALL summary line. It asserted nothing, and a plan row keyed on it
+        # would record coverage against a string with no checker behind it.

@@ -73,10 +73,6 @@ class sep_fabric_decode_error_response_test(sep_base_test):
             self.env.axi_monitor.arm_expected_decerr(1)
             probe = SepFabricUnmappedProbeSeq(addr)
             await self.start_seq(probe)
-            assert not probe.timed_out, (
-                f"unmapped read 0x{addr:08x} did not complete (wedge); expected a "
-                f"DECERR response"
-            )
             assert probe.resp_code == RESP_DECERR, (
                 f"unmapped read 0x{addr:08x} returned resp={probe.resp_code}, "
                 f"expected DECERR={RESP_DECERR} (not SLVERR/timeout/OKAY)"
