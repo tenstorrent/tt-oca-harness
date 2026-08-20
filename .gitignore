@@ -92,6 +92,8 @@ vendor/**/Bender.lock
 /sim_build/
 /flow_runs/
 /flow_runs_*.tar.gz
+/summaries/
+/new_baselines/
 /packaged_ip/
 /weekly_packaged_ip/
 

@@ -17,11 +17,6 @@ stages:
 # variables).
 variables:
   OCAH_NONFREE_REMOTE: "https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
-  # Slack digest recipients for the weekly static-check jobs, forwarded to the
-  # nonfree child pipeline. Space-separated IDs. Both empty is supported and
-  # safe: the digest is rendered into the job log and nothing is sent.
-  NOTIFY_USERS: ""
-  NOTIFY_CHANNELS: ""
 
 # Run on mirror-sync pushes, MRs, external PRs (GitHub mirror), manual web
 # triggers, and scheduled pipelines (the weekly EDA checks in the nonfree child
