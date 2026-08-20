@@ -180,7 +180,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Flash Sector Erase Test ()\n");
+    printf("SPI OT Flash Sector Erase Test\n");
     printf("Requires: +spi_device_sel=winbond (W25Q512JV)\n");
     printf("Target address: 0x%06x (sector 1)\n", FLASH_TARGET_ADDR);
     printf("========================================\n\n");

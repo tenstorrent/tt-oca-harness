@@ -186,10 +186,10 @@ int main(void) {
 
     printf("\n================================\n");
     if (errors == 0 && unexpected_nmi == 0) {
-        printf("PASS\n");
+        printf("WDT Pet/Reset Test: PASS\n");
         test_pass(0);
     } else {
-        printf("FAIL (errors=%d, unexpected_nmi=%d)\n", errors, unexpected_nmi);
+        printf("WDT Pet/Reset Test: FAIL (errors=%d, unexpected_nmi=%d)\n", errors, unexpected_nmi);
         test_fail(1);
     }
     printf("================================\n");

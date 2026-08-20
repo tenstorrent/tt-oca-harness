@@ -122,7 +122,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
-    printf("HMAC SHA-384 and SHA-512 Test ()\n");
+    printf("HMAC SHA-384 and SHA-512 Test\n");
     printf("====================================================\n");
 
     int pass = 1;

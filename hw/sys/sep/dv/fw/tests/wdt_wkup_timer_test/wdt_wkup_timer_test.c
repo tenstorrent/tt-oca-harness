@@ -187,10 +187,10 @@ int main(void) {
 
     printf("\n====================================\n");
     if (errors == 0) {
-        printf("PASS\n");
+        printf("AON Wakeup Timer Test: PASS\n");
         test_pass(0);
     } else {
-        printf("FAIL (errors=%d)\n", errors);
+        printf("AON Wakeup Timer Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("====================================\n");

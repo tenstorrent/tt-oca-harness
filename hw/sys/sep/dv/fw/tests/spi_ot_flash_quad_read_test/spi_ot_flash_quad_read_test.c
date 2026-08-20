@@ -145,7 +145,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Flash Quad Fast Read Test ()\n");
+    printf("SPI OT Flash Quad Fast Read Test\n");
     printf("Requires: +spi_device_sel=winbond (W25Q512JV)\n");
     printf("Target address: 0x%06x (sector 3)\n", FLASH_TARGET_ADDR);
     printf("========================================\n\n");

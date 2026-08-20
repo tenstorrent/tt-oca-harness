@@ -137,11 +137,11 @@ int main(void) {
 
     printf("\n=====================================\n");
     if (errors == 0) {
-        printf("PASS\n");
+        printf("WDT Pause in Sleep Test: PASS\n");
         printf("Note: Full sleep-pause requires TB to assert wdt_debug_sleep_mode_i\n");
         test_pass(0);
     } else {
-        printf("FAIL (errors=%d)\n", errors);
+        printf("WDT Pause in Sleep Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("=====================================\n");

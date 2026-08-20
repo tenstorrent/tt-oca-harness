@@ -101,10 +101,10 @@ int main(void) {
 
     printf("\n==================================\n");
     if (errors == 0) {
-        printf("PASS (normal operation verified; escalate halt N/A)\n");
+        printf("WDT LC Escalate Test: PASS (normal operation verified; escalate halt N/A)\n");
         test_pass(0);
     } else {
-        printf("FAIL (errors=%d)\n", errors);
+        printf("WDT LC Escalate Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("==================================\n");

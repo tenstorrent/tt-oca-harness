@@ -62,7 +62,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("HMAC Interrupt Test ()\n");
+    printf("HMAC Interrupt Test\n");
     printf("========================================\n\n");
 
     int pass = 1;

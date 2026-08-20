@@ -28,7 +28,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("Fabric PKA Sanity Test ()\n");
+    printf("Fabric PKA Sanity Test\n");
     printf("========================================\n\n");
 
     sep_cpu_ctrl__CLOCK_GATE_CTRL_t cg = {

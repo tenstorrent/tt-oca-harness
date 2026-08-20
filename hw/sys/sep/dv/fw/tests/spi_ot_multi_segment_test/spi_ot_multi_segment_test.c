@@ -74,7 +74,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Multi-Segment Test ()\n");
+    printf("SPI OT Multi-Segment Test\n");
     printf("========================================\n\n");
 
     int pass = 1;

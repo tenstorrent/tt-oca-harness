@@ -49,7 +49,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT ACCESSINVAL Test ()\n");
+    printf("SPI OT ACCESSINVAL Test\n");
     printf("========================================\n\n");
 
     printf("NOTE: ACCESSINVAL fires on invalid byte-enable writes to TXDATA.\n");

@@ -45,7 +45,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
-    printf("Fabric Alias Remap Cacheable Default Test ()\n");
+    printf("Fabric Alias Remap Cacheable Default Test\n");
     printf("====================================================\n\n");
 
     if (!check_eq32("SEP_LOCAL_BASE_ADDR",

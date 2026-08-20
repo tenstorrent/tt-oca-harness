@@ -230,7 +230,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
-    printf("HMAC Long Message Test ()\n");
+    printf("HMAC Long Message Test\n");
     printf("====================================================\n");
 
     int pass = 1;

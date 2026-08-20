@@ -91,10 +91,10 @@ int main(void) {
     /* Signal pass before triggering BITE (BITE causes system reset) */
     printf("\n// Signaling PASS before triggering BITE reset\n");
     if (errors == 0) {
-        printf("PASS (bark fires before bite)\n");
+        printf("WDT Bark/Bite Order Test: PASS (bark fires before bite)\n");
         test_pass(0);
     } else {
-        printf("FAIL (errors=%d)\n", errors);
+        printf("WDT Bark/Bite Order Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
 

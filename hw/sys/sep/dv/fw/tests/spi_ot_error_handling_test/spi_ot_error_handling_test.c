@@ -79,7 +79,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Error Handling Test ()\n");
+    printf("SPI OT Error Handling Test\n");
     printf("========================================\n\n");
 
     int pass = 1;

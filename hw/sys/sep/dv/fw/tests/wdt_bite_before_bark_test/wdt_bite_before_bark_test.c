@@ -67,7 +67,7 @@ int main(void) {
     }
 
     if (errors != 0) {
-        printf("FAIL (errors=%d)\n", errors);
+        printf("WDT Bite Before Bark Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
         while (1) {
             __asm__ volatile("wfi");
@@ -108,10 +108,10 @@ int main(void) {
     /* STEP 4: Signal before/as bite reset request propagates */
     printf("\n// STEP 4: Signal test result\n");
     if (errors == 0) {
-        printf("PASS\n");
+        printf("WDT Bite Before Bark Test: PASS\n");
         test_pass(0);
     } else {
-        printf("FAIL (errors=%d)\n", errors);
+        printf("WDT Bite Before Bark Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
 

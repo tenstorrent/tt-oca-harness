@@ -51,7 +51,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n==============================================\n");
-    printf("Fabric Filter Default Deny Reset Test ()\n");
+    printf("Fabric Filter Default Deny Reset Test\n");
     printf("==============================================\n\n");
 
     cfg_lo = READ_REG(in_cfg_addr);

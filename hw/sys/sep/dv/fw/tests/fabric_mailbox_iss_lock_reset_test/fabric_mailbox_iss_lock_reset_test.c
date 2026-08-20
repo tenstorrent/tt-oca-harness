@@ -56,7 +56,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n==========================================\n");
-    printf("Fabric Mailbox ISS Lock Reset Test ()\n");
+    printf("Fabric Mailbox ISS Lock Reset Test\n");
     printf("==========================================\n\n");
 
     /* CLOCK_GATE_CTRL is a reserved, not-yet-implemented placeholder;

@@ -246,10 +246,10 @@ finish:
 
     printf("\n===============================================\n");
     if (errors == 0) {
-        printf("PASS\n");
+        printf("WDT Counter 32-bit Overflow Test: PASS\n");
         test_pass(0);
     } else {
-        printf("FAIL (errors=%d)\n", errors);
+        printf("WDT Counter 32-bit Overflow Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("===============================================\n");

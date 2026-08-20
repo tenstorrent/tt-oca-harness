@@ -34,7 +34,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("HMAC Register Sanity Test ()\n");
+    printf("HMAC Register Sanity Test\n");
     printf("========================================\n\n");
 
     int pass = 1;

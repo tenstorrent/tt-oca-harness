@@ -26,7 +26,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("Fabric HMAC Sanity Test ()\n");
+    printf("Fabric HMAC Sanity Test\n");
     printf("========================================\n\n");
 
     hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
