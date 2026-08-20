@@ -306,6 +306,11 @@ committed output always corresponds to the RDL sources.
 make regen-regs
 ```
 
+The RDL is the register specification: it describes the address map and the registers'
+behaviour, not the RTL that implements them. Naming a module, a package or an address slice in
+an RDL comment ties the specification to one implementation of it; leave those details to the
+RTL.
+
 ## Code Comments
 
 Write a comment only to tell the reader something the code cannot: a constraint, an ordering
@@ -320,6 +325,11 @@ Three kinds of comment are not worth their space.
   edit.
 - **Justification.** Arguing that a change is correct addresses a reviewer who is gone once the
   pull request merges.
+
+Names carry the same obligation. An identifier that describes what changed — a field named for
+the size a region used to have, a constant named after a mode that was replaced — dates as
+quickly as a breadcrumb, and it forces a comment to explain a concept the code no longer has.
+Name what exists.
 
 Where a test can carry the constraint instead, prefer the test: it fails when the constraint is
 broken, and a comment does not.
