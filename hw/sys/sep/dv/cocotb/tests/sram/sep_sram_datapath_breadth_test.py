@@ -125,11 +125,26 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         cfg = self.scfg
         wr_addr = cfg.base_addr + cfg.nonvac_wr_offset
         rd_addr = cfg.base_addr + cfg.nonvac_rd_offset
+        # Both addresses are written, with complementary patterns, and both are read
+        # back and value-checked. The previous form wrote only wr_addr and required the
+        # UNWRITTEN rd_addr to differ from the written pattern -- but rd_addr holds
+        # zero-initialised memory, and nonvac_pattern is built as `getrandbits(64) | 1`,
+        # so the check reduced to `0 != nonzero`, true by construction every run. It
+        # could not detect the stuck read path it names: a datapath returning all-zeros
+        # passed it, and so did one returning all-ones.
+        other_pattern = (~cfg.nonvac_pattern) & ((1 << 64) - 1)
         await self.sram.write(wr_addr, cfg.nonvac_pattern, length=8)
-        other = await self.sram.read(rd_addr, length=8)
-        assert other != cfg.nonvac_pattern, (
-            f"CHK-NONVAC unwritten word @0x{rd_addr:08x} == written pattern "
-            f"0x{cfg.nonvac_pattern:016x} -- read may be returning a stuck constant")
+        await self.sram.write(rd_addr, other_pattern, length=8)
+        got_wr = await self.sram.read(wr_addr, length=8)
+        got_rd = await self.sram.read(rd_addr, length=8)
+        assert got_wr == cfg.nonvac_pattern, (
+            f"CHK-NONVAC @0x{wr_addr:08x} read 0x{got_wr:016x} != written "
+            f"0x{cfg.nonvac_pattern:016x}")
+        assert got_rd == other_pattern, (
+            f"CHK-NONVAC @0x{rd_addr:08x} read 0x{got_rd:016x} != written "
+            f"0x{other_pattern:016x} -- a stuck read path returns the same value for "
+            f"both addresses")
         self.logger.info(
-            "CHK-NONVAC PASS: distinct unwritten word 0x%016x != written 0x%016x",
-            other, cfg.nonvac_pattern)
+            "CHK-NONVAC PASS: two addresses hold complementary values "
+            "(0x%016x / 0x%016x), so the read path is not a stuck constant",
+            got_wr, got_rd)

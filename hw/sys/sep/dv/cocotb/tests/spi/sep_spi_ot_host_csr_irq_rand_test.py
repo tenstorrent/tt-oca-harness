@@ -111,19 +111,38 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def _chk_reg_rw(self) -> None:
         nonvac_seen = False
         for name, addr, wmask, val in self.scfg.rw_regs:
+            # Observe the pre-write value rather than trusting the RESET_VALUES table.
+            # CHK-NONVAC used to compare the readback against that table, but the
+            # readback had already been asserted == val, so it reduced to
+            # `val != RESET_VALUES[name]` -- this run's seeded random number against a
+            # file-scope constant, with no DUT term left. Anchoring on an observed read
+            # makes it a real statement about the register.
+            pre = await self.spi.rd(addr)
             await self.spi.wr(addr, val)
             rb = await self.spi.rd(addr)
             assert rb == val, (f"CHK-REG-RW {name}@0x{addr:08x} readback 0x{rb:08x} "
                                f"!= written 0x{val:08x} (wmask 0x{wmask:08x})")
-            assert (rb & ~wmask) == 0, (f"CHK-REG-RW {name} RO/reserved bits set: "
-                                        f"0x{rb & ~wmask:08x}")
-            _, reset_v = RESET_VALUES[name] if name in RESET_VALUES else (0, 0)
-            if name in RESET_VALUES and rb != reset_v:
+            # Probe the RO/reserved bits by writing them. Checking `rb & ~wmask == 0`
+            # after `rb == val` proved nothing: val is built as getrandbits(32) & wmask,
+            # so those bits were zero before the DUT ever saw them.
+            if (~wmask & 0xFFFF_FFFF) != 0:
+                await self.spi.wr(addr, val | (~wmask & 0xFFFF_FFFF))
+                rb2 = await self.spi.rd(addr)
+                assert (rb2 & ~wmask & 0xFFFF_FFFF) == 0, (
+                    f"CHK-REG-RW {name} reserved bits are writable: "
+                    f"0x{rb2 & ~wmask & 0xFFFF_FFFF:08x}")
+                assert (rb2 & wmask) == val, (
+                    f"CHK-REG-RW {name} writable bits disturbed by a reserved-bit "
+                    f"write: 0x{rb2 & wmask:08x} != 0x{val:08x}")
+            if rb != pre:
                 nonvac_seen = True
         self.logger.info("CHK-REG-RW PASS: %d RW regs write->readback exact, "
-                         "RO/reserved read 0", len(self.scfg.rw_regs))
-        assert nonvac_seen, "CHK-NONVAC: no RW reg differed from its reset value"
-        self.logger.info("CHK-NONVAC PASS: a written reg differs from its reset value")
+                         "reserved bits reject writes", len(self.scfg.rw_regs))
+        assert nonvac_seen, (
+            "CHK-NONVAC: no register's readback differed from its observed pre-write "
+            "value -- the writes changed nothing observable")
+        self.logger.info(
+            "CHK-NONVAC PASS: a written reg differs from its observed pre-write value")
         # Restore every walked reg to its reset value for the later facets.
         for name, addr, _, _ in self.scfg.rw_regs:
             if name in RESET_VALUES:
