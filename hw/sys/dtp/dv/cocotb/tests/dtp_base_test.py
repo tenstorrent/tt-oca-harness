@@ -13,18 +13,11 @@ from cocotb.triggers import ClockCycles
 from pyuvm import ConfigDB, uvm_test
 
 # The cocotb runner only puts the test dir on sys.path; make the DV root (env/,
-# seq_lib/) and shared OSS BFM roots importable. Imported by every concrete
-# test, so this runs first.
+# seq_lib/) importable. Shared VIP roots come from dtp_sim_cfg.toml.
 _DV_ROOT = Path(__file__).resolve().parents[1]
-_REPO_ROOT = _DV_ROOT.parents[5]
-for _path in (
-    _DV_ROOT,
-    _REPO_ROOT / "dv" / "oss" / "hw" / "dv" / "py",
-    _REPO_ROOT / "dv" / "vip" / "cocotb",
-):
-    _path_str = str(_path)
-    if _path_str not in sys.path:
-        sys.path.insert(0, _path_str)
+_dv_root_str = str(_DV_ROOT)
+if _dv_root_str not in sys.path:
+    sys.path.insert(0, _dv_root_str)
 
 from env.dtp_env import DtpEnv
 from env.dtp_env_cfg import DtpEnvCfg

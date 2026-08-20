@@ -3,7 +3,6 @@
 
 name: Task
 description: Implementation, docs, investigation, or a tracked decision with a done condition.
-title: "[Task]: "
 type: Task
 body:
   - type: markdown
@@ -30,6 +29,7 @@ body:
         - RDL
         - RELEASE
         - NONFREE
+        - FUSA
     validations:
       required: true
   - type: dropdown

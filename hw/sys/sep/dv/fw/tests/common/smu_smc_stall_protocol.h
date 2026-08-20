@@ -3,9 +3,8 @@
 /*
  * SEP_SMU_004  smu_smc_stall_sep  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SMC hold/release + SEP GO-poll) and parsed by the
- * cocotb checker (dv/smu/tb/tb_uvm/cocotb_tests/smu_smc_stall_sep_test.py) so the
- * DUT stimulus and the DV expectations can never drift (AGENTS.md one-source rule).
+ * Included by both firmwares (SMC hold/release + SEP GO-poll) and parsed by the
+ * cocotb checker so DUT stimulus and DV expectations share one contract.
  * Keep every value a plain integer/hex #define so the Python parser can read it.
  *
  * Channels (SMC CPU_CTRL scratch array, 8-byte stride, base 0xC0039080):

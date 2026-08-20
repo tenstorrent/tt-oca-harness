@@ -12,8 +12,7 @@ functional remap translation and outbound-filter enforcement are infra-gated
 All banks need the fabric clocks ungated first (CLOCK_GATE_CTRL); the existing
 sep_address_map_seq already does this with the same value.
 
-Bank map (hw/sys/sep/regs/gen/svh/sep_reg.svh; dv/sep .../sep_fabric_64bit_
-regwidth_sequence.sv + sep_outbound_filter_cfg_sequence.sv):
+Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
   Local-master alias-remap : base 0x10A1_0000, stride 0x20, 16 regions
       REGION_START +0x00 (64b), REGION_END +0x08 (64b, 4KB-aligned),
       REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[62], valid[63]=R/W)

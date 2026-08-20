@@ -29,6 +29,7 @@ project:
       - RDL
       - RELEASE
       - NONFREE
+      - FUSA
     Subsystem:
       - OCAH
       - SMU
@@ -116,6 +117,7 @@ classification:
     - LC and EFUSE use the targeted Subsystem, SEP or SMC.
     - Cross-subsystem work must be proposed for human decomposition; never invent compound values.
     - NONFREE is the Workstream when the work lands in the companion repository.
+    - FUSA is the Workstream for functional-safety work.
 
 title:
   general_component_format: "[WORKSTREAM/SUBSYSTEM] Imperative title"
