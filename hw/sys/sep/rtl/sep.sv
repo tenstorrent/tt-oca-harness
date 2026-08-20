@@ -165,7 +165,7 @@ module sep
         /////////////
 
         output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
-        output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
+        output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
         output logic lc_sigint_err_o,
         output logic security_disable_o,
         output logic secure_tm_o,
@@ -371,6 +371,7 @@ module sep
     assign sep_region_size_o      = sep_region_size;
 
     logic security_disable;
+    sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl;
 
     //////////////
     // SEP Resets
@@ -832,7 +833,8 @@ module sep
         .ext_boot_seq_done_i                    (ext_boot_seq_done_i),
         .security_disable_o                     (security_disable),
         .lc_state_o                             (lc_state_o),
-        .feat_ctrl_o                            (feat_ctrl_o),
+        .feat_ctrl_o                            (feat_ctrl),
+        .dbg_disable_o                          (dbg_disable_o),
         .lc_sigint_err_o                        (lc_sigint_err_o),
         .shadow_regs_o                          (),
         .fuse_sense_done_o                      (sep_fuse_sense_done_o),
@@ -951,7 +953,7 @@ module sep
 
         .test_en_i                        (test_en_i),
         .scan_rst_ni                      (scan_rst_ni),
-        .inbound_filter_skip_i            (feat_ctrl_o.sep_debug),  // 0: traverses inbound filter, 1: skips filter checking
+        .inbound_filter_skip_i            (feat_ctrl.sep_debug),    // 0: traverses inbound filter, 1: skips filter checking
         .outbound_filter_skip_i           (1'b0),                   // output filter is not affected by feature control
 
         // AXI4 Slave Interface

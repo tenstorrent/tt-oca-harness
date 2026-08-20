@@ -370,6 +370,14 @@ def _run_metadata(
         "git": result.get("git", {}),
         "selection": regression.get("selection", {}) if regression else {},
         "invocation": run_json or {},
+        "progress": result.get(
+            "progress",
+            regression.get("progress", {}) if regression else {},
+        ),
+        "interruption": result.get(
+            "interruption",
+            regression.get("interruption", {}) if regression else {},
+        ),
     }
 
 

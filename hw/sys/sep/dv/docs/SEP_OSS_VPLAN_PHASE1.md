@@ -34,12 +34,11 @@ The OSS SEP verification plan: pull the **fewest tests for the most coverage**, 
 behavior already exists in the OCAH SEP golden DV suite (the trusted reference), and track what DV-infra
 each needs to stand up on the bare `sep` OSS DUT.
 
-The golden universe is **~689 tests**: ~539 UVM (`dv/sep/tb/tb_uvm/yaml/testlist_sep.yaml` + `uvm_tests/`)
-and ~150 firmware (`fw/sep/tests/`). This plan selects **20** in three **cumulative** stages:
+The executable inventory is defined by the public TOML testlists and source
+trees. This plan selects **20** scenarios in three **cumulative** stages:
 **TOP-5 ⊂ TOP-10 ⊂ TOP-20** (run the 5 first, expand to 10, then 20). Cross-module / superset tests are
 preferred, and firmware tests are weighted heavily because they exercise the real CPU→fabric→IP path that
-UVM register tests cannot reach. Every name and the widest coverage claims were grep-verified by a design
-pass and re-verified by an adversarial audit pass.
+register-only tests cannot reach.
 
 This doc has two halves: **(A) the selection** (which tests, why) and **(B) port readiness** (which
 behavioral responders each test needs, what is built, what is blocked). They are different kinds of work —
@@ -71,7 +70,7 @@ DRBG/ESRC/EDN/TRNG, eFuse/OTP, Lifecycle ctrl (LCC), Secure DMA, WDT, mailbox (K
 PIC/interrupts, reset_ctrl, SPI (OpenTitan), AXI fabric/xbar, inbound/outbound filter +
 alias/output remap, JTAG/debug.
 
-**Interconnect edges (E1–E13,** from `dv/sep/tb/doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN_SUMMARY.md`**):**
+**Interconnect edges (E1–E13):**
 E1 eFuse↔KM · E2 DRBG/EDN→KM · E3 KM→{AES,HMAC,KMAC,OTBN} sideload · E4/E11 eFuse lc_state→LCC ·
 E7 DMA→SRAM/DCCM (+inline-SHA) · E8 CPU/DMA→target contention · E9 WDT→reset_ctrl→CPU ·
 E10 IP-IRQ→aggregator→PIC→CPU · E12 alias/output-remap→egress · E13 reset/JTAG→crypto.

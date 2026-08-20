@@ -3,10 +3,8 @@
 
 | Field | Value |
 |-------|-------|
-| Owner | minshaoho |
 | Scope | `hw/sys/smc/dv/cocotb/` (PyUVM-on-cocotb, DTP three-layer pattern) |
 | Related | `SMC_VPLAN.adoc`, `smc_oss_execution_guide.md`, `ref_test_dev.md` |
-| Source survey (non-OSS) | legacy SMC TB `dv/smc/tb/tb_uvm/` — 171 cocotb tests + 24 SV UVM tests |
 
 This is the planning half of the SMC OSS bring-up. It records the module-to-test
 mapping, the shared-infrastructure roadmap, and the design rules the ported tests
@@ -17,10 +15,9 @@ see `smc_oss_execution_guide.md`.
 
 ## 1. Scope & Goal
 
-For every functional module covered by the legacy SMC TB, pick **one most-representative
-testcase** and port it into the OSS tree following the DTP test architecture
-(`env/` + `seq_lib/` + `tests/`). Roughly **32 modules / ~30 testcases / 16
-shared infrastructure pieces**.
+For each functional module, select representative scenarios that follow the DTP
+test architecture (`env/` + `seq_lib/` + `tests/`) and share reusable
+infrastructure.
 
 ---
 
@@ -28,8 +25,8 @@ shared infrastructure pieces**.
 
 | Rule | Source | Consequence |
 |------|--------|-------------|
-| PyUVM-on-cocotb only; no SV UVM tests | DTP / SEP pattern | The 24 legacy SV UVM tests are not directly ported |
-| No firmware binary dependency | OSS philosophy | Firmware-driven legacy tests are rebuilt as BFM-driven Python tests |
+| PyUVM-on-cocotb only; no SV UVM tests | DTP / SEP pattern | Tests use the common Python environment |
+| No prebuilt firmware binary dependency | Reproducible builds | Firmware-driven behavior uses source-built images or BFM-driven Python tests |
 | All stimulus goes through BFM agents | DTP rule | One agent per external interface (I2C / JTAG / AXI / GPIO / OCTS / AVSBus / …) |
 | `tb_top` flattens and lifts internal signals to top-level | SEP rule | Internal observables exposed by `assign` XMR; BFMs hang off top-level ports |
 | Commercial sim is the live verification target; Verilator is best-effort | Pragmatic | Until the upstream Verilator codegen bug is fixed, live PASS via Xcelium / VCS |
@@ -226,7 +223,7 @@ Total: ~60 person-days, single mid-level engineer.
 | Verilator + PeakRDL codegen bug | All live Verilator runs blocked | Accept static + dry-run + commercial sim as verification; file a minimal upstream repro |
 | Missing OCAH BFMs (OCTS / ATB / AVSBus) | Some Batch B / C tests gated | Write OCAH-local simplified models (I12 / I13 / I14 in shared infra) |
 | CPU-LSU splice complexity | Batch D CPU tests hard | Copy the SEP `initial force` + XMR-read pattern verbatim |
-| Firmware-driven legacy test logic | Needs full re-design as BFM-driven | Re-scope what the firmware actually did (IRQ trigger, CSR write) into an equivalent BFM call |
+| Firmware-only test behavior | May need a BFM-driven equivalent | Express the hardware action, such as an IRQ trigger or CSR write, through the appropriate BFM |
 | `tb_top` port growth → bender filelist breakage | Batch C / D risk | Validate after every batch; stub immediately if any new Verilator surface fails |
 
 ---
