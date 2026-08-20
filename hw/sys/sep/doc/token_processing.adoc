@@ -139,10 +139,17 @@ vote would wave through as a match
 Either one raises a redundancy fault, which may indicate a tampering
 attack. The fault forces the error code onto all six output bits, so
 every downstream feature gate fails closed, and it sets the sticky bit
-for that token in the `TOKEN_MATCH_FAULT` register. The three sticky bits
-are combined into a single interrupt to the SEP CPU, and  firmware read
-the register to identify which comparators faulted. The fault bits clear only
-on reset, so a fault cannot be hidden by retrying with a valid token.
+for that token in the `TOKEN_MATCH_FAULT` register. The three sticky bits are
+combined into a single interrupt to the SEP CPU on PIC source 39; see
+ifdef::backend-html5[]
+xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-cpu-interrupt-vector-map>>
+endif::backend-pdf[]
+for the full slot map. Firmware reads the register to identify which
+comparators faulted. The fault bits clear only on reset, so a fault cannot be
+hidden by retrying with a valid token.
 
 image::SEP_Token_Processing.png[SEP_Token_Processing,scaledwidth=90.0%]
 
