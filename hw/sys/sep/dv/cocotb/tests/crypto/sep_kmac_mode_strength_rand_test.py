@@ -31,9 +31,6 @@ Checkers:
   CHK-DONE-RW1C  per cell: INTR_STATE.kmac_done observed set -> W1C -> reads 0
                  (proven in sep_kmac_seq.run_family), and CMD DONE returns to idle
   CHK-ERR        per cell: ERR_CODE == 0 and INTR_STATE.kmac_err == 0
-  CHK-NONVAC     per cell: digest non-zero; digest != a wrong-MODE golden (same
-                 strength/output length, different family mode); and for KMAC
-                 cells digest != wrong-KEY golden
   CHK-RAND-REP   all 8 discrete cells walked in one invocation (seed logged)
 """
 
@@ -62,12 +59,6 @@ CELLS = [
     ("kmac", 256, 64, 256, b"My Tagged Application"),
 ]
 
-# CHK-NONVAC wrong-MODE map: each cell's digest must differ from the golden
-# recomputed under a DIFFERENT family mode (same strength + output length, same
-# message/key/customization). The FIPS-202/SP800-185 domain-separation bytes
-# differ per mode (SHA3 0x06, SHAKE 0x1F, cSHAKE 0x04, KMAC adds the key bytepad
-# + right_encode tail), so a mode-agnostic / always-true checker would fail here.
-WRONG_MODE = {"sha3": "shake", "shake": "sha3", "cshake": "shake", "kmac": "cshake"}
 
 
 @pyuvm.test()
@@ -117,26 +108,15 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             f"{cell} digest != golden:\n  digest={[hex(w) for w in digest]}\n"
             f"  golden={[hex(w) for w in golden]}")
 
-        # CHK-NONVAC: non-zero, mode-specific, and (KMAC) key-specific.
-        assert any(digest), f"{cell} digest all-zero (vacuous)"
-        wrong_mode = WRONG_MODE[mode]
-        wm_kwargs = dict(mode=wrong_mode, sec=sec, msg_words=msg, outlen_bytes=outb)
-        if wrong_mode == "kmac":
-            wm_kwargs["key_words"] = key
-        if wrong_mode in ("cshake", "kmac"):
-            wm_kwargs["s"] = s
-        wrong_mode_golden = kmac_family_words(**wm_kwargs)
-        assert digest != wrong_mode_golden, (
-            f"{cell} digest matches a wrong-mode ({wrong_mode}) golden -- "
-            f"checker not mode-specific")
-        if mode == "kmac":
-            wrong_key = kmac_family_words(mode="kmac", sec=sec, msg_words=msg,
-                                          outlen_bytes=outb,
-                                          key_words=[w ^ 0xFFFF_FFFF for w in key], s=s)
-            assert digest != wrong_key, f"{cell} digest matches wrong-key golden"
+        # No CHK-NONVAC here. It used to assert `any(digest)` and that the digest
+        # differed from a wrong-mode and (for KMAC) wrong-key golden. With the digest
+        # already pinned bit-exact to its own golden above, all three reduce to
+        # relations between outputs of the same Python model -- they hold with the
+        # simulator switched off. One was weaker still: for the SHAKE-128/32B cell the
+        # wrong-mode golden is SHA3-128, which returns 4 words against the digest's 8,
+        # so that assert compared list lengths rather than doing any domain separation
+        # at all. Mode and key sensitivity are pinned where they belong: sep_kmac_golden
+        # self-tests every mode against hashlib and the NIST SP800-185 samples at import.
         await self.kmac.check_status_clean(cell)   # CHK-ERR
-        self.logger.info(
-            "CHK-NONVAC PASS %s: digest non-zero, differs from wrong-mode (%s) golden%s",
-            cell, wrong_mode, " and wrong-key golden" if mode == "kmac" else "")
         self.logger.info("CHK-CELL PASS %s: digest==golden, DONE-RW1C, ERR clean, "
                          "non-vacuous (out=%dB, msg=%d words)", cell, outb, len(msg))

@@ -214,13 +214,17 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
             for i in range(cfg.aes_blocks_fork):
                 await self.aes.load_key_iv(list(cfg.aes_key))
                 ct = await self.aes.run_ecb_block(aes_pt)
-                if i == 0:
-                    assert ct == aes_golden, (
-                        "AES contended block-0 ct != golden:\n"
-                        f"  ct    ={[hex(w) for w in ct]}\n"
-                        f"  golden={[hex(w) for w in aes_golden]}")
-                else:
-                    assert any(w != 0 for w in ct), f"AES all-zero ct (block {i})"
+                # Every fork block is compared bit-exact, not just block 0. ECB is
+                # stateless and the key/plaintext are identical per iteration, so the
+                # former `any(w != 0 for w in ct)` guard on later blocks reduced to
+                # `any(aes_golden)` -- a property of the Python model, true with the
+                # simulator switched off. The exact expected value is already known
+                # here, so asserting it turns each later block into a real second
+                # contended data point instead of a non-zero placeholder.
+                assert ct == aes_golden, (
+                    f"AES contended block-{i} ct != golden:\n"
+                    f"  ct    ={[hex(w) for w in ct]}\n"
+                    f"  golden={[hex(w) for w in aes_golden]}")
 
         async def kmac_arm():
             """KMAC crypto-EDN pulls: each keyed KMAC-256 op reseeds masking from EDN;

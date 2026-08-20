@@ -30,7 +30,6 @@ Checkers:
   CHK-RT       per cell: round-trip recovers plaintext -- ECB/CBC via engine
                DECRYPT, CTR via re-encrypt (stream self-inverse)
   CHK-STATUS   per cell: no AES recoverable/fatal alert across enc + round-trip
-  CHK-NONVAC   per cell: ciphertext != plaintext and != wrong-key golden
   CHK-ENTROPY  masking-PRNG reseed completed (reaching CHK-ENC is the evidence)
   CHK-RAND-REP all 9 discrete cells walked in one invocation (seed logged)
 """
@@ -102,11 +101,11 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             f"{cell} ciphertext != golden:\n  ct    ={[hex(w) for w in ct]}\n"
             f"  golden={[hex(w) for w in golden]}")
 
-        # CHK-NONVAC: not a passthrough, and a wrong key gives a different ct.
-        assert ct != pt, f"{cell} ciphertext == plaintext (engine passthrough?)"
-        wrong = aes_encrypt_words(mode=mode, key_words=[w ^ 0xFFFF_FFFF for w in key],
-                                  pt_words=pt, iv_words=iv)
-        assert ct != wrong, f"{cell} ct matches wrong-key golden (key not honored)"
+        # No golden-vs-golden guards here. With the DUT result already pinned
+        # bit-exact against the golden above, any further comparison between that
+        # result and another golden-model output reduces to a property of the model
+        # alone -- it holds with the simulator switched off. Model sanity belongs in
+        # the golden's import-time KAT block, not in a per-cell DUT check.
         await self.aes.check_status_clean(cell + "-enc")   # CHK-STATUS
 
         # --- CHK-RT: recover the plaintext -----------------------------------
