@@ -1,0 +1,25 @@
+doc/contributing/src/alignment.adoc
+  s_c8ce40a7fc1aa0::t_3ab5ca163c8aa7 16-17
+.github/ISSUE_CURATION.md
+  s_c8ce40a7fc1aa0::t_d15bc30d728126 18,20-22
+.github/issue-taxonomy.yml
+  s_c8ce40a7fc1aa0::t_04804b9d31f1dc 6,8
+AGENTS.md
+  s_c8ce40a7fc1aa0::t_9ee4294d403468 419-420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f43d6ed1736e18bcf9356443b04bcd5620338969",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
