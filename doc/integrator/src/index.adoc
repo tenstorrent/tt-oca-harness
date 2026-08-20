@@ -52,9 +52,8 @@ GPIO padrings) are instantiated externally by the adopter. See the
 wrappers demonstrate this integration.
 
 For detailed architectural documentation about the SMC internal design, refer to
-`hw/smc/doc/`. The testbench
-`dv/smc/tb/tb_uvm/sv/smc_chiplet_wrap_uvm_top.sv` provides a complete
-integration example.
+`hw/smc/doc/`. The `hw/top/smc_wrapper.sv` reference wrapper demonstrates the
+integration boundary.
 
 ==== Clock and Reset
 

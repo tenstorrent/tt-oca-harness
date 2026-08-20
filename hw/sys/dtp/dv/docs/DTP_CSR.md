@@ -9,15 +9,13 @@ DTP exposes state through two access mechanisms:
 | JTAG TDRs | Scan-chain registers | Load 6-bit IR, then shift DR |
 | XTRIG CSRs | AXI4-Lite memory-mapped registers | `axil_xtrig_*` subordinate |
 
-Full register detail is maintained in `dv/dtp/doc/DTP_CSR.md`. This OCAH
-open-source document summarizes the TDR/CSR behavior encoded in `env/dtp_types.py`
-and used by the public verification plan.
+This document summarizes the TDR/CSR behavior encoded in `env/dtp_types.py`
+and used by the verification plan.
 
 ## Register Sources
 
 | Source | Path |
 |--------|------|
-| Reference CSR document | `dv/dtp/doc/DTP_CSR.md` |
 | DTP design docs | `hw/sys/dtp/doc/` plus the JTAG and cross-trigger IP doc trees it includes |
 | CTP SystemRDL | `hw/ip/cross_trigger/cross_trigger_port/regs/cross_trigger_port.rdl` |
 | CTM SystemRDL | `hw/ip/cross_trigger/cross_trigger_matrix/regs/cross_trigger_matrix.rdl` |
@@ -284,12 +282,3 @@ CTM port indexing: ports `0 .. NUM_CTP-1` are the external CTPs and ports
 | RW | Read/write |
 | RO | Read only |
 | Mixed | Read/write behavior depends on field or TAP state |
-
-## Revision History
-
-| Version | Date | Author | Description |
-|---------|------|--------|-------------|
-| 1.0 | 2026-06-09 | DV Team | OCAH open-source CSR/TDR reference aligned with the DTP reference plan |
-| 1.1 | 2026-06-14 | DV Team | Aligned with OCAH design spec (ocah-documentation.pdf, Chapter 7): corrected JTAG_CAPS to 60-bit with field map, added IC_RESET / AXI-series / CTM-routing detail, the RISC-V-reserved opcode range, and CTP INVERT semantics |
-| 1.2 | 2026-06-22 | DV Team | Added TMP_STATUS, IC_RESET, DEBUG_CONTROL, JTAG_CAPS, and JTAG2AXI CAPS TDR verification notes for field, read-only, reset, and side-effect behavior |
-| 1.3 | 2026-07-29 | DV Team | Corrected the CTP/CTM SystemRDL paths, replaced the non-existent CTN SystemRDL and design-spec PDF rows with the CTN RTL address-decode package and the in-repo DTP design docs |

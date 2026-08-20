@@ -48,8 +48,8 @@ protocol BFMs behind a stable API:
 | STAP / 3DCR | DUT-local `DtpStap3dcrModel` | Partial DTP hierarchy model; downstream STAPs remain wire loopbacks. |
 | CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCH routing policy; promote only after parameterization and independent reuse. |
 
-The cocotb runner adds both `hw/common/dv` and `dv/vip/cocotb` to
-`PYTHONPATH` so tests can import the unified wrappers and their local backends.
+The cocotb runner adds `hw/common/dv/vip` to `PYTHONPATH` so tests can import
+the unified wrappers and their local backends.
 The ownership and promotion checklist is in `hw/common/dv/README.md`.
 
 ## Running

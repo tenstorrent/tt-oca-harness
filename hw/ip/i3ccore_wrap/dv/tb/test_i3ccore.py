@@ -8,6 +8,11 @@ This test verifies basic functionality of the i3ccore_wrapper module:
 - Reset release and initialization
 - AXI-Lite register access
 - Basic I3C bus activity (future)
+
+The register survey explicitly forces only the DAT/DCT backing SRAM arrays to
+zero because those arrays power up unknown and cannot be initialized through
+the surveyed register path. All DUT checks still use frontdoor AXI-Lite reads
+and writes.
 """
 
 import os
@@ -30,11 +35,15 @@ from cocotb.handle import Force, Release
 # Import tests from other test files
 from i3c_error_sanity import i3c_error_wrong_addr, i3c_fifo_overflow
 
-# Add path to import sim_handle utility
-OCH_ROOT = os.getenv("OCH_ROOT")
-if OCH_ROOT:
-    sys.path.append(f'{OCH_ROOT}/dv/smc/tb/tb_wrap_cocotb')
-    from common.smc_utils import sim_handle
+def sim_handle(path, root):
+    """Resolve a dotted simulator hierarchy path from ``root``."""
+    handle = root
+    for component in path.split("."):
+        try:
+            handle = getattr(handle, component)
+        except AttributeError:
+            handle = handle._id(component, extended=True)
+    return handle
 
 # Add path to register headers
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))

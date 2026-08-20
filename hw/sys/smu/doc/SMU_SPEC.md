@@ -19,9 +19,8 @@ These are joined by the **SMU AXI crossbar** (`smu_axi_xbar`), a 3×3 fully
 connected AXI4 crossbar that routes SEP, SMC, and one external SMN-facing port
 using CSR-programmed SEP/SMC apertures.
 
-This OCAH open-source verification plan follows the working reference plans in
-`dv/smu/tb/doc/`, but scopes implementation to the public `tt-oca` repository
-using the cocotb/Verilator environment in `hw/sys/smu/dv/`. Standard
+This specification describes the public `tt-oca` implementation and its
+cocotb/Verilator environment in `hw/sys/smu/dv/`. Standard
 protocol interfaces use the unified OCAH BFM packages; custom OCH protocols are
 modeled by OCAH-local BFMs when no shared wrapper exists.
 
@@ -33,7 +32,6 @@ modeled by OCAH-local BFMs when no shared wrapper exists.
 | Packages | `smu_pkg` (`hw/smu/rtl/smu_pkg.sv`), `smu_axi_xbar_pkg` |
 | Repository | `tt-oca` |
 | Open-source DV location | `hw/sys/smu/dv/` |
-| Reference plans | `dv/smu/tb/doc/` |
 | Standards | AMBA AXI4/AXI4-Lite; IEEE 1149.1 (JTAG) via DTP; OCH Cross Trigger v1.0 (OCCT) via DTP; OCAC/OCS compliance mapping |
 
 ## Specifications
@@ -289,9 +287,3 @@ Enrolled SMU open-source DV is defined by `hw/sys/smu/dv/testlists/*.toml`
 wrapper baseline). Deferred / SEP=1 inventory lives in `testlists/deferred.toml`
 and is not reportable as PASS. Live stimulus and checkers are under
 `hw/sys/smu/dv/cocotb/` and `hw/sys/smu/dv/cocotb_wrapper/`.
-
-## Revision History
-
-| Version | Date | Author | Description |
-|---------|------|--------|-------------|
-| 1.0 | 2026-07-07 | OSS DV Team | Initial OCAH open-source SMU design specification, modeled on the DTP OSS doc set and derived from the SMU RTL (`smu`/`smu_axi_xbar`/`smu_wrapper`) and the `dv/smu/tb/doc/` reference plans |

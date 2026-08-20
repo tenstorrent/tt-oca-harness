@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """U4-5 OCTS dual-chiplet sync: SECONDARY inject then PRIMARY outbound.
 
-Legacy reference (dv/smc/tb): DUT PRIMARY drives OCTS sync/credit pads;
-master BFM SECONDARY tracks. OSS has a single bare ``smc`` DUT, so this
-sequence (pads 55/56 after 68->65 GPIO shrink):
+The DUT PRIMARY drives OCTS sync/credit pads and the master BFM tracks the
+SECONDARY side. This sequence:
 
   1. Strap SECONDARY, inject ordered sync then credit on pad2core[55/56],
      hard-gate COUNT / STATUS.MODE.
