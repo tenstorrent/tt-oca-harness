@@ -99,14 +99,19 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
     def _rand_words(self, n: int) -> list[int]:
         return [self.rng.getrandbits(32) for _ in range(n)]
 
-    # Register convention for the SOFTWARE key path, derived from the RTL contract
-    # rather than discovered from the DUT.
+    # Register convention for the SOFTWARE key path, taken from the register
+    # SPECIFICATION rather than from the RTL or from the DUT.
     #
-    # vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv:219-221
-    #     secret_key_d[32*i+:32] = conv_endian32(reg2hw.key[31-i].q, key_swap);
-    # so secret_key[1023:992] == KEY_0, i.e. KEY_0 is the MOST-significant word, and
-    # hmac_core consumes secret_key_i[1023:768] for a 256-bit key. Writing KEY_0..KEY_7
-    # in order therefore lays the key down MSB-first and needs NO word reversal.
+    # vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:446
+    #     Order of the secret key is:  key[1023:0] = {KEY0, KEY1, KEY2, ... , KEY31};
+    # so KEY_0 is the MOST-significant word, and hmac_core consumes
+    # secret_key_i[1023:768] for a 256-bit key. Writing KEY_0..KEY_7 in order therefore
+    # lays the key down MSB-first and needs NO word reversal.
+    #
+    # The RTL agrees -- hmac.sv assigns the key registers in reverse index order -- but
+    # the RTL is deliberately NOT the citation here. An expectation transcribed from the
+    # thing it measures cannot disagree with it, which is the rule the lifecycle golden
+    # note states, and it applies to a register convention just as much as to a decode.
     #
     # Do not confuse this with the SIDELOAD path, where hmac.sv:51 packs
     # {key[0] ^ key[1], 768'b0} -- a different mechanism with a different convention.

@@ -15,14 +15,18 @@ requirements. They are not restated here. Read it first if you are auditing this
 
 The short form of the contract: *a row exists only if a run can prove it.* Every checker
 names log text a kept Verilator run actually contains, and the proof strings are checked
-mechanically rather than by eye — `docs/audit/verify_proofs.py` greps each backticked
+mechanically rather than by eye — `docs/tools/verify_plan_proofs.py` greps each backticked
 evidence string against that entry's newest kept log and exits non-zero on a miss.
 
 What this document is *not*: a coverage percentage, and not a forward contract. Phase 2
-names 112 candidate testcases, of which 42 are implemented; three further entries added
-by PR #451 are implemented but were named in no plan at all, giving 45 covered. Only
-implemented entries are graded. The remaining 69 are listed in <<backlog>> as names, with
-no rows and no claims.
+names 112 testcase-shaped identifiers. One of those, `sep_base_test`, is a base class
+rather than a testcase, so there are *111* real candidates: 42 implemented and 69 not.
+Three further entries added by PR #451 are implemented but were named in no plan at all,
+giving 45 covered here and in Phase 1 together. Only implemented entries are graded; the
+69 unimplemented ones are listed in <<backlog>> as names, with no rows and no claims.
+
+(42 + 69 = 111, and 111 + 1 base class = 112. An earlier revision of this section stated
+112 candidates against a 69-name backlog, which did not reconcile.)
 
 === Scope: 45 implemented, 23 graded here
 
@@ -463,6 +467,14 @@ Brings the lifecycle controller up in PROD so the inbound filter is genuinely ac
 (`sep_debug=0`, value-checked against the lifecycle golden), then exercises the allow and
 deny directions.
 
+IMPORTANT: this entry establishes the filter is active by value-checking `FEAT_CTRL`
+against the *Phase 1* lifecycle golden, so it inherits that golden's recorded limits and
+is not independent evidence about the lifecycle controller. Specifically: the DFT group
+`[47:32]` is structurally unverifiable because `secure_tm` has no testbench connection,
+and the differential-fault path has no frontdoor stimulus. Both are open items in
+`verification_plan_phase1.adoc`. What this entry proves on its own is the *filter*
+behaviour downstream of `sep_debug`; do not bank it as lifecycle-decode coverage.
+
 ==== Steps
 
 @@STEPS:sep_fabric_inbound_filter_rule_matrix_test@@
@@ -542,24 +554,24 @@ Testlist:: `system.toml`
   neighbouring field is undisturbed. The pre-write read is what makes this real: the
   former anchor asserted the written pattern was non-zero, which its own constructor
   guaranteed.
-| `CHK-NONVAC PASS: alias r`
+| `(observed change), neighbor END_lo 0`
 | PROVEN
 
 | CHK-ALIAS-RW
 | Region start, end and attribute registers are read/write, including the 64-bit upper
   word.
-| `CHK-ALIAS-RW PASS: alias r`
+| ` REGION_START/END/ATTRS R/W + 64-bit upper word`
 | PROVEN
 
 | CHK-AP-STEE-RW
 | The output-remap CSRs are read/write across both banks.
-| `CHK-AP-STEE-RW PASS: AP r`
+| ` output-remap CSRs R/W (64-bit)`
 | PROVEN
 
 | CHK-INFILT-CFG, CHK-OUTFILT-CFG
 | Filter-configuration read/write fields read back exactly on both the inbound and
   outbound banks.
-| `CHK-INFILT-CFG PASS: e`
+| ` FILTER_CONFIG RW fields read back exactly (rd/wr/ns/burst/src_id/group_id)`
 | PROVEN
 
 | CHK-RO
@@ -570,13 +582,13 @@ Testlist:: `system.toml`
 
 | CHK-VALID-RW
 | The region valid bit is read/write in both directions.
-| `CHK-VALID-RW PASS: alias r`
+| ` REGION_ATTRS valid bit is R/W (set->1, clear->0)`
 | PROVEN
 
 | CHK-WOSET
 | The write-once-set lock *actively rejects* a clear attempt with SLVERR rather than
   silently ignoring it — the strongest check in this entry.
-| `CHK-WOSET PASS (INFILT e`
+| ` locked): set sticks, clear-attempt rejected with SLVERR (write-once-set, lock active)`
 | PROVEN
 |===
 
@@ -1559,14 +1571,37 @@ here so this document is self-contained.
 | `sep_system_uvm_jtag_rst_ctrl_test`
 |===
 
-The count is checked against the testlists by `docs/audit/verify_proofs.py`, so a name
+The count is checked against the testlists by `docs/tools/verify_plan_proofs.py`, so a name
 that gets implemented without being promoted to an entry above surfaces as a mismatch
 rather than sitting quietly in this table.
 
 
 == Audit summary
 
-See the entries section for per-testcase grades. Totals are generated from the entry
-tables rather than maintained by hand; `docs/audit/verify_proofs.py` checks every proof
-string in this document against the newest kept log for its entry, and the entry count
-against the implemented testlist set.
+23 testcases, 103 checkers.
+
+[cols="2,1",options="header"]
+|===
+| Grade | Count
+
+| `PROVEN` | 67
+| `PARTIAL` | 31
+| `GUARD` | 5
+| `INSUFFICIENT-EVIDENCE` | 0
+| `NOT-RUN` | 0
+| `STALE` | 0
+| `FAILED` | 0
+|===
+
+Every entry passes on both build targets. The 36 non-`PROVEN` rows are not failures: 31
+are `PARTIAL`, with the unexercised part named in the row, and 5 are `GUARD` — checkers
+that cannot fail on any DUT because they guard a build precondition or a deferred
+infrastructure gap, kept for the regression they do catch and excluded from the proof
+count.
+
+`docs/tools/verify_plan_proofs.py` checks every quoted proof string in this document and
+in Phase 1 against the newest kept log for its entry. It requires a log corpus:
+`build/runs/` is git-ignored, so a fresh clone has nothing to check against and must
+produce one first. The script also reports how many quoted strings it *skipped* as
+non-log text — a string it declines to classify is neither verified nor missing, so
+without that count a clean result would over-read.

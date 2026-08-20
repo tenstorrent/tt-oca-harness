@@ -1156,8 +1156,10 @@ inline hash engine consumed the same bytes that were copied.
 | CHK-CFG
 | The DMA configuration lock is open before programming. A wrong value is counted as an
   error, not merely printed — it previously warned and continued, so the row was
-  unfalsifiable.
-| `CFG_REGWEN = 0x6 (expected 0x6 for unlocked)`, and the absence of `ERROR: CFG_REGWEN not unlocked`
+  unfalsifiable. The firmware emits an `ERROR: CFG_REGWEN not unlocked` line and
+  increments its error count on a wrong value, and that count gates the mailbox PASS
+  magic, so a violation fails the run rather than appearing only in the console.
+| `CFG_REGWEN = 0x6 (expected 0x6 for unlocked)`
 | PROVEN
 
 | CHK-COMPLETE
