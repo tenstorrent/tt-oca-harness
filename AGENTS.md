@@ -416,8 +416,8 @@ Do not set a GitHub milestone. Description heading is **What happened** (Bug),
 
 Do not add labels, assignees, or a milestone. Ingest copies those form picks
 onto empty Project 291 fields, applies matching labels, and prefixes the
-title. The curator infers assignees and leftover fields on dispatch; see
-`doc/contributing/src/alignment.adoc`.
+title. The curator infers assignees and leftover fields on its 05:00 and
+16:00 PDT runs and on dispatch; see `doc/contributing/src/alignment.adoc`.
 
 ### Pull requests
 

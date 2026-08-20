@@ -13,5 +13,5 @@ does not assign issues, and it does not police PR Summary or Test plan.
 
 The curator (`.github/ISSUE_CURATION.md`) can later fill leftover fields
 and assign an unassigned issue from a named person, the parent assignee,
-or the usual or majority owner of the title prefix. Dispatch
-`ocah-project-curator.lock.yml` to run it.
+or the usual or majority owner of the title prefix. It runs at 05:00 and
+16:00 PDT, and on dispatch of `ocah-project-curator.lock.yml`.

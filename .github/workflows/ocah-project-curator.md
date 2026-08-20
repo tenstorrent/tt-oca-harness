@@ -6,6 +6,9 @@ name: OCAH Project Curator
 description: Fill empty Project 291 fields and assign owners.
 
 on:
+  schedule:
+    - cron: "0 12 * * *"
+    - cron: "0 23 * * *"
   workflow_dispatch:
 
 permissions:

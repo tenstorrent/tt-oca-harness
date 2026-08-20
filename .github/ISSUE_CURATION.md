@@ -17,9 +17,10 @@ The prompt is `.github/workflows/ocah-project-curator.md`.
 ## Run
 
 `automation.enabled` in `issue-taxonomy.yml` is true. The workflow is
-`.github/workflows/ocah-project-curator.lock.yml`. It triggers on
-`workflow_dispatch`. `safe-outputs.staged` is true: proposals appear in
-the Actions run summary and are not applied.
+`.github/workflows/ocah-project-curator.lock.yml`. It runs at 05:00 and
+16:00 PDT (`0 12 * * *` and `0 23 * * *` UTC) and on `workflow_dispatch`.
+`safe-outputs.staged` is true: proposals appear in the Actions run
+summary and are not applied.
 
 ## Compile
 
