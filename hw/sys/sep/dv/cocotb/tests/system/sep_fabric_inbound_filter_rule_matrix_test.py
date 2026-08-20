@@ -14,10 +14,10 @@ Exercises the per-entry filter rule, not the whole-filter skip path
 filter wholly on/off). This test stays at sep_debug=0 the whole time and proves
 the PER-ENTRY allow-by-rule vs block-by-default policy.
 
-OCAH refs: fabric sep_inbound_filter_blockbydefault_test,
-sep_inbound_filter_programming_ownership_test, sep_inbound_id_remap_test @ 9ec8f9f4b. Mapping: COVERED_STRONGER -- real external AXI master
-through the live filter with an exact rdata value-check, vs OCAH proxy / CSR-only.
-CHK-OWNERSHIP ports OCAH run_filter_ownership(): the external master is denied
+reference refs: fabric sep_inbound_filter_blockbydefault_test,
+sep_inbound_filter_programming_ownership_test, sep_inbound_id_remap_test. Mapping: COVERED_STRONGER -- real external AXI master
+through the live filter with an exact rdata value-check, vs the reference suite proxy / CSR-only.
+CHK-OWNERSHIP ports reference suite run_filter_ownership(): the external master is denied
 read AND write of the filter's own config CSR (0x10A2_1000) with a completed
 DECERR, while the CPU-LSU reads the programmed rule -- the "only the SEP CPU can
 program these filters" asymmetry (hw/sys/sep/doc/fabric.adoc).
@@ -27,6 +27,7 @@ RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_deb
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
 
 from sep_base_test import sep_base_test
@@ -62,10 +63,18 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         """Real-sense a PROD image -> sep_debug=0 (inbound filter active)."""
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS})
-        assert image.lc_raw() == LC_PROD, "test bug: image LC_STATE is not PROD"
+        # No image.lc_raw() == LC_PROD assert here: select_efuse_image was called with
+        # lc_raw=LC_PROD and randomize() pins the field to exactly that, so the check
+        # compares a value to itself. The DUT-side evidence that PROD actually took
+        # effect is the FEAT_CTRL read below, value-checked against feat_ctrl_expected.
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
-        feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
+        # security_disable read from the DUT rather than passed as a literal. This
+        # entry value-checks FEAT_CTRL against the Phase 1 lifecycle golden, so every
+        # input to that golden should be observed where it can be; sec_dis can be, via
+        # lcc_security_disable_probe_o.
+        sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
+        feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
         assert ctl.sep_debug == 0, (
@@ -141,7 +150,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # the CPU-LSU path reads the programmed rule back (masked over the RW fields,
         # excluding the RO data_bus_width), but the EXTERNAL master is DENIED both read
         # and write of that CSR with a completed DECERR (not OKAY/SLVERR/timeout), and
-        # the denied write does not corrupt the rule. Direct port of OCAH
+        # the denied write does not corrupt the rule. Direct port of reference suite
         # sep_inbound_filter_programming_ownership_test run_filter_ownership(); the
         # external OKAY vs DECERR distinction is live in this same run (CHK-ALLOW-RULE
         # returned OKAY for the allowed addr), so the DECERR assertion is non-vacuous.
@@ -175,4 +184,5 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # observed under the SAME sep_debug=0 (filter active) -- the rule, not the global gate.
         self.logger.info(
             "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)")
-        self.logger.info("CHK-ALL PASS: inbound-filter per-entry rule (allow/block/read_allowed/write_allowed)")
+        # No CHK-ALL summary line. It asserted nothing, and a plan row keyed on it
+        # would record coverage against a string with no checker behind it.

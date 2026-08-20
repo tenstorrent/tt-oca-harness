@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP CPU debug-reset domain-isolation test (PyUVM).
 
-CPU-complex Phase-2 rep CPU debug-reset independence. OCAH provenance:
+CPU-complex Phase-2 rep CPU debug-reset independence. reference provenance:
 clock/sep_clock_uvm_reset_assertion_deassertion_test (dbg_rstb path) +
 clock/sep_clock_uvm_jtag_clock_independence_test.
 
@@ -21,13 +21,13 @@ Checks (each asserts an exact value; ``self.rd`` resolves X->0, so the ==1
 released checks fail on a stuck/X reset tree):
   CHK-BASELINE : with dbg_rstb_i high, sep_reset_n and sep_cpu_reset_n are released
                  (the isolation checker is not trivially always-true).
-  CHK-ISO      : pulsing dbg_rstb_i low->high leaves BOTH sep_reset_n and
-                 sep_cpu_reset_n released throughout -- a dbg_rstb-bleeds-into-
-                 system-reset bug would drop them -> FAIL.
-  CHK-LIVE     : non-vacuity contrast -- a real reset source (wdt_rst_ni_i low)
-                 DOES drop sep_cpu_reset_n to 0 (so the observable is live, not
-                 stuck-1), then restores; dbg_rstb left it released. This proves
-                 CHK-ISO would catch a real bleed.
+  CHK-LIVE     : a real reset source (wdt_rst_ni_i low) DOES drop sep_cpu_reset_n
+                 to 0, then restores it -- so the observable is live, not stuck-1.
+
+NOT covered: the dbg_rstb_i isolation claim itself. In this build the pin has no
+path to either observable, so a pulse-and-check assert cannot fail. See the long
+note in run_scenario for why, and what closing it would take. Do not re-add such
+a check without both a run-mode change and a positive debug-domain observable.
 
 no_cpu / +skip_fuse_sense (reset-observable only; no AXI traffic, no OTP read).
 """
@@ -73,27 +73,36 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
         self.logger.info(
             "CHK-BASELINE PASS: both reset observables released with dbg_rstb_i high")
 
-        # CHK-ISO: pulse dbg_rstb_i low (debug-logic reset) with rst_ni held high;
-        # the system/CPU reset domain must stay released during AND after.
-        dut.dbg_rstb_i.value = 0
-        await ClockCycles(dut.clk_i, _SETTLE)
-        await self._check_reset(
-            dut.dbg_sep_reset_n_o, "CHK-ISO during-pulse sep_reset_n", 1)
-        await self._check_reset(
-            dut.sep_cpu_reset_n_o, "CHK-ISO during-pulse sep_cpu_reset_n", 1)
-        dut.dbg_rstb_i.value = 1
-        await ClockCycles(dut.clk_i, _SETTLE)
-        await self._check_reset(
-            dut.dbg_sep_reset_n_o, "CHK-ISO after-release sep_reset_n", 1)
-        await self._check_reset(
-            dut.sep_cpu_reset_n_o, "CHK-ISO after-release sep_cpu_reset_n", 1)
-        self.logger.info(
-            "CHK-ISO PASS: dbg_rstb_i pulse left sep_reset_n and sep_cpu_reset_n "
-            "released (debug reset is domain-isolated)")
+        # NO CHK-ISO here, and this is the important part of the entry.
+        #
+        # There used to be one: pulse dbg_rstb_i low and assert both reset observables
+        # stay released. It could not fail, for two independent reasons.
+        #
+        # 1. This test runs target = "lsu_stub_all_live" (testlists/cpu.toml), which
+        #    excludes hw/sys/sep/rtl/sep_cpu.sv and substitutes
+        #    dv/shims/cpu/sep_cpu_stub.sv. In that stub dbg_rstb_i appears exactly once,
+        #    as a port declaration on line 40; nothing reads it. The stimulus pin is
+        #    dangling in the model the test actually elaborates.
+        # 2. Even against the real CPU, sep.sv:582 routes dbg_rstb_i only into sep_cpu,
+        #    and sep_reset_ctrl -- which produces both observables -- has no dbg_rstb
+        #    port at all. There is no netlist path from the stimulus to either signal.
+        #
+        # So the assert was CHK-BASELINE repeated with a no-op write in between. A
+        # vacuous check is worse than a missing one, because it reports coverage.
+        #
+        # Making the isolation claim real needs BOTH a run-mode change (cpu / target
+        # default, so the pin reaches sep_cpu.sv:149,159) AND a positive observable in
+        # the debug domain -- something that dbg_rstb_i is supposed to reset, so the
+        # pulse has an asserted consequence rather than only a non-consequence. That is
+        # a design change, not a repair, so it is recorded in the plan as an open item.
+        #
+        # What survives below is genuine: CHK-BASELINE (both observables released at
+        # rest) and CHK-LIVE (a real reset source does drop sep_cpu_reset_n, so the
+        # observable is not stuck at 1).
 
-        # CHK-LIVE: non-vacuity contrast. A real reset source (wdt_rst_ni_i low)
-        # MUST drop sep_cpu_reset_n -- proving the observable is live (not stuck-1)
-        # and that CHK-ISO above would have caught a dbg_rstb->system-reset bleed.
+        # CHK-LIVE: a real reset source (wdt_rst_ni_i low) MUST drop sep_cpu_reset_n,
+        # proving the observable is live rather than stuck at 1. This is what keeps the
+        # entry worth running at all now that the isolation assert is gone.
         dut.wdt_rst_ni_i.value = 0
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset(
@@ -106,9 +115,9 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
         await self._check_reset(
             dut.sep_cpu_reset_n_o, "CHK-LIVE wdt_rst_ni=1 restores sep_cpu_reset_n", 1)
         self.logger.info(
-            "CHK-LIVE PASS: sep_cpu_reset_n is reset-responsive (wdt drops it, "
-            "dbg_rstb did not) -- CHK-ISO is non-vacuous")
+            "CHK-LIVE PASS: sep_cpu_reset_n is reset-responsive (wdt drops it and "
+            "restores it), so the observable is live rather than stuck at 1")
 
         self.logger.info(
-            "CPU debug-reset independence PASS: dbg_rstb_i reset-domain isolation verified "
-            "(baseline / isolation / liveness-contrast)")
+            "CPU debug-reset observables PASS: baseline released + reset-responsive "
+            "(baseline / liveness-contrast; dbg_rstb isolation NOT covered)")

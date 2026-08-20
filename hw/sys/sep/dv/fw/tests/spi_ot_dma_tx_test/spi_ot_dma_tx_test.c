@@ -7,7 +7,7 @@
 //
 //   spi_host.lsio_trigger_o(=tx_wm|rx_wm) -> sep.lsio_trigger[0] -> secure_dma
 //
-// STRONGER than the OCAH spi_ot_dma_tx_test (which DMA-streams raw bytes and only
+// STRONGER than the reference spi_ot_dma_tx_test (which DMA-streams raw bytes and only
 // checks "DMA done + no SPI error"): here the DMA feeds a REAL flash PAGE PROGRAM
 // stream (opcode 0x02 + 24-bit addr + data) from SRAM, and the firmware then reads
 // the flash back over SPI and value-checks it == the programmed data. RX is kept
@@ -166,7 +166,14 @@ static int flash_wait_wip_clear(void) {
             return -1;
         }
         if (!(sr & FLASH_SR_WIP)) {
-            sep_mbx_puts("CHK-WIP PASS: flash WIP=0 after PAGE PROGRAM\n");
+            // Not a PASS. The BFM's status register never sets WIP (SR1 is always
+            // 0x00 once WEL clears), so this loop always exits on iteration 0 and
+            // `!(sr & WIP)` is satisfied by a MISO that never drove. The 0xFF guard
+            // above does catch a starved RX FIFO, which is the part that is real.
+            // Reported DEFERRED to match the sibling spi_ot_flash_cmd_test rather
+            // than claim a WIP->0 transition that cannot occur here.
+            sep_mbx_puts("CHK-WIP DEFERRED: BFM models no busy bit; RDSR readable "
+                         "(not 0xFF) but no WIP transition to observe\n");
             return 0;
         }
     }
@@ -174,7 +181,7 @@ static int flash_wait_wip_clear(void) {
     return -1;
 }
 
-// CHK-TRIGGER (port of the OCAH spi_ot_dma_trigger_test intent): positively prove
+// CHK-TRIGGER (port of the reference spi_ot_dma_trigger_test intent): positively prove
 // the TX-watermark signal that SOURCES lsio_trigger (= tx_wm | rx_wm) correlates
 // with TXQD crossing TX_WATERMARK, and that both trigger-enable registers hold
 // the value they were programmed with.
@@ -345,7 +352,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         return 1;
     }
 
-    // Issue the TX command BEFORE starting the DMA (OCAH order): the SPI stalls
+    // Issue the TX command BEFORE starting the DMA (reference suite order): the SPI stalls
     // for TX data, the DMA feeds it on each TX-watermark trigger. LEN == TOTAL-1.
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, total_bytes, 0));
     dma_arm_tx(SRC_BASE, total_bytes);

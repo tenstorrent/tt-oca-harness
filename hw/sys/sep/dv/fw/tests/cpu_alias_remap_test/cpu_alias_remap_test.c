@@ -1,29 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP CPU IFU/LSU local-alias-remap firmware test (OSS port of the OCAH
+// SEP CPU IFU/LSU local-alias-remap firmware test (OSS port of the reference suite
 // sep_cpu_ifu_lsu_alias_remap_matrix_test). Proves the CPU-side local alias remap
 // (hw/sys/sep/rtl/sep_cpu.sv u_lsu/u_ifu/u_dbg axi_window_remap, edge E12): a CPU fabric
 // access in [SEP_LOCAL_BASE, SEP_LOCAL_BASE+SEP_LOCAL_ALIAS_REGION_SIZE) is remapped
 // to (addr - (SEP_LOCAL_BASE - SEP_LOCAL_ALIAS_REGION_BASE)), and an access outside
 // the window passes through unchanged.
 //
-// Post-#3711 (SEP Local/Global Alias remap cleanup) the window is a FIXED 768 MiB:
+// The alias window is a FIXED 768 MiB:
 // SEP_LOCAL_BASE_ADDR resets to 0xD000_0000, the size is the fixed localparam
 // sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE = 0x3000_0000 (no longer the REGION_SIZE CSR),
 // and target_base is sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE = 0x1000_0000. So the
 // alias 0xD000_0000 maps to physical 0x1000_0000 (SEP SRAM). The firmware uses
-// 0xD000_xxxx (NOT the 0xC000_03xx the OCAH VIP drives on the raw pre-remap port):
+// 0xD000_xxxx (NOT the 0xC000_03xx the reference suite VIP drives on the raw pre-remap port):
 // a real CPU access to 0xC000_03xx would hit ICCM (TCM, internal) and never reach
 // the remapped fabric path, whereas 0xD000_xxxx routes through the IFU/LSU remap.
 //
-// Scope delta vs OCAH: SEP_REGION_SIZE (0x10A3_00D0) sizes the inbound/SMU window
+// Scope delta vs the reference suite: SEP_REGION_SIZE (0x10A3_00D0) sizes the inbound/SMU window
 // only, NOT this CPU alias window, so it is intentionally not programmed here; the
 // CPU window size is the fixed SEP_LOCAL_ALIAS_REGION_SIZE localparam.
 //
 // This must be a CPU-firmware (real IFU/LSU) test: the OSS no_cpu AXI splice is
 // POST-remap, so a no_cpu driver would bypass E12 entirely.
 //
-// Scope delta vs OCAH: the OCAH scenario also pokes ALIAS_ENTRY0_* (0x10A1_00xx);
+// Scope delta vs the reference suite: the reference suite scenario also pokes ALIAS_ENTRY0_* (0x10A1_00xx);
 // those program a SEPARATE alias-table remapper (for other masters), NOT the CPU
 // u_ifu/u_lsu_local_alias_remap instances this test (edge E12) targets, so they
 // are intentionally out of scope here.
@@ -37,7 +37,7 @@
 //   CHK-IFU    IFU fetch+execute through the alias: write a tiny function
 //              ("li a0,42; ret") to SRAM 0x1000_0000, then CALL it via the alias
 //              0xD000_0000 -> IFU fetch remaps to 0x1000_0000 -> returns 42.
-//              (Stronger than OCAH, which drives a synthetic write on the IFU port
+//              (Stronger than the reference suite, which drives a synthetic write on the IFU port
 //              rather than a real instruction fetch through the remap.)
 
 #include <stdint.h>
@@ -46,7 +46,9 @@
 #include "sep_mailbox.h"
 
 #define SEP_LOCAL_BASE_ADDR_REG 0x10A300C8u
-#define WINDOW_BASE 0xD0000000u            // SEP_LOCAL_BASE_ADDR reset/operating value (#3711)
+#define WINDOW_BASE 0xD0000000u            // SEP_LOCAL_BASE_ADDR reset/operating value
+// Distinct probe value, used only to prove the base CSR is writable at all.
+#define ALT_WINDOW_BASE 0xE0000000u
 #define TARGET_BASE 0x10000000u            // sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE (SEP SRAM)
 #define ADJUST (WINDOW_BASE - TARGET_BASE) // 0xC000_0000 = base - target
 
@@ -81,21 +83,36 @@ int main(void) {
     sep_outbound_filter_init();
     sep_mbx_puts("SEP CPU IFU/LSU alias-remap test\n");
 
-    // CHK-CSR: program the alias window base and read it back. Post-#3711 the base
+    // CHK-CSR: program the alias window base and read it back. The base
     // resets to 0xD000_0000 and the window size is the fixed
     // sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE localparam (0x3000_0000), so only the base
     // CSR is programmable; REGION_SIZE (0x10A3_00D0) no longer sizes this window and
     // is not touched here.
+    // Write a value that is NOT the reset value first. Writing only WINDOW_BASE
+    // and reading it back proves nothing about programmability: 0xD000_0000 is
+    // this field's own reset value, so the register could be read-only, or the
+    // CSR could be disconnected from the remapper entirely, and the readback
+    // would still match. Probing with a distinct value makes the write half of
+    // this check falsifiable; the alias accesses below then run at the restored
+    // operating base.
+    wr32(SEP_LOCAL_BASE_ADDR_REG, ALT_WINDOW_BASE);
+    uint32_t alt_rb = rd32(SEP_LOCAL_BASE_ADDR_REG);
     wr32(SEP_LOCAL_BASE_ADDR_REG, WINDOW_BASE);
     uint32_t base_rb = rd32(SEP_LOCAL_BASE_ADDR_REG);
-    if (base_rb != WINDOW_BASE) {
+    if (alt_rb != ALT_WINDOW_BASE) {
+        sep_mbx_puts("FAIL: alias CSR is not writable, alt readback=");
+        sep_mbx_puthex(alt_rb);
+        sep_mbx_putc('\n');
+        errors++;
+    } else if (base_rb != WINDOW_BASE) {
         sep_mbx_puts("FAIL: alias CSR readback base=");
         sep_mbx_puthex(base_rb);
         sep_mbx_putc('\n');
         errors++;
     } else {
         sep_mbx_puts(
-            "CHK-CSR PASS: SEP_LOCAL_BASE=0xd0000000 (fixed 768MiB window -> 0x10000000)\n");
+            "CHK-CSR PASS: SEP_LOCAL_BASE writable (probed 0xe0000000), restored to "
+            "0xd0000000 (fixed 768MiB window -> 0x10000000)\n");
     }
 
     // CHK-LSU-WR: write THROUGH the alias, read back at the physical target.

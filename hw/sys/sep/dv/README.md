@@ -9,6 +9,22 @@ the OpenTitan SPI mux). Flow = cocotb/PyUVM on Verilator and VCS, driven by
 `tools/dv/run_dv.py` (`--dut sep`). The environment is kept self-contained
 under this tree so the build, tests, shims, and docs are easy to review and reuse.
 
+What each test proves, and the exact log evidence that proves it, is recorded in the
+verification plans:
+
+* [`docs/oss_dv_plan.adoc`](docs/oss_dv_plan.adoc) — the high-level plan: three
+  phases, coverage model, quality bar.
+* [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) — the
+  Phase 1 baseline, closed.
+* [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) — Phase 2
+  iconic-feature contract, active.
+* [`docs/verification_plan_phase3.adoc`](docs/verification_plan_phase3.adoc) — Phase 3
+  candidates, unscheduled and moving to a new UVM environment.
+
+Phase 1 states the contract these documents share: a test passing is the entry condition
+for reading its checkers, never a substitute for them, and a checker row exists only if a
+run can prove it. A log tag is not the proof; an independent audit of the checker is.
+
 ## Layout
 
 ```
@@ -22,7 +38,7 @@ hw/sys/sep/dv/
 │                        # uvm/  — future sibling, not created
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
 │                        # + cov/sv/ (scaffold, empty)
-├── docs/                # VPLANs, bring-up journals, model specs, audit report
+├── docs/                # verification plans (oss_dv_plan + phases 1-3, AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
 ├── models/              # SEP-local SystemRDL models (sep_axi_extension + generated)
@@ -38,7 +54,8 @@ hw/sys/sep/dv/
 │   └── interfaces/      #   (SV interfaces — empty for now)
 ├── testlists/           # native TOML testlists (all.toml + per-subsystem leaves)
 ├── sep_sim_cfg.toml     # block build/filelist manifest, run modes, tool knobs
-├── sep_public_scope.vlt # scoped Verilator public list (see docs/SEP_OSS_VERILATOR_ICO_BLOWUP.md)
+├── sep_public_scope.vlt # scoped Verilator public list (narrow on purpose: a global
+│                     #   --public-flat-rw wedges the Verilator model)
 ├── sep_sim.core         # FuseSoC-style manifest for external consumers
 ├── build/               # generated: per-tool models + build/runs/<run-id>/ logs (gitignored)
 └── README.md
@@ -58,7 +75,7 @@ and drives `lsu_axi_req` from `tb_top`'s `lsu_req_drive` with a plain `assign` �
 not a `force`. Examples:
 - `sep_axi_smoke_test` — read `sep_cpu_ctrl.CLOCK_GATE_CTRL` + write/readback RW regs.
 - `sep_address_map_test` — field-aware `sep_cpu_ctrl` sweep + a SEP-local fabric
-  walk (ported from OCAH `sep_reg_walk_seq`) across the LSU-reachable, OSS-clean
+  walk (ported from the reference suite's register-walk sequence) across the LSU-reachable, OSS-clean
   blocks (DMA, WDT, reset_ctrl, OTBN/AES/HMAC/KMAC, CSRNG/EDN/entropy, lifecycle,
   KM/AXIL mailbox, eFuse shadow, alias/output-remap, OT SPI host).
 
@@ -165,7 +182,7 @@ AXI front door, and either readout can run any source:
 The memory, eFuse, and SPI-mux integration is RTL inside `sep_wrapper`
 (`hw/top/sep_ip_integration.sv`), not TB responders. The six
 bare-`sep` behavioral responders that used to back these ports were retired when
-the DUT moved to `sep_wrapper` (see `docs/SEP_OSS_WRAPPER_MIGRATION_PLAN.md`):
+the DUT moved to `sep_wrapper`:
 
 - **Memory macros** — real `prim_ram_1p` / `prim_rom` / EL2 TCM (`ram_16384x39`)
   macros. They have no runtime init, so `tb_backdoor_mem` (in `tb/tb_top.sv`)

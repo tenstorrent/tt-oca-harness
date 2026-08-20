@@ -29,7 +29,7 @@
 
 uint32_t lc_read_state(void) {
     uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
-    // OCAH efuse field is 8-bit (diff encoded by RTL).
+    // reference suite efuse field is 8-bit (diff encoded by RTL).
     // Extract low 4 bits = raw LC state.
     // The low nibble carries the decoded lifecycle state.
     return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &

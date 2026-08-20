@@ -23,9 +23,9 @@
 // Local Alias Configuration
 //-----------------------------------------------------------------------------
 
-// The local alias base address (#3711 reset default 0xD000_0000)
+// The local alias base address (reset default 0xD000_0000)
 // When CPU accesses address X in range [local_alias_base, local_alias_base + region_size),
-// it gets remapped to X - local_alias_base + target_base (target_base = 0x1000_0000 post-#3711)
+// it gets remapped to X - local_alias_base + target_base (target_base = 0x1000_0000 )
 #define LOCAL_ALIAS_BASE 0xD0000000UL
 #define LOCAL_ALIAS_OFFSET \
     0xC0000000UL // = LOCAL_ALIAS_BASE - target_base (0xD000_0000 - 0x1000_0000)

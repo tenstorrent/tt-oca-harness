@@ -41,8 +41,7 @@ This detailed guide complements:
 * `hw/common/dv/README.md` -- installation and concise policy summary;
 * each `hw/common/dv/vip/ocah_*_vip/README.md` -- protocol-specific API;
 * `tools/dv/doc/run-dv.adoc` -- simulation runner and result contract;
-* DUT documentation under `hw/<category>/<dut>/dv/docs/` -- local integration;
-* `hw/sys/sep/dv/docs/VPLAN_CREATION_RULES.md` -- checker-evidence conventions.
+* DUT documentation under `hw/<category>/<dut>/dv/docs/` -- local integration.
 
 include::vip-architecture.adoc[leveloffset=0]
 include::vip-catalog.adoc[leveloffset=0]
