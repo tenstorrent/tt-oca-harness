@@ -176,7 +176,7 @@ build_image() {
 ensure_image() {
     local hash tar
     hash="$(image_hash)"
-    if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image ${PODMAN_RUN_FLAGS} inspect \
+    if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image inspect \
         --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
         return 0
     fi
@@ -275,7 +275,11 @@ bwrap_run() {
     # sandbox runs its own interpreter, and a caller's values point at host trees
     # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
     # can import 'encodings', which the firmware post-process steps run into.
+    # --die-with-parent: killing the outer bwrap (e.g. a test harness
+    # terminating a spawned simulator) must not orphan the sandboxed process,
+    # which may never exit on its own.
     bwrap "${binds[@]}" --chdir "$workdir" \
+        --die-with-parent \
         --setenv PATH /usr/local/bin:/usr/bin:/bin \
         --setenv HOME /tmp \
         --unsetenv PYTHONHOME \
