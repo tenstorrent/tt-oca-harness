@@ -21,7 +21,7 @@ from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, with_timeout
 from pyuvm import ConfigDB, uvm_test
 
 # Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
-from ocah_axi_vip import OcahAxiLiteMaster
+from ocah_axi_vip import OcahAxiLiteMasterAgent
 
 try:  # cocotb < 2.0
     from cocotb.result import SimTimeoutError
@@ -448,17 +448,17 @@ class sep_base_test(uvm_test):
     # Driving a real DUT port is frontdoor, not a backdoor. Shared here so any
     # JTAG/eFuse test reuses one master + op helper rather than re-rolling them.
     def jtag_axil_master(self):
-        """Construct (once) and return OcahAxiLiteMaster on j_axi."""
+        """Construct (once) and return the AXI-Lite master sequence on j_axi."""
         if getattr(self, "_jtag_axil", None) is None:
             dut = cocotb.top
-            self._jtag_axil = OcahAxiLiteMaster.from_prefix(
+            self._jtag_axil = OcahAxiLiteMasterAgent.from_prefix(
                 dut,
                 "j_axi",
                 dut.clk_i,
                 dut.rst_ni,
                 name="sep_jtag_axil",
                 reset_active_level=False,
-            )
+            ).sequence
         return self._jtag_axil
 
     async def jtag_axil_op(self, *, write: bool, addr: int, wdata: int = 0,

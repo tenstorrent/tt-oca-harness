@@ -29,7 +29,14 @@ standard
 Region Access Control Register (mrac)
 ** Precisely trapped exception on usage violation
 * PIC (Programmable Interrupt Controller) is integrated supporting up to
-255 external interrupts
+255 external interrupts; see
+ifdef::backend-html5[]
+xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-cpu-interrupt-vector-map>>
+endif::backend-pdf[]
+for the complete source-by-source mapping
 * Two independent or linked internal timers with standard RV _mip_
 interrupts
 * Debug unit with JTAG interface and internal AXI4 Debug Master

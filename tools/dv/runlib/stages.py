@@ -115,6 +115,10 @@ REDACTED_ENV_PATTERN = re.compile(
 )
 REDACTED_VALUE = "<redacted>"
 
+_STAGE_CANCELLATION = threading.Event()
+_ACTIVE_SUBPROCESS_LOCK = threading.Lock()
+_ACTIVE_SUBPROCESSES: set[subprocess.Popen[bytes]] = set()
+
 
 def render_text(text: str, ctx: dict[str, str]) -> str:
     rendered = text
@@ -579,6 +583,32 @@ def progress_step(console: Console, label: str, quiet: bool, interval_sec: int =
             console.step_done(label, elapsed)
 
 
+def reset_stage_cancellation() -> None:
+    _STAGE_CANCELLATION.clear()
+
+
+def request_stage_cancellation() -> None:
+    """Stop registered stage process groups after an interrupted run."""
+    _STAGE_CANCELLATION.set()
+    with _ACTIVE_SUBPROCESS_LOCK:
+        processes = list(_ACTIVE_SUBPROCESSES)
+    if not processes:
+        return
+    for proc in processes:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    time.sleep(0.2)
+    for proc in processes:
+        if proc.poll() is not None:
+            continue
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
 def run_subprocess(
     argv: list[str],
     root: Path,
@@ -599,6 +629,8 @@ def run_subprocess(
     write_env_snapshot(env_path, env or dict(os.environ), dry_run)
     if dry_run:
         return 0
+    if _STAGE_CANCELLATION.is_set():
+        raise RuntimeError("stage execution cancelled")
     workdir.mkdir(parents=True, exist_ok=True)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -637,42 +669,55 @@ def run_subprocess(
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
-        assert proc.stdout is not None
-        selector = selectors.DefaultSelector()
-        selector.register(proc.stdout, selectors.EVENT_READ)
-        start = time.monotonic()
-        timed_out = False
+        with _ACTIVE_SUBPROCESS_LOCK:
+            _ACTIVE_SUBPROCESSES.add(proc)
         try:
-            while True:
-                if timeout_sec is not None and time.monotonic() - start > timeout_sec:
-                    timed_out = True
-                    break
-                events = selector.select(timeout=0.2)
-                for key, _mask in events:
-                    chunk = os.read(key.fileobj.fileno(), 65536)
-                    if not chunk:
-                        selector.unregister(key.fileobj)
+            assert proc.stdout is not None
+            selector = selectors.DefaultSelector()
+            selector.register(proc.stdout, selectors.EVENT_READ)
+            start = time.monotonic()
+            timed_out = False
+            cancelled = False
+            try:
+                while True:
+                    if _STAGE_CANCELLATION.is_set():
+                        cancelled = True
                         break
-                    text = chunk.decode(errors="replace")
-                    log.write(text)
-                    log.flush()
-                    if verbose and not quiet:
-                        print(text, end="", flush=True)
-                if proc.poll() is not None and not selector.get_map():
-                    break
-        except BaseException:
-            terminate_process_group(proc)
-            raise
+                    if timeout_sec is not None and time.monotonic() - start > timeout_sec:
+                        timed_out = True
+                        break
+                    events = selector.select(timeout=0.2)
+                    for key, _mask in events:
+                        chunk = os.read(key.fileobj.fileno(), 65536)
+                        if not chunk:
+                            selector.unregister(key.fileobj)
+                            break
+                        text = chunk.decode(errors="replace")
+                        log.write(text)
+                        log.flush()
+                        if verbose and not quiet:
+                            print(text, end="", flush=True)
+                    if proc.poll() is not None and not selector.get_map():
+                        break
+            except BaseException:
+                terminate_process_group(proc)
+                raise
+            finally:
+                selector.close()
+            if cancelled:
+                terminate_process_group(proc)
+                raise RuntimeError("stage execution cancelled")
+            if timed_out:
+                terminate_process_group(proc)
+                log.write(f"\n# TIMEOUT: command exceeded {timeout_sec}s and was killed\n")
+                log.flush()
+                raise StageTimeoutError(
+                    f"`{argv[0]}` exceeded timeout of {timeout_sec}s"
+                )
+            return proc.returncode
         finally:
-            selector.close()
-        if timed_out:
-            terminate_process_group(proc)
-            log.write(f"\n# TIMEOUT: command exceeded {timeout_sec}s and was killed\n")
-            log.flush()
-            raise StageTimeoutError(
-                f"`{argv[0]}` exceeded timeout of {timeout_sec}s"
-            )
-        return proc.returncode
+            with _ACTIVE_SUBPROCESS_LOCK:
+                _ACTIVE_SUBPROCESSES.discard(proc)
 
 
 def get_cocotb_runner():
@@ -2138,7 +2183,10 @@ def _vcs_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: ar
     if not top:
         raise ConfigError(f"{flow.path}: [build].top_module is required")
     filelist = repo_path(root, str(build.get("filelist", "")))
-    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path)))
+    # Uniform build-tree convention `build/<framework>/<tool>/`: the configured work_dir carries
+    # the framework segment (e.g. build/uvm), the runner appends the tool — mirroring how the
+    # cocotb build appends its tool subdir. Generated filelists stay directly under work_dir.
+    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path))) / "vcs"
 
     elab_args = [
         *_vcs_preamble(vcs_cfg, flow.framework),
@@ -2328,7 +2376,8 @@ def _xcelium_resolve_build(flow: Flow, root: Path, sim_cfg: dict[str, Any], args
     if not top:
         raise ConfigError(f"{flow.path}: [build].top_module is required")
     filelist = repo_path(root, str(build.get("filelist", "")))
-    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path)))
+    # Same `build/<framework>/<tool>/` convention as the VCS resolver above.
+    base_build = repo_path(root, required_path(build, "work_dir", "build", str(flow.path))) / "xcelium"
     snapshot = str(xcelium_cfg.get("snapshot", top))
 
     elab_args = [
@@ -2991,6 +3040,30 @@ def formal_run_stage(
     return run_subprocess(argv, root, log_path, args.dry_run, script_path, env_path, args.quiet, cwd=cwd, verbose=args.verbose, timeout_sec=args.timeout)
 
 
+def _resolve_stage_kind(kind: str, framework: str, tool: str, where: Any) -> str:
+    """Map a generic stage kind to its concrete (tool, framework) adapter.
+
+    Generic kinds keep the profile stage graph framework-neutral; the concrete adapter is
+    picked here at dispatch time. `vcs_uvm_build` is internal-only (the folded analyze +
+    elaborate two-step for SV-UVM on VCS) and never appears in configs.
+    """
+    if kind == "filelist":
+        return "bender_filelist"
+    if kind == "hdl_compile":
+        if framework == "uvm":
+            if tool == "vcs":
+                return "vcs_uvm_build"
+            raise ConfigError(f"{where}: framework `uvm` has no `hdl_compile` adapter for tool `{tool}` yet")
+        return "cocotb_build"
+    if kind == "sim":
+        if framework == "uvm":
+            if tool == "vcs":
+                return "vcs_sim"
+            raise ConfigError(f"{where}: framework `uvm` has no `sim` adapter for tool `{tool}` yet")
+        return "cocotb_sim"
+    return kind
+
+
 def run_stage(
     flow: Flow,
     root: Path,
@@ -3009,7 +3082,7 @@ def run_stage(
 ) -> StageResult:
     setattr(args, "_simulators", simulators)
     stage = flow_stages(flow)[stage_name]
-    kind = str(stage.get("kind", ""))
+    kind = _resolve_stage_kind(str(stage.get("kind", "")), flow.framework, tool, flow.path)
     seed = seed_override if seed_override is not None else (seed_for_item(catalog, sim_cfg, args, item) if item else as_int(args.seed, "seed") or 1)
     stage_dir = artifact_root(run_dir, stage_name, item, seed=seed, attempt=attempt, nest=nest)
     if stage_name in {"c_compile", "formal"}:
@@ -3094,7 +3167,7 @@ def run_stage(
         elif kind == "formal_run":
             rc = formal_run_stage(flow, root, sim_cfg, catalog, item, args, tool, simulators, log_path, script_path, env_path)
         elif kind in {"bender_filelist", "verilator_filelist"}:
-            # The `native-cocotb` profile maps the logical `flist` stage to `bender_filelist` for
+            # The `native` profile's cocotb framework maps the logical `flist` stage to `bender_filelist` for
             # every tool (VCS runs via cocotb's classic make, not the dedicated vcs_* stages), so the
             # tool-dependent stub ordering has to key off the actual target tool here.
             rc = generate_filelist(
@@ -3161,6 +3234,27 @@ def run_stage(
             )
         elif kind == "vcs_elaborate":
             rc = vcs_build(flow, root, sim_cfg, args, log_path, script_path, env_path, include_filelist=False)
+            info = _vcs_resolve_build(flow, root, sim_cfg, args)
+            metadata["target_build"] = _target_build_metadata(
+                target_name=info["target_name"],
+                tool="vcs",
+                build_dir=info["build_dir"],
+                fingerprint=info["fingerprint"],
+            )
+        elif kind == "vcs_uvm_build":
+            # Canonical two-step build for SV-UVM on VCS: analyze (vlogan + simulator-owned UVM
+            # library precompile) then elaborate to the reusable simv, folded into one
+            # `hdl_compile` stage. The analyze sub-step keeps the primary stage log/script; the
+            # elaborate sub-step writes alongside it so neither sub-step's evidence is
+            # overwritten, and a failing elaborate points the result at its own log.
+            rc = vcs_analyze(flow, root, sim_cfg, args, log_path, script_path, env_path)
+            if rc == 0:
+                elab_log = stage_dir / "logs" / f"{stage_suffix}.elaborate.log"
+                elab_script = stage_dir / "scripts" / f"{stage_suffix}.elaborate.sh"
+                elab_env = stage_dir / "env" / f"{stage_suffix}.elaborate.env"
+                rc = vcs_build(flow, root, sim_cfg, args, elab_log, elab_script, elab_env, include_filelist=False)
+                if rc != 0:
+                    log_path = elab_log
             info = _vcs_resolve_build(flow, root, sim_cfg, args)
             metadata["target_build"] = _target_build_metadata(
                 target_name=info["target_name"],

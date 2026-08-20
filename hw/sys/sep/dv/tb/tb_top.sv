@@ -563,7 +563,7 @@ module sep_uvm_top
 
         // New wrapper status/debug outputs: observability only, left open.
         .lc_state_o                   (),
-        .feat_ctrl_o                  (),
+        .dbg_disable_o                (),
         .lc_sigint_err_o              (),
         .security_disable_o           (),
         .km_unrecoverable_err_o       (),
@@ -669,6 +669,16 @@ module sep_uvm_top
         // DFX_CTRL_STATUS_SMU (smc_base+0xF800): mem_repair done(bit0)+success(bit1)
         // so the ROM's DFT/MEM_REPAIR gate passes (models mem-repair completed OK).
         u_smc_mem.mem[56'h4000_F800] = 8'h03;
+        // +sep_boot_from_spi flips the ROM to its SPI manifest path by setting
+        // STRAPS_LO[25] (primary_chiplet) at smc_base+0x2090; boot_from_spi() is
+        // `primary_chiplet && !boot_recovery` (boot_straps.h), and boot_recovery
+        // lives in STRAPS_HI, which stays 0. Bit 25 is byte 3 of the word, bit 1.
+        // Default off: without it the ROM keeps taking the SMC-SRAM branch, so
+        // sep_rom_non_secure_boot_test is unaffected.
+        if ($test$plusargs("sep_boot_from_spi")) begin
+            u_smc_mem.mem[56'h4000_2093] = 8'h02;
+            $display("[tb] STRAPS_LO[25] primary_chiplet=1 -> ROM boots from SPI");
+        end
         if ($value$plusargs("sep_smc_mem_hex=%s", smc_mem_image)) begin
             $readmemh(smc_mem_image, u_smc_mem.mem);
             $display("[tb] SMC mem preloaded from %s", smc_mem_image);
@@ -1066,6 +1076,48 @@ module sep_uvm_top
         end
     end
 `undef ESRC_NOISE_FORCE
+
+    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
+    // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
+    // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
+    // Rationale, cost and the open DE question live with the test that opts in
+    // (testlists/cpu.toml, sep_rom_ot_secure_boot_test) and in
+    // .dv/artifacts/SEP_ROM_SECURE_VS_NONSECURE_BOOT.md.
+    logic edn_force_on;
+    logic otbn_rnd_ack_q, otbn_urnd_ack_q;
+    initial begin
+        edn_force_on = $test$plusargs("sep_crypto_edn_force");
+        if (edn_force_on) begin
+            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN EDN grants are");
+            $display("[tb] *** forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
+        end
+    end
+
+// Target the driver-side net inside sep_crypto rather than the wrapper's input
+// port -- a `force` on a module instance input is rejected (ASSIGNIN).
+// Index 2 = OTBN RND client, 3 = OTBN URND (see sep_crypto.sv:502-512).
+`define OTBN_RND_RSP  `SEP_CORE.sep_crypto.crypto_edn_rsp[2]
+`define OTBN_URND_RSP `SEP_CORE.sep_crypto.crypto_edn_rsp[3]
+`define OTBN_RND_REQ  `SEP_CORE.sep_crypto.crypto_edn_req[2]
+`define OTBN_URND_REQ `SEP_CORE.sep_crypto.crypto_edn_req[3]
+    // ack pulses for one cycle per request rather than sitting high, so a
+    // multi-word reseed is delivered as a sequence of beats like the real EDN.
+    always @(posedge clk_i) begin
+        if (edn_force_on) begin
+            otbn_rnd_ack_q  <= `OTBN_RND_REQ.edn_req  & ~otbn_rnd_ack_q;
+            otbn_urnd_ack_q <= `OTBN_URND_REQ.edn_req & ~otbn_urnd_ack_q;
+            force `OTBN_RND_RSP.edn_ack   = otbn_rnd_ack_q;
+            force `OTBN_RND_RSP.edn_fips  = 1'b1;
+            force `OTBN_RND_RSP.edn_bus   = $urandom();
+            force `OTBN_URND_RSP.edn_ack  = otbn_urnd_ack_q;
+            force `OTBN_URND_RSP.edn_fips = 1'b1;
+            force `OTBN_URND_RSP.edn_bus  = $urandom();
+        end
+    end
+`undef OTBN_RND_RSP
+`undef OTBN_URND_RSP
+`undef OTBN_RND_REQ
+`undef OTBN_URND_REQ
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.jitter_ro_enable_i;

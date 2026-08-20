@@ -13,7 +13,7 @@ Backend note
 ``ApbSlave``, ``ApbRam``), so APB follows the same cocotbext-backend pattern as
 ``ocah_jtag_vip`` and ``ocah_axi_vip``.  It lives in its own package only
 because it is a distinct protocol — one package per protocol.  The public API
-mirrors ``OcahAxiLiteMaster`` so tests can switch between APB and AXI4-Lite
+mirrors ``OcahAxiLiteMasterAgent`` so tests can switch between APB and AXI4-Lite
 register interfaces without restructuring driver code.
 
 Quick-start

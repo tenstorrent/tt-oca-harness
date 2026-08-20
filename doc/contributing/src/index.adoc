@@ -64,6 +64,9 @@ This documentation is organized into the following sections:
 ** xref:documentation.adoc[Documentation] - OCAH documentation
 ** xref:code_of_conduct.adoc[Code of Conduct] - OCAH Project Code of Conduct
 
+* xref:issues.adoc[Filing issues]
+* xref:pull-requests.adoc[Pull requests]
+* xref:alignment.adoc[Issue alignment]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]

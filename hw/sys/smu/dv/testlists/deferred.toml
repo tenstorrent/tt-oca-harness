@@ -1,10 +1,8 @@
 schema_version = 1
 
 # Deferred / universe catalog — NOT included by testlists/all.toml.
-# Full stream narrative (OUT / deferred): docs/SMU_VPLAN.md Appendix A
-# Master P1/P2 plan: docs/SMU_VPLAN.md
-# Phase-1 executable set: docs/SMU_OSS_VPLAN_PHASE1.md
-# Result-reporting policy: docs/SMU_VPLAN.md §13
+# Phase-1 executable set: testlists/all.toml
+# Result-reporting policy: only enrolled groups report PASS; this file never does.
 #
 # Ownership:
 #   sep / interop / SEP=1 fabric matrix → SEP=1 colleague track
@@ -18,11 +16,7 @@ schema_version = 1
 # blocker or plan status (`BLOCKER:` / `PLANNED:`), so blocked tests retain
 # their blocker details next to the test names.
 
-# ----- SEP=1 real SEP under SMU (mirror oca_smu yaml gates) -----
-# Commercial reference: oca_smu/dv/smu/tb/tb_uvm/yaml/testlist_smu_chiplet.yaml
-#   SMU_Dev_with_SEP_Regression          = probe / connectivity (no CPU exec)
-#   Manual_SMU_Blocked_SEP_Exec_Regression = needs SEP fetch/retire
-#
+# ----- SEP=1 real SEP under SMU -----
 # BLOCKER (#3582 residual, OSS wrapper 2026-07-23): at SEP CPU reset release
 # mpc_reset_run_req=1 / cla=0 / clocks run, but IFU never asserts
 # sep_boot_rom_req (boot_rom_reqs=0, o_cpu_halt_status=X, traces=0). Same
@@ -374,7 +368,7 @@ tags = ["deferred", "interop"]
 # PLANNED: the full 3x3 `smu_axi_xbar` matrix needs a real SEP manager port,
 # i.e. SEP=1 bring-up (gated by the SEP console-path blocker above). SEP=0
 # fabric slice (SMC<->ext, ID width, DECERR, remap, ATOP) is already enrolled
-# in testlists/fabric.toml. Owner: SEP=1 track (docs/SMU_VPLAN.md Appendix A.3).
+# in testlists/fabric.toml. Owner: SEP=1 track (testlists/deferred.toml (SEP=1 track)).
 [[tests]]
 name = "smu_axi_xbar_address_decode_test"
 module = "smu_axi_xbar_address_decode_test"
@@ -407,12 +401,12 @@ tags = ["deferred", "fabric"]
 
 # ----- Phase-2 / depth / toggle (SEP=0 capable but not Phase-1 density) -----
 # PLANNED (not blocked): SEP=0-capable depth/child items deliberately outside
-# the density-first enrolled set (docs/SMU_VPLAN.md §1 scope lock). Subsystem
+# the density-first enrolled set (enrolled density-first scope in testlists/all.toml). Subsystem
 # depth (I2C/GPIO mux/PLIC/crypto KAT) belongs to child OSS SMC/SEP TBs.
 # Tests tagged `coverage` are toggle sweeps — forbidden as sole pass criteria
-# (docs/SMU_VPLAN.md §1 "Check grades"); commercial-simulator-only.
+# (enrolled check-grade policy); commercial-simulator-only.
 # NOTE (BLOCKED RTL, no test names here): CTP 16-port pad (IF-XT-04) and NDM
-# reset (IF-RST-04) are N/A-BLOCKED in docs/SMU_VPLAN.md §4 — RTL absent under
+# reset (IF-RST-04) are N/A-BLOCKED (RTL absent) — RTL absent under
 # the OSS wrapper; no testcase should be written until the RTL lands.
 [[tests]]
 name = "smu_smc_cpu_traffic_smoke_test"
@@ -551,8 +545,7 @@ name = "smu_jtag_chain_enhanced_test"
 module = "smu_jtag_chain_enhanced_test"
 tags = ["deferred", "dtp", "depth"]
 
-# ----- Legacy os_oca/dv/smu/tb adds (2026-07 mid) — catalog only -----
-# Source: os_oca commits #3966/#3971/#3973/#3926/#3909 + P3 expand e84dfe55d.
+# ----- Additional deferred compatibility entries -----
 # Bodies stay OUT of enrolled sep0_all: pad/SVT TB, SEP=1 dual-CPU, Force-compat,
 # or already superseded by OSS deepeners below. Do NOT report as PASS.
 #

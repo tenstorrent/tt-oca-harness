@@ -1,8 +1,8 @@
 schema_version = 1
 
 # SMU Phase-1 (SEP=0) — SMC / no-SEP stream.
-# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
-# Universe / deferred names: testlists/deferred.toml + docs/SMU_VPLAN.md
+# Executable contract: enrolled groups in this file / testlists/all.toml
+# Universe / deferred names: testlists/deferred.toml
 
 [[tests]]
 name = "smu_smc_smoke_test"
