@@ -14,6 +14,11 @@
 #   run-here CMD  firmware image, 1:1 host paths and caller's cwd (nonfree DV cgen)
 #   doc-html  build HTML with Antora image doc-pdf  build PDF with Asciidoctor image
 #   eda-run   run in the open EDA image    eda-shell interactive EDA shell
+#   vp-build  (re)build the VP toolchain image (Dockerfile.vp -> ocah-vp-toolchain)
+#   vp-run CMD  run in the VP image, 1:1 host paths (build AND run sep-vp there:
+#               a container-built sep-vp links the container glibc and cannot
+#               run on older hosts)          vp-shell  interactive VP shell
+#   vp-verify   compiler/cmake versions in the VP image
 # Env: OCAH_DOCKER_IMAGE       firmware image tag (default: ocah-toolchain)
 #      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the
 #                               firmware image; unset disables the cache
@@ -32,6 +37,9 @@
 #      OCAH_TOOLCHAIN_ROOTFS   extracted firmware-image rootfs; when set (and
 #                               bwrap is present) `run`/`run-here` use
 #                               bubblewrap instead of podman/docker (see below)
+#      OCAH_VP_DOCKER_IMAGE    VP toolchain image tag (default: ocah-vp-toolchain)
+#      OCAH_VP_TOOLCHAIN_ROOTFS extracted VP-image rootfs for the bwrap backend
+#                               of the vp-* subcommands
 #      OCAH_BWRAP_EXTRA_BINDS  extra host paths to bind into the bwrap sandbox
 #                               (space-separated; each bound at its own path)
 set -euo pipefail
@@ -56,15 +64,31 @@ EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 DOCKER_CTX="${ROOT}/tools/docker"
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
 
+# Image selection. The vp-* subcommands target the VP toolchain image (native
+# C++20 compiler + VP dependencies + runner Python; see tools/docker/
+# Dockerfile.vp) instead of the RISC-V firmware image, with their own rootfs
+# env var and bwrap probe binary.
+DOCKERFILE="${DOCKER_CTX}/Dockerfile"
+ROOTFS_ENV="${OCAH_TOOLCHAIN_ROOTFS:-}"
+ROOTFS_PROBE="usr/bin/riscv64-unknown-elf-gcc"
+case "${1:-}" in
+    vp-build|vp-run|vp-shell|vp-verify)
+        IMAGE="${OCAH_VP_DOCKER_IMAGE:-ocah-vp-toolchain}"
+        DOCKERFILE="${DOCKER_CTX}/Dockerfile.vp"
+        ROOTFS_ENV="${OCAH_VP_TOOLCHAIN_ROOTFS:-}"
+        ROOTFS_PROBE="usr/bin/g++"
+        ;;
+esac
+
 # Will this invocation actually need a container engine? The toolchain
 # subcommands can be served by the bubblewrap backend (see below), in which case
 # no engine - and none of the rootless-podman preparation underneath - is needed.
 # The doc/EDA subcommands use pulled images and always need an engine.
 NEEDS_ENGINE=1
 case "${1:-}" in
-    run|run-here|verify|shell)
-        if [[ -n "${OCAH_TOOLCHAIN_ROOTFS:-}" ]] \
-           && [[ -x "${OCAH_TOOLCHAIN_ROOTFS}/usr/bin/riscv64-unknown-elf-gcc" ]] \
+    run|run-here|verify|shell|vp-run|vp-shell|vp-verify)
+        if [[ -n "$ROOTFS_ENV" ]] \
+           && [[ -x "${ROOTFS_ENV}/${ROOTFS_PROBE}" ]] \
            && command -v bwrap >/dev/null 2>&1; then
             NEEDS_ENGINE=0
         fi ;;
@@ -144,7 +168,7 @@ else UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"; fi
 USER_FLAGS=(); [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
 # Short hash of the Dockerfile; a change forces a rebuild / new cache entry.
-image_hash() { sha256sum "${DOCKER_CTX}/Dockerfile" | cut -c1-16; }
+image_hash() { sha256sum "$DOCKERFILE" | cut -c1-16; }
 image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
 
 # Build the firmware image (labeled with the Dockerfile hash) and publish it to
@@ -153,7 +177,7 @@ image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
 build_image() {
     local hash; hash="$(image_hash)"
     "$ENGINE" ${PODMAN_STORAGE_FLAGS} build --label "ocah.dockerfile.sha=${hash}" \
-        -t "$IMAGE" "$DOCKER_CTX"
+        -f "$DOCKERFILE" -t "$IMAGE" "$DOCKER_CTX"
     [[ -n "$DOCKER_CACHE_DIR" ]] || return 0
     local tar; tar="$(image_cache_tar)"
     if mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
@@ -220,13 +244,13 @@ run_image() {
 # Paths are 1:1 (the repo is bound at its own host path), which is what the
 # nonfree DV cgen stage needs, so this backend serves `run` and `run-here`
 # identically; `run` just starts in the repo root.
-TOOLCHAIN_ROOTFS="${OCAH_TOOLCHAIN_ROOTFS:-}"
+TOOLCHAIN_ROOTFS="$ROOTFS_ENV"
 
 use_bwrap() {
     [[ -n "$TOOLCHAIN_ROOTFS" ]] || return 1
-    if [[ ! -x "${TOOLCHAIN_ROOTFS}/usr/bin/riscv64-unknown-elf-gcc" ]]; then
-        echo "docker-run: warning: OCAH_TOOLCHAIN_ROOTFS='$TOOLCHAIN_ROOTFS' has no" \
-             "usr/bin/riscv64-unknown-elf-gcc; falling back to $ENGINE" >&2
+    if [[ ! -x "${TOOLCHAIN_ROOTFS}/${ROOTFS_PROBE}" ]]; then
+        echo "docker-run: warning: rootfs '$TOOLCHAIN_ROOTFS' has no" \
+             "${ROOTFS_PROBE}; falling back to $ENGINE" >&2
         return 1
     fi
     if ! command -v bwrap >/dev/null 2>&1; then
@@ -281,10 +305,13 @@ bwrap_run() {
     # RISCV_TOOLCHAIN is unset for the same reason PATH is replaced: it names a
     # host toolchain path that is not bound here; the sandbox's own toolchain
     # (on the reset PATH) is the one to use.
+    # OCAH_IN_CONTAINER lets sandboxed makes detect containment (bwrap creates
+    # neither /run/.containerenv nor /.dockerenv, the usual markers).
     bwrap "${binds[@]}" --chdir "$workdir" \
         --die-with-parent \
         --setenv PATH /usr/local/bin:/usr/bin:/bin \
         --setenv HOME /tmp \
+        --setenv OCAH_IN_CONTAINER 1 \
         --unsetenv PYTHONHOME \
         --unsetenv PYTHONPATH \
         --unsetenv RISCV_TOOLCHAIN \
@@ -466,6 +493,10 @@ case "${1:-}" in
     doc-stage) doc_stage ;;
     eda-run)  shift; [[ $# -gt 0 ]] || { echo "error: eda-run requires a command" >&2; exit 1; }; eda_run "$@" ;;
     eda-shell) eda_run -it bash ;;
-    ""|-h|--help|help) sed -n '7,31p' "$0" ;;
+    vp-build)  build_image ;;
+    vp-run)   shift; [[ $# -gt 0 ]] || { echo "error: vp-run requires a command" >&2; exit 1; }; run_here "$@" ;;
+    vp-shell)  run_here -it bash ;;
+    vp-verify) run_here g++ --version; echo ---; run_here cmake --version ;;
+    ""|-h|--help|help) sed -n '7,41p' "$0" ;;
     *)      echo "error: unknown command '$1'" >&2; exit 1 ;;
 esac

@@ -47,9 +47,8 @@ make vp-test PYTEST_ARGS="--no-build -k bootcode"
 Requirements:
 
 - **A C++20-capable compiler on PATH** (g++ ≥ 10; `make check-cxx` verifies, `CXX=...`
-  overrides). Activate it yourself — e.g. on RHEL via `scl enable gcc-toolset-<N> bash`.
-  g++ 11/12 are known good; 13/14 have been seen to miscompile tt-oca-sim's VeeR-ISS
-  on some hosts.
+  overrides; g++ 11–14 verified). Activate it yourself — e.g. on RHEL via
+  `scl enable gcc-toolset-<N> bash`.
 - **Boost ≥ 1.74** (`iostreams`, `program_options`) and **OpenSSL ≥ 3.0**: used from
   the system when adequate, otherwise downloaded and built into `local/` automatically.
   `make deps-info` shows what was chosen and why; `VP_SYS_DEPS=0` forces hermetic
@@ -69,6 +68,27 @@ the `ocah-toolchain` container via `scripts/docker-run.sh run-here` (build it on
 with `./scripts/docker-run.sh build`; see `tools/docker/README.md`). On hosts where
 rootless podman's `--userns=keep-id` fails, extract the image rootfs once and set
 `OCAH_TOOLCHAIN_ROOTFS=<dir>` to use the engine-less bubblewrap backend instead.
+
+## Containerized build & run
+
+For hosts with no usable native toolchain at all, the whole VP can be built AND run
+in the `ocah-vp-toolchain` container (native C++20 toolchain, apt Boost/OpenSSL, the
+RISC-V firmware toolchain, and the runner's Python — see `tools/docker/Dockerfile.vp`):
+
+```bash
+./scripts/docker-run.sh vp-build      # build the image once
+make -C virtual_platform vp VP_CONTAINER=1        # deps (SystemC/CCI) + sep-vp
+make -C virtual_platform vp-test VP_CONTAINER=1   # pytest suites, in-container
+make -C virtual_platform boot-run VP_CONTAINER=1 BOOT_ARGS="--boot primary"
+./scripts/docker-run.sh vp-shell      # interactive shell, repo bound 1:1
+```
+
+A container-built `sep-vp` links the container's glibc and cannot run on older
+hosts, so `VP_CONTAINER=1` routes the run/test targets into the container too.
+Artifacts are partitioned per environment (`local-ctr/`, `tt-oca-sim/vp/build-ctr`)
+and never mix with a native build. Where rootless podman's `--userns=keep-id`
+fails, extract the VP image rootfs and set `OCAH_VP_TOOLCHAIN_ROOTFS=<dir>` for the
+engine-less bubblewrap backend (same pattern as `OCAH_TOOLCHAIN_ROOTFS`).
 
 The `sepvp` runner's design — status channels, overlay `.ini` generation, fuse maps —
 is documented in [`sepvp/README.md`](sepvp/README.md).

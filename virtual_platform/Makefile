@@ -25,12 +25,62 @@ SHELL       := /bin/bash
 .DELETE_ON_ERROR:
 .DEFAULT_GOAL := help
 
+# ---- Execution environment (native vs container) ----------------------------
+VP_DIR     := $(CURDIR)
+OCAH_ROOT  := $(abspath $(VP_DIR)/..)
+DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
+
+# Container-built and host-built artifacts must never mix (different
+# glibc/libstdc++ ABIs; CMake caches pin compiler paths), so every build tree
+# is partitioned by an environment tag: empty natively (paths unchanged),
+# "ctr" inside a container (auto-detected via the podman/docker markers or the
+# OCAH_IN_CONTAINER env the bwrap backend sets; the VP_CONTAINER forwarding
+# below also passes it explicitly).
+VP_ENV_TAG ?= $(if $(or $(wildcard /run/.containerenv /.dockerenv),$(OCAH_IN_CONTAINER)),ctr,)
+VP_TAG_SUFFIX := $(if $(VP_ENV_TAG),-$(VP_ENV_TAG),)
+
+# VP_CONTAINER=1 (opt-in; native stays the default): run the requested goals
+# inside the ocah-vp-toolchain image via scripts/docker-run.sh vp-run — for
+# hosts whose only capability is running containers. The container-built
+# sep-vp links the container's glibc and must also RUN in the container, which
+# this forwarding covers for vp-test/boot-run/fw-run/smoke too.
+VP_CONTAINER ?=
+ifeq ($(VP_CONTAINER),1)
+  ifeq ($(VP_ENV_TAG),)
+    VP_FORWARD := 1
+  endif
+endif
+
+ifeq ($(VP_FORWARD),1)
+# =============================================================================
+# Container forwarding mode: everything below the else is replaced by a single
+# rule that re-invokes make inside the container (1:1 repo bind; podman
+# forwards no environment, so the relevant variables travel as command-line
+# arguments).
+# =============================================================================
+_FWD_GOALS := $(or $(MAKECMDGOALS),help)
+_FWD_FIRST := $(firstword $(_FWD_GOALS))
+.PHONY: $(_FWD_GOALS)
+$(_FWD_FIRST):
+	@echo "[VP] VP_CONTAINER=1: running '$(_FWD_GOALS)' in the ocah-vp-toolchain container..."
+	"$(DOCKER_RUN)" vp-run make -C "$(VP_DIR)" $(_FWD_GOALS) \
+	  VP_ENV_TAG=ctr VP_CONTAINER=0 PYTHON=/usr/bin/python3 \
+	  $(if $(PYTEST_ARGS),PYTEST_ARGS="$(PYTEST_ARGS)") \
+	  $(if $(BOOT_ARGS),BOOT_ARGS="$(BOOT_ARGS)") \
+	  $(if $(FW_ARGS),FW_ARGS="$(FW_ARGS)") \
+	  $(if $(FW_TEST),FW_TEST=$(FW_TEST)) \
+	  $(if $(SW_TEST),SW_TEST=$(SW_TEST)) \
+	  $(if $(NPROC),NPROC=$(NPROC))
+$(filter-out $(_FWD_FIRST),$(_FWD_GOALS)):
+	@:
+
+else  # ---- native / in-container execution ----------------------------------
+
 # ---- Overridable configuration ---------------------------------------------
 # Compiler: whatever $(CXX) resolves to on PATH (make's default is g++).
-# C++20 needs g++ >= 10. NOTE: g++ 13/14 have been seen to miscompile
-# tt-oca-sim's VeeR-ISS (sep/cpu/VeeR-ISS/Tlb.cpp: "partial specialization of
-# std::hash<basic_string> after instantiation") on some hosts; g++ 11/12 are
-# known good.
+# C++20 needs g++ >= 10; 11 through 14 are verified (a historic VeeR-ISS
+# header-ordering failure under g++ 13/14 was fixed at the source in
+# tt-oca-sim — Memory.hpp now includes <string>).
 CXX_STD         ?= 20
 SYSTEMC_VERSION ?= 3.0.2
 BOOST_VERSION   ?= 1.84.0
@@ -48,13 +98,13 @@ RISCV_TOOLCHAIN ?=
 SMOKE_TIMEOUT   ?= 20
 
 # ---- Derived paths ----------------------------------------------------------
-VP_DIR       := $(CURDIR)
-LOCAL_DIR    := $(VP_DIR)/local
+# LOCAL_DIR / VP_BUILD_DIR carry the environment tag (local-ctr, build-ctr in
+# a container); DOWNLOAD_DIR is shared — tarballs are host-independent.
+LOCAL_DIR    := $(VP_DIR)/local$(VP_TAG_SUFFIX)
 DOWNLOAD_DIR := $(VP_DIR)/downloads
-OCAH_ROOT    := $(abspath $(VP_DIR)/..)
 SIM_DIR      := $(VP_DIR)/tt-oca-sim
 VP_SRC_DIR   := $(SIM_DIR)/vp
-VP_BUILD_DIR := $(VP_SRC_DIR)/build
+VP_BUILD_DIR := $(VP_SRC_DIR)/build$(VP_TAG_SUFFIX)
 SEP_VP_BIN   := $(VP_BUILD_DIR)/bin/sep-vp
 
 # ---- Firmware test harness (sepvp/ + tests/) --------------------------------
@@ -94,7 +144,6 @@ FW_ENV = export PATH="$(dir $(PYTHON)):$$PATH"; \
 # scripts/docker-run.sh run-here (set OCAH_TOOLCHAIN_ROOTFS to an extracted
 # image rootfs for the engine-less bwrap path). The pack targets (uv) stay
 # native — the container does not carry uv.
-DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 define fw_make
 if echo 'int main(void){return 0;}' | riscv64-unknown-elf-gcc --specs=picolibc.specs -x c -c - -o /dev/null 2>/dev/null; then \
   $(MAKE) $(1); \
@@ -211,7 +260,7 @@ endef
 # Resolve each dependency's library subdir robustly (lib-linux64 / lib64 / lib),
 # falling back to the canonical default when the dep is not built yet. This is
 # also where an overridden prefix gets its layout right.
-ENV_SCRIPT      := $(VP_DIR)/setup_environment.sh
+ENV_SCRIPT      := $(VP_DIR)/setup_environment$(VP_TAG_SUFFIX).sh
 SYSTEMC_LIBDIR  := $(or $(firstword $(wildcard $(SYSTEMC_HOME)/lib-linux64 $(SYSTEMC_HOME)/lib64 $(SYSTEMC_HOME)/lib)),$(SYSTEMC_HOME)/lib-linux64)
 CCI_LIBDIR      := $(or $(firstword $(wildcard $(CCI_HOME)/lib $(CCI_HOME)/lib64 $(CCI_HOME)/lib-linux64)),$(CCI_HOME)/lib)
 BOOST_LIBDIR    := $(or $(firstword $(wildcard $(BOOST_ROOT)/lib $(BOOST_ROOT)/lib64 $(BOOST_ROOT)/lib/x86_64-linux-gnu)),$(BOOST_ROOT)/lib)
@@ -233,7 +282,7 @@ CCI_TARBALL     := $(DOWNLOAD_DIR)/cci_v$(CCI_VERSION).tar.gz
 # and an activated-PATH `g++` of the same compiler don't ping-pong reconfigures.
 CXX_ID        := $(shell $(CXX) -dumpmachine 2>/dev/null)-$(shell $(CXX) -dumpversion 2>/dev/null)
 VP_CONFIG_SIG := $(SYSTEMC_HOME)|$(CCI_HOME)|$(BOOST_ROOT)|$(OPENSSL_ROOT)|c++$(CXX_STD)|$(CXX_ID)|$(STATUS_VALUES_PATH)
-DEP_STAMP     := $(VP_DIR)/.vp-config-stamp
+DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 
 .PHONY: help scratch-build download deps deps-info vp vp-clean clean env enable_vp \
         systemc boost openssl cci submodule-init check-tt-oca-sim check-cxx smoke \
@@ -271,6 +320,8 @@ help:
 	@echo ""
 	@echo "Key variables (override on the command line):"
 	@echo "  CXX=$(CXX)   CXX_STD=$(CXX_STD)   NPROC=$(NPROC)"
+	@echo "  VP_CONTAINER=1 (build AND run in the ocah-vp-toolchain container — no native"
+	@echo "    toolchain needed; artifacts land in local-ctr/ and vp/build-ctr)"
 	@echo "  VP_SYS_DEPS=$(VP_SYS_DEPS) (auto: use adequate system Boost/OpenSSL; 0: hermetic local builds)"
 	@echo "  BOOST_MIN=$(BOOST_MIN) (minimum acceptable system BOOST_VERSION)"
 	@echo "  SYSTEMC_VERSION=$(SYSTEMC_VERSION)  BOOST_VERSION=$(BOOST_VERSION)  OPENSSL_VERSION=$(OPENSSL_VERSION)  CCI_VERSION=$(CCI_VERSION)"
@@ -459,7 +510,7 @@ $(VP_BUILD_DIR)/Makefile: $(DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(O
 	cd $(VP_SRC_DIR)
 	SYSTEMC_HOME=$(SYSTEMC_HOME) CCI_HOME=$(CCI_HOME) \
 	BOOST_ROOT=$(BOOST_ROOT) OPENSSL_ROOT=$(OPENSSL_ROOT) \
-	VP_BOOST_MIN=$(BOOST_MIN) \
+	VP_BOOST_MIN=$(BOOST_MIN) BUILD_DIR=$(VP_BUILD_DIR) \
 	CMAKE_BUILD_TYPE=Release CMAKE_CXX_STANDARD=$(CXX_STD) \
 	  ./configure_vp.sh -- -DSEP_SCRATCH_COLD_STATUS_VALUES_PATH=$(STATUS_VALUES_PATH)
 
@@ -622,6 +673,7 @@ boot-secure-image:
 #   make boot-run BOOT_ARGS="--boot secondary --timeout 30"
 boot-run: boot-build $(SEP_VP_BIN)
 	@echo "[VP] Running boot_rom.elf on sep-vp ($(BOOT_ARGS))..."
+	export SEP_VP_BIN="$(SEP_VP_BIN)"
 	cd $(VP_DIR) && $(PYTHON) -m sepvp.cli --bin $(BOOT_ELF) $(BOOT_ARGS)
 
 # Build + run a SEP DV firmware test on sep-vp:  make fw-run FW_TEST=hello_world
@@ -635,6 +687,7 @@ fw-run: $(SEP_VP_BIN)
 	echo "[VP] Building hw/sys/sep/dv/fw/tests/$(FW_TEST)..."
 	$(call fw_make,-C $(OCAH_ROOT) ocah-dv-fw-tests TARGET=sep TEST=$(FW_TEST))
 	echo "[VP] Running $(FW_TEST) on sep-vp ($(FW_ARGS))..."
+	export SEP_VP_BIN="$(SEP_VP_BIN)"
 	cd $(VP_DIR) && $(PYTHON) -m sepvp.cli --bin $(OCAH_ROOT)/hw/sys/sep/dv/fw/build/tests/$(FW_TEST)/$(FW_TEST).tcm.elf $(FW_ARGS)
 
 # Run the pytest harness suite. Builds firmware by default (RISC-V toolchain on PATH);
@@ -643,4 +696,7 @@ fw-run: $(SEP_VP_BIN)
 vp-test: $(SEP_VP_BIN)
 	@$(PYTHON) -c "import pexpect, yaml, pytest, toml, elftools" 2>/dev/null || $(MAKE) vp-py-deps
 	$(FW_ENV)
+	export SEP_VP_BIN="$(SEP_VP_BIN)"
 	cd $(VP_DIR) && $(PYTHON) -m pytest tests $(PYTEST_ARGS)
+
+endif  # VP_FORWARD
