@@ -115,6 +115,10 @@ REDACTED_ENV_PATTERN = re.compile(
 )
 REDACTED_VALUE = "<redacted>"
 
+_STAGE_CANCELLATION = threading.Event()
+_ACTIVE_SUBPROCESS_LOCK = threading.Lock()
+_ACTIVE_SUBPROCESSES: set[subprocess.Popen[bytes]] = set()
+
 
 def render_text(text: str, ctx: dict[str, str]) -> str:
     rendered = text
@@ -579,6 +583,32 @@ def progress_step(console: Console, label: str, quiet: bool, interval_sec: int =
             console.step_done(label, elapsed)
 
 
+def reset_stage_cancellation() -> None:
+    _STAGE_CANCELLATION.clear()
+
+
+def request_stage_cancellation() -> None:
+    """Stop registered stage process groups after an interrupted run."""
+    _STAGE_CANCELLATION.set()
+    with _ACTIVE_SUBPROCESS_LOCK:
+        processes = list(_ACTIVE_SUBPROCESSES)
+    if not processes:
+        return
+    for proc in processes:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    time.sleep(0.2)
+    for proc in processes:
+        if proc.poll() is not None:
+            continue
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
 def run_subprocess(
     argv: list[str],
     root: Path,
@@ -599,6 +629,8 @@ def run_subprocess(
     write_env_snapshot(env_path, env or dict(os.environ), dry_run)
     if dry_run:
         return 0
+    if _STAGE_CANCELLATION.is_set():
+        raise RuntimeError("stage execution cancelled")
     workdir.mkdir(parents=True, exist_ok=True)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -637,42 +669,55 @@ def run_subprocess(
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
-        assert proc.stdout is not None
-        selector = selectors.DefaultSelector()
-        selector.register(proc.stdout, selectors.EVENT_READ)
-        start = time.monotonic()
-        timed_out = False
+        with _ACTIVE_SUBPROCESS_LOCK:
+            _ACTIVE_SUBPROCESSES.add(proc)
         try:
-            while True:
-                if timeout_sec is not None and time.monotonic() - start > timeout_sec:
-                    timed_out = True
-                    break
-                events = selector.select(timeout=0.2)
-                for key, _mask in events:
-                    chunk = os.read(key.fileobj.fileno(), 65536)
-                    if not chunk:
-                        selector.unregister(key.fileobj)
+            assert proc.stdout is not None
+            selector = selectors.DefaultSelector()
+            selector.register(proc.stdout, selectors.EVENT_READ)
+            start = time.monotonic()
+            timed_out = False
+            cancelled = False
+            try:
+                while True:
+                    if _STAGE_CANCELLATION.is_set():
+                        cancelled = True
                         break
-                    text = chunk.decode(errors="replace")
-                    log.write(text)
-                    log.flush()
-                    if verbose and not quiet:
-                        print(text, end="", flush=True)
-                if proc.poll() is not None and not selector.get_map():
-                    break
-        except BaseException:
-            terminate_process_group(proc)
-            raise
+                    if timeout_sec is not None and time.monotonic() - start > timeout_sec:
+                        timed_out = True
+                        break
+                    events = selector.select(timeout=0.2)
+                    for key, _mask in events:
+                        chunk = os.read(key.fileobj.fileno(), 65536)
+                        if not chunk:
+                            selector.unregister(key.fileobj)
+                            break
+                        text = chunk.decode(errors="replace")
+                        log.write(text)
+                        log.flush()
+                        if verbose and not quiet:
+                            print(text, end="", flush=True)
+                    if proc.poll() is not None and not selector.get_map():
+                        break
+            except BaseException:
+                terminate_process_group(proc)
+                raise
+            finally:
+                selector.close()
+            if cancelled:
+                terminate_process_group(proc)
+                raise RuntimeError("stage execution cancelled")
+            if timed_out:
+                terminate_process_group(proc)
+                log.write(f"\n# TIMEOUT: command exceeded {timeout_sec}s and was killed\n")
+                log.flush()
+                raise StageTimeoutError(
+                    f"`{argv[0]}` exceeded timeout of {timeout_sec}s"
+                )
+            return proc.returncode
         finally:
-            selector.close()
-        if timed_out:
-            terminate_process_group(proc)
-            log.write(f"\n# TIMEOUT: command exceeded {timeout_sec}s and was killed\n")
-            log.flush()
-            raise StageTimeoutError(
-                f"`{argv[0]}` exceeded timeout of {timeout_sec}s"
-            )
-        return proc.returncode
+            with _ACTIVE_SUBPROCESS_LOCK:
+                _ACTIVE_SUBPROCESSES.discard(proc)
 
 
 def get_cocotb_runner():
