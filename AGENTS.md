@@ -422,6 +422,49 @@ EOF
 Do not put Workstream / Subsystem / Component or labels on the PR.
 Ingest assigns the opener when Assignees is empty.
 
+### Paired pull requests with the `nonfree` companion
+
+A change that needs both trees is two pull requests, and **the `nonfree` one merges first.**
+Nothing in the open tree records which companion commit to use: `ocah-nonfree-init` clones
+the companion's default branch, and `nonfree/` is ignored rather than tracked, so there is
+no ref to bump and nothing to `git add`. Every pipeline — the open `main`, and every other
+contributor's in-flight PR — picks up whatever the companion's default branch holds at the
+moment that pipeline runs. Merging the open half first breaks CI for everyone until the
+companion catches up, and it breaks it for people whose work has nothing to do with yours.
+
+Work the pair in this order:
+
+1. Open both PRs, and say in each body that the other exists.
+2. Expect the open-tree PR's CI to fail while the companion PR is unmerged. A local branch
+   proves the pair works on your machine, but no pipeline can see it and there is no pin to
+   point at it.
+3. Merge the companion PR.
+4. Re-run the open-tree PR's pipeline, and merge only once it is green — not on the strength
+   of a run that predates step 3.
+
+Two further things follow from the same unpinned clone:
+
+- **Keep the companion half backwards compatible with the open `main`** wherever the change
+  admits it — an added driver, an overridden weak stub, a new variable with a default — so
+  that step 3 does not break the tree on its own. When it genuinely cannot be, do steps 3
+  and 4 back to back and tell the user, so they can warn whoever's pipelines will fail in
+  between.
+- **Never paper over an unmerged companion change from the open side.** Copying companion
+  material into the open tree crosses the boundary the split exists to maintain, and
+  stubbing, skipping or disabling the failing check discards the signal this ordering
+  protects.
+
+If the user asks you to merge the open half first, or to merge it while the companion PR is
+still open, say once — briefly, and without lecturing — what it breaks and whose work it
+breaks, and offer the order above instead. **The user decides.** They may know something you
+do not: that the companion change has already landed, that the tree is quiet, or that they
+are accepting the breakage deliberately. So raise it once, then do as they ask and note in
+the PR that the companion side is still pending. Repeating the objection, or refusing the
+work, is worse than the ordering mistake.
+
+Without companion access you can only do the open half. Say so and stop, rather than editing
+open files to compensate.
+
 ## Linting and Formatting
 
 | Check | Local command |
