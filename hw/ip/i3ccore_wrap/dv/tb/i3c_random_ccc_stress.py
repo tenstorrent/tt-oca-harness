@@ -8,10 +8,10 @@ Directed-random CCC ordering: repeatedly pick a CCC from the supported set in
 random order and issue it, stressing the command FSM. SET values are drawn from
 the full legal range (not a 3-value pool), and SET/GET round-trips self-check.
 
-Uses the shared constrained-random framework (dv/common/cocotb + i3c_rand):
-seed from +seed=<n> / SEED=<n> / default, logged, so regression runs vary the
-sequence and accumulate coverage. CCCs are picked by weight (GET-heavy, like
-real read-mostly traffic) to bias the command-FSM ordering.
+The seed is resolved by i3c_rand from +seed=<n> / SEED=<n> / default and
+logged, so regression runs vary the sequence and accumulate coverage. CCCs are
+picked by weight (GET-heavy, like real read-mostly traffic) to bias the
+command-FSM ordering.
 """
 import cocotb
 from i3c_test_base import make_env, bring_up_and_assign
@@ -26,6 +26,9 @@ async def test_random_ccc_stress(dut):
     await bring_up_and_assign(ctrl, tgt)
 
     r = RandMgr(name="random_ccc")                # seed logged; +seed/SEED override
+    tb.log.info(
+        f"Random CCC stress: seed=0x{r.seed:08X} iterations={N_ITERS}"
+    )
 
     # shadow model of the last programmed MWL/MRL for SET/GET self-checking
     shadow = {"mwl": None, "mrl": None}
@@ -36,6 +39,7 @@ async def test_random_ccc_stress(dut):
 
     async def ccc_setmwl():
         v = rand_mwl(r)                            # full legal range 1..4095
+        tb.log.info(f"SETMWL value={v}")
         ok, _ = await ctrl.setmwl(v, dat_idx=0)
         assert ok, f"SETMWL({v}) failed"
         shadow["mwl"] = v
@@ -49,6 +53,7 @@ async def test_random_ccc_stress(dut):
     async def ccc_setmrl():
         v = rand_mrl(r)
         ibi = weighted(r, [(0, 4), (0x08, 3), (0x10, 2), (0xFF, 1)])
+        tb.log.info(f"SETMRL value={v} ibi_payload_size={ibi}")
         ok, _ = await ctrl.setmrl(v, ibi_payload_size=ibi, dat_idx=0)
         assert ok, f"SETMRL({v}) failed"
         shadow["mrl"] = v

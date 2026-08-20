@@ -648,22 +648,6 @@ refer to this section for how the infrastructure underneath is delivered.
 | Sideband external BFM (real pins) | missing | Full sideband promotion | AVSBus/OCTS/telemetry blocked-window prechecks pass; full external BFM needs a pad-lift refactor |
 | Fault/diagnostic injection | missing | `smc_dfd_sanity_test`, `smc_cpu_ecc_lint_pint_depth_test` deepening | Currently a bounded diagnostic representative only |
 
-### 6c.2 Legacy SMC UVM alignment (reference)
-
-The legacy SMC UVM environment (non-OSS, `dv/smc/tb/tb_uvm`) provides useful
-depth targets, but only a subset maps cleanly to the public OSS cocotb/Verilator
-path without private firmware, commercial VIP, or RTL wrapper changes:
-
-| Legacy area | Representative legacy tests/sequences | OSS disposition |
-|-------------|----------------------------------------|-----------------|
-| Local fabric CSR/reg-bar | `smc_sep_local_fabric_wr_rd_sequence`, `smc_sys_local_fabric_wr_rd_sequence`, `local_fabric_*` | Partially covered by `canonical_top20` CSR slices; deeper randomised ranges are future field-aware CSR catalog work |
-| Mailbox data/error | `smc_sep_mailbox_register_sequence`, `smc_mailbox_register_test` | `smc_mailbox_data_error_test` under `mailbox_depth` covers FIFO data path + expected SLVERR |
-| Output/input fabric WR/RD/filter | `smc_output_fabric_*`, `smc_input_fabric_i3c_to_output_*` | Promoted through JTAG AXI stimulus + DV-only output-fabric responder/checker |
-| Register boundary groups | `smc_reg_boundary_test_GROUP_*` | Future depth campaign after the CSR catalog classifies side-effect + unsafe registers |
-| I2C/I3C protocol | `I2C_Regression`, OCA/Cadence I3C tests | Migrated: byte-level I2C loopback + SDR I3C loopback via `cocotbext-*` VIPs |
-| eFuse/OTP/security | `smc_efuse_*` | `canonical_top20` representative + P1 permission-boundary; split into a depth campaign once safe preload/shadow semantics are classified |
-| CPU/ROM/OCCP/performance | `smc_cpu_*`, `Main_SMC_BL0_Regression`, performance tests | Out of current OSS scope until the CPU firmware loader / master BFM path is available |
-
 ### 6c.3 Roadmap / implementation order
 
 1. Keep broad `smoke` as the debug regression; do not add weak variants just to

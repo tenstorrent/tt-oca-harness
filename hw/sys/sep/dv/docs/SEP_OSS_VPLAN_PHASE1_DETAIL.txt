@@ -3,14 +3,13 @@
 ================================================================================
 SEP OSS VPLAN — PHASE 1 (smoke + TOP-20) — DETAILED TEST CARDS
 ================================================================================
-Phase 1 (density-first compression) is COMPLETE; Phase-2 breadth-first basic-
-feature planning lives in SEP_OSS_VPLAN_PHASE2_DETAIL.txt (rules in
-VPLAN_CREATION_RULES.md).
+Phase 1 defines density-first compression. Phase-2 breadth-first basic-feature
+coverage is defined in SEP_OSS_VPLAN_PHASE2_DETAIL.txt, with shared rules in
+VPLAN_CREATION_RULES.md.
 
-Per-test detail for the 20 cherry-picked OCAH SEP tests (see SEP_OSS_VPLAN_PHASE1.md
-for the selection rationale + coverage matrix). Every card is refactored from the real
-OCAH source (test .sv / firmware .c / sequence) and the OCAH testplan — no invented
-behavior. Tiers are cumulative: TOP-5 (#1-5) < TOP-10 (#1-10) < TOP-20 (#1-20).
+Per-test detail for the 20 SEP scenarios is in SEP_OSS_VPLAN_PHASE1.md.
+Each card traces to public RTL, specifications, tests, sequences, or firmware.
+Tiers are cumulative: TOP-5 (#1-5) < TOP-10 (#1-10) < TOP-20 (#1-20).
 
 Card fields:
   SUMMARY   - what scenario it runs and why.
@@ -31,69 +30,6 @@ Additional OSS regression smoke (tracked outside the 20-test TOP selection):
   strengthened with REFERENCE_COUNTER 64-bit readability and SEP base/size CSR
   write/read/restore proof.
   sep_esrc_e2e_smoke_test — ESRC->CSRNG->EDN->KM entropy alive + strict CHK1..CHK5.
-
-
-================================================================================
-OCAH SEP SOURCE REFERENCE  (golden suite paths are repo-root-relative)
-================================================================================
-Runnable-name registry : dv/sep/tb/tb_uvm/yaml/testlist_sep.yaml
-FW root                : fw/sep/tests/<dir>/<dir>.c
-UVM root               : dv/sep/tb/tb_uvm/uvm_tests/<area>/  (+ uvm_sequences/<area>/<name>_seq.sv)
-Testplan root          : dv/sep/tb/doc/testplan/<area>/
-
-#1  FW   fw/sep/tests/sep_km_efuse_coexist_test/sep_km_efuse_coexist_test.c
-         tp  doc/testplan/efuse/EFUSE_COVERAGE_TESTPLAN.md
-#2  FW   fw/sep/tests/dma_hash_test/dma_hash_test.c
-         tp  doc/testplan/dma/DMA_TEST_PLAN.md
-#3  FW   fw/sep/tests/spi_ot_dma_rx_test/spi_ot_dma_rx_test.c
-         tp  doc/testplan/spi_ot/spi_ot_testplan.md
-#4  UVM  uvm_tests/subsystem/sep_km_otbn_sideload_kat_test.sv
-         seq uvm_sequences/subsystem/sep_km_otbn_sideload_kat_test_seq.sv
-         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
-#5  UVM  uvm_tests/subsystem/sep_efuse_lcc_lc_state_stitch_test.sv
-         seq uvm_sequences/subsystem/sep_efuse_lcc_lc_state_stitch_test_seq.sv
-         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
-#6  FW   fw/sep/tests/dma_cpu_contention_test/dma_cpu_contention_test.c
-         tp  doc/testplan/dma/DMA_TEST_PLAN.md
-#7  UVM  uvm_tests/subsystem/sep_clock_uvm_wdt_rst_input_reset_path_test.sv
-         seq uvm_sequences/subsystem/sep_clock_uvm_wdt_rst_input_reset_path_test_seq.sv
-         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
-#8  FW   fw/sep/tests/sep_mailbox_plic_test/sep_mailbox_plic_test.c
-#9  FW   fw/sep/tests/hmac_test/hmac_test.c  +  fw/sep/tests/kmac_test/kmac_test.c
-#10 FW   fw/sep/tests/rom_sanity_test/rom_sanity_test.c
-         tp  doc/testplan/rom/ROM_TEST_PLAN.md
-#11 UVM  uvm_tests/subsystem/sep_km_aes_sideload_kat_test.sv
-         seq uvm_sequences/subsystem/sep_km_aes_sideload_kat_test_seq.sv
-         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
-#12 UVM  uvm_tests/subsystem/sep_km_hmac_sideload_kat_test.sv
-         seq uvm_sequences/subsystem/sep_km_hmac_sideload_kat_test_seq.sv
-         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
-#13 UVM  uvm_tests/subsystem/sep_km_kmac_sideload_kat_test.sv
-         seq uvm_sequences/subsystem/sep_km_kmac_sideload_kat_test_seq.sv
-         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
-#14 UVM  uvm_tests/subsystem/sep_irq_ip_to_aggregator_test.sv
-         seq uvm_sequences/subsystem/sep_irq_ip_to_aggregator_test_seq.sv
-         tp  doc/testplan/subsystem/SEP_SUBSYSTEM_INTERCONNECT_VPLAN.txt
-#15 UVM  uvm_tests/drbg/sep_drbg_real_sink_multi_km_aes_test.sv
-         seq uvm_sequences/drbg/sep_drbg_real_sink_multi_km_aes_test_seq.sv
-             (+ base: uvm_sequences/drbg/sep_drbg_real_sink_multi_base_test_seq.sv)
-         tp  doc/testplan/drbg/DRBG_VPLAN.txt
-#16 FW   OSS port is CPU-firmware (no_cpu bypasses the post-remap splice); OCAH ref is UVM:
-         uvm_tests/fabric/sep_fabric_gap_matrix_tests.sv  (macro-defined, not a standalone file)
-         seq uvm_sequences/fabric/sep_fabric_gap_matrix_sequences.sv  (run_ifu_lsu_alias body)
-         tp  doc/testplan/fabric/fabric_testplan.md
-#17 FW   fw/sep/tests/sep_efuse_jtag_el2_cpu_mux_test/sep_efuse_jtag_el2_cpu_mux_test.c
-         tp  doc/testplan/efuse/EFUSE_COVERAGE_TESTPLAN.md
-#18 FW   fw/sep/tests/nmi_sanity_test/nmi_sanity_test.c
-         tp  doc/testplan/wdt/
-#19 FW   fw/sep/tests/sep_reset_ctrl_csr_test/sep_reset_ctrl_csr_test.c
-         +   fw/sep/tests/wdt_sanity_test/wdt_sanity_test.c
-         tp  doc/testplan/wdt/wdt_testplan.md
-#20 UVM  uvm_tests/lcc/sep_lcc_uvm_inbound_filter_gating_test.sv
-         seq uvm_sequences/lcc/sep_lcc_uvm_inbound_filter_gating_test_seq.sv
-         tp  doc/testplan/lcc/LCC_VPLAN.txt
-
-(All 20 paths verified to exist. `doc/testplan/` = `dv/sep/tb/doc/testplan/`.)
 
 
 ################################################################################

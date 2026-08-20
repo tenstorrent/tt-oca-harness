@@ -31,7 +31,7 @@ ifeq ($(MODULE),test_i3ccore)
     export COCOTB_RESOLVE_X ?= ZEROS
 endif
 
-# Constrained-random seed (constrained_random.py / i3c_rand.py): export so the
+# Constrained-random seed (i3c_rand.py): export so the
 # cocotb Python process sees it. `make MODULE=... SEED=0x1234` overrides the
 # built-in default; alternatively pass +seed=<n> as a sim plusarg. Run several
 # SEED values in regression and merge coverage to accumulate random bins.
