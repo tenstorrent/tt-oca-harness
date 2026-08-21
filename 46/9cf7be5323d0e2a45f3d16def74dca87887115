@@ -4,6 +4,7 @@ doc/trm/src/architecture.adoc
   s_735d663e4c2165::t_f79f24a0ecc3b2 255-266,324-334
 doc/trm/src/revision.adoc
   s_735d663e4c2165::t_dabb747cb5205d 161-163
+  s_c8ce40a7fc1aa0::t_07c687aa0f5e61 160
 hw/ip/uart/uart_16550/doc/interface.adoc
   s_735d663e4c2165::t_53c4e2ccff4faf 57-65,72-75,78-79,82-83,86-87,94-97
 hw/ip/uart/uart_16550/doc/programming.adoc
@@ -35,6 +36,14 @@ hw/sys/smc/doc/interrupts.adoc
         "tool": "cursor",
         "id": "0a51313d-04e6-40c2-b49e-afad05839e75",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    },
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
       },
       "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
     }
