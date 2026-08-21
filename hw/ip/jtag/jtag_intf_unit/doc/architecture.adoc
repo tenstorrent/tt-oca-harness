@@ -49,53 +49,72 @@ The STAP chain implements a four-level hierarchy with configurable lockup latch 
 
 The I/O STAP enables TDI lockup to handle the longer propagation delays across die boundaries. On-chip STAPs (SMC Debug, SEP Debug) disable TDI lockup since signal routing is local to the chiplet. The final extra STAP in the chain enables scan output lockup when `NUM_EXTRA_STAPS > 0`, providing additional output timing margin before the scan path returns to the PTAP.
 
-====== Feature Control Synchronization
+====== Debug-Disable Synchronization
 
-The lifecycle feature control signals originate in the system clock domain and must be synchronized to the TCK domain before use. The interface unit implements 64 individual 2-FF synchronizer chains, one per bit of the feature control vector. This per-bit synchronization approach breaks up the CDC timing path that would exist if the entire 64-bit vector were synchronized as a single unit.
+The lifecycle debug disables (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) arrive
+pre-resolved from the SEP lifecycle controller in the system clock domain and
+must be synchronized to the TCK domain before use. The interface unit
+implements eleven individual 2-stage synchronizer chains, one per
+`dbg_disable_t` field, each with a fail-closed reset value of `1` (interface
+disabled). This per-bit synchronization approach breaks up the CDC timing
+path that would exist if the vector were synchronized as a single unit.
 
-The synchronized feature control bits determine security access levels for STAP and SIB selection:
+Each synchronized disable gates exactly one interface (active-high,
+`1` = interface disabled):
 
 [width="100%",cols="<30%,<70%",options="header"]
 |===
-|Access Level |Feature Control Condition
+|Interface |Disable Field
 
 |I/O STAP
-|`sip_debug`
+|`stap_io`
 
 |SMC Debug STAP
-|`soc_debug \|\| ap_debug`
+|`stap_smc`
 
 |SEP Debug STAP
-|`sep_debug \|\| soc_debug \|\| ap_debug`
+|`stap_sep`
 
 |Extra STAPs
-|`ap_debug`
+|`stap_extra`
+
+|Extended host STAP scan
+|`stap_host`
 
 |DFT Secure SIB
-|`fuse_test \|\| sep_debug \|\| soc_debug \|\| ap_debug`
+|`dft_secure`
 
 |DFT Non-Secure SIB
-|`soc_debug \|\| ap_debug`
+|`dft_nonsecure`
 
 |DFD SIB
-|`ap_debug`
+|`dfd`
+
+|SMC fabric JTAG2AXI
+|`smc_jtag2axi`
+
+|SMC OTP JTAG2AXI
+|`smc_otp_jtag2axi`
+
+|SEP OTP JTAG2AXI
+|`sep_otp_jtag2axi`
 |===
 
 ===== iJTAG Network
 
-The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB) chains with progressively restrictive security requirements. Each SIB gates access to a specific set of debug instruments based on the synchronized feature control signals.
+The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB) chains with progressively restrictive security requirements. Each SIB gates access to a specific set of debug instruments based on its synchronized debug-disable field.
 
 ====== DFT Secure Chain
 
-The DFT Secure chain is accessible when any of fuse test, SEP debug, SOC debug, or AP debug features are enabled. This chain is ported out of the DTP for connection to tooling-generated DFT logic such as MBIST controllers and scan compression logic.
+The DFT Secure chain is accessible while `dft_secure` is deasserted. This chain is ported out of the DTP for connection to tooling-generated DFT logic such as MBIST controllers and scan compression logic.
 
 ====== DFT Non-Secure Chain
 
-The DFT Non-Secure chain requires either SOC debug or AP debug feature enablement. This chain provides access to DFT instrumentation that does not involve security-sensitive fuse or SEP operations.
+The DFT Non-Secure chain is accessible while `dft_nonsecure` is deasserted. This chain provides access to DFT instrumentation that does not involve security-sensitive fuse or SEP operations.
 
 ====== DFD Chain
 
-The Debug Forensics Dump (DFD) chain requires AP debug feature enablement, providing the highest security level. This chain grants access to:
+The Debug Forensics Dump (DFD) chain is accessible while `dfd` is deasserted; its instruments carry the highest security sensitivity. This chain grants access to:
 
 * SMC AXI4 system fabric via JTAG2AXI bridge
 * SMC OTP controller via AXI-Lite-to-APB bridge
@@ -114,6 +133,6 @@ The interface unit instantiates multiple JTAG2AXI bridges:
 
 The JTAG Interface Unit integrates with the chiplet lifecycle controller:
 
-* Security disable signals gate STAP selection
-* Lifecycle feature control sync for debug enable/disable
-* Per-STAP security lockout capability
+* Pre-resolved `dbg_disable_t` fields gate STAP selection, SIB access, and the JTAG2AXI bridges (one field per interface)
+* Per-field 2-stage TCK-domain synchronization with fail-closed reset
+* Per-STAP security lockout: an asserted disable forces the STAP's selection inactive and blocks its 3DCR update while stored configuration survives

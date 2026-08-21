@@ -146,8 +146,8 @@ create_generated_clock -name JTAG_TCK_DFT_OUT \
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports rst_n_i] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports pwr_on_rst_ni] -add_delay
 
-# feature control (OTP/fuse bits) -- quasi-static
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.25]      -clock [get_clock DTPCLK] [get_ports {feat_ctrl_i*}] -add_delay
+# lifecycle debug disables (pre-resolved in the SEP lifecycle controller) -- quasi-static
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.25]      -clock [get_clock DTPCLK] [get_ports {dbg_disable_i*}] -add_delay
 
 # JTAG PTAP client interface
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.75]    -clock [get_clock JTAG_TCK] [get_ports {jtag_ptap_client_tap_ctrl_i*}] -add_delay
