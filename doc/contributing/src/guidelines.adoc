@@ -46,7 +46,7 @@ For internal development and testing we will employ commercial tools to
 validate the OCAH design, proving readiness for chip deployment i.e.
 tapeout. This includes:
 
-* UVM verification
+* Design verification
 * lint tools for code quality
 * logic synthesis
 
