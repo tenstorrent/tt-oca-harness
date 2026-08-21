@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI DMA-TX test (PyUVM, cpu-firmware, randomized).
 
 SPI-subsystem Phase-2 rep SPI DMA-TX breadth: the TX complement of

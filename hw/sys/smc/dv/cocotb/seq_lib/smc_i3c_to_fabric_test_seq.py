@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I3C-window → fabric decode smoke (real OCA I3C core).
 
 Toggles the I3C CSR clock-gate control, restores it, then proves the I3C

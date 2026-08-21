@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_cold_reset_test (DV Skill 1.5 / SMC_001 rev 2).
 
 Exercises SmcResetAgent + SmcClkAgent observations required by the approved

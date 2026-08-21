@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Canonical high-density SMC smoke sequence.
 
 This sequence combines the six-agent observability smoke with the reset recovery

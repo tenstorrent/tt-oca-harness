@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS CPU JTAG protocol VIP wrapper.
 
 Thin DUT-local facade over ``ocah_jtag_vip`` for the SMC CPU TAP brought out

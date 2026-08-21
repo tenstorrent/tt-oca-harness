@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """WDT / AON-timer internals.
 
 no_cpu host-AXI CSR test of the SEP WDT aon_timer internals separate from the

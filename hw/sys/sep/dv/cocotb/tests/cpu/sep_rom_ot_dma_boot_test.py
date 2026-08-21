@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM boot over the OpenTitan SPI host, SECURE_DMA drain (PyUVM).
 
 Sibling of ``sep_rom_non_secure_boot_test``. Same production Boot ROM, same BL1

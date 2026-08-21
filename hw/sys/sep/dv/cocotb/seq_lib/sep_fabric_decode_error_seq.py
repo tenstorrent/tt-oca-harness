@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric decode-error stimulus for sep_fabric_decode_error_response_test.
 
 Drives the CPU-LSU AXI master (no_cpu splice, no inbound filter) at:

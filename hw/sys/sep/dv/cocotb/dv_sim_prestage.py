@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Pre-sim image staging hook for the SEP OSS DV flow.
 
 The `sep_wrapper` DUT's generic efuse model self-preloads its OTP bank from

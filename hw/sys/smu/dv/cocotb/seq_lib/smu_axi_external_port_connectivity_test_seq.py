@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002 rev 4).
 
 DV-CARD:          SMU_ALL_002   ANCHOR: smu_axi_external_port_connectivity_test

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ESRC -> DRBG -> CSRNG -> EDN -> KM entropy alive smoke (PyUVM).
 
 Proves the real entropy datapath produces genbits that the Key Manager actually

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware test (OSS port of the reference suite
 // sep_spi_ot_dma_rx_test, ). The EL2 CPU configures the OpenTitan

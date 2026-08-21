@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM I2C clock-gate sanity test.
 
 Brings the SMC OSS top out of cold reset (handled by ``smc_base_test``), then

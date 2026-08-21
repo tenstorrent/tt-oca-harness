@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 OcahI3cBus — stable OCAH wrapper around the antmicro/cocotbext-i3c I3C
 controller BFM.

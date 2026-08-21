@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Run every SEP golden-model self-test and fail if any does not pass.
 
 Each ``env/sep_*_golden.py`` carries a standalone self-test (a KAT / NIST / FIPS /
