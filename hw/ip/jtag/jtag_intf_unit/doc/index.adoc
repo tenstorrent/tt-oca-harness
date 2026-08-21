@@ -6,7 +6,9 @@
 
 ==== Overview
 
-The JTAG Interface Unit serves as the top-level JTAG control module, managing the primary JTAG port for the chiplet and all supporting instrument logic. It contains the following design blocks and features:
+The JTAG Interface Unit serves as the top-level JTAG control module, managing
+the primary JTAG port for the chiplet and all supporting instrument logic. It
+contains the following design blocks and features:
 
 * One PTAP
 ** Chiplet IDCODE register
@@ -25,7 +27,11 @@ The JTAG Interface Unit serves as the top-level JTAG control module, managing th
 ** A debug port for the SEP OTP
 ** A port for extending the iJTAG network outside the interface unit
 
-The PTAP, STAP and all other supporting logic conform to IEEE standards 1149.1-2013 _Test Access Port and Boundary-Scan Architecture_, 1687-2014 _Access and Control of Instrumentation Embedded within a Semiconductor Device_, and 1838-2019 _Test Access Architecture for Three-Dimensional Stacked Integrated Circuits_.
+The PTAP, STAP and all other supporting logic conform to IEEE standards
+1149.1-2013 _Test Access Port and Boundary-Scan Architecture_, 1687-2014 _Access
+and Control of Instrumentation Embedded within a Semiconductor Device_, and
+1838-2019 _Test Access Architecture for Three-Dimensional Stacked Integrated
+Circuits_.
 
 ==== Configuration Parameters
 

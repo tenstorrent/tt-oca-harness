@@ -40,6 +40,15 @@ scripts/docker-run.sh doc-html trm    # HTML site → doc/trm/_build/html_antora
 scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/trm/dist/ocah-trm.pdf
 ```
 
+Documentation builds define the generic AsciiDoc `release` attribute by
+default, which omits the TRM's internal revision history from HTML and PDF
+output. Disable release mode for internal builds with `OCAH_DOC_RELEASE=0`:
+
+```bash
+OCAH_DOC_RELEASE=0 scripts/docker-run.sh doc-html trm
+OCAH_DOC_RELEASE=0 scripts/docker-run.sh doc-pdf  trm
+```
+
 Use `integrator` in place of `trm` to build the Integrator Guide. The images
 (`docker.io/antora/antora`, `docker.io/asciidoctor/docker-asciidoctor`) are pulled once
 and cached; override them with `OCAH_DOC_HTML_IMAGE` / `OCAH_DOC_PDF_IMAGE` to point at
