@@ -6,19 +6,24 @@
 
 ==== Overview
 
-The Secondary TAP (STAP) enables hierarchical interconnection of TAP controllers across multiple chiplets as specified in IEEE 1838-2019 (3DIC). Each STAP interface provides an extension of a SiP's primary JTAG interface across internal or external chiplets.
+The Secondary TAP (STAP) enables hierarchical interconnection of TAP controllers
+across multiple chiplets as specified in IEEE 1838-2019 (3DIC). Each STAP
+interface provides an extension of a SiP's primary JTAG interface across
+internal or external chiplets.
 
 The DTP supports the following STAP types:
 
 * *I/O STAP*: Extends JTAG to the next chiplet in the SiP
 * *SMC Debug STAP*: Provides access to the SMC CPU core debugger TAP
 * *SEP Debug STAP*: Provides access to the SEP CPU core debugger TAP
-* *Additional STAPs*: Provides access to additional TAPs for on or off-chip connectivity
+* *Additional STAPs*: Provides access to additional TAPs for on or off-chip
+  connectivity
 * *Extended STAP Scan Interface*: Port for adding STAPs external to the DTP
 
 ==== Configuration Parameters
 
-The STAP provides three timing-related configuration parameters to optimize performance across different physical topologies.
+The STAP provides three timing-related configuration parameters to optimize
+performance across different physical topologies.
 
 [width="100%",cols="<30%,<15%,<15%,<40%",options="header"]
 |===

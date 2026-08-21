@@ -38,9 +38,32 @@ env:
   VERILATOR_VERSION: v5.050
 
 jobs:
+  diff-class:
+    runs-on: ubuntu-latest
+    outputs:
+      run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify the diff
+        id: diff-class
+        run: |
+          case "${{ github.event_name }}" in
+            pull_request|push)
+              python3 scripts/ci/diff_class.py --github-output >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
   verilator-smoke:
-    # Explicit name so adding the tool matrix axis keeps the pre-existing PR
-    # check name `verilator-smoke (dtp)` stable, and nightly runs are labeled.
+    # Explicit name keeps the main-protection contexts
+    # `verilator-smoke (dtp)` / `verilator-smoke (sep)` stable if the matrix
+    # gains another axis, while nightly runs remain visibly labeled.
     # (The env context is unavailable here, so the tier expression is inlined.)
     name: verilator-smoke (${{ matrix.dut }})${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && ' nightly' || '' }}
     # Per-DUT runner size (matrix.runner). DTP stays on the 4-vCPU standard
@@ -48,6 +71,7 @@ jobs:
     # crypto) and gets a 16-vCPU larger runner, which --build-jobs "$(nproc)"
     # picks up automatically.
     runs-on: ${{ matrix.runner }}
+    needs: [diff-class]
     # The nightly tier gets headroom for a Verilator cache miss (from-source
     # build) plus ~450 scheduler leaves at --sim-jobs 4 in the same budget.
     timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 90 || 60 }}
@@ -114,19 +138,30 @@ jobs:
       # make consecutive nightly points replace each other whenever main has
       # not moved. (env cannot reference env, hence the inlined tier.)
       RUN_DIR: build/ci/runs/${{ matrix.dut }}/${{ matrix.tool }}/${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 'nightly' || 'smoke' }}/${{ github.run_id }}
+      # Required check names (verilator-smoke (dtp/sep)) must still report,
+      # so this job always runs; RUN_HARDWARE_CI=false skips the sim work.
+      RUN_HARDWARE_CI: ${{ needs.diff-class.outputs.run_hardware_ci }}
     steps:
+      - name: Skip documentation-only changes
+        if: env.RUN_HARDWARE_CI != 'true'
+        run: echo "Documentation-only diff; Verilator smoke is not run."
+
       - name: Checkout
+        if: env.RUN_HARDWARE_CI == 'true'
         uses: actions/checkout@v4
 
       - name: Install uv
+        if: env.RUN_HARDWARE_CI == 'true'
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
 
       - name: Install bender
+        if: env.RUN_HARDWARE_CI == 'true'
         uses: pulp-platform/pulp-actions/bender-install@v2.5.1
 
       - name: Cache Verilator
+        if: env.RUN_HARDWARE_CI == 'true'
         id: cache-verilator
         uses: actions/cache@v4
         with:
@@ -134,7 +169,7 @@ jobs:
           key: verilator-${{ env.VERILATOR_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
       - name: Build Verilator
-        if: steps.cache-verilator.outputs.cache-hit != 'true'
+        if: env.RUN_HARDWARE_CI == 'true' && steps.cache-verilator.outputs.cache-hit != 'true'
         timeout-minutes: 30
         run: |
           # Acquire options: the hosted-runner mirror list falls back from
@@ -156,6 +191,7 @@ jobs:
           make install
 
       - name: Add Verilator to PATH
+        if: env.RUN_HARDWARE_CI == 'true'
         timeout-minutes: 10
         run: |
           echo "$HOME/verilator/bin" >> "$GITHUB_PATH"
@@ -176,6 +212,7 @@ jobs:
             install -y --no-install-recommends libfl2 ccache
 
       - name: Check environment
+        if: env.RUN_HARDWARE_CI == 'true'
         run: |
           verilator --version
           python3 tools/dv/run_dv.py --validate-configs
@@ -187,6 +224,7 @@ jobs:
       # hosted runner. The explicit --run-dir keeps every tier's tree separate
       # and means run_dv.py never creates a `latest` symlink.
       - name: Run DV tests
+        if: env.RUN_HARDWARE_CI == 'true'
         run: |
           if [ "$TIER" = "nightly" ]; then
             items=${{ matrix.nightly_items }}
@@ -216,6 +254,7 @@ jobs:
       # gate is defense-in-depth so the job can never go green without a
       # native schema-v1 PASS record matching this exact invocation.
       - name: Gate on native result
+        if: env.RUN_HARDWARE_CI == 'true'
         run: |
           jq -e --arg flow "${{ matrix.dut }}" --arg tool "${{ matrix.tool }}" \
             '.schema_version == 1 and .flow == $flow and .tool == $tool and .status == "PASS"' \
@@ -224,7 +263,7 @@ jobs:
       # Logs and result.json for every test in the run; result.json is the
       # schema-v1 record that tools/dv/run_dashboard.py collect consumes.
       - name: Upload run artifacts
-        if: always()
+        if: always() && env.RUN_HARDWARE_CI == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: dv-run-${{ matrix.dut }}-${{ matrix.tool }}-${{ env.TIER }}

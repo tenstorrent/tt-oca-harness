@@ -2,11 +2,12 @@
 """Self-contained Keccak / SHA-3 / SHAKE / cSHAKE / KMAC golden (FIPS-202 +
 SP800-185) for the standalone KMAC mode-breadth test (AES mode/key-size breadth... KMAC mode/strength breadth).
 
-Pure Python (no third-party crypto dependency, per AGENTS.md §2). A raw
+Pure Python, with no third-party crypto dependency so the environment stays
+self-contained. A raw
 Keccak-f[1600] sponge implements the whole family; SHA-3 and SHAKE are ALSO
 cross-checked against the Python stdlib (`hashlib.sha3_*`/`shake_*`) at import, so
 a transcription error in the permutation, padding, or rate fails loudly here
-rather than silently agreeing with a broken DUT (AGENTS.md §7). cSHAKE and KMAC
+rather than silently agreeing with a broken DUT. cSHAKE and KMAC
 (not in hashlib) are validated against the NIST SP800-185 sample vectors.
 
 Register byte/word convention (OpenTitan KMAC little-endian defaults,

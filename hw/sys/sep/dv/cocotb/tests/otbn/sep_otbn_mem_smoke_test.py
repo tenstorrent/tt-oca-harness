@@ -11,6 +11,11 @@ import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_otbn_mem_smoke_seq import sep_otbn_mem_smoke_seq
 
+# One 32-bit write + one 32-bit readback per memory, as issued by
+# sep_otbn_mem_smoke_seq.body().
+EXP_IMEM_REQS, EXP_IMEM_WRITES = 2, 1
+EXP_DMEM_REQS, EXP_DMEM_WRITES = 2, 1
+
 
 @pyuvm.test()
 class sep_otbn_mem_smoke_test(sep_base_test):
@@ -23,14 +28,29 @@ class sep_otbn_mem_smoke_test(sep_base_test):
         await self.start_seq(seq)
         await ClockCycles(dut.clk_i, 20)
 
+        imem_reqs = self.rd(dut.otbn_imem_req_count_o)
         imem_writes = self.rd(dut.otbn_imem_write_count_o)
+        dmem_reqs = self.rd(dut.otbn_dmem_req_count_o)
         dmem_writes = self.rd(dut.otbn_dmem_write_count_o)
         self.logger.info(
             "OTBN memory counters: imem=%d/%d dmem=%d/%d",
-            self.rd(dut.otbn_imem_req_count_o),
+            imem_reqs,
             imem_writes,
-            self.rd(dut.otbn_dmem_req_count_o),
+            dmem_reqs,
             dmem_writes,
         )
-        assert imem_writes > 0, "OTBN IMEM responder saw no writes"
-        assert dmem_writes > 0, "OTBN DMEM responder saw no writes"
+        # Exact counts, derived from the stimulus the sequence issues: one 32-bit
+        # write plus one 32-bit readback per memory => 2 SRAM requests of which 1
+        # is a write. Asserting `> 0` instead would pass on any access pattern,
+        # including the 64-bit beat that splits one access into extra word
+        # requests and is rejected by these SECDED memories. The STATUS poll in
+        # the sequence targets the OTBN register map, not IMEM/DMEM, so it does
+        # not contribute to these counters.
+        assert (imem_reqs, imem_writes) == (EXP_IMEM_REQS, EXP_IMEM_WRITES), (
+            f"OTBN IMEM SRAM requests {imem_reqs}/{imem_writes} != "
+            f"expected {EXP_IMEM_REQS}/{EXP_IMEM_WRITES} (req/write)"
+        )
+        assert (dmem_reqs, dmem_writes) == (EXP_DMEM_REQS, EXP_DMEM_WRITES), (
+            f"OTBN DMEM SRAM requests {dmem_reqs}/{dmem_writes} != "
+            f"expected {EXP_DMEM_REQS}/{EXP_DMEM_WRITES} (req/write)"
+        )

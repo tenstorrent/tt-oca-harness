@@ -7,7 +7,7 @@ handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
 lsio_trigger, which refills the TX FIFO from SRAM a 16-byte chunk at a time. RX is
 held quiescent so the single lsio_trigger (= tx_wm | rx_wm) is TX-watermark-driven.
 
-COVERED_STRONGER vs the OCAH spi_ot_dma_tx_test (raw-byte stream, done+no-error
+COVERED_STRONGER vs the reference spi_ot_dma_tx_test (raw-byte stream, done+no-error
 only): the DMA feeds a REAL flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr +
 data) from SRAM; the firmware then reads the flash back over SPI and value-checks
 it; and an independent cocotb BFM golden confirms the flash memory == the SRAM
@@ -25,7 +25,7 @@ Checks:
     CHK-TRIGGER   : the TX-watermark source of lsio_trigger (STATUS.TXWM) tracks
                     TXQD across TX_WATERMARK (empty->1, fill->0, SW_RST drain->1,
                     values logged); EVENT_ENABLE.TXWM + DMA HANDSHAKE_INTR_ENABLE
-                    are live (port of OCAH spi_ot_dma_trigger_test). The transfer
+                    are live (port of reference spi_ot_dma_trigger_test). The transfer
                     spans >=2 chunks so the refill loop iterates dynamically.
     CHK-DMA-DONE  : DMA STATUS.done, error==0, ERROR_CODE==0, STATUS RW1C clears.
     CHK-SPI-IDLE  : OT SPI reaches idle, ERROR_STATUS==0.

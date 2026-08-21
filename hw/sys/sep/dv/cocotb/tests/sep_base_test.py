@@ -640,7 +640,7 @@ class sep_base_test(uvm_test):
         Shared by every entropy-consumer test: starts the golden-vs-probe
         scoreboard (which drives the deterministic ESRC noise so the ring
         oscillators are alive under Verilator), proves the noise force took, then
-        runs the OCAH bring-up order (configure ESRC generators-off, enable CSRNG,
+        runs the reference suite bring-up order (configure ESRC generators-off, enable CSRNG,
         stage EDN, enable generators, wait for a seed, enable EDN). The caller does
         the consumer-specific steps afterwards (fork the FIFO drain, wait_genbits,
         release/boot its consumer). ``cfg`` defaults to ``SepEntropyCfg()``.

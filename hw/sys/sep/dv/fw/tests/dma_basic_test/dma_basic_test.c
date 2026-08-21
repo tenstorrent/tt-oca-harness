@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP Secure-DMA basic-breadth firmware test (OSS rep DMA basic breadth). OCAH provenance:
+// SEP Secure-DMA basic-breadth firmware test (OSS rep DMA basic breadth). reference provenance:
 // uvm_tests/dma sep_dma_uvm_reg_rw / reg_reset / cfg_regwen / range_regwen /
 // addr_fixed / addr_wrap / addr_combo / mem_copy(width sweep) / err_opcode.
 //
@@ -13,7 +13,7 @@
 //
 // main() returns the error count; start.S turns 0 -> PASS magic / non-zero ->
 // FAIL magic on the 0x8000_0000 mailbox. Every checker logs a positive PASS line
-// so the kept log is auditable (absence of FAIL is not evidence, AGENTS.md §7/§9).
+// so the kept log is auditable (absence of FAIL is not evidence).
 //
 // Checks:
 //   CHK-RESET      : DMA config registers read their documented reset values.
@@ -30,7 +30,6 @@
 //   CHK-DONE-RW1C  : STATUS.done observed -> W1C -> reads back 0 (polled status).
 //   CHK-ERR-OPCODE : invalid opcode 0xF -> ERROR_CODE.opcode_error + STATUS.error;
 //                    W1C clear; a subsequent good copy recovers.
-//   CHK-NONVAC     : firmware error count 0 + boot scoreboard PASS banner.
 
 #include <stdint.h>
 
@@ -267,6 +266,15 @@ static int chk_range_regwen(void) {
     wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C); // clear the error
 
     // (b) Program a full valid range, then lock it via RANGE_REGWEN rw0c.
+    // Positive control first: write a NON-reset value and prove it lands. Otherwise the
+    // post-lock "still reads the old value" check below is satisfied identically by a
+    // working REGWEN, a read-only register and a missing decode -- the pre-lock write
+    // used to be 0x0, which is also this register's reset value.
+    wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00001000u);
+    if (rd(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR) != 0x00001000u) {
+        sep_mbx_puts("FAIL: CHK-RANGE-REGWEN RANGE_BASE not writable before lock\n");
+        return 1;
+    }
     wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0u);
     wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
     wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
@@ -406,6 +414,19 @@ static int chk_width(void) {
         uint32_t st = dma_run(SRC_BASE, DST_BASE, bytes, bytes, widths[w],
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+        // Read the width back. Without this the three iterations are indistinguishable:
+        // 16 bytes is a whole multiple of 1, 2 and 4, so a TRANSFER_WIDTH that ignored
+        // writes and stayed at its 0x2 reset produced a byte-identical copy all three
+        // times and the check could not tell 1B from 4B.
+        uint32_t wr_rb = rd(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR) & 0x3u;
+        if (wr_rb != widths[w]) {
+            sep_mbx_puts("FAIL: CHK-WIDTH TRANSFER_WIDTH readback ");
+            sep_mbx_puthex(wr_rb);
+            sep_mbx_puts(" != written ");
+            sep_mbx_puthex(widths[w]);
+            sep_mbx_putc('\n');
+            e++;
+        }
         int bad = (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm));
         for (uint32_t i = 0; i < bytes && !bad; i++) {
             if (db[i] != sb[i]) bad = 1;
@@ -421,7 +442,7 @@ static int chk_width(void) {
         wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     }
     if (!e) {
-        sep_mbx_puts("CHK-WIDTH PASS: 1B/2B/4B transfer-width copies byte-exact\n");
+        sep_mbx_puts("CHK-WIDTH PASS: TRANSFER_WIDTH 1B/2B/4B each read back as written, copies byte-exact\n");
     }
     return e;
 }
@@ -463,7 +484,7 @@ static int chk_err_opcode(void) {
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_INVALID);
     uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     // Exclusive: ONLY opcode_error must be set (no other ERROR_CODE bit), matching
-    // the OCAH err_opcode error-exclusivity check.
+    // the reference suite err_opcode error-exclusivity check.
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__OPCODE_ERROR_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-OPCODE invalid opcode did not set opcode_error "
                      "exclusively (status ");

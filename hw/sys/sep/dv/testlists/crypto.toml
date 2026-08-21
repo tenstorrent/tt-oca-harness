@@ -27,6 +27,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
 
 [[tests]]
+# CHK4 Generate segmentation at glen=4. BOOT_GEN_CMD resets to glen=4095 and is
+# what BOOT_REQ issues; GENERATE_CMD alone never completes a command. This entry
+# programs both from SepEntropyCfg(glen=4, program_boot_generate=True). Leave
+# the other entropy tests' boot-generate length alone -- their CHK4 budgets
+# assume one open command.
+name = "sep_drbg_gen_segmentation_test"
+module = "crypto.sep_drbg_gen_segmentation_test"
+seed = 1
+timeout_sec = 1800
+tags = ["drbg", "entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
+
+[[tests]]
 name = "sep_hmac_kmac_cpu_crypto_smoke_test"
 module = "cpu.sep_hmac_kmac_cpu_crypto_smoke_test"
 firmware = "hmac_kmac_smoke_test"
@@ -79,13 +94,13 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# DRBG real-sink multi-consumer KM + AES concurrent (OCAH P3.7 / TOP-20 #15, edge
+# DRBG real-sink multi-consumer KM + AES concurrent (the reference suite P3.7 / TOP-20 #15, edge
 # E2 multi-rand): one real DRBG/EDN stream feeds two real sinks at once -- KM AXIS
 # (rom_main + interleaved CMD_KEY_GENERATE DRBG pulls) and AES native crypto-EDN
 # (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
 # shared DRBG is correct; CHK5_km + CHK5_aes observed (>=1 beat each) prove
 # concurrent multi-sink consumption. Per-sink bit-exact (which word to which sink)
-# is the documented delta (needs the OCAH AXIS1 pre-adapter tap + arbiter trace,
+# is the documented delta (needs the reference suite AXIS1 pre-adapter tap + arbiter trace,
 # not built; sep_drbg_scoreboard raises NotImplementedError for crypto golden).
 # no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
 # oscillators under Verilator. rom_main.rom.parhex from tracked source.

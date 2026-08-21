@@ -4,7 +4,7 @@
 no_cpu host-AXI test of the SEP axil_mailbox MECHANICS over the CPU-LSU master,
 on the outbound_mailbox_0 aperture (0x10A0_0000) -- the SEP/CPU side of the
 two-port cross-FIFO, reachable with NO inbound filter. This is the TX-path test,
-matching OCAH's "CPU not running -> RX FIFO always empty; verify the TX path"
+matching the reference suite's "CPU not running -> RX FIFO always empty; verify the TX path"
 intent. Distinct from the outbound->PIC->CPU delivery path
 (sep_mailbox_plic_test).
 
@@ -14,9 +14,8 @@ predicts the visible STATUS bits + the write-threshold IRQ from the TX occupancy
 (STATUS has no exact-depth field). Thresholds compare with strict > (RTL). Seed is
 logged; regression mode can sweep this via TOML ``reseed = N``.
 
-OCAH refs: fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test,
-sep_fabric_mailbox_fifo_closure_test
-@ 9ec8f9f4b. Mapping: MERGED_INTO (one rep subsumes the TX FIFO/IRQ/error/flush family).
+reference refs: fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test,
+sep_fabric_mailbox_fifo_closure_test. Mapping: MERGED_INTO (one rep subsumes the TX FIFO/IRQ/error/flush family).
 RUN-MODE: no_cpu (CPU-LSU master). FUSE-MODE: +skip_fuse_sense (the local mailbox has
 no OTP/LC dependency).
 
@@ -24,7 +23,7 @@ ACCEPTED DELTAS: (1) data round-trip readback and (2) read-threshold (RIRQT) nee
 RX FIFO filled from the peer side. A clean VCS repro proved the external smn_inbound
 frontdoor can fill inbound_mailbox_0 at 0x10A0_0800 and the CPU-LSU side can pop that
 value from outbound_mailbox_0. This rep intentionally stays TX-focused because the
-OCAH mailbox data test it ports is TX-focused; the external-inbound closure belongs
+reference suite mailbox data test it ports is TX-focused; the external-inbound closure belongs
 in a separate fabric/mailbox peer-path testcase if we keep it permanently.
 """
 
@@ -77,7 +76,9 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         await self._chk_64b_status_threshold()
         await self._chk_write_full_error()
         await self._chk_flush()
-        self.logger.info("CHK-ALL PASS: axil_mailbox TX 64b + STATUS + WIRQT + error + flush")
+        # No CHK-ALL summary: it asserted nothing, and every facet above already
+        # logs its own PASS line. A plan row keyed on a bare summary string would
+        # record coverage with no checker behind it.
 
     async def _chk_read_empty_error(self) -> None:
         """CHK-ERR-RD: READ_DATA on the empty RX FIFO -> 0xFEEDDEAD + SLVERR +
@@ -115,12 +116,22 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         # with RANDOM 64-bit payloads. STATUS tracks the golden TX depth after each push.
         for i in range(self.cfg_mb.first_batch):
             assert await self.mb.push64(self.cfg_mb.payloads[i]) == RESP_OKAY
-            assert self.gold.push()
+            # Advance the model. Not asserted: gold.push() only returns False when the
+            # model is already full, which a range(first_batch < depth) loop cannot
+            # reach, so asserting it tests the model's arithmetic rather than the DUT.
+            # _check_status below is what compares the model against the DUT.
+            self.gold.push()
             await self._check_status("push64")
         # CHK-WIRQT: tx = first_batch > WIRQT -> wtirq set; IRQP gated by IRQEN; level-held.
         irqs = await self.mb.rd_csr(IRQS)
-        assert (irqs & IRQ_WTIRQ) and self.gold.wtirq(), (
-            f"IRQS.wtirq not set at tx={self.gold.tx}>wirqt={self.gold.wirqt} (0x{irqs:08x})"
+        # DUT vs model, not DUT and model. `self.gold.wtirq()` is tx > wirqt, and the
+        # config draws first_batch from randint(wirqt+1, depth), so that conjunct was
+        # always True -- a dead term whose failure message blamed the DUT. As an
+        # equality it also covers the below-threshold direction.
+        assert bool(irqs & IRQ_WTIRQ) == self.gold.wtirq(), (
+            f"IRQS.wtirq={bool(irqs & IRQ_WTIRQ)} but golden expects "
+            f"{self.gold.wtirq()} at tx={self.gold.tx} wirqt={self.gold.wirqt} "
+            f"(IRQS=0x{irqs:08x})"
         )
         irqp = await self.mb.rd_csr(IRQP)
         assert irqp & IRQ_WTIRQ, f"IRQP.wtirq not gated-set by IRQEN+IRQS (0x{irqp:08x})"
@@ -134,7 +145,7 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         # Phase 2 -- top up to full.
         for i in range(self.cfg_mb.first_batch, self.cfg_mb.depth):
             assert await self.mb.push64(self.cfg_mb.payloads[i]) == RESP_OKAY
-            assert self.gold.push()
+            self.gold.push()
             await self._check_status("push64-fill")
         st = await self.mb.rd_csr(STATUS)
         assert st & ST_FULL, f"TX FIFO not full after {self.cfg_mb.depth} pushes (STATUS=0x{st:08x})"
@@ -142,15 +153,15 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             "CHK-64B PASS: %d native 64-bit WRITE_DATA pushes (random data, first batch=%d) "
             "-> exactly full (1 entry/beat)", self.cfg_mb.depth, self.cfg_mb.first_batch,
         )
-        self.logger.info("CHK-STATUS PASS: full/write_level_above tracked golden TX depth")
+        # No separate CHK-STATUS line: the STATUS comparison is _check_status, called
+        # after every push above, and a bare summary log with no assert behind it reads
+        # as a checker in a plan while enforcing nothing.
 
     async def _chk_write_full_error(self) -> None:
         """CHK-ERR-WR: a push to the full TX FIFO -> SLVERR +
         ERROR_FLAGS.write_error + IRQS.eirq W1C."""
-        assert self.gold.tx == self.cfg_mb.depth, "test bug: TX not full before write-full check"
         resp = await self.mb.push64(self.cfg_mb.payloads[self.cfg_mb.depth], expect_error=True)
         assert resp == RESP_SLVERR, f"write-to-full resp={resp}, expected SLVERR"
-        assert not self.gold.push()                          # golden: push on full fails
         err = await self.mb.rd_csr(ERROR_FLAGS)
         assert err & ERR_WRITE, f"ERROR_FLAGS.write_error not set after write-full (0x{err:08x})"
         self.logger.info("CHK-ERR-WR PASS: write-to-full -> SLVERR + ERROR_FLAGS.write_error")

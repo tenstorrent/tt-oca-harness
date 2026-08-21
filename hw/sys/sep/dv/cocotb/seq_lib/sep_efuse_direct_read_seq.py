@@ -6,7 +6,7 @@ read_done -> EFUSE_READ_INTERFACE_READ_DATA.dout), BYPASSING the sense->shadow
 datapath. This is distinct from ``sep_efuse_shadow_check_seq`` (which reads the
 sensed shadow registers): a direct read proves a value is in persistent OTP
 independent of any resense. Enforces the clear-after-read discipline (drop
-read_enable when done), mirroring the program path's #3908 clear-after-program
+read_enable when done), mirroring the program path's clear-after-program
 rule (leaving an enable asserted starves the shared efuse command channel).
 
 Result word is left in ``self.rdata`` for the caller to check.
@@ -76,7 +76,7 @@ class sep_efuse_direct_read_seq(uvm_sequence):
                     f"{self.word_index}"
                 )
                 self.rdata = await self._access(SepAxiOp.READ, _EFUSE_READ_DATA, label="read_data")
-                # Clear read_enable before returning (clear-after-read; #3908 discipline).
+                # Clear read_enable before returning (clear-after-read discipline).
                 await self._access(SepAxiOp.WRITE, _EFUSE_READ_CTRL, data=0, label="read_ctrl_clear")
                 return
         raise AssertionError(

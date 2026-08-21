@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP eFuse -> Lifecycle-Controller lc_state stitch test (OSS).
 
-OSS port of the OCAH UVM ``sep_efuse_lcc_lc_state_stitch_test``. Walks the
+OSS port of the reference UVM ``sep_efuse_lcc_lc_state_stitch_test``. Walks the
 lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD -> RMA_SIP_1 ->
 RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is stitched into
 the lifecycle controller and decoded into the right feature-control vector
@@ -22,10 +22,14 @@ W1S-monotonic / valid-transition rules (the test-level mirror of the RTL SVA
 state checker); the fixed monotonic chain covers the SVA forward-only and
 terminal-stability properties implicitly.
 
-Scope vs the OCAH reference: differential-decode integrity (``lc_sigint_err``)
-is not checked directly -- that port is internal to ``sep`` and unreachable from
-cocotb.top -- but it is covered indirectly, since a spurious sigint forces
-``feat_ctrl`` to 0 and the exact feat_ctrl check would flag the mismatch.
+Scope: differential-decode integrity (``lc_sigint_err``) is NOT covered, and the
+earlier claim here that it was "covered indirectly" was an overclaim. It is now
+observed via ``lcc_sigint_err_probe_o`` and asserted to stay 0, but that is a health
+guard, not a test of the fault path: the runs establish that the sense FSM regenerates
+the ``{~raw, raw}`` pair from the raw nibble in OTP, so no staged image can present a
+broken pair to the decode. The golden's ``sigint_err`` branch and the specification's
+INVALID row therefore have no frontdoor stimulus in this environment. Proving the run
+did not trip a fault is not the same as proving the fault detection works.
 """
 
 from __future__ import annotations
@@ -40,7 +44,7 @@ from cocotb.triggers import ClockCycles
 
 from sep_base_test import sep_base_test
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from env.sep_efuse_image import SepEfuseImage
+from env.sep_efuse_image import SepEfuseImage, LC_WORD_IDX
 from env.sep_lcc_golden import (
     LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1,
     is_legal_lc, is_valid_lc_transition, lc_state_name,
@@ -49,7 +53,7 @@ from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# Monotonic lifecycle chain exercised (matches the OCAH test's PROD/RMA walk).
+# Monotonic lifecycle chain exercised (matches the reference test's PROD/RMA walk).
 _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
 
 # Distinct, non-zero disable vectors so each decoded FEAT_CTRL is a different,
@@ -58,8 +62,12 @@ _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
 _SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
-_EFUSE_CTRL_BASE = _SHADOW_BASE + 0x400
-_EFUSE_MMR_BASE = _SHADOW_BASE + 0x500
+# Block bases from the generated map. These are separate register blocks, not offsets
+# within the shadow map, so deriving them as _SHADOW_BASE + 0x400 / + 0x500 was a
+# hand-copied adjacency that happens to hold today -- the same defect class as the
+# field offsets above, one level up.
+_EFUSE_CTRL_BASE = sym("EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")
+_EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
 _EFUSE_PROGRAM_CTRL = _EFUSE_CTRL_BASE + 0x4
 _RMA_SIP_TOKEN_I = _EFUSE_MMR_BASE + 0x00
 _RMA_CHIPLET_TOKEN_I = _EFUSE_MMR_BASE + 0x20
@@ -68,9 +76,12 @@ _RMA_SIP_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x64
 _RMA_CHIPLET_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x68
 _TOKEN_MATCH = 0x15
 
-_RMA_SIP_TOKEN_DIGEST = _SHADOW_BASE + 0x024
-_RMA_CHIPLET_TOKEN_DIGEST = _SHADOW_BASE + 0x044
-_LC_STATE_BIT_BASE = 2 * 32
+_RMA_SIP_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR")
+_RMA_CHIPLET_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR")
+# sep_pkg::LC_STATE_BIT_POSITION -- efuse_guard gates program addresses BASE+1
+# (RMA_SIP token) and BASE+2 (RMA_CHIPLET token) on a token match. Derived, because
+# the literal 64 silently addressed LOCKS_SPARE once LC_STATE moved to word 3.
+_LC_STATE_BIT_BASE = LC_WORD_IDX * 32
 
 _TOKEN_RMA_SIP = 0
 _TOKEN_RMA_CHIPLET = 1
@@ -221,17 +232,6 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
     """Stitch eFuse lc_state through the LCC and verify decoded FEAT_CTRL."""
 
-    def _read_signal(self, name: str) -> int | None:
-        """Best-effort read of an observable top-level DUT signal (None if the
-        port is not exposed on cocotb.top or resolves to X)."""
-        sig = getattr(cocotb.top, name, None)
-        if sig is None:
-            return None
-        try:
-            return int(sig.value)
-        except Exception:
-            return None
-
     async def _sense_initial_state(self, image: SepEfuseImage, raw: int) -> None:
         image.set_lc_state(raw)
         self.write_efuse_image(image)
@@ -271,26 +271,57 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         prev_raw: int | None = None
 
         for i, raw in enumerate(_LC_CHAIN):
+            # Guards the stimulus table itself; the DUT-side legality check is below.
             assert is_legal_lc(raw), f"test bug: illegal LC code 0x{raw:x}"
             if i == 0:
                 await self._sense_initial_state(image, raw)
             else:
                 await self._program_state_and_resense(image, raw)
 
-            # Test-level mirror of the SVA state checker on the observed walk.
-            if prev_raw is not None:
-                assert is_valid_lc_transition(prev_raw, raw), (
-                    f"illegal LC transition {lc_state_name(prev_raw)} -> "
-                    f"{lc_state_name(raw)}"
-                )
+            # sec_dis is now OBSERVED, not assumed. security_disable_o used to be left
+            # open on the sep instance, so every checker here passed a literal 0 and a
+            # comment explaining that reading it would return 0 unconditionally. It is
+            # brought out as lcc_security_disable_probe_o, so the golden is fed the
+            # value the DUT actually presents.
+            sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
 
-            # security_disable feeds the golden; default 0 if the port is not
-            # exposed (a wrong value is still caught by the exact feat_ctrl check,
-            # which would otherwise expect the all-ones sec_dis override).
-            sec_dis = self._read_signal("security_disable_o") or 0
+            # The differential-decode fault status, likewise observed rather than
+            # inferred. No stimulus in this environment can present a BROKEN {~raw, raw}
+            # pair -- the sense FSM regenerates the pair from the raw nibble, so a staged
+            # image cannot produce one -- which means lc_sigint_err has no positive
+            # coverage here and the golden's sigint branch is unreachable from the
+            # frontdoor. Asserting it stays 0 is therefore NOT a test of the fault path;
+            # it is a guard that the decode is healthy while the checks below run, and it
+            # is what lets those checks attribute a feat_ctrl mismatch to the decode
+            # rather than to a silent sigint. The plan records the gap.
+            sigint = int(cocotb.top.lcc_sigint_err_probe_o.value) & 0x1
+            assert sigint == 0, (
+                f"lc_sigint_err is set at LC=0x{raw:x}: the differential LC decode "
+                f"reported a fault, so every feat_ctrl expectation below is void"
+            )
             seq = sep_lcc_stitch_check_seq(image, secure_tm=0, sec_dis=sec_dis)
             await self.start_seq(seq)
-            prev_raw = raw
+
+            # Legality and transition rules are applied to the code the DUT
+            # returned over the frontdoor, not to the _LC_CHAIN literal we
+            # programmed. Checking the literal would compare two test-side
+            # constants and could never fail, whatever the DUT did.
+            observed = seq.observed_lc_raw
+            assert observed is not None, "sequence did not publish an observed LC code"
+            assert is_legal_lc(observed), (
+                f"DUT returned an illegal LC code 0x{observed:x} "
+                f"(programmed {lc_state_name(raw)})"
+            )
+            if prev_raw is not None:
+                assert is_valid_lc_transition(prev_raw, observed), (
+                    f"illegal LC transition {lc_state_name(prev_raw)} -> "
+                    f"{lc_state_name(observed)} (as observed on the DUT)"
+                )
+            self.logger.info(
+                "[lcc] observed LC code 0x%x (%s) after programming %s",
+                observed, lc_state_name(observed), lc_state_name(raw),
+            )
+            prev_raw = observed
 
         assert self._total_program_retries >= 1, (
             "OTP-program retry path never exercised: no program failures were "

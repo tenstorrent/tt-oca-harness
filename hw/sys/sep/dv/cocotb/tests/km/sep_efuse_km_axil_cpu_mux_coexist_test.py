@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP dual-CPU eFuse AXI-lite mux coexistence test (PyUVM).
 
-OSS port of the OCAH TEST 10.3 ``sep_efuse_km_axil_cpu_mux_coexist_test`` (#2936).
+OSS port of the reference-suite TEST 10.3 ``sep_efuse_km_axil_cpu_mux_coexist_test``.
 Two REAL CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
 
   * the VeeR EL2 host boots ``km_efuse_coexist`` firmware: it senses CHIPLET_UID,
@@ -11,17 +11,17 @@ Two REAL CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
   * the KM PicoRV32 boots ``km_rom_coexist`` (the ``+km_rom_hex`` image) and
     free-runs eFuse MMR writes through the same mux.
 
-This test reproduces BOTH OCAH verdicts:
+This test reproduces BOTH reference suite verdicts:
   1. the EL2 firmware self-check (``fw_pass`` via the PASS/FAIL magic + banner,
      gated by ``SepBootScoreboard``); and
   2. an independent passive observer that backdoor-reads the SEP scratch-cold
-     registers (the EL2 publishes its measured summary there), mirroring the OCAH
+     registers (the EL2 publishes its measured summary there), mirroring the reference suite
      ``uvm_hdl_read`` observer. The scratch words are surfaced as the tb_top probe
      ``scratch_cold_probe_o`` (cocotb runs no AXI master while the EL2 owns the
      LSU bus). Plus the base test's automatic post-sense shadow compare proves the
      sensed CHIPLET_UID actually equals the staged image (0xDEADBEEF).
 
-OSS delta vs OCAH (documented): the OCAH observer deposits an UVM_DONE marker to
+OSS delta vs the reference suite (documented): the reference suite observer deposits an UVM_DONE marker to
 release a waiting host loop; cocotb cannot deposit an internal register without a
 force port, so the OSS host loop is a FIXED contended window and the observer is
 read-only. Mutual non-starvation is proven by the host completing all
@@ -126,7 +126,7 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
         )
 
         # Independent passive observer: read the EL2-published summary out of the
-        # scratch-cold probe and assert the OCAH coexistence verdict directly
+        # scratch-cold probe and assert the reference suite coexistence verdict directly
         # (not relying only on the firmware's PASS magic).
         probe = self.rd(cocotb.top.scratch_cold_probe_o)
         ready = self._scratch(probe, _SCRATCH_READY)
@@ -149,9 +149,12 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
             f"EL2 host did not complete the contended window "
             f"(COUNT={count} != {_CONTENDED_LOOPS}) -- possible starvation"
         )
-        assert changes > 0, (
-            "KM made no measured progress through the mux (CHANGES=0) -- the KM "
-            "never reached the eFuse mux under contention"
+        # A floor, not just non-zero: a mux that starved the Key Manager down to a
+        # single write across 512 host iterations would otherwise pass. Half is well
+        # under the ~511 a healthy run records.
+        assert changes >= _CONTENDED_LOOPS // 2, (
+            f"KM progress starved: {changes} payload changes across "
+            f"{_CONTENDED_LOOPS} host iterations (expected >= {_CONTENDED_LOOPS // 2})"
         )
         assert bad_uid == 0, (
             f"{bad_uid} corrupted host CHIPLET_UID reads under KM contention"

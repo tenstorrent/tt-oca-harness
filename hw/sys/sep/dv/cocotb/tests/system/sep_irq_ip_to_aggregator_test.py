@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """IP-interrupt -> sep_internal_interrupts aggregator.
 
-OCAH ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivity_
+reference ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivity_
 test_seq). no_cpu: with the CPU held off, the host injects each CSRNG/EDN
 interrupt via its real INTR_TEST register and proves it propagates to the mapped
 bit of the sep_internal_interrupts aggregate vector that feeds the VeeR PIC --
@@ -11,11 +11,11 @@ the IP raised its own status bit.
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 (unreachable with the CPU held off), so the test observes it through the tb_top
 `sep_internal_interrupts_probe_o` (observation-only XMR mirror, signed off; the
-OSS analog of OCAH's sep_irq_probe_if wire-tap of sep_interrupts[idx]). The IP-
+OSS analog of the reference suite's sep_irq_probe_if wire-tap of sep_interrupts[idx]). The IP-
 local INTR_STATE RW1C contract is checked frontdoor over AXI.
 
-Per source (CSRNG cmd_req_done/entropy_req/hw_inst_exc/fatal_err -> bits 21..24;
-EDN cmd_req_done/fatal_err -> bits 25..26), the full OCAH 3-phase check:
+Per source (CSRNG cmd_req_done/entropy_req/hw_inst_exc/fatal_err -> bits 23..26;
+EDN cmd_req_done/fatal_err -> bits 27..28), the full reference suite 3-phase check:
   CHK-BASE  clear INTR_TEST + W1C INTR_STATE -> aggregate bit reads 0
             (non-vacuity: a stuck-high aggregate bit fails here).
   CHK-SET   INTR_ENABLE + INTR_TEST -> aggregate bit reads 1 AND INTR_STATE bit 1
@@ -23,9 +23,9 @@ EDN cmd_req_done/fatal_err -> bits 25..26), the full OCAH 3-phase check:
             low / mis-wired aggregate bit fails here.
   CHK-ISO   while this source is asserted, the OTHER 5 mapped bits stay 0
             (one-hot aggregation -- catches an OR-network smear; stronger than
-            OCAH, which checks one source at a time).
+            reference suite, which checks one source at a time).
   CHK-CLR   W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0
-            (RW1C deassert path, per AGENTS.md §7).
+            (RW1C deassert path).
 
 INTR_TEST sets INTR_STATE regardless of IP functional state, so no entropy bring-
 up is needed: +skip_fuse_sense, no_cpu.
@@ -72,15 +72,23 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             # low (a stuck-high bit would fail here -> the SET check is non-vacuous).
             await self.irq.stop_inject(src)
             await self.irq.clear_state(src)
-            base_ok, _ = await self._poll_agg(src.agg_idx, 0)
+            base_ok, base_vec = await self._poll_agg(src.agg_idx, 0)
             assert base_ok, (
                 f"{src.name}: sep_internal_interrupts[{src.agg_idx}] not low at baseline"
+            )
+            self.logger.info(
+                "STEP %s: INTR_TEST + INTR_STATE pre-cleared; aggregate bit[%d] "
+                "baseline-low confirmed (vec=0x%08x)", src.name, src.agg_idx, base_vec,
             )
 
             # CHK-SET: enable then inject via INTR_TEST; the mapped aggregate bit must
             # go high and the IP's own INTR_STATE bit must set.
             await self.irq.enable(src)
             await self.irq.inject(src)
+            self.logger.info(
+                "STEP %s: interrupt enabled and INTR_TEST bit %d injected",
+                src.name, src.test_bit,
+            )
             set_ok, _ = await self._poll_agg(src.agg_idx, 1)
             assert set_ok, (
                 f"{src.name}: INTR_TEST did not propagate to "
@@ -117,7 +125,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             )
             self.logger.info(
                 "%s PASS: INTR_TEST -> sep_internal_interrupts[%d] 0->1->0 + "
-                "INTR_STATE RW1C + isolation", src.name, src.agg_idx)
+                "INTR_STATE RW1C + isolation (vec=0x%08x)",
+                src.name, src.agg_idx, iso)
 
         self.logger.info(
             "CHK-AGG PASS: all %d CSRNG/EDN IRQs propagate to the aggregator, "

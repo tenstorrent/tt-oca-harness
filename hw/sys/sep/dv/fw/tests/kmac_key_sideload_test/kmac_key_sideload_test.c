@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_015 — KMAC Key Sideload Mode Test (P1, GitHub #1301)
+ * TC_KMAC_015 — KMAC Key Sideload Mode Test (P1)
  *
  * Tests the CFG_SHADOWED.sideload register field and its functional effect:
  *

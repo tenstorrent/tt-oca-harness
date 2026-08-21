@@ -2,7 +2,7 @@
 //
 // Manifest format used by the ROM (manifest_t = 1184 bytes).
 // Adapted for this platform with
-// OCAH-specific address overrides (ICCM base, SPI window, flash offsets).
+// reference suite-specific address overrides (ICCM base, SPI window, flash offsets).
 
 #ifndef __MANIFEST_H_DEFINED__
 #define __MANIFEST_H_DEFINED__
@@ -25,7 +25,7 @@
 #define BACKUP_MANIFEST_OFFSET 0x41000
 
 // =========================================================================
-// OCAH address overrides for memory layout
+// reference suite address overrides for memory layout
 // =========================================================================
 // BL1 executes from SRAM.  IFU can fetch instructions from SRAM via
 // the AXI system bus (sep_cpu IFU demux → sep_local_axi_xbar → sram),
@@ -53,7 +53,7 @@
 #define SEP_DRAM_SIZE 0x00020000u // 128 KiB
 #endif
 
-// SPI flash direct-access window base (OCAH address map).
+// SPI flash direct-access window base (reference suite address map).
 #ifndef SEP_SPI_BASE
 #define SEP_SPI_BASE 0x30000000u
 #endif
@@ -286,7 +286,7 @@ static inline uint32_t check_bl1_image(const struct toc_entry *image) {
 }
 
 // =========================================================================
-// OCAH-specific error codes
+// reference suite-specific error codes
 // =========================================================================
 enum {
     MANIFEST_OK = 0u,
@@ -317,7 +317,7 @@ enum {
 };
 
 // =========================================================================
-// OCAH-specific API declarations
+// reference suite-specific API declarations
 // =========================================================================
 
 struct boot_straps;

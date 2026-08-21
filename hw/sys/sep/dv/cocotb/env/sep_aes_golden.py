@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Self-contained AES-256-ECB encryption golden for the KM->AES sideload KAT.
 
-Pure-Python (no third-party crypto dependency, per AGENTS.md §2 "self-contained")
+Pure-Python, with no third-party crypto dependency so the environment stays
+self-contained. A
 reference implementation of AES-256 block encryption, used to value-check the
 ciphertext the OpenTitan AES core produces. Derived independently from FIPS-197
-(the algorithm), NOT fitted to observed DUT output (AGENTS.md §7 value-agnostic
-trap): the module self-tests against the FIPS-197 Appendix C.3 AES-256 known
+(the algorithm), NOT fitted to observed DUT output — fitting a golden to what the
+DUT already produces is the value-agnostic trap: the module self-tests against the FIPS-197 Appendix C.3 AES-256 known
 vector at import, so a transcription error in the S-box / key schedule / round
 math fails loudly here rather than silently agreeing with a broken DUT.
 

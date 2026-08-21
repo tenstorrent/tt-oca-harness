@@ -42,16 +42,286 @@ def _safe_load_json(path: Path) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def _artifact_path(repo_root: Path, run_root: Path, value: Any) -> Path | None:
+def _recorded_run_root(
+    result: dict[str, Any],
+    regression: dict[str, Any] | None,
+) -> Path | None:
+    value = result.get("run_dir")
+    if not value and regression:
+        value = regression.get("run_dir") or regression.get("artifact_root")
+    if not isinstance(value, str) or not value:
+        return None
+    return Path(value).expanduser()
+
+
+def _relative_to_recorded_root(
+    repo_root: Path,
+    path: Path,
+    recorded_run_root: Path | None,
+) -> Path | None:
+    if recorded_run_root is None:
+        return None
+    absolute = path if path.is_absolute() else repo_root / path
+    recorded_absolute = (
+        recorded_run_root
+        if recorded_run_root.is_absolute()
+        else repo_root / recorded_run_root
+    )
+    try:
+        return absolute.relative_to(recorded_absolute)
+    except ValueError:
+        pass
+
+    path_parts = path.parts
+    recorded_parts = recorded_run_root.parts
+    if recorded_run_root.is_absolute() and not path.is_absolute():
+        # A repo-relative artifact can be paired with an absolute recorded run
+        # root. Match the longest recorded-root suffix at the path's start.
+        for index in range(len(recorded_parts)):
+            suffix = recorded_parts[index:]
+            if path_parts[:len(suffix)] == suffix:
+                return Path(*path_parts[len(suffix):])
+        return None
+    if recorded_run_root.is_absolute():
+        return None
+
+    # Absolute paths recorded on another worker still contain the repo-relative
+    # run root. Recover the suffix without depending on that worker's checkout.
+    width = len(recorded_parts)
+    for index in range(len(path_parts) - width, -1, -1):
+        if path_parts[index:index + width] == recorded_parts:
+            return Path(*path_parts[index + width:])
+    return None
+
+
+def _artifact_path(
+    repo_root: Path,
+    run_root: Path,
+    value: Any,
+    recorded_run_root: Path | None = None,
+) -> Path | None:
     if not isinstance(value, str) or not value:
         return None
     path = Path(value).expanduser()
+    relative = _relative_to_recorded_root(repo_root, path, recorded_run_root)
+    if relative is not None:
+        return run_root / relative
     if path.is_absolute():
         return path
     repo_candidate = repo_root / path
     if repo_candidate.exists():
         return repo_candidate
     return run_root / path
+
+
+def _artifact_text(
+    repo_root: Path,
+    run_root: Path,
+    value: Any,
+    recorded_run_root: Path | None,
+) -> str:
+    path = _artifact_path(repo_root, run_root, value, recorded_run_root)
+    return _repo_rel(repo_root, path) if path is not None else ""
+
+
+def _path_values(value: Any) -> list[str]:
+    if isinstance(value, str) and value:
+        return [value]
+    if isinstance(value, list):
+        return [entry for entry in value if isinstance(entry, str) and entry]
+    return []
+
+
+def _rebase_artifacts(
+    repo_root: Path,
+    run_root: Path,
+    artifacts: dict[str, Any],
+    recorded_run_root: Path | None,
+) -> dict[str, Any]:
+    rebased: dict[str, Any] = {}
+    for key, value in artifacts.items():
+        path_key = key in _PATH_ARTIFACT_KEYS or key.startswith("debug_")
+        if not path_key:
+            rebased[key] = value
+            continue
+        if isinstance(value, str):
+            rebased[key] = _artifact_text(
+                repo_root,
+                run_root,
+                value,
+                recorded_run_root,
+            )
+        elif isinstance(value, list):
+            rebased[key] = [
+                _artifact_text(
+                    repo_root,
+                    run_root,
+                    entry,
+                    recorded_run_root,
+                )
+                if isinstance(entry, str)
+                else entry
+                for entry in value
+            ]
+        else:
+            rebased[key] = value
+    return rebased
+
+
+def _rebase_parser(
+    repo_root: Path,
+    run_root: Path,
+    parser: Any,
+    recorded_run_root: Path | None,
+) -> Any:
+    if not isinstance(parser, dict):
+        return parser
+    rebased = dict(parser)
+    evidence_out = []
+    for evidence in parser.get("evidence") or []:
+        if not isinstance(evidence, dict):
+            evidence_out.append(evidence)
+            continue
+        entry = dict(evidence)
+        if entry.get("path"):
+            entry["path"] = _artifact_text(
+                repo_root,
+                run_root,
+                entry["path"],
+                recorded_run_root,
+            )
+        evidence_out.append(entry)
+    if "evidence" in parser:
+        rebased["evidence"] = evidence_out
+    return rebased
+
+
+def _rebase_failure_buckets(
+    repo_root: Path,
+    run_root: Path,
+    buckets: Any,
+    recorded_run_root: Path | None,
+) -> Any:
+    if not isinstance(buckets, list):
+        return buckets
+    rebased = []
+    for bucket in buckets:
+        if not isinstance(bucket, dict):
+            rebased.append(bucket)
+            continue
+        entry = dict(bucket)
+        if isinstance(entry.get("examples"), list):
+            entry["examples"] = _rebase_artifacts(
+                repo_root,
+                run_root,
+                {"examples": entry["examples"]},
+                recorded_run_root,
+            )["examples"]
+        rebased.append(entry)
+    return rebased
+
+
+def _rebase_result_record(
+    repo_root: Path,
+    run_root: Path,
+    record: dict[str, Any],
+    recorded_run_root: Path | None,
+) -> dict[str, Any]:
+    rebased = dict(record)
+    for key in ("log", "result_json"):
+        if rebased.get(key):
+            rebased[key] = _artifact_text(
+                repo_root,
+                run_root,
+                rebased[key],
+                recorded_run_root,
+            )
+    if isinstance(rebased.get("artifacts"), dict):
+        rebased["artifacts"] = _rebase_artifacts(
+            repo_root,
+            run_root,
+            rebased["artifacts"],
+            recorded_run_root,
+        )
+    if "parser" in rebased:
+        rebased["parser"] = _rebase_parser(
+            repo_root,
+            run_root,
+            rebased["parser"],
+            recorded_run_root,
+        )
+    if isinstance(rebased.get("failure_buckets"), list):
+        rebased["failure_buckets"] = _rebase_failure_buckets(
+            repo_root,
+            run_root,
+            rebased["failure_buckets"],
+            recorded_run_root,
+        )
+    for key in ("attempts",):
+        if isinstance(rebased.get(key), list):
+            rebased[key] = [
+                _rebase_result_record(
+                    repo_root,
+                    run_root,
+                    entry,
+                    recorded_run_root,
+                )
+                if isinstance(entry, dict)
+                else entry
+                for entry in rebased[key]
+            ]
+    if isinstance(rebased.get("wave_debug"), dict):
+        rebased["wave_debug"] = _rebase_result_record(
+            repo_root,
+            run_root,
+            rebased["wave_debug"],
+            recorded_run_root,
+        )
+    return rebased
+
+
+def _rebase_regression(
+    repo_root: Path,
+    run_root: Path,
+    regression: dict[str, Any],
+    recorded_run_root: Path | None,
+) -> dict[str, Any]:
+    rebased = dict(regression)
+    if isinstance(rebased.get("artifacts"), dict):
+        rebased["artifacts"] = _rebase_artifacts(
+            repo_root,
+            run_root,
+            rebased["artifacts"],
+            recorded_run_root,
+        )
+    if isinstance(rebased.get("coverage"), dict):
+        rebased["coverage"] = _rebase_artifacts(
+            repo_root,
+            run_root,
+            rebased["coverage"],
+            recorded_run_root,
+        )
+    if isinstance(rebased.get("failure_buckets"), list):
+        rebased["failure_buckets"] = _rebase_failure_buckets(
+            repo_root,
+            run_root,
+            rebased["failure_buckets"],
+            recorded_run_root,
+        )
+    for key in ("jobs", "failed_tests", "flaky_tests"):
+        if isinstance(rebased.get(key), list):
+            rebased[key] = [
+                _rebase_result_record(
+                    repo_root,
+                    run_root,
+                    entry,
+                    recorded_run_root,
+                )
+                if isinstance(entry, dict)
+                else entry
+                for entry in rebased[key]
+            ]
+    return rebased
 
 
 def _native_result_path(repo_root: Path, flow: Flow, run_dir: Path | None) -> Path | None:
@@ -118,6 +388,39 @@ _CATEGORY_PRIORITY = (
     "subsystem",
 )
 
+_PATH_ARTIFACT_KEYS = {
+    "coverage",
+    "coverage_design",
+    "coverage_details",
+    "coverage_details_raw",
+    "coverage_inputs",
+    "coverage_manifest",
+    "coverage_policy_application",
+    "coverage_report",
+    "coverage_summary",
+    "debug_result_json",
+    "env",
+    "examples",
+    "inputs",
+    "log",
+    "manifest",
+    "merged",
+    "policy_application",
+    "regression_json",
+    "report",
+    "report_dir",
+    "result_json",
+    "results_xml",
+    "script",
+    "summary",
+    "summary_json",
+    "wave_debug_context",
+    "wave_dump_script",
+    "wave_files",
+    "wave_log",
+    "waves",
+}
+
 
 def _test_metadata(flow: Flow, catalog: TestCatalog, groups_by_test: dict[str, list[str]], item: str | None) -> dict[str, Any]:
     if not item:
@@ -150,16 +453,26 @@ def _parser_junit_paths(parser: Any) -> list[str]:
     return paths
 
 
-def _guess_junit_from_log(repo_root: Path, run_root: Path, log: Any) -> str:
-    log_path = _artifact_path(repo_root, run_root, log)
+def _guess_junit_from_log(
+    repo_root: Path,
+    run_root: Path,
+    log: Any,
+    recorded_run_root: Path | None,
+) -> str:
+    log_path = _artifact_path(repo_root, run_root, log, recorded_run_root)
     if log_path is None:
         return ""
     leaf_dir = log_path.parent.parent if log_path.parent.name == "logs" else log_path.parent
     return _repo_rel(repo_root, leaf_dir / "results" / "results.xml")
 
 
-def _read_leaf_result(repo_root: Path, run_root: Path, result_json: Any) -> dict[str, Any] | None:
-    path = _artifact_path(repo_root, run_root, result_json)
+def _read_leaf_result(
+    repo_root: Path,
+    run_root: Path,
+    result_json: Any,
+    recorded_run_root: Path | None,
+) -> dict[str, Any] | None:
+    path = _artifact_path(repo_root, run_root, result_json, recorded_run_root)
     if path is None or not path.is_file():
         return None
     return _safe_load_json(path)
@@ -173,28 +486,79 @@ def _test_detail_from_record(
     catalog: TestCatalog,
     groups_by_test: dict[str, list[str]],
     record: dict[str, Any],
+    recorded_run_root: Path | None,
     fallback_stage: str = "sim",
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]], list[str]]:
     item = record.get("item")
     if not isinstance(item, str) or not item:
         return None, [], []
 
-    leaf = _read_leaf_result(repo_root, run_root, record.get("result_json")) or {}
+    leaf = _read_leaf_result(
+        repo_root,
+        run_root,
+        record.get("result_json"),
+        recorded_run_root,
+    ) or {}
     merged = {**record, **{k: v for k, v in leaf.items() if v not in (None, "", [], {})}}
     meta = _test_metadata(flow, catalog, groups_by_test, item)
-    artifacts = merged.get("artifacts") if isinstance(merged.get("artifacts"), dict) else {}
+    recorded_artifacts = (
+        merged.get("artifacts") if isinstance(merged.get("artifacts"), dict) else {}
+    )
+    artifacts = _rebase_artifacts(
+        repo_root,
+        run_root,
+        recorded_artifacts,
+        recorded_run_root,
+    )
     parser = merged.get("parser")
-    junit_paths = _parser_junit_paths(parser)
+    junit_values = _path_values(recorded_artifacts.get("results_xml"))
+    if not junit_values:
+        junit_values = _parser_junit_paths(parser)
+    junit_paths = [
+        _artifact_text(repo_root, run_root, value, recorded_run_root)
+        for value in junit_values
+    ]
+    junit_paths = [path for path in junit_paths if path]
     if not junit_paths:
-        guessed = _guess_junit_from_log(repo_root, run_root, merged.get("log"))
+        guessed = _guess_junit_from_log(
+            repo_root,
+            run_root,
+            merged.get("log"),
+            recorded_run_root,
+        )
         if guessed:
             junit_paths.append(guessed)
 
-    result_json_path = str(record.get("result_json") or "")
+    result_json_path = _artifact_text(
+        repo_root,
+        run_root,
+        record.get("result_json"),
+        recorded_run_root,
+    )
     if not result_json_path:
         flat = run_root / item / "result.json"
         if flat.is_file():
             result_json_path = _repo_rel(repo_root, flat)
+    log_path = _artifact_text(
+        repo_root,
+        run_root,
+        merged.get("log"),
+        recorded_run_root,
+    )
+    parser_evidence = []
+    if isinstance(parser, dict):
+        for evidence in (parser.get("evidence") or [])[:5]:
+            if not isinstance(evidence, dict):
+                continue
+            entry = dict(evidence)
+            if entry.get("path"):
+                entry["path"] = _artifact_text(
+                    repo_root,
+                    run_root,
+                    entry["path"],
+                    recorded_run_root,
+                )
+            parser_evidence.append(entry)
 
     detail = {
         "name": meta["name"],
@@ -209,7 +573,7 @@ def _test_detail_from_record(
         "status": merged.get("status", STATUS_UNKNOWN),
         "duration_sec": merged.get("duration_sec"),
         "reason": merged.get("reason", ""),
-        "log": merged.get("log", ""),
+        "log": log_path,
         "result_json": result_json_path,
         "junit_xml": junit_paths[0] if junit_paths else "",
         "artifacts": artifacts,
@@ -217,7 +581,7 @@ def _test_detail_from_record(
         "parser": {
             "policy": parser.get("policy") if isinstance(parser, dict) else None,
             "status_source": parser.get("status_source") if isinstance(parser, dict) else None,
-            "evidence": (parser.get("evidence") or [])[:5] if isinstance(parser, dict) else [],
+            "evidence": parser_evidence,
         },
     }
     junit_entries = [
@@ -246,6 +610,7 @@ def _test_details_from_layout(
     flow: Flow,
     catalog: TestCatalog,
     groups_by_test: dict[str, list[str]],
+    recorded_run_root: Path | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     details: list[dict[str, Any]] = []
     junit_entries: list[dict[str, Any]] = []
@@ -265,6 +630,7 @@ def _test_details_from_layout(
             catalog=catalog,
             groups_by_test=groups_by_test,
             record=record,
+            recorded_run_root=recorded_run_root,
         )
         if detail:
             details.append(detail)
@@ -279,6 +645,7 @@ def _collect_test_details(
     flow: Flow,
     result: dict[str, Any],
     regression: dict[str, Any] | None,
+    recorded_run_root: Path | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     catalog = load_test_catalog(flow, repo_root)
     groups_by_test = _groups_by_test(catalog)
@@ -310,6 +677,7 @@ def _collect_test_details(
             catalog=catalog,
             groups_by_test=groups_by_test,
             record=record,
+            recorded_run_root=recorded_run_root,
         )
         if detail is None:
             continue
@@ -323,7 +691,12 @@ def _collect_test_details(
 
     if not details:
         layout_details, layout_junit, layout_warnings = _test_details_from_layout(
-            repo_root, run_root, flow, catalog, groups_by_test
+            repo_root,
+            run_root,
+            flow,
+            catalog,
+            groups_by_test,
+            recorded_run_root,
         )
         details.extend(layout_details)
         junit_entries.extend(layout_junit)
@@ -341,7 +714,7 @@ def _load_regression(repo_root: Path, run_root: Path) -> dict[str, Any] | None:
     data = dict(data)
     data.setdefault("artifacts", {})
     if isinstance(data["artifacts"], dict):
-        data["artifacts"].setdefault("regression_json", _repo_rel(repo_root, path))
+        data["artifacts"]["regression_json"] = _repo_rel(repo_root, path)
     return data
 
 
@@ -396,15 +769,22 @@ def _collect_native_result(repo_root: Path, flow: Flow, run_dir: Path | None) ->
     run_json_path = run_root / "run.json"
     run_json = _safe_load_json(run_json_path) if run_json_path.is_file() else None
     regression = _load_regression(repo_root, run_root)
+    recorded_run_root = _recorded_run_root(result, regression)
+    if regression is not None:
+        regression = _rebase_regression(
+            repo_root,
+            run_root,
+            regression,
+            recorded_run_root,
+        )
     tests_detail, junit_xml, warnings = _collect_test_details(
         repo_root,
         run_root,
         flow,
         result,
         regression,
+        recorded_run_root,
     )
-    if not run_json_path.is_file():
-        warnings.append(f"run.json not found for run: {_repo_rel(repo_root, run_root)}")
 
     raw_status = str(result.get("status", STATUS_UNKNOWN))
     # Dashboard buckets are PASS / FAIL / UNKNOWN; ERROR and TIMEOUT are non-passing failures.
@@ -427,7 +807,12 @@ def _collect_native_result(repo_root: Path, flow: Flow, run_dir: Path | None) ->
     # Prefer a failing test's log for triage, else the first run's log.
     sim_stage = next((s for s in sim_stages if s.get("status") != STATUS_PASS), sim_stages[0] if sim_stages else None)
     if sim_stage:
-        artifacts["log"] = str(sim_stage["log"])
+        artifacts["log"] = _artifact_text(
+            repo_root,
+            run_root,
+            sim_stage["log"],
+            recorded_run_root,
+        )
     for key in (
         "report",
         "summary",
