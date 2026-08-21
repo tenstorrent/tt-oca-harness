@@ -42,8 +42,6 @@ cache_key_extra = []
 # Tool-specific fields use nested tool tables so every simulator follows the same naming rule:
 # target.tools.<tool>.flags.
 #
-# SIMULATION is the project simulation-vs-synthesis name. SIM remains for
-# first-party RTL that still tests that name.
 [target_defaults.default]
 defines = [
   "SIMULATION",
