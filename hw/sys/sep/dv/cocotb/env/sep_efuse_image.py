@@ -300,12 +300,10 @@ class SepEfuseImage:
         Stores the full differential encoding ``{~raw, raw}`` in LC_STATE[7:0],
         matching the real OTP and the reference-suite preload.
 
-        Storing the encoded form is a convenience, not a requirement. An earlier version
-        of this docstring claimed a bare raw nibble was "itself a differential error",
-        contradicting ``load_hex`` one screen up, which says either form works because
-        only ``[3:0]`` is significant. The runs settle it in load_hex's favour: the sense
-        FSM reads the raw nibble out of OTP and regenerates ``{~raw, raw}`` into the
-        shadow itself, so a staged image carrying a bare nibble still senses as a valid
+        Storing the encoded form is a convenience, not a requirement: only ``[3:0]``
+        is significant. The sense FSM reads the raw nibble out of OTP and regenerates
+        ``{~raw, raw}`` into the shadow itself, so a staged image carrying a bare nibble
+        still senses as a valid
         pair. That is also why no staged image can present a BROKEN pair to the DUT.
         The stitch test injects that fault at the LCC decoder input (signed-off force).
         """
@@ -341,12 +339,9 @@ class SepEfuseImage:
         Constraints (mirrors reference sep_efuse_item):
           * LC_STATE is restricted to the 7 legal raw codes (never an illegal
             encoding) — pinned via ``lc_raw`` or drawn from the legal set.
-          * There are no RESERVED_* fields any more. The v0.5.22 map replaced the
-            whole reserved tail with real registers (PQC hashes, SEP_*_ID,
-            SPARE0-7), and every one of them is randomized like any other data
-            field. An earlier revision of this docstring still promised they
-            stayed zero, and the loop below still tested for a ``reserved`` kind
-            that _derive_fields never emits.
+          * The map has no reserved tail: the whole range is real registers
+            (PQC hashes, SEP_*_ID, SPARE0-7), and every one is randomized like
+            any other data field. Nothing here is pinned to zero.
           * LOCKS stays unlocked unless ``lock_prob`` > 0, so every field reads
             back (read-locks would return 0xbadcab1e instead of data).
           * ``fixed`` pins named fields to explicit values after randomization.

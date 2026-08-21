@@ -232,7 +232,7 @@ module sep_uvm_top
     // EL2 debugger reset INPUT to the DUT (sep.sv dbg_rstb_i, a real sep primary
     // input). Default-driven 1 (deasserted) by sep_base_test; the CPU debug-reset
     // isolation test pulses it to 0 to prove it does NOT disturb the system/CPU
-    // reset domain. Previously hardwired to rst_ni in this tb.
+    // reset domain.
     input  wire logic         dbg_rstb_i,
     output logic              o_cpu_run_ack_o,   // core run acknowledge (XMR-tapped)
     output logic              cpu_trace_valid_o, // retired-instruction valid

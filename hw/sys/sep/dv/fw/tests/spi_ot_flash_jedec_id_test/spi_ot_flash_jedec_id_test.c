@@ -25,9 +25,8 @@
  * Without flash model the test fails closed on empty/all-0xFF JEDEC response.
  *
  * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim
- * make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim
- * EXTRA_SIM_ARGS=+spi_device_sel=winbond
+ * make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim \
+ *     EXTRA_SIM_ARGS=+spi_device_sel=winbond
  *
  */
 

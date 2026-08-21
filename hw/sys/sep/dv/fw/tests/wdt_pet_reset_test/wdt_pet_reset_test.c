@@ -11,7 +11,7 @@
  * 2. Pet (write 0 to WDOG_COUNT) → verify counter resets to ~0
  * 3. Repeat pet at various counts (100, 500, 900)
  * 4. Positive control (bark NMI can fire), then pet below high threshold
- * and verify no unexpected NMI
+ *    and verify no unexpected NMI
  * 5. Verify counter resumes incrementing after pet
  *
  ******************************************************************************/

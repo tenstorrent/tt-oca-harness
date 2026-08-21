@@ -273,7 +273,7 @@ static int test_read_only_write_only_field_coverage(void) {
             uint32_t after_ro_test = 0;
             read_alias_csr_register(reg_idx, &after_ro_test);
 
-            // Read-only bitsshouldkeepunchanged (or perHWlogicupdate)
+            // Read-only bits stay unchanged, or update per HW logic
             printf("RO test reg %d: before=0x%04X, after=0x%04X\n", reg_idx, before_ro_test,
                    after_ro_test);
         }

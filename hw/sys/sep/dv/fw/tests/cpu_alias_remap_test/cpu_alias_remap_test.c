@@ -87,7 +87,7 @@ int main(void) {
     // CHK-CSR: program the alias window base and read it back. The base
     // resets to 0xD000_0000 and the window size is the fixed
     // sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE localparam (0x3000_0000), so only the base
-    // CSR is programmable; REGION_SIZE (0x10A3_00D0) no longer sizes this window and
+    // CSR is programmable; REGION_SIZE (0x10A3_00D0) does not size this window and
     // is not touched here.
     // Write a value that is NOT the reset value first. Writing only WINDOW_BASE
     // and reading it back proves nothing about programmability: 0xD000_0000 is

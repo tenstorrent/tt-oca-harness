@@ -29,9 +29,8 @@ generated symbol expresses. Blocks whose reset value IS exported
 (reset_ctrl/OTBN/HMAC/KMAC) take it from the header.
 
 Accepted scope delta — CLOCK_GATE_CTRL ungating:
-    An earlier revision of this sequence ungated per-block CSR clocks
-    (dma[1], mailbox[2], alias_remap[7], entropy_fifo[10]) before the fabric
-    walk. Those fields do not exist in this repository's RDL: sep_cpu_ctrl.rdl
+    This sequence does not ungate per-block CSR clocks before the fabric walk,
+    because no such gates exist: sep_cpu_ctrl.rdl
     declares CLOCK_GATE_CTRL as a placeholder with a single implemented bit
     (`pka_cg_enable[0:0]`, reset 0) and documents it as "not yet implemented".
     There is therefore nothing to ungate — every walked block is unconditionally
@@ -287,8 +286,8 @@ class sep_address_map_seq(uvm_sequence):
             await self._write(BASE + SEP_CPU_CTRL.offset(name), value, name=name)
 
         # CLOCK_GATE_CTRL write path: drive every implemented bit, read it back,
-        # restore the reset value. See the module docstring for why this no longer
-        # ungates per-block clocks (those fields do not exist in this RDL).
+        # restore the reset value. See the module docstring for why this does not
+        # ungate per-block clocks (those fields do not exist in this RDL).
         cg_addr = BASE + SEP_CPU_CTRL.offset("CLOCK_GATE_CTRL")
         cg_mask = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
         cg_reset = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
