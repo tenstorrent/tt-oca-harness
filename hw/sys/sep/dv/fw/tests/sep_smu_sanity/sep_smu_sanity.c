@@ -23,7 +23,7 @@
  *                                         level.
  *   4. SPI register R/W sanity         — write/readback of SPI mux + clock
  *                                         divider + control registers in the
- *                                         Cadence xSPI controller's register
+ *                                         licensed SPI host's register
  *                                         block.  Does NOT trigger SPI
  *                                         init/discovery (no flash model in
  *                                         SMU TB), only proves the fabric
@@ -314,7 +314,7 @@ static int stage_kmac(void) {
  *   The SMU testbench does not instantiate an external SPI flash model, so
  *   we deliberately do NOT trigger init/discovery (which would never assert
  *   init_comp).  Instead we exercise:
- *     (a) SPI mux ctrl  : toggle spi_sel between OT (1) and Cadence (0),
+ *     (a) SPI mux ctrl  : toggle spi_sel between OT (1) and licensed host (0),
  *                         and cs_force_high.
  *     (b) SPI clk div   : write a custom divider value and read it back.
  *     (c) SPI ctrl      : reset assert/deassert pattern + spi_enable.
@@ -344,10 +344,10 @@ static int stage_spi_regs(void) {
 
     int errors = 0;
 
-    /* (a) SPI mux ctrl: select Cadence, force CS high. */
+    /* (a) SPI mux ctrl: select the licensed host, force CS high. */
     {
         och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t w = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
-        w.f.spi_sel = 0; /* Cadence */
+        w.f.spi_sel = 0; /* licensed host */
         w.f.cs_force_high = 1;
         WRITE_REG(SPI_MUX_CTRL_ADDR, w.w);
 

@@ -2,41 +2,41 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Flash Write+Read Test - TC_SPIOT_021 (P0)
+ * SPI OT Flash Write+Read Test
  *
  * Verifies a full SPI NOR flash write + read + verify cycle using the
  * OpenTitan SPI controller. Requires a Quad SPI flash model in the testbench.
  *
  * Run with: +spi_device_sel=winbond (Winbond W25Q512JV, JEDEC: EF 40 20)
- *           OR +spi_device_sel=0 (Micron N25Q128,   JEDEC: 20 BA 18)
+ * OR +spi_device_sel=0 (Micron N25Q128,   JEDEC: 20 BA 18)
  *
  * Flash commands used:
- *   0x06 - WREN  (Write Enable, 1 byte TX, no address)
- *   0x05 - RDSR  (Read Status Register-1, 1 byte TX + 1 byte RX)
- *   0x02 - PP    (Page Program, 1 byte cmd + 3 byte addr + up to 256 bytes data)
- *   0x03 - READ  (Standard Read, 1 byte cmd + 3 byte addr, then RX data)
+ * 0x06 - WREN  (Write Enable, 1 byte TX, no address)
+ * 0x05 - RDSR  (Read Status Register-1, 1 byte TX + 1 byte RX)
+ * 0x02 - PP    (Page Program, 1 byte cmd + 3 byte addr + up to 256 bytes data)
+ * 0x03 - READ  (Standard Read, 1 byte cmd + 3 byte addr, then RX data)
  *
  * TX byte packing (LITTLE_ENDIAN=1): TXDATA[7:0] is transmitted first.
- *   cmd+addr packed as: byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
+ * cmd+addr packed as: byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
  *
  * Test Flow:
- *   1. Configure SPI mux for OpenTitan, enable controller
- *   2. WREN: Write Enable (0x06, 1 byte TX)
- *   3. RDSR: Read Status, verify WEL=1 (bit 1) to confirm write enable
- *   4. PP:   Page Program (0x02 + addr 0x000000 + 16 bytes pattern), CSAAT
- *   5. RDSR poll: wait for WIP=0 (bit 0) - page program complete
- *   6. READ: Standard Read 16 bytes from 0x000000
- *   7. Verify read data matches written pattern
+ * 1. Configure SPI mux for OpenTitan, enable controller
+ * 2. WREN: Write Enable (0x06, 1 byte TX)
+ * 3. RDSR: Read Status, verify WEL=1 (bit 1) to confirm write enable
+ * 4. PP: Page Program (0x02 + addr 0x000000 + 16 bytes pattern), CSAAT
+ * 5. RDSR poll: wait for WIP=0 (bit 0) - page program complete
+ * 6. READ: Standard Read 16 bytes from 0x000000
+ * 7. Verify read data matches written pattern
  *
  * Status Register-1 bits:
- *   [0] WIP  (Write In Progress): 1=busy, 0=ready
- *   [1] WEL  (Write Enable Latch): 1=write enabled
+ * [0] WIP  (Write In Progress): 1=busy, 0=ready
+ * [1] WEL  (Write Enable Latch): 1=write enabled
  *
  * Note: Requires flash model. Without flash model, status poll will timeout.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_flash_write_read_test STACK=sim \
- *       EXTRA_SIM_ARGS=+spi_device_sel=winbond
+ * make test-sep TEST_NAME=sep_spi_ot_flash_write_read_test STACK=sim \
+ * EXTRA_SIM_ARGS=+spi_device_sel=winbond
  *
  */
 
@@ -149,7 +149,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Flash Write+Read Test (TC_SPIOT_021)\n");
+    printf("SPI OT Flash Write+Read Test\n");
     printf("Requires: +spi_device_sel=winbond (W25Q512JV)\n");
     printf("========================================\n\n");
 

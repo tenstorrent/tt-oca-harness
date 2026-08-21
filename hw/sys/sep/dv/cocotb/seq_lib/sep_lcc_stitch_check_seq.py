@@ -10,7 +10,7 @@ checks each against the golden reference:
     that was sensed (proves the sensed lc_state reached the software map).
   * FEAT_CTRL (64-bit, read as two 32-bit halves) == ``feat_ctrl_expected(...)``
     from the LCC golden model (proves eFuse lc_state -> LCC decode -> feature
-    control, interconnect edge E4/E11).
+    control).
 
 Both checks are exact-value (caught by the scoreboard's value-check / uvm_error),
 so each fails on a broken decode rather than merely "no X".
@@ -38,14 +38,17 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         *,
         secure_tm: int = 0,
         sec_dis: int = 0,
+        sigint_err: int = 0,
         name: str = "sep_lcc_stitch_check_seq",
     ) -> None:
         super().__init__(name)
         self.image = image
         self.secure_tm = secure_tm
         self.sec_dis = sec_dis
+        self.sigint_err = sigint_err
         # Computed in body() and exposed for the test's transition checks/logging.
         self.observed_lc_raw: int | None = None
+        self.observed_feat: int | None = None
 
     async def _read_expect(self, addr: int, expected: int, label: str) -> int:
         item = SepAxiItem(f"rd_{label}_0x{addr:08x}")
@@ -64,6 +67,7 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         feat = feat_ctrl_expected(
             lc_raw, sip_dis, sys_dis,
             secure_tm=self.secure_tm, sec_dis=self.sec_dis,
+            sigint_err=self.sigint_err,
         )
 
         # (1) sensed lc_state reached the software-visible shadow map.
@@ -77,12 +81,19 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         self.observed_lc_raw = shadow_rdata & 0xF
 
         # (2) LCC decoded that lc_state into the expected feature-control vector.
-        await self._read_expect(LCC_FEAT_CTRL, feat & 0xFFFF_FFFF, "feat_ctrl_lo")
-        await self._read_expect(
+        feat_lo = await self._read_expect(
+            LCC_FEAT_CTRL, feat & 0xFFFF_FFFF, "feat_ctrl_lo")
+        feat_hi = await self._read_expect(
             LCC_FEAT_CTRL + 4, (feat >> 32) & 0xFFFF_FFFF, "feat_ctrl_hi"
         )
+        # Publish the vector the DUT returned on AXI, not the golden that the
+        # sequence already compared it against. Callers log this as the observe
+        # half of the signed-off sigint inject (probe + FEAT_CTRL).
+        self.observed_feat = feat_lo | (feat_hi << 32)
 
         cocotb.log.info(
-            "[lcc] state %s (0x%x): SIP_DIS=0x%016x SYS_DIS=0x%016x -> FEAT_CTRL=0x%016x",
-            lc_state_name(lc_raw), lc_raw, sip_dis, sys_dis, feat,
+            "[lcc] state %s (0x%x): SIP_DIS=0x%016x SYS_DIS=0x%016x "
+            "secure_tm=%d sigint=%d -> FEAT_CTRL=0x%016x",
+            lc_state_name(lc_raw), lc_raw, sip_dis, sys_dis,
+            self.secure_tm, self.sigint_err, self.observed_feat,
         )

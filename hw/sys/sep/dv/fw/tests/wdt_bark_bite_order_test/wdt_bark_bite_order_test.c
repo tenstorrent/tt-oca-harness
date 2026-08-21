@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_008 (V3, P1) - WDT Bark/Bite Order Test
+ * WDT Bark/Bite Order Test
  *
  * Verifies BARK fires before BITE when BARK_THOLD < BITE_THOLD,
  * then signals test_pass before triggering BITE reset (cocotb verifies).
@@ -35,7 +35,7 @@ void wdt_nmi_handler(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_008: WDT Bark/Bite Order Test\n");
+    printf("WDT Bark/Bite Order Test\n");
     printf("======================================\n\n");
 
     /* Set up NMI handler for BARK */
@@ -91,10 +91,10 @@ int main(void) {
     /* Signal pass before triggering BITE (BITE causes system reset) */
     printf("\n// Signaling PASS before triggering BITE reset\n");
     if (errors == 0) {
-        printf("TC_WDT_008: PASS (bark fires before bite)\n");
+        printf("WDT Bark/Bite Order Test: PASS (bark fires before bite)\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_008: FAIL (errors=%d)\n", errors);
+        printf("WDT Bark/Bite Order Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
 

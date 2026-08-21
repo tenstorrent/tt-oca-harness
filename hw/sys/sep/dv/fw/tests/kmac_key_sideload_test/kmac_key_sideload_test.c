@@ -2,31 +2,31 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_015 — KMAC Key Sideload Mode Test (P1)
+ * KMAC Key Sideload Mode Test
  *
  * Tests the CFG_SHADOWED.sideload register field and its functional effect:
  *
- *   Phase 1 — Register control:
- *     Verify default sideload=1; write 0, readback 0; write 1, readback 1.
+ * Phase 1 — Register control:
+ * Verify default sideload=1; write 0, readback 0; write 1, readback 1.
  *
- *   Phase 2 — SW-key operation (sideload=0):
- *     Run KMAC-128 with a known software key (KEY_SHARE0/1 registers).
- *     Verify non-zero digest and record digest_sw[].
+ * Phase 2 — SW-key operation (sideload=0):
+ * Run KMAC-128 with a known software key (KEY_SHARE0/1 registers).
+ * Verify non-zero digest and record digest_sw[].
  *
- *   Phase 3 — Determinism (sideload=0, same SW key):
- *     Re-run Phase 2; digest must match Phase 2 and the fixed SW-key vector.
+ * Phase 3 — Determinism (sideload=0, same SW key):
+ * Re-run Phase 2; digest must match Phase 2 and the fixed SW-key vector.
  *
- *   Phase 4 — Optional ENV note (no security claim without keymgr allow-path):
- *     If sideload=1 START raises ErrKeyNotValid, log INFO only. RTL-KMAC-005
- *     recovery is tracked in kmac_bug.md, not soft-passed here.
+ * Phase 4 — Optional ENV note (no security claim without keymgr allow-path):
+ * If sideload=1 START raises ErrKeyNotValid, log INFO only. RTL-KMAC-005
+ * recovery is tracked in kmac_bug.md, not soft-passed here.
  *
  * Checker summary:
- *   [1] default sideload = 1 (typed CFG.sideload)
- *   [2] sideload=0 readback = 0
- *   [3] sideload=1 readback = 1
- *   [4] Phase 2 KMAC completes
- *   [5] Phase 2 digest matches fixed SW-key vector
- *   [9] Phase 3 digest matches Phase 2 (determinism)
+ * [1] default sideload = 1 (typed CFG.sideload)
+ * [2] sideload=0 readback = 0
+ * [3] sideload=1 readback = 1
+ * [4] Phase 2 KMAC completes
+ * [5] Phase 2 digest matches fixed SW-key vector
+ * [9] Phase 3 digest matches Phase 2 (determinism)
  *
  */
 
@@ -160,7 +160,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_015: KMAC Key Sideload Test\n");
+    printf("  KMAC Key Sideload Test\n");
     printf("========================================\n\n");
 
     {

@@ -2,34 +2,34 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Flash Dual Fast Read Test - TC_SPIOT_023 (P1)
+ * SPI OT Flash Dual Fast Read Test
  *
  * Verifies Flash Fast Read Dual Output (0x3B) using the OpenTitan SPI controller.
  * Requires a Quad SPI flash model (+spi_device_sel=winbond, W25Q512JV).
  *
  * Flash commands used:
- *   0x06 - WREN  (Write Enable)
- *   0x05 - RDSR  (Read Status Register-1)
- *   0x02 - PP    (Page Program, Standard SPI write)
- *   0x3B - DOFR  (Dual Output Fast Read: cmd+addr Standard, 8 dummy clocks, data Dual)
+ * 0x06 - WREN  (Write Enable)
+ * 0x05 - RDSR  (Read Status Register-1)
+ * 0x02 - PP    (Page Program, Standard SPI write)
+ * 0x3B - DOFR  (Dual Output Fast Read: cmd+addr Standard, 8 dummy clocks, data Dual)
  *
  * Dual Output Fast Read (0x3B) segment breakdown:
- *   Seg1: TX 4 bytes (cmd=0x3B + addr[23:0]), SPEED=Standard, CSAAT=1
- *   Seg2: Dummy 1 byte (8 SCK clocks), SPEED=Standard, CSAAT=1
- *   Seg3: RX 16 bytes, SPEED=Dual (IO0+IO1), CSAAT=0
+ * Seg1: TX 4 bytes (cmd=0x3B + addr[23:0]), SPEED=Standard, CSAAT=1
+ * Seg2: Dummy 1 byte (8 SCK clocks), SPEED=Standard, CSAAT=1
+ * Seg3: RX 16 bytes, SPEED=Dual (IO0+IO1), CSAAT=0
  *
  * TX byte packing (LITTLE_ENDIAN=1): TXDATA[7:0] sent first.
- *   cmd+addr: byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
+ * cmd+addr: byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
  *
  * Test Flow:
- *   1. PP 16 bytes at 0x002000 with pattern 0xD0xxxxxx
- *   2. WIP poll until page program complete
- *   3. DOFR 16 bytes from 0x002000 using 3-segment dual read
- *   4. Compare RX data against written pattern
+ * 1. PP 16 bytes at 0x002000 with pattern 0xD0xxxxxx
+ * 2. WIP poll until page program complete
+ * 3. DOFR 16 bytes from 0x002000 using 3-segment dual read
+ * 4. Compare RX data against written pattern
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_flash_dual_read_test STACK=sim \
- *       EXTRA_SIM_ARGS=+spi_device_sel=winbond
+ * make test-sep TEST_NAME=sep_spi_ot_flash_dual_read_test STACK=sim \
+ * EXTRA_SIM_ARGS=+spi_device_sel=winbond
  *
  */
 
@@ -141,7 +141,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Flash Dual Fast Read Test (TC_SPIOT_023)\n");
+    printf("SPI OT Flash Dual Fast Read Test\n");
     printf("Requires: +spi_device_sel=winbond (W25Q512JV)\n");
     printf("Target address: 0x%06x (sector 2)\n", FLASH_TARGET_ADDR);
     printf("========================================\n\n");
@@ -236,9 +236,9 @@ int main(void) {
 
     /* ---------------------------------------------------------------
      * Phase 2: Dual Output Fast Read (0x3B)
-     *   Seg1: TX 4 bytes (0x3B + addr), Standard, CSAAT=1
-     *   Seg2: Dummy 1 byte (8 clocks), Standard, CSAAT=1
-     *   Seg3: RX 16 bytes, Dual (SPEED=1), CSAAT=0
+     * Seg1: TX 4 bytes (0x3B + addr), Standard, CSAAT=1
+     * Seg2: Dummy 1 byte (8 clocks), Standard, CSAAT=1
+     * Seg3: RX 16 bytes, Dual (SPEED=1), CSAAT=0
      * --------------------------------------------------------------- */
     printf("\nPhase 2: Dual Output Fast Read (0x3B) from 0x%06x\n", FLASH_TARGET_ADDR);
 

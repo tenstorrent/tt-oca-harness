@@ -17,7 +17,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]
 
 [[tests]]
-# Dual-CPU eFuse AXI-lite mux coexistence (reference suite TEST 10.3): the EL2 host
+# Dual-CPU eFuse AXI-lite mux coexistence (reference suite
+# sep_efuse_km_axil_cpu_mux_coexist_test): the EL2 host
 # and the KM PicoRV32 both contend at u_km_efuse_axi_lite_mux. run_mode "cpu"
 # boots the EL2 (+cpu_boot); real fuse-sense is on (no +skip_fuse_sense) so the
 # host CHIPLET_UID read path is live, with the OTP image staged to the responder

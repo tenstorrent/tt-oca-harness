@@ -70,7 +70,7 @@ def build_aes_ctrl(*, sideload: bool, operation: int = AES_OP_ENC,
                    reseed_rate: int = AES_PRS_RATE_PER_8K) -> int:
     """CTRL_SHADOWED word. OPERATION selects ENC/DEC, MODE the cipher mode
     (ECB/CBC/CTR), KEY_LEN the key width (128/192/256), SIDELOAD the KM key vs
-    KEY_SHARE. Defaults are ECB-256 (the KM sideload KAT #11 path)."""
+    KEY_SHARE. Defaults are ECB-256 (the KM AES sideload KAT path)."""
     return (
         operation
         | (mode << 2)

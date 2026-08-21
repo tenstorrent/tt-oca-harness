@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_HMAC_009 (P1) - Key length configuration test
+ * Key length configuration test
  *
  * Steps:
- *   1) For key_length values 0x01(128b), 0x02(256b), 0x04(384b), 0x08(512b):
- *      write CFG.key_length, readback verify
- *   2) Write a test key and HMAC-hash "test" with key_length=128 and key_length=256
- *   3) Verify the two digests differ (different effective key length => different HMAC)
+ * 1) For key_length values 0x01(128b), 0x02(256b), 0x04(384b), 0x08(512b):
+ * write CFG.key_length, readback verify
+ * 2) Write a test key and HMAC-hash "test" with key_length=128 and key_length=256
+ * 3) Verify the two digests differ (different effective key length => different HMAC)
  */
 
 #include <stdint.h>
@@ -105,7 +105,7 @@ static int hmac_hash_with_key_length(uint32_t klen_val, uint32_t digest_out[8]) 
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("=== TC_HMAC_009: Key length configuration test ===\n");
+    printf("=== Key length configuration test ===\n");
     int pass = 1;
 
     /* Part 1: Readback verify key_length field for multiple values */
@@ -188,10 +188,10 @@ int main(void) {
     }
 
     if (pass) {
-        printf("=== TC_HMAC_009 PASSED ===\n");
+        printf("=== PASSED ===\n");
         test_pass(0);
     } else {
-        printf("FAIL: TC_HMAC_009 key length test\n");
+        printf("FAIL: key length test\n");
         test_fail(1);
     }
 

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_068: fabric_output_remap_reg_final_push_test
+ * fabric_output_remap_reg_final_push_test
  *
  * Goal: output_remap_reg 86.36% -> 90%+ (needs 3.64% improvement)
  * Strategy: Full scan of remaining CSR toggle bits
@@ -206,45 +206,45 @@ static int test_attribute_flag_complete_toggle(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_068: Output Remap Reg Final Push Test\n");
+    printf("Output Remap Reg Final Push Test\n");
     printf("Goal: 86.36%% -> 90%%+ (needs 3.64%% improvement)\n");
     printf("Strategy: Full scan of remaining CSR toggle bits\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_068");
+        test_fail("fabric_output_remap_reg_final_push_test");
         return TEST_FAIL;
     }
 
     // Run all CSR-toggle scenarios
     if (test_address_field_precise_toggle() != 0) {
-        test_fail("TC_FABRIC_068 - Address Field Toggle");
+        test_fail("Address Field Toggle");
         return TEST_FAIL;
     }
 
     if (test_enable_bit_combinations() != 0) {
-        test_fail("TC_FABRIC_068 - Enable Bit Combinations");
+        test_fail("Enable Bit Combinations");
         return TEST_FAIL;
     }
 
     if (test_channel_selection_deep_toggle() != 0) {
-        test_fail("TC_FABRIC_068 - Channel Selection Toggle");
+        test_fail("Channel Selection Toggle");
         return TEST_FAIL;
     }
 
     if (test_size_mask_full_toggle() != 0) {
-        test_fail("TC_FABRIC_068 - Size Mask Toggle");
+        test_fail("Size Mask Toggle");
         return TEST_FAIL;
     }
 
     if (test_attribute_flag_complete_toggle() != 0) {
-        test_fail("TC_FABRIC_068 - Attribute Flag Toggle");
+        test_fail("Attribute Flag Toggle");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_068: OUTPUT REMAP REG FINAL PUSH TEST PASSED ===\n");
+    printf("\n=== OUTPUT REMAP REG FINAL PUSH TEST PASSED ===\n");
     printf("Expected improvement: 86.36%% -> 90%+ coverage\n");
 
-    test_pass("TC_FABRIC_068");
+    test_pass("fabric_output_remap_reg_final_push_test");
     return TEST_PASS;
 }

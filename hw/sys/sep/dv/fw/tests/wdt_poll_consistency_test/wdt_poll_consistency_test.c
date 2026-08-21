@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_012 (V3, P2) - WDT Poll Consistency Test
+ * WDT Poll Consistency Test
  *
  * Verifies WDOG_COUNT is monotonically incrementing and readable without
  * stale values or races.
@@ -28,7 +28,7 @@
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_012: WDT Poll Consistency Test\n");
+    printf("WDT Poll Consistency Test\n");
     printf("=======================================\n\n");
 
     int errors = 0;
@@ -103,10 +103,10 @@ int main(void) {
 
     printf("\n=======================================\n");
     if (errors == 0) {
-        printf("TC_WDT_012: PASS\n");
+        printf("WDT Poll Consistency Test: PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_012: FAIL (errors=%d)\n", errors);
+        printf("WDT Poll Consistency Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("=======================================\n");

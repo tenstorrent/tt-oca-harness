@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Flash JEDEC ID Test - TC_SPIOT_019 (P1)
+ * SPI OT Flash JEDEC ID Test
  *
  * Issues a standard JEDEC Read ID command (0x9F) to the SPI flash device
  * using a two-segment transaction on the OpenTitan SPI controller.
@@ -10,24 +10,23 @@
  * Signal path: OT SPI Controller -> SPI Mux -> GPIO pads -> Flash model
  *
  * TX byte packing (LITTLE_ENDIAN=1): TXDATA[7:0] is transmitted first.
- *   WRITE_REG(TXDATA, 0x0000009F) -> sends 0x9F on the bus
+ * WRITE_REG(TXDATA, 0x0000009F) -> sends 0x9F on the bus
  * RX byte ordering: RXDATA[7:0] = first byte received from device.
- *   byte[0] = manufacturer ID, byte[1] = memory type, byte[2] = capacity
+ * byte[0] = manufacturer ID, byte[1] = memory type, byte[2] = capacity
  *
  * Test Flow:
- *   1. Configure SPI mux for OpenTitan, enable controller
- *   2. Segment 1: TX 0x9F (JEDEC ID cmd), CSAAT=1
- *   3. Segment 2: RX 3 bytes (MFR + type + capacity), CSAAT=0
- *   4. Read and log JEDEC response from RXDATA
- *   5. Verify no SPI controller errors (CMDINVAL, CSIDINVAL)
+ * 1. Configure SPI mux for OpenTitan, enable controller
+ * 2. Segment 1: TX 0x9F (JEDEC ID cmd), CSAAT=1
+ * 3. Segment 2: RX 3 bytes (MFR + type + capacity), CSAAT=0
+ * 4. Read and log JEDEC response from RXDATA
+ * 5. Verify no SPI controller errors (CMDINVAL, CSIDINVAL)
  *
  * Note: Requires SPI flash model (+spi_device_sel=winbond) for PASS.
- *   Without flash model the test fails closed on empty/all-0xFF JEDEC response.
+ * Without flash model the test fails closed on empty/all-0xFF JEDEC response.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim
- *   make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim
- * EXTRA_SIM_ARGS=+spi_device_sel=winbond
+ * make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim \
+ *     EXTRA_SIM_ARGS=+spi_device_sel=winbond
  *
  */
 
@@ -100,7 +99,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Flash JEDEC ID Test (TC_SPIOT_019)\n");
+    printf("SPI OT Flash JEDEC ID Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
