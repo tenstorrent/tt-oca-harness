@@ -73,6 +73,10 @@ class SepDmaBasicCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepDmaBasicCfg":
+        # Deterministic by requirement, not by oversight: a failing leaf is
+        # reproduced with `--stage sim --seed N`, so the stimulus must be a
+        # pure function of the seed. These values pick DMA offsets for a
+        # simulated DUT; none of them is a key, token, or access decision.
         rng = random.Random(seed)
         nbytes = rng.choice((16, 32))
         src_off = rng.randrange(0, 0x10000, 16)

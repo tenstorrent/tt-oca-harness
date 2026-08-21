@@ -116,6 +116,10 @@ class SepInboundFilterMatrixCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepInboundFilterMatrixCfg":
+        # Deterministic by requirement: `--stage sim --seed N` must replay the
+        # exact stimulus. These are AXI payload values written to a simulated
+        # DUT, never secrets, so a CSPRNG would cost reproducibility and buy
+        # nothing.
         rng = random.Random(seed)
         va = rng.getrandbits(32) or TARGET_VALUE
         vb = rng.getrandbits(32) or WINDOW_B_VALUE
