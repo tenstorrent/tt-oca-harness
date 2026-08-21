@@ -577,11 +577,18 @@ overview and interconnect fabric are described in `hw/sep/doc/overview.adoc` and
 ==== Module Overview
 
 The `sep.sv` module provides the complete SEP functionality with logic-level
-interfaces. Technology-specific components (SRAM, ROM, eFuse shims, external
-TRNG, SPI controller) are instantiated by the adopter outside SEP, following
-the same vendor-neutral philosophy used for the SMC. When integrated inside the
-SMU, the SEP's external interfaces are passed through the SMU boundary with a
-`sep_` prefix.
+interfaces. Technology-specific components -- SRAM, ROM, and eFuse shims -- are
+instantiated by the adopter outside SEP, following the same vendor-neutral
+philosophy used for the SMC.
+
+Separately, SEP exposes interfaces for supplementary peripherals an adopter may
+add on rather than substitute: an external TRNG and an additional SPI
+controller. These are not technology-specific -- SEP contains its own entropy
+source and SPI host -- so the interfaces exist to supplement what SEP already
+provides, and may be left unused.
+
+When integrated inside the SMU, the SEP's external interfaces are passed through
+the SMU boundary with a `sep_` prefix.
 
 ==== Clock and Reset Requirements
 
