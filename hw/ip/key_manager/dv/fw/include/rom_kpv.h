@@ -88,7 +88,7 @@ void rom_kpv_shred_all(void);
  * clears the slot CTRL register, so a write-locked slot is wiped too.  A
  * sealed slot ends up retired instead of free.
  *
- * @param slot Slot index (0-31).
+ * @param slot Slot index (0-63).
  */
 void rom_kpv_shred_slot(uint8_t slot);
 
@@ -104,7 +104,7 @@ void rom_kpv_shred_slot(uint8_t slot);
  * set, and the slot can be neither read, rewritten nor reused until warm
  * reset.
  *
- * @param[in] slot Slot index (0-31).
+ * @param[in] slot Slot index (0-63).
  */
 void rom_kpv_erase_slot(uint8_t slot);
 
@@ -119,7 +119,7 @@ void rom_kpv_erase_slot(uint8_t slot);
  * of the slot are left holding whatever the preceding shred put there.
  * Returns an error without writing anything if the slot is write-locked.
  *
- * @param slot Slot index (0-31).
+ * @param slot Slot index (0-63).
  * @param words Key data (@p n_words 32-bit words).
  * @param n_words Words to write (1-16).
  * @return 0 on success, -1 if @p n_words is outside 1-16 or the slot is
@@ -134,7 +134,7 @@ int rom_kpv_write_slot(uint8_t slot, const uint32_t *words, uint8_t n_words);
  * meaningful is the caller's business: the hardware masks nothing, so words
  * past a key's length read back as the shred's LFSR data rather than zero.
  *
- * @param slot Slot index (0-31).
+ * @param slot Slot index (0-63).
  * @param words Buffer for @p n_words 32-bit words.
  * @param n_words Words to read (1-16).
  * @return 0 on success, -1 if @p n_words is outside 1-16 or the slot is
@@ -152,7 +152,7 @@ int rom_kpv_read_slot(uint8_t slot, uint32_t *words, uint8_t n_words);
  * The register write is issued three times so a single skipped store (e.g.
  * from a fault-injection glitch) cannot leave the slot writable.
  *
- * @param slot Slot index (0-31).
+ * @param slot Slot index (0-63).
  */
 void rom_kpv_write_lock(uint8_t slot);
 
@@ -162,7 +162,7 @@ void rom_kpv_write_lock(uint8_t slot);
  * The register write is issued three times so a single skipped store (e.g.
  * from a fault-injection glitch) cannot leave the key readable.
  *
- * @param slot Slot index (0-31).
+ * @param slot Slot index (0-63).
  */
 void rom_kpv_read_lock(uint8_t slot);
 
@@ -176,7 +176,7 @@ void rom_kpv_read_lock(uint8_t slot);
  *
  * Only the seal bit is written; hardware sets lock_write alongside it.
  *
- * @param slot Slot index (0-31).
+ * @param slot Slot index (0-63).
  * @return 0 when the seal and the hardware-set write lock both read back set,
  *         -1 otherwise.
  */
@@ -191,7 +191,7 @@ int rom_kpv_seal_slot(uint8_t slot);
  * slot too, whose material is gone: pair with rom_kpv_slot_retired() to tell
  * the two apart.
  *
- * @param slot Slot index (0-31).
+ * @param slot Slot index (0-63).
  * @return 1 if both lock_write and seal are set, 0 otherwise.
  */
 int rom_kpv_slot_sealed(uint8_t slot);
@@ -204,7 +204,7 @@ int rom_kpv_slot_sealed(uint8_t slot);
  * lock_use only from an erase completing, so a set lock_use is what separates a
  * retired slot from a sealed live one.
  *
- * @param slot Slot index (0-31).
+ * @param slot Slot index (0-63).
  * @return 1 if both seal and lock_use are set, 0 otherwise.
  */
 int rom_kpv_slot_retired(uint8_t slot);

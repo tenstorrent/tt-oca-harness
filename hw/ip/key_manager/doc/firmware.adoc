@@ -4372,7 +4372,8 @@ there are not enough available. The slots need not be contiguous
 .. Selected slots must lie in the key region. The root region is not a capacity
 pool the allocator may fall back on (<<km-kpv-slot-map>>).
 .. The first key slot must be selected randomly using data from the DRBG.
-.. Selected slots must not be write-locked, read-locked or erase-locked.
+.. Selected slots must not be write-locked or read-locked. This excludes sealed
+and retired slots, since hardware holds _lock_write_ set on both.
 .. Selected slots must not be associated with a live key descriptor.
 . Shreds all slots selected for the key.
 . Returns the slot set as a chain head and a slot bitmap, for the caller to drive
