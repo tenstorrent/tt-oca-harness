@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
 #-----------------------------------------------------------------------------
-# SEP (Secure Enclave Processor) block-level timing constraints.
+# SEP (Security Processor) block-level timing constraints.
 #
 # Clock periods, generated clocks, and I/O delays for the `sep` top-level
 # port list (hw/sys/sep/rtl/sep.sv). All top-level port references below

@@ -51,7 +51,7 @@ The DTP serves as the central hub for:
 *Secondary TAPs*
 
 * I/O STAP for chiplet-to-chiplet JTAG connectivity
-* SEP debug STAP for secure enclave access
+* SEP debug STAP for Security Processor access
 * Configurable number of extra STAPs
 
 ==== Specifications

@@ -40,7 +40,7 @@ A key design premise behind OCAH is that most interoperability requirements
 in OCA land in the chiplet framework rather than in the application
 subsystem itself. OCAH integrates the non-application-specific
 functions that repeatedly appear across chiplets, such as the Security
-Enclave Processor (SEP), System Management Controller (SMC), System
+Processor (SEP), System Management Controller (SMC), System
 Management Network (SMN), debug/test access, and bridges such as
 AXI-over-UCIe. 
 
