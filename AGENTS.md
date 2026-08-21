@@ -513,4 +513,4 @@ either form works. They prefer tools on `PATH` and, when one is missing, print a
 plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
-`scripts/ci/classify_diff.py` is the classifier.
+`scripts/ci/diff_class.py` is the classifier.

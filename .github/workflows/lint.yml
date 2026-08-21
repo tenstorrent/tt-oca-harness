@@ -10,10 +10,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  classify-diff:
+  diff-class:
     runs-on: ubuntu-latest
     outputs:
-      heavy: ${{ steps.classify.outputs.heavy }}
+      run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request' || github.event_name == 'push'
@@ -21,14 +21,14 @@ jobs:
         with:
           fetch-depth: 0
       - name: Classify the diff
-        id: classify
+        id: diff-class
         run: |
           case "${{ github.event_name }}" in
             pull_request|push)
-              python3 scripts/ci/classify_diff.py --github-output >> "$GITHUB_OUTPUT"
+              python3 scripts/ci/diff_class.py --github-output >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "heavy=true" >> "$GITHUB_OUTPUT"
+              echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -36,8 +36,8 @@ jobs:
   # bender (only lint-sv-slang) and reviewdog (via the shared
   # .github/actions/reviewdog-report composite action).
   setup-tools:
-    needs: [classify-diff]
-    if: needs.classify-diff.outputs.heavy == 'true'
+    needs: [diff-class]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Install bender
@@ -58,8 +58,8 @@ jobs:
         with: { name: reviewdog-bin, path: ./reviewdog-bin/reviewdog, retention-days: 1 }
 
   format-c:
-    needs: [classify-diff, setup-tools]
-    if: needs.classify-diff.outputs.heavy == 'true'
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }
     steps:
@@ -83,8 +83,8 @@ jobs:
           name: format-c
 
   lint-tcl:
-    needs: [classify-diff, setup-tools]
-    if: needs.classify-diff.outputs.heavy == 'true'
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }
     steps:
@@ -123,8 +123,8 @@ jobs:
   #       with: { log-file: lint_sv_verible.log, efm: '%f:%l:%c: %m', level: error, name: lint-sv-verible, fail-level: none }
 
   lint-sv-slang:
-    needs: [classify-diff, setup-tools]
-    if: needs.classify-diff.outputs.heavy == 'true'
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }
     steps:

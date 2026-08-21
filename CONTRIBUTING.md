@@ -85,7 +85,7 @@ artifacts; jobs report through `.github/actions/reviewdog-report`.
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
 child. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still
-report success. `scripts/ci/classify_diff.py --self-test` checks the classifier.
+report success. `scripts/ci/diff_class.py --self-test` checks the classifier.
 Scheduled and manually dispatched pipelines always run in full.
 
 | CI job | Reviewdog check(s) | Local command |

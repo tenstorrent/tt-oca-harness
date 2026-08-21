@@ -35,15 +35,15 @@ init:
   script:
     - |
       set -e
-      # Schedule and web always run the real companion. A documentation-only
-      # push or PR still has to produce nonfree/ci.yml so the trigger job can
-      # report the required GitHub check; use the stub instead of cloning.
+      # `trigger:` must include a child YAML. Job `rules` are fixed when the
+      # parent is created, so they cannot read this classification, and an
+      # env var cannot skip the trigger without a companion change. Schedule
+      # and web always clone. A documentation-only push or PR writes a
+      # one-job child so the required GitHub check still goes green.
       if [ "$CI_PIPELINE_SOURCE" = "schedule" ] || [ "$CI_PIPELINE_SOURCE" = "web" ]; then
         make ocah-nonfree-init
-      elif python3 scripts/ci/classify_diff.py --is-docs-only; then
-        mkdir -p nonfree
-        cp scripts/ci/docs-only-child.yml nonfree/ci.yml
-        echo "Documentation-only diff; child pipeline is a no-op."
+      elif python3 scripts/ci/diff_class.py --write-documentation-only-child nonfree/ci.yml; then
+        echo "Documentation-only diff; companion child is a one-job report."
       else
         make ocah-nonfree-init
       fi
