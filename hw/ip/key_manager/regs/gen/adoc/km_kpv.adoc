@@ -50,8 +50,8 @@ prevents an erase. The slot's seal state when the erase completes decides
 the outcome. Unsealed, the slot CTRL register is cleared and the slot is
 reusable. Sealed, lock_write stays set and lock_use is set, retiring the
 slot: its data is destroyed and it can be neither read, rewritten nor
-reused until warm reset. The eraser latches its slot when it starts, so a
-seal taken while an erase is in flight still retires the slot.
+reused until warm reset. A seal taken while an erase is already in flight
+therefore still retires the slot.
 | 1 | `lock_use` | RW | 0x0 a| Prevents KM read of this key entry data until reset. Read-any, write-1-only.
 Hardware sets this bit when an erase of a sealed slot completes, retiring
 the slot: its destroyed contents cannot be read back.

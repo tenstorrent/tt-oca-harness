@@ -461,8 +461,8 @@ neither _lock_write_, _lock_use_ nor _seal_ prevents it. The slot's seal state
 when the erase completes decides the outcome. On an unsealed slot the CTRL
 register is cleared — including _lock_write_ and _lock_use_ — so the slot
 becomes reusable. On a sealed slot the slot is *retired* instead: _lock_write_
-stays set and _lock_use_ is set. The erase controller latches its slot at the
-start, so a seal taken while an erase is in flight still retires the slot. The
+stays set and _lock_use_ is set. A seal taken while an erase is already in
+flight therefore still retires the slot. The
 hardware self-clears this bit when the erase completes; firmware can poll it to
 detect completion. This field is read-any, write-one-only.
 * Seal[3]

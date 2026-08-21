@@ -115,8 +115,8 @@ addrmap km_kpv {
                     the outcome. Unsealed, the slot CTRL register is cleared and the slot is
                     reusable. Sealed, lock_write stays set and lock_use is set, retiring the
                     slot: its data is destroyed and it can be neither read, rewritten nor
-                    reused until warm reset. The eraser latches its slot when it starts, so a
-                    seal taken while an erase is in flight still retires the slot.";
+                    reused until warm reset. A seal taken while an erase is already in flight
+                    therefore still retires the slot.";
             sw = rw;
             hw = r;
             onwrite = woset;
