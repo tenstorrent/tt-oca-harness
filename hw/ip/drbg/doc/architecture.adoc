@@ -62,6 +62,4 @@ functionality of those IPs.
 
 The CSRNG and EDN register interfaces use TL-UL, following the OpenTitan convention. The DRBG wrapper provides two levels of adaptation. The `drbg_axil64_lane_adapter` accepts 64-bit AXI-Lite transactions from the SoC interconnect and narrows them to 32-bit AXI-Lite by selecting the appropriate data lane based on address bit [2]. Only aligned single-lane accesses with strobe `0x0F` or `0xF0` are forwarded; all others are rejected with SLVERR. The downstream `axi_lite_to_tlul` bridge then converts 32-bit AXI-Lite into TL-UL for the CSRNG and EDN register blocks.
 
-The CSRNG and EDN register maps are generated from the vendored OpenTitan
-RDL (`vendor/lowRISC/opentitan/overlay/regs/`) and reported in the SEP
-detailed register map (see the DRBG section of the SEP TRM memory map).
+The CSRNG and EDN register maps are reported in the SEP detailed register map.
