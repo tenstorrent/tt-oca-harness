@@ -323,9 +323,9 @@ After sensing, the shadow register map (`sep_efuse_pkg::efuse_map_t`) is exposed
 
 The Key Manager receives a subset of the OTP data through the `km_otp_data_t` structure, which is assembled in `sep_crypto.sv`. The `life_cycle` field comes from the differentially-encoded `LC_STATE` shadow register, the `demotion_state_*` fields come from the lifecycle controller outputs (not directly from fuses), and the `chiplet_uid` field comes from the `CHIPLET_UID` shadow register. The ARBC fields (`BL1_VERSION`, `BL2_VERSION`), RMA tokens, and public key hashes are not wired into the Key Manager; they remain accessible only through the eFuse shadow register interface and are consumed by the SEP boot firmware.
 
-For simulation, adopters may provide an external eFuse macro model through an
-overlay-specific shim. The open tree keeps only the generic controller and shim
-interfaces.
+For simulation, adopters need to provide an external eFuse macro model behind the
+shim interface. Only the generic controller and the shim interfaces are defined
+here.
 
 For the canonical eFuse IP documentation covering the `efuse_interface_controller` internals, sensing FSM, and programming protocol, see `hw/ip/efuse/doc/index.adoc` (included in the SMC documentation via `hw/sys/smc/doc/periphs.adoc`).
 
@@ -386,7 +386,7 @@ _not support_ this feature and will leave this interface on the
 component unconnected or terminated. Furthermore, there is no SPI Slave
 device present in the SEP peripheral subsystem.
 
-The SEP provides two SPI integration paths. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. A second path, `sep_cdns_spi_wrap` (provided by the nonfree overlay), integrates a vendor xSPI controller and PHY for high-performance octal DDR flash access. This module presents both an AXI-Lite register interface and a full AXI4 flash read window, along with dedicated PHY pad connections and initialization status outputs. The selection between these two SPI paths is determined by the system configuration.
+The SEP instantiates a SPI host controller for boot. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the `sep_io_spi` boundary and drive `spi_irq_i` from it.
 
 Consult the
 https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host

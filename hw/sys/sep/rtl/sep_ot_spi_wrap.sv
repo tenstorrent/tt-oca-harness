@@ -9,9 +9,9 @@
 // This module encapsulates:
 // - spi_controller (modified OpenTitan SPI Host with AXI4-Lite interface)
 //
-// The spi_controller is a software-controlled SPI controller that
-// uses FIFO-based command/data transfer (similar to STIG mode in Cadence xSPI).
-// It does NOT support direct memory-mapped flash access.
+// The spi_controller is a software-controlled SPI controller that uses
+// FIFO-based command/data transfer. It does NOT support direct
+// memory-mapped flash access.
 //
 // Features:
 // - Configurable number of chip selects (default: 1)
