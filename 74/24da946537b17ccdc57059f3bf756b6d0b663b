@@ -1,0 +1,665 @@
+README.md
+  s_c8ce40a7fc1aa0::t_5777dd52d0c2ec 3-4,15-25
+  s_c8ce40a7fc1aa0::t_b4616a44a2ecb5 228-246
+  s_c8ce40a7fc1aa0::t_7a23c73035b626 26
+tools/docker/README.md
+  s_c8ce40a7fc1aa0::t_db5b5c8c409d27 107
+  s_c8ce40a7fc1aa0::t_2fee5acd36c9e0 27
+doc/trm/src/methodology.adoc
+  s_c8ce40a7fc1aa0::t_5fd9ed08a23313 244-245
+tools/regs/common/rdlview.py
+  s_c8ce40a7fc1aa0::t_352501c92c77eb 190-191
+  s_c8ce40a7fc1aa0::t_3cdb0aae940402 162-166
+tools/regs/rdlsvh.py
+  s_c8ce40a7fc1aa0::t_3e0ae7d817605c 62-64
+CONTRIBUTING.md
+  s_c8ce40a7fc1aa0::t_a0a06177e1d604 68-70
+tools/spdx/scan_license_headers.py
+  s_c8ce40a7fc1aa0::t_9af3a2ad6e5728 1-156
+tools/regs/stamp_spdx.py
+  s_c8ce40a7fc1aa0::t_05d5dea069d238 1-68
+tools/regs/rdlpyhdr.py
+  s_c8ce40a7fc1aa0::t_3bb50003c82ec6 198-199
+hw/common/regs/rules.mk
+  s_c8ce40a7fc1aa0::t_17539ac6e423ee 67
+  s_c8ce40a7fc1aa0::t_c0c308054d403c 157
+  s_c8ce40a7fc1aa0::t_468bc7eb239db1 100
+  s_c8ce40a7fc1aa0::t_ec5f1d8b968218 61
+  s_c8ce40a7fc1aa0::t_2c5eef169795fc 148
+  s_c8ce40a7fc1aa0::t_dcac51c8005111 86
+  s_c8ce40a7fc1aa0::t_31cfde9a3da752 118
+  s_c8ce40a7fc1aa0::t_55c19acd64dbdc 112
+  s_c8ce40a7fc1aa0::t_ad3328698ace9b 142
+  s_c8ce40a7fc1aa0::t_f69d04caafc977 124
+  s_c8ce40a7fc1aa0::t_845018a4e0992a 55
+  s_c8ce40a7fc1aa0::t_1f7bd585d44b64 167
+  s_c8ce40a7fc1aa0::t_bfcfc3777a6fb6 73
+  s_c8ce40a7fc1aa0::t_6ca05029048a87 106
+  s_c8ce40a7fc1aa0::t_f048526f3e61a7 11-13
+  s_c8ce40a7fc1aa0::t_bb54b5962f1c24 176
+tools/spdx/add_missing_headers.py
+  s_c8ce40a7fc1aa0::t_5fa387ee37cf5e 1-83
+hw/common/axi/axi_hang_detector/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/common/dv/configs/duts.toml
+  h_1abe2da33d4938 1-3
+hw/common/dv/configs/executors.toml
+  h_1abe2da33d4938 1-3
+hw/common/dv/configs/parsers.toml
+  h_1abe2da33d4938 1-3
+hw/common/dv/configs/profiles/native-formal.toml
+  h_1abe2da33d4938 1-3
+hw/common/dv/configs/simulators.toml
+  h_1abe2da33d4938 1-3
+hw/common/dv/pyproject.toml
+  h_1abe2da33d4938 1-3
+hw/common/dv/vip/jtag_vip/__init__.py
+  h_1abe2da33d4938 1-3
+hw/common/dv/vip/jtag_vip/jtag_enum.py
+  h_1abe2da33d4938 1-3
+hw/common/dv/vip/jtag_vip/jtag_intf.sv
+  h_1abe2da33d4938 1-3
+hw/common/dv/vip/jtag_vip/jtag_mon.py
+  h_1abe2da33d4938 1-3
+hw/common/dv/vip/jtag_vip/jtag_mst_bfm.py
+  h_1abe2da33d4938 1-3
+hw/common/dv/vip/jtag_vip/jtag_slv_bfm.py
+  h_1abe2da33d4938 1-3
+hw/common/dv/vip/jtag_vip/jtag_test_example.py
+  h_1abe2da33d4938 1-3
+hw/ip/axi_lite_mailbox_unit/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_matrix/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_matrix/dv/tb_vcs/rtl.f
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_matrix/dv/tb_vcs/tb.f
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_network/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_network/dv/tb_vcs/rtl.f
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_network/dv/tb_vcs/tb.f
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_port/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_port/dv/tb_vcs/rtl.f
+  h_1abe2da33d4938 1-3
+hw/ip/cross_trigger/cross_trigger_port/dv/tb_vcs/tb.f
+  h_1abe2da33d4938 1-3
+hw/ip/drbg/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/entropy_source/dv/cocotb/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/entropy_source/dv/tb/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/entropy_source/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/entropy_source/dv/tb_vcs/rtl.f
+  h_1abe2da33d4938 1-3
+hw/ip/entropy_source/dv/tb_vcs/tb.f
+  h_1abe2da33d4938 1-3
+hw/ip/gpio/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/i3ccore_wrap/dv/tb/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/jtag/jtag_stap/dv/tb/test_jtag_stap_tb.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/scripts/gen_crc_vectors.py
+  h_1abe2da33d4938 2-4
+hw/ip/key_manager/dv/tb/test_firmware.py
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/lint/scrambler.toml
+  h_1abe2da33d4938 1-3
+hw/ip/uart/log_engine/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/uart/uart_16550/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/uart/uart_log_engine_wrap/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/uart/uart_wrap/dv/tb_vcs/Makefile
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/dv/dtp_sim_cfg.toml
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/dv/testlists/all.toml
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/dv/testlists/debug_tdr.toml
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/dv/testlists/jtag.toml
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/dv/testlists/jtag2axi.toml
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/dv/testlists/scan.toml
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/dv/testlists/xtrig.toml
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/Makefile
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/configs/secure_boot_test.yaml
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/aes_driver.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/bl0_state.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/boot_flash.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/boot_straps.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/errors.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/fuse_lock.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/harden.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/hmac_sha256.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/kdf.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/lifecycle.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/manifest.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/manifest_crypto.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/otbn_driver.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/pll_init.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/rom_mbx.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/rom_mmio.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/rom_smc.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/rom_virt_console.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/rsa_verify.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/sep_dma.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/sep_helpers.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/sep_ot_spi.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/sep_ot_spi_profiles.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/sep_smc_interface.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/sep_spi.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/spi_tlv.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/status_ring.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/include/status_values.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/link/rom.ld
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/scripts/bl0-version.py
+  h_1abe2da33d4938 2-4
+hw/sys/sep/bootrom/prod/src/aes_driver.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/boot_straps.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/fuse_lock.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/hmac_sha256.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/kdf.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/key_digests.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/lifecycle.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/manifest_crypto.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/manifest_load.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/pll_init.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/rom_handoff.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/rom_main.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/rom_mem_clear.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/sep_dma.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/sep_ot_spi.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/status_ring.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/src/vector.S
+  h_1abe2da33d4938 1-3
+hw/sys/sep/bootrom/prod/tools/bin_to_spi_preload.py
+  h_1abe2da33d4938 2-4
+hw/sys/sep/bootrom/prod/tools/elf-to-vmem.py
+  h_1abe2da33d4938 2-4
+hw/sys/sep/bootrom/prod/tools/elf_to_vmem64.py
+  h_1abe2da33d4938 2-4
+hw/sys/sep/bootrom/prod/tools/generate_key_digests.py
+  h_1abe2da33d4938 2-4
+hw/sys/sep/bootrom/prod/tools/insert-rom-sha256.py
+  h_1abe2da33d4938 2-4
+hw/sys/sep/dv/fw/tests/bl1_pass_test/Makefile
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/bl1_pass_test/bl1.ld
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/bl1_pass_test/bl1_pass_test.S
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/bl1_pass_test/bl1_pass_test.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/common/spi_clk.h
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/common_otbn/otbn_app.ld
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/common_otbn/serialize/__init__.py
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smc_interop/sep_smc_interop.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq/sep_smc_mbox_irq.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smc_notify/sep_smc_notify.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smc_xbar/sep_smc_xbar.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_aes/sep_smu_aes.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_bidirect/sep_smu_bidirect.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_boot_health/sep_smu_boot_health.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_dma/sep_smu_dma.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_efuse/sep_smu_efuse.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_ext_axi/sep_smu_ext_axi.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_modules/sep_smu_modules.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_otbn/sep_smu_otbn.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_remap/sep_smu_remap.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_sanity/sep_smu_sanity.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_spi/sep_smu_spi.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_spi_mux/sep_smu_spi_mux.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/sep_smu_wdt/sep_smu_wdt.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.c
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/smu_smc_stall_sep/smu_smc_stall_sep.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/i3c_raw_master/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/i3c_raw_slave/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_boot_sequence_status_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_comprehensive_error_verification_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_crc_err_injection_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_interface_latch_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_interface_unlatch_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_invalid_cmd_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_invalid_length_field_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_jump/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_jump_invalid_region_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_jump_reject/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_max_size_transfer_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_mem_boundary_access_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_min_size_transfer_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_oversize_body_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_random_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_register_access_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_ring_buffer_advanced_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_ring_buffer_overflow_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_ring_buffer_stress_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_ring_buffer_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_secure_access_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_secure_boot_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_unaligned_access_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_undersize_body_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_undersize_header_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_unsecure_boot_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_unsupported_status_id_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_validate_boot_invalid_region_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_validate_boot_reject_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_validate_boot_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_zero_length_rw_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/tests/occp_zero_length_test/main.c
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/smc_sim_cfg.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/tb/smc_public_scope.vlt
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/fw/common/sep_boot_rom.ld
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/fw/common/sep_tcm.ld
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/fw/common/smc_rom.ld
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/smu_sim_cfg.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/smu_wrapper_sim_cfg.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/testlists/all.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/testlists/deferred.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/testlists/dtp.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/testlists/fabric.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/testlists/interop.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/testlists/sep.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/testlists/smc.toml
+  h_1abe2da33d4938 1-3
+hw/sys/smu/dv/testlists/wrapper.toml
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/__init__.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/cli.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/collect_results.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/gen_dashboard.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/gen_report.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/html.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/publish_reports.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/schema.py
+  h_1abe2da33d4938 1-3
+tools/dv/run_dashboard.py
+  h_1abe2da33d4938 2-4
+tools/dv/run_dv.py
+  h_1abe2da33d4938 2-4
+tools/dv/runlib/__init__.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/buildcache.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/cli.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/compat.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/config.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_model.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_parsers/__init__.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_parsers/imc.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_parsers/urg.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_parsers/verilator.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_policy.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/duts.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/junit.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/logparse.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/models.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/paths.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/results.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/stages.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/ui.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/waves.py
+  h_1abe2da33d4938 1-3
+tools/dv/sync_python_namespace.py
+  h_1abe2da33d4938 2-4
+tools/regs/common/__init__.py
+  h_1abe2da33d4938 1-3
+hw/ip/axi_window_remap/rtl/axi_address_adjuster.sv
+  h_1abe2da33d4938 1-3
+hw/ip/axi_window_remap/rtl/axi_window_remap.sv
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/drivers/rom_boot_sram_restart.S
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/drivers/rom_wipe.S
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/km_mutable_fw.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/km_production.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/km_sram_layout.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/modes/rom.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/modes/vrom.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/production/rom_main/rom_main.c
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_axil/test_efuse_km_axil.c
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_coexist/test_efuse_km_coexist.c
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_perm/test_efuse_km_perm.c
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/tb/tb_key_manager.sv
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/lint/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_1024x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_1024x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_2048x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_2048x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_4096x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_4096x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_512x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_512x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_8192x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_8192x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/rtl/config/dtp.f
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/link/modes/tcm.ld
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/common_otbn/generate_otbn_c.py
+  h_1abe2da33d4938 2-4
+hw/sys/sep/dv/fw/tests/common_otbn/otbn_app.mk
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/startup/crt0.S
+  h_1abe2da33d4938 1-3
+hw/top/smc_ijtag_net.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/c/csrng.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/c/csrng_addr.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/html/csrng.html
+  h_1abe2da33d4938 1-2
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/py/csrng_reg.py
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/ral/csrng_ral_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/svh/csrng_reg.svh
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/c/edn.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/c/edn_addr.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/html/edn.html
+  h_1abe2da33d4938 1-2
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/py/edn_reg.py
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/ral/edn_ral_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/sv/edn_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/svh/edn_reg.svh
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/c/secure_dma.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/c/secure_dma_addr.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/html/secure_dma.html
+  h_1abe2da33d4938 1-2
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/py/secure_dma_reg.py
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/sv/secure_dma_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/svh/secure_dma_reg.svh
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/c/spi_controller.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/c/spi_controller_addr.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/html/spi_controller.html
+  h_1abe2da33d4938 1-2
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/py/spi_controller_reg.py
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/sv/spi_controller_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/svh/spi_controller_reg.svh
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/block_flow_customizations/axi/vclint/inputs/waivers/project_waiver.tcl
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/__init__.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/config/__init__.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/config/parser.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/config/schema.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/configs/example_fabric.yaml
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/gen_fabric.py
+  h_1abe2da33d4938 2-4
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/generator/__init__.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/generator/conversion_graph.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/generator/render.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/generator/template_context.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/model/__init__.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/model/conversion.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/model/protocol.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/dma_ctrl.rdl
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/adoc/dma_ctrl.adoc
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/c/dma_ctrl.h
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/c/dma_ctrl_addr.h
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/html/dma_ctrl.html
+  h_1abe2da33d4938 1-2
+vendor/pulp-platform/idma/overlay/rdl/gen/py/dma_ctrl_reg.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/svh/dma_ctrl_reg.svh
+  h_1abe2da33d4938 1-3
+.github/workflows/spdx.yml
+  s_c8ce40a7fc1aa0::t_049dfe3f118e92 1-19
+.github/spdx_ignore.yaml
+  s_c8ce40a7fc1aa0::t_0b4ec70ac3ea4d 1-20
+hw/ip/entropy_source/dv/syn/entropy_source_rtl.f
+  s_c8ce40a7fc1aa0::t_fdd1b4d68e9a16 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7424da946537b17ccdc57059f3bf756b6d0b663b",
+  "prompts": {},
+  "humans": {
+    "h_1abe2da33d4938": {
+      "author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  },
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
