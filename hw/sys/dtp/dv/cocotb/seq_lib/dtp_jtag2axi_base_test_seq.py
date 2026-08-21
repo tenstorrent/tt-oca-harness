@@ -8,7 +8,6 @@ import os
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
 
-from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable, update_enables
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_types import (
     SMC_DBG_AXSIZE_8B,
@@ -770,48 +769,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
         return unpack_series_data(result, size, with_status=True)
 
-    # --- lifecycle and AXI activity helpers ----------------------------------
-    async def set_lifecycle(self, **bits: int) -> None:
-        """Interim five-enable API: derive and drive the eleven direct disables."""
-        dut = cocotb.top
-        disables = update_enables(**bits)
-        for name in DBG_DISABLE_FIELDS:
-            getattr(dut, f"dbg_disable_{name}").value = disables[name]
-        self.log.info(
-            "Lifecycle enables %s -> dbg_disable %s",
-            {name: value & 0x1 for name, value in bits.items()},
-            format_dbg_disable(disables),
-        )
-        await self.wait_sys_cycles(4)
-
-    async def enable_all_lifecycle(self) -> None:
-        await self.set_lifecycle(
-            sip_debug=1,
-            soc_debug=1,
-            ap_debug=1,
-            sep_debug=1,
-            fuse_test=1,
-        )
-
-    async def clear_lifecycle(self) -> None:
-        """Legacy restore helper: all protected lifecycle features enabled."""
-        await self.enable_all_lifecycle()
-
-    async def gate_lifecycle_bits(self, **bits: bool) -> None:
-        values = {
-            "sip_debug": 1,
-            "soc_debug": 1,
-            "ap_debug": 1,
-            "sep_debug": 1,
-            "fuse_test": 1,
-        }
-        for name, gated in bits.items():
-            if name not in values:
-                raise ValueError(f"unknown lifecycle feature {name!r}")
-            if gated:
-                values[name] = 0
-        await self.set_lifecycle(**values)
-
+    # --- AXI activity helpers -------------------------------------------------
     async def axi_activity_counts(self) -> dict[str, int]:
         """Sample SMC AXI request activity counters exposed by tb_top."""
         await ReadOnly()

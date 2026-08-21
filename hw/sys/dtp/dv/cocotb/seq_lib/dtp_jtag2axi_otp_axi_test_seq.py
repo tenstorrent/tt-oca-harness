@@ -230,9 +230,13 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             read=False,
             context="gate.baseline",
         )
-        for idx, bit_name in enumerate(cfg.required_enable_bits, start=1):
-            self.log_step(idx + 1, "Gate %s write with lifecycle %s", self.target, bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
+        # Two assert/release passes of the target's direct disable prove the
+        # gate is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
+            self.log_step(idx + 1, "Gate %s write with %s (pass %d)",
+                          self.target, cfg.dbg_disable_bit, idx)
+            await self.disable_debug_bits(cfg.dbg_disable_bit)
             raw = pack_single_op(
                 DtpJtag2AxiOp.WRITE,
                 addr + (idx * cfg.beat_bytes),
@@ -243,7 +247,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             )
             await self.write_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"gate.{bit_name}.no_axi")
-            await self.clear_lifecycle()
+            await self.enable_all_debug()
             before = await self.target_activity_counts(self.target)
             status, _ = await self.write_target_single_and_check(
                 self.target,
@@ -473,13 +477,17 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             context="read_gate.baseline",
         )
         self.status = status
-        for idx, bit_name in enumerate(cfg.required_enable_bits, start=1):
-            self.log_step(idx + 1, "Gate %s read with lifecycle %s", self.target, bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
+        # Two assert/release passes of the target's direct disable prove the
+        # gate is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
+            self.log_step(idx + 1, "Gate %s read with %s (pass %d)",
+                          self.target, cfg.dbg_disable_bit, idx)
+            await self.disable_debug_bits(cfg.dbg_disable_bit)
             raw = pack_single_op(DtpJtag2AxiOp.READ, addr + (idx * cfg.beat_bytes), size=size, target=cfg)
             await self.write_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"read_gate.{bit_name}.no_axi")
-            await self.clear_lifecycle()
+            await self.enable_all_debug()
             before = await self.target_activity_counts(self.target)
             status, _ = await self.read_target_single_and_check(
                 self.target,
@@ -502,7 +510,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         return unpack_series_data(raw, size)
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "single_write": self.run_single_write,
             "single_write_data_verify": self.run_single_write_data_verify,
@@ -523,7 +531,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         if self.scenario not in scenarios:
             raise ValueError(f"unknown OTP JTAG2AXI scenario {self.scenario!r}")
         await scenarios[self.scenario]()
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "OTP AXI-Lite JTAG2AXI scenario complete",
             target=self.target,

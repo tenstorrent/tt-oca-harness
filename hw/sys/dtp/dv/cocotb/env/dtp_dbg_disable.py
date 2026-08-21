@@ -4,6 +4,8 @@
 The DUT takes ``sep_lifecycle_ctrl_pkg::dbg_disable_t``: eleven pre-resolved
 active-high disables, one per gated interface (1 = interface disabled).
 ``tb_top.sv`` exposes one scalar input per field, named ``dbg_disable_<field>``.
+Deriving these disables from lifecycle policy is SEP-level behavior; DTP DV
+drives and checks each field directly.
 """
 
 from __future__ import annotations
@@ -25,60 +27,47 @@ DBG_DISABLE_FIELDS: tuple[str, ...] = (
     "sep_otp_jtag2axi",
 )
 
-# The five legacy lifecycle enables of the pre-resolved derivation (now in
-# sep_lifecycle_ctrl at the SEP level).
-LIFECYCLE_ENABLE_NAMES: tuple[str, ...] = (
-    "sip_debug",
-    "soc_debug",
-    "ap_debug",
-    "sep_debug",
-    "fuse_test",
-)
-
-# Enables that must all be high for each interface to be enabled. This is the
-# derivation the DTP RTL performed before it took dbg_disable_i directly; the
-# interim five-enable sequence API uses it until tests drive disables directly.
-REQUIRED_ENABLES: dict[str, tuple[str, ...]] = {
-    "stap_io": ("sip_debug",),
-    "stap_smc": ("soc_debug", "ap_debug"),
-    "stap_sep": ("sep_debug", "soc_debug", "ap_debug"),
-    "stap_extra": ("ap_debug",),
-    "stap_host": ("ap_debug",),
-    "dft_secure": ("fuse_test", "sep_debug", "soc_debug", "ap_debug"),
-    "dft_nonsecure": ("soc_debug", "ap_debug"),
-    "dfd": ("ap_debug",),
-    "smc_jtag2axi": ("soc_debug", "ap_debug"),
-    "smc_otp_jtag2axi": ("fuse_test", "soc_debug", "ap_debug"),
-    "sep_otp_jtag2axi": ("fuse_test", "sep_debug", "soc_debug", "ap_debug"),
+# iJTAG SIB name (dtp_scan_ref_model.IJTAG_SIB_ORDER) -> disable field.
+IJTAG_SIB_DISABLE: dict[str, str] = {
+    "dft_secure": "dft_secure",
+    "dft": "dft_nonsecure",
+    "dfd": "dfd",
 }
 
-# Enable state tracked across the interim five-enable API calls within one
-# test process. The bring-up startup vector enables everything, so partial
-# set_lifecycle() updates merge into an all-enabled baseline.
-_current_enables: dict[str, int] = {name: 1 for name in LIFECYCLE_ENABLE_NAMES}
+# STAP name (dtp_scan_ref_model.STAP_ORDER plus the extended host scan
+# interface) -> disable field.
+STAP_DISABLE: dict[str, str] = {
+    "io": "stap_io",
+    "smc": "stap_smc",
+    "sep": "stap_sep",
+    "extra0": "stap_extra",
+    "stap_host": "stap_host",
+}
+
+# JTAG2AXI target name (dtp_types.JTAG2AXI_TARGETS) -> disable field.
+JTAG2AXI_DISABLE: dict[str, str] = {
+    "smc_axi": "smc_jtag2axi",
+    "smc_otp": "smc_otp_jtag2axi",
+    "sep_otp": "sep_otp_jtag2axi",
+}
 
 
-def disables_from_enables(enables: Mapping[str, int]) -> dict[str, int]:
-    """Derive the eleven active-high disables from the five legacy enables."""
-    unknown = set(enables) - set(LIFECYCLE_ENABLE_NAMES)
+def validate_dbg_disable(values: Mapping[str, int]) -> dict[str, int]:
+    """Normalize a named (possibly partial) disable mask; reject unknown names."""
+    unknown = set(values) - set(DBG_DISABLE_FIELDS)
     if unknown:
-        raise ValueError(f"unknown lifecycle feature(s): {sorted(unknown)}")
-    return {
-        field: int(not all(int(enables.get(name, 0)) & 1 for name in required))
-        for field, required in REQUIRED_ENABLES.items()
-    }
+        raise ValueError(f"unknown dbg_disable field(s): {sorted(unknown)}")
+    return {name: int(values[name]) & 1 for name in values}
 
 
-def update_enables(**bits: int) -> dict[str, int]:
-    """Merge partial enable updates into the tracked state; return disables."""
-    unknown = set(bits) - set(LIFECYCLE_ENABLE_NAMES)
-    if unknown:
-        raise ValueError(f"unknown lifecycle feature(s): {sorted(unknown)}")
-    for name, value in bits.items():
-        _current_enables[name] = int(value) & 1
-    return disables_from_enables(_current_enables)
+def full_dbg_disable(values: Mapping[str, int] | None = None) -> dict[str, int]:
+    """Return a complete eleven-field mask; unnamed fields default to enabled (0)."""
+    named = validate_dbg_disable(values or {})
+    return {name: named.get(name, 0) for name in DBG_DISABLE_FIELDS}
 
 
 def format_dbg_disable(values: Mapping[str, int]) -> str:
     """Deterministic 'field=value' log string in struct declaration order."""
-    return " ".join(f"{name}={int(values[name]) & 1}" for name in DBG_DISABLE_FIELDS)
+    return " ".join(
+        f"{name}={int(values[name]) & 1}" for name in DBG_DISABLE_FIELDS if name in values
+    )

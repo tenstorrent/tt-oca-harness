@@ -18,8 +18,8 @@
 // reverses both. The smc_otp responder is the shared ocah_axi_vip UVM slave
 // agent (one-shot injection via its ocah_axi_slave_sequence); the smc_axi
 // responder remains the plain-SV RAM module driven through tb_if error
-// ports. Lifecycle enables must be raised before any JTAG2AXI op (they
-// reset to the gated-off tie-off value).
+// ports. The lifecycle debug disables reset to the fail-closed '1 tie-off,
+// so the target's disable must be cleared before any JTAG2AXI op.
 
 class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
     `uvm_object_utils(dtp_jtag2axi_base_seq)
@@ -46,6 +46,8 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
         int unsigned size_bits;
         int unsigned wstrb_bits;
         int unsigned default_size;
+        // The one dbg_disable_t field that gates this bridge (one-hot mask).
+        sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_mask;
     } j2a_target_t;
 
     localparam int unsigned MaxStatusPolls = 16;
@@ -73,6 +75,8 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
         t.size_bits       = 2;
         t.wstrb_bits      = 4;
         t.default_size    = 2;
+        t.dbg_disable_mask = '0;
+        t.dbg_disable_mask.smc_otp_jtag2axi = 1'b1;
         return t;
     endfunction
 
@@ -85,6 +89,8 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
         t.size_bits       = 2;
         t.wstrb_bits      = 8;
         t.default_size    = 3;
+        t.dbg_disable_mask = '0;
+        t.dbg_disable_mask.smc_jtag2axi = 1'b1;
         return t;
     endfunction
 
@@ -166,10 +172,10 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
                 addr & ((t.addr_width >= 64) ? '1 : ((64'd1 << t.addr_width) - 1)),
                 data & ((t.data_width >= 64) ? '1 : ((64'd1 << t.data_width) - 1)),
                 wstrb);
-        // Gated ops never reach the bus: do not arm read intents while a
-        // required lifecycle enable is low (the no-activity evidence owns
-        // that case; a dangling intent would false-fail at check_phase).
-        if (op == J2A_OP_READ && axi_cfg != null && lifecycle_all_enabled())
+        // Gated ops never reach the bus: do not arm read intents while the
+        // target's disable is asserted (the no-activity evidence owns that
+        // case; a dangling intent would false-fail at check_phase).
+        if (op == J2A_OP_READ && axi_cfg != null && target_enabled(t))
             axi_cfg.arm_expected_read(
                 addr & ((t.addr_width >= 64) ? '1 : ((64'd1 << t.addr_width) - 1)));
         pack_single_op(t, op, addr, data, wstrb, eff_size, dr);
@@ -236,37 +242,27 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
                 UVM_MEDIUM)
     endfunction
 
-    // --- lifecycle debug disables (must precede any JTAG2AXI op) -----------
-    // Interim five-enable API over the typed dbg_disable_t: derive the eleven
-    // pre-resolved active-high disables the way the DTP RTL used to (the
-    // derivation now lives in sep_lifecycle_ctrl), so the existing gating
-    // sequences keep their meaning until they drive disables directly.
-    task set_lifecycle(bit sip, bit soc, bit ap, bit sep, bit fuse);
-        sep_lifecycle_ctrl_pkg::dbg_disable_t d;
-        d.stap_io          = !sip;
-        d.stap_smc         = !soc || !ap;
-        d.stap_sep         = !sep || !soc || !ap;
-        d.stap_extra       = !ap;
-        d.stap_host        = !ap;
-        d.dft_secure       = !fuse || !sep || !soc || !ap;
-        d.dft_nonsecure    = !soc || !ap;
-        d.dfd              = !ap;
-        d.smc_jtag2axi     = !soc || !ap;
-        d.smc_otp_jtag2axi = !fuse || !soc || !ap;
-        d.sep_otp_jtag2axi = !fuse || !sep || !soc || !ap;
+    // --- lifecycle debug disables (must be cleared before JTAG2AXI ops) ----
+    task set_dbg_disable(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
         tb_vif.dbg_disable <= d;
-        #100ns;  // settle in the system-clock domain (10ns period)
-        `uvm_info(get_type_name(), $sformatf(
-            "lifecycle sip=%0d soc=%0d ap=%0d sep=%0d fuse=%0d -> dbg_disable=0x%03h",
-            sip, soc, ap, sep, fuse, d), UVM_MEDIUM)
+        // The DUT synchronizes dbg_disable through 2-stage TCK-domain flops;
+        // four toggling idle TCK cycles are the TB settle margin.
+        for (int unsigned i = 0; i < 4; i++)
+            step(1'b0);
+        `uvm_info(get_type_name(), $sformatf("dbg_disable=0x%03h", d), UVM_MEDIUM)
     endtask
 
-    task enable_all_lifecycle();
-        set_lifecycle(1'b1, 1'b1, 1'b1, 1'b1, 1'b1);
+    task enable_all_debug();
+        set_dbg_disable('0);
     endtask
 
-    function bit lifecycle_all_enabled();
-        return tb_vif.dbg_disable == '0;
+    // Assert exactly the disable that gates this target (all others clear).
+    task gate_target(j2a_target_t t);
+        set_dbg_disable(t.dbg_disable_mask);
+    endtask
+
+    function bit target_enabled(j2a_target_t t);
+        return (tb_vif.dbg_disable & t.dbg_disable_mask) == '0;
     endfunction
 
     // --- error arming (responder ports + shared checker, one place) --------

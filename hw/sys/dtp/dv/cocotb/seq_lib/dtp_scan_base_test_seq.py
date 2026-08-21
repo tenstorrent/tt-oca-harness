@@ -3,10 +3,6 @@
 
 from __future__ import annotations
 
-import cocotb
-from cocotb.triggers import ClockCycles
-
-from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable, update_enables
 from env.dtp_scan_ref_model import (
     DtpIjtagSibModel,
     DtpStap3dcrModel,
@@ -26,52 +22,6 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         super().__init__(*args, **kwargs)
         self.ijtag_model = DtpIjtagSibModel()
         self.stap_model = DtpStap3dcrModel()
-
-    # --- lifecycle -----------------------------------------------------------
-    async def set_lifecycle(self, **bits: int) -> None:
-        """Interim five-enable API: derive and drive the eleven direct disables."""
-        dut = cocotb.top
-        disables = update_enables(**bits)
-        for name in DBG_DISABLE_FIELDS:
-            getattr(dut, f"dbg_disable_{name}").value = disables[name]
-        self.log.info(
-            "Lifecycle enables %s -> dbg_disable %s",
-            {name: value & 0x1 for name, value in bits.items()},
-            format_dbg_disable(disables),
-        )
-        # Disable bits cross into TCK through two sync flops; step TCK so
-        # they propagate before the next operation.
-        for _ in range(4):
-            await self.tms_step(0)
-        await ClockCycles(dut.clk_i, 4)
-
-    async def enable_all_lifecycle(self) -> None:
-        await self.set_lifecycle(
-            sip_debug=1,
-            soc_debug=1,
-            ap_debug=1,
-            sep_debug=1,
-            fuse_test=1,
-        )
-
-    async def clear_lifecycle(self) -> None:
-        """Legacy restore helper: all protected lifecycle features enabled."""
-        await self.enable_all_lifecycle()
-
-    async def gate_lifecycle_bits(self, **bits: bool) -> None:
-        values = {
-            "sip_debug": 1,
-            "soc_debug": 1,
-            "ap_debug": 1,
-            "sep_debug": 1,
-            "fuse_test": 1,
-        }
-        for name, gated in bits.items():
-            if name not in values:
-                raise ValueError(f"unknown lifecycle feature {name!r}")
-            if gated:
-                values[name] = 0
-        await self.set_lifecycle(**values)
 
     # --- generic observable checks ------------------------------------------
     async def sample_signals(self) -> dict[str, int]:
@@ -101,11 +51,10 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         pattern: int,
         *,
         context: str,
-        feat_ctrl: dict[str, int] | None = None,
+        dbg_disable: dict[str, int] | None = None,
     ):
         """Update the three iJTAG SIB bits in LSB-first RTL order."""
-        feat = dict(feat_ctrl or {})
-        state = self.ijtag_model.state(pattern, **feat)
+        state = self.ijtag_model.state(pattern, dbg_disable)
         self.log.info(
             "%s SIB pattern=0x%x requested=%s gated=%s effective=%s chain_len=%d",
             context,
@@ -175,7 +124,7 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         stap_sel: int,
         tms_hold: int,
         close_sib: int = 1,
-        feat_ctrl: dict[str, int] | None = None,
+        dbg_disable: dict[str, int] | None = None,
         context: str,
     ) -> None:
         """Write one downstream STAP 3DCR after its SIB has been opened.
@@ -183,7 +132,7 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         Packing follows the jtag_stap RTL testbench: SIB bit first, then
         config_hold, stap_sel, tms_hold in LSB-first scan order.
         """
-        gates = self.stap_model.gates(**dict(feat_ctrl or {}))
+        gates = self.stap_model.gates(dbg_disable)
         payload = self.stap_model.stap_3dcr_value(
             config_hold=config_hold,
             stap_sel=stap_sel,
@@ -210,7 +159,7 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         self,
         name: str,
         *,
-        feat_ctrl: dict[str, int] | None = None,
+        dbg_disable: dict[str, int] | None = None,
         context: str,
     ) -> None:
         await self.write_ptap_3dcr(config_hold=1, select=1, context=f"{context}.ptap_select")
@@ -221,7 +170,7 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
             stap_sel=1,
             tms_hold=1,
             close_sib=0,
-            feat_ctrl=feat_ctrl,
+            dbg_disable=dbg_disable,
             context=f"{context}.write_stap_3dcr",
         )
 

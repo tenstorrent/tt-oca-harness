@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from env.dtp_dbg_disable import STAP_DISABLE
 from env.dtp_scan_ref_model import STAP_ORDER
 
 from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
@@ -23,9 +24,9 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         self.scenario = scenario
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         await self.reset_tap()
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         match self.scenario:
             case "stap_sel_ds" | "stap_sel_smc" | "stap_sel_sep" | "stap_sel_extra":
                 await self.run_stap_select(self.STAP_BY_SCENARIO[self.scenario])
@@ -37,32 +38,26 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
                 await self.run_tms_hold()
             case _:
                 raise ValueError(f"unknown STAP scenario {self.scenario}")
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         await self.write_ptap_3dcr(config_hold=0, select=0, context="cleanup")
 
     async def run_stap_select(self, stap: str) -> None:
         self.log_banner(f"GH #3213 STAP selection: {stap}")
-        feat = {}
-        await self.select_stap(stap, feat_ctrl=feat, context=f"{stap}.select")
+        await self.select_stap(stap, context=f"{stap}.select")
         _, signals = await self.observe_stap_controls(stap, context=f"{stap}.observe")
         self.check_stap_selected(stap, signals, selected=1, context=f"{stap}.selected")
 
-        gate_bits = {
-            "io": {"sip_debug": 0},
-            "smc": {"soc_debug": 0},
-            "sep": {"sep_debug": 0},
-            "extra0": {"ap_debug": 0},
-        }[stap]
-        await self.set_lifecycle(**gate_bits)
+        disable_field = STAP_DISABLE[stap]
+        await self.disable_debug_bits(disable_field)
         _, gated_signals = await self.observe_stap_controls(stap, context=f"{stap}.gated")
         self.check_stap_selected(stap, gated_signals, selected=0, context=f"{stap}.gated")
 
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         await self.apply_trst()
         await self.select_stap(stap, context=f"{stap}.recover")
         _, recovered = await self.observe_stap_controls(stap, context=f"{stap}.recover_observe")
         self.check_stap_selected(stap, recovered, selected=1, context=f"{stap}.recover")
-        self.log_summary("STAP select", stap=stap, gate_bits=gate_bits)
+        self.log_summary("STAP select", stap=stap, disable_field=disable_field)
 
     async def run_ext_stap_scan(self) -> None:
         self.log_banner("GH #3213 extended STAP scan interface")
@@ -79,10 +74,10 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         )
 
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.gate_enable")
-        await self.set_lifecycle(ap_debug=0)
-        _, gated = await self.shift_dr_observe(0x2, 2, context="ext.ap_gated_shift")
-        self.check_observable(gated, "jtag_stap_host_select", 0, context="ext.ap_gated")
-        self.log_summary("extended STAP scan", checked=("enable", "disable", "ap_debug gate"))
+        await self.disable_debug_bits("stap_host")
+        _, gated = await self.shift_dr_observe(0x2, 2, context="ext.host_gated_shift")
+        self.check_observable(gated, "jtag_stap_host_select", 0, context="ext.host_gated")
+        self.log_summary("extended STAP scan", checked=("enable", "disable", "stap_host gate"))
 
     async def run_config_hold(self) -> None:
         self.log_banner("GH #3213 PTAP/STAP CONFIG_HOLD behavior")

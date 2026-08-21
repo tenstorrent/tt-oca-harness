@@ -17,6 +17,12 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from pyuvm import uvm_sequence
 
+from env.dtp_dbg_disable import (
+    DBG_DISABLE_FIELDS,
+    format_dbg_disable,
+    full_dbg_disable,
+    validate_dbg_disable,
+)
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_types import DTP_IR_WIDTH, DtpJtagInstr, DtpTapState
 
@@ -231,6 +237,44 @@ class dtp_base_test_seq(uvm_sequence):
     async def write_tdr(self, reg: str, value: int) -> None:
         """Write a named TDR through the shared JTAG driver."""
         await self._send(op=DtpJtagOp.WRITE, reg=reg, value=value)
+
+    # --- lifecycle debug disables ---------------------------------------------
+    # The DUT synchronizes dbg_disable_i through 2-stage TCK-domain flops, so
+    # a disable change is only guaranteed visible after TCK has toggled.
+    async def wait_dbg_disable_sync(self) -> None:
+        """Settle a dbg_disable change: four idle TCK cycles (TB margin over
+        the 2-stage synchronizers), then a short system-domain settle for the
+        bridge-side logic behind them."""
+        for _ in range(4):
+            await self.tms_step(0)
+        await self.wait_sys_cycles(4)
+
+    async def set_dbg_disable(self, **bits: int) -> None:
+        """Drive named dbg_disable fields (1 = disabled); others keep state."""
+        named = validate_dbg_disable(bits)
+        dut = cocotb.top
+        for name, value in named.items():
+            getattr(dut, f"dbg_disable_{name}").value = value
+        self.log.info("dbg_disable set %s", format_dbg_disable(named))
+        await self.wait_dbg_disable_sync()
+
+    async def set_dbg_disable_vector(self, values) -> None:
+        """Drive all eleven dbg_disable fields; unnamed fields are enabled (0)."""
+        await self.set_dbg_disable(**full_dbg_disable(values))
+
+    async def enable_all_debug(self) -> None:
+        """Clear every disable: full debug access."""
+        await self.set_dbg_disable_vector({})
+
+    async def disable_debug_bits(self, *names: str) -> None:
+        """Assert one or more named disables; other fields keep state."""
+        await self.set_dbg_disable(**{name: 1 for name in names})
+
+    def dbg_resource_enabled(self, name: str) -> bool:
+        """Read back one driven dbg_disable input; True when enabled (0)."""
+        if name not in DBG_DISABLE_FIELDS:
+            raise ValueError(f"unknown dbg_disable field {name!r}")
+        return int(getattr(cocotb.top, f"dbg_disable_{name}").value) == 0
 
     # --- system-domain helpers ----------------------------------------------
     async def wait_sys_cycles(self, cycles: int = 4) -> None:

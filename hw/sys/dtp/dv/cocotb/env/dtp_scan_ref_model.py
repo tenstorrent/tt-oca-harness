@@ -9,7 +9,10 @@ without pretending there is a full downstream instrument VIP behind the loopback
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+
+from env.dtp_dbg_disable import IJTAG_SIB_DISABLE, STAP_DISABLE
 
 IJTAG_SIB_ORDER = ("dft_secure", "dft", "dfd")
 IJTAG_SIB_COUNT = len(IJTAG_SIB_ORDER)
@@ -38,11 +41,12 @@ class DtpIjtagSibModel:
     """Predict iJTAG SIB state for the DTP public loopback environment."""
 
     @staticmethod
-    def gates(*, soc_debug: int = 1, ap_debug: int = 1, sep_debug: int = 1, fuse_test: int = 1, **_) -> dict[str, int]:
+    def gates(dbg_disable: Mapping[str, int] | None = None) -> dict[str, int]:
+        """Per-SIB gate state from the direct disables (1 = SIB gated)."""
+        dbg = dict(dbg_disable or {})
         return {
-            "dft_secure": int(not bool(fuse_test and sep_debug and soc_debug and ap_debug)),
-            "dft": int(not bool(soc_debug and ap_debug)),
-            "dfd": int(not bool(ap_debug)),
+            name: int(dbg.get(IJTAG_SIB_DISABLE[name], 0)) & 1
+            for name in IJTAG_SIB_ORDER
         }
 
     @staticmethod
@@ -55,9 +59,9 @@ class DtpIjtagSibModel:
             for idx, name in enumerate(IJTAG_SIB_ORDER)
         }
 
-    def state(self, pattern: int, **feat_ctrl: int) -> IjtagSibState:
+    def state(self, pattern: int, dbg_disable: Mapping[str, int] | None = None) -> IjtagSibState:
         requested = self.pattern_dict(pattern)
-        gated = self.gates(**feat_ctrl)
+        gated = self.gates(dbg_disable)
         effective = {name: requested[name] & (gated[name] ^ 1) for name in IJTAG_SIB_ORDER}
         chain_len = IJTAG_SIB_COUNT + sum(
             IJTAG_INSTRUMENT_WIDTHS[name] for name in IJTAG_SIB_ORDER if effective[name]
@@ -98,13 +102,11 @@ class DtpStap3dcrModel:
         self.staps = {name: Stap3dcrState() for name in STAP_ORDER}
 
     @staticmethod
-    def gates(*, sip_debug: int = 1, soc_debug: int = 1, ap_debug: int = 1, sep_debug: int = 1, **_) -> dict[str, int]:
+    def gates(dbg_disable: Mapping[str, int] | None = None) -> dict[str, int]:
+        """Per-STAP gate state from the direct disables (1 = STAP gated)."""
+        dbg = dict(dbg_disable or {})
         return {
-            "io": int(not bool(sip_debug)),
-            "smc": int(not bool(soc_debug and ap_debug)),
-            "sep": int(not bool(sep_debug and soc_debug and ap_debug)),
-            "extra0": int(not bool(ap_debug)),
-            "stap_host": int(not bool(ap_debug)),
+            name: int(dbg.get(field, 0)) & 1 for name, field in STAP_DISABLE.items()
         }
 
     @staticmethod
@@ -140,9 +142,9 @@ class DtpStap3dcrModel:
         for name in STAP_ORDER:
             self.staps[name] = Stap3dcrState()
 
-    def effective_stap_sel(self, name: str, **feat_ctrl: int) -> int:
-        return self.staps[name].stap_sel & (self.gates(**feat_ctrl)[name] ^ 1)
+    def effective_stap_sel(self, name: str, dbg_disable: Mapping[str, int] | None = None) -> int:
+        return self.staps[name].stap_sel & (self.gates(dbg_disable)[name] ^ 1)
 
-    def parked_tms(self, name: str, **feat_ctrl: int) -> int:
-        return self.staps[name].tms_hold if not self.effective_stap_sel(name, **feat_ctrl) else 0
+    def parked_tms(self, name: str, dbg_disable: Mapping[str, int] | None = None) -> int:
+        return self.staps[name].tms_hold if not self.effective_stap_sel(name, dbg_disable) else 0
 
