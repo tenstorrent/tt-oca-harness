@@ -197,6 +197,26 @@ ifdef::backend-pdf[]
 include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 
+==== DRBG (CSRNG and EDN)
+
+The DRBG wraps the OpenTitan CSRNG and EDN blocks (see
+<<drbg,Architecture>>). Neither is a top-level SEP peripheral, so neither
+appears in the SEP aggregate register map; instead, their register maps are
+generated from the vendored OpenTitan RDL under
+`vendor/lowRISC/opentitan/overlay/regs/` and reported here.
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$csrng/regs/gen/html/csrng.html[]
+include::ip:partial$edn/regs/gen/html/edn.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[]
+endif::backend-pdf[]
+
 ==== Key Manager
 
 The generated maps live with the IP.

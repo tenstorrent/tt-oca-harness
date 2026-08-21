@@ -124,6 +124,18 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/ "$ROOT"/hw/common/axi/*/; do
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
 
+# --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
+#     collateral is generated into the lowRISC overlay rather than hw/ip, because
+#     they are instantiated through wrappers (e.g. the DRBG wraps CSRNG and EDN).
+#     Stage each under the ip module namespace so its generated maps include like
+#     any other IP. Overlay names do not collide with hw/ip. ---
+for otdir in "$ROOT"/vendor/lowRISC/opentitan/overlay/regs/*/; do
+  [ -d "$otdir" ] || continue
+  ip="$(basename "$otdir")"
+  stage_gen_adoc "$otdir/regs/gen/adoc" "$MOD/ip/partials/$ip/regs/gen/adoc"
+  stage_gen_html "$otdir/regs/gen/html" "$MOD/ip/partials/$ip/regs/gen/html"
+done
+
 # --- images: aggregate hw doc images into doc/assets (PDF) and module images
 #     (HTML). Flattened by basename so references resolve regardless of source. ---
 while IFS= read -r img; do
