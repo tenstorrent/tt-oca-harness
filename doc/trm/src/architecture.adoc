@@ -25,7 +25,7 @@ detailed microarchitectural documentation for each subsystem.
 [[ocah-high-level-features]]
 === OCAH High-Level Features
 
-* *Security Enclave Processor (SEP)* -- Root of Trust (RoT) with the highest
+* *Security Processor (SEP)* -- Root of Trust (RoT) with the highest
   security privilege. Provides a physically isolated RISC-V execution
   environment for secure boot, lifecycle control, device attestation, and
   hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3,
