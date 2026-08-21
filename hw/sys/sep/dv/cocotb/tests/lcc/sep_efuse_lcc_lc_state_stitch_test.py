@@ -28,7 +28,8 @@ test raises the frontdoor ``test_en_strap_i``, re-senses, and proves the latched
 
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
 The test injects a broken pair at the LCC decoder input (signed-off force) after
-the walk, proves fail-closed FEAT_CTRL=0, then releases and proves restore.
+the walk. Observation is the DUT ``lc_sigint_err_o`` probe plus an AXI
+``FEAT_CTRL`` readback of 0 (fail-closed), then release and both restore.
 """
 
 from __future__ import annotations
@@ -46,7 +47,7 @@ from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_image import SepEfuseImage, LC_WORD_IDX
 from env.sep_lcc_golden import (
     LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1,
-    TEST_MASK, feat_ctrl_expected,
+    TEST_MASK,
     is_legal_lc, is_valid_lc_transition, lc_state_name,
 )
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
@@ -278,13 +279,10 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             image, secure_tm=secure_tm, sec_dis=sec_dis, sigint_err=sigint_err,
         )
         await self.start_seq(seq)
+        assert seq.observed_feat is not None, "sequence did not publish AXI FEAT_CTRL"
+        feat = seq.observed_feat
+        self._last_observed_feat = feat
 
-        sip_dis = image.field_int("SIP_DIS")
-        sys_dis = image.field_int("SYS_DIS")
-        feat = feat_ctrl_expected(
-            raw, sip_dis, sys_dis,
-            secure_tm=secure_tm, sec_dis=sec_dis, sigint_err=sigint_err,
-        )
         if raw == LC_TEST_DEV and not sigint_err:
             dft = (feat & TEST_MASK) >> 32
             if secure_tm:
@@ -300,12 +298,13 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 )
         if sigint_err:
             assert feat == 0, (
-                f"sigint fail-closed expects FEAT_CTRL=0, got 0x{feat:016x} "
-                f"(sec_dis={sec_dis})"
+                f"sigint fail-closed expects AXI FEAT_CTRL=0, got 0x{feat:016x} "
+                f"(lcc_sigint_err_probe_o={observed_sigint} sec_dis={sec_dis})"
             )
             self.logger.info(
-                "CHK-SIGINT PASS: lc_sigint_err=1, FEAT_CTRL=0x%016x (fail-closed)",
-                feat,
+                "CHK-SIGINT PASS: inject took: lcc_sigint_err_probe_o=%d, "
+                "AXI FEAT_CTRL=0x%016x (fail-closed)",
+                observed_sigint, feat,
             )
 
         if sigint_err:
@@ -376,7 +375,9 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             image, last_raw, secure_tm=1, sigint_err=0, prev_raw=prev_raw,
         )
         self.logger.info(
-            "CHK-SIGINT-RELEASE PASS: lc_sigint_err returned to 0, FEAT_CTRL restored"
+            "CHK-SIGINT-RELEASE PASS: lcc_sigint_err_probe_o=0, "
+            "AXI FEAT_CTRL=0x%016x restored",
+            self._last_observed_feat,
         )
 
         assert self._total_program_retries >= 1, (

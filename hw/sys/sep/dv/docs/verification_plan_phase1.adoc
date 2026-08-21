@@ -1498,9 +1498,9 @@ of assuming programming always succeeds first time.
 | implemented -- pending kept log
 
 | CHK-SIGINT
-| A signed-off force breaks the LC_STATE pair at the LCC decoder input. `lc_sigint_err`
-  asserts and FEAT_CTRL is 0 (fail-closed, `SEC_DIS` observed 0). Release restores
-  both.
+| A signed-off force breaks the LC_STATE pair at the LCC decoder input. Observation
+  is the DUT `lc_sigint_err_o` probe plus an AXI `FEAT_CTRL` readback of 0
+  (fail-closed, `SEC_DIS` observed 0). Release restores both.
 | `CHK-SIGINT PASS` then `CHK-SIGINT-RELEASE PASS`
 | implemented -- pending kept log
 |===

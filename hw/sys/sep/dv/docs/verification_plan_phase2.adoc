@@ -415,15 +415,15 @@ grants still alternate (AES then URND). That is the round-robin decision.
 |===
 
 NOTE: Next PR — standing rule, not this change-set. Any test that moves data
-across the DRBG must run CHK1..CHK4 (`strict=True`, FIFO drain, `report()`) and
+across the DRBG must run CHK1..CHK4 (strict scoreboard, FIFO drain, report()) and
 enable CHK5 on every live sink. CHK1..CHK4 are always allowed on a real entropy
-bring-up. CHK5 mode is the strongest the stimulus allows: `golden` when one sink
-and the pull order is predictable; `membership` when more than one crypto sink is
+bring-up. CHK5 mode is the strongest the stimulus allows: golden when one sink
+and the pull order is predictable; membership when more than one crypto sink is
 live (each word is a CHK4 genbits word; dual-sink bit-exact routing needs the
-unported arbiter-assignment trace); `observe` when firmware-driven order is not
+unported arbiter-assignment trace); observe when firmware-driven order is not
 golden-predictable (`rom_main`). This test, `sep_aes_mode_keysize_rand_test`, and
-`sep_kmac_mode_strength_rand_test` currently cross DRBG with `strict=False` and
-no `report()`.
+`sep_kmac_mode_strength_rand_test` currently cross DRBG with the scoreboard in
+observe-only mode and no report().
 
 [[sep_drbg_gen_segmentation_test]]
 === sep_drbg_gen_segmentation_test
@@ -983,8 +983,8 @@ data.
 
 | CHK-DMA-DONE
 | The DMA done bit clears on write-one-to-clear and reads back clear. Handshake mode
-  does not raise `STATUS.chunk_done` (`chunk_done = !cfg_handshake_en`); that status is
-  `sep_dma_basic_test`.
+  does not raise `STATUS.chunk_done` (RTL: chunk_done is the inverse of
+  cfg_handshake_en); that status is `sep_dma_basic_test`.
 | `CHK-DMA-DONE PASS: done RW1C reads back clear`
 | PROVEN
 
@@ -1105,8 +1105,9 @@ Testlist:: `spi.toml`
 | PROVEN
 
 | CHK-WATERMARK
-| `STATUS.TXWM` follows the RTL polarity `tx_wm = tx_qd < tx_watermark`: set while empty
-  and at occupancy `wm-1`, clear at the exact watermark and after filling past it.
+| `STATUS.TXWM` follows the RTL polarity (set while TXQD is below the watermark):
+  set while empty and at occupancy `wm-1`, clear at the exact watermark and after
+  filling past it.
 | `CHK-WATERMARK PASS: TXWM 1->0 at exact wm=`
 | PROVEN
 
@@ -1440,6 +1441,18 @@ They belong to the ROM-FW owner. This plan keeps ROM *hardware* access only:
 `sep_boot_rom_smoke_test` and `sep_rom_sanity_test` in Phase 1 (IFU fetch),
 and <<sep_boot_rom_lsu_read_test>> (LSU read / write-ignored). The
 `sep_rom_uvm_*` names in <<backlog>> are the same HW-access class.
+
+The four implemented ROM-FW tests live in `testlists/rom_fw.toml` and still run
+in the `all` and `cpu` groups. This plan does not grade them:
+
+* `sep_rom_non_secure_boot_test`
+* `sep_rom_ot_dma_boot_test`
+* `sep_rom_ot_pio_boot_test`
+* `sep_rom_ot_secure_boot_test`
+
+`sep_rom_ot_integrity_reject_test` was deleted with the ROM-FW drop; it is not
+a source and is not enrolled. Ownership is recorded in `rom_fw.toml`; when a
+ROM-FW plan exists, those four names are graded there.
 
 [[open-items]]
 == Open items

@@ -12,10 +12,10 @@ schema_version = 1
 #     image. The shared TCM firmware engine (`c_build.default`) does not build it.
 #
 # OWNERSHIP: these exercise ROM firmware, not the ROM macro. They arrived with
-# PR #451 and are graded in the ROM-FW plan, NOT in verification_plan_phase1/2 --
-# which is why docs/tools/verify_plan_proofs.py skips this file when it checks
-# that every implemented test has a graded entry. ROM *hardware* coverage stays
-# in the SEP plans (`sep_boot_rom_lsu_read_test`, the `sep_rom_uvm_*` backlog).
+# PR #451 and are not graded in verification_plan_phase1/2. ROM *hardware*
+# coverage stays in the SEP plans (`sep_boot_rom_lsu_read_test`, the
+# `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
+# four names are graded.
 #
 # They still run in the `all` and `cpu` groups: the boot path is worth exercising
 # in a SEP sweep even though SEP does not grade it.

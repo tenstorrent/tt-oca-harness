@@ -88,19 +88,12 @@ macros, backdoor-loaded by `tb_backdoor_mem` in `tb/tb_top.sv`. Examples:
   `mpc_reset_run_req=1`. The test boots VeeR EL2 and checks PC advance
   (`sep_cpu_trace`) plus the firmware banner and PASS magic on the outbound
   mailbox (`tb/sep_outbound_mbx.sv`).
-- `sep_rom_non_secure_boot_test` — OSS port of the internal ROM non-secure boot
-  test (target `rom_boot`). Boots VeeR EL2 from the **real production Boot ROM**
-  (`hw/sys/sep/bootrom/prod`, at ROM_BASE 0x10040000) and runs the full non-secure boot: the
-  ROM reads the manifest, validates it (real SHA256), DMA-copies the `bl1_pass_test`
-  BL1 to SRAM, jumps, and BL1 signals PASS. SPI is stubbed (the OSS `sep` has only
-  the OpenTitan Quad `spi_host`, not the Cadence xSPI); instead a behavioral SMC
-  responder (`axi_sim_mem`, `SEP_SMC_MEM_MODEL`) serves the SMC scratch regs +
-  the manifest+BL1 image from SMC memory, so the ROM takes its non-SPI (SMC-SRAM)
-  manifest path. A TEST_DEV eFuse image satisfies the lifecycle check. Checks: EL2
-  PC-advance + `fw_done && fw_pass` (BL1 `0xA5A55A5A`→`0xCAFEBABE` mailbox magic);
-  the ROM/BL1 console (SCRATCH2 virt-console) is decoded to the log. Design notes
-  (`sep-rom-non-secure-boot-design.md` and `-handoff.md`) live in the internal
-  `tt-oca-hw` checkout and are not yet ported here.
+
+Production Boot ROM firmware tests (`sep_rom_non_secure_boot_test`,
+`sep_rom_ot_{dma,pio,secure}_boot_test`) live in `testlists/rom_fw.toml` and
+still run in the `all` and `cpu` groups. They belong to the ROM-FW owner;
+this suite grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
+`sep_rom_sanity_test`, `sep_boot_rom_lsu_read_test`).
 
 Boot/reset invariant: `ext_boot_seq_done_i=1`. Fuse-sense policy is testcase
 metadata, not a run mode: non-eFuse tests usually add `+skip_fuse_sense` to their
@@ -235,18 +228,16 @@ port, not a memory model.
 # Build the OSS firmware first (RISC-V GCC on PATH; no picolibc) — only for boot:
 make -C hw/sys/sep/dv/fw -f fw.mk dv-fw-tests TEST=hello_world OCAH_ROOT="$PWD"
 
-# sep_rom_non_secure_boot_test needs the Boot ROM + manifest + BL1 image, but does
-# NOT need a manual build step: the test declares `firmware = { mode = "boot_rom" }`,
-# so the c_compile stage runs [c_build.boot_rom] (hw/sys/sep/bootrom/prod/Makefile)
-# and its `outputs` are checked before sim -- a bare run_dv.py is self-contained.
-#
-# The one prerequisite it cannot do for you is the manifest packer submodule, because
-# a build step must not mutate git state. Without it the pack half dies with
-# "No module named tt_boot_manifest":
+# Production Boot ROM firmware tests live in testlists/rom_fw.toml (ROM-FW
+# owner) and still run in the `cpu` group. A named run still needs the Boot ROM
+# + manifest + BL1 image: those tests declare `firmware = { mode = "boot_rom" }`,
+# so c_compile runs [c_build.boot_rom] (hw/sys/sep/bootrom/prod/Makefile). The
+# one prerequisite a build step must not mutate git for is the manifest packer
+# submodule; without it the pack half dies with "No module named tt_boot_manifest":
 git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
 
-# Build it by hand only when iterating on the ROM sources themselves. The two halves
-# are split by tool dependency, so each runs where its tools are:
+# Build the ROM by hand only when iterating on the ROM sources themselves. The two
+# halves are split by tool dependency, so each runs where its tools are:
 #   toolchain-images needs the RISC-V toolchain WITH picolibc (the generated
 #     register headers close their packing checks with static_assert, i.e.
 #     <assert.h>, which is not a freestanding header) -> use the toolchain container.

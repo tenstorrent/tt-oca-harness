@@ -7,9 +7,10 @@ schema_version = 1
 # full-CPU default model.
 #
 # Production Boot ROM firmware tests (sep_rom_non_secure_boot_test,
-# sep_rom_ot_{dma,pio,secure}_boot_test) are not enrolled here. Sources stay
-# under cocotb/tests/cpu/ for the ROM-FW owner; this VPLAN grades ROM hardware
-# access only (see docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
+# sep_rom_ot_{dma,pio,secure}_boot_test) are not defined here -- they live in
+# rom_fw.toml (different RTL target and firmware profile). They still run in
+# the `cpu` group; this VPLAN grades ROM hardware access only
+# (see docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
 
 [[tests]]
 name = "sep_hello_world_test"

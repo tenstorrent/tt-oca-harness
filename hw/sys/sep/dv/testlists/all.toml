@@ -29,8 +29,9 @@ schema_version = 1
 #   sep_fabric_inbound_filter_rule_matrix_test CHK-OWNERSHIP-WINDOW
 #     https://github.com/tenstorrent/tt-oca-harness/issues/1050
 #
-# Production Boot ROM firmware tests are not enrolled (ROM-FW owner; see
-# cpu.toml and docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
+# Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They
+# still run in the `all` and `cpu` groups; this VPLAN does not grade them
+# (see docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
 includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml"]
 
 # CI smoke gate (`--items smoke`), matching the dtp/smc/smu convention so the

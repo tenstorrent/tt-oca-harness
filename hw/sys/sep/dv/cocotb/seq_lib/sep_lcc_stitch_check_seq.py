@@ -48,6 +48,7 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         self.sigint_err = sigint_err
         # Computed in body() and exposed for the test's transition checks/logging.
         self.observed_lc_raw: int | None = None
+        self.observed_feat: int | None = None
 
     async def _read_expect(self, addr: int, expected: int, label: str) -> int:
         item = SepAxiItem(f"rd_{label}_0x{addr:08x}")
@@ -80,14 +81,19 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         self.observed_lc_raw = shadow_rdata & 0xF
 
         # (2) LCC decoded that lc_state into the expected feature-control vector.
-        await self._read_expect(LCC_FEAT_CTRL, feat & 0xFFFF_FFFF, "feat_ctrl_lo")
-        await self._read_expect(
+        feat_lo = await self._read_expect(
+            LCC_FEAT_CTRL, feat & 0xFFFF_FFFF, "feat_ctrl_lo")
+        feat_hi = await self._read_expect(
             LCC_FEAT_CTRL + 4, (feat >> 32) & 0xFFFF_FFFF, "feat_ctrl_hi"
         )
+        # Publish the vector the DUT returned on AXI, not the golden that the
+        # sequence already compared it against. Callers log this as the observe
+        # half of the signed-off sigint inject (probe + FEAT_CTRL).
+        self.observed_feat = feat_lo | (feat_hi << 32)
 
         cocotb.log.info(
             "[lcc] state %s (0x%x): SIP_DIS=0x%016x SYS_DIS=0x%016x "
             "secure_tm=%d sigint=%d -> FEAT_CTRL=0x%016x",
             lc_state_name(lc_raw), lc_raw, sip_dis, sys_dis,
-            self.secure_tm, self.sigint_err, feat,
+            self.secure_tm, self.sigint_err, self.observed_feat,
         )
