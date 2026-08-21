@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP LCC sep_debug -> inbound-filter gating test (OSS).
 
-OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test`` (TEST 3.7,
-reference suite). Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
+OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test``.
+Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
 PROD_DBG_1 (sep_debug=1, filter skipped). Datapath
 (``sep.sv``: ``inbound_filter_skip_i = feat_ctrl.sep_debug``):
@@ -240,4 +240,4 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         self.logger.info(
             "CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed"
         )
-        self.logger.info("SEP LCC inbound-filter-gating test PASS (TEST 3.7)")
+        self.logger.info("SEP LCC inbound-filter-gating test PASS")

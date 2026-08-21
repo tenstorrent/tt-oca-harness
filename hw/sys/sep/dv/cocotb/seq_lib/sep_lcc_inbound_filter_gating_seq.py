@@ -2,7 +2,7 @@
 """LCC sep_debug -> inbound-filter gating sequences for the SEP OSS flow.
 
 Stimulus for the inbound-filter-gating test (reference suite ``sep_lcc_uvm_inbound_filter
-_gating_test``, TEST 3.7). The contract:
+_gating_test``). The contract:
 
   feat_ctrl.sep_debug (FEAT_CTRL[0]) drives the SEP inbound filter's
   ``filter_skip_i`` (``sep.sv``: ``inbound_filter_skip_i = feat_ctrl_o.sep_debug``).

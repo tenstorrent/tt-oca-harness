@@ -17,7 +17,60 @@ Sources: the SEP architecture chapters under `hw/sys/sep/doc/`, the Phase 1 and
 Phase 2 verification plans, `oss_dv_plan.adoc`, and a concept read of the
 internal UVM environment (test *names* and behaviour only — no proprietary
 paths, licensed IP, or internal testcase IDs).
+
+This file *ships in this PR*. Executing <<improvements>> §1–§8 is later
+work. The first later step is still §1 (rewrite the 69-name ledger).
 ====
+
+== This PR's scope
+
+What this branch already did, and must not re-do as if it were still open.
+
+Spine honesty::
+Phase 1 grades stay 147 `PROVEN` / 1 `FAILED`. Phase 2 stays 22 graded
+entries, 101 `PROVEN` / 1 `FAILED`. `PARTIAL` / `GUARD` are unused.
+Two checkers are hard `FAILED` spec-vs-RTL reveals, not XFAILs, not
+regressions of this PR. Confirmed again on Verilator `all` run
+`20260821_024643`:
++
+--
+* CHK-JTAG-MMR-DENY on `sep_efuse_jtag_axil_el2_cpu_mux_test` —
+  https://github.com/tenstorrent/tt-oca-harness/issues/626
+* CHK-OWNERSHIP-WINDOW on `sep_fabric_inbound_filter_rule_matrix_test` —
+  https://github.com/tenstorrent/tt-oca-harness/issues/1050
+--
++
+CI `--items smoke` does not include them. A class sweep is expected
+two-red until RTL.
+
+ROM firmware::
+Dropped from this VPLAN. The four implemented boots live in
+`testlists/rom_fw.toml` and still run in the `all` and `cpu` groups.
+This plan does not grade them. `sep_rom_ot_integrity_reject_test` was
+deleted with the drop.
+
+Parking-lot close::
+`sep_crypto_edn_round_robin_grant_test` is implemented and `PROVEN`
+(kept log `20260820_210207`). `secure_tm` is a frontdoor strap;
+`lc_sigint_err` is a signed-off decoder-input inject whose pass line
+is the DUT probe plus an AXI `FEAT_CTRL` readback. Verilator run
+`20260821_041148` logged `CHK-SECURE-TM-OFF/ON`, `CHK-SIGINT`, and
+`CHK-SIGINT-RELEASE`. Latch-timing corners stay backlog
+`sep_efuse_strap_secure_tm_latch_test`.
+
+SPI flash-cmd golden::
+`3693829a` added the neighbour-sector program so CHK-ERASE cannot pass
+as a chip-wide wipe. The host golden now expects that 10-opcode
+sequence. Dual/quad opcode walk is still §5 (BFM-gated), not closed.
+
+Not this PR::
+--
+* Executing §1–§8 (KM command, eFuse lock, demote product, OTBN
+  compute, filter-matrix upgrade, outbound remap, Phase 3 UVM).
+* CHK1–CHK4 + CHK5 on `sep_crypto_edn_round_robin_grant_test`,
+  `sep_aes_mode_keysize_rand_test`, and
+  `sep_kmac_mode_strength_rand_test` — standing rule, next PR.
+--
 
 == Verdict
 
@@ -32,7 +85,7 @@ and Phase 2 randomizes whenever the feature has a legal matrix or knob space
 What *has* arrived is the other, weaker reading: a strong *integration spine*.
 The wires between blocks are mostly proven. Several IPs still do not have the
 feature that makes that IP itself. Grade tables hide that distinction: a suite
-can be 145 + 101 `PROVEN` with two hard `FAILED` spec-gaps and still miss
+can be 147 + 101 `PROVEN` with two hard `FAILED` spec-gaps and still miss
 iconic-per-IP.
 
 [cols="2,3",options="header"]
@@ -109,17 +162,21 @@ Do not execute §7 by writing more notes. Name the owner or strengthen.
 == What Phase 1 + 2 actually delivered
 
 Phase 1 is closed as a *spine*: 11 smoke + 21 representatives.
-*Current grades (regenerated):* 145 `PROVEN` / 0 `PARTIAL` / 0 `GUARD` / 1
-`FAILED` (CHK-JTAG-MMR-DENY, `periphs.adoc` vs RTL, issue 626). Stitch
-CHK-SECURE-TM / CHK-SIGINT are implemented, pending a kept log — not in the
-145. The spine is real: KM sideload into OTBN/AES/HMAC/KMAC, OTP →
-lifecycle decode, inbound filter vs `SEP_DBG`, DMA copy + SHA-256 + SPI
-handshake, entropy CHK1–4 under forced noise, CPU boot and ROM IFU, WDT bark
-→ NMI.
+*Current grades:* 147 `PROVEN` / 0 `PARTIAL` / 0 `GUARD` / 1 `FAILED`
+(CHK-JTAG-MMR-DENY, `periphs.adoc` vs RTL, issue 626, re-hit
+`20260821_024643`). Stitch CHK-SECURE-TM and CHK-SIGINT now quote run
+`20260821_041148` and are graded; CHK-SECRET-BLANK and
+CHK-SECURE-TM-PROG-BLOCK are the two rows added on top of the earlier 145.
+
+The spine is real: KM sideload into
+OTBN/AES/HMAC/KMAC, OTP → lifecycle decode, inbound filter vs `SEP_DBG`,
+DMA copy + SHA-256 + SPI handshake, entropy CHK1–4 under forced noise,
+CPU boot and ROM IFU, WDT bark → NMI.
 
 Phase 2 is 22 graded entries.
 *Current grades:* 101 `PROVEN` / 0 `PARTIAL` / 1 `FAILED`
-(CHK-OWNERSHIP-WINDOW, `fabric.adoc` vs RTL, issue 1050). The ones that
+(CHK-OWNERSHIP-WINDOW, `fabric.adoc` vs RTL, issue 1050, re-hit
+`20260821_024643`). The ones that
 match `oss_dv_plan` (iconic + walk the discrete cells in one run):
 
 * `sep_aes_mode_keysize_rand_test` — 9-cell AES
@@ -185,8 +242,9 @@ claim*, not the new wording, unless a named owner took the excluded slice.
 
 | EL2 boot + ROM-HW fetch / LSU
 | PROVEN
-| Hello-world, ROM IFU, LSU read / write-ignored. Integrity-reject and
-  secure-boot RSA are ROM-FW, not this VPLAN.
+| Hello-world, ROM IFU, LSU read / write-ignored. Production ROM-FW
+  boots are in `rom_fw.toml` (still in the `cpu` sweep) and are not
+  graded here. Integrity-reject was deleted with that drop.
 
 | PIC source map
 | PARTIAL
@@ -260,7 +318,9 @@ claim*, not the new wording, unless a named owner took the excluded slice.
 | Lifecycle `feat_ctrl` vs `LC_STATE`
 | PROVEN
 | Stitch test, spec-derived golden. `secure_tm` strap and `lc_sigint`
-  inject are implemented on that test, pending a kept log.
+  inject are observed (DUT `secure_tm_o` / `lc_sigint_err_o` plus AXI
+  `FEAT_CTRL`; run `20260821_041148`). Latch-timing corners remain
+  backlog.
 
 | Lifecycle demote (DBG_1 / DBG_2, TEST_DEV vs PROD)
 | PARTIAL
@@ -322,10 +382,12 @@ These would move the suite *away* from `oss_dv_plan.adoc`.
 * Do not add GPIO, licensed SPI PHY, or vendor TRNG tests. The spec places
   UART/GPIO in SMC; OSS hygiene drops licensed leaves.
 
+[[improvements]]
 == Improvements
 
 Each item is Why (the spec or plan gap) then How (the change) then Done-when
 (the evidence-item that must appear in a kept Verilator log).
+None of §1–§8 is work this PR still owes.
 
 === 1. Make Phase 2's document match Phase 2's job
 
@@ -445,9 +507,10 @@ In place, same test names:
 * `sep_crypto_per_ip_reset_isolation_test` — walk the remaining
   `SW_RESET_N` bits that this DUT actually isolates (do not claim KM if
   KM reset is a different mechanism).
-* `sep_spi_ot_flash_cmd_rand_test` — either walk the opcode cells the BFM
-  can show, or drop the RAND-REP label. Dual/quad stay deferred if the
-  BFM cannot show lanes; that is infra, not a silent pass.
+* `sep_spi_ot_flash_cmd_rand_test` — neighbour-sector erase is in (10
+  BFM opcodes). Either walk the remaining opcode cells the BFM can
+  show, or drop the RAND-REP label. Dual/quad stay deferred if the BFM
+  cannot show lanes; that is infra, not a silent pass.
 
 Done-when::
 Each upgraded test logs `CHK-RAND-REP` (or equivalent) with the cell
@@ -501,7 +564,8 @@ No new IPs. Fix the checker or the stimulus:
   needs the unported arbiter-assignment trace.
 * `sep_cpu_dbg_reset_independence_test`: keep the dropped isolation claim
   dropped.
-* Boot ROM firmware stays out of this VPLAN. ROM-FW owner.
+* Boot ROM firmware stays out of this VPLAN. Sources and enrollment
+  live in `testlists/rom_fw.toml`; ROM-FW owner.
 
 Done-when::
 Each open item is either a new `PROVEN` line or an explicit Phase 3 name
@@ -561,9 +625,9 @@ from a combined Phase 1+2 run — not from the 69-name list.
 
 == Suggested order
 
-The 60% iconic bar moves in this order. Do not parallelize §1 away from
-the rest: the document change is what stops the 69-name worklist from
-being executed by accident.
+The 60% iconic bar moves in this order *after this PR*. Do not
+parallelize §1 away from the rest: the document change is what stops
+the 69-name worklist from being executed by accident.
 
 . §1 document alignment (no sim)
 . §7 honesty fixes on existing tests (cheap, DV-bug-first; name owners,
@@ -602,4 +666,8 @@ being executed by accident.
 | `README.md` / `AGENTS.md`
 | Point at `verification_plan_phase*.adoc` and `oss_dv_plan.adoc`. The
   `SEP_OSS_VPLAN_PHASE*.md` paths are gone.
+
+| `testlists/rom_fw.toml`
+| ROM-FW boots live here. Still members of `all` / `cpu`. Not a SEP
+  VPLAN grade surface.
 |===

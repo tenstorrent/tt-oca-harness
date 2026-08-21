@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * PREFIX Register Test (P1)
+ * PREFIX Register Test
  *
  * Verifies PREFIX register write/readback for all 11 words.
  * Runs KMAC with standard prefix, then custom prefix, and

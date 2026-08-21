@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * STATE Share Verification Test (P1)
+ * STATE Share Verification Test
  *
  * Runs SHA3-256 of "abc", reads both STATE shares (share0 and share1),
  * verifies that both are non-zero, they differ (masking is active),

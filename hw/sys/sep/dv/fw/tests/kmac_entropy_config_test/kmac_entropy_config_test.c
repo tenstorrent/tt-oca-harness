@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Entropy Configuration Test (P1)
+ * Entropy Configuration Test
  *
  * Verifies KMAC entropy period register, entropy seed provisioning,
  * and entropy_ready flow. Runs KMAC-128 (keyblock) so HASH_CNT increments,

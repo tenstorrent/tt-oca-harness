@@ -29,7 +29,7 @@ VPLAN-parity checkers:
             per-engine key-bus AW monitor)
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
   CHK-PUB   HMAC public KEY CSRs read back zero after the sideload (the key is not
-            exposed on the frontdoor) -- reference P3 hmac_public_key_regs_read_zero
+            exposed on the frontdoor) -- hmac_public_key_regs_read_zero
   CHK-MAC   engine keyed digest == HMAC-SHA256(known_key, msg) golden (consume-proof)
   CHK-RW1C  HMAC done event W1C-clears (INTR_STATE.hmac_done -> 0)
   CHK-ERR   HMAC ERR_CODE == 0 and INTR_STATE.hmac_err == 0
@@ -144,6 +144,9 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             "HMAC public KEY CSRs not all zero after sideload (key leak): "
             f"{[hex(w) for w in pub if w]}"
         )
+        self.logger.info(
+            "CHK-PUB HMAC public KEY frontdoor reads zero after sideload "
+            "(read path alive: STATUS=%#010x)", ctl_pub)
 
         # CHK-MAC: keyed HMAC-SHA256 with the SIDELOAD key, value-checked vs golden.
         await self.hmac.configure_keyed_256()

@@ -91,6 +91,13 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
+# Class-1a device secrets. sep_efuse_pkg.sv:563 SecretShadowRanges disconnects these
+# from the shadow-register hardware output while secure_tm is asserted, so no real
+# secret reaches a scannable consumer. Named, not derived: which fields are secret is
+# a security decision in the package, not a property of the map's shape, so a new
+# field must be classified deliberately rather than inherited by position.
+_SECRET_REGS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
+
 # Lock-field geometry, from sep_efuse_pkg. LOCKS (64-bit, OTP words 0-1) plus
 # LOCKS_SPARE (32-bit, word 2) form one 96-bit field holding two bits per protected
 # field -- a write lock and a read lock -- across 40 slots (idx 0-39). locks[79:0] are
@@ -405,22 +412,40 @@ class SepEfuseImage:
 
     # -- golden model ------------------------------------------------------
 
-    def shadow_word(self, word_idx: int) -> int:
+    def secret_words(self) -> frozenset:
+        """Word indices the DUT blanks while secure_tm is asserted."""
+        idx = set()
+        for name in _SECRET_REGS:
+            fld = self.field(name)
+            idx.update(range(fld.word, fld.word + fld.n_words))
+        return frozenset(idx)
+
+    def shadow_word(self, word_idx: int, *, secure_tm: int = 0) -> int:
         """Expected software-readback value for shadow word ``word_idx``.
 
-        Only LC_STATE is transformed by the sense FSM; all other
-        readable words read back verbatim (secure_tm=0, LOCKS unlocked).
+        LC_STATE is transformed by the sense FSM. With ``secure_tm`` asserted the
+        Class-1a secrets read back as zero -- the DUT disconnects them from the shadow
+        output (sep_efuse_pkg.sv SecretShadowRanges), so a golden that returned the
+        staged value would report 32 mismatches on a TEST_EN run. Everything else
+        reads back verbatim (LOCKS unlocked).
+
+        The blanking is conditional ON PURPOSE. Zeroing these words unconditionally
+        would stop the compare proving they sensed correctly at all, which is the
+        whole point of the post-sense check.
         """
+        if secure_tm and word_idx in self.secret_words():
+            return 0
         if word_idx == LC_WORD_IDX:
             upper = self.words[LC_WORD_IDX] & 0xFFFF_FF00
             return upper | lc_encode(self.lc_raw())
         return self.words[word_idx] & WORD_MASK
 
-    def expected_field(self, name: str) -> List[Tuple[int, int]]:
+    def expected_field(self, name: str, *, secure_tm: int = 0) -> List[Tuple[int, int]]:
         """(addr, expected) pairs the checker reads for ``name``."""
         fld = self.field(name)
         return [
-            (fld.shadow_addr + 4 * i, self.shadow_word(fld.word + i))
+            (fld.shadow_addr + 4 * i,
+             self.shadow_word(fld.word + i, secure_tm=secure_tm))
             for i in range(fld.n_words)
         ]
 

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * CFG_REGWEN Protection Test (P1)
+ * CFG_REGWEN Protection Test
  *
  * Verifies that CFG_REGWEN locks CFG_SHADOWED when KMAC is active
  * and unlocks after operation completes.

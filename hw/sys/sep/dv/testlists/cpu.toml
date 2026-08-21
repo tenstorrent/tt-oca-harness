@@ -131,12 +131,12 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# CPU IFU/LSU local-alias-remap (the reference suite's sep_cpu_ifu_lsu_alias_remap_matrix_test,
-# , edge E12). EL2 firmware programs the alias window
+# CPU IFU/LSU local-alias-remap (the reference suite's
+# sep_cpu_ifu_lsu_alias_remap_matrix_test). EL2 firmware programs the alias window
 # (SEP_LOCAL_BASE=0xC000_0000/REGION_SIZE=0x4000_0000) and proves the CPU-side
 # IFU + LSU local-alias-remap (sep_cpu.sv u_lsu/u_ifu_local_alias_remap): a fabric
 # access to 0xD000_xxxx remaps to physical SRAM 0x1000_xxxx. MUST be cpu mode --
-# the no_cpu AXI splice is post-remap and would bypass E12. +skip_fuse_sense (the
+# the no_cpu AXI splice is post-remap and would bypass the remap. +skip_fuse_sense (the
 # alias remap does not depend on sensed OTP). CPU complex (real CPU IFU/LSU).
 name = "sep_cpu_ifu_lsu_alias_remap_matrix_test"
 module = "cpu.sep_cpu_ifu_lsu_alias_remap_matrix_test"

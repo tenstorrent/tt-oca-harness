@@ -2,7 +2,7 @@
 //
 // SEP CPU IFU/LSU local-alias-remap firmware test (OSS port of the reference suite
 // sep_cpu_ifu_lsu_alias_remap_matrix_test). Proves the CPU-side local alias remap
-// (hw/sys/sep/rtl/sep_cpu.sv u_lsu/u_ifu/u_dbg axi_window_remap, edge E12): a CPU fabric
+// (hw/sys/sep/rtl/sep_cpu.sv u_lsu/u_ifu/u_dbg axi_window_remap): a CPU fabric
 // access in [SEP_LOCAL_BASE, SEP_LOCAL_BASE+SEP_LOCAL_ALIAS_REGION_SIZE) is remapped
 // to (addr - (SEP_LOCAL_BASE - SEP_LOCAL_ALIAS_REGION_BASE)), and an access outside
 // the window passes through unchanged.
@@ -22,11 +22,11 @@
 // CPU window size is the fixed SEP_LOCAL_ALIAS_REGION_SIZE localparam.
 //
 // This must be a CPU-firmware (real IFU/LSU) test: the OSS no_cpu AXI splice is
-// POST-remap, so a no_cpu driver would bypass E12 entirely.
+// POST-remap, so a no_cpu driver would bypass the remap entirely.
 //
 // Scope delta vs the reference suite: the reference suite scenario also pokes ALIAS_ENTRY0_* (0x10A1_00xx);
 // those program a SEPARATE alias-table remapper (for other masters), NOT the CPU
-// u_ifu/u_lsu_local_alias_remap instances this test (edge E12) targets, so they
+// u_ifu/u_lsu_local_alias_remap instances this test targets, so they
 // are intentionally out of scope here.
 //
 // Checks (firmware-self-checking; start.S emits PASS/FAIL magic from main's rc):

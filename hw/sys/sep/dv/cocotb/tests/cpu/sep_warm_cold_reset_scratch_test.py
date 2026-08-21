@@ -18,17 +18,16 @@ readback) and BACKDOOR (the ``scratch_cold_probe_o`` XMR tap), proving they agre
 
 Checks (each asserts an exact value, so a stuck/X register fails):
   CHK-NONVAC     : pre-reset AXI writes to SCRATCH_WARM[0]/SCRATCH_COLD[0] read
-                   back the written patterns (the writes land + banks AXI-live;
-                   reference suite A.1/A.2). Cold bank cross-checked via scratch_cold_probe_o.
+                   back the written patterns (the writes land + banks AXI-live).
+                   Cold bank cross-checked via scratch_cold_probe_o.
   CHK-WARM-RST   : a wdt_rst_ni_i low pulse drives sep_cpu_reset_n 1->0->1.
                    Cold-domain isolation is CHK-WARM-CLEAR / CHK-WARM-RETAIN
                    (warm bank clears, cold bank retains) -- dbg_sep_reset_n_o has
                    no fan-out from wdt_rst_ni_i, so asserting it stays 1 cannot fail.
-  CHK-WARM-CLEAR : after the warm reset, SCRATCH_WARM[0] == reset default 0x0
-                   (reference suite C.1).
+  CHK-WARM-CLEAR : after the warm reset, SCRATCH_WARM[0] == reset default 0x0.
   CHK-WARM-RETAIN: after the warm reset, SCRATCH_COLD[0] == its written pattern
-                   (survives; reference suite D.1). Probe cross-check.
-  CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset (reference suite E.1).
+                   (survives). Probe cross-check.
+  CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset.
   CHK-COLD-REINIT: after a cold reset (rst_ni resense), BOTH banks == reset
                    default (stronger than the reference suite). Probe cross-check on the cold bank.
 
@@ -81,7 +80,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.scr = SepScratchReset(self)
 
-        # --- CHK-NONVAC: writes land + banks AXI-live (reference suite A.1/A.2) ---
+        # --- CHK-NONVAC: writes land + banks AXI-live ---
         await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN)
         await self.scr.write(SCRATCH_COLD_0, COLD_PATTERN)
         warm_rb = await self.scr.read(SCRATCH_WARM_0)
@@ -111,7 +110,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         self.logger.info(
             "CHK-WARM-RST PASS: warm reset asserted and released sep_cpu_reset_n")
 
-        # --- CHK-WARM-CLEAR: warm bank cleared by the warm reset (reference suite C.1) ---
+        # --- CHK-WARM-CLEAR: warm bank cleared by the warm reset ---
         warm_post = await self.scr.read(SCRATCH_WARM_0)
         assert warm_post == SCRATCH_RESET_DEFAULT, (
             f"CHK-WARM-CLEAR SCRATCH_WARM[0]=0x{warm_post:08x} != reset default "
@@ -119,7 +118,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         self.logger.info(
             "CHK-WARM-CLEAR PASS: SCRATCH_WARM[0] cleared to 0x%08x", warm_post)
 
-        # --- CHK-WARM-RETAIN: cold bank survives the warm reset (reference suite D.1) ---
+        # --- CHK-WARM-RETAIN: cold bank survives the warm reset ---
         cold_post = await self.scr.read(SCRATCH_COLD_0)
         assert cold_post == COLD_PATTERN, (
             f"CHK-WARM-RETAIN SCRATCH_COLD[0]=0x{cold_post:08x} != 0x{COLD_PATTERN:08x}")
@@ -129,7 +128,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         self.logger.info(
             "CHK-WARM-RETAIN PASS: SCRATCH_COLD[0] retained 0x%08x (probe agrees)", cold_post)
 
-        # --- CHK-WARM-RECOVER: warm bank writable again post-warm-reset (reference suite E.1) ---
+        # --- CHK-WARM-RECOVER: warm bank writable again post-warm-reset ---
         await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN2)
         warm_rec = await self.scr.read(SCRATCH_WARM_0)
         assert warm_rec == WARM_PATTERN2, (

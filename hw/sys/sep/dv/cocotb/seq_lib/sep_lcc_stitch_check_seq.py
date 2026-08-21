@@ -10,7 +10,7 @@ checks each against the golden reference:
     that was sensed (proves the sensed lc_state reached the software map).
   * FEAT_CTRL (64-bit, read as two 32-bit halves) == ``feat_ctrl_expected(...)``
     from the LCC golden model (proves eFuse lc_state -> LCC decode -> feature
-    control, interconnect edge E4/E11).
+    control).
 
 Both checks are exact-value (caught by the scoreboard's value-check / uvm_error),
 so each fails on a broken decode rather than merely "no X".

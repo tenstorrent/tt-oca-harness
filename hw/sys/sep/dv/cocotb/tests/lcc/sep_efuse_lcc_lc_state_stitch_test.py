@@ -4,8 +4,7 @@
 OSS port of the reference UVM ``sep_efuse_lcc_lc_state_stitch_test``. Walks the
 lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD -> RMA_SIP_1 ->
 RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is stitched into
-the lifecycle controller and decoded into the right feature-control vector
-(interconnect edge E4/E11):
+the lifecycle controller and decoded into the right feature-control vector:
 
   * the LC_STATE shadow register reads back the differential-encoded state, and
   * FEAT_CTRL reads back exactly ``feat_ctrl_expected(...)`` from the LCC golden
@@ -53,6 +52,10 @@ from env.sep_lcc_golden import (
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
+
+# One Class-1a secret is enough to prove the secure_tm disconnect; the
+# post-sense backdoor compare already covers all four every sense.
+_SECRET_FIELD = "CLASS_KEY"
 
 # Monotonic lifecycle chain exercised (matches the reference test's PROD/RMA walk).
 _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
@@ -255,6 +258,17 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         image.set_lc_state(raw)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
 
+
+    def _sensed_secret(self, image: SepEfuseImage, name: str) -> int:
+        """Read one Class-1a secret field out of the sensed shadow array by backdoor."""
+        sensed = int(cocotb.top.efuse_shadow_probe_o.value)
+        fld = image.field(name)
+        val = 0
+        for i in range(fld.n_words):
+            word = (sensed >> (32 * (fld.word + i))) & 0xFFFF_FFFF
+            val |= word << (32 * i)
+        return val
+
     async def _check_state(
         self,
         image: SepEfuseImage,
@@ -348,6 +362,20 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 prev_raw = await self._check_state(
                     image, raw, secure_tm=0, prev_raw=prev_raw,
                 )
+                # CHK-SECRET-BLANK, first half: with the strap low the Class-1a
+                # secret must be present in the sensed shadow. Captured BEFORE the
+                # strap goes up so the blanking below is a transition on one image
+                # rather than an observation that could also be satisfied by a DUT
+                # that never sensed the secret at all.
+                staged = image.field_int(_SECRET_FIELD)
+                assert staged != 0, (
+                    f"test bug: staged {_SECRET_FIELD} is zero, so the blanking check "
+                    f"below would pass on a DUT that ignores secure_tm")
+                open_secret = self._sensed_secret(image, _SECRET_FIELD)
+                assert open_secret == staged, (
+                    f"{_SECRET_FIELD} at secure_tm=0 sensed 0x{open_secret:x} != "
+                    f"staged 0x{staged:x}")
+
                 # Latch TEST_EN on the next sense-done. resense pulses rst_ni
                 # (clears the latch flop) then re-samples the strap.
                 cocotb.top.test_en_strap_i.value = 1
@@ -355,24 +383,67 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 prev_raw = await self._check_state(
                     image, raw, secure_tm=1, prev_raw=prev_raw,
                 )
+                # Second half: the same image, same field, strap high -> disconnected.
+                blanked = self._sensed_secret(image, _SECRET_FIELD)
+                assert blanked == 0, (
+                    f"{_SECRET_FIELD} must read 0 while secure_tm=1 "
+                    f"(sep_efuse_pkg SecretShadowRanges), got 0x{blanked:x}")
+                self.logger.info(
+                    "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and 0 at "
+                    "secure_tm=1 (Class-1a secret disconnected)",
+                    _SECRET_FIELD, open_secret)
+
+                # CHK-SECURE-TM-PROG-BLOCK: while the strap is up, efuse_guard
+                # (efuse_guard.sv:110) empties the whole fuse command request, so NO
+                # bit programs -- not just the secrets. Prove that here, on the same
+                # bit the walk programs next, so the refusal is attributable to
+                # secure_tm rather than to a bad address.
+                blocked = _lcc_otp_program_seq(
+                    _LC_STATE_BIT_BASE + 0, max_attempts=2)
+                try:
+                    await self.start_seq(blocked)
+                except AssertionError:
+                    self.logger.info(
+                        "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] refused while "
+                        "secure_tm=1 (efuse_guard empties the command request)",
+                        _LC_STATE_BIT_BASE)
+                else:
+                    raise AssertionError(
+                        f"OTP bit[{_LC_STATE_BIT_BASE}] programmed while secure_tm=1; "
+                        f"efuse_guard must block every fuse command under the strap")
+
+                # Drop the strap before the walk resumes. LC_STATE carries
+                # SECURE_TM_LOCK and the guard blanks the command interface outright,
+                # so programming and secure_tm cannot both hold -- the strap phase is
+                # deliberately scoped to the DFT-column and secret-disconnect checks
+                # above. The same bit programs for real in the next iteration, which
+                # is what makes the refusal above a gate rather than a dead path.
+                cocotb.top.test_en_strap_i.value = 0
+                await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+                prev_raw = await self._check_state(
+                    image, raw, secure_tm=0, prev_raw=prev_raw,
+                )
             else:
                 await self._program_state_and_resense(image, raw)
                 prev_raw = await self._check_state(
-                    image, raw, secure_tm=1, prev_raw=prev_raw,
+                    image, raw, secure_tm=0, prev_raw=prev_raw,
                 )
 
         # Broken-pair inject: no legal OTP image can present one. Force the
         # LCC decoder input, prove fail-closed, then release and restore.
         last_raw = _LC_CHAIN[-1]
+        # secure_tm=0 here: the TEST_EN strap is dropped after the first state so the
+        # walk can program LC_STATE at all. _check_state asserts the observed strap,
+        # so these must match the DUT rather than the earlier phase.
         cocotb.top.lc_sigint_inject_i.value = 1
         await ClockCycles(cocotb.top.clk_i, 2)
         await self._check_state(
-            image, last_raw, secure_tm=1, sigint_err=1, prev_raw=prev_raw,
+            image, last_raw, secure_tm=0, sigint_err=1, prev_raw=prev_raw,
         )
         cocotb.top.lc_sigint_inject_i.value = 0
         await ClockCycles(cocotb.top.clk_i, 2)
         await self._check_state(
-            image, last_raw, secure_tm=1, sigint_err=0, prev_raw=prev_raw,
+            image, last_raw, secure_tm=0, sigint_err=0, prev_raw=prev_raw,
         )
         self.logger.info(
             "CHK-SIGINT-RELEASE PASS: lcc_sigint_err_probe_o=0, "

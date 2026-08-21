@@ -50,7 +50,7 @@ Accepted scope deltas vs the reference suite (documented; no silent skips):
 
 Boot recipe matches the OTBN/AES/HMAC KATs (real fuse-sense, valid PROD OTP image).
 KMAC IS an EDN consumer (masking entropy), so it is parked through KM boot/load for
-clean isolation + entropy dedication, then released before the transfer (reference P3),
+clean isolation + entropy dedication, then released before the transfer,
 after which its keyed ops pull real EDN masking entropy (scored via CHK5_kmac).
 """
 
@@ -98,7 +98,7 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
 
         # Park all four sideload-target crypto engines: KM owns the EDN stream for
         # boot/keygen and the key bus is isolated. KMAC is released only before the
-        # transfer (reference P3) so its keyed ops pull EDN masking entropy afterwards.
+        # transfer so its keyed ops pull EDN masking entropy afterwards.
         await self.swrst.park("otbn", "aes", "hmac", "kmac")
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
@@ -169,6 +169,9 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
             "CHK-PUB positive control failed: KMAC STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
         )
+        self.logger.info(
+            "CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload "
+            "(read path alive: STATUS=%#010x)", ctl_pub)
 
         # CHK-SIDE/CHK-MAC: sideload MAC, then SW-key MAC with the KNOWN key.
         a_side = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=True)

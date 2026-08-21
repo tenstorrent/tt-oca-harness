@@ -1047,8 +1047,9 @@ Testlist:: `spi.toml`
 |===
 
 NOTE: the transaction-order golden is strong and independent — it requires the exact
-six-transaction opcode sequence and that the program transaction carries the exact random
-address and payload.
+ten-transaction opcode sequence (primary program/read, neighbour program/read, erase,
+primary read, neighbour read) and that both program transactions carry the exact
+payloads.
 
 [[sep_spi_ot_host_csr_irq_rand_test]]
 === sep_spi_ot_host_csr_irq_rand_test

@@ -139,7 +139,15 @@ class sep_base_test(uvm_test):
             )
         from seq_lib.sep_efuse_backdoor_check import check_efuse_shadow_backdoor
 
-        check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image)
+        # The strap the DUT latched, not what the test intended: reading secure_tm_o
+        # keeps the golden's secret-blanking tied to the DUT rather than to a flag the
+        # test could set wrongly.
+        secure_tm = 0
+        probe = getattr(cocotb.top, "secure_tm_o", None)
+        if probe is not None:
+            secure_tm = int(probe.value) & 0x1
+        check_efuse_shadow_backdoor(
+            self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.

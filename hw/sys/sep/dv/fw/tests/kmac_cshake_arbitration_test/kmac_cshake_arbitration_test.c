@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * KMAC cSHAKE Arbitration / Back-to-Back Test (P1)
+ * KMAC cSHAKE Arbitration / Back-to-Back Test
  *
  * Verifies that the KMAC cSHAKE datapath handles sequential SW-initiated
  * operations correctly with no state leakage between runs.

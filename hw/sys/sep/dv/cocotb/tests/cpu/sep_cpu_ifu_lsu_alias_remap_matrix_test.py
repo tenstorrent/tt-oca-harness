@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP CPU IFU/LSU local-alias-remap test (PyUVM).
 
-OSS port of the reference suite ``sep_cpu_ifu_lsu_alias_remap_matrix_test`` (edge E12).
+OSS port of the reference suite ``sep_cpu_ifu_lsu_alias_remap_matrix_test``.
 Boots the VeeR EL2 core running the cpu_alias_remap firmware, which programs the
 CPU-side alias window base (SEP_LOCAL_BASE=0xD000_0000, its reset value) and
 proves both the LSU and the IFU local-alias-remap (hw/sys/sep/rtl/sep_cpu.sv

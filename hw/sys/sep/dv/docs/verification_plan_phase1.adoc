@@ -1429,7 +1429,7 @@ of assuming programming always succeeds first time.
 
 | 3
 | Pin the two disable overrides to distinct non-zero vectors so each decoded feature-control word is a different non-trivial value; check the state reached the controller and that feature control matches the golden model.
-| `[lcc] state PROD (0x1): SIP_DIS=0x0f0f0f0f0f0f0f0f SYS_DIS=0x00ff00ff00ff00ff -> FEAT_CTRL=0xf000000000000000`
+| `[lcc] state PROD (0x1): SIP_DIS=0x0f0f0f0f0f0f0f0f SYS_DIS=0x00ff00ff00ff00ff secure_tm=0 sigint=0 -> FEAT_CTRL=0xf000000000000000`
 | LOGGED
 
 | 4
@@ -1495,14 +1495,33 @@ of assuming programming always succeeds first time.
   raised and the image is re-sensed, `secure_tm_o` is 1 and the DFT group matches
   the golden (non-zero under the pinned disable vectors).
 | `CHK-SECURE-TM-OFF PASS` then `CHK-SECURE-TM-ON PASS`
-| implemented -- pending kept log
+| PROVEN
+
+| CHK-SECRET-BLANK
+| The Class-1a secret disconnect, proven as a transition on one image rather than as
+  a single observation. With the strap at 0 the staged `CLASS_KEY` is present in the
+  sensed shadow; with it raised the same field reads 0
+  (`sep_efuse_pkg.sv` `SecretShadowRanges`). The staged value is asserted non-zero
+  first, so a DUT that never sensed the secret at all cannot satisfy the blanked half.
+| `CHK-SECRET-BLANK PASS`
+| PROVEN
+
+| CHK-SECURE-TM-PROG-BLOCK
+| `efuse_guard.sv:110` empties the whole fuse command request while `secure_tm` is
+  asserted, so no OTP bit programs -- not only the secrets. The strap-up attempt on
+  LC_STATE bit 96 is required to fail. Non-vacuous by construction: the *same* bit
+  programs successfully one walk step later, so the refusal is attributable to
+  `secure_tm` rather than to a bad address.
+| `CHK-SECURE-TM-PROG-BLOCK PASS` with `CHK-OTP-RETRY PASS: OTP bit[96] programmed`
+  later in the same log
+| PROVEN
 
 | CHK-SIGINT
 | A signed-off force breaks the LC_STATE pair at the LCC decoder input. Observation
   is the DUT `lc_sigint_err_o` probe plus an AXI `FEAT_CTRL` readback of 0
   (fail-closed, `SEC_DIS` observed 0). Release restores both.
 | `CHK-SIGINT PASS` then `CHK-SIGINT-RELEASE PASS`
-| implemented -- pending kept log
+| PROVEN
 |===
 
 [[lcc-golden-follows-rtl]]
@@ -3186,7 +3205,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 == Audit summary
 
-32 testcases, 154 steps, 146 checkers.
+31 testcases, 154 steps, 148 checkers.
 
 [cols="2,1",options="header"]
 |===
@@ -3200,7 +3219,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Grade | Count
 
-| `PROVEN` | 145
+| `PROVEN` | 147
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `STALE` | 0

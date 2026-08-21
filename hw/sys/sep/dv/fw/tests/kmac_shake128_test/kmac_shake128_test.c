@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SHAKE128 XOF Test (P1)
+ * SHAKE128 XOF Test
  *
  * Verifies SHAKE128 eXtendable Output Function operation:
  * performs first squeeze, issues MANUAL_RUN for second squeeze,

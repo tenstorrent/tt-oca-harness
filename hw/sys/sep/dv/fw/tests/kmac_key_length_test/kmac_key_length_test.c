@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Key Length Test (P1)
+ * Key Length Test
  *
  * Runs KMAC-128 with Key128 (4-word key), saves digest.
  * Runs KMAC-128 with Key256 (8-word key), saves digest.

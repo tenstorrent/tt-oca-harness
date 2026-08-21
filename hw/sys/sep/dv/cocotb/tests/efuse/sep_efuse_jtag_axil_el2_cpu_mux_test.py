@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP eFuse JTAG-AXIL + EL2-CPU mux arbitration test (PyUVM).
 
-OSS port of the reference suite ``sep_efuse_jtag_axil_el2_cpu_mux_test`` (TEST 9.5). Boots
+OSS port of the reference suite ``sep_efuse_jtag_axil_el2_cpu_mux_test``. Boots
 the VeeR EL2 core running the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR
 read loop) and, CONCURRENTLY, drives the DUT's real SEP-OTP JTAG AXI-Lite port
 (``axil_sep_otp_jtag``, brought out as ``j_axi_*`` in tb_top) via a cocotbext-axi
