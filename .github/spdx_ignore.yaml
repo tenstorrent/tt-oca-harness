@@ -33,6 +33,10 @@ ignore:
     - hw/sys/smc/dv/fw/link/
     - hw/sys/smc/bootrom/prod/boot/
     - hw/sys/smc/bootrom/prod/linker/
+    # TT-authored KM ROM firmware: uses # comment style (RISC-V assembly)
+    - hw/sys/sep/dv/cocotb/tests/km_fw/
+    # VeeR EL2 DV startup code (Western Digital / Chips Alliance origin)
+    - hw/sys/sep/dv/fw/startup/
     # lowRISC/OpenTitan OTBN assembly programs
     - hw/sys/sep/dv/fw/tests/otbn_p256_verify_test/otbn_src/
     - hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/
