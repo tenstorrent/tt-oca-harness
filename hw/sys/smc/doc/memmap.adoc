@@ -294,12 +294,8 @@ The following shows the detailed register map of a set of
 programmer-visible spare SMC blocks. They are spare but essential: for
 example, the scratch block provides general-purpose registers, and the
 chip-config and NDM-reset blocks hold system-level configuration and
-reset control. Blocks documented from another chapter are not repeated
-here: `cpu_ctrl` and `clint` appear in <<cpu-memory-system>>, and
-`reset_unit`, `dma_ctrl`, `plic`, `debug_module`, `bus_error_unit`,
-`wdt`, and `smc_efuse_map` appear in their respective chapters.
-`oca_i3c_wrap` is omitted; I3C remains deferred with the wording in
-<<peripherals>>.
+reset control. `oca_i3c_wrap` is omitted; I3C remains deferred with the
+wording in <<peripherals>>.
 
 ===== Chip Config, Scratch, NDM Reset, and Misc Wrap
 
