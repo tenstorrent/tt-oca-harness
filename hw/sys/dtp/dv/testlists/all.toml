@@ -122,6 +122,7 @@ tests = [
     "dtp_jtag2axi_decode_error_decerr_read_test",
     "dtp_jtag2axi_decode_error_mixed_test",
     "dtp_jtag2axi_series_corner_all_bridges_test",
+    "dtp_jtag2axi_dbg_disable_matrix_test",
 ]
 
 [[groups]]
@@ -139,6 +140,34 @@ tests = [
     "dtp_ext_stap_scan_test",
     "dtp_3dcr_config_hold_test",
     "dtp_3dcr_tms_hold_test",
+    "dtp_scan_dbg_disable_matrix_test",
+]
+
+# Debug-disable closure group: the two per-gate matrices plus the directed
+# tests that carry the per-field gating contract for all eleven
+# sep_lifecycle_ctrl_pkg::dbg_disable_t fields.
+[[groups]]
+name = "dbg_disable"
+tests = [
+    "dtp_scan_dbg_disable_matrix_test",
+    "dtp_jtag2axi_dbg_disable_matrix_test",
+    "dtp_3dcr_stap_sel_ds_test",
+    "dtp_3dcr_stap_sel_smc_test",
+    "dtp_3dcr_stap_sel_sep_test",
+    "dtp_3dcr_stap_sel_extra_test",
+    "dtp_ext_stap_scan_test",
+    "dtp_ijtag_dft_test",
+    "dtp_ijtag_dfd_test",
+    "dtp_jtag2axi_smc_axi_write_security_gating_test",
+    "dtp_jtag2axi_smc_axi_read_security_gating_test",
+    "dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test",
+    "dtp_jtag2axi_smc_otp_axi_write_security_gating_test",
+    "dtp_jtag2axi_smc_otp_axi_read_security_gating_test",
+    "dtp_jtag2axi_sep_otp_axi_write_security_gating_test",
+    "dtp_jtag2axi_sep_otp_axi_read_security_gating_test",
+    "dtp_jtag2axi_smc_axi_error_security_gating_test",
+    "dtp_jtag2axi_smc_otp_axi_error_security_gating_test",
+    "dtp_jtag2axi_sep_otp_axi_error_security_gating_test",
 ]
 
 [[groups]]
@@ -298,6 +327,8 @@ tests = [
     "dtp_ext_stap_scan_test",
     "dtp_3dcr_config_hold_test",
     "dtp_3dcr_tms_hold_test",
+    "dtp_scan_dbg_disable_matrix_test",
+    "dtp_jtag2axi_dbg_disable_matrix_test",
     "dtp_xtrig_reg_stall_test",
     "dtp_xtrig_rand_deterministic_csr_sweep_test",
     "dtp_ctm_rand_deterministic_csr_sweep_test",

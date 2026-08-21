@@ -62,36 +62,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         await self.program_ijtag_sibs(0, context="cleanup")
 
     async def check_pattern(self, pattern: int, *, dbg_disable: dict[str, int] | None = None, context: str) -> None:
-        dbg = dict(dbg_disable or {})
-        # Drive the full vector so the model's expectation and the DUT inputs
-        # always agree, regardless of what earlier iterations left behind.
-        await self.set_dbg_disable_vector(dbg)
-        state = await self.program_ijtag_sibs(pattern, context=f"{context}.program", dbg_disable=dbg)
-
-        # Temporal evidence across the whole observe scan: a requested-but-
-        # gated SIB's scan controls must never pulse; an effective SIB's
-        # select must actually be seen high. Post-scan snapshots alone cannot
-        # prove the "never pulses" half.
-        quiet: list[str] = []
-        active: list[str] = []
-        watched: list[str] = []
-        for name in IJTAG_SIB_ORDER:
-            prefix = self.IJTAG_SIGNAL_PREFIX[name]
-            if state.effective[name]:
-                active.append(f"{prefix}_select")
-            elif state.requested[name] and state.gated[name]:
-                quiet.extend(
-                    f"{prefix}_{suffix}"
-                    for suffix in ("select", "shift_en", "capture_en", "update_en")
-                )
-            else:
-                quiet.append(f"{prefix}_select")
-        watched = quiet + active
-        window = self.start_scan_window(watched)
-        _, signals = await self.observe_ijtag_controls(pattern, context=f"{context}.observe")
-        self.check_scan_window(window, quiet=tuple(quiet), active=tuple(active), context=f"{context}.window")
-        self.check_ijtag_controls(state, signals, context=context)
-        self.assert_equal(f"{context}.chain_len", state.chain_len, 3)
+        await self.check_ijtag_pattern(pattern, dbg_disable=dbg_disable, context=context)
 
     async def run_sib_all_off(self) -> None:
         self.log_banner("GH #3213 iJTAG SIB all-off")

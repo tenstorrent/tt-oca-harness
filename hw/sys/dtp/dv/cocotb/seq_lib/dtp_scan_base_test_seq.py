@@ -115,6 +115,37 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
             expected_select = state.effective[name]
             self.check_observable(signals, f"{prefix}_select", expected_select, context=f"{context}.{name}")
 
+    async def check_ijtag_pattern(self, pattern: int, *, dbg_disable: dict[str, int] | None = None, context: str):
+        """Program a SIB pattern under a disable mask and prove the outcome.
+
+        Drives the full disable vector, programs the SIBs, then observes with
+        a temporal window: a requested-but-gated SIB's scan controls must
+        never pulse, an effective SIB's select must be seen high, and any
+        closed SIB's select stays quiet. Returns the model state."""
+        dbg = dict(dbg_disable or {})
+        await self.set_dbg_disable_vector(dbg)
+        state = await self.program_ijtag_sibs(pattern, context=f"{context}.program", dbg_disable=dbg)
+
+        quiet: list[str] = []
+        active: list[str] = []
+        for name in IJTAG_SIB_ORDER:
+            prefix = self.IJTAG_SIGNAL_PREFIX[name]
+            if state.effective[name]:
+                active.append(f"{prefix}_select")
+            elif state.requested[name] and state.gated[name]:
+                quiet.extend(
+                    f"{prefix}_{suffix}"
+                    for suffix in ("select", "shift_en", "capture_en", "update_en")
+                )
+            else:
+                quiet.append(f"{prefix}_select")
+        window = self.start_scan_window(quiet + active)
+        _, signals = await self.observe_ijtag_controls(pattern, context=f"{context}.observe")
+        self.check_scan_window(window, quiet=tuple(quiet), active=tuple(active), context=f"{context}.window")
+        self.check_ijtag_controls(state, signals, context=context)
+        self.assert_equal(f"{context}.chain_len", state.chain_len, 3)
+        return state
+
     # --- STAP / 3DCR ---------------------------------------------------------
     @staticmethod
     def stap_index(name: str) -> int:
