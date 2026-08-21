@@ -249,15 +249,6 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_reset_n_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset for SEP IP integration block (active low).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_ip_integration</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_timer_rst_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
@@ -856,7 +847,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Muxed SPI IRQ from <code>sep_ip_integration</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI interrupt request into the SEP PIC, driven by whichever SPI controller the integration selects.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI controller</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
