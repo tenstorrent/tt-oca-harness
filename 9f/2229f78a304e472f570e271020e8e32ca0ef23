@@ -1,0 +1,23 @@
+hw/ip/key_manager/doc/architecture.adoc
+  s_c5151d462a6a92::t_39427ab52f772a 22
+hw/ip/drbg/doc/architecture.adoc
+  s_c5151d462a6a92::t_086e88ff7ece8f 65
+hw/sys/sep/doc/memory_map.adoc
+  s_c5151d462a6a92::t_7824f3f68f83f2 202-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "9f2229f78a304e472f570e271020e8e32ca0ef23",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
