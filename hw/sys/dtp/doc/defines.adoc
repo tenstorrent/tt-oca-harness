@@ -16,17 +16,19 @@ defines; those knobs are documented in `hw/sys/dtp/dv/README.md`.
 
 ==== How the DTP DV flow applies defines
 
-A DTP simulation compile merges three layers, in this order:
+A DTP simulation compile merges these layers, in this order:
 
 1. The shared native profile
    (`hw/common/dv/configs/profiles/native.toml`,
    `[target_defaults.default].defines`) — the same set for every native-profile
    DUT, including both the cocotb and SV-UVM frameworks.
-2. The DTP Verilator overlay (`hw/sys/dtp/dv/dtp_sim_cfg.toml`,
-   `[targets.default.tools.verilator].flags`) — extra `+define+` flags only
-   when the tool is Verilator.
-3. The SV-UVM overlay (`[frameworks.uvm.targets.default].defines`) —
-   `DTP_UVM_TB`, only when the run is `--dut dtp --framework uvm`.
+2. The DTP default target (`hw/sys/dtp/dv/dtp_sim_cfg.toml`,
+   `[targets.default].defines`) — `SIMULATION`, the DTP name for a simulation
+   compile.
+3. The DTP Verilator overlay (`[targets.default.tools.verilator].flags`) —
+   extra `+define+` flags only when the tool is Verilator.
+4. The SV-UVM overlay (`[frameworks.uvm.targets.default].defines`) —
+   `SIMULATION` and `DTP_UVM_TB`, only when the run is `--dut dtp --framework uvm`.
 
 `python3 tools/dv/run_dv.py --define NAME` appends a further `+define+` for
 that run. The supported DTP configuration is the merged set above.
@@ -40,6 +42,17 @@ do not use the native DV profile. They pass `-D SYNTHESIS=1` from
 [cols="<,<,<,<,<",options="header"]
 |===
 |Define |Applied by |Why |With the define |Without the define
+
+|`SIMULATION`
+|DTP default target (`dtp_sim_cfg.toml`); repeated on the SV-UVM overlay
+|DTP's simulation-vs-synthesis name. Matches the OpenTitan / Caliptra
+`ifdef SIMULATION` convention used by vendored prims in the DTP compile graph.
+DTP uses this name for simulation-only RTL, not `SIM`.
+|OpenTitan simulation-only prim paths (behavioral sparse-FSM flops, CDC random
+delay) compile in. DTP-owned RTL that gates on `SIMULATION` takes its
+simulation view.
+|Those vendored simulation-only paths are omitted. No DTP-owned RTL source
+branches on `SIMULATION`, so the public DTP tests still run.
 
 |`DTP_UVM_TB`
 |DTP SV-UVM overlay (`dtp_sim_cfg.toml`)
@@ -98,16 +111,6 @@ DTP DV does not set this define, so a `--dut dtp` run is not a synthesis view.
 are live; on Verilator `VERILATOR` still compiles them out. Defining
 `SYNTHESIS` on a DTP DV compile would drop that SVA and is not the supported
 test configuration.
-
-|`SIM`
-|Native profile (every DTP DV tool)
-|Marks a simulation compile for IP that replaces uninitialized or X values
-with defined stimulus. DTP's own RTL and testbench do not branch on `SIM`.
-|No DTP-local behavior change. Other OCAH subsystems (for example eFuse token
-matching) use `SIM` so security tokens that power up as X become zeros and
-those tests can run.
-|DTP tests still run: no DTP source is gated on `SIM`. A compile that also
-includes eFuse token logic sees X on those tokens and the matching checks fail.
 |===
 
 `UVM` is not a DTP config define. The SV-UVM flow gets it from the simulator
@@ -123,6 +126,11 @@ them. They are part of the shared native-profile set applied to every DUT.
 [cols="<,<",options="header"]
 |===
 |Define |Notes
+
+|`SIM`
+|Native-profile simulation mark used by other OCAH subsystems (for example
+eFuse token matching). DTP does not branch on `SIM`. DTP simulation-only code
+uses `SIMULATION` above.
 
 |`DISABLE_ASSERT`
 |No DTP compile-unit source tests this name. Verilator assertion gating is

@@ -75,6 +75,8 @@ args = []
 [targets.default]
 description = "DTP cocotb target for public JTAG/JTAG2AXI smoke and coverage"
 build_dir = "hw/sys/dtp/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
+# DTP simulation-vs-synthesis name. Merged with the native profile define set.
+defines = ["SIMULATION"]
 
 [targets.default.tools.verilator]
 flags = [
@@ -130,6 +132,8 @@ args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
 [frameworks.uvm.targets.default]
 description = "DTP SV-UVM default target"
 build_dir = "hw/sys/dtp/dv/build/uvm"
-# Appends to the native profile's [target_defaults.default] defines (dedup-merge):
-# selects the SV-UVM shape of the shared tb_top.sv.
-defines = ["DTP_UVM_TB"]
+# Appends to the native profile's [target_defaults.default] defines (dedup-merge).
+# Repeat SIMULATION: the framework overlay replaces the DUT [targets.default]
+# defines list rather than appending it. DTP_UVM_TB selects the SV-UVM shape of
+# the shared tb_top.sv.
+defines = ["SIMULATION", "DTP_UVM_TB"]
