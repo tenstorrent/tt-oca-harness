@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM SECURE boot over the OpenTitan SPI host (PyUVM) -- RSA-3072 on OTBN.
 
 The signed sibling of ``sep_rom_ot_dma_boot_test``. Identical ROM, identical SPI

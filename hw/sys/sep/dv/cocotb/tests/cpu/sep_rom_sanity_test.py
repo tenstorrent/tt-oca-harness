@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP boot-ROM IFU sanity test (PyUVM).
 
 OSS port of the reference suite ``sep_rom_sanity_test`` (edge: CPU IFU -> boot-ROM). Boots

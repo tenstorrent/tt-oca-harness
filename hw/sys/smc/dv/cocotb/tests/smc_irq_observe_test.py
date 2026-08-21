@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM interrupt-observe test.
 
 DV-CARD:          SMC_007   ANCHOR: smc_irq_observe_test

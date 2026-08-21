@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence helpers for sep_km_mem_smoke_test."""
 
 from __future__ import annotations

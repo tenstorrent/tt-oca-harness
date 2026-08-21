@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ic_reset_dual_domain_illegal_test - P3-H5a dual IC_RESET in one DR.
 
 P2-I5a proves one-domain-at-a-time mutual exclusion. This corner packs two

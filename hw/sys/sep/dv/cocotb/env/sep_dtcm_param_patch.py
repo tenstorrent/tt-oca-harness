@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Patch a firmware parameter block into a staged DTCM image at a magic sentinel.
 
 Lets a cocotb test be the single source of randomness for a CPU-firmware test

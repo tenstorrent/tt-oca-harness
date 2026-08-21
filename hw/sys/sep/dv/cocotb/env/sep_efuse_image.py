@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse/OTP image builder for the OSS cocotb flow.
 
 Builds the 256-word (8192-bit) SEP fuse array as a ``$readmemh`` image the

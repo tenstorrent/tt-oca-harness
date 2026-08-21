@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS output filter/remap security CSR smoke.
 
 DV-CARD:          SMC_005   ANCHOR: smc_output_filter_remap_security_test

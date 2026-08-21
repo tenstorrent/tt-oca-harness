@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """LCC lc_state-stitch checker sequence for the SEP OSS flow.
 
 After an eFuse image carrying a specific lifecycle state has been sensed, this

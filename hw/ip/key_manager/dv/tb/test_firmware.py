@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Generic Firmware Test Runner.
 
 This module provides a generic cocotb test that can run any firmware image

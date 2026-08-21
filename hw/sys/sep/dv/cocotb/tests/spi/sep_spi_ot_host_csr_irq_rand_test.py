@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI host control-plane CSR / IRQ / error breadth (PyUVM, no_cpu).
 
 SPI-subsystem Phase-2 rep SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the

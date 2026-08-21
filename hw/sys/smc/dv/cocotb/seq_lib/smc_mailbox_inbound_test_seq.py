@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: inbound mailbox 0 CSR precheck (TC_SMC_P1CG_01).
 
 The existing mailbox tests (P0/P1 P1-5) only touch outbound mailbox 0

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OpenTitan-SPI flash command-breadth firmware test (OSS rep SPI flash command breadth). Direct
 // cpu-firmware port of the reference spi_ot_flash_write_read_test +

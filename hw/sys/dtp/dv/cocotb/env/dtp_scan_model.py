@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Small DTP-local scan-chain model for basic JTAG scenarios.
 
 The OSS DTP top loops BSR/iJTAG scan inputs back from DUT scan outputs. This

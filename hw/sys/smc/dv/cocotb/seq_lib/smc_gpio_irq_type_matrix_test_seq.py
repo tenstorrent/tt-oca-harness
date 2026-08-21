@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO interrupt-type (polarity) matrix verification.
 
 Existing GPIO IRQ coverage only exercised the active-low level type. This

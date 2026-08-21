@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // HMAC SHA-256 hardware driver for OROM.
 //
 // Drives the OpenTitan HMAC IP (at HMAC_REG_MAP_BASE_ADDR = 0x10911000)

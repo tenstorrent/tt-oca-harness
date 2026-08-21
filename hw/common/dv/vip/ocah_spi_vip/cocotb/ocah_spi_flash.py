@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 OcahSpiFlash — OCAH-stable NOR-flash device BFM for SPI / QSPI / OSPI.
 

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smc_pvt_analog_sensor_test — DEFERRED (rtl_placeholder).
 
 Exercises pll/pvt OKAY wraps only. Shelved until real adopter IP.

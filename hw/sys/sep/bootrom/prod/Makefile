@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 SHELL := /bin/bash
 #
 # OSS SEP Boot ROM (non-secure ROM boot test subset).

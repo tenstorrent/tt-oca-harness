@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP SMC fabric debug AXI UVM agent.
 
 Wraps the unified OCAH AXI RAM BFM as the memory responder on the JTAG2AXI

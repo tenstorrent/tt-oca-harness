@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smc_security_demote_pm_test - SEP=0 demote / lc_state observe-only.
 
 Bare smu (SEP=0) ties lcc_demote_state_*_o to 0 and drives lc_state=0xf0.

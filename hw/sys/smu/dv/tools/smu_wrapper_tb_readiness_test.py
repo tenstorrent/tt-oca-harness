@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fast source/filelist/artifact readiness gate for the SMU wrapper OSS flow."""
 
 from __future__ import annotations

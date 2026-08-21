@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shadow-register readout checker for the SEP eFuse OSS flow.
 
 After fuse-sense, reads the software-visible shadow-register block field-by-field

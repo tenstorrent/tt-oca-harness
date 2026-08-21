@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP JTAG sequence item.
 
 A single TAP action. Generic JTAG ops (reset, TDR read/write) plus the two

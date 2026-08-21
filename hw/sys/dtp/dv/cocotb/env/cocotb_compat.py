@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """cocotb 1.9.2 / Python 3.13+ teardown-noise shim.
 
 ``GPITrigger`` declares ``__slots__ = ("cbhdl",)``. A ``Timer`` that is garbage

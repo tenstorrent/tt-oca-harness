@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Crypto-EDN arbiter: two crypto-endpoint clients (AES + KMAC) contend.
 
 Top-down integration edge: AES (crypto_edn[0]) and KMAC (crypto_edn[1]) BOTH pull

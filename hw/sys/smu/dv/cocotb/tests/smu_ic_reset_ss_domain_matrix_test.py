@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ic_reset_ss_domain_matrix_test - P4 IC_RESET SS cold/warm domains.
 
 Exercises SS_COLD0 (port 5) and SS_WARM0 (port 37) one at a time with mutual

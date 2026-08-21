@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM I2C multi-sample test.
 
 Three back-to-back I2C observation samples separated by ~100 ref-clk cycles

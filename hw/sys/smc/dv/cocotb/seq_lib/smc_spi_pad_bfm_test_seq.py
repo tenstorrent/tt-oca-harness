@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U2-2: TB SPI host + OcahSepSpiFlash on lifted SMC SPI pads.
 
 Architecture (smc_wrapper has no internal SPI host IP on this surface):

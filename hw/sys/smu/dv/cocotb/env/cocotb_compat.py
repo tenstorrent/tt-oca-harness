@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """cocotb 1.9.2 teardown-noise shim (same contract as DTP OSS).
 
 ``GPITrigger`` declares ``__slots__ = ("cbhdl",)``. A ``Timer`` GC'd without a

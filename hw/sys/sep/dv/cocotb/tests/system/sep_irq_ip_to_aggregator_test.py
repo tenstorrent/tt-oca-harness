@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """IP-interrupt -> sep_internal_interrupts aggregator.
 
 reference ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivity_

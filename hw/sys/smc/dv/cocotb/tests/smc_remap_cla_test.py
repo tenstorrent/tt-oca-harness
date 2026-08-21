@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS P1 coverage-gap: MMODE_REMAP + full ALIAS + CLA sweep."""
 
 from __future__ import annotations

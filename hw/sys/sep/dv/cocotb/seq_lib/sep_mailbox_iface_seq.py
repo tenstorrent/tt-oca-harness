@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """axil_mailbox interface driver (outbound aperture, CPU-LSU, TX path).
 
 Drives the SEP outbound_mailbox_0 aperture (0x10A0_0000) over the CPU-LSU master --

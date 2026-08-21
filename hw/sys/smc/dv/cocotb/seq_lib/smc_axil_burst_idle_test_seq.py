@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_axil_burst_idle_test."""
 
 from __future__ import annotations

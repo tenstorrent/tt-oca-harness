@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: CPU cluster infrastructure (TC_SMC_P1CG_10/11/12).
 
 Bundles three previously-unreached CPU-cluster CSR surfaces:

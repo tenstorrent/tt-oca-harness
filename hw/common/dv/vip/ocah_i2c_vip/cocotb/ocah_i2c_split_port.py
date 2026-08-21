@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Split-port open-drain I2C adapters for OCAH cocotb TBs.
 
 Some OCAH testbenches (notably SMC OSS) expose I2C pads as:

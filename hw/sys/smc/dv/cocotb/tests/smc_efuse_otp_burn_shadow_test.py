@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U7-5 / P2-6 OTP burn + shadow verify (behavioral eFuse responder)."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smc_mailbox_int_test — PROMOTED out of deferred.
 
 Active implementation: ``cocotb/tests/smc_mailbox_int_test.py`` (SMU_ALL_004
