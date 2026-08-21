@@ -8,7 +8,7 @@
  * underflow error detection, and RX watermark behavior.
  *
  * Test Flow:
- * 1. Configure SPI mux, enable controller
+ * 1. Enable controller
  * 2. Verify RXEMPTY=1, RXQD=0 initially
  * 3. Issue 16-byte RX command (MISO=0xFF without flash model)
  * 4. Verify RXQD=4, RXEMPTY=0 after transaction
@@ -80,7 +80,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     uint32_t i;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

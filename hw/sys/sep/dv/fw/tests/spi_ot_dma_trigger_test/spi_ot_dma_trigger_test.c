@@ -13,7 +13,7 @@
  * rx_wm: asserted when RXQD >= SPI_RX_WATERMARK (RX FIFO has data)
  *
  * Test Flow:
- * 1. Configure SPI mux for OpenTitan, enable controller
+ * 1. Enable controller
  * 2. Set SPI_TX_WATERMARK=4, verify STATUS.TXWM=1 (empty FIFO < 4)
  * 3. Write 8 words to TX FIFO, verify TXWM clears (TXQD >= 4)
  * 4. Drain via SW_RST, verify TXWM re-asserts
@@ -65,7 +65,6 @@ int main(void) {
     spi_controller__STATUS_t status;
     uint32_t read_val;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller with SPI_TX_WATERMARK=4 */
     ctrl.w = 0;

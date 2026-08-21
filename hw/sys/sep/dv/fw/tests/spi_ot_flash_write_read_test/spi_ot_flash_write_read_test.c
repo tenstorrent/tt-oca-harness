@@ -20,7 +20,7 @@
  * cmd+addr packed as: byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
  *
  * Test Flow:
- * 1. Configure SPI mux for OpenTitan, enable controller
+ * 1. Enable controller
  * 2. WREN: Write Enable (0x06, 1 byte TX)
  * 3. RDSR: Read Status, verify WEL=1 (bit 1) to confirm write enable
  * 4. PP: Page Program (0x02 + addr 0x000000 + 16 bytes pattern), CSAAT
@@ -156,7 +156,6 @@ int main(void) {
     uint32_t i;
     spi_controller__CMD_t cmd;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d\n\n", SPI_CLKDIV);

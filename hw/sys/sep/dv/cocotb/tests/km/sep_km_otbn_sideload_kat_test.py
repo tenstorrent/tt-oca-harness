@@ -208,5 +208,5 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # error + recoverable-alert regs stayed zero across the run.
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info("CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)")

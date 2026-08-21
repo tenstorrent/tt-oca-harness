@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware test (OSS port of the reference suite
-// sep_spi_ot_dma_rx_test, ). The EL2 CPU configures the OpenTitan
+// SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware test (OSS port of the
+// reference suite sep_spi_ot_dma_rx_test). The EL2 CPU configures the OpenTitan
 // SPI host, arms the Secure DMA in hardware-handshake mode (SRC = SPI RXDATA,
 // fixed/WRAP; DST = SRAM, incrementing), then issues a SPI read. As the SPI RX
 // FIFO crosses its watermark, the controller raises lsio_trigger, which drains a
@@ -9,8 +9,9 @@
 //
 //   spi_host.lsio_trigger_o -> sep.lsio_trigger[0] -> secure_dma.lsio_trigger_i[0]
 //
-// This whole datapath is internal to bare `sep` (hw/sep/sep.sv:899). Exercises
-// SPI-FIFO -> DMA on the OpenTitan SPI line.
+// This whole datapath is internal to bare `sep`
+// (`hw/sys/sep/rtl/sep.sv`: `lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger`).
+// Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
 // PARITY-PLUS over reference suite: the reference test only checks "DMA done + no SPI error"
 // because it clocks idle MISO (no flash model) and leaves the received data

@@ -50,9 +50,10 @@ End to end, one eFuse test runs:
 
 === Readout method vs image source
 
-Two tests run the sense flow above. *Readout method and image source are
-independent axes* — backdoor is the default readout, exactly one test uses the
-AXI front door, and either readout can run any source:
+The generic eFuse model sense flow (OTP image → sense FSM → shadow) is used
+by more than the two shadow-compare tests. *Readout method and image source
+are independent axes* for those two — backdoor is the default readout, exactly
+one test uses the AXI front door, and either readout can run any source:
 
 `sep_efuse_sense_test`:: *Backdoor* shadow compare (the default), reading the
   sensed array directly from the top-level `efuse_shadow_probe_o` port. Enrolled
@@ -61,12 +62,17 @@ AXI front door, and either readout can run any source:
   door* (exercising the real software read datapath), plus a resense cycle with a
   fresh image. Runs the default (random) source.
 
-== Memory / eFuse / SPI models (inside `sep_wrapper`)
+Other enrolled tests also run *real* fuse sense (no `+skip_fuse_sense`) for a
+different contract — lifecycle decode, inbound-filter `SEP_DBG` gating — and
+do not replace the shadow-compare pair: `sep_efuse_lcc_lc_state_stitch_test`,
+`sep_lcc_uvm_inbound_filter_gating_test`,
+`sep_fabric_inbound_filter_rule_matrix_test`.
 
-The memory, eFuse, and SPI-mux integration is RTL inside `sep_wrapper`
-(`hw/top/sep_ip_integration.sv`), not TB responders. The six bare-`sep`
-behavioral responders that used to back these ports were retired when the DUT
-moved to `sep_wrapper`.
+== Memory / eFuse / SPI models
+
+The memory and eFuse integration is RTL inside `sep_wrapper`
+(`hw/top/sep_ip_integration.sv`). The OpenTitan SPI host is RTL inside the
+`sep` core. The TB does not back those ports with responders.
 
 === Memory macros
 
@@ -99,10 +105,12 @@ with `+sep_efuse_prog_fail_count`, `+sep_efuse_prog_fail_percent`, and
 Internal to the wrapper; its pads come out as scalar cocotb ports in `tb_top.sv`
 so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM.
 
-The SPI pad mux is a nonfree wrapper block and is absent from a pure-open build —
-the pads are driven straight off the wrapper's struct port, and flash tests need
-no mux step. Firmware that programs that mux lives with the wrapper, not in this
-tree.
+The SPI pad mux is absent from a pure-open build — the pads are driven
+straight off the wrapper's struct port, and flash tests need no mux step.
+If a mux that selects between the OCAH SPI host and a proprietary SPI exists
+only in a companion wrapper, the driver for it lives in that repo and that
+repo's `fw.mk` compiles and links against it. Open firmware does not program
+it.
 
 === Kept TB shims
 
@@ -120,7 +128,8 @@ grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
 `sep_rom_sanity_test`, `sep_boot_rom_lsu_read_test`).
 
 A named ROM run needs the Boot ROM + manifest + BL1 image. Those tests declare
-`firmware = { mode = "boot_rom" }`, so `c_compile` runs `[c_build.boot_rom]`
+`firmware = { name = "boot_rom", mode = "boot_rom" }` (both keys; `mode` alone
+does not select `[c_build.boot_rom]`), so `c_compile` runs `[c_build.boot_rom]`
 (`hw/sys/sep/bootrom/prod/Makefile`). The one prerequisite a build step must not
 mutate git for is the manifest packer submodule; without it the pack half dies
 with `No module named tt_boot_manifest`:

@@ -8,7 +8,7 @@
  * INTR_TEST register forcing, and EVENT_ENABLE individual control.
  *
  * Test Flow:
- * 1. Configure SPI mux, enable controller
+ * 1. Enable controller
  * 2. Test INTR_ENABLE defaults and write-readback
  * 3. INTR_TEST injection → verify INTR_STATUS asserts/deasserts (ERROR and SPI_EVENT)
  * 3.5. Real UNDERFLOW event → INTR_STATUS.error functional path
@@ -52,7 +52,6 @@ int main(void) {
     spi_controller__CTRL_t ctrl;
     uint32_t dummy_rx;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller (required for event signals to be valid) */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

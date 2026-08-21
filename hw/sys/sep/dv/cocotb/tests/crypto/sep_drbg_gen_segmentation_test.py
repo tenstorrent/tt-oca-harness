@@ -109,4 +109,4 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
 
         # Bit-exactness across those Update boundaries is the actual regression
         # guard for the demand-driven golden.
-        sb.report()
+        assert sb.report()

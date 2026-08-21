@@ -208,6 +208,13 @@ class SepDrbgScoreboard:
         if self.legal_gen_lengths is None:
             self.legal_gen_lengths = {self.glen}
         self._fips_violations = 0
+        # Post-adapter EDN FIPS (tb_top pool_edn_fips_o / crypto_edn_fips_o).
+        # Distinct from CHK4 genbits_fips_o: these prove the axis-edn adapter
+        # forwarded tuser onto the native EDN beat the sink actually took.
+        self._pool_fips_ok = 0
+        self._pool_fips_bad = 0
+        self._crypto_fips_ok = 0
+        self._crypto_fips_bad = 0
         self._genbits_in_gen = 0
         self._gen_lengths = Counter()   # observed blocks-per-Generate histogram
 
@@ -337,7 +344,8 @@ class SepDrbgScoreboard:
         if self.sink_mode["pool"] == "observe":
             self._tasks.append(cocotb.start_soon(self._mon_handshake_observed(
                 "CHK5_pool", d.pool_edn_req_o, d.pool_edn_ack_o,
-                d.pool_edn_bus_o, mask=0xFFFFFFFF)))
+                d.pool_edn_bus_o, mask=0xFFFFFFFF,
+                fips_check=self._note_pool_fips)))
         elif self.sink_mode["pool"] == "golden":
             self._tasks.append(cocotb.start_soon(self._mon_pool_edn_golden()))
         elif self.sink_mode["pool"] == "membership":
@@ -461,6 +469,10 @@ class SepDrbgScoreboard:
         self._genbits_in_gen = 0
         self._gen_lengths.clear()
         self._fips_violations = 0
+        self._pool_fips_ok = 0
+        self._pool_fips_bad = 0
+        self._crypto_fips_ok = 0
+        self._crypto_fips_bad = 0
 
     # --------------------------------------------------------------- recording
     def _expected_q(self, key):
@@ -539,7 +551,8 @@ class SepDrbgScoreboard:
                 if v is not None:
                     self._record(key, v & mask)
 
-    async def _mon_handshake_observed(self, key, vld, rdy, sig, *, mask):
+    async def _mon_handshake_observed(self, key, vld, rdy, sig, *, mask,
+                                     fips_check=None):
         """One observed item per tvalid && tready beat, with no golden compare."""
         while True:
             await RisingEdge(self.dut.clk_i)
@@ -547,9 +560,26 @@ class SepDrbgScoreboard:
                 continue
             await ReadOnly()
             if (_safe_int(vld) or 0) and (_safe_int(rdy) or 0):
+                if fips_check is not None:
+                    fips_check()
                 v = _safe_int(sig)
                 if v is not None:
                     self._record_observed(key, v & mask)
+
+    def _note_pool_fips(self) -> None:
+        """Sample pool_edn_fips_o on a completed pool EDN beat."""
+        if (_safe_int(self.dut.pool_edn_fips_o) or 0) == 1:
+            self._pool_fips_ok += 1
+        else:
+            self._pool_fips_bad += 1
+
+    def _note_crypto_fips(self, idx: int) -> None:
+        """Sample crypto_edn_fips_o[idx] on a completed crypto-EDN beat."""
+        vec = _safe_int(self.dut.crypto_edn_fips_o) or 0
+        if ((vec >> idx) & 1) == 1:
+            self._crypto_fips_ok += 1
+        else:
+            self._crypto_fips_bad += 1
 
     async def _mon_edn_sink(self, key, idx, *, observe):
         """One item per native-EDN beat to crypto sink `idx` -- the cycle the client
@@ -564,6 +594,7 @@ class SepDrbgScoreboard:
             req = ((_safe_int(d.crypto_edn_req_o) or 0) >> idx) & 1
             ack = ((_safe_int(d.crypto_edn_ack_o) or 0) >> idx) & 1
             if req and ack:
+                self._note_crypto_fips(idx)
                 bus = _safe_int(d.crypto_edn_bus_o)
                 if bus is not None:
                     v = (bus >> (32 * idx)) & 0xFFFFFFFF
@@ -620,6 +651,7 @@ class SepDrbgScoreboard:
             req = _safe_int(d.pool_edn_req_o) or 0
             ack = _safe_int(d.pool_edn_ack_o) or 0
             if req and ack:
+                self._note_pool_fips()
                 bus = _safe_int(d.pool_edn_bus_o)
                 if bus is None:
                     continue
@@ -638,6 +670,7 @@ class SepDrbgScoreboard:
             req = _safe_int(d.pool_edn_req_o) or 0
             ack = _safe_int(d.pool_edn_ack_o) or 0
             if req and ack:
+                self._note_pool_fips()
                 bus = _safe_int(d.pool_edn_bus_o)
                 if bus is not None:
                     self._pool_words.append(bus & 0xFFFFFFFF)
@@ -656,6 +689,7 @@ class SepDrbgScoreboard:
             req = ((_safe_int(d.crypto_edn_req_o) or 0) >> idx) & 1
             ack = ((_safe_int(d.crypto_edn_ack_o) or 0) >> idx) & 1
             if req and ack:
+                self._note_crypto_fips(idx)
                 bus = _safe_int(d.crypto_edn_bus_o)
                 if bus is None:
                     continue
@@ -691,6 +725,7 @@ class SepDrbgScoreboard:
             req = ((_safe_int(d.crypto_edn_req_o) or 0) >> idx) & 1
             ack = ((_safe_int(d.crypto_edn_ack_o) or 0) >> idx) & 1
             if req and ack:
+                self._note_crypto_fips(idx)
                 bus = _safe_int(d.crypto_edn_bus_o)
                 if bus is not None:
                     self._sink_words[name].append((bus >> (32 * idx)) & 0xFFFFFFFF)
@@ -983,6 +1018,28 @@ class SepDrbgScoreboard:
             self.log.error("CHK4 FIPS violation: %d genbits with genbits_fips_o != 1",
                            self._fips_violations)
             any_fail = True
+        pool_fips_n = self._pool_fips_ok + self._pool_fips_bad
+        if pool_fips_n:
+            if self._pool_fips_bad:
+                self.log.error(
+                    "CHK5_pool FIPS FAIL: %d/%d beats with pool_edn_fips_o != 1",
+                    self._pool_fips_bad, pool_fips_n)
+                any_fail = True
+            else:
+                self.log.info(
+                    "CHK5_pool FIPS PASS: %d beats with pool_edn_fips_o=1",
+                    self._pool_fips_ok)
+        crypto_fips_n = self._crypto_fips_ok + self._crypto_fips_bad
+        if crypto_fips_n:
+            if self._crypto_fips_bad:
+                self.log.error(
+                    "CHK5 crypto FIPS FAIL: %d/%d beats with crypto_edn_fips_o != 1",
+                    self._crypto_fips_bad, crypto_fips_n)
+                any_fail = True
+            else:
+                self.log.info(
+                    "CHK5 crypto FIPS PASS: %d beats with crypto_edn_fips_o=1",
+                    self._crypto_fips_ok)
         # Generate segmentation. gen_last IS a per-Generate-command terminator:
         # csrng_cmd_stage sets cmd_gen_cnt_last when the genbits down-counter
         # reaches its final beat (csrng_cmd_stage.sv:379, :447), ships it as

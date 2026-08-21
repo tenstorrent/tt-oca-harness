@@ -12,7 +12,7 @@
  * - ERROR_ENABLE, EVENT_ENABLE, ERROR_STATUS
  *
  * Test Flow:
- * 1. Configure SPI mux for OpenTitan
+ * 1. Enable controller
  * 2. Verify reset defaults for all readable registers
  * 3. Write-readback for all RW registers
  * 4. Verify SW_RST singlepulse auto-clears to 0
@@ -69,7 +69,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     /* -------------------------------------------------------------------
      * Step 1: Verify reset defaults

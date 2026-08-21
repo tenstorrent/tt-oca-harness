@@ -12,7 +12,7 @@
  * and monitors STATUS/ERROR registers during the transaction.
  *
  * Test Flow:
- * 1. Configure SPI mux, enable controller, set clock/config
+ * 1. Enable controller, set clock/config
  * 2. Load TX data into FIFO
  * 3. Issue TX command (Standard SPI, CSAAT=0)
  * 4. Monitor STATUS.ACTIVE until transaction completes
@@ -71,7 +71,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     uint32_t i;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

@@ -6,8 +6,7 @@
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
- *   - OpenTitan SPI host. Pad-mux programming belongs with
- *     the nonfree wrapper, not this file.
+ *   - OpenTitan SPI host. The open DUT has no pad mux.
  *
  * Completion is signaled by pass/fail loops for cocotb PC classification.
  */
@@ -314,11 +313,6 @@ static int stage_efuse(void) {
     return 0;
 }
 
-static int stage_spi_regs(void) {
-    /* Pad mux CSRs live with the nonfree wrapper. */
-    return 0;
-}
-
 __attribute__((used, noinline, noreturn)) void smu_sep_modules_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
@@ -376,8 +370,7 @@ __attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_spi_loop(voi
 int main(void) {
     const uint32_t stage_mask = (1u << 2) | /* AES  */
                                 (1u << 3) | /* HMAC */
-                                (1u << 4) | /* KMAC */
-                                (1u << 6);  /* SPI */
+                                (1u << 4);  /* KMAC */
 
     sep_outbound_filter_init();
 
@@ -387,7 +380,6 @@ int main(void) {
     if ((stage_mask & (1u << 3)) && stage_hmac() != 0) smu_sep_modules_fail_hmac_loop();
     if ((stage_mask & (1u << 4)) && stage_kmac() != 0) smu_sep_modules_fail_kmac_loop();
     if ((stage_mask & (1u << 5)) && stage_efuse() != 0) smu_sep_modules_fail_efuse_loop();
-    if ((stage_mask & (1u << 6)) && stage_spi_regs() != 0) smu_sep_modules_fail_spi_loop();
 
     smu_sep_modules_pass_loop();
     smu_sep_modules_fail_loop();

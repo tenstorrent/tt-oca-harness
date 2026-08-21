@@ -38,7 +38,7 @@ from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 from seq_lib.sep_inbound_filter_rule_seq import (
     SepInboundFilterCfg, SepInboundFilterMatrixCfg, SepInboundFilter,
-    ext_read_seq, ext_write_seq, RESP_OKAY, RESP_DECERR,
+    ext_read_seq, ext_write_seq, RESP_OKAY, RESP_DECERR, FILTER_BEAT_MASK,
 )
 from seq_lib.sep_fabric_csr_bank_seq import FILTER_RW_MASK
 
@@ -153,13 +153,23 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                     "CHK-BLOCK-DEFAULT PASS: ext read 0x%08x -> DECERR (block-by-default)",
                     mcfg.blocked_addr)
             if mode == "r":
-                self.logger.info(
-                    "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
-                    "(DECERR) entry=%d window=%d", entry, widx)
-            if mode == "w":
+                # read_ok=1 / write_ok=0: the allowed read already checked OKAY;
+                # this cell's DENY is the write.
                 self.logger.info(
                     "CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write "
                     "(DECERR) entry=%d window=%d", entry, widx)
+                self.logger.info(
+                    "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
+                    "(OKAY) entry=%d window=%d", entry, widx)
+            if mode == "w":
+                # read_ok=0 / write_ok=1: the allowed write already checked OKAY;
+                # this cell's DENY is the read.
+                self.logger.info(
+                    "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
+                    "(DECERR) entry=%d window=%d", entry, widx)
+                self.logger.info(
+                    "CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write "
+                    "(OKAY) entry=%d window=%d", entry, widx)
             self.logger.info(
                 "CHK-CELL PASS: entry=%d window=%d mode=%s addr=0x%08x",
                 entry, widx, mode, addr)
@@ -220,17 +230,33 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"entry 1 START_ADDR does not cover CFG: got 0x{own_start:08x}, "
             f"expected 0x{cfg_addr:08x}"
         )
+        own_end = await self.filt.read_cpu(own.end_addr_reg)
+        # HW writeback: same-beat window expands END to the last byte of the
+        # data-bus granule (filter_ctrl.rdl END_ADDR reset 0x7 / 8-byte beat).
+        expected_end = cfg_addr | FILTER_BEAT_MASK
+        assert own_end == expected_end, (
+            f"entry 1 END_ADDR not granule-expanded: got 0x{own_end:08x}, "
+            f"expected 0x{expected_end:08x} (START=0x{cfg_addr:08x} | beat_mask)"
+        )
+        own_end_hi = await self.filt.read_cpu(own.end_addr_reg + 4)
+        assert own_end_hi == 0, (
+            f"entry 1 END_ADDR hi is not 0: got 0x{own_end_hi:08x}"
+        )
+        self.logger.info(
+            "CHK-FILTER-PROGRAMMED PASS: entry 1 FILTER_CONFIG rw=0x%08x "
+            "START_ADDR=0x%08x END_ADDR=0x%08x",
+            own_cfg & FILTER_RW_MASK, own_start, own_end)
         resp, _ = await self._ext_read(cfg_addr)
         assert resp == RESP_DECERR, (
             f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
             f"0x{cfg_addr:08x} on entry 1, external read resp={resp}, expected "
-            f"DECERR (RTL vs fabric.adoc: only the SEP CPU programs the filter)"
+            f"DECERR (RTL vs hw/sys/sep/doc/fabric.adoc: only the SEP CPU programs the filter)"
         )
         resp = await self._ext_write(cfg_addr, 0xFFFF_FFFF)
         assert resp == RESP_DECERR, (
             f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
             f"0x{cfg_addr:08x} on entry 1, external write resp={resp}, expected "
-            f"DECERR (RTL vs fabric.adoc)"
+            f"DECERR (RTL vs hw/sys/sep/doc/fabric.adoc)"
         )
         cpu_cfg_after2 = await self.filt.read_cpu(cfg_addr)
         assert (cpu_cfg_after2 & FILTER_RW_MASK) == (expected_cfg & FILTER_RW_MASK), (

@@ -353,7 +353,8 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // DUT-flavor XMR roots. The DUT is `sep_wrapper`, so sep-internal state lives
     // under u_dut.u_sep and the OSS IP integration (memory macros, generic efuse
-    // model, OpenTitan SPI mux) under u_dut.u_sep_ip_integration. Every
+    // model) under u_dut.u_sep_ip_integration. The OpenTitan SPI host is inside
+    // the `sep` core. Every
     // sep-internal XMR read routes through `SEP_CORE / `SEP_IPI so one probe text
     // is used throughout.
     // ------------------------------------------------------------------
@@ -456,12 +457,10 @@ module sep_uvm_top
         $display("[SEP OSS DV] Reset-vector TDR programmed to 0x%08x", vector);
     endtask
 
-    // FIXME(SEP-DV): the current vendored VeeR tap dropped the reset-vector TDR,
-    // so this JTAG sequence shifts into a nonexistent register and is inert. The
-    // reset vector now reaches the CPU through the wrapper's direct `rst_vec`
-    // input (connected from rst_vec_i in the DUT instantiation below). Remove
-    // this TDR machinery once the +cpu_boot flow is re-validated on the direct
-    // port. Original rationale kept below for reference:
+    // The vendored VeeR tap has no reset-vector TDR, so this JTAG sequence
+    // shifts into a nonexistent register and is inert. The reset vector reaches
+    // the CPU through the wrapper's direct `rst_vec` input (connected from
+    // rst_vec_i in the DUT instantiation below).
     // The OSS top has no external JTAG client. Program RSTVEC while the primary
     // reset is asserted, before the cocotb CPU-boot flow releases reset. Poll on the
     // clock edge rather than a bare level `wait`: a cocotb (VPI)-driven rst_vec_i
@@ -583,13 +582,10 @@ module sep_uvm_top
         .lcc_demote_state_1_o         (),
         .lcc_demote_state_2_o         (),
 
-        // SPI: quad-lane struct boundary, bridged below to the legacy
+        // SPI: quad-lane struct boundary, bridged below to the
         // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
         // MISO returns on rsp.sd[1]). The SPI block IRQ loops back into the
-        // wrapper's interrupt aggregator input, matching the pre-port routing.
-        // FIXME(SEP-DV): the 4 SPI flash tests are unverified against this
-        // struct boundary (and the retired och_sep_spi_mux_ctrl CS-release CSR);
-        // re-validate them before re-enabling SPI coverage claims.
+        // wrapper's interrupt aggregator input.
         .sep_io_spi_req_o             (sep_io_spi_req_w),
         .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
         .spi_irq_i                    (sep_io_spi_req_w.irq),
@@ -1140,9 +1136,8 @@ module sep_uvm_top
     // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
     // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
     // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
-    // Rationale, cost and the open DE question live with the test that opts in
-    // (testlists/cpu.toml, sep_rom_ot_secure_boot_test) and in
-    // .dv/artifacts/SEP_ROM_SECURE_VS_NONSECURE_BOOT.md.
+    // The test that opts in is sep_rom_ot_secure_boot_test
+    // (testlists/rom_fw.toml).
     logic edn_force_on;
     logic otbn_rnd_ack_q, otbn_urnd_ack_q;
     initial begin

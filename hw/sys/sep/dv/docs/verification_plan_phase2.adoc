@@ -11,8 +11,10 @@
 The record of what Phase 2 verifies and what evidence backs each claim. It follows
 `oss_dv_plan.adoc`: one *iconic* feature per in-scope IP, randomized when the feature
 has a legal matrix or knob space, plus the cross-IP edges a per-IP bench cannot
-see. Phase 1 + Phase 2 together are the cocotb baseline (*> 60%* of SEP, counted
-as `PROVEN` evidence-items). The architecture spec is the denominator; AGP,
+see. Phase 1 + Phase 2 together are the cocotb baseline (*> 60%* of SEP,
+counted as `PROVEN` *feature* rows on
+link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard],
+not as a count of `PROVEN` checkers). The architecture spec is the denominator; AGP,
 local UART/GPIO, proprietary SPI PHY, ROM patch, next-gen DMA-AES, DCLS-in-SEP
 and PCR vault are out of that count. A `FAILED` spec-gap is not a 60% credit.
 
@@ -48,7 +50,7 @@ name is not coverage. There is no separate improvement worklist.
 
 | Graded Phase 2 entries
 | 22
-| <<Entries>> below
+| <<entries>> below
 
 | Iconic remaining — new tests
 | see <<iconic-remaining>>
@@ -129,7 +131,7 @@ assert forbidden markers do not appear; a dual-print still fails the test.
 
 The same set as Phase 1, with the same meanings. A running test's checkers are
 `PROVEN` or `FAILED`. `PARTIAL`, `GUARD`, and `INSUFFICIENT-EVIDENCE` are unused
-here. The one `FAILED` row is CHK-OWNERSHIP-WINDOW (RTL vs `fabric.adoc`).
+here. The one `FAILED` row is CHK-OWNERSHIP-WINDOW (RTL vs `hw/sys/sep/doc/fabric.adoc`).
 
 [[entries]]
 == Entries
@@ -158,7 +160,25 @@ and SP800-38A F.2.1/F.5.1 — so the expectation is independent of the DUT.
 
 ==== Steps
 
-@@STEPS:sep_aes_mode_keysize_rand_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring up in `no_cpu` with `+skip_fuse_sense` and park non-AES EDN clients.
+| `Skipping fuse sense`
+| LOGGED
+
+| 2
+| Walk all nine {ECB, CBC, CTR} × {128, 192, 256} cells against `sep_aes_golden`.
+| `CHK-RAND-REP PASS: walked all 9 discrete cells`
+| LOGGED
+
+| 3
+| Score CHK1..CHK4 bit-exact and CHK5_aes routing.
+| `CHK1..CHK4 bit-exact + CHK5_aes ROUTING (AES==AXIS1) PASS`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -211,7 +231,20 @@ self-tests against RFC 4231 and FIPS-180 vectors at import.
 
 ==== Steps
 
-@@STEPS:sep_hmac_sha_variant_rand_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring up in `no_cpu` with `+skip_fuse_sense`.
+| `Skipping fuse sense`
+| LOGGED
+
+| 2
+| Walk the 17 HMAC/SHA cells against `sep_hmac_golden`.
+| `CHK-RAND-REP PASS: walked all 17 discrete cells`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -263,7 +296,20 @@ and the NIST SP800-185 samples.
 
 ==== Steps
 
-@@STEPS:sep_kmac_mode_strength_rand_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring up in `no_cpu` with `+skip_fuse_sense`.
+| `Skipping fuse sense`
+| LOGGED
+
+| 2
+| Walk the eight SHA3/SHAKE/cSHAKE/KMAC cells against `sep_kmac_golden`.
+| `CHK-RAND-REP PASS: walked all 8 discrete cells`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -323,7 +369,20 @@ insufficient evidence, FIPS violation or illegal segmentation.
 
 ==== Steps
 
-@@STEPS:sep_crypto_edn_multisink_arbitration_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring up in `no_cpu` with `+skip_fuse_sense` and `+esrc_noise_force`.
+| `Skipping fuse sense`
+| LOGGED
+
+| 2
+| Run the entropy scoreboard in strict mode with `report()`.
+| `CHK-BOTH-COMPLETE PASS: under contention AES block-0 ct==golden AND KMAC digest==golden`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -580,7 +639,20 @@ reset and the other's held result must survive bit-exact. Both directions are co
 
 ==== Steps
 
-@@STEPS:sep_crypto_per_ip_reset_isolation_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Compute a golden-checked result on two engines.
+| `CHK-NONVAC PASS: HMAC DIGEST + AES DATA_OUT hold real golden results`
+| LOGGED
+
+| 2
+| Reset one engine; the other's held result must survive bit-exact. Both directions.
+| `CHK-NEIGHBOR-SURVIVES PASS: HMAC DIGEST bit-exact intact`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -615,8 +687,9 @@ reset and the other's held result must survive bit-exact. Both directions are co
 | PROVEN
 
 | CHK-KMAC-SELF
-| KMAC `SW_RESET_N` perturbs its own STATE while HMAC DIGEST stays bit-exact.
-| `CHK-KMAC-SELF PASS: KMAC reset perturbed STATE; HMAC DIGEST intact`
+| KMAC `SW_RESET_N` restores `STATUS` to its register-map reset and STATE
+  (share0^share1) reads 0, while HMAC DIGEST stays bit-exact.
+| `CHK-KMAC-SELF PASS: KMAC STATUS=` with `STATE cleared to 0`
 | PROVEN
 
 | CHK-KMAC-NEIGHBOR
@@ -625,8 +698,10 @@ reset and the other's held result must survive bit-exact. Both directions are co
 | PROVEN
 
 | CHK-OTBN
-| OTBN `LOAD_CHECKSUM` survives an AES reset and clears when OTBN itself is reset.
-  OTBN DMEM is SRAM-macro retention, not an OTBN `rst_ni` observable.
+| OTBN `LOAD_CHECKSUM` (rst_ni CSR) survives an AES reset and clears to its
+  register-map reset on OTBN's own pulse. DMEM holds the staged mark across the
+  AES neighbour pulse (cross-domain leak). OTBN's own reset runs a secure wipe,
+  so DMEM retention across that pulse is not claimed.
 | `CHK-OTBN PASS: LOAD_CHECKSUM survived AES reset, cleared by OTBN reset`
 | PROVEN
 
@@ -652,9 +727,29 @@ Testlist:: `system.toml`
 
 ==== Description
 
+Mapped CSR OKAY plus reset-value vs unmapped DECERR on the same CPU-LSU bus.
+
 ==== Steps
 
-@@STEPS:sep_fabric_decode_error_response_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Read a mapped CSR (`SEP_NMI_VEC`) and require OKAY plus the documented reset.
+| `CHK-OKAY PASS: mapped CSR 0x10a30180 -> OKAY, rdata=0xc0000100`
+| LOGGED
+
+| 2
+| Read and write unmapped addresses; both must complete DECERR.
+| `CHK-DECERR PASS: unmapped read 0x10ff0000 -> DECERR (resp=3)`
+| LOGGED
+
+| 3
+| Confirm the same bus returned both OKAY and DECERR.
+| `CHK-NONVAC PASS: same s_axi bus returned OKAY (mapped) and DECERR`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -716,7 +811,25 @@ and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
 
 ==== Steps
 
-@@STEPS:sep_fabric_inbound_filter_rule_matrix_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring the lifecycle controller up in PROD so the inbound filter is active.
+| `CHK-BLOCK-DEFAULT PASS: ext read 0x10a30008 -> DECERR (block-by-default)`
+| LOGGED
+
+| 2
+| Walk first and last table entries, two windows, and `{rw, r, w}` — 12 cells.
+| `CHK-RAND-REP PASS: walked all 12 discrete cells`
+| LOGGED
+
+| 3
+| Keep CHK-OWNERSHIP-WINDOW a hard assert (expected red until RTL).
+| `CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg 0x10a21000 on entry 1, external read resp=0, expected DECERR`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -755,6 +868,14 @@ and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
 | `CHK-OWNERSHIP PASS: filter cfg 0x10a21000 -- CPU-LSU reads rule`
 | PROVEN
 
+| CHK-FILTER-PROGRAMMED
+| Entry 1's allow-window is programmed as a closed interval: CPU-LSU readback of
+  `FILTER_CONFIG` and `START_ADDR` match the CFG address, and `END_ADDR` is the
+  HW-expanded last byte of that 8-byte beat (`filter_ctrl.rdl` `END_ADDR` reset
+  `0x7`; `axi_filter_wrap` same-beat expansion).
+| `CHK-FILTER-PROGRAMMED PASS: entry 1 FILTER_CONFIG` with `END_ADDR=`
+| PROVEN
+
 | CHK-OWNERSHIP-WINDOW
 | After a second filter entry allow-lists the CFG address with read and write, the
   external master still DECERRs. `hw/sys/sep/doc/fabric.adoc`: only the SEP CPU
@@ -789,9 +910,25 @@ Testlist:: `system.toml`
 
 ==== Description
 
+R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and
+inbound/outbound filter CSR banks.
+
 ==== Steps
 
-@@STEPS:sep_fabric_remap_filter_csr_bank_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Write each bank and require the readback to differ from the observed pre-write.
+| `(observed change), neighbor END_lo 0`
+| LOGGED
+
+| 2
+| Prove RO `data_bus_width` ignores writes on both filters.
+| `CHK-RO PASS: data_bus_width reads 3 and ignores writes (both filters)`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -856,9 +993,25 @@ Testlist:: `system.toml`
 
 ==== Description
 
+64-bit TX FIFO, status, threshold IRQ, empty/full errors, and flush on the
+outbound mailbox aperture.
+
 ==== Steps
 
-@@STEPS:sep_axil_mailbox_iface_rand_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Confirm empty FIFOs in STATUS, then push native 64-bit WRITE_DATA beats.
+| `CHK-NONVAC PASS: empty FIFOs reflected in STATUS (not stuck)`
+| LOGGED
+
+| 2
+| Overfill and empty-read must SLVERR with the documented error flags; flush drains TX.
+| `CHK-ERR-WR PASS: write-to-full -> SLVERR + ERROR_FLAGS.write_error`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -918,9 +1071,24 @@ Testlist:: `system.toml`
 
 ==== Description
 
+Simultaneous IP-IRQ fan-in into the aggregator: one-hot map, no alias, RW1C clear.
+
 ==== Steps
 
-@@STEPS:sep_irq_simultaneous_fanin_no_alias_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Fire a single source and require exactly one aggregate bit.
+| `CHK-NONVAC PASS: single source `
+| LOGGED
+
+| 2
+| Fire several together; no non-driven bit may rise, and each RW1C-clears.
+| `CHK-ANTI-ALIAS PASS: no non-driven bit in `
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -973,7 +1141,20 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 
 ==== Steps
 
-@@STEPS:sep_pic_irq_source_map_delivery_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Arm three PIC sources and wait a quiet window with no ISR.
+| `CHK-NONVAC PASS: no spurious ISR before any trigger`
+| LOGGED
+
+| 2
+| Deliver OTBN done to the CPU; complete when the source de-asserts.
+| `CHK-DELIVER PASS: OTBN ISR woke the CPU`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1037,7 +1218,20 @@ data.
 
 ==== Steps
 
-@@STEPS:sep_spi_ot_dma_tx_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| DMA SRAM into the OpenTitan SPI TX FIFO and program the flash BFM.
+| `CHK-TRIGGER PASS: TXWM(=lsio_trigger src) tracks TXQD across wm (live)`
+| LOGGED
+
+| 2
+| Read the flash back and compare to the SRAM source; W1C-clear DMA done.
+| `CHK-DMA-TX PASS: flash content == SRAM source`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1092,9 +1286,25 @@ Testlist:: `spi.toml`
 
 ==== Description
 
+JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the
+flash BFM, with a neighbour-sector intact check.
+
 ==== Steps
 
-@@STEPS:sep_spi_ot_flash_cmd_rand_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| READ ID, then prove WEL set by WREN and cleared by WRDI.
+| `CHK-JEDEC PASS: READ ID 0x9F -> 0x0018ba20`
+| LOGGED
+
+| 2
+| Program, FAST_READ, and sector-erase with neighbour intact; ERROR_STATUS stays 0.
+| `CHK-WRDI PASS: opcode 0x04 cleared`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1156,9 +1366,19 @@ Testlist:: `spi.toml`
 
 ==== Description
 
+OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C.
+
 ==== Steps
 
-@@STEPS:sep_spi_ot_host_csr_irq_rand_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Read the eight control registers at documented reset with STATUS idle.
+| `CHK-RESET PASS: 8 control regs at documented reset + STATUS idle`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1224,9 +1444,19 @@ Testlist:: `memory.toml`
 
 ==== Description
 
+SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port.
+
 ==== Steps
 
-@@STEPS:sep_sram_datapath_breadth_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Walk every contiguous WSTRB mask against a Python strobe model.
+| `CHK-WSTRB PASS: all 36 contiguous WSTRB masks change only their byte lanes`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1286,7 +1516,20 @@ come from the run seed (`SepDmaBasicCfg`).
 
 ==== Steps
 
-@@STEPS:sep_dma_basic_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Read DMA config registers at documented reset, then prove CFG_REGWEN lock while BUSY.
+| `CHK-RESET PASS: DMA config registers at documented reset values`
+| LOGGED
+
+| 2
+| Walk INCR / FIXED / WRAP × 1B/2B/4B; consume the seed-patched SCENARIO line.
+| `CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1357,9 +1600,24 @@ Testlist:: `memory.toml`
 
 ==== Description
 
+LSU reads of the Boot ROM match the loaded image; stores to ROM are ignored.
+
 ==== Steps
 
-@@STEPS:sep_boot_rom_lsu_read_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| LSU-read ten half-words of the loaded Boot ROM image.
+| `CHK-ROM-READ PASS: LSU reads of ROM words match the loaded image`
+| LOGGED
+
+| 2
+| Store to ROM; content must stay the image literal and the CPU must not trap.
+| `CHK-ROM-WRITE-IGNORED PASS: store to ROM returned, content unchanged`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1400,9 +1658,19 @@ Testlist:: `cpu.toml`
 
 ==== Description
 
+Warm vs cold scratch: warm bank clears, cold bank retains, both writable after release.
+
 ==== Steps
 
-@@STEPS:sep_warm_cold_reset_scratch_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Write both scratch banks, then pulse warm reset.
+| `CHK-WARM-RST PASS: warm reset asserted and released sep_cpu_reset_n`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1453,9 +1721,19 @@ Testlist:: `cpu.toml`
 
 ==== Description
 
+`dbg_rstb_i` vs the CPU reset observable: independent assert/release.
+
 ==== Steps
 
-@@STEPS:sep_cpu_dbg_reset_independence_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Both reset observables released at rest with `dbg_rstb_i` high.
+| `CHK-BASELINE PASS: both reset observables released with dbg_rstb_i high`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1488,9 +1766,19 @@ Testlist:: `system.toml`
 
 ==== Description
 
+Wakeup and watchdog tick, threshold expiry, cause, and bark/bite on the AON timer.
+
 ==== Steps
 
-@@STEPS:sep_wdt_aon_timer_internals_test@@
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Expire the wakeup threshold and W1C-clear the interrupt.
+| `CHK-WKUP-EXPIRE PASS (set)`
+| LOGGED
+|===
 
 ==== Checkers
 
@@ -1586,8 +1874,12 @@ ring oscillator, KM wipe, and inbound negative product are Phase 3
 [[iconic-remaining]]
 == Iconic remaining — new tests
 
-Create these from this plan. Do *not* implement the old 69-name list as 69
-tests.
+Create these from this plan, in row order. Do *not* implement the old 69-name
+list as 69 tests. A graded <<entries>> row is checker evidence, not a
+feature-level `PROVEN` on the 60% scorecard — see
+link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard]. The rows below
+are feature `GAP`s (no test yet for that iconic claim). Checker tables stay
+binary; `PARTIAL` is a feature grade there, not a checker grade here.
 
 [cols="2,2,3",options="header"]
 |===
@@ -1774,15 +2066,15 @@ or `FAILED` checker on a graded entry.
 |===
 
 [[phase3-dump]]
-== Phase 3 dump of the former ledger
+== Names deferred to Phase 3
 
-Error, security, coverage-bin, and corner names. They are *not* Phase 2
-work. The same list is recorded in `verification_plan_phase3.adoc`. Do not
-grade them here.
+Error, security, coverage-bin, and corner names mapped out of Phase 2. This is
+a provenance dump (`COVERED_BY` / deferred-to-Phase-3), not an execute worklist
+and not committed Phase 3 scope. Do not grade them here.
 
 [cols="2,3",options="header"]
 |===
-| Former name | Why Phase 3
+| Name | Why Phase 3
 
 | `sep_clock_uvm_jtag_clock_independence_test`
 | Clock-isolation corner
@@ -1866,13 +2158,13 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 
 == Audit summary
 
-22 testcases, 117 checkers.
+22 testcases, 47 steps, 118 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 116
+| `PROVEN` | 117
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
@@ -1883,7 +2175,7 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 
 The one `FAILED` row is CHK-OWNERSHIP-WINDOW: after entry 1 allow-lists the filter
 CFG address, the external master returns OKAY (Verilator run `20260820_164231`).
-That is RTL vs `fabric.adoc` ("Only the SEP CPU can program these filters"),
+That is RTL vs `hw/sys/sep/doc/fabric.adoc` ("Only the SEP CPU can program these filters"),
 filed as a question:
 https://github.com/tenstorrent/tt-oca-harness/issues/1050
 CHK-OWNERSHIP without that window is `PROVEN` in the same log.

@@ -13,7 +13,7 @@
  * CFG.CSNTRAIL [19:16]: CS hold time after last SCLK edge
  *
  * Test Flow:
- * 1. Configure SPI mux, enable controller
+ * 1. Enable controller
  * 2. Write min values (all 0): readback verify
  * 3. Write max values (all 15): readback verify
  * 4. Write mixed values (CSNIDLE=5, CSNLEAD=10, CSNTRAIL=3): readback verify
@@ -84,7 +84,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__ERROR_STATUS_t err_status;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

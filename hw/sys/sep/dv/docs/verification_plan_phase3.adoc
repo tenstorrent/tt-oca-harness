@@ -9,7 +9,7 @@
 [IMPORTANT]
 ====
 *Nothing in this document is committed scope.* Phase 3 is a candidate list, not a
-contract. Unlike <<phase1,Phase 1>> — where a row exists only if a run can prove it —
+contract. Unlike link:verification_plan_phase1.adoc[Phase 1] — where a row exists only if a run can prove it —
 every entry here is unimplemented by definition, so nothing is graded and no proof is
 cited. Read it as a direction note plus two worked candidates.
 ====
@@ -62,7 +62,7 @@ Both arrived from reference-suite updates that landed after this environment las
 Neither is an iconic-feature gap, so both are Phase 3 rather than Phase 2. No tracking issues
 exist yet; owners should file them rather than inventing numbers here.
 
-=== P3-1 — `sep_km_sw_emergency_wipe_test`
+=== `sep_km_sw_emergency_wipe_test`
 
 Key Manager and key distribution.
 
@@ -72,7 +72,7 @@ wipe, covered force-free in the reference suite by a frontdoor register write to
 
 What is new:: A genuinely new SEP-to-KM integration edge. `sep_system_csr` drives
 `KM_WIPE_CTRL.wipe_state` (offset `0x1A0`) into `sep_crypto` and on to
-`key_manager.wipe_state_i`, which was previously tied to `1'b0`. A 0-to-1 edge zeroes every
+`key_manager.wipe_state_i`. A 0-to-1 edge zeroes every
 KPV entry and raises the `WIPE_STATE` interrupt. There is no coverage of this today.
 
 Qualification:: *Yes.* Key Manager Phase 2 planning explicitly deferred wipe. The feature
@@ -91,7 +91,7 @@ without a recorded exception.
 
 Effort:: Moderate. Needs new firmware or sequence plus a KPV-state observation path.
 
-=== P3-2 — `sep_cpu_sram_aes_sram_test`
+=== `sep_cpu_sram_aes_sram_test`
 
 Crypto and entropy, CPU integration.
 
@@ -124,13 +124,13 @@ harness are all in place, and AES-128 is a small extension to the existing golde
 Effort:: Large. Needs new CPU firmware, the SRAM-AES orchestration, the negative leg, and
 the isolation proof.
 
-[[phase2-ledger-dump]]
-== Dump from the former Phase 2 ledger
+[[phase3-deferred-names]]
+== Names in this phase, not a second spine
 
-These names used to sit in Phase 2 as an ungraded 69-row worklist. They are
-error, security, coverage-bin, or corner work. Phase 2 maps each one here so
-nobody implements them as a second spine. They are not graded. Stimulus for
-them waits for a UVM smoke and a combined Phase 1+2 coverage hole list.
+These names are error, security, coverage-bin, or corner work. Phase 2 maps
+each one here so nobody implements them as a second spine. They are not
+graded. Stimulus for them waits for a UVM smoke and a combined Phase 1+2
+coverage hole list.
 
 [cols="2,3",options="header"]
 |===
@@ -206,7 +206,7 @@ them waits for a UVM smoke and a combined Phase 1+2 coverage hole list.
 | Entropy-quality / real-noise HT; entropy IP testbench, not SEP iconic consume
 
 | KM wipe
-| Destructive security edge; see P3-1 (`sep_km_sw_emergency_wipe_test`)
+| Destructive security edge; see `sep_km_sw_emergency_wipe_test`
 
 | Inbound-filter negative product
 | Negative-path matrix; iconic inbound is allow vs block-by-default

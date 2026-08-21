@@ -53,10 +53,14 @@ count. ROM-*firmware* contracts are out of this VPLAN — ROM-FW owner.
 A backlog *name* is not a credit. A `FAILED` spec-gap is honest and is
 not a 60% credit either.
 
-The scorecard is the per-test checker tables in
-`verification_plan_phase1.adoc` and `verification_plan_phase2.adoc`. A
-`PROVEN` row is in the 60% count; a `FAILED` row is not. The audit
-summaries at the end of those files are the running totals.
+The 60% scorecard is <<iconic-scorecard>> — feature coverage, not checker
+count. A graded test with `PROVEN` checkers is evidence *behind* a feature
+row; it does not by itself make the feature `PROVEN`. `PARTIAL` is a
+feature grade only (a test exists, the iconic claim is not fully proven).
+Checker tables stay binary (`PROVEN` / `FAILED`). A `FAILED` checker is
+not a 60% credit. Phase 2
+link:verification_plan_phase2.adoc#iconic-remaining[iconic remaining]
+holds the `GAP` rows to implement, in row order.
 
 Phase 1 and Phase 2 stay on the existing cocotb environment and finish there.
 Phase 3 does not extend that environment — it starts a new UVM bench.
@@ -137,10 +141,13 @@ Detail: `verification_plan_phase3.adoc` (revisited once the UVM environment exis
 Two different numbers. Do not mix them.
 
 Feature coverage (Phase 1 + Phase 2)::
-Behaviour that has a test whose log proves it. Target: *> 60% of SEP*. There
-is no SystemVerilog covergroup number for this — the directed environment has
-none, and RTL SVA is compiled out under the Verilator acceptance flow. "Covered"
-means an evidence-item is `PROVEN`.
+The iconic claim for each in-scope IP, graded on <<iconic-scorecard>>.
+Target: *> 60% of SEP*, counting only `PROVEN` feature rows. There is no
+SystemVerilog covergroup number for this — the directed environment has
+none, and RTL SVA is compiled out under the Verilator acceptance flow.
+A `PARTIAL` feature (a test exists, the iconic claim is incomplete) and a
+`GAP` (no test yet) are not credits. Per-test checker tables are the
+evidence behind a row, not a substitute for it.
 
 Code coverage (all three phases, combined)::
 Measured on the DUT from Phase 1, Phase 2, *and* Phase 3 runs together.
@@ -150,6 +157,159 @@ uncovered bins rather than on a second copy of the Phase 1 representatives.
 
 A bin Phase 1 already hits is a Phase 1 bin, even if a Phase 3 test could hit
 it too. Credit once, at the earliest phase that proved it.
+
+[[iconic-scorecard]]
+=== Iconic scorecard (in-scope SEP)
+
+Out of the 60% count: AGP, local UART/GPIO (spec: remote, in SMC), licensed
+SPI PHY, vendor TRNG core, ROM patch, next-gen DMA-AES, DCLS-in-SEP, PCR
+vault, ROM-FW contracts.
+
+Feature grades are independent of checker grades. Close `GAP` then
+`PARTIAL`, in the order of Phase 2
+link:verification_plan_phase2.adoc#iconic-remaining[iconic remaining].
+Do not treat a `PARTIAL` as done by pointing at a graded entry.
+
+[cols="2,2,3",options="header"]
+|===
+| Iconic feature (from spec) | Phase 1+2 | Why this grade
+
+| Fabric reachability / address map
+| PROVEN
+| Smoke + address-map walk.
+
+| Inbound filter: POR block-all, CPU-programmed allow, `SEP_DBG` bypass
+| PARTIAL
+| Block-by-default, 12-cell allow/block walk, and `SEP_DBG` gating are
+  proven. CHK-OWNERSHIP-WINDOW is `FAILED` (RTL vs `fabric.adoc`, issue
+  1050) — honest, not a 60% credit. Source-ID × r/w-enable product is
+  not walked.
+
+| Outbound filter / AP-STEE live remap
+| GAP
+| CSR bank R/W only. No proof a programmed region translates or that the
+  outbound filter drops a forbidden beat.
+
+| CPU alias window (LSU + IFU)
+| PROVEN
+| LSU both directions, IFU call through the alias, and CHK-BASE-LIVE
+  (a remapper hardwired at the operating base fails).
+
+| Mailbox → PIC
+| PROVEN
+| One-channel delivery.
+
+| EL2 boot + ROM-HW fetch / LSU
+| PROVEN
+| Hello-world, ROM IFU, LSU read / write-ignored.
+
+| PIC source map
+| PARTIAL
+| Three representative sources, directed. Not a seeded subset of the map.
+
+| DMA copy + inline SHA-256 + LSIO
+| PROVEN
+| Hash, contention, SPI RX/TX.
+
+| DMA address modes (INCR / FIXED / WRAP) × width
+| PROVEN
+| Modes walked; src/dst/length/fill from the run seed (`RANDCFG`).
+
+| SRAM datapath
+| PROVEN
+| Smoke + strobe/pattern walk.
+
+| AES mode × key-size
+| PROVEN
+| 9-cell RAND-REP, bit-exact vs independent golden. CTR re-runs ENCRYPT
+  (keystream identity); DECRYPT opcode is Phase 3, not a silent 9-cell
+  decrypt.
+
+| HMAC SHA variants
+| PROVEN
+| 17-cell RAND-REP.
+
+| KMAC / SHA3 / SHAKE
+| PROVEN
+| 8-cell RAND-REP.
+
+| OTBN as a compute engine
+| GAP
+| Sideload key-dump and IMEM/DMEM smoke. No OTBN program that computes.
+
+| KM sideload consume (AES/HMAC/KMAC/OTBN)
+| PROVEN
+| Interconnect claim. Alive-mode CHK5 on `rom_main` is live beats;
+  bit-exact CHK5 is the small KM ROM tests.
+
+| KM as KM: mailbox + command set
+| GAP
+| Generate / transfer appear only inside sideload KATs. No command-set
+  RAND-REP.
+
+| Entropy ESRC → DRBG → EDN consume
+| PROVEN
+| CHK1–4 bit-exact under forced noise; Generate segmentation is a named
+  test; consume is live including the entropy-pool sink.
+
+| Crypto EDN arbitration (two live clients)
+| PROVEN
+| Same-cycle dual request, both acked, consecutive grants alternate.
+
+| eFuse sense + shadow + persist
+| PROVEN
+| Sense, image, program-then-resense.
+
+| eFuse program × lock
+| GAP
+| Lock/permission matrix is not a test.
+
+| Lifecycle `feat_ctrl` vs `LC_STATE`
+| PROVEN
+| Stitch test, spec-derived golden, `secure_tm` strap and `lc_sigint`
+  inject (kept-log `PROVEN` checkers).
+
+| Lifecycle demote (DBG_1 / DBG_2, TEST_DEV vs PROD)
+| PARTIAL
+| `DEMOTE_1` and `DEMOTE_2` independence are proven. The demote × LC ×
+  DIS product is not walked.
+
+| RMA token match → LC update
+| PARTIAL
+| Inside the stitch test's RMA legs, not a standalone randomizable token
+  path.
+
+| SPI-OT flash + DMA
+| PROVEN
+| JEDEC, RX, TX, flash cmd, host CSR/IRQ. Dual/quad are BFM-gated, not a
+  60% hole. There is no pad mux in this open build.
+
+| WDT bark → NMI, pet, lock
+| PROVEN
+| Phase 1 bark/NMI + Phase 2 internals RANDCFG.
+
+| Per-IP `SW_RESET_N` isolation
+| PROVEN
+| AES, HMAC, KMAC, OTBN walked; KM held by reset default.
+
+| Clock-gate per IP
+| GAP
+| No iconic representative.
+
+| JTAG vs CPU vs KM eFuse mux
+| PROVEN
+| Two mux-coexistence tests. Extra-MMR deny is `FAILED` (issue 626) —
+  RTL vs spec, not a missing test, and not a 60% credit for that slice.
+
+| Secure boot negative (bad sig / revoke / rollback)
+| out
+| ROM-FW owner. Not a Phase 2 GAP this suite executes.
+|===
+
+`PROVEN` feature rows in the count; `PARTIAL`, `GAP`, and `out` are not.
+A `FAILED` checker on an otherwise-proven feature (inbound ownership,
+JTAG extra-MMR) is named on the row and is not a 60% credit for that
+slice.
 
 == Quality bar
 
@@ -189,9 +349,8 @@ later:
 * *Hang instead of fail* — an unbounded wait that expires the sim budget
   with no attributed error.
 
-A checker that cannot fail is deleted, or graded `GUARD` if it only protects
-a build precondition (linker alignment, generated tie-off). It is never
-counted as proof about the DUT.
+A checker that cannot fail is deleted. It is never counted as proof about the
+DUT. `GUARD` is not a legal verdict in Phase 1 or Phase 2.
 
 === Force-free
 
@@ -231,7 +390,10 @@ wrapper that depends on a licensed leaf is not.
 
 DUT::
 `sep_wrapper` — the `sep` core plus its IP integration (real memory macros,
-generic eFuse model, OpenTitan SPI mux).
+generic eFuse model). The OpenTitan SPI host is inside the `sep` core; there
+is no SPI pad mux in this build. A mux between the OCAH SPI host and a
+proprietary SPI, when it exists only in a companion wrapper, is driven from
+that repo.
 
 Stimulus::
 Two run modes, not two DUTs. `no_cpu` holds the CPU off and drives the LSU bus
@@ -246,6 +408,7 @@ Phase 3 bench::
 New UVM environment. Same DUT, same quality bar, different stimulus engine.
 Not created yet.
 
+[[documents]]
 == Documents
 
 [cols="2,4",options="header"]

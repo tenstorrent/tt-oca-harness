@@ -77,4 +77,4 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         self.logger.info("ESRC->DRBG->CSRNG->EDN->KM alive; KM consumed entropy; alerts clean")
 
         await self.stop_fifo_drain()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()

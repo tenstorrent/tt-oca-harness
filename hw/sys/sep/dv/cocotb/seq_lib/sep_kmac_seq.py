@@ -297,6 +297,10 @@ class SepKmac(SepAxiRegDriver):
             digest.append((s0 ^ s1) & 0xFFFF_FFFF)
         return digest
 
+    async def read_status(self) -> int:
+        """Read STATUS (sha3_idle[0], sha3_squeeze[2], fifo_empty, ...)."""
+        return await self._rd(KMAC_STATUS)
+
     async def _check_done_rw1c(self, tag: str) -> None:
         """CHK-DONE-RW1C: after the message is absorbed (squeeze ready) the
         INTR_STATE.kmac_done status bit must be set; write 1 to clear it and prove

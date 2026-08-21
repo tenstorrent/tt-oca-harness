@@ -4,7 +4,9 @@
  * Goal:
  *   Run a minimal OpenTitan SPI command sequence in SMU SEP_RTL mode without
  *   requiring an external flash model, then park the CPU in explicit pass/fail
- *   loops so the cocotb test can classify the result by SEP PC.
+ *   loops so the cocotb test can classify the result by SEP PC. The open DUT
+ *   has no SPI pad mux, so this image does not program one. A companion
+ *   wrapper mux belongs with that wrapper's firmware.
  */
 
 #include <stdint.h>

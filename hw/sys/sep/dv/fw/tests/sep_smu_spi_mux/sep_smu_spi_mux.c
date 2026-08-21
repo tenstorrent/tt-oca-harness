@@ -2,10 +2,10 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_spi_mux — pad-mux programming belongs with the nonfree wrapper.
- *
- * This directory is excluded from the OSS firmware compile
- * (`FW_TEST_EXCLUDE_NAMES`). The open DUT has no pad mux to program.
+ * sep_smu_spi_mux — excluded from the OSS firmware compile
+ * (`FW_TEST_EXCLUDE_NAMES`). The open DUT has no pad mux to program. A mux
+ * that selects between the OCAH SPI host and a proprietary SPI is driven
+ * from whichever repo holds that wrapper.
  */
 
 #include <stdint.h>

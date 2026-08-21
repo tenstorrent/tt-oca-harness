@@ -8,7 +8,7 @@
  * overflow error detection, and SW_RST drain behavior.
  *
  * Test Flow:
- * 1. Configure SPI mux, enable controller
+ * 1. Enable controller
  * 2. Verify TXEMPTY=1 initially
  * 3. Write multiple words to TXDATA, monitor TXQD
  * 4. Test TX watermark (TXWM) with configurable TX_WATERMARK
@@ -53,7 +53,6 @@ int main(void) {
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

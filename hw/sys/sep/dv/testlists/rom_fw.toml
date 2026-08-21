@@ -28,7 +28,7 @@ schema_version = 1
 # NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
 # OpenTitan Quad spi_host),
 # so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
-# behavioral SMC responder (SEP_SMC_MEM_MODEL). See sep-rom-non-secure-boot-design.md.
+# behavioral SMC responder (SEP_SMC_MEM_MODEL).
 name = "sep_rom_non_secure_boot_test"
 module = "cpu.sep_rom_non_secure_boot_test"
 target = "rom_boot"
@@ -153,14 +153,11 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   # DV SHORTCUT, tagged dv_shortcut above. OTBN parks in UrndRefresh until EDN
-  # grants entropy, and nothing in the boot flow enables the entropy chain (the
+  # grants entropy, and the boot flow does not enable the entropy chain (the
   # ROM has no CSRNG/EDN code), so without this the RSA verify never starts and
   # the test sits at RSA_VERIFY_START until timeout. This forces the OTBN EDN
   # grants only -- the entropy_source/CSRNG/EDN path is NOT exercised here, and
   # the RSA assertions are untouched, so a pass still means the signature really
-  # verified. Same shortcut the internal flow takes (+CRYPTO_EDN_HACK).
-  # FIXME(SEP-DV): drop this once DE confirms who is meant to bring up DRBG/EDN
-  # before the ROM runs RSA; if the answer is "nobody", this masks a real gap.
-  # See .dv/artifacts/SEP_ROM_SECURE_VS_NONSECURE_BOOT.md.
+  # verified.
   "+sep_crypto_edn_force",
 ]

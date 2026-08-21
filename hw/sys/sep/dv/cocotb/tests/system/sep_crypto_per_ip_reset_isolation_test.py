@@ -31,8 +31,13 @@ Isolation proof (both directions, then the remaining isolated bits):
   * CHK-NEIGHBOR-SURVIVES  the sibling's held crypto result is bit-exact intact.
   * CHK-REVERSE     roles swapped (AES-victim then HMAC-victim).
   * CHK-KMAC / CHK-OTBN  KMAC SHA3-256 STATE and OTBN DMEM hold across a
-                    neighbour pulse and perturb on their own pulse. KM (bit 0)
-                    stays held at the reset default and is not claimed.
+                    neighbour pulse. KMAC's own pulse returns STATUS to its
+                    register-map reset; OTBN LOAD_CHECKSUM (rst_ni CSR) clears
+                    to its register-map reset. DMEM is the cross-domain leak
+                    check (a neighbour must not wipe it). OTBN's own reset runs
+                    a secure wipe, so DMEM retention across that pulse is not
+                    claimed. KM (bit 0) stays held at the reset default and is
+                    not claimed.
 
 reference ref: clock sep_clock_uvm_sw_reset_per_ip_test --
 COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
@@ -63,7 +68,8 @@ from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 from env.sep_kmac_golden import kmac_family_words
-from seq_lib.sep_otbn_seq import SepOtbn, OTBN_LOAD_CHECKSUM_RESET
+from seq_lib.sep_otbn_seq import SepOtbn, OTBN_LOAD_CHECKSUM_RESET, OTBN_DMEM_RESULT_LO
+from sep_reg_meta import KMAC
 from seq_lib.sep_crypto_reset_iso_seq import (
     SepCryptoResetIso, ENG_HMAC, ENG_AES, ENG_KMAC, ENG_OTBN,
 )
@@ -75,6 +81,8 @@ AES_KEY = [0x03020100, 0x07060504, 0x0B0A0908, 0x0F0E0D0C,
 AES_PT = [0xAABBCCDD, 0x11223344, 0x55667788, 0x99001122]
 KMAC_MSG = [0x6A6F6232, 0xDEADBEEF]
 OTBN_CHECKSUM_MARK = 0xA11CED01
+OTBN_DMEM_MARK = 0xD3E00D3E
+KMAC_STATUS_RESET = KMAC.reset32("STATUS")
 
 _ZERO_DIGEST = [0] * 8
 _ZERO_BLOCK = [0] * 4
@@ -137,16 +145,27 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await self.kmac.check_status_clean("sha3-hold")
         return digest
 
-    async def _otbn_hold_checksum(self) -> int:
-        """Hold a non-reset LOAD_CHECKSUM. That CSR is in the OTBN rst_ni domain;
-        DMEM SRAM is not (a core reset leaves the macros intact)."""
+    async def _otbn_hold_checksum_and_dmem(self) -> tuple[int, int]:
+        """Hold a non-reset LOAD_CHECKSUM (rst_ni CSR) and a DMEM word used as
+        the neighbour-reset leak check.
+
+        LOAD_CHECKSUM is a running CRC of IMEM/DMEM bus writes
+        (``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn.sv``
+        ``u_mem_load_crc32``). Stage DMEM first, then write the mark last, so
+        the DMEM store cannot mix the held checksum.
+        """
         await self.otbn.wait_idle("pre-checksum-hold")
+        await self.otbn.write_dmem(OTBN_DMEM_RESULT_LO, OTBN_DMEM_MARK)
+        dmem = await self.otbn.read_dmem(OTBN_DMEM_RESULT_LO)
+        assert dmem == OTBN_DMEM_MARK, (
+            f"OTBN DMEM hold write failed 0x{dmem:08x}"
+        )
         await self.otbn.write_load_checksum(OTBN_CHECKSUM_MARK)
         got = await self.otbn.read_load_checksum()
         assert got == OTBN_CHECKSUM_MARK, (
             f"OTBN LOAD_CHECKSUM hold write failed 0x{got:08x}"
         )
-        return got
+        return got, dmem
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -236,10 +255,19 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         k_digest = await self._run_kmac()
         assert await self.kmac.read_digest() == k_digest, "KMAC STATE not held on re-read"
         await self._pulse_reset(ENG_KMAC.rst_bit)
+        kmac_status = await self.kmac.read_status()
+        assert kmac_status == KMAC_STATUS_RESET, (
+            f"KMAC STATUS not restored to register-map reset 0x{KMAC_STATUS_RESET:08x} "
+            f"after its own SW_RESET_N pulse: 0x{kmac_status:08x}"
+        )
         kmac_after = await self.kmac.read_digest()
-        assert kmac_after != k_digest, (
-            "KMAC STATE not perturbed by its own SW_RESET_N pulse:\n"
-            f"  held={[hex(w) for w in k_digest]}\n  after={[hex(w) for w in kmac_after]}"
+        # STATE is a window, not a PeakRDL CSR, so it has no REG_DEFAULT. On this
+        # DUT a domain reset leaves share0^share1 as 0 (unlike AES DATA_OUT,
+        # which SEC_WIPE replaces with PRNG data). Assert that exact idle
+        # presentation, not merely inequality against the held digest.
+        assert kmac_after == _ZERO_DIGEST, (
+            f"KMAC STATE not cleared by its own SW_RESET_N pulse: "
+            f"{[hex(w) for w in kmac_after]}"
         )
         hmac_survived = await self.hmac.read_digest()
         assert hmac_survived == h_digest, (
@@ -247,7 +275,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"  before={[hex(w) for w in h_digest]}\n  after={[hex(w) for w in hmac_survived]}"
         )
         self.logger.info(
-            "CHK-KMAC-SELF PASS: KMAC reset perturbed STATE; HMAC DIGEST intact")
+            "CHK-KMAC-SELF PASS: KMAC STATUS=0x%08x (REG_DEFAULT), "
+            "STATE cleared to 0 (held[0]=0x%08x); HMAC DIGEST intact",
+            kmac_status, k_digest[0])
 
         k_digest = await self._run_kmac()
         await self._pulse_reset(ENG_HMAC.rst_bit)
@@ -259,23 +289,29 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self.logger.info(
             "CHK-KMAC-NEIGHBOR PASS: HMAC reset left KMAC STATE bit-exact intact")
 
-        mark = await self._otbn_hold_checksum()
+        mark, dmem_mark = await self._otbn_hold_checksum_and_dmem()
         await self._pulse_reset(ENG_AES.rst_bit)
         otbn_survived = await self.otbn.read_load_checksum()
         assert otbn_survived == mark, (
             f"OTBN LOAD_CHECKSUM disturbed by AES reset: "
             f"0x{otbn_survived:08x} != 0x{mark:08x}"
         )
+        dmem_survived = await self.otbn.read_dmem(OTBN_DMEM_RESULT_LO)
+        assert dmem_survived == dmem_mark, (
+            f"OTBN DMEM disturbed by AES reset (cross-domain leak): "
+            f"0x{dmem_survived:08x} != 0x{dmem_mark:08x}"
+        )
         await self._pulse_reset(ENG_OTBN.rst_bit)
         await self.otbn.wait_idle("post-otbn-reset")
         otbn_after = await self.otbn.read_load_checksum()
         assert otbn_after == OTBN_LOAD_CHECKSUM_RESET, (
             f"OTBN LOAD_CHECKSUM not cleared by its own SW_RESET_N pulse: "
-            f"0x{otbn_after:08x}"
+            f"0x{otbn_after:08x} != REG_DEFAULT 0x{OTBN_LOAD_CHECKSUM_RESET:08x}"
         )
         self.logger.info(
             "CHK-OTBN PASS: LOAD_CHECKSUM survived AES reset, cleared by OTBN reset "
-            "(held 0x%08x -> 0x%08x)", mark, otbn_after)
+            "(held 0x%08x -> 0x%08x); DMEM 0x%08x held across AES neighbour reset",
+            mark, otbn_after, dmem_mark)
 
         self.logger.info(
             "CHK-SW-RESET-BITS PASS: AES/HMAC/KMAC/OTBN domains walked; KM held")
@@ -289,7 +325,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # was never requested.
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report(), (
+            "sep_drbg_scoreboard report failed (CHK5_aes/kmac beat floor or CHK1..CHK4)"
+        )
 
         self.logger.info(
             "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "

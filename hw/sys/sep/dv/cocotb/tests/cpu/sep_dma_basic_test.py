@@ -38,6 +38,7 @@ import pyuvm
 
 from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_dtcm_param_patch import patch_param_block
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_basic_test")
@@ -54,53 +55,6 @@ _BANNER = "SEP DMA basic test"
 _PARAM_MAGIC = 0xDA0A11C0
 _SRAM_SIZE = 0x40000
 _BUSY_LEN = 0x100
-
-
-def _parse_hex_cells(path: str) -> dict:
-    cells: dict = {}
-    addr = 0
-    with open(path) as fh:
-        for line in fh:
-            tok = line.strip()
-            if not tok:
-                continue
-            if tok.startswith("@"):
-                addr = int(tok[1:], 16)
-                continue
-            for byte in tok.split():
-                cells[addr] = int(byte, 16)
-                addr += 1
-    return cells
-
-
-def _find_magic(cells: dict, magic_le: bytes) -> int:
-    for base in sorted(cells):
-        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le))):
-            return base
-    raise RuntimeError("DMA_PARAM_MAGIC not found in DTCM image")
-
-
-def _patch_hex(src: str, dst: str, patches: dict) -> None:
-    out = []
-    addr = 0
-    with open(src) as fh:
-        for raw in fh:
-            line = raw.rstrip("\n")
-            tok = line.strip()
-            if tok.startswith("@"):
-                addr = int(tok[1:], 16)
-                out.append(line)
-                continue
-            if not tok:
-                out.append(line)
-                continue
-            new_toks = []
-            for byte in tok.split():
-                new_toks.append(f"{patches[addr]:02X}" if addr in patches else byte)
-                addr += 1
-            out.append(" ".join(new_toks))
-    with open(dst, "w") as fh:
-        fh.write("\n".join(out) + "\n")
 
 
 @dataclass(frozen=True)
@@ -144,14 +98,8 @@ class sep_dma_basic_test(sep_base_test):
         cfg = SepDmaBasicCfg.from_seed(self.random_seed())
         assert cfg.src_off + _BUSY_LEN <= _SRAM_SIZE
         assert cfg.dst_off + _BUSY_LEN <= _SRAM_SIZE
-        cells = _parse_hex_cells(_DTCM_HEX)
-        base = _find_magic(cells, _PARAM_MAGIC.to_bytes(4, "little"))
-        patches = {}
-        for k, word in enumerate(cfg.param_words()):
-            for b in range(4):
-                patches[base + 4 * k + b] = (word >> (8 * b)) & 0xFF
         patched = os.path.join(os.getcwd(), "sep_dtcm_dma.hex")
-        _patch_hex(_DTCM_HEX, patched, patches)
+        patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(
             "DMA basic RANDCFG seed=%d src_off=0x%x dst_off=0x%x nbytes=%d fill=0x%08x",
             cfg.seed, cfg.src_off, cfg.dst_off, cfg.nbytes, cfg.fill_seed)

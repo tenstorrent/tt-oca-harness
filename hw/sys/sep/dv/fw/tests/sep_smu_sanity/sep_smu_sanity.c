@@ -21,13 +21,10 @@
  *                                         entropy_mode so it does not depend
  *                                         on EDN being available at SMU
  *                                         level.
- *   4. SPI register stage              — pad-mux CSRs live with the
- *                                         nonfree wrapper; this stage is a
- *                                         no-op in the open tree.
  *
  * Pass criterion
  * --------------
- *   All four stages succeed → test_pass(0) writes the 2-word magic
+ *   HMAC and KMAC stages succeed → test_pass(0) writes the 2-word magic
  *   sequence to STDOUT (0x80000000) which the cocotb test detects.
  */
 
@@ -303,19 +300,6 @@ static int stage_kmac(void) {
     return 0;
 }
 
-/* --------------------------------------------------------------------------
- * Stage 3 — OpenTitan SPI host is in-tree. Pad-mux CSRs live with the
- * nonfree wrapper, so this stage is a no-op here.
- * ------------------------------------------------------------------------ */
-
-static int stage_spi_regs(void) {
-    return 0;
-}
-
-/* --------------------------------------------------------------------------
- * main
- * ------------------------------------------------------------------------ */
-
 int main(void) {
     /* Beacon 0 = main entered; written via raw store BEFORE outbound filter
      * init.  In the standalone SEP TB the outbound filter is open by default
@@ -346,8 +330,6 @@ int main(void) {
     STAGE_BEACON(3);
     if (stage_kmac() != 0) errors++;
     STAGE_BEACON(4);
-    if (stage_spi_regs() != 0) errors++;
-    STAGE_BEACON(5);
 
     printf("\n========================================\n");
     if (errors == 0) {

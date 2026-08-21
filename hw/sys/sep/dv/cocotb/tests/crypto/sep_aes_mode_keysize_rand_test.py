@@ -91,7 +91,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info(
             "CHK1..CHK4 bit-exact + CHK5_aes ROUTING (AES==AXIS1) PASS")
         self.logger.info(

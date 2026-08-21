@@ -55,6 +55,7 @@ import pyuvm
 
 from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_dtcm_param_patch import patch_param_block
 from ocah_spi_vip import OcahSpiFlash
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -73,57 +74,6 @@ _PARAM_MAGIC = 0x5A11C0DE
 _MAX_WORDS = 16
 _PAGE_SIZE = 256
 _SECTOR_SIZE = 4096
-
-
-def _parse_hex_cells(path: str) -> dict:
-    """Parse a Verilog $readmemh-style byte image into {byte_addr: value}."""
-    cells: dict = {}
-    addr = 0
-    with open(path) as fh:
-        for line in fh:
-            tok = line.strip()
-            if not tok:
-                continue
-            if tok.startswith("@"):
-                addr = int(tok[1:], 16)
-                continue
-            for byte in tok.split():
-                cells[addr] = int(byte, 16)
-                addr += 1
-    return cells
-
-
-def _find_magic(cells: dict, magic_le: bytes) -> int:
-    """Return the byte address where the little-endian magic bytes start."""
-    for base in sorted(cells):
-        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le))):
-            return base
-    raise RuntimeError("SPI1_PARAM_MAGIC not found in DTCM image")
-
-
-def _patch_hex(src: str, dst: str, patches: dict) -> None:
-    """Rewrite ``src`` to ``dst`` replacing bytes at the addresses in ``patches``,
-    preserving the original @addr / 16-byte-per-line layout exactly."""
-    out = []
-    addr = 0
-    with open(src) as fh:
-        for raw in fh:
-            line = raw.rstrip("\n")
-            tok = line.strip()
-            if tok.startswith("@"):
-                addr = int(tok[1:], 16)
-                out.append(line)
-                continue
-            if not tok:
-                out.append(line)
-                continue
-            new_toks = []
-            for byte in tok.split():
-                new_toks.append(f"{patches[addr]:02X}" if addr in patches else byte)
-                addr += 1
-            out.append(" ".join(new_toks))
-    with open(dst, "w") as fh:
-        fh.write("\n".join(out) + "\n")
 
 
 @dataclass(frozen=True)
@@ -200,14 +150,8 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             return _DTCM_HEX, None
 
         cfg = SepSpiFlashCmdCfg.from_seed(self.random_seed())
-        cells = _parse_hex_cells(_DTCM_HEX)
-        base = _find_magic(cells, _PARAM_MAGIC.to_bytes(4, "little"))
-        patches = {}
-        for k, word in enumerate(cfg.param_words()):
-            for b in range(4):
-                patches[base + 4 * k + b] = (word >> (8 * b)) & 0xFF
         patched = os.path.join(os.getcwd(), "sep_dtcm_spi1.hex")
-        _patch_hex(_DTCM_HEX, patched, patches)
+        patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(
             "SPI flash command breadth scenario (seed=%d): addr=0x%06x nwords=%d data=%s",
             cfg.seed, cfg.addr, cfg.nwords, [f"0x{w:08x}" for w in cfg.data],

@@ -157,7 +157,7 @@ module sep
         output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,
         input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-        // Muxed SPI IRQ from sep_ip_integration (Cadence or OT, selected by spi_sel)
+        // Muxed SPI IRQ from sep_ip_integration (host selected by spi_sel)
         input  logic spi_irq_i,
 
         /////////////

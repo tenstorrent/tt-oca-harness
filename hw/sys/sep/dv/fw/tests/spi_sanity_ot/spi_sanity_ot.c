@@ -4,12 +4,11 @@
 /*
  * SPI Sanity Test for OCH SEP - OpenTitan SPI Host
  *
- * CSR smoke: select the OT SPI mux path, then check POR defaults and simple
- * write/readback on INTR_ENABLE, INTR_TEST, CTRL, CFG, CSID, and EVENT_ENABLE.
+ * CSR smoke: check POR defaults and simple write/readback on INTR_ENABLE,
+ * INTR_TEST, CTRL, CFG, CSID, and EVENT_ENABLE.
  *
  * Test Flow:
- *   1. Configure SPI mux (select OpenTitan, clear cs_force_high)
- *   2. Verify SPI controller CSR defaults and write/readback
+ *   1. Verify SPI controller CSR defaults and write/readback
  *
  */
 
@@ -20,25 +19,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 
-//==============================================================================
-// SPI Mux Control Functions
-//==============================================================================
-
-/**
- * Configure SPI mux - select OpenTitan SPI Host controller and release CS force
- *
- * The SPI mux has two important control bits:
- *   - spi_sel: selects an adopter SPI overlay or the OpenTitan SPI Host
- *   - cs_force_high: 1 = force all CS# pins high (deasserted)
- *
- * The default value has cs_force_high=1 for safety during power-up.
- * This function clears cs_force_high to allow normal CS# operation.
- */
-
-//==============================================================================
-// Main Test
-//==============================================================================
-
 int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
@@ -46,14 +26,11 @@ int main(void) {
     printf("\n========================================\n");
     printf("OCH SEP OpenTitan SPI Host Sanity Test\n");
     printf("========================================\n");
-    printf("\nCSR smoke: mux select + SPI controller POR/R/W\n\n");
+    printf("\nCSR smoke: SPI controller POR/R/W\n\n");
 
     printf("SPI Control Base: 0x%08x\n", OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR);
 
     int pass = 1;
-
-    // Configure SPI mux: select OpenTitan SPI Host controller and clear cs_force_high
-    // This must be done FIRST before any SPI controller operations
 
     printf("\n--- Testing SPI Controller Registers ---\n\n");
 

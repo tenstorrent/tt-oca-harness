@@ -293,7 +293,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # Strict report: CHK1..CHK4 bit-exact + per-sink membership (each AES word and
         # each KMAC word is a genbits-golden word) -- raises on any mismatch, a starved
         # sink (matches<1), or a genbits protocol violation.
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info(
             "CHK-MEMBERSHIP PASS: every AES and every KMAC crypto-EDN word is a CHK4 "
             "genbits-golden word (per-sink removal tally) -- one DRBG partitions into "

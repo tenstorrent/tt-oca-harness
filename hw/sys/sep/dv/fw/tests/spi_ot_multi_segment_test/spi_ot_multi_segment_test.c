@@ -82,7 +82,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
 
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

@@ -6,8 +6,12 @@ cocotb/PyUVM and driven by `tools/dv/run_dv.py --dut sep`.
 
 **DUT** = `sep_wrapper` (`hw/top/sep_wrapper.sv`) — the bare `sep` core
 (`hw/sys/sep/rtl/sep.sv`) plus its IP integration
-(`hw/top/sep_ip_integration.sv`: real memory macros, the generic eFuse model, and
-the OpenTitan SPI mux). **Backend** = Verilator (pre-merge acceptance); VCS and
+(`hw/top/sep_ip_integration.sv`: real memory macros and the generic eFuse model).
+The OpenTitan SPI host is inside the `sep` core (`sep_io` / `sep_ot_spi_wrap`);
+its pads come out of the wrapper. There is no SPI pad mux in this build.
+A mux that selects between the OCAH SPI host and a proprietary SPI belongs
+with whichever repo holds that wrapper.
+**Backend** = Verilator (pre-merge acceptance); VCS and
 Xcelium are supported for development iteration. Everything the environment needs
 lives under this tree, so the build, tests, shims, and docs are easy to review and
 reuse.
@@ -175,13 +179,14 @@ The bender filelist uses targets `["sep", "sep_el2", "sep_wrapper"]` only — ne
 `"simulation"`, which pulls licensed I/O and a foundry padring. Verify
 vendor-clean with `tools/dv/check_no_vendor_paths.py`.
 
-One transitional exception: a proprietary SPI wrapper is dropped via
-`build.exclude_files` until it is absent from the OSS checkout upstream.
+`[build].exclude_files` holds only `abr_wrapper_key_reg.sv` — a Verilator
+PeakRDL miscompile workaround, replaced by `shims/crypto/abr_wrapper_key_reg_stub.sv`.
+Proprietary IPs that are not in the OSS checkout are simply not on the filelist.
 
 ## Troubleshooting
 
 **`Define or directive not defined: '`TEC_RV_ICG'`** (from
-`upstream/design/lib/beh_lib.sv`) — the committed VeeR EL2 config snapshot is
+`vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/beh_lib.sv`) — the committed VeeR EL2 config snapshot is
 missing or was clobbered. Check it:
 
 ```bash

@@ -59,7 +59,7 @@ _ICCM_BASE = 0xC000_0000
 _EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")   # shadow map -> DENIED to JTAG at PROD
 _EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")    # MMR token region -> ALLOWED
 _EFUSE_MMR_TOKEN3 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR")
-# Not a token register. periphs.adoc: in PROD/RMA_SIP, JTAG may only access
+# Not a token register. hw/sys/sep/doc/periphs.adoc: in PROD/RMA_SIP, JTAG may only access
 # RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I. This address must DECERR.
 _EFUSE_MMR_DENIED = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 _BADCAB1E = 0xBADC_AB1E
@@ -199,7 +199,7 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         assert cpu_err == 0, f"CPU eFuse MMR read error count nonzero after JTAG burst: {cpu_err}"
         self.logger.info("CHK-CPU-MMR PASS: CPU eFuse MMR read error count stayed zero")
 
-        # periphs.adoc PROD/RMA_SIP: JTAG may only R/W RMA_SIP_TOKEN_I and
+        # hw/sys/sep/doc/periphs.adoc PROD/RMA_SIP: JTAG may only R/W RMA_SIP_TOKEN_I and
         # RMA_CHIPLET_TOKEN_I. A non-token MMR must complete DECERR. RTL opens
         # the whole MMR window. Hard fail: the mismatch is the reveal.
         code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_DENIED)
