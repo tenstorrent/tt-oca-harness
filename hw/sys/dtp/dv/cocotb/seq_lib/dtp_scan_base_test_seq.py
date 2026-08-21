@@ -9,6 +9,7 @@ from env.dtp_scan_ref_model import (
     IJTAG_SIB_COUNT,
     IJTAG_SIB_ORDER,
     STAP_ORDER,
+    Stap3dcrState,
 )
 from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor
 from env.dtp_types import DtpJtagInstr
@@ -36,7 +37,7 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         quiet: tuple[str, ...] = (),
         active: tuple[str, ...] = (),
         context: str,
-    ) -> dict[str, int]:
+    ) -> tuple[int, dict[str, int]]:
         """Close a window and prove quiet signals never pulsed and active ones did."""
         edges, counts = monitor.stop()
         self.log.info("%s scan window edges=%d counts=%s", context, edges, counts)
@@ -51,7 +52,7 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
                 f"{context}: {name} never pulsed inside a window that must show "
                 f"activity ({edges} TCK edges)"
             )
-        return counts
+        return edges, counts
 
     # --- generic observable checks ------------------------------------------
     async def sample_signals(self) -> dict[str, int]:
@@ -147,84 +148,91 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         await self.load_ir(DtpJtagInstr.TAP_3DCR)
         await self.shift_dr(pattern, len(STAP_ORDER))
 
-    async def write_stap_3dcr(
-        self,
-        name: str,
-        *,
-        config_hold: int,
-        stap_sel: int,
-        tms_hold: int,
-        close_sib: int = 1,
-        dbg_disable: dict[str, int] | None = None,
-        context: str,
-    ) -> None:
-        """Write one downstream STAP 3DCR after its SIB has been opened.
-
-        Packing follows the jtag_stap RTL testbench: SIB bit first, then
-        config_hold, stap_sel, tms_hold in LSB-first scan order.
-        """
-        gates = self.stap_model.gates(dbg_disable)
-        payload = self.stap_model.stap_3dcr_value(
-            config_hold=config_hold,
-            stap_sel=stap_sel,
-            tms_hold=tms_hold,
-        )
-        value = (close_sib & 0x1) << (len(STAP_ORDER) - 1 - self.stap_index(name))
-        value |= payload << len(STAP_ORDER)
-        width = len(STAP_ORDER) + 3
-        self.log.info(
-            "%s STAP %s 3DCR config_hold=%d stap_sel=%d tms_hold=%d close_sib=%d raw=0x%x",
-            context,
-            name,
-            config_hold,
-            stap_sel,
-            tms_hold,
-            close_sib,
-            value,
-        )
-        self.stap_model.update_stap(name, payload, gated=gates[name])
-        await self.load_ir(DtpJtagInstr.TAP_3DCR)
-        await self.shift_dr(value, width)
-
-    async def select_stap(
-        self,
-        name: str,
-        *,
-        dbg_disable: dict[str, int] | None = None,
-        context: str,
-    ) -> None:
-        await self.write_ptap_3dcr(config_hold=1, select=1, context=f"{context}.ptap_select")
-        await self.shift_stap_sibs(self.stap_sib_pattern(name, 1), context=f"{context}.open_sib")
-        await self.write_stap_3dcr(
-            name,
-            config_hold=1,
-            stap_sel=1,
-            tms_hold=1,
-            close_sib=0,
-            dbg_disable=dbg_disable,
-            context=f"{context}.write_stap_3dcr",
-        )
-
     async def observe_stap_controls(self, name: str, *, context: str) -> tuple[int, dict[str, int]]:
         await self.load_ir(DtpJtagInstr.TAP_3DCR)
         return await self.shift_dr_observe(0, len(STAP_ORDER), context=context)
 
-    def check_stap_selected(
+    # --- composed TAP_3DCR chain scans (IEEE 1838 serial configuration) -------
+    # The TAP_3DCR data register is the 2-bit PTAP 3DCR followed serially by
+    # the STAP configuration chain, and the chain shifts on every scan, so
+    # each scan drives the full chain state. Scans are over-length: leading
+    # zeros pass through and the trailing bits land in the chain.
+    STAP_CHAIN_SCAN_WIDTH = 32
+
+    async def stap_chain_flush(self, *, context: str) -> None:
+        """Load TAP_3DCR and zero the whole PTAP+STAP configuration chain."""
+        self.log.info("%s flush TAP_3DCR configuration chain", context)
+        await self.load_ir(DtpJtagInstr.TAP_3DCR)
+        await self.shift_dr(0, self.STAP_CHAIN_SCAN_WIDTH)
+        self.stap_model.flush_scan()
+
+    async def stap_chain_write(
         self,
-        name: str,
-        signals: dict[str, int],
         *,
-        selected: int,
+        ptap_select: int | None = None,
+        ptap_config_hold: int | None = None,
+        sib_en: dict[str, int] | None = None,
+        payloads: dict[str, dict[str, int]] | None = None,
+        dbg_disable: dict[str, int] | None = None,
+        context: str,
+    ) -> int:
+        """One composed TAP_3DCR scan driving the full chain state.
+
+        TAP_3DCR must already be loaded (stap_chain_flush). Unspecified
+        fields keep their stored values, so a bare call is a maintain scan
+        whose captured bits read back the pre-scan chain state.
+        """
+        payload_states = {
+            name: Stap3dcrState(
+                config_hold=p.get("config_hold", 0),
+                stap_sel=p.get("stap_sel", 0),
+                tms_hold=p.get("tms_hold", 0),
+            )
+            for name, p in (payloads or {}).items()
+        }
+        kwargs = {
+            "ptap_select": ptap_select,
+            "ptap_config_hold": ptap_config_hold,
+            "sib_en": sib_en,
+            "payloads": payload_states,
+            "dbg_disable": dbg_disable,
+        }
+        value = self.stap_model.compose_scan(self.STAP_CHAIN_SCAN_WIDTH, **kwargs)
+        chain_len = len(self.stap_model.chain_layout(dbg_disable))
+        self.log.info(
+            "%s TAP_3DCR chain scan value=0x%08x chain_len=%d sib_en=%s payloads=%s",
+            context,
+            value,
+            chain_len,
+            sib_en,
+            payloads,
+        )
+        item = await self.shift_dr(value, self.STAP_CHAIN_SCAN_WIDTH)
+        self.stap_model.apply_scan(**kwargs)
+        return item.result
+
+    async def stap_chain_maintain(self, *, dbg_disable: dict[str, int] | None = None, context: str) -> int:
+        """State-preserving chain scan; the capture reads back stored state."""
+        return await self.stap_chain_write(dbg_disable=dbg_disable, context=context)
+
+    def check_stap_chain_readback(
+        self,
+        captured: int,
+        *,
+        dbg_disable: dict[str, int] | None = None,
         context: str,
     ) -> None:
-        """host tdo_oen asserts only while the STAP is selected AND the
-        composed TAP_3DCR chain (2-bit PTAP 3DCR followed by the STAP SIB
-        chain) is in Shift-DR; the current helpers shift the PTAP 3DCR and
-        SIB fields as separate fixed-width scans, so `selected` cannot be
-        asserted from tdo_oen here."""
-        prefix = self.stap_signal_prefix(name)
-        self.check_observable(signals, f"{prefix}_trst_n", 1, context=context)
-        self.log.info("%s selected=%d sampled_%s_tdo_oen=%d", context, selected, prefix, signals[f"{prefix}_tdo_oen"])
+        """Compare a maintain scan's captured bits against the model state.
+
+        Valid only while the PTAP 3DCR select was already 1 before the scan
+        (otherwise TDO carries the PTAP TDR path, not the chain return).
+        """
+        expected, care, chain_len = self.stap_model.expected_capture(dbg_disable)
+        self.log.info(
+            "%s chain readback captured=0x%08x expected=0x%0*x care=0x%0*x len=%d",
+            context, captured, (chain_len + 3) // 4, expected, (chain_len + 3) // 4, care, chain_len,
+        )
+        self.assert_equal("stap_chain_readback", captured & care, expected & care, context)
 
     async def apply_tlr(self) -> None:
         for _ in range(5):
