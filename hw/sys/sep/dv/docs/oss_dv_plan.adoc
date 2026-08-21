@@ -251,6 +251,10 @@ Not created yet.
 | Phase 3 holding area. Corners, error/security permutations, and the UVM
   smoke. Revisited after the UVM environment exists.
 
+| `improvement_plan.adoc`
+| After Phase 1 + 2: did the 60% iconic target arrive, and what to change
+  in order. Not a test contract.
+
 | `README.md`
 | How to build and run. Not a verification contract.
 |===
