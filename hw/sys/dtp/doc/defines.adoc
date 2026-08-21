@@ -21,14 +21,13 @@ A DTP simulation compile merges these layers, in this order:
 1. The shared native profile
    (`hw/common/dv/configs/profiles/native.toml`,
    `[target_defaults.default].defines`) — the same set for every native-profile
-   DUT, including both the cocotb and SV-UVM frameworks.
-2. The DTP default target (`hw/sys/dtp/dv/dtp_sim_cfg.toml`,
-   `[targets.default].defines`) — `SIMULATION`, the DTP name for a simulation
-   compile.
-3. The DTP Verilator overlay (`[targets.default.tools.verilator].flags`) —
-   extra `+define+` flags only when the tool is Verilator.
-4. The SV-UVM overlay (`[frameworks.uvm.targets.default].defines`) —
-   `SIMULATION` and `DTP_UVM_TB`, only when the run is `--dut dtp --framework uvm`.
+   DUT, including both the cocotb and SV-UVM frameworks. That set includes
+   `SIMULATION`.
+2. The DTP Verilator overlay (`hw/sys/dtp/dv/dtp_sim_cfg.toml`,
+   `[targets.default.tools.verilator].flags`) — extra `+define+` flags only
+   when the tool is Verilator.
+3. The SV-UVM overlay (`[frameworks.uvm.targets.default].defines`) —
+   `DTP_UVM_TB`, only when the run is `--dut dtp --framework uvm`.
 
 `python3 tools/dv/run_dv.py --define NAME` appends a further `+define+` for
 that run. The supported DTP configuration is the merged set above.
@@ -44,7 +43,7 @@ do not use the native DV profile. They pass `-D SYNTHESIS=1` from
 |Define |Applied by |Why |With the define |Without the define
 
 |`SIMULATION`
-|DTP default target (`dtp_sim_cfg.toml`); repeated on the SV-UVM overlay
+|Native profile (every DTP DV tool)
 |Marks a simulation compile. Vendored OpenTitan prims in the DTP graph gate
 simulation-only paths on this name.
 |Those prim paths compile in.

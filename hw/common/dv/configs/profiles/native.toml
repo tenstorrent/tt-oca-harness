@@ -41,8 +41,12 @@ cache_key_extra = []
 # COMMON_CELLS_ASSERTS_OFF) is a deliberate follow-up, not a silent difference between the flows.
 # Tool-specific fields use nested tool tables so every simulator follows the same naming rule:
 # target.tools.<tool>.flags.
+#
+# SIMULATION is the project simulation-vs-synthesis name. SIM remains for
+# first-party RTL that still tests that name.
 [target_defaults.default]
 defines = [
+  "SIMULATION",
   "SIM",
   "NO_LIBCELL",
   "DISABLE_ASSERT",
