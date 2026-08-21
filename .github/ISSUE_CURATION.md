@@ -48,27 +48,32 @@ gh aw compile ocah-project-curator --validate
 
 ## Weekly issue activity
 
-`.github/workflows/ocah-weekly-issue-activity.lock.yml` runs at 12:00
-PDT on Tuesday (`0 19 * * 2` UTC) and on `workflow_dispatch`. It reads
-repository issues from the Issues API, plots opened/closed volume and
-time-to-close with pandas/matplotlib/seaborn on the runner, and opens
-a General discussion titled `[Weekly Summary] YYYY-MM-DD`. It closes
-older discussions with that prefix. It does not read GitHub Insights
-or Project 291 Insights.
+Catalog source: `githubnext/agentics/weekly-issue-activity`
+(`source:` in the markdown). Overlay: Tuesday 12:00 PDT
+(`0 19 * * 2` UTC), General category, `fallback-to-issue: false`,
+Copilot credit caps.
+
+`.github/workflows/weekly-issue-activity.lock.yml` reads repository
+issues from the Issues API, plots opened/closed volume and
+time-to-close, and opens a General discussion. It does not read
+GitHub Insights or Project 291 Insights.
 
 ```bash
-gh aw compile ocah-weekly-issue-activity --validate
+gh aw compile weekly-issue-activity --validate
+gh aw update weekly-issue-activity
 ```
 
 ## Discussion task miner
 
-`.github/workflows/ocah-discussion-task-miner.lock.yml` runs at 10:00
-PDT daily (`0 17 * * *` UTC) and on `workflow_dispatch`. It reads Ideas
-discussions from the last 7 days, opens up to 5 Task issues labelled
-`discussion-miner`, and remembers processed threads in cache-memory.
-Each issue is type Task and uses the Task form headings so ingest
-can prefix the title and copy fields. They do not expire.
+Catalog source: `githubnext/agentics/discussion-task-miner`.
+Overlay: no `[task-miner]` title prefix, no 1-day expiry, Ideas
+only, Task form headings, label `discussion-miner`, type Task.
+
+`.github/workflows/discussion-task-miner.lock.yml` runs daily and
+on `workflow_dispatch`. Ingest prefixes and copies fields from the
+form headings. The curator assigns.
 
 ```bash
-gh aw compile ocah-discussion-task-miner --validate
+gh aw compile discussion-task-miner --validate
+gh aw update discussion-task-miner
 ```
