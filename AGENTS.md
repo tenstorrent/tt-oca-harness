@@ -426,8 +426,7 @@ and bodies, nudges approved PRs that are still open after 3 days, and
 reminds assignees 3 days before a milestone or issue due date on its
 05:00 and 16:00 PDT runs and on dispatch. The weekly
 issue-activity and discussion-miner workflows are in
-`.github/ISSUE_CURATION.md`; see
-`doc/contributing/src/alignment.adoc`.
+`.github/ISSUE_CURATION.md`.
 
 ### Pull requests
 

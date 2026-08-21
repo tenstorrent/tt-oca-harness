@@ -12,6 +12,4 @@ Open a pull request against `main`. The template asks for:
 * *Notes* — optional; delete if unused
 
 CI does not require those sections. Project taxonomy lives on issues, not PRs.
-Ingest assigns the opener when Assignees is empty; see
-xref:alignment.adoc[Issue alignment].
 Pull requests are reviewed weekly.
