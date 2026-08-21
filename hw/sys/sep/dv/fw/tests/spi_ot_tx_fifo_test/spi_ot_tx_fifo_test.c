@@ -2,21 +2,21 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT TX FIFO Test - TC_SPIOT_005 (P0)
+ * SPI OT TX FIFO Test
  *
  * Verifies TX FIFO write, status monitoring (TXQD, TXEMPTY, TXFULL, TXWM),
  * overflow error detection, and SW_RST drain behavior.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Verify TXEMPTY=1 initially
- *   3. Write multiple words to TXDATA, monitor TXQD
- *   4. Test TX watermark (TXWM) with configurable TX_WATERMARK
- *   5. Write until TXFULL, verify overflow error
- *   6. SW_RST, verify TXEMPTY after reset
+ * 1. Configure SPI mux, enable controller
+ * 2. Verify TXEMPTY=1 initially
+ * 3. Write multiple words to TXDATA, monitor TXQD
+ * 4. Test TX watermark (TXWM) with configurable TX_WATERMARK
+ * 5. Write until TXFULL, verify overflow error
+ * 6. SW_RST, verify TXEMPTY after reset
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_tx_fifo_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_tx_fifo_test STACK=sim
  *
  */
 
@@ -46,7 +46,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT TX FIFO Test (TC_SPIOT_005)\n");
+    printf("SPI OT TX FIFO Test\n");
     printf("========================================\n\n");
 
     int pass = 1;

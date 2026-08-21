@@ -13,9 +13,8 @@ fully-frontdoor half of the spec property -- the positive "debug logic was reset
 confirmation needs JTAG-DTM debug-module access not wired on bare sep (deferred,
 see the VPLAN card; no backdoor probe is added).
 
-``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv:24) that this tb now brings
-out as a controllable top-level port (it was previously hardwired to ``rst_ni``);
-``sep_base_test`` default-drives it released (1).
+``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv:24) brought out as a
+controllable top-level port; ``sep_base_test`` default-drives it released (1).
 
 Checks (each asserts an exact value; ``self.rd`` resolves X->0, so the ==1
 released checks fail on a stuck/X reset tree):
@@ -73,36 +72,17 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
         self.logger.info(
             "CHK-BASELINE PASS: both reset observables released with dbg_rstb_i high")
 
-        # NO CHK-ISO here, and this is the important part of the entry.
-        #
-        # There used to be one: pulse dbg_rstb_i low and assert both reset observables
-        # stay released. It could not fail, for two independent reasons.
-        #
-        # 1. This test runs target = "lsu_stub_all_live" (testlists/cpu.toml), which
-        #    excludes hw/sys/sep/rtl/sep_cpu.sv and substitutes
-        #    dv/shims/cpu/sep_cpu_stub.sv. In that stub dbg_rstb_i appears exactly once,
-        #    as a port declaration on line 40; nothing reads it. The stimulus pin is
-        #    dangling in the model the test actually elaborates.
-        # 2. Even against the real CPU, sep.sv:582 routes dbg_rstb_i only into sep_cpu,
-        #    and sep_reset_ctrl -- which produces both observables -- has no dbg_rstb
-        #    port at all. There is no netlist path from the stimulus to either signal.
-        #
-        # So the assert was CHK-BASELINE repeated with a no-op write in between. A
-        # vacuous check is worse than a missing one, because it reports coverage.
-        #
-        # Making the isolation claim real needs BOTH a run-mode change (cpu / target
-        # default, so the pin reaches sep_cpu.sv:149,159) AND a positive observable in
-        # the debug domain -- something that dbg_rstb_i is supposed to reset, so the
-        # pulse has an asserted consequence rather than only a non-consequence. That is
-        # a design change, not a repair, so it is recorded in the plan as an open item.
-        #
-        # What survives below is genuine: CHK-BASELINE (both observables released at
-        # rest) and CHK-LIVE (a real reset source does drop sep_cpu_reset_n, so the
-        # observable is not stuck at 1).
+        # No CHK-ISO. This test elaborates lsu_stub_all_live, whose CPU stub
+        # declares dbg_rstb_i and never reads it. Against the real CPU, sep.sv
+        # routes the pin only into sep_cpu, and sep_reset_ctrl -- which produces
+        # both observables -- has no dbg_rstb port. There is no netlist path from
+        # the stimulus to either signal, so a pulse-and-check would be CHK-BASELINE
+        # with a no-op write in between. Closing the isolation claim needs a cpu
+        # run-mode (so the pin reaches sep_cpu) and a positive debug-domain
+        # observable; that is an open item in the plan.
 
         # CHK-LIVE: a real reset source (wdt_rst_ni_i low) MUST drop sep_cpu_reset_n,
-        # proving the observable is live rather than stuck at 1. This is what keeps the
-        # entry worth running at all now that the isolation assert is gone.
+        # proving the observable is live rather than stuck at 1.
         dut.wdt_rst_ni_i.value = 0
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset(

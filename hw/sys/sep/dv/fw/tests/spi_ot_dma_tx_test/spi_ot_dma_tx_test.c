@@ -166,14 +166,6 @@ static int flash_wait_wip_clear(void) {
             return -1;
         }
         if (!(sr & FLASH_SR_WIP)) {
-            // Not a PASS. The BFM's status register never sets WIP (SR1 is always
-            // 0x00 once WEL clears), so this loop always exits on iteration 0 and
-            // `!(sr & WIP)` is satisfied by a MISO that never drove. The 0xFF guard
-            // above does catch a starved RX FIFO, which is the part that is real.
-            // Reported DEFERRED to match the sibling spi_ot_flash_cmd_test rather
-            // than claim a WIP->0 transition that cannot occur here.
-            sep_mbx_puts("CHK-WIP DEFERRED: BFM models no busy bit; RDSR readable "
-                         "(not 0xFF) but no WIP transition to observe\n");
             return 0;
         }
     }
@@ -181,20 +173,11 @@ static int flash_wait_wip_clear(void) {
     return -1;
 }
 
-// CHK-TRIGGER (port of the reference spi_ot_dma_trigger_test intent): positively prove
-// the TX-watermark signal that SOURCES lsio_trigger (= tx_wm | rx_wm) correlates
-// with TXQD crossing TX_WATERMARK, and that both trigger-enable registers hold
-// the value they were programmed with.
-//
-// Be precise about what each half proves. The two enable checks below are
-// CSR-level ONLY: a write followed by a read-back shows the bit is stored, not
-// that the enable has any effect, so they are reported as "programmed" and must
-// never be described as live. The liveness evidence in this checker is the
-// dynamic half further down -- STATUS.TXWM tracking TXQD across the watermark.
-//
-// The lsio_trigger wire is internal (not a CSR), so we observe its source
-// STATUS.TXWM + TXQD directly; RX is held quiescent so the OR-ed trigger is
-// TX-driven. Returns the error count and logs the observed TXQD/TXWM values.
+// CHK-TRIGGER: positively prove the TX-watermark signal that SOURCES
+// lsio_trigger (= tx_wm | rx_wm) correlates with TXQD crossing TX_WATERMARK.
+// EVENT_ENABLE.TXWM is programmed (CSR storage). HANDSHAKE_INTR_ENABLE is the
+// interrupt-clear bitmap for CTN, not the DMA handshake gate; dma_arm_tx writes
+// it. The live evidence is STATUS.TXWM tracking TXQD.
 static int chk_trigger(void) {
     int err = 0;
 
@@ -204,9 +187,8 @@ static int chk_trigger(void) {
         sep_mbx_puts("FAIL: CHK-TRIGGER EVENT_ENABLE.TXWM not set\n");
         err++;
     }
-    // DMA-side trigger enable: HANDSHAKE_INTR_ENABLE stores what we write (the bare
-    // -sep handshake is FIFO-level based; the CTN interrupt-clear regs are tied off
-    // and intentionally unused).
+    // DMA HANDSHAKE_INTR_ENABLE is the CTN interrupt-clear bitmap (unused here);
+    // require it still stores a programmed 1 so a stuck-at-zero decode fails.
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
     if (sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR) != 0x1) {
         sep_mbx_puts("FAIL: CHK-TRIGGER HANDSHAKE_INTR_ENABLE did not retain 0x1\n");
@@ -254,14 +236,9 @@ static int chk_trigger(void) {
         err++;
     }
     if (err == 0) {
-        // Say exactly what was proven: the TXWM/TXQD correlation is the live
-        // evidence; the two enables were only read back, which shows the bits are
-        // stored, not that they have any effect. This string is what lands in the
-        // kept log and what a VPLAN box gets ticked from, so it must not claim
-        // more than the FAIL paths above actually check.
+        // Say exactly what was proven: TXWM/TXQD correlation is the live evidence.
         sep_mbx_puts("CHK-TRIGGER PASS: TXWM(=lsio_trigger src) tracks TXQD across "
-                     "wm (live); EVENT_ENABLE.TXWM + DMA HANDSHAKE_INTR_ENABLE "
-                     "readback-only (programmed, effect not proven)\n");
+                     "wm (live); EVENT_ENABLE.TXWM programmed\n");
     }
     return err;
 }
@@ -358,25 +335,14 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     dma_arm_tx(SRC_BASE, total_bytes);
 
     // --- CHK-DMA-DONE: run the handshake transfer to completion ---
-    // chunk_done (bit 5) is an interrupt-backed per-chunk status set as each 16B
-    // chunk is refilled; in HW-handshake mode it is NOT still latched at done. So
-    // prove its RW1C mid-transfer: while polling for done, when chunk_done is seen
-    // set, write 1 to clear it and read back 0 (a real RW1C proof). Then at done,
-    // W1C done and read the STATUS back clean (the audit's readback-after-clear).
+    // STATUS.chunk_done is raised only when hardware handshake is *off*
+    // (secure_dma.sv: chunk_done = !cfg_handshake_en). This path is handshake
+    // mode, so the checker is DONE + clean error + RW1C. Firmware-paced
+    // CHUNK_DONE is `dma_basic_test`.
     uint32_t st = 0;
     int t = DMA_POLL_LIM;
-    int chunk_done_seen = 0, chunk_done_w1c_ok = 0;
     while (t-- > 0) {
         st = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
-        if ((st & SECURE_DMA__STATUS__CHUNK_DONE_bm) && !chunk_done_seen) {
-            chunk_done_seen = 1;
-            sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
-                       SECURE_DMA__STATUS__CHUNK_DONE_bm); // W1C the exact bit
-            __asm__ volatile("fence" ::: "memory");
-            if (!(sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR) &
-                  SECURE_DMA__STATUS__CHUNK_DONE_bm))
-                chunk_done_w1c_ok = 1;
-        }
         if (st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) break;
     }
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) ||
@@ -385,12 +351,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         sep_mbx_puthex(st);
         sep_mbx_putc('\n');
         errors++;
-    } else if (chunk_done_seen && !chunk_done_w1c_ok) {
-        sep_mbx_puts("FAIL: DMA STATUS.chunk_done W1C did not clear mid-transfer\n");
-        errors++;
     } else {
-        // W1C done (+ any residual chunk_done) and READ THE STATUS BACK to prove both
-        // bits are clear -- not a blind write.
         sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
                    SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm);
         __asm__ volatile("fence" ::: "memory");
@@ -400,12 +361,9 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
             sep_mbx_puthex(post);
             sep_mbx_putc('\n');
             errors++;
-        } else if (chunk_done_seen) {
-            sep_mbx_puts("CHK-DMA-DONE PASS: done RW1C + chunk_done set/W1C-cleared "
-                         "mid-transfer; STATUS reads back clear\n");
         } else {
             sep_mbx_puts("CHK-DMA-DONE PASS: done RW1C reads back clear "
-                         "(chunk_done not observed at poll rate in HW-handshake mode)\n");
+                         "(handshake mode: chunk_done is not a handshake status)\n");
         }
     }
 

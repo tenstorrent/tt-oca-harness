@@ -65,9 +65,8 @@ top_file = "hw/sys/sep/dv/tb/tb_top.sv"
 # monitor. The sep_wrapper DUT, its IP-integration models, and the eFuse
 # shim/bank models all come from the Bender closure now: `sep_wrapper` supplies
 # hw/top/sep_{wrapper,ip_integration}.sv and the `any(sep, smc)` groups supply
-# the hw/ip/efuse model/reg files. The legacy och_sep_spi_mux_ctrl_ot register
-# block no longer exists in this repository (the wrapper's SPI moved to struct
-# ports), so it is no longer compiled.
+# The wrapper SPI uses struct ports; och_sep_spi_mux_ctrl_ot is not in this
+# filelist.
 sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_regs.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_pcpi_mul.sv",
@@ -107,7 +106,7 @@ filelist = "hw/sys/sep/dv/build/sep_dut_compile.f"
 bender_filelist = "hw/sys/sep/dv/build/sep_bender.f"
 work_dir = "hw/sys/sep/dv/build"
 # Vendor-clean target set (verify with check_no_vendor_paths.py).
-# NEVER add "simulation" — it pulls Cadence + Samsung padring (51 violations).
+# NEVER add "simulation" — it pulls licensed I/O and a foundry padring (51 violations).
 common_bender_targets = [
   "axi_rtl",
   "apb_rtl",
@@ -201,8 +200,8 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 # for picolibc.specs and, when it is absent, re-run the same make inside the OCAH
 # toolchain container (scripts/docker-run.sh, which mounts the repo at /work and
 # carries picolibc-riscv64-unknown-elf). That keeps a bare clone working without
-# tribal knowledge: previously this stage just failed on every host lacking
-# picolibc, even though the sim itself only needs the resulting .hex images.
+# tribal knowledge: a host without picolibc still gets a working firmware
+# image via the container, even though the sim itself only needs the .hex.
 cwd = "."
 argv = [
   "bash",
@@ -262,10 +261,9 @@ outputs = [
 # and for the no-braces constraint on argv (str.format rejects every placeholder
 # except {fw_target}, so use "$VAR" and $(...), never shell ${...}).
 #
-# The probe/fallback logic below is deliberately identical to [c_build.boot_rom].
-# FIXME(SEP-DV): three c_build templates now carry the same ~20-line shell; fold
-# them into a script under tools/dv/ and have argv call it, which also retires the
-# no-braces constraint.
+# The probe/fallback logic below is identical to [c_build.boot_rom]. The same
+# toolchain probe is duplicated in four argv blocks; a fix must be applied in
+# all four.
 #
 # pack-images runs into build_ot/ too, so non_secure_boot.bin -- the raw image the
 # cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
@@ -309,11 +307,9 @@ outputs = [
 # image, and the signed one is the DMA variant's business. The packed bytes are
 # drain-agnostic and land in the shared build/, so this does not rebuild them.
 #
-# FIXME(SEP-DV): this is now the FOURTH template carrying the same ~20-line shell,
-# which is why it was produced by copy-substitution rather than by hand. Fold the
-# probe into a script under tools/dv/ and have every argv call it; that also
-# retires the no-braces constraint. The duplication is the reason a fix to the
-# toolchain probe has to be applied in four places today.
+# The same toolchain probe is duplicated in four argv blocks; a fix must be
+# applied in all four. Folding it into a script under tools/dv/ would also
+# retire the no-braces constraint.
 cwd = "."
 argv = [
   "bash",

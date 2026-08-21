@@ -6,7 +6,7 @@
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
- *   - spi(cadence + ot path) and spi-phy gpio registers
+ *   - spi (licensed host + OT path) and spi-phy gpio registers
  *
  * Completion is signaled by pass/fail loops for cocotb PC classification.
  */

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Fabric Mailbox ISS Lock Reset Test - TC_FABRIC_053
+ * Fabric Mailbox ISS Lock Reset Test
  *
  * Uses the current CSR-visible implementation of ISS mailbox policy:
  * mailbox data/IRQ status plus inbound-filter src_id and locked behavior.
@@ -56,7 +56,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n==========================================\n");
-    printf("Fabric Mailbox ISS Lock Reset Test (TC_FABRIC_053)\n");
+    printf("Fabric Mailbox ISS Lock Reset Test\n");
     printf("==========================================\n\n");
 
     /* CLOCK_GATE_CTRL is a reserved, not-yet-implemented placeholder;

@@ -2,18 +2,18 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_014 (P1) - Software Reset Test
+ * Software Reset Test
  *
  * Verifies KMAC software reset via SEP Reset Controller (0x10A50000).
  * Per OCH spec: KMAC starts in reset (kmac_sw_rst_n=0 by default);
  * firmware must write 1 to bit[4] to release before use.
  *
  * Steps:
- *  1. Assert KMAC reset (kmac_sw_rst_n=0) while other IPs stay released
- *  2. Verify KMAC STATUS shows idle after reset assert
- *  3. Release KMAC reset (kmac_sw_rst_n=1)
- *  4. Wait for idle, run a SHA3-256 hash to confirm KMAC operational
- *  5. Re-assert and release reset, verify KMAC returns to idle defaults
+ * 1. Assert KMAC reset (kmac_sw_rst_n=0) while other IPs stay released
+ * 2. Verify KMAC STATUS shows idle after reset assert
+ * 3. Release KMAC reset (kmac_sw_rst_n=1)
+ * 4. Wait for idle, run a SHA3-256 hash to confirm KMAC operational
+ * 5. Re-assert and release reset, verify KMAC returns to idle defaults
  */
 
 #include <stdint.h>
@@ -214,7 +214,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_014: Software Reset Test\n");
+    printf("  Software Reset Test\n");
     printf("========================================\n\n");
 
     test_sw_reset();

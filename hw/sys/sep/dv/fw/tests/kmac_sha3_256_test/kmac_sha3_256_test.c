@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_002 (P0) - SHA-3-256 Known Answer Test
+ * SHA-3-256 Known Answer Test
  *
  * Computes SHA-3-256 of "abc" and verifies against NIST known vector.
  * Digest from two STATE shares XORed. Accepts exact, byte-swapped,
@@ -127,7 +127,7 @@ static int sha3_256_abc_test(void) {
     printf("\n  Digest[0:7]:");
     for (int i = 0; i < 8; i++) printf(" %08x", digest[i]);
     /* Also show A[4][0] (words 8-9) XOR */
-    printf("\n  A[4][0]:     %08x %08x  (w8^w8_s1, w9^w9_s1)", share0[8] ^ share1[8],
+    printf("\n  A[4][0]: %08x %08x  (w8^w8_s1, w9^w9_s1)", share0[8] ^ share1[8],
            share0[9] ^ share1[9]);
     printf("\n  Expected:");
     for (int i = 0; i < 8; i++) printf(" %08x", sha3_256_abc_ref[i]);
@@ -201,7 +201,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_002: SHA-3-256 Known Answer\n");
+    printf("  SHA-3-256 Known Answer\n");
     printf("========================================\n");
 
     int result = 0;

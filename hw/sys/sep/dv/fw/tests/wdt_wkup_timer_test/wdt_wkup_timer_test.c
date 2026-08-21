@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_013 (V2, P1) - AON Wakeup Timer Test
+ * AON Wakeup Timer Test
  *
  * Verifies the WKUP (wakeup) timer, which is an entirely separate 64-bit
  * counter in the same AON timer IP as the watchdog.
@@ -44,7 +44,7 @@
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_013: AON Wakeup Timer Test\n");
+    printf("AON Wakeup Timer Test\n");
     printf("====================================\n\n");
 
     int errors = 0;
@@ -187,10 +187,10 @@ int main(void) {
 
     printf("\n====================================\n");
     if (errors == 0) {
-        printf("TC_WDT_013: PASS\n");
+        printf("AON Wakeup Timer Test: PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_013: FAIL (errors=%d)\n", errors);
+        printf("AON Wakeup Timer Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("====================================\n");

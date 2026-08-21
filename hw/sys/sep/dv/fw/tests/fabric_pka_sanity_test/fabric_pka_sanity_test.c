@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Fabric PKA Sanity Test - TC_FABRIC_011
+ * Fabric PKA Sanity Test
  *
  * Verifies the SEP fabric path to cpu_ctrl PKA/OTBN-facing control CSRs.
  */
@@ -28,7 +28,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("Fabric PKA Sanity Test (TC_FABRIC_011)\n");
+    printf("Fabric PKA Sanity Test\n");
     printf("========================================\n\n");
 
     sep_cpu_ctrl__CLOCK_GATE_CTRL_t cg = {

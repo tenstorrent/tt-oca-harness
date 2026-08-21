@@ -20,8 +20,8 @@
  * the simulated core clock. If unset (0), helpers fall back to the 100 MHz
  * reference clock.
  *
- * The Cadence xSPI controller uses its own divider register; its helper lives
- * with the Cadence register model in the nonfree companion repo.
+ * The licensed xSPI host uses its own divider register; its helper lives
+ * with that register model in the nonfree companion repo.
  */
 #ifndef SPI_CLK_H
 #define SPI_CLK_H
