@@ -41,7 +41,6 @@ cache_key_extra = []
 # COMMON_CELLS_ASSERTS_OFF) is a deliberate follow-up, not a silent difference between the flows.
 # Tool-specific fields use nested tool tables so every simulator follows the same naming rule:
 # target.tools.<tool>.flags.
-#
 [target_defaults.default]
 defines = [
   "SIMULATION",
