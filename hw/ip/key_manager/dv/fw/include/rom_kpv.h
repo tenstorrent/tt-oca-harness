@@ -75,7 +75,8 @@ void rom_kpv_scrambler_lock(void);
  * Calls rom_kpv_shred_slot on every slot, erasing each slot SHRED_ITER+1
  * times.  Each erase overwrites the slot data with LFSR output (through the
  * KPV scrambler) and clears the slot CTRL register, so write-locked slots are
- * wiped too.
+ * wiped too.  A sealed slot is erased as well, but comes out retired rather
+ * than free: its data is destroyed and the slot cannot be reused.
  */
 void rom_kpv_shred_all(void);
 
@@ -84,7 +85,8 @@ void rom_kpv_shred_all(void);
  *
  * Calls rom_kpv_erase_slot on the slot SHRED_ITER+1 times.  Each erase
  * overwrites the slot data with LFSR output (through the KPV scrambler) and
- * clears the slot CTRL register, so a write-locked slot is wiped too.
+ * clears the slot CTRL register, so a write-locked slot is wiped too.  A
+ * sealed slot ends up retired instead of free.
  *
  * @param slot Slot index (0-31).
  */
@@ -94,11 +96,13 @@ void rom_kpv_shred_slot(uint8_t slot);
  * @brief Hardware-erase one slot, then wait for it to complete.
  *
  * Asserts the slot's CTRL.erase trigger, then busy-waits for the hardware to
- * overwrite the slot's key words with LFSR data (through the KPV scrambler)
- * and clear its CTRL register (including lock_write/lock_use), clearing the
- * erase bit on completion. Erase is not blocked by the slot locks. This
- * function blocks until the erase bit has self-cleared, after which the slot
- * is reusable.
+ * overwrite the slot's key words with LFSR data (through the KPV scrambler),
+ * which clears the erase bit on completion.  Erase is never blocked: no lock
+ * bit and no seal prevents it.  The slot's seal state decides what the slot
+ * looks like afterwards.  Unsealed, its CTRL register is cleared and the slot
+ * is reusable.  Sealed, the slot is retired: lock_write stays set, lock_use is
+ * set, and the slot can be neither read, rewritten nor reused until warm
+ * reset.
  *
  * @param[in] slot Slot index (0-31).
  */
@@ -161,5 +165,48 @@ void rom_kpv_write_lock(uint8_t slot);
  * @param slot Slot index (0-31).
  */
 void rom_kpv_read_lock(uint8_t slot);
+
+/**
+ * @brief Seal one slot, with triple write.
+ *
+ * A sealed slot's data can be read but not overwritten until the next warm
+ * reset.  It can still be erased, which retires the slot rather than freeing
+ * it, so sealing a slot commits its slot as well as its contents: the material
+ * can be revoked but the slot never carries anything else.
+ *
+ * Only the seal bit is written; hardware sets lock_write alongside it.
+ *
+ * @param slot Slot index (0-31).
+ * @return 0 when the seal and the hardware-set write lock both read back set,
+ *         -1 otherwise.
+ */
+int rom_kpv_seal_slot(uint8_t slot);
+
+/**
+ * @brief Report whether one slot is sealed.
+ *
+ * The check a consumer of surviving key material makes before trusting it: a
+ * sealed slot cannot have been altered since the seal was taken, because
+ * lock_write blocks writes and a seal holds lock_write set.  True of a retired
+ * slot too, whose material is gone: pair with rom_kpv_slot_retired() to tell
+ * the two apart.
+ *
+ * @param slot Slot index (0-31).
+ * @return 1 if both lock_write and seal are set, 0 otherwise.
+ */
+int rom_kpv_slot_sealed(uint8_t slot);
+
+/**
+ * @brief Report whether one slot is retired.
+ *
+ * A retired slot is a sealed slot that has been erased: its data is destroyed
+ * and it can be neither read nor reused until warm reset.  A sealed slot gains
+ * lock_use only from an erase completing, so a set lock_use is what separates a
+ * retired slot from a sealed live one.
+ *
+ * @param slot Slot index (0-31).
+ * @return 1 if both seal and lock_use are set, 0 otherwise.
+ */
+int rom_kpv_slot_retired(uint8_t slot);
 
 #endif /* ROM_KPV_H */
