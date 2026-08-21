@@ -160,7 +160,8 @@
 <div class="sect2">
 <h3 id="dtp-jtag-integration"><a class="anchor" href="#dtp-jtag-integration"></a><a class="link" href="#dtp-jtag-integration">1. DTP JTAG Integration</a></h3>
 <div class="paragraph">
-<p>This section describes how JTAG components are integrated within the DTP subsystem. For detailed component documentation, see:</p>
+<p>This section describes how JTAG components are integrated within the DTP
+subsystem. For detailed component documentation, see:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -178,7 +179,8 @@
 <div class="sect3">
 <h4 id="dtp-jtag-topology"><a class="anchor" href="#dtp-jtag-topology"></a><a class="link" href="#dtp-jtag-topology">1.1. DTP JTAG Topology</a></h4>
 <div class="paragraph">
-<p>The DTP instantiates a single JTAG Interface Unit that serves as the primary debug access point for the chiplet. The interface unit connects to:</p>
+<p>The DTP instantiates a single JTAG Interface Unit that serves as the primary
+debug access point for the chiplet. The interface unit connects to:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -201,7 +203,39 @@
 </div>
 </div>
 <div class="sect3">
-<h4 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">1.2. Clock Domains</a></h4>
+<h4 id="stap-secondary-scan-path"><a class="anchor" href="#stap-secondary-scan-path"></a><a class="link" href="#stap-secondary-scan-path">1.2. STAP Secondary Scan Path</a></h4>
+<div class="paragraph">
+<p>The PTAP secondary scan path in the DTP is ordered as follows:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>PTAP</p>
+</li>
+<li>
+<p>I/O STAP when <code>JTAG_STAP_IO_ENABLE=1</code></p>
+</li>
+<li>
+<p>SMC debug STAP when <code>JTAG_SMC_DBG_ENABLE=1</code></p>
+</li>
+<li>
+<p>SEP debug STAP when <code>JTAG_SEP_DBG_ENABLE=1</code></p>
+</li>
+<li>
+<p>extra STAP instances <code>[JTAG_NUM_EXTRA_STAPS-1:0]</code></p>
+</li>
+<li>
+<p>return to PTAP</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When a STAP is disabled by parameter, the DTP bypasses it in the secondary scan
+chain and drives its internal host outputs low.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">1.3. Clock Domains</a></h4>
 <div class="paragraph">
 <p>The DTP operates in two clock domains:</p>
 </div>
@@ -232,18 +266,21 @@
 </tbody>
 </table>
 <div class="paragraph">
-<p>All cross-trigger signals are synchronized to the system clock domain within the CTPs.</p>
+<p>All cross-trigger signals are synchronized to the system clock domain within the
+CTPs.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">1.3. Reset Architecture</a></h4>
+<h4 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">1.4. Reset Architecture</a></h4>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>rst_n_i</strong>: Active-low asynchronous reset for cross trigger logic and AXI interfaces</p>
+<p><strong>rst_n_i</strong>: Active-low asynchronous reset for cross trigger logic and AXI
+interfaces</p>
 </li>
 <li>
-<p><strong>pwr_on_rst_ni</strong>: Asynchronous active-low power-on reset for JTAG logic, combined internally with TRST_n</p>
+<p><strong>pwr_on_rst_ni</strong>: Asynchronous active-low power-on reset for JTAG logic,
+combined internally with TRST_n</p>
 </li>
 <li>
 <p>All registers reset to safe states</p>
@@ -258,22 +295,89 @@
 </div>
 </div>
 <div class="sect3">
-<h4 id="security-integration"><a class="anchor" href="#security-integration"></a><a class="link" href="#security-integration">1.4. Security Integration</a></h4>
+<h4 id="lifecycle-feature-control"><a class="anchor" href="#lifecycle-feature-control"></a><a class="link" href="#lifecycle-feature-control">1.5. Lifecycle Feature Control</a></h4>
 <div class="paragraph">
-<p>The DTP integrates with the chiplet lifecycle controller:</p>
+<p>The DTP top level consumes <code>feat_ctrl_i</code> using the SEP lifecycle feature control
+type <code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code>. That type is reused for
+its bit layout only: the bits themselves are active-high feature <strong>enables</strong> (1 =
+feature enabled), driven by the SEP lifecycle controller. The DTP synchronizes
+<code>feat_ctrl_i</code> into the TCK domain before use, then derives a security disable
+signal per gated path.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Security disable signals gate STAP selection for debug TAPs</p>
-</li>
-<li>
-<p>Lifecycle feature control determines which debug features are accessible</p>
-</li>
-<li>
-<p>JTAG2AXI access can be restricted based on lifecycle state</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>Because <code>feat_ctrl_i</code> is enable-polarity, a path is enabled only when <strong>all</strong> of
+its required enables are asserted, and is therefore disabled whenever <strong>any</strong> one
+of them is deasserted:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Gated Path</th>
+<th class="tableblock halign-left valign-top">Security Disable Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP host path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.sip_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP host path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP host path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP host paths</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure external DFT iJTAG path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure external DFT iJTAG path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric JTAG2AXI path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXI path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXI path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A disabled path remains observable only where required for control and readback;
+its host-visible scan or debug access is clamped or bypassed so the disabled
+path cannot be used to reach downstream secure logic. For a JTAG2AXI bridge this
+means its TDR update registers are not latched, buffered requests are dropped,
+and the AXI state machine is held in idle, so no AXI traffic can be generated at
+all.</p>
+</div>
+<div class="paragraph">
+<p>The STAP and iJTAG conditions are implemented in <code>jtag_intf_unit</code>; the three
+JTAG2AXI conditions are implemented in <code>jtag_ptap</code>.</p>
 </div>
 </div>
 </div>

@@ -90,9 +90,6 @@
     <a class="nav-link" href="../../../index.html">Documentation Overview</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../../../revision.html">Revision History</a>
-  </li>
-  <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../../../about-ocah.html">About OCAH</a>
   </li>
   <li class="nav-item" data-depth="1">
@@ -196,7 +193,8 @@
 <div class="sect3">
 <h4 id="jtag-intf-unit-architecture"><a class="anchor" href="#jtag-intf-unit-architecture"></a><a class="link" href="#jtag-intf-unit-architecture">1. Architecture</a></h4>
 <div class="paragraph">
-<p>The JTAG Interface Unit integrates PTAP, STAP chain, and iJTAG network into a unified debug access point.</p>
+<p>The JTAG Interface Unit integrates PTAP, STAP chain, and iJTAG network into a
+unified debug access point.</p>
 </div>
 <div class="paragraph">
 <p>Shown below is an abstract diagram of the JTAG scan chain.</p>
@@ -209,12 +207,16 @@
 <div class="sect4">
 <h5 id="scan-chain-topology"><a class="anchor" href="#scan-chain-topology"></a><a class="link" href="#scan-chain-topology">Scan Chain Topology</a></h5>
 <div class="paragraph">
-<p>The PTAP is connected to the incoming JTAG interface for the chiplet. The scan chain is organized in three major segments: the Primary TAP processes all instructions, the Secondary TAP chain provides hierarchical TAP access, and the iJTAG network enables instrument-level access to debug blocks.</p>
+<p>The PTAP is connected to the incoming JTAG interface for the chiplet. The scan
+chain is organized in three major segments: the Primary TAP processes all
+instructions, the Secondary TAP chain provides hierarchical TAP access, and the
+iJTAG network enables instrument-level access to debug blocks.</p>
 </div>
 <div class="sect5">
 <h6 id="stap-chain-hierarchy"><a class="anchor" href="#stap-chain-hierarchy"></a><a class="link" href="#stap-chain-hierarchy">STAP Chain Hierarchy</a></h6>
 <div class="paragraph">
-<p>The STAP chain implements a four-level hierarchy with configurable lockup latch insertion optimized for different physical routing distances.</p>
+<p>The STAP chain implements a four-level hierarchy with configurable lockup latch
+insertion optimized for different physical routing distances.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -265,56 +267,81 @@
 </tbody>
 </table>
 <div class="paragraph">
-<p>The I/O STAP enables TDI lockup to handle the longer propagation delays across die boundaries. On-chip STAPs (SMC Debug, SEP Debug) disable TDI lockup since signal routing is local to the chiplet. The final extra STAP in the chain enables scan output lockup when <code>NUM_EXTRA_STAPS &gt; 0</code>, providing additional output timing margin before the scan path returns to the PTAP.</p>
+<p>The I/O STAP enables TDI lockup to handle the longer propagation delays across
+die boundaries. On-chip STAPs (SMC Debug, SEP Debug) disable TDI lockup since
+signal routing is local to the chiplet. The final extra STAP in the chain
+enables scan output lockup when <code>NUM_EXTRA_STAPS &gt; 0</code>, providing additional
+output timing margin before the scan path returns to the PTAP.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="feature-control-synchronization"><a class="anchor" href="#feature-control-synchronization"></a><a class="link" href="#feature-control-synchronization">Feature Control Synchronization</a></h6>
 <div class="paragraph">
-<p>The lifecycle feature control signals originate in the system clock domain and must be synchronized to the TCK domain before use. The interface unit implements 64 individual 2-FF synchronizer chains, one per bit of the feature control vector. This per-bit synchronization approach breaks up the CDC timing path that would exist if the entire 64-bit vector were synchronized as a single unit.</p>
+<p>The lifecycle feature control signals originate in the system clock domain and
+must be synchronized to the TCK domain before use. The interface unit implements
+64 individual 2-FF synchronizer chains, one per bit of the feature control
+vector. This per-bit synchronization approach breaks up the CDC timing path that
+would exist if the entire 64-bit vector were synchronized as a single unit.</p>
 </div>
 <div class="paragraph">
-<p>The synchronized feature control bits determine security access levels for STAP and SIB selection:</p>
+<p>The synchronized feature control bits determine security access levels for STAP
+and SIB selection. <code>feat_ctrl_i</code> is enable-polarity (1 = feature enabled). Each
+access point is enabled only when <strong>all</strong> of its listed enables are asserted, so
+it is disabled when <strong>any</strong> one of them is deasserted:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Access Level</th>
-<th class="tableblock halign-left valign-top">Feature Control Condition</th>
+<th class="tableblock halign-left valign-top">Access Point</th>
+<th class="tableblock halign-left valign-top">Enabled When Feature Control Satisfies</th>
+<th class="tableblock halign-left valign-top">Security Disable Signal</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sip_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!sip_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC Debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soc_debug || ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soc_debug \&amp;\&amp; ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!soc_debug || !ap_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP Debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_debug || soc_debug || ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_debug \&amp;\&amp; soc_debug \&amp;\&amp; ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!sep_debug || !soc_debug || !ap_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAPs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT Secure SIB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_test || sep_debug || soc_debug || ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_test \&amp;\&amp; sep_debug \&amp;\&amp; soc_debug \&amp;\&amp; ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!fuse_test || !sep_debug || !soc_debug || !ap_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT Non-Secure SIB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soc_debug || ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soc_debug \&amp;\&amp; ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!soc_debug || !ap_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD SIB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -323,24 +350,35 @@
 <div class="sect4">
 <h5 id="ijtag-network"><a class="anchor" href="#ijtag-network"></a><a class="link" href="#ijtag-network">iJTAG Network</a></h5>
 <div class="paragraph">
-<p>The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB) chains with progressively restrictive security requirements. Each SIB gates access to a specific set of debug instruments based on the synchronized feature control signals.</p>
+<p>The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
+chains with differing security requirements. Each SIB gates access to a specific
+set of debug instruments based on the synchronized feature control signals, and
+requires <strong>all</strong> of the enables listed for it above.</p>
 </div>
 <div class="sect5">
 <h6 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">DFT Secure Chain</a></h6>
 <div class="paragraph">
-<p>The DFT Secure chain is accessible when any of fuse test, SEP debug, SOC debug, or AP debug features are enabled. This chain is ported out of the DTP for connection to tooling-generated DFT logic such as MBIST controllers and scan compression logic.</p>
+<p>The DFT Secure chain is the most restrictive of the three: it is accessible only
+when fuse test, SEP debug, SOC debug, and AP debug are all enabled. This chain
+is ported out of the DTP for connection to tooling-generated DFT logic such as
+MBIST controllers and scan compression logic.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="dft-non-secure-chain"><a class="anchor" href="#dft-non-secure-chain"></a><a class="link" href="#dft-non-secure-chain">DFT Non-Secure Chain</a></h6>
 <div class="paragraph">
-<p>The DFT Non-Secure chain requires either SOC debug or AP debug feature enablement. This chain provides access to DFT instrumentation that does not involve security-sensitive fuse or SEP operations.</p>
+<p>The DFT Non-Secure chain requires both SOC debug and AP debug to be enabled.
+This chain provides access to DFT instrumentation that does not involve
+security-sensitive fuse or SEP operations.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="dfd-chain"><a class="anchor" href="#dfd-chain"></a><a class="link" href="#dfd-chain">DFD Chain</a></h6>
 <div class="paragraph">
-<p>The Debug Forensics Dump (DFD) chain requires AP debug feature enablement, providing the highest security level. This chain grants access to:</p>
+<p>The Debug Forensics Dump (DFD) chain requires AP debug to be enabled. The SIB
+gate itself is the least restrictive of the three; the resources reached through
+it are gated again inside the PTAP, where each JTAG2AXI bridge applies its own
+lifecycle condition. This chain grants access to:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -368,32 +406,18 @@
 <div class="ulist">
 <ul>
 <li>
-<p><strong>SMC JTAG2AXI TDRs</strong>: This set of TDRs provide a mechanism to inject AXI transactions onto the SMC AXI local interconnect.</p>
+<p><strong>SMC JTAG2AXI TDRs</strong>: This set of TDRs provide a mechanism to inject AXI
+transactions onto the SMC AXI local interconnect.</p>
 </li>
 <li>
-<p><strong>SMC Fuse JTAG2AXIL TDRs</strong>: This set of TDRs provide a mechanism to interact directly with the SMC fuse controller. The JTAG2AXIL interface connects to the fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
+<p><strong>SMC Fuse JTAG2AXIL TDRs</strong>: This set of TDRs provide a mechanism to interact
+directly with the SMC fuse controller. The JTAG2AXIL interface connects to the
+fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
 </li>
 <li>
-<p><strong>SEP Fuse JTAG2AXIL TDRs</strong>: This set of TDRs provide a mechanism to interact directly with the SEP fuse controller. The JTAG2AXIL interface connects to the fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect4">
-<h5 id="security-integration"><a class="anchor" href="#security-integration"></a><a class="link" href="#security-integration">Security Integration</a></h5>
-<div class="paragraph">
-<p>The JTAG Interface Unit integrates with the chiplet lifecycle controller:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Security disable signals gate STAP selection</p>
-</li>
-<li>
-<p>Lifecycle feature control sync for debug enable/disable</p>
-</li>
-<li>
-<p>Per-STAP security lockout capability</p>
+<p><strong>SEP Fuse JTAG2AXIL TDRs</strong>: This set of TDRs provide a mechanism to interact
+directly with the SEP fuse controller. The JTAG2AXIL interface connects to the
+fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
 </li>
 </ul>
 </div>

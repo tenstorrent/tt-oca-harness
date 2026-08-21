@@ -262,7 +262,7 @@ raw vector bits and PLIC source IDs, see the following section.</p>
 <h4 id="cpu-interrupt-vector-map"><a class="anchor" href="#cpu-interrupt-vector-map"></a><a class="link" href="#cpu-interrupt-vector-map">1.3. SMC CPU Interrupt Vector Map</a></h4>
 <div class="paragraph">
 <p>This section documents the raw <code>cpu_interrupts_o</code> vector assembled in
-<code>hw/smc/smc_base.sv</code>. The vector is built from four sources:</p>
+<code>hw/sys/smc/rtl/smc_base.sv</code>. The vector is built from four sources:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -335,7 +335,7 @@ human-readable; implementation signal names are called out in the
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Integration-defined external interrupt inputs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/smc/smc_base.sv</code> drives
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/sys/smc/rtl/smc_base.sv</code> drives
 <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_i</code>.</p></td>
 </tr>
 <tr>
@@ -658,17 +658,18 @@ tail bits in <code>smc_base.sv</code>.</p></td>
 <ul>
 <li>
 <p>Peripheral interrupt construction is defined in
-<code>hw/smc/smc_peripherals/rtl/smc_peripherals.sv</code>.</p>
+<code>hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv</code>.</p>
 </li>
 <li>
 <p>Mailbox interrupt construction is defined in <code>hw/ip/mailbox/rtl/mailbox.sv</code>
-and is routed into <code>cpu_interrupts_o</code> by <code>hw/smc/smc_base.sv</code>.</p>
+and is routed into <code>cpu_interrupts_o</code> by <code>hw/sys/smc/rtl/smc_base.sv</code>.</p>
 </li>
 <li>
-<p>Internal interrupt construction is defined by <code>hw/smc/smc_base.sv</code>,
-with the DFD CLA signals sourced through <code>hw/smc/smc_internal_regs.sv</code>,
-the DMA completion pulse sourced by <code>hw/comp/idma_wrapper/rtl/idma_wrapper.sv</code>,
-and the Zeroer completion pulse sourced by <code>hw/comp/zeroer/rtl/zeroer.sv</code>.</p>
+<p>Internal interrupt construction is defined by <code>hw/sys/smc/rtl/smc_base.sv</code>,
+with the DFD CLA signals sourced through
+<code>hw/sys/smc/rtl/smc_internal_regs.sv</code>, the DMA completion pulse sourced by
+<code>hw/ip/idma_wrapper/rtl/idma_wrapper.sv</code>, and the Zeroer completion pulse
+sourced by <code>hw/ip/zeroer/rtl/zeroer.sv</code>.</p>
 </li>
 <li>
 <p>The raw vector documents SMC-generated sources only. The meaning of each

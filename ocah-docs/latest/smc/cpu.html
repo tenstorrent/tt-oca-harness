@@ -90,9 +90,6 @@
     <a class="nav-link" href="../index.html">Documentation Overview</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../revision.html">Revision History</a>
-  </li>
-  <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../about-ocah.html">About OCAH</a>
   </li>
   <li class="nav-item" data-depth="1">
@@ -382,12 +379,11 @@ bypasses repair logic when asserted, assuming SRAM arrays are defect-free.</p>
 <p><strong>Status Reporting:</strong></p>
 </div>
 <div class="paragraph">
-<p>Repair completion and success are reported through DFT Control Status registers
-(<code>DFX_CTRL_STATUS_SOC</code> at <code>0xC000D800</code> and <code>DFX_CTRL_STATUS_SEP_SMC</code> at
-<code>0xC000D80C</code>). The <code>mem_repair_done</code> bit indicates completion, while
-<code>mem_repair_success</code> indicates successful repair. The SMC ROM firmware monitors
-these bits during initialization to verify repair completion before proceeding
-with boot operations.</p>
+<p>Repair completion and success are reported through
+<code>DFX_CTRL_STATUS.STATUS_SMU</code> at <code>0xC000_B800</code>. The <code>mem_repair_done</code> bit
+indicates completion, while <code>mem_repair_success</code> indicates successful repair.
+The SMC ROM firmware monitors these bits during initialization to verify repair
+completion before proceeding with boot operations.</p>
 </div>
 <div class="paragraph">
 <p><strong>Boot Sequence Integration:</strong></p>

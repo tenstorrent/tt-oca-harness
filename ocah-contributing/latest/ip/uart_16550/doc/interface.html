@@ -296,7 +296,16 @@ state is high (logic 1).</p></td>
 <h6 id="modem-control-interface"><a class="anchor" href="#modem-control-interface"></a><a class="link" href="#modem-control-interface">Modem Control Interface</a></h6>
 <div class="paragraph">
 <p>The modem control interface provides full RS-232 modem signaling
-compatibility with hardware flow control support.</p>
+compatibility. All modem signals are active low at the pins, matching the
+RS-232 convention.</p>
+</div>
+<div class="paragraph">
+<p>The modem inputs are <strong>status only</strong>. Each one is synchronized and then
+reported in the <code>MSR</code> register in the opposite polarity (a bit reads <code>1</code>
+while its pin is asserted low), and a change on any of them raises the
+Modem Status Interrupt. None of them gates the datapath: this component
+implements no automatic flow control, so software must act on the
+interrupt to throttle traffic. See the Programming section.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. Modem Control Input Signals</caption>
@@ -323,8 +332,10 @@ compatibility with hardware flow control support.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Clear To Send. Asynchronous modem input. When
-asserted (low), indicates remote device is ready to receive data. Used
-for hardware flow control.</p></td>
+asserted (low), indicates remote device is ready to receive data.
+Reported in <code>MSR.CTS</code>; a change sets <code>MSR.DCTS</code> and raises the Modem
+Status Interrupt. Does not stall the transmitter - flow control is
+performed by software.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dsr_ni</code></p></td>
@@ -332,7 +343,8 @@ for hardware flow control.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Set Ready. Asynchronous modem input.
-Indicates remote modem is connected and ready.</p></td>
+Indicates remote modem is connected and ready. Reported in <code>MSR.DSR</code>; a
+change sets <code>MSR.DDSR</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ri_ni</code></p></td>
@@ -340,7 +352,8 @@ Indicates remote modem is connected and ready.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Ring Indicator. Asynchronous modem input.
-Indicates incoming call on modem connection.</p></td>
+Indicates incoming call on modem connection. Reported in <code>MSR.RI</code>; a
+trailing edge sets <code>MSR.TERI</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dcd_ni</code></p></td>
@@ -348,7 +361,8 @@ Indicates incoming call on modem connection.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Carrier Detect. Asynchronous modem input.
-Indicates carrier signal detected on modem connection.</p></td>
+Indicates carrier signal detected on modem connection. Reported in
+<code>MSR.DCD</code>; a change sets <code>MSR.DDCD</code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -376,9 +390,10 @@ Indicates carrier signal detected on modem connection.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Request To Send. Modem control output. When
-asserted (low), indicates this device is ready to receive data. Used for
-hardware flow control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Request To Send. Modem control output driven
+from <code>MCR.RTS</code> in the opposite polarity. When asserted (low), indicates
+this device is ready to receive data. Driven by software; the receiver
+does not deassert it automatically when the RX FIFO fills.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dtr_no</code></p></td>

@@ -90,9 +90,6 @@
     <a class="nav-link" href="../../../index.html">Documentation Overview</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../../../revision.html">Revision History</a>
-  </li>
-  <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../../../about-ocah.html">About OCAH</a>
   </li>
   <li class="nav-item" data-depth="1">
@@ -196,12 +193,18 @@
 <div class="sect3">
 <h4 id="stap-architecture"><a class="anchor" href="#stap-architecture"></a><a class="link" href="#stap-architecture">1. Architecture</a></h4>
 <div class="paragraph">
-<p>IEEE 1838-2019 enables hierarchical interconnection of TAP controllers across multiple chiplets. Each STAP interface provides an extension of a SiP&#8217;s primary JTAG interface across internal chiplets. When enabled, a STAP interface is part of the JTAG scan chain, otherwise the STAP interface is bypassed. In addition, STAPs can also support connection of other TAP interfaces included on the same chiplet as the PTAP.</p>
+<p>IEEE 1838-2019 enables hierarchical interconnection of TAP controllers across
+multiple chiplets. Each STAP interface provides an extension of a SiP&#8217;s primary
+JTAG interface across internal chiplets. When enabled, a STAP interface is part
+of the JTAG scan chain, otherwise the STAP interface is bypassed. In addition,
+STAPs can also support connection of other TAP interfaces included on the same
+chiplet as the PTAP.</p>
 </div>
 <div class="sect4">
 <h5 id="module-hierarchy"><a class="anchor" href="#module-hierarchy"></a><a class="link" href="#module-hierarchy">Module Hierarchy</a></h5>
 <div class="paragraph">
-<p>The STAP implementation consists of three main components integrated within a single module:</p>
+<p>The STAP implementation consists of three main components integrated within a
+single module:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -238,13 +241,23 @@
 <div class="sect4">
 <h5 id="stap-module"><a class="anchor" href="#stap-module"></a><a class="link" href="#stap-module">STAP Module</a></h5>
 <div class="paragraph">
-<p>Each STAP has a 3-bit 3DCR TDR that defines the control interface for the STAP. Note that the STAP 3DCRs take a distributed segment approach to improve timing, as opposed to the single monolithic PTAP 3DCR approach detailed in the IEEE 1838 standard. This 3DCR is connected inline within each STAP&#8217;s scan chain. A SIB is inserted at the end of the 3DCR to exclude it from the scan chain when not needed.</p>
+<p>Each STAP has a 3-bit 3DCR TDR that defines the control interface for the STAP.
+Note that the STAP 3DCRs take a distributed segment approach to improve timing,
+as opposed to the single monolithic PTAP 3DCR approach detailed in the IEEE 1838
+standard. This 3DCR is connected inline within each STAP&#8217;s scan chain. A SIB is
+inserted at the end of the 3DCR to exclude it from the scan chain when not
+needed.</p>
 </div>
 <div class="paragraph">
-<p>When not selected, the STAP interface TMS signal is tied to the constant value specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS signal.</p>
+<p>When not selected, the STAP interface TMS signal is tied to the constant value
+specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
+signal.</p>
 </div>
 <div class="paragraph">
-<p>The following diagram illustrates the STAP architecture and the details of the 3DCR register. The green colored flops are optional, each configured via parameters. The red AND gate and nets implement security access lockout when the chiplet is not in the correct lifecycle state.</p>
+<p>The following diagram illustrates the STAP architecture and the details of the
+3DCR register. The green colored flops are optional, each configured via
+parameters. The red AND gate and nets implement security access lockout when the
+chiplet is not in the correct lifecycle state.</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -255,7 +268,10 @@
 <div class="sect4">
 <h5 id="3dcr-register"><a class="anchor" href="#3dcr-register"></a><a class="link" href="#3dcr-register">3DCR Register</a></h5>
 <div class="paragraph">
-<p>The 3-bit 3DCR control register is implemented using <code>prim_jtag_scan_reg</code> with a loopback configuration. The register outputs feed back to the data inputs, allowing the register to retain its configuration across scan operations while still being scannable for updates.</p>
+<p>The 3-bit 3DCR control register is implemented using <code>prim_jtag_scan_reg</code> with a
+loopback configuration. The register outputs feed back to the data inputs,
+allowing the register to retain its configuration across scan operations while
+still being scannable for updates.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -297,7 +313,11 @@
 <div class="sect4">
 <h5 id="stap-types"><a class="anchor" href="#stap-types"></a><a class="link" href="#stap-types">STAP Types</a></h5>
 <div class="paragraph">
-<p>The following table lists the STAPs allocated for the DTP JTAG interface. The STAPs are serially chained TDI &#8594; TDO according to their order in this table from top to bottom. In addition to the STAPs integrated into the DTP, the STAP scan chain is ported out of the DTP so that the chiplet integrator may add additional STAPs closer to their point of use.</p>
+<p>The following table lists the STAPs allocated for the DTP JTAG interface. The
+STAPs are serially chained TDI &#8594; TDO according to their order in this table
+from top to bottom. In addition to the STAPs integrated into the DTP, the STAP
+scan chain is ported out of the DTP so that the chiplet integrator may add
+additional STAPs closer to their point of use.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -337,7 +357,9 @@
 <div class="sect4">
 <h5 id="security-lockout"><a class="anchor" href="#security-lockout"></a><a class="link" href="#security-lockout">Security Lockout</a></h5>
 <div class="paragraph">
-<p>The security lockout feature prevents unauthorized access to debug TAPs based on chiplet lifecycle state. The <code>security_disable_i</code> input controls three aspects of STAP operation:</p>
+<p>The security lockout feature prevents unauthorized access to debug TAPs based on
+chiplet lifecycle state. The <code>security_disable_i</code> input controls three aspects
+of STAP operation:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -366,30 +388,48 @@
 </tbody>
 </table>
 <div class="paragraph">
-<p>This triple gating approach ensures that STAP selection, TDO output, and configuration updates are all blocked when the chiplet lifecycle state restricts debug access. The gating logic is implemented combinationally at the module output, preventing any timing-dependent bypass paths.</p>
+<p>This triple gating approach ensures that STAP selection, TDO output, and
+configuration updates are all blocked when the chiplet lifecycle state restricts
+debug access. The gating logic is implemented combinationally at the module
+output, preventing any timing-dependent bypass paths.</p>
 </div>
 </div>
 <div class="sect4">
 <h5 id="lockup-latches"><a class="anchor" href="#lockup-latches"></a><a class="link" href="#lockup-latches">Lockup Latches</a></h5>
 <div class="paragraph">
-<p>The STAP implements three types of lockup latches to manage timing across die boundaries and long scan chains. These latches are clocked on the falling edge of TCK to capture data during the second half of the clock cycle, providing setup time margin for the next rising edge.</p>
+<p>The STAP implements three types of lockup latches to manage timing across die
+boundaries and long scan chains. These latches are clocked on the falling edge
+of TCK to capture data during the second half of the clock cycle, providing
+setup time margin for the next rising edge.</p>
 </div>
 <div class="sect5">
 <h6 id="tdo-lockup-latch"><a class="anchor" href="#tdo-lockup-latch"></a><a class="link" href="#tdo-lockup-latch">TDO Lockup Latch</a></h6>
 <div class="paragraph">
-<p>The TDO lockup latch is always present and cannot be disabled. This latch captures the scan data propagating from client to host on the falling edge of TCK. The latch ensures that data from the downstream TAP&#8217;s TDO has sufficient setup time before being sampled by the upstream TAP on the rising edge of TCK.</p>
+<p>The TDO lockup latch is always present and cannot be disabled. This latch
+captures the scan data propagating from client to host on the falling edge of
+TCK. The latch ensures that data from the downstream TAP&#8217;s TDO has sufficient
+setup time before being sampled by the upstream TAP on the rising edge of TCK.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="tdi-lockup-latch"><a class="anchor" href="#tdi-lockup-latch"></a><a class="link" href="#tdi-lockup-latch">TDI Lockup Latch</a></h6>
 <div class="paragraph">
-<p>The TDI lockup latch is optional and controlled by the <code>TDI_LOCKUP</code> parameter (default = 0). When enabled, this latch captures the host TDI input on the falling edge of TCK before routing it to the client TDI output. This adds one additional cycle of latency but provides timing margin for die boundary crossings where signal delays may be significant. In the DTP integration, TDI lockup is enabled only for the I/O STAP that crosses between chiplets.</p>
+<p>The TDI lockup latch is optional and controlled by the <code>TDI_LOCKUP</code> parameter
+(default = 0). When enabled, this latch captures the host TDI input on the
+falling edge of TCK before routing it to the client TDI output. This adds one
+additional cycle of latency but provides timing margin for die boundary
+crossings where signal delays may be significant. In the DTP integration, TDI
+lockup is enabled only for the I/O STAP that crosses between chiplets.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="scan-output-lockup-latch"><a class="anchor" href="#scan-output-lockup-latch"></a><a class="link" href="#scan-output-lockup-latch">Scan Output Lockup Latch</a></h6>
 <div class="paragraph">
-<p>The scan output lockup latch is optional and controlled by the <code>SCAN_OUT_LOCKUP</code> parameter (default = 0). This latch is implemented within the <code>prim_jtag_sib_mux_pre</code> module and adds a register stage to the client scan output path. This is typically enabled only on the final STAP in an extended chain to provide additional output timing margin.</p>
+<p>The scan output lockup latch is optional and controlled by the <code>SCAN_OUT_LOCKUP</code>
+parameter (default = 0). This latch is implemented within the
+<code>prim_jtag_sib_mux_pre</code> module and adds a register stage to the client scan
+output path. This is typically enabled only on the final STAP in an extended
+chain to provide additional output timing margin.</p>
 </div>
 </div>
 </div>

@@ -201,7 +201,8 @@ compatible with industry-standard UART protocols.</p>
 modes</p>
 </li>
 <li>
-<p>Modem control interface (CTS, DSR, RI, DCD, RTS, DTR, OUT1, OUT2)</p>
+<p>Modem control interface (CTS, DSR, RI, DCD, RTS, DTR, OUT1, OUT2) with
+change detection and interrupt; flow control is performed by software</p>
 </li>
 </ul>
 </div>
@@ -240,7 +241,12 @@ programmable divisor for timing precision.</p>
 </div>
 <div class="paragraph">
 <p>The interrupt controller handles six prioritized interrupt sources, and
-modem control supports all standard modem signals. DMA is supported in
+modem control supports all standard modem signals. The modem interface is
+status and control only - the inputs are synchronized and reported in the
+<code>MSR</code> register with change detection and an interrupt, and the outputs are
+driven directly from the <code>MCR</code> register. No modem signal gates the
+transmit or receive datapath, so hardware flow control, if needed, is
+implemented by software on top of these registers. DMA is supported in
 both immediate and hysteresis modes for efficient data transfers. Both
 internal and external loopback modes are supported for testing and
 diagnostics.</p>
@@ -259,9 +265,9 @@ reliability.</p>
 maintaining timing accuracy and signal integrity. It generates frames
 with selectable start, parity, and stop bits to match protocol
 requirements and legacy compatibility. Baud rate alignment uses 16x
-oversampling for precise timing. Flow control honors CTS signals to
-avoid overrunning the receiver. It also supports break signal generation
-for protocol control or device reset.</p>
+oversampling for precise timing. It also supports break signal generation
+for protocol control or device reset. The engine has no modem inputs and
+transmits whenever the TX FIFO is non-empty; it does not stall on CTS.</p>
 </div>
 <div class="paragraph">
 <p><strong>Receive Engine</strong> (uart_rx)</p>
@@ -530,7 +536,16 @@ state is high (logic 1).</p></td>
 <h6 id="modem-control-interface"><a class="anchor" href="#modem-control-interface"></a><a class="link" href="#modem-control-interface">Modem Control Interface</a></h6>
 <div class="paragraph">
 <p>The modem control interface provides full RS-232 modem signaling
-compatibility with hardware flow control support.</p>
+compatibility. All modem signals are active low at the pins, matching the
+RS-232 convention.</p>
+</div>
+<div class="paragraph">
+<p>The modem inputs are <strong>status only</strong>. Each one is synchronized and then
+reported in the <code>MSR</code> register in the opposite polarity (a bit reads <code>1</code>
+while its pin is asserted low), and a change on any of them raises the
+Modem Status Interrupt. None of them gates the datapath: this component
+implements no automatic flow control, so software must act on the
+interrupt to throttle traffic. See the Programming section.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 5. Modem Control Input Signals</caption>
@@ -557,8 +572,10 @@ compatibility with hardware flow control support.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Clear To Send. Asynchronous modem input. When
-asserted (low), indicates remote device is ready to receive data. Used
-for hardware flow control.</p></td>
+asserted (low), indicates remote device is ready to receive data.
+Reported in <code>MSR.CTS</code>; a change sets <code>MSR.DCTS</code> and raises the Modem
+Status Interrupt. Does not stall the transmitter - flow control is
+performed by software.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dsr_ni</code></p></td>
@@ -566,7 +583,8 @@ for hardware flow control.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Set Ready. Asynchronous modem input.
-Indicates remote modem is connected and ready.</p></td>
+Indicates remote modem is connected and ready. Reported in <code>MSR.DSR</code>; a
+change sets <code>MSR.DDSR</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ri_ni</code></p></td>
@@ -574,7 +592,8 @@ Indicates remote modem is connected and ready.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Ring Indicator. Asynchronous modem input.
-Indicates incoming call on modem connection.</p></td>
+Indicates incoming call on modem connection. Reported in <code>MSR.RI</code>; a
+trailing edge sets <code>MSR.TERI</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dcd_ni</code></p></td>
@@ -582,7 +601,8 @@ Indicates incoming call on modem connection.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Carrier Detect. Asynchronous modem input.
-Indicates carrier signal detected on modem connection.</p></td>
+Indicates carrier signal detected on modem connection. Reported in
+<code>MSR.DCD</code>; a change sets <code>MSR.DDCD</code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -610,9 +630,10 @@ Indicates carrier signal detected on modem connection.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Request To Send. Modem control output. When
-asserted (low), indicates this device is ready to receive data. Used for
-hardware flow control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Request To Send. Modem control output driven
+from <code>MCR.RTS</code> in the opposite polarity. When asserted (low), indicates
+this device is ready to receive data. Driven by software; the receiver
+does not deassert it automatically when the RX FIFO fills.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dtr_no</code></p></td>
@@ -1050,6 +1071,63 @@ Write 0x00 to DLM</p>
 <p>Service interrupts by reading appropriate status/data registers</p>
 </li>
 </ol>
+</div>
+</div>
+<div class="sect5">
+<h6 id="modem-status-and-flow-control"><a class="anchor" href="#modem-status-and-flow-control"></a><a class="link" href="#modem-status-and-flow-control">Modem Status and Flow Control</a></h6>
+<div class="paragraph">
+<p>The component does not implement automatic flow control. The <code>cts_ni</code>,
+<code>dsr_ni</code>, <code>ri_ni</code> and <code>dcd_ni</code> inputs are synchronized and reported in the
+<code>MSR</code> register only - the transmitter keeps sending while the TX FIFO is
+non-empty regardless of CTS, and the receiver never deasserts <code>rts_no</code> on
+its own. Any flow control protocol must therefore be driven by software.</p>
+</div>
+<div class="paragraph">
+<p>To use CTS-based flow control on the transmit side:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Enable the Modem Status Interrupt by setting EDSSI=1 in IER (0x04)</p>
+</li>
+<li>
+<p>On an interrupt, read IIR (0x08) to confirm the Modem Status source</p>
+</li>
+<li>
+<p>Read MSR (0x18). <code>MSR.CTS</code> reads <code>1</code> while <code>cts_ni</code> is asserted (low),
+that is, while the remote device can accept data. <code>MSR.DCTS</code> indicates
+CTS changed since the previous MSR read</p>
+</li>
+<li>
+<p>Stop writing THR while <code>MSR.CTS</code> reads <code>0</code>, and resume when the next
+Modem Status Interrupt reports it back at <code>1</code></p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The four delta bits (DCTS, DDSR, TERI, DDCD) are sticky and are cleared by
+any read of MSR, including a read that only intended to sample one of them.
+A single read must therefore be used to capture the state of every modem
+input. Because they are sticky, a change is still reported even if the input
+returns to its previous level before software gets to the read - the delta
+bit records that something moved, while the level bits only show where the
+input ended up.</p>
+</div>
+<div class="paragraph">
+<p>On the receive side, software throttles the remote device by clearing
+<code>MCR.RTS</code> (which drives <code>rts_no</code> high, deasserted) when the RX FIFO
+approaches its trigger level, and setting it again after draining RBR.</p>
+</div>
+<div class="paragraph">
+<p>Both loopback modes bypass the pins, so the MSR level bits no longer reflect
+the modem inputs. With <code>MCR.LOOP</code> set, MSR is fed internally from the MCR
+bits (CTS from RTS, DSR from DTR, RI from OUT1, DCD from OUT2) and the modem
+outputs are deasserted. With <code>MCR.LINE_LOOPBACK</code> set, the modem inputs are
+routed straight back out to the modem outputs and all four MSR level bits
+read <code>0</code>. If both bits are set at once the two paths resolve priority
+differently: the modem outputs follow line loopback, while MSR follows system
+loopback. Delta bits and the Modem Status Interrupt track whatever values are
+substituted.</p>
 </div>
 <div class="paragraph">
 <p>The memory map provides comprehensive control over all UART 16550

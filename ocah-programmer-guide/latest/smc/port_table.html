@@ -343,42 +343,6 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pll_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL control AXI-Lite request (32-bit addr, 32-bit data).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric → PLL Shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pll_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL control AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Shim → SMC Fabric</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pvt_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT monitoring AXI-Lite request (32-bit addr, 32-bit data).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric → PVT Shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pvt_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT monitoring AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Shim → SMC Fabric</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_bank_ctrl_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
@@ -467,24 +431,6 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">CAT thermal sensor input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CAT thermal sensor → PVT wrap</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_gpio_ctrl_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_pkg::gpio_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO controller AXI-Lite request.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric → GPIO padring</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_gpio_ctrl_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_pkg::gpio_axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO controller AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → SMC Fabric</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsio_interface_select_o</code></p></td>

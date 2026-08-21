@@ -168,7 +168,11 @@
 <div class="sect4">
 <h5 id="instruction-encodings"><a class="anchor" href="#instruction-encodings"></a><a class="link" href="#instruction-encodings">Instruction Encodings</a></h5>
 <div class="paragraph">
-<p>The PTAP uses 6-bit instruction encodings. During the capture phase, the least significant bit (closest to TDO) of the instruction register always presents a 1 to the scan chain, and the next least significant bit presents a 0 as specified by the 1149.1 standard, section 7.2.1. All other bits of the instruction register always return 0s.</p>
+<p>The PTAP uses 6-bit instruction encodings. During the capture phase, the least
+significant bit (closest to TDO) of the instruction register always presents a 1
+to the scan chain, and the next least significant bit presents a 0 as specified
+by the 1149.1 standard, section 7.2.1. All other bits of the instruction
+register always return 0s.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -315,7 +319,8 @@
 </tbody>
 </table>
 <div class="paragraph">
-<p><strong>NOTE:</strong> All instruction encodings <em>not</em> explicitly defined in this table map to the BYPASS instruction.</p>
+<p><strong>NOTE:</strong> All instruction encodings <em>not</em> explicitly defined in this table map
+to the BYPASS instruction.</p>
 </div>
 </div>
 <div class="sect4">
@@ -503,10 +508,10 @@
 <div class="ulist">
 <ul>
 <li>
-<p><code>hw/common/prim</code> - Primitive cells (synchronizers, clock gating)</p>
+<p><code>hw/common/och_prim</code> - Primitive cells (synchronizers, clock gating)</p>
 </li>
 <li>
-<p><code>hw/ip/jtag_stap</code> - Secondary TAP (when 3DIC support enabled)</p>
+<p><code>hw/ip/jtag/jtag_stap</code> - Secondary TAP (when 3DIC support enabled)</p>
 </li>
 </ul>
 </div>

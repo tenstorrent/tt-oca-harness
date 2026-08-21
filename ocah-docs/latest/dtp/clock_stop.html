@@ -90,9 +90,6 @@
     <a class="nav-link" href="../index.html">Documentation Overview</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../revision.html">Revision History</a>
-  </li>
-  <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../about-ocah.html">About OCAH</a>
   </li>
   <li class="nav-item" data-depth="1">
@@ -196,11 +193,12 @@
 <div class="sect2">
 <h3 id="dtp-clock-stop"><a class="anchor" href="#dtp-clock-stop"></a><a class="link" href="#dtp-clock-stop">1. Clock Stop</a></h3>
 <div class="paragraph">
-<p>This section describes DTP-level clock stop integration. For the clock stop controller implementation details, see <a href="#cross-trigger-network">[cross-trigger-network]</a>.</p>
+<p>This section describes DTP-level clock stop integration. For the clock stop
+controller implementation details, see <a href="#cross-trigger-network">[cross-trigger-network]</a>.</p>
 </div>
 <div class="paragraph">
-<p>From the DTP perspective, clock-stop handling combines JTAG DEBUG_CONTROL and CLA
-request sources into one functional halt path, while keeping CLA-only status
+<p>From the DTP perspective, clock-stop handling combines JTAG DEBUG_CONTROL and
+CLA request sources into one functional halt path, while keeping CLA-only status
 separate for DEBUG_CONTROL readback.</p>
 </div>
 <div class="ulist">
@@ -249,8 +247,8 @@ active.</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>This keeps CLA clock-stop observability distinct from the JTAG direct-stop
-path, while both can assert the functional chiplet halt through <code>stop_clks_o</code>.</p>
+<p>This keeps CLA clock-stop observability distinct from the JTAG direct-stop path,
+while both can assert the functional chiplet halt through <code>stop_clks_o</code>.</p>
 </div>
 </div>
 </div>

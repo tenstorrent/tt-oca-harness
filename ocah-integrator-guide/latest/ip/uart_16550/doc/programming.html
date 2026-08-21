@@ -239,6 +239,63 @@ Write 0x00 to DLM</p>
 </li>
 </ol>
 </div>
+</div>
+<div class="sect5">
+<h6 id="modem-status-and-flow-control"><a class="anchor" href="#modem-status-and-flow-control"></a><a class="link" href="#modem-status-and-flow-control">Modem Status and Flow Control</a></h6>
+<div class="paragraph">
+<p>The component does not implement automatic flow control. The <code>cts_ni</code>,
+<code>dsr_ni</code>, <code>ri_ni</code> and <code>dcd_ni</code> inputs are synchronized and reported in the
+<code>MSR</code> register only - the transmitter keeps sending while the TX FIFO is
+non-empty regardless of CTS, and the receiver never deasserts <code>rts_no</code> on
+its own. Any flow control protocol must therefore be driven by software.</p>
+</div>
+<div class="paragraph">
+<p>To use CTS-based flow control on the transmit side:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Enable the Modem Status Interrupt by setting EDSSI=1 in IER (0x04)</p>
+</li>
+<li>
+<p>On an interrupt, read IIR (0x08) to confirm the Modem Status source</p>
+</li>
+<li>
+<p>Read MSR (0x18). <code>MSR.CTS</code> reads <code>1</code> while <code>cts_ni</code> is asserted (low),
+that is, while the remote device can accept data. <code>MSR.DCTS</code> indicates
+CTS changed since the previous MSR read</p>
+</li>
+<li>
+<p>Stop writing THR while <code>MSR.CTS</code> reads <code>0</code>, and resume when the next
+Modem Status Interrupt reports it back at <code>1</code></p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The four delta bits (DCTS, DDSR, TERI, DDCD) are sticky and are cleared by
+any read of MSR, including a read that only intended to sample one of them.
+A single read must therefore be used to capture the state of every modem
+input. Because they are sticky, a change is still reported even if the input
+returns to its previous level before software gets to the read - the delta
+bit records that something moved, while the level bits only show where the
+input ended up.</p>
+</div>
+<div class="paragraph">
+<p>On the receive side, software throttles the remote device by clearing
+<code>MCR.RTS</code> (which drives <code>rts_no</code> high, deasserted) when the RX FIFO
+approaches its trigger level, and setting it again after draining RBR.</p>
+</div>
+<div class="paragraph">
+<p>Both loopback modes bypass the pins, so the MSR level bits no longer reflect
+the modem inputs. With <code>MCR.LOOP</code> set, MSR is fed internally from the MCR
+bits (CTS from RTS, DSR from DTR, RI from OUT1, DCD from OUT2) and the modem
+outputs are deasserted. With <code>MCR.LINE_LOOPBACK</code> set, the modem inputs are
+routed straight back out to the modem outputs and all four MSR level bits
+read <code>0</code>. If both bits are set at once the two paths resolve priority
+differently: the modem outputs follow line loopback, while MSR follows system
+loopback. Delta bits and the Modem Status Interrupt track whatever values are
+substituted.</p>
+</div>
 <div class="paragraph">
 <p>The memory map provides comprehensive control over all UART 16550
 functions while maintaining backward compatibility with the original

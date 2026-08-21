@@ -166,7 +166,11 @@
 <div class="sect3">
 <h4 id="ctp-architecture"><a class="anchor" href="#ctp-architecture"></a><a class="link" href="#ctp-architecture">1. Architecture</a></h4>
 <div class="paragraph">
-<p>The Cross Trigger Port architecture separates the register interface from core logic to enable reuse. The full <code>cross_trigger_port</code> module includes CSRs for runtime configuration, while the <code>cross_trigger_port_core</code> module provides the core functionality without registers, allowing instantiation for internal cross-trigger connections without AXI-Lite overhead.</p>
+<p>The Cross Trigger Port architecture separates the register interface from core
+logic to enable reuse. The full <code>cross_trigger_port</code> module includes CSRs for
+runtime configuration, while the <code>cross_trigger_port_core</code> module provides the
+core functionality without registers, allowing instantiation for internal
+cross-trigger connections without AXI-Lite overhead.</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -176,7 +180,8 @@
 <div class="sect4">
 <h5 id="submodule-hierarchy"><a class="anchor" href="#submodule-hierarchy"></a><a class="link" href="#submodule-hierarchy">Submodule Hierarchy</a></h5>
 <div class="paragraph">
-<p>The CTP core instantiates four specialized submodules for different aspects of cross-trigger operation:</p>
+<p>The CTP core instantiates four specialized submodules for different aspects of
+cross-trigger operation:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -212,21 +217,43 @@
 <div class="sect4">
 <h5 id="wire-or-mode"><a class="anchor" href="#wire-or-mode"></a><a class="link" href="#wire-or-mode">Wire-OR Mode</a></h5>
 <div class="paragraph">
-<p>Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many existing cross triggering implementations. This scheme is very resource efficient, as it only requires a single pin per chiplet connected to the network. However, the performance of the network decreases as the number of connected chiplets increase. Also, the duration of the cross trigger pulse must be pre-arranged across all connected chiplets.</p>
+<p>Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
+existing cross triggering implementations. This scheme is very resource
+efficient, as it only requires a single pin per chiplet connected to the
+network. However, the performance of the network decreases as the number of
+connected chiplets increase. Also, the duration of the cross trigger pulse must
+be pre-arranged across all connected chiplets.</p>
 </div>
 <div class="sect5">
 <h6 id="pulse-stretcher-operation"><a class="anchor" href="#pulse-stretcher-operation"></a><a class="link" href="#pulse-stretcher-operation">Pulse Stretcher Operation</a></h6>
 <div class="paragraph">
-<p>The pulse stretcher extends single-cycle core-side pulses to multi-cycle GPIO assertions lasting <code>stretch_mult + 1</code> clock cycles. The module implements a 16-bit countdown counter that loads the stretch multiplier value when a new pulse arrives and decrements to zero. If a new pulse arrives before the counter reaches zero, the counter restarts from the stretch multiplier value, ensuring that rapid successive pulses merge into an extended assertion.</p>
+<p>The pulse stretcher extends single-cycle core-side pulses to multi-cycle GPIO
+assertions lasting <code>stretch_mult + 1</code> clock cycles. The module implements a
+16-bit countdown counter that loads the stretch multiplier value when a new
+pulse arrives and decrements to zero. If a new pulse arrives before the counter
+reaches zero, the counter restarts from the stretch multiplier value, ensuring
+that rapid successive pulses merge into an extended assertion.</p>
 </div>
 <div class="paragraph">
-<p>The output <code>stretched_pulse</code> remains asserted as long as the counter is non-zero. This stretched pulse drives the output enable control for the open-drain CT_Req_out GPIO pad, effectively pulling the shared wire low for the configured duration.</p>
+<p>The output <code>stretched_pulse</code> remains asserted as long as the counter is
+non-zero. This stretched pulse drives the output enable control for the
+open-drain CT_Req_out GPIO pad, effectively pulling the shared wire low for the
+configured duration.</p>
 </div>
 <div class="paragraph">
-<p>Each chiplet has an open-drain I/O connected to a single shared wire. Any connected chiplet may pull this signal low to assert a cross trigger. Depending on the electrical requirements, one or more internal pad pull-ups or external keepers ensure the cross trigger request signal remains high when no cross trigger is asserted. To ensure no connected chiplet misses a cross trigger pulse, all chiplets transmitting a trigger pulse must stretch the pulse a mutually agreed upon length of time.</p>
+<p>Each chiplet has an open-drain I/O connected to a single shared wire. Any
+connected chiplet may pull this signal low to assert a cross trigger. Depending
+on the electrical requirements, one or more internal pad pull-ups or external
+keepers ensure the cross trigger request signal remains high when no cross
+trigger is asserted. To ensure no connected chiplet misses a cross trigger
+pulse, all chiplets transmitting a trigger pulse must stretch the pulse a
+mutually agreed upon length of time.</p>
 </div>
 <div class="paragraph">
-<p>Note that in wire-OR mode the <em>CT_Req_out</em> signal is connected to an open-drain configured I/O pad. For I/O pads that do have explicit open-drain control, the request data signal should connect to the output-enable control pin of the I/O pad, and the output data signal of the I/O pin should be driven statically low.</p>
+<p>Note that in wire-OR mode the <em>CT_Req_out</em> signal is connected to an open-drain
+configured I/O pad. For I/O pads that do have explicit open-drain control, the
+request data signal should connect to the output-enable control pin of the I/O
+pad, and the output data signal of the I/O pin should be driven statically low.</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -234,7 +261,8 @@
 </div>
 </div>
 <div class="paragraph">
-<p>Any number of chiplets may have their <em>CT_Req_out</em> pads interconnected as shown in the following example diagram:</p>
+<p>Any number of chiplets may have their <em>CT_Req_out</em> pads interconnected as shown
+in the following example diagram:</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -246,7 +274,12 @@
 <div class="sect4">
 <h5 id="point-to-point-mode"><a class="anchor" href="#point-to-point-mode"></a><a class="link" href="#point-to-point-mode">Point-to-Point Mode</a></h5>
 <div class="paragraph">
-<p>Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a cross trigger quickly and reliably between two chiplets without pulse stretching. While this scheme is simple and fast, it requires a dedicated CTP for each chiplet-to-chiplet interconnection, and each CTP requires four I/O pads for bi-directional communication, or two pads for unidirectional communication. All output pads are configured for push-pull operation.</p>
+<p>Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a
+cross trigger quickly and reliably between two chiplets without pulse
+stretching. While this scheme is simple and fast, it requires a dedicated CTP
+for each chiplet-to-chiplet interconnection, and each CTP requires four I/O pads
+for bi-directional communication, or two pads for unidirectional communication.
+All output pads are configured for push-pull operation.</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -254,7 +287,8 @@
 </div>
 </div>
 <div class="paragraph">
-<p>Any two chiplets may have their four cross trigger pads cross-coupled as shown in the following example diagram:</p>
+<p>Any two chiplets may have their four cross trigger pads cross-coupled as shown
+in the following example diagram:</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -262,10 +296,15 @@
 </div>
 </div>
 <div class="paragraph">
-<p>On the sender side, the receiver&#8217;s <em>CT_Ack_out</em> is connected to the sender&#8217;s <em>CT_Ack_in</em> pad. <em>CT_Req_out</em> asserts whenever <em>CT_Src</em> asserts. <em>CT_Req_out</em> will then remain asserted until <em>CT_Ack_in</em> asserts.</p>
+<p>On the sender side, the receiver&#8217;s <em>CT_Ack_out</em> is connected to the sender&#8217;s
+<em>CT_Ack_in</em> pad. <em>CT_Req_out</em> asserts whenever <em>CT_Src</em> asserts. <em>CT_Req_out</em>
+will then remain asserted until <em>CT_Ack_in</em> asserts.</p>
 </div>
 <div class="paragraph">
-<p>On the receiver side, the sender&#8217;s <em>CT_Req_out</em> is connected to the receiver&#8217;s <em>CT_Req_in</em> pad. On any positive edge of <em>CT_Req_in</em>, the receiver generates a pulse on <em>CT_Dst</em> and asserts <em>CT_Ack_out</em>. Deassertion proceeds in exactly the same sequence.</p>
+<p>On the receiver side, the sender&#8217;s <em>CT_Req_out</em> is connected to the receiver&#8217;s
+<em>CT_Req_in</em> pad. On any positive edge of <em>CT_Req_in</em>, the receiver generates a
+pulse on <em>CT_Dst</em> and asserts <em>CT_Ack_out</em>. Deassertion proceeds in exactly the
+same sequence.</p>
 </div>
 <div class="paragraph">
 <p>The timing of the request/acknowledge handshake is shown in the diagram below:</p>
@@ -278,7 +317,10 @@
 <div class="sect5">
 <h6 id="synchronization-and-cdc-handling"><a class="anchor" href="#synchronization-and-cdc-handling"></a><a class="link" href="#synchronization-and-cdc-handling">Synchronization and CDC Handling</a></h6>
 <div class="paragraph">
-<p>All GPIO input signals are asynchronous with respect to the CTP system clock and require synchronization to prevent metastability. The <code>ctp_synchronizer</code> module implements three independent 2-FF synchronizer chains using the <code>prim_flop_2sync</code> primitive:</p>
+<p>All GPIO input signals are asynchronous with respect to the CTP system clock and
+require synchronization to prevent metastability. The <code>ctp_synchronizer</code> module
+implements three independent 2-FF synchronizer chains using the
+<code>prim_flop_2sync</code> primitive:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -312,13 +354,21 @@
 </tbody>
 </table>
 <div class="paragraph">
-<p>After synchronization, an optional inversion is applied if the <code>INVERT</code> configuration bit is set. This allows adaptation to GPIO pads with different polarity requirements. Edge detection and state machine processing occur only on synchronized (and optionally inverted) signals, ensuring all CTP core logic operates on glitch-free inputs.</p>
+<p>After synchronization, an optional inversion is applied if the <code>INVERT</code>
+configuration bit is set. This allows adaptation to GPIO pads with different
+polarity requirements. Edge detection and state machine processing occur only on
+synchronized (and optionally inverted) signals, ensuring all CTP core logic
+operates on glitch-free inputs.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="handshake-state-machines"><a class="anchor" href="#handshake-state-machines"></a><a class="link" href="#handshake-state-machines">Handshake State Machines</a></h6>
 <div class="paragraph">
-<p>Point-to-point mode implements two independent state machines within the <code>ctp_handshake_ctrl</code> module, enabling full-duplex cross-triggering. The sender state machine controls outgoing cross-trigger requests, while the receiver state machine handles incoming requests. Both state machines operate synchronously in the system clock domain on synchronized GPIO inputs.</p>
+<p>Point-to-point mode implements two independent state machines within the
+<code>ctp_handshake_ctrl</code> module, enabling full-duplex cross-triggering. The sender
+state machine controls outgoing cross-trigger requests, while the receiver state
+machine handles incoming requests. Both state machines operate synchronously in
+the system clock domain on synchronized GPIO inputs.</p>
 </div>
 <div class="paragraph">
 <p><strong>Sender State Machine:</strong></p>
@@ -411,7 +461,10 @@
 </tbody>
 </table>
 <div class="paragraph">
-<p>The <code>ct_dst</code> output pulse is generated for a single clock cycle when the receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is asserted whenever either state machine is not in its IDLE state, indicating an active cross-trigger transfer.</p>
+<p>The <code>ct_dst</code> output pulse is generated for a single clock cycle when the
+receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is
+asserted whenever either state machine is not in its IDLE state, indicating an
+active cross-trigger transfer.</p>
 </div>
 </div>
 </div>

@@ -217,8 +217,8 @@ wrappers demonstrate this integration.</p>
 </div>
 <div class="paragraph">
 <p>For detailed architectural documentation about the SMC internal design, refer to
-<code>hw/smc/doc/</code>. The <code>hw/top/smc_wrapper.sv</code> reference wrapper demonstrates the
-integration boundary.</p>
+<code>hw/sys/smc/doc/</code>. The public integration examples are
+<code>hw/top/smc_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code>.</p>
 </div>
 <div class="sect3">
 <h4 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">2.1.1. Clock and Reset</a></h4>
@@ -326,11 +326,11 @@ the fixed <code>LOCAL_ALIAS_REGION_SIZE</code> parameter in RTL.</p>
 </div>
 <div class="paragraph">
 <p>For full details on alias remapping and outbound routing, see the SMC
-Fabric documentation (<code>hw/smc/doc/fabric.adoc</code>).</p>
+Fabric documentation (<code>hw/sys/smc/doc/fabric.adoc</code>).</p>
 </div>
 <div class="paragraph">
 <p>For a detailed breakdown of all components within the SMC local map,
-refer to the SMC Memory Map documentation (<code>hw/smc/doc/memmap.adoc</code>).</p>
+refer to the SMC Memory Map documentation (<code>hw/sys/smc/doc/memmap.adoc</code>).</p>
 </div>
 </div>
 <div class="sect3">
@@ -368,34 +368,24 @@ this interface.</p>
 <div class="sect3">
 <h4 id="gpio-pad-integration"><a class="anchor" href="#gpio-pad-integration"></a><a class="link" href="#gpio-pad-integration">2.1.4. GPIO Pad Integration</a></h4>
 <div class="paragraph">
-<p>GPIO pad integration requires careful attention to pull-up/pull-down
-requirements and strap configurations. The GPIO table below specifies default
-directions and pull settings for each pin. During power-up, certain GPIO pins
-function as configuration straps that determine boot behavior and operational
-modes.</p>
+<p>GPIO pad integration requires careful attention to function assignment and pull
+requirements. The GPIO table below lists each signal, bump location, function,
+recommended pull, and integration notes. Default input/output direction is
+defined by <code>smc_padring_pkg::DefaultDirectionMap</code>, not by the table.</p>
 </div>
 <div class="paragraph">
-<p>The testbench provides reference implementations for pad connections starting at
-line 732. For input-only pins such as the JTAG interface (pins 68-77), connect
-directly to external pads without output drivers. For bidirectional pins,
-implement proper tri-state buffers controlled by the <code>gpio_out_en_o</code> signals.
-The testbench demonstrates pull-up resistor integration using <code>pullup</code>
-primitives on specific signals like I2C and I3C interfaces.</p>
+<p>The public <code>hw/top/smc_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code> examples
+show the pad connections. For bidirectional pins, implement proper tri-state
+buffers controlled by the <code>gpio_out_en_o</code> signals. Connect multiplexed UART,
+I2C, I3C, and SPI pins to external devices according to the function assignments
+in the GPIO table.</p>
 </div>
 <div class="paragraph">
-<p>Configuration straps such as <code>BYPASS_SRAM_REPAIR</code> (pin 13), <code>TEST_EN</code> (pin 14),
-and others listed in the GPIO table must be set before the cold reset
-deassertion. These strap values determine fundamental operational modes and
-cannot be changed after the SMC completes fuse sensing. The testbench shows
-examples of strap forcing through GPIO pad connections.</p>
-</div>
-<div class="paragraph">
-<p>For peripheral interfaces like UART, I2C, I3C, and SPI that multiplex through
-GPIO pins, the testbench demonstrates loopback configurations between transmit
-and receive pairs. In actual integration, connect these pins to external devices
-according to the pin function assignments shown in the GPIO table. The
-<code>lsio_interface_select_o</code> signals control peripheral multiplexing and are driven
-by SMC configuration registers.</p>
+<p>Configuration straps are captured separately from the GPIO table. Establish
+them before cold reset deassertion and keep them stable during capture. The
+generated reset-unit <code>STRAPS_LO</code> and <code>STRAPS_HI</code> register descriptions define
+the decoded bit assignments, including <code>BYPASS_SRAM_REPAIR</code> at
+<code>STRAPS_LO[13]</code> and <code>TEST_EN</code> at <code>STRAPS_LO[14]</code>.</p>
 </div>
 </div>
 <div class="sect3">
@@ -406,21 +396,28 @@ subsystem components that the adopter instantiates externally. The
 subsections below describe each connection in turn.</p>
 </div>
 <div class="sect4">
-<h5 id="smc-pll-connection"><a class="anchor" href="#smc-pll-connection"></a><a class="link" href="#smc-pll-connection">PLL Interface</a></h5>
+<h5 id="smc-external-connection"><a class="anchor" href="#smc-external-connection"></a><a class="link" href="#smc-external-connection">Adopter Peripheral Window</a></h5>
 <div class="paragraph">
-<p>The <code>axil_pll_req_o</code> and <code>axil_pll_resp_i</code> signals form a 32-bit AXI-Lite
-interface to the adopter&#8217;s PLL control logic. The SMC uses this interface to
-configure output frequencies and manage clock generation; connect it to the
-control/status registers of the external PLL block(s).</p>
+<p>The <code>smc_external_req_o</code> and <code>smc_external_resp_i</code> signals form a 32-bit
+AXI-Lite interface to the adopter&#8217;s own peripheral register maps. Any
+technology- or product-specific block that SMC firmware needs to reach sits
+behind this window rather than on a dedicated per-peripheral port.</p>
 </div>
-</div>
-<div class="sect4">
-<h5 id="smc-pvt-connection"><a class="anchor" href="#smc-pvt-connection"></a><a class="link" href="#smc-pvt-connection">PVT Interface</a></h5>
 <div class="paragraph">
-<p>The <code>axil_pvt_req_o</code> and <code>axil_pvt_resp_i</code> signals form a 32-bit AXI-Lite
-interface to the adopter&#8217;s Process-Voltage-Temperature (PVT) monitoring
-blocks. Connect it to the external PVT sensor control registers to enable
-runtime monitoring and reporting.</p>
+<p>The window is the recommended home for the control/status registers of logic
+that the SMC must configure or monitor but that the SMC itself does not
+implement&#8201;&#8212;&#8201;padring configuration logic, clock generation, on-die sensors,
+memory-technology SHIMs, and similar adopter-owned blocks are typical examples.
+For example, runtime reconfiguration of pin directions, pull settings, and peripheral
+multiplexing is expected to be reachable here. The SMC decodes the aperture and
+forwards the transaction; what lives behind it is entirely adopter-defined.</p>
+</div>
+<div class="paragraph">
+<p>The window is split into a mandatory region, whose contents and placement the
+SMC memory map fixes and every integration must implement, and a supplementary
+region for anything else the adopter chooses to expose. For placement and the
+full register layout, refer to the SMC Memory Map documentation
+(<code>hw/smc/doc/memmap.adoc</code>).</p>
 </div>
 </div>
 <div class="sect4">
@@ -506,15 +503,6 @@ propagates them through the shadow registers; the <code>fuse_sense_done_o</code>
 indicates completion of this sensing operation.</p>
 </div>
 </div>
-<div class="sect4">
-<h5 id="smc-gpio-connection"><a class="anchor" href="#smc-gpio-connection"></a><a class="link" href="#smc-gpio-connection">GPIO Interface</a></h5>
-<div class="paragraph">
-<p>For GPIO controller access, connect the <code>axil_req_gpio_ctrl_o</code> and
-<code>axil_resp_gpio_ctrl_i</code> signals to the GPIO padring configuration logic. This
-interface allows runtime reconfiguration of pin directions, pull settings, and
-peripheral multiplexing options.</p>
-</div>
-</div>
 </div>
 <div class="sect3">
 <h4 id="memory-subsystem-integration"><a class="anchor" href="#memory-subsystem-integration"></a><a class="link" href="#memory-subsystem-integration">2.1.6. Memory Subsystem Integration</a></h4>
@@ -534,7 +522,8 @@ memory interfaces for L1 instruction and data caches (<code>l1_icache_*</code> a
 <p>The <code>disable_sram_auto_init_i</code> input controls automatic memory initialization
 behavior. When deasserted, the SMC automatically zeroes all SRAM contents during
 bring-up. The <code>init_mem_done_o</code> output indicates completion of this
-initialization sequence. The strap <code>SRAM_AUTO_ZERO_DISABLE</code> (GPIO pin 26) can
+initialization sequence. The <code>SRAM_AUTO_ZERO_DISABLE</code> strap
+(<code>STRAPS_LO[26]</code>) can
 disable this automatic zeroing behavior if your integration requires preserved
 SRAM contents across resets.</p>
 </div>
@@ -592,8 +581,8 @@ arrays according to your memory architecture.</p>
 <p><strong>Status Monitoring:</strong></p>
 </div>
 <div class="paragraph">
-<p>Repair completion and success are reported through DFT Control Status registers
-at <code>0xC000F800</code> (SOC) and <code>0xC000F80C</code> (SEP/SMC). The <code>mem_repair_done</code> bit
+<p>Repair completion and success are reported through
+<code>DFX_CTRL_STATUS.STATUS_SMU</code> at <code>0xC000_B800</code>. The <code>mem_repair_done</code> bit
 indicates completion regardless of success, while <code>mem_repair_success</code> indicates
 successful repair. Both bits are set by the external repair controller. The SMC
 ROM firmware monitors these bits during initialization to verify repair
@@ -603,10 +592,10 @@ completion.</p>
 <p><strong>Bypass Configuration:</strong></p>
 </div>
 <div class="paragraph">
-<p>The <code>BYPASS_SRAM_REPAIR</code> configuration strap (GPIO pin 13) bypasses repair logic
-when asserted high, causing <code>skip_mem_repair_o</code> to assert. Use bypass mode only
-when SRAM arrays are guaranteed defect-free, such as during development or with
-known-good components.</p>
+<p>The <code>BYPASS_SRAM_REPAIR</code> configuration strap (<code>STRAPS_LO[13]</code>) bypasses
+repair logic when asserted high, causing <code>skip_mem_repair_o</code> to assert. Use
+bypass mode only when SRAM arrays are guaranteed defect-free, such as during
+development or with known-good components.</p>
 </div>
 <div class="paragraph">
 <p><strong>Integration Requirements:</strong></p>
@@ -636,9 +625,10 @@ repair unless explicitly bypassed via strap configuration.</p>
 <div class="paragraph">
 <p>The SMC aggregates interrupts from multiple sources into <code>cpu_interrupts_o</code>, which feeds
 the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
-<code>hw/smc/smc_base.sv</code> and <code>hw/smc/smc_peripherals/rtl/smc_peripherals.sv</code>. The authoritative
-bit-level map (1-core and 4-core columns, RTL trace, and PLIC source ID note) is maintained
-in a single place:</p>
+<code>hw/sys/smc/rtl/smc_base.sv</code> and
+<code>hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv</code>. The authoritative
+bit-level map (1-core and 4-core columns, RTL trace, and PLIC source ID note) is
+maintained in a single place:</p>
 </div>
 <div class="paragraph">
 <p><a href="smc/interrupts.html#cpu-interrupt-vector-map" class="xref page">SMC CPU interrupt vector map</a></p>
@@ -896,42 +886,6 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pll_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL control AXI-Lite request (32-bit addr, 32-bit data).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric → PLL Shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pll_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL control AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL Shim → SMC Fabric</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pvt_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT monitoring AXI-Lite request (32-bit addr, 32-bit data).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric → PVT Shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pvt_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT monitoring AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT Shim → SMC Fabric</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_bank_ctrl_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
@@ -1020,24 +974,6 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CAT thermal sensor input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CAT thermal sensor → PVT wrap</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_gpio_ctrl_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_pkg::gpio_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO controller AXI-Lite request.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric → GPIO padring</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_gpio_ctrl_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_pkg::gpio_axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO controller AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → SMC Fabric</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsio_interface_select_o</code></p></td>
@@ -1711,11 +1647,12 @@ signal descriptions and timing requirements.</p>
 <div class="sect3">
 <h4 id="gpio-pin-requirements"><a class="anchor" href="#gpio-pin-requirements"></a><a class="link" href="#gpio-pin-requirements">2.1.12. GPIO Pin Requirements</a></h4>
 <div class="paragraph">
-<p>The SMC provides GPIO functionality with multiplexed peripheral functions, configuration
-straps, and test interfaces. The following table specifies all GPIO pins with their
-default configurations, pull-up/pull-down requirements, and strap definitions. Note that
-strap configurations must be established before cold reset deassertion and remain stable
-during fuse sensing.</p>
+<p>The SMC provides GPIO functionality with multiplexed peripheral functions and
+test interfaces. The following table lists the signal and bump location,
+assigned function, recommended pull, and GPIO-specific notes. It does not define
+default direction or decode configuration straps; use
+<code>smc_padring_pkg::DefaultDirectionMap</code> and the generated reset-unit <code>STRAPS_LO</code>
+and <code>STRAPS_HI</code> register descriptions for those.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
 <caption class="title">Table 3. OCAH GPIO Requirements</caption>
@@ -2461,11 +2398,11 @@ during fuse sensing.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p>For multi-chiplet systems, the <code>PRIMARY_CHIPLET</code> strap (GPIO pin 25) determines
-whether the chiplet operates as primary or secondary. The primary chiplet&#8217;s
-System Timer OCTS generates synchronization pulses (<code>timer_sync_load_o</code>,
-<code>timer_cnt_credit_o</code>) that secondary chiplets receive to maintain coherent
-timestamps across the system.</p>
+<p>For multi-chiplet systems, the <code>PRIMARY_CHIPLET</code> strap (<code>STRAPS_LO[25]</code>)
+determines whether the chiplet operates as primary or secondary. The primary
+chiplet&#8217;s System Timer OCTS generates synchronization pulses
+(<code>timer_sync_load_o</code>, <code>timer_cnt_credit_o</code>) that secondary chiplets receive to
+maintain coherent timestamps across the system.</p>
 </div>
 </div>
 </div>
@@ -2474,16 +2411,20 @@ timestamps across the system.</p>
 <div class="sect3">
 <h4 id="configuration"><a class="anchor" href="#configuration"></a><a class="link" href="#configuration">2.2.1. Configuration</a></h4>
 <div class="paragraph">
-<p>Before integrating the DTP, run the configuration script to generate required files:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">cd hw/dtp
-python3 generate_dtp.py --num-ctp &lt;N&gt; --num-int-ct &lt;M&gt;</code></pre>
-</div>
+<p>The cross-trigger topology is fixed at elaboration by <code>dtp_pkg</code>, a committed
+source file at <code>hw/sys/dtp/rtl/dtp_pkg.sv</code>. <code>DEFAULT_NUM_CTP</code>,
+<code>DEFAULT_NUM_INT_CT</code>, and <code>DEFAULT_NUM_CLK_STOP_REQ</code> there set the
+<code>XTRIG_NUM_CTP</code>, <code>XTRIG_NUM_INT_CT</code>, and <code>XTRIG_NUM_CLK_STOP_REQ</code> localparams of
+<code>dtp</code>, so a different port count is applied by editing that package rather than
+by overriding parameters at the instantiation. The remaining DTP parameters,
+including <code>XTRIG_INT_CT_MODE</code> and every <code>JTAG_*</code> enable, are set at the
+instantiation as shown below.</p>
 </div>
 <div class="paragraph">
-<p>Include the DTP in your build using <code>hw/dtp/config/dtp.f</code> or Bender target <code>dtp_rtl</code>.</p>
+<p>Include the DTP in your build using Bender target <code>dtp</code>, which pulls in the DTP
+RTL together with the JTAG and cross-trigger IPs it instantiates. The legacy
+filelist <code>hw/sys/dtp/rtl/config/dtp.f</code> covers only the JTAG portion of the
+hierarchy and is not a complete DTP recipe.</p>
 </div>
 </div>
 <div class="sect3">
@@ -2567,30 +2508,40 @@ ties <code>sep_stap_tdo_to_dtp = 1&#8217;b0</code> to bypass the SEP STAP return
 </div>
 <div class="paragraph">
 <p>Each STAP host interface is gated by lifecycle feature controls, synchronized to
-TCK inside the DTP.</p>
+TCK inside the DTP. <code>feat_ctrl_i</code> is enable-polarity (1 = feature enabled), so a
+STAP host interface is enabled only when all of its required enables are asserted
+and is disabled when any one of them is deasserted.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 30%;">
-<col style="width: 70%;">
+<col style="width: 25%;">
+<col style="width: 35%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">STAP</th>
-<th class="tableblock halign-left valign-top">Lifecycle Host Gating</th>
+<th class="tableblock halign-left valign-top">Enabled When</th>
+<th class="tableblock halign-left valign-top">Host Gating Disable Condition</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.soc_debug || feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.sep_debug || feat_ctrl_i.soc_debug || feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.sep_debug \&amp;\&amp; feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The full set of lifecycle-gated debug paths, including the iJTAG chains and the
+JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="dtp-port-interface"><a class="anchor" href="#dtp-port-interface"></a><a class="link" href="#dtp-port-interface">2.2.6. DTP Port Interface</a></h4>
@@ -2598,7 +2549,7 @@ TCK inside the DTP.</p>
 <p>The DTP exposes interfaces for JTAG TAP control, boundary scan, multiple STAP
 host ports, iJTAG scan chains, AXI debug bridges, cross trigger networks, and
 CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
-the dedicated DTP documentation in <code>hw/dtp/doc/</code> for internal design details.</p>
+the dedicated DTP documentation in <code>hw/sys/dtp/doc/</code> for internal design details.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
 <caption class="title">Table 4. DTP Port Declaration</caption>
@@ -3332,9 +3283,9 @@ standalone out-of-context IP.</p>
 </div>
 <div class="paragraph">
 <p>For detailed architectural documentation about the SEP internal design, refer to
-the dedicated SEP documentation located in <code>hw/sep/doc/</code>. The SEP hardware
-overview and interconnect fabric are described in <code>hw/sep/doc/overview.adoc</code> and
-<code>hw/sep/doc/fabric.adoc</code> respectively.</p>
+the dedicated SEP documentation located in <code>hw/sys/sep/doc/</code>. The SEP hardware
+overview and interconnect fabric are described in
+<code>hw/sys/sep/doc/overview.adoc</code> and <code>hw/sys/sep/doc/fabric.adoc</code> respectively.</p>
 </div>
 <div class="sect3">
 <h4 id="module-overview"><a class="anchor" href="#module-overview"></a><a class="link" href="#module-overview">2.3.1. Module Overview</a></h4>
@@ -4390,10 +4341,14 @@ AXI4 manager/subordinate pairs: the SEP outbound master (<code>sep_out</code>),
 the SMC outbound master (<code>smc_out</code>), and the external SMU AXI input
 (<code>ext_in</code> / <code>smu_axi_in</code>). The corresponding targets are the SEP and
 SMC inbound subordinates, and the external SMU AXI output
-(<code>ext_out</code> / <code>smu_axi_out</code>). Connectivity is described in
-<a href="#smu-axi-crossbar">SMU AXI Crossbar</a>; the split between hardware-fixed
-behaviour and firmware-programmable apertures is documented in
-<a href="#ocah-memory-map">OCAH Memory Map</a>.</p>
+(<code>ext_out</code> / <code>smu_axi_out</code>).</p>
+</div>
+<div class="paragraph">
+<p>Connectivity is described in
+<a href="../../ocah-docs/latest/architecture.html#smu-axi-crossbar" class="xref page">SMU AXI Crossbar</a>;
+the split between hardware-fixed behaviour and firmware-programmable apertures
+is documented in
+<a href="../../ocah-docs/latest/architecture.html#ocah-memory-map" class="xref page">OCAH Memory Map</a>.</p>
 </div>
 <div class="paragraph">
 <p>The crossbar uses a <strong>runtime</strong> address map. Only the SEP and SMC
@@ -4437,9 +4392,12 @@ SMC <code>GLOBAL_BASE</code> / <code>REGION_SIZE</code> during early boot, <stro
 cross-subsystem AXI traffic is issued</strong>, and must ensure the two
 apertures do not overlap and both fall within the chiplet-visible SMU
 envelope assigned by the integrator. The SMU crossbar does not itself
-constrain envelope size; see <a href="#ocah-memory-map">OCAH Memory Map</a> for
-the responsibility split between integrator, firmware, and the internal
-SEP/SMC address maps.</p>
+constrain envelope size.</p>
+</div>
+<div class="paragraph">
+<p>See <a href="../../ocah-docs/latest/architecture.html#ocah-memory-map" class="xref page">OCAH Memory Map</a> for
+the responsibility split between integrator, firmware, and the internal SEP/SMC
+address maps.</p>
 </div>
 </div>
 </div>
@@ -6102,7 +6060,7 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </table>
 </div>
 <div class="sect4">
-<h5 id="pll-interface-axi-lite"><a class="anchor" href="#pll-interface-axi-lite"></a><a class="link" href="#pll-interface-axi-lite">PLL Interface AXI-Lite</a></h5>
+<h5 id="adopter-peripheral-window-axi-lite"><a class="anchor" href="#adopter-peripheral-window-axi-lite"></a><a class="link" href="#adopter-peripheral-window-axi-lite">Adopter Peripheral Window AXI-Lite</a></h5>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -6120,49 +6078,16 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pll_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port (to PLL shim)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port (to adopter peripherals)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pll_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external_resp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port (from PLL shim)</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect4">
-<h5 id="pvt-interface-axi-lite"><a class="anchor" href="#pvt-interface-axi-lite"></a><a class="link" href="#pvt-interface-axi-lite">PVT Interface AXI-Lite</a></h5>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 10%;">
-<col style="width: 20%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Port</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">SMU Connection</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pvt_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port (to PVT shim)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pvt_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port (from PVT shim)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port (from adopter peripherals)</p></td>
 </tr>
 </tbody>
 </table>
@@ -6213,39 +6138,6 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>shadow_regs_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_map_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect4">
-<h5 id="gpio-shim-interface"><a class="anchor" href="#gpio-shim-interface"></a><a class="link" href="#gpio-shim-interface">GPIO Shim Interface</a></h5>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 10%;">
-<col style="width: 20%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Port</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">SMU Connection</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_gpio_ctrl_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_gpio_ctrl_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_axil_resp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 </tbody>
@@ -7934,42 +7826,6 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pll_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL control AXI-Lite request.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pll_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL control AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLL shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pvt_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT monitoring AXI-Lite request.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_pvt_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT monitoring AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
@@ -8076,24 +7932,6 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">CAT thermal sensor input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CAT thermal sensor</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_gpio_ctrl_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_pkg::gpio_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO controller AXI-Lite request.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_gpio_ctrl_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_pkg::gpio_axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO controller AXI-Lite response.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsio_interface_select_o</code></p></td>
@@ -8982,6 +8820,803 @@ SMN integration procedures, network topology, and management interfaces.</p>
 </td>
 </tr>
 </table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="prim-cell-replacement"><a class="anchor" href="#prim-cell-replacement"></a><a class="link" href="#prim-cell-replacement">4. Prim Cell Replacement and Don&#8217;t-Touch Constraints</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCAH primitives (<code>prim_stdbuf</code>, <code>prim_and2</code>, <code>prim_clkgater</code>, the
+<code>prim_flop_*sync*</code> family, and so on) ship as behavioral models with a
+reference technology mapping. Adopters replace them with cells from their own
+library.</p>
+</div>
+<div class="paragraph">
+<p>Two rules govern those replacements. Both are the adopter&#8217;s responsibility&#8201;&#8212;&#8201;OCAH provides the instance names, but the names have no effect until the
+adopter&#8217;s synthesis and place-and-route flows constrain them.</p>
+</div>
+<div class="sect2">
+<h3 id="prim-cell-replacement-naming"><a class="anchor" href="#prim-cell-replacement-naming"></a><a class="link" href="#prim-cell-replacement-naming">4.1. Naming Requirement</a></h3>
+<div class="paragraph">
+<p><strong>Every library cell instantiated inside a replacement primitive must have
+<code>d0nt_</code> in its instance name.</strong></p>
+</div>
+<div class="paragraph">
+<p>The marker is deliberately misspelled with a zero. <code>dont_touch</code> is a reserved
+keyword in several tools and a common substring in ordinary comments and signal
+names; <code>d0nt_</code> occurs only where the protection is intended, so a name-based
+match cannot pick up unrelated cells.</p>
+</div>
+<div class="paragraph">
+<p>Clock-path cells take the extended prefix <code>d0nt_clk</code>, which selects the stricter
+rule below. The reference mapping uses these names:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Instance name</th>
+<th class="tableblock halign-left valign-top">Rule</th>
+<th class="tableblock halign-left valign-top">Primitive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkgate</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clkgater</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkbuf</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_buf</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkinv</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_inv</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkmux</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_mux2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clknand</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_clock_nand2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_clkxor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Don&#8217;t touch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_xor2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_stdbuf</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_stdbuf</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_stdinv</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_flop_*sync_*</code> reset inverter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_an</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_and2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>d0nt_wrap_sync</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_flop_*sync_*</code> synchronizer flops</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Keep the same names when substituting your own cells. Adopters who rename must
+apply the equivalent constraints to whatever names they use.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="prim-cell-replacement-constraints"><a class="anchor" href="#prim-cell-replacement-constraints"></a><a class="link" href="#prim-cell-replacement-constraints">4.2. Constraint Requirement</a></h3>
+<div class="paragraph">
+<p><strong>In synthesis, apply <code>set_size_only</code> to every cell matching <code>d0nt_</code>, then
+<code>set_dont_touch</code> to every cell matching <code>d0nt_clk</code>. Every step after synthesis
+needs <code>size_only</code> alone&#8201;&#8212;&#8201;on all <code>d0nt_</code> cells, clock cells included.</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl"># Order matters: d0nt_clk* also matches d0nt_*, so the clock rule is applied
+# second and overrides size-only for those cells.
+set_size_only  [get_cells -hierarchical -filter "full_name =~ *d0nt_*"]
+set_dont_touch [get_cells -hierarchical -filter "full_name =~ *d0nt_clk*"]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>size_only</code> keeps the instance in the netlist&#8201;&#8212;&#8201;the tool may not delete, merge,
+absorb, restructure, or buffer through it&#8201;&#8212;&#8201;while still allowing it to be
+swapped for another library cell of the same logic function, typically to change
+drive strength or threshold-voltage flavor for timing, area, and EM closure.
+That is the intent for every replacement cell: these primitives exist because
+the structure matters, not because the logic function could not be inferred.
+Synthesis will otherwise remove them&#8201;&#8212;&#8201;an inverter pair that cancels,
+redundant AND gates that always agree, a buffer driving a single load are all
+dead weight to an optimizer.</p>
+</div>
+<div class="paragraph">
+<p>Clock cells need the stronger <code>dont_touch</code> because that swap is exactly the
+problem. Under <code>size_only</code> the tool treats the logic function as the contract
+and every other property of the cell as free to change. On the clock path the
+function is the least of the reasons the cell was chosen. Clock buffers,
+inverters, muxes, and gaters are picked for electrical characteristics the
+function does not capture&#8201;&#8212;&#8201;matched rise and fall times above all, and with
+them duty-cycle preservation, balanced input-to-output delay, and low delay
+variation across PVT. A functionally identical cell pulled from the
+general-purpose library guarantees none of that. The netlist still says
+"inverter", functional simulation still passes, and the duty-cycle distortion
+shows up only in silicon or in a timing run late enough to be expensive.</p>
+</div>
+<div class="paragraph">
+<p><code>dont_touch</code> removes the tool&#8217;s discretion: the cell the designer selected is
+the cell that reaches the netlist. Sizing and insertion-delay decisions on the
+clock path belong to clock tree synthesis, which owns them explicitly, rather
+than to a logic-optimization pass making a substitution it believes is free.</p>
+</div>
+<div class="sect3">
+<h4 id="prim-cell-replacement-post-synthesis"><a class="anchor" href="#prim-cell-replacement-post-synthesis"></a><a class="link" href="#prim-cell-replacement-post-synthesis">4.2.1. After Synthesis</a></h4>
+<div class="paragraph">
+<p>The <code>dont_touch</code> on <code>d0nt_clk*</code> is a synthesis-only constraint. Once synthesis
+has handed off the netlist, release the clock cells to <code>size_only</code> and carry
+that&#8201;&#8212;&#8201;and nothing stronger&#8201;&#8212;&#8201;through placement, clock tree synthesis,
+routing, and optimization:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl"># Post-synthesis: uniform size_only, clock cells included.
+set_dont_touch [get_cells -hierarchical -filter "full_name =~ *d0nt_clk*"] false
+set_size_only  [get_cells -hierarchical -filter "full_name =~ *d0nt_*"]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The stricter rule exists to stop logic optimization from choosing the cell.
+Downstream, clock cell sizing is CTS&#8217;s job: it cannot balance skew or close
+transition violations with the cells it needs to resize frozen, and freezing
+them there buys nothing. Keeping <code>size_only</code> in place still prevents deletion,
+merging, and restructuring for the rest of the flow.</p>
+</div>
+<div class="paragraph">
+<p>Restrict the physical flow to the library&#8217;s clock-cell list so a resize stays
+inside the same clock cell family. Sizing a <code>CLKBUF_D4</code> up to a <code>CLKBUF_D8</code>
+keeps the matched rise and fall behavior the cell was chosen for; substituting a
+general-purpose buffer of equivalent drive does not.</p>
+</div>
+<div class="paragraph">
+<p>Additional requirements:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Carry <code>size_only</code> through PnR.</strong> The <code>dont_touch</code> is synthesis-only, but
+<code>size_only</code> is not. A cell protected in synthesis and left entirely
+unprotected downstream is not protected.</p>
+</li>
+<li>
+<p><strong>Verify the match is non-zero.</strong> A typo in the filter, or a flow that renames
+instances before the constraint is read, silently protects nothing. Check the
+collection size and error out if it is empty.</p>
+</li>
+<li>
+<p><strong>Preserve the names.</strong> Uniquification, flattening, and name mapping must not
+strip the <code>d0nt_</code> substring. If your flow renames instances, derive the
+collections before flattening and carry them forward.</p>
+</li>
+<li>
+<p><strong>Restore protection after ECOs.</strong> Flows that relax preservation constraints for
+clock-tree or filler ECOs&#8201;&#8212;&#8201;clearing <code>eco_honor_dont_touch</code>, for example&#8201;&#8212;&#8201;must restore <code>size_only</code> before any subsequent optimization pass.</p>
+</li>
+<li>
+<p><strong>Check the final netlist,</strong> not just the post-synthesis one.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Flows other than Design Compiler and Fusion Compiler must apply the equivalent
+<code>size_only</code> and <code>dont_touch</code> attributes to the same collections.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="prim-cell-replacement-simulation"><a class="anchor" href="#prim-cell-replacement-simulation"></a><a class="link" href="#prim-cell-replacement-simulation">4.3. Simulation</a></h3>
+<div class="paragraph">
+<p>These constraints have no functional effect and no simulation impact. All OCAH
+simulation flows compile with <code>+define+NO_LIBCELL</code>, which selects the behavioral
+model inside every primitive, so no library cell is ever elaborated by a
+simulator.</p>
+</div>
+<div class="paragraph">
+<p>Confirming that the protected cells survived is therefore a gate-level netlist
+check. RTL simulation cannot detect their loss.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cdc-timing-constraints"><a class="anchor" href="#cdc-timing-constraints"></a><a class="link" href="#cdc-timing-constraints">5. CDC Timing Constraints</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCAH ships synthesis constraints that bound every clock-domain crossing in the
+SMC, SEP, DTP and SMU. This section explains what those constraints do, how they
+are produced, and what an adopter has to change when integrating OCAH into their
+own flow and cell library.</p>
+</div>
+<div class="paragraph">
+<p>The collateral ships with the harness. Each block carries its own constraints in
+<code>hw/sys/&lt;block&gt;/synth/</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>constraints.sdc</code>&#8201;&#8212;&#8201;the block&#8217;s full timing intent, including the clock
+definitions and the asynchronous clock groups. It sources the two files below.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_cdc_max_delay.tcl</code>&#8201;&#8212;&#8201;generated-clock periods and any hand-written
+overrides.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_cdc_max_delay_generated.tcl</code>&#8201;&#8212;&#8201;the per-instance calls.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The two pieces shared by every block live in <code>flows/synth/constraints/</code>:
+<code>async_clock_groups.tcl</code> and <code>cdc_max_delay_procs.tcl</code>.</p>
+</div>
+<div class="sect2">
+<h3 id="why-crossings-are-bounded-rather-than-timed"><a class="anchor" href="#why-crossings-are-bounded-rather-than-timed"></a><a class="link" href="#why-crossings-are-bounded-rather-than-timed">5.1. Why crossings are bounded rather than timed</a></h3>
+<div class="paragraph">
+<p>A clock-domain crossing has no fixed phase relationship, so it cannot be timed
+against a capture edge. Its correctness still depends on delay, though: every CDC
+element assumes the data reaches the receiver within a bounded time.</p>
+</div>
+<div class="paragraph">
+<p>OCAH therefore keeps the crossings visible to the tool and gives each one an
+explicit upper bound, sized from the clock that captures it. This asserts no phase
+relationship&#8201;&#8212;&#8201;it states only how much delay the crossing tolerates while its CDC
+element&#8217;s guarantee still holds.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="what-is-constrained"><a class="anchor" href="#what-is-constrained"></a><a class="link" href="#what-is-constrained">5.2. What is constrained</a></h3>
+<div class="paragraph">
+<p>Every CDC element in each block is enumerated and given its own <code>set_max_delay</code>,
+sized from the clock that actually captures it as read from the netlist. Muxed
+domains resolve to several clocks; the tightest period wins.</p>
+</div>
+<div class="paragraph">
+<p>The elements covered are <code>prim_sync2/3/4</code> and their reset and set variants, the
+pulp <code>sync</code> shim, <code>prim_sync_reset</code>, <code>prim_sync3_pulse</code>, <code>prim_fifo_async</code>,
+<code>avsbus_async_fifo</code>, <code>cdc_fifo_gray</code>, <code>axi_cdc</code>, <code>prim_reg_cdc</code>,
+<code>prim_sync_reqack_data</code>, <code>prim_sync_data_autohs</code>, <code>cdc_2phase</code>, <code>dmi_wrapper</code> and
+Rocket <code>AsyncQueue</code>.</p>
+</div>
+<div class="paragraph">
+<p>The bound depends on what protects the crossing:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Kind of path</th>
+<th class="tableblock halign-left valign-top">Bound</th>
+<th class="tableblock halign-left valign-top">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronizer data input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0.5 * T_dst</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Leaves half a destination period of settling margin before the capture edge the synchronizer relies on.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protocol-protected data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1.0 * T_dst</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conservative. The requirement is set by the pointer synchronizer&#8217;s depth&#8201;&#8212;&#8201;see below.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Two-phase handshake nets</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>min(T_src, T_dst)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cdc_2phase</code> runs the handshake in both directions, so the tighter domain governs. This is the module&#8217;s own stated requirement.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>T_dst</code> rather than <code>min(T_src, T_dst)</code> in the general case because the gating
+synchronizer is clocked by the destination, so its settling window is <code>S * T_dst</code>
+and <code>T_src</code> does not enter the guarantee. This makes slow-to-fast and fast-to-slow
+equally safe.</p>
+</div>
+<div class="sect3">
+<h4 id="why-protocol-protected-data-still-needs-a-bound"><a class="anchor" href="#why-protocol-protected-data-still-needs-a-bound"></a><a class="link" href="#why-protocol-protected-data-still-needs-a-bound">5.2.1. Why protocol-protected data still needs a bound</a></h4>
+<div class="paragraph">
+<p>The payload of a gray-pointer FIFO or a req/ack handshake never passes through a
+synchronizer&#8201;&#8212;&#8201;only the pointer or request does. So this is not a metastability
+constraint, and it is reasonable to ask why such a path needs a bound at all, or
+why a single blanket bound covering every crossing in the design would not be
+enough.</p>
+</div>
+<div class="paragraph">
+<p>Because the protocol guarantees <strong>ordering</strong>, not <strong>arrival</strong>. The read side will not
+look at an entry until the write pointer has crossed, which takes <code>SYNC_STAGES</code>
+destination cycles, where <code>SYNC_STAGES</code> is the depth of the pointer
+synchronizer. Nothing in the protocol ensures the data physically arrived within
+that window; that is a timing property, and only a <code>max_delay</code> states it. Miss it
+and the consumer samples the entry&#8217;s previous contents. There is no violation
+report and no metastability event, just wrong data.</p>
+</div>
+<div class="paragraph">
+<p>So the requirement is <code>data path &lt; SYNC_STAGES * T_dst</code>. It is not a fixed number
+of nanoseconds: it scales with the clock that captures the crossing, and the
+destination periods within one design span an order of magnitude.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Destination period</th>
+<th class="tableblock halign-left valign-top">Guarantee at 3 stages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3 ns</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15 ns</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10 ns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">30 ns</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>That is why the bound is applied per instance rather than as one global value. A
+single blanket <code>max_delay</code> has to be chosen once for the whole design: loose
+enough to be feasible on the slowest domains, it permits several times more delay
+than a fast crossing&#8217;s pointer scheme tolerates; tight enough for the fastest
+domain, it over-constrains every slow crossing and burns effort closing paths
+that were never at risk. Sizing each crossing from its own capturing clock is the
+only bound that tracks the requirement.</p>
+</div>
+<div class="paragraph">
+<p>The blanket default that the clock-group layer applies (see <a href="#cdc-two-layers">The
+two layers</a>) is deliberately on the loose side, and for slow destination domains
+it is already sufficient&#8201;&#8212;&#8201;there the explicit per-instance constraint is
+redundant. It is the fast crossings that need it.</p>
+</div>
+<div class="paragraph">
+<p><code>1.0 * T_dst</code> is therefore conservative by a factor of two to three. It is kept
+simple deliberately, but if wide payloads such as AXI data will not close, raising
+<code>cdc_data_delay</code> to <code>2.0 * T_dst</code> stays inside a three-stage guarantee with a
+cycle to spare. An adopter whose synchronizer cells use a different depth should
+recompute from their own <code>SYNC_STAGES</code> rather than inheriting this factor.</p>
+</div>
+<div class="paragraph">
+<p>Enumeration and clock resolution run once, offline, against an elaborated design,
+and their output is an explicit per-block file of constraint calls that is reviewed
+and checked in. The flow itself does no discovery. This matters to an integrator
+because those files are written against the OCAH hierarchy and OCAH&#8217;s clock names.
+If you instantiate a block as delivered, you do not need to regenerate or hand-edit
+them: set <code>::cdc_hier_prefix</code> to where the block sits in your hierarchy, and
+optionally <code>::cdc_clock_alias</code> to map OCAH clock names onto your own. Regeneration
+is needed only when the block is reconfigured in a way that changes which CDC
+elements exist, since no prefix can conjure constraints for elements the file never
+listed (see <a href="#cdc-integration-checklist">Integration checklist</a> item 2).</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cdc-two-layers"><a class="anchor" href="#cdc-two-layers"></a><a class="link" href="#cdc-two-layers">5.3. The two layers</a></h3>
+<div class="paragraph">
+<p>The per-instance bounds take effect only on top of a correctly configured
+clock-group layer. That layer decides whether the tool considers inter-domain
+paths at all, so it must be established first; the per-instance exceptions then
+refine it.</p>
+</div>
+<div class="paragraph">
+<p><strong>Layer 1</strong> is <code>set_async_clock_groups</code>, defined in
+<code>flows/synth/constraints/async_clock_groups.tcl</code> and called from each block&#8217;s
+<code>constraints.sdc</code>. It declares the asynchronous groups <strong>with <code>-allow_paths</code></strong> and
+applies a loose 20 ns / -20 ns default to every inter-group clock pair.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>-allow_paths</code> is a prerequisite, not a refinement. In DC and PrimeTime exception
+priority, <code>set_false_path</code> outranks <code>set_max_delay</code> regardless of which is more
+specific, so a bare <code>set_clock_groups -asynchronous</code> silently masks <strong>every</strong>
+per-instance constraint. There is no warning; the exceptions simply have no
+effect.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The 20 ns default is what makes <code>-allow_paths</code> safe to enable. Once paths are
+allowed, every crossing without a specific constraint would otherwise be timed
+against a meaningless launch-capture relationship and fail. The default bounds
+them loosely so that only deliberately tightened paths appear as real
+requirements. It is emitted per ordered clock pair, never group-wide, because a
+20 ns bound inside a group would mask genuine setup failures on synchronous paths.</p>
+</div>
+<div class="paragraph">
+<p><strong>Layer 2</strong> is the per-instance <code>set_max_delay</code> output of the three steps above, with
+two deliberate carve-outs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Paths from primary inputs revert to the default.</strong> A synchronizer input
+reachable from a top-level port carries that port&#8217;s <code>set_input_delay</code>, which is a
+budget figure rather than real logic and can alone exceed the tightened bound.
+Only the parent block sees both ends, so there is nothing to tighten at block
+level.</p>
+</li>
+<li>
+<p><strong>Same-clock instances are skipped.</strong> A two-clock element wired to one clock is not
+a crossing, and applying <code>set_max_delay -ignore_clock_latency</code> there would
+replace a proper setup check with a flat budget that discards skew and
+uncertainty. These are emitted commented out. OCAH has five, where OpenTitan
+AES, KMAC and OTBN instantiate <code>prim_sync_reqack_data</code> on EDN and OTP interfaces
+that are separate domains upstream but share a clock in SEP.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="what-is-covered"><a class="anchor" href="#what-is-covered"></a><a class="link" href="#what-is-covered">5.4. What is covered</a></h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">CDC elements constrained</th>
+<th class="tableblock halign-left valign-top">Exceptions emitted</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">365</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">412</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">250</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">270</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">758</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">838</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>SMU is a flat build containing the other three, so its instance paths carry
+<code>u_smc/</code>, <code>gen_sep.u_sep/</code> and <code>u_dtp/</code> prefixes. It is not the sum of the parts:
+DTP contributes 375 elements inside SMU against 250 standalone, because it
+instantiates three JTAG2AXI bridges in the SMU configuration and two on its own.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cdc-integration-checklist"><a class="anchor" href="#cdc-integration-checklist"></a><a class="link" href="#cdc-integration-checklist">5.5. Integration checklist</a></h3>
+<div class="paragraph">
+<p>Five things must change, three should be checked. None of them requires editing
+per-instance data by hand; every change is either a one-line policy edit or a
+regeneration.</p>
+</div>
+<div class="sect3">
+<h4 id="1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"><a class="anchor" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"></a><a class="link" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper">5.5.1. 1. Repoint the constraints at the pin of the cell inside the prim wrapper</a></h4>
+<div class="paragraph">
+<p>This is the most important change.</p>
+</div>
+<div class="paragraph">
+<p>As shipped, the procs target the prim wrapper&#8217;s own port, <code>prim_sync3/i_d</code>. That
+port exists only as long as the wrapper survives as a hierarchical boundary, and a
+prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
+dissolving its ports.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Do not rely on the wrapper port surviving. Anchor the constraint to the pin of the
+cell instantiated <strong>inside</strong> the wrapper. When you swap in your own synchronizer,
+that cell is a real library cell or macro&#8201;&#8212;&#8201;a leaf that cannot be flattened&#8201;&#8212;&#8201;so
+its pins persist through optimisation regardless of what happens to the RTL
+hierarchy around it.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">proc set_cdc_max_delay_prim_sync3 { inst dst_clk {delay {}} } {
+    cdc_emit "prim_sync3 $inst" [cdc_sync_delay $dst_clk $delay] to \
+        {} [get_pins "$inst/u_my_sync_cell/D" -quiet]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>$inst</code> stays the wrapper instance path the generator recorded; you extend it down
+to the leaf. If your cell is instantiated in a generate loop or per bit, the path
+needs a glob. Note that generate scopes are separated by <code>.</code>, not <code>/</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">[get_pins "$inst/g_bits*.u_my_sync_cell/D" -quiet]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Anchoring this way makes hierarchy preservation a safety margin rather than a
+load-bearing dependency.</p>
+</div>
+<div class="paragraph">
+<p>If you keep the prim wrappers unchanged, the shipped port names work as-is, but
+your flow must then preserve those wrapper boundaries. A <code>destination empty</code>
+warning appearing after <code>compile</code> where there was none at constraint-load time
+means a boundary was dissolved.</p>
+</div>
+<div class="paragraph">
+<p>If you go further and replace a wrapper with a module of your own name, the
+enumeration that produced <code>&lt;block&gt;_cdc_max_delay_generated.tcl</code> knows nothing
+about it and those crossings end up with no per-instance bound at all. Nothing
+warns&#8201;&#8212;&#8201;an element that was never listed cannot report itself missing. Add the
+calls for it to <code>&lt;block&gt;_cdc_max_delay.tcl</code> by hand; the procs take an instance
+path and the capturing clock regardless of the module they were named after.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="2-point-the-files-at-your-hierarchy-or-regenerate"><a class="anchor" href="#2-point-the-files-at-your-hierarchy-or-regenerate"></a><a class="link" href="#2-point-the-files-at-your-hierarchy-or-regenerate">5.5.2. 2. Point the files at your hierarchy, or regenerate</a></h4>
+<div class="paragraph">
+<p>The checked-in <code>&lt;block&gt;_cdc_max_delay_generated.tcl</code> files are written against the
+OCAH hierarchy, with paths relative to the block&#8217;s own top and clocks named as
+OCAH names them. Two ways to make them apply to your design.</p>
+</div>
+<div class="paragraph">
+<p><strong>If you instantiate the block as delivered</strong>, reuse the files and set two
+variables. Both default to no-ops, so leaving them alone reproduces the shipped
+behaviour exactly.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl"># where the block sits in your hierarchy, with a trailing slash
+set ::cdc_hier_prefix "u_chiplet/u_mgmt/u_smc/"
+
+# optional: map an OCAH clock name onto the clock you actually drive it with
+set ::cdc_clock_alias(SMCCLK) MY_SYS_CLK</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The prefix is prepended to every instance path. The alias is applied wherever a
+clock name reaches the tool, so OCAH&#8217;s names become labels in your design. You can
+also skip the alias and supply the period directly with
+<code>set ::cdc_clock_period(SMCCLK) &lt;ps&gt;</code>, which is enough for the synchronizer
+constraints; the alias additionally matters for the data-path constraints, which
+name the destination clock as a timing endpoint and so need it to exist.</p>
+</div>
+<div class="paragraph">
+<p><strong>If you reconfigure the block</strong>, regenerate instead. Changing parameters that add
+or remove CDC elements makes the shipped file stale in the silent direction&#8201;&#8212;&#8201;the
+constraints that should exist for new elements simply will not, and nothing warns.
+The prefix does not help with that.</p>
+</div>
+<div class="paragraph">
+<p>A wrong prefix fails loudly: every path resolves to nothing, so you get a warning
+per constraint against a zero exception count, and <code>SUMMARY 0 exceptions</code> is itself
+reported as a setup failure.</p>
+</div>
+<div class="paragraph">
+<p>Regeneration is also the right answer whenever a parent build contains the block.
+Instance counts there can differ from the standalone build, so a parent&#8217;s file is
+not the child&#8217;s file with a prefix.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="3-set-the-default-bound"><a class="anchor" href="#3-set-the-default-bound"></a><a class="link" href="#3-set-the-default-bound">5.5.3. 3. Set the default bound</a></h4>
+<div class="paragraph">
+<p>The 20 ns / -20 ns figures are a starting point. Both are
+<code>info exists</code>-guarded in <code>flows/synth/constraints/async_clock_groups.tcl</code>, so
+setting them before that file is sourced overrides without editing it. <code>set_async_clock_groups</code> also
+accepts per-call overrides, which is the cleaner way to give one block a different
+default:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">set_async_clock_groups { {CLK_A} {CLK_B} } -max_delay 8000 -min_delay -8000</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Two constraints on the choice. The default must exceed every per-instance bound
+you tighten, because it also governs paths from primary inputs into synchronizers;
+if it is tighter than <code>0.5 * T_dst</code> it becomes the binding constraint there. And
+tighter is not automatically better: this is a net for crossings you have not
+enumerated, so set it loose enough that those do not fail and rely on layer 2 for
+the paths that matter.</p>
+</div>
+<div class="paragraph">
+<p>The minimum is negative deliberately. With <code>-allow_paths</code> a crossing has no
+meaningful hold relationship, and a zero floor would report hold violations where
+hold is not a real requirement.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="4-declare-your-own-clock-groups"><a class="anchor" href="#4-declare-your-own-clock-groups"></a><a class="link" href="#4-declare-your-own-clock-groups">5.5.4. 4. Declare your own clock groups</a></h4>
+<div class="paragraph">
+<p><code>set_async_clock_groups</code> is called from each block&#8217;s <code>constraints.sdc</code> with that
+block&#8217;s group list. Each inner list is one asynchronous group and globs are
+allowed. Globs resolve when the call runs, so it has to come after every
+<code>create_clock</code> and <code>create_generated_clock</code> it is meant to cover.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">set_async_clock_groups {
+    {CLK_A CLK_A_DERIVED_*}
+    {CLK_B}
+    {JTAG_TCK}
+} -exclude {{PATTERN_X* PATTERN_Y*}}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>-exclude</code> takes pairs of patterns and suppresses that part of the cross product,
+for clock pairs that already have a <code>-logically_exclusive</code> or
+<code>-physically_exclusive</code> relationship that <code>-allow_paths</code> would contradict. Omit it
+unless you hit a <code>TIM-184</code> conflict.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="5-declare-periods-for-generated-clocks"><a class="anchor" href="#5-declare-periods-for-generated-clocks"></a><a class="link" href="#5-declare-periods-for-generated-clocks">5.5.5. 5. Declare periods for generated clocks</a></h4>
+<div class="paragraph">
+<p>A generated clock exposes no readable <code>period</code> attribute in Design Compiler, so
+any generated clock that clocks a CDC element needs an explicit entry in
+<code>&lt;block&gt;_cdc_max_delay.tcl</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">set ::cdc_clock_period(MY_DIV_CLK) [expr {4 * $clock_periods(MY_MASTER_PERIOD)}]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Omitting one is loud&#8201;&#8212;&#8201;a <code>no period for clock</code> warning per affected element&#8201;&#8212;&#8201;so
+a clean run means you have them all. Keep them in step with your
+<code>create_generated_clock</code> divide factors; nothing cross-checks them.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="also-check"><a class="anchor" href="#also-check"></a><a class="link" href="#also-check">5.5.6. Also check</a></h4>
+<div class="paragraph">
+<p><strong>Hierarchy preservation.</strong> The reference flow applies <code>set_ungroup false</code> and
+<code>set_boundary_optimization false</code> to the CDC designs before <code>compile</code>. How much
+this matters depends on item 1: with leaf cell pins it is a safety margin, with
+wrapper ports it is load-bearing. Either way, your flow needs the equivalent, and
+it needs to name your cells rather than OCAH&#8217;s.</p>
+</div>
+<div class="paragraph">
+<p><strong>Delay factors.</strong> <code>0.5 * T_dst</code> and <code>1.0 * T_dst</code> are policy, not physics. If your
+methodology wants more settling margin, change <code>cdc_sync_delay</code> and
+<code>cdc_data_delay</code> in <code>flows/synth/constraints/cdc_max_delay_procs.tcl</code>.
+Per-instance overrides are also available without editing procs: every proc takes
+an optional trailing delay in picoseconds, and re-stating a call in
+<code>&lt;block&gt;_cdc_max_delay.tcl</code> after the <code>source</code> wins.</p>
+</div>
+<div class="paragraph">
+<p><strong>Tool differences.</strong> Two Design Compiler specific choices to revisit under
+PrimeTime. <code>get_attribute &lt;pin&gt; clocks</code> is used because <code>get_clocks -of_objects</code>
+is PrimeTime-only, and generated clocks may expose a readable <code>period</code> in
+PrimeTime, making item 5 unnecessary.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="confirming-it-worked"><a class="anchor" href="#confirming-it-worked"></a><a class="link" href="#confirming-it-worked">5.6. Confirming it worked</a></h3>
+<div class="paragraph">
+<p>Load the constraints and check the summary:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>INFO: cdc_max_delay: SUMMARY &lt;n&gt; exceptions, 0 warnings</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Zero warnings is necessary but not sufficient. A pin pattern that matches nothing
+warns, but one that matches the <strong>wrong</strong> thing does not. Two stronger checks:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Predict the count.</strong> Multiply each proc&#8217;s number of emitted exceptions by its
+number of calls and compare against the summary. A mismatch localises the
+failure, because the size of the shortfall identifies which proc did not fire.</p>
+</li>
+<li>
+<p><strong>Confirm the precedence.</strong> Layer 2 is on pins and layer 1 on clocks, and the
+design assumes the more specific specification wins. Verify once in your tool:</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-tcl hljs" data-lang="tcl">report_timing -to [get_pins &lt;a synchronizer&gt;/i_d] -nworst 1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>max_delay</code> line must show your <code>0.5 * T_dst</code> value rather than the default. If
+it shows the default, layer 2 is inert and nothing else in this section applies.</p>
+</div>
+<div class="paragraph">
+<p><code>SUMMARY 0 exceptions</code> is treated as a setup failure and warns as such. It means
+the constraints did not load, not that the design has no crossings.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="scope-and-limitations"><a class="anchor" href="#scope-and-limitations"></a><a class="link" href="#scope-and-limitations">5.7. Scope and limitations</a></h3>
+<div class="paragraph">
+<p>The 20 ns default is loose by design. Against a 1 ns clock it permits twenty clock
+periods of delay into a synchronizer input. It is a safety net that keeps
+<code>-allow_paths</code> usable, not a real constraint; any crossing that matters belongs in
+layer 2.</p>
+</div>
+<div class="paragraph">
+<p>Enumeration works from a fixed list of module names, so a hand-written two-flop
+synchronizer that uses none of them will not be found. Structural detection of
+crossings is what a static CDC tool does, and this flow does not attempt it. These
+constraints time crossings already known to exist; they are not a substitute for
+CDC signoff.</p>
+</div>
+<div class="paragraph">
+<p>Because the instance list is generated offline, removals are loud but additions
+are silent. A stale instance path warns, but a synchronizer added without
+regenerating produces no warning: the constraint never exists, the path falls back
+to the default, and it passes timing. Regenerate and diff the result against what
+is checked in whenever the RTL changes.</p>
+</div>
 </div>
 </div>
 </div>

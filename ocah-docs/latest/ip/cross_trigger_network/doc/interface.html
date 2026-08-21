@@ -90,9 +90,6 @@
     <a class="nav-link" href="../../../index.html">Documentation Overview</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../../../revision.html">Revision History</a>
-  </li>
-  <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../../../about-ocah.html">About OCAH</a>
   </li>
   <li class="nav-item" data-depth="1">
@@ -198,8 +195,8 @@
 <div class="sect4">
 <h5 id="cross-trigger-port-ctp"><a class="anchor" href="#cross-trigger-port-ctp"></a><a class="link" href="#cross-trigger-port-ctp">Cross Trigger Port (CTP)</a></h5>
 <div class="paragraph">
-<p>The following diagram and table illustrate the logical behavior and
-signal interface of a CTP module:</p>
+<p>The following diagram and table illustrate the logical behavior and signal
+interface of a CTP module:</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -335,14 +332,14 @@ this signal. In wire-OR mode it is unused.</p></td>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>CT_Src[N-1:0]</strong> - Cross trigger pulse output signals from the CTM to
-CLAs, CTPs, or other cross trigger sinking devices, where N is the
-number of these cross trigger sinks.<br></p>
+<p><strong>CT_Src[N-1:0]</strong> - Cross trigger pulse output signals from the CTM to CLAs,
+CTPs, or other cross trigger sinking devices, where N is the number of these
+cross trigger sinks.<br></p>
 </li>
 <li>
-<p><strong>CT_Dst[M-1:0]</strong> - Cross trigger pulse input signals to the CTM from
-CLAs, CTPs, or other cross trigger generating devices, where M is the
-number of these cross trigger sources.</p>
+<p><strong>CT_Dst[M-1:0]</strong> - Cross trigger pulse input signals to the CTM from CLAs,
+CTPs, or other cross trigger generating devices, where M is the number of
+these cross trigger sources.</p>
 </li>
 </ul>
 </div>
@@ -358,7 +355,8 @@ number of these cross trigger sources.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>INT_CT_MODE</code> - Per-bit mode selection for internal CTPs (0 = Wire-OR, 1 = P2P)</p>
+<p><code>INT_CT_MODE</code> - Per-bit mode selection for internal CTPs (0 = Wire-OR, 1 =
+P2P)</p>
 </li>
 <li>
 <p><code>axil_req_t</code>, <code>axil_resp_t</code> - AXI-Lite request/response types</p>
@@ -403,13 +401,13 @@ output logic [NUM_INT_CT-1:0] ctm_dst_ack_o
 <div class="ulist">
 <ul>
 <li>
-<p><code>hw/ip/cross_trigger_port</code> - Cross Trigger Port IP</p>
+<p><code>hw/ip/cross_trigger/cross_trigger_port</code> - Cross Trigger Port IP</p>
 </li>
 <li>
-<p><code>hw/ip/cross_trigger_matrix</code> - Cross Trigger Matrix IP</p>
+<p><code>hw/ip/cross_trigger/cross_trigger_matrix</code> - Cross Trigger Matrix IP</p>
 </li>
 <li>
-<p><code>deps/axi</code> - AXI infrastructure (axi_lite_xbar)</p>
+<p><code>vendor/pulp-platform/axi</code> - AXI infrastructure (<code>axi_lite_xbar</code>)</p>
 </li>
 </ul>
 </div>

@@ -90,9 +90,6 @@
     <a class="nav-link" href="../../../index.html">Documentation Overview</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../../../revision.html">Revision History</a>
-  </li>
-  <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../../../about-ocah.html">About OCAH</a>
   </li>
   <li class="nav-item" data-depth="1">
@@ -227,7 +224,12 @@ programmable divisor for timing precision.</p>
 </div>
 <div class="paragraph">
 <p>The interrupt controller handles six prioritized interrupt sources, and
-modem control supports all standard modem signals. DMA is supported in
+modem control supports all standard modem signals. The modem interface is
+status and control only - the inputs are synchronized and reported in the
+<code>MSR</code> register with change detection and an interrupt, and the outputs are
+driven directly from the <code>MCR</code> register. No modem signal gates the
+transmit or receive datapath, so hardware flow control, if needed, is
+implemented by software on top of these registers. DMA is supported in
 both immediate and hysteresis modes for efficient data transfers. Both
 internal and external loopback modes are supported for testing and
 diagnostics.</p>
@@ -246,9 +248,9 @@ reliability.</p>
 maintaining timing accuracy and signal integrity. It generates frames
 with selectable start, parity, and stop bits to match protocol
 requirements and legacy compatibility. Baud rate alignment uses 16x
-oversampling for precise timing. Flow control honors CTS signals to
-avoid overrunning the receiver. It also supports break signal generation
-for protocol control or device reset.</p>
+oversampling for precise timing. It also supports break signal generation
+for protocol control or device reset. The engine has no modem inputs and
+transmits whenever the TX FIFO is non-empty; it does not stall on CTS.</p>
 </div>
 <div class="paragraph">
 <p><strong>Receive Engine</strong> (uart_rx)</p>
