@@ -33,7 +33,20 @@ init:
   stage: init
   <<: *ci_rules
   script:
-    - make ocah-nonfree-init
+    - |
+      set -e
+      # Schedule and web always run the real companion. A documentation-only
+      # push or PR still has to produce nonfree/ci.yml so the trigger job can
+      # report the required GitHub check; use the stub instead of cloning.
+      if [ "$CI_PIPELINE_SOURCE" = "schedule" ] || [ "$CI_PIPELINE_SOURCE" = "web" ]; then
+        make ocah-nonfree-init
+      elif python3 scripts/ci/classify_diff.py --is-docs-only; then
+        mkdir -p nonfree
+        cp scripts/ci/docs-only-child.yml nonfree/ci.yml
+        echo "Documentation-only diff; child pipeline is a no-op."
+      else
+        make ocah-nonfree-init
+      fi
   artifacts:
     paths:
       - nonfree/ci.yml

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Stub child pipeline. The harness parent copies this over nonfree/ci.yml
+# when the triggering diff is documentation-only, so GitLab still reports a
+# green parent check without cloning the companion or running VCS smokes.
+
+stages:
+  - gate
+
+docs-only-skip:
+  stage: gate
+  tags: [chiplet-ip]
+  script:
+    - echo "Harness classified this pipeline as documentation-only; nonfree smokes were not started."
