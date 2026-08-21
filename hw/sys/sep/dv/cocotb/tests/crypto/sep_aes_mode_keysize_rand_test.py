@@ -3,7 +3,7 @@
 
 Drives the OpenTitan AES engine directly over the CPU-LSU AXI master (no_cpu, no
 firmware, SW key) across the full standalone matrix the Phase-1 KM->AES sideload
-KAT (#11, ECB-256 via keymgr) does not reach:
+KAT (`sep_km_aes_sideload_kat_test`, ECB-256 via keymgr) does not reach:
 
     {ECB, CBC, CTR} x {128, 192, 256}  (9 cells).
 
@@ -11,13 +11,16 @@ reference parity: MERGED_INTO rep of the reference suite aes mode/keylen directe
 uvm_tests/aes suite is register/alert-centric with no standalone CBC/CTR/128/192
 ciphertext golden, so the independent pure-Python golden (env/sep_aes_golden.py:
 FIPS-197 ECB 128/192/256 + SP800-38A CBC/CTR self-tested) is the reference and
-this rep is stronger than the reference suite for encryption breadth. DISTINCT from #11 (ECB-256
-via sideload) -- AES mode/key-size breadth is standalone SW-key across modes/sizes.
+this rep is stronger than the reference suite for encryption breadth. DISTINCT from
+`sep_km_aes_sideload_kat_test` (ECB-256 via sideload) -- AES mode/key-size breadth
+is standalone SW-key across modes/sizes.
 
 Entropy: OpenTitan AES masking reseeds its PRNG from the crypto-EDN leg, so the
 test brings up the real ESRC->DRBG->EDN stack (+esrc_noise_force) before any AES
 op or the engine stalls. The DRBG scoreboard runs non-strict (AES mode/key-size breadth's contract is
-AES correctness, not the entropy golden -- that is #15/KMAC mode/strength breadth/crypto-EDN multisink arbitration); simply
+AES correctness, not the entropy golden -- that is
+`sep_drbg_real_sink_multi_km_aes_test` / KMAC mode-strength / crypto-EDN
+multisink arbitration); simply
 reaching the ciphertext checks proves masking entropy flowed (CHK-ENTROPY).
 
 RAND-REP contract: a SepAesCfg config object is the single source
@@ -67,12 +70,9 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         await self.aes.trigger_prng_reseed()   # seed the masking PRNG from EDN
 
         # Collect each cell's DUT ciphertext, so the matrix claim rests on observed
-        # output rather than on the loop's own trip count. The former guard was
-        # `walked == len(MODES) * len(KEY_SIZES)` -- both sides file-scope constants,
-        # incremented once per iteration by the loop structure, so it asserted its own
-        # arithmetic. Distinct results also show the nine cells really did program nine
-        # different configurations: two cells that silently ran the same mode and key
-        # size on the same random inputs would collide here.
+        # output. Distinct results also show the nine cells programmed nine different
+        # configurations: two cells that silently ran the same mode and key size on
+        # the same random inputs would collide here.
         results: dict[str, tuple[int, ...]] = {}
         for mode in MODES:
             for key_bits in KEY_SIZES:

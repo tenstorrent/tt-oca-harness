@@ -17,10 +17,11 @@ the PER-ENTRY allow-by-rule vs block-by-default policy.
 reference refs: fabric sep_inbound_filter_blockbydefault_test,
 sep_inbound_filter_programming_ownership_test, sep_inbound_id_remap_test. Mapping: COVERED_STRONGER -- real external AXI master
 through the live filter with an exact rdata value-check, vs the reference suite proxy / CSR-only.
-CHK-OWNERSHIP ports reference suite run_filter_ownership(): the external master is denied
-read AND write of the filter's own config CSR (0x10A2_1000) with a completed
-DECERR, while the CPU-LSU reads the programmed rule -- the "only the SEP CPU can
-program these filters" asymmetry (hw/sys/sep/doc/fabric.adoc).
+CHK-OWNERSHIP ports the CPU-vs-external asymmetry at the filter CFG CSR
+(0x10A2_1000): CPU-LSU reads the programmed rule, the external master completes
+DECERR on read and write, and the denied write does not land. That is the
+spec's "only the SEP CPU can program these filters" under the programmed allow
+window, which does not include the CFG address.
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-NONE (directed).
 """
@@ -145,15 +146,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         assert landed == 0x5555_AAAA, f"allowed ext write did not land (0x{landed:08x})"
         self.logger.info("CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write (DECERR<->OKAY, landed)")
 
-        # CHK-OWNERSHIP: only the SEP CPU may program the inbound filter. Prove the
-        # asymmetry at the filter's OWN config CSR (entry FILTER_CONFIG @ 0x10A2_1000):
-        # the CPU-LSU path reads the programmed rule back (masked over the RW fields,
-        # excluding the RO data_bus_width), but the EXTERNAL master is DENIED both read
-        # and write of that CSR with a completed DECERR (not OKAY/SLVERR/timeout), and
-        # the denied write does not corrupt the rule. Direct port of reference suite
-        # sep_inbound_filter_programming_ownership_test run_filter_ownership(); the
-        # external OKAY vs DECERR distinction is live in this same run (CHK-ALLOW-RULE
-        # returned OKAY for the allowed addr), so the DECERR assertion is non-vacuous.
+        # CHK-OWNERSHIP: CPU-LSU vs external at the filter CFG CSR. The CPU reads
+        # the programmed rule; the external master is denied read and write with a
+        # completed DECERR; the denied write does not land. The allow window does
+        # not cover this CSR; CHK-ALLOW-RULE already showed OKAY on the allowed
+        # address in this run, so the DECERR is not a dead bus.
         cfg_addr = self.fcfg.cfg_addr
         expected_cfg = self.fcfg.config_word(read_allowed=True, write_allowed=True)
         cpu_cfg = await self.filt.read_cpu(cfg_addr)
@@ -177,12 +174,39 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         self.logger.info(
             "CHK-OWNERSHIP PASS: filter cfg 0x%08x -- CPU-LSU reads rule (rw 0x%08x), external "
-            "R+W DECERR, rule intact (only the SEP CPU can program the filter)",
+            "R+W DECERR, rule intact",
             cfg_addr, cpu_cfg & FILTER_RW_MASK)
 
-        # CHK-NONVAC: both a blocked (DECERR) and an allowed (OKAY) external access were
-        # observed under the SAME sep_debug=0 (filter active) -- the rule, not the global gate.
+        # CHK-NONVAC before the spec-vs-RTL window check: allow + block were already
+        # observed. The next assert is expected to FAIL on today's RTL.
         self.logger.info(
             "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)")
-        # No CHK-ALL summary line. It asserted nothing, and a plan row keyed on it
-        # would record coverage against a string with no checker behind it.
+
+        # fabric.adoc: "Only the SEP CPU can program these filters." The deny above
+        # could still be block-by-default (CFG is outside entry 0's window). A second
+        # entry allow-lists the CFG address with read+write; the spec sentence holds
+        # only if the external path still DECERR and still cannot land a write.
+        own = SepInboundFilterCfg(entry=1)
+        own.allow_addr = cfg_addr
+        await self.filt.program_rule(own, read_allowed=True, write_allowed=True)
+        resp, _ = await self._ext_read(cfg_addr)
+        assert resp == RESP_DECERR, (
+            f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
+            f"0x{cfg_addr:08x} on entry 1, external read resp={resp}, expected "
+            f"DECERR (RTL vs fabric.adoc: only the SEP CPU programs the filter)"
+        )
+        resp = await self._ext_write(cfg_addr, 0xFFFF_FFFF)
+        assert resp == RESP_DECERR, (
+            f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
+            f"0x{cfg_addr:08x} on entry 1, external write resp={resp}, expected "
+            f"DECERR (RTL vs fabric.adoc)"
+        )
+        cpu_cfg_after2 = await self.filt.read_cpu(cfg_addr)
+        assert (cpu_cfg_after2 & FILTER_RW_MASK) == (expected_cfg & FILTER_RW_MASK), (
+            f"filter cfg corrupted by denied ext write after allow-list: "
+            f"0x{cpu_cfg_after2:08x}"
+        )
+        self.logger.info(
+            "CHK-OWNERSHIP-WINDOW PASS: filter cfg 0x%08x still DECERR after entry-1 allow "
+            "window covers it (spec: only the SEP CPU can program the inbound filter)",
+            cfg_addr)

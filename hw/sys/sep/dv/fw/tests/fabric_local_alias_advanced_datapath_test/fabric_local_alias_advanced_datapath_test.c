@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_071: fabric_local_alias_advanced_datapath_test
+ * fabric_local_alias_advanced_datapath_test
  *
  * Goal: axi_local_alias_remap 72.95% -> 90%+ (needs 17.05% improvement)
  * Strategy: Advanced local-alias datapath; deep signal coverage
@@ -497,45 +497,45 @@ static int test_error_injection_advanced_recovery(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_071: Local Alias Advanced Datapath Test\n");
+    printf("Local Alias Advanced Datapath Test\n");
     printf("Goals: axi_local_alias_remap 72.95%% -> 90%%+ (needs 17.05%% improvement)\n");
     printf("Strategy: Advanced local-alias datapath; deep signal coverage\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_071");
+        test_fail("fabric_local_alias_advanced_datapath_test");
         return TEST_FAIL;
     }
 
     // Run all local-alias advanced datapath scenarios
     if (test_advanced_local_alias_datapath_matrix() != 0) {
-        test_fail("TC_FABRIC_071 - Advanced Local Alias Datapath Matrix");
+        test_fail("Advanced Local Alias Datapath Matrix");
         return TEST_FAIL;
     }
 
     if (test_deep_signal_toggle_coverage() != 0) {
-        test_fail("TC_FABRIC_071 - Deep Signal Toggle Coverage");
+        test_fail("Deep Signal Toggle Coverage");
         return TEST_FAIL;
     }
 
     if (test_complex_routing_scenarios() != 0) {
-        test_fail("TC_FABRIC_071 - Complex Routing Scenarios");
+        test_fail("Complex Routing Scenarios");
         return TEST_FAIL;
     }
 
     if (test_timing_critical_datapath_sequences() != 0) {
-        test_fail("TC_FABRIC_071 - Timing Critical Datapath Sequences");
+        test_fail("Timing Critical Datapath Sequences");
         return TEST_FAIL;
     }
 
     if (test_error_injection_advanced_recovery() != 0) {
-        test_fail("TC_FABRIC_071 - Error Injection Advanced Recovery");
+        test_fail("Error Injection Advanced Recovery");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_071: LOCAL ALIAS ADVANCED DATAPATH TEST PASSED ===\n");
+    printf("\n=== LOCAL ALIAS ADVANCED DATAPATH TEST PASSED ===\n");
     printf("Expected improvement: axi_local_alias_remap 72.95%% -> 90%%+ (17.05%% improvement)\n");
 
-    test_pass("TC_FABRIC_071");
+    test_pass("fabric_local_alias_advanced_datapath_test");
     return TEST_PASS;
 }

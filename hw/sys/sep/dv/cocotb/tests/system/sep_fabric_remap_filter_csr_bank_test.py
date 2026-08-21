@@ -78,10 +78,7 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         # to its field -- the neighbor END_lo stays 0 after we write START_lo (a
         # stuck-at-reset bank fails the readback; a field-bleed fails the neighbor).
         # Read the register BEFORE writing it, so "differs from reset" is an observation
-        # rather than an assumption. The former anchor was `c.start_lo != 0`, and the
-        # config builds that value as `(random & ~0xFFF) or 0x1000`, which makes zero
-        # unreachable -- it asserted a property of its own constructor and never read
-        # the register's reset value at all.
+        # of the DUT, not a property of the written value.
         pre = await self.fab.read32(start_lo)
         rb = await self.fab.rw_readback(start_lo, c.start_lo)
         assert rb == c.start_lo, f"alias r{c.alias_rw_region} START_lo R/W: 0x{rb:08x} != 0x{c.start_lo:08x}"
