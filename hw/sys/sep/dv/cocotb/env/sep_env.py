@@ -19,7 +19,7 @@ class SepEnv(uvm_env):
         # inbound filter (block-by-default; skipped only when sep_debug=1). It
         # idles unless a test drives it, so existing tests are unaffected. The
         # prefix attribute is read by the agent's build_phase (top-down, so it is
-        # set in time). The OSS analog of OCAH's ext_axi_sqr (master[0]).
+        # set in time). The OSS analog of the reference suite's ext_axi_sqr (master[0]).
         self.ext_axi_agent = SepAxiAgent("ext_axi_agent", self)
         self.ext_axi_agent.axi_prefix = "m_axi"
         self.scoreboard = SepScoreboard("scoreboard", self)

@@ -12,8 +12,8 @@
 //   2. nmi_set_vector_reg();               // SEP_NMI_VEC = &_nmi_handler
 //   3. enable an NMI source (e.g. the WDT bark, sep_wdt.h)
 //
-// This is the OSS analog of the OCAH fw/sep/tests/common/nmi.h, using the
-// SEP_NMI_VEC register path (the OCAH testbench-mailbox LOAD_NMI_ADDR path is not
+// This is the OSS analog of the reference suite fw/sep/tests/common/nmi.h, using the
+// SEP_NMI_VEC register path (the reference testbench-mailbox LOAD_NMI_ADDR path is not
 // used in the OSS env).
 
 #ifndef SEP_NMI_H

@@ -36,7 +36,9 @@ Test Plan
 ---------
 
 The CTM scenarios are enrolled in the DTP verification plan,
-`hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`.
+`hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`. See `../../doc/architecture.adoc` and
+`../../doc/interface.adoc` for the design description this testbench checks
+against.
 
 Intended Usage
 --------------

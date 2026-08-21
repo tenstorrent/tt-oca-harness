@@ -9,8 +9,8 @@ and proves the OR-packing assembled EXACTLY those bits -- a 1:1 source->bit map
 with NO non-driven neighbor in [8:31] aliasing. This is the same packing/aliasing
 bug class that caught the mailbox 8->1 truncation, re-run for the crypto/KM region.
 
-OCAH ref: uvm_tests/system/sep_irq_extended_connectivity_test @ 9ec8f9f4b.
-Mapping: COVERED_STRONGER -- OCAH asserts connectivity one source at a time; this
+reference ref: uvm_tests/system/sep_irq_extended_connectivity_test.
+Mapping: COVERED_STRONGER -- the reference suite asserts connectivity one source at a time; this
 test asserts a cross-IP set SIMULTANEOUSLY and proves no aggregator smear. Distinct
 from the single-source-at-a-time aggregator check (sep_irq_ip_to_aggregator_test)
 and from the CPU PIC/ISR delivery path. CPU-ISR delivery of the simultaneous set and
@@ -111,11 +111,12 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             f"simultaneous fan-in: [8:31]=0x{vec & REGION_MASK:08x}, expected "
             f"0x{want:08x} (bits {[s.agg_idx for s in sources]})"
         )
-        # Confirm each driven bit individually (named evidence per source).
+        # Per-source evidence. No `(vec >> agg_idx) & 1` test: the poll above already
+        # established vec & REGION_MASK == want & REGION_MASK, and agg_idx is a member
+        # of want, so that bit is set by entailment. The INTR_STATE read below is
+        # independent -- it addresses the IP's own register rather than the aggregate --
+        # so it is what carries per-source evidence.
         for src in sources:
-            assert (vec >> src.agg_idx) & 1, (
-                f"{src.name}: bit[{src.agg_idx}] not set in the simultaneous vector"
-            )
             assert await self.irq.read_state_bit(src) == 1, (
                 f"{src.name}: INTR_STATE bit not set"
             )
@@ -125,20 +126,20 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             len(sources), [s.agg_idx for s in sources], vec & REGION_MASK,
         )
 
-        # CHK-ANTI-ALIAS: every NON-driven bit in [8:31] stays 0 (the mailbox-bug
-        # class check -- an OR-network smear would light a neighbor).
-        alias = (vec & REGION_MASK) & ~want
-        assert alias == 0, (
-            f"anti-alias: non-driven bits set in [8:31] = 0x{alias:08x} "
-            f"(vec=0x{vec:08x}); aggregator smear"
-        )
+        # The anti-alias property is proven by the EXACT-equality poll above, not by a
+        # separate check. A former CHK-ANTI-ALIAS assert required
+        # `(vec & REGION_MASK) & ~want == 0`; since the poll only returns when
+        # `vec & REGION_MASK == want & REGION_MASK`, and want & REGION_MASK is a subset
+        # of want, that expression is identically zero -- it could not fail for any DUT
+        # behaviour. A real aggregator smear lights a neighbour bit, which breaks the
+        # poll's equality and times it out. That is where the proof actually lives.
         self.logger.info(
             "CHK-ANTI-ALIAS PASS: no non-driven bit in [%d:%d] is set (mask=0x%08x)",
             REGION_LO, REGION_HI, REGION_MASK,
         )
 
         # CHK-CLEAR: W1C every driven source's INTR_STATE -> the region returns to 0
-        # and each IP's INTR_STATE bit reads 0 (RW1C deassert path, AGENTS.md §7).
+        # and each IP's INTR_STATE bit reads 0 (RW1C deassert path).
         for src in sources:
             await self._drive(src, on=False)
         ok, vec = await self._poll_region(0)

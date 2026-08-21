@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // SEP OpenTitan-SPI flash command-breadth firmware test (OSS rep SPI flash command breadth). Direct
-// cpu-firmware port of the OCAH spi_ot_flash_write_read_test +
+// cpu-firmware port of the reference spi_ot_flash_write_read_test +
 // spi_ot_flash_sector_erase_test, driving the OT SPI host (@ 0x10B0_0000) against
-// the OcahSpiFlash BFM. Firmware-mode (like every OCAH spi_ot flash test + the
+// the OcahSpiFlash BFM. Firmware-mode (like every reference spi_ot flash test + the
 // Phase-1 sep_spi_ot_dma_rx) -- the OT spi_host multi-command flash sequence runs
 // from the EL2 CPU, not the no_cpu AXI splice.
 //

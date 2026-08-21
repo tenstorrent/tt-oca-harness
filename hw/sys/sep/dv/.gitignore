@@ -19,5 +19,5 @@ cocotb/tests/sep_dtcm.hex
 **/__pycache__/
 *.pyc
 
-# Staged real KM firmware (built artifact; see AGENTS.md §1 build-from-source TODO)
+# Staged real KM firmware (built artifact; build-from-source TODO)
 cocotb/tests/rom_main.rom.parhex

@@ -11,7 +11,8 @@ from seq_lib.sep_axi_smoke_seq import sep_axi_smoke_seq
 
 @pyuvm.test()
 class sep_axi_smoke_test(sep_base_test):
-    """SEP no-CPU AXI smoke: read CLOCK_GATE_CTRL over the CPU LSU bus."""
+    """SEP no-CPU AXI smoke: read SEP_LOCAL_BASE_ADDR and write/read-back four
+    SEP_CPU_CTRL registers over the CPU LSU bus."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()

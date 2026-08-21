@@ -3,12 +3,12 @@
 
 Runs one keyed KMAC-256 (cSHAKE, PREFIX="KMAC") over a message, with the key
 either from the KM sideload port (CFG.sideload=1) or the public KEY_SHARE CSRs
-(SW-key path, sideload=0) -- mirroring the OCAH sep_km_kmac_sideload_kat_test_seq
+(SW-key path, sideload=0) -- mirroring the reference sep_km_kmac_sideload_kat_test_seq
 op helper (RAL there; direct AXI here, like SepAes/SepHmac). Masking is enabled
 (EnMasking), so the digest is read as STATE share0 ^ share1. 32-bit beats (size=2).
 
 KMAC register map (base 0x1091_3000; vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_reg_pkg.sv; bit/cmd
-encodings reused from fw/sep/tests/kmac_test + the OCAH seq):
+encodings reused from fw/sep/tests/kmac_test + the reference seq):
   CFG_SHADOWED @ 0x014 (shadowed: written twice)   CMD @ 0x018   STATUS @ 0x01C
   KEY_SHARE0_0 @ 0x030 .. KEY_SHARE0_15 @ 0x06C    KEY_SHARE1_0 @ 0x070
   KEY_LEN @ 0x0B0   PREFIX_0 @ 0x0B4   ERR_CODE @ 0x0E0
@@ -66,7 +66,7 @@ KMAC_INTR_KMAC_DONE = 1 << 0
 KMAC_INTR_KMAC_ERR = 1 << 2
 
 # CFG_SHADOWED for keyed KMAC-256 cSHAKE, entropy_mode=EDN, entropy_ready=1
-# (FW/OCAH-confirmed): kmac_en[0], kstrength L256 (0x4), mode cSHAKE (0x20),
+# (FW/reference suite-confirmed): kmac_en[0], kstrength L256 (0x4), mode cSHAKE (0x20),
 # entropy_mode EDN (0x1_0000), entropy_ready (0x100_0000), sideload (0x1000).
 KMAC_CFG_KEYED_SIDELOAD = 0x0101_1025
 KMAC_CFG_KEYED_SWKEY = 0x0101_0025
@@ -153,12 +153,27 @@ class SepKmac(SepAxiRegDriver):
 
     _DRIVER_TAG = "KMAC"
 
-    async def read_public_key_shares(self) -> tuple[list[int], list[int]]:
-        """Read the public KEY_SHARE0/1 CSRs. With a KM-sideloaded key these stay
-        write-only and read back zero -- the key is not exposed on the frontdoor."""
+    async def read_public_key_shares(self) -> tuple[list[int], list[int], int]:
+        """Read the public KEY_SHARE0/1 CSRs, plus a positive control.
+
+        These key registers are declared write-only and the generated register
+        block ties their read data to a constant '0. Reading them back as zero is
+        therefore NOT evidence that the sideloaded key is unexposed -- they read
+        zero whether the key is protected, mirrored elsewhere, or never delivered.
+        (Directly demonstrated: a decoy value written to these addresses earlier in
+        the run still reads back as zero here.) What the readback can do is catch
+        the day they become readable.
+
+        For that to be worth anything the read path must be known alive, so this
+        also returns STATUS, a readable register in the same window over the same
+        bus. A caller asserting the shares are zero must also assert the control
+        read is non-zero; otherwise a dead read path returning zeros for everything
+        would look identical to a pass.
+        """
         s0 = [await self._rd(KMAC_KEY_SHARE0_0 + i * 4) for i in range(KMAC_NUM_PUBLIC_KEY)]
         s1 = [await self._rd(KMAC_KEY_SHARE1_0 + i * 4) for i in range(KMAC_NUM_PUBLIC_KEY)]
-        return s0, s1
+        control = await self._rd(KMAC_STATUS)
+        return s0, s1, control
 
     async def keyed_mac(self, msg_words: list[int], *, sideload: bool,
                         sw_key: list[int] | None = None) -> list[int]:
@@ -234,7 +249,7 @@ class SepKmac(SepAxiRegDriver):
         """Run one KMAC-family op (sha3/shake/cshake/kmac SW-key) per ``cfg``;
         return the digest words (STATE share0 ^ share1, masking on). Proves the
         INTR_STATE.kmac_done RW1C contract (observed set -> W1C -> reads 0) before
-        CmdDone (AGENTS.md §7)."""
+        CmdDone."""
         if cfg.kmac_en:
             await self._wr(KMAC_KEY_LEN, KMAC_KEYLEN[cfg.key_bits])
         await self._write_prefix(cfg.prefix_bytes())

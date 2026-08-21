@@ -25,6 +25,15 @@ committed `regs/cross_trigger_matrix.rdl` and writes `regs/gen/`:
 make -f ocah.mk ocah-regen-regs TARGET=cross_trigger_matrix
 ```
 
+Clean it with:
+
+```bash
+make -f ocah.mk ocah-regen-regs-clean TARGET=cross_trigger_matrix
+```
+
+The flow runs through `uv`, which installs peakrdl and the exporters from the
+lockfile; nothing else needs to be on `PATH`.
+
 ## Port Counts
 
 The matrix is sized for the DTP cross-trigger topology of 26 CT_Src and 26

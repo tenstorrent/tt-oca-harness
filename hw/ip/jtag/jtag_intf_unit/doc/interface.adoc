@@ -53,7 +53,8 @@ The JTAG interface unit uses 6-bit instruction encodings:
 |0x3F |BYPASS (IEEE 1149.1, Section 8.4) |1 |
 |===
 
-**NOTE:** All instruction encodings _not_ explicitly defined in this table map to the BYPASS instruction.
+**NOTE:** All instruction encodings _not_ explicitly defined in this table map
+to the BYPASS instruction.
 
 ===== Signal Interface
 
@@ -86,6 +87,6 @@ The JTAG interface unit uses 6-bit instruction encodings:
 
 The JTAG Interface Unit depends on the following components:
 
-* `hw/ip/jtag_ptap` - Primary TAP
-* `hw/ip/jtag_stap` - Secondary TAP
-* `hw/common/prim` - Primitive cells
+* `hw/ip/jtag/jtag_ptap` - Primary TAP
+* `hw/ip/jtag/jtag_stap` - Secondary TAP
+* `hw/common/och_prim` - Primitive cells

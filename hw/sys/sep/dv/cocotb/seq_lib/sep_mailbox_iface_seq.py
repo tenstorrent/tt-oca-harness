@@ -3,7 +3,7 @@
 
 Drives the SEP outbound_mailbox_0 aperture (0x10A0_0000) over the CPU-LSU master --
 the SEP/CPU side of the two-port cross-FIFO, reachable with NO inbound filter. This
-is the TX-path test (OCAH ): WRITE_DATA pushes the TX FIFO; READ_DATA
+is the TX-path test (as in the reference suite): WRITE_DATA pushes the TX FIFO; READ_DATA
 pops the RX FIFO, which is empty on bare-sep (no peer port wired) -> read returns
 the 0xFEEDDEAD sentinel + SLVERR. Over the CPU-LSU master WRITE_DATA is accessed as
 a single native 64-bit beat = one FIFO entry (a 32-bit sub-word write to WRITE_DATA

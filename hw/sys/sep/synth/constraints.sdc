@@ -15,7 +15,7 @@
 # (e.g. OpenROAD/OpenSTA) is added to the flow. See
 # flows/synth/yosys/README.md for the rationale.
 #
-# Known limitation, called out explicitly:
+# Known limitations, called out explicitly:
 #   - The entropy clock-tree section below (ENTROPY_ROSC_CLK /
 #     ENTROPY_SHARED_RO / per-tap generated clocks) targets post-synthesis
 #     standard-cell instances by hierarchical path and by cell reference name
@@ -26,7 +26,38 @@
 #     section is kept as documentation of the intended clock topology for
 #     whichever technology/EDA flow eventually implements it, not as a
 #     constraint that resolves against this repo's RTL or PDK today.
+#   - CDC crossings are bounded in two layers, both included from this file.
+#     `set_async_clock_groups` below declares the asynchronous groups with
+#     `-allow_paths` and applies a loose default max_delay per inter-group
+#     clock pair; `sep_cdc_max_delay.tcl`, sourced at the end, tightens each
+#     synchronizer and async FIFO individually. The `-allow_paths` is not
+#     optional: `set_false_path` outranks `set_max_delay` in exception
+#     priority, so a bare `set_clock_groups -asynchronous` would silently mask
+#     every per-instance bound.
+#   - `sep_cdc_max_delay_generated.tcl` enumerates this block's CDC elements.
+#     It is produced once, offline, against an elaborated design and checked
+#     in; nothing discovers instances when this file is read. Its paths and
+#     clock names are OCAH's, so instantiating this block deeper in a
+#     hierarchy or driving it from differently named clocks needs no edit
+#     here -- set `::cdc_hier_prefix` and `::cdc_clock_alias` before sourcing
+#     it. Regeneration, which runs in the closed synthesis flow, is needed
+#     only when the block is reconfigured such that the set of CDC elements
+#     changes: the file then goes stale silently, since no prefix can supply
+#     constraints for elements it never listed.
+#     See "CDC Timing Constraints" in the Integrator Guide.
 #-----------------------------------------------------------------------------
+
+# Directory holding this file, so the CDC collateral below resolves regardless
+# of the invoking tool's working directory. `info script` is the file currently
+# being read; GIT_ROOT covers tools that do not set it.
+if {[info script] ne ""} {
+    set ocah_sdc_dir [file dirname [file normalize [info script]]]
+} elseif {[info exists ::env(GIT_ROOT)]} {
+    set ocah_sdc_dir [file normalize $::env(GIT_ROOT)/hw/sys/sep/synth]
+} else {
+    error "constraints.sdc: cannot locate this file's directory; set GIT_ROOT"
+}
+set ocah_flow_constraints_dir [file normalize $ocah_sdc_dir/../../../../flows/synth/constraints]
 
 ##################
 # CLOCK PERIODS
@@ -51,6 +82,9 @@ set clock_periods(ENTROPY_SHARED_RO_PERIOD) 2300
 ##################
 
 create_clock -add -name SEPCLK            -period $clock_periods(SYSCLK_PERIOD)                [get_ports "clk_i"]
+# Free-running reference clock for the system CSR reference counter, which
+# crosses to it from SEPCLK through a synchronizer and an async FIFO.
+create_clock -add -name REFCLK            -period $clock_periods(REFCLK_PERIOD)                [get_ports "clk_ref_i"]
 create_clock -add -name WDTCLK            -period $clock_periods(WDTCLK_PERIOD)                [get_ports "clk_wdt_i"]
 create_clock -add -name JTAG_TCK          -period $clock_periods(JTAG_TCK_PERIOD)              [get_ports "jtag_tck"]
 
@@ -111,14 +145,26 @@ set_clock_groups -logically_exclusive \
     -group [concat {ENTROPY_ROSC_CLK}  [get_object_name [get_clocks "ENTROPY_SCLK_FROM_ROSC_*"]]] \
     -group [concat {ENTROPY_SHARED_RO} [get_object_name [get_clocks "ENTROPY_SCLK_FROM_SHARED_RO_*"]]]
 
-set_clock_groups -asynchronous \
-    -group {SEPCLK SEPCLK_PKA_IMEM SEPCLK_PKA_DMEM}\
-    -group {WDTCLK}\
-    -group {JTAG_TCK}\
-    -group [concat {ENTROPY_ROSC_CLK}  [get_object_name [get_clocks "ENTROPY_SCLK_FROM_ROSC_*"]]]\
-    -group [concat {ENTROPY_SHARED_RO} [get_object_name [get_clocks "ENTROPY_SCLK_FROM_SHARED_RO_*"]]]\
-    -group [get_object_name [get_clocks "ENTROPY_DBG_MON_*"]]\
-    -group {ck_feedthru}
+# Asynchronous groups, declared with `-allow_paths` plus a loose default bound
+# on every inter-group clock pair. The per-instance bounds sourced at the end of
+# this file refine that default; without `-allow_paths` they would be masked.
+# The two entropy sample-clock families are already `-logically_exclusive`
+# above, so `-exclude` keeps that one pair out of the asynchronous declaration
+# -- a clock pair cannot carry both relationships. Groups matching no clock are
+# dropped, so the entropy groups cost nothing while `entropy_source` is
+# blackboxed.
+source [file join $ocah_flow_constraints_dir async_clock_groups.tcl]
+
+set_async_clock_groups {
+    {SEPCLK SEPCLK_PKA_IMEM SEPCLK_PKA_DMEM}
+    {REFCLK}
+    {WDTCLK}
+    {JTAG_TCK}
+    {ENTROPY_ROSC_CLK  ENTROPY_SCLK_FROM_ROSC_*}
+    {ENTROPY_SHARED_RO ENTROPY_SCLK_FROM_SHARED_RO_*}
+    {ENTROPY_DBG_MON_*}
+    {ck_feedthru}
+} -exclude {{ENTROPY_*ROSC* ENTROPY_*SHARED_RO*}}
 
 
 ########################################################
@@ -284,3 +330,12 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # External debug bus
 set_output_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ext_debug_bus_o*}] -add_delay
+########################################################
+# CDC max_delay bounds
+########################################################
+# Layer 2: a per-instance bound on every synchronizer and async FIFO, tighter
+# than the inter-group default applied by set_async_clock_groups above. Loaded
+# last so these exceptions are the ones the tool keeps where both apply, and so
+# the primary-input relaxation at the end sees every constrained pin.
+source [file join $ocah_flow_constraints_dir cdc_max_delay_procs.tcl]
+source [file join $ocah_sdc_dir sep_cdc_max_delay.tcl]

@@ -6,27 +6,30 @@
 
 ==== Overview
 
-OCH supports generating and sinking cross triggers between chiplets in a
-SiP as specified in the Open Chiplet Cross Triggering (OCCT)
-specification. A Cross Trigger Port (CTP) module serves as the signaling
-interface between the chiplet core logic and the I/O pads, while a Cross
-Trigger Matrix (CTM) module statically routes cross triggers between
-CTPs and the on-chip resources generating and sinking cross trigger
-pulses.
+OCH supports generating and sinking cross triggers between chiplets in a SiP as
+specified in the Open Chiplet Cross Triggering (OCCT) specification. A Cross
+Trigger Port (CTP) module serves as the signaling interface between the chiplet
+core logic and the I/O pads, while a Cross Trigger Matrix (CTM) module
+statically routes cross triggers between CTPs and the on-chip resources
+generating and sinking cross trigger pulses.
 
-The CTPs support two different inter-chiplet cross trigger signalling
-schemes, wire-OR and point-to-point. Wire-OR supports a wider range of
-existing chiplet implementations and is very resource efficient, while
-point-to-point is faster, more reliable, and simpler to configure.
+The CTPs support two different inter-chiplet cross trigger signalling schemes,
+wire-OR and point-to-point. Wire-OR supports a wider range of existing chiplet
+implementations and is very resource efficient, while point-to-point is faster,
+more reliable, and simpler to configure.
 
 ==== Purpose
 
 The primary purposes of the CTN are:
 
-1. *Die-to-Die Cross Triggering*: Enable debug triggers to propagate between chiplets in a multi-die package
-2. *On-Chip Cross Triggering*: Route cross trigger signals between internal debug modules (e.g., CLAs)
-3. *Unified Management*: Provide a single AXI-Lite interface for configuring all cross trigger functionality
-4. *Clock Stop Coordination*: Aggregate clock stop requests from multiple sources
+1. *Die-to-Die Cross Triggering*: Enable debug triggers to propagate between
+   chiplets in a multi-die package
+2. *On-Chip Cross Triggering*: Route cross trigger signals between internal
+   debug modules (e.g., CLAs)
+3. *Unified Management*: Provide a single AXI-Lite interface for configuring all
+   cross trigger functionality
+4. *Clock Stop Coordination*: Aggregate clock stop requests from multiple
+   sources
 
 ==== Configuration Parameters
 

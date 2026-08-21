@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // SEP PIC interrupt-source MAP + multi-source delivery firmware test (OSS rep
-// PIC source-map delivery). OCAH provenance: fw/sep/tests/otbn_plic_test (OTBN done -> PIC src 30
+// PIC source-map delivery). reference provenance: fw/sep/tests/otbn_plic_test (OTBN done -> PIC src 30
 // -> ISR) + system/sep_irq_connectivity_test (source->PIC connectivity, no real
 // ISR claim).
 //
@@ -27,7 +27,9 @@
 // 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
 //   CHK-NONVAC      : before any trigger, no ISR fires (quiet window).
 //   CHK-DELIVER     : a non-mailbox source (OTBN done) wakes the CPU ISR (WFI, no poll).
-//   CHK-MAP         : each ISR's meihap claim id == expected PIC source (1 / 30 / 24).
+//   CHK-DELIVER also carries the source->PIC-id map: with fast_interrupt_redirect
+//   the hardware jumps to vectbl[claim_id], so the handler at index N running is
+//   the PIC having claimed N. There is no separate CHK-MAP.
 //   CHK-IP-RW1C     : the IP INTR_STATE / mailbox IRQS bit clears via W1C, reads back 0.
 //   CHK-PIC-COMPLETE: after the ISR clears the source the line de-asserts (no storm).
 //   CHK-ONEHOT      : when one source is asserted, ONLY its ISR fires among the three
@@ -173,20 +175,18 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src, uint3
     sep_mbx_puts("CHK-DELIVER PASS: ");
     sep_mbx_puts(name);
     sep_mbx_puts(" ISR woke the CPU\n");
-    if (g_claim[s] != pic_src) { // CHK-MAP
-        sep_mbx_puts("FAIL: ");
-        sep_mbx_puts(name);
-        sep_mbx_puts(" wrong PIC claim id ");
-        sep_mbx_puthex(g_claim[s]);
-        sep_mbx_putc('\n');
-        errors++;
-    } else {
-        sep_mbx_puts("CHK-MAP PASS: ");
-        sep_mbx_puts(name);
-        sep_mbx_puts(" meihap claim id == ");
-        sep_mbx_puthex(pic_src);
-        sep_mbx_putc('\n');
-    }
+    // No separate CHK-MAP claim-id comparison. VeeR EL2 is built with
+    // fast_interrupt_redirect, so the hardware computes meihap from the claim id and
+    // jumps to vectbl[claim_id]. Each ISR is registered at exactly one slot, so
+    // otbn_isr running already means the PIC claimed 30 -- reading claim_id() inside
+    // it and comparing against 30 cannot disagree. CHK-DELIVER above is what carries
+    // the source->PIC-id map: the handler at index N ran, therefore the PIC claimed N.
+    //
+    // To make the map a separately falsifiable check, register ONE shared handler on
+    // all three slots and bucket by claim_id(); a mis-mapped delivery would then land
+    // in the wrong bucket and fail CHK-DELIVER for the expected source. That is a
+    // firmware restructure, not a repair, so it is recorded rather than done here.
+    (void)g_claim;
     if (!only_one_fired(s, snap)) { // CHK-ONEHOT
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(name);
@@ -247,7 +247,7 @@ int main(void) {
         sep_mbx_puts("FAIL: spurious ISR before any source asserted\n");
         errors++;
     } else {
-        // Positively name the proven contract in the kept log (AGENTS.md §7/§9):
+        // Positively name the proven contract in the kept log:
         // absence of a FAIL is not auditable evidence on its own.
         sep_mbx_puts("CHK-NONVAC PASS: no spurious ISR before any trigger "
                      "(quiet window clean, counts 0/0/0)\n");
@@ -271,16 +271,8 @@ int main(void) {
             return 1;
         }
         sep_mbx_puts("CHK-DELIVER PASS: mailbox ISR reached the CPU\n");
-        if (g_claim[SRC_MBOX] != SEP_AXIL_MBOX0_PIC_SRC) { // CHK-MAP
-            sep_mbx_puts("FAIL: mailbox wrong PIC claim id ");
-            sep_mbx_puthex(g_claim[SRC_MBOX]);
-            sep_mbx_putc('\n');
-            errors++;
-        } else {
-            sep_mbx_puts("CHK-MAP PASS: mailbox meihap claim id == ");
-            sep_mbx_puthex(SEP_AXIL_MBOX0_PIC_SRC);
-            sep_mbx_putc('\n');
-        }
+        // See the CHK-MAP note in run_intr_test_source: mbox_isr is registered at
+        // exactly one vector slot, so its own claim id cannot disagree with it.
         if (!only_one_fired(SRC_MBOX, snap)) { // CHK-ONEHOT
             sep_mbx_puts("FAIL: mailbox triggered a neighbour source\n");
             errors++;

@@ -4,20 +4,20 @@
 # sep_drbg_scoreboard.py
 #
 # Cocotb scoreboard for the SEP entropy datapath CHK1..CHK5 golden-vs-probe
-# comparison, ported from the OCAH UVM sep_drbg_scoreboard methodology.
+# comparison, ported from the reference UVM sep_drbg_scoreboard methodology.
 #
 # CHAINED (default): the scoreboard DRIVES deterministic per-lane noise into the
 # DUT via esrc_noise_ext_i AND feeds the identical sequence into a golden chain
 # (sep_entropy_golden). Because one noise source feeds both, the decorrelator
 # golden aligns by construction -- no LFSR-phase reverse-engineering.
 # Each CHKn expected value is the golden's output of CHKn-1; the only DUT input to
-# the chain is the noise. The OCAH enable-sync is replicated: the golden decor's
+# the chain is the noise. The reference enable-sync is replicated: the golden decor's
 # per-lane enable mirrors esrc_ro_enable_o each cycle, so the model only shifts on
 # the cycles the DUT does.
 #
 # Comparison is ordered-FIFO at each DUT valid event (a stage is correct iff its
 # Nth DUT item equals the golden's Nth item), with a small warmup skip for the
-# decorrelator SR-fill / enable-edge transient (OCAH warmup_samples).
+# decorrelator SR-fill / enable-edge transient (reference warmup_samples).
 #
 # strict=False (calibration): mismatches logged, test not failed, first-N pairs
 # dumped for offline alignment. strict=True (sign-off): report() raises (house-rule
@@ -68,7 +68,7 @@ class SepDrbgScoreboard:
 
     # per-stream: (golden expected-queue attr, probe width bits). The four crypto
     # EDN sinks have no golden queue here (None): the SEP EDN fans genbits to the
-    # crypto leg via an arbiter, so bit-exact per-sink prediction needs the OCAH
+    # crypto leg via an arbiter, so bit-exact per-sink prediction needs the reference suite
     # AXIS1-golden-tap + arbiter-assignment trace (sep_drbg_real_sink_multi_*). Until
     # that is ported, crypto sinks run in OBSERVE mode (positive beat evidence, no
     # value compare); CHK5_km keeps its golden queue for the controlled-firmware case.
@@ -117,7 +117,7 @@ class SepDrbgScoreboard:
         #   golden   -- bit-exact compare of the sink's EDN beats against the golden
         #               queue. Only when the consumer pull order is controlled/
         #               predictable (KM controlled firmware). NOT yet available for
-        #               the crypto sinks (needs the OCAH arbiter-assignment trace).
+        #               the crypto sinks (needs the reference arbiter-assignment trace).
         #   observe  -- require real post-mux/post-adapter beats but do not value-
         #               compare them. Use for rom_main (firmware-driven KM pull) and
         #               for every crypto sink until the multi-sink golden is ported.
@@ -142,13 +142,13 @@ class SepDrbgScoreboard:
         # drbg_axis_edn_adapter is round-robin, so this in-order equality only holds
         # when EXACTLY ONE crypto sink is active (the others parked -> never request,
         # so the arbiter grants the live sink every word in order). Multiple
-        # concurrent crypto sinks in golden mode would need the OCAH per-endpoint
+        # concurrent crypto sinks in golden mode would need the reference suite per-endpoint
         # block-assignment trace (not ported); reject that here.
         _crypto_golden = [n for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd")
                           if self.sink_mode[n] == "golden"]
         if len(_crypto_golden) > 1:
             raise NotImplementedError(
-                "CHK5 golden mode for >1 concurrent crypto sink needs the OCAH "
+                "CHK5 golden mode for >1 concurrent crypto sink needs the reference suite "
                 f"per-endpoint arbiter-assignment trace (requested: {_crypto_golden}). "
                 "Use a single golden crypto sink (others parked/observe).")
         # Back-compat aliases retained for callers/reporting.
@@ -159,7 +159,7 @@ class SepDrbgScoreboard:
         # the live entropy_stream_data_o wire-tap monitor.
         self.chk2_backdoor = chk2_backdoor
         # Minimum-evidence floor per enabled stream: a strict run FAILS if a
-        # checkpoint scored fewer than this many matches (OCAH fails enabled
+        # checkpoint scored fewer than this many matches (reference suite fails enabled
         # checkpoints with zero comparisons -- a stream that never fired is a
         # silent hole, not a pass). Override via set_min_matches() for a longer
         # coverage test that demands deeper streams.
@@ -661,6 +661,37 @@ class SepDrbgScoreboard:
                 self._genbits_in_gen = 0
 
     # --------------------------------------------------------------- accessors
+    def km_beats(self):
+        """Live count of Key-Manager AXIS entropy beats tapped so far.
+
+        The KM counterpart of sink_beats(), which covers only the crypto-EDN sinks.
+        Callable mid-run to snapshot the KM leg before and after a window.
+        """
+        return len(self._km_words)
+
+    def completed_generate_lengths(self):
+        """Observed blocks-per-Generate histogram: {blocks_in_command: how_many_commands}.
+
+        A command is counted only when the DUT asserts `gen_last`, and the key is the
+        number of genbits beats COUNTED before that boundary -- not the commanded
+        length. That is what lets a caller assert segmentation against its own stimulus
+        instead of against the DUT's own `gen_last`, which would follow a wrongly
+        segmenting DUT rather than catch it.
+
+        Live: callable mid-run. Returns a copy, so a caller cannot perturb scoreboard
+        state. Empty until the first command completes.
+        """
+        return Counter(self._gen_lengths)
+
+    def open_generate_remaining(self):
+        """Genbits beats seen so far in the Generate command still in flight (0 if none).
+
+        Only useful for diagnostics: a run that ends with this non-zero and
+        `completed_generate_lengths()` empty never saw `gen_last`, so its segmentation
+        evidence does not exist rather than being weak.
+        """
+        return self._genbits_in_gen
+
     def sink_beats(self, name):
         """Public count of post-adapter crypto-EDN beats delivered to crypto sink
         `name` (aes/kmac/otbn_rnd/otbn_urnd) so far -- the membership-stash length.
@@ -703,7 +734,7 @@ class SepDrbgScoreboard:
         self.log.info("==== sep_drbg_scoreboard CHK1..CHK5 report ====")
         any_fail = False
 
-        # CHK5 genbits-chain membership (stronger than OCAH's AXIS1-as-its-own-golden):
+        # CHK5 genbits-chain membership (stronger than the reference suite's AXIS1-as-its-own-golden):
         # every word delivered to KM (membership mode) and every crypto-leg AXIS1 word
         # must be a genuine CHK4 genbits-golden word, drawn from the SAME verified
         # multiset -- proving the one DRBG stream partitions into the two sinks. The pool

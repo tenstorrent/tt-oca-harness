@@ -88,7 +88,7 @@ int main(void) {
 
     /* Step 1: Enable the mailbox clock (registers are otherwise inaccessible). */
     printf("[STEP 1] Enabling mailbox clock gate...\n");
-    /* CLOCK_GATE_CTRL is a reserved, not-yet-implemented placeholder (issue #3950);
+    /* CLOCK_GATE_CTRL is a reserved, not-yet-implemented placeholder;
      * the mailbox clock is always on, so no ungate step is required. */
 
     /* Step 2: Register the ISR on all candidate PIC sources and configure them. */
