@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // VeeR EL2 NMI (non-maskable interrupt) firmware driver for the SEP OSS tests.
 // Header-only, self-contained (register addresses are SEP fabric facts, matching

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_003 ANCHOR: smc_cg_dft_reset_bringup_test
 DV-CARD-REVISION: 1 RECORD-SHA256: 14b3775169e65fc707b9fdcd7c6dec6f9d817c002225fc23bbe4eaeefa702640

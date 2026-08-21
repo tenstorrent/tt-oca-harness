@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Configuration and deterministic timing choices for the SMU OSS environment."""
 
 from __future__ import annotations

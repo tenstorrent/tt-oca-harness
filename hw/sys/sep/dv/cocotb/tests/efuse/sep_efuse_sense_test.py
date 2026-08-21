@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse sense + backdoor shadow-readout test (OSS).
 
 Selects an OTP image through the shared eFuse image policy and senses it through

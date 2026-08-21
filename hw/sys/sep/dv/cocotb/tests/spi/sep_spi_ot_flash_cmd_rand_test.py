@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI flash command-breadth test (PyUVM, cpu-firmware, randomized).
 
 SPI-subsystem Phase-2 rep SPI flash command breadth (lead of the dedicated OpenTitan-SPI sweep). A

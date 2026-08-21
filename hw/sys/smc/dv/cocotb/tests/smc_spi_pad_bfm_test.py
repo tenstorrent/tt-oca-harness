@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM SPI pad-attached OcahSepSpiFlash JEDEC test (U2-2)."""
 
 from __future__ import annotations

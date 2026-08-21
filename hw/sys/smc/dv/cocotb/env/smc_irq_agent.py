@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS interrupt-observer UVM agent.
 
 Passive agent. Samples the SMC sync interrupt output plus the OR-of-vector

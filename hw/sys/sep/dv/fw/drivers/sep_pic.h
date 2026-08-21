@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // VeeR EL2 PIC (programmable interrupt controller) firmware driver for the SEP
 // OSS tests. Header-only (static inline), self-contained: the PIC register

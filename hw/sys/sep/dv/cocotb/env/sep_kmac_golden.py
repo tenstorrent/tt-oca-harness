@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Self-contained Keccak / SHA-3 / SHAKE / cSHAKE / KMAC golden (FIPS-202 +
 SP800-185) for the standalone KMAC mode-breadth test (AES mode/key-size breadth... KMAC mode/strength breadth).
 

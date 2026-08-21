@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap round 3: full GPIO_INTF sweep.
 
 Sweeps every PeakRDL GPIO_INTF DATA_CTRL entry to prove decode is alive.

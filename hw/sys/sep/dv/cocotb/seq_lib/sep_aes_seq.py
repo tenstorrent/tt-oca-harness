@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan AES run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Configures the AES core for ECB-256 encryption, writes the key shares / data,

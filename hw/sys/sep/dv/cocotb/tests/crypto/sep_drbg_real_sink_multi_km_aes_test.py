@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DRBG real-sink multi-consumer: KM + AES concurrent.
 
 One real DRBG/ESRC/EDN stream feeds TWO real entropy sinks concurrently:

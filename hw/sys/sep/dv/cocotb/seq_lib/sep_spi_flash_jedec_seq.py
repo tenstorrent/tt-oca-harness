@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan SPI-host JEDEC-ID sequence for the SEP OSS flow.
 
 Drives the OpenTitan SPI host controller over the CPU-LSU AXI bus to issue a

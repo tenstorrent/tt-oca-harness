@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric remap + filter CSR-bank driver.
 
 Combined-per-group CSR R/W sweep over the SEP "System block" fabric banks, driven

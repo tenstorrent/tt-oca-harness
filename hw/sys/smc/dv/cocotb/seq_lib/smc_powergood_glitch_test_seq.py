@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_powergood_glitch_test.
 
 Exercises the SMC powergood stretcher: sample baseline, drive powergood low for

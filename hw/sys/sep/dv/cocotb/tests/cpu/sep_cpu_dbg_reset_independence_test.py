@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP CPU debug-reset domain-isolation test (PyUVM).
 
 CPU-complex Phase-2 rep CPU debug-reset independence. reference provenance:

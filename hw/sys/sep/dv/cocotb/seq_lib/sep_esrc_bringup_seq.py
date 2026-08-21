@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences + reusable helpers.
 
 Replicates the reference suite real-entropy bring-up order (sep_drbg_uvm_base_test_seq.sv):

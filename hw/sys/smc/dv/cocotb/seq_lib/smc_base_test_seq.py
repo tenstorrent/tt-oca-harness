@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base sequence for SMC OSS PyUVM tests.
 
 Agent-agnostic: child sequences override ``body`` and dispatch their own item
