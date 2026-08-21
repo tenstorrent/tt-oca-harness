@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP NMI sanity firmware test (OSS port of the reference suite nmi_sanity_test). Verifies
 // the VeeR EL2 NMI mechanism end-to-end on bare `sep`:

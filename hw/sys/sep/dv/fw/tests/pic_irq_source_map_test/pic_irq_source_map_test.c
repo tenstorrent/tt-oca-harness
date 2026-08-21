@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP PIC interrupt-source MAP + multi-source delivery firmware test (OSS rep
 // PIC source-map delivery). reference provenance: fw/sep/tests/otbn_plic_test (OTBN done -> PIC src 30

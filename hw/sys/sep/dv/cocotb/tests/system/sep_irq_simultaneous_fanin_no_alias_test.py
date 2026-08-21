@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Simultaneous multi-source interrupt fan-in + anti-alias.
 
 With the CPU held off, the host asserts SEVERAL IP interrupts at once (HMAC done,

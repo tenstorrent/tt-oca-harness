@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP PIC interrupt-source map + multi-source delivery test (PyUVM).
 
 CPU-complex Phase-2 rep PIC source-map delivery. reference provenance: fw `otbn_plic_test` (OTBN done ->

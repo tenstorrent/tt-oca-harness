@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS P1 coverage-gap: SMC_EFUSE_MAP direct read."""
 
 from __future__ import annotations

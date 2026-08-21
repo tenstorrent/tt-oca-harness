@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Normalized DV/FV result schemas.
 
 The dashboard intentionally consumes plain JSON records so it can be generated

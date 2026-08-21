@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CHK4 Generate-segmentation contract, proven with a short glen.
 
 Every other entropy test leaves Generate unfinished, so CHK4's legality loop

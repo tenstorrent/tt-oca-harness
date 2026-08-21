@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Plain configuration object for the AXI4 slave-side VIP components.
 
 One `OcahAxiSlaveConfig` describes a memory-backed responder (naming, memory

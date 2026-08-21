@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_xtrig_ctm_remap_test - product-pin CTM remap.
 
 Proves SMU glue on real TB ports (same class as clock-stop remap):

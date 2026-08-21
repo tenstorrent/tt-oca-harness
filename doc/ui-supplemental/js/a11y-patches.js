@@ -17,26 +17,33 @@
     }
   }
 
-  // Stock toolbar home-icon link: a background-image-only <a> with no
-  // text content or accessible name at all.
-  document.querySelectorAll('.home-link').forEach(function (el) {
-    ensureAccessibleName(el, 'Home');
-  });
+  function applyScrollableCodeFix() {
+    document.querySelectorAll('.doc pre.highlight > code, .doc pre').forEach(function (el) {
+      if (el.scrollWidth > el.clientWidth && !el.hasAttribute('tabindex')) {
+        el.setAttribute('tabindex', '0');
+      }
+    });
+  }
 
-  // Stock sidebar nav-tree expand/collapse toggle: an empty <button>,
-  // same issue. Only present on pages whose sidebar has nested sections.
-  document.querySelectorAll('.nav-item-toggle').forEach(function (el) {
-    ensureAccessibleName(el, 'Toggle section');
-  });
-
-  // Horizontally-scrolling code blocks need to be in the tab order so
-  // keyboard users can scroll them (axe's scrollable-region-focusable
-  // rule). Antora renders these as "pre.highlight > code"; overflow is
-  // detected directly per-element rather than assumed, since not every
-  // code block actually overflows.
-  document.querySelectorAll('.doc pre.highlight > code, .doc pre').forEach(function (el) {
-    if (el.scrollWidth > el.clientWidth && !el.hasAttribute('tabindex')) {
-      el.setAttribute('tabindex', '0');
+  function applyPatches() {
+    document.querySelectorAll('.home-link').forEach(function (el) {
+      ensureAccessibleName(el, 'Home');
+    });
+    document.querySelectorAll('.nav-item-toggle').forEach(function (el) {
+      ensureAccessibleName(el, 'Toggle section');
+    });
+    applyScrollableCodeFix();
+    // Custom monospace fonts (Berkeley Mono) use font-display: swap, so a
+    // code block's rendered width -- and therefore whether it overflows --
+    // can change after this initial pass, once the font actually loads.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(applyScrollableCodeFix);
     }
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyPatches);
+  } else {
+    applyPatches();
+  }
 })();

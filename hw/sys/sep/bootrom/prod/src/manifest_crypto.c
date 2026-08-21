@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Manifest crypto validation for OROM (C13.10).
 //
 // Orchestrates all cryptographic checks on a loaded manifest:

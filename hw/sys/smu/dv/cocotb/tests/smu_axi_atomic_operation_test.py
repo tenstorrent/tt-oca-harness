@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_atomic_operation_test - ATOP non-support on SEP=0 SMN path.
 
 SMU xbar (SEP=1) instantiates ``ATOPs=0``; SEP=0 uses the same SMC inbound

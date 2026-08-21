@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Boot manifest and payload structure definitions for OCH SEP ROM.
 //
 // Manifest format used by the ROM (manifest_t = 1184 bytes).

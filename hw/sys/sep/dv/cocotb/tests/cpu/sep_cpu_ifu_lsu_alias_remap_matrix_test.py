@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP CPU IFU/LSU local-alias-remap test (PyUVM).
 
 OSS port of the reference suite ``sep_cpu_ifu_lsu_alias_remap_matrix_test``.

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Generate an OpenTitan-style static dashboard from result JSON files."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Lifecycle-Controller (LCC) golden model for the SEP OSS flow.
 
 Pure-Python reference for what the SEP `sep_lifecycle_ctrl` block computes on its

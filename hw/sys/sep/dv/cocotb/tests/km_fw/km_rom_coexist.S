@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
 # KM (PicoRV32) ROM firmware for the SEP OSS dual-CPU eFuse AXI-lite mux
 # coexistence test (reference sep_efuse_km_axil_cpu_mux_coexist_test).

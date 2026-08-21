@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P2 Phase A #4: SPI protocol library loopback + AXI flash-alias probe.
 
 Two-layered proof for the deferred P2-A #4 (full byte-level SPI loopback):

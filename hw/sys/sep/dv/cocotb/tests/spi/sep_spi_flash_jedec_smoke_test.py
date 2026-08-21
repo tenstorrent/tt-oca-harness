@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan SPI host JEDEC-ID smoke test."""
 
 from __future__ import annotations

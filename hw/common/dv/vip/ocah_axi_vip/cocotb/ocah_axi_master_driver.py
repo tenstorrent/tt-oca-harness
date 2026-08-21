@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AXI4 master driver: the cocotbext-axi engine binding.
 
 `OcahAxiMasterDriver` owns the bus/clock/reset resolution and the underlying

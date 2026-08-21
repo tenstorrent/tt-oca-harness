@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_DMA_CG_ACTIVITY_TEST ANCHOR: smc_dma_cg_activity_test
 DV-CARD-REVISION: 2 RECORD-SHA256: b1f928140c5123ae1298877e726f91b309ba15c3b287fb236f723b3582d51653

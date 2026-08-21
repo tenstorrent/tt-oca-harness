@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP primary TAP register map.
 
 Centralizes the TDR map so the JTAG driver and sequences agree on register

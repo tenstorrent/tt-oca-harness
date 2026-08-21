@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Lifecycle controller implementation for OROM.
 //
 // Reads LC_STATE from efuse shadow register, validates against the

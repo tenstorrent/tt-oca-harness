@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OSS PyUVM environment package.
 
 Wraps the open-source cocotbext-axi VIP in a UVM hierarchy:

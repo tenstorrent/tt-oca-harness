@@ -197,3 +197,66 @@ ifdef::backend-pdf[]
 include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 
+==== DRBG (CSRNG and EDN)
+
+The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
+(see <<drbg,Architecture>>). Their register maps are reported here.
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$csrng/regs/gen/html/csrng.html[]
+include::ip:partial$edn/regs/gen/html/edn.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[]
+endif::backend-pdf[]
+
+==== Key Manager
+
+The generated maps live with the IP.
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$key_manager/regs/gen/html/key_manager.html[]
+include::ip:partial$key_manager/regs/gen/html/km_csr.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../ip/key_manager/regs/gen/adoc/key_manager.adoc[]
+include::../../../ip/key_manager/regs/gen/adoc/km_csr.adoc[]
+endif::backend-pdf[]
+
+==== Secure DMA
+
+The secure DMA controller register map follows.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/secure_dma.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/secure_dma.adoc[]
+endif::backend-pdf[]
+
+==== SPI Controller
+
+Consult the
+https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host
+documentation] for the authoritative core functionality of the IP. The
+register map follows.
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/spi_controller.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/spi_controller.adoc[]
+endif::backend-pdf[]

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Simulator-free self-test for the AXI reference model and scoreboard.
 
 Runs the positive evidence flow plus the negative suite below (cases A-R in

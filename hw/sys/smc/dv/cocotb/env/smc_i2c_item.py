@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Transaction items for the SMC OSS I2C observation agent."""
 
 from __future__ import annotations

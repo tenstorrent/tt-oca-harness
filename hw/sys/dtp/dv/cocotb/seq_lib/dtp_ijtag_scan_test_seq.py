@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """iJTAG SIB/DFT/DFD scan scenarios for GH issue #3213."""
 
 from __future__ import annotations

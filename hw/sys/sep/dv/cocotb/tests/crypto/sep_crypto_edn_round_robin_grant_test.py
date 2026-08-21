@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Crypto-EDN round-robin grant: two adapter clients held requesting at once.
 
 ``sep_crypto_edn_multisink_arbitration_test`` proves AES and KMAC complete and

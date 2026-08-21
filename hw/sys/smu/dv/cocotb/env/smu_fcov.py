@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Lightweight Python-side FCOV counters for OSS SMU (SEP=0 P1/P2/P3).
 
 Verilator cannot compile SV covergroups; VCS can still use this as a

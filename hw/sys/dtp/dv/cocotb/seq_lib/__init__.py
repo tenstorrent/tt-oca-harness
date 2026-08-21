@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP OSS reusable UVM stimulus sequences.
 
 Feature helpers are split into focused base sequences so concrete tests inherit

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP firmware-boot scoreboard.
 
 Accumulates the boot observables the boot test samples each cycle and, at

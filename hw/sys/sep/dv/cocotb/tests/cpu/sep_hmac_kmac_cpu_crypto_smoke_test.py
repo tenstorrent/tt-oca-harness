@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP HMAC + KMAC CPU crypto smoke test (PyUVM).
 
 OSS port combining the reference suite ``hmac_test`` and ``kmac_test`` (crypto

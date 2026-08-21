@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """HMAC-SHA256 golden for the KM->HMAC sideload KAT.
 
 Independent reference for the keyed-MAC the OpenTitan HMAC engine produces from a

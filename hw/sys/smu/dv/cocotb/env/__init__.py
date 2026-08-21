@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMU OSS env package."""
 
 from . import cocotb_compat as _cocotb_compat

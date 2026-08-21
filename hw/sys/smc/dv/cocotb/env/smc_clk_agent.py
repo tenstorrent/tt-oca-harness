@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS clock-observer UVM agent.
 
 For each ``COUNT_EDGES`` transaction, the driver waits a configurable number

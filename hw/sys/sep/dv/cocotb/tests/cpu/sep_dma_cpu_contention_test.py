@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA vs CPU-LSU SRAM contention test (PyUVM).
 
 OSS port of the reference suite ``sep_dma_cpu_contention_test``.

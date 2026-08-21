@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PLL-window reachability + internal clock-gate CSR precheck.
 
 Confirms the PLL AXI-Lite window is reachable (no hang). Under

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_clock_stop_jtag_vs_cla_fb_race_test — DEFERRED (no DUT Force policy).
 
 Was: CLA fb Force inject on hierarchical SMU nets. No product pin / frontdoor stimulus yet.

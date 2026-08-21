@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP LCC sep_debug -> inbound-filter gating test (OSS).
 
 OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test``.

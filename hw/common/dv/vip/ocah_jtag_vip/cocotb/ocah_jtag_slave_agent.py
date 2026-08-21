@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Composed slave-side agent: reactive device driver + passive monitor + checker.
 
 `OcahJtagSlaveAgent` is the device-side counterpart of

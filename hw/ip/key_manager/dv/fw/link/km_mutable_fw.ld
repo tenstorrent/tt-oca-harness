@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* Copyright 2026 Tenstorrent Inc. */
 /* Minimal linker script for KM test mutable firmware images loaded into SRAM. */
 

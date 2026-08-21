@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_clock_stop_coordination_test — SMU_ALL_006 boot-stall/IC-reset/clkstop.
 
 DV-CARD:          SMU_ALL_006   ANCHOR: smu_clock_stop_coordination_test

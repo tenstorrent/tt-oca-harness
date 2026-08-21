@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OpenTitan SPI-host firmware helpers for the OSS tests. Header-only.
 // Addresses and field masks come from generated sep_addr.h / spi_controller.h

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Generic base sequence for DTP cocotb stimulus.
 
 This class intentionally stays feature-agnostic. Feature-specific helpers live in

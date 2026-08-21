@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Create the generated DV Python namespace bridge.
 
 The bridge lives under ``build/dv/python`` and maps stable import names

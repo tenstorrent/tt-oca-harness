@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """WDT / AON-timer CSR driver.
 
 Direct-AXI access to the SEP WDT aon_timer block (base 0x1080_1000) over the

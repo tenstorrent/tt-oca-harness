@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-2 remainder: SMBus Host Notify with DUT I2C0 as target @ 0x08.
 
 VIP master drives SMBus 2.0 Host Notify onto ``tb_i2c0_*``; DUT OpenTitan

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA basic-breadth firmware-boot test (PyUVM).
 
 OSS rep DMA basic breadth. reference provenance: the uvm_tests/dma reg_rw / reg_reset /

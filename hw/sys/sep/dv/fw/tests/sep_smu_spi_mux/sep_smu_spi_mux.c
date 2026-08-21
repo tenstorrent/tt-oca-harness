@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * sep_smu_spi_mux - Program SPI_MUX_CTRL via SEP CSR frontdoor only.
  *

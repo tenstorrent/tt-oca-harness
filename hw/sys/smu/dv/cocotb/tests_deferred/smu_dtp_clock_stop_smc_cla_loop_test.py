@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_clock_stop_smc_cla_loop_test — DEFERRED (no DUT Force policy).
 
 Was: CLA feedback Force inject on hierarchical SMU nets. No product pin / frontdoor stimulus yet.
