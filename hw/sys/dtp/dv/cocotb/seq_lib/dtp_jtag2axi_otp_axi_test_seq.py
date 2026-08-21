@@ -237,9 +237,15 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             self.log_step(idx + 1, "Gate %s write with %s (pass %d)",
                           self.target, cfg.dbg_disable_bit, idx)
             await self.disable_debug_bits(cfg.dbg_disable_bit)
+            # Preload a sentinel at the gated-attempt address: the blocked
+            # write must leave memory untouched, both while gated and after
+            # the disable is released (a delayed replay would overwrite it).
+            gate_addr = addr + (idx * cfg.beat_bytes)
+            sentinel = 0x5EA1_0000 | idx
+            self.write_target_mem_int(self.target, gate_addr, sentinel, size)
             raw = pack_single_op(
                 DtpJtag2AxiOp.WRITE,
-                addr + (idx * cfg.beat_bytes),
+                gate_addr,
                 data ^ idx,
                 wstrb=self.target_full_wstrb(self.target, size),
                 size=size,
@@ -247,7 +253,18 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             )
             await self.write_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"gate.{bit_name}.no_axi")
+            self.assert_equal(
+                f"gate.{bit_name}.sentinel",
+                self.read_target_mem_int(self.target, gate_addr, size),
+                sentinel,
+            )
             await self.enable_all_debug()
+            await self.wait_sys_cycles(8)
+            self.assert_equal(
+                f"gate.{bit_name}.sentinel_post_release",
+                self.read_target_mem_int(self.target, gate_addr, size),
+                sentinel,
+            )
             before = await self.target_activity_counts(self.target)
             status, _ = await self.write_target_single_and_check(
                 self.target,

@@ -59,10 +59,23 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         self.check_stap_selected(stap, recovered, selected=1, context=f"{stap}.recover")
         self.log_summary("STAP select", stap=stap, disable_field=disable_field)
 
+    HOST_SCAN_CONTROLS = (
+        "jtag_stap_host_select",
+        "jtag_stap_host_shift_en",
+        "jtag_stap_host_capture_en",
+        "jtag_stap_host_update_en",
+    )
+
     async def run_ext_stap_scan(self) -> None:
         self.log_banner("GH #3213 extended STAP scan interface")
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.enable")
+        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
         _, enabled = await self.shift_dr_observe(0x2, 2, context="ext.enabled_shift")
+        self.check_scan_window(
+            window,
+            active=("jtag_stap_host_select", "jtag_stap_host_shift_en"),
+            context="ext.enabled_window",
+        )
         self.check_observable(enabled, "jtag_stap_host_select", 1, context="ext.enabled")
 
         await self.write_ptap_3dcr(config_hold=0, select=0, context="ext.disable")
@@ -75,9 +88,30 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
 
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.gate_enable")
         await self.disable_debug_bits("stap_host")
+        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
         _, gated = await self.shift_dr_observe(0x2, 2, context="ext.host_gated_shift")
+        self.check_scan_window(
+            window,
+            quiet=self.HOST_SCAN_CONTROLS,
+            context="ext.host_gated_window",
+        )
         self.check_observable(gated, "jtag_stap_host_select", 0, context="ext.host_gated")
-        self.log_summary("extended STAP scan", checked=("enable", "disable", "stap_host gate"))
+
+        # Recovery without reset: normal host scan control resumes once the
+        # disable clears.
+        await self.enable_all_debug()
+        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
+        _, recovered = await self.shift_dr_observe(0x2, 2, context="ext.recover_shift")
+        self.check_scan_window(
+            window,
+            active=("jtag_stap_host_select", "jtag_stap_host_shift_en"),
+            context="ext.recover_window",
+        )
+        self.check_observable(recovered, "jtag_stap_host_select", 1, context="ext.recover")
+        self.log_summary(
+            "extended STAP scan",
+            checked=("enable", "disable", "stap_host gate window", "recover without reset"),
+        )
 
     async def run_config_hold(self) -> None:
         self.log_banner("GH #3213 PTAP/STAP CONFIG_HOLD behavior")

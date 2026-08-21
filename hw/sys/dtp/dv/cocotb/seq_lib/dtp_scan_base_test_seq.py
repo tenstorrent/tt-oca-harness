@@ -10,6 +10,7 @@ from env.dtp_scan_ref_model import (
     IJTAG_SIB_ORDER,
     STAP_ORDER,
 )
+from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor
 from env.dtp_types import DtpJtagInstr
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
@@ -22,6 +23,35 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         super().__init__(*args, **kwargs)
         self.ijtag_model = DtpIjtagSibModel()
         self.stap_model = DtpStap3dcrModel()
+
+    # --- temporal scan-control windows ----------------------------------------
+    def start_scan_window(self, signals) -> DtpScanControlWindowMonitor:
+        """Begin sampling named observables on every rising TCK edge."""
+        return DtpScanControlWindowMonitor(signals).start()
+
+    def check_scan_window(
+        self,
+        monitor: DtpScanControlWindowMonitor,
+        *,
+        quiet: tuple[str, ...] = (),
+        active: tuple[str, ...] = (),
+        context: str,
+    ) -> dict[str, int]:
+        """Close a window and prove quiet signals never pulsed and active ones did."""
+        edges, counts = monitor.stop()
+        self.log.info("%s scan window edges=%d counts=%s", context, edges, counts)
+        assert edges > 0, f"{context}: scan window saw no TCK edges (vacuous window)"
+        for name in quiet:
+            assert counts[name] == 0, (
+                f"{context}: {name} pulsed {counts[name]}x inside a window that "
+                f"must stay quiet ({edges} TCK edges)"
+            )
+        for name in active:
+            assert counts[name] > 0, (
+                f"{context}: {name} never pulsed inside a window that must show "
+                f"activity ({edges} TCK edges)"
+            )
+        return counts
 
     # --- generic observable checks ------------------------------------------
     async def sample_signals(self) -> dict[str, int]:
@@ -72,14 +102,15 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         await self.load_ir(DtpJtagInstr.SELECT_IJTAG)
         return await self.shift_dr_observe(pattern, IJTAG_SIB_COUNT, context=context)
 
+    IJTAG_SIGNAL_PREFIX = {
+        "dft_secure": "jtag_dft_secure",
+        "dft": "jtag_dft",
+        "dfd": "jtag_dfd",
+    }
+
     def check_ijtag_controls(self, state, signals: dict[str, int], *, context: str) -> None:
-        signal_prefix = {
-            "dft_secure": "jtag_dft_secure",
-            "dft": "jtag_dft",
-            "dfd": "jtag_dfd",
-        }
         for name in IJTAG_SIB_ORDER:
-            prefix = signal_prefix[name]
+            prefix = self.IJTAG_SIGNAL_PREFIX[name]
             expected_select = state.effective[name]
             self.check_observable(signals, f"{prefix}_select", expected_select, context=f"{context}.{name}")
 
@@ -186,6 +217,11 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         selected: int,
         context: str,
     ) -> None:
+        """host tdo_oen asserts only while the STAP is selected AND the
+        composed TAP_3DCR chain (2-bit PTAP 3DCR followed by the STAP SIB
+        chain) is in Shift-DR; the current helpers shift the PTAP 3DCR and
+        SIB fields as separate fixed-width scans, so `selected` cannot be
+        asserted from tdo_oen here."""
         prefix = self.stap_signal_prefix(name)
         self.check_observable(signals, f"{prefix}_trst_n", 1, context=context)
         self.log.info("%s selected=%d sampled_%s_tdo_oen=%d", context, selected, prefix, signals[f"{prefix}_tdo_oen"])
