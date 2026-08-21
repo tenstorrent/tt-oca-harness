@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-description: Creates weekly summary of issue activity including trends, charts, and insights every Monday
+description: Creates weekly summary of issue activity including trends, charts, and insights every Tuesday at 12:00 PDT
 
 timeout-minutes: 30
 engine: copilot
