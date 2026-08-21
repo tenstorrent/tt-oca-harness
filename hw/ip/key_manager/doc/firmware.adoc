@@ -602,6 +602,7 @@ The rest of this section describes all valid commands and their payloads.
 | `0x37` | `CMD_CLEAR_HW_KEYS` | Revoke every HW-domain key and clear all three HW roots.
 | `0x38` | `CMD_CLEAR_KEY_TREE` | Revoke a key and all of its live KDF descendants.
 | `0x39` | `CMD_GEN_ML_KEM_MVAL` | Mint an ephemeral ML-KEM encapsulation seed and sideload it.
+| `0x3A` | `CMD_CLEAR_ORPHANED_KEYS` | Revoke every key whose lineage reference no longer resolves.
 |===
 
 [[km-cmd-hw-ver]]
@@ -2928,6 +2929,58 @@ single return argument carrying `KM_ERR_CRYPTO` if the DRBG cannot supply the
 seed or the masking randomness (fail closed: nothing lands and nothing is
 retained).
 
+[[km-cmd-clear-orphaned-keys]]
+====== 0x3A - CMD_CLEAR_ORPHANED_KEYS
+
+*Description*
+
+Revokes every key whose lineage reference no longer resolves, together with
+everything below it, and returns how many descriptors were revoked.
+
+This is a repair command, not routine hygiene. Ordinary revocation re-parents
+(<<km-reparentage>>), so a healthy KM never has an orphan and this command
+always returns zero. One case produces them: a key whose own descriptor seal has
+failed cannot supply a trustworthy grandparent, so revoking it leaves its
+children referencing a descriptor that no longer exists
+(<<km-crc-failure-response>>). Such a key is not damaged — its handle still
+resolves and it still derives — but it has become unreachable from any ancestor,
+so `CMD_CLEAR_KEY_TREE` will never sweep it. This command is the only way to
+reclaim one.
+
+*Payload*
+
+This command has no payload.
+
+*Notes*
+
+A descriptor is orphaned only if its `parent` names a *key* whose issue counter
+has moved on. A `parent` of NONE is an imported key and a `parent` naming a root
+is one derived directly from a root; both are legitimate tree heads and are
+never orphans.
+
+The sweep iterates to a fixpoint rather than making a single pass. Revoking an
+orphan retires its issue counter, which orphans its own children in turn, so one
+invocation removes an entire unreachable subtree and a second invocation
+immediately afterwards returns zero. Re-parentage is deliberately not applied
+while sweeping: splicing a child onto its parent's already-dead reference would
+only reproduce the same orphan one level up.
+
+This command does not acknowledge the fault that caused the damage. The
+`RECOVERABLE_ERR` bit stays set until `CMD_RECOV_ACK` (<<km-cmd-recov-ack>>);
+sweeping is the repair, acknowledgement is separate.
+
+*Response*
+
+This command has a `RESP_CMD` response with a return code of _success_ and a
+single return argument.
+
+.Return Arguments
+[cols="^15%,<25%,<60%",options="header"]
+|===
+| Arg | Name | Description
+| `0` | `SWEPT_COUNT` | Number of descriptors revoked. Zero is the healthy result and is not an error.
+|===
+
 [[km-firmware-response-message-reference]]
 ===== Response Message Reference
 
@@ -3155,7 +3208,7 @@ A signed 8-bit code indicating the cause of the fault.
 [cols="^12%,<28%,<60%",options="header"]
 |===
 | Code | Name | Description
-| `-1` | `key_slot_crc` | A CRC-32C integrity check over KPV-resident material has failed — either a key's descriptor seal (<<km-descriptor-crc>>) or a root (<<km-root-integrity>>). Whatever operation triggered the fault was aborted; the material is not erased in response.
+| `-1` | `key_slot_crc` | A CRC-32C integrity check over KPV-resident material has failed — either a key's descriptor seal (<<km-descriptor-crc>>) or a root (<<km-root-integrity>>). What follows depends on what the caller asked for, and the two cases are opposites: see <<km-crc-failure-response>>.
 | `-2` | `rx_buff_oflow` | The message receive buffer has encountered a message overflow. This is caused by a singular incomplete message filling up the message receive buffer. All message buffers and mailbox FIFOs have been flushed by the KM.
 | `-3` | `mbox_overflow` | The KM outgoing mailbox FIFO has encountered an overflow condition. All message buffers and mailbox FIFOs have been flushed by the KM.
 | `-4` | `mbox_underflow` | The KM incoming mailbox FIFO has encountered an underflow condition. All message buffers and mailbox FIFOs have been flushed by the KM.
@@ -4991,6 +5044,41 @@ Two consequences for firmware:
   descriptor exists — and separately raises the recoverable fault described
   under Check Key (<<km-firmware-key-management>>).
 
+[[km-crc-failure-response]]
+*Responding to a CRC failure: use versus revoke*
+
+Raising `key_slot_crc` says the material cannot be vouched for. It does not by
+itself say what to do with that material, and the answer is not the same in
+both directions.
+
+*A request to USE the material is aborted, and nothing is erased.* Deriving
+from a key, transferring it, or reading its metadata all take this path. The
+caller wanted to read the key, so destroying it serves no one: a CRC failure
+may be transient, and the material may still be recoverable — a root re-derives
+from fuses on the next reset, and a single-bit disturbance in a key slot may
+not recur. Erasing on detection would convert every such fault into permanent
+loss. The operation returns its ordinary failure status and the KM raises the
+fault.
+
+*A request to REVOKE the material proceeds, and the fault is raised
+afterwards.* Destruction is what the caller asked for, and a corrupt key must
+never become unreclaimable. Refusing here would strand material in the KPV
+with no way to release its slots. Revoke Key therefore erases the slots and
+retires the descriptor exactly as it would for an intact key. What it cannot do
+is *re-parent* and child keys. The target's `parent` field is inside the region 
+that just failed its check, so it cannot be trusted to name a grandparent, and 
+writing it into the children and re-sealing them would launder an unverified 
+value into something that looks authentic (<<km-reparentage>>).
+
+Those children are left holding a reference to a descriptor that no longer
+exists. They remain live and usable by handle — nothing about them is damaged —
+but no ancestor can reach them any more, so no `CMD_CLEAR_KEY_TREE` will ever
+sweep them. They are *orphans*, and `CMD_CLEAR_ORPHANED_KEYS`
+(<<km-cmd-clear-orphaned-keys>>) is how the SEP reclaims them.
+
+This is the only way the KM produces an orphan: every ordinary revocation
+re-parents, so a healthy KM has none.
+
 [[km-reparentage]]
 *Lineage and re-parentage*
 
@@ -5031,6 +5119,14 @@ consistent forest, even when they revoke a key and its parent in the same pass.
 Re-parentage writes another descriptor, so each re-parented child must be
 re-sealed: its `parent` field changes, and its CRC-32C covers that field
 (<<km-descriptor-crc>>).
+
+Re-parentage has exactly one failure mode, and it is not silent. If the revoked
+key's own seal has failed, its `parent` field is inside the region that failed
+the check and cannot be trusted to name a grandparent. The revoke still
+completes, the children are left orphaned rather than spliced onto an unverified
+value, and the `key_slot_crc` fault is raised
+(<<km-crc-failure-response>>). `CMD_CLEAR_ORPHANED_KEYS`
+(<<km-cmd-clear-orphaned-keys>>) reclaims them.
 
 All access to the key registry must go through a well defined interface. The
 following functions manipulate the key registry.
@@ -5466,6 +5562,14 @@ is simply still live — a retry re-parents nothing and proceeds. Torn after ste
 the descriptor survives over wiped slots, which its next lookup detects as a CRC
 mismatch and reports as the recoverable fault under Check Key.
 
+Revoking a key whose own seal has failed is explicitly allowed, and is the one
+case where step 2 cannot run: a corrupt descriptor's `parent` field cannot be
+trusted, so its children are left orphaned rather than re-parented onto an
+unverified value. Steps 3 to 5 proceed regardless — the material is erased and
+the descriptor retired — and the `key_slot_crc` fault is raised afterwards
+(<<km-crc-failure-response>>). The orphans are reclaimed with
+`CMD_CLEAR_ORPHANED_KEYS` (<<km-cmd-clear-orphaned-keys>>).
+
 Engine sideload registers are out of scope here — revocation never reaches
 material already transferred to an engine (<<km-seq-key-transfer-purge>>).
 
@@ -5479,9 +5583,10 @@ members differ only in the predicate and in what they do to roots afterwards:
 [cols="<30%,<40%,<30%",options="header"]
 |===
 | Command | Predicate | Roots afterwards
-| `CMD_CLEAR_OWNER_KEYS` | Current owner field equals `OWNER` | That owner's HW, SW and identity roots are cleared, retiring their slots
-| `CMD_CLEAR_HW_KEYS` | Domain is `HW` | All three HW roots are cleared, retiring their slots
+| `CMD_CLEAR_OWNER_KEYS` | Current owner field equals `OWNER` | That owner's HW, SW and identity roots are cleared
+| `CMD_CLEAR_HW_KEYS` | Domain is `HW` | All three HW roots are cleared
 | `CMD_CLEAR_KEY_TREE` | Descriptor is reachable from the named one through parent links | Untouched
+| `CMD_CLEAR_ORPHANED_KEYS` | Descriptor's `parent` names a key whose issue counter has moved on | Untouched
 |===
 
 `CMD_CLEAR_KEY_TREE` is the one case where the predicate is not a per-descriptor
