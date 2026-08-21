@@ -22,9 +22,6 @@ all: $(PARHEX)
 # The firmware is in-tree at hw/ip/key_manager/dv/fw and builds through the shared
 # DV firmware engine, the same one SEP's own firmware uses; the entry point is
 # production/rom_main and the engine's parity step emits rom_main.rom.parhex.
-# (This target previously drove a `hw/ip/key_manager/tb/firmware` tree from a
-# `hw/comp/key_manager/...` source path -- both leftovers from the old repository
-# layout that never existed here.)
 OCH_ROOT ?= $(abspath $(CURDIR)/../../../../../../..)
 KM_FW_DIR := $(OCH_ROOT)/hw/ip/key_manager/dv/fw
 KM_ROM_BUILT := $(KM_FW_DIR)/build/tests/rom_main/rom_main.rom.parhex

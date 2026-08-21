@@ -97,9 +97,8 @@ class sep_efuse_image_test(sep_base_test):
         await self.start_seq(rd)
         got = rd.rdata & 0xFFFF_FFFF
         assert ((got >> (nc_a % 32)) & 1) and ((got >> (nc_b % 32)) & 1), (
-            f"CHK-W1S-NOCLOBBER: after programming bit {nc_b}, earlier bit {nc_a} is not "
+            f"after programming bit {nc_b}, earlier bit {nc_a} is not "
             f"set (direct OTP word {nc_word} = 0x{got:08x}); bank must be OR, not overwrite")
-        self.logger.info("CHK-W1S-NOCLOBBER PASS: sequential same-word programs both persist")
 
         # Advance the base post-sense golden to the post-program OTP state (the DUT
         # already holds the W1S bits from the programs above; this only updates the

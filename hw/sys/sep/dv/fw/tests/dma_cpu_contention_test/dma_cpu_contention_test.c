@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // SEP Secure-DMA vs CPU-LSU SRAM contention firmware test (OSS port of the reference suite
-// dma_cpu_contention_test). Interconnect edge E8: the Secure-DMA master and the
+// dma_cpu_contention_test). The Secure-DMA master and the
 // CPU-LSU master concurrently drive the SEP-local AXI xbar to the shared SRAM
 // slave (0x1000_0000). The EL2 CPU kicks off a long SRAM->SRAM DMA copy, then
 // immediately runs its own store loop into a DISJOINT SRAM region while the DMA

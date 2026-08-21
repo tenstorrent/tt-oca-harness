@@ -9,12 +9,11 @@
 //
 // Flow: WREN -> PAGE PROGRAM (single TX segment: cmd+addr+data) -> READ + verify
 // == pattern -> WREN -> SECTOR ERASE -> READ + verify == 0xFF. ERROR_STATUS
-// checked == 0. The RDSR/WIP status-poll path is deferred: the current BFM is
-// instant-ready and the split RDSR transaction sequence needs separate bring-up.
+// checked == 0. The BFM is instant-ready (no WIP bit); dual/quad lanes are not
+// modeled. Neither is a checker here.
 //
 // The BFM memory inits to 0xFF (erased), so PAGE PROGRAM (NOR-AND) writes the
-// pattern directly. CHK-DUAL-QUAD is deferred: the BFM models neither the
-// 0x3B/0x6B opcodes nor multi-lane DQ (single-bit data phase).
+// pattern directly.
 //
 // RANDOMIZATION ([RAND-REP]): the scenario (flash address, word count, data) is
 // held in the g_spi1_params block below. The committed defaults are the directed
@@ -212,7 +211,36 @@ int main(void) {
         sep_mbx_puts("CHK-PROGRAM/CHK-READ PASS: PP + READ match the pattern\n");
     }
 
-    // --- ERASE path: WREN -> ERASE -> READ == 0xFF ---
+    // Neighbour 4 KiB sector: program it so the erase below cannot pass as a
+    // chip-wide wipe.
+    uint32_t neigh = addr ^ 0x1000u;
+    uint32_t neigh_pat[MAX_WORDS];
+    uint32_t neigh_rd[MAX_WORDS];
+    for (uint32_t i = 0; i < nwords; i++) {
+        neigh_pat[i] = exp[i] ^ 0xFFFFFFFFu;
+    }
+    if (flash_wren()) {
+        sep_mbx_puts("FAIL: WREN(neighbour) timeout\n");
+        return 1;
+    }
+    if (flash_page_program(neigh, neigh_pat, nwords)) {
+        sep_mbx_puts("FAIL: PAGE PROGRAM(neighbour) timeout\n");
+        return 1;
+    }
+    if (flash_read(neigh, neigh_rd, nwords)) {
+        sep_mbx_puts("FAIL: READ(neighbour) timeout\n");
+        return 1;
+    }
+    for (uint32_t i = 0; i < nwords; i++) {
+        if (neigh_rd[i] != neigh_pat[i]) {
+            sep_mbx_puts("FAIL: neighbour sector program word ");
+            sep_mbx_puthex(i);
+            sep_mbx_putc('\n');
+            errors++;
+        }
+    }
+
+    // --- ERASE path: WREN -> ERASE -> READ == 0xFF, neighbour intact ---
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN(erase) timeout\n");
         return 1;
@@ -238,7 +266,26 @@ int main(void) {
         }
     }
     if (erase_ok) {
-        sep_mbx_puts("CHK-ERASE PASS: sector erase -> READ all 0xFF\n");
+        int neigh_ok = 1;
+        if (flash_read(neigh, neigh_rd, nwords)) {
+            sep_mbx_puts("FAIL: READ(neighbour after erase) timeout\n");
+            return 1;
+        }
+        for (uint32_t i = 0; i < nwords; i++) {
+            if (neigh_rd[i] != neigh_pat[i]) {
+                sep_mbx_puts("FAIL: CHK-ERASE neighbour word ");
+                sep_mbx_puthex(i);
+                sep_mbx_puts(" got ");
+                sep_mbx_puthex(neigh_rd[i]);
+                sep_mbx_puts(" -- sector erase wiped the adjacent 4KiB sector\n");
+                errors++;
+                neigh_ok = 0;
+            }
+        }
+        if (neigh_ok) {
+            sep_mbx_puts("CHK-ERASE PASS: sector erase -> READ all 0xFF, neighbour "
+                         "4KiB sector intact\n");
+        }
     }
 
     // --- CHK-NO-ERROR: the OT SPI host saw no error across the whole sequence ---
@@ -251,8 +298,6 @@ int main(void) {
     } else {
         sep_mbx_puts("CHK-NO-ERROR PASS: OT SPI ERROR_STATUS==0\n");
     }
-    sep_mbx_puts("CHK-WIP DEFERRED: RDSR/WIP poll path not enabled in this firmware\n");
-    sep_mbx_puts("CHK-DUAL-QUAD DEFERRED: BFM has no 0x3B/0x6B opcode or multi-lane DQ\n");
 
     if (errors == 0) {
         sep_mbx_puts("PASS: OT SPI flash program/read/erase/no-error all OK\n");

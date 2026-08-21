@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""DRBG real-sink multi-consumer: KM + AES concurrent (reference P3.7).
+"""DRBG real-sink multi-consumer: KM + AES concurrent.
 
-One real DRBG/ESRC/EDN stream feeds TWO real entropy sinks concurrently -- edge E2
-(multi-rand): the KM AXIS endpoint (real KM firmware rom_main pulls the DRBG sampler)
+One real DRBG/ESRC/EDN stream feeds TWO real entropy sinks concurrently:
+the KM AXIS endpoint (real KM firmware rom_main pulls the DRBG sampler)
 and the AES native crypto-EDN leg (ECB-256 reseed+encrypt). KM and AES are driven as a
 TRUE cocotb fork so both contend at the EDN arbiter in the same window. The CHK5 proof
 is BIT-EXACT and genbits-anchored (stronger than the reference suite):

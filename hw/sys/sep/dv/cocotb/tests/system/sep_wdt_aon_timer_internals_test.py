@@ -116,7 +116,14 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         assert count2 > count1, (
             f"WKUP_COUNT did not advance on clk_wdt: count1={count1} count2={count2}"
         )
-        self.logger.info("CHK-WKUP-COUNT PASS: WKUP_COUNT %d -> %d (advances on clk_wdt)", count1, count2)
+        intr = await self.wdt.read(INTR_STATE)
+        assert (intr & INTR_WKUP_EXPIRED) == 0, (
+            f"CHK-WKUP-COUNT: high threshold expired in the count window "
+            f"(INTR_STATE=0x{intr:08x}, count2={count2}, thold={self.cfg_wdt.wkup_high_thold})"
+        )
+        self.logger.info(
+            "CHK-WKUP-COUNT PASS: WKUP_COUNT %d -> %d (advances on clk_wdt); "
+            "INTR_STATE.wkup_expired stayed 0 under the high threshold", count1, count2)
 
     async def _chk_wkup_expire(self) -> None:
         """CHK-WKUP-EXPIRE: small thold -> INTR_STATE.wkup_expired sets, then W1C -> 0."""
@@ -142,6 +149,13 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         assert cause & WKUP_CAUSE_BIT, f"WKUP_CAUSE.cause not set after wkup expiry (0x{cause:08x})"
         await self.wdt.write(WKUP_COUNT_HI, 0)                 # remove the wakeup condition
         await self.wdt.write(WKUP_COUNT_LO, 0)
+        # Sticky: dropping the count must leave the cause set, otherwise the write-0
+        # below cannot be blamed for the clear.
+        cause_held = await self.wdt.read(WKUP_CAUSE)
+        assert cause_held & WKUP_CAUSE_BIT, (
+            f"WKUP_CAUSE.cause cleared when COUNT was reset (0x{cause_held:08x}); "
+            f"the write-0 clear would then be unattributed"
+        )
         # OpenTitan aon_timer WKUP_CAUSE: SW writes 0 to acknowledge/clear the cause.
         await self.wdt.write(WKUP_CAUSE, 0)
         # WKUP_CAUSE is AON-domain (clk_aon=clk_wdt): the clear settles over a few clk_wdt
@@ -213,7 +227,15 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"WDOG_BARK_THOLD changed after REGWEN lock: 0x{post:08x} (expected 0x{pre_val:08x}, "
             f"write resp={resp})"
         )
+        bite_pre = await self.wdt.read(WDOG_BITE_THOLD)
+        resp_bite = await self.wdt.write_tolerant(WDOG_BITE_THOLD, self.cfg_wdt.bark_postlock)
+        bite_post = await self.wdt.read(WDOG_BITE_THOLD)
+        assert bite_post == bite_pre, (
+            f"WDOG_BITE_THOLD changed after REGWEN lock: 0x{bite_post:08x} "
+            f"(expected 0x{bite_pre:08x}, write resp={resp_bite})"
+        )
         self.logger.info(
-            "CHK-REGWEN-LOCK PASS: post-lock WDOG_BARK_THOLD write ignored, stays 0x%08x "
-            "(write resp=%d)", post, resp,
+            "CHK-REGWEN-LOCK PASS: post-lock WDOG_BARK_THOLD and WDOG_BITE_THOLD writes "
+            "ignored, bark stays 0x%08x bite stays 0x%08x (write resp=%d/%d)",
+            post, bite_post, resp, resp_bite,
         )

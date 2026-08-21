@@ -1,0 +1,673 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= SEP Open-Source DV — Improvement Plan
+:toc: left
+:toclevels: 2
+:icons: font
+:source-highlighter: rouge
+
+[NOTE]
+====
+This is not a test contract and not a status tracker. It answers
+three questions: after Phase 1 and Phase 2 land, did the stated target arrive;
+if not, why; and what to change, in order, with a done-when for each item.
+
+Sources: the SEP architecture chapters under `hw/sys/sep/doc/`, the Phase 1 and
+Phase 2 verification plans, `oss_dv_plan.adoc`, and a concept read of the
+internal UVM environment (test *names* and behaviour only — no proprietary
+paths, licensed IP, or internal testcase IDs).
+
+This file *ships in this PR*. Executing <<improvements>> §1–§8 is later
+work. The first later step is still §1 (rewrite the 69-name ledger).
+====
+
+== This PR's scope
+
+What this branch already did, and must not re-do as if it were still open.
+
+Spine honesty::
+Phase 1 grades stay 147 `PROVEN` / 1 `FAILED`. Phase 2 stays 22 graded
+entries, 101 `PROVEN` / 1 `FAILED`. `PARTIAL` / `GUARD` are unused.
+Two checkers are hard `FAILED` spec-vs-RTL reveals, not XFAILs, not
+regressions of this PR. Confirmed again on Verilator `all` run
+`20260821_024643`:
++
+--
+* CHK-JTAG-MMR-DENY on `sep_efuse_jtag_axil_el2_cpu_mux_test` —
+  https://github.com/tenstorrent/tt-oca-harness/issues/626
+* CHK-OWNERSHIP-WINDOW on `sep_fabric_inbound_filter_rule_matrix_test` —
+  https://github.com/tenstorrent/tt-oca-harness/issues/1050
+--
++
+CI `--items smoke` does not include them. A class sweep is expected
+two-red until RTL.
+
+ROM firmware::
+Dropped from this VPLAN. The four implemented boots live in
+`testlists/rom_fw.toml` and still run in the `all` and `cpu` groups.
+This plan does not grade them. `sep_rom_ot_integrity_reject_test` was
+deleted with the drop.
+
+Parking-lot close::
+`sep_crypto_edn_round_robin_grant_test` is implemented and `PROVEN`
+(kept log `20260820_210207`). `secure_tm` is a frontdoor strap;
+`lc_sigint_err` is a signed-off decoder-input inject whose pass line
+is the DUT probe plus an AXI `FEAT_CTRL` readback. Verilator run
+`20260821_041148` logged `CHK-SECURE-TM-OFF/ON`, `CHK-SIGINT`, and
+`CHK-SIGINT-RELEASE`. Latch-timing corners stay backlog
+`sep_efuse_strap_secure_tm_latch_test`.
+
+SPI flash-cmd golden::
+`3693829a` added the neighbour-sector program so CHK-ERASE cannot pass
+as a chip-wide wipe. The host golden now expects that 10-opcode
+sequence. Dual/quad opcode walk is still §5 (BFM-gated), not closed.
+
+Not this PR::
+--
+* Executing §1–§8 (KM command, eFuse lock, demote product, OTBN
+  compute, filter-matrix upgrade, outbound remap, Phase 3 UVM).
+* CHK1–CHK4 + CHK5 on `sep_crypto_edn_round_robin_grant_test`,
+  `sep_aes_mode_keysize_rand_test`, and
+  `sep_kmac_mode_strength_rand_test` — standing rule, next PR.
+--
+
+== Verdict
+
+*The Phase 1 + Phase 2 target has not arrived* under the definition in
+`oss_dv_plan.adoc`.
+
+That definition is: Phase 1 + Phase 2 together cover *> 60% of SEP*, where
+"covered" means a spec-visible *iconic* behaviour has a `PROVEN` evidence-item,
+and Phase 2 randomizes whenever the feature has a legal matrix or knob space
+(`oss_dv_plan.adoc` lines 37–39).
+
+What *has* arrived is the other, weaker reading: a strong *integration spine*.
+The wires between blocks are mostly proven. Several IPs still do not have the
+feature that makes that IP itself. Grade tables hide that distinction: a suite
+can be 147 + 101 `PROVEN` with two hard `FAILED` spec-gaps and still miss
+iconic-per-IP.
+
+[cols="2,3",options="header"]
+|===
+| Reading of "60% of SEP" | After Phase 1 + 2 land?
+
+| Integration / datapath spine (sideload, LC stitch, inbound-filter gate,
+  DMA copy, entropy consume, CPU boot, SPI handshake)
+| *Yes.* This is what Phase 1 was built to be, and it matches the internal
+  environment's small cross-IP interconnect suite.
+
+| Iconic feature per in-scope IP, randomized if possible, `PROVEN` in a kept
+  Verilator log (`oss_dv_plan.adoc`)
+| *No.* AES / HMAC / KMAC / SPI / SRAM / WDT / EDN-arbiter / DRBG
+  segmentation are in that shape. Key Manager as a command device, eFuse
+  program/lock, lifecycle demote product, OTBN as a compute engine,
+  inbound-filter as a *matrix*, and live outbound remap are not.
+|===
+
+Do not mix the two. Closing Phase 2 while the 69-name backlog is still listed
+as Phase 2 would report a pass on the spine and a fail on the plan.
+
+== How this was judged
+
+Three independent reads, then this synthesis.
+
+. The architecture spec (`hw/sys/sep/doc/`) is the denominator. Iconic =
+  the behaviour that makes the block itself. Corner = error, security
+  permutation, negative matrix. Deferred / not-in-bare-SEP (AGP, local UART
+  and GPIO, licensed SPI PHY, ROM patch, next-gen DMA-AES) are *out* of the
+  60% count. ROM-*firmware* contracts (SPI boot path, integrity reject,
+  forced-EDN RSA) are out of *this* VPLAN — ROM-FW owner — and are not a
+  Phase 2 GAP this suite should execute.
+. Phase 1 and Phase 2 plans were scored by evidence-item grade, not by test
+  count. A `PARTIAL` or `GUARD` row is not a 60% credit. A backlog *name* is
+  not coverage. After the cleanup, running checkers are `PROVEN` or `FAILED`
+  only; a `FAILED` spec-gap is honest and is not a 60% credit either.
+. The internal UVM environment is a per-IP matrix (hundreds of directed
+  tests, coverage-bin close-out in the *same* bench). OSS is supposed to
+  *compress* that matrix into iconic + random representatives, not re-port
+  it. Where OSS already randomized a matrix (AES mode × key-size, HMAC
+  variants, KMAC modes), that is the concept working. Where OSS kept a
+  69-name breadth ledger, that is the internal concept leaking back in.
+
+=== Conflict with `3693829a` (the plan was right)
+
+This plan's own rule:
+
+> Do not treat a `PARTIAL` as done by writing a longer note. Either
+> strengthen the checker so it can fail, or move the unproven slice to
+> Phase 3 with an explicit name.
+
+`3693829a` broke that rule on the five KM alive-mode CHK5 rows: they moved
+`PARTIAL` (bit-exact) → `PROVEN` (alive-only) with a longer note, and named
+no owner for the excluded slice. The out-of-range and segmentation rows in
+the same commit are fine — those took the second branch (`sep_drbg_gen_segmentation_test`
+owns segmentation).
+
+Resolution, which current Phase 1 text now states and this plan will keep:
+
+* Bit-exact CHK5 under `rom_main` is infeasible (firmware pull order). That
+  is not "strengthen."
+* The excluded slice's *named owner* is the small KM ROM tests:
+  `sep_esrc_e2e_smoke_test` and `sep_drbg_gen_segmentation_test` (and
+  `km_rom_entropy` where loaded). Alive-mode on the sideload KATs is a
+  different checker (live beats).
+* Same-class leftovers that still need a name, not a description caveat:
+  AES CTR round-trip re-runs ENCRYPT (keystream-determinism, not a DECRYPT
+  opcode) — Phase 3 or an explicit accepted-identity, not a silent 9-cell
+  `PROVEN` of decrypt.
+
+Do not execute §7 by writing more notes. Name the owner or strengthen.
+
+== What Phase 1 + 2 actually delivered
+
+Phase 1 is closed as a *spine*: 11 smoke + 21 representatives.
+*Current grades:* 147 `PROVEN` / 0 `PARTIAL` / 0 `GUARD` / 1 `FAILED`
+(CHK-JTAG-MMR-DENY, `periphs.adoc` vs RTL, issue 626, re-hit
+`20260821_024643`). Stitch CHK-SECURE-TM and CHK-SIGINT now quote run
+`20260821_041148` and are graded; CHK-SECRET-BLANK and
+CHK-SECURE-TM-PROG-BLOCK are the two rows added on top of the earlier 145.
+
+The spine is real: KM sideload into
+OTBN/AES/HMAC/KMAC, OTP → lifecycle decode, inbound filter vs `SEP_DBG`,
+DMA copy + SHA-256 + SPI handshake, entropy CHK1–4 under forced noise,
+CPU boot and ROM IFU, WDT bark → NMI.
+
+Phase 2 is 22 graded entries.
+*Current grades:* 101 `PROVEN` / 0 `PARTIAL` / 1 `FAILED`
+(CHK-OWNERSHIP-WINDOW, `fabric.adoc` vs RTL, issue 1050, re-hit
+`20260821_024643`). The ones that
+match `oss_dv_plan` (iconic + walk the discrete cells in one run):
+
+* `sep_aes_mode_keysize_rand_test` — 9-cell AES
+* `sep_hmac_sha_variant_rand_test` — 17-cell HMAC/SHA
+* `sep_kmac_mode_strength_rand_test` — 8-cell KMAC/SHA3
+* `sep_sram_datapath_breadth_test` — strobes and patterns walked
+* `sep_spi_ot_dma_tx_test` / `sep_spi_ot_host_csr_irq_rand_test` — SPI TX and
+  host control
+* `sep_drbg_gen_segmentation_test` — Generate `glen` is commanded, not
+  followed from DUT `gen_last`
+* `sep_crypto_edn_round_robin_grant_test` — same-cycle dual `edn_req`,
+  consecutive grants alternate (kept log `20260820_210207`)
+
+The ones that do *not*: tests named "matrix" or "rand" that shipped a single
+point (`sep_fabric_inbound_filter_rule_matrix_test` is one allow and one
+block); DMA modes walked but seed pinned; PIC three sources, not a seeded
+subset; crypto SW-reset covering AES↔HMAC only; KM present only as a
+sideload consumer, not as a mailbox/command device.
+
+Phase 2 still *structures* itself as 22 graded entries plus 69 ungraded
+names. That is the old breadth ledger. It is not the iconic plan.
+
+== Iconic scorecard (in-scope SEP)
+
+Out of the 60% count: AGP, local UART/GPIO (spec: remote, in SMC), licensed
+SPI PHY, vendor TRNG core, ROM patch, next-gen DMA-AES, DCLS-in-SEP, PCR
+vault, ROM-FW contracts (integrity reject, SPI boot path, forced-EDN RSA).
+
+Grades below are regenerated from the current documents. Where a plan row
+moved `PARTIAL` → `PROVEN` by re-scoping, the scorecard follows the *iconic
+claim*, not the new wording, unless a named owner took the excluded slice.
+
+[cols="2,2,3",options="header"]
+|===
+| Iconic feature (from spec) | Phase 1+2 | Why this grade
+
+| Fabric reachability / address map
+| PROVEN
+| Smoke + address-map walk.
+
+| Inbound filter: POR block-all, CPU-programmed allow, `SEP_DBG` bypass
+| PARTIAL
+| Gating by lifecycle/`SEP_DBG` is proven. Per-entry rule matrix is one
+  window. CHK-OWNERSHIP-WINDOW is `FAILED` (RTL vs `fabric.adoc`, issue
+  1050) — honest, not a 60% credit. Source-ID and read/write-enable product
+  not walked.
+
+| Outbound filter / AP-STEE live remap
+| GAP
+| CSR bank R/W only. No proof a programmed region actually translates or
+  that the outbound filter drops a forbidden beat.
+
+| CPU alias window (LSU + IFU)
+| PARTIAL
+| LSU both directions and an IFU call through the alias, all at the
+  *operating* base after a CSR probe-and-restore. A hardwired remapper at
+  that base would still pass.
+
+| Mailbox → PIC
+| PROVEN
+| One-channel delivery. TX-FIFO RANDCFG exists; RX/peer fill is an accepted
+  delta, not a 60% hole.
+
+| EL2 boot + ROM-HW fetch / LSU
+| PROVEN
+| Hello-world, ROM IFU, LSU read / write-ignored. Production ROM-FW
+  boots are in `rom_fw.toml` (still in the `cpu` sweep) and are not
+  graded here. Integrity-reject was deleted with that drop.
+
+| PIC source map
+| PARTIAL
+| Three representative sources, directed. Not a seeded subset of the map.
+
+| DMA copy + inline SHA-256 + LSIO
+| PROVEN
+| Hash, contention, SPI RX/TX. SHA-384 and abort are corners → Phase 3.
+
+| DMA address modes (INCR / FIXED / WRAP) × width
+| PARTIAL
+| Modes walked in `sep_dma_basic_test`; seed pinned. Against
+  "randomize if possible."
+
+| SRAM datapath
+| PROVEN
+| Smoke + strobe/pattern walk. Scrambler/ECC are corners → Phase 3.
+
+| AES mode × key-size
+| PROVEN
+| 9-cell RAND-REP, bit-exact vs independent golden. CTR round-trip re-runs
+  ENCRYPT (keystream-determinism). That is not a `PARTIAL` row; name the
+  DECRYPT-opcode slice for Phase 3 rather than implying 9-cell decrypt.
+
+| HMAC SHA variants
+| PROVEN
+| 17-cell RAND-REP.
+
+| KMAC / SHA3 / SHAKE
+| PROVEN
+| 8-cell RAND-REP. Phase 1 KMAC CPU path is liveness only.
+
+| OTBN as a compute engine
+| GAP
+| Sideload key-dump and IMEM/DMEM smoke. No OTBN program that computes.
+  Secure-boot RSA is ROM-FW and uses a forced EDN response.
+
+| KM sideload consume (AES/HMAC/KMAC/OTBN)
+| PROVEN
+| The interconnect claim. Alive-mode CHK5 on `rom_main` sideload is live
+  beats. Bit-exact CHK5 is the small KM ROM tests
+  (`sep_esrc_e2e_smoke_test`, `sep_drbg_gen_segmentation_test`) — that is
+  the named owner `3693829a` originally omitted.
+
+| KM as KM: mailbox + command set
+| GAP
+| `CMD_KEY_GENERATE` / `TRANSFER` appear only inside sideload KATs. No
+  command-set RAND-REP, no mailbox protocol proof.
+
+| Entropy ESRC → DRBG → EDN consume
+| PROVEN
+| CHK1–4 bit-exact under forced noise; Generate segmentation is a named
+  test (`sep_drbg_gen_segmentation_test`); consume is live. Health tests,
+  entropy-pool sink, and ring oscillator stay Phase 3.
+
+| Crypto EDN arbitration (two live clients)
+| PROVEN
+| `sep_crypto_edn_round_robin_grant_test`: same-cycle dual `edn_req`, both
+  acked, consecutive grants alternate. Span-containment overlap remains a
+  weaker sibling, not the iconic claim.
+
+| eFuse sense + shadow + persist
+| PROVEN
+| Sense, image, program-then-resense.
+
+| eFuse program × lock
+| GAP
+| The identity of eFuse after "it senses." Lock/permission matrix is
+  backlog names, not a test.
+
+| Lifecycle `feat_ctrl` vs `LC_STATE`
+| PROVEN
+| Stitch test, spec-derived golden. `secure_tm` strap and `lc_sigint`
+  inject are observed (DUT `secure_tm_o` / `lc_sigint_err_o` plus AXI
+  `FEAT_CTRL`; run `20260821_041148`). Latch-timing corners remain
+  backlog.
+
+| Lifecycle demote (DBG_1 / DBG_2, TEST_DEV vs PROD)
+| PARTIAL
+| `DEMOTE_1` opens the inbound filter; `DEMOTE_2` independence is now
+  proven on the same test (`CHK-DEMOTE-INDEP`). The demote × LC × DIS
+  product is still not walked.
+
+| RMA token match → LC update
+| PARTIAL
+| Present inside the stitch test's RMA legs, not a standalone iconic
+  randomizable token path.
+
+| SPI-OT flash + DMA
+| PROVEN
+| JEDEC, RX, TX cells, flash cmd, host CSR/IRQ. Dual/quad and WIP are
+  BFM-gated, not a 60% hole.
+
+| WDT bark → NMI, pet, lock
+| PROVEN
+| Phase 1 bark/NMI + Phase 2 internals RANDCFG.
+
+| Per-IP `SW_RESET_N` isolation
+| PARTIAL
+| AES↔HMAC live-result isolation. KM / OTBN / KMAC bits unused.
+
+| Clock-gate per IP
+| GAP
+| No iconic representative.
+
+| JTAG vs CPU vs KM eFuse mux
+| PROVEN
+| Two mux-coexistence tests. Extra-MMR deny is `FAILED` (issue 626) — RTL
+  vs spec, not a missing test.
+
+| Secure boot negative (bad sig / revoke / rollback)
+| out
+| ROM-FW owner. Not a Phase 2 GAP this suite executes.
+|===
+
+Read the table as: the spine is green; KM-the-device, eFuse-the-lock, demote
+product, OTBN-compute, live outbound remap, and several "named matrix shipped
+as one point" rows are why 60% iconic has not arrived.
+
+== What not to do
+
+These would move the suite *away* from `oss_dv_plan.adoc`.
+
+* Do not implement the 69 Phase 2 backlog names as 69 tests. Most are
+  overlap with a graded entry, or error/security matrices that belong in
+  Phase 3 UVM.
+* Do not start Phase 3 UVM coverage-closure until the Phase 2 *iconic*
+  set below is `PROVEN`. A new bench that re-hits AES-ECB-256 or DMA
+  SHA-256 is the overlap the plan already forbids.
+* Do not treat a `PARTIAL` as done by writing a longer note. Either
+  strengthen the checker so it can fail, or move the unproven slice to
+  Phase 3 *with an explicit name* (or a named existing test). `3693829a`'s
+  KM alive-mode re-scope is the worked example of the forbidden move;
+  naming the small KM ROM tests as CHK5 bit-exact owner is the repair.
+* Do not add GPIO, licensed SPI PHY, or vendor TRNG tests. The spec places
+  UART/GPIO in SMC; OSS hygiene drops licensed leaves.
+
+[[improvements]]
+== Improvements
+
+Each item is Why (the spec or plan gap) then How (the change) then Done-when
+(the evidence-item that must appear in a kept Verilator log).
+None of §1–§8 is work this PR still owes.
+
+=== 1. Make Phase 2's document match Phase 2's job
+
+Why::
+`oss_dv_plan.adoc` says one iconic feature per IP, randomized if possible.
+`verification_plan_phase2.adoc` still presents a 22 + 69 breadth ledger.
+Reviewers will score the ledger, not the plan. The 69 names are not
+evidence, but they *are* a worklist people will execute.
+
+How::
+Rewrite the Phase 2 front matter to an iconic checklist (the scorecard
+above). Split the 69 names into three lists in that document. The split is
+not a judgment call — each name maps through the scorecard:
+
+* *compress* — the name's coverage intent is already a `PROVEN` or `FAILED`
+  checker on a graded entry (`COVERED_BY` / `MERGED_INTO`). Delete from
+  Phase 2.
+* *iconic remaining* — the name *is* a scorecard row that is `GAP` or
+  `PARTIAL` (the items in §2–§8 below). Keep the name only as that row's
+  remaining work.
+* *Phase 3* — error, security permutation, coverage-bin walk, or a corner
+  of an already-`PROVEN` iconic row (AES CTR DECRYPT opcode, KM wipe,
+  health tests, inbound negative product).
+
+Stop calling Phase 2 "basic functional breadth."
+
+Done-when::
+Phase 2 names only tests that are implemented-and-graded or on the iconic
+remaining list. Every former backlog name has a one-line map to compress /
+iconic remaining / Phase 3. The 69-row table is gone. `oss_dv_plan.adoc` and
+Phase 2 use the same words.
+
+=== 2. Key Manager as a command device
+
+Why::
+The spec's KM identity is an isolated CPU behind a mailbox, with a command
+set (generate, revoke, transfer, shred, …) and a KPV. Phase 1 proved
+*consume*: a known key appears in an engine. That is the interconnect
+seam. It is not KM. Internal coverage of KM is the largest IP folder for
+exactly this reason.
+
+How::
+One RAND-REP, not a command-per-test matrix. Walk the discrete legal
+commands that are frontdoor-stimulable on this DUT in one invocation
+(generate, transfer to one engine already covered by a KAT, revoke or
+shred, a documented illegal command → error). Seed legal continuous knobs
+(slot, owner, length). Same config object for DUT and checkers. Mailbox
+protocol (separator, depth, flush, IRQ RW1C) can be the same test or a
+sibling RANDCFG — do not split it into five directed ports.
+
+Done-when::
+A kept log shows every required command cell, a value check that is not
+the sideload KAT repeated, and mailbox IRQ RW1C to 0. Wipe stays Phase 3
+(destructive security edge, already parked).
+
+=== 3. eFuse program × lock
+
+Why::
+After sense-and-image, eFuse's iconic remaining behaviour is "a field can
+be programmed, a lock sticks, a locked program is refused." Phase 1 proved
+the controller can sense and that one program persists across resense. It
+did not prove the lock contract. That is what makes OTP different from a
+shadow RAM.
+
+How::
+One RAND-REP over a *legal* spare/test field (never `LC_STATE`, which the
+spec says must not be R/W locked). Discrete cells: program while unlocked
+→ resense sees it; set write-lock → further program refused; read-lock
+behaviour as spec'd for that field. Seed which legal field and which bit.
+Clear `EFUSE_PROGRAM_CTRL` after program (liveness: both enables starve
+the read). Independent expected value from the generated fuse map, not
+from the DUT shadow.
+
+Done-when::
+Log names the field, shows W1S persist, shows lock refusal, shows
+post-clear read completing. Permission-neg × `secure_tm` permutations
+are Phase 3.
+
+=== 4. Lifecycle demote product
+
+Why::
+The spec's demote rule is the thing people get wrong: TEST_DEV forces
+debug on, PROD *relaxes to honour DIS*, RMA/PROD_END ignore demote,
+DEMOTE_1 and DEMOTE_2 are independent. Phase 1 used `DEMOTE_1` as a switch
+to open the inbound filter and now also proves `DEMOTE_2` independence.
+That still does not walk the product. The golden already exists
+(`sep_lcc_golden.py`, spec Table 50).
+
+How::
+One RAND-REP: walk the discrete LC × demote × a small legal DIS subset in
+one invocation. Check `feat_ctrl` against the spec golden, then one
+*live* consequence (inbound filter skip vs force) so it is not
+CSR-storage-only. Seed the DIS vector bits that the spec defines
+(SEP_DBG, CHIPLET_DBG, SIP_DBG), not reserved bits.
+
+Done-when::
+Every required cell logs `feat_ctrl` vs golden *and* a live filter or
+debug-gate observation. A PROD vector with a DBG_1 bit disabled must
+*not* open that bit under demote (the #242 distinction).
+
+=== 5. Finish randomization on tests that already exist
+
+Why::
+The plan says: pin directed, then upgrade; do not ship a one-point
+stand-in for a matrix. Several Phase 2 entries already have the datapath
+and a config object. Upgrading them is cheaper than new tests and is the
+fastest 60% move.
+
+How::
+In place, same test names:
+
+* `sep_fabric_inbound_filter_rule_matrix_test` — walk entry index ×
+  read/write-allow × at least two windows. Keep live PROD sense. Keep the
+  ownership-window assert hard (issue 1050); do not XFAIL it.
+* `sep_dma_basic_test` — keep the mode/width walk; un-pin the seed;
+  randomize legal addr/len/chunk under the alignment the RTL requires.
+* `sep_crypto_per_ip_reset_isolation_test` — walk the remaining
+  `SW_RESET_N` bits that this DUT actually isolates (do not claim KM if
+  KM reset is a different mechanism).
+* `sep_spi_ot_flash_cmd_rand_test` — neighbour-sector erase is in (10
+  BFM opcodes). Either walk the remaining opcode cells the BFM can
+  show, or drop the RAND-REP label. Dual/quad stay deferred if the BFM
+  cannot show lanes; that is infra, not a silent pass.
+
+Done-when::
+Each upgraded test logs `CHK-RAND-REP` (or equivalent) with the cell
+count, and the previous "one point" iconic hole is gone or explicitly
+infra-gated.
+
+=== 6. OTBN compute, not only key-dump
+
+Why::
+OTBN's iconic feature is "a program in IMEM runs and writes DMEM." Phase 1
+proved a sideloaded key is visible to OTBN. Secure-boot RSA is real math
+but ROM-FW, with EDN responses forced, so it does not prove the entropy
+seam and is not this VPLAN's job. Without one honest compute cell, OTBN is
+a memory window plus a key sink.
+
+How::
+One directed-then-RANDCFG test: load a tiny known program over 32-bit AXI
+beats, wait `STATUS==IDLE` after wipe, run, compare DMEM against an
+independent expected value. Release OTBN from SW reset before any KM
+transfer if sideload is in the same test. If EDN is required, bring up
+real entropy (do not add another `edn_force` on the proof path).
+
+Done-when::
+Log shows `ERR_BITS==0`, DMEM == golden, and EDN was either unused or a
+real CHK5 consume. Forced-EDN RSA boot stays with the ROM-FW owner.
+
+=== 7. Close the honesty gaps on tests we already run
+
+Why::
+DV bugs first. A `PROVEN` row whose checker cannot see the failure it
+names is worse than a named GAP. Execute this section by strengthening or
+naming an owner — not by lengthening the note (`3693829a` KM CHK5).
+
+How::
+No new IPs. Fix the checker or the stimulus:
+
+* Entropy Generate segmentation: **closed** by
+  `sep_drbg_gen_segmentation_test`. Do not triplicate onto the Phase 1
+  entropy tests.
+* Crypto EDN arbiter: **closed** by
+  `sep_crypto_edn_round_robin_grant_test` (kept log `20260820_210207`).
+* CHK5 bit-exact vs `rom_main`: **named owner** — small KM ROM tests.
+  Do not re-open as a PARTIAL on the sideload KATs.
+* AES CTR DECRYPT opcode: **name it** (Phase 3 corner, or an accepted
+  CTR-identity note with that name). Do not leave it as a sentence inside
+  CHK-CELL `PROVEN`.
+* CHK1..CHK4 + CHK5 on every DRBG cross — still the standing rule. Known
+  holes: `sep_crypto_edn_round_robin_grant_test`,
+  `sep_aes_mode_keysize_rand_test`,
+  `sep_kmac_mode_strength_rand_test`. Dual-sink bit-exact routing still
+  needs the unported arbiter-assignment trace.
+* `sep_cpu_dbg_reset_independence_test`: keep the dropped isolation claim
+  dropped.
+* Boot ROM firmware stays out of this VPLAN. Sources and enrollment
+  live in `testlists/rom_fw.toml`; ROM-FW owner.
+
+Done-when::
+Each open item is either a new `PROVEN` line or an explicit Phase 3 name
+in the Phase 2 document. No `PROVEN` row whose log cannot fail the slice
+the test's name implies.
+
+=== 8. Live outbound remap — only if it is still iconic after §5
+
+Why::
+The spec's fabric identity includes "programmed regions translate, and
+the outbound filter can forbid a path." CSR R/W of those banks is
+decode, not `[LIVE]`. If §5's inbound-filter upgrade plus Phase 1 alias
+remap already carry fabric for the 60% bar, this can wait. If review
+still counts fabric as a hole, it is one test, not a gap-matrix port.
+
+How::
+One RANDCFG: program one legal remap region, issue a beat that must land
+at the translated address (observed on a real DUT port or a location the
+frontdoor can read), then a forbidden outbound beat that must complete
+with DECERR. No backdoor peek of the remapper.
+
+Done-when::
+A translated hit and a filtered miss, both attributed in the log. The
+fabric gap-matrix and tail-closure names stay Phase 3.
+
+=== 9. Phase 3 starts with a UVM smoke, not the leftover names
+
+Why::
+`oss_dv_plan.adoc` already assigns Phase 3 a different job from Phase 2.
+Phase 1 + 2 are the cocotb baseline (*> 60%* feature coverage). Phase 3 is
+a *new* UVM bench whose coverage job is combined code coverage *> 95%*
+on the *union* of all three phases, plus corners those phases deferred.
+Stimulus is coverage-driven against holes in a combined Phase 1+2 run.
+A Phase 3 test whose bins Phase 1+2 already hit is rejected.
+
+Starting Phase 3 from the 69 leftover *names* would do the opposite: it
+would re-implement the spine (KM sideload, AES-ECB, DMA SHA-256) under a
+new harness — the overlap rule — and it would treat a worklist as a
+coverage map. The spec's measurement is bins, not names.
+
+A UVM smoke first is the same evidence-item bar the cocotb suite already
+uses: clock, reset, a register read, a kept Verilator log. Until that
+exists, Phase 3 cannot prove it can produce a `PROVEN` row at all.
+
+How::
+After §1–§7: new UVM environment, same DUT, same quality bar
+(evidence-items, force-free, Verilator close-out). First test is UVM
+smoke (clock/reset/a register read). Then coverage-driven stimulus aimed
+at bins Phase 1+2 never hit, plus the parked corners: KM wipe, token-error
+matrix, health-test stress, inbound negative permutations, AES CTR
+DECRYPT opcode, DMA abort/opcode-error. Secure-boot reject stays with the
+ROM-FW owner unless that owner asks Phase 3 to carry it.
+
+Done-when::
+A UVM smoke `PROVEN` on Verilator. A written list of coverage holes taken
+from a combined Phase 1+2 run — not from the 69-name list.
+
+== Suggested order
+
+The 60% iconic bar moves in this order *after this PR*. Do not
+parallelize §1 away from the rest: the document change is what stops
+the 69-name worklist from being executed by accident.
+
+. §1 document alignment (no sim)
+. §7 honesty fixes on existing tests (cheap, DV-bug-first; name owners,
+  do not re-scope)
+. §5 randomize upgrades on existing tests
+. §2 KM command RAND-REP
+. §3 eFuse program × lock
+. §4 lifecycle demote product
+. §6 OTBN compute
+. §8 outbound remap only if the scorecard still shows fabric as a hole
+. §9 Phase 3 UVM smoke
+
+== Documents this plan would change
+
+[cols="2,3",options="header"]
+|===
+| File | Change
+
+| `verification_plan_phase2.adoc`
+| Replace breadth ledger with iconic remaining + Phase 3 dump of the 69
+  names, each mapped by the scorecard criterion. Keep graded entries as
+  the contract they are.
+
+| `oss_dv_plan.adoc`
+| Points at this file. No change to the 60% / 95% / randomize rules —
+  those stay; this plan executes them.
+
+| `verification_plan_phase1.adoc`
+| Purpose paragraph: Boot ROM firmware contracts are out of this VPLAN.
+  Keep the named CHK5 bit-exact owner on the KM sideload rows.
+
+| `verification_plan_phase3.adoc`
+| Remain uncommitted. Add the Phase 3 dump from §1 when Phase 2 is
+  rewritten. Do not grade those names.
+
+| `README.md` / `AGENTS.md`
+| Point at `verification_plan_phase*.adoc` and `oss_dv_plan.adoc`. The
+  `SEP_OSS_VPLAN_PHASE*.md` paths are gone.
+
+| `testlists/rom_fw.toml`
+| ROM-FW boots live here. Still members of `all` / `cpu`. Not a SEP
+  VPLAN grade surface.
+|===

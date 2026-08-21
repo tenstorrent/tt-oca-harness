@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC SHA-384 and SHA-512 Test - TC_HMAC_012 (P0)
+ * HMAC SHA-384 and SHA-512 Test
  *
  * Verifies SHA-384 and SHA-512 digest computation against NIST FIPS 180-4
  * known-answer vectors for message "abc".
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_sha384_sha512_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_sha384_sha512_test STACK=sim
  */
 
 #include <stdint.h>
@@ -108,7 +108,7 @@ static int run_sha_case(const char *name, uint32_t digest_size, uint32_t nwords,
     if (nwords * 8u >= sizeof(got_hex)) return -1;
     digest_to_hex(nwords, got_hex);
 
-    printf("  Digest:   %s\n", got_hex);
+    printf("  Digest: %s\n", got_hex);
     printf("  Expected: %s\n", expected_hex);
     if (strcmp(got_hex, expected_hex) != 0) {
         printf("  FAIL: %s digest mismatch\n", name);
@@ -122,7 +122,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
-    printf("HMAC SHA-384 and SHA-512 Test (TC_HMAC_012)\n");
+    printf("HMAC SHA-384 and SHA-512 Test\n");
     printf("====================================================\n");
 
     int pass = 1;

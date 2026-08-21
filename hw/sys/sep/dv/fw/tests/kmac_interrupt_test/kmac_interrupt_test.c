@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_006 (P0) - Interrupt Test
+ * Interrupt Test
  *
  * INTR_TEST set/clear for each source (fifo_empty proven with non-empty FIFO),
  * plus a real kmac_done via empty SHA3-256 with software entropy.
@@ -193,7 +193,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_006: Interrupt Test\n");
+    printf("  Interrupt Test\n");
     printf("========================================\n");
 
     WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
