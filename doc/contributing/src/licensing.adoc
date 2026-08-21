@@ -63,10 +63,9 @@ comments in the file headers.
 
 A Contributor License Agreement (CLA) defines the terms under which contributions can be made to a project.
 
-It is key to the successful functioning of an open source project such as OpenTitan. 
-It offers critical support to three separate groups:
+It is key to the successful functioning of an open source project and offers critical support to three separate groups:
 
-- Ensures that the OpenTitan project has the right to distribute the contribution.
+- Ensures that the project has the right to distribute the contribution.
 - Confirms the contributor's ownership and grants licenses to the project.
 - Provides protection for recipients and users of the contributions.
 

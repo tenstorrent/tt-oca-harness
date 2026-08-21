@@ -12,7 +12,7 @@ OCAH implements the common non-application functions an OCA chiplet
 needs, so adopters get them by construction rather than rebuilding
 them per project::
 
-* Security Enclave Processor (SEP) -- secure boot, chain of trust, key management
+* Security Processor (SEP) -- secure boot, chain of trust, key management
 * System Management Controller (SMC) -- system bring-up, clock control,
   power/thermal management, reset coordination, telemetry
 * System Management Unit (SMU) -- composite of SEP, SMC, and DTP
