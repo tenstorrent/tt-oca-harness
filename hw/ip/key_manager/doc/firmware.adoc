@@ -479,15 +479,21 @@ Each key carries flags recording how it came to exist. All are KM-forged — non
 SEP-settable — and `CMD_KEY_INFO` returns them.
 
 .Provenance Flags
-[cols="<20%,<80%",options="header"]
+[cols="^10%,<20%,<70%",options="header"]
 |===
-| Flag | Meaning
-| `EPHEMERAL`     | Created by an ephemeral opcode, so DRBG entropy is inside its derivation and it cannot be re-derived.
-| `IMPORTED`      | Entered the KM as material supplied from outside its derivation tree — host-supplied over the mailbox (`CMD_KEY_LOAD`) or engine-delivered over an inbound sideload interface (`CMD_ABR_SK_INGEST`) — rather than being derived. Mutually exclusive with `EPHEMERAL`.
-| `ROM_CREATED`   | The KM was executing ROM when this key was created. Sampled from the exec-mode state, never inherited.
-| `ROM_LINEAGE`   | This key, or some ancestor in its chain, was created in ROM. Inherited by every descendant and never cleared.
-| `OWNER_XFERRED` | Ownership has been transferred at least once since creation.
+| Bit | Flag | Meaning
+| `0` | `EPHEMERAL`     | Created by an ephemeral opcode, so DRBG entropy is inside its derivation and it cannot be re-derived.
+| `1` | `OWNER_XFERRED` | Ownership has been transferred at least once since creation.
+| `2` | `IMPORTED`      | Entered the KM as material supplied from outside its derivation tree — host-supplied over the mailbox (`CMD_KEY_LOAD`) or engine-delivered over an inbound sideload interface (`CMD_ABR_SK_INGEST`) — rather than being derived. Mutually exclusive with `EPHEMERAL`.
+| `3` | `ROM_CREATED`   | The KM was executing ROM when this key was created. Sampled from the exec-mode state, never inherited.
+| `4` | `ROM_LINEAGE`   | This key, or some ancestor in its chain, was created in ROM. Inherited by every descendant and never cleared.
+| `[15:5]` | reserved | Unassigned. A client MUST mask these rather than comparing the flags word for equality.
 |===
+
+The flags occupy a 16-bit field, carried at bytes 20-21 of the
+`km_key_info_t` block returned by <<km-cmd-key-info,`CMD_KEY_INFO`>> and hashed
+into every derivation at bytes 6-7 of the KDF request block
+(<<km-kdf-request-block>>).
 
 `ROM_CREATED` is the one to understand, because it is why the exec-mode state is
 security-critical. The flags word sits inside the hashed derivation input, so a key
@@ -2308,10 +2314,63 @@ The 64-bit key handle, least-significant word first.
 *Response*
 
 A handle that does not resolve returns _failure_ with `KM_ERR_INVALID_HANDLE`.
-Otherwise _success_, with the 24-byte public metadata block in six
-return-argument words: the ABI structure `km_key_info_t`, carrying the handle,
-key class, key type, owner, domain, logical key length, purpose, capabilities
-and provenance flags.
+
+Otherwise _success_, with the 24-byte public metadata block — the ABI structure
+`km_key_info_t` — in six return-argument words. The block is the descriptor's
+public region copied verbatim (<<km-firmware-key-registry>>), not a projection
+assembled for this command, so its layout is the descriptor's layout.
+
+.RESP_CMD _Success_ Return Argument
+[cols="32*^",options="header"]
+|===
+| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
+32+^| `KEY_HANDLE_LO[31:0]`
+32+^| `KEY_HANDLE_HI[31:0]`
+8+^| `DOMAIN[7:0]`
+8+^| `OWNER[7:0]`
+8+^| `KEY_TYPE[7:0]`
+8+^| `KEY_CLASS[7:0]`
+16+^| `PURPOSE[15:0]`
+16+^| `KEY_BITS[15:0]`
+32+^| `CAPS[31:0]`
+16+^| `RESERVED`
+16+^| `FLAGS[15:0]`
+|===
+
+.km_key_info_t Fields
+[cols="^8%,^10%,^8%,<20%,<54%",options="header"]
+|===
+| Word | Byte | Size | Field | Description
+| `0`–`1` | 0 | 8 | `KEY_HANDLE` | The handle this block describes, least-significant word first. Echoed so a response can be matched to its request without external bookkeeping.
+| `2` | 8 | 1 | `KEY_CLASS` | `0x01` SYMMETRIC, `0x02` PRIVATE.
+| `2` | 9 | 1 | `KEY_TYPE` | Key type; see <<km-kdf-out-type>>.
+| `2` | 10 | 1 | `OWNER` | Current owner (<<km-owners>>). The only mutable field in the block, and only through `CMD_ASSIGN_KEY_OWNER`.
+| `2` | 11 | 1 | `DOMAIN` | `0x00` HW, `0x01` SW (<<km-domains>>). Immutable; `HW` if and only if the key has HW-root ancestry.
+| `3` | 12 | 2 | `KEY_BITS` | Logical key length in bits, matching the units of `OUT_BITS` and `KEY_BITS` at creation.
+| `3` | 14 | 2 | `PURPOSE` | The free-form label supplied at creation, returned unchanged.
+| `4` | 16 | 4 | `CAPS` | Capability bitmap (<<km-kdf-caps>>). Fixed at creation.
+| `5` | 20 | 2 | `FLAGS` | Provenance flags (<<km-provenance>>).
+| `5` | 22 | 2 | `RESERVED` | Zero.
+|===
+
+Byte offsets are little-endian within each word, so a field's position in this
+table runs opposite to its position in the bit diagram above: `KEY_CLASS` at
+byte 8 is bits `[7:0]` of word 2 and `DOMAIN` at byte 11 is bits `[31:24]` of
+the same word, and `FLAGS` at byte 20 is the low half of word 5 rather than the
+high half.
+
+Word 2 has the same shape as word 0 of the `CMD_KEY_LOAD` payload
+(<<km-cmd-key-load>>) — class, type and owner in the low three bytes — with the
+KM-forged domain occupying the byte that is reserved there. A client can share
+one accessor between them.
+
+Two things the block deliberately does not contain, both stated in
+<<km-firmware-key-registry>>: no KPV slot number, and no parent reference. The
+descriptor holds both, in its private region, and neither crosses to the SEP.
+
+NOTE: A client MUST mask the unassigned bits of `FLAGS` rather than comparing the
+word for equality, and MUST ignore a nonzero `RESERVED`. Both are how this block
+gains fields in a later revision without breaking an older host.
 
 [[km-cmd-key-list]]
 ====== 0x31 - CMD_KEY_LIST
@@ -4885,7 +4944,7 @@ CRC-32C in its tail:
 | public | `key_class`, `key_type` | Class and type of the key.
 | public | `owner` | Owning agent. Mutable only through `CMD_ASSIGN_KEY_OWNER`.
 | public | `domain` | Immutable; `HW` if and only if the key has HW-root ancestry.
-| public | `key_bytes` | Logical key length.
+| public | `key_bits` | Logical key length, in bits — the same units the creating command used.
 | public | `purpose` | Free-form host label.
 | public | `caps` | Capability bitmap.
 | public | `flags` | Provenance flags (<<km-provenance>>).
@@ -4893,7 +4952,7 @@ CRC-32C in its tail:
 | private | `devstate_at_create` | The live device state sampled when the key was created.
 | private | `state` | Descriptor lifecycle state.
 | private | `first_slot` | Head of the key's slot chain, giving the ordered readout.
-| private | `num_slots`, `stored_bytes` | Physical footprint. `stored_bytes` equals `key_bytes` for every current type and is kept separate to allow future packing changes.
+| private | `num_slots`, `stored_bytes` | Physical footprint, counted in bytes. `stored_bytes` equals `key_bits / 8` for every current type and is kept separate to allow future packing changes. The units differ from `key_bits` deliberately: the command ABI counts bits throughout, while everything below the key-management layer counts bytes (<<km-firmware-key-management>>, *Load Key*).
 | private | `slot_map` | Bitmap over the KPV slots this key occupies.
 | tail | `crc32` | Integrity seal; see below.
 |===
