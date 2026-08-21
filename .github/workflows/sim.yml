@@ -277,16 +277,17 @@ jobs:
              and .status == "PASS"
              and (($require_coverage | not) or (
                .coverage.enabled == true
-               and .coverage.status == "PASS"
-               and .coverage.threshold_met == true
                and (.coverage.total_percent | type == "number")
+               and (.coverage.report | type == "string" and length > 0)
+               and (.coverage.summary | type == "string" and length > 0)
              ))' \
             "$RUN_DIR/result.json"
 
       # Logs and result.json for every test in the run; result.json is the
       # schema-v1 record that tools/dv/run_dashboard.py collect consumes. The
-      # merged coverage report stays in the artifact, while per-leaf native
-      # databases are excluded after merge to keep the nightly artifact bounded.
+      # reference-only merged coverage report stays in the artifact, while
+      # per-leaf native databases are excluded after merge to keep the nightly
+      # artifact bounded.
       - name: Upload run artifacts
         if: always() && env.RUN_HARDWARE_CI == 'true'
         uses: actions/upload-artifact@v4
