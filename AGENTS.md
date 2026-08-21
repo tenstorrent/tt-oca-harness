@@ -344,11 +344,16 @@ code no longer has. Name what exists.
 
 ## Commit Conventions
 
-Follow the existing history: a path-like scope, then an imperative summary, with the PR
-number appended when one exists.
+Follow the existing history: a lowercase path-like scope (one to three
+segments, or a filename when that file is the change), a colon, a space,
+then an imperative sentence-case summary, with the PR number appended when
+one exists. This is not Conventional Commits: do not use `feat`, `fix`,
+`chore`, or `feat(scope):`. Do not use an issue taxonomy prefix
+(`[RTL/SMC]`) on a commit or PR title.
 
 ```
-dv: add the SEP smoke regression list and wire sep into CI (#243)
+dv: Add the SEP smoke regression list and wire sep into CI (#243)
+hw/smc: Reject unmapped register accesses instead of aliasing live registers
 tools/dv: Guarantee per-leaf JUnit XML across frameworks (#283)
 doc: Regenerate stale uart and smc reset_unit register collaterals (#282)
 ```
@@ -429,8 +434,12 @@ Summary and Test plan are optional guidance; CI does not fail on them.
 Add `## Closes` with `Fixes #N` only when `N` is a real issue; omit the
 section if nothing closes. Never leave a bare `Fixes #`. Delete **Notes** if unused.
 
+The title is the same path-like form as a commit: `scope: imperative summary`
+(`hw:`, `hw/smc:`, `dv/sep:`, `github:`, `tools/dv:`). Ingest does not prefix
+PR titles. Do not put `[WORKSTREAM/SUBSYSTEM]` or `feat(scope):` on a PR.
+
 ```bash
-gh pr create --title "<scope>: <imperative summary>" --body "$(cat <<'EOF'
+gh pr create --title "hw/smc: Reject unmapped register accesses" --body "$(cat <<'EOF'
 ## Summary
 <what changed and why>
 
@@ -441,7 +450,8 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR.
-Ingest assigns the opener when Assignees is empty.
+Ingest assigns the opener when Assignees is empty. The curator rewrites a
+PR title only when it is not already this form.
 
 ### Paired pull requests with the `nonfree` companion
 

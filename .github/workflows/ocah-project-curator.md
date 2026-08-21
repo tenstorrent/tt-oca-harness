@@ -122,10 +122,11 @@ Copy-edit only. Do not add or remove facts, headings, lists, links, paths,
 numbers, code, HTML comments, form fields, or sections. Rephrase a sentence
 only when it is not grammatical English. Leave text that is already correct.
 
-Titles use sentence case after the prefix or scope: capitalize the first word
-and proper nouns, acronyms, and code; do not title-case every word.
-Use the imperative mood. Fix spelling. Strip a leading `[Bug]:`, `[Task]:`,
-or `[Feature]:`. Preserve tracker codes in title.preserve_external_codes.
+The words after an issue prefix or a PR scope use sentence case: capitalize
+the first word and proper nouns, acronyms, and code; do not title-case every
+word. Use the imperative mood. Fix spelling. Strip a leading `[Bug]:`,
+`[Task]:`, or `[Feature]:`. Preserve tracker codes in
+title.preserve_external_codes.
 
 When replacing a body, pass `operation: replace`. Keep every `###` heading
 and the exact value under Workstream, Subsystem, Component, Priority, and
@@ -135,6 +136,10 @@ Do not introduce closing keywords (`Fixes`, `Closes`, `Resolves`) that were
 not already present.
 
 If title and body are already consistent, leave them.
+
+Issue titles and PR titles use different prefixes. Never put a
+`[WORKSTREAM/SUBSYSTEM]` prefix on a PR. Never put a path scope on an issue
+that already has a taxonomy prefix.
 
 ## Issues
 
@@ -183,10 +188,19 @@ it no longer holds.
 
 Always pass pr_number.
 
-Apply the same cadence and the same title and body style as issues.
+Copy-edit the body as in Shared title and body style. Do not add or remove
+Summary, Test plan, Closes, or Notes.
+
 Rewrite the title to `scope: imperative summary` when it is not already
-that form. `scope` is a path-like prefix from the existing history
-(`dv`, `doc`, `github`, `tools/dv`). Keep an existing accurate scope.
+that form. `scope` is a lowercase path, one to three segments, from the
+files the PR touches (`hw`, `hw/smc`, `hw/sys/smc`, `dv`, `dv/sep`, `doc`,
+`github`, `ci`, `tools/dv`). A filename is a valid scope when that file is
+the change (`AGENTS.md`, `ocah.mk`). Keep an existing accurate scope.
+When the PR spans several trees, use the dominant one; do not invent a
+compound scope (`hw+dv`). Leave the title if no single scope is obvious.
+
+Never use Conventional Commits types (`feat`, `fix`, `chore`, `feat(smc):`).
+Never use an issue taxonomy prefix (`[RTL/SMC]`, `[DV/OCAH]`) on a PR.
 
 If Assignees is empty, assign the opener. REASON is "you opened it".
 

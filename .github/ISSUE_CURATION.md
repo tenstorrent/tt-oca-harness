@@ -21,7 +21,9 @@ The prompt is `.github/workflows/ocah-project-curator.md`.
 16:00 PDT (`0 12 * * *` and `0 23 * * *` UTC) and on `workflow_dispatch`.
 It applies Project 291 fills, assignments, and title/body consistency
 on open issues and PRs, then lists those changes in the Actions run
-summary. It also comments on PRs approved for 3 days that are still
+summary. Issue titles keep `[WORKSTREAM/SUBSYSTEM]`. PR titles use a
+path-like scope (`hw/smc:`, `dv:`), not an issue prefix and not
+`feat(scope):`. It also comments on PRs approved for 3 days that are still
 open, and reminds issue assignees 3 days before a milestone or issue
 due date. The window is every open issue and PR opened at or after the
 last successful run of this workflow; when there is no successful run,
