@@ -388,7 +388,10 @@ device present in the SEP peripheral subsystem.
 
 The SEP instantiates a SPI host controller for boot. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the `sep_io_spi` boundary and drive `spi_irq_i` from it.
 
-For the OpenTitan SPI host theory of operation and register map, refer to the https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host documentation].
+Consult the
+https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host
+documentation] for the authoritative core functionality of the IP. The
+register map is reported in <<sep-detailed-register-map>>.
 
 [[watchdog-timer-wdt-watchdog-timer-wdt]]
 ==== Watchdog Timer (WDT)
@@ -406,7 +409,10 @@ The wrapper provides a dedicated watchdog clock input (`clk_wdt_i`) that is sync
 
 The wrapper exports two signals: `intr_wdog_timer_bark_o`, the watchdog bark interrupt that fires when the first timeout stage expires, and `wdt_timer_rst_req_o`, the bite reset request that fires when the second timeout stage expires and the system failed to respond to the bark.
 
-For the full `aon_timer` theory of operation, watchdog configuration, and register map, refer to the https://opentitan.org/book/hw/ip/aon_timer/[OpenTitan Always-On Timer documentation].
+Consult the
+https://opentitan.org/book/hw/ip/aon_timer/[OpenTitan Always-On Timer
+documentation] for the authoritative core functionality of the IP. The
+register map is reported in <<sep-detailed-register-map>>.
 
 [[sep-reset-controller]]
 ==== SEP Reset Controller
