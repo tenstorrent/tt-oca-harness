@@ -4,41 +4,106 @@
 [[smc-dfd-cla]]
 === Design-for-Debug (DFD) and Core Logic Analyzer (CLA)
 
-The SMC instantiates `smc_dfd_wrap` from `smc_internal_regs`. The wrap
-clock-gates `dfd_top` and presents the CLA and trace path to the rest of
-the SMC. This chapter records the integration that is visible in that
-wrap, the memory map, and the interrupt table. It does not describe CLA
-node or EAP programming beyond the generated register map.
+The SMC integrates a Design-for-Debug (DFD) subsystem that observes
+internal activity, triggers on programmable conditions, and captures
+trace, all on-chip and without external instrumentation. Its core is a
+Core Logic Analyzer (CLA) that watches a configurable debug bus,
+evaluates programmable events, and fires actions — an interrupt, a clock
+stop, a GPIO toggle, a cross-trigger, or a trace capture — when those
+events occur. A trace subsystem timestamps the captured activity and
+streams it to memory for offline analysis.
 
-==== Integration
+Key features include:
 
-`smc_dfd_wrap` sits on the local-fabric APB window `smc_dfd_reg` and
-instantiates `dfd_top` with `NTRACE_SUPPORT` tied off. The wrap:
+* A programmable debug bus that routes internal signals of interest to
+  the analyzer under software control
+* An event engine supporting signal-match, edge, transition, ones-count,
+  any-change, time-match, and counter events
+* Event-action pairing that binds detected events to system actions
+* Per-trigger snapshot of the debug bus and status flags identifying
+  which pair fired
+* Cross-trigger exchange with the rest of the debug infrastructure
+* Timestamped trace streamed to memory over the fabric
 
-* Clock-gates `dfd_top` from `clk_smc_i` using the `dfd_enables_i`
-  clock-gate and force-clock controls.
-* Presents an APB4 register interface at the CLA aperture
-  `BASE + 0x016_0000` (36 KB, see <<smc-memory-map>>).
-* Reduces the incoming debug bus through two `dfd_debug_bus_mux` levels
-  before driving `dfd_top` `hw0`–`hw15`.
-* Forwards cross-trigger I/O on `xtrigger_ss_*`.
-* Exports CLA actions that the SMC already wires: debug interrupt,
-  clock-stop status (qualified by `tdr_dbg_ctrl_clock_stop_en_i`), GPIO
-  enable, custom actions, and trace-memory ports.
+==== Debug Bus
+
+The analyzer operates on a debug bus: a fixed-width vector of internal
+signals sampled every cycle. A selection fabric chooses which internal
+signals are driven onto the bus, so a single analyzer can be pointed at
+different parts of the design without RTL changes. Software selects the
+observed signal set, then programs the event engine against the resulting
+bus value.
+
+==== Core Logic Analyzer
+
+The CLA is organized as a set of nodes, each holding several event-action
+pairs (EAPs). An EAP binds one or more events, computed from the debug
+bus, to one or more actions taken when those events occur. The event
+engine evaluates several event types in parallel:
+
+[cols="30%,70%",options="header",]
+|=======================================================================
+|Event |Description
+|Signal match |Fires when the masked debug bus equals a programmed value
+(`debug_bus & mask == match`). Several independent match events are
+available.
+|Edge |Fires on a rising or falling edge of selected debug-bus signals.
+|Transition |Fires when a masked subset of the bus moves from a
+programmed value A to a programmed value B.
+|Ones count |Fires when the population count of a masked subset equals a
+programmed value.
+|Any change |Fires when any signal within a masked subset changes.
+|Time match |Fires when the internal time counter reaches a programmed
+value, allowing time-based triggering.
+|Counter |Counts cycles following an event match and fires when the
+count is reached; a small pool of counters is available for measuring
+intervals or deferring an action.
+|=======================================================================
+
+When an EAP fires, a status flag records which pair triggered — for
+example, so an interrupt handler can identify the source — and a snapshot
+register latches the debug-bus value at the moment of the trigger for
+post-mortem inspection. EAPs are enabled together once programming is
+complete, so a partially programmed pairing never triggers.
+
+==== Actions and Cross-Triggering
+
+An EAP can drive one or more actions:
+
+* *Debug interrupt* — raise a non-maskable interrupt to the CPU.
+* *Clock stop* — halt clocks to freeze the design for inspection.
+* *GPIO toggle* — drive an externally observable pin.
+* *Cross-trigger out* — signal other debug blocks that a local event
+  occurred.
+* *Trace capture* — hand the event to the trace subsystem.
+* *Custom actions* — reserved outputs for design-specific use.
+
+Cross-trigger inputs let events elsewhere in the system arm or fire local
+actions, and cross-trigger outputs propagate local events outward, so
+debug conditions can be correlated across blocks rather than observed in
+isolation.
+
+==== Trace
+
+The trace subsystem captures, timestamps, and streams debug activity for
+offline analysis. Samples and events are encoded and packetized, merged
+through a trace network, and written to memory over the fabric by a trace
+master. A global timestamp with a synchronization mechanism places trace
+from different sources on a common time base, so captures can be aligned
+after the fact.
 
 ==== Interrupts
 
-The SMC interrupt table in <<interrupts>> already lists the two CLA
-sources driven through `u_smc_dfd_wrap`:
+The SMC interrupt table in <<interrupts>> lists the two CLA-driven
+sources:
 
-* CLA Clock Stop — `tdr_dbg_ctrl_clocks_stopped_by_cla_o`
-  (1-core bit 96 / 4-core bit 320)
-* CLA Interrupt — `external_action_debug_interrupt_o`
-  (1-core bit 97 / 4-core bit 321)
+* *CLA clock stop* — asserted while the CLA has stopped clocks.
+* *CLA debug interrupt* — the debug interrupt raised by a CLA action.
 
 ==== Register Map
 
-The generated `smc_cla` map is the programmer view of this aperture.
+The generated `smc_cla` map is the programmer view of this aperture (see
+<<smc-memory-map>>).
 
 ifdef::backend-html5[]
 ++++
