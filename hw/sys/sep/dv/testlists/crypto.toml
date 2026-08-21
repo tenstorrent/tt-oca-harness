@@ -56,6 +56,7 @@ args = ["+skip_fuse_sense"]
 # over SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256; SepKmacCfg
 # is SSOT for CFG+KEY_LEN+PREFIX+key+msg and the Keccak golden. KMAC masking reseeds
 # from EDN, so entropy bring-up is required (+esrc_noise_force); +skip_fuse_sense.
+# Strict CHK1..CHK4 + CHK5_kmac routing golden (OTBN/AES/HMAC parked).
 name = "sep_kmac_mode_strength_rand_test"
 module = "crypto.sep_kmac_mode_strength_rand_test"
 seed = 1
@@ -70,6 +71,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # {ECB,CBC,CTR} x {128,192,256}; SepAesCfg is SSOT for CTRL+key+IV+data and
 # the golden. AES masking reseeds from crypto-EDN, so entropy bring-up is required
 # (+esrc_noise_force for deterministic ESRC noise); +skip_fuse_sense (no OTP need).
+# Strict CHK1..CHK4 + CHK5_aes routing golden (OTBN/KMAC/HMAC parked).
 name = "sep_aes_mode_keysize_rand_test"
 module = "crypto.sep_aes_mode_keysize_rand_test"
 seed = 1
@@ -136,6 +138,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # EDN is enabled, then the real entropy chain is brought up so prim_arbiter_ppc
 # inside drbg_axis_edn_adapter has to grant both. Distinct from the AES+KMAC
 # time-span overlap test above, which cannot hold two edn_req bits together.
+# Strict CHK1..CHK4 + CHK5_aes/CHK5_otbn_urnd membership (two live sinks).
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1

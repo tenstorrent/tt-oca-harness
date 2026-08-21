@@ -37,7 +37,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define SPI_CLKDIV spi_clkdiv()
 #define TIMEOUT_LIMIT 200000
@@ -104,7 +103,6 @@ int main(void) {
 
     int pass = 1;
 
-    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
 
     init_spi_controller();

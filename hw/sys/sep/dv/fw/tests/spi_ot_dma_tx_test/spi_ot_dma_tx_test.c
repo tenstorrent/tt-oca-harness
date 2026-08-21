@@ -121,9 +121,6 @@ static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
 }
 
 static void spi_init(void) {
-    // Nonfree: route pads to OT and release cs_force_high (needs NONFREE_ROOT
-    // overlay so spi_mux_select_ot is not a no-op). Open SEP has no mux.
-    sep_spi_mux_release_cs();
     // RX_WM=1 (RX kept quiescent), TX_WM drives the refill trigger.
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
            (TX_WATERMARK << SPI_CONTROLLER__CTRL__TX_WATERMARK_bp) |

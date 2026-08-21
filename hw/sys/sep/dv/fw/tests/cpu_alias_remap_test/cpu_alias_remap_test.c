@@ -35,6 +35,8 @@
 //              (write alias 0xD000_0308 -> read direct 0x1000_0308 == marker).
 //   CHK-LSU-RD LSU read via the alias returns the physical SRAM target
 //              (write direct 0x1000_0310 -> read alias 0xD000_0310 == marker).
+//   CHK-BASE-LIVE LSU write through a non-reset base (0xE000_0318) lands at
+//              phys 0x1000_0318. A remapper stuck at the operating base fails.
 //   CHK-IFU    IFU fetch+execute through the alias: write a tiny function
 //              ("li a0,42; ret") to SRAM 0x1000_0000, then CALL it via the alias
 //              0xD000_0000 -> IFU fetch remaps to 0x1000_0000 -> returns 42.
@@ -52,17 +54,21 @@
 #define ALT_WINDOW_BASE 0xE0000000u
 #define TARGET_BASE 0x10000000u            // sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE (SEP SRAM)
 #define ADJUST (WINDOW_BASE - TARGET_BASE) // 0xC000_0000 = base - target
+#define ADJUST_ALT (ALT_WINDOW_BASE - TARGET_BASE)
 
 #define SRAM_PHYS TARGET_BASE             // SEP SRAM base
 #define ALIAS_FOR(phys) ((phys) + ADJUST) // physical target addr -> its alias addr
+#define ALIAS_ALT(phys) ((phys) + ADJUST_ALT)
 
 // SRAM layout for this test (within the SRAM responder, no overlap).
 #define IFU_FN_PHYS (SRAM_PHYS + 0x000u) // 2 instr words live here
 #define LSU_WR_PHYS (SRAM_PHYS + 0x308u)
 #define LSU_RD_PHYS (SRAM_PHYS + 0x310u)
+#define LSU_BASE_PHYS (SRAM_PHYS + 0x318u)
 
 #define MARK_LSU_WR 0xA11A1036u
 #define MARK_LSU_RD 0xA11A0317u
+#define MARK_BASE_LIVE 0xB15E0001u
 #define IFU_RET_VAL 42
 
 // "li a0,42 ; ret" (verified encodings) -- a leaf function returning 42.
@@ -140,6 +146,23 @@ int main(void) {
         sep_mbx_puts("CHK-LSU-RD PASS: read@0xd0000310 -> phys 0x10000310 == marker\n");
     }
 
+    // CHK-BASE-LIVE: with the alternate base programmed, a write through that
+    // window must land at physical SRAM. A remapper hardwired at the operating
+    // base (0xD000_0000) would map 0xE000_0318 to 0x2000_0318, not 0x1000_0318.
+    wr32(SEP_LOCAL_BASE_ADDR_REG, ALT_WINDOW_BASE);
+    wr32(ALIAS_ALT(LSU_BASE_PHYS), MARK_BASE_LIVE);
+    uint32_t base_seen = rd32(LSU_BASE_PHYS);
+    wr32(SEP_LOCAL_BASE_ADDR_REG, WINDOW_BASE);
+    if (base_seen != MARK_BASE_LIVE) {
+        sep_mbx_puts("FAIL: alias remapper ignored programmed base, phys got ");
+        sep_mbx_puthex(base_seen);
+        sep_mbx_putc('\n');
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-BASE-LIVE PASS: write@0xe0000318 with base 0xe0000000 -> "
+                     "phys 0x10000318 == marker (remapper consumes SEP_LOCAL_BASE)\n");
+    }
+
     // CHK-IFU: place a leaf function in SRAM, then CALL it through the alias so the
     // IFU fetch is remapped. fence.i flushes any stale prefetch before the fetch.
     wr32(IFU_FN_PHYS + 0, INSN_LI_A0_42);
@@ -159,7 +182,7 @@ int main(void) {
     }
 
     if (errors == 0) {
-        sep_mbx_puts("PASS: CPU IFU+LSU local-alias-remap (E12) verified\n");
+        sep_mbx_puts("PASS: CPU IFU+LSU local-alias-remap verified\n");
     }
     return errors;
 }

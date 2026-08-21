@@ -25,8 +25,7 @@ Checkers (each logged):
   * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY (MMR is
     allowed even in the restricted state).
   * CHK-JTAG-MMR-DENY: a JTAG read of a non-token MMR (SEC_DISABLE_TOKEN_MATCH)
-    must DECERR in PROD. Today's RTL opens the whole MMR window -- hard fail,
-    https://github.com/tenstorrent/tt-oca-harness/issues/626.
+    must DECERR in PROD. Today's RTL opens the whole MMR window -- hard fail.
   * CHK-COEXIST: the CPU loop counter (scratch-cold[2], read via the read-only
     scratch_cold_probe_o) advances across the JTAG burst -- the CPU was not stalled
     by the JTAG master.
@@ -202,14 +201,12 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
 
         # periphs.adoc PROD/RMA_SIP: JTAG may only R/W RMA_SIP_TOKEN_I and
         # RMA_CHIPLET_TOKEN_I. A non-token MMR must complete DECERR. RTL opens
-        # the whole MMR window -- https://github.com/tenstorrent/tt-oca-harness/issues/626.
-        # Hard fail: the mismatch is the reveal.
+        # the whole MMR window. Hard fail: the mismatch is the reveal.
         code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_DENIED)
         assert code == _RESP_DECERR, (
             f"CHK-JTAG-MMR-DENY FAIL: spec requires DECERR on non-token MMR "
             f"SEC_DISABLE_TOKEN_MATCH @0x{_EFUSE_MMR_DENIED:08x} in PROD; "
-            f"RTL returned resp={code} rdata=0x{rdata:08x} "
-            f"(https://github.com/tenstorrent/tt-oca-harness/issues/626)"
+            f"RTL returned resp={code} rdata=0x{rdata:08x}"
         )
         self.logger.info(
             "CHK-JTAG-MMR-DENY PASS: JTAG non-token MMR @0x%08x denied with DECERR "

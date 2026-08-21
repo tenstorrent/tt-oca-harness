@@ -6,7 +6,8 @@
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
- *   - spi (licensed host + OT path) and spi-phy gpio registers
+ *   - OpenTitan SPI host. Pad-mux / proprietary SPI programming belongs with
+ *     the nonfree wrapper, not this file.
  *
  * Completion is signaled by pass/fail loops for cocotb PC classification.
  */
@@ -313,47 +314,8 @@ static int stage_efuse(void) {
     return 0;
 }
 
-#define SPI_MUX_CTRL_ADDR OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR
-#define SPI_CTRL_ADDR OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_BASE_ADDR
-#define SPI_CLK_DIV_CTRL_ADDR \
-    OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_BASE_ADDR
-/*
- * SPI_PROBE_MODE:
- *   0: write-only (regression-safe, avoids known readback side effects)
- *   1: check CLK_DIV readback only
- *   2: check MUX readback only
- *   3: check both MUX + CLK_DIV readback
- */
-#ifndef SPI_PROBE_MODE
-#define SPI_PROBE_MODE 0
-#endif
-
 static int stage_spi_regs(void) {
-    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
-    och_sep_cdns_spi_ctrl__SPI_CLK_DIV_CTRL_t clkdiv = {
-        .w = OCH_SEP_CDNS_SPI_CTRL__SPI_CLK_DIV_CTRL_reset};
-
-    mux.f.spi_sel = 0;
-    mux.f.cs_force_high = 1;
-    WRITE_REG(SPI_MUX_CTRL_ADDR, mux.w);
-    g_sink ^= mux.w;
-
-    clkdiv.f.clock_divider_value = 32;
-    clkdiv.f.clock_div_set = 1;
-    clkdiv.f.clock_dutycycle = 128;
-    clkdiv.f.clock_div_enable = 1;
-    WRITE_REG(SPI_CLK_DIV_CTRL_ADDR, clkdiv.w);
-    g_sink ^= clkdiv.w;
-
-#if (SPI_PROBE_MODE == 1)
-    if (READ_REG(SPI_CLK_DIV_CTRL_ADDR) != clkdiv.w) return -1;
-#elif (SPI_PROBE_MODE == 2)
-    if (READ_REG(SPI_MUX_CTRL_ADDR) != mux.w) return -1;
-#elif (SPI_PROBE_MODE == 3)
-    if (READ_REG(SPI_MUX_CTRL_ADDR) != mux.w) return -1;
-    if (READ_REG(SPI_CLK_DIV_CTRL_ADDR) != clkdiv.w) return -1;
-#endif
-
+    /* Pad mux and proprietary SPI CSRs live with the nonfree wrapper. */
     return 0;
 }
 

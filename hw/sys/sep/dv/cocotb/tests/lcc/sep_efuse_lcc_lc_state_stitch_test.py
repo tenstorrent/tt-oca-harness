@@ -402,7 +402,12 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     _LC_STATE_BIT_BASE + 0, max_attempts=2)
                 try:
                     await self.start_seq(blocked)
-                except AssertionError:
+                except AssertionError as exc:
+                    msg = str(exc)
+                    if "OTP program bit" not in msg or (
+                        "failed after" not in msg and "did not complete" not in msg
+                    ):
+                        raise
                     self.logger.info(
                         "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] refused while "
                         "secure_tm=1 (efuse_guard empties the command request)",

@@ -17,8 +17,8 @@ schema_version = 1
 # `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
 # four names are graded.
 #
-# They still run in the `all` and `cpu` groups: the boot path is worth exercising
-# in a SEP sweep even though SEP does not grade it.
+# They run in the `all` and `rom_fw` groups, not `cpu`: a CPU-class run is
+# one RTL target (`default`), and these need `rom_boot`.
 
 [[tests]]
 # ROM non-secure boot (the reference suite's sep_rom_non_secure_boot_test): the CPU boots the REAL
@@ -26,7 +26,7 @@ schema_version = 1
 # manifest flow -- read manifest from SMC SRAM, validate its SHA256, DMA-copy BL1
 # into SEP SRAM, jump, and observe BL1 PASS magic on the outbound mailbox. It is
 # NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
-# OpenTitan Quad spi_host, not the licensed xSPI controller the ROM drives),
+# OpenTitan Quad spi_host),
 # so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
 # behavioral SMC responder (SEP_SMC_MEM_MODEL). See sep-rom-non-secure-boot-design.md.
 name = "sep_rom_non_secure_boot_test"

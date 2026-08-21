@@ -17,11 +17,9 @@ is standalone SW-key across modes/sizes.
 
 Entropy: OpenTitan AES masking reseeds its PRNG from the crypto-EDN leg, so the
 test brings up the real ESRC->DRBG->EDN stack (+esrc_noise_force) before any AES
-op or the engine stalls. The DRBG scoreboard runs non-strict (AES mode/key-size breadth's contract is
-AES correctness, not the entropy golden -- that is
-`sep_drbg_real_sink_multi_km_aes_test` / KMAC mode-strength / crypto-EDN
-multisink arbitration); simply
-reaching the ciphertext checks proves masking entropy flowed (CHK-ENTROPY).
+op or the engine stalls. OTBN/KMAC/HMAC are parked so AES is the only crypto
+EDN client: CHK1..CHK4 are bit-exact, CHK5_aes is per-sink ROUTING golden
+(each post-adapter beat equals the next AXIS1 word). KM is unused.
 
 RAND-REP contract: a SepAesCfg config object is the single source
 of truth for BOTH DUT programming (CTRL + key + IV + data) AND the golden. The 9
@@ -33,7 +31,8 @@ Checkers:
   CHK-RT       per cell: round-trip recovers plaintext -- ECB/CBC via engine
                DECRYPT, CTR via re-encrypt (stream self-inverse)
   CHK-STATUS   per cell: no AES recoverable/fatal alert across enc + round-trip
-  CHK-ENTROPY  masking-PRNG reseed completed (reaching CHK-ENC is the evidence)
+  CHK1..CHK4   bit-exact entropy golden (strict scoreboard report)
+  CHK5_aes     post-adapter AES beats == AXIS1 in order (single live crypto sink)
   CHK-RAND-REP all 9 discrete cells walked in one invocation (seed logged)
 """
 
@@ -46,6 +45,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes_encrypt_words
 from seq_lib.sep_aes_seq import SepAes, SepAesCfg, AES_OP_ENC, AES_OP_DEC
+from seq_lib.sep_sw_reset_seq import SepSwReset
 
 MODES = ["ecb", "cbc", "ctr"]
 KEY_SIZES = [128, 192, 256]
@@ -58,9 +58,13 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
-        # AES masking PRNG reseeds from crypto-EDN; bring the stack up (non-strict:
-        # AES mode/key-size breadth proves AES, not the entropy golden) and drive the deterministic noise.
-        await self.bring_up_entropy(strict=False, score_km=False)
+        # Park every other crypto-EDN client so CHK5_aes golden routing is
+        # in-order (one live sink). AES stays released for the masking reseed.
+        self.swrst = SepSwReset(self)
+        await self.swrst.park("otbn", "hmac", "kmac")
+        await self.bring_up_entropy(
+            strict=True, score_km=False, score_sinks={"aes": "golden"})
+        self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
         self.aes = SepAes(self)
@@ -85,7 +89,11 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             "AES cells produced duplicate ciphertexts, so they did not all run distinct "
             "configurations: "
             + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
+        await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        self.drbg_sb.report()
+        self.logger.info(
+            "CHK1..CHK4 bit-exact + CHK5_aes ROUTING (AES==AXIS1) PASS")
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells ({ECB,CBC,CTR} x "
             "{128,192,256}) in one invocation (seed=%d); key/IV/plaintext "

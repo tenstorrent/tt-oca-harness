@@ -260,7 +260,7 @@ static int test_region_boundary_crossing(void) {
 }
 
 int main(void) {
-    printf("Output Remap Datapath P3 Test\n");
+    printf("Output Remap Datapath Test\n");
     printf("Goals: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
     printf("Strategy: AP/STEE remap traffic covers every region index; full datapath matrix\n\n");
 
@@ -296,7 +296,7 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    printf("\n=== OUTPUT REMAP DATAPATH P3 TEST PASSED ===\n");
+    printf("\n=== OUTPUT REMAP DATAPATH TEST PASSED ===\n");
     printf(
         "Expected improvement: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
 

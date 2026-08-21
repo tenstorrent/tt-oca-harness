@@ -30,7 +30,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -75,7 +74,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
-    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */

@@ -12,6 +12,10 @@ IRQ; sep_dma_cpu_contention mid-flight BUSY + dual-master; sep_spi_ot_dma_rx
 lsio handshake): DMA basic breadth adds the CSR/REGWEN breadth, the FIXED/INCR/WRAP address-
 mode matrix, the 1B/2B/4B transfer-width sweep, and one opcode-error path.
 
+SepDmaBasicCfg is the single source of truth for src/dst offsets, copy length
+and fill seed. Discrete mode/width cells stay walked every invocation; the
+continuous knobs come from the run seed (patched into the firmware param block).
+
 Firmware-self-checking: the firmware returns its error count and start.S emits
 the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which
 the boot scoreboard gates on. The firmware self-checks (each with a positive PASS
@@ -26,6 +30,8 @@ cpu / +skip_fuse_sense (no fuse data is read).
 from __future__ import annotations
 
 import os
+import random
+from dataclasses import dataclass
 from pathlib import Path
 
 import pyuvm
@@ -39,12 +45,88 @@ _ITCM_HEX = os.path.join(_FW_DIR, "dma_basic_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_basic_test.dtcm.hex")
 
 _ICCM_BASE = 0xC000_0000
-# A handful of tiny SRAM->SRAM copies + one 1 KiB busy-lock copy; the run loop
-# early-exits on fw_done, so this is an upper bound.
 _MAX_RUN_CYCLES = 4_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
 _BANNER = "SEP DMA basic test"
+
+_PARAM_MAGIC = 0xDA0A11C0
+_SRAM_SIZE = 0x40000
+_BUSY_LEN = 0x100
+
+
+def _parse_hex_cells(path: str) -> dict:
+    cells: dict = {}
+    addr = 0
+    with open(path) as fh:
+        for line in fh:
+            tok = line.strip()
+            if not tok:
+                continue
+            if tok.startswith("@"):
+                addr = int(tok[1:], 16)
+                continue
+            for byte in tok.split():
+                cells[addr] = int(byte, 16)
+                addr += 1
+    return cells
+
+
+def _find_magic(cells: dict, magic_le: bytes) -> int:
+    for base in sorted(cells):
+        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le))):
+            return base
+    raise RuntimeError("DMA_PARAM_MAGIC not found in DTCM image")
+
+
+def _patch_hex(src: str, dst: str, patches: dict) -> None:
+    out = []
+    addr = 0
+    with open(src) as fh:
+        for raw in fh:
+            line = raw.rstrip("\n")
+            tok = line.strip()
+            if tok.startswith("@"):
+                addr = int(tok[1:], 16)
+                out.append(line)
+                continue
+            if not tok:
+                out.append(line)
+                continue
+            new_toks = []
+            for byte in tok.split():
+                new_toks.append(f"{patches[addr]:02X}" if addr in patches else byte)
+                addr += 1
+            out.append(" ".join(new_toks))
+    with open(dst, "w") as fh:
+        fh.write("\n".join(out) + "\n")
+
+
+@dataclass(frozen=True)
+class SepDmaBasicCfg:
+    """Single source of truth for DMA basic-breadth continuous knobs.
+
+    Discrete cells (INCR/FIXED/WRAP x 1B/2B/4B) are walked every invocation.
+    src/dst offsets, copy length and fill seed come from the run seed.
+    """
+
+    seed: int
+    src_off: int
+    dst_off: int
+    nbytes: int
+    fill_seed: int
+
+    @classmethod
+    def from_seed(cls, seed: int) -> "SepDmaBasicCfg":
+        rng = random.Random(seed)
+        nbytes = rng.choice((16, 32))
+        src_off = rng.randrange(0, 0x10000, 16)
+        dst_off = rng.randrange(0x20000, 0x30000, 16)
+        fill = rng.getrandbits(32) or 0x1234567
+        return cls(seed=seed, src_off=src_off, dst_off=dst_off, nbytes=nbytes, fill_seed=fill)
+
+    def param_words(self) -> list[int]:
+        return [_PARAM_MAGIC, self.src_off, self.dst_off, self.nbytes, self.fill_seed]
 
 
 @pyuvm.test()
@@ -57,14 +139,36 @@ class sep_dma_basic_test(sep_base_test):
         super().build_phase()
         self.sb = SepBootScoreboard("sb", self)
 
+    def _stage_dtcm(self) -> str:
+        cfg = SepDmaBasicCfg.from_seed(self.random_seed())
+        assert cfg.src_off + _BUSY_LEN <= _SRAM_SIZE
+        assert cfg.dst_off + _BUSY_LEN <= _SRAM_SIZE
+        cells = _parse_hex_cells(_DTCM_HEX)
+        base = _find_magic(cells, _PARAM_MAGIC.to_bytes(4, "little"))
+        patches = {}
+        for k, word in enumerate(cfg.param_words()):
+            for b in range(4):
+                patches[base + 4 * k + b] = (word >> (8 * b)) & 0xFF
+        patched = os.path.join(os.getcwd(), "sep_dtcm_dma.hex")
+        _patch_hex(_DTCM_HEX, patched, patches)
+        self.logger.info(
+            "DMA basic RANDCFG seed=%d src_off=0x%x dst_off=0x%x nbytes=%d fill=0x%08x",
+            cfg.seed, cfg.src_off, cfg.dst_off, cfg.nbytes, cfg.fill_seed)
+        self._dma_cfg = cfg
+        return patched
+
     async def run_scenario(self) -> None:
         # Override the boot scoreboard's expected banner here (after its own
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
+        dtcm = self._stage_dtcm()
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb, _ITCM_HEX, dtcm,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
         )
+        self.logger.info(
+            "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
+            self._dma_cfg.seed, self._dma_cfg.nbytes)

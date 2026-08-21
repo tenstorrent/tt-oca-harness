@@ -9,7 +9,7 @@ does not reach:
     {SHA-256, SHA-384, SHA-512} x {keyed HMAC, plain SHA} x legal key-length.
 
 reference parity: this is a GAP (basic) rep -- the reference SEP tb has no SHA-384/512 HMAC
-or key-length coverage (uvm_tests/hmac + fw hmac cover SHA-256 only). So the
+or key-length coverage (OCAH HMAC tests cover SHA-256 only). So the
 independent stdlib golden (env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 +
 plain SHA FIPS-180 self-tested) IS the reference and this rep is STRONGER than the
 directed reference suite set it merges. DISTINCT from

@@ -8,9 +8,9 @@ schema_version = 1
 #
 # Production Boot ROM firmware tests (sep_rom_non_secure_boot_test,
 # sep_rom_ot_{dma,pio,secure}_boot_test) are not defined here -- they live in
-# rom_fw.toml (different RTL target and firmware profile). They still run in
-# the `cpu` group; this VPLAN grades ROM hardware access only
-# (see docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
+# rom_fw.toml (different RTL target and firmware profile). They run in
+# the `all` and `rom_fw` groups, not `cpu`; this VPLAN grades ROM hardware
+# access only (see docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
 
 [[tests]]
 name = "sep_hello_world_test"
@@ -84,13 +84,15 @@ args = ["+skip_fuse_sense"]
 # drives the DMA (sep_dma.h) over the CPU LSU for SRAM->SRAM copies: CSR reset
 # values, CFG_REGWEN HW busy-lock, RANGE_REGWEN rw0c lock + range gating,
 # FIXED/INCR/WRAP address modes (per-mode golden image + neighbor), 1B/2B/4B
-# widths, STATUS.done RW1C, and one invalid-opcode error + recovery. Distinct
+# widths, STATUS.done RW1C, and one invalid-opcode error + recovery. Src/dst
+# offsets, copy length and fill seed come from the run seed (3 seeds). Distinct
 # from the Phase-1 DMA trio (hash/contention/spi-rx). cpu run mode;
 # +skip_fuse_sense (no OTP read). DMA & data movement (cpu-fw bucket).
 name = "sep_dma_basic_test"
 module = "cpu.sep_dma_basic_test"
 firmware = "dma_basic_test"
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["boot", "cpu", "dma", "subsystem"]
 run_modes = ["cpu"]

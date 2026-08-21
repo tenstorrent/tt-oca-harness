@@ -484,7 +484,7 @@ static int test_system_integration_stress(void) {
 }
 
 int main(void) {
-    printf("Output Remap Advanced P3 Test\n");
+    printf("Output Remap Advanced Test\n");
     printf("Goals: Advanced output_remap scenarios; full performance optimization\n");
     printf("Strategy: Advanced output-remap scenarios; complex configuration combinations\n\n");
 
@@ -530,7 +530,7 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    printf("\n=== OUTPUT REMAP ADVANCED P3 TEST PASSED ===\n");
+    printf("\n=== OUTPUT REMAP ADVANCED TEST PASSED ===\n");
     printf("Expected improvement: output_remap advanced scenarios and performance optimization\n");
 
     test_pass("fabric_output_remap_advanced_p3_test");

@@ -22,7 +22,7 @@ Entropy is brought up first (ESRC->DRBG->CSRNG->EDN) so the AES masking-PRNG
 reseed is served -- satisfying the card's "with entropy bring-up" requirement and
 exercising a real entropy-backed crypto op rather than a poked status bit.
 
-Isolation proof (both directions):
+Isolation proof (both directions, then the remaining isolated bits):
   * CHK-NONVAC      both held results are golden-matched and survive a second
                     independent read, so the later survives/cleared checks are
                     observations rather than restatements of one sample.
@@ -30,6 +30,9 @@ Isolation proof (both directions):
                     (proves the pulse landed in that engine's domain).
   * CHK-NEIGHBOR-SURVIVES  the sibling's held crypto result is bit-exact intact.
   * CHK-REVERSE     roles swapped (AES-victim then HMAC-victim).
+  * CHK-KMAC / CHK-OTBN  KMAC SHA3-256 STATE and OTBN DMEM hold across a
+                    neighbour pulse and perturb on their own pulse. KM (bit 0)
+                    stays held at the reset default and is not claimed.
 
 reference ref: clock sep_clock_uvm_sw_reset_per_ip_test --
 COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
@@ -58,13 +61,20 @@ from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_aes_seq import SepAes
-from seq_lib.sep_crypto_reset_iso_seq import SepCryptoResetIso, ENG_HMAC, ENG_AES
+from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
+from env.sep_kmac_golden import kmac_family_words
+from seq_lib.sep_otbn_seq import SepOtbn, OTBN_LOAD_CHECKSUM_RESET
+from seq_lib.sep_crypto_reset_iso_seq import (
+    SepCryptoResetIso, ENG_HMAC, ENG_AES, ENG_KMAC, ENG_OTBN,
+)
 
 # Directed known vectors (RAND-NONE).
 HMAC_MSG = [0x6A6F6232, 0xDEADBEEF, 0x0BADF00D, 0xFEEDFACE]
 AES_KEY = [0x03020100, 0x07060504, 0x0B0A0908, 0x0F0E0D0C,
            0x13121110, 0x17161514, 0x1B1A1918, 0x1F1E1D1C]
 AES_PT = [0xAABBCCDD, 0x11223344, 0x55667788, 0x99001122]
+KMAC_MSG = [0x6A6F6232, 0xDEADBEEF]
+OTBN_CHECKSUM_MARK = 0xA11CED01
 
 _ZERO_DIGEST = [0] * 8
 _ZERO_BLOCK = [0] * 4
@@ -115,6 +125,29 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await self.aes.check_status_clean("ecb-enc")
         return ct
 
+    async def _run_kmac(self) -> list[int]:
+        """SHA3-256, leave STATE in squeeze so a re-read is a held result."""
+        cfg = SepKmacCfg(mode="sha3", sec=256, msg_words=list(KMAC_MSG), outlen_bytes=32)
+        digest = await self.kmac.run_family(cfg, tag="sha3-hold", hold=True)
+        golden = kmac_family_words(**cfg.golden_kwargs())
+        assert digest == golden, (
+            "KMAC SHA3-256 digest != golden:\n"
+            f"  got={[hex(w) for w in digest]}\n  exp={[hex(w) for w in golden]}"
+        )
+        await self.kmac.check_status_clean("sha3-hold")
+        return digest
+
+    async def _otbn_hold_checksum(self) -> int:
+        """Hold a non-reset LOAD_CHECKSUM. That CSR is in the OTBN rst_ni domain;
+        DMEM SRAM is not (a core reset leaves the macros intact)."""
+        await self.otbn.wait_idle("pre-checksum-hold")
+        await self.otbn.write_load_checksum(OTBN_CHECKSUM_MARK)
+        got = await self.otbn.read_load_checksum()
+        assert got == OTBN_CHECKSUM_MARK, (
+            f"OTBN LOAD_CHECKSUM hold write failed 0x{got:08x}"
+        )
+        return got
+
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
 
@@ -123,13 +156,15 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # results, not on the bit-exact DRBG golden stream; the scoreboard is used
         # only to drive the deterministic ESRC noise + observe the AES EDN leg.
         await self.bring_up_entropy(strict=False, score_km=False,
-                                    score_sinks={"aes": "observe"})
+                                    score_sinks={"aes": "observe", "kmac": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
 
         self.rst = SepCryptoResetIso(self)
         self.hmac = SepHmac(self)
         self.aes = SepAes(self)
+        self.kmac = SepKmac(self)
+        self.otbn = SepOtbn(self)
 
         # Establish a held, golden-checked result in each engine.
         h_digest = await self._run_hmac()
@@ -195,6 +230,56 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self.logger.info(
             "CHK-REVERSE PASS: HMAC reset cleared its own DIGEST; AES DATA_OUT intact")
 
+        # Remaining SW_RESET_N bits that this DUT isolates: KMAC and OTBN.
+        # KM (bit 0) stays held at the reset default -- a different mechanism.
+        h_digest = await self._run_hmac()
+        k_digest = await self._run_kmac()
+        assert await self.kmac.read_digest() == k_digest, "KMAC STATE not held on re-read"
+        await self._pulse_reset(ENG_KMAC.rst_bit)
+        kmac_after = await self.kmac.read_digest()
+        assert kmac_after != k_digest, (
+            "KMAC STATE not perturbed by its own SW_RESET_N pulse:\n"
+            f"  held={[hex(w) for w in k_digest]}\n  after={[hex(w) for w in kmac_after]}"
+        )
+        hmac_survived = await self.hmac.read_digest()
+        assert hmac_survived == h_digest, (
+            "HMAC DIGEST disturbed by KMAC reset:\n"
+            f"  before={[hex(w) for w in h_digest]}\n  after={[hex(w) for w in hmac_survived]}"
+        )
+        self.logger.info(
+            "CHK-KMAC-SELF PASS: KMAC reset perturbed STATE; HMAC DIGEST intact")
+
+        k_digest = await self._run_kmac()
+        await self._pulse_reset(ENG_HMAC.rst_bit)
+        kmac_survived = await self.kmac.read_digest()
+        assert kmac_survived == k_digest, (
+            "KMAC STATE disturbed by HMAC reset:\n"
+            f"  before={[hex(w) for w in k_digest]}\n  after={[hex(w) for w in kmac_survived]}"
+        )
+        self.logger.info(
+            "CHK-KMAC-NEIGHBOR PASS: HMAC reset left KMAC STATE bit-exact intact")
+
+        mark = await self._otbn_hold_checksum()
+        await self._pulse_reset(ENG_AES.rst_bit)
+        otbn_survived = await self.otbn.read_load_checksum()
+        assert otbn_survived == mark, (
+            f"OTBN LOAD_CHECKSUM disturbed by AES reset: "
+            f"0x{otbn_survived:08x} != 0x{mark:08x}"
+        )
+        await self._pulse_reset(ENG_OTBN.rst_bit)
+        await self.otbn.wait_idle("post-otbn-reset")
+        otbn_after = await self.otbn.read_load_checksum()
+        assert otbn_after == OTBN_LOAD_CHECKSUM_RESET, (
+            f"OTBN LOAD_CHECKSUM not cleared by its own SW_RESET_N pulse: "
+            f"0x{otbn_after:08x}"
+        )
+        self.logger.info(
+            "CHK-OTBN PASS: LOAD_CHECKSUM survived AES reset, cleared by OTBN reset "
+            "(held 0x%08x -> 0x%08x)", mark, otbn_after)
+
+        self.logger.info(
+            "CHK-SW-RESET-BITS PASS: AES/HMAC/KMAC/OTBN domains walked; KM held")
+
         # Close out the entropy evidence this test asked for. bring_up_entropy was
         # called with score_sinks={"aes": "observe"}, which forks the crypto-EDN sink
         # monitor and sets a >=1-beat floor for CHK5_aes -- but nothing evaluated it:
@@ -208,4 +293,4 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         self.logger.info(
             "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
-            "(HMAC<->AES, both directions, entropy-backed: CHK5_aes beats reported)")
+            "(HMAC<->AES, KMAC, OTBN; KM held; entropy-backed: CHK5_aes/kmac beats reported)")

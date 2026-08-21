@@ -42,6 +42,8 @@ class CryptoEngine:
 # hold a live golden-checked result (HMAC DIGEST, AES DATA_OUT).
 ENG_HMAC = CryptoEngine("hmac", RST_HMAC)
 ENG_AES = CryptoEngine("aes", RST_AES)
+ENG_KMAC = CryptoEngine("kmac", RST_KMAC)
+ENG_OTBN = CryptoEngine("otbn", RST_OTBN)
 
 
 class SepCryptoResetIso(SepAxiRegDriver):

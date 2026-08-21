@@ -314,6 +314,18 @@ module sep_uvm_top
     output logic              axis1_tvalid_o,        // entropy_muxed_req[1].tvalid
     output logic              axis1_tready_o,        // entropy_muxed_rsp[1].tready
     output logic [31:0]       axis1_tdata_o,         // entropy_muxed_req[1].tdata (32b word)
+    // CHK5 entropy-pool sink (EDN endpoint [2]): AXIS2 is the pre-adapter mux-leg
+    // stream (entropy_muxed_req[2]); pool_edn_* is the post-adapter native EDN
+    // handshake into sep_entropy_fifo (one client, so AXIS2==pool beats in order).
+    // Observation-only XMR, no force. No frontdoor equivalent of the 32-bit EDN
+    // beat -- the 0x1095 aperture is a packed 64-bit drain, Phase 3 FIFO consume.
+    output logic              axis2_tvalid_o,        // entropy_muxed_req[2].tvalid
+    output logic              axis2_tready_o,        // entropy_muxed_rsp[2].tready
+    output logic [31:0]       axis2_tdata_o,         // entropy_muxed_req[2].tdata (32b word)
+    output logic              pool_edn_req_o,        // entropy_pool_edn_req_i.edn_req
+    output logic              pool_edn_ack_o,        // entropy_pool_edn_rsp_o.edn_ack
+    output logic [31:0]       pool_edn_bus_o,        // entropy_pool_edn_rsp_o.edn_bus
+    output logic              pool_edn_fips_o,       // entropy_pool_edn_rsp_o.edn_fips
     // IP-interrupt aggregator (E10): observation-only mirror of the 34-bit
     // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
     // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
@@ -1215,6 +1227,14 @@ module sep_uvm_top
     assign axis1_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[1].tready;
     assign axis1_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tdata;
     assign km_entropy_tready_o  = `SEP_CORE.sep_crypto.entropy_muxed_rsp[0].tready;
+    // CHK5 pool (mux endpoint [2]): pre-adapter AXIS2 + post-adapter native EDN.
+    assign axis2_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tvalid;
+    assign axis2_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[2].tready;
+    assign axis2_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tdata;
+    assign pool_edn_req_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_req_i.edn_req;
+    assign pool_edn_ack_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_ack;
+    assign pool_edn_bus_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_bus;
+    assign pool_edn_fips_o      = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_fips;
 
     // Per-client crypto EDN taps (post drbg_axis_edn_adapter). edn_req is the
     // client's request, edn_ack the adapter's grant pulse, edn_bus the delivered

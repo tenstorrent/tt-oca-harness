@@ -22,13 +22,6 @@
 #define SPI_ERR_WAIT_IDLE_RX 5
 #define SPI_ERR_STATUS 6
 
-static void configure_spi_mux_ot(void) {
-    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t spi_mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
-    spi_mux.f.spi_sel = 1; /* Route to OpenTitan SPI controller */
-    spi_mux.f.cs_force_high = 0;
-    WRITE_REG(OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, spi_mux.w);
-}
-
 static void spi_controller_init(void) {
     spi_controller__CTRL_t ctrl = {.w = SPI_CONTROLLER__CTRL_reset};
     spi_controller__CFG_t cfg = {.w = 0};
@@ -79,7 +72,6 @@ static int run_spi_txrx_sequence(void) {
     spi_controller__CMD_t cmd = {.w = 0};
     spi_error_status_t err = {.w = 0};
 
-    configure_spi_mux_ot();
     spi_controller_init();
 
     /* Step 1: TX single-byte command (0x9F). */

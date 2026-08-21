@@ -45,6 +45,14 @@ other.
   corners Phase 1 and Phase 2 do not reach.
 |===
 
+The architecture spec (`hw/sys/sep/doc/`) is the 60% denominator. Iconic =
+the mode, command, or contract that makes that IP itself. Deferred /
+not-in-bare-SEP (AGP, local UART and GPIO, proprietary SPI PHY, ROM
+patch, next-gen DMA-AES, DCLS-in-SEP, PCR vault) are *out* of the 60%
+count. ROM-*firmware* contracts are out of this VPLAN — ROM-FW owner.
+A backlog *name* is not a credit. A `FAILED` spec-gap is honest and is
+not a 60% credit either.
+
 Phase 1 and Phase 2 stay on the existing cocotb environment and finish there.
 Phase 3 does not extend that environment — it starts a new UVM bench.
 
@@ -93,11 +101,13 @@ Phase 1 + Phase 2 is the cocotb baseline. Together they must cover more than
 randomize to *reach* the 60%, do not drop a real gap to keep the test count
 pretty.
 
-Iconic representatives that are not yet coded (KM command set, eFuse
-program × lock, lifecycle demote product, OTBN compute) stay *named* in
-`verification_plan_phase2.adoc` until they are. Existing tests that shipped a
-one-point stand-in for a matrix are strengthened in place rather than
-replaced. Do not port a leftover name-list as 69 directed tests.
+Iconic representatives that are not yet coded stay *named* in
+`verification_plan_phase2.adoc` until they are. That plan is the execute
+list for new Phase 2 tests. Existing tests that shipped a one-point
+stand-in for a matrix are strengthened in place rather than replaced.
+Former leftover names are mapped there to `COVERED_BY` / `MERGED_INTO` or
+to Phase 3. Do not port them as 69 directed tests. There is no separate
+improvement worklist.
 
 Detail: `verification_plan_phase2.adoc`.
 
@@ -244,16 +254,13 @@ Not created yet.
 | Phase 1 contract. Smoke plus the twenty-one representative tests, with evidence-items.
 
 | `verification_plan_phase2.adoc`
-| Phase 2 contract. Graded entries with evidence-items. Unimplemented iconic
-  representatives stay named here until coded.
+| Phase 2 contract. Graded iconic entries plus the named remaining iconic
+  work. Former leftover names are mapped, not listed as a worklist.
 
 | `verification_plan_phase3.adoc`
 | Phase 3 holding area. Corners, error/security permutations, and the UVM
-  smoke. Revisited after the UVM environment exists.
-
-| `improvement_plan.adoc`
-| After Phase 1 + 2: did the 60% iconic target arrive, and what to change
-  in order. Not a test contract.
+  smoke. Revisited after the UVM environment exists. New tests that are
+  not Phase 2 iconic remaining are created from this plan.
 
 | `README.md`
 | How to build and run. Not a verification contract.

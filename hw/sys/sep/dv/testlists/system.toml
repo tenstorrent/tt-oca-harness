@@ -118,7 +118,7 @@ module = "system.sep_axil_mailbox_iface_rand_test"
 seed = 1
 reseed = 3
 timeout_sec = 1800
-tags = ["mailbox", "axil_mailbox", "fifo", "irq", "system", "subsystem"]
+tags = ["mailbox", "axil_mailbox", "fifo", "interrupt", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
@@ -134,7 +134,7 @@ args = ["+skip_fuse_sense"]
 name = "sep_crypto_per_ip_reset_isolation_test"
 module = "system.sep_crypto_per_ip_reset_isolation_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["reset", "crypto", "isolation", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
@@ -143,16 +143,16 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 [[tests]]
 # Inbound-filter per-entry RULE matrix (the reference suite\'s sep_inbound_filter_blockbydefault_test # + sep_inbound_filter_programming_ownership_test +
 # sep_inbound_id_remap_test ). Filter ACTIVE (sep_debug=0, real PROD fuse):
-# CPU-LSU programs one allow-entry; the external SMN master proves allow-addr->OKAY+value,
-# non-allowed->DECERR (block-by-default), and read_en/write_en gating. Distinct from
+# CPU-LSU programs allow-entries; the external SMN master proves allow-addr->OKAY+value,
+# non-allowed->DECERR (block-by-default), and read_en/write_en gating. Walks entry 0
+# and 7 x two windows x rw/r/w. Distinct from
 # `sep_lcc_uvm_inbound_filter_gating_test` (global sep_debug skip gate). no_cpu + ext SMN master; REAL PROD fuse sense.
-# CHK-OWNERSHIP-WINDOW currently FAILS (RTL OKAY vs fabric.adoc DECERR);
-# https://github.com/tenstorrent/tt-oca-harness/issues/1050 -- expected red,
-# not an XFAIL.
+# CHK-OWNERSHIP-WINDOW currently FAILS (RTL OKAY vs fabric.adoc DECERR after
+# an allow-list on the CFG window). Expected red, not an XFAIL.
 name = "sep_fabric_inbound_filter_rule_matrix_test"
 module = "system.sep_fabric_inbound_filter_rule_matrix_test"
 seed = 1
-timeout_sec = 1800
+timeout_sec = 3600
 tags = ["fabric", "inbound_filter", "security", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

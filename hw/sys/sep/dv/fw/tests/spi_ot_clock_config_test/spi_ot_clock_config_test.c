@@ -25,7 +25,6 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -43,7 +42,6 @@ int main(void) {
     int pass = 1;
     spi_controller__CFG_t cfg;
 
-    spi_mux_select_ot();
     printf("SPI mux configured for OpenTitan\n\n");
 
     /* Step 1: Verify CFG default */

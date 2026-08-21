@@ -19,7 +19,6 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 //==============================================================================
 // SPI Mux Control Functions
@@ -55,7 +54,6 @@ int main(void) {
 
     // Configure SPI mux: select OpenTitan SPI Host controller and clear cs_force_high
     // This must be done FIRST before any SPI controller operations
-    spi_mux_select_ot();
 
     printf("\n--- Testing SPI Controller Registers ---\n\n");
 

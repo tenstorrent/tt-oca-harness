@@ -1439,15 +1439,16 @@ of assuming programming always succeeds first time.
 
 | 5
 | After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and
-  prove the DFT group opens. Keep the strap high for the rest of the walk.
+  prove the DFT group opens. The strap is then lowered again; the rest of the walk
+  runs at `secure_tm=0`.
 | `CHK-SECURE-TM-OFF PASS` then `CHK-SECURE-TM-ON PASS`
-| implemented -- pending kept log
+| LOGGED
 
 | 6
 | Inject a broken LC_STATE pair at the LCC decoder input; prove fail-closed
   FEAT_CTRL=0; release and restore.
 | `CHK-SIGINT PASS` then `CHK-SIGINT-RELEASE PASS`
-| implemented -- pending kept log
+| LOGGED
 
 |===
 
@@ -1468,14 +1469,15 @@ of assuming programming always succeeds first time.
 
 | CHK-GOLDEN
 | The feature-control output matches the golden decode at each of the four states, at
-  the pinned override vectors, with demote at its reset value. After the initial
-  TEST_DEV / `secure_tm=0` check the walk holds `secure_tm=1`, so RMA_SIP / RMA_CHIP
-  include the DFT group. Demote is not written here — the demoted branches are
-  covered by `sep_lcc_uvm_inbound_filter_gating_test`. See
+  the pinned override vectors, with demote at its reset value. The four-state walk runs
+  at `secure_tm=0`; TEST_DEV is additionally re-checked at `secure_tm=1`, which is where
+  the DFT group opening is proven (step 5). Demote is not written here — the demoted
+  branches are covered by `sep_lcc_uvm_inbound_filter_gating_test`. See
   <<lcc-golden-follows-rtl>> for what "matches the golden" does and does not
   establish.
-| One `[lcc] state ... secure_tm=1 sigint=0 -> FEAT_CTRL=...` line per state
-| implemented -- pending kept log (values change vs the prior `secure_tm=0` walk)
+| One `[lcc] state ... secure_tm=0 sigint=0 -> FEAT_CTRL=...` line per state, plus the
+  TEST_DEV re-check `secure_tm=1 sigint=0 -> FEAT_CTRL=0xf000f000f000f000`
+| PROVEN
 
 | CHK-OTP-RETRY
 | An injected physical program failure is observed, cleared and retried to success.
@@ -2589,12 +2591,19 @@ remap, so the window would be bypassed entirely and the test would prove nothing
 
 | CHK-CSR
 | The alias base register is writable and reads back. It is probed with a value distinct
-  from its reset value first — writing only the operating base would be unfalsifiable,
-  since that is also the field's reset value and a read-only register would pass. What
-  this still does not establish is that the CSR *drives* the remapper: every access below
-  runs at the reset base, so a design with the base hardwired would pass. Closing that
-  needs an access made while the alternate base is programmed.
+from its reset value first — writing only the operating base would be unfalsifiable,
+since that is also the field's reset value and a read-only register would pass.
+<<chk-base-live>> then proves the programmed base is actually consumed.
 | `CHK-CSR PASS: SEP_LOCAL_BASE writable (probed 0xe0000000), restored to 0xd0000000 (fixed 768MiB window -> 0x10000000)`
+| PROVEN
+
+[[chk-base-live]]
+| CHK-BASE-LIVE
+| A write through the alias window with a NON-reset base programmed lands at the
+  physical address that base selects. A remapper hardwired at the operating base
+  (`0xD000_0000`) would map `0xE000_0318` to `0x2000_0318`, not `0x1000_0318`, and
+  fails here. This is what makes CHK-CSR's probe more than a register readback.
+| `CHK-BASE-LIVE PASS: write@0xe0000318 with base 0xe0000000 -> phys 0x10000318 == marker (remapper consumes SEP_LOCAL_BASE)`
 | PROVEN
 
 | CHK-LSU-WR
@@ -3170,6 +3179,12 @@ so what is checked is the queue's output rather than an internal signal.
 | `CHK5_km` row of the scoreboard report with `mismatch=0` (item counts vary per run)
 | PROVEN
 
+| CHK5_pool
+| Mux endpoint [2] (entropy-pool adapter): each post-adapter pool beat equals
+  the next AXIS2 word. Does not drain `0x1095_0000`.
+| `CHK5_pool` row of the scoreboard report with `mismatch=0` (item counts vary per run)
+| PROVEN
+
 | CHK-ALERTS
 | Generator and distribution error and alert status are clear.
 | The four alert reads returning zero: `AXI read  0x10915054 -> 0x0`, `AXI read  0x10915050 -> 0x0`, `AXI read  0x1091583c -> 0x0`, `AXI read  0x10915838 -> 0x0`
@@ -3205,13 +3220,13 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 == Audit summary
 
-31 testcases, 154 steps, 148 checkers.
+31 testcases, 153 steps, 151 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Step proof | Count
 
-| `LOGGED` | 154
+| `LOGGED` | 153
 | `NOT-LOGGED` | 0
 |===
 
@@ -3219,7 +3234,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Grade | Count
 
-| `PROVEN` | 147
+| `PROVEN` | 150
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `STALE` | 0

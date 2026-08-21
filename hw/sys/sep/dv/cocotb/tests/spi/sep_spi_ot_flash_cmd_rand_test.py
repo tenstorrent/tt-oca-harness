@@ -29,9 +29,9 @@ Checks:
     CHK-ERASE            : sector ERASE -> READ returns all 0xFF.
     CHK-NO-ERROR         : OT SPI ERROR_STATUS == 0 throughout.
   cocotb golden cross-check (independent of the firmware readback):
-    - exactly 10 BFM transactions in the expected opcode order (primary
-      program/read, neighbour program/read, erase, primary read, neighbour
-      read);
+    - exactly the BFM-visible opcode sequence (JEDEC, WRDI, RDSR, WREN, primary
+      program/read, FAST_READ, neighbour program/read, erase, primary read,
+      neighbour read);
     - the PAGE PROGRAM (0x02) landed at the random addr with the random data;
     - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards)
       and left the neighbour 4 KiB sector intact.
@@ -141,9 +141,14 @@ class SepSpiFlashCmdCfg:
     data: list[int]
 
     # BFM opcode order the firmware must drive (bare class attr, not a field):
-    # WREN, PP, READ (primary); WREN, PP, READ (neighbour 4 KiB);
-    # WREN, SECTOR ERASE, READ (primary); READ (neighbour after erase).
-    EXPECTED_OPS = [0x06, 0x02, 0x03, 0x06, 0x02, 0x03, 0x06, 0x20, 0x03, 0x03]
+    # JEDEC, WRDI, RDSR, WREN, RDSR, then WREN/PP/READ (primary), FAST_READ,
+    # WREN/PP/READ (neighbour), WREN/ERASE/READ (primary), READ (neighbour).
+    EXPECTED_OPS = [
+        0x9F, 0x06, 0x05, 0x04, 0x05,
+        0x06, 0x02, 0x03, 0x0B,
+        0x06, 0x02, 0x03,
+        0x06, 0x20, 0x03, 0x03,
+    ]
 
     @property
     def neigh_addr(self) -> int:
@@ -256,7 +261,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                               [f"0x{o:02x}" for o in cfg.EXPECTED_OPS])
             raise AssertionError("SPI flash command breadth golden: unexpected BFM opcode sequence")
 
-        pp = txns[1]
+        pp = txns[6]
         exp_bytes = cfg.pp_bytes()
         if pp.get("addr") != cfg.addr or bytes(pp.get("data_in") or b"") != exp_bytes:
             self.logger.error(
@@ -265,7 +270,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 cfg.addr, exp_bytes.hex())
             raise AssertionError("SPI flash command breadth golden: PAGE PROGRAM addr/data mismatch")
 
-        neigh_pp = txns[4]
+        neigh_pp = txns[10]
         neigh_bytes = cfg.neigh_bytes()
         if neigh_pp.get("addr") != cfg.neigh_addr or bytes(neigh_pp.get("data_in") or b"") != neigh_bytes:
             self.logger.error(
@@ -287,5 +292,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             raise AssertionError("SPI flash command breadth golden: sector erase wiped the neighbour")
         self.logger.info(
             "SPI flash command breadth GOLDEN PASS: PP@0x%06x %dB landed, erase wiped it, "
-            "neighbour 0x%06x intact",
-            cfg.addr, cfg.nwords * 4, cfg.neigh_addr)
+            "neighbour 0x%06x intact, opcodes=%s",
+            cfg.addr, cfg.nwords * 4, cfg.neigh_addr,
+            [f"0x{o:02x}" for o in cfg.EXPECTED_OPS])
+        self.logger.info(
+            "CHK-RAND-REP PASS: walked BFM-visible opcodes "
+            "JEDEC/WREN/RDSR/WRDI/PP/READ/FAST/ERASE (dual/quad infra-gated)")
