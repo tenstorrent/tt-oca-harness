@@ -78,9 +78,15 @@ When adding a new vendored dependency, confirm its license is Apache-2.0 compati
 Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching the job
 (plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
 
-`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, and `lint-tcl` on every push/PR
-(`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
+`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, and `lint-tcl` on pull
+requests and on pushes to `main` (`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
 artifacts; jobs report through `.github/actions/reviewdog-report`.
+
+Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
+or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
+child. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still
+report success. `scripts/ci/diff_class.py --self-test` checks the classifier.
+Scheduled and manually dispatched pipelines always run in full.
 
 | CI job | Reviewdog check(s) | Local command |
 |---|---|---|
