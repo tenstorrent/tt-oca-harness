@@ -238,11 +238,18 @@ does not assign issues, and it does not police PR Summary or Test plan.</p>
 assigns an unassigned issue from a named person, the parent assignee,
 or the usual or majority owner of the title prefix, and copy-edits
 issue and PR titles and bodies for capitalization, imperative mood,
-and grammatical English without adding or removing content. It runs
-at 05:00 and 16:00 PDT, and on dispatch of
+and grammatical English without adding or removing content. Issue
+titles keep the ingest taxonomy prefix. PR titles use a path-like
+scope (<code>hw/smc:</code>, <code>dv:</code>, <code>github:</code>), or <code>treewide:</code> when the change
+spans several trees, not <code>[WORKSTREAM/SUBSYSTEM]</code> and
+not <code>feat(scope):</code>. It comments
+on a PR that has been approved for 3 days and is still open, and it
+reminds an issue assignee 3 days before a milestone or issue due date.
+It runs at 05:00 and 16:00 PDT, and on dispatch of
 <code>ocah-project-curator.lock.yml</code>. Each run covers items opened at or
 after the last successful run; the first successful run covers every
-open issue and PR.</p>
+open issue and PR. Approved-but-unmerged PRs and issues with a due
+date in the next 3 days are always included.</p>
 </div>
 </article>
   </div>
