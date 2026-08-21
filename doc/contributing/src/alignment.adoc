@@ -27,3 +27,11 @@ It runs at 05:00 and 16:00 PDT, and on dispatch of
 after the last successful run; the first successful run covers every
 open issue and PR. Approved-but-unmerged PRs and issues with a due
 date in the next 3 days are always included.
+
+A Monday run of `ocah-weekly-issue-activity.lock.yml` posts a General
+discussion with opened-versus-closed and time-to-close charts built
+from the Issues API. Those charts are not GitHub Insights and are
+not Project 291 Insights. A daily run of
+`ocah-discussion-task-miner.lock.yml` opens Task issues for concrete
+action items in Ideas discussions from the last 7 days. Those issues
+skip the issue form; the curator fills leftover fields.
