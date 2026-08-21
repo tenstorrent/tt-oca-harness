@@ -1,0 +1,78 @@
+tools/dv/dashboard/__init__.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/cli.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/collect_results.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/gen_dashboard.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/gen_report.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/html.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/publish_reports.py
+  h_1abe2da33d4938 1-3
+tools/dv/dashboard/schema.py
+  h_1abe2da33d4938 1-3
+tools/dv/run_dashboard.py
+  h_1abe2da33d4938 2-4
+tools/dv/run_dv.py
+  h_1abe2da33d4938 2-4
+tools/dv/runlib/__init__.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/buildcache.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/cli.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/compat.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/config.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_model.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_parsers/__init__.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_parsers/imc.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_parsers/urg.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_parsers/verilator.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/coverage_policy.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/duts.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/junit.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/logparse.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/models.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/paths.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/results.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/stages.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/ui.py
+  h_1abe2da33d4938 1-3
+tools/dv/runlib/waves.py
+  h_1abe2da33d4938 1-3
+tools/dv/sync_python_namespace.py
+  h_1abe2da33d4938 2-4
+tools/regs/common/__init__.py
+  h_1abe2da33d4938 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3db71739f87c31c82910cac07bbee8e8b9e7d5c3",
+  "prompts": {},
+  "humans": {
+    "h_1abe2da33d4938": {
+      "author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
