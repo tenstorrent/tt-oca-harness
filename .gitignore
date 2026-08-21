@@ -9,7 +9,7 @@ __pycache__/
 nonfree/
 
 # Transient per-block build outputs. The build_ot* variants come from the SEP
-# bootcode BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images).
+# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images).
 **/build/
 **/build_ot/
 **/build_ot_pio/

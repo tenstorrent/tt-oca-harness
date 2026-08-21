@@ -5,14 +5,44 @@ from __future__ import annotations
 
 from sep_reg_meta import sym
 
+import cocotb
+
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
+OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
+OTBN_ADDR_STATUS = OTBN_BASE + 0x018
 OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
 OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 OTBN_IMEM_SMOKE_WORD = 0x0000_0013
 OTBN_DMEM_SMOKE_WORD = 0xA5A5_5A5A
+
+# OTBN STATUS encoding, from the vendored OpenTitan otbn_pkg::status_e.
+OTBN_STATUS_IDLE = 0x00
+OTBN_STATUS_BUSY_EXECUTE = 0x01
+OTBN_STATUS_BUSY_SEC_WIPE_DMEM = 0x02
+OTBN_STATUS_BUSY_SEC_WIPE_IMEM = 0x03
+OTBN_STATUS_BUSY_SEC_WIPE_INT = 0x04
+OTBN_STATUS_LOCKED = 0xFF
+
+# The state in which a bus access to IMEM/DMEM is illegal. Per the vendored RTL,
+# imem_access_core = busy_execute_q | start_q and dmem_access_core = busy_execute_q
+# (otbn.sv), so while OTBN is executing, a bus request is diverted to a dummy
+# response and latches the fatal illegal_bus_access error.
+#
+# Note the two BusySecWipe*mem states are NOT that case: they are raised by
+# otbn_{d,i}mem_scramble_key_req_busy (otbn.sv status_d), i.e. a scramble-key
+# request is outstanding -- bus access still reaches the SRAM, so they are not the
+# states to exclude.
+OTBN_MEM_ACCESS_ILLEGAL_STATES = (OTBN_STATUS_BUSY_EXECUTE,)
+
+# OTBN IMEM/DMEM are 32-bit SECDED words and reject a 64-bit beat with SLVERR, so
+# every access here drives size=2 (4-byte beat) -- the same width SepOtbn's
+# inherited _wr/_rd use for the real program load. Leaving size unset lets
+# cocotbext-axi pick the full 64-bit bus width, which exercises an access no OTBN
+# driver in this environment ever issues and which the memories reject.
+_AXI_SIZE_4B = 2
 
 
 class sep_otbn_mem_smoke_seq(uvm_sequence):
@@ -21,21 +51,48 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
         item.op = SepAxiOp.WRITE
         item.addr = addr
         item.length = length
+        item.size = _AXI_SIZE_4B
         item.wdata = data
-        item.allow_unverified_write_resp = True
         await self.start_item(item)
         await self.finish_item(item)
 
-    async def _read(self, addr: int, expected: int, length: int = 4) -> None:
+    async def _read(self, addr: int, expected: int | None = None, length: int = 4) -> int:
         item = SepAxiItem(f"rd_otbn_0x{addr:08x}")
         item.op = SepAxiOp.READ
         item.addr = addr
         item.length = length
+        item.size = _AXI_SIZE_4B
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
+        return item.rdata
+
+    async def _check_mem_access_precondition(self) -> None:
+        """Establish, from the DUT, that an IMEM/DMEM readback compare is meaningful.
+
+        OTBN comes out of reset into StatusBusySecWipeInt (0x04) and stays there for
+        this test: leaving it needs EDN entropy to reseed URND, and the no_cpu smoke
+        configuration never brings EDN up. That is harmless here -- the internal wipe
+        does not touch IMEM/DMEM, which is why every access below completes OKAY.
+
+        What would NOT be harmless is OTBN executing, which makes a bus access to
+        these memories illegal, or OTBN LOCKED, which fails accesses outright. Both
+        are checked rather than assumed, so this test fails loudly if OTBN's reset
+        behaviour ever changes.
+        """
+        st = await self._read(OTBN_ADDR_STATUS) & 0xFF
+        assert st != OTBN_STATUS_LOCKED, f"OTBN LOCKED (STATUS=0x{st:02x}) before memory smoke"
+        assert st not in OTBN_MEM_ACCESS_ILLEGAL_STATES, (
+            f"OTBN is executing (STATUS=0x{st:02x}); a bus access to IMEM/DMEM would "
+            f"be diverted and flagged as an illegal bus access"
+        )
+        cocotb.log.info(
+            "OTBN memory-access precondition OK: STATUS=0x%08x (not LOCKED, not executing)",
+            st,
+        )
 
     async def body(self) -> None:
+        await self._check_mem_access_precondition()
         await self._write(OTBN_IMEM_BASE, OTBN_IMEM_SMOKE_WORD)
         await self._read(OTBN_IMEM_BASE, OTBN_IMEM_SMOKE_WORD)
         await self._write(OTBN_DMEM_BASE, OTBN_DMEM_SMOKE_WORD)

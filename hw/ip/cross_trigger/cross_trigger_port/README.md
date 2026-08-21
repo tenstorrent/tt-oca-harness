@@ -33,16 +33,19 @@ Everything lands under `regs/gen/`, one directory per output format:
 
 The flow runs through `uv`, which installs peakrdl and the exporters from the
 lockfile; nothing else needs to be on PATH.
-* PeakRDL: `pip install systemrdl-compiler peakrdl-regblock`
-* OCH_ROOT environment variable set (see repository root README)
 
 ## Documentation
 
-See `CTP_SPECIFICATION.md` for detailed specification and `doc/` directory for
-Sphinx documentation.
+See `doc/CTP_SPECIFICATION.md` for the detailed specification. The AsciiDoc pages
+under `doc/` are published with the rest of the OCAH documentation; build the TRM,
+which includes them under the DTP subsystem:
+
+```bash
+make -f ocah.mk ocah-doc-trm-html
+```
 
 ## Dependencies
 
 None - CTP is a standalone IP used by:
-- `hw/comp/cross_trigger_network` - Cross Trigger Network component
-- `hw/dtp` - Debug and Test Ports module
+- `hw/ip/cross_trigger/cross_trigger_network` - Cross Trigger Network
+- `hw/sys/dtp` - Debug and Test Ports subsystem

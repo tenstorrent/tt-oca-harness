@@ -455,7 +455,7 @@ module smu #(
 
     // SEP lifecycle and mailbox signals
     logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  sep_lc_state;
-    sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t sep_feat_ctrl;
+    sep_lifecycle_ctrl_pkg::dbg_disable_t  sep_dbg_disable;
     logic  sep_lc_sigint_err;
     logic [sep_pkg::NUM_MAILBOXES-1:0]  sep_mailbox_interrupts;
 
@@ -587,7 +587,7 @@ module smu #(
         .clk_i                           (clk_smu_i),
         .rst_n_i                         (rst_primary_smc_clk_no),
         .pwr_on_rst_ni                   (powergood_stable),
-        .feat_ctrl_i                     (sep_feat_ctrl),
+        .dbg_disable_i                   (sep_dbg_disable),
         .jtag_ptap_client_tap_ctrl_i     (jtag_ptap_client_tap_ctrl_i),
         .jtag_ptap_client_tdi_i          (jtag_ptap_client_tdi_i),
         .jtag_ptap_client_tdo_o          (jtag_ptap_client_tdo_o),
@@ -968,7 +968,7 @@ module smu #(
             .spi_irq_i                     (spi_irq_i),
 
             .lc_state_o                    (sep_lc_state),
-            .feat_ctrl_o                   (sep_feat_ctrl),
+            .dbg_disable_o                 (sep_dbg_disable),
             .lc_sigint_err_o               (sep_lc_sigint_err),
             .security_disable_o            (sep_security_disable),
             .secure_tm_o                   (secure_tm_o),
@@ -1178,7 +1178,7 @@ module smu #(
         // Lifecycle state -- original standalone behavior
         // ==================================================================
         assign sep_lc_state      = 8'hf0;
-        assign sep_feat_ctrl     = '1;
+        assign sep_dbg_disable   = '0;
         assign sep_lc_sigint_err = 1'b0;
         assign lc_state_o        = sep_lc_state;
         assign lc_sigint_err_o   = efuse_lc_sigint_err;

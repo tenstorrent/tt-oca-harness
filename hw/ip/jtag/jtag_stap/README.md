@@ -27,11 +27,17 @@ and multi-die test access systems.
 
 ## Running Tests
 
-cd tb
+```bash
+cd dv/tb
 make help
+```
 
 ## Documentation
 
-cd doc
-make help
+The pages under `doc/` are AsciiDoc sources published with the rest of the OCAH
+documentation, under the DTP subsystem in the TRM:
+
+```bash
+make -f ocah.mk ocah-doc-trm-html
+```
 

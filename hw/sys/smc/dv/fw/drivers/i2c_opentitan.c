@@ -279,8 +279,8 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
 
     // Step 2: Verify FIFO levels are 0 (Crucial Step per OpenTitan FIFO guide)
     // Reference: OpenTitan I2C FIFO documentation, Section 2.1
-    // "驗證 (Crucial Step): 讀取 HOST_FIFO_STATUS 或 TARGET_FIFO_STATUS 暫存器。
-    //  確認 RX/ACQ FIFO Level 為 0。確認 FMT/TX FIFO Level 為 0 (且 TX 應標示為 Empty)。"
+    // "Verify (Crucial Step): read HOST_FIFO_STATUS or TARGET_FIFO_STATUS.
+    // Confirm RX/ACQ FIFO Level is 0. Confirm FMT/TX FIFO Level is 0 (and TX Empty)."
 
     // Small delay to allow FIFO reset to propagate through hardware
     for (volatile int i = 0; i < 100; i++)

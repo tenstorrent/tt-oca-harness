@@ -11,7 +11,7 @@ leak out.
 `ApbRam`), so `ocah_apb_vip` targets `cocotbext-axi` just like `ocah_axi_vip`
 does — same backend library, different protocol surface. APB lives in its own
 package only because it is a distinct protocol (one package per protocol). The
-public API mirrors `OcahAxiLiteMaster` so tests can switch between APB and
+public API mirrors `OcahAxiLiteMasterAgent` so tests can switch between APB and
 AXI4-Lite register interfaces without restructuring driver code.
 
 ## Package Layout

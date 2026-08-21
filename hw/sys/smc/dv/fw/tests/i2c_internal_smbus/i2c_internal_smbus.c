@@ -574,7 +574,7 @@ int main(void) {
 
     uint8_t target_addr_byte = (TARGET_ADDR << 1); // 7-bit address << 1 for I2C format
     write_scratch(1, 0x00000057);                  // Before calling i2c_target_transmit
-    // Commented out simputs to avoid blocking窄謢窄謢
+    // Commented out simputs to avoid blocking
     // simputs("  [PROGRESS] Calling i2c_target_transmit...\n");
     uint32_t written = i2c_target_transmit(TARGET_IDX, &target_addr_byte, 1);
     write_scratch(1, 0x00000058); // After i2c_target_transmit

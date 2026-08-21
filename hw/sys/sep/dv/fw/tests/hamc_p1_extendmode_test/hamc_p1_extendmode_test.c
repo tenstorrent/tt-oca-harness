@@ -8,7 +8,7 @@
  *   - HMAC-SHA384 with 512-bit and 1024-bit keys
  *   - HMAC-SHA512 with 512-bit and 1024-bit keys
  *
- * The test name intentionally follows GitHub issue #1290's typo ("hamc").
+ * The test name intentionally preserves an upstream typo ("hamc").
  */
 
 #include <stdint.h>

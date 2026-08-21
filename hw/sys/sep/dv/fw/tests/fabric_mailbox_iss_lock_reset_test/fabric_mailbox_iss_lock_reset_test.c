@@ -59,7 +59,7 @@ int main(void) {
     printf("Fabric Mailbox ISS Lock Reset Test (TC_FABRIC_053)\n");
     printf("==========================================\n\n");
 
-    /* CLOCK_GATE_CTRL is a reserved, not-yet-implemented placeholder (issue #3950);
+    /* CLOCK_GATE_CTRL is a reserved, not-yet-implemented placeholder;
      * mailbox/filter clocks are always on, so no ungate step is required. */
 
     WRITE_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_BASE_ADDR, (uint32_t)ctrl.w);

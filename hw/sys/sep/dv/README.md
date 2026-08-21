@@ -9,6 +9,22 @@ the OpenTitan SPI mux). Flow = cocotb/PyUVM on Verilator and VCS, driven by
 `tools/dv/run_dv.py` (`--dut sep`). The environment is kept self-contained
 under this tree so the build, tests, shims, and docs are easy to review and reuse.
 
+What each test proves, and the exact log evidence that proves it, is recorded in the
+verification plans:
+
+* [`docs/oss_dv_plan.adoc`](docs/oss_dv_plan.adoc) — the high-level plan: three
+  phases, coverage model, quality bar.
+* [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) — the
+  Phase 1 baseline, closed.
+* [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) — Phase 2
+  iconic-feature contract, active.
+* [`docs/verification_plan_phase3.adoc`](docs/verification_plan_phase3.adoc) — Phase 3
+  candidates, unscheduled and moving to a new UVM environment.
+
+Phase 1 states the contract these documents share: a test passing is the entry condition
+for reading its checkers, never a substitute for them, and a checker row exists only if a
+run can prove it. A log tag is not the proof; an independent audit of the checker is.
+
 ## Layout
 
 ```
@@ -22,8 +38,9 @@ hw/sys/sep/dv/
 │                        # uvm/  — future sibling, not created
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
 │                        # + cov/sv/ (scaffold, empty)
-├── docs/                # VPLANs, bring-up journals, model specs, audit report
-├── fw/                  # OSS-owned firmware (bootcode/ drivers/ tests/) — see fw/README.md
+├── docs/                # verification plans (oss_dv_plan + phases 1-3, AsciiDoc)
+├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
+│                        # the Boot ROM lives outside DV, at ../bootrom/prod/
 ├── models/              # SEP-local SystemRDL models (sep_axi_extension + generated)
 ├── shims/               # SEP-local behavioral sim-models (kept, accepted shims)
 │   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
@@ -37,7 +54,8 @@ hw/sys/sep/dv/
 │   └── interfaces/      #   (SV interfaces — empty for now)
 ├── testlists/           # native TOML testlists (all.toml + per-subsystem leaves)
 ├── sep_sim_cfg.toml     # block build/filelist manifest, run modes, tool knobs
-├── sep_public_scope.vlt # scoped Verilator public list (see docs/SEP_OSS_VERILATOR_ICO_BLOWUP.md)
+├── sep_public_scope.vlt # scoped Verilator public list (narrow on purpose: a global
+│                     #   --public-flat-rw wedges the Verilator model)
 ├── sep_sim.core         # FuseSoC-style manifest for external consumers
 ├── build/               # generated: per-tool models + build/runs/<run-id>/ logs (gitignored)
 └── README.md
@@ -57,7 +75,7 @@ and drives `lsu_axi_req` from `tb_top`'s `lsu_req_drive` with a plain `assign` �
 not a `force`. Examples:
 - `sep_axi_smoke_test` — read `sep_cpu_ctrl.CLOCK_GATE_CTRL` + write/readback RW regs.
 - `sep_address_map_test` — field-aware `sep_cpu_ctrl` sweep + a SEP-local fabric
-  walk (ported from OCAH `sep_reg_walk_seq`) across the LSU-reachable, OSS-clean
+  walk (ported from the reference suite's register-walk sequence) across the LSU-reachable, OSS-clean
   blocks (DMA, WDT, reset_ctrl, OTBN/AES/HMAC/KMAC, CSRNG/EDN/entropy, lifecycle,
   KM/AXIL mailbox, eFuse shadow, alias/output-remap, OT SPI host).
 
@@ -72,7 +90,7 @@ macros, backdoor-loaded by `tb_backdoor_mem` in `tb/tb_top.sv`. Examples:
   mailbox (`tb/sep_outbound_mbx.sv`).
 - `sep_rom_non_secure_boot_test` — OSS port of the internal ROM non-secure boot
   test (target `rom_boot`). Boots VeeR EL2 from the **real production Boot ROM**
-  (`fw/bootcode`, at ROM_BASE 0x10040000) and runs the full non-secure boot: the
+  (`hw/sys/sep/bootrom/prod`, at ROM_BASE 0x10040000) and runs the full non-secure boot: the
   ROM reads the manifest, validates it (real SHA256), DMA-copies the `bl1_pass_test`
   BL1 to SRAM, jumps, and BL1 signals PASS. SPI is stubbed (the OSS `sep` has only
   the OpenTitan Quad `spi_host`, not the Cadence xSPI); instead a behavioral SMC
@@ -164,7 +182,7 @@ AXI front door, and either readout can run any source:
 The memory, eFuse, and SPI-mux integration is RTL inside `sep_wrapper`
 (`hw/top/sep_ip_integration.sv`), not TB responders. The six
 bare-`sep` behavioral responders that used to back these ports were retired when
-the DUT moved to `sep_wrapper` (see `docs/SEP_OSS_WRAPPER_MIGRATION_PLAN.md`):
+the DUT moved to `sep_wrapper`:
 
 - **Memory macros** — real `prim_ram_1p` / `prim_rom` / EL2 TCM (`ram_16384x39`)
   macros. They have no runtime init, so `tb_backdoor_mem` (in `tb/tb_top.sv`)
@@ -217,12 +235,26 @@ port, not a memory model.
 # Build the OSS firmware first (RISC-V GCC on PATH; no picolibc) — only for boot:
 make -C hw/sys/sep/dv/fw -f fw.mk dv-fw-tests TEST=hello_world OCAH_ROOT="$PWD"
 
-# For sep_rom_non_secure_boot_test, build the Boot ROM + manifest + BL1 image.
-# This compiles bl1_pass_test (fw/tests/bl1_pass_test) and packs it with the
-# vendored tt-boot-manifest packer (fw/bootcode/tools) -> build/smc_mem.hex,
-# entirely from source (no internal prebuilt blob). Packer needs Python
-# 'cryptography' + 'ruamel.yaml' (pip3 install --user cryptography ruamel.yaml).
-make -C hw/sys/sep/dv/fw/bootcode
+# sep_rom_non_secure_boot_test needs the Boot ROM + manifest + BL1 image, but does
+# NOT need a manual build step: the test declares `firmware = { mode = "boot_rom" }`,
+# so the c_compile stage runs [c_build.boot_rom] (hw/sys/sep/bootrom/prod/Makefile)
+# and its `outputs` are checked before sim -- a bare run_dv.py is self-contained.
+#
+# The one prerequisite it cannot do for you is the manifest packer submodule, because
+# a build step must not mutate git state. Without it the pack half dies with
+# "No module named tt_boot_manifest":
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+
+# Build it by hand only when iterating on the ROM sources themselves. The two halves
+# are split by tool dependency, so each runs where its tools are:
+#   toolchain-images needs the RISC-V toolchain WITH picolibc (the generated
+#     register headers close their packing checks with static_assert, i.e.
+#     <assert.h>, which is not a freestanding header) -> use the toolchain container.
+#   pack-images is pure Python; its deps come from the submodule's own
+#     pyproject.toml, installed on demand by uv (no pip3 install needed).
+# [c_build.boot_rom] performs exactly these two steps, probing for picolibc first.
+scripts/docker-run.sh run make -C hw/sys/sep/bootrom/prod toolchain-images
+make -C hw/sys/sep/bootrom/prod pack-images
 
 # Then run (model rebuilds on SV/config change; python-only changes reuse it).
 # `all` is the maximum group; tags select subsets.

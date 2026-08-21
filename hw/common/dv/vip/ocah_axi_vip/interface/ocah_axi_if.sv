@@ -7,7 +7,7 @@
 // and a single non-parameterized `virtual ocah_axi_if` type keeps the UVM
 // class layer simple. UVM instantiations use the DEFAULT (maximum) parameter
 // widths; the actual bus geometry (addr/data/id widths, protocol selection)
-// lives in ocah_axi_cfg, which masks sampled values down to the real widths.
+// lives in ocah_axi_config, which masks sampled values down to the real widths.
 //
 // AXI4-Lite integrations tie the AXI4-only fields at the TB adapter:
 //   awlen='0, awsize=$clog2(data_bytes), awburst=2'b01 (INCR), awid='0,

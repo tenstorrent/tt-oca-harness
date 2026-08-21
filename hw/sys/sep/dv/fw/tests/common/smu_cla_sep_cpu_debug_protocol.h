@@ -80,7 +80,7 @@
 #define CLADBG_CLA_EAP0_ACT1 0x101FBFC000ULL /* mpc_debug_run_req  */
 #define CLADBG_CLA_EAP0_ACT3 0x103FBFC000ULL /* i_cpu_halt_req     */
 #define CLADBG_CLA_EAP0_ACT4 0x104FBFC000ULL /* i_cpu_run_req      */
-#define CLADBG_CLA_EAP0_ACT2 0x102FBFC000ULL /* mpc_reset_run_req = ~cla[2] (inverted #3582) */
+#define CLADBG_CLA_EAP0_ACT2 0x102FBFC000ULL /* mpc_reset_run_req = ~cla[2] (inverted) */
 #define CLADBG_CLA_EAP0_ACT5 0x105FBFC000ULL /* unmapped [5..15]   */
 
 #endif /* SMU_CLA_SEP_CPU_DEBUG_PROTOCOL_H */

@@ -7,11 +7,11 @@ KAT (#11, ECB-256 via keymgr) does not reach:
 
     {ECB, CBC, CTR} x {128, 192, 256}  (9 cells).
 
-OCAH parity: MERGED_INTO rep of the OCAH aes mode/keylen directed set. The OCAH
+reference parity: MERGED_INTO rep of the reference suite aes mode/keylen directed set. The reference suite
 uvm_tests/aes suite is register/alert-centric with no standalone CBC/CTR/128/192
 ciphertext golden, so the independent pure-Python golden (env/sep_aes_golden.py:
 FIPS-197 ECB 128/192/256 + SP800-38A CBC/CTR self-tested) is the reference and
-this rep is stronger-than-OCAH for encryption breadth. DISTINCT from #11 (ECB-256
+this rep is stronger than the reference suite for encryption breadth. DISTINCT from #11 (ECB-256
 via sideload) -- AES mode/key-size breadth is standalone SW-key across modes/sizes.
 
 Entropy: OpenTitan AES masking reseeds its PRNG from the crypto-EDN leg, so the
@@ -20,7 +20,7 @@ op or the engine stalls. The DRBG scoreboard runs non-strict (AES mode/key-size 
 AES correctness, not the entropy golden -- that is #15/KMAC mode/strength breadth/crypto-EDN multisink arbitration); simply
 reaching the ciphertext checks proves masking entropy flowed (CHK-ENTROPY).
 
-RAND-REP contract (AGENTS.md §9): a SepAesCfg config object is the single source
+RAND-REP contract: a SepAesCfg config object is the single source
 of truth for BOTH DUT programming (CTRL + key + IV + data) AND the golden. The 9
 discrete (mode, key-size) cells are WALKED DETERMINISTICALLY in one invocation;
 the seed randomizes only the legal continuous knobs (key, IV, plaintext content).
@@ -30,7 +30,6 @@ Checkers:
   CHK-RT       per cell: round-trip recovers plaintext -- ECB/CBC via engine
                DECRYPT, CTR via re-encrypt (stream self-inverse)
   CHK-STATUS   per cell: no AES recoverable/fatal alert across enc + round-trip
-  CHK-NONVAC   per cell: ciphertext != plaintext and != wrong-key golden
   CHK-ENTROPY  masking-PRNG reseed completed (reaching CHK-ENC is the evidence)
   CHK-RAND-REP all 9 discrete cells walked in one invocation (seed logged)
 """
@@ -67,14 +66,25 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         self.logger.info("AES mode/key-size breadth AES mode x key-size breadth: seed=%d", seed)
         await self.aes.trigger_prng_reseed()   # seed the masking PRNG from EDN
 
-        walked = 0
+        # Collect each cell's DUT ciphertext, so the matrix claim rests on observed
+        # output rather than on the loop's own trip count. The former guard was
+        # `walked == len(MODES) * len(KEY_SIZES)` -- both sides file-scope constants,
+        # incremented once per iteration by the loop structure, so it asserted its own
+        # arithmetic. Distinct results also show the nine cells really did program nine
+        # different configurations: two cells that silently ran the same mode and key
+        # size on the same random inputs would collide here.
+        results: dict[str, tuple[int, ...]] = {}
         for mode in MODES:
             for key_bits in KEY_SIZES:
-                await self._run_cell(mode, key_bits)
-                walked += 1
+                results[f"{mode}-{key_bits}"] = await self._run_cell(mode, key_bits)
 
+        walked = len(results)
         expected = len(MODES) * len(KEY_SIZES)
         assert walked == expected, f"walked {walked} cells != {expected}"
+        assert len(set(results.values())) == expected, (
+            "AES cells produced duplicate ciphertexts, so they did not all run distinct "
+            "configurations: "
+            + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
         await self.check_entropy_alerts_zero()
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells ({ECB,CBC,CTR} x "
@@ -84,7 +94,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
     def _rand_words(self, n: int) -> list[int]:
         return [self.rng.getrandbits(32) for _ in range(n)]
 
-    async def _run_cell(self, mode: str, key_bits: int) -> None:
+    async def _run_cell(self, mode: str, key_bits: int) -> tuple[int, ...]:
         key = self._rand_words(key_bits // 32)
         pt = self._rand_words(4 * NUM_BLOCKS)
         iv = self._rand_words(4) if mode != "ecb" else None
@@ -102,11 +112,11 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             f"{cell} ciphertext != golden:\n  ct    ={[hex(w) for w in ct]}\n"
             f"  golden={[hex(w) for w in golden]}")
 
-        # CHK-NONVAC: not a passthrough, and a wrong key gives a different ct.
-        assert ct != pt, f"{cell} ciphertext == plaintext (engine passthrough?)"
-        wrong = aes_encrypt_words(mode=mode, key_words=[w ^ 0xFFFF_FFFF for w in key],
-                                  pt_words=pt, iv_words=iv)
-        assert ct != wrong, f"{cell} ct matches wrong-key golden (key not honored)"
+        # No golden-vs-golden guards here. With the DUT result already pinned
+        # bit-exact against the golden above, any further comparison between that
+        # result and another golden-model output reduces to a property of the model
+        # alone -- it holds with the simulator switched off. Model sanity belongs in
+        # the golden's import-time KAT block, not in a per-cell DUT check.
         await self.aes.check_status_clean(cell + "-enc")   # CHK-STATUS
 
         # --- CHK-RT: recover the plaintext -----------------------------------
@@ -127,3 +137,4 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
 
         self.logger.info("CHK-CELL PASS %s: ct==golden, round-trip==pt, no alert, "
                          "non-vacuous (%d blocks)", cell, NUM_BLOCKS)
+        return tuple(ct)

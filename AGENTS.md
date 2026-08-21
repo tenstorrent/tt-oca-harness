@@ -31,7 +31,11 @@ partial read costs far more time than a full one.
 | Document | What it answers |
 |---|---|
 | `README.md` | Repository layout, doc builds, register generation, DV firmware targets, vendoring |
-| `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents |
+| `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents, issue/PR pointers |
+| `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
+| `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
+| `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
+| `.github/ISSUE_CURATION.md` | Project curator; catalog weekly-issue-activity and discussion-task-miner (`automation.enabled`) and compile |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
@@ -286,7 +290,6 @@ Whatever the testbench, these hold:
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (`cross_trigger/`, `jtag/`, `uart/` hold sub-blocks) |
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
-| `dv/` | Verification that sits outside a single block's tree |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `contributing` |
 | `flows/` | Lint, format and synthesis flow makefiles |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone |
@@ -303,7 +306,18 @@ committed output always corresponds to the RDL sources.
 make regen-regs
 ```
 
-## Code Comments
+The RDL is the register specification: it describes the address map and the registers'
+behaviour, not the RTL that implements them. Naming a module, a package or an address slice in
+an RDL comment ties the specification to one implementation of it; leave those details to the
+RTL.
+
+## Coding Guidance
+
+These rules hold for every language in the tree. Where the file being edited already has a
+convention — a comment style, a case for constants — follow it rather than one carried in from
+elsewhere.
+
+### Comments
 
 Write a comment only to tell the reader something the code cannot: a constraint, an ordering
 that matters, a hardware behaviour a maintainer would otherwise have to rediscover. State it in
@@ -321,13 +335,25 @@ Three kinds of comment are not worth their space.
 Where a test can carry the constraint instead, prefer the test: it fails when the constraint is
 broken, and a comment does not.
 
+### Names
+
+A name is held to the same rule as a comment. An identifier that describes what changed — a
+field named for the size a region used to have, a constant named after a mode that was
+replaced — dates as quickly as a breadcrumb, and it forces a comment to explain a concept the
+code no longer has. Name what exists.
+
 ## Commit Conventions
 
-Follow the existing history: a path-like scope, then an imperative summary, with the PR
-number appended when one exists.
+Follow the existing history: a lowercase path-like scope (one to three
+segments, or a filename when that file is the change), a colon, a space,
+then an imperative sentence-case summary, with the PR number appended when
+one exists. A change that spans several trees uses `treewide`. This is not
+Conventional Commits: do not use `feat`, `fix`, `chore`, or `feat(scope):`.
+Do not use an issue taxonomy prefix (`[RTL/SMC]`) on a commit or PR title.
 
 ```
-dv: add the SEP smoke regression list and wire sep into CI (#243)
+dv: Add the SEP smoke regression list and wire sep into CI (#243)
+hw/smc: Reject unmapped register accesses instead of aliasing live registers
 tools/dv: Guarantee per-leaf JUnit XML across frameworks (#283)
 doc: Regenerate stale uart and smc reset_unit register collaterals (#282)
 ```
@@ -336,6 +362,141 @@ doc: Regenerate stale uart and smc reset_unit register collaterals (#282)
 - Keep pull requests focused; unrelated changes belong in separate PRs.
 - Every hand-authored file needs an SPDX header — see `CONTRIBUTING.md` for the exact form
   per file type.
+
+## Issues and pull requests
+
+When you open an issue or pull request on behalf of the user — `gh issue create`,
+`gh pr create`, or the GitHub API — follow the same templates humans get in the UI.
+Do not invent a free-form body. Blank issues are off; security reports are not public
+issues (see `SECURITY.md`).
+
+Read `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md` rather than
+restating them. Allowed taxonomy values live in `.github/issue-taxonomy.yml`.
+
+### Issues
+
+Pick one form: Bug, Task, or Feature (`gh issue create --type Bug|Task|Feature`).
+`--template` is interactive, so in a non-interactive session pass `--body` that still
+uses the form headings ingest parses (`### Workstream`, and so on).
+
+Write a plain imperative title. Do not put `[Bug]:` or `[Task]:` in it, and do
+not invent the taxonomy prefix. Ingest prefixes from the form picks:
+`[WORKSTREAM/SUBSYSTEM]` when Component is General, or
+`[WORKSTREAM/SUBSYSTEM-COMPONENT]` otherwise. `[RTL/OCAH]` below is one
+example of that pattern, not a fixed string.
+
+```bash
+gh issue create --type Bug --title "<plain imperative title>" --body "$(cat <<'EOF'
+### Workstream
+
+RTL
+
+### Subsystem
+
+OCAH
+
+### Component
+
+General
+
+### Priority
+
+P2
+
+### Target release
+
+Future
+
+### What happened
+
+<what broke, where, what you expected>
+EOF
+)"
+```
+
+Required: **Workstream**, **Subsystem**, **Component** (use `General` if unsure),
+**Priority** (P2 if unsure), and **Target release** (`Future` if unscheduled).
+Do not set a GitHub milestone. Description heading is **What happened** (Bug),
+**Goal** (Task), or **What and why** (Feature); it is optional.
+
+Do not add labels, assignees, or a milestone. Ingest copies those form picks
+onto empty Project 291 fields, applies matching labels, and prefixes the
+title. The curator fills leftover fields, assigns, copy-edits titles
+and bodies, nudges approved PRs that are still open after 3 days, and
+reminds assignees 3 days before a milestone or issue due date on its
+05:00 and 16:00 PDT runs and on dispatch. The weekly
+issue-activity and discussion-miner workflows are in
+`.github/ISSUE_CURATION.md`.
+
+### Pull requests
+
+`gh pr create --body` replaces the template, so include the headings yourself.
+Summary and Test plan are optional guidance; CI does not fail on them.
+Add `## Closes` with `Fixes #N` only when `N` is a real issue; omit the
+section if nothing closes. Never leave a bare `Fixes #`. Delete **Notes** if unused.
+
+The title is the same path-like form as a commit: `scope: imperative summary`
+(`hw:`, `hw/smc:`, `dv/sep:`, `github:`, `tools/dv:`). A PR that spans
+several trees uses `treewide:`. Ingest does not prefix PR titles. Do not
+put `[WORKSTREAM/SUBSYSTEM]` or `feat(scope):` on a PR.
+
+```bash
+gh pr create --title "hw/smc: Reject unmapped register accesses" --body "$(cat <<'EOF'
+## Summary
+<what changed and why>
+
+## Test plan
+<optional command, or N/A>
+EOF
+)"
+```
+
+Do not put Workstream / Subsystem / Component or labels on the PR.
+Ingest assigns the opener when Assignees is empty. The curator rewrites a
+PR title only when it is not already this form.
+
+### Paired pull requests with the `nonfree` companion
+
+A change that needs both trees is two pull requests, and **the `nonfree` one merges first.**
+Nothing in the open tree records which companion commit to use: `ocah-nonfree-init` clones
+the companion's default branch, and `nonfree/` is ignored rather than tracked, so there is
+no ref to bump and nothing to `git add`. Every pipeline — the open `main`, and every other
+contributor's in-flight PR — picks up whatever the companion's default branch holds at the
+moment that pipeline runs. Merging the open half first breaks CI for everyone until the
+companion catches up, and it breaks it for people whose work has nothing to do with yours.
+
+Work the pair in this order:
+
+1. Open both PRs, and say in each body that the other exists.
+2. Expect the open-tree PR's CI to fail while the companion PR is unmerged. A local branch
+   proves the pair works on your machine, but no pipeline can see it and there is no pin to
+   point at it.
+3. Merge the companion PR.
+4. Re-run the open-tree PR's pipeline, and merge only once it is green — not on the strength
+   of a run that predates step 3.
+
+Two further things follow from the same unpinned clone:
+
+- **Keep the companion half backwards compatible with the open `main`** wherever the change
+  admits it — an added driver, an overridden weak stub, a new variable with a default — so
+  that step 3 does not break the tree on its own. When it genuinely cannot be, do steps 3
+  and 4 back to back and tell the user, so they can warn whoever's pipelines will fail in
+  between.
+- **Never paper over an unmerged companion change from the open side.** Copying companion
+  material into the open tree crosses the boundary the split exists to maintain, and
+  stubbing, skipping or disabling the failing check discards the signal this ordering
+  protects.
+
+If the user asks you to merge the open half first, or to merge it while the companion PR is
+still open, say once — briefly, and without lecturing — what it breaks and whose work it
+breaks, and offer the order above instead. **The user decides.** They may know something you
+do not: that the companion change has already landed, that the tree is quiet, or that they
+are accepting the breakage deliberately. So raise it once, then do as they ask and note in
+the PR that the companion side is still pending. Repeating the objection, or refusing the
+work, is worse than the ordering mistake.
+
+Without companion access you can only do the open half. Say so and stop, rather than editing
+open files to compensate.
 
 ## Linting and Formatting
 
@@ -351,3 +512,5 @@ Each of these is an auto-generated alias for the `ocah-`-prefixed target of the 
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
 plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
+Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
+`scripts/ci/diff_class.py` is the classifier.

@@ -26,6 +26,11 @@ feature-control profile to `feat_ctrl_o`. See
 input arriving from the OTP shadow register; fail closed (force
 `feat_ctrl_o = 0`) on detection.
 
+The block diagram below shows a high-level view of the Life Cycle Controller
+components.
+
+image::SEP_LC_Block.png[SEP_LC_Block,scaledwidth=100.0%]
+
 [[demote-1-2-in-field-debug-demotion]]
 ===== Demotion 1 and Demotion 2 -- In-Field Debug Demotion
 

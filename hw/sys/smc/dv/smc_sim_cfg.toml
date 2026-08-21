@@ -4,7 +4,7 @@ schema_version = 1
 # tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
 # smc_cpu_mem_integration); the bare DUT name selects that wrapper-based TB.
 name = "smc"
-profile = "native-cocotb"
+profile = "native"
 description = "SMC OSS cocotb: smc_wrapper under tb_top"
 default_tool = "verilator"
 tools = ["vcs", "verilator", "xcelium"]
@@ -66,7 +66,7 @@ ccache = true
 [build.options]
 build_jobs = 8
 
-[cocotb]
+[frameworks.cocotb]
 python_root = "hw/sys/smc/dv/cocotb"
 test_dir = "hw/sys/smc/dv/cocotb/tests"
 python_paths = [

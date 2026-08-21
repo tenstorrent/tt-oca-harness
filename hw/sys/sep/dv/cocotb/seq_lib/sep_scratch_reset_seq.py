@@ -29,7 +29,7 @@ SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")   # warm domain: .ars
 SCRATCH_WARM_1 = sym("SEP_SCRATCH_WARM_SCRATCH_1__REG_ADDR")
 SCRATCH_RESET_DEFAULT = 0x0000_0000
 
-# Test patterns (mirror the OCAH sep_clock_uvm_warm_reset_vs_cold_reset_test_seq).
+# Test patterns (mirror the reference sep_clock_uvm_warm_reset_vs_cold_reset_test_seq).
 COLD_PATTERN = 0xCAFE_BABE
 WARM_PATTERN = 0xDEAD_BEEF
 WARM_PATTERN2 = 0xA5A5_5A5A    # post-warm-reset recovery write

@@ -34,7 +34,8 @@ Do not replace these files with vendor copies without a full interface and regre
 | — | `csrng_pkg.sv` → `hw/comp/csrng/rtl/` |
 | — | `edn_pkg.sv` → `hw/comp/edn/rtl/` |
 
-Legacy filelists (`dv/smu/tb/tb_uvm/tt_smu.f`, `fv/smu/synopsys_vcf/filelist/smu_fv.fl`) still list **`ot_pkg` copies** of `csrng_pkg.sv` and `edn_pkg.sv`. SMC paths (`tt_smc.f`) already use `hw/comp` for CSRNG/EDN. The `ot_pkg` `csrng_pkg.sv` file is an **obsolete stub**; do not use it in new flows.
+Current Bender builds use `hw/comp` for CSRNG and EDN. The `ot_pkg`
+`csrng_pkg.sv` file is an obsolete stub and must not be selected by new flows.
 
 **OTBN** (`vendor/opentitan/upstream/hw/ip/otbn`) depends on `otp_ctrl_pkg` and is built on SEP after `sep_crypto_pkg` imports the OT packages.
 

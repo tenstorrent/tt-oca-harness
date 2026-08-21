@@ -4,7 +4,7 @@
 Proves the real entropy datapath produces genbits that the Key Manager actually
 CONSUMES, with NO force on the DRBG/EDN -- only the permitted ESRC raw-noise force
 (+esrc_noise_force) that makes the ring oscillators alive under Verilator. Bring-up
-follows OCAH order via the reusable sep_esrc_bringup_seq API: select internal DRBG,
+follows reference suite order via the reusable sep_esrc_bringup_seq API: select internal DRBG,
 configure ESRC (generators off), enable CSRNG, stage EDN commands, start the
 generators, wait for a seed, then enable EDN last.
 
@@ -47,7 +47,7 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
 
         # Shared entropy bring-up: starts the STRICT CHK1..CHK5 scoreboard (report()
         # fails on any stage mismatch; CHK2 actual data = AXI frontdoor FIFO_RDATA),
-        # drives the ESRC noise, and runs the OCAH config order through EDN-enable.
+        # drives the ESRC noise, and runs the reference suite config order through EDN-enable.
         await self.bring_up_entropy(strict=True)
 
         # Concurrent FIFO_RDATA drain so the FIFO never overflows during the long

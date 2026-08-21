@@ -4,31 +4,31 @@
 /*
  * TC_FABRIC_070: fabric_filter_wrap_edge_case_test
  *
- * 目標: axi_filter_wrap 79.75% → 90%+ (需要 10.25% 改進)
- * 策略: Filter wrap邊界條件和異常case精準測試
- * 優先級: 第三輪 (精準優化)
+ * Goal: axi_filter_wrap 79.75% -> 90%+ (needs 10.25% improvement)
+ * Strategy: Precise filter-wrap boundary and anomaly cases
+ * Priority: third pass (precision optimization)
  *
- * 專注於axi filter wrap的邊界條件、異常處理和wrap logic覆蓋
+ * Focus on axi_filter_wrap boundaries, anomaly handling, and wrap logic
  */
 
 #include "sep_test_common.h"
 #include "sep_fabric.h"
 
-// Filter wrap edge case 場景數量
+// Filter wrap edge case scenario count
 #define FILTER_WRAP_SCENARIOS 10
 
-// Filter測試定義
+// Filter test definitions
 #define MAX_FILTER_ENTRIES 16
 #define WRAP_BOUNDARY_TESTS 32
 #define EDGE_CASE_PATTERNS 24
 
-// Filter類型和模式定義
+// Filter type/mode definitions
 #define FILTER_TYPE_ALLOWLIST 0x1
 #define FILTER_TYPE_BLOCKLIST 0x2
 #define FILTER_TYPE_REMAP 0x4
 #define FILTER_TYPE_MONITOR 0x8
 
-// Wrap logic測試地址
+// Wrap-logic test addresses
 #define WRAP_TEST_BASE 0x70000000
 #define WRAP_BOUNDARY_LOW 0x7FFFFFE0
 #define WRAP_BOUNDARY_HIGH 0x80000020
@@ -36,9 +36,9 @@
 static int test_address_wrap_boundary_precision(void) {
     printf("Starting address wrap boundary precision test...\n");
 
-    // 場景1: Address wrap boundary精確測試
+    // Scenario 1: Precise address-wrap boundary test
     for (int wrap_test = 0; wrap_test < 64; wrap_test++) {
-        // 設置靠近wrap boundary的filter entries
+        // setwrap boundary filter entries
         for (int filter_idx = 0; filter_idx < 16; filter_idx++) {
             // Edge case addresses around 32-bit boundary
             uint32_t boundary_addrs[] = {
@@ -105,7 +105,7 @@ static int test_address_wrap_boundary_precision(void) {
 static int test_filter_overflow_underflow_cases(void) {
     printf("Starting filter overflow/underflow cases test...\n");
 
-    // 場景2: Filter overflow/underflow cases
+    // Scenario 2: Filter overflow/underflow cases
     for (int overflow_test = 0; overflow_test < 32; overflow_test++) {
         for (int filter_idx = 0; filter_idx < 16; filter_idx++) {
             // Overflow scenarios
@@ -167,7 +167,7 @@ static int test_filter_overflow_underflow_cases(void) {
 static int test_concurrent_filter_wrap_conflicts(void) {
     printf("Starting concurrent filter wrap conflicts test...\n");
 
-    // 場景3: Concurrent filter wrap conflicts
+    // Scenario 3: Concurrent filter wrap conflicts
     for (int conflict_test = 0; conflict_test < 24; conflict_test++) {
         // Configure multiple overlapping filters with conflicting wrap modes
         for (int filter_set = 0; filter_set < 4; filter_set++) {
@@ -228,7 +228,7 @@ static int test_concurrent_filter_wrap_conflicts(void) {
 static int test_wrap_mode_state_transitions(void) {
     printf("Starting wrap mode state transitions test...\n");
 
-    // 場景4: Wrap mode state transitions
+    // Scenario 4: Wrap mode state transitions
     for (int transition_test = 0; transition_test < 16; transition_test++) {
         for (int filter_idx = 0; filter_idx < 16; filter_idx++) {
             uint32_t trans_base =
@@ -299,7 +299,7 @@ static int test_wrap_mode_state_transitions(void) {
 static int test_burst_wrap_edge_cases(void) {
     printf("Starting burst wrap edge cases test...\n");
 
-    // 場景5: Burst wrap edge cases
+    // Scenario 5: Burst wrap edge cases
     uint32_t burst_sizes[] = {1, 2, 4, 8, 16, 32, 64, 128, 256};
     uint32_t wrap_alignments[] = {4, 8, 16, 32, 64, 128, 256, 512, 1024};
 
@@ -363,7 +363,7 @@ static int test_burst_wrap_edge_cases(void) {
 static int test_wrap_error_injection_recovery(void) {
     printf("Starting wrap error injection and recovery test...\n");
 
-    // 場景6: Wrap error injection and recovery
+    // Scenario 6: Wrap error injection and recovery
     for (int error_test = 0; error_test < 20; error_test++) {
         for (int filter_idx = 0; filter_idx < 16; filter_idx++) {
             uint32_t error_base = WRAP_TEST_BASE + error_test * 0x400000 + filter_idx * 0x40000;
@@ -446,7 +446,7 @@ static int test_wrap_error_injection_recovery(void) {
 static int test_wrap_performance_corner_cases(void) {
     printf("Starting wrap performance corner cases test...\n");
 
-    // 場景7: Wrap performance corner cases
+    // Scenario 7: Wrap performance corner cases
     for (int perf_test = 0; perf_test < 12; perf_test++) {
         // Configure high-stress wrap scenarios
         for (int filter_idx = 0; filter_idx < 16; filter_idx++) {
@@ -517,16 +517,16 @@ static int test_wrap_performance_corner_cases(void) {
 
 int main(void) {
     printf("TC_FABRIC_070: Filter Wrap Edge Case Test\n");
-    printf("Goals: axi_filter_wrap 79.75%% -> 90%%+ (需要 10.25%% 改進)\n");
-    printf("Strategy: Filter wrap邊界條件和異常case精準測試\n\n");
+    printf("Goals: axi_filter_wrap 79.75%% -> 90%%+ (needs 10.25%% improvement)\n");
+    printf("Strategy: Precise filter-wrap boundary and anomaly cases\n\n");
 
-    // 初始化fabric系統
+    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("TC_FABRIC_070");
         return TEST_FAIL;
     }
 
-    // 執行所有filter wrap edge case場景
+    // Run all filter-wrap edge-case scenarios
     if (test_address_wrap_boundary_precision() != 0) {
         test_fail("TC_FABRIC_070 - Address Wrap Boundary Precision");
         return TEST_FAIL;

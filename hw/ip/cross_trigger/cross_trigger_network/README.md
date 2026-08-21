@@ -20,42 +20,33 @@ cross_trigger_network/
 │   ├── cross_trigger_network_pkg.sv    # Package with types and parameters
 │   ├── cross_trigger_network.sv        # Top-level module
 │   └── ctn_clock_stop_ctrl.sv          # Clock stop control module
-├── doc/                                 # Sphinx documentation
-├── tb_vcs/                             # VCS/cocotb testbench
-├── syn/                                # Synthesis constraints
-├── generate_comp.py                    # Configuration script
+├── doc/                                # AsciiDoc pages published via Antora
+├── dv/
+│   ├── tb_vcs/                         # VCS/cocotb testbench
+│   └── syn/                            # Synthesis constraints
 └── README.md
 ```
 
 ## Configuration
 
-Run the configuration script to set up the CTN:
+The CTN has no generator. `rtl/cross_trigger_network_pkg.sv` is a committed
+source file, and the topology is set by editing its `DEFAULT_NUM_CTP`,
+`DEFAULT_NUM_INT_CT`, and `DEFAULT_NUM_CLK_STOP_REQ` values, or by overriding the
+corresponding module parameters at the instantiation:
 
-```bash
-./generate_comp.py --num-ctp 16 --num-int-ct 9
-```
+- `NUM_CTP`: Number of external CTPs (1-32, default: 16)
+- `NUM_INT_CT`: Number of internal cross triggers (0-32, default: 10)
+- `NUM_CLK_STOP_REQ`: Number of clock stop request inputs (1-32, default: 9)
+- `INT_CT_MODE`: Per-internal-CTP signalling mode
 
-This generates CTN-specific files:
-
-**CTN files**:
-- `rtl/cross_trigger_network_pkg.sv` - Package with matching NUM_CTP/NUM_INT_CT
-- `tb_vcs/test/test_base.py` - Test utilities with matching configuration
-- `regs/cross_trigger_network.rdl` - Address map RDL
-
-**Note**: CTP and CTM are generated separately by their respective
-`generate_ip.py` scripts, which must be run with matching parameters. Their
-register collateral then comes from `make -f ocah.mk ocah-regen-regs`, like
-every other block.
-
-Options:
-- `--num-ctp`: Number of external CTPs (1-32, default: 16)
-- `--num-int-ct`: Number of internal cross triggers (0-32, default: 10)
-- `--num-clk-stop-req`: Number of clock stop request inputs (1-32, default: 9)
-- `--clean`: Remove generated files
+The DTP drives these from `dtp_pkg` (`hw/sys/dtp/rtl/dtp_pkg.sv`), so a change to
+the port count belongs there when the CTN is used inside the DTP. The CTN has no
+register block of its own; the CTM and CTP register collateral comes from
+`make -f ocah.mk ocah-regen-regs`, like every other block.
 
 ## Integration
 
-The CTN is instantiated within the DTP module (`hw/dtp/rtl/dtp.sv`):
+The CTN is instantiated within the DTP module (`hw/sys/dtp/rtl/dtp.sv`):
 
 ```systemverilog
 cross_trigger_network #(
@@ -84,7 +75,7 @@ The AXI-Lite address space is organized as (CTM first, then CTPs) within a 2KB (
 Run the testbench:
 
 ```bash
-cd tb_vcs
+cd dv/tb_vcs
 make TEST=test_sanity      # Basic register access
 make TEST=test_routing     # CTM routing (basic + mixed mode)
 make TEST=test_loopback    # Loopback tests (Wire-OR, P2P, internal, external)
@@ -103,15 +94,15 @@ make regression            # Run all tests
 
 ## Documentation
 
-Build the Sphinx documentation:
+The pages under `doc/` are AsciiDoc sources published with the rest of the OCAH
+documentation. Build the TRM, which includes them under the DTP subsystem:
 
 ```bash
-cd doc
-make html
+make -f ocah.mk ocah-doc-trm-html
 ```
 
 ## Dependencies
 
-- `hw/ip/cross_trigger_port` - Cross Trigger Port IP
-- `hw/ip/cross_trigger_matrix` - Cross Trigger Matrix IP
-- `deps/axi` - AXI infrastructure (axi_lite_xbar)
+- `hw/ip/cross_trigger/cross_trigger_port` - Cross Trigger Port IP
+- `hw/ip/cross_trigger/cross_trigger_matrix` - Cross Trigger Matrix IP
+- `vendor/pulp-platform/axi` - AXI infrastructure (`axi_lite_xbar`)

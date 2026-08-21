@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP boot-ROM IFU sanity firmware test (OSS port of the OCAH rom_sanity_test).
+// SEP boot-ROM IFU sanity firmware test (OSS port of the reference suite rom_sanity_test).
 // Edge: CPU IFU -> boot-ROM. Proves the VeeR EL2 instruction-fetch unit can
 // fetch and execute instructions resident in the boot-ROM (0x1004_0000), with no
 // LSU (load/store) access to ROM.
@@ -9,7 +9,7 @@
 // rom_sanity_rom.hex`) with seven tiny hand-assembled functions. The firmware
 // (running from ICCM) calls each via a function pointer (indirect JALR), so the
 // IFU fetches the function body from ROM; the return value proves the fetched
-// instructions executed correctly. The ROM word layout + encodings are the OCAH
+// instructions executed correctly. The ROM word layout + encodings are the reference suite
 // reference (rom_sanity_rom.hex packs them as 64-bit little-endian words):
 //
 //   Func0 @0x00  addi a0,zero,42 ; ret                       -> 42      (I-type)
@@ -61,6 +61,7 @@ int main(void) {
     int errors = 0;
 
     sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
+    sep_mbx_puts("STEP filter init done\n");
     sep_mbx_puts("SEP ROM IFU sanity test\n");
 
     // Each call drives the IFU to fetch the function body from boot-ROM.

@@ -23,14 +23,16 @@ reseed is served -- satisfying the card's "with entropy bring-up" requirement an
 exercising a real entropy-backed crypto op rather than a poked status bit.
 
 Isolation proof (both directions):
-  * CHK-NONVAC      both held results are real golden-matched values != reset 0.
+  * CHK-NONVAC      both held results are golden-matched and survive a second
+                    independent read, so the later survives/cleared checks are
+                    observations rather than restatements of one sample.
   * CHK-SELF-RESET  the pulsed engine's held result clears to its reset value
                     (proves the pulse landed in that engine's domain).
   * CHK-NEIGHBOR-SURVIVES  the sibling's held crypto result is bit-exact intact.
   * CHK-REVERSE     roles swapped (AES-victim then HMAC-victim).
 
-OCAH ref: clock sep_clock_uvm_sw_reset_per_ip_test @ 9ec8f9f4b --
-COVERED_STRONGER: OCAH proves only the SW_RESET_N register -> sep_sw_rst_no output
+reference ref: clock sep_clock_uvm_sw_reset_per_ip_test --
+COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
 bit mapping (via an HDL backdoor); this test proves the reset actually lands in the
 IP and is domain-isolated at the level of a live crypto-datapath RESULT, frontdoor.
 no_cpu / +skip_fuse_sense (entropy + crypto are independent of OTP lifecycle) /
@@ -138,8 +140,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # later is a real, non-trivial observation, not a one-shot artifact).
         assert await self.hmac.read_digest() == h_digest, "HMAC DIGEST not held on re-read"
         assert await self.aes.read_data_out() == c_block, "AES DATA_OUT not held on re-read"
-        assert h_digest != _ZERO_DIGEST, "HMAC digest is all-zero (no real result)"
-        assert c_block != _ZERO_BLOCK, "AES ciphertext is all-zero (no real result)"
+        # No `!= _ZERO` guards. Both results are already pinned bit-exact to their
+        # goldens above, so those comparisons reduce to relations between file-scope
+        # constants -- decidable without running the DUT. The load-bearing non-vacuity
+        # evidence is the re-read-holds pair below, which is a second real DUT read.
         self.logger.info(
             "CHK-NONVAC PASS: HMAC DIGEST + AES DATA_OUT hold real golden results "
             "(!= reset 0): HMAC[0]=0x%08x AES[0]=0x%08x", h_digest[0], c_block[0])
@@ -191,6 +195,17 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self.logger.info(
             "CHK-REVERSE PASS: HMAC reset cleared its own DIGEST; AES DATA_OUT intact")
 
+        # Close out the entropy evidence this test asked for. bring_up_entropy was
+        # called with score_sinks={"aes": "observe"}, which forks the crypto-EDN sink
+        # monitor and sets a >=1-beat floor for CHK5_aes -- but nothing evaluated it:
+        # report() was never called, so no CHK5_aes line reached the log and the
+        # "entropy-backed" claim in the line below had no enforced evidence behind it.
+        # A requested check that is never reported is indistinguishable from one that
+        # was never requested.
+        await self.stop_fifo_drain()
+        await self.check_entropy_alerts_zero()
+        self.drbg_sb.report()
+
         self.logger.info(
-            "CHK-ALL PASS: per-IP SW-reset domain isolation with live crypto results "
-            "(HMAC<->AES, both directions, entropy-backed)")
+            "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
+            "(HMAC<->AES, both directions, entropy-backed: CHK5_aes beats reported)")

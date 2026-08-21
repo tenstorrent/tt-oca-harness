@@ -4,14 +4,8 @@
 """
 i3c_rand.py — I3C-specific constrained-random layer for the I3C block TB.
 
-Thin domain layer on top of the IP-agnostic core in
-``dv/common/cocotb/constrained_random.py``: it re-exports the generic seed /
-constraint primitives and adds I3C protocol-specific generators and a
-declarative transaction object.
-
-Generic primitives (seed mgmt, in_range, weighted, banded, rand_bytes) live in
-the shared core so every IP's TB can reuse them; only the I3C knowledge
-(reserved addresses, MWL/MRL, threshold reachability, IBI, transfers) lives here.
+The module provides deterministic seed handling and generic random helpers
+alongside I3C protocol-specific generators and a declarative transaction object.
 
 Example
 -------
@@ -24,26 +18,78 @@ Example
         await do_transfer(ctrl, tgt, t)  # drives + self-checks
 """
 
+import logging
 import os
-import sys
+import random
 
-# Locate the shared cocotb core: prefer $OCH_ROOT, fall back to a path relative
-# to this file (hw/periph/i3ccore_wrap/tb -> repo root -> dv/common/cocotb).
-_OCH = os.getenv("OCH_ROOT")
-_candidates = []
-if _OCH:
-    _candidates.append(os.path.join(_OCH, "dv", "common", "cocotb"))
-_candidates.append(os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..",
-                 "dv", "common", "cocotb")))
-for _p in _candidates:
-    if os.path.isdir(_p) and _p not in sys.path:
-        sys.path.insert(0, _p)
 
-# Re-export the generic core so tests can `from i3c_rand import RandMgr, ...`.
-from constrained_random import (   # noqa: E402
-    RandMgr, resolve_seed, in_range, weighted, banded, rand_bytes,
-)
+def resolve_seed(seed=None, default=1):
+    """Resolve a seed from an explicit value, ``+seed``, ``SEED``, or default."""
+    if seed is not None:
+        return int(str(seed), 0)
+
+    plusarg_seed = None
+    try:
+        import cocotb
+
+        plusarg_seed = cocotb.plusargs.get("seed")
+    except (AttributeError, ImportError):
+        pass
+
+    raw_seed = plusarg_seed if plusarg_seed is not None else os.getenv("SEED")
+    return default if raw_seed is None else int(str(raw_seed), 0)
+
+
+class RandMgr(random.Random):
+    """Seeded random generator that records its reproducible seed."""
+
+    def __init__(self, seed=None, name="i3c"):
+        resolved_seed = resolve_seed(seed)
+        super().__init__(resolved_seed)
+        self.seed = resolved_seed
+        logging.getLogger(f"i3c.rand.{name}").info(
+            "Random seed: 0x%08X", resolved_seed
+        )
+
+
+def in_range(rng, low, high, *, corners=(), exclude=()):
+    """Choose an inclusive value, with a bias toward valid corner values."""
+    excluded = set(exclude)
+    allowed = [value for value in range(low, high + 1) if value not in excluded]
+    if not allowed:
+        raise ValueError(f"no values available in inclusive range [{low}, {high}]")
+
+    valid_corners = [
+        value for value in dict.fromkeys(corners) if value in allowed
+    ]
+    if valid_corners and rng.randint(0, 1) == 0:
+        return rng.choice(valid_corners)
+    return rng.choice(allowed)
+
+
+def weighted(rng, choices):
+    """Choose an item from ``(item, weight)`` pairs."""
+    if not choices:
+        raise ValueError("weighted choices must not be empty")
+    values, weights = zip(*choices)
+    if any(weight < 0 for weight in weights) or not any(weights):
+        raise ValueError("weights must be non-negative with at least one nonzero")
+    return rng.choices(values, weights=weights, k=1)[0]
+
+
+def banded(rng, bands):
+    """Choose from weighted inclusive ``(low, high, weight)`` bands."""
+    low, high, _weight = weighted(
+        rng, [((low, high, weight), weight) for low, high, weight in bands]
+    )
+    return rng.randint(low, high)
+
+
+def rand_bytes(rng, length):
+    """Return ``length`` deterministic random bytes."""
+    if length < 0:
+        raise ValueError("length must be non-negative")
+    return bytes(rng.randrange(256) for _ in range(length))
 
 __all__ = [
     # re-exported generic
@@ -147,11 +193,17 @@ async def do_transfer(ctrl, tgt, t):
     if t.dir == "write":
         ok, resp, rx = await ctrl.private_write(t.data, tgt, dat_idx=t.dat_idx)
         assert ok, f"write {t.length}B failed resp=0x{resp:08X}"
-        assert rx == t.data, f"write {t.length}B data mismatch"
+        assert rx == t.data, (
+            f"write {t.length}B data mismatch: "
+            f"expected={t.data.hex()} observed={bytes(rx).hex()}"
+        )
     else:
         ok, resp, rx = await ctrl.private_read(tgt, t.data, dat_idx=t.dat_idx)
         assert ok, f"read {t.length}B failed resp=0x{resp:08X}"
-        assert rx == t.data, f"read {t.length}B data mismatch"
+        assert rx == t.data, (
+            f"read {t.length}B data mismatch: "
+            f"expected={t.data.hex()} observed={bytes(rx).hex()}"
+        )
     return ok, resp, rx
 
 
@@ -177,4 +229,4 @@ if __name__ == "__main__":
         assert t.dir in ("write", "read")
         assert 1 <= t.length <= mwl and len(t.data) == t.length
 
-    print("i3c_rand self-test PASSED (I3C constraints held, core re-exported OK)")
+    print("i3c_rand self-test PASSED")

@@ -14,7 +14,7 @@
 class ocah_axi_ref_model extends uvm_subscriber #(ocah_axi_item);
     `uvm_component_utils(ocah_axi_ref_model)
 
-    ocah_axi_cfg cfg;
+    ocah_axi_config cfg;
     uvm_analysis_port #(ocah_axi_item) expected_ap;
 
     protected bit [7:0] m_mem[bit [63:0]];
@@ -25,8 +25,8 @@ class ocah_axi_ref_model extends uvm_subscriber #(ocah_axi_item);
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        if (!uvm_config_db#(ocah_axi_cfg)::get(this, "", "cfg", cfg) || cfg == null)
-            `uvm_fatal(get_type_name(), "ocah_axi_cfg `cfg` not found in uvm_config_db")
+        if (!uvm_config_db#(ocah_axi_config)::get(this, "", "cfg", cfg) || cfg == null)
+            `uvm_fatal(get_type_name(), "ocah_axi_config `cfg` not found in uvm_config_db")
         expected_ap = new("expected_ap", this);
     endfunction
 

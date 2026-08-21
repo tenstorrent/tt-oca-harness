@@ -3,7 +3,7 @@
 
 Configures the AES core for ECB-256 encryption, writes the key shares / data,
 triggers the masking-PRNG reseed, and runs one block, mirroring the AES op
-helpers in the OCAH sep_km_aes_sideload_kat_test_seq (RAL there; direct AXI
+helpers in the reference sep_km_aes_sideload_kat_test_seq (RAL there; direct AXI
 here, like SepOtbn). All accesses are 32-bit beats (size=2): the AES register
 block is 32-bit behind the wrapper's 64->32 dw-converter.
 
@@ -206,15 +206,26 @@ class SepAes(SepAxiRegDriver):
             out += await self.run_ecb_block(pt_words[i:i + 4])
         return out
 
-    async def read_public_key_shares(self) -> tuple[list[int], list[int]]:
-        """Read public KEY_SHARE0/1 CSRs.
+    async def read_public_key_shares(self) -> tuple[list[int], list[int], int]:
+        """Read the public KEY_SHARE0/1 CSRs, plus a positive control.
 
-        After a KM sideload, these public key registers must remain write-only and
-        read as zero; the sideloaded key is carried on the private KM key bus.
+        These key registers are declared write-only, and the generated register
+        block ties their read data to zero. That has a consequence worth stating
+        plainly: reading them back as zero is NOT by itself evidence that the
+        sideloaded key is unexposed -- they would read zero even if the key were
+        mirrored somewhere else, and even if the transfer never happened. What
+        the readback can do is catch the day someone makes them readable.
+
+        For that to be worth anything the read path has to be known alive, so we
+        also return STATUS, a readable register in the same CSR window reached
+        over the same bus. A caller that asserts the shares are zero must also
+        assert the control read is non-zero; otherwise a dead read path returning
+        zeros for everything would look identical to a pass.
         """
         s0 = [await self._rd(AES_KEY_SHARE0_0 + i * 4) for i in range(8)]
         s1 = [await self._rd(AES_KEY_SHARE1_0 + i * 4) for i in range(8)]
-        return s0, s1
+        control = await self._rd(AES_STATUS)
+        return s0, s1, control
 
     async def trigger_prng_reseed(self) -> None:
         """Reseed the masking PRNG from the entropy source, then wait idle."""

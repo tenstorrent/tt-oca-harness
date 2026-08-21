@@ -3,10 +3,9 @@
 /*
  * SEP_SMU_003  smc_sep_xbar  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SEP consumer + SMC producer) and parsed by the cocotb
- * checker (dv/smu/tb/tb_uvm/cocotb_tests/smc_sep_xbar_test.py) so DUT stimulus and DV
- * expectations can never drift (AGENTS.md one-source rule). Every value is a plain
- * integer/hex #define so the Python parser can read it.
+ * Included by both firmwares (SEP consumer + SMC producer) and parsed by the
+ * cocotb checker so DUT stimulus and DV expectations share one contract. Every
+ * value is a plain integer/hex #define for the Python parser.
  *
  * Force-free SEP-driven bootstrap (pivoted 2026-07-20 off the ext_in launch, which
  * segfaults VCS on a CPU_CTRL write -- see B-EXTIN-CPUCTRL-WRITE): the real SEP CPU boots

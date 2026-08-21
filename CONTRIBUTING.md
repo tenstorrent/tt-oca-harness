@@ -24,10 +24,10 @@ See the [README](README.md) for vendor import conventions, register-generation f
 
 1. Create a topic branch off `main` for your change.
 2. Make focused commits that compile and pass relevant checks where possible.
-3. Open a pull request against `main` with a clear description of the change and its motivation.
+3. Open a pull request against `main`. The template is guidance only; CI does not require Summary or Test plan. Add `Fixes #N` when the PR closes an issue.
 4. Be responsive to review feedback.
 
-Pull requests are reviewed on a weekly basis.
+Pull requests are reviewed on a weekly basis. The full how-to is in [`doc/contributing/`](doc/contributing/).
 
 ## Coding Conventions
 
@@ -78,9 +78,15 @@ When adding a new vendored dependency, confirm its license is Apache-2.0 compati
 Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching the job
 (plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
 
-`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, and `lint-tcl` on every push/PR
-(`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
+`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, and `lint-tcl` on pull
+requests and on pushes to `main` (`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
 artifacts; jobs report through `.github/actions/reviewdog-report`.
+
+Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
+or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
+child. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still
+report success. `scripts/ci/diff_class.py --self-test` checks the classifier.
+Scheduled and manually dispatched pipelines always run in full.
 
 | CI job | Reviewdog check(s) | Local command |
 |---|---|---|
@@ -102,7 +108,7 @@ Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the 
 
 ## Reporting Issues
 
-For functional bugs and feature requests, open a [GitHub issue](https://github.com/tenstorrent/tt-oca-harness/issues) with enough detail to reproduce or understand the request.
+Open a [new issue](https://github.com/tenstorrent/tt-oca-harness/issues/new/choose) and pick Bug, Task, or Feature. Choose Workstream, Subsystem, and Component from the lists. Priority and Target release are optional.
 
 For security vulnerabilities, do not open a public issue. Follow the process in [SECURITY.md](SECURITY.md).
 

@@ -9,7 +9,7 @@ persist across reset/resense and are never un-set -- instead of a non-physical
 mid-run image replacement (the generic efuse model loads its bank once at time 0).
 
 Exercises the eFuse goals: sense + resense, specific-or-random init, field
-constraints, OCAH-aligned fuse map, shadow-vs-loaded-mem comparison, and multi-bit
+constraints, reference suite-aligned fuse map, shadow-vs-loaded-mem comparison, and multi-bit
 W1S program persistence across a resense.
 """
 
@@ -23,6 +23,7 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
+from sep_reg_meta import sym
 from env.sep_efuse_image import SepEfuseImage
 
 _MAX_SENSE_CYCLES = 20_000
@@ -30,7 +31,7 @@ _MAX_SENSE_CYCLES = 20_000
 # CHIPLET_UID is a benign, shadow-visible data field (8 words = 256 bits) pinned to
 # zero in the initial image, so every burn target is a known 0->1 bit. Global fuse
 # bit index = word*32 + bit.
-_UID_WORD0 = 0x0C8 // 4          # 50 (CHIPLET_UID first word)
+_UID_WORD0 = sym("SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET") // 4
 _UID_NBITS = 8 * 32             # 256 bits across the 8 CHIPLET_UID words
 _NUM_BURN = 10
 
