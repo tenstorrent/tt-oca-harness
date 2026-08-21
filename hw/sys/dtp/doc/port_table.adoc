@@ -74,7 +74,7 @@
 
 |`jtag_ic_reset_smc_o` |`ic_reset_smc_t` |Output |`$bits(ic_reset_smc_t)` |SMC IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized to match the corresponding SMC reset control struct. Tied to '0 when `JTAG_IC_RESET_SMC_ENABLE=0`. |SMC `jtag_smc_reset_ctrl_i` |N/A
 |`jtag_ic_reset_sep_o` |`ic_reset_sep_t` |Output |`$bits(ic_reset_sep_t)` |SEP IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized to match the corresponding SEP reset control struct. Tied to '0 when `JTAG_IC_RESET_SEP_ENABLE=0`. |SEP `jtag_sep_reset_ctrl_i` |N/A
-|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized per integrator-defined type. Tied to '0 when `JTAG_IC_RESET_EXT_ENABLE=0`. |Integrator-defined reset overrides, including any SEP xSPI resets consumed by an adopter SPI overlay outside the SMU |N/A
+|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized per integrator-defined type. Tied to '0 when `JTAG_IC_RESET_EXT_ENABLE=0`. |Integrator-defined reset overrides for logic outside the SMU |N/A
 
 |`jtag_ptap_state_o` |`tap_state_e` |Output |- |Current PTAP TAP state. |Debug infrastructure |N/A
 |`jtag_ptap_inst_decoded_o` |`jtag_instruction_decoded_e` |Output |- |Current decoded PTAP instruction. |Debug infrastructure |N/A

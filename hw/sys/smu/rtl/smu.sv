@@ -5,10 +5,7 @@
 
 module smu #(
   parameter int unsigned MAX_TRANS = 2,
-    // Vendor eFuse shim CSR blocks carved off the base of each external window.
-    // Both are literals here: the register headers carrying the real sizes are
-    // nonfree, so the nonfree smu_wrapper overrides these from the *_top_reg_pkg
-    // packages (0x44 each with the Samsung shims overlaid).
+    // Vendor eFuse shim address sizes
     parameter int unsigned SEP_EFUSE_SHIM_SIZE = 'h4,
     parameter int unsigned SMC_EFUSE_SHIM_SIZE = 'h44,
     parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,
@@ -332,7 +329,7 @@ module smu #(
     output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,
     input  km_intf_pkg::km_sram_mem_rsp_t  sep_km_sram_mem_rsp_i,
 
-    // Muxed SPI IRQ from sep_ip_integration (Cadence or OT)
+    // External SPI interrupt
     input  logic                        spi_irq_i,
 
     output sep_pkg::sep_32_64_6_12_axi_req_t   sep_external_req_o,
@@ -433,8 +430,6 @@ module smu #(
     logic  sep_stap_tdo_to_dtp;
 
     // JTAG SEP Reset Control Overrides (driven by DTP's SEP slice of the IC_RESET TDR).
-    // SMU-internal only: the adopter SPI overlay's reset overrides ride the DTP's
-    // external slice (jtag_ic_reset_ext_o) instead.
     sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl;
 
     // CLA custom actions map to SEP CPU debug controls

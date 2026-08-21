@@ -53,7 +53,7 @@
 |`jtag_ptap_state_o` |`jtag_tap_pkg::tap_state_e` |Output |- |Current PTAP TAP state. |Debug infrastructure |N/A
 |`jtag_ptap_inst_decoded_o` |`jtag_inst_reg_pkg::jtag_instruction_decoded_e` |Output |- |Current decoded PTAP instruction. |Debug infrastructure |N/A
 
-|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External JTAG IC_RESET override slice. Integrator-defined packed struct with `.ovrd` override enables and `.val` active-low override values. Driven by the DTP's `jtag_ic_reset_ext_o` when `Cfg.JTAG_IC_RESET_ENABLE=1`, otherwise tied to '0. An adopter whose SPI overlay needs JTAG reset overrides sets `ic_reset_ext_t` to the overlay's own override struct and routes this port to it; the SMU does not define that type. |Integrator-defined reset overrides, incl. SEP xSPI resets |N/A
+|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External JTAG IC_RESET override slice. Integrator-defined packed struct with `.ovrd` override enables and `.val` active-low override values. Driven by the DTP's `jtag_ic_reset_ext_o` when `Cfg.JTAG_IC_RESET_ENABLE=1`, otherwise tied to '0. An integrator needing JTAG reset overrides for logic outside the SMU sets `ic_reset_ext_t` to their own override struct and routes this port to it; the SMU does not define that type. |Integrator-defined reset overrides |N/A
 
 |`xtrig_ctm_src_req_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests (SMU external ports [7:0]; DTP [1:0] reserved for SMC). |Cross trigger network |N/A
 |`xtrig_ctm_src_ack_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |Tie to '0 in pulse-sync mode
@@ -209,7 +209,7 @@
 |`sep_km_sram_mem_req_o` |`km_intf_pkg::km_sram_mem_req_t` |Output |- |SEP Key Manager SRAM memory request passthrough. |SRAM macro |N/A
 |`sep_km_sram_mem_rsp_i` |`km_intf_pkg::km_sram_mem_rsp_t` |Input |- |SEP Key Manager SRAM memory response passthrough. |SRAM macro |N/A
 
-|`spi_irq_i` |`logic` |Input |1 |Muxed SPI IRQ from `sep_ip_integration`. |SPI mux |Tie to '0 if unused
+|`spi_irq_i` |`logic` |Input |1 |SPI interrupt request into the SEP PIC, driven by whichever SPI controller the integration selects. |SPI controller |Tie to '0 if unused
 
 |`sep_external_req_o` |`sep_pkg::sep_32_64_6_12_axi_req_t` |Output |- |SEP AXI extension port request passthrough. |Adopter peripherals |N/A
 |`sep_external_resp_i` |`sep_pkg::sep_32_64_6_12_axi_resp_t` |Input |- |SEP AXI extension port response passthrough. |Adopter peripherals |Tie to DECERR if unused

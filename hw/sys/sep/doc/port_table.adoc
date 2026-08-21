@@ -93,7 +93,7 @@
 
 |`sep_io_spi_req_o` |`sep_io_spi_req_t` |Output |- |SPI host controller request. |SPI pad interface |N/A
 |`sep_io_spi_rsp_i` |`sep_io_spi_rsp_t` |Input |- |SPI host controller response. |SPI pad interface |N/A
-|`spi_irq_i` |`logic` |Input |1 |Muxed SPI IRQ from `sep_ip_integration`. |SPI controller |Tie to '0 if unused
+|`spi_irq_i` |`logic` |Input |1 |SPI interrupt request into the SEP PIC, driven by whichever SPI controller the integration selects. |SPI controller |Tie to '0 if unused
 
 |`lc_state_o` |`logic` |Output |`[2*LC_STATE_BIT_WIDTH-1:0]` |Lifecycle state output (differentially encoded). |SMC, DTP |N/A
 |`feat_ctrl_o` |`sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t` |Output |- |Lifecycle feature control vector. |SMC, DTP |N/A
