@@ -189,7 +189,7 @@ the DUT moved to `sep_wrapper`:
   `ram_16384x39.ram_core`).
 - **Generic eFuse model** (`hw/ip/efuse/dv/models/efuse_bank_model.sv`, shared with
   SMC via a plusarg prefix) — backs the eFuse bank-control and fuse-command
-  datapath so fuse sense runs without Samsung OTP macros. Self-preloads its OTP
+  datapath so fuse sense runs without foundry OTP macros. Self-preloads its OTP
   image at t=0 via `+sep_efuse_hex`
   (default `out/sep_efuse.hex`, staged by the pre-sim hook) and persists W1S
   programs across reset. It can inject opt-in OTP program failures with
@@ -201,7 +201,7 @@ the DUT moved to `sep_wrapper`:
   nonfree shim block inside `sep_axi_extension` and is therefore **absent from a
   pure-open build** — the pads are driven straight off the wrapper's struct port,
   and flash tests need no mux step. In an overlay build the mux comes back, resets
-  to "Cadence selected, CS# forced high", and a scenario must point it at the OT
+  to "licensed SPI host selected, CS# forced high", and a scenario must point it at the OT
   host (`spi_sel=1`, `cs_force_high=0`); firmware does this through the
   `#ifdef`-gated `spi_mux_select_ot()` in `fw/drivers/spi_mux.h`.
 
@@ -272,8 +272,8 @@ single failing leaf with `--stage sim --seed N`.
 ## OSS hygiene
 
 The bender filelist uses targets `["sep", "sep_el2", "sep_wrapper"]` only — never `"simulation"`
-(it pulls Cadence + Samsung padring). FIXME(transition): the licensed Cadence SPI
-wrapper is dropped via `build.exclude_files` until it is absent from the OSS
+(it pulls licensed I/O and a foundry padring). FIXME(transition): the licensed
+SPI wrapper is dropped via `build.exclude_files` until it is absent from the OSS
 checkout upstream. Verify vendor-clean with
 `tools/dv/check_no_vendor_paths.py`. PASS/FAIL requires positive
 evidence from `results.xml` — a clean simulator exit alone is not enough.

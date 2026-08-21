@@ -65,7 +65,7 @@ static inline void spi_wr(uint32_t addr, uint32_t value) {
     *(volatile uint32_t *)addr = value;
 }
 
-// SPI mux control. Out of reset SPI_MUX_CTRL selects the Cadence xSPI controller
+// SPI mux control. Out of reset SPI_MUX_CTRL selects the licensed SPI host
 // and forces CS# high, so an OT scenario must both point the mux at the OT host
 // (spi_sel=1) and release CS# (cs_force_high=0).
 static inline void sep_spi_mux_release_cs(void) {

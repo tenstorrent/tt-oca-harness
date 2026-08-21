@@ -106,7 +106,7 @@ filelist = "hw/sys/sep/dv/build/sep_dut_compile.f"
 bender_filelist = "hw/sys/sep/dv/build/sep_bender.f"
 work_dir = "hw/sys/sep/dv/build"
 # Vendor-clean target set (verify with check_no_vendor_paths.py).
-# NEVER add "simulation" — it pulls Cadence + Samsung padring (51 violations).
+# NEVER add "simulation" — it pulls licensed I/O and a foundry padring (51 violations).
 common_bender_targets = [
   "axi_rtl",
   "apb_rtl",

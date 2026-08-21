@@ -26,7 +26,7 @@ schema_version = 1
 # manifest flow -- read manifest from SMC SRAM, validate its SHA256, DMA-copy BL1
 # into SEP SRAM, jump, and observe BL1 PASS magic on the outbound mailbox. It is
 # NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
-# OpenTitan Quad spi_host, not the Cadence xSPI octal controller the ROM drives),
+# OpenTitan Quad spi_host, not the licensed xSPI controller the ROM drives),
 # so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
 # behavioral SMC responder (SEP_SMC_MEM_MODEL). See sep-rom-non-secure-boot-design.md.
 name = "sep_rom_non_secure_boot_test"
