@@ -1,0 +1,23 @@
+hw/ip/key_manager/doc/architecture.adoc
+  s_c5151d462a6a92::t_d2a3dc7031bc2f 22-24
+hw/sys/sep/doc/memory_map.adoc
+  s_c5151d462a6a92::t_c4fb0fc1fb41f2 218
+  s_c5151d462a6a92::t_c4d3fee56aae15 235
+  s_c5151d462a6a92::t_bfffefc9bd7da4 202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "65e4792653d92331bfe50e6bbdbb7bb1d628fc0d",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
