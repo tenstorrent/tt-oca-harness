@@ -551,6 +551,12 @@ the overhead of large or slow data copying operations. The DMA has a
 built-in SHA2 engine for inline hashing.</p>
 </div>
 <div class="paragraph">
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA Controller
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
+</div>
+<div class="paragraph">
 <p>Transfers operate on a word by word basis. This is because the TL-UL
 bus, used in the OpenTitan implementation, does not support burst
 transfers. AXI4-lite also does not support bursts.</p>

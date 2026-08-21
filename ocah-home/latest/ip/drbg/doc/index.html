@@ -309,13 +309,19 @@ Generator.</p>
 <p>The EDN automates generate and reseed command sequences so that downstream consumers receive a continuous stream of random data without firmware intervention. The EDN endpoint interface uses a simple request/acknowledge handshake. The <code>drbg_edn_axis_adapter</code> converts this into the AXI-Stream protocol expected by the rest of the SEP fabric, buffering data in per-endpoint FIFOs.</p>
 </div>
 <div class="paragraph">
-<p>For a detailed description of the CSRNG and EDN theory of operation, register maps, and command protocol, refer to the OpenTitan documentation at <a href="https://opentitan.org/book/hw/ip/csrng/">CSRNG</a> and <a href="https://opentitan.org/book/hw/ip/edn/">EDN</a>.</p>
+<p>Consult the OpenTitan documentation at
+<a href="https://opentitan.org/book/hw/ip/csrng/">CSRNG</a> and
+<a href="https://opentitan.org/book/hw/ip/edn/">EDN</a> for the authoritative core
+functionality of those IPs.</p>
 </div>
 </div>
 <div class="sect4">
 <h5 id="bus-protocol-adaptation"><a class="anchor" href="#bus-protocol-adaptation"></a><a class="link" href="#bus-protocol-adaptation">Bus Protocol Adaptation</a></h5>
 <div class="paragraph">
 <p>The CSRNG and EDN register interfaces use TL-UL, following the OpenTitan convention. The DRBG wrapper provides two levels of adaptation. The <code>drbg_axil64_lane_adapter</code> accepts 64-bit AXI-Lite transactions from the SoC interconnect and narrows them to 32-bit AXI-Lite by selecting the appropriate data lane based on address bit [2]. Only aligned single-lane accesses with strobe <code>0x0F</code> or <code>0xF0</code> are forwarded; all others are rejected with SLVERR. The downstream <code>axi_lite_to_tlul</code> bridge then converts 32-bit AXI-Lite into TL-UL for the CSRNG and EDN register blocks.</p>
+</div>
+<div class="paragraph">
+<p>The CSRNG and EDN register maps are reported in the SEP detailed register map.</p>
 </div>
 </div>
 </div>

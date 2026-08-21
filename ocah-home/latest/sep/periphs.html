@@ -902,7 +902,10 @@ device present in the SEP peripheral subsystem.</p>
 <p>The SEP instantiates a SPI host controller for boot. The <code>sep_ot_spi_wrap</code> module wraps the modified OpenTitan-derived <code>spi_controller</code> with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (<code>lsio_trigger_o</code>). The <code>NUM_CS</code> parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the <code>sep_io_spi</code> boundary and drive <code>spi_irq_i</code> from it.</p>
 </div>
 <div class="paragraph">
-<p>For the OpenTitan SPI host theory of operation and register map, refer to the <a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host documentation</a>.</p>
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
 </div>
 </div>
 </div>
@@ -926,7 +929,10 @@ that its timeout has expired and there is a problem within the SEP.</p>
 <p>The wrapper exports two signals: <code>intr_wdog_timer_bark_o</code>, the watchdog bark interrupt that fires when the first timeout stage expires, and <code>wdt_timer_rst_req_o</code>, the bite reset request that fires when the second timeout stage expires and the system failed to respond to the bark.</p>
 </div>
 <div class="paragraph">
-<p>For the full <code>aon_timer</code> theory of operation, watchdog configuration, and register map, refer to the <a href="https://opentitan.org/book/hw/ip/aon_timer/">OpenTitan Always-On Timer documentation</a>.</p>
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/aon_timer/">OpenTitan Always-On Timer
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
 </div>
 </div>
 <div class="sect3">

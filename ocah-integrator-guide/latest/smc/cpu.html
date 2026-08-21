@@ -570,6 +570,236 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
+<h2>Address Map: cpu_ctrl</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>RESET_VECTOR[4]</strong>: 4 registers, base 0x0, stride 0x8</li>
+<li><strong>SCRATCH[16]</strong>: 16 registers, base 0x80, stride 0x8</li>
+<li><strong>WB_PC_CORE0[8]</strong>: 8 registers, base 0x100, stride 0x8</li>
+<li><strong>WB_PC_CORE1[8]</strong>: 8 registers, base 0x140, stride 0x8</li>
+<li><strong>WB_PC_CORE2[8]</strong>: 8 registers, base 0x180, stride 0x8</li>
+<li><strong>WB_PC_CORE3[8]</strong>: 8 registers, base 0x1C0, stride 0x8</li>
+<li><strong>MUTEX[4]</strong>: 4 registers, base 0x240, stride 0x8</li>
+<li><strong>SEMA[4]</strong>: 4 registers, base 0x260, stride 0x8</li>
+<li><strong>DUMMY_ROM_NULL[4]</strong>: 4 registers, base 0x2A0, stride 0x8</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x18</td><td><a href="#RESET_VECTOR_4_">RESET_VECTOR[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#RESET_CTRL">RESET_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#RESET_TIMEOUT">RESET_TIMEOUT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x40</td><td><a href="#REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x50</td><td><a href="#WDT_TIMEOUT">WDT_TIMEOUT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x58</td><td><a href="#WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x60</td><td><a href="#TEST_CTRL">TEST_CTRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x80 - 0xF8</td><td><a href="#SCRATCH_16_">SCRATCH[16]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100 - 0x138</td><td><a href="#WB_PC_CORE0_8_">WB_PC_CORE0[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x140 - 0x178</td><td><a href="#WB_PC_CORE1_8_">WB_PC_CORE1[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x180 - 0x1B8</td><td><a href="#WB_PC_CORE2_8_">WB_PC_CORE2[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1C0 - 0x1F8</td><td><a href="#WB_PC_CORE3_8_">WB_PC_CORE3[8]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x200</td><td><a href="#SMC_ATTRIBUTES">SMC_ATTRIBUTES</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x240 - 0x258</td><td><a href="#MUTEX_4_">MUTEX[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x260 - 0x278</td><td><a href="#SEMA_4_">SEMA[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x280</td><td><a href="#DUMMY_ROM_0">DUMMY_ROM_0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x288</td><td><a href="#DUMMY_ROM_1">DUMMY_ROM_1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x290</td><td><a href="#DUMMY_ROM_2">DUMMY_ROM_2</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x298</td><td><a href="#DUMMY_ROM_3">DUMMY_ROM_3</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2A0 - 0x2B8</td><td><a href="#DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="RESET_VECTOR_4_">RESET_VECTOR[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>vector</td><td>RW</td><td>0xC0040000</td><td>-</td></tr>
+</table>
+<h3 id="RESET_CTRL">RESET_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>debug_reset_n_n0_scan</td><td>RW</td><td>0x0</td><td>Debug Module Reset, active low</td></tr>
+<tr><td>23:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>uncore_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.<br>WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.</td></tr>
+<tr><td>7</td><td>core3_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.<br>This pulse is ANDed with core_reset_n[3] so a 0 in core_reset_n[3] will override the pulse.</td></tr>
+<tr><td>6</td><td>core2_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.<br>This pulse is ANDed with core_reset_n[2] so a 0 in core_reset_n[2] will override the pulse.</td></tr>
+<tr><td>5</td><td>core1_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.<br>This pulse is ANDed with core_reset_n[1] so a 0 in core_reset_n[1] will override the pulse.</td></tr>
+<tr><td>4</td><td>core0_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.<br>This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override the pulse.</td></tr>
+<tr><td>3</td><td>core3_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
+<tr><td>2</td><td>core2_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
+<tr><td>1</td><td>core1_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
+<tr><td>0</td><td>core0_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
+</table>
+<h3 id="CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:36</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>35:32</td><td>core_resets_done</td><td>R</td><td>0xF</td><td>Logic low while performing core reset, logic high otherwise.</td></tr>
+<tr><td>31:16</td><td>post_reset_count</td><td>RW</td><td>0x10</td><td>Core reset pulse count post-reset. The duration of the pulse is the set value + 1.</td></tr>
+<tr><td>15:0</td><td>pre_reset_count</td><td>RW</td><td>0x8</td><td>Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.</td></tr>
+</table>
+<h3 id="RESET_TIMEOUT">RESET_TIMEOUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:37</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Live status: high while a pending software reset has exceeded<br>timeout_value (timeout/error flag; set in both modes).</td></tr>
+<tr><td>35:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software reset is actually applied<br>at the cluster (drain complete and reset asserted).</td></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = give up and report error (stay withheld, do not apply);<br>1 = force the reset on timeout.</td></tr>
+<tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely.</td></tr>
+</table>
+<h3 id="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>Reference counter for the CPU</td></tr>
+</table>
+<h3 id="WDT_TIMEOUT">WDT_TIMEOUT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x4000</td><td>Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles</td></tr>
+</table>
+<h3 id="WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>reset_cycle_count_3</td><td>RW</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
+<tr><td>2</td><td>reset_cycle_count_2</td><td>RW</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
+<tr><td>1</td><td>reset_cycle_count_1</td><td>RW</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
+<tr><td>0</td><td>reset_cycle_count_0</td><td>RW</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
+</table>
+<h3 id="TEST_CTRL">TEST_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>Test control register for the CPU</td></tr>
+</table>
+<h3 id="SCRATCH_16_">SCRATCH[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register for the CPU</td></tr>
+</table>
+<h3 id="WB_PC_CORE0_8_">WB_PC_CORE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
+</table>
+<h3 id="WB_PC_CORE1_8_">WB_PC_CORE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
+</table>
+<h3 id="WB_PC_CORE2_8_">WB_PC_CORE2[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
+</table>
+<h3 id="WB_PC_CORE3_8_">WB_PC_CORE3[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
+</table>
+<h3 id="SMC_ATTRIBUTES">SMC_ATTRIBUTES</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:46</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>45:40</td><td>num_mailboxes</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>39:36</td><td>mailbox_depth</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>35:33</td><td>num_cores</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>32</td><td>no_output_remap</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>31:26</td><td>sram_size</td><td>R</td><td>-</td><td>Total SRAM size is 2 ^ value bytes</td></tr>
+<tr><td>25:17</td><td>num_cpu_interrupts</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>16:8</td><td>num_ext_interrupts</td><td>R</td><td>-</td><td>-</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>chiplet_is_primary</td><td>R</td><td>-</td><td>Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.</td></tr>
+</table>
+<h3 id="MUTEX_4_">MUTEX[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>mutex</td><td>RW</td><td>0x1</td><td>HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.</td></tr>
+</table>
+<h3 id="SEMA_4_">SEMA[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>sema</td><td>RW</td><td>0x0</td><td>16-bit semaphore value to inc/dec. Writing to this register will inc/dec the semaphore value.<br>The written value is treated as a signed number using 2s compliment.</td></tr>
+</table>
+<h3 id="DUMMY_ROM_0">DUMMY_ROM_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_word_0</td><td>RW</td><td>0x145051300000517</td><td>Word 0 of WFI loop</td></tr>
+</table>
+<h3 id="DUMMY_ROM_1">DUMMY_ROM_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_word_1</td><td>RW</td><td>0xFFF0069330551073</td><td>Word 1 of WFI loop</td></tr>
+</table>
+<h3 id="DUMMY_ROM_2">DUMMY_ROM_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_word_2</td><td>RW</td><td>0x105000733046B073</td><td>Word 2 of WFI loop</td></tr>
+</table>
+<h3 id="DUMMY_ROM_3">DUMMY_ROM_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_word_3</td><td>RW</td><td>0xFFDFF06F</td><td>Word 3 of WFI loop</td></tr>
+</table>
+<h3 id="DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>dummy_rom_null</td><td>RW</td><td>0x0</td><td>Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: clint</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>MSIP[4]</strong>: 4 registers, base 0x0, stride 0x4</li>
+<li><strong>MTIMECMP[4]</strong>: 4 registers, base 0x4000, stride 0x8</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xC</td><td><a href="#MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4000 - 0x4018</td><td><a href="#MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xBFF8</td><td><a href="#MTIME">MTIME</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="MSIP_4_">MSIP[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>value</td><td>RW</td><td>0x0</td><td>MSIP bit for core</td></tr>
+</table>
+<h3 id="MTIMECMP_4_">MTIMECMP[4]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count value to be used for comparison, triggers interrupt once count value matches this</td></tr>
+</table>
+<h3 id="MTIME">MTIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count (time) value</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
 <h2>Address Map: debug_module</h2>
 <p><strong>Register Arrays:</strong></p>
 <ul>

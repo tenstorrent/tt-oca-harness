@@ -200,7 +200,9 @@ distinct buses:</p>
 <p>The subsystem’s hardware components are modified versions of the
 OpenTitan components and the firmware is also based on the
 <a href="https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html">OpenTitan
-cryptographic library</a>.</p>
+cryptographic library</a>. Generated PeakRDL maps for the Key Manager,
+entropy source, and the other crypto CSRs are included in
+<a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
 </div>
 <div class="paragraph">
 <p>The primary modifications to the hardware is the separation of the key
@@ -274,8 +276,10 @@ key through the <code>hmac_wrapper_key_reg</code> block, which maps directly to 
 has no EDN connection.</p>
 </div>
 <div class="paragraph">
-<p>For the full HMAC theory of operation and register map, refer to the
-<a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC documentation</a>.</p>
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
 </div>
 </div>
 </div>
@@ -394,10 +398,10 @@ signals are tied to their inactive state. OTBN occupies alert indices [2:1] in
 the crypto aggregation and exports a single <code>intr_done_o</code> interrupt.</p>
 </div>
 <div class="paragraph">
-<p>For the full OTBN theory of operation, instruction set, and register map, refer
-to the
+<p>Consult the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan OTBN
-documentation</a>.</p>
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
 </div>
 </div>
 </div>
@@ -456,8 +460,10 @@ inactive state. AES occupies alert indices [4:3] in the crypto aggregation and
 exports an <code>idle_o</code> status output but no interrupt.</p>
 </div>
 <div class="paragraph">
-<p>For the full AES theory of operation, modes, and register map, refer to the
-<a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES documentation</a>.</p>
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
 </div>
 </div>
 </div>
@@ -493,8 +499,10 @@ occupies alert indices [6:5] in the crypto aggregation and exports three
 interrupts: <code>done</code>, <code>fifo_empty</code>, and <code>err</code>.</p>
 </div>
 <div class="paragraph">
-<p>For the full KMAC theory of operation and register map, refer to the
-<a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC documentation</a>.</p>
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-register-map]</a>.</p>
 </div>
 </div>
 </div>

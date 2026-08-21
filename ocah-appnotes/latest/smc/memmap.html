@@ -805,7 +805,401 @@ reporting</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="component-specific-register-documentation"><a class="anchor" href="#component-specific-register-documentation"></a><a class="link" href="#component-specific-register-documentation">1.6. Component-Specific Register Documentation</a></h4>
+<h4 id="spare-smc-register-blocks"><a class="anchor" href="#spare-smc-register-blocks"></a><a class="link" href="#spare-smc-register-blocks">1.6. Spare SMC Register Blocks</a></h4>
+<div class="paragraph">
+<p>The following shows the detailed register map of a set of
+programmer-visible spare SMC blocks. They are spare but essential: for
+example, the scratch block provides general-purpose registers, and the
+chip-config and NDM-reset blocks hold system-level configuration and
+reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred with the
+wording in <a href="#peripherals">[peripherals]</a>.</p>
+</div>
+<div class="sect4">
+<h5 id="chip-config-scratch-ndm-reset-and-misc-wrap"><a class="anchor" href="#chip-config-scratch-ndm-reset-and-misc-wrap"></a><a class="link" href="#chip-config-scratch-ndm-reset-and-misc-wrap">Chip Config, Scratch, NDM Reset, and Misc Wrap</a></h5>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: chip_config</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#RAS_BANK_INFO">RAS_BANK_INFO</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="VERSION_LO">VERSION_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>version_lo</td><td>R</td><td>0x100A0</td><td>SMC version, lower 32 bits</td></tr>
+</table>
+<h3 id="VERSION_HI">VERSION_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version, upper 32 bits</td></tr>
+</table>
+<h3 id="CHIP_ID">CHIP_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>chip_id</td><td>R</td><td>0x0</td><td>Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)</td></tr>
+</table>
+<h3 id="LC_STATE">LC_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF</td><td>Lifecycle state value from SEP. Default to invalid state</td></tr>
+</table>
+<h3 id="RAS_BANK_INFO">RAS_BANK_INFO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:4</td><td>bank_instance</td><td>RW</td><td>0x0</td><td>Chiplet instance ID</td></tr>
+<tr><td>3:0</td><td>bank_chip</td><td>RW</td><td>0x0</td><td>Chiplet type ID</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: scratch</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="SCRATCH_8_">SCRATCH[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: ndm_reset</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ndmreset_request</td><td>R</td><td>0x0</td><td>NDM Request from Cluster [0:NDMRESET_CLUSTER_COUNT]. Read-only field that reflects incoming NDM reset requests.<br>Connected from ndmreset_request_i input port. Also connected to SMC interrupts. Supports up to 32 CPU Clusters</td></tr>
+</table>
+<h3 id="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ndmreset_process</td><td>RW</td><td>0x0</td><td>NDM Response Firmware writes to this field to respond to NDM reset requests.<br>Connected to ndmreset_process_o output port. Supports up to 32 CPU Clusters</td></tr>
+</table>
+<h3 id="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>ndmreset_cluster_count</td><td>R</td><td>0x0</td><td>Number of NDM Clusters supported. Can be read to mask the ndmreset_request register</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: misc_wrap</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+</ul>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100</td><td><a href="#VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x104</td><td><a href="#VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x110</td><td><a href="#RAS_BANK_INFO">RAS_BANK_INFO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x200</td><td><a href="#NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x204</td><td><a href="#NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x208</td><td><a href="#NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="SCRATCH_8_">SCRATCH[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
+</table>
+<h3 id="VERSION_LO">VERSION_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>version_lo</td><td>R</td><td>0x100A0</td><td>SMC version, lower 32 bits</td></tr>
+</table>
+<h3 id="VERSION_HI">VERSION_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>version_hi</td><td>R</td><td>0x0</td><td>SMC version, upper 32 bits</td></tr>
+</table>
+<h3 id="CHIP_ID">CHIP_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>chip_id</td><td>R</td><td>0x0</td><td>Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)</td></tr>
+</table>
+<h3 id="LC_STATE">LC_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF</td><td>Lifecycle state value from SEP. Default to invalid state</td></tr>
+</table>
+<h3 id="RAS_BANK_INFO">RAS_BANK_INFO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:4</td><td>bank_instance</td><td>RW</td><td>0x0</td><td>Chiplet instance ID</td></tr>
+<tr><td>3:0</td><td>bank_chip</td><td>RW</td><td>0x0</td><td>Chiplet type ID</td></tr>
+</table>
+<h3 id="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ndmreset_request</td><td>R</td><td>0x0</td><td>NDM Request from Cluster [0:NDMRESET_CLUSTER_COUNT]. Read-only field that reflects incoming NDM reset requests.<br>Connected from ndmreset_request_i input port. Also connected to SMC interrupts. Supports up to 32 CPU Clusters</td></tr>
+</table>
+<h3 id="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>ndmreset_process</td><td>RW</td><td>0x0</td><td>NDM Response Firmware writes to this field to respond to NDM reset requests.<br>Connected to ndmreset_process_o output port. Supports up to 32 CPU Clusters</td></tr>
+</table>
+<h3 id="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>ndmreset_cluster_count</td><td>R</td><td>0x0</td><td>Number of NDM Clusters supported. Can be read to mask the ndmreset_request register</td></tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="base-config-dfx-status-and-gpio-pocpbias"><a class="anchor" href="#base-config-dfx-status-and-gpio-pocpbias"></a><a class="link" href="#base-config-dfx-status-and-gpio-pocpbias">Base Config, DFX Status, and GPIO POC/PBias</a></h5>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: smc_base_config</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#GLOBAL_BASE">GLOBAL_BASE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#LOCAL_BASE">LOCAL_BASE</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#REGION_SIZE">REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x28</td><td><a href="#HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x30</td><td><a href="#HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x38</td><td><a href="#HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+<tr><td>0x40</td><td><a href="#HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
+<tr><td>0x48</td><td><a href="#HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="GLOBAL_BASE">GLOBAL_BASE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>base</td><td>RW</td><td>0x40000000</td><td>Global base address for the CPU</td></tr>
+</table>
+<h3 id="LOCAL_BASE">LOCAL_BASE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>55:0</td><td>base</td><td>R</td><td>0xC0000000</td><td>Local base address for the CPU</td></tr>
+</table>
+<h3 id="REGION_SIZE">REGION_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
+</table>
+<h3 id="CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>29:24</td><td>cg_hysteresis</td><td>RW</td><td>0x1F</td><td>Clockgate cg_hysteresis</td></tr>
+<tr><td>23:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>telemetry_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for telemetry</td></tr>
+<tr><td>12</td><td>uart_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for UART</td></tr>
+<tr><td>11</td><td>i2c_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for i2c</td></tr>
+<tr><td>10</td><td>avs_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for AVSBus</td></tr>
+<tr><td>9</td><td>i3c_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for i3c</td></tr>
+<tr><td>8</td><td>zeroer_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for axi zeroer</td></tr>
+<tr><td>7</td><td>output_fabric_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for address remapper register logic</td></tr>
+<tr><td>6</td><td>addr_remap_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for address remapper register logic</td></tr>
+<tr><td>5</td><td>filter_ib_reg_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for inbound filter registers</td></tr>
+<tr><td>4</td><td>filter_ib_axi_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the inbound filters</td></tr>
+<tr><td>3</td><td>filter_ob_reg_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for outbound filter registers</td></tr>
+<tr><td>2</td><td>filter_ob_axi_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the outbound filters</td></tr>
+<tr><td>1</td><td>mailbox_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the mailbox</td></tr>
+<tr><td>0</td><td>dma_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the DMA</td></tr>
+</table>
+<h3 id="HANG_DET_SYS_AXI_CTRL">HANG_DET_SYS_AXI_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When 1, a timeout event propagates to irq_o.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
+</table>
+<h3 id="HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD">HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</td></tr>
+</table>
+<h3 id="HANG_DET_SEP_AXI_CTRL">HANG_DET_SEP_AXI_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When 1, a timeout event propagates to irq_o.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
+</table>
+<h3 id="HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD">HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</td></tr>
+</table>
+<h3 id="HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>irq_test</td><td>RW</td><td>0x0</td><td>Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>irq_en</td><td>RW</td><td>0x0</td><td>Interrupt enable. When 1, a timeout event propagates to irq_o.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>When 1, the timeout counter runs. When 0, it is held at 0 and irq_o is forced low.</td></tr>
+</table>
+<h3 id="HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>value</td><td>RW</td><td>0x1000</td><td>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz).</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: dfx_ctrl_status</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#STATUS_SMU">STATUS_SMU</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#DEBUG_BUS_MUX">DEBUG_BUS_MUX</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="STATUS_SMU">STATUS_SMU</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>mbist_abort</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say that MBIST has hit timeout and aborted<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>mbist_pass</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when MBIST is successful<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>mbist_done</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when MBIST is completed<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>mem_repair_abort</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say that mem repair has hit timeout and aborted<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>1</td><td>mem_repair_success</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say if mem repair was successful<br>This register is sticky 1 and will hold the value until reset</td></tr>
+<tr><td>0</td><td>mem_repair_done</td><td>R</td><td>0x0</td><td>One bit indicator from DFT logic to say when mem repair is completed.<br>This register is sticky 1 and will hold the value until reset</td></tr>
+</table>
+<h3 id="DEBUG_CTRL">DEBUG_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30:23</td><td>debug_marker</td><td>RW</td><td>0x0</td><td>Debug marker</td></tr>
+<tr><td>22:7</td><td>xtrig_clk_halt_mask</td><td>RW</td><td>0x0</td><td>Mask==0 (default) -&gt; disabled; Mask==1 -&gt; enabled</td></tr>
+<tr><td>6</td><td>dtb_ew_en</td><td>RW</td><td>0x0</td><td>DTB E/W enable</td></tr>
+<tr><td>5</td><td>dtb_ns_en</td><td>RW</td><td>0x0</td><td>DTB NS enable</td></tr>
+<tr><td>4</td><td>force_clk_en</td><td>RW</td><td>0x0</td><td>Force clk en</td></tr>
+<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>Clock gating en</td></tr>
+<tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>GPIO en</td></tr>
+<tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Chiplet Enable Used for Triggering</td></tr>
+</table>
+<h3 id="DEBUG_BUS_MUX">DEBUG_BUS_MUX</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</td></tr>
+<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</td></tr>
+<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</td></tr>
+<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</td></tr>
+<tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>Unique DBM ID of the DBM instance</td></tr>
+<tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
+</table>
+</div>
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: gpio_poc_pbias_ctrl</h2>
+<h2>Register List:</h2>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>-</td></tr>
+</table>
+<h2>Register Details:</h2>
+<h3 id="CONTROL">CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>retention_en</td><td>RW</td><td>0x0</td><td>Retention enable control. Set to 0 by default which disables retention.</td></tr>
+<tr><td>0</td><td>pwr_supply_sel</td><td>RW</td><td>0x0</td><td>Power supply voltage level selection.<br>PSW=0 at 1.8V I/O supply<br>PSW=1 at 1.2V I/O supply</td></tr>
+</table>
+<h3 id="ACCESS_FILTER">ACCESS_FILTER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>18:16</td><td>arprot_requirement</td><td>RW</td><td>0x1</td><td>When read_filter_enable is set, only allow read accesses with this prot value</td></tr>
+<tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:8</td><td>awprot_requirement</td><td>RW</td><td>0x1</td><td>When write_filter_enable is set, only allow write accesses with this prot value</td></tr>
+<tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.</td></tr>
+<tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.</td></tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="component-specific-register-documentation"><a class="anchor" href="#component-specific-register-documentation"></a><a class="link" href="#component-specific-register-documentation">1.7. Component-Specific Register Documentation</a></h4>
 <div class="paragraph">
 <p>For detailed register-level documentation of each SMC component, refer
 to the individual component documentation:</p>
@@ -868,6 +1262,11 @@ Timer registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Clock Generation</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PLL wrapper and clock generation registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">pll</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD / CLA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Design-for-debug wrap and Core Logic Analyzer register map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dfd</p></td>
 </tr>
 </tbody>
 </table>
