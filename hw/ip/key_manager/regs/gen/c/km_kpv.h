@@ -42,16 +42,21 @@ typedef struct __attribute__ ((__packed__)) {
 #define KM_KPV__CTRL_REG__ERASE_bp 2
 #define KM_KPV__CTRL_REG__ERASE_bw 1
 #define KM_KPV__CTRL_REG__ERASE_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_31_3_bm 0xfffffff8
-#define KM_KPV__CTRL_REG__RSVD_31_3_bp 3
-#define KM_KPV__CTRL_REG__RSVD_31_3_bw 29
-#define KM_KPV__CTRL_REG__RSVD_31_3_reset 0x0
+#define KM_KPV__CTRL_REG__SEAL_bm 0x8
+#define KM_KPV__CTRL_REG__SEAL_bp 3
+#define KM_KPV__CTRL_REG__SEAL_bw 1
+#define KM_KPV__CTRL_REG__SEAL_reset 0x0
+#define KM_KPV__CTRL_REG__RSVD_31_4_bm 0xfffffff0
+#define KM_KPV__CTRL_REG__RSVD_31_4_bp 4
+#define KM_KPV__CTRL_REG__RSVD_31_4_bw 28
+#define KM_KPV__CTRL_REG__RSVD_31_4_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t lock_write :1;
         uint32_t lock_use :1;
         uint32_t erase :1;
-        uint32_t rsvd_31_3 :29;
+        uint32_t seal :1;
+        uint32_t rsvd_31_4 :28;
     } f;
     uint32_t w;
 } km_kpv__ctrl_reg_t;

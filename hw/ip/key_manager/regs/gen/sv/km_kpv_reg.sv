@@ -313,6 +313,10 @@ module km_kpv_reg (
                 logic next;
                 logic load_next;
             } erase;
+            struct {
+                logic next;
+                logic load_next;
+            } seal;
         } CTRL[64];
         struct {
             struct {
@@ -344,6 +348,9 @@ module km_kpv_reg (
             struct {
                 logic value;
             } erase;
+            struct {
+                logic value;
+            } seal;
         } CTRL[64];
         struct {
             struct {
@@ -379,6 +386,9 @@ module km_kpv_reg (
             if(decoded_reg_strb.CTRL[i0] && decoded_req_is_wr) begin // SW write 1 set
                 next_c = field_storage.CTRL[i0].lock_write.value | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
                 load_next_c = '1;
+            end else if(hwif_in.CTRL[i0].lock_write.hwset) begin // HW Set
+                next_c = '1;
+                load_next_c = '1;
             end else if(hwif_in.CTRL[i0].lock_write.hwclr) begin // HW Clear
                 next_c = '0;
                 load_next_c = '1;
@@ -404,6 +414,9 @@ module km_kpv_reg (
             load_next_c = '0;
             if(decoded_reg_strb.CTRL[i0] && decoded_req_is_wr) begin // SW write 1 set
                 next_c = field_storage.CTRL[i0].lock_use.value | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+                load_next_c = '1;
+            end else if(hwif_in.CTRL[i0].lock_use.hwset) begin // HW Set
+                next_c = '1;
                 load_next_c = '1;
             end else if(hwif_in.CTRL[i0].lock_use.hwclr) begin // HW Clear
                 next_c = '0;
@@ -448,6 +461,32 @@ module km_kpv_reg (
             end
         end
         assign hwif_out.CTRL[i0].erase.value = field_storage.CTRL[i0].erase.value;
+        // Field: km_kpv.CTRL[].seal
+        always_comb begin
+            automatic logic [0:0] next_c;
+            automatic logic load_next_c;
+            next_c = field_storage.CTRL[i0].seal.value;
+            load_next_c = '0;
+            if(decoded_reg_strb.CTRL[i0] && decoded_req_is_wr) begin // SW write 1 set
+                next_c = field_storage.CTRL[i0].seal.value | (decoded_wr_data[3:3] & decoded_wr_biten[3:3]);
+                load_next_c = '1;
+            end else if(hwif_in.CTRL[i0].seal.hwclr) begin // HW Clear
+                next_c = '0;
+                load_next_c = '1;
+            end
+            field_combo.CTRL[i0].seal.next = next_c;
+            field_combo.CTRL[i0].seal.load_next = load_next_c;
+        end
+        always_ff @(posedge clk) begin
+            if(~hwif_in.WARM_RST_N) begin
+                field_storage.CTRL[i0].seal.value <= 1'h0;
+            end else begin
+                if(field_combo.CTRL[i0].seal.load_next) begin
+                    field_storage.CTRL[i0].seal.value <= field_combo.CTRL[i0].seal.next;
+                end
+            end
+        end
+        assign hwif_out.CTRL[i0].seal.value = field_storage.CTRL[i0].seal.value;
     end
     // Field: km_kpv.KPV_SCRAMBLER_KEY.key
     always_comb begin
@@ -587,7 +626,8 @@ module km_kpv_reg (
                 readback_data_var[0] = field_storage.CTRL[i0].lock_write.value;
                 readback_data_var[1] = field_storage.CTRL[i0].lock_use.value;
                 readback_data_var[2] = field_storage.CTRL[i0].erase.value;
-                readback_data_var[31:3] = 29'h0;
+                readback_data_var[3] = field_storage.CTRL[i0].seal.value;
+                readback_data_var[31:4] = 28'h0;
             end
         end
         if(rd_mux_addr == 13'h1100) begin
