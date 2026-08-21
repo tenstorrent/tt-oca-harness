@@ -95,9 +95,6 @@
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="pull-requests.html">Pull requests</a>
   </li>
-  <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="alignment.html">Issue alignment</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -185,10 +182,9 @@ Allowed values live in <code>.github/issue-taxonomy.yml</code>.</p>
 Description is optional. Do not pick a GitHub milestone.</p>
 </div>
 <div class="paragraph">
-<p>Do not pick labels. Ingest copies the required picks onto
+<p>Do not pick labels. The form picks feed
 <a href="https://github.com/orgs/tenstorrent/projects/291">Project 291</a>
-and applies matching labels (Component <strong>General</strong> does not get a label).
-See <a href="alignment.html" class="xref page">Issue alignment</a>.</p>
+(Component <strong>General</strong> does not get a label).</p>
 </div>
 <div class="paragraph">
 <p>Security reports must not be public issues. Use
@@ -219,37 +215,7 @@ See <a href="alignment.html" class="xref page">Issue alignment</a>.</p>
 </div>
 <div class="paragraph">
 <p>CI does not require those sections. Project taxonomy lives on issues, not PRs.
-Ingest assigns the opener when Assignees is empty; see
-<a href="alignment.html" class="xref page">Issue alignment</a>.
 Pull requests are reviewed weekly.</p>
-</div>
-<h1 id="issue-alignment" class="sect0"><a class="anchor" href="#issue-alignment"></a><a class="link" href="#issue-alignment">Issue alignment</a></h1>
-<div class="paragraph">
-<p>Ingest copies form picks onto empty
-<a href="https://github.com/orgs/tenstorrent/projects/291">Project 291</a>
-fields on every issue open or edit. It needs Workstream, Subsystem, and
-Component to run; it also copies Priority and Target release when present.
-It prefixes the title from those picks (<code>[WORKSTREAM/SUBSYSTEM]</code> or
-<code>[WORKSTREAM/SUBSYSTEM-COMPONENT]</code>). It assigns a PR to its opener. It
-does not assign issues, and it does not police PR Summary or Test plan.</p>
-</div>
-<div class="paragraph">
-<p>The curator (<code>.github/ISSUE_CURATION.md</code>) later fills leftover fields,
-assigns an unassigned issue from a named person, the parent assignee,
-or the usual or majority owner of the title prefix, and copy-edits
-issue and PR titles and bodies for capitalization, imperative mood,
-and grammatical English without adding or removing content. Issue
-titles keep the ingest taxonomy prefix. PR titles use a path-like
-scope (<code>hw/smc:</code>, <code>dv:</code>, <code>github:</code>), or <code>treewide:</code> when the change
-spans several trees, not <code>[WORKSTREAM/SUBSYSTEM]</code> and
-not <code>feat(scope):</code>. It comments
-on a PR that has been approved for 3 days and is still open, and it
-reminds an issue assignee 3 days before a milestone or issue due date.
-It runs at 05:00 and 16:00 PDT, and on dispatch of
-<code>ocah-project-curator.lock.yml</code>. Each run covers items opened at or
-after the last successful run; the first successful run covers every
-open issue and PR. Approved-but-unmerged PRs and issues with a due
-date in the next 3 days are always included.</p>
 </div>
 </article>
   </div>
