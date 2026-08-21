@@ -45,14 +45,10 @@ do not use the native DV profile. They pass `-D SYNTHESIS=1` from
 
 |`SIMULATION`
 |DTP default target (`dtp_sim_cfg.toml`); repeated on the SV-UVM overlay
-|DTP's simulation-vs-synthesis name. Matches the OpenTitan / Caliptra
-`ifdef SIMULATION` convention used by vendored prims in the DTP compile graph.
-DTP uses this name for simulation-only RTL, not `SIM`.
-|OpenTitan simulation-only prim paths (behavioral sparse-FSM flops, CDC random
-delay) compile in. DTP-owned RTL that gates on `SIMULATION` takes its
-simulation view.
-|Those vendored simulation-only paths are omitted. No DTP-owned RTL source
-branches on `SIMULATION`, so the public DTP tests still run.
+|Marks a simulation compile. Vendored OpenTitan prims in the DTP graph gate
+simulation-only paths on this name.
+|Those prim paths compile in.
+|Those prim paths are omitted.
 
 |`DTP_UVM_TB`
 |DTP SV-UVM overlay (`dtp_sim_cfg.toml`)
@@ -128,9 +124,7 @@ them. They are part of the shared native-profile set applied to every DUT.
 |Define |Notes
 
 |`SIM`
-|Native-profile simulation mark used by other OCAH subsystems (for example
-eFuse token matching). DTP does not branch on `SIM`. DTP simulation-only code
-uses `SIMULATION` above.
+|Native-profile simulation mark. No DTP source branches on this name.
 
 |`DISABLE_ASSERT`
 |No DTP compile-unit source tests this name. Verilator assertion gating is
