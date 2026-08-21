@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Transaction-window monitor for DTP scan-control observables.
 
 Post-transaction snapshots cannot prove that a control signal never pulsed

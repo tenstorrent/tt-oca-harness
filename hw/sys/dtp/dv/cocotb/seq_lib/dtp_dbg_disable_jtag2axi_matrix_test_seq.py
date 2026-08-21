@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Debug-disable matrix over the three JTAG2AXI bridge gate fields.
 
 Deterministic one-hot rows, the all-clear and all-disabled boundary masks,

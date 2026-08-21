@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Debug-disable matrix over the eight scan-side gate fields.
 
 One compact matrix instead of eight duplicate wrappers: deterministic one-hot

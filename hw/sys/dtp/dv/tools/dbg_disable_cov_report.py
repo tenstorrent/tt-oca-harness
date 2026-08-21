@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Union DTP debug-disable FCOV artifacts and enforce the 22-cell contract.
 
 Usage:

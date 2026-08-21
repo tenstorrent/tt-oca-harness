@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Debug-disable functional coverage.
 
 Verilator cannot compile SV covergroups, so this Python-side ledger records
