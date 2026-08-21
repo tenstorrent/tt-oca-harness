@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Revision History
+= Internal Revision History
 :doctype: book
 :sectanchors:
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
 
-This document tracks major revisions and updates to the OCAH
-documentation.
+This document tracks internal revisions and updates to the OCAH documentation.
 
-.Revision History
+.Internal Revision History
 [width="100%",cols="15%,15%,15%,55%",options="header",]
 |=======================================================================
 |Version |Date |Author |Description
@@ -157,4 +156,8 @@ included) and reconciled the generated register tables with the RDL. Completed
 the HT_WATERMARK description: each watermark arms when the entropy source is
 enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse -- high watermarks to
 0x0000 (running maximum), low watermarks to 0xFFFF (running minimum).
+|0.5.26 |2026-08-13 |Alessandro Ottaviano |Completed the published-document
+migration audit. Restored the shared reference-counter description and UART
+software flow-control guidance; aligned DFX status, repository path, and
+cross-document link descriptions with the current implementation.
 |=======================================================================
