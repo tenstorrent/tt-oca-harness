@@ -17,7 +17,8 @@ or the usual or majority owner of the title prefix, and copy-edits
 issue and PR titles and bodies for capitalization, imperative mood,
 and grammatical English without adding or removing content. Issue
 titles keep the ingest taxonomy prefix. PR titles use a path-like
-scope (`hw/smc:`, `dv:`, `github:`), not `[WORKSTREAM/SUBSYSTEM]` and
+scope (`hw/smc:`, `dv:`, `github:`), or `treewide:` when the change
+spans several trees, not `[WORKSTREAM/SUBSYSTEM]` and
 not `feat(scope):`. It comments
 on a PR that has been approved for 3 days and is still open, and it
 reminds an issue assignee 3 days before a milestone or issue due date.

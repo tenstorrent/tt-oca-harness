@@ -196,8 +196,8 @@ that form. `scope` is a lowercase path, one to three segments, from the
 files the PR touches (`hw`, `hw/smc`, `hw/sys/smc`, `dv`, `dv/sep`, `doc`,
 `github`, `ci`, `tools/dv`). A filename is a valid scope when that file is
 the change (`AGENTS.md`, `ocah.mk`). Keep an existing accurate scope.
-When the PR spans several trees, use the dominant one; do not invent a
-compound scope (`hw+dv`). Leave the title if no single scope is obvious.
+When the PR spans several trees, use `treewide`. Do not invent a
+compound scope (`hw+dv`). `treewide: Fix foo` is the title form.
 
 Never use Conventional Commits types (`feat`, `fix`, `chore`, `feat(smc):`).
 Never use an issue taxonomy prefix (`[RTL/SMC]`, `[DV/OCAH]`) on a PR.
