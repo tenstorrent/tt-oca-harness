@@ -80,6 +80,12 @@ flags = [
   "+define+ASSERTS_OFF",
 ]
 
+[coverage.verilator]
+# Initial scheduled-CI floor. The `all` group with three seeds measured 63.554%
+# overall on Verilator 5.050; keep headroom for seed and tool noise while making
+# missing/disabled coverage and material regressions fail closed.
+fail_under = 60.0
+
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
 # for both frameworks: +define+DTP_UVM_TB (below) switches tb/tb_top.sv from the ported cocotb
