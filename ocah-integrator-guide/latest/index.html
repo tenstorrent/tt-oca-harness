@@ -43,7 +43,7 @@
             <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
             <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
             <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
-			<a class="navbar-item" href="../../ocah-contributing/latest/index.html">Contributing to OCAH</a>
+			<a class="navbar-item" href="../../ocah-contributing/latest/index.html">Starting with OCAH</a>
           </div>
         </div>
         <div class="navbar-item has-dropdown is-hoverable downloads-menu">
@@ -107,6 +107,14 @@
   </div>
   <ul class="components">
     <li class="component">
+      <div class="title"><a href="../../ocah-home/latest/index.html">Open Chiplet Atlas Harness (OCAH)</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <div class="title"><a href="../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
         <li class="version is-latest">
@@ -154,7 +162,7 @@
 <main class="article">
 <div class="toolbar" role="navigation">
 <button class="nav-toggle"></button>
-  <a href="../../ocah-docs/latest/index.html" class="home-link"></a>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></li>
@@ -344,7 +352,7 @@ to your system fabric for normal operational access from application processors
 or DMA controllers.</p>
 </div>
 <div class="paragraph">
-<p>The <code>sep_axi_in</code> interface provides dedicated access from the Security Processor
+<p>The <code>sep_axi_in</code> interface provides dedicated access from the Security Enclave Processor
 (SEP) subsystem. This interface shares the same sizing parameters as the system
 input but operates independently to maintain security domain separation. Use
 this interface only when integrating alongside the SEP subsystem. The interface
@@ -3272,9 +3280,9 @@ the dedicated DTP documentation in <code>hw/sys/dtp/doc/</code> for internal des
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-integration"><a class="anchor" href="#sep-integration"></a><a class="link" href="#sep-integration">2.3. Security Processor (SEP) Integration</a></h3>
+<h3 id="sep-integration"><a class="anchor" href="#sep-integration"></a><a class="link" href="#sep-integration">2.3. Security Enclave Processor (SEP) Integration</a></h3>
 <div class="paragraph">
-<p>The Security Processor (SEP) is the Root of Trust for the chiplet, providing
+<p>The Security Enclave Processor (SEP) is the Root of Trust for the chiplet, providing
 a physically isolated execution environment for security-critical services
 such as secure boot, lifecycle control, device attestation, cryptographic
 acceleration, and key management. This section provides practical integration

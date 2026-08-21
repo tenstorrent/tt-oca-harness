@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Feature Overview :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../_/css/site.css">
     <link rel="stylesheet" href="../../_/css/extra.css">
@@ -43,7 +43,7 @@
             <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
             <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
             <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
-			<a class="navbar-item" href="../../ocah-contributing/latest/index.html">Contributing to OCAH</a>
+			<a class="navbar-item" href="../../ocah-contributing/latest/index.html">Starting with OCAH</a>
           </div>
         </div>
         <div class="navbar-item has-dropdown is-hoverable downloads-menu">
@@ -76,51 +76,33 @@
   </nav>
 </header>
 <div class="body">
-<div class="nav-container" data-component="ocah-docs" data-version="latest">
+<div class="nav-container" data-component="ocah-home" data-version="latest">
   <aside class="nav">
     <div class="panels">
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></h3>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH)</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="index.html">Documentation Overview</a>
-  </li>
-  <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="about-ocah.html">About OCAH</a>
-  </li>
-  <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="getting-started.html">Getting Started</a>
-  </li>
-  <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
+    <a class="nav-link" href="index.html">Home</a>
 <ul class="nav-list">
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="architecture.html#ocah-architecture">OCAH Architecture</a>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="features.html">Feature Overview</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="architecture.html#security-processor-sep">Security Processor (SEP)</a>
+    <a class="nav-link" href="motivation.html">Motivation</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="architecture.html#system-management-controller">System Management Controller (SMC)</a>
+    <a class="nav-link" href="use-cases.html">Use Cases</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="architecture.html#debug-test-ports">Debug &amp; Test Ports (DTP)</a>
-  </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="architecture.html#system-management-network">System Management Network (SMN)</a>
-  </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="architecture.html#axi-over-ucie-bridge">AXI-over-UCIe Bridge (AoU)</a>
+    <a class="nav-link" href="license.html">License</a>
   </li>
 </ul>
-  </li>
-  <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="dashboard.html">Verification Dashboard</a>
   </li>
 </ul>
   </li>
@@ -129,10 +111,18 @@
 </div>
 <div class="nav-panel-explore" data-panel="explore">
   <div class="context">
-    <span class="title">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</span>
+    <span class="title">Open Chiplet Atlas Harness (OCAH)</span>
     <span class="version">latest</span>
   </div>
   <ul class="components">
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH)</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component">
       <div class="title"><a href="../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
       <ul class="versions">
@@ -165,11 +155,11 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <div class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+    <li class="component">
+      <div class="title"><a href="../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
       <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="index.html">latest</a>
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -183,6 +173,11 @@
 <button class="nav-toggle"></button>
   <a href="index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas Harness (OCAH)</a></li>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="features.html">Feature Overview</a></li>
+  </ul>
 </nav>
 </div>
   <div class="content">
@@ -190,115 +185,99 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<div class="sect1">
-<h2 id="dependencies"><a class="anchor" href="#dependencies"></a><a class="link" href="#dependencies">1. Dependencies</a></h2>
+<h1 class="page">Feature Overview</h1>
+<div id="preamble">
 <div class="sectionbody">
-<div class="admonitionblock warning">
-<table>
+<div class="paragraph">
+<p>OCAH provides the non-application-specific framework logic that is common
+across chiplets built to the Open Chiplet Architecture (OCA) standard.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">Architecture</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCAH implements the common non-application functions an OCA chiplet
+needs, so adopters get them by construction rather than rebuilding
+them per project::</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Security Enclave Processor (SEP)&#8201;&#8212;&#8201;secure boot, chain of trust, key management</p>
+</li>
+<li>
+<p>System Management Controller (SMC)&#8201;&#8212;&#8201;system bring-up, clock control,
+power/thermal management, reset coordination, telemetry</p>
+</li>
+<li>
+<p>System Management Unit (SMU)&#8201;&#8212;&#8201;composite of SEP, SMC, and DTP</p>
+</li>
+<li>
+<p>System Management Network (SMN)&#8201;&#8212;&#8201;management-plane fabric</p>
+</li>
+<li>
+<p>Debug &amp; Test Ports (DTP)&#8201;&#8212;&#8201;post-package debug and test access over JTAG
+(IEEE 1149.1), iJTAG instrument access (IEEE 1687), and package-level TAP
+chaining (IEEE 1838), plus OCA cross-trigger management</p>
+</li>
+<li>
+<p>AXI-over-UCIe Bridge (AoU)&#8201;&#8212;&#8201;die-to-die transport bridge (roadmap)</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="oca-standard-layers"><a class="anchor" href="#oca-standard-layers"></a><a class="link" href="#oca-standard-layers">OCA Standard Layers</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCAH is built to the OCA specification&#8217;s five-layer model, from top to
+bottom: Software, System, Protocol, Transport, and Physical. Each layer
+abstracts the one below it, so adopters aren&#8217;t locked to specific
+lower-layer choices.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<thead>
 <tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>This section is currently under development. <strong>Content has been taken
-verbatim from existing documentation.</strong> More content will be added as the
-project matures.</p>
-</div>
-</td>
+<th class="tableblock halign-left valign-top">Layer</th>
+<th class="tableblock halign-left valign-top">What it standardizes</th>
 </tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Open Chiplet Management Interface (OCMI), signed boot image format, and a
+standard device configuration data structure</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot sequencing, security domains (SSID/DSID), the system management
+hierarchy, hardware-assisted time synchronization, FuSa/RAS, and debug/test</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protocol</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inter-chiplet communication protocols including AXI, CHI, and the Open
+Chiplet Configuration Protocol (OCCP)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Transport</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UCIe and BoW for high-speed die-to-die links; I3C/I2C as auxiliary
+transport for boot configuration, firmware distribution, and management
+traffic</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Physical</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Packaging, physical interconnect, electrical signaling, and power
+delivery for 2D/2.5D/3D integration</p></td>
+</tr>
+</tbody>
 </table>
-</div>
-<div class="paragraph">
-<p>This section outlines the system requirements and dependencies for the
-OCAH project.</p>
-</div>
-<div class="sect2">
-<h3 id="system-requirements"><a class="anchor" href="#system-requirements"></a><a class="link" href="#system-requirements">1.1. System Requirements</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Linux Distribution</strong>: Ubuntu 20.04+ or CentOS 8+</p>
-</li>
-<li>
-<p><strong>Python</strong>: Version 3.9.18 or later</p>
-</li>
-<li>
-<p><strong>Memory</strong>: Minimum 16GB RAM recommended for full builds</p>
-</li>
-<li>
-<p><strong>Storage</strong>: Minimum 50GB available disk space</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="python-dependencies"><a class="anchor" href="#python-dependencies"></a><a class="link" href="#python-dependencies">1.2. Python Dependencies</a></h3>
-<div class="paragraph">
-<p>The project uses a Python virtual environment for SystemRDL and
-documentation tools:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>PeakRDL</strong>: SystemRDL processing and RTL generation</p>
-</li>
-<li>
-<p><strong>Asciidoctor</strong>: AsciiDoc documentation processing and PDF generation</p>
-</li>
-<li>
-<p><strong>Antora</strong>: Multi-repository documentation site generator for AsciiDoc</p>
-</li>
-<li>
-<p><strong>Python packages</strong>: Managed by the repo-level <code>pyproject.toml</code> and <code>uv.lock</code>; run <code>make uv-sync</code> or <code>uv sync</code> from the repository root.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="hardware-requirements"><a class="anchor" href="#hardware-requirements"></a><a class="link" href="#hardware-requirements">1.3. Hardware Requirements</a></h3>
-<div class="paragraph">
-<p>For simulation and synthesis:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>CPU</strong>: Multi-core processor (8+ cores recommended)</p>
-</li>
-<li>
-<p><strong>RAM</strong>: 16GB minimum, 32GB recommended for large designs</p>
-</li>
-<li>
-<p><strong>Storage</strong>: SSD recommended for build performance</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="license-requirements"><a class="anchor" href="#license-requirements"></a><a class="link" href="#license-requirements">1.4. License Requirements</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Open Source Tools</strong>: No additional licenses required</p>
-</li>
-<li>
-<p><strong>Commercial Tools</strong>: Valid licenses required for VCS, Design Compiler,
-etc.</p>
-</li>
-<li>
-<p><strong>Dependencies</strong>: Some external IPs may have specific license
-requirements</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="environment-setup"><a class="anchor" href="#environment-setup"></a><a class="link" href="#environment-setup">1.5. Environment Setup</a></h3>
-<div class="paragraph">
-<p>Refer to the project setup documentation for detailed installation
-instructions of these dependencies.</p>
-</div>
-</div>
 </div>
 </div>
 </article>
