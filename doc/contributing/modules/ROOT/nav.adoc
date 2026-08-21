@@ -4,4 +4,3 @@
 * xref:index.adoc[Contributing Guide]
 * xref:issues.adoc[Filing issues]
 * xref:pull-requests.adoc[Pull requests]
-* xref:alignment.adoc[Issue alignment]
