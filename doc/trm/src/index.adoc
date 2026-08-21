@@ -14,7 +14,7 @@
 The Open Chiplet Atlas Harness (OCAH) is a chiplet design IP where the
 non-application-specific functions are integrated to form a chiplet design
 framework. These non-application-specific functions include common chiplet
-subsystems like Security Processor (SEP), System Management Controller (SMC),
+subsystems like Security Enclave Processor (SEP), System Management Controller (SMC),
 System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 (DTP), etc.
 

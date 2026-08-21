@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-* xref:index.adoc[Contributing Guide]
-* xref:issues.adoc[Filing issues]
-* xref:pull-requests.adoc[Pull requests]
+* xref:index.adoc[Contribution Guide]
+** xref:licensing.adoc[Licensing]
+** xref:contribution.adoc[Contributions]
+** xref:defects.adoc[Defect Reporting]
+** xref:code_of_conduct.adoc[Code of Conduct]
+* Getting Started Guide
+** xref:guidelines.adoc[Guidelines]
+** xref:dependencies.adoc[Dependencies]
+** xref:workflows.adoc[Workflows]
+** xref:documentation.adoc[Documentation]
+
