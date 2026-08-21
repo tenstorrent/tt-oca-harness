@@ -35,7 +35,7 @@ partial read costs far more time than a full one.
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
 | `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
-| `.github/ISSUE_CURATION.md` | Project curator (`automation.enabled`) and compile |
+| `.github/ISSUE_CURATION.md` | Project curator; catalog weekly-issue-activity and discussion-task-miner (`automation.enabled`) and compile |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
@@ -424,8 +424,9 @@ onto empty Project 291 fields, applies matching labels, and prefixes the
 title. The curator fills leftover fields, assigns, copy-edits titles
 and bodies, nudges approved PRs that are still open after 3 days, and
 reminds assignees 3 days before a milestone or issue due date on its
-05:00 and 16:00 PDT runs and on dispatch; see
-`doc/contributing/src/alignment.adoc`.
+05:00 and 16:00 PDT runs and on dispatch. The weekly
+issue-activity and discussion-miner workflows are in
+`.github/ISSUE_CURATION.md`.
 
 ### Pull requests
 
