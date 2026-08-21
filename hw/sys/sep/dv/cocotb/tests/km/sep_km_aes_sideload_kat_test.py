@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""KM -> AES sideload consume-proof KAT (reference suite SS-1 AES leaf, sep_km_aes_sideload_kat_test).
+"""KM -> AES sideload consume-proof KAT (reference suite, sep_km_aes_sideload_kat_test).
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -23,33 +23,34 @@ reference suite on two axes:
     share-defeated sideload changes the ciphertext and fails the golden compare.
 
 VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
-  CHK0     boot KM on real DRBG -> RESP_KM_READY                  (reference P1)
-  CHK-A    CMD_KEY_LOAD known key (replaces reference CMD_KEY_GENERATE+backdoor) (P2)
-  CHK-NEG  ct_dummy == AES(dummy, PT): negative reference is a real encryption (P3)
-  CHK-B    CMD_KEY_TRANSFER rc=0 to AES                           (reference P4)
+  CHK0     boot KM on real DRBG -> RESP_KM_READY
+  CHK-A    CMD_KEY_LOAD known key (replaces reference CMD_KEY_GENERATE+backdoor)
+  CHK-NEG  ct_dummy == AES(dummy, PT): negative reference is a real encryption
+  CHK-B    CMD_KEY_TRANSFER rc=0 to AES
   CHK-ISO  key-bus isolation: only AES released; OTBN/KMAC/HMAC parked in SW reset
            so they physically cannot receive the key (OSS analog of the reference suite's per-
-           engine key-bus AW monitor; same mechanism as the OTBN KAT)   (P4 "others idle")
+           engine key-bus AW monitor; same mechanism as the OTBN KAT)
   CHK-PUB  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload:
            the KM-delivered key is not exposed through software-readable CSRs
   CHK-F    ct_side == AES(known_key, PT) golden: sideload delivered the exact key
-           (replaces the reference suite's backdoor SHARE0^SHARE1 non-degeneracy proof)  (P5/P6, stronger)
+           (replaces the reference suite's backdoor SHARE0^SHARE1 non-degeneracy proof)
   CHK-RT   DEC(ct_side) with the SIDELOAD key == original PT: the sideloaded key
-           drives a full ECB-256 ENC/DEC round-trip, not just encryption    (reference P6b)
-  CHK-H    ct_swref == AES(known_key, PT) golden: SW-key path is correct          (P7)
+           drives a full ECB-256 ENC/DEC round-trip, not just encryption
+  CHK-H    ct_swref == AES(known_key, PT) golden: SW-key path is correct
   CHK1..CHK4 strict golden proof via the DRBG scoreboard; CHK5_km alive/observed
            (rom_main pull order not golden-predictable) + CHK5_aes alive/observed:
            the released AES masking PRNG reseeds from the crypto EDN leg, so a
            second real EDN consumer (besides KM) is witnessed off one DRBG.
 
 Accepted scope deltas vs the reference suite (documented, no silent skips):
-  * reference P5 backdoor SHARE0^SHARE1 reconstruction + non-degeneracy guards are
-    dropped: with a KNOWN, distinct-word key loaded via CMD_KEY_LOAD there is no
-    KM keygen and no constant-word keygen defect to guard against, and CHK-F (golden
-    value compare) proves the exact key flowed -- stronger than "the reconstructed
-    key is not a single repeated word". No backdoor is used. The ONE sub-property
-    the reference suite's P5 checks that a frontdoor port cannot see is the raw SHARE0 *mask*
-    non-degeneracy inside the AES wrapper (its !mask_all_same guard): the combined
+  * the reference suite's backdoor SHARE0^SHARE1 reconstruction + non-degeneracy
+    guards are dropped: with a KNOWN, distinct-word key loaded via CMD_KEY_LOAD
+    there is no KM keygen and no constant-word keygen defect to guard against, and
+    CHK-F (golden value compare) proves the exact key flowed -- stronger than
+    "the reconstructed key is not a single repeated word". No backdoor is used.
+    The ONE sub-property the reference suite checks that a frontdoor port cannot
+    see is the raw SHARE0 *mask* non-degeneracy inside the AES wrapper (its
+    !mask_all_same guard): the combined
     key is correct (CHK-F) yet the 2-share masking could in principle be degenerate.
     That is an AES-wrapper-internal masking property, not the KM->AES sideload-consume
     contract this leaf owns, and it is proven frontdoor by the sibling OTBN KAT
@@ -140,7 +141,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
         # CHK-NEG: negative reference. Encrypt with an unrelated DUMMY SW key BEFORE
-        # the transfer (reference P3). A real encryption, golden-checked, so ct_side !=
+        # the transfer. A real encryption, golden-checked, so ct_side !=
         # ct_dummy later is a meaningful "a distinct key was delivered" proof.
         await self.aes.configure_ecb_enc_256(sideload=False)
         await self.aes.write_full_key(list(AES_DUMMY_SW_KEY))
@@ -191,8 +192,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         )
         self.logger.info(
             "CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=0x%08x)", ctl_pub,
-        )
+            "(read path alive: STATUS=%#010x)", ctl_pub)
 
         # CHK-F: encrypt with the SIDELOAD key and value-check against the golden.
         # This proves AES consumed the exact KM-delivered key (stronger than the reference suite's
@@ -216,7 +216,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # strictly stronger. The HMAC sibling dropped the same check for the same
         # reason; see sep_km_hmac_sideload_kat_test.
 
-        # CHK-RT (reference P6b): decrypt ct_side with the SIDELOAD key and prove it
+        # CHK-RT: decrypt ct_side with the SIDELOAD key and prove it
         # recovers the original plaintext -- the sideloaded key drives a full
         # ENC/DEC round-trip, not just one direction. The recovered PT is checked
         # against the known AES_ECB_PT (value-specific; no decrypt golden needed

@@ -86,10 +86,6 @@
 |`smu_axi_out_req_o` |`smu_axi_xbar_pkg::axi_out_req_t` |Output |- |SMU AXI crossbar outbound request (to SMN). |SMN fabric |N/A
 |`smu_axi_out_resp_i` |`smu_axi_xbar_pkg::axi_out_resp_t` |Input |- |SMU AXI crossbar outbound response. |SMN fabric |Tie to '0 if unused
 
-|`axil_pll_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |PLL control AXI-Lite request. |PLL shim |N/A
-|`axil_pll_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |PLL control AXI-Lite response. |PLL shim |N/A
-|`axil_pvt_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |PVT monitoring AXI-Lite request. |PVT shim |N/A
-|`axil_pvt_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |PVT monitoring AXI-Lite response. |PVT shim |N/A
 |`smc_external_req_o` |`smc_pkg::smc_axil_32_32_req_t` |Output |- |SMC AXI-Lite external port request for adopter peripheral expansion. |Adopter peripherals |N/A
 |`smc_external_resp_i` |`smc_pkg::smc_axil_32_32_resp_t` |Input |- |SMC AXI-Lite external port response. |Adopter peripherals |Tie to DECERR if unused
 
@@ -105,8 +101,6 @@
 |`pvt_process_clk_obs_en_i` |`logic` |Input |1 |PVT process monitor clock observation enable. |Control logic |N/A
 |`cat_therm_i` |`logic` |Input |1 |CAT thermal sensor input. |CAT thermal sensor |Tie to '0 if unused
 
-|`axil_req_gpio_ctrl_o` |`gpio_pkg::gpio_axil_req_t` |Output |- |GPIO controller AXI-Lite request. |GPIO padring |N/A
-|`axil_resp_gpio_ctrl_i` |`gpio_pkg::gpio_axil_resp_t` |Input |- |GPIO controller AXI-Lite response. |GPIO padring |N/A
 |`lsio_interface_select_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |LSIO interface selection. |GPIO padring |N/A
 |`gpio_in_i` |`logic` |Input |`[NUM_GPIO_WRAPS-1:0]` |GPIO input data from external pins. |External GPIO pins |N/A
 |`gpio_out_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO output data to external pins. |External GPIO pins |N/A

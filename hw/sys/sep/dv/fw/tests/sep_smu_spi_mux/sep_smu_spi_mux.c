@@ -1,8 +1,8 @@
 /*
  * sep_smu_spi_mux - Program SPI_MUX_CTRL via SEP CSR frontdoor only.
  *
- * Does not touch Cadence/OT SPI command paths (no external flash wait).
- *   spi_sel = 0 (Cadence), cs_force_high = 1
+ * Does not touch licensed-host or OT SPI command paths (no external flash wait).
+ *   spi_sel = 0 (licensed host), cs_force_high = 1
  */
 
 #include <stdint.h>

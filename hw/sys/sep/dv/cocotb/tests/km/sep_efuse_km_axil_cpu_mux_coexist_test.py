@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP dual-CPU eFuse AXI-lite mux coexistence test (PyUVM).
 
-OSS port of the reference-suite TEST 10.3 ``sep_efuse_km_axil_cpu_mux_coexist_test``.
+OSS port of the reference-suite ``sep_efuse_km_axil_cpu_mux_coexist_test``.
 Two REAL CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
 
   * the VeeR EL2 host boots ``km_efuse_coexist`` firmware: it senses CHIPLET_UID,

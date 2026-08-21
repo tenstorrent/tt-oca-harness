@@ -10,7 +10,7 @@
 //   spi_host.lsio_trigger_o -> sep.lsio_trigger[0] -> secure_dma.lsio_trigger_i[0]
 //
 // This whole datapath is internal to bare `sep` (hw/sep/sep.sv:899). Exercises
-// edge E7 (SPI-FIFO -> DMA) on the OpenTitan SPI line; the Cadence xSPI path is
+// SPI-FIFO -> DMA on the OpenTitan SPI line; the licensed xSPI path is
 // out of the OSS DUT.
 //
 // PARITY-PLUS over reference suite: the reference test only checks "DMA done + no SPI error"

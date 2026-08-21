@@ -4,10 +4,10 @@
 /*
  * SPI pad mux helper.
  *
- * The SEP shares one set of SPI pads between the Cadence xSPI controller and
+ * The SEP shares one set of SPI pads between the licensed SPI host and
  * the OpenTitan SPI host. SPI_MUX_CTRL.spi_sel picks which one drives them, and
  * cs_force_high holds CS# high until software is ready. Out of reset the mux
- * points at Cadence with CS# forced high, so an OT test that does not move it
+ * points at the licensed host with CS# forced high, so an OT test that does not move it
  * drives its transactions into pads the OT host does not own: the flash model
  * never sees CS# fall, and every status read comes back 0x00.
  *

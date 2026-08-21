@@ -1,4 +1,4 @@
-/* SS-1.3 KM->OTBN sideload consume-proof program.
+/* KM->OTBN sideload consume-proof program.
  *
  * Reads the sideloaded keymgr key (provided by the Key Manager) from the
  * OTBN KEY_S0/KEY_S1 WSRs, reconstructs key = share0 ^ share1, and writes the

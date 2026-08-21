@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_001 (P0) - KMAC Register Defaults and Read/Write Sanity Test
+ * KMAC Register Defaults and Read/Write Sanity Test
  *
  * Verifies default register values after reset, basic read/write
  * functionality for KMAC configuration and interrupt registers, and
@@ -222,7 +222,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_001: Register Sanity Test\n");
+    printf("  Register Sanity Test\n");
     printf("========================================\n");
 
     test_register_defaults();

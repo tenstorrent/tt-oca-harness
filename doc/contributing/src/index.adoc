@@ -27,7 +27,6 @@ ifdef::backend-html5[]
 
 * xref:issues.adoc[Filing issues]
 * xref:pull-requests.adoc[Pull requests]
-* xref:alignment.adoc[Issue alignment]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]

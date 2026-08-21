@@ -92,7 +92,8 @@ KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}     # Key128..Key512
 def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool,
                    sideload: bool = False) -> int:
     """CFG_SHADOWED word with EDN entropy (entropy_mode=EDN + entropy_ready), the
-    masking-required config. Reproduces #13's KMAC-256 keyed SW value 0x0101_0025."""
+    masking-required config. KMAC-256 keyed SW CFG 0x0101_0025 (same word the KM
+    KMAC sideload KAT uses)."""
     return (
         int(bool(kmac_en))
         | (kstrength << 1)
@@ -126,7 +127,7 @@ class SepKmacCfg:
     def mode_val(self) -> int:
         # KMAC is programmed as mode=cSHAKE + kmac_en=1 (kmac programmers_guide.md
         # §"Initialization": "configure CFG_SHADOWED.mode to cSHAKE"). This is the
-        # spec-correct KMAC mode; #13's mode=Shake was cross-check-consistent only.
+        # spec-correct KMAC mode. Do not program mode=SHAKE for keyed KMAC.
         return KMAC_MODE["cshake" if self.mode == "kmac" else self.mode]
 
     def cfg_word(self, *, sideload: bool = False) -> int:

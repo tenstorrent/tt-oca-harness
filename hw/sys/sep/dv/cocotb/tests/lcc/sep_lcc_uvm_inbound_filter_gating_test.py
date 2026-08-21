@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """SEP LCC sep_debug -> inbound-filter gating test (OSS).
 
-OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test`` (TEST 3.7,
-reference suite). Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
+OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test``.
+Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
 PROD_DBG_1 (sep_debug=1, filter skipped). Datapath
 (``sep.sv``: ``inbound_filter_skip_i = feat_ctrl.sep_debug``):
@@ -67,7 +67,7 @@ _MAX_SENSE_CYCLES = 20_000
 # value in BOTH states (guards the golden checks against a vacuous all-zero pass).
 # DBG_1 bits 0 (sep_debug) and 1 (chiplet_dbg) are deliberately LEFT ENABLED in both
 # vectors. Under the per-group decode a PROD demotion only relaxes its debug group to
-# honour SIP_DIS|SYS_DIS -- it no longer forces the group open -- so a vector that
+# honour SIP_DIS|SYS_DIS; it does not force the group open. A vector that
 # disables sep_debug would make this test's own property unreachable: DEMOTE_1 would
 # be honoured correctly and sep_debug would still read 0. Every other DIS bit stays
 # set, so the value remains distinctive rather than all-ones.
@@ -132,19 +132,15 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
 
         # ---- CHK-DEMOTE-INDEP: DEMOTE_2 alone must open DBG_2 and NOT DBG_1 ----
         #
-        # Under the post-#242 decode DEMOTE_1 and DEMOTE_2 are independent and act only
-        # on their own debug group: DEMOTE_1 on DBG_1 [15:0], DEMOTE_2 on DBG_2 [31:16].
-        # Before this phase existed, DEMOTE_2 was never written by any test in this
-        # environment -- it appeared only in the golden, so Table 50's DEMOTE_2 column
-        # and the independence property rested entirely on the golden's import-time KAT
-        # comparing the model against itself.
-        #
-        # DEMOTE_2 is driven FIRST and deliberately: the demote field is `onwrite=woset`
-        # (sep_lifecycle_ctrl.rdl:27), so it cannot be cleared once set. Driving DEMOTE_2
-        # while DEMOTE_1 is still 0 is therefore the only order in which this DUT can
-        # show one group opening without the other. sep_debug is bit 0, inside DBG_1, so
-        # it must still read 0 here -- and the external port must still be blocked, which
-        # is a second, independent consequence of the same property.
+        # DEMOTE_1 and DEMOTE_2 are independent and act only on their own debug
+        # group: DEMOTE_1 on DBG_1 [15:0], DEMOTE_2 on DBG_2 [31:16].
+        # DEMOTE_2 is driven FIRST: the demote field is `onwrite=woset`
+        # (sep_lifecycle_ctrl.rdl:27), so it cannot be cleared once set. Driving
+        # DEMOTE_2 while DEMOTE_1 is still 0 is the only order in which this DUT
+        # can show one group opening without the other. sep_debug is bit 0, inside
+        # DBG_1, so it must still read 0 here -- and the external port must still
+        # be blocked, which is a second, independent consequence of the same
+        # property.
         demote2 = SepLccDemoteSeq(group=2)
         await self.start_seq(demote2)
         assert demote2.demote == 1, f"DEMOTE_2.demote read back {demote2.demote}, expected 1"
@@ -208,9 +204,6 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         # nor zero, so a
         # dummy responder or any unrelated OKAY slave fails it, and matching it proves
         # the external read actually reached the LCC FEAT_CTRL register.
-        #
-        # This argument was previously made about the hi word, which was correct only
-        # while the old decode let a demotion rewrite Function as well.
         exp_lo = feat_dbg & 0xFFFF_FFFF
         exp_hi = (feat_dbg >> 32) & 0xFFFF_FFFF
         probe_lo = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
@@ -247,4 +240,4 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         self.logger.info(
             "CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed"
         )
-        self.logger.info("SEP LCC inbound-filter-gating test PASS (TEST 3.7)")
+        self.logger.info("SEP LCC inbound-filter-gating test PASS")
