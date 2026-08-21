@@ -20,6 +20,12 @@ OCAH_DOC_PDF_THEME ?= $(OCAH_DOC_DIR)/theme.yml
 OCAH_DOC_PDF_THEMESDIR ?= $(OCAH_DOC_DIR)
 OCAH_CSV_TO_ADOC := python3 $(OCAH_ROOT)/tools/doc/csvadoc.py
 OCAH_DOC_REGEN_REGS ?= 1
+# Partner-facing output is a release build by default. AsciiDoc sources can use
+# the generic `release` attribute to exclude internal-only material.
+OCAH_DOC_RELEASE ?= 1
+OCAH_DOC_RELEASE_ENABLED := $(filter 1 yes true,$(strip $(OCAH_DOC_RELEASE)))
+OCAH_DOC_ANTORA_RELEASE_ARG := $(if $(OCAH_DOC_RELEASE_ENABLED),--attribute release)
+OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG := $(if $(OCAH_DOC_RELEASE_ENABLED),-a release)
 # Optional Antora --url override (nested publish paths, e.g. /trm).
 OCAH_DOC_SITE_URL ?=
 

@@ -3,13 +3,41 @@
 
 name: lint
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
+  diff-class:
+    runs-on: ubuntu-latest
+    outputs:
+      run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify the diff
+        id: diff-class
+        run: |
+          case "${{ github.event_name }}" in
+            pull_request|push)
+              python3 scripts/ci/diff_class.py --github-output >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
   # Builds the two tools every lint job below needs, once, as artifacts:
   # bender (only lint-sv-slang) and reviewdog (via the shared
   # .github/actions/reviewdog-report composite action).
   setup-tools:
+    needs: [diff-class]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Install bender
@@ -30,7 +58,8 @@ jobs:
         with: { name: reviewdog-bin, path: ./reviewdog-bin/reviewdog, retention-days: 1 }
 
   format-c:
-    needs: setup-tools
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }
     steps:
@@ -54,7 +83,8 @@ jobs:
           name: format-c
 
   lint-tcl:
-    needs: setup-tools
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }
     steps:
@@ -93,7 +123,8 @@ jobs:
   #       with: { log-file: lint_sv_verible.log, efm: '%f:%l:%c: %m', level: error, name: lint-sv-verible, fail-level: none }
 
   lint-sv-slang:
-    needs: setup-tools
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }
     steps:

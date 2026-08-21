@@ -35,7 +35,7 @@ partial read costs far more time than a full one.
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
 | `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
-| `.github/ISSUE_CURATION.md` | Project curator (`automation.enabled`) and compile |
+| `.github/ISSUE_CURATION.md` | Project curator; catalog weekly-issue-activity and discussion-task-miner (`automation.enabled`) and compile |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
@@ -344,11 +344,16 @@ code no longer has. Name what exists.
 
 ## Commit Conventions
 
-Follow the existing history: a path-like scope, then an imperative summary, with the PR
-number appended when one exists.
+Follow the existing history: a lowercase path-like scope (one to three
+segments, or a filename when that file is the change), a colon, a space,
+then an imperative sentence-case summary, with the PR number appended when
+one exists. A change that spans several trees uses `treewide`. This is not
+Conventional Commits: do not use `feat`, `fix`, `chore`, or `feat(scope):`.
+Do not use an issue taxonomy prefix (`[RTL/SMC]`) on a commit or PR title.
 
 ```
-dv: add the SEP smoke regression list and wire sep into CI (#243)
+dv: Add the SEP smoke regression list and wire sep into CI (#243)
+hw/smc: Reject unmapped register accesses instead of aliasing live registers
 tools/dv: Guarantee per-leaf JUnit XML across frameworks (#283)
 doc: Regenerate stale uart and smc reset_unit register collaterals (#282)
 ```
@@ -416,9 +421,12 @@ Do not set a GitHub milestone. Description heading is **What happened** (Bug),
 
 Do not add labels, assignees, or a milestone. Ingest copies those form picks
 onto empty Project 291 fields, applies matching labels, and prefixes the
-title. The curator fills leftover fields, assigns, and copy-edits titles
-and bodies on its 05:00 and 16:00 PDT runs and on dispatch; see
-`doc/contributing/src/alignment.adoc`.
+title. The curator fills leftover fields, assigns, copy-edits titles
+and bodies, nudges approved PRs that are still open after 3 days, and
+reminds assignees 3 days before a milestone or issue due date on its
+05:00 and 16:00 PDT runs and on dispatch. The weekly
+issue-activity and discussion-miner workflows are in
+`.github/ISSUE_CURATION.md`.
 
 ### Pull requests
 
@@ -427,8 +435,13 @@ Summary and Test plan are optional guidance; CI does not fail on them.
 Add `## Closes` with `Fixes #N` only when `N` is a real issue; omit the
 section if nothing closes. Never leave a bare `Fixes #`. Delete **Notes** if unused.
 
+The title is the same path-like form as a commit: `scope: imperative summary`
+(`hw:`, `hw/smc:`, `dv/sep:`, `github:`, `tools/dv:`). A PR that spans
+several trees uses `treewide:`. Ingest does not prefix PR titles. Do not
+put `[WORKSTREAM/SUBSYSTEM]` or `feat(scope):` on a PR.
+
 ```bash
-gh pr create --title "<scope>: <imperative summary>" --body "$(cat <<'EOF'
+gh pr create --title "hw/smc: Reject unmapped register accesses" --body "$(cat <<'EOF'
 ## Summary
 <what changed and why>
 
@@ -439,7 +452,8 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR.
-Ingest assigns the opener when Assignees is empty.
+Ingest assigns the opener when Assignees is empty. The curator rewrites a
+PR title only when it is not already this form.
 
 ### Paired pull requests with the `nonfree` companion
 
@@ -498,3 +512,5 @@ Each of these is an auto-generated alias for the `ocah-`-prefixed target of the 
 either form works. They prefer tools on `PATH` and, when one is missing, print an install hint
 plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs only a subset of
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
+Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
+`scripts/ci/diff_class.py` is the classifier.

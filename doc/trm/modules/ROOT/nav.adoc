@@ -2,7 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 * xref:index.adoc[Documentation Overview]
-* xref:revision.adoc[Revision History]
+ifndef::release[]
+* xref:revision.adoc[Internal Revision History]
+endif::release[]
 * xref:about-ocah.adoc[About OCAH]
 * xref:getting-started.adoc[Getting Started]
 * xref:architecture.adoc[OCAH Architecture & Design]
