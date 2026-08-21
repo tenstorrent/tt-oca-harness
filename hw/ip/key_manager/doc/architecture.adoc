@@ -19,10 +19,9 @@ The CPU implementation enables future key management feature
 enhancements to be delivered with firmware. One example of this is TPM
 2.0 attestation.
 
-Consult the
-https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key Manager
-documentation] for the authoritative core functionality of the IP. The
-register map is reported in the SEP detailed register map.
+The Key Manager is a Tenstorrent design; this document is the
+authoritative description of its core functionality, and its register
+map is reported in the SEP detailed register map.
 
 To summarize, KM uses a collection of device identity and
 root key data to generate a set of keys using a derivation function.

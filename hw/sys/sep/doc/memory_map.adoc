@@ -199,8 +199,7 @@ endif::backend-pdf[]
 
 ==== Key Manager
 
-The Key Manager CSR window is at `0x1092_0000`. The generated maps live
-with the IP.
+The generated maps live with the IP.
 
 ifdef::backend-html5[]
 ++++
@@ -216,7 +215,7 @@ endif::backend-pdf[]
 
 ==== Secure DMA
 
-The DMA CSR window is at `0x1080_0000`.
+The secure DMA controller register map follows.
 
 ifdef::backend-html5[]
 ++++
@@ -233,10 +232,7 @@ endif::backend-pdf[]
 Consult the
 https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host
 documentation] for the authoritative core functionality of the IP. The
-register map follows. The controller sits on the SEP IO peripheral
-bridge (`0x10B0_0000`). The Cadence xSPI path (`sep_cdns_spi_wrap`) is
-supplied by the nonfree overlay and is not documented in this
-open-source map.
+register map follows.
 
 ifdef::backend-html5[]
 ++++
