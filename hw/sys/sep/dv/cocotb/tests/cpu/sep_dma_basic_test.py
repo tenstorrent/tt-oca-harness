@@ -30,7 +30,6 @@ cpu / +skip_fuse_sense (no fuse data is read).
 from __future__ import annotations
 
 import os
-import random
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,6 +38,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_seeded_rng import SepSeededRng
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_basic_test")
@@ -73,11 +73,11 @@ class SepDmaBasicCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepDmaBasicCfg":
-        # Deterministic by requirement, not by oversight: a failing leaf is
-        # reproduced with `--stage sim --seed N`, so the stimulus must be a
-        # pure function of the seed. These values pick DMA offsets for a
-        # simulated DUT; none of them is a key, token, or access decision.
-        rng = random.Random(seed)
+        # Seed-reproducible by requirement: a failing leaf is replayed with
+        # `--stage sim --seed N`, so the stimulus is a pure function of the
+        # seed. These pick DMA offsets for a simulated DUT -- never a key,
+        # token, or access decision. See AGENTS.md "Stimulus randomness".
+        rng = SepSeededRng(seed)
         nbytes = rng.choice((16, 32))
         src_off = rng.randrange(0, 0x10000, 16)
         dst_off = rng.randrange(0x20000, 0x30000, 16)

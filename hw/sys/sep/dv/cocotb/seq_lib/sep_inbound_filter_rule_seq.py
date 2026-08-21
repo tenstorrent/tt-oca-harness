@@ -21,11 +21,10 @@ ar/awuser[3:0]=0 still matches; allow_ns=1 matches the master's NONSECURE prot.
 
 from __future__ import annotations
 
-import random
-
 from sep_reg_meta import sym
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -116,11 +115,10 @@ class SepInboundFilterMatrixCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepInboundFilterMatrixCfg":
-        # Deterministic by requirement: `--stage sim --seed N` must replay the
-        # exact stimulus. These are AXI payload values written to a simulated
-        # DUT, never secrets, so a CSPRNG would cost reproducibility and buy
-        # nothing.
-        rng = random.Random(seed)
+        # Seed-reproducible by requirement: `--stage sim --seed N` must replay
+        # the exact stimulus. These are AXI payload words written to a
+        # simulated DUT, never secrets. See AGENTS.md "Stimulus randomness".
+        rng = SepSeededRng(seed)
         va = rng.getrandbits(32) or TARGET_VALUE
         vb = rng.getrandbits(32) or WINDOW_B_VALUE
         if va == vb:

@@ -36,6 +36,18 @@ in front of you.
   simulator off — anchor on a DUT probe or a real readback.
 - Never mask a spec-vs-RTL gap as an `expect_fail`/XFAIL.
 
+**Stimulus randomness** (AGENTS.md §5.1)
+- Randomized stimulus must be a pure function of the seed — `--stage sim --seed N`
+  replays a failing leaf. `secrets` / `SystemRandom` are unseedable and are not
+  alternatives.
+- Use `env/sep_seeded_rng.py` (`SepSeededRng`, SHA-256 counter mode), not
+  `random.Random`: stable across hosts and Python versions, and it does not trip
+  the SAST weak-PRNG rule.
+- **It is not a CSPRNG.** The stream is predictable from the seed by design.
+  Never use it for a key, token, nonce, or anything leaving the simulation.
+- Converting a call site changes its seed→value mapping, so recorded repro seeds
+  go stale. Never quote a per-seed value as VPLAN evidence.
+
 ## Running
 
 Canonical: `python3 tools/dv/run_dv.py --dut sep …` (see README.md).
