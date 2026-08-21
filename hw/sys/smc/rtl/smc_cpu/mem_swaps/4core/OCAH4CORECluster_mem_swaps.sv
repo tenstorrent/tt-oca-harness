@@ -193,13 +193,6 @@ module OCAH4CORECluster_rom_ext
 );
 
 `ifdef SIMULATION
-  // SIMULATION is defined (e.g., by Makefile at line 48: +define+SIMULATION)
-`elsif SIM
-  // SIM is defined (e.g., by YAML test framework verilog_defines line 56)
-`endif
-
-`ifdef SIMULATION
-`elsif SIM
   prim_rom #(
     .Width(64),
     .Depth(16384),
