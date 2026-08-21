@@ -111,24 +111,28 @@ jobs:
             tool: verilator
             runner: ubuntu-latest
             nightly_items: all
+            nightly_coverage: true
           - dut: sep
             tool: verilator
             runner: ${{ vars.SEP_CI_RUNNER || 'ubuntu-latest' }}
             # SEP's `all` mixes cpu firmware tests; `no_cpu` is the toolchain-free
             # subset. The smoke tier is unaffected (sep_axi_smoke_test is no_cpu).
             nightly_items: no_cpu
+            nightly_coverage: false
           - dut: smu
             tool: verilator
             runner: ubuntu-latest
             # SMU has no `all` group; `sep0_all` is the enrolled SEP=0 release set
             # (no c_compile / RISC-V toolchain stage on hosted runners).
             nightly_items: sep0_all
+            nightly_coverage: false
           - dut: smc
             tool: verilator
             runner: ubuntu-latest
             # SMC has no `all` group; `smoke` is the enrolled CI set and has no
             # firmware c_compile stage (cpu boot lives in other groups).
             nightly_items: smoke
+            nightly_coverage: false
     env:
       # smoke: pull_request, push, and default manual dispatch.
       # nightly: daily schedule, or manual dispatch with tier=nightly.
@@ -230,6 +234,9 @@ jobs:
             items=${{ matrix.nightly_items }}
             sim_jobs=4
             tier_args=(--reseed 3)
+            if [ "${{ matrix.nightly_coverage }}" = "true" ]; then
+              tier_args+=(--cov)
+            fi
           else
             items=smoke
             sim_jobs=2
@@ -256,17 +263,38 @@ jobs:
       - name: Gate on native result
         if: env.RUN_HARDWARE_CI == 'true'
         run: |
-          jq -e --arg flow "${{ matrix.dut }}" --arg tool "${{ matrix.tool }}" \
-            '.schema_version == 1 and .flow == $flow and .tool == $tool and .status == "PASS"' \
+          require_coverage=false
+          if [ "$TIER" = "nightly" ] && [ "${{ matrix.nightly_coverage }}" = "true" ]; then
+            require_coverage=true
+          fi
+          jq -e \
+            --arg flow "${{ matrix.dut }}" \
+            --arg tool "${{ matrix.tool }}" \
+            --argjson require_coverage "$require_coverage" \
+            '.schema_version == 1
+             and .flow == $flow
+             and .tool == $tool
+             and .status == "PASS"
+             and (($require_coverage | not) or (
+               .coverage.enabled == true
+               and (.coverage.total_percent | type == "number")
+               and (.coverage.report | type == "string" and length > 0)
+               and (.coverage.summary | type == "string" and length > 0)
+             ))' \
             "$RUN_DIR/result.json"
 
       # Logs and result.json for every test in the run; result.json is the
-      # schema-v1 record that tools/dv/run_dashboard.py collect consumes.
+      # schema-v1 record that tools/dv/run_dashboard.py collect consumes. The
+      # reference-only merged coverage report stays in the artifact, while
+      # per-leaf native databases are excluded after merge to keep the nightly
+      # artifact bounded.
       - name: Upload run artifacts
         if: always() && env.RUN_HARDWARE_CI == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: dv-run-${{ matrix.dut }}-${{ matrix.tool }}-${{ env.TIER }}
-          path: ${{ env.RUN_DIR }}
+          path: |
+            ${{ env.RUN_DIR }}
+            !${{ env.RUN_DIR }}/**/coverage/coverage.dat
           retention-days: 14
           if-no-files-found: ignore
