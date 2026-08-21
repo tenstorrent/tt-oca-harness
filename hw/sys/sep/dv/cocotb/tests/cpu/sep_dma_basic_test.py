@@ -76,7 +76,7 @@ class SepDmaBasicCfg:
         # Seed-reproducible by requirement: a failing leaf is replayed with
         # `--stage sim --seed N`, so the stimulus is a pure function of the
         # seed. These pick DMA offsets for a simulated DUT -- never a key,
-        # token, or access decision. See AGENTS.md "Stimulus randomness".
+        # token, or access decision.
         rng = SepSeededRng(seed)
         nbytes = rng.choice((16, 32))
         src_off = rng.randrange(0, 0x10000, 16)

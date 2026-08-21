@@ -14,7 +14,11 @@ not go through the ``random`` module, which SAST scanners flag on sight.
 
 Not a CSPRNG substitute. The stream is fully predictable from the seed, which
 is the entire point. Never use it for a key, token, nonce, or any value that
-leaves the simulation. See ``AGENTS.md`` "Stimulus randomness".
+leaves the simulation.
+
+Converting a call site changes its seed->value mapping, so a seed recorded as
+reproducing a past failure must be re-derived, and a per-seed value must never
+be quoted as verification-plan evidence.
 """
 
 import hashlib

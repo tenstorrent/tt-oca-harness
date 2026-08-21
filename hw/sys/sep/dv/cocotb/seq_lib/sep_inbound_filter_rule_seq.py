@@ -117,7 +117,7 @@ class SepInboundFilterMatrixCfg:
     def from_seed(cls, seed: int) -> "SepInboundFilterMatrixCfg":
         # Seed-reproducible by requirement: `--stage sim --seed N` must replay
         # the exact stimulus. These are AXI payload words written to a
-        # simulated DUT, never secrets. See AGENTS.md "Stimulus randomness".
+        # simulated DUT, never secrets.
         rng = SepSeededRng(seed)
         va = rng.getrandbits(32) or TARGET_VALUE
         vb = rng.getrandbits(32) or WINDOW_B_VALUE
