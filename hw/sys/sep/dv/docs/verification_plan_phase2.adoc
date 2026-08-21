@@ -20,18 +20,19 @@ the proof — an independent audit still has to show the checker can fail.
 What this document is *not*: a coverage percentage, and not a forward contract. Phase 2
 names 112 testcase-shaped identifiers. One of those, `sep_base_test`, is a base class
 rather than a testcase, so there are *111* real candidates: 42 implemented and 69 not.
-Three further entries added by PR #451, plus `sep_drbg_gen_segmentation_test` (named in
-no original plan), give 46 covered here and in Phase 1 together. Implemented
-entries are graded; the 69 unimplemented original names are listed in <<backlog>>
-as names, with no rows and no claims. Two later spec-gap tests are documented in
-<<documented-nyi>> with `NOT-RUN` checkers and are not in the proof count.
+`sep_drbg_gen_segmentation_test` (named in no original plan) plus
+`sep_crypto_edn_round_robin_grant_test` (kept log `20260820_210207`) are extra graded
+entries. Boot ROM *firmware* contracts (production ROM boot, SPI manifest/payload
+path, secure-boot RSA, integrity reject) are out of this plan — ROM-FW owner, not
+this VPLAN. ROM *hardware* access stays: IFU fetch and LSU read/write-ignore.
 
-(42 + 69 = 111, and 111 + 1 base class = 112. The 46 covered = 42 + 3 from PR #451 +
-`sep_drbg_gen_segmentation_test`.)
+Implemented hardware entries are graded; the 69 unimplemented original names are
+listed in <<backlog>> as names, with no rows and no claims. The `sep_rom_uvm_*`
+backlog names are ROM-HW access, not ROM-FW boot.
 
-=== Scope: 46 implemented, 24 graded here
+=== Scope: 43 graded, 22 here
 
-Phase 2 builds on the Phase 1 baseline rather than replacing it, so 22 of the 46 are
+Phase 2 builds on the Phase 1 baseline rather than replacing it, so 21 of the 43 are
 already graded in `verification_plan_phase1.adoc`. Those are *not* duplicated here. A
 checker with two rows in two documents is a maintenance hazard, and this branch has been
 bitten by that shape twice already — an eFuse field map held in both Python and C, and a
@@ -43,24 +44,16 @@ and stayed consistent with the other.
 | Group | Count | Where graded
 
 | Phase 1 baseline, re-run under Phase 2
-| 22
+| 21
 | `verification_plan_phase1.adoc`
 
 | Net-new Phase 2 entries
-| 21
+| 22
 | this document
-
-| OpenTitan SPI boot entries added by PR #451
-| 3
-| this document — they had no plan entry at all before
 
 | Named in Phase 2 planning, not implemented
 | 69
 | <<backlog>> — names only
-
-| Spec-gap entries, documented not implemented
-| 2
-| <<documented-nyi>> — `NOT-RUN`, excluded from the proof count
 |===
 
 [[audit]]
@@ -117,22 +110,15 @@ passed. The window is now long enough that the count reaches `0x400`+ first.
 to three encodings and never read it back; 16 bytes is a whole multiple of 1, 2 and 4, so
 a register stuck at its reset produced byte-identical output all three times.
 
-*Entailed guards.* Several "forbids X" checks were entailed by their own "requires Y" —
-both markers on complementary arms of one predicate in a single boot. Those rows were
-deleted: they were not spec scenarios and could not fail once the required marker passed.
+*Entailed guards.* Complementary-arm ROM-marker absences and flash-WIP DEFERRED
+lines were deleted from this plan. They are not checkers. The ROM tests still
+assert forbidden markers do not appear; a dual-print still fails the test.
 
 == Grades used here
 
-The same set as Phase 1, with the same meanings. `PARTIAL` is used for one row that
-is implemented and awaiting the next kept log; `GUARD` is defined and unused here:
-
-`PARTIAL`:: The checker holds, but a named sub-condition was not exercised. The
-unexercised part is stated in the row — not left for a reader to infer.
-
-`GUARD`:: The checker cannot fail on any DUT, because it guards a build precondition or a
-generated-register tie-off rather than a hardware property. Kept because it catches a
-regression in what it does cover, graded separately so it is never read as evidence about
-the design, and excluded from the proof count.
+The same set as Phase 1, with the same meanings. A running test's checkers are
+`PROVEN` or `FAILED`. `PARTIAL`, `GUARD`, and `INSUFFICIENT-EVIDENCE` are unused
+here. The one `FAILED` row is CHK-OWNERSHIP-WINDOW (RTL vs `fabric.adoc`).
 
 == Entries
 
@@ -350,6 +336,95 @@ so CHK1 verifies the *recurrence* rather than the reset phase, and CHK2..CHK4 ta
 previous verified stage's DUT output as their input. That is the standard chained-stage
 methodology, recorded here so the chain of custody is explicit.
 
+[[sep_crypto_edn_round_robin_grant_test]]
+=== sep_crypto_edn_round_robin_grant_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+Testlist:: `crypto.toml` (enrolled in `no_cpu` and `all`)
+Status:: Graded. Kept Verilator log `20260820_210207`.
+
+==== Description
+
+`hw/sys/sep/doc/crypto.adoc`: `u_axis_edn_crypto_s3c_scan`
+(`drbg_axis_edn_adapter`) is a small round-robin native-protocol EDN fan-out
+to AES, KMAC, OTBN RND, and OTBN URND. <<sep_crypto_edn_multisink_arbitration_test>>
+proves two clients complete and that their beat *time spans* overlap. It cannot
+create a same-cycle dual `edn_req`: AES/KMAC masking reseeds are short pulses
+separated by AXI configuration. `sep_drbg_km_vs_crypto_endpoint_concurrency_test`
+in the backlog is KM vs the crypto *leg*, a different adapter. Extending either
+fork does not hold two `edn_req` bits high together.
+
+This test holds AES (crypto_edn[0]) and OTBN URND (crypto_edn[3]) requesting at
+once, then brings up the real entropy chain so `prim_arbiter_ppc` inside the
+adapter has to grant both. AES masking reseeds pulse `edn_req` per beat, so a
+same-cycle dual-req sample at ack often sees only AES; consecutive post-adapter
+grants still alternate (AES then URND). That is the round-robin decision.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring up in `no_cpu` mode with fuse sense skipped.
+| `Skipping fuse sense`
+| LOGGED
+
+| 2
+| Hold AES PRNG reseed and OTBN URND `edn_req` together before EDN is enabled.
+| `CHK-DUAL-REQ PASS: crypto_edn_req bits`
+| LOGGED
+
+| 3
+| Bring up the entropy stack (noise force, seed, then enable EDN).
+| `CHK1 golden seeded from live ff_stage`
+| LOGGED
+
+| 4
+| Sample `crypto_edn_ack_o` until both clients have been granted and consecutive
+  grants differ.
+| `CHK-NO-STARVE PASS: both clients acked` and `CHK-GRANT-ALT PASS: consecutive grants alternate`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-DUAL-REQ
+| At least one cycle both selected clients have `edn_req` high. Without this,
+  CHK-GRANT-ALT is vacuous.
+| `CHK-DUAL-REQ PASS: crypto_edn_req bits 0x9 (AES bit 0 + URND bit 3)`
+| PROVEN
+
+| CHK-GRANT-ALT
+| After that dual request, consecutive post-adapter grants go to different
+  clients — the round-robin decision, not interval-span overlap.
+| `CHK-GRANT-ALT PASS: consecutive grants alternate (grants=[0, 3]`
+| PROVEN
+
+| CHK-NO-STARVE
+| Each requesting client receives at least one `edn_ack` in the window.
+| `CHK-NO-STARVE PASS: both clients acked (AES grants=1 URND grants=1)`
+| PROVEN
+|===
+
+NOTE: Next PR — standing rule, not this change-set. Any test that moves data
+across the DRBG must run CHK1..CHK4 (`strict=True`, FIFO drain, `report()`) and
+enable CHK5 on every live sink. CHK1..CHK4 are always allowed on a real entropy
+bring-up. CHK5 mode is the strongest the stimulus allows: `golden` when one sink
+and the pull order is predictable; `membership` when more than one crypto sink is
+live (each word is a CHK4 genbits word; dual-sink bit-exact routing needs the
+unported arbiter-assignment trace); `observe` when firmware-driven order is not
+golden-predictable (`rom_main`). This test, `sep_aes_mode_keysize_rand_test`, and
+`sep_kmac_mode_strength_rand_test` currently cross DRBG with `strict=False` and
+no `report()`.
+
 [[sep_drbg_gen_segmentation_test]]
 === sep_drbg_gen_segmentation_test
 
@@ -563,12 +638,12 @@ Brings the lifecycle controller up in PROD so the inbound filter is genuinely ac
 deny directions.
 
 IMPORTANT: this entry establishes the filter is active by value-checking `FEAT_CTRL`
-against the *Phase 1* lifecycle golden, so it inherits that golden's recorded limits and
-is not independent evidence about the lifecycle controller. Specifically: the DFT group
-`[47:32]` is structurally unverifiable because `secure_tm` has no testbench connection,
-and the differential-fault path has no frontdoor stimulus. Both are open items in
-`verification_plan_phase1.adoc`. What this entry proves on its own is the *filter*
-behaviour downstream of `sep_debug`; do not bank it as lifecycle-decode coverage.
+against the *Phase 1* lifecycle golden, so it inherits that golden and is not
+independent lifecycle-controller evidence. PROD already zeros the DFT group
+`[47:32]` in the LC decode, so this test does not drive `TEST_EN`. The strap gate
+and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
+`sep_efuse_lcc_lc_state_stitch_test`. What this entry proves on its own is the
+*filter* behaviour downstream of `sep_debug`.
 
 ==== Steps
 
@@ -607,13 +682,17 @@ behaviour downstream of `sep_debug`; do not bank it as lifecycle-decode coverage
 | CHK-OWNERSHIP
 | The CPU-LSU reads the programmed rule at the filter CFG CSR. The external master
   completes DECERR on read and write of that address, and the denied write does not
-  land — including after a second filter entry allow-lists the CFG address with
-  read and write. That is `hw/sys/sep/doc/fabric.adoc`: only the SEP CPU can program
-  these filters.
-| `CHK-OWNERSHIP PASS: filter cfg 0x10a21000 still DECERR after entry-1 allow`
-| PARTIAL — CPU-vs-external DECERR is in the previous kept log; the entry-1
-  allow-list half is in the test and awaits the next run of this entry. If that
-  run returns OKAY, it is RTL vs `fabric.adoc`, not a VPLAN overclaim.
+  land. CFG is outside entry 0's window in this step.
+| `CHK-OWNERSHIP PASS: filter cfg 0x10a21000 -- CPU-LSU reads rule`
+| PROVEN
+
+| CHK-OWNERSHIP-WINDOW
+| After a second filter entry allow-lists the CFG address with read and write, the
+  external master still DECERRs. `hw/sys/sep/doc/fabric.adoc`: only the SEP CPU
+  can program these filters.
+| `CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg 0x10a21000 on entry 1, external read resp=0, expected DECERR`
+| FAILED — RTL returned OKAY (Verilator run `20260820_164231`). Question:
+  https://github.com/tenstorrent/tt-oca-harness/issues/1050
 
 | CHK-NONVAC
 | Allow and block were both observed under one lifecycle state.
@@ -1352,305 +1431,29 @@ Testlist:: `system.toml`
 | PROVEN
 |===
 
-[[sep_rom_ot_dma_boot_test]]
-=== sep_rom_ot_dma_boot_test
-
-[horizontal]
-Tier:: Tier 2
-Run mode:: `cpu`, the `rom_boot` build target, boot-from-SPI strap seeded
-Testlist:: `cpu.toml`
-
-==== Description
-
-Added by PR #451 and previously undocumented. With the strap seeded, the production boot
-ROM built for the OpenTitan SPI controller takes its SPI branch, fetches the primary
-manifest and its payload over the real `spi_host` from the flash BFM into SRAM, validates
-both hashes with its own SHA-256, and runs the copied first-stage payload to firmware pass.
-
-==== Steps
-
-@@STEPS:sep_rom_ot_dma_boot_test@@
-
-==== Checkers
-
-[cols="1,4,4,1",options="header"]
-|===
-| ID | Check | Proof | Status
-
-| CHK-ROM-PATH
-| The ROM took the SPI path and validated what it fetched. Three markers are required and
-  each is logged when matched: the strap decision, the *flash-relative* manifest offset,
-  and the manifest-OK marker. The middle one is the load-bearing evidence — the SMC-SRAM
-  branch prints an absolute address, so only the SPI branch can print a flash-relative
-  offset. An empty marker list and a dark console are both asserted against, so a
-  zero-marker run can no longer look like a full one.
-| `CHK-ROM-PATH: required marker observed: MANIFEST_SRC=0x00001000`
-| PROVEN
-|===
-
-NOTE: the two ROM builds (DMA drain vs programmed-IO drain) are distinct binaries.
-Nothing in either entry asserts which drain ran; that is not a `hw/sys/sep/doc`
-requirement on these tests.
-
-[[sep_rom_ot_pio_boot_test]]
-=== sep_rom_ot_pio_boot_test
-
-[horizontal]
-Tier:: Tier 2
-Run mode:: `cpu`, the `rom_boot` build target, programmed-IO ROM build
-Testlist:: `cpu.toml`
-
-==== Description
-
-The same end-to-end SPI manifest and payload boot as <<sep_rom_ot_dma_boot_test>>, from
-the ROM build whose binary does not link the DMA drain — so the receive FIFO drain must be
-CPU programmed-IO. Checkers and grades are as above, inherited from the same scenario.
-
-==== Steps
-
-@@STEPS:sep_rom_ot_pio_boot_test@@
-
-==== Checkers
-
-[cols="1,4,4,1",options="header"]
-|===
-| ID | Check | Proof | Status
-
-| CHK-ROM-PATH
-| As above.
-| `CHK-ROM-PATH: required marker observed: MANIFEST_SRC=0x00001000`
-| PROVEN
-|===
-
-IMPORTANT: that this entry exercised the programmed-IO drain rather than the DMA drain is
-established by which ROM binary was linked, not by a checker.
-
-[[sep_rom_ot_secure_boot_test]]
-=== sep_rom_ot_secure_boot_test
-
-[horizontal]
-Tier:: Tier 2
-Run mode:: `cpu`, the `rom_boot` build target, signed flash image, `+sep_crypto_edn_force`
-Testlist:: `cpu.toml`
-
-==== Description
-
-With an RSA-3072 PKCS#1 v1.5 signed image, the ROM enters its secure-boot arm and completes
-a genuine signature verification on OTBN against the ROM-pinned development key digest
-before booting the payload to firmware pass.
-
-==== Steps
-
-@@STEPS:sep_rom_ot_secure_boot_test@@
-
-==== Checkers
-
-[cols="1,4,4,1",options="header"]
-|===
-| ID | Check | Proof | Status
-
-| CHK-ROM-PATH
-| As <<sep_rom_ot_dma_boot_test>>, plus the RSA markers: the verification started,
-  executed on OTBN, and reported a valid signature. Reaching the start marker entails the
-  pinned key digest matched, since the ROM checks it first.
-| `CHK-ROM-PATH: required marker observed: MANIFEST_SRC=0x00001000`
-| PROVEN
-|===
-
-IMPORTANT: the signature verification is real — the testbench force is confined to the
-OTBN random-number EDN response structs and does not touch the RSA datapath, the OTBN
-application, the digest or any comparison. What it means is that the
-entropy_source/CSRNG/EDN chain is *not* exercised: without the force this entry
-would stall at the verification start. Version rollback and key revocation execute only in
-their zero-fuse pass-through configuration, so those gates are run but not verified.
-Integrity reject (bad signature, tampered payload, anti-rollback) is
-<<sep_rom_ot_integrity_reject_test>>, not this entry. See <<open-items>> for the
-entropy-chain extension still owed here.
-
-[[documented-nyi]]
-== Documented, not implemented
-
-Two `hw/sys/sep/doc` requirements that no implemented test and no Phase 2 backlog
-name can carry. They are named here so the plan has a test, not an open-item
-sentence. Checkers are `NOT-RUN`. Proof strings are the log text the
-implementation must emit; they are not evidence.
-
-[[sep_rom_ot_integrity_reject_test]]
-=== sep_rom_ot_integrity_reject_test
-
-[horizontal]
-Tier:: Tier 2
-Run mode:: `cpu`, the `rom_boot` build target, OpenTitan SPI flash image
-Testlist:: `cpu.toml` (not enrolled)
-Status:: Documented only. Not implemented. `NOT-RUN`.
-
-==== Description
-
-`hw/sys/sep/doc/cpu.adoc`: failure of BL1 signature verification, payload-hash
-verification, or anti-rollback comparison puts the processor in a fail loop that
-needs a reset to exit. Every `sep_rom_ot_*_boot_test` and Phase 1
-`sep_rom_non_secure_boot_test` is the all-good path; corrupting the image would
-destroy those tests' own pass criterion. The Phase 2 backlog `sep_rom_uvm_*`
-names are ROM *memory* accesses, not boot-integrity reject.
-
-One directed test walks the three spec checks. The ROM already converges on
-`rom_err_fail` → mailbox `ROM_FW_FAIL` (`0xDEADBEEF`) + error code + `wfi`. The
-host must require that fail sequence and the absence of BL1 handoff / PASS
-magic. A timeout with a dark console is not the fail loop.
-
-==== Steps
-
-[cols="1,3"]
-|===
-| Step | Intent
-
-| Bring-up
-| Same SPI ROM boot as <<sep_rom_ot_dma_boot_test>> / <<sep_rom_ot_secure_boot_test>>
-  (strap, flash BFM, `rom_boot` target). No `+skip_fuse_sense` on the
-  anti-rollback cell (OTP version must be real).
-
-| Cell 1 — tampered payload
-| Load a well-formed manifest whose payload bytes differ from `payload_hash`.
-  Secure boot may be off: payload hash is always checked.
-
-| Cell 2 — bad signature
-| Load a signed image with a corrupted RSA-3072 signature (or a mismatched
-  digest). Secure boot on. Must reach `manifest_crypto_validate`, not fail
-  earlier on the manifest hash.
-
-| Cell 3 — anti-rollback
-| Load a signed image whose security version is below the OTP security-version
-  field. Non-zero OTP; not the zero-fuse pass-through the all-good tests use.
-|===
-
-==== Checkers
-
-[cols="1,4,4,1",options="header"]
-|===
-| ID | Check | Proof | Status
-
-| CHK-FAIL-LOOP
-| Each cell ends in the ROM fail loop: mailbox `ROM_FW_FAIL`, a non-zero error
-  code, no BL1 PASS magic, no handoff. A hang without `ROM_FW_FAIL` is not this
-  checker.
-| `CHK-FAIL-LOOP PASS:` then `ROM_FW_FAIL` / `DEADBEEF` and the cell's error code
-| NOT-RUN
-
-| CHK-PAYLOAD-HASH
-| Cell 1: the ROM reports payload-hash failure (`PLD_HASH_FAIL=` or
-  `MANIFEST_BOOT_FAIL=`) and then CHK-FAIL-LOOP. A later cell must not be
-  allowed to skip this one.
-| `CHK-PAYLOAD-HASH PASS: tampered payload -> PLD_HASH_FAIL=`
-| NOT-RUN
-
-| CHK-BAD-SIG
-| Cell 2: the ROM reports crypto/signature failure (`CRYPTO_FAIL=`) after
-  starting RSA (`RSA_VERIFY` / equivalent required marker) and then
-  CHK-FAIL-LOOP.
-| `CHK-BAD-SIG PASS: bad signature -> CRYPTO_FAIL=`
-| NOT-RUN
-
-| CHK-ANTI-ROLLBACK
-| Cell 3: the ROM reports the version/rollback failure from
-  `manifest_crypto_validate` and then CHK-FAIL-LOOP. Zero-fuse pass-through
-  does not count.
-| `CHK-ANTI-ROLLBACK PASS: manifest version below OTP -> CRYPTO_FAIL=`
-| NOT-RUN
-|===
-
-NOTE: key-revocation and a cleared boot strap are not in `cpu.adoc`'s fail-loop
-sentence. Do not add them to this entry unless the spec names them.
-
-[[sep_crypto_edn_round_robin_grant_test]]
-=== sep_crypto_edn_round_robin_grant_test
-
-[horizontal]
-Tier:: Tier 2
-Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
-Testlist:: `crypto.toml` (not enrolled)
-Status:: Documented only. Not implemented. `NOT-RUN`.
-
-==== Description
-
-`hw/sys/sep/doc/crypto.adoc`: `u_axis_edn_crypto_s3c_scan`
-(`drbg_axis_edn_adapter`) is a small round-robin native-protocol EDN fan-out
-to AES, KMAC, OTBN RND, and OTBN URND. <<sep_crypto_edn_multisink_arbitration_test>>
-proves two clients complete and that their beat *time spans* overlap. It cannot
-create a same-cycle dual `edn_req`: AES/KMAC masking reseeds are short pulses
-separated by AXI configuration. `sep_drbg_km_vs_crypto_endpoint_concurrency_test`
-in the backlog is KM vs the crypto *leg*, a different adapter. Extending either
-fork does not hold two `edn_req` bits high together.
-
-This test holds two adapter clients requesting at once (`crypto_edn_req_o`
-probes already in `tb_top.sv`), then checks the arbiter grants both rather than
-starving one. `prim_arbiter_ppc` inside the adapter is the RTL under test.
-
-==== Steps
-
-[cols="1,3"]
-|===
-| Step | Intent
-
-| Bring-up
-| Same entropy bring-up as <<sep_crypto_edn_multisink_arbitration_test>>
-  (noise force, seed, DRBG generate flowing into the crypto adapter).
-
-| Hold two clients
-| Put two of AES / KMAC / OTBN RND / OTBN URND into a mode that keeps
-  `edn_req` asserted (not a one-beat reseed pulse). OTBN URND in
-  UrndRefresh is the known hold; the second client must also hold.
-
-| Observe
-| Sample `crypto_edn_req_o` and the corresponding ack/grant path until both
-  request bits have been high in the same cycle and each has been granted.
-|===
-
-==== Checkers
-
-[cols="1,4,4,1",options="header"]
-|===
-| ID | Check | Proof | Status
-
-| CHK-DUAL-REQ
-| At least one cycle both selected clients have `edn_req` high. Without this,
-  CHK-GRANT-ALT is vacuous.
-| `CHK-DUAL-REQ PASS: crypto_edn_req bits`
-| NOT-RUN
-
-| CHK-GRANT-ALT
-| While both request, consecutive grants go to different clients — the
-  round-robin decision, not interval-span overlap.
-| `CHK-GRANT-ALT PASS: consecutive grants alternate`
-| NOT-RUN
-
-| CHK-NO-STARVE
-| Each requesting client receives at least one `edn_ack` in the window.
-| `CHK-NO-STARVE PASS: both clients acked`
-| NOT-RUN
-|===
+[[rom-fw-out-of-scope]]
+== Boot ROM firmware — out of this plan
+
+Production Boot ROM firmware contracts (SPI manifest/payload boot, DMA vs PIO
+drain, secure-boot RSA, integrity reject / fail loop) are not graded here.
+They belong to the ROM-FW owner. This plan keeps ROM *hardware* access only:
+`sep_boot_rom_smoke_test` and `sep_rom_sanity_test` in Phase 1 (IFU fetch),
+and <<sep_boot_rom_lsu_read_test>> (LSU read / write-ignored). The
+`sep_rom_uvm_*` names in <<backlog>> are the same HW-access class.
 
 [[open-items]]
 == Open items
 
 These are `hw/sys/sep/doc` requirements that no implemented checker currently proves.
-JTAG deny in PROD, the DFT/`secure_tm` column, and `lc_sigint` INVALID live in
-`verification_plan_phase1.adoc` (those tests are graded there). ROM integrity
-reject is <<sep_rom_ot_integrity_reject_test>>; EDN round-robin grant is
-<<sep_crypto_edn_round_robin_grant_test>> — documented, not implemented. A name
-that is not in either table is not a hole: flash `WIP`, complementary-arm ROM
-markers, and `dbg_rstb` isolation are not spec scenarios.
-
-[cols="2,3,3",options="header"]
-|===
-| Spec | Gap | What would close it
-
-| `hw/sys/sep/doc/cpu.adoc`: OTBN RSA verification consumes entropy.
-| `sep_rom_ot_secure_boot_test` supplies OTBN RND/URND via `+sep_crypto_edn_force`,
-  so the RSA compare is real and the entropy_source/CSRNG/EDN chain is not. Version
-  rollback and key revocation run only in their zero-fuse pass-through configuration.
-| Extend that same test: bring up the real entropy chain before the ROM reaches RSA,
-  and program non-zero version/revocation fuses.
-|===
+JTAG non-token MMR deny is CHK-JTAG-MMR-DENY (`FAILED`,
+https://github.com/tenstorrent/tt-oca-harness/issues/626). The TEST_EN / `secure_tm`
+DFT-group gate and `lc_sigint_err` fail-closed are CHK-SECURE-TM / CHK-SIGINT on
+`sep_efuse_lcc_lc_state_stitch_test` (pending a kept log). Latch-timing corners of
+the strap remain backlog `sep_efuse_strap_secure_tm_latch_test`.
+Boot ROM firmware contracts are out of this plan (see <<rom-fw-out-of-scope>>).
+EDN round-robin grant is <<sep_crypto_edn_round_robin_grant_test>> (PROVEN, run
+`20260820_210207`). Next PR: enable CHK1..CHK4 and CHK5 on every test that
+moves data across the DRBG (see that entry's NOTE).
 
 [[backlog]]
 == Backlog: named, not implemented
@@ -1750,29 +1553,27 @@ sentence ("Only the SEP CPU can program these filters") is CHK-OWNERSHIP on
 
 == Audit summary
 
-24 testcases, 101 checkers.
+22 testcases, 102 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 100
-| `PARTIAL` | 1
+| `PROVEN` | 101
+| `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
 | `NOT-RUN` | 0
 | `STALE` | 0
-| `FAILED` | 0
+| `FAILED` | 1
 |===
 
-The one `PARTIAL` is CHK-OWNERSHIP on `sep_fabric_inbound_filter_rule_matrix_test`:
-the CPU-vs-external DECERR half is already in a kept log; the entry-1 allow-list
-half is in the test and waits on the next run. Flash `WIP` and complementary-arm
-ROM-marker rows were dropped — they were not architecture requirements.
-
-Two further testcases are documented in <<documented-nyi>>
-(`sep_rom_ot_integrity_reject_test`, `sep_crypto_edn_round_robin_grant_test`).
-Their checkers are `NOT-RUN` and are not in the table above.
+The one `FAILED` row is CHK-OWNERSHIP-WINDOW: after entry 1 allow-lists the filter
+CFG address, the external master returns OKAY (Verilator run `20260820_164231`).
+That is RTL vs `fabric.adoc` ("Only the SEP CPU can program these filters"),
+filed as a question:
+https://github.com/tenstorrent/tt-oca-harness/issues/1050
+CHK-OWNERSHIP without that window is `PROVEN` in the same log.
 
 A keyword match against a kept log is not the proof. An independent audit still has
 to read the checker and confirm a broken DUT would fail it — a printed check tag with

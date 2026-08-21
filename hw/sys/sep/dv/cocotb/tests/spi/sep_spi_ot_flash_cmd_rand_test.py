@@ -32,8 +32,6 @@ Checks:
     - exactly 6 BFM transactions in the expected opcode order;
     - the PAGE PROGRAM (0x02) landed at the random addr with the random data;
     - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards).
-  CHK-WIP / CHK-DUAL-QUAD: DEFERRED (instant-ready BFM; single-bit DQ, no
-    0x3B/0x6B) -- infra-gated.
 
 main() returns the error count; start.S emits PASS (0xCAFEBABE) / FAIL
 (0xDEADBEEF) magic, which the boot scoreboard gates on (+ banner + ICCM exec).

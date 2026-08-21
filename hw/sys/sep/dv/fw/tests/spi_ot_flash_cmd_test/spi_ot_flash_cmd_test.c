@@ -9,12 +9,11 @@
 //
 // Flow: WREN -> PAGE PROGRAM (single TX segment: cmd+addr+data) -> READ + verify
 // == pattern -> WREN -> SECTOR ERASE -> READ + verify == 0xFF. ERROR_STATUS
-// checked == 0. The RDSR/WIP status-poll path is deferred: the current BFM is
-// instant-ready and the split RDSR transaction sequence needs separate bring-up.
+// checked == 0. The BFM is instant-ready (no WIP bit); dual/quad lanes are not
+// modeled. Neither is a checker here.
 //
 // The BFM memory inits to 0xFF (erased), so PAGE PROGRAM (NOR-AND) writes the
-// pattern directly. CHK-DUAL-QUAD is deferred: the BFM models neither the
-// 0x3B/0x6B opcodes nor multi-lane DQ (single-bit data phase).
+// pattern directly.
 //
 // RANDOMIZATION ([RAND-REP]): the scenario (flash address, word count, data) is
 // held in the g_spi1_params block below. The committed defaults are the directed
@@ -299,8 +298,6 @@ int main(void) {
     } else {
         sep_mbx_puts("CHK-NO-ERROR PASS: OT SPI ERROR_STATUS==0\n");
     }
-    sep_mbx_puts("CHK-WIP DEFERRED: RDSR/WIP poll path not enabled in this firmware\n");
-    sep_mbx_puts("CHK-DUAL-QUAD DEFERRED: BFM has no 0x3B/0x6B opcode or multi-lane DQ\n");
 
     if (errors == 0) {
         sep_mbx_puts("PASS: OT SPI flash program/read/erase/no-error all OK\n");

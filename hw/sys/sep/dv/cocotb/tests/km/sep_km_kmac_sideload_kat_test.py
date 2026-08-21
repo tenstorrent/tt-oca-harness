@@ -169,10 +169,6 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
             "CHK-PUB positive control failed: KMAC STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
         )
-        self.logger.info(
-            "CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=0x%08x)", ctl_pub,
-        )
 
         # CHK-SIDE/CHK-MAC: sideload MAC, then SW-key MAC with the KNOWN key.
         a_side = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=True)

@@ -22,14 +22,13 @@ W1S-monotonic / valid-transition rules (the test-level mirror of the RTL SVA
 state checker); the fixed monotonic chain covers the SVA forward-only and
 terminal-stability properties implicitly.
 
-Scope: differential-decode integrity (``lc_sigint_err``) is NOT covered, and the
-earlier claim here that it was "covered indirectly" was an overclaim. It is now
-observed via ``lcc_sigint_err_probe_o`` and asserted to stay 0, but that is a health
-guard, not a test of the fault path: the runs establish that the sense FSM regenerates
-the ``{~raw, raw}`` pair from the raw nibble in OTP, so no staged image can present a
-broken pair to the decode. The golden's ``sigint_err`` branch and the specification's
-INVALID row therefore have no frontdoor stimulus in this environment. Proving the run
-did not trip a fault is not the same as proving the fault detection works.
+After the initial TEST_DEV sense (TEST_EN strap = 0, DFT group forced off) the
+test raises the frontdoor ``test_en_strap_i``, re-senses, and proves the latched
+``secure_tm`` opens FEAT_CTRL[47:32]. The remaining walk keeps the strap high.
+
+``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
+The test injects a broken pair at the LCC decoder input (signed-off force) after
+the walk, proves fail-closed FEAT_CTRL=0, then releases and proves restore.
 """
 
 from __future__ import annotations
@@ -47,6 +46,7 @@ from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_image import SepEfuseImage, LC_WORD_IDX
 from env.sep_lcc_golden import (
     LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1,
+    TEST_MASK, feat_ctrl_expected,
     is_legal_lc, is_valid_lc_transition, lc_state_name,
 )
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
@@ -254,6 +254,80 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         image.set_lc_state(raw)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
 
+    async def _check_state(
+        self,
+        image: SepEfuseImage,
+        raw: int,
+        *,
+        secure_tm: int,
+        sigint_err: int = 0,
+        prev_raw: int | None,
+    ) -> int:
+        """Value-check LC shadow + FEAT_CTRL; return the DUT-observed LC code."""
+        sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
+        observed_tm = int(cocotb.top.secure_tm_o.value) & 0x1
+        observed_sigint = int(cocotb.top.lcc_sigint_err_probe_o.value) & 0x1
+        assert observed_tm == secure_tm, (
+            f"secure_tm_o={observed_tm} after TEST_EN strap={secure_tm} "
+            f"(LC=0x{raw:x})"
+        )
+        assert observed_sigint == sigint_err, (
+            f"lc_sigint_err={observed_sigint} expected {sigint_err} at LC=0x{raw:x}"
+        )
+        seq = sep_lcc_stitch_check_seq(
+            image, secure_tm=secure_tm, sec_dis=sec_dis, sigint_err=sigint_err,
+        )
+        await self.start_seq(seq)
+
+        sip_dis = image.field_int("SIP_DIS")
+        sys_dis = image.field_int("SYS_DIS")
+        feat = feat_ctrl_expected(
+            raw, sip_dis, sys_dis,
+            secure_tm=secure_tm, sec_dis=sec_dis, sigint_err=sigint_err,
+        )
+        if raw == LC_TEST_DEV and not sigint_err:
+            dft = (feat & TEST_MASK) >> 32
+            if secure_tm:
+                assert dft != 0, "TEST_DEV + secure_tm=1 must leave DFT bits live"
+                self.logger.info(
+                    "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL[47:32]=0x%04x",
+                    dft,
+                )
+            else:
+                assert dft == 0, "TEST_DEV + secure_tm=0 must force DFT group to 0"
+                self.logger.info(
+                    "CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL[47:32]=0"
+                )
+        if sigint_err:
+            assert feat == 0, (
+                f"sigint fail-closed expects FEAT_CTRL=0, got 0x{feat:016x} "
+                f"(sec_dis={sec_dis})"
+            )
+            self.logger.info(
+                "CHK-SIGINT PASS: lc_sigint_err=1, FEAT_CTRL=0x%016x (fail-closed)",
+                feat,
+            )
+
+        if sigint_err:
+            return prev_raw if prev_raw is not None else raw
+
+        observed = seq.observed_lc_raw
+        assert observed is not None, "sequence did not publish an observed LC code"
+        assert is_legal_lc(observed), (
+            f"DUT returned an illegal LC code 0x{observed:x} "
+            f"(programmed {lc_state_name(raw)})"
+        )
+        if prev_raw is not None:
+            assert is_valid_lc_transition(prev_raw, observed), (
+                f"illegal LC transition {lc_state_name(prev_raw)} -> "
+                f"{lc_state_name(observed)} (as observed on the DUT)"
+            )
+        self.logger.info(
+            "[lcc] observed LC code 0x%x (%s) after programming %s",
+            observed, lc_state_name(observed), lc_state_name(raw),
+        )
+        return observed
+
     async def run_scenario(self) -> None:
         # Pinned disable vectors + seeded-random data; LC_STATE set per step.
         image = SepEfuseImage().randomize(
@@ -266,58 +340,44 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         # (+sep_efuse_prog_fail_count), so a zero count means the retry path was
         # never exercised -- asserted at the end so the retry check is non-vacuous.
         self._total_program_retries = 0
-        # security_disable is a DUT output; feed the real value to the golden
-        # model instead of assuming. secure_tm is internal and 0 for this image.
         prev_raw: int | None = None
 
         for i, raw in enumerate(_LC_CHAIN):
-            # Guards the stimulus table itself; the DUT-side legality check is below.
             assert is_legal_lc(raw), f"test bug: illegal LC code 0x{raw:x}"
             if i == 0:
                 await self._sense_initial_state(image, raw)
+                prev_raw = await self._check_state(
+                    image, raw, secure_tm=0, prev_raw=prev_raw,
+                )
+                # Latch TEST_EN on the next sense-done. resense pulses rst_ni
+                # (clears the latch flop) then re-samples the strap.
+                cocotb.top.test_en_strap_i.value = 1
+                await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+                prev_raw = await self._check_state(
+                    image, raw, secure_tm=1, prev_raw=prev_raw,
+                )
             else:
                 await self._program_state_and_resense(image, raw)
-
-            # sec_dis is OBSERVED on lcc_security_disable_probe_o, not assumed.
-            sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
-
-            # The differential-decode fault status, likewise observed rather than
-            # inferred. No stimulus in this environment can present a BROKEN {~raw, raw}
-            # pair -- the sense FSM regenerates the pair from the raw nibble, so a staged
-            # image cannot produce one -- which means lc_sigint_err has no positive
-            # coverage here and the golden's sigint branch is unreachable from the
-            # frontdoor. Asserting it stays 0 is therefore NOT a test of the fault path;
-            # it is a guard that the decode is healthy while the checks below run, and it
-            # is what lets those checks attribute a feat_ctrl mismatch to the decode
-            # rather than to a silent sigint. The plan records the gap.
-            sigint = int(cocotb.top.lcc_sigint_err_probe_o.value) & 0x1
-            assert sigint == 0, (
-                f"lc_sigint_err is set at LC=0x{raw:x}: the differential LC decode "
-                f"reported a fault, so every feat_ctrl expectation below is void"
-            )
-            seq = sep_lcc_stitch_check_seq(image, secure_tm=0, sec_dis=sec_dis)
-            await self.start_seq(seq)
-
-            # Legality and transition rules are applied to the code the DUT
-            # returned over the frontdoor, not to the _LC_CHAIN literal we
-            # programmed. Checking the literal would compare two test-side
-            # constants and could never fail, whatever the DUT did.
-            observed = seq.observed_lc_raw
-            assert observed is not None, "sequence did not publish an observed LC code"
-            assert is_legal_lc(observed), (
-                f"DUT returned an illegal LC code 0x{observed:x} "
-                f"(programmed {lc_state_name(raw)})"
-            )
-            if prev_raw is not None:
-                assert is_valid_lc_transition(prev_raw, observed), (
-                    f"illegal LC transition {lc_state_name(prev_raw)} -> "
-                    f"{lc_state_name(observed)} (as observed on the DUT)"
+                prev_raw = await self._check_state(
+                    image, raw, secure_tm=1, prev_raw=prev_raw,
                 )
-            self.logger.info(
-                "[lcc] observed LC code 0x%x (%s) after programming %s",
-                observed, lc_state_name(observed), lc_state_name(raw),
-            )
-            prev_raw = observed
+
+        # Broken-pair inject: no legal OTP image can present one. Force the
+        # LCC decoder input, prove fail-closed, then release and restore.
+        last_raw = _LC_CHAIN[-1]
+        cocotb.top.lc_sigint_inject_i.value = 1
+        await ClockCycles(cocotb.top.clk_i, 2)
+        await self._check_state(
+            image, last_raw, secure_tm=1, sigint_err=1, prev_raw=prev_raw,
+        )
+        cocotb.top.lc_sigint_inject_i.value = 0
+        await ClockCycles(cocotb.top.clk_i, 2)
+        await self._check_state(
+            image, last_raw, secure_tm=1, sigint_err=0, prev_raw=prev_raw,
+        )
+        self.logger.info(
+            "CHK-SIGINT-RELEASE PASS: lc_sigint_err returned to 0, FEAT_CTRL restored"
+        )
 
         assert self._total_program_retries >= 1, (
             "OTP-program retry path never exercised: no program failures were "
@@ -328,6 +388,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
 
         self.logger.info(
             "LCC stitch: walked %d states (%s); FEAT_CTRL matched golden at each; "
+            "secure_tm off/on and lc_sigint inject proven; "
             "OTP-program retry path exercised %d time(s)",
             len(_LC_CHAIN), " -> ".join(lc_state_name(r) for r in _LC_CHAIN),
             self._total_program_retries,

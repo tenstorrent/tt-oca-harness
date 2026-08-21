@@ -144,10 +144,6 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             "HMAC public KEY CSRs not all zero after sideload (key leak): "
             f"{[hex(w) for w in pub if w]}"
         )
-        self.logger.info(
-            "CHK-PUB HMAC public KEY frontdoor reads zero after sideload "
-            "(read path alive: STATUS=0x%08x)", ctl_pub,
-        )
 
         # CHK-MAC: keyed HMAC-SHA256 with the SIDELOAD key, value-checked vs golden.
         await self.hmac.configure_keyed_256()

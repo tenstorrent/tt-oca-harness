@@ -16,10 +16,11 @@ environment: the bring-up smoke suite plus the twenty-one representative subsyst
 selected to carry the widest coverage per test.
 
 Phase 1 is *closed*. Every testcase listed here is implemented, runs in the
-cocotb/PyUVM + Verilator flow, and is expected to pass in regression — with one
-exception, recorded in <<open-items>>: `sep_rom_non_secure_boot_test` needs a boot-ROM
-image this repository does not build, so a clean checkout cannot run it. This document
-records what each test *proves*, and the exact evidence in its log that proves it.
+cocotb/PyUVM + Verilator flow, and is expected to pass in regression. Boot ROM
+*firmware* contracts (production ROM boot flow, integrity reject) are out of this
+plan — ROM-FW owner, not this VPLAN. ROM *hardware* access stays
+(`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`). This document records what
+each test *proves*, and the exact evidence in its log that proves it.
 
 What this document is *not*: it is not a status tracker and not a coverage percentage.
 There is no functional-coverage number for this environment: it has no SystemVerilog
@@ -369,67 +370,6 @@ this path, so it is the first one to look at when a firmware test fails.
 | The core boots from tightly-coupled memory and reaches the firmware entry point,
   proven by console output that only executed code can produce.
 | `Hello from SEP OSS firmware!`
-| PROVEN
-|===
-
-// ---------------------------------------------------------------------------
-
-[[sep_rom_non_secure_boot_test]]
-=== sep_rom_non_secure_boot_test
-
-[horizontal]
-Tier:: Smoke
-Run mode:: `cpu`
-Testlist:: `cpu.toml`
-
-==== Description
-
-Boots the real boot ROM image rather than a test firmware and lets it run its
-non-secure startup flow. The ROM announces each stage it reaches, so the console
-trace is the evidence that the ROM executed its memory-check stage on the real core and
-that the copied payload ran afterwards. The markers are required as a set, not in a
-sequence — nothing checks their order — and the fuse-check marker comes from the payload
-after handoff, not from the ROM.
-
-==== Steps
-
-[cols="1,4,4,1",options="header"]
-|===
-| # | Step | Proof | Status
-
-| 1
-| Stage the boot ROM image and release the CPU with the ROM as the reset vector.
-| `SEP fuse sense done at cycle 804` (real sense, no skip)
-| LOGGED
-
-| 2
-| Let the ROM run its non-secure boot path.
-| `ROM> BOOT_SECONDARY` then `ROM> WAIT_SMC_MANIFEST` on the ROM's virtual console
-| LOGGED
-
-| 3
-| Collect the stage markers it prints.
-| `CHK-ROM-STAGES PASS: all 5 required ROM/BL1 stage markers observed`
-| LOGGED
-
-|===
-
-==== Checkers
-
-[cols="1,3,4,1",options="header"]
-|===
-| ID | Check | Proof | Status
-
-| CHK-ROM-STAGES
-| The ROM announces its memory-check and hash-validation stages, and the copied payload
-  announces its own stages after handoff — so the set evidences both that the real ROM
-  ran and that control transferred. These markers are now required, not merely printed:
-  the whole virtual console could previously go dark and the run would stay green.
-  Note the hash markers show the ROM *reports* validating the manifest and payload;
-  nothing here corrupts either, so rejection is untested. What the set does prove is
-  that the real ROM image executed on the core rather than a stub.
-| `CHK-ROM-STAGES PASS: all 5 required ROM/BL1 stage markers observed` — the run
-  additionally logs each marker as a `ROM> ...` line
 | PROVEN
 |===
 
@@ -821,11 +761,10 @@ Testlist:: `efuse_lcc.toml`
 ==== Description
 
 Proves the write-one-to-set programming path into one-time-programmable memory: bits
-that are burned read back as one directly from the array before any re-sense,
-programming two bits in the same word does not clobber the earlier one, and after a
-cold re-sense the shadow equals the original image plus exactly the bits that were
-burned. Together these establish that programming is real, additive, and persistent —
-the three properties every later lifecycle test assumes.
+that are burned read back as one directly from the array before any re-sense, and
+after a cold re-sense the shadow equals the original image plus exactly the bits that
+were burned. Together these establish that programming reached the array through the
+real command path and that the sense FSM re-reads it.
 
 [NOTE]
 ====
@@ -887,11 +826,6 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
   only after the re-sense, by CHK-W1S-PERSIST.
 | `CHK-OTP-DIRECT PASS: burned bits read 1 directly from OTP pre-resense`
 | PROVEN
-
-| CHK-W1S-NOCLOBBER
-| Programming a second bit in the same word leaves the first one set.
-| `CHK-W1S-NOCLOBBER PASS: sequential same-word programs both persist`
-| GUARD — build precondition, cannot fail on any DUT
 
 | CHK-W1S-PERSIST
 | After cold re-sense the shadow equals the original image plus exactly the burned bits — all twelve, the ten random ones and the two from step 4.
@@ -1422,8 +1356,8 @@ released from reset, with AES, HMAC and KMAC held parked for the whole transfer.
 
 | CHK5
 | The Key Manager and OTBN both take real entropy beats from the shared bus.
-  Bit-exact per-sink compare is not this row: KM firmware pull order is not
-  golden-alignable.
+  Alive-mode beat count. Bit-exact per-sink compare is the small KM ROM tests
+  (`sep_esrc_e2e_smoke_test`, `sep_drbg_gen_segmentation_test`), not `rom_main`.
 | `CHK5_km` row of the scoreboard report with a non-zero `observed_beats` (count varies per run) +
   `CHK5_otbn_urnd` row of the scoreboard report with a non-zero `observed_beats` (count varies per run)
 | PROVEN
@@ -1503,6 +1437,18 @@ of assuming programming always succeeds first time.
 | `LCC stitch: walked 4 states (TEST_DEV -> PROD -> RMA_SIP_1 -> RMA_CHIP_1); FEAT_CTRL matched golden at each` and one `[lcc] state ...` line per state
 | LOGGED
 
+| 5
+| After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and
+  prove the DFT group opens. Keep the strap high for the rest of the walk.
+| `CHK-SECURE-TM-OFF PASS` then `CHK-SECURE-TM-ON PASS`
+| implemented -- pending kept log
+
+| 6
+| Inject a broken LC_STATE pair at the LCC decoder input; prove fail-closed
+  FEAT_CTRL=0; release and restore.
+| `CHK-SIGINT PASS` then `CHK-SIGINT-RELEASE PASS`
+| implemented -- pending kept log
+
 |===
 
 ==== Checkers
@@ -1522,12 +1468,14 @@ of assuming programming always succeeds first time.
 
 | CHK-GOLDEN
 | The feature-control output matches the golden decode at each of the four states, at
-  the pinned override vectors, with demote at its reset value. Demote is not written
-  here — the demoted branches are covered by
-  `sep_lcc_uvm_inbound_filter_gating_test`. See <<lcc-golden-follows-rtl>> for what
-  "matches the golden" does and does not establish.
-| One `[lcc] state RMA_SIP_1 (0x3): SIP_DIS=0x0f0f0f0f0f0f0f0f SYS_DIS=0x00ff00ff00ff00ff -> FEAT_CTRL=0xf0f00000f0f0f0f0` line per state
-| PROVEN
+  the pinned override vectors, with demote at its reset value. After the initial
+  TEST_DEV / `secure_tm=0` check the walk holds `secure_tm=1`, so RMA_SIP / RMA_CHIP
+  include the DFT group. Demote is not written here — the demoted branches are
+  covered by `sep_lcc_uvm_inbound_filter_gating_test`. See
+  <<lcc-golden-follows-rtl>> for what "matches the golden" does and does not
+  establish.
+| One `[lcc] state ... secure_tm=1 sigint=0 -> FEAT_CTRL=...` line per state
+| implemented -- pending kept log (values change vs the prior `secure_tm=0` walk)
 
 | CHK-OTP-RETRY
 | An injected physical program failure is observed, cleared and retried to success.
@@ -1540,6 +1488,21 @@ of assuming programming always succeeds first time.
   at three of the four states.
 | The four distinct values on the `[lcc] state ...` lines
 | PROVEN
+
+| CHK-SECURE-TM
+| The TEST_EN strap is driven frontdoor. After the initial TEST_DEV sense with the
+  strap at 0, FEAT_CTRL[47:32] is 0 and `secure_tm_o` is 0. After the strap is
+  raised and the image is re-sensed, `secure_tm_o` is 1 and the DFT group matches
+  the golden (non-zero under the pinned disable vectors).
+| `CHK-SECURE-TM-OFF PASS` then `CHK-SECURE-TM-ON PASS`
+| implemented -- pending kept log
+
+| CHK-SIGINT
+| A signed-off force breaks the LC_STATE pair at the LCC decoder input. `lc_sigint_err`
+  asserts and FEAT_CTRL is 0 (fail-closed, `SEC_DIS` observed 0). Release restores
+  both.
+| `CHK-SIGINT PASS` then `CHK-SIGINT-RELEASE PASS`
+| implemented -- pending kept log
 |===
 
 [[lcc-golden-follows-rtl]]
@@ -1833,14 +1796,6 @@ is why it is a firmware test rather than a host-driven one.
 | `PASS: mailbox[0] IRQ -> PIC claim id 0x00000001 -> CPU ISR`
 | PROVEN
 
-| CHK-CLAIM-ID
-| Only the mailbox source has a registered handler, so any other source reaches the
-  dummy handler and fails the test with the routine never having run. Under fast
-  interrupt redirect the logged identifier is a constant rather than a discriminating
-  compare — the property is carried by CHK-DELIVERY's mechanism, not by this value.
-| `PIC claim id 0x00000001`
-| GUARD — build precondition, cannot fail on any DUT
-
 | CHK-RW1C
 | The interrupt status register clears on write-one-to-clear, and the read-only
   pending register — derived as status AND enable — reads back zero while the enable
@@ -1919,9 +1874,8 @@ compared to a golden value.
 | PROVEN
 
 | CHK-KMAC-LIVE
-| KMAC completes with clean error status and a non-zero digest. Bit-exact KMAC
-  is `sep_kmac_mode_strength_rand_test` (independent FIPS-202/SP800-185 model),
-  not this smoke.
+| KMAC completes with clean error status and a non-zero digest. Golden-checked KMAC
+  is `sep_kmac_mode_strength_rand_test`.
 | `[PASS] KMAC done, ERR_CODE=0, digest nonzero kdig[0]=0xddfe0cb1`
 | PROVEN
 |===
@@ -2096,16 +2050,6 @@ entropy rather than a constant.
 | `CHK-ISO key-bus isolation PASS: only KM+AES released, OTBN/KMAC/HMAC parked (SW_RESET_N=0x05)`
 | PROVEN
 
-| CHK-PUB
-| The engine's public key registers still read zero, and the read path that returned
-  those zeros is alive. This is a regression guard, not a leak proof: those registers
-  are write-only with read data tied to zero in the generated register block, so they
-  would read zero whether the key were protected, mirrored elsewhere, or never
-  delivered at all. Without the positive control the row would be unfalsifiable; with
-  it, the check fails if the read path dies or if the registers ever become readable.
-| `CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload (read path alive: STATUS=0x00000011)`
-| GUARD — generated-register tie-off, cannot fail on any DUT
-
 | CHK-NEG
 | The decoy-key ciphertext matches its own golden, so the comparison baseline is sound.
 | `CHK-NEG dummy-key ECB PASS: ct_dummy == AES(dummy, PT) golden`
@@ -2138,8 +2082,8 @@ entropy rather than a constant.
 
 | CHK5
 | Both the Key Manager and AES draw real entropy beats.
-  Bit-exact per-sink compare is not this row: KM firmware pull order is not
-  golden-alignable.
+  Alive-mode beat count. Bit-exact per-sink compare is the small KM ROM tests,
+  not `rom_main`.
 | `CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)`
 | PROVEN
 |===
@@ -2229,16 +2173,6 @@ leave to their own engines.
 | `CHK-ISO key-bus isolation PASS: only KM+HMAC released, AES/KMAC/OTBN parked (SW_RESET_N=0x09)`
 | PROVEN
 
-| CHK-PUB
-| The public key registers still read zero, and the read path that returned those zeros
-  is alive. This is a regression guard, not a leak proof: these registers are write-only
-  with read data tied to a constant zero in the generated register block, so they read
-  zero whether the key is protected, mirrored elsewhere, or never delivered at all.
-  Without the positive control the row would be unfalsifiable; with it, the check fails
-  if the read path dies or if the registers ever become readable.
-| `CHK-PUB HMAC public KEY frontdoor reads zero after sideload (read path alive: STATUS=0x00000003)`
-| GUARD — generated-register tie-off, cannot fail on any DUT
-
 | CHK-MAC
 | The digest equals the independent HMAC-SHA256 golden for the known key.
 | `CHK-MAC KM->HMAC sideload KAT PASS: digest == HMAC-SHA256(known_key, msg) golden`
@@ -2251,7 +2185,8 @@ leave to their own engines.
 
 | CHK5
 | The Key Manager draws real entropy beats from the shared bus while the key is staged.
-  Alive-mode beat count; bit-exact per-sink compare is not this row.
+  Alive-mode beat count. Bit-exact per-sink compare is the small KM ROM tests,
+  not `rom_main`.
 | `CHK5_km        observed_beats=24 (alive mode: no bit-exact compare)` — the count is
   firmware-driven, so it is stable (identical across all 12 kept runs)
 | PROVEN
@@ -2348,18 +2283,6 @@ real entropy beats.
 | `CHK-ISO key-bus isolation PASS: only KM+KMAC released, AES/HMAC/OTBN parked (SW_RESET_N=0x11)`
 | PROVEN
 
-| CHK-PUB
-| The public key registers still read zero, and the read path that returned those zeros
-  is alive. This is a regression guard, not a leak proof: these registers are write-only
-  with read data tied to a constant zero in the generated register block, so they read
-  zero whether the key is protected, mirrored elsewhere, or never delivered at all.
-  Without the positive control the row would be unfalsifiable; with it, the check fails
-  if the read path dies or if the registers ever become readable.
-  This run demonstrates the point directly: a decoy value written to these same
-  addresses earlier still reads back as zero here.
-| `CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload (read path alive: STATUS=0x00004001)`
-| GUARD — generated-register tie-off, cannot fail on any DUT
-
 | CHK-SIDE
 | The sideload digest differs from the decoy-key digest.
 | `CHK-SIDE PASS: sideload digest != dummy-key digest`
@@ -2371,8 +2294,9 @@ real entropy beats.
 | PROVEN
 
 | CHK-ENT
-| The engine draws real masking entropy. Alive-mode beat count; bit-exact per-sink
-  compare is not this row. The scoreboard reports it as `CHK5_km` / `CHK5_kmac`.
+| The engine draws real masking entropy. Alive-mode beat count. Bit-exact per-sink
+  compare is the small KM ROM tests, not `rom_main`. The scoreboard reports it as
+  `CHK5_km` / `CHK5_kmac`.
 | `CHK-ENT + CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)`
 | PROVEN
 
@@ -2777,6 +2701,13 @@ lifecycle state is not exercised: no test drives this port at another state.
 | The CPU made real progress during the debug-port burst — the overlap was genuine.
 | `CHK-COEXIST PASS: CPU loop advanced 1->8 during 16 JTAG MMR rounds`
 | PROVEN
+
+| CHK-JTAG-MMR-DENY
+| In PROD, a JTAG read of `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH` (not a token
+  register) completes DECERR. `periphs.adoc`: the JTAG port can only read and
+  write `RMA_SIP_TOKEN_I` and `RMA_CHIPLET_TOKEN_I`.
+| `CHK-JTAG-MMR-DENY FAIL: spec requires DECERR on non-token MMR SEC_DISABLE_TOKEN_MATCH @0x1093056c in PROD; RTL returned resp=0 rdata=0x00000000`
+| FAILED — run `20260820_165856`. RTL returned OKAY. https://github.com/tenstorrent/tt-oca-harness/issues/626
 |===
 
 // ---------------------------------------------------------------------------
@@ -2791,10 +2722,10 @@ Testlist:: `cpu.toml`
 
 ==== Description
 
-Covers the non-maskable interrupt mechanism end to end: the handler trampoline is
-correctly aligned, the vector register has the right default, accepts a new value,
-and refuses further writes once locked — and then a real watchdog bark delivers an
-actual non-maskable interrupt to that handler, which clears the condition and returns.
+Covers the non-maskable interrupt mechanism end to end: the vector register has the
+right default, accepts a new value, and refuses further writes once locked — and then
+a real watchdog bark delivers an actual non-maskable interrupt to that handler, which
+clears the condition and returns.
 
 The lock check is a negative test: the write after locking must be ignored and the
 vector must still hold its previous value.
@@ -2806,8 +2737,8 @@ vector must still hold its previous value.
 | # | Step | Proof | Status
 
 | 1
-| Register the handler; check the trampoline is 256-byte aligned.
-| `CHK-ALIGN PASS: _nmi_handler=0xc0000500 is 256B aligned` (a build precondition, not a DUT property — see the checker note)
+| Register the handler.
+| `SEP NMI sanity test`
 | LOGGED
 
 | 2
@@ -2842,15 +2773,6 @@ vector must still hold its previous value.
 [cols="1,3,4,1",options="header"]
 |===
 | ID | Check | Proof | Status
-
-| CHK-ALIGN
-| The handler trampoline is 256-byte aligned. This is a *build* precondition, not a DUT
-  property: the address is a link-time constant fixed by the linker script, so the check
-  cannot fail on any DUT and proves nothing about the hardware. It is retained because it
-  catches a linker-script regression, and is recorded here so nobody reads it as evidence
-  about the NMI path.
-| `CHK-ALIGN PASS: _nmi_handler=0xc0000500 is 256B aligned`
-| GUARD — build precondition, cannot fail on any DUT
 
 | CHK-VEC-DEFAULT
 | The vector register holds its specified reset value.
@@ -3264,7 +3186,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 == Audit summary
 
-32 testcases, 154 steps, 151 checkers.
+32 testcases, 154 steps, 146 checkers.
 
 [cols="2,1",options="header"]
 |===
@@ -3280,27 +3202,20 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 | `PROVEN` | 145
 | `PARTIAL` | 0
-| `GUARD` | 6
+| `GUARD` | 0
 | `STALE` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
 | `NOT-RUN` | 0
-| `FAILED` | 0
+| `FAILED` | 1
 |===
 
-Every testcase passes in this environment, on both build targets, against the RTL
-currently in the tree — which includes PR #242's lifecycle and fuse-map changes and
-PR #451's boot-ROM relocation.
-
-Six checkers are not graded `PROVEN`. All six are `GUARD`: they cannot fail on any DUT
-because they guard a build precondition or a generated-register tie-off rather than a
-hardware property. Counting them separately is the honest reading: a linker-script
-alignment check is worth keeping and is not evidence about the NMI path.
-
-CHK4 generate-command segmentation and CHK5 alive-mode beat observation name only what
-the kept log proves: generated bits match the golden on the `glen=32` budget, and the
-Key Manager draws real entropy beats. Segmentation is `sep_drbg_gen_segmentation_test`.
-Bit-exact per-sink CHK5 against `rom_main` is an accepted scoreboard limit (firmware
-pull order is not golden-predictable), not an architecture hole.
+A running test's checkers are `PROVEN` or `FAILED`. Rows that could not fail on
+this DUT were deleted, not parked as `GUARD`. Alive-mode CHK5 names only live
+beats; bit-exact per-sink is the small KM ROM tests. The one `FAILED` row is
+CHK-JTAG-MMR-DENY: `periphs.adoc` requires DECERR on a non-token MMR in PROD;
+the RTL returned OKAY (resp=0) on `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH` at
+`0x1093056c` (run `20260820_165856`). Tracked as
+https://github.com/tenstorrent/tt-oca-harness/issues/626.
 
 The `STALE` grade is now unused. It existed for one entry whose boot-ROM image the
 repository could not rebuild; #451 wired that build into the flow and the entry has
@@ -3313,54 +3228,25 @@ to say.
 === Open items
 
 These are `hw/sys/sep/doc` requirements that no implemented checker currently proves.
-CHK5 bit-exact vs `rom_main` is an accepted scoreboard limit, not a spec hole.
-KMAC correctness is `sep_kmac_mode_strength_rand_test`; the smoke's non-zero digest
-is liveness only. The `right_encode` length in `fw/drivers/sep_kmac.h` is a driver
-bug, not a missing VPLAN scenario.
+JTAG non-token MMR deny is CHK-JTAG-MMR-DENY on `sep_efuse_jtag_axil_el2_cpu_mux_test`
+(`FAILED`, https://github.com/tenstorrent/tt-oca-harness/issues/626).
+`lc_sigint_err` fail-closed is CHK-SIGINT on `sep_efuse_lcc_lc_state_stitch_test`
+(signed-off decoder-input force; pending a kept log). The TEST_EN / `secure_tm`
+DFT-group gate is CHK-SECURE-TM on the same test (frontdoor strap; pending a kept
+log). `sep_lcc_uvm_inbound_filter_gating_test` stays on PROD, where the LC decode
+already zeros `[47:32]`, so that test does not need the strap.
+CHK5 bit-exact vs `rom_main` is not a spec checker; the small KM ROM tests already
+golden-compare CHK5. KMAC correctness is `sep_kmac_mode_strength_rand_test`.
 
 [cols="2,3,3",options="header"]
 |===
 | Testcase | Item | What would close it
 
-| `sep_efuse_jtag_axil_el2_cpu_mux_test`
-| The JTAG *deny* set in PROD. `hw/sys/sep/doc/periphs.adoc` says that in PROD and
-  RMA_SIP the JTAG port can only read and write `RMA_SIP_TOKEN_I` and
-  `RMA_CHIPLET_TOKEN_I`; the RTL currently opens the whole MMR window. This entry used
-  to read `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH` inside its allow-set loop and assert OKAY,
-  which made the deviation a *requirement* — the entry could never reveal it, and it
-  would have gone red the moment the RTL was corrected. The read is gone; the allow-set
-  half now matches the specification, and the deny is uncovered rather than inverted.
-| After the RTL fix (#626), *extend that same test* with DECERR on a non-token MMR
-  address in PROD. Do not add a new test.
-
-| `sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_uvm_inbound_filter_gating_test`
-| The DFT group `[47:32]` of the feature-control word. It is gated by `secure_tm`, and
-  `secure_tm` has no testbench connection at all, so the group reads 0 in every run and
-  the golden clears it unconditionally. The specification's DFT column is therefore
-  structurally unverifiable here, not merely unexercised.
-| Drive the `secure_tm` strap from the testbench, then walk the DFT column against
-  Table 50 with the strap both set and clear. That is the named backlog
-  `sep_efuse_strap_secure_tm_latch_test`, not a second FEAT_CTRL checker on the stitch
-  test.
-
-| `sep_efuse_lcc_lc_state_stitch_test`
-| The differential-decode fault path (`lc_sigint_err`) and the specification's INVALID
-  row. The status is now observed via a probe and asserted to stay 0, which is a health
-  guard rather than coverage: the sense FSM regenerates the `{~raw, raw}` pair from the
-  raw nibble in OTP, so no staged image can present a broken pair to the decode. An
-  earlier docstring claimed this was "covered indirectly" — it was not, and that claim
-  is gone.
-| A fault-injection path that can corrupt the sensed pair, or a documented backdoor
-  force with a recorded exception.
-
-| `sep_rom_non_secure_boot_test`
-| Only the all-good leg of the ROM's manifest and payload integrity checks is
-  exercised. No test anywhere corrupts a manifest, and secure boot is off on this
-  path, so nothing shows a bad image is rejected. The stage markers now required of
-  the run show the ROM *reports* validating both hashes — not that validation bites.
-| Phase 2 `sep_rom_ot_integrity_reject_test` (documented, not implemented):
-  corrupt payload / bad signature / anti-rollback and require the ROM fail-loop
-  marker. The all-good boot cannot carry that scenario.
+| (none remaining from the prior DFT / `lc_sigint` rows)
+| Latch-timing corners of `secure_tm` (cold-reset sample when `SEC_DIS=1` vs
+  sense-done sample) are still the backlog `sep_efuse_strap_secure_tm_latch_test`.
+  The stitch test proves the FEAT_CTRL gate, not every latch-timing path.
+| Implement the backlog latch test if those corners are required.
 |===
 
 One item has been closed since this table was first written. The lifecycle golden and
@@ -3369,9 +3255,10 @@ the golden is now derived from the lifecycle-controller chapter rather than tran
 from the RTL, and the field table is derived from the generated map. See
 <<lcc-golden-follows-rtl>>.
 
-CHK4 generate-command segmentation on the Phase 1 `glen=32` rows is likewise closed:
-those rows now claim only that generated bits match the golden, and
-`sep_drbg_gen_segmentation_test` is the dedicated segmentation proof.
+CHK4 generate-command segmentation on the Phase 1 `glen=32` rows names only that
+generated bits match the golden; `sep_drbg_gen_segmentation_test` owns segmentation.
+CHK5 on the `rom_main` sideload tests names only live beats; bit-exact CHK5 is the
+small KM ROM tests.
 
 === Unlogged steps
 

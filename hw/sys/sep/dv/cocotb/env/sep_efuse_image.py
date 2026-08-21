@@ -299,8 +299,8 @@ class SepEfuseImage:
         only ``[3:0]`` is significant. The runs settle it in load_hex's favour: the sense
         FSM reads the raw nibble out of OTP and regenerates ``{~raw, raw}`` into the
         shadow itself, so a staged image carrying a bare nibble still senses as a valid
-        pair. That is also why no staged image can present a BROKEN pair to the DUT --
-        see the lc_sigint_err note in the Phase 1 plan.
+        pair. That is also why no staged image can present a BROKEN pair to the DUT.
+        The stitch test injects that fault at the LCC decoder input (signed-off force).
         """
         if raw not in LEGAL_LC_RAW:
             raise ValueError(f"illegal LC raw code 0x{raw:x}")

@@ -2,7 +2,6 @@
 //
 // SEP NMI sanity firmware test (OSS port of the reference suite nmi_sanity_test). Verifies
 // the VeeR EL2 NMI mechanism end-to-end on bare `sep`:
-//   * the NMI trampoline (start.S _nmi_handler) is 256-byte aligned;
 //   * SEP_NMI_VEC reads its reset default (0xC0000100);
 //   * SEP_NMI_VEC is writable and reads back the programmed vector;
 //   * SEP_NMI_VEC_LOCK is sticky and, once set, freezes SEP_NMI_VEC;
@@ -67,17 +66,12 @@ int main(void) {
     // STEP 1: register the NMI handler.
     nmi_register_handler(nmi_handler);
 
-    // CHK-ALIGN: the trampoline must be 256-byte aligned.
     uint32_t nmi_addr = nmi_get_vector_addr();
     if (nmi_addr & 0xFFu) {
         sep_mbx_puts("FAIL: NMI trampoline not 256-byte aligned ");
         sep_mbx_puthex(nmi_addr);
         sep_mbx_putc('\n');
         errors++;
-    } else {
-        sep_mbx_puts("CHK-ALIGN PASS: _nmi_handler=");
-        sep_mbx_puthex(nmi_addr);
-        sep_mbx_puts(" is 256B aligned\n");
     }
 
     // CHK-VEC-DEFAULT: SEP_NMI_VEC reset default.
@@ -186,7 +180,7 @@ int main(void) {
     }
 
     if (errors == 0) {
-        sep_mbx_puts("PASS: NMI sanity (align/default/writeback/lock + WDT bark->NMI->clear)\n");
+        sep_mbx_puts("PASS: NMI sanity (default/writeback/lock + WDT bark->NMI->clear)\n");
     }
     return errors;
 }

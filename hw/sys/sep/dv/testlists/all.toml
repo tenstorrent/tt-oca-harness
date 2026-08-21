@@ -96,6 +96,7 @@ tests = [
     "sep_aes_mode_keysize_rand_test",
     "sep_kmac_mode_strength_rand_test",
     "sep_crypto_edn_multisink_arbitration_test",
+    "sep_crypto_edn_round_robin_grant_test",
 ]
 
 [[groups]]
@@ -165,5 +166,6 @@ tests = [
     "sep_aes_mode_keysize_rand_test",
     "sep_kmac_mode_strength_rand_test",
     "sep_crypto_edn_multisink_arbitration_test",
+    "sep_crypto_edn_round_robin_grant_test",
 ]
 

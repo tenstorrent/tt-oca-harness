@@ -123,6 +123,10 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "rst_vec_i", rst_vec)
         self._set_if_exists(dut, "esrc_noise_ext_i", 0)
         self._set_if_exists(dut, "spi_miso_i", 1)
+        # TEST_EN strap / LC sigint inject default off. Tests that need either
+        # polarity raise the port themselves after bring-up (or before sense).
+        self._set_if_exists(dut, "test_en_strap_i", 0)
+        self._set_if_exists(dut, "lc_sigint_inject_i", 0)
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""
@@ -282,7 +286,7 @@ class sep_base_test(uvm_test):
             self.logger.info("CPU boot: tcm_load_i pulse complete")
 
         await self.bring_up_cpu_boot(
-            rst_vec, pre_reset_hook=_load_tcm, run_pulse_cycles=run_pulse_cycles
+            rst_vec, pre_reset_hook=_load_tcm, run_pulse_cycles=run_pulse_cycles,
         )
 
         await self.poll_boot(

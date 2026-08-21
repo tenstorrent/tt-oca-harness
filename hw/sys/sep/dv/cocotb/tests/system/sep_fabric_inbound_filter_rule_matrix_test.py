@@ -177,6 +177,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             "R+W DECERR, rule intact",
             cfg_addr, cpu_cfg & FILTER_RW_MASK)
 
+        # CHK-NONVAC before the spec-vs-RTL window check: allow + block were already
+        # observed. The next assert is expected to FAIL on today's RTL.
+        self.logger.info(
+            "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)")
+
         # fabric.adoc: "Only the SEP CPU can program these filters." The deny above
         # could still be block-by-default (CFG is outside entry 0's window). A second
         # entry allow-lists the CFG address with read+write; the spec sentence holds
@@ -186,13 +191,15 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.filt.program_rule(own, read_allowed=True, write_allowed=True)
         resp, _ = await self._ext_read(cfg_addr)
         assert resp == RESP_DECERR, (
-            f"after allow-listing filter cfg 0x{cfg_addr:08x} on entry 1, external read "
-            f"resp={resp}, expected DECERR (spec: only the SEP CPU programs the filter)"
+            f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
+            f"0x{cfg_addr:08x} on entry 1, external read resp={resp}, expected "
+            f"DECERR (RTL vs fabric.adoc: only the SEP CPU programs the filter)"
         )
         resp = await self._ext_write(cfg_addr, 0xFFFF_FFFF)
         assert resp == RESP_DECERR, (
-            f"after allow-listing filter cfg 0x{cfg_addr:08x} on entry 1, external write "
-            f"resp={resp}, expected DECERR (spec: only the SEP CPU programs the filter)"
+            f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
+            f"0x{cfg_addr:08x} on entry 1, external write resp={resp}, expected "
+            f"DECERR (RTL vs fabric.adoc)"
         )
         cpu_cfg_after2 = await self.filt.read_cpu(cfg_addr)
         assert (cpu_cfg_after2 & FILTER_RW_MASK) == (expected_cfg & FILTER_RW_MASK), (
@@ -200,13 +207,6 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"0x{cpu_cfg_after2:08x}"
         )
         self.logger.info(
-            "CHK-OWNERSHIP PASS: filter cfg 0x%08x still DECERR after entry-1 allow "
+            "CHK-OWNERSHIP-WINDOW PASS: filter cfg 0x%08x still DECERR after entry-1 allow "
             "window covers it (spec: only the SEP CPU can program the inbound filter)",
             cfg_addr)
-
-        # CHK-NONVAC: both a blocked (DECERR) and an allowed (OKAY) external access were
-        # observed under the SAME sep_debug=0 (filter active) -- the rule, not the global gate.
-        self.logger.info(
-            "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)")
-        # No CHK-ALL summary line. It asserted nothing, and a plan row keyed on it
-        # would record coverage against a string with no checker behind it.

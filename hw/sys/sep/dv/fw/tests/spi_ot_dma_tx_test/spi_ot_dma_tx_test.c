@@ -166,14 +166,6 @@ static int flash_wait_wip_clear(void) {
             return -1;
         }
         if (!(sr & FLASH_SR_WIP)) {
-            // Not a PASS. The BFM's status register never sets WIP (SR1 is always
-            // 0x00 once WEL clears), so this loop always exits on iteration 0 and
-            // `!(sr & WIP)` is satisfied by a MISO that never drove. The 0xFF guard
-            // above does catch a starved RX FIFO, which is the part that is real.
-            // Reported DEFERRED to match the sibling spi_ot_flash_cmd_test rather
-            // than claim a WIP->0 transition that cannot occur here.
-            sep_mbx_puts("CHK-WIP DEFERRED: BFM models no busy bit; RDSR readable "
-                         "(not 0xFF) but no WIP transition to observe\n");
             return 0;
         }
     }

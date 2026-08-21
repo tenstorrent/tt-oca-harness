@@ -203,6 +203,14 @@ _LCC_GOLDEN_VECTORS = (
     (LC_RMA_CHIP_1, 0, 0, {}, _FULL_NO_TEST),                     # RMA_CHIPLET: all ones
     (LC_PROD, 0, 0, {"sec_dis": 1, "secure_tm": 1}, M64),        # SEC_DIS override = all ones
     (LC_TEST_DEV, 0xFFFF_FFFF_FFFF_FFFF, 0, {"sigint_err": 1}, 0),   # sigint -> all disabled
+    # SEC_DIS overrides sigint to all-ones; the SECURE_TM gate still applies last.
+    (LC_TEST_DEV, 0, 0, {"sigint_err": 1, "sec_dis": 1}, _FULL_NO_TEST),
+    (LC_TEST_DEV, 0, 0, {"sigint_err": 1, "sec_dis": 1, "secure_tm": 1}, M64),
+    # Stitch-test DIS vectors: DFT group is 0xF000 with secure_tm=1, forced 0 without.
+    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {},
+     0xF000_0000_F000_F000),
+    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {"secure_tm": 1},
+     0xF000_F000_F000_F000),
 )
 
 

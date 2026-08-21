@@ -38,12 +38,14 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         *,
         secure_tm: int = 0,
         sec_dis: int = 0,
+        sigint_err: int = 0,
         name: str = "sep_lcc_stitch_check_seq",
     ) -> None:
         super().__init__(name)
         self.image = image
         self.secure_tm = secure_tm
         self.sec_dis = sec_dis
+        self.sigint_err = sigint_err
         # Computed in body() and exposed for the test's transition checks/logging.
         self.observed_lc_raw: int | None = None
 
@@ -64,6 +66,7 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         feat = feat_ctrl_expected(
             lc_raw, sip_dis, sys_dis,
             secure_tm=self.secure_tm, sec_dis=self.sec_dis,
+            sigint_err=self.sigint_err,
         )
 
         # (1) sensed lc_state reached the software-visible shadow map.
@@ -83,6 +86,8 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         )
 
         cocotb.log.info(
-            "[lcc] state %s (0x%x): SIP_DIS=0x%016x SYS_DIS=0x%016x -> FEAT_CTRL=0x%016x",
-            lc_state_name(lc_raw), lc_raw, sip_dis, sys_dis, feat,
+            "[lcc] state %s (0x%x): SIP_DIS=0x%016x SYS_DIS=0x%016x "
+            "secure_tm=%d sigint=%d -> FEAT_CTRL=0x%016x",
+            lc_state_name(lc_raw), lc_raw, sip_dis, sys_dis,
+            self.secure_tm, self.sigint_err, feat,
         )

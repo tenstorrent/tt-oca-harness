@@ -189,10 +189,6 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  s0={[hex(w) for w in s0_pub if w]}\n"
             f"  s1={[hex(w) for w in s1_pub if w]}"
         )
-        self.logger.info(
-            "CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=0x%08x)", ctl_pub,
-        )
 
         # CHK-F: encrypt with the SIDELOAD key and value-check against the golden.
         # This proves AES consumed the exact KM-delivered key (stronger than the reference suite's
