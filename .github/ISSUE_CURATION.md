@@ -48,8 +48,8 @@ gh aw compile ocah-project-curator --validate
 
 ## Weekly issue activity
 
-`.github/workflows/ocah-weekly-issue-activity.lock.yml` runs at 09:00
-PDT on Monday (`0 16 * * 1` UTC) and on `workflow_dispatch`. It reads
+`.github/workflows/ocah-weekly-issue-activity.lock.yml` runs at 12:00
+PDT on Tuesday (`0 19 * * 2` UTC) and on `workflow_dispatch`. It reads
 repository issues from the Issues API, plots opened/closed volume and
 time-to-close with pandas/matplotlib/seaborn on the runner, and opens
 a General discussion titled `[Weekly Summary] YYYY-MM-DD`. It closes
@@ -66,8 +66,8 @@ gh aw compile ocah-weekly-issue-activity --validate
 PDT daily (`0 17 * * *` UTC) and on `workflow_dispatch`. It reads Ideas
 discussions from the last 7 days, opens up to 5 Task issues labelled
 `discussion-miner`, and remembers processed threads in cache-memory.
-Those issues skip the issue form; titles stay unprefixed so the
-curator can apply `[WORKSTREAM/SUBSYSTEM]`. They do not expire.
+Each issue is type Task and uses the Task form headings so ingest
+can prefix the title and copy fields. They do not expire.
 
 ```bash
 gh aw compile ocah-discussion-task-miner --validate

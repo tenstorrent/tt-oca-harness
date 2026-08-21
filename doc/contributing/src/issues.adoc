@@ -15,8 +15,8 @@ Description is optional. Do not pick a GitHub milestone.
 Do not pick labels. Ingest copies the required picks onto
 https://github.com/orgs/tenstorrent/projects/291[Project 291]
 and applies matching labels (Component *General* does not get a label).
-The discussion task miner opens formless Task issues labelled
-`discussion-miner`; the curator fills leftover fields. See
+The discussion task miner opens Task issues labelled
+`discussion-miner` with the same form headings ingest reads. See
 xref:alignment.adoc[Issue alignment].
 
 Security reports must not be public issues. Use

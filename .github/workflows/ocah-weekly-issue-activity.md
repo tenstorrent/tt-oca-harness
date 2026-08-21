@@ -7,7 +7,7 @@ description: Plot opened and closed issues and post a weekly discussion.
 
 on:
   schedule:
-    - cron: "0 16 * * 1"
+    - cron: "0 19 * * 2"
   workflow_dispatch:
 
 permissions:
@@ -126,7 +126,7 @@ Upload both PNGs with upload-asset. Embed the returned URLs.
 Close older open discussions whose title starts with `[Weekly Summary]`.
 
 Create one discussion. The title-prefix is applied for you; set the
-title to the ISO date of this Monday (`YYYY-MM-DD`).
+title to the ISO date of this Tuesday (`YYYY-MM-DD`).
 
 Use `###` for sections. Put the full issue list in a collapsible block.
 Keep the overview, charts, statistics, and recommendations visible.
