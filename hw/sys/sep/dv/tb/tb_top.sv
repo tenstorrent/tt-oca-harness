@@ -326,7 +326,7 @@ module sep_uvm_top
     output logic              pool_edn_ack_o,        // entropy_pool_edn_rsp_o.edn_ack
     output logic [31:0]       pool_edn_bus_o,        // entropy_pool_edn_rsp_o.edn_bus
     output logic              pool_edn_fips_o,       // entropy_pool_edn_rsp_o.edn_fips
-    // IP-interrupt aggregator (E10): observation-only mirror of the 34-bit
+    // IP-interrupt aggregator: observation-only mirror of the 34-bit
     // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
     // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
@@ -1040,7 +1040,7 @@ module sep_uvm_top
     assign sep_cpu_reset_n_o = `SEP_CORE.sep_cpu_reset_n;
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
-    // observation-only mirror for the IP->aggregator (E10) test. CSRNG INTR sources
+    // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
     // map to bits [21:24], EDN to [25:26] (sep.sv:451-461).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
 

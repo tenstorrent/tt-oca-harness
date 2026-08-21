@@ -6,7 +6,7 @@
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
- *   - OpenTitan SPI host. Pad-mux / proprietary SPI programming belongs with
+ *   - OpenTitan SPI host. Pad-mux programming belongs with
  *     the nonfree wrapper, not this file.
  *
  * Completion is signaled by pass/fail loops for cocotb PC classification.
@@ -315,7 +315,7 @@ static int stage_efuse(void) {
 }
 
 static int stage_spi_regs(void) {
-    /* Pad mux and proprietary SPI CSRs live with the nonfree wrapper. */
+    /* Pad mux CSRs live with the nonfree wrapper. */
     return 0;
 }
 

@@ -11,8 +11,8 @@ schema_version = 1
 #     Makefile, links to ROM_BASE instead of the TCMs, and packs a manifest+BL1
 #     image. The shared TCM firmware engine (`c_build.default`) does not build it.
 #
-# OWNERSHIP: these exercise ROM firmware, not the ROM macro. They arrived with
-# PR #451 and are not graded in verification_plan_phase1/2. ROM *hardware*
+# OWNERSHIP: these exercise ROM firmware, not the ROM macro. They are not
+# graded in verification_plan_phase1/2. ROM *hardware*
 # coverage stays in the SEP plans (`sep_boot_rom_lsu_read_test`, the
 # `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
 # four names are graded.

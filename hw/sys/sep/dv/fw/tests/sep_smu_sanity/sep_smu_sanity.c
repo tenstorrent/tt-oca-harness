@@ -21,9 +21,9 @@
  *                                         entropy_mode so it does not depend
  *                                         on EDN being available at SMU
  *                                         level.
- *   4. SPI register stage              — pad-mux / proprietary SPI CSRs live
- *                                         with the nonfree wrapper; this
- *                                         stage is a no-op in the open tree.
+ *   4. SPI register stage              — pad-mux CSRs live with the
+ *                                         nonfree wrapper; this stage is a
+ *                                         no-op in the open tree.
  *
  * Pass criterion
  * --------------
@@ -304,8 +304,8 @@ static int stage_kmac(void) {
 }
 
 /* --------------------------------------------------------------------------
- * Stage 3 — OpenTitan SPI host is in-tree. Pad-mux / proprietary SPI CSRs
- * live with the nonfree wrapper, so this stage is a no-op here.
+ * Stage 3 — OpenTitan SPI host is in-tree. Pad-mux CSRs live with the
+ * nonfree wrapper, so this stage is a no-op here.
  * ------------------------------------------------------------------------ */
 
 static int stage_spi_regs(void) {

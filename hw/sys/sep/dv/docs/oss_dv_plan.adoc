@@ -53,6 +53,11 @@ count. ROM-*firmware* contracts are out of this VPLAN — ROM-FW owner.
 A backlog *name* is not a credit. A `FAILED` spec-gap is honest and is
 not a 60% credit either.
 
+The scorecard is the per-test checker tables in
+`verification_plan_phase1.adoc` and `verification_plan_phase2.adoc`. A
+`PROVEN` row is in the 60% count; a `FAILED` row is not. The audit
+summaries at the end of those files are the running totals.
+
 Phase 1 and Phase 2 stay on the existing cocotb environment and finish there.
 Phase 3 does not extend that environment — it starts a new UVM bench.
 

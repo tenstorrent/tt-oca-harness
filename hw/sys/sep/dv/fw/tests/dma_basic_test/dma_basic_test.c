@@ -581,6 +581,8 @@ int main(void) {
     sep_mbx_puthex(dst_base);
     sep_mbx_puts(" nbytes=");
     sep_mbx_puthex(copy_bytes);
+    sep_mbx_puts(" fill=");
+    sep_mbx_puthex(fill_seed);
     sep_mbx_putc('\n');
 
     errors += chk_reset();        // must run before any DMA write

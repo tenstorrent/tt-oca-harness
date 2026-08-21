@@ -178,7 +178,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# IP-interrupt -> sep_internal_interrupts aggregator (E10 breadth, the reference suite
+# IP-interrupt -> sep_internal_interrupts aggregator (the reference suite
 # sep_irq_ip_to_aggregator_test): host injects each CSRNG/EDN INTR_TEST and watches
 # the mapped aggregate bit (tb_top sep_internal_interrupts_probe_o, observation-only
 # XMR mirror) go 0->1->0, plus the IP INTR_STATE RW1C contract and one-hot isolation.

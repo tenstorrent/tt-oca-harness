@@ -13,7 +13,7 @@
 // 8:1) so the DMA is provably still busy when the CPU loop finishes -- that
 // mid-flight STATUS read is the non-vacuity proof that the two streams really
 // overlapped. (Sizes are kept small enough that the Verilator sim finishes well
-// inside the regression timeout; the E8 contention proof needs the imbalance and
+// inside the regression timeout; the contention proof needs the imbalance and
 // the overlap, not a large transfer -- the reference suite's 16 KiB/1 KiB is overkill here.)
 //
 // Checks (every failure increments errors; main() returns it and start.S turns

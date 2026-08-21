@@ -45,6 +45,7 @@ _ITCM_HEX = os.path.join(_FW_DIR, "dma_basic_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_basic_test.dtcm.hex")
 
 _ICCM_BASE = 0xC000_0000
+_SRAM_BASE = 0x1000_0000
 _MAX_RUN_CYCLES = 4_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -169,6 +170,19 @@ class sep_dma_basic_test(sep_base_test):
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
         )
+        cfg = self._dma_cfg
+        needle = (
+            f"SCENARIO src=0x{_SRAM_BASE + cfg.src_off:08x} "
+            f"dst=0x{_SRAM_BASE + cfg.dst_off:08x} "
+            f"nbytes=0x{cfg.nbytes:08x} "
+            f"fill=0x{cfg.fill_seed:08x}"
+        )
+        console = self.sb.console_text()
+        if needle not in console:
+            raise AssertionError(
+                "firmware did not consume the patched DMA cfg "
+                f"(missing {needle!r} in console; patch was inert or the image is stale)"
+            )
         self.logger.info(
             "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
-            self._dma_cfg.seed, self._dma_cfg.nbytes)
+            cfg.seed, cfg.nbytes)
