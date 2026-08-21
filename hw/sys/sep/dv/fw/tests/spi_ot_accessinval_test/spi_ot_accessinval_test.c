@@ -2,37 +2,37 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT ACCESSINVAL Test - TC_SPIOT_021 (P1)
+ * SPI OT ACCESSINVAL Test
  *
  * Verifies the ERROR_STATUS.ACCESSINVAL[20] register field behavior.
  *
  * RTL Implementation Note:
- *   ACCESSINVAL fires when TXDATA is written with an INVALID byte-enable pattern
- *   (non-contiguous or non-standard byte lanes). Source:
- *     assign error_access_inval = tx_valid & ~access_valid;
- *   where access_valid is 1 only for aligned 1/2/4 byte patterns:
- *     4'b0001, 4'b0010, 4'b0100, 4'b1000 (single byte)
- *     4'b0011, 4'b0110, 4'b1100 (contiguous 2-byte)
- *     4'b1111 (4-byte word)
- *   This differs from the OpenTitan spec which defines ACCESSINVAL as
- *   "write to protected register while ACTIVE=1".
+ * ACCESSINVAL fires when TXDATA is written with an INVALID byte-enable pattern
+ * (non-contiguous or non-standard byte lanes). Source:
+ * assign error_access_inval = tx_valid & ~access_valid;
+ * where access_valid is 1 only for aligned 1/2/4 byte patterns:
+ * 4'b0001, 4'b0010, 4'b0100, 4'b1000 (single byte)
+ * 4'b0011, 4'b0110, 4'b1100 (contiguous 2-byte)
+ * 4'b1111 (4-byte word)
+ * This differs from the OpenTitan spec which defines ACCESSINVAL as
+ * "write to protected register while ACTIVE=1".
  *
  * FW Testability:
- *   Standard RISC-V instructions (SW/SH/SB) always produce valid AXI byte
- *   enables, so ACCESSINVAL cannot be triggered from firmware. This test
- *   verifies:
- *     1. ACCESSINVAL=0 after valid TXDATA SW/SH/SB writes (happy path)
- *     2. ACCESSINVAL[20] bit position and mask are correct
- *     3. ERROR_STATUS W1C works (writing 1 to bit 20 when already 0 has no effect)
- *     4. ACCESSINVAL is NOT gated by ERROR_ENABLE (no corresponding bit in ERROR_ENABLE)
- *     5. Other ERROR_STATUS bits (e.g., UNDERFLOW) are unaffected by ACCESSINVAL W1C
+ * Standard RISC-V instructions (SW/SH/SB) always produce valid AXI byte
+ * enables, so ACCESSINVAL cannot be triggered from firmware. This test
+ * verifies:
+ * 1. ACCESSINVAL=0 after valid TXDATA SW/SH/SB writes (happy path)
+ * 2. ACCESSINVAL[20] bit position and mask are correct
+ * 3. ERROR_STATUS W1C works (writing 1 to bit 20 when already 0 has no effect)
+ * 4. ACCESSINVAL is NOT gated by ERROR_ENABLE (no corresponding bit in ERROR_ENABLE)
+ * 5. Other ERROR_STATUS bits (e.g., UNDERFLOW) are unaffected by ACCESSINVAL W1C
  *
  * Note: Actual ACCESSINVAL triggering requires UVM-level TB injection of
  * non-contiguous byte enables on the TXDATA register write — not testable
  * via CPU firmware.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_accessinval_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_accessinval_test STACK=sim
  *
  */
 
@@ -49,7 +49,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT ACCESSINVAL Test (TC_SPIOT_021)\n");
+    printf("SPI OT ACCESSINVAL Test\n");
     printf("========================================\n\n");
 
     printf("NOTE: ACCESSINVAL fires on invalid byte-enable writes to TXDATA.\n");

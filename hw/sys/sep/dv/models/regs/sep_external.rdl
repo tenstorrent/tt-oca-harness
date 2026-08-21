@@ -8,7 +8,7 @@
 
 addrmap sep_external {
     name = "SEP External";
-    desc = "SEP external adopter/vendor address map (Cadence xSPI, etc.)";
+    desc = "SEP external adopter/vendor address map (licensed xSPI, etc.)";
 
     // eFuse SHIM control. Sits at the base of the window because sep.sv's
     // external demux carves this block off before the crossbar and routes it

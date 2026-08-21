@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_006 (V3, P2) - WDT Interrupt Test (INTR_TEST injection)
+ * WDT Interrupt Test (INTR_TEST injection)
  *
  * Verifies INTR_TEST register injects INTR_STATE bits and fires NMI,
  * and INTR_STATE W1C clears correctly.
@@ -43,7 +43,7 @@ void wdt_nmi_handler(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_006: WDT Interrupt Test\n");
+    printf("WDT Interrupt Test\n");
     printf("================================\n\n");
 
     int errors = 0;
@@ -175,10 +175,10 @@ int main(void) {
 
     printf("\n================================\n");
     if (errors == 0) {
-        printf("TC_WDT_006: PASS\n");
+        printf("WDT Interrupt Test: PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_006: FAIL (errors=%d)\n", errors);
+        printf("WDT Interrupt Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("================================\n");

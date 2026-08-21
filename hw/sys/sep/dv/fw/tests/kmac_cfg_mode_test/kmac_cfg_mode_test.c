@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_004 (P0) - CFG Mode/Kstrength Field Verification
+ * CFG Mode/Kstrength Field Verification
  *
  * Writes CFG_SHADOWED with different mode/kstrength combinations,
  * reads back and verifies each configuration.
@@ -65,7 +65,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_004: CFG Mode Test\n");
+    printf("  CFG Mode Test\n");
     printf("========================================\n");
 
     if (wait_for_idle() != 0) {

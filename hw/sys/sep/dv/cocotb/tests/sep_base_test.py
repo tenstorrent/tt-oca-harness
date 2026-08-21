@@ -111,8 +111,7 @@ class sep_base_test(uvm_test):
         dut.ext_boot_seq_done_i.value = 1
         dut.mpc_reset_run_req.value = 1 if cpu_run else 0
         # eFuse program-fail injection is seeded via the +sep_efuse_prog_fail_seed
-        # plusarg inside the generic efuse model (the old efuse_prog_fail_seed_i port
-        # was retired with the bare-sep responders).
+        # plusarg inside the generic efuse model.
         self._set_if_exists(dut, "i_cpu_run_req_i", 0)
         self._set_if_exists(dut, "tcm_load_i", 0)
         # WDT reset input deasserted by default (sep_cpu_reset_n then follows
@@ -124,6 +123,10 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "rst_vec_i", rst_vec)
         self._set_if_exists(dut, "esrc_noise_ext_i", 0)
         self._set_if_exists(dut, "spi_miso_i", 1)
+        # TEST_EN strap / LC sigint inject default off. Tests that need either
+        # polarity raise the port themselves after bring-up (or before sense).
+        self._set_if_exists(dut, "test_en_strap_i", 0)
+        self._set_if_exists(dut, "lc_sigint_inject_i", 0)
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""
@@ -136,7 +139,15 @@ class sep_base_test(uvm_test):
             )
         from seq_lib.sep_efuse_backdoor_check import check_efuse_shadow_backdoor
 
-        check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image)
+        # The strap the DUT latched, not what the test intended: reading secure_tm_o
+        # keeps the golden's secret-blanking tied to the DUT rather than to a flag the
+        # test could set wrongly.
+        secure_tm = 0
+        probe = getattr(cocotb.top, "secure_tm_o", None)
+        if probe is not None:
+            secure_tm = int(probe.value) & 0x1
+        check_efuse_shadow_backdoor(
+            self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
@@ -207,7 +218,7 @@ class sep_base_test(uvm_test):
         self.logger.info("Bringing up clocks and reset (CPU run, rst_vec=0x%x)", rst_vec)
         dut.rst_ni.value = 0
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
-        # Match the old tb wiring for CPU boot: EL2 debug reset followed cold reset.
+        # CPU boot: EL2 debug reset follows cold reset.
         self._set_if_exists(dut, "dbg_rstb_i", 0)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
@@ -283,7 +294,7 @@ class sep_base_test(uvm_test):
             self.logger.info("CPU boot: tcm_load_i pulse complete")
 
         await self.bring_up_cpu_boot(
-            rst_vec, pre_reset_hook=_load_tcm, run_pulse_cycles=run_pulse_cycles
+            rst_vec, pre_reset_hook=_load_tcm, run_pulse_cycles=run_pulse_cycles,
         )
 
         await self.poll_boot(

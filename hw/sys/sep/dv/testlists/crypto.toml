@@ -94,7 +94,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# DRBG real-sink multi-consumer KM + AES concurrent (the reference suite P3.7 / TOP-20 #15, edge
+# DRBG real-sink multi-consumer KM + AES concurrent (edge
 # E2 multi-rand): one real DRBG/EDN stream feeds two real sinks at once -- KM AXIS
 # (rom_main + interleaved CMD_KEY_GENERATE DRBG pulls) and AES native crypto-EDN
 # (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
@@ -127,6 +127,20 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["drbg", "entropy", "crypto", "multi-sink", "aes", "kmac", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Same-cycle dual crypto-EDN request: AES masking reseed + OTBN URND held before
+# EDN is enabled, then the real entropy chain is brought up so prim_arbiter_ppc
+# inside drbg_axis_edn_adapter has to grant both. Distinct from the AES+KMAC
+# time-span overlap test above, which cannot hold two edn_req bits together.
+name = "sep_crypto_edn_round_robin_grant_test"
+module = "crypto.sep_crypto_edn_round_robin_grant_test"
+seed = 1
+timeout_sec = 7200
+tags = ["drbg", "entropy", "crypto", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]

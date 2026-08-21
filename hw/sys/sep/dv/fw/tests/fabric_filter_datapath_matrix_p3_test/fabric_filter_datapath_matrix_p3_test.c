@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_061: fabric_filter_datapath_matrix_p3_test
+ * fabric_filter_datapath_matrix_p3_test
  *
  * Goal: traffic_filter 88.11% -> 90%+, axi_filter_wrap 64.11% -> 90%+
  * Strategy: Targeted pass/block traffic tests covering all datapath combinations
@@ -206,41 +206,41 @@ static int test_burst_allowed_blocked_scenarios(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_061: Filter Datapath Matrix P3 Test\n");
+    printf("Filter Datapath Matrix P3 Test\n");
     printf("Goals: traffic_filter 88.11%% -> 90%%+, axi_filter_wrap 64.11%% -> 90%%+\n");
     printf("Strategy: Targeted pass/block traffic tests covering all datapath combinations\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_061");
+        test_fail("fabric_filter_datapath_matrix_p3_test");
         return TEST_FAIL;
     }
 
     // Run all filter datapath scenarios
     if (test_no_match_default_block_scenarios() != 0) {
-        test_fail("TC_FABRIC_061 - No Match Default Block");
+        test_fail("No Match Default Block");
         return TEST_FAIL;
     }
 
     if (test_read_only_pass_write_block_combinations() != 0) {
-        test_fail("TC_FABRIC_061 - Read Only Pass Write Block");
+        test_fail("Read Only Pass Write Block");
         return TEST_FAIL;
     }
 
     if (test_ns_secure_allow_deny_patterns() != 0) {
-        test_fail("TC_FABRIC_061 - NS Secure Allow Deny");
+        test_fail("NS Secure Allow Deny");
         return TEST_FAIL;
     }
 
     if (test_burst_allowed_blocked_scenarios() != 0) {
-        test_fail("TC_FABRIC_061 - Burst Allowed Blocked");
+        test_fail("Burst Allowed Blocked");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_061: FILTER DATAPATH MATRIX P3 TEST PASSED ===\n");
+    printf("\n=== FILTER DATAPATH MATRIX P3 TEST PASSED ===\n");
     printf("Expected improvement: traffic_filter 88.11%% -> 90%%+, axi_filter_wrap 64.11%% -> "
            "90%%+\n");
 
-    test_pass("TC_FABRIC_061");
+    test_pass("fabric_filter_datapath_matrix_p3_test");
     return TEST_PASS;
 }

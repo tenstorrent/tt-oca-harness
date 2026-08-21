@@ -31,12 +31,12 @@ from pyuvm import uvm_sequence
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from sep_reg_meta import SEP_CPU_CTRL
 
-# sep_cpu_ctrl CLOCK_GATE_CTRL on the CPU-local map: a known-good decode target
-# with a deterministic reset value and no read side effects -- the same anchor the
-# smoke/address-map tests use. Address and expected value are derived from the
-# generated SystemRDL export, never hardcoded.
-MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
-MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
+# sep_cpu_ctrl SEP_NMI_VEC on the CPU-local map: a known-good decode target with
+# a non-zero generated reset (0xC000_0100) and no read side effects. CLOCK_GATE_CTRL
+# resets to 0, so a value-check there is zero-vs-zero and would also pass a tied-off
+# decode. Address and expected value are derived from the generated SystemRDL export.
+MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
+MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
 
 # The addresses below stay LITERAL by definition and must NOT be converted to sym()
 # lookups: having no decode target is the whole point of the test, so no generated

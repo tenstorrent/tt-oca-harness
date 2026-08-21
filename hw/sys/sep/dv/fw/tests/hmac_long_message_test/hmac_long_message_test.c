@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC Long Message Test - TC_HMAC_015 (P1)
+ * HMAC Long Message Test
  *
  * Verifies HMAC handling of messages longer than MSG FIFO capacity.
  * Tests FIFO polling, multi-block processing, and proper message length handling.
@@ -14,7 +14,7 @@
  * - Proper message length bit counting
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_long_message_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_long_message_test STACK=sim
  *
  */
 
@@ -230,7 +230,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
-    printf("HMAC Long Message Test (TC_HMAC_015)\n");
+    printf("HMAC Long Message Test\n");
     printf("====================================================\n");
 
     int pass = 1;

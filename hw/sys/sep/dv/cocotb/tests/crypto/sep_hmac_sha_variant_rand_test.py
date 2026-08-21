@@ -3,7 +3,8 @@
 
 Drives the OpenTitan HMAC engine directly over the CPU-LSU AXI master (no_cpu, no
 firmware) across the full standalone SW-key matrix that the Phase-1 KM->HMAC
-sideload KAT (#12, SHA-256 keyed via keymgr_key_i) does not reach:
+sideload KAT (`sep_km_hmac_sideload_kat_test`, SHA-256 keyed via keymgr_key_i)
+does not reach:
 
     {SHA-256, SHA-384, SHA-512} x {keyed HMAC, plain SHA} x legal key-length.
 
@@ -11,7 +12,8 @@ reference parity: this is a GAP (basic) rep -- the reference SEP tb has no SHA-3
 or key-length coverage (uvm_tests/hmac + fw hmac cover SHA-256 only). So the
 independent stdlib golden (env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 +
 plain SHA FIPS-180 self-tested) IS the reference and this rep is STRONGER than the
-directed reference suite set it merges. DISTINCT from #12 (SHA-256 via SIDELOAD) and the CPU
+directed reference suite set it merges. DISTINCT from
+`sep_km_hmac_sideload_kat_test` (SHA-256 via SIDELOAD) and the CPU
 crypto smoke (SHA-256): HMAC SHA-variant breadth is standalone SW-key across variants.
 
 RAND-REP contract: a SepHmacCfg config object is the single source
@@ -117,15 +119,6 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
     # Do not confuse this with the SIDELOAD path, where hmac.sv:51 packs
     # {key[0] ^ key[1], 768'b0} -- a different mechanism with a different convention.
     # sep_hmac_golden's module docstring describes that one.
-    #
-    # This used to be resolved by running the engine and picking whichever of two
-    # candidate conventions reproduced its digest. That made the golden a function of
-    # the DUT: had the RTL consumed the key words in the wrong order, the scan would
-    # have selected the matching wrong convention and all fourteen keyed cells would
-    # have compared the DUT against an expectation built from the same error. An
-    # expectation that shares a source with the thing it measures cannot disagree
-    # with it -- and key word order is precisely the bug class these cells exist to
-    # catch.
     _SW_KEY_CONV = dict(key_word_rev=False, key_be=True, msg_be=False, digest_swap=False)
 
     async def _check_key_convention(self) -> dict:

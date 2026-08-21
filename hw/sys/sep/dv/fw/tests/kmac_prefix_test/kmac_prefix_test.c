@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_010 - PREFIX Register Test (P1)
+ * PREFIX Register Test
  *
  * Verifies PREFIX register write/readback for all 11 words.
  * Runs KMAC with standard prefix, then custom prefix, and
@@ -196,7 +196,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_010: PREFIX Register Test\n");
+    printf("  PREFIX Register Test\n");
     printf("========================================\n\n");
 
     int result = test_prefix();

@@ -61,7 +61,7 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # OT SPI DMA-TX: SRAM -> Secure DMA (HW handshake on TX watermark) -> SPI TXFIFO
-# -> flash. The TX complement of #3 sep_spi_ot_dma_rx. [RAND-REP] seeds the flash
+# -> flash. The TX complement of `sep_spi_ot_dma_rx_test`. [RAND-REP] seeds the flash
 # address/data (patched into the firmware param block). DMA-feeds a real flash
 # PAGE PROGRAM stream + reads it back; cocotb BFM golden cross-checks. cpu-fw.
 name = "sep_spi_ot_dma_tx_test"

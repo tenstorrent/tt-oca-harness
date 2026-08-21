@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_010 (V3, P1) - WDT Stress All Test
+ * WDT Stress All Test
  *
  * Comprehensive stress: enable/disable cycles, threshold changes, pets,
  * interrupt injections, and combined operations.
@@ -42,7 +42,7 @@ void wdt_nmi_handler(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_010: WDT Stress All Test\n");
+    printf("WDT Stress All Test\n");
     printf("================================\n\n");
 
     nmi_register_handler(wdt_nmi_handler);
@@ -167,10 +167,10 @@ int main(void) {
 
     printf("\n================================\n");
     if (errors == 0) {
-        printf("TC_WDT_010: PASS\n");
+        printf("WDT Stress All Test: PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_010: FAIL (errors=%d)\n", errors);
+        printf("WDT Stress All Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("================================\n");

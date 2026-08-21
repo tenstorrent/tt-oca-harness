@@ -2,24 +2,24 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Register Test - TC_SPIOT_001 (P1)
+ * SPI OT Register Test
  *
  * Verifies reset defaults, write-readback, and special behaviors for all
  * SPI controller registers:
- *   - INTR_STATE, INTR_ENABLE, INTR_TEST
- *   - CTRL (incl. SW_RST singlepulse), CFG, CSID
- *   - STATUS (TXEMPTY, RXEMPTY, BYTEORDER=1, READY=1 at reset)
- *   - ERROR_ENABLE, EVENT_ENABLE, ERROR_STATUS
+ * - INTR_STATE, INTR_ENABLE, INTR_TEST
+ * - CTRL (incl. SW_RST singlepulse), CFG, CSID
+ * - STATUS (TXEMPTY, RXEMPTY, BYTEORDER=1, READY=1 at reset)
+ * - ERROR_ENABLE, EVENT_ENABLE, ERROR_STATUS
  *
  * Test Flow:
- *   1. Configure SPI mux for OpenTitan
- *   2. Verify reset defaults for all readable registers
- *   3. Write-readback for all RW registers
- *   4. Verify SW_RST singlepulse auto-clears to 0
- *   5. Verify STATUS.BYTEORDER=1 (LITTLE_ENDIAN parameter)
+ * 1. Configure SPI mux for OpenTitan
+ * 2. Verify reset defaults for all readable registers
+ * 3. Write-readback for all RW registers
+ * 4. Verify SW_RST singlepulse auto-clears to 0
+ * 5. Verify STATUS.BYTEORDER=1 (LITTLE_ENDIAN parameter)
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_reg_test STACK=cgen,sim
+ * make test-sep TEST_NAME=sep_spi_ot_reg_test STACK=cgen,sim
  *
  */
 
@@ -56,7 +56,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Register Test (TC_SPIOT_001)\n");
+    printf("SPI OT Register Test\n");
     printf("========================================\n\n");
 
     int pass = 1;

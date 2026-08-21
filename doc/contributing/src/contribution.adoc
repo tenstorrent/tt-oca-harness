@@ -4,5 +4,3 @@
 include::issues.adoc[]
 
 include::pull-requests.adoc[]
-
-include::alignment.adoc[]

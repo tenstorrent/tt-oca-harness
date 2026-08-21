@@ -2,14 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_HMAC_008 (P1) - WIPE_SECRET test
+ * WIPE_SECRET test
  *
  * Steps:
- *   1) Hash "abc" with SHA-256, save digest
- *   2) Write WIPE_SECRET with 0xFFFFFFFF
- *   3) Read DIGEST_0..7 again, verify at least some words changed
- *   4) Verify STATUS returns idle
- *   5) Start new hash of "abc", verify correct digest is produced again
+ * 1) Hash "abc" with SHA-256, save digest
+ * 2) Write WIPE_SECRET with 0xFFFFFFFF
+ * 3) Read DIGEST_0..7 again, verify at least some words changed
+ * 4) Verify STATUS returns idle
+ * 5) Start new hash of "abc", verify correct digest is produced again
  */
 
 #include <stdint.h>
@@ -106,7 +106,7 @@ static int sha256_abc(uint32_t digest_words[8]) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("=== TC_HMAC_008: WIPE_SECRET test ===\n");
+    printf("=== WIPE_SECRET test ===\n");
     int pass = 1;
 
     /* Step 1: Hash "abc", save digest */
@@ -170,17 +170,17 @@ int main(void) {
     to_hex(d2_bytes, got, 32);
     const char *abc_hex = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
     printf("Re-hash digest: %s\n", got);
-    printf("Expected:       %s\n", abc_hex);
+    printf("Expected: %s\n", abc_hex);
     if (strcmp(got, abc_hex) != 0) {
         printf("FAIL: Re-hash after wipe produced wrong digest\n");
         pass = 0;
     }
 
     if (pass) {
-        printf("=== TC_HMAC_008 PASSED ===\n");
+        printf("=== PASSED ===\n");
         test_pass(0);
     } else {
-        printf("FAIL: TC_HMAC_008 WIPE_SECRET test\n");
+        printf("FAIL: WIPE_SECRET test\n");
         test_fail(1);
     }
 

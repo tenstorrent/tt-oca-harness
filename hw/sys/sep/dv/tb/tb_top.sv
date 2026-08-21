@@ -65,6 +65,14 @@ module sep_uvm_top
     // Boot/run controls (driven by cocotb)
     input  wire logic ext_boot_seq_done_i,
     input  wire logic mpc_reset_run_req,
+    // TEST_EN strap (frontdoor DUT input). Latched into secure_tm on fuse-sense-done
+    // (or on cold-reset release when security_disable is set). Default 0 = functional
+    // mode; drive 1 before sense to open FEAT_CTRL[47:32].
+    input  wire logic test_en_strap_i,
+    // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
+    // pair onto the LCC decoder input (signed off -- no legal OTP image can present
+    // one). See the force block below.
+    input  wire logic lc_sigint_inject_i,
 
     // ------------------------------------------------------------------
     // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -127,7 +135,7 @@ module sep_uvm_top
     // real DUT port. Unlike the CPU-LSU splice (s_axi), which attaches to the
     // internal LSU bus, this path traverses the SEP inbound filter
     // (u_inbound_filter), which is block-by-default and is skipped
-    // only when feat_ctrl.sep_debug=1. The inbound-filter-gating test (#20) drives
+    // only when feat_ctrl.sep_debug=1. `sep_lcc_uvm_inbound_filter_gating_test` drives
     // it to prove external AXI is blocked (PROD) / allowed (PROD_DBG_1). Idle for
     // every other test (the agent drives these to a clean idle from t=0).
     // ------------------------------------------------------------------
@@ -188,7 +196,7 @@ module sep_uvm_top
     // which arbitrates with the CPU's eFuse-MMR path at the eFuse AXI-Lite mux and
     // is LC-state-gated (in PROD/RMA_SIP the JTAG path may read/write only the MMR
     // token region; a shadow/CSR access is routed to an error slave -> 0xbadcab1e).
-    // Used by the JTAG/eFuse mux test (#17). Idle for every other test.
+    // Used by `sep_efuse_jtag_axil_el2_cpu_mux_test`. Idle for every other test.
     // ------------------------------------------------------------------
     input  wire logic [31:0]  j_axi_awaddr,
     input  wire logic [2:0]   j_axi_awprot,
@@ -224,7 +232,7 @@ module sep_uvm_top
     // EL2 debugger reset INPUT to the DUT (sep.sv dbg_rstb_i, a real sep primary
     // input). Default-driven 1 (deasserted) by sep_base_test; the CPU debug-reset
     // isolation test pulses it to 0 to prove it does NOT disturb the system/CPU
-    // reset domain. Previously hardwired to rst_ni in this tb.
+    // reset domain.
     input  wire logic         dbg_rstb_i,
     output logic              o_cpu_run_ack_o,   // core run acknowledge (XMR-tapped)
     output logic              cpu_trace_valid_o, // retired-instruction valid
@@ -312,15 +320,16 @@ module sep_uvm_top
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
-    // Lifecycle status observability. Both of these were previously left open on the
-    // sep instance, which meant every LCC checker ASSUMED security-disable was 0 and
-    // ASSUMED no differential-decode fault had fired. Bringing them out turns two
-    // assumptions into measurements. Read-only taps, no force.
+    // Lifecycle status observability. security_disable and lc_sigint_err are DUT
+    // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
+    // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
     output logic              lcc_security_disable_probe_o,
     output logic              lcc_sigint_err_probe_o,
+    output logic              secure_tm_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
     // asserted when the WDT count reaches BITE_THOLD). Brought out so the
-    // reset/WDT sanity test (#19) can observe the bite -> reset-request edge. This
+    // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
+    // reset-request edge. This
     // is a DUT output (frontdoor), not an internal-signal probe.
     output logic              wdt_timer_rst_req_o,
     output logic              spi_cs_n_o,
@@ -358,7 +367,13 @@ module sep_uvm_top
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
     sep_pkg::jtag_sep_reset_ctrl_t   jtag_sep_reset_ctrl_idle = '0;
-    sep_pkg::sep_straps_t            sep_straps_idle      = '0;
+    // TEST_EN strap is a real DUT input (sep_straps_i.test_straps.test_en). The
+    // rest of the strap struct stays idle-0. Not a force.
+    sep_pkg::sep_straps_t            sep_straps_drive;
+    always_comb begin
+        sep_straps_drive = '0;
+        sep_straps_drive.test_straps.test_en = test_en_strap_i;
+    end
 
     // Outbound mailbox responder buses and CPU trace (the only DUT struct nets the
     // wrapper flow still needs; the retired mem/efuse/spi responder buses are gone).
@@ -572,6 +587,7 @@ module sep_uvm_top
         .dbg_disable_o                (),
         .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
+        .secure_tm_o                  (secure_tm_o),
         .km_unrecoverable_err_o       (),
         .km_recoverable_err_o         (),
         .efuse_debug_bus_o            (),
@@ -583,8 +599,8 @@ module sep_uvm_top
         .smc_fuse_sense_done_i        (1'b0),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
-        // Straps
-        .sep_straps_i                 (sep_straps_idle),
+        // Straps (TEST_EN driven from test_en_strap_i; other fields idle-0)
+        .sep_straps_i                 (sep_straps_drive),
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
@@ -1040,6 +1056,30 @@ module sep_uvm_top
 `undef SCRATCH_COLD
 
     // ------------------------------------------------------------------
+    // LC differential-integrity error inject.
+    // SIGNED OFF 2026-08-20 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // No legal OTP image can present a broken {~raw, raw} LC_STATE pair: the
+    // sense FSM regenerates the pair from the raw nibble. The specification's
+    // fail-closed feat_ctrl=0 path therefore has no frontdoor stimulus.
+    // When lc_sigint_inject_i=1, force both rails of the LCC decoder input to 0
+    // so prim_diff_decode_multi asserts sigint (XNOR of equal rails). The
+    // software-visible LC_STATE shadow is not touched -- only the decoder
+    // input -- so the stitch test can still value-check the legal pair.
+    // Re-issue every clock (Verilator snapshots a force RHS). Release when the
+    // port drops so the legal pair returns. Default 0; outside AXI cones.
+`define LCC_DEC_DATA \
+    `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
+    always @(posedge clk_i) begin
+        if (lc_sigint_inject_i === 1'b1) begin
+            force `LCC_DEC_DATA = '0;
+        end else begin
+            release `LCC_DEC_DATA;
+        end
+    end
+`undef LCC_DEC_DATA
+
+    // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
     // ------------------------------------------------------------------
     // The ESRC ring oscillators' `#delay` feedback is ignored under Verilator, so
@@ -1168,8 +1208,9 @@ module sep_uvm_top
     assign km_entropy_tdata_o   = `SEP_CORE.sep_crypto.entropy_muxed_req[0].tdata;
     // CHK5 per-sink routing golden: the crypto-leg (mux endpoint [1]) AXIS word
     // stream feeding drbg_axis_edn_adapter. tvalid && tready = one word handed to a
-    // crypto endpoint (in #15 only AES requests, so this equals AES's post-adapter
-    // beats in order). Each word is also a CHK4 genbits-golden word (chained).
+    // crypto endpoint (in `sep_drbg_real_sink_multi_km_aes_test` only AES
+    // requests, so this equals AES's post-adapter beats in order). Each word is
+    // also a CHK4 genbits-golden word (chained).
     assign axis1_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tvalid;
     assign axis1_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[1].tready;
     assign axis1_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tdata;

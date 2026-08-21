@@ -30,7 +30,7 @@ meihap claim id), CHK-DELIVER (OTBN ISR wakes the CPU via WFI, no poll), CHK-IP-
 CHK-ONEHOT (only the asserted source's ISR fires among the three PIC-enabled sources),
 plus CHK-NONVAC (no spurious ISR before any trigger). The scoreboard also checks the
 banner and ICCM execution. Full 34-bit sep_internal_interrupts vector isolation is
-COVERED_BY the no_cpu `sep_irq_ip_to_aggregator_test` (#14); here only the three
+COVERED_BY the no_cpu `sep_irq_ip_to_aggregator_test`; here only the three
 representative sources are PIC-enabled, so this proves delivery-path one-hot, not the
 whole-vector wire isolation.
 
