@@ -40,6 +40,66 @@ independently, followed by the <<smu-composition,SMU Composition>> section that
 explains how they are wired together inside the SMU and how to select between the
 `smu.sv` logic-level core and the `smu_wrapper.sv` reference integration.
 
+[[address-map-integration]]
+=== Address Map Integration
+
+The OCAH address map has three levels, and the assignment contract splits across
+the integrator, SEP firmware, and SMC firmware. Assign and program them from this
+section; the deeper subsystem and crossbar sections referenced below give the
+per-block detail.
+
+* *Chiplet envelope (integrator).* The SoC/chiplet address map assigns each
+  subsystem a global base and reserved size, and the adopter's fabric decoder
+  routes those ranges to the SMU. The SMU crossbar preserves offsets and does not
+  constrain envelope size, so the integrator owns non-overlap and containment at
+  the SoC level.
+* *SEP and SMC chiplet apertures (firmware).* Each subsystem exposes a
+  chiplet-visible aperture whose base and size are programmable at runtime.
+  Inbound transactions to an aperture are remapped global-to-local before they
+  reach the subsystem.
+* *Local-alias views (fixed in RTL).* Internally each subsystem addresses its
+  own resources through a fixed local map: the SMC at `0xC000_0000` (see
+  <<smc-address-map-integration>>), the SEP through its own local map. These are
+  RTL-fixed and not integrator-assigned.
+
+.Address-map assignment contract
+[width="100%",cols="26%,20%,54%",options="header"]
+|=======================================================================
+|Level |Owner |Assigned / programmed by
+|Chiplet envelope |Integrator |SoC/chiplet address map + adopter fabric decode
+|SEP chiplet aperture |SEP firmware |`SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`
+(the `sep_cpu_ctrl` CSRs)
+|SMC chiplet aperture |SMC firmware |`GLOBAL_BASE` / `REGION_SIZE` (the SMC CPU
+Control CSRs at `0xC001_0000`)
+|SEP / SMC local view |Fixed (RTL) |Offsets within each subsystem's local map
+(SMC local base `0xC000_0000`)
+|=======================================================================
+
+Programming order and constraints: firmware programs the SEP and SMC aperture
+CSRs during early boot, *before any cross-subsystem AXI traffic is issued*, and
+must keep the two apertures non-overlapping and inside the chiplet envelope the
+integrator assigned. The full runtime crossbar behaviour and the exact CSR
+plumbing are in <<smu-firmware-programming-order>> under <<smu-composition>>.
+
+[[address-map-collateral]]
+==== Register collateral
+
+The machine-readable address map ships in the repository tree; integrators
+consume it from the release checkout or tarball rather than a separate package:
+
+* System tops: `hw/sys/<sys>/regs/<sys>.rdl` (e.g. `hw/sys/sep/regs/sep.rdl`,
+  `hw/sys/smc/regs/smc.rdl`).
+* IP blocks: `hw/ip/<ip>/regs/<ip>.rdl`.
+* Vendored blocks: `vendor/.../overlay/regs/<ip>/regs/<ip>.rdl` or
+  `vendor/.../overlay/rdl/<ip>.rdl`.
+* Generated outputs per block: `<block>/regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/`
+  — C headers, SystemVerilog packages, Python models, UVM RAL, documentation, and
+  IEEE 1685-2014 IP-XACT component descriptions.
+
+For the architecture-level responsibility split between the integrator, firmware,
+and the internal SEP/SMC maps, see
+xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
+
 [[smc-integration]]
 === System Management Controller (SMC) Integration
 
@@ -823,6 +883,7 @@ quasi-static CSR fields need no clock-domain crossing. The crossbar's
 address arithmetic is done on 57-bit widened sums; `ext_out` covers
 `0x0000_8000_0000` up to the top of the 56-bit address space.
 
+[[smu-firmware-programming-order]]
 ===== Firmware programming order
 
 Firmware must program `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE` and
