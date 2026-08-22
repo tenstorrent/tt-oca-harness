@@ -46,8 +46,8 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
 
     `include "prim_assert.sv"
 
-    /** @brief Internal register address width (13 bits = 8 KB per port). */
-    localparam int unsigned ADDR_W = 13;
+    /** @brief Internal register address width, from the generated register map. */
+    localparam int unsigned ADDR_W = KM_KPV_REG_MIN_ADDR_WIDTH;
 
     /** @brief Key slots in the vault, and the index width that addresses them. */
     localparam int unsigned NUM_SLOTS      = 64;

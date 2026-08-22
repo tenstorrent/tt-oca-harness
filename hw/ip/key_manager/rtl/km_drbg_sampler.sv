@@ -45,8 +45,8 @@ module km_drbg_sampler import km_intf_pkg::*; import axi_pkg::*;
 
     `include "prim_assert.sv"
 
-    /** @brief Register block address width (4 bits, word-aligned). */
-    localparam int unsigned ADDR_W = 4;
+    /** @brief Register block address width, from the generated register map. */
+    localparam int unsigned ADDR_W = KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH;
 
     //--------------------------------------------------------------------------
     // Register block AXI (flat) and hwif
