@@ -122,9 +122,6 @@ them. They are part of the shared native-profile set applied to every DUT.
 |===
 |Define |Notes
 
-|`SIM`
-|Native-profile simulation mark. No DTP source branches on this name.
-
 |`DISABLE_ASSERT`
 |No DTP compile-unit source tests this name. Verilator assertion gating is
 `VERILATOR`, `ASSERTS_OFF`, and `COMMON_CELLS_ASSERTS_OFF` above.

@@ -44,7 +44,6 @@ cache_key_extra = []
 [target_defaults.default]
 defines = [
   "SIMULATION",
-  "SIM",
   "NO_LIBCELL",
   "DISABLE_ASSERT",
   "COMMON_CELLS_ASSERTS_OFF",
