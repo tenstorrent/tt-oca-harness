@@ -155,30 +155,30 @@ endif::backend-pdf[]
 
 ifdef::backend-html5[]
 ++++
-include::partial$sep/regs/gen/html/blocks/aon_timer.html[]
+include::ip:partial$aon_timer/regs/gen/html/aon_timer.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/aon_timer.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc[]
 endif::backend-pdf[]
 
 ==== Cryptographic Accelerators
 
 ifdef::backend-html5[]
 ++++
-include::partial$sep/regs/gen/html/blocks/aes.html[]
-include::partial$sep/regs/gen/html/blocks/hmac.html[]
-include::partial$sep/regs/gen/html/blocks/kmac.html[]
-include::partial$sep/regs/gen/html/blocks/otbn.html[]
+include::ip:partial$aes/regs/gen/html/aes.html[]
+include::ip:partial$hmac/regs/gen/html/hmac.html[]
+include::ip:partial$kmac/regs/gen/html/kmac.html[]
+include::ip:partial$otbn/regs/gen/html/otbn.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/aes.adoc[]
-include::../regs/gen/adoc/blocks/hmac.adoc[]
-include::../regs/gen/adoc/blocks/kmac.adoc[]
-include::../regs/gen/adoc/blocks/otbn.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc[]
 endif::backend-pdf[]
 
 ==== Entropy Source

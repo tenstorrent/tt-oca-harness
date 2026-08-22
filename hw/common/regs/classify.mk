@@ -108,12 +108,17 @@ OCAH_REG_COMPOSITE_BLOCK_IDS := $(foreach block,$(OCAH_REG_BLOCKS),$(if $(call o
 OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(OCAH_REG_BLOCKS))
 
 # Tops that get the shared catalog on their -I path: composite tops, plus plain
-# wrapper/top RDLs that include sibling blocks by bare filename.
+# wrapper/top RDLs that include sibling blocks by bare filename. The relocated
+# OpenTitan overlay blocks hmac/kmac/otbn (like edn) pull the shared
+# opentitan_udps.rdl fragment by bare include, so they need the catalog too.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   edn \
+  hmac \
   i2c_wrap \
   key_manager \
+  kmac \
   oca_i3c_wrap \
+  otbn \
   sep_external \
   smc \
   telemetry_receiver_wrap \

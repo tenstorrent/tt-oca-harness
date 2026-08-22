@@ -35,6 +35,7 @@ typedef union {
 #define AES__KEY_SHARE0__KEY_SHARE0_bm 0xffffffff
 #define AES__KEY_SHARE0__KEY_SHARE0_bp 0
 #define AES__KEY_SHARE0__KEY_SHARE0_bw 32
+#define AES__KEY_SHARE0__KEY_SHARE0_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KEY_SHARE0 :32;
@@ -46,6 +47,7 @@ typedef union {
 #define AES__KEY_SHARE1__KEY_SHARE1_bm 0xffffffff
 #define AES__KEY_SHARE1__KEY_SHARE1_bp 0
 #define AES__KEY_SHARE1__KEY_SHARE1_bw 32
+#define AES__KEY_SHARE1__KEY_SHARE1_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KEY_SHARE1 :32;
@@ -57,6 +59,7 @@ typedef union {
 #define AES__IV__IV_bm 0xffffffff
 #define AES__IV__IV_bp 0
 #define AES__IV__IV_bw 32
+#define AES__IV__IV_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t IV :32;
@@ -68,6 +71,7 @@ typedef union {
 #define AES__DATA_IN__DATA_IN_bm 0xffffffff
 #define AES__DATA_IN__DATA_IN_bp 0
 #define AES__DATA_IN__DATA_IN_bw 32
+#define AES__DATA_IN__DATA_IN_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t DATA_IN :32;
@@ -79,6 +83,7 @@ typedef union {
 #define AES__DATA_OUT__DATA_OUT_bm 0xffffffff
 #define AES__DATA_OUT__DATA_OUT_bp 0
 #define AES__DATA_OUT__DATA_OUT_bw 32
+#define AES__DATA_OUT__DATA_OUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t DATA_OUT :32;
@@ -90,21 +95,27 @@ typedef union {
 #define AES__CTRL_SHADOWED__OPERATION_bm 0x3
 #define AES__CTRL_SHADOWED__OPERATION_bp 0
 #define AES__CTRL_SHADOWED__OPERATION_bw 2
+#define AES__CTRL_SHADOWED__OPERATION_reset 0x1
 #define AES__CTRL_SHADOWED__MODE_bm 0xfc
 #define AES__CTRL_SHADOWED__MODE_bp 2
 #define AES__CTRL_SHADOWED__MODE_bw 6
+#define AES__CTRL_SHADOWED__MODE_reset 0x3f
 #define AES__CTRL_SHADOWED__KEY_LEN_bm 0x700
 #define AES__CTRL_SHADOWED__KEY_LEN_bp 8
 #define AES__CTRL_SHADOWED__KEY_LEN_bw 3
+#define AES__CTRL_SHADOWED__KEY_LEN_reset 0x1
 #define AES__CTRL_SHADOWED__SIDELOAD_bm 0x800
 #define AES__CTRL_SHADOWED__SIDELOAD_bp 11
 #define AES__CTRL_SHADOWED__SIDELOAD_bw 1
+#define AES__CTRL_SHADOWED__SIDELOAD_reset 0x0
 #define AES__CTRL_SHADOWED__PRNG_RESEED_RATE_bm 0x7000
 #define AES__CTRL_SHADOWED__PRNG_RESEED_RATE_bp 12
 #define AES__CTRL_SHADOWED__PRNG_RESEED_RATE_bw 3
+#define AES__CTRL_SHADOWED__PRNG_RESEED_RATE_reset 0x1
 #define AES__CTRL_SHADOWED__MANUAL_OPERATION_bm 0x8000
 #define AES__CTRL_SHADOWED__MANUAL_OPERATION_bp 15
 #define AES__CTRL_SHADOWED__MANUAL_OPERATION_bw 1
+#define AES__CTRL_SHADOWED__MANUAL_OPERATION_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t OPERATION :2;
@@ -122,9 +133,11 @@ typedef union {
 #define AES__CTRL_AUX_SHADOWED__KEY_TOUCH_FORCES_RESEED_bm 0x1
 #define AES__CTRL_AUX_SHADOWED__KEY_TOUCH_FORCES_RESEED_bp 0
 #define AES__CTRL_AUX_SHADOWED__KEY_TOUCH_FORCES_RESEED_bw 1
+#define AES__CTRL_AUX_SHADOWED__KEY_TOUCH_FORCES_RESEED_reset 0x1
 #define AES__CTRL_AUX_SHADOWED__FORCE_MASKS_bm 0x2
 #define AES__CTRL_AUX_SHADOWED__FORCE_MASKS_bp 1
 #define AES__CTRL_AUX_SHADOWED__FORCE_MASKS_bw 1
+#define AES__CTRL_AUX_SHADOWED__FORCE_MASKS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t KEY_TOUCH_FORCES_RESEED :1;
@@ -151,15 +164,19 @@ typedef union {
 #define AES__TRIGGER__START_bm 0x1
 #define AES__TRIGGER__START_bp 0
 #define AES__TRIGGER__START_bw 1
+#define AES__TRIGGER__START_reset 0x0
 #define AES__TRIGGER__KEY_IV_DATA_IN_CLEAR_bm 0x2
 #define AES__TRIGGER__KEY_IV_DATA_IN_CLEAR_bp 1
 #define AES__TRIGGER__KEY_IV_DATA_IN_CLEAR_bw 1
+#define AES__TRIGGER__KEY_IV_DATA_IN_CLEAR_reset 0x1
 #define AES__TRIGGER__DATA_OUT_CLEAR_bm 0x4
 #define AES__TRIGGER__DATA_OUT_CLEAR_bp 2
 #define AES__TRIGGER__DATA_OUT_CLEAR_bw 1
+#define AES__TRIGGER__DATA_OUT_CLEAR_reset 0x1
 #define AES__TRIGGER__PRNG_RESEED_bm 0x8
 #define AES__TRIGGER__PRNG_RESEED_bp 3
 #define AES__TRIGGER__PRNG_RESEED_bw 1
+#define AES__TRIGGER__PRNG_RESEED_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t START :1;
@@ -175,24 +192,31 @@ typedef union {
 #define AES__STATUS__IDLE_bm 0x1
 #define AES__STATUS__IDLE_bp 0
 #define AES__STATUS__IDLE_bw 1
+#define AES__STATUS__IDLE_reset 0x0
 #define AES__STATUS__STALL_bm 0x2
 #define AES__STATUS__STALL_bp 1
 #define AES__STATUS__STALL_bw 1
+#define AES__STATUS__STALL_reset 0x0
 #define AES__STATUS__OUTPUT_LOST_bm 0x4
 #define AES__STATUS__OUTPUT_LOST_bp 2
 #define AES__STATUS__OUTPUT_LOST_bw 1
+#define AES__STATUS__OUTPUT_LOST_reset 0x0
 #define AES__STATUS__OUTPUT_VALID_bm 0x8
 #define AES__STATUS__OUTPUT_VALID_bp 3
 #define AES__STATUS__OUTPUT_VALID_bw 1
+#define AES__STATUS__OUTPUT_VALID_reset 0x0
 #define AES__STATUS__INPUT_READY_bm 0x10
 #define AES__STATUS__INPUT_READY_bp 4
 #define AES__STATUS__INPUT_READY_bw 1
+#define AES__STATUS__INPUT_READY_reset 0x0
 #define AES__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bm 0x20
 #define AES__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bp 5
 #define AES__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_bw 1
+#define AES__STATUS__ALERT_RECOV_CTRL_UPDATE_ERR_reset 0x0
 #define AES__STATUS__ALERT_FATAL_FAULT_bm 0x40
 #define AES__STATUS__ALERT_FATAL_FAULT_bp 6
 #define AES__STATUS__ALERT_FATAL_FAULT_bw 1
+#define AES__STATUS__ALERT_FATAL_FAULT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t IDLE :1;
@@ -211,9 +235,11 @@ typedef union {
 #define AES__CTRL_GCM_SHADOWED__PHASE_bm 0x3f
 #define AES__CTRL_GCM_SHADOWED__PHASE_bp 0
 #define AES__CTRL_GCM_SHADOWED__PHASE_bw 6
+#define AES__CTRL_GCM_SHADOWED__PHASE_reset 0x1
 #define AES__CTRL_GCM_SHADOWED__NUM_VALID_BYTES_bm 0x7c0
 #define AES__CTRL_GCM_SHADOWED__NUM_VALID_BYTES_bp 6
 #define AES__CTRL_GCM_SHADOWED__NUM_VALID_BYTES_bw 5
+#define AES__CTRL_GCM_SHADOWED__NUM_VALID_BYTES_reset 0x10
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t PHASE :6;

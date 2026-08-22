@@ -11,7 +11,7 @@ DUT already produces is the value-agnostic trap: the module self-tests against t
 vector at import, so a transcription error in the S-box / key schedule / round
 math fails loudly here rather than silently agreeing with a broken DUT.
 
-Register byte/word convention (OpenTitan AES, hw/sys/sep/regs/gen/adoc/blocks/aes.adoc
+Register byte/word convention (OpenTitan AES, vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc
 "all registers are little-endian", programmers_guide.md):
   * The 256-bit key is KEY_SHARE0_0..7 (8 words); KEY_SHARE0_0 holds key bytes
     [3:0] little-endian (byte 0 = LSB), KEY_SHARE0_1 holds bytes [7:4], etc.
