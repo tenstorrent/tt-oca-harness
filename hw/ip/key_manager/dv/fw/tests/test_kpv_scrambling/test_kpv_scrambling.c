@@ -7,9 +7,9 @@
  * @brief KPV scrambler test
  *
  * 1. Set scrambler key, enable scrambling.
- * 2. Write values to all KPV key registers (32 slots x 16 words) and all CTRL
- *    registers; read back all key words and verify they match (round-trip with
- *    scrambling: write scramble -> store -> read descramble).
+ * 2. Write values to all KPV key registers (32 slots x 16 words); read back all
+ *    key words and verify they match (round-trip with scrambling: write
+ *    scramble -> store -> read descramble).
  * 3. Disable scrambling, read back all key words and confirm returned values
  *    are scrambled (i.e. not the original plaintext — raw stored form).
  *
@@ -57,11 +57,10 @@ int main(void) {
     kpv_scrambler_set_key(0xDEADBEEFu);
     kpv_scrambler_enable(1);
 
-    /* Write all KPV key words and all CTRL registers with scrambling enabled */
+    /* Write all KPV key words with scrambling enabled */
     for (uint32_t s = 0; s < NUM_SLOTS; s++) {
         for (uint32_t w = 0; w < WORDS_PER_SLOT; w++)
             KPV_KEY_WORD_REG(s, w).w = key_plaintext(s, w);
-        KPV_CTRL_REG(s).f.last_dword = 15u;
     }
 
     /* Verify scrambler and all CTRL registers before round-trip (ensure we get unscrambled
@@ -73,9 +72,6 @@ int main(void) {
         TEST_FAIL("Scrambler enable before readback: expected 1, got %u",
                   (unsigned)KPV_SCRAMBLER_CTRL_REG.f.enable);
     for (uint32_t s = 0; s < NUM_SLOTS; s++) {
-        if (KPV_CTRL_REG(s).f.last_dword != 15u)
-            TEST_FAIL("CTRL[%u].last_dword before readback: expected 15, got %u", (unsigned)s,
-                      (unsigned)KPV_CTRL_REG(s).f.last_dword);
         if (KPV_CTRL_REG(s).f.lock_write != 0u)
             TEST_FAIL("CTRL[%u].lock_write before readback: expected 0, got %u", (unsigned)s,
                       (unsigned)KPV_CTRL_REG(s).f.lock_write);

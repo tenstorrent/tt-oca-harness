@@ -114,164 +114,85 @@ void rom_kpv_shred_all(void) {
  * overwrites the slot data with LFSR output (through the KPV scrambler) and
  * clears the slot CTRL register, so this also wipes write-locked slots.
  *
- * @param[in]  slot Slot index to shred (EXTEND determines the span erased).
+ * @param[in]  slot Slot index to shred.
  */
 void rom_kpv_shred_slot(uint8_t slot) {
     for (uint8_t iter = 0; iter < ROM_KM_SHRED_ITER + 1; iter++) rom_kpv_erase_slot(slot);
 }
 
 /**
- * @brief Hardware-erase the base slot and all extended slots, then wait.
+ * @brief Hardware-erase one slot, then wait for completion.
  *
- * Asserts CTRL.erase on every slot spanned by the key and busy-waits until
- * hardware self-clears each erase bit (slot data overwritten with LFSR output
- * and CTRL cleared, incl. locks — erase is not gated by the slot locks).
+ * Asserts CTRL.erase and busy-waits until hardware self-clears the erase bit
+ * (slot data overwritten with LFSR output and CTRL cleared, incl. locks —
+ * erase is not gated by the slot locks).
  *
- * @param[in] base_slot First slot index (EXTEND field determines span).
+ * @param[in] slot Slot index.
  */
-void rom_kpv_erase_slot(uint8_t base_slot) {
-    uint8_t extend = (uint8_t)KPV_CTRL(base_slot).f.extend;
+void rom_kpv_erase_slot(uint8_t slot) {
+    /* The write-1 trigger is issued three times so a single skipped store
+     * (e.g. from a fault-injection glitch) cannot prevent the erase from
+     * starting. */
+    km_kpv__ctrl_reg_t ctrl;
+    ctrl.w = KPV_CTRL(slot).w;
+    ctrl.f.erase = 1;
+    KPV_CTRL(slot).w = ctrl.w;
+    KPV_CTRL(slot).w = ctrl.w;
+    KPV_CTRL(slot).w = ctrl.w;
 
-    /* Assert the erase trigger on every slot of the key.  The write-1 trigger
-     * is issued three times per slot so a single skipped store (e.g. from a
-     * fault-injection glitch) cannot prevent the erase from starting. */
-    for (uint8_t s = 0; s <= extend; s++) {
-        km_kpv__ctrl_reg_t ctrl;
-        ctrl.w = KPV_CTRL(base_slot + s).w;
-        ctrl.f.erase = 1;
-        KPV_CTRL(base_slot + s).w = ctrl.w;
-        KPV_CTRL(base_slot + s).w = ctrl.w;
-        KPV_CTRL(base_slot + s).w = ctrl.w;
-    }
-
-    /* Wait until hardware self-clears each erase bit: the slot data has been
+    /* Wait until hardware self-clears the erase bit: the slot data has been
      * overwritten and its CTRL register (incl. locks) cleared, so the slot is
      * reusable. */
-    for (uint8_t s = 0; s <= extend; s++) {
-        while (KPV_CTRL(base_slot + s).f.erase)
-            ;
-    }
+    while (KPV_CTRL(slot).f.erase)
+        ;
 }
 
 /*===========================================================================
- * Write key
+ * Write slot
  *===========================================================================*/
 
 /**
- * @brief Write a key into one or more consecutive KPV slots.
+ * @brief Write key words into one KPV slot.
  *
- * Configures EXTEND and LAST_DWORD control fields. The permitted-destination
- * mask is tracked in the software key registry (rom_keyreg), not in KPV CTRL.
- *
- * @param[in] base_slot  First slot index.
- * @param[in] key        Key data array.
- * @param[in] key_len    Key length in 32-bit words.
- * @return 0 on success, -1 if any required slot is write-locked.
+ * @param[in] slot     Slot index.
+ * @param[in] words    Key data array.
+ * @param[in] n_words  Words to write (1-16).
+ * @return 0 on success, -1 if n_words is out of range or the slot is
+ *         write-locked.
  */
-int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key, uint8_t key_len) {
-    uint8_t extend = (uint8_t)((key_len - 1) / ROM_KM_KPV_WORDS_PER_SLOT);
-    uint8_t num_slots = extend + 1;
+int rom_kpv_write_slot(uint8_t slot, const uint32_t *words, uint8_t n_words) {
+    /* A slot is ROM_KM_KPV_WORDS_PER_SLOT words and the slots are contiguous,
+     * so an over-long count would run into the next slot. */
+    if (n_words == 0 || n_words > ROM_KM_KPV_WORDS_PER_SLOT) return -1;
 
-    /* Verify none of the required slots are write-locked. */
-    for (uint8_t s = 0; s < num_slots; s++) {
-        if (KPV_CTRL(base_slot + s).f.lock_write) return -1;
-    }
+    if (KPV_CTRL(slot).f.lock_write) return -1;
 
-    /* Configure control registers for each slot. */
-    uint8_t words_written = 0;
-    for (uint8_t s = 0; s < num_slots; s++) {
-        km_kpv__ctrl_reg_t ctrl;
-        ctrl.w = 0;
-        ctrl.f.extend = ((s == 0) ? extend : 0) & 0x7u;
-
-        if (s == num_slots - 1) {
-            uint8_t rem = key_len % ROM_KM_KPV_WORDS_PER_SLOT;
-            ctrl.f.last_dword = ((rem == 0) ? 15 : (rem - 1)) & 0xFu;
-        } else {
-            ctrl.f.last_dword = 15u & 0xFu;
-        }
-
-        KPV_CTRL(base_slot + s).w = ctrl.w;
-
-        /* Write key data words for this slot. */
-        uint8_t words_in_slot =
-            (s == num_slots - 1) ? (uint8_t)(key_len - words_written) : ROM_KM_KPV_WORDS_PER_SLOT;
-
-        for (uint8_t w = 0; w < words_in_slot; w++)
-            KPV_KEY_WORD(base_slot + s, w) = key[words_written + w];
-
-        words_written += words_in_slot;
-    }
+    for (uint8_t w = 0; w < n_words; w++) KPV_KEY_WORD(slot, w) = words[w];
 
     return 0;
 }
 
 /*===========================================================================
- * Get key info (length from control registers only)
+ * Read slot
  *===========================================================================*/
 
 /**
- * @brief Get key length from KPV control registers.
+ * @brief Read key words out of one KPV slot.
  *
- * Performs same validation as rom_kpv_read_key; does not read key data.
- *
- * @param[in]  base_slot  Base slot index (0-31).
- * @param[out] key_len    Receives total key length in words.
- * @return 0 on success, -1 if read-locked or malformed.
+ * @param[in]  slot     Slot index.
+ * @param[out] words    Output buffer (>= n_words words).
+ * @param[in]  n_words  Words to read (1-16).
+ * @return 0 on success, -1 if n_words is out of range or the slot is
+ *         read-locked.
  */
-int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len) {
-    km_kpv__ctrl_reg_t base_ctrl;
-    base_ctrl.w = KPV_CTRL(base_slot).w;
+int rom_kpv_read_slot(uint8_t slot, uint32_t *words, uint8_t n_words) {
+    /* Bounded for the same reason as rom_kpv_write_slot: an over-long count
+     * would read out of the slot and into the next one. */
+    if (n_words == 0 || n_words > ROM_KM_KPV_WORDS_PER_SLOT) return -1;
 
-    uint8_t extend = (uint8_t)base_ctrl.f.extend;
-    uint8_t num_slots = extend + 1;
+    if (KPV_CTRL(slot).f.lock_use) return -1;
 
-    for (uint8_t s = 0; s < num_slots; s++) {
-        if (KPV_CTRL(base_slot + s).f.lock_use) return -1;
-    }
-
-    for (uint8_t s = 0; s < num_slots - 1; s++) {
-        if (KPV_CTRL(base_slot + s).f.last_dword != 15) return -1;
-    }
-
-    km_kpv__ctrl_reg_t final_ctrl;
-    final_ctrl.w = KPV_CTRL(base_slot + extend).w;
-    *key_len = (uint8_t)(ROM_KM_KPV_WORDS_PER_SLOT * extend + final_ctrl.f.last_dword + 1);
-    return 0;
-}
-
-/*===========================================================================
- * Read key
- *===========================================================================*/
-
-/**
- * @brief Read a multi-slot key from the KPV.
- *
- * Reconstructs total length from EXTEND and LAST_DWORD control fields.
- *
- * @param[in]  base_slot  First slot index (must have EXTEND set).
- * @param[out] key        Output buffer (caller must provide >= key_len words).
- * @param[out] key_len    Receives the reconstructed key length in words.
- * @return 0 on success, -1 if any slot is read-locked or malformed.
- */
-int rom_kpv_read_key(uint8_t base_slot, uint32_t *key, uint8_t *key_len) {
-    if (rom_kpv_get_key_info(base_slot, key_len) < 0) return -1;
-
-    uint8_t total_len = *key_len;
-    uint8_t extend = (uint8_t)KPV_CTRL(base_slot).f.extend;
-    uint8_t num_slots = extend + 1;
-
-    /* Read key data from all slots. */
-    uint8_t words_read = 0;
-    for (uint8_t s = 0; s < num_slots; s++) {
-        uint8_t words_in_slot =
-            (s == num_slots - 1) ? (uint8_t)(total_len - words_read) : ROM_KM_KPV_WORDS_PER_SLOT;
-
-        for (uint8_t w = 0; w < words_in_slot; w++)
-            key[words_read + w] = KPV_KEY_WORD(base_slot + s, w);
-
-        words_read += words_in_slot;
-    }
+    for (uint8_t w = 0; w < n_words; w++) words[w] = KPV_KEY_WORD(slot, w);
 
     return 0;
 }
@@ -281,35 +202,32 @@ int rom_kpv_read_key(uint8_t base_slot, uint32_t *key, uint8_t *key_len) {
  *===========================================================================*/
 
 /**
- * @brief Set the write-lock bit on all slots spanned by a multi-slot key.
+ * @brief Set the write-lock bit on one slot, with triple write.
  *
- * @param[in] base_slot First slot index (EXTEND field determines span).
+ * @param[in] slot Slot index.
  */
-void rom_kpv_write_lock(uint8_t base_slot) {
-    uint8_t extend = (uint8_t)KPV_CTRL(base_slot).f.extend;
-
-    for (uint8_t s = 0; s <= extend; s++) {
-        km_kpv__ctrl_reg_t ctrl;
-        ctrl.w = KPV_CTRL(base_slot + s).w;
-        ctrl.f.lock_write = 1;
-        KPV_CTRL(base_slot + s).w = ctrl.w;
-    }
+void rom_kpv_write_lock(uint8_t slot) {
+    /* Triple-write convention: 3 writes ensure the lock commits even if a
+     * fault-injection glitch skips a store.  lock_write is woset, so the
+     * repeated writes are idempotent and the zero-valued bits leave the
+     * slot's other CTRL fields (incl. erase) untouched. */
+    km_kpv__ctrl_reg_t ctrl = {0};
+    ctrl.f.lock_write = 1;
+    KPV_CTRL(slot).w = ctrl.w;
+    KPV_CTRL(slot).w = ctrl.w;
+    KPV_CTRL(slot).w = ctrl.w;
 }
 
 /**
- * @brief Set read-lock (lock_use) on all slots spanned by a multi-slot key.
+ * @brief Set read-lock (lock_use) on one slot, preventing further key reads.
  *
- * Prevents further key reads.
- *
- * @param[in] base_slot First slot index (EXTEND field determines span).
+ * @param[in] slot Slot index.
  */
-void rom_kpv_read_lock(uint8_t base_slot) {
-    uint8_t extend = (uint8_t)KPV_CTRL(base_slot).f.extend;
-
-    for (uint8_t s = 0; s <= extend; s++) {
-        km_kpv__ctrl_reg_t ctrl;
-        ctrl.w = KPV_CTRL(base_slot + s).w;
-        ctrl.f.lock_use = 1;
-        KPV_CTRL(base_slot + s).w = ctrl.w;
-    }
+void rom_kpv_read_lock(uint8_t slot) {
+    /* Triple-write convention — same rationale as rom_kpv_write_lock. */
+    km_kpv__ctrl_reg_t ctrl = {0};
+    ctrl.f.lock_use = 1;
+    KPV_CTRL(slot).w = ctrl.w;
+    KPV_CTRL(slot).w = ctrl.w;
+    KPV_CTRL(slot).w = ctrl.w;
 }

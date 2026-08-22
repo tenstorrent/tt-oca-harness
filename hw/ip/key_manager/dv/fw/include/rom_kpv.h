@@ -9,6 +9,11 @@
  * Provides scrambler initialization/control, slot shredding, key read/write,
  * and write/read locking through the PeakRDL-generated register unions in
  * key_manager.h / key_manager_addr.h.
+ *
+ * Every entry point here works on exactly one slot and knows nothing of keys:
+ * the KPV stores key data and lock state only, so a key's slot span and its
+ * final-slot word count are software state held in the key registry
+ * (rom_keyreg).  Callers that operate on a whole key loop over its slots.
  */
 
 #ifndef ROM_KPV_H
@@ -81,83 +86,80 @@ void rom_kpv_shred_all(void);
  * overwrites the slot data with LFSR output (through the KPV scrambler) and
  * clears the slot CTRL register, so a write-locked slot is wiped too.
  *
- * @param slot Slot index (0-31); EXTEND determines the span erased.
+ * @param slot Slot index (0-31).
  */
 void rom_kpv_shred_slot(uint8_t slot);
 
 /**
- * @brief Hardware-erase the base slot and all extended slots, then wait.
+ * @brief Hardware-erase one slot, then wait for it to complete.
  *
- * Asserts the per-slot CTRL.erase trigger on every slot spanned by the key
- * (base slot EXTEND field determines the span), then busy-waits for the
- * hardware to overwrite each slot's key words with LFSR data (through the
- * KPV scrambler) and clear its CTRL register (including lock_write/lock_use),
- * clearing the erase bit on completion. Erase is not blocked by the slot
- * locks. This function blocks until every slot's erase bit has self-cleared,
- * after which the slots are reusable.
+ * Asserts the slot's CTRL.erase trigger, then busy-waits for the hardware to
+ * overwrite the slot's key words with LFSR data (through the KPV scrambler)
+ * and clear its CTRL register (including lock_write/lock_use), clearing the
+ * erase bit on completion. Erase is not blocked by the slot locks. This
+ * function blocks until the erase bit has self-cleared, after which the slot
+ * is reusable.
  *
- * @param[in] base_slot First slot index (EXTEND field determines the span).
+ * @param[in] slot Slot index (0-31).
  */
-void rom_kpv_erase_slot(uint8_t base_slot);
+void rom_kpv_erase_slot(uint8_t slot);
 
 /*===========================================================================
  * Key Data Functions
  *===========================================================================*/
 
 /**
- * @brief Write key data and control fields to the KPV.
+ * @brief Write key words into one KPV slot.
  *
- * Computes EXTEND = (key_len-1)/16, sets LAST_DWORD on each required slot,
- * and writes the key words.  Returns an error if any required slot is
- * write-locked (no data is written in that case).  The permitted-destination
- * mask is tracked in the software key registry (rom_keyreg), not in KPV CTRL.
+ * Writes @p n_words words starting at word 0 of the slot; any remaining words
+ * of the slot are left holding whatever the preceding shred put there.
+ * Returns an error without writing anything if the slot is write-locked.
  *
- * @param base_slot Base slot index (0-31).
- * @param key Key data (key_len 32-bit words).
- * @param key_len Key length in 32-bit words (1-128).
- * @return 0 on success, -1 on error.
+ * @param slot Slot index (0-31).
+ * @param words Key data (@p n_words 32-bit words).
+ * @param n_words Words to write (1-16).
+ * @return 0 on success, -1 if @p n_words is outside 1-16 or the slot is
+ *         write-locked.
  */
-int rom_kpv_write_key(uint8_t base_slot, const uint32_t *key, uint8_t key_len);
+int rom_kpv_write_slot(uint8_t slot, const uint32_t *words, uint8_t n_words);
 
 /**
- * @brief Get key length from KPV control registers (no key data read).
+ * @brief Read key words out of one KPV slot.
  *
- * Same validation as rom_kpv_read_key (lock_use, last_dword).
+ * Reads @p n_words words starting at word 0 of the slot.  How many words are
+ * meaningful is the caller's business: the hardware masks nothing, so words
+ * past a key's length read back as the shred's LFSR data rather than zero.
  *
- * @param base_slot Base slot index (0-31).
- * @param key_len Receives total key length in 32-bit words.
- * @return 0 on success, -1 if any slot is read-locked or control fields malformed.
+ * @param slot Slot index (0-31).
+ * @param words Buffer for @p n_words 32-bit words.
+ * @param n_words Words to read (1-16).
+ * @return 0 on success, -1 if @p n_words is outside 1-16 or the slot is
+ *         read-locked.
  */
-int rom_kpv_get_key_info(uint8_t base_slot, uint8_t *key_len);
-
-/**
- * @brief Read key data and control fields from the KPV.
- *
- * Reconstructs total key length from EXTEND and LAST_DWORD, verifies that
- * non-final slots have LAST_DWORD == 15, and copies key words into @p key.
- * Returns an error if any required slot is read-locked.
- *
- * @param base_slot Base slot index (0-31).
- * @param key Buffer for key data (caller must size appropriately).
- * @param key_len Receives total key length in 32-bit words.
- * @return 0 on success, -1 on error.
- */
-int rom_kpv_read_key(uint8_t base_slot, uint32_t *key, uint8_t *key_len);
+int rom_kpv_read_slot(uint8_t slot, uint32_t *words, uint8_t n_words);
 
 /*===========================================================================
  * Lock Functions
  *===========================================================================*/
 
 /**
- * @brief Write-lock the base slot and all extended slots.
- * @param base_slot Base slot index (0-31).
+ * @brief Write-lock one slot, with triple write.
+ *
+ * The register write is issued three times so a single skipped store (e.g.
+ * from a fault-injection glitch) cannot leave the slot writable.
+ *
+ * @param slot Slot index (0-31).
  */
-void rom_kpv_write_lock(uint8_t base_slot);
+void rom_kpv_write_lock(uint8_t slot);
 
 /**
- * @brief Read-lock (lock_use) the base slot and all extended slots.
- * @param base_slot Base slot index (0-31).
+ * @brief Read-lock (lock_use) one slot, with triple write.
+ *
+ * The register write is issued three times so a single skipped store (e.g.
+ * from a fault-injection glitch) cannot leave the key readable.
+ *
+ * @param slot Slot index (0-31).
  */
-void rom_kpv_read_lock(uint8_t base_slot);
+void rom_kpv_read_lock(uint8_t slot);
 
 #endif /* ROM_KPV_H */

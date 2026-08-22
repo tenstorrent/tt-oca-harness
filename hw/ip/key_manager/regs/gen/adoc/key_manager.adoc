@@ -52,7 +52,7 @@
 |===
 | Address | Name | Access | Description
 | 0xD000 - 0xD03C | WORD[16] | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
-| 0xD800 - 0xD87C | CTRL[32] | RW a| Per-slot control: lock bits (W1S), Extend, Dest_valid, Last_dword
+| 0xD800 - 0xD87C | CTRL[32] | RW a| Per-slot control: lock bits (W1S) and the erase trigger
 | 0xD880 | KPV_SCRAMBLER_KEY | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
 | 0xD884 | KPV_SCRAMBLER_CTRL | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
 | 0xE000 | VERSION | R a| Hardware version register (semantic versioning: major.minor.patch)
@@ -244,11 +244,7 @@ Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 .CTRL[32] Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:21 | `rsvd_31_21` | R | 0x0 a| Reserved
-| 20:17 | `last_dword` | RW | 0x0 a| Last valid key word index [0,15]. Hardware returns 0 for reads beyond this.
-| 16:7 | `rsvd_16_7` | R | 0x0 a| Reserved
-| 6:4 | `extend` | RW | 0x0 a| Zero-indexed number of additional slots for wide keys. Firmware enforced.
-| 3 | `rsvd_3` | R | 0x0 a| Reserved
+| 31:3 | `rsvd_31_3` | R | 0x0 a| Reserved
 | 2 | `erase` | RW | 0x0 a| Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
 words (through the KPV scrambler) and the slot CTRL register is cleared.
 Hardware self-clears this bit when the erase completes. Not blocked by
