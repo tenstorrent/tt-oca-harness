@@ -1592,6 +1592,8 @@ memory map above.</p>
 </div>
 <div class="sect3">
 <h4 id="cpu-control-and-interrupts"><a class="anchor" href="#cpu-control-and-interrupts"></a><a class="link" href="#cpu-control-and-interrupts">1.5.1. CPU Control and Interrupts</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -1838,6 +1840,8 @@ memory map above.</p>
 <tr><td>31:0</td><td>version_id</td><td>R</td><td>0xDEADBEEF</td><td>Version ID for the CPU</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -1904,6 +1908,8 @@ memory map above.</p>
 </div>
 <div class="sect3">
 <h4 id="reset-and-lifecycle"><a class="anchor" href="#reset-and-lifecycle"></a><a class="link" href="#reset-and-lifecycle">1.5.2. Reset and Lifecycle</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -1928,6 +1934,8 @@ memory map above.</p>
 <tr><td>0</td><td>km_sw_rst_n</td><td>RW</td><td>0x0</td><td>KM reset (0=assert, 1=release)</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -1966,6 +1974,8 @@ memory map above.</p>
 </div>
 <div class="sect3">
 <h4 id="scratch-and-efuse"><a class="anchor" href="#scratch-and-efuse"></a><a class="link" href="#scratch-and-efuse">1.5.3. Scratch and eFuse</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -1990,6 +2000,8 @@ memory map above.</p>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register for the CPU</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -2414,6 +2426,8 @@ memory map above.</p>
 <tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -2486,6 +2500,8 @@ memory map above.</p>
 </div>
 <div class="sect3">
 <h4 id="timers"><a class="anchor" href="#timers"></a><a class="link" href="#timers">1.5.4. Timers</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -2597,6 +2613,8 @@ memory map above.</p>
 </div>
 <div class="sect3">
 <h4 id="cryptographic-accelerators"><a class="anchor" href="#cryptographic-accelerators"></a><a class="link" href="#cryptographic-accelerators">1.5.5. Cryptographic Accelerators</a></h4>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -2714,6 +2732,8 @@ memory map above.</p>
 <tr><td>5:0</td><td>PHASE</td><td>RW</td><td>0x1</td><td>6-bit one-hot field to select the phase of the<br>Galois/Counter Mode (GCM) of operation.  Invalid input<br>values, i.e., values with multiple bits set and value<br>6&#x27;b00_0000, are mapped to GCM_INIT (6&#x27;b00_0001).  In case<br>support for GCM has been disabled at compile time, this<br>field is not writable and always reads as GCM_INIT<br>(6&#x27;b00_0001).</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -2836,6 +2856,8 @@ memory map above.</p>
 <tr><td>31:0</td><td>v</td><td>RW</td><td>-</td><td>Message Length [63:32]</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -3006,6 +3028,8 @@ memory map above.</p>
 <tr><td>31:0</td><td>err_code</td><td>R</td><td>0x0</td><td>If the `kmac_err` interrupt occurs, this register has information on the error cause.<br>Bits 31:24 contain the error code (please refer to `err_code_e` in `hw/ip/kmac/rtl/kmac_pkg.sv`) for the encoding, and bits 23:0 contain additional debug information.<br>This register does *not* get cleared when the `kmac_err` interrupt state gets cleared.</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -3126,6 +3150,8 @@ memory map above.</p>
 feeds the DRBG. Its register map is generated from the IP RDL rather than the
 SEP aggregate.</p>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -3775,6 +3801,8 @@ SEP aggregate.</p>
 <p>The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <a href="#drbg">Architecture</a>). Their register maps are reported here.</p>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -4006,6 +4034,8 @@ SEP aggregate.</p>
 <tr><td>7:0</td><td>MAIN_SM_STATE</td><td>R</td><td>0x4E</td><td>This is the state of the CSRNG main state machine.<br>See the RTL file `csrng_main_sm` for the meaning of the values.</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -4174,6 +4204,8 @@ SEP aggregate.</p>
 <div class="paragraph">
 <p>The generated maps live with the IP.</p>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -5549,6 +5581,8 @@ SEP aggregate.</p>
 <tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>32-bit shared-key word. Hardware writes on key-ready event;<br>hardware clears to 0 on key-consume event (KEY_VALID cleared).</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -6214,6 +6248,8 @@ SEP aggregate.</p>
 <div class="paragraph">
 <p>The secure DMA controller register map follows.</p>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -6659,6 +6695,8 @@ SEP aggregate.</p>
 documentation</a> for the authoritative core functionality of the IP. The
 register map follows.</p>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
