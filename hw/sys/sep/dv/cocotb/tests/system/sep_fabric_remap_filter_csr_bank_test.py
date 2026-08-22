@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric remap + filter CSR-bank R/W breadth.
 
 Combined-per-group CSR sweep over the SEP System-block fabric banks on the CPU-LSU

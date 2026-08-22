@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC_BASE_CONFIG (CPU address-map + hang-detector) reset-value precheck.
 
 The block at smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR") is SMC_BASE_CONFIG

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_xtrig_ctm_illegal_phase_test - pin-only illegal CTM corners.
 
 This enrolled subset uses only product TB pins:

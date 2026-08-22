@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP KMAC (OpenTitan KMAC engine) firmware helpers, KMAC128/cSHAKE with
 // SOFTWARE entropy. Header-only.

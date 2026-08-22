@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP VPLAN scenario `dtp_jtag2axi_backpressure_abort_at_data_w_test`."""
 
 import pyuvm

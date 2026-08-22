@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """One bounded SEP_IN read used by the macro AXI-Lite routing test.
 
 Issues a single real CSR read to a peripheral-xbar macro window and captures

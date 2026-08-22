@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_dtp_jtag_smoke_test (SMU_ALL_005 rev 9).
 
 DV-CARD:          SMU_ALL_005   ANCHOR: smu_dtp_jtag_smoke_test

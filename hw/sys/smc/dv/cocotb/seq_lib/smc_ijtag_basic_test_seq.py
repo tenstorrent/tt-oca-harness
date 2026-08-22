@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_ijtag_basic_test (Batch C).
 
 The public OSS TB does not yet include an active JTAG/iJTAG VIP. This active

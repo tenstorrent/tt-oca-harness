@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA inline SHA-256 firmware-boot test (PyUVM).
 
 OSS port of the reference suite ``sep_dma_hash_test``. Boots the VeeR EL2 core and runs the

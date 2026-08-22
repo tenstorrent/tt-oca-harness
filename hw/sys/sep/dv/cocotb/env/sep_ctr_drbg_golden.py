@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CTR_DRBG (AES-256, no derivation function) golden model for the SEP OSS flow.
 
 Implements NIST SP 800-90A Section 10.2.1 CTR_DRBG with **no derivation

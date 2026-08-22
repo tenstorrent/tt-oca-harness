@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Real LCC / feat_ctrl ungating for SMU (no Force, no placeholder).
 
 Under ``smu #(.SEP(0))`` RTL ties ``sep_feat_ctrl = '0``, so JTAG2AXI stays

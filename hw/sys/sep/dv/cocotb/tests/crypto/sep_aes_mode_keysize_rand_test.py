@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Standalone AES mode x key-size breadth, RAND-REP (AES mode/key-size breadth).
 
 Drives the OpenTitan AES engine directly over the CPU-LSU AXI master (no_cpu, no

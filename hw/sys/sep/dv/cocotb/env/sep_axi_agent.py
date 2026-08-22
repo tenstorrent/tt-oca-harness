@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP AXI UVM agent.
 
 Owns the AXI master mechanics via ``ocah_axi_vip.OcahAxiMasterSequence``: the driver

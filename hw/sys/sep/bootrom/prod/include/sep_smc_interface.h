@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // SEP-side interface for accessing SMC resources.
 //
 // SEP accesses SMC through the outbound AXI path.  The base address is fixed

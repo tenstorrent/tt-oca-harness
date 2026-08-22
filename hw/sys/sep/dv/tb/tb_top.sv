@@ -514,7 +514,6 @@ module sep_uvm_top
         .dbg_rstb_i                   (dbg_rstb_i),
         .wdt_rst_ni                   (wdt_rst_ni_i),
         .entropy_rosc_sample_clk_i    (entropy_rosc_sample_clk_i),
-        .sep_reset_n_o                (dbg_sep_reset_n_o),
         .wdt_timer_rst_req_o          (wdt_timer_rst_req_o),
 
         // JTAG (TB-driven only during +cpu_boot reset-vector TDR setup)
@@ -1031,8 +1030,9 @@ module sep_uvm_top
     assign cpu_trace_addr_o  = cpu_trace_w.trace_rv_i_address_ip;
     assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.o_cpu_run_ack;
 
-    // CPU warm reset (internal net, not a sep port): the wdt-reset-path test reads
-    // it to confirm wdt_rst_ni -> sep_cpu_reset_n. Same XMR-probe style as above.
+    // SEP resets (internal nets, no longer sep ports): the reset-independence and
+    // wdt-reset-path tests read them. Same XMR-probe style as above.
+    assign dbg_sep_reset_n_o = `SEP_CORE.sep_reset_n;
     assign sep_cpu_reset_n_o = `SEP_CORE.sep_cpu_reset_n;
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):

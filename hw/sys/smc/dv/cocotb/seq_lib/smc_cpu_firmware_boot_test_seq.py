@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_cpu_firmware_boot_test (DV Skill 1.5 / SMC_002 rev 3).
 
 Emits exact STEP/CHK evidence for reset-vector fetch, ROM-as-target,

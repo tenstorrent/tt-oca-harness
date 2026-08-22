@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AXI/AXI-Lite scoreboard pairing observed items with reference-model predictions.
 
 Composes the protocol-neutral ``ocah_checker.OcahChecker`` evidence core per the

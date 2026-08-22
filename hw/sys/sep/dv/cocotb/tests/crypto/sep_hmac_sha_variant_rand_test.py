@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Standalone HMAC SHA-variant breadth, RAND-REP (HMAC SHA-variant breadth).
 
 Drives the OpenTitan HMAC engine directly over the CPU-LSU AXI master (no_cpu, no

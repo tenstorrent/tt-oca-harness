@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for sep_address_map_test.
 
 Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bus:

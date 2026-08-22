@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse JTAG-AXIL + EL2-CPU mux arbitration test (PyUVM).
 
 OSS port of the reference suite ``sep_efuse_jtag_axil_el2_cpu_mux_test``. Boots

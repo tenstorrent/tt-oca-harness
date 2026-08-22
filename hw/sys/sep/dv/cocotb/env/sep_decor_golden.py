@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP DRBG entropy-decorrelator golden model.
 
 The model mirrors ``hw/ip/entropy_source/rtl/entropy_decorrelator.sv``.

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Stateful AXI/AXI-Lite reference model: shadow memory + response expectations.
 
 Pure Python (no cocotb imports) so scoreboard mechanics can be validated without

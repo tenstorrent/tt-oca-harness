@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 ocah_entropy_vip — OCAH AXI-Stream entropy BFM for SEP TRNG DV.
 

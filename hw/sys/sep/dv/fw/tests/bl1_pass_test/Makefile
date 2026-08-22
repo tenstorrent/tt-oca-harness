@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Build bl1_pass_test as a single flat binary for SRAM execution.
 #
 # Produces:

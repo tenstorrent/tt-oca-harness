@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan SPI-host control-plane CSR map + config/driver for SPI host CSR/IRQ breadth
 (``sep_spi_ot_host_csr_irq_rand_test``).
 

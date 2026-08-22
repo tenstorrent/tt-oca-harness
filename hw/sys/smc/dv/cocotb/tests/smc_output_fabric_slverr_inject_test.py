@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR via axi_sim_mem werr/rerr (SEP pulp API)."""
 
 from __future__ import annotations

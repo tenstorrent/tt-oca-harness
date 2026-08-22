@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP UVM base test helpers.
 
 Concrete tests inherit this class for common import setup, environment build,

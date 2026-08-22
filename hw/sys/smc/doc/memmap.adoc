@@ -288,6 +288,49 @@ privileges
 reporting
 |=======================================================================
 
+==== Spare SMC Register Blocks
+
+The following shows the detailed register map of a set of
+programmer-visible spare SMC blocks. They are spare but essential: for
+example, the scratch block provides general-purpose registers, and the
+chip-config and NDM-reset blocks hold system-level configuration and
+reset control. `oca_i3c_wrap` is omitted; I3C remains deferred with the
+wording in <<peripherals>>.
+
+===== Chip Config, Scratch, NDM Reset, and Misc Wrap
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/chip_config.html[]
+include::partial$smc/regs/gen/html/blocks/scratch.html[]
+include::partial$smc/regs/gen/html/blocks/ndm_reset.html[]
+include::partial$smc/regs/gen/html/blocks/misc_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/chip_config.adoc[]
+include::../regs/gen/adoc/blocks/scratch.adoc[]
+include::../regs/gen/adoc/blocks/ndm_reset.adoc[]
+include::../regs/gen/adoc/blocks/misc_wrap.adoc[]
+endif::backend-pdf[]
+
+===== Base Config, DFX Status, and GPIO POC/PBias
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/regs/gen/html/blocks/smc_base_config.html[]
+include::partial$smc/regs/gen/html/blocks/dfx_ctrl_status.html[]
+include::partial$smc/regs/gen/html/blocks/gpio_poc_pbias_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/smc_base_config.adoc[]
+include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[]
+include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[]
+endif::backend-pdf[]
+
 ==== Component-Specific Register Documentation
 
 For detailed register-level documentation of each SMC component, refer
@@ -316,4 +359,6 @@ Timer registers |periphs
 |Reset Management |Reset unit and system control registers |clk_rst
 
 |Clock Generation |PLL wrapper and clock generation registers |pll
+
+|DFD / CLA |Design-for-debug wrap and Core Logic Analyzer register map |dfd
 |=======================================================================

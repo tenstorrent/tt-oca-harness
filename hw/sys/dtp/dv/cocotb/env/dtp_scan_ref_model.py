@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP-local iJTAG and STAP/3DCR reference models.
 
 These models intentionally describe the public OSS DTP testbench shape. The

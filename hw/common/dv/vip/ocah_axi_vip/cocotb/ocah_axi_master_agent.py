@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Composed AXI4 master agent: driver + sequence API (+ optional monitor).
 
 `OcahAxiMasterAgent` is the cocotb analogue of a UVM agent bundle: it builds

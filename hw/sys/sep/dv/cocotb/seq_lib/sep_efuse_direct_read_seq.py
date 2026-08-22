@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Direct OTP word read through the eFuse controller EFUSE_READ_CTRL interface.
 
 Reads a raw fuse word straight from the OTP array (EFUSE_READ_CTRL -> poll

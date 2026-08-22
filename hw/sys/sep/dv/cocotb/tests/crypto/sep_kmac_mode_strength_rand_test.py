@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Standalone KMAC-engine mode x strength breadth, RAND-REP (KMAC mode/strength breadth).
 
 Drives the OpenTitan KMAC engine directly over the CPU-LSU AXI master (no_cpu, no

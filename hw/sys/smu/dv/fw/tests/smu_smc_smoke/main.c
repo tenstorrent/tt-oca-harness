@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Minimal no-SEP SMC firmware: publish TEST_PASS through scratch register 0.
 
 #include <stdint.h>

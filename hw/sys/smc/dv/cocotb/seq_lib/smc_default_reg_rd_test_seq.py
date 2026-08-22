@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Default register read smoke over real SYS AXI.
 
 This is the OSS-safe slice of the legacy default-reg-read flow: it reads

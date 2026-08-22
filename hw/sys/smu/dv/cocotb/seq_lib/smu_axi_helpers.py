@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared AXI helpers for SMU external SMN port and outbound observe."""
 
 from __future__ import annotations

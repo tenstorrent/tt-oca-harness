@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // PLL/clock initialization for OROM.
 // Uses SMC window to access PLL control registers.
 //

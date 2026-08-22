@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared XTRIG helpers and full VPLAN scenario sequences."""
 
 from __future__ import annotations

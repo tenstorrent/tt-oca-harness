@@ -20,7 +20,7 @@ typedef struct {
     /* Only works when CrossPageEn === 0.
         Cross Page optimization disable:
         0 -> Entry goes into Pause state while crossing Page boundary.
-        Next time when the demand miss happens on the same page, it doesn’t need
+        Next time when the demand miss happens on the same page, it doesnâ€™t need
        to train again. 1 -> The entry is invalidated in case of a cross page. */
     uint8_t CrossPageOptmDisable;
 

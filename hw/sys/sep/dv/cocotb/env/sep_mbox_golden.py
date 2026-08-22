@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """axil_mailbox config + golden depth model (outbound aperture, TX path).
 
 The SEP axil_mailbox (vendor/pulp-platform/axi/.../axi_lite_mailbox.sv, wrapped by

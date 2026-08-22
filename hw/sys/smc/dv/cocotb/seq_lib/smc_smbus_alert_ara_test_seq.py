@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-2 SMBALERT# path: DUT I2C0 target asserts alert; VIP host runs ARA.
 
 TB-driven (no FW binary): AXI programs DUT as SMBus target @ ADDRESS0 with

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-IP SW-reset domain isolation across crypto engines.
 
 no_cpu host-AXI test that proves the SEP per-IP SW_RESET_N domains are isolated

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP UVM environment: JTAG agent + AXI memory agent + scoreboard."""
 
 from __future__ import annotations

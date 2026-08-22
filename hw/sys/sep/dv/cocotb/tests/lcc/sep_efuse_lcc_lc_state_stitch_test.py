@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse -> Lifecycle-Controller lc_state stitch test (OSS).
 
 OSS port of the reference UVM ``sep_efuse_lcc_lc_state_stitch_test``. Walks the

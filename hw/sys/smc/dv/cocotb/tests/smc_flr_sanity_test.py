@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM FLR-like recovery sanity test (Batch D).
 
 Uses the public cool-reset control as the current OSS FLR-like stimulus, then

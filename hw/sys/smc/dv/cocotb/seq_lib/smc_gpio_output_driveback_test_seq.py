@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO register-driven output (core2pad) driveback verification.
 
 Programs GPIO wrap 0 as a register-driven TX output and checks the DUT pad

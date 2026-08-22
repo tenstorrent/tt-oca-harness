@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Collect a DUT's native `run_dv.py` result.json into normalized dashboard result JSON.
 
 OSS dashboard collection consumes the normalized `result.json` that `run_dv.py` emits for every

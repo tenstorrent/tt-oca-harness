@@ -8,6 +8,9 @@
 # twice, so the second is resolved via secondary expansion ($$*). A no-op elsewhere.
 .SECONDEXPANSION:
 
+# Prepend SPDX to generated register files after PeakRDL / custom exporters.
+ocah_reg_stamp = python3 "$(OCAH_ROOT)/tools/regs/stamp_spdx.py"
+
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
 # input, output, name/bitfields, log.
 ocah_reg_run_cheader  = "$(UV)" run peakrdl c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical 2>&1 | tee "$(5)"
@@ -49,21 +52,25 @@ $(call ocah_reg_raw_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UD
 	@mkdir -p "$(call ocah_reg_gen,$(1))/c" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating raw C address header for $(1)"
 	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format c --base-name "$(shell echo $(call ocah_reg_name,$(1))_addr | tr a-z A-Z)" -o "$(call ocah_reg_raw_c_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_c_header.log"'
+	@$(ocah_reg_stamp) "$(call ocah_reg_raw_c_output,$(1))"
 
 $(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating SystemVerilog address package for $(1)"
 	@$(ocah_sh) '"$(UV)" run peakrdl raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format svpkg -o "$(call ocah_reg_svpkg_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_svpkg.log"'
+	@$(ocah_reg_stamp) "$(call ocah_reg_svpkg_output,$(1))"
 
 $(call ocah_reg_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/py" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating Python register header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_py,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_py_output,$(1)),$(call ocah_reg_py_bitfields,$(1)),$(call ocah_reg_build,$(1))/py.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_py_output,$(1))"
 
 $(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlsvh.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | uv-sync
 	@mkdir -p "$(call ocah_reg_gen,$(1))/svh" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating flattened SV header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_svh,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_svh_output,$(1)),$(call ocah_reg_build,$(1))/svh.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_svh_output,$(1))"
 
 $(call ocah_reg_build,$(1))/.generated: $(call ocah_reg_sv_target,$(1)) $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1)) $(call ocah_reg_svpkg_output,$(1)) $(call ocah_reg_svh_output,$(1)) $(call ocah_reg_py_output,$(1))
 	@mkdir -p "$(call ocah_reg_build,$(1))"
@@ -76,6 +83,7 @@ $(call ocah_reg_sv_stamp,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) |
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_gen,$(1))/sv,$(call ocah_reg_name,$(1)),$(call ocah_reg_build,$(1))/peakrdl_sv.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_gen,$(1))/sv"
 	@touch "$$@"
 
 $(call ocah_reg_sv_outputs,$(1)): $(call ocah_reg_sv_stamp,$(1))
@@ -89,26 +97,31 @@ $(call ocah_reg_sv_block_dir,$(1))/%_reg.sv: $(call ocah_reg_root,$(1))/regs/blo
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$$<,$$(@D),$$*,$(1)/regs/build/peakrdl_sv_$$*.log)'
+	@$(ocah_reg_stamp) "$$(@D)"
 
 $(call ocah_reg_c_block_dir,$(1))/%.h: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating firmware C header for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$$<,$$@,$$(if $$(filter $$*,$(OCAH_REG_NO_BITFIELDS)),none,ltoh),$(1)/regs/build/c_header_$$*.log)'
+	@$(ocah_reg_stamp) "$$@"
 
 $(call ocah_reg_adoc_block_dir,$(1))/%.adoc: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) tools/regs/rdladoc.py tools/regs/common/rdlview.py | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating AsciiDoc register docs for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_adoc,$(1),$$<,$$@,$(1)/regs/build/adoc_$$*.log)'
+	@$(ocah_reg_stamp) "$$@"
 
 $(call ocah_reg_html_block_dir,$(1))/%.html: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$$<,$$@,$(1)/regs/build/html_$$*.log)'
+	@$(ocah_reg_stamp) "$$@"
 
 $(call ocah_reg_ral_dir,$(1))/%_ral_pkg.sv: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating UVM RAL model for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_ral,$(1),$$<,$$*,$$@,,$(1)/regs/build/ral_$$*.log)'
+	@$(ocah_reg_stamp) "$$@"
 endef
 
 # RTL sourced outside regblock: skip the run, keep the empty stamp so .generated
@@ -126,11 +139,13 @@ $(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP
 	@mkdir -p "$(call ocah_reg_gen,$(1))/adoc" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating AsciiDoc register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_adoc,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_adoc_output,$(1)),$(call ocah_reg_build,$(1))/adoc.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_adoc_output,$(1))"
 
 $(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/html.log)'
+	@$(ocah_reg_stamp) "$$@"
 endef
 
 # JSON register model for a whole top (composite or leaf), opt-in list only.
@@ -139,6 +154,7 @@ $(call ocah_reg_json_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating JSON register model for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_json,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/json.log)'
+	@$(ocah_reg_stamp) "$$@"
 endef
 
 # Plain-leaf UVM RAL: one peakrdl uvm run. Only instantiated for leaves on the
@@ -148,6 +164,7 @@ $(call ocah_reg_ral_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP)
 	@mkdir -p "$(call ocah_reg_ral_dir,$(1))" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating UVM RAL model for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_ral,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_name,$(1)),$(call ocah_reg_ral_output,$(1)),$(call ocah_reg_ral_rename,$(1)),$(call ocah_reg_build,$(1))/ral.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_ral_output,$(1))"
 endef
 
 # Plain-leaf firmware C header: one peakrdl c-header run.
@@ -156,6 +173,7 @@ $(call ocah_reg_c_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) |
 	@mkdir -p "$(call ocah_reg_gen,$(1))/c" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating firmware C header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_c_output,$(1)),$(call ocah_reg_c_bitfields,$(1)),$(call ocah_reg_build,$(1))/c_header.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_c_output,$(1))"
 endef
 
 # Address exporters (raw-C, SV package, py) and the .generated stamp for every block.

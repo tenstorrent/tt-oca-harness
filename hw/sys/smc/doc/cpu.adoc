@@ -237,6 +237,8 @@ firmware development and diagnostics.
 
 ifdef::backend-html5[]
 ++++
+include::partial$smc/regs/gen/html/blocks/cpu_ctrl.html[]
+include::partial$smc/regs/gen/html/blocks/clint.html[]
 include::partial$smc/regs/gen/html/blocks/debug_module.html[]
 include::partial$smc/regs/gen/html/blocks/bus_error_unit.html[]
 include::partial$smc/regs/gen/html/blocks/wdt.html[]
@@ -244,6 +246,8 @@ include::partial$smc/regs/gen/html/blocks/wdt.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/clint.adoc[]
 include::../regs/gen/adoc/blocks/debug_module.adoc[]
 include::../regs/gen/adoc/blocks/bus_error_unit.adoc[]
 include::../regs/gen/adoc/blocks/wdt.adoc[]

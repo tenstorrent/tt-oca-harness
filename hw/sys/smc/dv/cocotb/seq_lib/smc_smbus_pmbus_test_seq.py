@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P2 Phase A #1: SMBus / PMBus protocol extension over the I2C VIP.
 
 Proves that `SmcI2cMasterVip.smbus_*` and `pmbus_*` helpers drive real

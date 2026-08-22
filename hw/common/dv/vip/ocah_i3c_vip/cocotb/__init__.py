@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 ocah_i3c_vip — OCAH-stable I3C bus BFM wrappers for cocotb testbenches.
 

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OTBN run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Loads an OTBN program into IMEM over the AXI front door (the OTBN TL/AXI adapter

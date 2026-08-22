@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # OTBN Application Build Infrastructure
 # Generic Makefile for building OTBN applications and generating C arrays
 #

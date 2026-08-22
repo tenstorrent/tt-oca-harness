@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan KMAC run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Runs one keyed KMAC-256 (cSHAKE, PREFIX="KMAC") over a message, with the key

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS SEP-input AXI UVM agent.
 
 Drives real AXI traffic through the tb_top ``s_axi_*`` bridge into

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Inbound-filter per-entry RULE stimulus.
 
 With the SEP inbound filter ACTIVE (feat_ctrl.sep_debug=0, real PROD fuse), the

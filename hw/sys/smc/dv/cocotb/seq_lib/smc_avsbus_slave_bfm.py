@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Minimal AVSBus slave ACK BFM on ``tb_avs_sdata_ext`` (pad 51).
 
 Timing matches ``avsbus_controller.sv``:

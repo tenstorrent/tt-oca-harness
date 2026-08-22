@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Minimal freestanding mem* implementations for the SEP OSS firmware (built
 // with -nostdlib). The C standard lets the compiler emit calls to memcpy /

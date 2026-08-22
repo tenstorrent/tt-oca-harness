@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP address-map register sweep test (PyUVM).
 
 Builds the SEP env, brings up clocks/reset with the CPU held off, and runs a

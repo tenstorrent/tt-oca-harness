@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ext_boot_seq_gate_test — SMU P0 external boot-sequence gate (SMU_006 rev 2).
 
 DV-CARD:          SMU_006   ANCHOR: smu_ext_boot_seq_gate_test

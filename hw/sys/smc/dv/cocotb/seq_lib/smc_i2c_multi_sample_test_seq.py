@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_i2c_multi_sample_test.
 
 Three back-to-back I2C observation samples at fixed cycle intervals to

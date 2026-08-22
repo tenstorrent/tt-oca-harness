@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP eFuse JTAG-AXIL + EL2-CPU mux firmware test (OSS port of the reference suite
 // sep_efuse_jtag_el2_cpu_mux_test, EL2 side). The EL2 CPU continuously issues

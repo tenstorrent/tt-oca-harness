@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM non-secure boot test (PyUVM) -- real Boot ROM, SPI stubbed.
 
 Boots the VeeR EL2 core from the REAL production Boot ROM

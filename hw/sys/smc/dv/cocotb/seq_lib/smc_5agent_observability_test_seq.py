@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_5agent_observability_test.
 
 Single scenario that samples all five agents (reset, i2c, clock, irq, gpio).

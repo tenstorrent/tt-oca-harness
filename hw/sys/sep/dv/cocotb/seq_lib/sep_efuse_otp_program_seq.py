@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Frontdoor OTP single-bit program sequence (write-one-to-set).
 
 Programs one eFuse bit through the ``EFUSE_PROGRAM_CTRL`` MMR and enforces the

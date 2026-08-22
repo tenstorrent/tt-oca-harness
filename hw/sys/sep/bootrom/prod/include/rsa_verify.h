@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // RSA-3072 signature verification for OROM.
 //
 // Uses OTBN coprocessor for modular exponentiation and verifies

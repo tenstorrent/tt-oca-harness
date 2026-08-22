@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // KBKDF-HMAC-SHA256 key derivation for OROM.
 //
 // Implements NIST SP 800-108 KBKDF in counter mode with HMAC-SHA256 as PRF.

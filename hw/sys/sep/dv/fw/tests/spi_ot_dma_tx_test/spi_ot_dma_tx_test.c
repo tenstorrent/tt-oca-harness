@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OpenTitan-SPI DMA-TX firmware test (OSS rep SPI DMA-TX breadth). The complement of the
 // Phase-1 sep_spi_ot_dma_rx (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA

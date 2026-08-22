@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backdoor shadow-readout checker for the SEP eFuse OSS flow.
 
 Reads the sensed shadow-register array directly via the top-level

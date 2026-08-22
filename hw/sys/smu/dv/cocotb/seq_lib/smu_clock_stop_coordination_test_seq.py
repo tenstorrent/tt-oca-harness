@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_clock_stop_coordination_test (SMU_ALL_006 rev 10).
 
 DV-CARD:          SMU_ALL_006   ANCHOR: smu_clock_stop_coordination_test

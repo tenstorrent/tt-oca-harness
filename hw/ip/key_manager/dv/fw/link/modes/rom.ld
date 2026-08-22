@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* Copyright 2026 Tenstorrent Inc. */
 /* Key Manager Firmware Linker Script - all-in-ROM images (no VROM) */
 /* For testbenches that load only the physical KM ROM and side-load nothing:

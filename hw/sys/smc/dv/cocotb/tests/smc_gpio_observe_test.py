@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM GPIO observe test.
 
 Samples the OR-of-vector GPIO observability outputs exposed at tb_top. With

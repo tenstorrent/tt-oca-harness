@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP Secure Enclave Processor
+// SEP Security Processor
 
 `include "axi/assign.svh"
 
@@ -9,9 +9,7 @@ module sep
 #(
     parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
     parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
-    // Open placeholder size for the vendor eFuse shim CSR block. Kept a literal
-    // because the register header that carries the real size is nonfree; the
-    // nonfree sep_wrapper overrides this from sep_top_reg_pkg (0x44).
+    // Size for the vendor eFuse shim CSR block
     parameter int unsigned EFUSE_SHIM_SIZE = 'h4,
     // During synthesis, to be replaced with the actual token digest embedded in the netlist
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
@@ -23,8 +21,6 @@ module sep
         input  logic dbg_rstb_i,          // EL2 debugger reset
         input  logic wdt_rst_ni,          // Aggregated WDT Resets from SMC and SEP
 
-        output logic sep_reset_n_o,       // SEP reset (efuse-sense-done, after JTAG override)
-        output logic sep_cpu_reset_n_o,   // sep_reset_n & WDT reset; resets CPU + SEP IP integration
         output logic wdt_timer_rst_req_o, // SEP WDT bite reset request (active-high) to SMC reset unit
 
         input  logic jtag_tck,    // JTAG clk
@@ -157,7 +153,7 @@ module sep
         output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,
         input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-        // Muxed SPI IRQ from sep_ip_integration (host selected by spi_sel)
+        // SPI IRQ to the PIC, driven by whichever SPI controller the integration selects
         input  logic spi_irq_i,
 
         /////////////
@@ -1123,8 +1119,6 @@ module sep
     );
 
     assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
-    assign sep_reset_n_o        = sep_reset_n;
-    assign sep_cpu_reset_n_o    = sep_cpu_reset_n;
     assign security_disable_o   = security_disable;
 
     // External debug bus assignment (384 bits, 16-bit aligned fields)

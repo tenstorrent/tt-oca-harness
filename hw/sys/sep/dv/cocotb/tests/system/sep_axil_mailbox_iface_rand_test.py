@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """axil_mailbox interface breadth (randomized-rep, TX path).
 
 no_cpu host-AXI test of the SEP axil_mailbox MECHANICS over the CPU-LSU master,

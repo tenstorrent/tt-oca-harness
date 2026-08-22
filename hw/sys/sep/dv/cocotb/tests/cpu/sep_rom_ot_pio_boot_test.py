@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM boot over the OpenTitan SPI host, CPU PIO drain (PyUVM).
 
 The drain-method sibling of ``sep_rom_ot_dma_boot_test``: same production Boot

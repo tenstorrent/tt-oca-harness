@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC protocol VIP sequence item.
 
 This item records an OSS-runnable protocol intent for tests that still use
