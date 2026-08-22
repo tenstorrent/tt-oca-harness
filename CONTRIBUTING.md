@@ -80,7 +80,8 @@ When adding a new vendored dependency, confirm its license is Apache-2.0 compati
 Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching the job
 (plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
 
-`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, and `lint-tcl` on pull
+`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, `lint-tcl`, and
+`regen-regs` on pull
 requests and on pushes to `main` (`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
 artifacts; jobs report through `.github/actions/reviewdog-report`.
 
@@ -96,6 +97,19 @@ Scheduled and manually dispatched pipelines always run in full.
 | `lint-sv-verible` (disabled in CI) | `lint-sv-verible` | `make lint-sv-verible` |
 | `format-c` | `format-c` | `make format-c-check` |
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
+| `regen-regs` | — (job fails on a dirty tree) | `make regen-regs regen-regs-adoc regen-regs-html` |
+
+The `regen-regs` gate regenerates every register block's collateral from the RDLs
+and fails if the working tree changes, so the committed `**/regs/gen/` outputs
+(SystemVerilog, C headers, Python, RAL, IP-XACT, AsciiDoc, HTML) always match a
+fresh run. It is peakrdl-only (no bender or `nonfree/`), so a plain checkout
+reproduces it. To fix a failure, run the local command above and commit the
+result:
+
+```
+make regen-regs regen-regs-adoc regen-regs-html
+git status --porcelain   # expect no output
+```
 
 Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the tools on
 `PATH` (same as CI). If a tool is missing, Make prints an install hint and the matching
