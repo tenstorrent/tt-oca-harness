@@ -17,14 +17,12 @@ it bit-exactly against this same masked engine. Attaching it here would upgrade 
 cross-check below into a real known-answer test. The OSS port is a FRONTDOOR
 known-key variant: it loads a KNOWN distinct-word key, so the cross-check ties the
 sideload output to that specific key via the SW path, and the dummy-key negative
-reference proves the key actually drives the output. This sidesteps the 
-value-agnostic false-confidence trap (the lesson this very test originated) by
-construction -- the key is known and non-degenerate, not a possibly-collapsed
-KM-generated key.
+reference proves the key actually drives the output. Consume-proof is
+sideload-vs-SW plus decoy difference, not a KMAC golden.
 
 VPLAN-parity checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
-  CHK-A     CMD_KEY_LOAD known key (replaces reference CMD_KEY_GENERATE + backdoor)
+  CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-NEG   negative ref: keyed MAC with a DUMMY SW key -> c_dummy (a real op)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only KMAC of the four
             sideload targets released; AES/HMAC/OTBN parked
