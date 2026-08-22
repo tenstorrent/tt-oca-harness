@@ -140,9 +140,6 @@ tests = [
 
 [[groups]]
 # CPU-stub daily regression: high sim fanout, single-threaded Verilator model.
-# Includes the KM sideload/DRBG tests that boot the KM firmware ROM built from
-# source, so the rv32 RISC-V toolchain must be on PATH; on a runner without
-# it, select `no_toolchain` below instead.
 name = "no_cpu"
 tests = [
     "sep_axi_smoke_test",
@@ -172,52 +169,6 @@ tests = [
     "sep_axil_mailbox_iface_rand_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
-    "sep_sram_datapath_breadth_test",
-    "sep_spi_ot_host_csr_irq_rand_test",
-    "sep_warm_cold_reset_scratch_test",
-    "sep_cpu_dbg_reset_independence_test",
-    "sep_hmac_sha_variant_rand_test",
-    "sep_aes_mode_keysize_rand_test",
-    "sep_kmac_mode_strength_rand_test",
-    "sep_crypto_edn_multisink_arbitration_test",
-    "sep_crypto_edn_round_robin_grant_test",
-]
-
-[[groups]]
-# `no_cpu` minus the tests that boot the KM firmware ROM built from source
-# (`+km_rom_hex=rom_main.rom.parhex`, `make -C cocotb/tests/km_fw rom_main`).
-# That artifact needs the rv32 RISC-V toolchain and is not a committed blob, so
-# on a runner without the toolchain those tests fail as a dead KM after a long
-# mailbox timeout. This group is the SEP selection for toolchain-free runners
-# (hosted CI); with the toolchain installed, run `no_cpu` for the full
-# CPU-stub regression.
-#
-# Also excluded until the inbound-filter CFG ownership question is resolved
-# (https://github.com/tenstorrent/tt-oca-harness/issues/1050):
-# `sep_fabric_inbound_filter_rule_matrix_test` fails its CHK-OWNERSHIP-WINDOW
-# check on every seed at head.
-name = "no_toolchain"
-tests = [
-    "sep_axi_smoke_test",
-    "sep_address_map_test",
-    "sep_sram_smoke_test",
-    "sep_km_mem_smoke_test",
-    "sep_otbn_mem_smoke_test",
-    "sep_efuse_sense_test",
-    "sep_efuse_image_test",
-    "sep_spi_flash_jedec_smoke_test",
-    "sep_efuse_lcc_lc_state_stitch_test",
-    "sep_clock_uvm_wdt_rst_input_reset_path_test",
-    "sep_esrc_e2e_smoke_test",
-    "sep_drbg_gen_segmentation_test",
-    "sep_irq_ip_to_aggregator_test",
-    "sep_lcc_uvm_inbound_filter_gating_test",
-    "sep_fabric_decode_error_response_test",
-    "sep_irq_simultaneous_fanin_no_alias_test",
-    "sep_fabric_remap_filter_csr_bank_test",
-    "sep_wdt_aon_timer_internals_test",
-    "sep_axil_mailbox_iface_rand_test",
-    "sep_crypto_per_ip_reset_isolation_test",
     "sep_sram_datapath_breadth_test",
     "sep_spi_ot_host_csr_irq_rand_test",
     "sep_warm_cold_reset_scratch_test",
