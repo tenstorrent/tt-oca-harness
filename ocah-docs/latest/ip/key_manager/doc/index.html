@@ -259,7 +259,7 @@ This data comes from the following sources:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Per-owner public identity values that personalize each owner&#8217;s identity root. Being public they are not read-locked; only their integrity matters</p>
+<p>Per-owner public identity values that personalize each owner&#8217;s identity root. Being public, only their integrity matters</p>
 </li>
 </ul>
 </div>
@@ -339,8 +339,8 @@ fault: the KM notifies the SEP host and halts (see
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SRAM_SIZE_BYTES</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16384</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Size of the KM data SRAM in bytes (16 KB).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32768</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Size of the KM data SRAM in bytes (32 KB).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_DEPTH</code></p></td>
@@ -361,6 +361,9 @@ fault: the KM notifies the SEP host and halts (see
 <h5 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">Memory Map</a></h5>
 <div class="paragraph">
 <p>The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.</p>
+</div>
+<div class="paragraph">
+<p>Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -383,38 +386,63 @@ fault: the KM notifies the SEP host and halts (see
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_4000</code> – <code>0x0000_7FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unmapped; returns a decode error.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_8000</code> – <code>0x0000_FFFF</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SRAM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16 KB data SRAM (parity-protected, optional scrambling, region-based write-lock).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 KB data SRAM (parity-protected, optional scrambling, region-based write-lock).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_D000</code> – <code>0x0000_DFFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KPV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key and Policy Vault register and key storage region.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_E000</code> – <code>0x0000_EFFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KMCSR</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Control and Status Registers.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_F000</code> – <code>0x0000_FFFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG Sampler</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG random data, configuration, and status registers.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_0000</code> – <code>0x0001_0FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_0000</code> – <code>0x0001_001F</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">KM-side mailbox read/write and control registers.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_1000</code> – <code>0x0001_1FFF</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OTP/eFuse</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite pass-through to SEP eFuse controller. Hardware remaps KM-local addresses to <code>OTP_EFUSE_REMAP_BASE</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite pass-through to SEP eFuse controller. Hardware remaps KM-local addresses to <code>OTP_EFUSE_REMAP_BASE</code>, which needs the whole page.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_8000</code> – <code>0x0001_CFFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Crypto Masters</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master ports: OTBN, AES, KMAC, HMAC, ABR (4 KB each).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_2000</code> – <code>0x0001_3FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KPV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key and Policy Vault register and key storage region (8 KB, 8 KB-aligned).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_4000</code> – <code>0x0001_47FF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMCSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Control and Status Registers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_5000</code> – <code>0x0001_500F</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG Sampler</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG random data, configuration, and status registers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_8000</code> – <code>0x0001_807F</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for OTBN key storage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_9000</code> – <code>0x0001_907F</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for AES key storage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_A000</code> – <code>0x0001_A07F</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for KMAC key storage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_B000</code> – <code>0x0001_B07F</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for HMAC key storage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001_C000</code> – <code>0x0001_C7FF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ABR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External AXI4-Lite master port for Adams Bridge key storage.</p></td>
 </tr>
 </tbody>
 </table>
@@ -547,11 +575,11 @@ the <code>OTP_READ_LOCK_COLD</code> register (cold-reset-domain OTP read-lock bi
 guarantee no in-flight transaction lingers across a warm reset — see
 below); the KMCSR warm subset (<code>IRQ_STATUS</code>/<code>IRQ_ENABLE</code>/<code>IRQ_SET</code>,
 <code>SOFT_RST_CODE</code>, <code>RECOVERABLE_ERR</code>, <code>SRAM_LOCK</code> write-lock bits,
-<code>SRAM_LOCK</code> violation bits, <code>SRAM_EXEC_MODE</code>,
+<code>SRAM_LOCK</code> violation bits, <code>SRAM_EXEC_MODE</code>, the ROM lockout latch,
 <code>IRQ_ENTRY_ADDR</code>/<code>IRQ_ENTRY_LOCK</code>, <code>OTP_READ_LOCK</code>,
 <code>OTP_CHANGE_STATUS</code>, and the firmware test-bench registers);
 all DRBG sampler CSRs and datapath-control state; the KPV per-slot lock
-bits (<code>lock_write</code>, <code>lock_use</code>); and the KM-side mailbox
+bits (<code>lock_write</code>, <code>lock_use</code>, <code>seal</code>); and the KM-side mailbox
 write/read state machines, IRQ, control, and status fields.</p></td>
 </tr>
 </tbody>
@@ -766,51 +794,22 @@ unallocated.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_4000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_7DFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">~15.5 kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_7FFF</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em> (decode error)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_8000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 kB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">KM SRAM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Prgm/Data SRAM</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_7E00</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_7FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KM SRAM (warm-persist)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ROM warm-persistent region (<code>rom_persist</code>)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_8000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_CFFF</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_D000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_DFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KPV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key and Policy Vault</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_E000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_EFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">KMCSR</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration, Status, Interrupt
-and Interrupt Mask Registers</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_F000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0000_FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG Sampling Interface</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_0000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_0FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_001F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">MB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox Message</p></td>
 </tr>
@@ -823,44 +822,59 @@ and Interrupt Mask Registers</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_2000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_7FFF</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_3FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KPV</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key and Policy Vault</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_4000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_47FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMCSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configuration, Status, Interrupt
+and Interrupt Mask Registers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_5000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_500F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG Sampling Interface</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_8000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_8FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_807F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Public Key Cryptography
 Accelerator key storage</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_9000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_9FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_907F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AES block cipher key storage</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_A000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_AFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_A07F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">KMAC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">KMAC key storage</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_B000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_BFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_B07F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HMAC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HMAC key storage</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_C000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_CFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4kB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001_C7FF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2kB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ABR key storage</p></td>
 </tr>
@@ -1045,17 +1059,18 @@ firmware.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>32 Key Entry registers, each of 512 bits (16 words)</p>
+<p>64 Key Entry registers, each of 512 bits (16 words)</p>
 </li>
 <li>
-<p>32 corresponding 32-bit control registers</p>
+<p>64 corresponding 32-bit control registers</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
 <p>RSA3K keys will not naturally fit into a single key entry, so will be
-concatenated into several as indicated by the new control register field
-xxx[2:0].</p>
+concatenated into several consecutive slots. The KPV has no control register
+field describing that span: how many slots a key occupies, and how many words
+of its final slot are in use, is KM firmware state held in the key registry.</p>
 </div>
 <div class="paragraph">
 <p>KM control registers for each slot have the following fields:</p>
@@ -1067,15 +1082,15 @@ xxx[2:0].</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Prevents KM firmware from overwriting this key entry’s data register
-and the control fields <em>extend</em> and <em>last_dword</em> until
+<p>Prevents KM firmware from overwriting this key entry’s data register until
 the next KM reset (cleared by either a cold or a warm reset — the KPV
-per-slot lock bits are in the warm reset domain). The control bits
-<em>lock_write</em> and <em>lock_use</em> (lower two bits) remain writable even when <em>lock_write</em>
-is set. Writes to the CTRL register when <em>lock_write</em> is set block all
-but the lower three bits (no update to blocked fields). Writes to key
-entry data when <em>lock_write</em> is set trigger AXI SLVERR and do not update
-storage. This field is read-any, write-one-only.</p>
+per-slot lock bits are in the warm reset domain). The CTRL register itself
+remains writable when <em>lock_write</em> is set, so the other lock bits can still be
+taken and the slot can still be erased. Writes to key entry data when
+<em>lock_write</em> is set trigger AXI SLVERR and do not update storage. Hardware
+holds this field set for as long as <em>seal</em> is set, so sealing a slot
+write-locks it without a separate write here. This field is read-any,
+write-one-only.</p>
 </li>
 </ul>
 </div>
@@ -1087,8 +1102,9 @@ storage. This field is read-any, write-one-only.</p>
 <li>
 <p>Prevents KM firmware from reading this key entry’s data register
 until the next KM reset (cold or warm). Key entry reads when <em>lock_use</em>
-is set return AXI SLVERR with read data 0. This field is read-any,
-write-one-only.</p>
+is set return AXI SLVERR with read data 0. Hardware sets this field when an
+erase of a sealed slot completes, so the destroyed contents cannot be read
+back. This field is read-any, write-one-only.</p>
 </li>
 </ul>
 </div>
@@ -1098,58 +1114,37 @@ write-one-only.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Write-one to start a hardware erase of this slot. The hardware
-overwrites all 16 key words of the slot with pseudorandom data and
-clears the slot CTRL register — including <em>lock_write</em> and <em>lock_use</em> — so
-the slot becomes reusable. Erase is intentionally <strong>not</strong> blocked by
-<em>lock_write</em> or <em>lock_use</em>. The hardware self-clears this bit when the
-erase completes; firmware can poll it to detect completion. This field is
-read-any, write-one-only.</p>
+<p>Write-one to start a hardware erase of this slot. The hardware overwrites
+all 16 key words of the slot with pseudorandom data. Erase is never blocked:
+neither <em>lock_write</em>, <em>lock_use</em> nor <em>seal</em> prevents it. The slot&#8217;s seal state
+when the erase completes decides the outcome. On an unsealed slot the CTRL
+register is cleared — including <em>lock_write</em> and <em>lock_use</em> — so the slot
+becomes reusable. On a sealed slot the slot is <strong>retired</strong> instead: <em>lock_write</em>
+stays set and <em>lock_use</em> is set. A seal taken while an erase is already in
+flight therefore still retires the slot. The
+hardware self-clears this bit when the erase completes; firmware can poll it to
+detect completion. This field is read-any, write-one-only.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p>Reserved[3]</p>
-</li>
-<li>
-<p>Extend[6:4]</p>
+<p>Seal[3]</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Indicates the zero-indexed number of slots for wide key fields. For
-example, RSA3K modulus requires 3kbit, so occupies 6 consecutive key
-slot entries with <em>extend</em> set to 5. This is enforced by firmware.</p>
+<p>Seals this key entry until the next KM reset (cold or warm — the KPV
+per-slot lock bits are in the warm reset domain). Setting this field also sets
+<em>lock_write</em> in hardware, so one CTRL write seals the slot. Erase remains
+available, and erasing a sealed slot retires it rather than freeing it, so a
+sealed slot&#8217;s material can be destroyed but its slot never reused. This field
+is read-any, write-one-only.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p>Reserved[8:7]</p>
-<div class="ulist">
-<ul>
-<li>
-<p>TBD</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Reserved[16:9]</p>
-</li>
-<li>
-<p>Last_dword[20:17]</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Last valid key entry word index [1,15] e.g. last_dword=7 for a
-256-bit AES key. All invalid key words return 0 if read.</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Reserved[31:21]</p>
+<p>Reserved[31:4]</p>
 <div class="ulist">
 <ul>
 <li>
@@ -1161,8 +1156,35 @@ slot entries with <em>extend</em> set to 5. This is enforced by firmware.</p>
 </ul>
 </div>
 <div class="paragraph">
+<p><strong>Sealed and retired slots.</strong> A slot with <em>seal</em> set is <strong>sealed</strong>: readable, but
+not writable, because hardware holds <em>lock_write</em> set alongside the seal. That
+surviving <em>lock_write</em> is evidence that the slot holds what it held when the
+seal was taken, which is what lets firmware that inherits the vault after a
+handover trust material provisioned before it (see the KM firmware
+specification). A write lock on its own would prove nothing, since an erase
+clears it and frees the slot to be rewritten with chosen material and
+re-locked.</p>
+</div>
+<div class="paragraph">
+<p>Erasing a sealed slot is still permitted, and leaves it <strong>retired</strong>: <em>lock_write</em>
+held, <em>lock_use</em> set, <em>seal</em> still set, and the data destroyed. A retired slot
+can be neither read, rewritten nor reused until the next warm reset, and
+repeating the erase changes nothing. Revocation and reuse are therefore
+separate: firmware can destroy a sealed key it no longer trusts without
+handing the slot to whoever asked for the destruction.</p>
+</div>
+<div class="paragraph">
+<p>An emergency wipe releases a sealed or retired slot: it zeroes key data and
+clears every CTRL bit, <em>seal</em> included (<a href="#wipe-state">Wipe State</a>). That is sound because
+no KM CPU execution follows a wipe before a warm reset — a CPU trap halts the
+core, and <em>wipe_state</em> is asserted by the SEP rather than by KM firmware — so a
+slot cannot be released and rewritten within one boot cycle. An integrator that
+gives KM firmware a path to assert <em>wipe_state</em>, or that lets the CPU continue
+after a wipe, breaks that property.</p>
+</div>
+<div class="paragraph">
 <p>Reset values: All KPV control registers (CTRL) reset to 0. All KPV key
-entry data registers (32 slots × 512 bits) have no reset value: they
+entry data registers (64 slots × 512 bits) have no reset value: they
 power up with random (undefined) values for security. The implementation
 must not connect reset to key entry storage flops.</p>
 </div>
@@ -1188,8 +1210,8 @@ reset. Scrambling is disabled by default after a cold reset.</p>
 </div>
 <div class="paragraph">
 <p>When scrambling is enabled, the KPV uses the same scrambler algorithm as
-SRAM but sized for 512×32 words (32 slots × 16 words). The scrambler
-address input is the linear register index (0..511): <em>slot_index</em> × 16<br>
+SRAM but sized for 1024×32 words (64 slots × 16 words). The scrambler
+address input is the linear register index (0..1023): <em>slot_index</em> × 16<br>
 <em>word_index</em>. Address scrambling maps the logical index to a scrambled
 physical storage index. Data is scrambled before storage and descrambled
 after retrieval. Only key entry data words are scrambled; CTRL registers
@@ -1216,7 +1238,7 @@ interrupt in the KMCSR.</p>
 </div>
 <div class="paragraph">
 <p>On the next clock cycle after the rising edge, the KPV is synchronously
-reset to zero: all 512 key entry data registers, all 32 KPV control
+reset to zero: all 1024 key entry data registers, all 64 KPV control
 registers, and the KPV scrambler key and scrambler control registers
 (enable and lock) are cleared to zero.</p>
 </div>
@@ -1415,7 +1437,11 @@ read-only: a write completes with an AXI SLVERR response and does not change
 the value.</p>
 </div>
 <div class="paragraph">
-<p>The interrupt aggregation logic collects eleven hardware event sources into a single CPU interrupt. Each source has a sticky status bit in <code>IRQ_STATUS</code> (write-one-to-clear), a mask bit in <code>IRQ_ENABLE</code>, and a software-trigger bit in <code>IRQ_SET</code> for ISR testing. The aggregated interrupt output is the logical OR of the masked status bits (<code>IRQ_STATUS &amp; IRQ_ENABLE</code>).</p>
+<p>The interrupt aggregation logic collects twelve hardware event sources into a
+single CPU interrupt. Each source has a sticky status bit in <code>IRQ_STATUS</code>
+(write-one-to-clear), a mask bit in <code>IRQ_ENABLE</code>, and a software-trigger bit in
+<code>IRQ_SET</code> for ISR testing. The aggregated interrupt output is the logical OR of
+the masked status bits (<code>IRQ_STATUS &amp; IRQ_ENABLE</code>).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1449,7 +1475,7 @@ the value.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SRAM Write-Lock Violation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A write targeted a locked 512-byte SRAM region.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A write targeted a locked 1 KB SRAM region.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
@@ -1484,12 +1510,17 @@ the value.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Execute Violation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction fetch from a non-whitelisted (non-executable) memory region.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction fetch from a non-whitelisted (non-executable) memory region, excluding the ROM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM Access Violation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM instruction fetch or data read attempted after the ROM lockout engaged.</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Bits <code>[31:11]</code> of <code>IRQ_STATUS</code> are reserved. Two interrupt sources are not part
+<p>Bits <code>[31:12]</code> of <code>IRQ_STATUS</code> are reserved. Two interrupt sources are not part
 of the KMCSR <code>IRQ_STATUS</code> aggregation and are serviced separately: the mailbox
 sources (FIFO data-available/space-available and overflow/underflow/flush
 conditions), and the Adams Bridge ML-KEM shared-key interrupt on its own
@@ -1509,10 +1540,26 @@ every reset that re-enters ROM (cold, external asynchronous, and KM soft reset)
 restores <code>IRQ_ENTRY_ADDR</code> to <code>0x0000_0010</code> and clears <code>IRQ_ENTRY_LOCK</code>.</p>
 </div>
 <div class="paragraph">
-<p>The scrambler lock logic in the KMCSR is described in the SRAM Scrambling section of this document. The SRAM write-lock uses the <code>SRAM_LOCK</code> register, which is implemented as write-one-to-set (RDL <code>woset</code>). Each bit corresponds to a 512-byte SRAM region. Once a bit is set, it is cleared by the next warm or cold KM reset — <code>SRAM_LOCK</code> is in the warm reset domain. The SRAM scrambler key/enable/lock (<code>SCRAMBLER_KEY</code>, <code>SCRAMBLER_CTRL</code>) remain non-volatile state in the cold reset domain and are preserved across a warm reset. Because <code>SRAM_LOCK</code> clears on warm reset, the ROM is responsible for re-applying the write-lock policy on every boot (cold and warm) before handing control to mutable firmware.</p>
+<p>The scrambler lock logic in the KMCSR is described in the SRAM Scrambling
+section of this document. The SRAM write-lock uses the <code>SRAM_LOCK</code> register,
+which is implemented as write-one-to-set (RDL <code>woset</code>). Each of the 32 bits
+corresponds to a 1 KB SRAM region, so the register covers the whole 32 KB
+SRAM. Once a bit is set, it is cleared by the next warm or cold KM reset —
+<code>SRAM_LOCK</code> is in the warm reset domain. The SRAM scrambler key/enable/lock
+(<code>SCRAMBLER_KEY</code>, <code>SCRAMBLER_CTRL</code>) remain non-volatile state in the cold
+reset domain and are preserved across a warm reset. Because <code>SRAM_LOCK</code>
+clears on warm reset, the ROM is responsible for re-applying the write-lock
+policy on every boot (cold and warm) before handing control to mutable
+firmware.</p>
 </div>
 <div class="paragraph">
-<p>The soft reset mechanism is guarded by a magic code. Firmware must write the value <code>0x53525354</code> (ASCII <code>"SRST"</code>) to the <code>SOFT_RST_CODE</code> register; when the code matches, the KMCSR asserts an active-low soft reset (<code>soft_rst_n</code>) that feeds the <strong>warm</strong> path of the reset conditioner. This produces a synchronous warm reset of the KM CPU and volatile state (see Reset Conditioning) — it does not reset the cold-only domain. The warm reset remains asserted until the hold counter expires (<code>MIN_RESET_CYCLES</code>).</p>
+<p>The soft reset mechanism is guarded by a magic code. Firmware must write the
+value <code>0x53525354</code> (ASCII <code>"SRST"</code>) to the <code>SOFT_RST_CODE</code> register; when the
+code matches, the KMCSR asserts an active-low soft reset (<code>soft_rst_n</code>) that
+feeds the <strong>warm</strong> path of the reset conditioner. This produces a synchronous
+warm reset of the KM CPU and volatile state (see Reset Conditioning) — it
+does not reset the cold-only domain. The warm reset remains asserted until
+the hold counter expires (<code>MIN_RESET_CYCLES</code>).</p>
 </div>
 <div class="paragraph">
 <p>The <code>BOOT_STATUS</code> register (offset <code>0x02C</code>) carries a single
@@ -1532,7 +1579,8 @@ a warm reboot (reads 1) and can branch its initialization accordingly.</p>
 committed instruction fetch (<code>mem_valid &amp;&amp; mem_instr</code>).  Any fetch from
 outside the whitelist immediately pulses <code>KMCSR.IRQ_STATUS.EXEC_VIOLATION</code>,
 which (if unmasked) routes to the ISR and triggers the unrecoverable fault
-<code>ROM_KM_UFAULT_EXEC</code>.</p>
+<code>ROM_KM_UFAULT_EXEC</code>.  A ROM fetch refused by the ROM lockout described below
+is reported on <code>ROM_ACCESS_VIOLATION</code> instead, so the two bits are disjoint.</p>
 </div>
 <div class="paragraph">
 <p>The whitelist mode is controlled by the <code>KMCSR.SRAM_EXEC_MODE.enable</code> bit
@@ -1554,23 +1602,30 @@ which (if unmasked) routes to the ISR and triggers the unrecoverable fault
 <tbody>
 <tr>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>0</code> (ROM mode)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ROM (<code>0x0000</code>–<code>0x1FFF</code>) and VROM*</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM (<code>0x0000</code>–<code>0x3FFF</code>) and VROM*</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">All SRAM; Peripheral/AXI</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>1</code> (SRAM mode)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ROM, VROM*, and write-locked SRAM regions (<code>SRAM_LOCK.lock_bits</code>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Unlocked SRAM; Peripheral/AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write-locked 1 KB SRAM regions (<code>SRAM_LOCK.lock_bits</code>), VROM*, and the ROM until the lockout engages</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unlocked SRAM; Peripheral/AXI; the ROM once the lockout engages</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The fetch-region index is a plain slice of the byte address, which works only
+because the SRAM base (<code>0x0000_8000</code>) is aligned to the SRAM size; it is the
+same slice <code>km_sram_interface</code> uses to check data writes, so the two views of a
+region can never disagree.</p>
+</div>
 <div class="ulist">
 <ul>
 <li>
 <p>VROM (<code>0x1000_0000</code>) is a testbench-only virtual ROM used in the block TB.
 It is treated as always executable in both modes so that firmware running
-from VROM in simulation is not falsely faulted.  VROM does not exist in
-production silicon.</p>
+from VROM in simulation is not falsely faulted, and it is exempt from the ROM
+lockout for the same reason.  VROM does not exist in production silicon and
+so carries no security requirement.</p>
 </li>
 </ul>
 </div>
@@ -1581,6 +1636,76 @@ after SRAM write-lock regions have already been committed.  This minimises
 the window between enabling SRAM execution and the first fetch from SRAM.
 The bit is write-1-only and cleared by warm reset, so the ROM-only
 whitelist is re-applied on every boot cycle.</p>
+</div>
+<div id="rom-lockout" class="paragraph">
+<p><strong>ROM Lockout</strong></p>
+</div>
+<div class="paragraph">
+<p>Setting <code>SRAM_EXEC_MODE.enable</code> exchanges the ROM for write-locked SRAM rather
+than adding to the whitelist.  Were it purely additive, mutable firmware would
+inherit read and fetch access to the ROM that handed control to it, leaving the
+ROM&#8217;s key-management routines and its <code>rom_persist</code> structure reachable by code
+the ROM does not trust.</p>
+</div>
+<div class="paragraph">
+<p>The exchange is staged so that the handover can complete.  Writing the bit only
+<strong>arms</strong> the lockout; the lockout <strong>engages</strong> on the first committed instruction
+fetch from a write-locked SRAM address, which is the point at which mutable
+firmware actually begins executing.  Everything the handover assembly runs after
+its arming store — the store itself, the register clears, the <code>jalr</code> — is ROM
+code, and remains legal precisely because the lockout has not engaged yet.
+Engaging on a fetch rather than on any ROM access also keeps the rule
+independent of incidental data traffic: ROM code reads <code>rom_persist</code>, which
+itself lives in a write-locked SRAM region.</p>
+</div>
+<div class="paragraph">
+<p>Once engaged, the lockout blocks ROM instruction fetches and ROM data reads
+until the next warm or cold reset.  The latch is in the warm reset domain, the
+same domain as <code>SRAM_EXEC_MODE.enable</code>, so the transition is one-way within a
+boot and every reset that re-enters ROM restores ROM access.  ROM <strong>writes</strong> are
+unaffected and continue to raise <code>ROM_WRITE_ERR</code>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Blocked access behaviour.</strong>  A blocked access returns zeros; ROM content is
+never delivered.  What follows depends on the access type:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A blocked <strong>data read</strong> raises <code>ROM_ACCESS_VIOLATION</code> and nothing else.  Zero is
+a legitimate data value, so no decode and no trap occur.</p>
+</li>
+<li>
+<p>A blocked <strong>instruction fetch</strong> raises <code>ROM_ACCESS_VIOLATION</code> and additionally
+feeds an all-zeros instruction stream, which the PicoRV32 <code>CATCH_ILLINSN</code>
+logic traps as an illegal instruction.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The two reports are ordered by causality rather than by arbitration.  The
+violation is combinational in the cycle of the blocked access, whereas the
+illegal instruction cannot be detected until the zero word has been returned and
+decoded, which is strictly later.  Since <code>IRQ_STATUS</code> is sticky, the violation
+bit is always recorded first.</p>
+</div>
+<div class="paragraph">
+<p>Which mechanism <strong>acts</strong> depends on the interrupt mask, and after handover only
+one does.  Handover leaves all CPU interrupts masked, so the illegal instruction
+takes the PicoRV32 trap state rather than an interrupt: the core halts,
+<code>unrecoverable_err_o</code> asserts, and the KPV is wiped.  The <code>ROM_ACCESS_VIOLATION</code>
+interrupt is inert in that state — it sets its sticky bit but has nowhere to
+vector, because the ROM ISR it would have vectored to is itself in the ROM the
+lockout has just revoked.  A real post-handover breach therefore halts the KM
+without emitting a mailbox fault code; <code>ROM_KM_UFAULT_ROM_ACCESS</code> is reportable
+only while the ROM is still live (via <code>IRQ_SET</code>) or through a vector that
+mutable firmware installed itself.</p>
+</div>
+<div class="paragraph">
+<p>Both mechanisms are retained because they do different jobs.  The violation bit
+is the diagnostic that distinguishes a lockout breach from any other
+illegal-instruction halt; the trap is the containment, and it requires no
+firmware cooperation, no enabled interrupt, and no reachable handler.</p>
 </div>
 <div id="error-events" class="paragraph">
 <p><strong>Error Events</strong></p>
@@ -1609,6 +1734,9 @@ but are not limited to, the following conditions:</p>
 </li>
 <li>
 <p>Instruction fetch from a non-whitelisted (non-executable) memory region</p>
+</li>
+<li>
+<p>ROM instruction fetch or data read after the ROM lockout engaged</p>
 </li>
 <li>
 <p>Any other unhandled exception or fault</p>
@@ -2044,18 +2172,33 @@ relationship.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256-bit CLASS_KEY dual-rail words.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_SEP_CHIPLET_ID_VAL/CPL_0..7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 × 32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256-bit SEP_CHIPLET_ID dual-rail words.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_SEP_SIP_ID_VAL/CPL_0..7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 × 32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256-bit SEP_SIP_ID dual-rail words.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_SEP_SYS_ID_VAL/CPL_0..7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 × 32-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256-bit SEP_SYS_ID dual-rail words.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_READ_LOCK</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9-bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Write-one-to-set read-lock bits (warm reset domain), one per field. Cleared by warm or cold reset.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_READ_LOCK_COLD</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9-bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Write-one-to-set read-lock bits (cold reset domain), one per field. Survives warm reset; cleared only by cold reset. Effective lock = <code>OTP_READ_LOCK</code> | <code>OTP_READ_LOCK_COLD</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OTP_CHANGE_STATUS</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6-bit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9-bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sticky write-1-to-clear flags: set when a monitored field&#8217;s decoded value changes.</p></td>
 </tr>
 </tbody>
@@ -2063,7 +2206,9 @@ relationship.</p>
 <div class="paragraph">
 <p><strong>Dual-rail integrity.</strong> The hardware continuously checks that each value word is
 the bitwise inverse of its complement word. Any violation raises the
-<code>OTP_SIGINT</code> interrupt, which ROM firmware treats as an unrecoverable fault.</p>
+<code>OTP_SIGINT</code> interrupt, which ROM firmware treats as an unrecoverable fault.
+This applies to the public identity fields as much as to the secrets: a flipped
+bit there would silently personalize <code>ID_ROOT</code> with the wrong identity.</p>
 </div>
 <div class="paragraph">
 <p><strong>Change detection.</strong> When a monitored field&#8217;s decoded value changes, the hardware
@@ -2118,12 +2263,17 @@ baseline.</p>
 </div>
 <div class="paragraph">
 <p>Concretely, this safeguard is the <code>OTP_READ_LOCK</code> register: one
-write-one-to-set bit per OTP readout field (life-cycle, demotion, and the four
-256-bit secrets). Setting a bit causes the hardware to return zero for that
-field&#8217;s value and complement words. ROM applies the lock using a triple-write
-convention (three consecutive writes) so it commits even under a single-bit
-glitch. <code>OTP_CHANGE_STATUS</code> shares the same warm reset domain for the same
-reasons.</p>
+write-one-to-set bit per OTP readout field (life-cycle, demotion, the four
+256-bit secrets, and the three 256-bit public identities). Setting a bit causes
+the hardware to return zero for that field&#8217;s value and complement words. ROM
+applies the lock using a triple-write convention (three consecutive writes) so
+it commits even under a single-bit glitch. <code>OTP_CHANGE_STATUS</code> shares the same
+warm reset domain for the same reasons.</p>
+</div>
+<div class="paragraph">
+<p>ROM does not lock the public identity fields at handover, since concealing them
+buys nothing. Their lock bits exist so the block is uniform and so a caller that
+wants to freeze <code>ID_ROOT</code> re-derivation has the same means it has for the UIDs.</p>
 </div>
 <div class="paragraph">
 <p>A parallel <strong>cold-reset-domain</strong> register, <code>OTP_READ_LOCK_COLD</code>, provides the
@@ -2632,7 +2782,8 @@ bits next to the 32-bit data word.</p>
 <h5 id="sram-write-locking"><a class="anchor" href="#sram-write-locking"></a><a class="link" href="#sram-write-locking">SRAM Write Locking</a></h5>
 <div class="paragraph">
 <p>The SRAM interface incorporates a write-locking mechanism to designate
-specific 512-byte memory regions as read-only. This feature is primarily
+specific 1 KB memory regions as read-only; 32 regions cover the whole 32 KB
+SRAM, one per <code>SRAM_LOCK</code> bit. This feature is primarily
 designed to protect dynamically loaded KM firmware from unauthorized
 modification.</p>
 </div>
@@ -2654,7 +2805,7 @@ executes against an unlocked SRAM region.</p>
 <div class="sect4">
 <h5 id="rom-warm-persist-region"><a class="anchor" href="#rom-warm-persist-region"></a><a class="link" href="#rom-warm-persist-region">ROM Warm-Persistent SRAM Region</a></h5>
 <div class="paragraph">
-<p>The highest 512 bytes of KM SRAM (region 31, <code>0x0000_7E00</code>–<code>0x0000_7FFF</code>) are
+<p>The highest 1 KB of KM SRAM (region 31, <code>0x0000_FC00</code>–<code>0x0000_FFFF</code>) are
 reserved as a ROM-managed warm-persistent data structure (<code>rom_persist</code>). The
 mutable-firmware load area, stack, and BSS/data occupy the SRAM below it.</p>
 </div>
@@ -2705,7 +2856,7 @@ all fields. On a warm or soft reset, <code>COLD_BOOT_DONE</code> already reads 1
 <div class="paragraph">
 <p><strong>Write-lock policy.</strong> Before handing control to mutable (SRAM-loaded) firmware,
 ROM must call <code>rom_persist_lock()</code>, which sets SRAM_LOCK bit 31 via a triple
-write for glitch resistance. After locking, any write into <code>0x7E00</code>–<code>0x7FFF</code>
+write for glitch resistance. After locking, any write into <code>0xFC00</code>–<code>0xFFFF</code>
 is silently dropped and a <code>SRAM_WRITE_LOCK_VIOLATION</code> IRQ is raised. The lock
 is cleared on the next warm or cold reset; ROM re-establishes it
 before transferring control to mutable code.</p>
@@ -2718,16 +2869,16 @@ before transferring control to mutable code.</p>
 controlled by the <code>CMD_SRAM_LOAD_EXEC</code> and <code>CMD_SRAM_EXEC</code> mailbox commands.</p>
 </div>
 <div class="paragraph">
-<p><strong>Memory map.</strong> Mutable firmware is loaded into SRAM starting at <code>0x4000</code> (SRAM
-word-address 0) and ROM jumps to <code>0x4000</code> as the entry point.  ROM does not
+<p><strong>Memory map.</strong> Mutable firmware is loaded into SRAM starting at <code>0x8000</code> (SRAM
+word-address 0) and ROM jumps to <code>0x8000</code> as the entry point.  ROM does not
 program the CPU IRQ entry vector for the loaded image; the mutable firmware is
 responsible for setting <code>IRQ_ENTRY_ADDR</code> to its own handler before it
 re-enables interrupts.</p>
 </div>
 <div class="paragraph">
-<p><strong>SRAM region write-locking.</strong> After a successful load, ROM write-locks the 512-byte
+<p><strong>SRAM region write-locking.</strong> After a successful load, ROM write-locks the 1 KB
 SRAM regions that contain the firmware image (regions 0 through
-<code>ceil(fw_size_bytes / 512) - 1</code>).  These locks are applied immediately before the
+<code>ceil(fw_size_bytes / 1024) - 1</code>).  These locks are applied immediately before the
 handover jump and remain active for the lifetime of that execution epoch.
 <code>SRAM_LOCK</code> is in the warm-reset domain and is cleared by a warm reset; ROM
 re-applies the write-lock on each subsequent warm boot when <code>CMD_SRAM_EXEC</code> is
@@ -2742,7 +2893,7 @@ downward toward the image: after a warm reset that follows mutable-firmware
 execution, the ROM re-runs and a <code>CMD_SRAM_EXEC</code> restart may drive the stack
 deeper than it was at original load, so a live-SP bound could let the ROM stack
 later overwrite executable image words.  The linker computes the ceiling as
-<code>STACK - </em>rom_max_stack</code> (rounded down to a 512-byte write-lock region), where
+<code>STACK - </em>rom_max_stack</code> (rounded down to a 1 KB write-lock region), where
 <code>__rom_max_stack</code> is the worst-case ROM stack depth validated against the
 production ELF by a post-link call-graph analyzer; the firmware build is gated
 on the analyzer.  <code>CMD_SRAM_LOAD_EXEC</code> rejects oversized images, and a per-word
@@ -2750,7 +2901,7 @@ guard during streaming provides defense-in-depth.</p>
 </div>
 <div class="paragraph">
 <p>The region-disjointness invariant guarantees that no ROM runtime region (stack,
-<code>.data</code>, <code>.bss</code>) shares a 512-byte block with any firmware-image region.  This
+<code>.data</code>, <code>.bss</code>) shares a 1 KB block with any firmware-image region.  This
 ensures that write-locking the firmware regions does not accidentally lock
 ROM-owned data, which must remain erasable by the whole-SRAM scramble during
 handover.  Aligning the load ceiling down to a write-lock region boundary is
@@ -3085,21 +3236,23 @@ domain-separation labels, so they are cryptographically independent.</p>
 </div>
 <div class="paragraph">
 <p><strong>Roots are never host-addressable.</strong> No command, field or handle names a root.
-Roots occupy KPV slots, but those slots are marked <code>IS_ROOT</code> and are absent from
-the key registry, so no descriptor points at one and no handle can resolve to
-one. The SEP selects a root only implicitly, by naming an owner and choosing an
-opcode whose domain is fixed; it can neither read a root nor derive at a label of
-its own choosing. A root that failed to derive, or that has been revoked, reports
-<code>KM_ERR_ROOT_CLEARED</code> when a command would have used it.</p>
+Roots occupy KPV slots, but those slots are absent from the key registry, so no
+descriptor points at one and no handle can resolve to one. The SEP selects a root
+only implicitly, by naming an owner and choosing an opcode whose domain is fixed;
+it can neither read a root nor derive at a label of its own choosing. A root that
+failed to derive, or that has been revoked, reports <code>KM_ERR_ROOT_CLEARED</code> when a
+command would have used it.</p>
 </div>
 <div class="paragraph">
 <p>Revoking a root is the same hardware operation as revoking a key: the KM asserts
-<code>ERASE_KEY</code> on the root&#8217;s slot, which wipes the material and clears the slot&#8217;s
-lock bits. <code>CMD_CLEAR_ID_ROOT</code>, <code>CMD_CLEAR_OWNER_KEYS</code> and <code>CMD_CLEAR_HW_KEYS</code>
-all clear roots this way. What distinguishes a root from a key is not the erase
-path but the registry: a cleared root frees no descriptor, because it never had
-one, and is reported through <code>KM_ERR_ROOT_CLEARED</code> rather than by a handle
-ceasing to resolve.</p>
+<code>ERASE_KEY</code> on the root&#8217;s slot, which wipes the material. <code>CMD_CLEAR_ID_ROOT</code>,
+<code>CMD_CLEAR_OWNER_KEYS</code> and <code>CMD_CLEAR_HW_KEYS</code> all clear roots this way, in
+either mode. Because root slots are sealed from derivation onwards, clearing one
+retires its slot rather than freeing it (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>), so a revoked root
+cannot be replaced by a value of the caller&#8217;s choosing. What distinguishes a root
+from a key is not the erase path but the registry: a cleared root frees no
+descriptor, because it never had one, and is reported through
+<code>KM_ERR_ROOT_CLEARED</code> rather than by a handle ceasing to resolve.</p>
 </div>
 <div class="paragraph">
 <p>Root derivation is per-owner fail-closed: one owner&#8217;s root failing leaves the
@@ -3207,16 +3360,14 @@ from both ends: keys upward from slot <code>0</code>, roots downward from <code>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 6. KPV Slot Map</caption>
 <colgroup>
-<col style="width: 18%;">
+<col style="width: 20%;">
 <col style="width: 16%;">
-<col style="width: 28%;">
-<col style="width: 38%;">
+<col style="width: 64%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-center valign-top">Slots</th>
 <th class="tableblock halign-center valign-top">Count</th>
-<th class="tableblock halign-left valign-top">Flag</th>
 <th class="tableblock halign-left valign-top">Contents</th>
 </tr>
 </thead>
@@ -3224,62 +3375,61 @@ from both ends: keys upward from slot <code>0</code>, roots downward from <code>
 <tr>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>0</code>–<code>54</code></p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">55</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IS_KEY</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key material, one or more slots per key, allocated by the key registry.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>55</code>–<code>63</code></p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">9</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IS_ROOT</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The nine roots — <code>HW_ROOT</code>, <code>SW_ROOT</code> and <code>ID_ROOT</code> for each of <code>CHIPLET</code>, <code>SIP</code> and <code>SYSTEM</code> (<a href="#km-roots">Roots</a>).</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The two regions exactly partition the vault: <code>55 + 9 = SLOT_CNT</code>, so every slot
-carries exactly one flag and there is no unflagged slot. Firmware may therefore
-treat a slot with neither flag set as a fault rather than as spare capacity.</p>
+<p>The two regions exactly partition the vault: <code>55 + 9 = SLOT_CNT</code>.</p>
 </div>
 <div class="paragraph">
-<p><code>IS_KEY</code> and <code>IS_ROOT</code> are per-slot flags and are mutually exclusive:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>IS_KEY</code> means the material is a KM key registered in the key registry, and is
-therefore reachable by the key commands — transfer, derive, revoke and the
-rest.</p>
-</li>
-<li>
-<p><code>IS_ROOT</code> means the material is a root derived at ROM boot. No descriptor
-names it and no handle resolves to it.</p>
-</li>
-</ul>
+<p>Which region a slot belongs to is a registry fact, not a hardware one. The KPV
+holds key data and lock state and nothing else — no per-slot class field — so a
+slot is a key slot because a descriptor points at it and a root slot because the
+ROM derived a root into it and no descriptor names it. Firmware reads the class
+from the key registry and the root registry (<a href="#km-firmware-key-registry">Key Registry</a>,
+<a href="#km-root-registry">[km-root-registry]</a>), never from the vault.</p>
 </div>
 <div class="paragraph">
-<p>The KM boot ROM sets these flags, and they cannot be altered once the KM is
-executing mutable firmware. The layout is decided at software build time, but
-it is not enforced by software convention: the ROM write-locks every <code>IS_ROOT</code>
-slot before handover, so mutable firmware inherits a KPV whose root region it
-cannot rewrite regardless of what its own code believes the map to be. Root slots
-are not read-locked, because a surviving root still has to be readable by the KDF
-that derives from it (<a href="#km-handover-domain-split">[km-handover-domain-split]</a>).</p>
+<p>What hardware does enforce is that material handed forward across handover cannot
+be altered by what receives it. The ROM <strong>seals</strong> each root slot as it derives the
+root into it: one control-register write setting <code>SEAL</code>, which hardware answers
+by setting <code>LOCK_WRITE</code> alongside it. A sealed slot refuses key writes, and
+because the seal holds <code>LOCK_WRITE</code> set, mutable firmware cannot shed the write
+lock to install a value of its own either. Only a warm reset, which hands the KM
+back to ROM, lifts a seal. Sealed root slots are not read-locked, because a
+surviving root still has to be readable by the KDF that derives from it
+(<a href="#km-handover-domain-split">[km-handover-domain-split]</a>).</p>
 </div>
 <div class="paragraph">
-<p>That yields the rule mutable firmware must be written against: a slot marked
-<code>IS_ROOT</code> cannot be written, re-derived, or have its flags changed in mutable
-software mode. Roots exist for the whole boot cycle unless erased by ROM code.
-Mutable firmware can exercise any ROOT made available to it and it can destroy ROOTs,
-but it cannot mint or replace one.</p>
+<p>A seal does not block erase; it changes what the erase leaves behind. Erasing a
+sealed slot destroys its data and <strong>retires</strong> the slot: <code>LOCK_WRITE</code> stays set,
+<code>LOCK_USE</code> is set, and the slot can be neither read, rewritten nor reused until
+the next warm reset. Destruction and reuse are separate powers, so mutable
+firmware may destroy a root it no longer trusts without getting the slot back in
+exchange.</p>
 </div>
 <div class="paragraph">
-<p>The one operation that stays available is destruction. <code>ERASE_KEY</code> is exempt from
-the restriction above, exactly as it is exempt from <code>lock_write</code> and <code>lock_use</code>,
-because erase is the mechanism every revocation command is built on: were it
-gated in mutable mode, <code>CMD_CLEAR_ID_ROOT</code>, <code>CMD_CLEAR_OWNER_KEYS</code> and
-<code>CMD_CLEAR_HW_KEYS</code> would silently lose their root-clearing half after handover.
-The asymmetry is the intended one — mutable firmware may narrow what the device
-can do, never widen it.</p>
+<p>That yields the rule mutable firmware must be written against: a surviving root
+cannot be written or re-derived in mutable software mode, and destroying one
+retires its slot rather than freeing it. Mutable firmware can exercise any root
+made available to it and can revoke it, but it can neither mint nor replace one,
+and the slot map is therefore binding on it regardless of what its own code
+believes the map to be.</p>
+</div>
+<div class="paragraph">
+<p>Destruction stays available everywhere. <code>ERASE_KEY</code> is exempt from <code>lock_write</code>,
+<code>lock_use</code> and <code>SEAL</code> alike — the exemption every revocation command is built
+on, so <code>CMD_KEY_REVOKE</code> and the bulk sweeps keep working after handover, on root
+slots as much as key slots (<a href="#km-handover-posture">[km-handover-posture]</a>). What the seal changes is
+the aftermath: a cleared key slot returns to the free pool, while a cleared root
+slot is retired. The asymmetry is the intended one — mutable firmware may narrow
+what the device can do, never widen it.</p>
 </div>
 <div id="km-kpv-extent-in-software" class="paragraph">
 <p>Within the key region, the KPV tracks slot usage alone. It has no field naming
@@ -4277,7 +4427,7 @@ this epoch (including a prior <code>CMD_EXEC_ROM</code>).</p>
 </div>
 <div class="paragraph">
 <p>Instructs the KM ROM to accept a mutable firmware image via the mailbox
-FIFO, load it into SRAM starting at address <code>0x4000</code>, verify the image
+FIFO, load it into SRAM starting at address <code>0x8000</code>, verify the image
 integrity with CRC-32C, and hand control to the loaded firmware.</p>
 </div>
 <div class="paragraph">
@@ -4299,8 +4449,8 @@ CRC word.</p>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Locks OTP secret fields and the <code>rom_persist</code> SRAM region, and seals the KPV
-(read-locks registered slots, shreds free slots).</p>
+<p>Locks OTP secret fields and the <code>rom_persist</code> SRAM region, and locks down the
+KPV (read-locks registered slots, shreds free slots).</p>
 </li>
 <li>
 <p>Write-locks the SRAM regions containing the firmware image.</p>
@@ -4319,7 +4469,7 @@ silently skipped by hardware).</p>
 <p>Clears all CPU general-purpose registers.</p>
 </li>
 <li>
-<p>Jumps to <code>0x4000</code> (SRAM base).</p>
+<p>Jumps to <code>0x8000</code> (SRAM base).</p>
 </li>
 </ol>
 </div>
@@ -4339,7 +4489,7 @@ the command returns <em>failure</em> immediately and the image is not requested.
 <li>
 <p><code>FW_WORDS</code> must be non-zero and the loaded image must fit entirely below
 the static load ceiling <code><em>_km_fw_load_limit</code> (the worst-case ROM stack
-bound, region-aligned to a 512-byte SRAM write-lock boundary), otherwise
+bound, region-aligned to a 1 KB SRAM write-lock boundary), otherwise
 _invalid_arg</em> is returned and no image is requested.  The ceiling is a
 build-time constant, so a warm-reset
 <code>CMD_SRAM_EXEC</code> restart whose ROM stack runs deeper than at load time can
@@ -7404,7 +7554,7 @@ the lifetime of a power cycle, regardless of subsequent warm resets.</p>
 <p><strong>Payload</strong></p>
 </div>
 <div class="paragraph">
-<p>A bitmask selecting which OTP fields to lock. Bits <code>[31:6]</code> are
+<p>A bitmask selecting which OTP fields to lock. Bits <code>[31:9]</code> are
 reserved and must be zero; a non-zero reserved field returns
 <code>invalid_arg</code>. Writing 0 is a no-op; already-set bits are unaffected
 (write-one-to-set, idempotent).</p>
@@ -7483,7 +7633,10 @@ reserved and must be zero; a non-zero reserved field returns
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-center valign-top" colspan="26"><p class="tableblock"><code>RESERVED</code></p></td>
+<td class="tableblock halign-center valign-top" colspan="23"><p class="tableblock"><code>RESERVED</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SsI</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiI</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>cI</code></p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>CK</code></p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>SU</code></p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiU</code></p></td>
@@ -7538,13 +7691,28 @@ reserved and must be zero; a non-zero reserved field returns
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_CLASS_KEY_VAL/CPL</code> reads.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>6</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_SEP_CHIPLET_ID_VAL/CPL</code> reads.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>7</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SiI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_SEP_SIP_ID_VAL/CPL</code> reads.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SsI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lock <code>OTP_SEP_SYS_ID_VAL/CPL</code> reads.</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
 <p><strong>Response</strong></p>
 </div>
 <div class="paragraph">
-<p>If any reserved bit <code>[31:6]</code> is set, the command returns <code>RESP_CMD</code>
+<p>If any reserved bit <code>[31:9]</code> is set, the command returns <code>RESP_CMD</code>
 <em>invalid_arg</em> with <code>return_arg</code> = the raw <code>lock_bits</code> word received.</p>
 </div>
 <div class="admonitionblock note">
@@ -7589,6 +7757,11 @@ or <code>D</code> also makes every live host KDF operation return <em>failure</e
 <code>KM_ERR_LOCKED</code>. The device-state sample is a PRF binding, and deriving
 against a zeroed sample would silently mint keys under a wrong binding.
 Locking these values disable the ability of the KM to mint new keys</p>
+</li>
+<li>
+<p>Locking an identity field (<code>cI</code>, <code>SiI</code>, <code>SsI</code>) conceals nothing — the values
+are public — but it does stop that owner&#8217;s <code>ID_ROOT</code> from being re-derived at
+the next warm boot, in the same per-owner way as locking their UID.</p>
 </li>
 </ul>
 </div>
@@ -7666,7 +7839,10 @@ Locking these values disable the ability of the KM to mint new keys</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-center valign-top" colspan="26"><p class="tableblock"><code>RESERVED</code></p></td>
+<td class="tableblock halign-center valign-top" colspan="23"><p class="tableblock"><code>RESERVED</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SsI</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiI</code></p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>cI</code></p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>CK</code></p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>SU</code></p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>SiU</code></p></td>
@@ -7916,8 +8092,8 @@ credential must prove device <strong>state</strong> rather than device <strong>i
 </div>
 <div class="paragraph">
 <p>This command is effectively ROM-mode only. The handover to mutable firmware
-erases all three identity roots (<a href="#km-handover-domain-split">[km-handover-domain-split]</a>), so every call
-afterwards returns <code>KM_ERR_ROOT_CLEARED</code>. Unlike <code>CMD_BL_DECRYPT_KEY</code> the
+retires all three identity root slots (<a href="#km-handover-domain-split">[km-handover-domain-split]</a>), so every
+call afterwards returns <code>KM_ERR_ROOT_CLEARED</code>. Unlike <code>CMD_BL_DECRYPT_KEY</code> the
 restriction is not a mode check in the handler — it falls out of the root being
 gone, and it holds equally for an owner whose root <code>CMD_CLEAR_ID_ROOT</code> had
 already cleared.</p>
@@ -9820,7 +9996,12 @@ unrecoverable fault. Core execution has halted.</p>
 <tr>
 <td class="tableblock halign-center valign-top"><p class="tableblock"><code>-17</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>exec</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">An instruction fetch was attempted from a non-whitelisted (non-executable) memory region (execute-permission whitelist violation). The KM halts; recovery requires a warm or cold reset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An instruction fetch was attempted from a non-whitelisted (non-executable) memory region other than the ROM (execute-permission whitelist violation). The KM halts; recovery requires a warm or cold reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-center valign-top"><p class="tableblock"><code>-18</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_access</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A ROM instruction fetch or data read was attempted after the ROM lockout engaged. Reportable as a fault code only while the ROM is still live, which in practice means an <code>IRQ_SET</code> self-test: after handover the ROM ISR is itself unreachable, so a real breach halts the KM through the illegal-instruction trap with no fault code emitted. Recovery requires a warm or cold reset.</p></td>
 </tr>
 </tbody>
 </table>
@@ -10103,7 +10284,7 @@ firmware via the <code>CMD_SRAM_LOAD_EXEC</code> (load + run) or <code>CMD_SRAM_
 <p><strong>Validate.</strong>  The ROM checks <code>FW_WORDS &gt; 0</code> and that the firmware image
 fits below the static load ceiling <code><em>km_fw_load_limit</code> — a build-time
 constant computed by the linker as <code>STACK - </em>rom_max_stack</code>, rounded down
-to a 512-byte SRAM write-lock region boundary, where <code><em>_rom_max_stack</code> is
+to a 1 KB SRAM write-lock region boundary, where <code><em>_rom_max_stack</code> is
 the worst-case ROM stack depth validated against the production ELF (see
 <a href="#km-rom-stack-budget">ROM Stack Budget and the Static Load Ceiling</a>).  If either check fails, the command returns
 _invalid_arg</em> and no image is requested.</p>
@@ -10116,7 +10297,7 @@ streaming the image.</p>
 </li>
 <li>
 <p><strong>Stream.</strong>  The ROM polls the inbound FIFO directly (bypassing the normal
-message buffer), storing each word into SRAM starting at <code>0x4000</code> and
+message buffer), storing each word into SRAM starting at <code>0x8000</code> and
 accumulating a running CRC-32C.  A per-word guard (defense-in-depth on top
 of the static <code>__km_fw_load_limit</code> validation) ensures the destination
 address never reaches the load ceiling.</p>
@@ -10146,12 +10327,16 @@ not inherit (<a href="#km-handover-domain-split">[km-handover-domain-split]</a>)
 through the ordinary Revoke Key flow, exactly as <code>CMD_CLEAR_HW_KEYS</code> would do
 it.  The three <code>HW_ROOT</code> slots are then cleared through <strong>Clear Root</strong>, and so
 are the three <code>ID_ROOT</code> slots as mutable firmware mints no device identity.
-Going through <strong>Clear Root</strong> rather than erasing the slots directly is what
-records the cleared state in the root registry (<a href="#km-root-registry">[km-root-registry]</a>); without
-it, mutable firmware&#8217;s first <code>GEN_HW_*</code> would read an erased slot against a
-stale CRC and report an integrity fault instead of the correct
+Because those slots were sealed when their roots were derived, clearing them
+retires them (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>): the material is destroyed and the six
+slots cannot be refilled with a forged value for the rest of the boot.  Going
+through <strong>Clear Root</strong> rather than erasing the slots directly is what records
+the cleared state in the root registry (<a href="#km-root-registry">[km-root-registry]</a>); without it,
+mutable firmware&#8217;s first <code>GEN_HW_*</code> would read an erased slot against a stale
+CRC and report an integrity fault instead of the correct
 <code>KM_ERR_ROOT_CLEARED</code>.  The three <code>SW_ROOT</code> slots and every SW-domain key are
-deliberately left intact.</p>
+deliberately left intact; the <code>SW_ROOT</code> slots cross the boundary sealed and
+live.</p>
 </li>
 <li>
 <p><strong>Lock.</strong>  OTP secret fields and the <code>rom_persist</code> SRAM region are locked.
@@ -10160,19 +10345,21 @@ registry across the boundary: both live there (<a href="#km-registry-residency">
 a write-locked region is the one thing the scramble below cannot touch.  ROM
 must therefore have finished every registry mutation it intends to make —
 including the HW-domain sweep and the root clearing above — before this step,
-because after it the registries are frozen for the rest of the boot.  Every
-<code>IS_ROOT</code> slot is write-locked, which is what makes the slot map binding on
-mutable firmware rather than a convention it could ignore
-(<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>): the six erased roots cannot be refilled with a forged
-value, and the three surviving <code>SW_ROOT</code> slots cannot be rewritten.  Root slots
-are not read-locked — the KDF has to read <code>SW_ROOT</code> to serve a <code>GEN_SW_*</code>
-derivation.  In the key region, every free slot is overwritten with PRNG data
+because after it the registries are frozen for the rest of the boot.  The root
+slots need no locking here: each was sealed when its root was derived, which is
+what makes the slot map binding on mutable firmware rather than a convention it
+could ignore (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>).  The six retired roots cannot be refilled
+with a forged value, and the three surviving <code>SW_ROOT</code> slots cannot be
+rewritten, so the material a <code>GEN_SW_*</code> derivation reads is necessarily the
+material the ROM derived.  Root slots are not read-locked — the KDF has to read
+<code>SW_ROOT</code> to serve a <code>GEN_SW_*</code> derivation.  In the key region, every free slot
+is overwritten with PRNG data
 (a free-but-write-locked slot is read-locked instead); slots freed by the sweep
 above were hardware-erased at revocation time and are already wiped and fully
 unlocked by this point.  Surviving SW-domain key slots keep the write-lock they
 have carried since creation and are NOT read-locked, because mutable firmware
 has to read them to transfer keys to engine ports, to derive from them, and to
-re-seal descriptors.  The SRAM write-lock mask is set to cover all 512-byte
+re-seal descriptors.  The SRAM write-lock mask is set to cover all 1 KB
 regions that contain the loaded image.</p>
 </li>
 <li>
@@ -10188,7 +10375,7 @@ firmware sets its own before re-enabling interrupts.</p>
 <li>
 <p><strong>Scramble.</strong>  A stack-less assembly routine (<code>rom_handover_jump.S</code>) seeds a
 <code>xoshiro128++</code> PRNG from the value passed from C, iterates over the full
-SRAM range <code>0x4000–0xC000</code>, and overwrites each address with a
+SRAM range <code>0x8000</code>–<code>0xFFFF</code>, and overwrites each address with a
 pseudo-random word.  Hardware silently discards writes to write-locked
 regions (firmware image and <code>rom_persist</code>), so only ROM runtime data
 (stack, <code>.data</code>, <code>.bss</code>) is actually overwritten.  No stack pointer or
@@ -10218,9 +10405,16 @@ write hardens against voltage-glitch attacks that might cause a single store to
 be skipped.  Setting this bit as the very last operation before the jump
 minimises the window during which SRAM execution is enabled before the first
 SRAM fetch.</p>
+<div class="paragraph">
+<p>The write <strong>arms</strong> the exchange; the ROM lockout <strong>engages</strong> on the first committed
+instruction fetch from write-locked SRAM, which is the jump in the next step.
+That staging is what lets this routine finish at all: the store itself, the
+register clears and the <code>jalr</code> are all ROM instructions issued after the arming
+write, and they remain legal because the lockout has not engaged yet.</p>
+</div>
 </li>
 <li>
-<p><strong>Jump.</strong>  <code>jalr zero, 0(x5)</code> transfers control to <code>0x4000</code>.  The ROM
+<p><strong>Jump.</strong>  <code>jalr zero, 0(x5)</code> transfers control to <code>0x8000</code>.  The ROM
 never returns.  The mutable firmware is responsible for sending its own
 ready message to the SEP.</p>
 </li>
@@ -10234,7 +10428,7 @@ provided <code>sram_fw_size &gt; 0</code>.</p>
 <p><strong>What survives the handover</strong></p>
 </div>
 <div class="paragraph">
-<p>The handover does not seal the KPV wholesale — it partitions it. That partition
+<p>The handover does not lock the KPV wholesale — it partitions it. That partition
 is the reason the HW/SW domain split exists at all: the domain of a key is
 precisely the question "may mutable firmware inherit this?", decided once at
 creation and answered in one pass at handover.</p>
@@ -10261,18 +10455,18 @@ creation and answered in one pass at handover.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>HW_ROOT</code> × 3</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">Erased</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GEN_HW_SYM</code> and <code>GEN_HW_PRV</code> return <code>KM_ERR_ROOT_CLEARED</code>, so the HW domain cannot be repopulated.</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">Retired</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GEN_HW_SYM</code> and <code>GEN_HW_PRV</code> return <code>KM_ERR_ROOT_CLEARED</code>, so the HW domain cannot be repopulated; the retired slots cannot be refilled either.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ID_ROOT</code> × 3</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">Erased</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CMD_INVOKE_ID_KEY</code> returns <code>KM_ERR_ROOT_CLEARED</code>; no device identity can be minted after handover.</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">Retired</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CMD_INVOKE_ID_KEY</code> returns <code>KM_ERR_ROOT_CLEARED</code>; no device identity can be minted after handover, and the slots cannot be refilled.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SW_ROOT</code> × 3</p></td>
-<td class="tableblock halign-center valign-top"><p class="tableblock">Preserved</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GEN_SW_*</code> and the ephemeral opcodes keep working, so mutable firmware can still mint new SW-domain keys.</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">Preserved, sealed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GEN_SW_*</code> and the ephemeral opcodes keep working, so mutable firmware can still mint new SW-domain keys — from the material the ROM derived, which it cannot alter.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SW-domain keys</p></td>
@@ -10341,7 +10535,7 @@ The KM CPU may never executre from from both in either ROM or mutable software m
 <tr>
 <td class="tableblock halign-center valign-top"><p class="tableblock">SRAM</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">32 KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ROM runtime data (<code>.data</code>, <code>.bss</code>, stack), and the mutable firmware image from <code>0x4000</code> upward.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM runtime data (<code>.data</code>, <code>.bss</code>, stack), and the mutable firmware image from <code>0x8000</code> upward.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Only after handover, and only the write-locked image region.</p></td>
 </tr>
 </tbody>
@@ -10351,14 +10545,30 @@ The KM CPU may never executre from from both in either ROM or mutable software m
 image is inert data. <code>SRAM_EXEC_MODE</code> exchanges one for the other. Afterwards the
 whitelist names the write-locked SRAM image region alone, and <strong>the ROM is not
 merely un-executable but inaccessible</strong> — no instruction fetch and no data read.
-An attempted fetch raises the <code>exec</code> fault (<a href="#km-seq-error-recovery">Error Recovery</a>), which
-halts the KM.</p>
+Either raises <code>KMCSR.IRQ_STATUS.ROM_ACCESS_VIOLATION</code>, corresponding to the
+<code>rom_access</code> fault (<a href="#km-seq-error-recovery">Error Recovery</a>). ROM writes are unaffected and
+still raise <code>rom_write</code>, as they did before the handover.</p>
 </div>
 <div class="paragraph">
-<p>The lockout is one-way within a boot. <code>SRAM_EXEC_MODE.enable</code> is write-1-only in
-the warm-reset domain, so mutable firmware cannot clear it and cannot re-enter
-the ROM by any sequence of writes; only a warm or cold reset restores ROM access,
-and that restarts the ROM from its entry point rather than resuming it.</p>
+<p>A blocked access returns zeros rather than ROM content, and a blocked <strong>fetch</strong>
+therefore also feeds the core an all-zeros instruction stream, which traps as an
+illegal instruction and halts the KM. Because handover leaves every CPU interrupt
+masked, that trap — not the interrupt — is what actually stops the core: it wipes
+the KPV through the unrecoverable-error path without needing any handler. The
+violation bit is still recorded, since it is set in the cycle of the access and
+<code>IRQ_STATUS</code> is sticky, but the ROM ISR that would normally translate it into a
+mailbox fault code is itself inside the ROM the lockout has just revoked. A real
+breach after handover therefore halts the KM without emitting <code>rom_access</code> to the
+host; the fault code is observable only while the ROM is still live, or through
+an interrupt vector the mutable image installed itself.</p>
+</div>
+<div class="paragraph">
+<p>The lockout is one-way within a boot. <code>SRAM_EXEC_MODE.enable</code> is write-1-only and
+the lockout latch is not software-writable at all; both are warm-reset-domain
+state, so mutable firmware cannot clear either and cannot re-enter the ROM by any
+sequence of writes; only a
+warm or cold reset restores ROM access, and that restarts the ROM from its entry
+point rather than resuming it.</p>
 </div>
 <div class="paragraph">
 <p><strong>Why the ROM is closed off</strong></p>
@@ -10445,11 +10655,12 @@ one of them survives a hostile or defective image:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Hardware-enforced,</strong> and so binding on any image: the <code>IS_ROOT</code> write-lock and
-the slot map it pins (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>), <code>ERASE_KEY</code> as the only path that
-clears a root, <code>SRAM_EXEC_MODE</code> being write-1-only, the execute-permission
-whitelist and the ROM lockout, the OTP read-locks, the per-slot <code>lock_write</code>
-and <code>lock_use</code> bits, and the dual-share engine key ports.</p>
+<p><strong>Hardware-enforced,</strong> and so binding on any image: the seal on the root slots
+and the slot map it pins (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>), retirement as the outcome of
+clearing a sealed slot, <code>ERASE_KEY</code> as the only path that clears a root,
+<code>SRAM_EXEC_MODE</code> being write-1-only, the execute-permission whitelist and the
+ROM lockout, the OTP read-locks, the per-slot <code>lock_write</code>, <code>lock_use</code> and
+<code>seal</code> bits, and the dual-share engine key ports.</p>
 </li>
 <li>
 <p><strong>Firmware-conventional,</strong> and so only as trustworthy as the image: domain and
@@ -10478,7 +10689,9 @@ specified, and they are only effective in this order:</p>
 <li>
 <p><code>CMD_CLEAR_HW_KEYS</code> and <code>CMD_CLEAR_OWNER_KEYS</code> to retire key populations and
 roots that must not be inherited, beyond the HW and identity roots the
-handover already clears (<a href="#km-handover-domain-split">[km-handover-domain-split]</a>).</p>
+handover already clears (<a href="#km-handover-domain-split">[km-handover-domain-split]</a>). Clearing a root remains
+possible after handover — it retires the slot — but doing it here is what
+guarantees the root never reaches the loaded image at all.</p>
 </li>
 <li>
 <p><code>CMD_CLEAR_ID_ROOT</code> per owner where identity minting must end early.</p>
@@ -10505,7 +10718,7 @@ to enforce them on its behalf.</p>
 <div class="sect5">
 <h6 id="km-rom-stack-budget"><a class="anchor" href="#km-rom-stack-budget"></a><a class="link" href="#km-rom-stack-budget">ROM Stack Budget and the Static Load Ceiling</a></h6>
 <div class="paragraph">
-<p>Mutable firmware is loaded from the SRAM base (<code>0x4000</code>) and grows upward,
+<p>Mutable firmware is loaded from the SRAM base (<code>0x8000</code>) and grows upward,
 while the ROM stack grows downward from <code>STACK</code> (the top of the ROM&#8217;s
 <code>.data</code>/<code>.bss</code>).  After a warm reset that follows mutable-firmware execution,
 the ROM re-runs and a subsequent <code>CMD_SRAM_EXEC</code> restart may drive the stack
@@ -10537,7 +10750,7 @@ same value the analyzer checks the image against.</p>
 </li>
 <li>
 <p>The linker (<code>km_sram_layout.ld</code>) derives the load ceiling
-<code><em>km_fw_load_limit = (STACK - </em>rom_max_stack)</code>, rounded down to a 512-byte
+<code><em>km_fw_load_limit = (STACK - </em>rom_max_stack)</code>, rounded down to a 1 KB
 SRAM write-lock region so the image and ROM stack never share a lock region,
 and asserts that a non-empty load area remains.  <code>rom_cmd_sram_load_exec()</code>
 rejects any image whose top exceeds this symbol.</p>
@@ -10652,11 +10865,6 @@ CPU execution (jump to address 0).</p>
 </div>
 </li>
 <li>
-<p>Commit the KPV slot map: set <code>IS_KEY</code> or <code>IS_ROOT</code> on every slot per the
-build-time layout (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>). The flags cannot be changed after this
-point.</p>
-</li>
-<li>
 <p>Initialize the key registry (<strong>Reset Registry</strong>, <a href="#km-firmware-key-registry">Key Registry</a>).
 This runs on every boot, warm or cold, and reinitializes the registry in place
 in the <code>rom_persist</code> region (<a href="#km-registry-residency">[km-registry-residency]</a>). Any registry state left
@@ -10697,11 +10905,14 @@ is per-owner fail-closed: one owner&#8217;s fuses being unreadable leaves the ot
 owners' roots usable, and marks only that owner&#8217;s entries never-derived.</p>
 </li>
 <li>
-<p>Seal each derived root — compute its CRC-32C and record it in the root
-registry (<a href="#km-root-registry">[km-root-registry]</a>).</p>
+<p>Record each derived root in the root registry — compute its CRC-32C and store
+it there (<a href="#km-root-registry">[km-root-registry]</a>).</p>
 </li>
 <li>
-<p>Write-lock each root slot.</p>
+<p>Seal each root slot (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>). Sealing at derivation time, rather
+than at handover, is what makes every later clear of a root a retirement: the
+slot&#8217;s material can be destroyed but the slot itself never reused within the boot
+cycle.</p>
 </li>
 </ol>
 </div>
@@ -11538,8 +11749,8 @@ read. It has the following execution flow:</p>
 <h5 id="km-firmware-kpv-driver"><a class="anchor" href="#km-firmware-kpv-driver"></a><a class="link" href="#km-firmware-kpv-driver">KPV Driver</a></h5>
 <div class="paragraph">
 <p>These functions provide firmware abstractions for the KPV. The KPV is a bank of
-key-data registers plus, per slot, a control register carrying the <code>lock_use</code> and
-<code>lock_write</code> bits, the <code>IS_KEY</code> / <code>IS_ROOT</code> flags, and the <code>ERASE_KEY</code> trigger.
+key-data registers plus, per slot, a control register carrying the <code>lock_use</code>,
+<code>lock_write</code> and <code>seal</code> bits and the <code>ERASE_KEY</code> trigger.
 Firmware drives the control register and reads the key and status registers.
 Every function here operates on one slot, addressed by slot index. The KPV has no
 notion of a key spanning slots, so grouping slots into keys belongs to the key
@@ -11573,18 +11784,30 @@ of times with random words sourced from the DRBG.</p>
 <p><strong>Read Slot Status</strong></p>
 </div>
 <div class="paragraph">
-<p>Returns a slot&#8217;s control-register status: its <code>lock_use</code> and <code>lock_write</code> bits,
-its <code>IS_KEY</code> / <code>IS_ROOT</code> flags, and whether an erase is in progress.</p>
+<p>Returns a slot&#8217;s control-register status: its <code>lock_use</code>, <code>lock_write</code> and
+<code>seal</code> bits, and whether an erase is in progress.</p>
 </div>
 <div class="paragraph">
-<p><strong>Set Slot Flags</strong></p>
+<p><strong>Seal Slot</strong></p>
 </div>
 <div class="paragraph">
-<p>Sets a slot&#8217;s <code>IS_KEY</code> or <code>IS_ROOT</code> flag through the control register. The two
-are mutually exclusive, and the hardware refuses a write that would set both or
-that would alter a flag already committed. Called only by the boot ROM while it
-lays out the KPV; there is no path by which mutable firmware can reach it
-(<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>).</p>
+<p>Seals a slot by setting <code>seal</code> in a single control-register write, leaving it
+readable but not writable until the next warm reset. Only that one bit is
+written: hardware sets <code>lock_write</code> alongside the seal, and reading both back is
+the fault check the function reports on. The ROM seals each root slot as it
+derives the root into it (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>); a sealed slot&#8217;s status reads back
+through <strong>Read Slot Status</strong>, which is how firmware that inherits the vault
+establishes that a slot has not been altered since the seal was taken.</p>
+</div>
+<div class="paragraph">
+<p><strong>Slot Retired</strong></p>
+</div>
+<div class="paragraph">
+<p>Reports whether a slot is retired: a sealed slot that has been erased, so its
+material is destroyed and the slot is locked against reuse. A sealed slot gains
+<code>lock_use</code> only from an erase completing, so <code>seal</code> and <code>lock_use</code> together are
+what distinguish a retired slot from a sealed live one — a distinction firmware
+needs because both report as sealed.</p>
 </div>
 <div class="paragraph">
 <p><strong>Read Slot</strong></p>
@@ -11655,11 +11878,15 @@ glitch) cannot prevent the erase from starting.</p>
 </div>
 <div class="paragraph">
 <p>The state machine overwrites every key word of the slot (through the KPV
-scrambler) and clears the slot&#8217;s lock bits. Erase is not blocked by <code>lock_write</code>
-or <code>lock_use</code>, and it is permitted on an <code>IS_ROOT</code> slot in mutable software mode
-even though writes to that slot are not — this is the sole hardware path by which
-the revocation commands clear a root (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>). The slot is wiped and
-reusable when the function returns.</p>
+scrambler). Erase is blocked by nothing at all — not <code>lock_write</code>, not
+<code>lock_use</code>, not <code>seal</code> — which is what makes it the hardware path every
+revocation command is built on: a locked or sealed slot is still erasable, so a
+revocation cannot be denied by the policy a key carries in normal service. The
+slot&#8217;s material is destroyed when the function returns.</p>
+</div>
+<div class="paragraph">
+<p>What the slot looks like afterwards depends on whether it was sealed. An
+unsealed slot has its <code>lock_write</code> and <code>lock_use</code> bits cleared and is reusable.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -11668,12 +11895,11 @@ reusable when the function returns.</p>
 <i class="fa icon-important" title="Important"></i>
 </td>
 <td class="content">
-Erase clears the material and the lock bits but NOT the <code>IS_KEY</code> /
-<code>IS_ROOT</code> flags. An erased root slot stays <code>IS_ROOT</code>. Were the flags cleared with
-the rest of the control register, clearing a root would hand mutable firmware a
-generic slot in the root region that it could then claim as a key turning a
-revocation into a way to reshape the slot map. The flags are set once by the boot
-ROM and survive every erase.
+A sealed slot is <strong>retired</strong> rather than freed: <code>lock_write</code> stays set,
+<code>lock_use</code> is set, and the slot can be neither read, rewritten nor reused until
+the next warm reset. Repeating the erase changes nothing. This is what lets
+mutable firmware revoke a root without gaining a slot it could refill with a
+forged value (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>), and it is reported by <strong>Slot Retired</strong>.
 </td>
 </tr>
 </table>
@@ -12156,7 +12382,7 @@ survives the handover: every other SRAM region is overwritten on the way out
 </div>
 <div class="paragraph">
 <p>The region is a build-time constant, sized to hold all of the above and aligned
-to the 512-byte SRAM write-lock granularity so that it occupies whole lock
+to the 1 KB SRAM write-lock granularity so that it occupies whole lock
 regions and shares none with the ROM stack or with the loaded image.</p>
 </div>
 <div class="admonitionblock note">
@@ -13230,16 +13456,15 @@ there are not enough available. The slots need not be contiguous
 <div class="olist loweralpha">
 <ol class="loweralpha" type="a">
 <li>
-<p>Selected slots must be marked <code>IS_KEY</code>. The root region is not a capacity
-pool the allocator may fall back on, and checking the flag rather than the index
-means a slot-map mistake cannot silently place a key over a root
-(<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>).</p>
+<p>Selected slots must lie in the key region. The root region is not a capacity
+pool the allocator may fall back on (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>).</p>
 </li>
 <li>
 <p>The first key slot must be selected randomly using data from the DRBG.</p>
 </li>
 <li>
-<p>Selected slots must not be write-locked or read-locked.</p>
+<p>Selected slots must not be write-locked or read-locked. This excludes sealed
+and retired slots, since hardware holds <em>lock_write</em> set on both.</p>
 </li>
 <li>
 <p>Selected slots must not be associated with a live key descriptor.</p>
@@ -13547,12 +13772,12 @@ members differ only in the predicate and in what they do to roots afterwards:</p
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CMD_CLEAR_OWNER_KEYS</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Current owner field equals <code>OWNER</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">That owner&#8217;s HW, SW and identity roots are cleared</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">That owner&#8217;s HW, SW and identity roots are cleared, retiring their slots</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CMD_CLEAR_HW_KEYS</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Domain is <code>HW</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">All three HW roots are cleared</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All three HW roots are cleared, retiring their slots</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CMD_CLEAR_KEY_TREE</code></p></td>
@@ -13567,6 +13792,13 @@ test. Reachability is discovered over the untouched registry first and the whole
 marked set is swept afterwards, so the walk is iterative, needs no recursion and
 no dynamic allocation, and the count is exact. Root clearing is never included
 in the returned count.</p>
+</div>
+<div class="paragraph">
+<p>The root column applies in either mode: a root slot&#8217;s seal permits the erase and
+turns it into a retirement (<a href="#km-kpv-slot-map">[km-kpv-slot-map]</a>), so a sweep issued by mutable
+firmware clears the roots its command names just as one issued in ROM mode does,
+and their slots go out of circulation rather than back to the free pool. Root
+clearing stays outside the returned count in both modes.</p>
 </div>
 <div class="paragraph">
 <p>Sweeps need no special handling for lineage. Each target goes through the ordinary
