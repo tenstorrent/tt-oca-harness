@@ -206,7 +206,7 @@ static int test_burst_allowed_blocked_scenarios(void) {
 }
 
 int main(void) {
-    printf("Filter Datapath Matrix P3 Test\n");
+    printf("Filter Datapath Matrix Test\n");
     printf("Goals: traffic_filter 88.11%% -> 90%%+, axi_filter_wrap 64.11%% -> 90%%+\n");
     printf("Strategy: Targeted pass/block traffic tests covering all datapath combinations\n\n");
 
@@ -237,7 +237,7 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    printf("\n=== FILTER DATAPATH MATRIX P3 TEST PASSED ===\n");
+    printf("\n=== FILTER DATAPATH MATRIX TEST PASSED ===\n");
     printf("Expected improvement: traffic_filter 88.11%% -> 90%%+, axi_filter_wrap 64.11%% -> "
            "90%%+\n");
 

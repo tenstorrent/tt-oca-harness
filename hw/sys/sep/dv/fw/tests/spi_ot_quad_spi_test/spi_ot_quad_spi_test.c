@@ -12,7 +12,7 @@
  * All 4 data lines (SD[3:0]) are active in Quad mode.
  *
  * Test Flow:
- * 1. Configure SPI mux, enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
+ * 1. Enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
  * 2. Quad TX: SPEED=2, DIRECTION=2, LEN=3 (4 bytes), CSAAT=1
  * 3. Quad Dummy: SPEED=2, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
  * 4. Quad RX: SPEED=2, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
@@ -30,7 +30,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -75,8 +74,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

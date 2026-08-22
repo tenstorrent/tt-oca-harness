@@ -43,7 +43,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 int main(void) {
     sep_outbound_filter_init();
@@ -64,8 +63,6 @@ int main(void) {
     spi_controller__ERROR_ENABLE_t err_enable;
     uint32_t dummy;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
