@@ -97,11 +97,6 @@ python3 tools/dv/run_dv.py --dut dtp --items functional
 python3 tools/dv/run_dv.py --dut dtp --items dbg_disable
 python3 tools/dv/run_dv.py --dut dtp --items dbg_disable --regress --reseed 3
 
-# Union the matrix FCOV artifacts and enforce the 22-cell contract
-python3 hw/sys/dtp/dv/tools/dbg_disable_cov_report.py \
-  hw/sys/dtp/dv/build/runs/<run-dir-with-scan-matrix> \
-  hw/sys/dtp/dv/build/runs/<run-dir-with-jtag2axi-matrix>
-
 # Commercial backends for coverage (same PyUVM tests)
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --cov
 ```

@@ -11,9 +11,9 @@ associated functional checker has passed. The legal cells are
 checker failure, never a coverage bin. Auxiliary bins record mask classes and
 the isolation / release-without-replay / recovery evidence.
 
-Each test emits a JSON artifact under its ``coverage/`` directory;
-``hw/sys/dtp/dv/tools/dbg_disable_cov_report.py`` unions the artifacts and
-fails unless all 22 required cells are present.
+Each matrix test enforces its own required cells via ``require_cells``
+before completing, and emits a JSON artifact under its ``coverage/``
+directory recording the cells it hit.
 """
 
 from __future__ import annotations
@@ -125,7 +125,7 @@ class DtpDbgDisableFcov:
         return base / "coverage"
 
     def write_artifact(self, *, seed: int) -> Path:
-        """Emit the JSON coverage artifact for the report utility to union."""
+        """Emit the JSON coverage artifact recording the cells this run hit."""
         out_dir = self._coverage_dir()
         out_dir.mkdir(parents=True, exist_ok=True)
         path = out_dir / f"dbg_disable_fcov_{self.feature_key}.json"

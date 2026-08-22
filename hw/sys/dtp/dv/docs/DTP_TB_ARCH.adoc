@@ -159,8 +159,6 @@ hw/sys/dtp/dv/
     scan.toml
     xtrig.toml
     all.toml
-  tools/
-    dbg_disable_cov_report.py
 ----
 
 === HDL Top

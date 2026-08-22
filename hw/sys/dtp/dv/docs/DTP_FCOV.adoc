@@ -291,10 +291,11 @@ Sampling rules:
   input.
 * Every coverage log line records the field, the full named disable mask,
   the attempted operation, and the observed result.
-* Each matrix test emits a JSON artifact under its `coverage/` directory;
-  `hw/sys/dtp/dv/tools/dbg_disable_cov_report.py` unions the scan and
-  JTAG2AXI matrix artifacts and fails unless all 22 required cells are
-  present.
+* Each matrix test enforces its own cells before completing: the scan
+  matrix requires all 16 cells of its eight fields and the JTAG2AXI matrix
+  the 6 cells of its three bridge fields, so a passing `dbg_disable` group
+  run covers all 22 required cells. Each matrix also emits a JSON artifact
+  under its `coverage/` directory recording the cells it hit.
 
 === VPLAN to FCOV Traceability
 
