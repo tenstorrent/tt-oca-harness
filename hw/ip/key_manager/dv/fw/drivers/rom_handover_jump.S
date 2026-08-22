@@ -18,6 +18,13 @@
  * before the jalr, so SRAM execution is enabled for the first time in the
  * narrowest possible window before the jump.
  *
+ * That write also arms the ROM lockout.  Arming is not revocation: the ROM is
+ * revoked on the first committed instruction fetch from write-locked SRAM, which
+ * is the jalr's target.  Everything this routine executes after the triple write
+ * is still ROM code, and stays legal for exactly that reason.  From the landing
+ * onward the ROM is unreadable and unexecutable until the next warm reset, so
+ * mutable firmware can neither call back into ROM nor read rom_persist.
+ *
  * Algorithm:
  *   1. Overwrite the entire SRAM (0x8000..0xFFFF inclusive) with a
  *      register-seeded xoshiro128++ pseudorandom pattern.
@@ -104,6 +111,10 @@ rom_handover_jump:
      * The bit is write-1-only (woset) so writing 1 is idempotent.
      * Three identical stores harden against voltage-glitch skip attacks
      * (the same convention used for SRAM write-lock in rom_kmcsr.c).
+     *
+     * This is the arming write for the ROM lockout; the instructions below
+     * still fetch from ROM and must, which is why the lockout engages on the
+     * fetch at the jump target rather than here.
      *
      * After the three stores x1 and x2 are zeroed before the jump so the
      * mutable firmware starts with a clean register file.

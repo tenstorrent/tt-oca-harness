@@ -301,7 +301,8 @@ class KM_CSR_IRQ_STATUS_REG_reg_t(Structure):
         ('otp_change', c_uint32, 1),
         ('otp_sigint', c_uint32, 1),
         ('exec_violation', c_uint32, 1),
-        ('rsvd', c_uint32, 21),
+        ('rom_access_violation', c_uint32, 1),
+        ('rsvd', c_uint32, 20),
     ]
 
 KM_CSR_IRQ_STATUS_REG_REG_DEFAULT = 0x00000000
@@ -340,7 +341,8 @@ class KM_CSR_IRQ_ENABLE_REG_reg_t(Structure):
         ('otp_change_en', c_uint32, 1),
         ('otp_sigint_en', c_uint32, 1),
         ('exec_violation_en', c_uint32, 1),
-        ('rsvd', c_uint32, 21),
+        ('rom_access_violation_en', c_uint32, 1),
+        ('rsvd', c_uint32, 20),
     ]
 
 KM_CSR_IRQ_ENABLE_REG_REG_DEFAULT = 0x00000000
@@ -465,7 +467,8 @@ class KM_CSR_IRQ_SET_REG_reg_t(Structure):
         ('otp_change_set', c_uint32, 1),
         ('otp_sigint_set', c_uint32, 1),
         ('exec_violation_set', c_uint32, 1),
-        ('rsvd', c_uint32, 21),
+        ('rom_access_violation_set', c_uint32, 1),
+        ('rsvd', c_uint32, 20),
     ]
 
 KM_CSR_IRQ_SET_REG_REG_DEFAULT = 0x00000000

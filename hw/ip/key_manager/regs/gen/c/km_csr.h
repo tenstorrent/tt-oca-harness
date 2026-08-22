@@ -109,9 +109,13 @@ typedef union {
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bp 10
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bw 1
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bp 11
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bw 21
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bm 0x800
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bp 11
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bw 1
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bp 12
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bw 20
 #define KM_CSR__IRQ_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -126,7 +130,8 @@ typedef union {
         uint32_t otp_change :1;
         uint32_t otp_sigint :1;
         uint32_t exec_violation :1;
-        uint32_t rsvd :21;
+        uint32_t rom_access_violation :1;
+        uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_status_reg_t;
@@ -176,9 +181,13 @@ typedef union {
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bp 10
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 11
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 21
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bm 0x800
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bp 11
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 12
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 20
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -193,7 +202,8 @@ typedef union {
         uint32_t otp_change_en :1;
         uint32_t otp_sigint_en :1;
         uint32_t exec_violation_en :1;
-        uint32_t rsvd :21;
+        uint32_t rom_access_violation_en :1;
+        uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_enable_reg_t;
@@ -288,9 +298,13 @@ typedef union {
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bp 10
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_SET_REG__RSVD_bp 11
-#define KM_CSR__IRQ_SET_REG__RSVD_bw 21
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bm 0x800
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bp 11
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_SET_REG__RSVD_bp 12
+#define KM_CSR__IRQ_SET_REG__RSVD_bw 20
 #define KM_CSR__IRQ_SET_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -305,7 +319,8 @@ typedef union {
         uint32_t otp_change_set :1;
         uint32_t otp_sigint_set :1;
         uint32_t exec_violation_set :1;
-        uint32_t rsvd :21;
+        uint32_t rom_access_violation_set :1;
+        uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_set_reg_t;

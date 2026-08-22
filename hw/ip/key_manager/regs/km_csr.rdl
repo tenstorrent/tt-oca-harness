@@ -248,7 +248,7 @@ addrmap km_csr {
 
         field {
             name = "EXEC_VIOLATION";
-            desc = "Instruction fetch from a non-whitelisted (non-executable) memory region detected. Sticky, write 1 to clear.";
+            desc = "Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.";
             sw = rw;
             hw = rw;
             hwset = true;
@@ -259,12 +259,24 @@ addrmap km_csr {
         } exec_violation[10:10];
 
         field {
+            name = "ROM_ACCESS_VIOLATION";
+            desc = "KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } rom_access_violation[11:11];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 20'h0;
+        } rsvd[31:12];
     };
 
     irq_status_reg IRQ_STATUS @ 0x00C;
@@ -376,12 +388,21 @@ addrmap km_csr {
         } exec_violation_en[10:10];
 
         field {
+            name = "ROM_ACCESS_VIOLATION_EN";
+            desc = "Enable ROM lockout violation interrupt";
+            sw = rw;
+            hw = r;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } rom_access_violation_en[11:11];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 20'h0;
+        } rsvd[31:12];
     };
 
     irq_enable_reg IRQ_ENABLE @ 0x010;
@@ -509,12 +530,22 @@ addrmap km_csr {
         } exec_violation_set[10:10];
 
         field {
+            name = "ROM_ACCESS_VIOLATION_SET";
+            desc = "Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)";
+            sw = w;
+            hw = r;
+            singlepulse;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } rom_access_violation_set[11:11];
+
+        field {
             name = "RSVD";
             desc = "Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)";
             sw = w;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 20'h0;
+        } rsvd[31:12];
     };
 
     irq_set_reg IRQ_SET @ 0x020;
@@ -693,17 +724,21 @@ addrmap km_csr {
     // PicoRV32 is permitted to execute from:
     //   0 (ROM mode): ROM only.  Instruction fetch from SRAM or peripheral
     //     space triggers an unrecoverable fault (EXEC_VIOLATION IRQ).
-    //   1 (SRAM mode): ROM and write-locked SRAM regions (SRAM_LOCK bits).
-    //     Instruction fetch from unlocked SRAM or peripheral space faults.
-    // Warm reset clears it so the ROM-only whitelist is re-applied on every
-    // boot cycle.
+    //   1 (SRAM mode): write-locked SRAM regions (SRAM_LOCK bits).  Instruction
+    //     fetch from unlocked SRAM or peripheral space faults.
+    // Writing 1 arms an exchange rather than adding to the whitelist: the ROM
+    // stays executable until the first committed fetch from write-locked SRAM,
+    // at which point the ROM lockout engages and revokes ROM fetch and read
+    // access (ROM_ACCESS_VIOLATION IRQ).
+    // Warm reset clears both this bit and the lockout, so the ROM-only whitelist
+    // is re-applied on every boot cycle.
     reg sram_exec_mode_reg {
         name = "SRAM_EXEC_MODE";
-        desc = "Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM-only executable; 1=ROM + write-locked SRAM regions executable. Set by ROM stack-less handover immediately before jumping to mutable firmware.";
+        desc = "Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.";
 
         field {
             name = "ENABLE";
-            desc = "Execute-permission mode: 0=ROM-only whitelist; 1=ROM + write-locked SRAM whitelist. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
+            desc = "Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
             sw = rw;
             onwrite = woset;
             hw = r;

@@ -291,8 +291,8 @@ typedef enum {
     ROM_KM_UFAULT_FW_CRC = -14,         /**< Mutable firmware image CRC-32C mismatch */
     ROM_KM_UFAULT_FW_STACK_OVF = -15,   /**< Firmware load destination exceeded stack guard */
     ROM_KM_UFAULT_SHRED_RANGE = -16,    /**< Shred word count exceeded the shred-order buffer */
-    ROM_KM_UFAULT_EXEC =
-        -17 /**< Instruction fetch from non-whitelisted (non-executable) memory region */
+    ROM_KM_UFAULT_EXEC = -17,           /**< Fetch from a non-executable region other than ROM */
+    ROM_KM_UFAULT_ROM_ACCESS = -18      /**< ROM fetch or read after the lockout engaged */
 } rom_km_unrecov_fault_code_t;
 
 /*===========================================================================

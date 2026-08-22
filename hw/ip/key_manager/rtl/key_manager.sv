@@ -196,6 +196,9 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
     logic        sram_exec_mode;
     logic        exec_violation;
 
+    // ROM lockout violation (from CPU to KMCSR)
+    logic        rom_access_violation;
+
     // Crossbar slave port (from CPU)
     km_axil_req_t  xbar_slv_req;
     km_axil_resp_t xbar_slv_resp;
@@ -298,6 +301,7 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
         // Execute-permission whitelist (from/to KMCSR)
         .sram_exec_mode_i   (sram_exec_mode),
         .exec_violation_o   (exec_violation),
+        .rom_access_violation_o (rom_access_violation),
         // AXI interface for peripherals only
         .axi_mst_req_o      (cpu_axil_req),
         .axi_mst_resp_i     (cpu_axil_resp),
@@ -465,6 +469,7 @@ module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pk
         // Execute-permission whitelist mode output and violation input
         .sram_exec_mode_o   (sram_exec_mode),
         .exec_violation_i   (exec_violation),
+        .rom_access_violation_i (rom_access_violation),
         // Aggregated IRQ Output (to CPU)
         .km_irq_o           (km_irq),
         .irq_entry_addr_o   (irq_entry_addr),

@@ -2333,7 +2333,8 @@ A signed 8-bit code indicating the cause of the fault.
 | `-14` | `fw_crc` | The loaded mutable firmware image failed its CRC-32C integrity check. The KM halts; recovery requires a warm or cold reset.
 | `-15` | `fw_stack_ovf` | The firmware load destination reached the stack guard region boundary, indicating the SEP sent more words than declared in `FW_WORDS`. The KM halts; recovery requires a warm or cold reset.
 | `-16` | `shred_range` | A shred operation was requested with a word count that exceeded the shred-order buffer. The KM halts; recovery requires a warm or cold reset.
-| `-17` | `exec` | An instruction fetch was attempted from a non-whitelisted (non-executable) memory region (execute-permission whitelist violation). The KM halts; recovery requires a warm or cold reset.
+| `-17` | `exec` | An instruction fetch was attempted from a non-whitelisted (non-executable) memory region other than the ROM (execute-permission whitelist violation). The KM halts; recovery requires a warm or cold reset.
+| `-18` | `rom_access` | A ROM instruction fetch or data read was attempted after the ROM lockout engaged. Reportable as a fault code only while the ROM is still live, which in practice means an `IRQ_SET` self-test: after handover the ROM ISR is itself unreachable, so a real breach halts the KM through the illegal-instruction trap with no fault code emitted. Recovery requires a warm or cold reset.
 |===
 
 [[km-firmware-common-sequences]]
@@ -2620,6 +2621,12 @@ handled during the boot.
   be skipped.  Setting this bit as the very last operation before the jump
   minimises the window during which SRAM execution is enabled before the first
   SRAM fetch.
++
+The write *arms* the exchange; the ROM lockout *engages* on the first committed
+instruction fetch from write-locked SRAM, which is the jump in the next step.
+That staging is what lets this routine finish at all: the store itself, the
+register clears and the `jalr` are all ROM instructions issued after the arming
+write, and they remain legal because the lockout has not engaged yet.
 
 . *Jump.*  `jalr zero, 0(x5)` transfers control to `0x8000`.  The ROM
   never returns.  The mutable firmware is responsible for sending its own
@@ -2683,13 +2690,28 @@ Before handover the execute-permission whitelist names the ROM alone; the loaded
 image is inert data. `SRAM_EXEC_MODE` exchanges one for the other. Afterwards the
 whitelist names the write-locked SRAM image region alone, and *the ROM is not
 merely un-executable but inaccessible* — no instruction fetch and no data read.
-An attempted fetch raises the `exec` fault (<<km-seq-error-recovery>>), which
-halts the KM.
+Either raises `KMCSR.IRQ_STATUS.ROM_ACCESS_VIOLATION`, corresponding to the
+`rom_access` fault (<<km-seq-error-recovery>>). ROM writes are unaffected and
+still raise `rom_write`, as they did before the handover.
 
-The lockout is one-way within a boot. `SRAM_EXEC_MODE.enable` is write-1-only in
-the warm-reset domain, so mutable firmware cannot clear it and cannot re-enter
-the ROM by any sequence of writes; only a warm or cold reset restores ROM access,
-and that restarts the ROM from its entry point rather than resuming it.
+A blocked access returns zeros rather than ROM content, and a blocked *fetch*
+therefore also feeds the core an all-zeros instruction stream, which traps as an
+illegal instruction and halts the KM. Because handover leaves every CPU interrupt
+masked, that trap — not the interrupt — is what actually stops the core: it wipes
+the KPV through the unrecoverable-error path without needing any handler. The
+violation bit is still recorded, since it is set in the cycle of the access and
+`IRQ_STATUS` is sticky, but the ROM ISR that would normally translate it into a
+mailbox fault code is itself inside the ROM the lockout has just revoked. A real
+breach after handover therefore halts the KM without emitting `rom_access` to the
+host; the fault code is observable only while the ROM is still live, or through
+an interrupt vector the mutable image installed itself.
+
+The lockout is one-way within a boot. `SRAM_EXEC_MODE.enable` is write-1-only and
+the lockout latch is not software-writable at all; both are warm-reset-domain
+state, so mutable firmware cannot clear either and cannot re-enter the ROM by any
+sequence of writes; only a
+warm or cold reset restores ROM access, and that restarts the ROM from its entry
+point rather than resuming it.
 
 *Why the ROM is closed off*
 

@@ -691,6 +691,10 @@ module km_csr_reg (
                 logic next;
                 logic load_next;
             } exec_violation;
+            struct {
+                logic next;
+                logic load_next;
+            } rom_access_violation;
         } IRQ_STATUS;
         struct {
             struct {
@@ -737,6 +741,10 @@ module km_csr_reg (
                 logic next;
                 logic load_next;
             } exec_violation_en;
+            struct {
+                logic next;
+                logic load_next;
+            } rom_access_violation_en;
         } IRQ_ENABLE;
         struct {
             struct {
@@ -806,7 +814,11 @@ module km_csr_reg (
                 logic load_next;
             } exec_violation_set;
             struct {
-                logic [20:0] next;
+                logic next;
+                logic load_next;
+            } rom_access_violation_set;
+            struct {
+                logic [19:0] next;
                 logic load_next;
             } rsvd;
         } IRQ_SET;
@@ -1019,6 +1031,9 @@ module km_csr_reg (
             struct {
                 logic value;
             } exec_violation;
+            struct {
+                logic value;
+            } rom_access_violation;
         } IRQ_STATUS;
         struct {
             struct {
@@ -1054,6 +1069,9 @@ module km_csr_reg (
             struct {
                 logic value;
             } exec_violation_en;
+            struct {
+                logic value;
+            } rom_access_violation_en;
         } IRQ_ENABLE;
         struct {
             struct {
@@ -1108,7 +1126,10 @@ module km_csr_reg (
                 logic value;
             } exec_violation_set;
             struct {
-                logic [20:0] value;
+                logic value;
+            } rom_access_violation_set;
+            struct {
+                logic [19:0] value;
             } rsvd;
         } IRQ_SET;
         struct {
@@ -1589,6 +1610,35 @@ module km_csr_reg (
         end
     end
     assign hwif_out.IRQ_STATUS.exec_violation.value = field_storage.IRQ_STATUS.exec_violation.value;
+    // Field: km_csr.IRQ_STATUS.rom_access_violation
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.IRQ_STATUS.rom_access_violation.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.IRQ_STATUS && decoded_req_is_wr) begin // SW write 1 clear
+            next_c = field_storage.IRQ_STATUS.rom_access_violation.value & ~(decoded_wr_data[11:11] & decoded_wr_biten[11:11]);
+            load_next_c = '1;
+        end else if(hwif_in.IRQ_STATUS.rom_access_violation.next) begin // stickybit
+            next_c = '1;
+            load_next_c = '1;
+        end else if(hwif_in.IRQ_STATUS.rom_access_violation.hwset) begin // HW Set
+            next_c = '1;
+            load_next_c = '1;
+        end
+        field_combo.IRQ_STATUS.rom_access_violation.next = next_c;
+        field_combo.IRQ_STATUS.rom_access_violation.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.IRQ_STATUS.rom_access_violation.value <= 1'h0;
+        end else begin
+            if(field_combo.IRQ_STATUS.rom_access_violation.load_next) begin
+                field_storage.IRQ_STATUS.rom_access_violation.value <= field_combo.IRQ_STATUS.rom_access_violation.next;
+            end
+        end
+    end
+    assign hwif_out.IRQ_STATUS.rom_access_violation.value = field_storage.IRQ_STATUS.rom_access_violation.value;
     // Field: km_csr.IRQ_ENABLE.rom_parity_en
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1842,6 +1892,29 @@ module km_csr_reg (
         end
     end
     assign hwif_out.IRQ_ENABLE.exec_violation_en.value = field_storage.IRQ_ENABLE.exec_violation_en.value;
+    // Field: km_csr.IRQ_ENABLE.rom_access_violation_en
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.IRQ_ENABLE.rom_access_violation_en.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.IRQ_ENABLE && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.IRQ_ENABLE.rom_access_violation_en.value & ~decoded_wr_biten[11:11]) | (decoded_wr_data[11:11] & decoded_wr_biten[11:11]);
+            load_next_c = '1;
+        end
+        field_combo.IRQ_ENABLE.rom_access_violation_en.next = next_c;
+        field_combo.IRQ_ENABLE.rom_access_violation_en.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.IRQ_ENABLE.rom_access_violation_en.value <= 1'h0;
+        end else begin
+            if(field_combo.IRQ_ENABLE.rom_access_violation_en.load_next) begin
+                field_storage.IRQ_ENABLE.rom_access_violation_en.value <= field_combo.IRQ_ENABLE.rom_access_violation_en.next;
+            end
+        end
+    end
+    assign hwif_out.IRQ_ENABLE.rom_access_violation_en.value = field_storage.IRQ_ENABLE.rom_access_violation_en.value;
     // Field: km_csr.SCRAMBLER_KEY.key
     always_comb begin
         automatic logic [31:0] next_c;
@@ -2225,14 +2298,40 @@ module km_csr_reg (
         end
     end
     assign hwif_out.IRQ_SET.exec_violation_set.value = field_storage.IRQ_SET.exec_violation_set.value;
+    // Field: km_csr.IRQ_SET.rom_access_violation_set
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.IRQ_SET.rom_access_violation_set.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.IRQ_SET && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.IRQ_SET.rom_access_violation_set.value & ~decoded_wr_biten[11:11]) | (decoded_wr_data[11:11] & decoded_wr_biten[11:11]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.IRQ_SET.rom_access_violation_set.next = next_c;
+        field_combo.IRQ_SET.rom_access_violation_set.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.IRQ_SET.rom_access_violation_set.value <= 1'h0;
+        end else begin
+            if(field_combo.IRQ_SET.rom_access_violation_set.load_next) begin
+                field_storage.IRQ_SET.rom_access_violation_set.value <= field_combo.IRQ_SET.rom_access_violation_set.next;
+            end
+        end
+    end
+    assign hwif_out.IRQ_SET.rom_access_violation_set.value = field_storage.IRQ_SET.rom_access_violation_set.value;
     // Field: km_csr.IRQ_SET.rsvd
     always_comb begin
-        automatic logic [20:0] next_c;
+        automatic logic [19:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.IRQ_SET.rsvd.value;
         load_next_c = '0;
         if(decoded_reg_strb.IRQ_SET && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.IRQ_SET.rsvd.value & ~decoded_wr_biten[31:11]) | (decoded_wr_data[31:11] & decoded_wr_biten[31:11]);
+            next_c = (field_storage.IRQ_SET.rsvd.value & ~decoded_wr_biten[31:12]) | (decoded_wr_data[31:12] & decoded_wr_biten[31:12]);
             load_next_c = '1;
         end
         field_combo.IRQ_SET.rsvd.next = next_c;
@@ -2240,7 +2339,7 @@ module km_csr_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.IRQ_SET.rsvd.value <= 21'h0;
+            field_storage.IRQ_SET.rsvd.value <= 20'h0;
         end else begin
             if(field_combo.IRQ_SET.rsvd.load_next) begin
                 field_storage.IRQ_SET.rsvd.value <= field_combo.IRQ_SET.rsvd.next;
@@ -3101,7 +3200,8 @@ module km_csr_reg (
             readback_data_var[8] = field_storage.IRQ_STATUS.otp_change.value;
             readback_data_var[9] = field_storage.IRQ_STATUS.otp_sigint.value;
             readback_data_var[10] = field_storage.IRQ_STATUS.exec_violation.value;
-            readback_data_var[31:11] = 21'h0;
+            readback_data_var[11] = field_storage.IRQ_STATUS.rom_access_violation.value;
+            readback_data_var[31:12] = 20'h0;
         end
         if(rd_mux_addr == 10'h10) begin
             readback_data_var[0] = field_storage.IRQ_ENABLE.rom_parity_en.value;
@@ -3115,7 +3215,8 @@ module km_csr_reg (
             readback_data_var[8] = field_storage.IRQ_ENABLE.otp_change_en.value;
             readback_data_var[9] = field_storage.IRQ_ENABLE.otp_sigint_en.value;
             readback_data_var[10] = field_storage.IRQ_ENABLE.exec_violation_en.value;
-            readback_data_var[31:11] = 21'h0;
+            readback_data_var[11] = field_storage.IRQ_ENABLE.rom_access_violation_en.value;
+            readback_data_var[31:12] = 20'h0;
         end
         if(rd_mux_addr == 10'h14) begin
             readback_data_var[31:0] = field_storage.SCRAMBLER_KEY.key.value;

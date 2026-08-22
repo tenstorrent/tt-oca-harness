@@ -167,6 +167,9 @@ __attribute__((cold)) void rom_isr_kmcsr(void) {
     if (status.f.exec_violation && enable.f.exec_violation_en)
         rom_trigger_unrecoverable(ROM_KM_UFAULT_EXEC);
 
+    if (status.f.rom_access_violation && enable.f.rom_access_violation_en)
+        rom_trigger_unrecoverable(ROM_KM_UFAULT_ROM_ACCESS);
+
     if (status.f.otp_change && enable.f.otp_change_en) {
         uint32_t changed = rom_otp_get_change_status();
         rom_otp_on_change(changed);
