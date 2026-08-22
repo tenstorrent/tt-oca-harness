@@ -143,8 +143,6 @@ build_dir = "hw/sys/smu/dv/build/cocotb"
 defines = [
   # Match SMC OSS: no-op assertion/cover blocks that confuse commercial sims.
   "SYNTHESIS",
-  # Enable efuse_shadow_regs +skip_fuse_sense path (SIM-gated).
-  "SIM",
 ]
 
 [targets.default.tools.vcs]

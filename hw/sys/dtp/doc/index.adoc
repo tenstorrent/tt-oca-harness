@@ -35,4 +35,4 @@ endif::backend-pdf[]
 // DTP-level integration
 include::jtag.adoc[leveloffset=0]
 include::clock_stop.adoc[leveloffset=0]
- 
+include::defines.adoc[leveloffset=0]
