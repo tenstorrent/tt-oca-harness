@@ -59,12 +59,6 @@ use single-bit data timing; DDR and vendor timing are deferred.
 |Master, responder/RAM, results, item, monitor, and checker. A package-local
 example and real DUT consumer are still required.
 
-|`ocah_entropy_vip`
-|Experimental
-|OCAH-native cocotb model
-|Deterministic/random entropy source, passive monitor, backpressure, IRQ, and
-alarm injection. A gating subsystem consumer is missing.
-
 |`ocah_i2c_vip`
 |Experimental
 |`cocotbext-i2c`
@@ -226,15 +220,9 @@ handle `OcahUartImportError`.
 [[shared-vip-entropy]]
 === Entropy Stream
 
-Package: `hw/common/dv/vip/ocah_entropy_vip/`
-
-`OcahEntropySource` drives deterministic words by default, supports explicitly
-seeded random mode and backpressure, and can inject IRQ/alarm sideband events.
-`OcahEntropyMonitor` passively records stream activity. Randomness without an
-explicit seed is forbidden.
-
-The package remains experimental until a real subsystem gates its source and
-monitor behavior.
+No shared entropy package ships. SEP-local models drive `esrc_noise_ext_i` and
+check the ESRC-to-DRBG-to-EDN chain; a shared entropy VIP is introduced only
+when a second subsystem needs one and gates it with a real regression.
 
 [[shared-vip-checker]]
 === Common Checker Evidence
