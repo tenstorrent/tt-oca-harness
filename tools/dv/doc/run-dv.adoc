@@ -957,10 +957,12 @@ under 30 minutes of wall clock per pull request.
 |`nightly`
 |Daily `schedule` (18:00 UTC), or `workflow_dispatch` with `tier=nightly`
 |Each DUT's configured `nightly_items` group runs with `--reseed 3 --sim-jobs
-4`. DTP runs `all` with reference-only Verilator coverage; the score is
-published but does not determine test pass/fail. The other DUTs run without
-coverage until separately qualified. Nightly is not a merge gate; a red nightly
-run is a triage signal.
+4`. DTP (`all`) and SEP (`no_toolchain`) collect reference-only Verilator
+coverage; the score is published but does not determine test pass/fail. SEP
+instruments line/branch/expression/user but not toggle coverage (see
+`[coverage.verilator]` in the SEP sim config for the sizing rationale). SMU
+and SMC run without coverage until separately qualified. Nightly is not a
+merge gate; a red nightly run is a triage signal.
 |===
 
 Pull requests never run the `all` regression; the tier is selected by the
@@ -988,7 +990,12 @@ never create or update the `latest` symlink.
 |`dtp`, `sep`, `smu`, `smc` + Verilator
 |Hosted `sim` matrix at current head. Smoke runs on every pull request and
 push to `main`; nightly reseeds each DUT's `nightly_items` group (`all` /
-`no_cpu` / `sep0_all` / `smoke`). Main protection requires the stable
+`no_toolchain` / `sep0_all` / `smoke`). SEP's nightly group is the `no_cpu`
+subset qualified for hosted runners: it drops the tests that boot the KM
+firmware ROM built from source (no RISC-V toolchain on hosted runners) and
+the tests red at head for tracked RTL questions; the group comment in the SEP
+testlist carries the exclusion list. The full `no_cpu` regression stays a
+toolchain-equipped local run. Main protection requires the stable
 `verilator-smoke (dtp)` and `verilator-smoke (sep)` pull-request contexts in
 addition to the GitLab mirror context. A failed, cancelled, or missing DTP or
 SEP smoke result blocks merge. SMU and SMC smoke run in the same matrix but

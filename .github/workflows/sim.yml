@@ -6,7 +6,7 @@ name: sim
 # Label scheduled and manually dispatched runs in the Actions list; PR and
 # push runs yield an empty run-name, which falls back to the default
 # event-specific title (PR title / commit message).
-run-name: ${{ github.event_name == 'schedule' && 'sim nightly (scheduled) - dtp all x3 seeds' || github.event_name == 'workflow_dispatch' && format('sim {0} (manual dispatch)', inputs.tier) || '' }}
+run-name: ${{ github.event_name == 'schedule' && 'sim nightly (scheduled) - per-DUT nightly groups x3 seeds' || github.event_name == 'workflow_dispatch' && format('sim {0} (manual dispatch)', inputs.tier) || '' }}
 
 on:
   pull_request:
@@ -72,9 +72,13 @@ jobs:
     # picks up automatically.
     runs-on: ${{ matrix.runner }}
     needs: [diff-class]
-    # The nightly tier gets headroom for a Verilator cache miss (from-source
-    # build) plus ~450 scheduler leaves at --sim-jobs 4 in the same budget.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && 90 || 60 }}
+    # The nightly budget is per DUT (matrix.nightly_timeout): the tier gets
+    # headroom for a Verilator cache miss (from-source build) plus each DUT's
+    # nightly group at --sim-jobs 4. SEP's is larger because its nightly group
+    # alone needs most of the shared 90 minutes on the standard 4-vCPU runner,
+    # before the coverage-instrumented model build and the coverage overhead
+    # on every simulation.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.tier == 'nightly') && matrix.nightly_timeout || 60 }}
     permissions: { contents: read }
     strategy:
       fail-fast: false
@@ -112,13 +116,17 @@ jobs:
             runner: ubuntu-latest
             nightly_items: all
             nightly_coverage: true
+            nightly_timeout: 90
           - dut: sep
             tool: verilator
             runner: ${{ vars.SEP_CI_RUNNER || 'ubuntu-latest' }}
-            # SEP's `all` mixes cpu firmware tests; `no_cpu` is the toolchain-free
-            # subset. The smoke tier is unaffected (sep_axi_smoke_test is no_cpu).
-            nightly_items: no_cpu
-            nightly_coverage: false
+            # SEP's `all` mixes cpu firmware tests, and `no_cpu` still boots the
+            # KM firmware ROM built from source in some tests; `no_toolchain` is
+            # the subset needing no RISC-V toolchain artifacts at all. The smoke
+            # tier is unaffected (sep_axi_smoke_test is in every group).
+            nightly_items: no_toolchain
+            nightly_coverage: true
+            nightly_timeout: 180
           - dut: smu
             tool: verilator
             runner: ubuntu-latest
@@ -126,6 +134,7 @@ jobs:
             # (no c_compile / RISC-V toolchain stage on hosted runners).
             nightly_items: sep0_all
             nightly_coverage: false
+            nightly_timeout: 90
           - dut: smc
             tool: verilator
             runner: ubuntu-latest
@@ -133,6 +142,7 @@ jobs:
             # firmware c_compile stage (cpu boot lives in other groups).
             nightly_items: smoke
             nightly_coverage: false
+            nightly_timeout: 90
     env:
       # smoke: pull_request, push, and default manual dispatch.
       # nightly: daily schedule, or manual dispatch with tier=nightly.

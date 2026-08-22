@@ -157,6 +157,16 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # it lets the write-path loop settle to the same fixed point VCS/trace reach.
 extra_args = ["-fno-dfg"]
 
+[coverage.verilator]
+# Instrument line/branch (--coverage-line), expression, and SVL user coverage;
+# toggle instrumentation stays off for this DUT. On this model toggle points
+# are ~95% of the coverage database (~0.5 GB per test leaf, tens of GB across
+# a reseeded regression before merge) and the costliest instrumentation at sim
+# time; without toggle the same regression's coverage stays in the low GB
+# range and fits standard CI runner disk. Replaces the simulator-default
+# `--coverage` (which enables all forms including toggle).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+
 [frameworks.cocotb]
 # Flow-first layout: cocotb env/seq_lib/tests live under cocotb/ (room for a
 # future uvm/ sibling). python_root puts env/ + seq_lib/ on the import path.
