@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_sram_write_lock.c
- * @brief SRAM write-lock test for 512-byte regions
+ * @brief SRAM write-lock test, one subtest per lockable region
  *
  * Verifies SRAM write-locking:
  * - For each region: lock region, attempt write, verify write dropped,
@@ -15,24 +15,25 @@
  * Skip only the regions that would corrupt or hang the running firmware:
  * - Any region that overlaps linker-placed .data or .bss.
  * - The region containing the active C stack frame.
- * - Region 15 (0x5E00-0x5FFF), which still causes a hang when tested.
+ * - Region 15 (0xBC00-0xBFFF), which still causes a hang when tested.
  *
  * Run with:
  *   make run_fw FW_TEST=test_sram_write_lock
  */
 
 #include "test_common.h"
+#include "rom_defs.h"
 #include "key_manager_fw.h"
 #include "key_manager_addr.h"
 
-#define NUM_SRAM_REGIONS 32
-#define BYTES_PER_REGION 512
+#define NUM_SRAM_REGIONS (ROM_KM_SRAM_SIZE / SRAM_LOCK_REGION_BYTES)
+#define BYTES_PER_REGION SRAM_LOCK_REGION_BYTES
 #define SRAM_REGION_BASE(r) (SRAM_BASE + (uint32_t)(r)*BYTES_PER_REGION)
 
 /* Offset within each region for the test write. */
 #define OFFSET_IN_REGION 0x100u
 
-#define REGION_SKIP_HANG 15u /* 0x5E00-0x5FFF - causes hang when tested */
+#define REGION_SKIP_HANG 15u /* 0xBC00-0xBFFF - causes hang when tested */
 #define REGION_FIRST 0u
 #define REGION_LAST (NUM_SRAM_REGIONS - 1u)
 

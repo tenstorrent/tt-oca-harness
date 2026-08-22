@@ -1323,7 +1323,7 @@ module sep_crypto #(
 
     key_manager #(
         .ROM_SIZE_BYTES       (16384),
-        .SRAM_SIZE_BYTES      (16384),
+        .SRAM_SIZE_BYTES      (32768),
         .MAILBOX_DEPTH        (16),
         .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
         .OTP_EFUSE_REMAP_BASE (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)

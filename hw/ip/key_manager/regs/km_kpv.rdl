@@ -6,9 +6,10 @@
 // SystemRDL 2.0
 //
 //
-// Base Address: 0x0000_D000 (KM CPU via crossbar)
-// Size: 4KB
-// 32 key entries (512 bits = 16 x 32-bit words each), 32 KM control registers.
+// Base Address: 0x0001_2000 (KM CPU via crossbar)
+// Size: 8KB
+// 64 key entries (512 bits = 16 x 32-bit words each), 64 KM control registers.
+// The key entries alone fill the low 4 KB, which is why the window is 8 KB.
 // Access rules: lock_write/lock_use enforced in RTL; violations return SLVERR.
 
 addrmap km_kpv {
@@ -64,9 +65,9 @@ addrmap km_kpv {
         key_word_reg WORD[16] @ 0x000;
     };
 
-    // 32 key entries: KEY_ENTRY[0] at 0x000, [1] at 0x040, ... [31] at 0x7C0
+    // 64 key entries: KEY_ENTRY[0] at 0x000, [1] at 0x040, ... [63] at 0xFC0
     // External: no internal flops; RTL bridges to km_kpv_regfile via req/ack interface.
-    external key_entry_rf KEY_ENTRY[32] @ 0x000;
+    external key_entry_rf KEY_ENTRY[64] @ 0x000;
 
     //=========================================================================
     // KM Control Register (per slot)
@@ -121,8 +122,8 @@ addrmap km_kpv {
         } rsvd_31_3[31:3];
     };
 
-    // 32 control registers at 0x800 - 0x87C
-    ctrl_reg CTRL[32] @ 0x800;
+    // 64 control registers at 0x1000 - 0x10FC, clear of the key-entry region
+    ctrl_reg CTRL[64] @ 0x1000;
 
     //=========================================================================
     // KPV Scrambler (KM port only)
@@ -143,7 +144,7 @@ addrmap km_kpv {
         } key[31:0];
     };
 
-    kpv_scrambler_key_reg KPV_SCRAMBLER_KEY @ 0x880;
+    kpv_scrambler_key_reg KPV_SCRAMBLER_KEY @ 0x1100;
 
     // Scrambler control: ENABLE and LOCK; reset to 0 on KM reset.
     reg kpv_scrambler_ctrl_reg {
@@ -179,5 +180,5 @@ addrmap km_kpv {
         } rsvd[31:2];
     };
 
-    kpv_scrambler_ctrl_reg KPV_SCRAMBLER_CTRL @ 0x884;
+    kpv_scrambler_ctrl_reg KPV_SCRAMBLER_CTRL @ 0x1104;
 };

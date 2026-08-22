@@ -71,7 +71,7 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     input  logic [31:0] scrambler_key_i,
     input  logic   scrambler_en_i,
 
-    // SRAM write-lock (from KMCSR): bit[i]=1 locks region i (512 bytes each)
+    // SRAM write-lock (from KMCSR): bit[i]=1 locks region i
     input  logic [31:0] sram_lock_bits_i,
 
     // SRAM write-lock violation (to KMCSR): one-hot region that had attempted write while locked
@@ -328,16 +328,18 @@ module picorv32_wrapper import km_intf_pkg::*; import axi_pkg::*; #(
     // because block-TB firmware runs .text from VROM (km_exec_from_vrom.ld).
     // VROM does not exist in production silicon.
     //
-    // Region index: 512-byte regions within the 16KB SRAM.
-    //   fetch_region = mem_addr[13:9]  (equivalent to word_addr >> 7 in km_sram_interface)
+    // Region index: SRAM_LOCK_REGION_BYTES-sized regions within the SRAM.  The
+    // SRAM base is naturally aligned to its own size, so the index is a plain
+    // slice of the byte address, matching write_region in km_sram_interface.
     localparam int unsigned SRAM_REGION_INDEX_W = $clog2(km_intf_pkg::SRAM_NUM_LOCK_REGIONS);
+    localparam int unsigned SRAM_REGION_LSB     = $clog2(km_intf_pkg::SRAM_LOCK_REGION_BYTES);
 
     logic        committed_fetch;
     logic        exec_allowed;
     logic [SRAM_REGION_INDEX_W-1:0] fetch_region;
 
     assign committed_fetch = mem_valid && mem_instr && !(|mem_wstrb);
-    assign fetch_region    = mem_addr[9 + SRAM_REGION_INDEX_W - 1 : 9];
+    assign fetch_region    = mem_addr[SRAM_REGION_LSB + SRAM_REGION_INDEX_W - 1 : SRAM_REGION_LSB];
     assign exec_allowed    = is_rom_addr
                           || is_vrom_addr
                           || (is_sram_addr && sram_exec_mode_i && sram_lock_bits_i[fetch_region]);

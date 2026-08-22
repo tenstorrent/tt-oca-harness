@@ -74,7 +74,7 @@ image::SEP_Key_Manager.png[SEP_Key_Manager,scaledwidth=90.0%]
 |===
 |Parameter |Type |Default |Description
 |`ROM_SIZE_BYTES` |`int unsigned` |16384 |Size of the KM boot ROM in bytes (16 KB).
-|`SRAM_SIZE_BYTES` |`int unsigned` |16384 |Size of the KM data SRAM in bytes (16 KB).
+|`SRAM_SIZE_BYTES` |`int unsigned` |32768 |Size of the KM data SRAM in bytes (32 KB).
 |`MAILBOX_DEPTH` |`int unsigned` |16 |Minimum FIFO depth for each mailbox direction (must be a power of two).
 |`LATCHED_MEM_RDATA` |`bit` |`1'b0` |When set, the PicoRV32 core treats memory read data as latched (hold until next request).
 |===
@@ -87,12 +87,13 @@ The KM CPU addresses its internal peripherals through a flat 32-bit address spac
 |===
 |Address Range |Component |Description
 |`0x0000_0000` – `0x0000_3FFF` |ROM |16 KB boot ROM (read-only, parity-protected).
-|`0x0000_4000` – `0x0000_7FFF` |SRAM |16 KB data SRAM (parity-protected, optional scrambling, region-based write-lock).
-|`0x0000_D000` – `0x0000_DFFF` |KPV |Key and Policy Vault register and key storage region.
-|`0x0000_E000` – `0x0000_EFFF` |KMCSR |Key Manager Control and Status Registers.
-|`0x0000_F000` – `0x0000_FFFF` |DRBG Sampler |DRBG random data, configuration, and status registers.
+|`0x0000_4000` – `0x0000_7FFF` |Reserved |Unmapped; returns a decode error.
+|`0x0000_8000` – `0x0000_FFFF` |SRAM |32 KB data SRAM (parity-protected, optional scrambling, region-based write-lock).
 |`0x0001_0000` – `0x0001_0FFF` |Mailbox |KM-side mailbox read/write and control registers.
 |`0x0001_1000` – `0x0001_1FFF` |OTP/eFuse |External AXI4-Lite pass-through to SEP eFuse controller. Hardware remaps KM-local addresses to `OTP_EFUSE_REMAP_BASE`.
+|`0x0001_2000` – `0x0001_3FFF` |KPV |Key and Policy Vault register and key storage region (8 KB, 8 KB-aligned).
+|`0x0001_4000` – `0x0001_4FFF` |KMCSR |Key Manager Control and Status Registers.
+|`0x0001_5000` – `0x0001_5FFF` |DRBG Sampler |DRBG random data, configuration, and status registers.
 |`0x0001_8000` – `0x0001_CFFF` |Crypto Masters |External AXI4-Lite master ports: OTBN, AES, KMAC, HMAC, ABR (4 KB each).
 |===
 
@@ -295,24 +296,22 @@ unallocated.
 |Base Address |End Address |Size |Unit |Description
 |0x0000_0000 |0x0000_3FFF |16 kB |KM ROM |Key Manager Program ROM
 
-|0x0000_4000 |0x0000_7DFF |~15.5 kB |KM SRAM |Key Manager Prgm/Data SRAM
+|0x0000_4000 |0x0000_7FFF | | |_Reserved_ (decode error)
 
-|0x0000_7E00 |0x0000_7FFF |512 B |KM SRAM (warm-persist) |ROM warm-persistent region (`rom_persist`)
-
-|0x0000_8000 |0x0000_CFFF | | |_Reserved_
-
-|0x0000_D000 |0x0000_DFFF |4kB |KPV |Key and Policy Vault
-
-|0x0000_E000 |0x0000_EFFF |4kB |KMCSR |Configuration, Status, Interrupt
-and Interrupt Mask Registers
-
-|0x0000_F000 |0x0000_FFFF |4kB |DRBG |DRBG Sampling Interface
+|0x0000_8000 |0x0000_FFFF |32 kB |KM SRAM |Key Manager Prgm/Data SRAM
 
 |0x0001_0000 |0x0001_0FFF |4kB |MB |Mailbox Message
 
 |0x0001_1000 |0x0001_1FFF |4kB |OTP/eFuse |SEP eFuse pass-through. KM-local addresses remapped to SEP the value of `OTP_EFUSE_REMAP_BASE`.
 
-|0x0001_2000 |0x0001_7FFF | | |_Reserved_
+|0x0001_2000 |0x0001_3FFF |8kB |KPV |Key and Policy Vault
+
+|0x0001_4000 |0x0001_4FFF |4kB |KMCSR |Configuration, Status, Interrupt
+and Interrupt Mask Registers
+
+|0x0001_5000 |0x0001_5FFF |4kB |DRBG |DRBG Sampling Interface
+
+|0x0001_6000 |0x0001_7FFF | | |_Reserved_
 
 |0x0001_8000 |0x0001_8FFF |4kB |OTBN |Public Key Cryptography
 Accelerator key storage
@@ -425,8 +424,8 @@ firmware.
 
 KPV has the following registers:
 
-* 32 Key Entry registers, each of 512 bits (16 words)
-* 32 corresponding 32-bit control registers
+* 64 Key Entry registers, each of 512 bits (16 words)
+* 64 corresponding 32-bit control registers
 
 RSA3K keys will not naturally fit into a single key entry, so will be
 concatenated into several consecutive slots. The KPV has no control register
@@ -459,7 +458,7 @@ read-any, write-one-only.
 ** TBD
 
 Reset values: All KPV control registers (CTRL) reset to 0. All KPV key
-entry data registers (32 slots × 512 bits) have no reset value: they
+entry data registers (64 slots × 512 bits) have no reset value: they
 power up with random (undefined) values for security. The implementation
 must not connect reset to key entry storage flops.
 
@@ -483,8 +482,8 @@ domain — they are preserved across a warm reset and cleared only by a cold
 reset. Scrambling is disabled by default after a cold reset.
 
 When scrambling is enabled, the KPV uses the same scrambler algorithm as
-SRAM but sized for 512×32 words (32 slots × 16 words). The scrambler
-address input is the linear register index (0..511): _slot_index_ × 16 +
+SRAM but sized for 1024×32 words (64 slots × 16 words). The scrambler
+address input is the linear register index (0..1023): _slot_index_ × 16 +
 _word_index_. Address scrambling maps the logical index to a scrambled
 physical storage index. Data is scrambled before storage and descrambled
 after retrieval. Only key entry data words are scrambled; CTRL registers
@@ -507,7 +506,7 @@ On every rising edge of this signal, the KM sets the wipe state
 interrupt in the KMCSR.
 
 On the next clock cycle after the rising edge, the KPV is synchronously
-reset to zero: all 512 key entry data registers, all 32 KPV control
+reset to zero: all 1024 key entry data registers, all 64 KPV control
 registers, and the KPV scrambler key and scrambler control registers
 (enable and lock) are cleared to zero.
 
@@ -660,7 +659,7 @@ The interrupt aggregation logic collects eleven hardware event sources into a si
 |0 |ROM Parity Error |Parity mismatch detected on a ROM read.
 |1 |SRAM Parity Error |Parity mismatch detected on an SRAM read.
 |2 |ROM Write Error |A write was attempted to the read-only ROM region.
-|3 |SRAM Write-Lock Violation |A write targeted a locked 512-byte SRAM region.
+|3 |SRAM Write-Lock Violation |A write targeted a locked 1 KB SRAM region.
 |4 |AXI SLVERR |An AXI4-Lite slave returned SLVERR.
 |5 |AXI DECERR |An AXI4-Lite slave returned DECERR.
 |6 |DRBG Error |The DRBG sampler reported a timeout or stream error.
@@ -688,9 +687,25 @@ bit that can only transition from 0 to 1: while it is 0 firmware may reprogram
 every reset that re-enters ROM (cold, external asynchronous, and KM soft reset)
 restores `IRQ_ENTRY_ADDR` to `0x0000_0010` and clears `IRQ_ENTRY_LOCK`.
 
-The scrambler lock logic in the KMCSR is described in the SRAM Scrambling section of this document. The SRAM write-lock uses the `SRAM_LOCK` register, which is implemented as write-one-to-set (RDL `woset`). Each bit corresponds to a 512-byte SRAM region. Once a bit is set, it is cleared by the next warm or cold KM reset — `SRAM_LOCK` is in the warm reset domain. The SRAM scrambler key/enable/lock (`SCRAMBLER_KEY`, `SCRAMBLER_CTRL`) remain non-volatile state in the cold reset domain and are preserved across a warm reset. Because `SRAM_LOCK` clears on warm reset, the ROM is responsible for re-applying the write-lock policy on every boot (cold and warm) before handing control to mutable firmware.
+The scrambler lock logic in the KMCSR is described in the SRAM Scrambling
+section of this document. The SRAM write-lock uses the `SRAM_LOCK` register,
+which is implemented as write-one-to-set (RDL `woset`). Each of the 32 bits
+corresponds to a 1 KB SRAM region, so the register covers the whole 32 KB
+SRAM. Once a bit is set, it is cleared by the next warm or cold KM reset —
+`SRAM_LOCK` is in the warm reset domain. The SRAM scrambler key/enable/lock
+(`SCRAMBLER_KEY`, `SCRAMBLER_CTRL`) remain non-volatile state in the cold
+reset domain and are preserved across a warm reset. Because `SRAM_LOCK`
+clears on warm reset, the ROM is responsible for re-applying the write-lock
+policy on every boot (cold and warm) before handing control to mutable
+firmware.
 
-The soft reset mechanism is guarded by a magic code. Firmware must write the value `0x53525354` (ASCII `"SRST"`) to the `SOFT_RST_CODE` register; when the code matches, the KMCSR asserts an active-low soft reset (`soft_rst_n`) that feeds the *warm* path of the reset conditioner. This produces a synchronous warm reset of the KM CPU and volatile state (see Reset Conditioning) — it does not reset the cold-only domain. The warm reset remains asserted until the hold counter expires (`MIN_RESET_CYCLES`).
+The soft reset mechanism is guarded by a magic code. Firmware must write the
+value `0x53525354` (ASCII `"SRST"`) to the `SOFT_RST_CODE` register; when the
+code matches, the KMCSR asserts an active-low soft reset (`soft_rst_n`) that
+feeds the *warm* path of the reset conditioner. This produces a synchronous
+warm reset of the KM CPU and volatile state (see Reset Conditioning) — it
+does not reset the cold-only domain. The warm reset remains asserted until
+the hold counter expires (`MIN_RESET_CYCLES`).
 
 The `BOOT_STATUS` register (offset `0x02C`) carries a single
 `COLD_BOOT_DONE` flag. It is a write-one-only (RDL `woset`-style) status
@@ -716,9 +731,14 @@ The whitelist mode is controlled by the `KMCSR.SRAM_EXEC_MODE.enable` bit
 [width="100%",cols="^15%,55%,30%",options="header"]
 |===
 |`enable` |Executable regions |Forbidden regions
-|`0` (ROM mode) |ROM (`0x0000`–`0x1FFF`) and VROM* |All SRAM; Peripheral/AXI
-|`1` (SRAM mode) |ROM, VROM*, and write-locked SRAM regions (`SRAM_LOCK.lock_bits`) |Unlocked SRAM; Peripheral/AXI
+|`0` (ROM mode) |ROM (`0x0000`–`0x3FFF`) and VROM* |All SRAM; Peripheral/AXI
+|`1` (SRAM mode) |ROM, VROM*, and write-locked 1 KB SRAM regions (`SRAM_LOCK.lock_bits`) |Unlocked SRAM; Peripheral/AXI
 |===
+
+The fetch-region index is a plain slice of the byte address, which works only
+because the SRAM base (`0x0000_8000`) is aligned to the SRAM size; it is the
+same slice `km_sram_interface` uses to check data writes, so the two views of a
+region can never disagree.
 
 * VROM (`0x1000_0000`) is a testbench-only virtual ROM used in the block TB.
   It is treated as always executable in both modes so that firmware running
@@ -1362,7 +1382,8 @@ bits next to the 32-bit data word.
 ===== SRAM Write Locking
 
 The SRAM interface incorporates a write-locking mechanism to designate
-specific 512-byte memory regions as read-only. This feature is primarily
+specific 1 KB memory regions as read-only; 32 regions cover the whole 32 KB
+SRAM, one per `SRAM_LOCK` bit. This feature is primarily
 designed to protect dynamically loaded KM firmware from unauthorized
 modification.
 
@@ -1381,7 +1402,7 @@ executes against an unlocked SRAM region.
 [[rom-warm-persist-region]]
 ===== ROM Warm-Persistent SRAM Region
 
-The highest 512 bytes of KM SRAM (region 31, `0x0000_7E00`–`0x0000_7FFF`) are
+The highest 1 KB of KM SRAM (region 31, `0x0000_FC00`–`0x0000_FFFF`) are
 reserved as a ROM-managed warm-persistent data structure (`rom_persist`). The
 mutable-firmware load area, stack, and BSS/data occupy the SRAM below it.
 
@@ -1412,7 +1433,7 @@ all fields. On a warm or soft reset, `COLD_BOOT_DONE` already reads 1 and
 
 *Write-lock policy.* Before handing control to mutable (SRAM-loaded) firmware,
 ROM must call `rom_persist_lock()`, which sets SRAM_LOCK bit 31 via a triple
-write for glitch resistance. After locking, any write into `0x7E00`–`0x7FFF`
+write for glitch resistance. After locking, any write into `0xFC00`–`0xFFFF`
 is silently dropped and a `SRAM_WRITE_LOCK_VIOLATION` IRQ is raised. The lock
 is cleared on the next warm or cold reset; ROM re-establishes it
 before transferring control to mutable code.
@@ -1423,15 +1444,15 @@ before transferring control to mutable code.
 The KM ROM supports loading and executing a mutable software image from SRAM,
 controlled by the `CMD_SRAM_LOAD_EXEC` and `CMD_SRAM_EXEC` mailbox commands.
 
-*Memory map.* Mutable firmware is loaded into SRAM starting at `0x4000` (SRAM
-word-address 0) and ROM jumps to `0x4000` as the entry point.  ROM does not
+*Memory map.* Mutable firmware is loaded into SRAM starting at `0x8000` (SRAM
+word-address 0) and ROM jumps to `0x8000` as the entry point.  ROM does not
 program the CPU IRQ entry vector for the loaded image; the mutable firmware is
 responsible for setting `IRQ_ENTRY_ADDR` to its own handler before it
 re-enables interrupts.
 
-*SRAM region write-locking.* After a successful load, ROM write-locks the 512-byte
+*SRAM region write-locking.* After a successful load, ROM write-locks the 1 KB
 SRAM regions that contain the firmware image (regions 0 through
-`ceil(fw_size_bytes / 512) - 1`).  These locks are applied immediately before the
+`ceil(fw_size_bytes / 1024) - 1`).  These locks are applied immediately before the
 handover jump and remain active for the lifetime of that execution epoch.
 `SRAM_LOCK` is in the warm-reset domain and is cleared by a warm reset; ROM
 re-applies the write-lock on each subsequent warm boot when `CMD_SRAM_EXEC` is
@@ -1445,14 +1466,14 @@ downward toward the image: after a warm reset that follows mutable-firmware
 execution, the ROM re-runs and a `CMD_SRAM_EXEC` restart may drive the stack
 deeper than it was at original load, so a live-SP bound could let the ROM stack
 later overwrite executable image words.  The linker computes the ceiling as
-`STACK - __rom_max_stack` (rounded down to a 512-byte write-lock region), where
+`STACK - __rom_max_stack` (rounded down to a 1 KB write-lock region), where
 `__rom_max_stack` is the worst-case ROM stack depth validated against the
 production ELF by a post-link call-graph analyzer; the firmware build is gated
 on the analyzer.  `CMD_SRAM_LOAD_EXEC` rejects oversized images, and a per-word
 guard during streaming provides defense-in-depth.
 
 The region-disjointness invariant guarantees that no ROM runtime region (stack,
-`.data`, `.bss`) shares a 512-byte block with any firmware-image region.  This
+`.data`, `.bss`) shares a 1 KB block with any firmware-image region.  This
 ensures that write-locking the firmware regions does not accidentally lock
 ROM-owned data, which must remain erasable by the whole-SRAM scramble during
 handover.  Aligning the load ceiling down to a write-lock region boundary is

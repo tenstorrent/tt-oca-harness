@@ -9,8 +9,8 @@
   ** Base Address: 0x0
   ** Address Increment: 0x4 per register
 
-* *CTRL[32]*: 32 registers
-  ** Base Address: 0x800
+* *CTRL[64]*: 64 registers
+  ** Base Address: 0x1000
   ** Address Increment: 0x4 per register
 
 ======
@@ -20,9 +20,9 @@
 |===
 | Address | Name | Access | Description
 | 0x0 - 0x3C | WORD[16] | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
-| 0x800 - 0x87C | CTRL[32] | RW a| Per-slot control: lock bits (W1S) and the erase trigger
-| 0x880 | KPV_SCRAMBLER_KEY | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
-| 0x884 | KPV_SCRAMBLER_CTRL | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
+| 0x1000 - 0x10FC | CTRL[64] | RW a| Per-slot control: lock bits (W1S) and the erase trigger
+| 0x1100 | KPV_SCRAMBLER_KEY | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
+| 0x1104 | KPV_SCRAMBLER_CTRL | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
 |===
 
 [cols="1,1,1,1,3", options="header"]
@@ -34,7 +34,7 @@ Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 |===
 
 [cols="1,1,1,1,3", options="header"]
-.CTRL[32] Register
+.CTRL[64] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `rsvd_31_3` | R | 0x0 a| Reserved

@@ -6,26 +6,26 @@
 package km_kpv_addrmap_pkg;
 
 localparam longint unsigned KM_KPV_BASE_ADDR = 64'h0;
-localparam longint unsigned KM_KPV_SIZE = 64'h888;
+localparam longint unsigned KM_KPV_SIZE = 64'h1108;
 
 function automatic longint unsigned KM_KPV_KEY_ENTRY_BASE_ADDR(input int unsigned KEY_ENTRY_idx);
     return 64'h0 + (KEY_ENTRY_idx * 64'h40);
 endfunction
-localparam longint unsigned KM_KPV_KEY_ENTRY_NUM = 64'h20;
+localparam longint unsigned KM_KPV_KEY_ENTRY_NUM = 64'h40;
 localparam longint unsigned KM_KPV_KEY_ENTRY_SIZE = 64'h40;
 localparam longint unsigned KM_KPV_KEY_ENTRY_STRIDE = 64'h40;
-localparam longint unsigned KM_KPV_KEY_ENTRY_TOTAL_SIZE = 64'h800;
+localparam longint unsigned KM_KPV_KEY_ENTRY_TOTAL_SIZE = 64'h1000;
 
 function automatic longint unsigned KM_KPV_KEY_ENTRY_WORD_BASE_ADDR(input int unsigned KEY_ENTRY_idx, input int unsigned WORD_idx);
     return 64'h0 + (KEY_ENTRY_idx * 64'h40) + (WORD_idx * 64'h4);
 endfunction
 localparam longint unsigned KM_KPV_KEY_ENTRY_WORD_NUM = 64'h10;
 function automatic longint unsigned KM_KPV_CTRL_BASE_ADDR(input int unsigned CTRL_idx);
-    return 64'h800 + (CTRL_idx * 64'h4);
+    return 64'h1000 + (CTRL_idx * 64'h4);
 endfunction
-localparam longint unsigned KM_KPV_CTRL_NUM = 64'h20;
-localparam longint unsigned KM_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR = 64'h880;
-localparam longint unsigned KM_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR = 64'h884;
+localparam longint unsigned KM_KPV_CTRL_NUM = 64'h40;
+localparam longint unsigned KM_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR = 64'h1100;
+localparam longint unsigned KM_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR = 64'h1104;
 
 
 endpackage;

@@ -24,7 +24,7 @@
 #define KPV_SCRAMBLER_CTRL \
     (*(volatile km_kpv__kpv_scrambler_ctrl_reg_t *)KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR)
 
-/** @brief Base of KPV key array (32 slots × 16 words = 512 words). */
+/** @brief Base of KPV key array (ROM_KM_KPV_NUM_SLOTS × 16 words). */
 #define KPV_KEY_BASE ((volatile uint32_t *)KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, 0))
 
 /** @brief Pointer to the first word of slot [slot]. */

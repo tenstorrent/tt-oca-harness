@@ -54,36 +54,39 @@ addrmap key_manager {
     // - Includes byte-wise parity checking
     // - Size: 16KB (4096 words × 4 bytes)
 
-    // SRAM Region: 0x0000_4000 - 0x0000_7FFF (16KB)
+    // Reserved: 0x0000_4000 - 0x0000_7FFF (16KB)
+    // - Unmapped; returns DECERR
+
+    // SRAM Region: 0x0000_8000 - 0x0000_FFFF (32KB)
     // - Read/write memory for KM CPU data and stack
     // - Accessed via direct memory interface (not AXI-Lite)
     // - Includes byte-wise parity checking
     // - Optional address/data scrambling (controlled by KMCSR)
-    // - Size: 16KB (4096 words × 4 bytes)
+    // - Size: 32KB (8192 words × 4 bytes)
 
     //=========================================================================
     // Register-Based Peripherals (AXI-Lite Access)
     //=========================================================================
 
     // KPV (Key and Policy Vault) - KM port
-    // Base Address: 0x0000_D000
-    // Size: 4KB
-    // 32 key entries (512b each), 32 control registers; lock_write/lock_use enforced in RTL
-    km_kpv kpv @ 0x0000_D000;
+    // Base Address: 0x0001_2000
+    // Size: 8KB
+    // 64 key entries (512b each), 64 control registers; lock_write/lock_use enforced in RTL
+    km_kpv kpv @ 0x0001_2000;
 
     // KMCSR (Key Manager Control and Status Registers)
-    // Base Address: 0x0000_E000
+    // Base Address: 0x0001_4000
     // Size: 4KB (0x1000)
     // Description: Control and status registers for the Key Manager subsystem
     // Includes: VERSION, CTRL, STATUS, IRQ_STATUS, IRQ_ENABLE, IRQ_SET,
     //           SCRAMBLER_KEY, SCRAMBLER_CTRL, Virtual UART, Test Protocol
-    km_csr kmcsr @ 0x0000_E000;
+    km_csr kmcsr @ 0x0001_4000;
 
     // DRBG Sampler
-    // Base Address: 0x0000_F000
+    // Base Address: 0x0001_5000
     // Size: 4KB (0x1000) decode window; register block is 16 bytes
     // Description: Bridges KM CPU reads to DRBG AXI-Stream; DATA, CFG, STATUS, PREFETCH_DATA
-    km_drbg_sampler drbg_sampler @ 0x0000_F000;
+    km_drbg_sampler drbg_sampler @ 0x0001_5000;
 
     // Mailbox KM Side Interface
     // Base Address: 0x0001_0000
@@ -170,14 +173,14 @@ addrmap key_manager {
     // Address Range          | Size    | Description                    | Access
     // -----------------------|---------|--------------------------------|--------
     // 0x0000_0000-0x0000_3FFF| 16KB    | ROM (boot code)                | Direct Memory (R)
-    // 0x0000_4000-0x0000_7FFF| 16KB    | SRAM (data/stack)              | Direct Memory (R/W)
-    // 0x0000_8000-0x0000_CFFF| 20KB    | Reserved                       | -
-    // 0x0000_D000-0x0000_DFFF| 4KB     | KPV (Key and Policy Vault)     | AXI-Lite
-    // 0x0000_E000-0x0000_EFFF| 4KB     | KMCSR (control/status)         | AXI-Lite
-    // 0x0000_F000-0x0000_FFFF| 4KB     | DRBG Sampler                   | AXI-Lite
+    // 0x0000_4000-0x0000_7FFF| 16KB    | Reserved (future ROM growth)   | DECERR
+    // 0x0000_8000-0x0000_FFFF| 32KB    | SRAM (data/stack)              | Direct Memory (R/W)
     // 0x0001_0000-0x0001_0FFF| 4KB     | Mailbox KM Side                | AXI-Lite
     // 0x0001_1000-0x0001_1FFF| 4KB     | OTP/eFuse (external, remapped) | AXI-Lite
-    // 0x0001_2000-0x0001_7FFF| 24KB    | Reserved                       | -
+    // 0x0001_2000-0x0001_3FFF| 8KB     | KPV (Key and Policy Vault)     | AXI-Lite
+    // 0x0001_4000-0x0001_4FFF| 4KB     | KMCSR (control/status)         | AXI-Lite
+    // 0x0001_5000-0x0001_5FFF| 4KB     | DRBG Sampler                   | AXI-Lite
+    // 0x0001_6000-0x0001_7FFF| 8KB     | Reserved                       | -
     // 0x0001_8000-0x0001_8FFF| 4KB     | OTBN Key Storage               | AXI-Lite
     // 0x0001_9000-0x0001_9FFF| 4KB     | AES Key Storage                | AXI-Lite
     // 0x0001_A000-0x0001_AFFF| 4KB     | KMAC Key Storage               | AXI-Lite

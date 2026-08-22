@@ -91,14 +91,14 @@ typedef union {
 
 // addrmap - km_kpv
 typedef struct __attribute__ ((__packed__)) {
-    km_kpv__key_entry_rf_t KEY_ENTRY[32];
-    km_kpv__ctrl_reg_t CTRL[32];
+    km_kpv__key_entry_rf_t KEY_ENTRY[64];
+    km_kpv__ctrl_reg_t CTRL[64];
     km_kpv__kpv_scrambler_key_reg_t KPV_SCRAMBLER_KEY;
     km_kpv__kpv_scrambler_ctrl_reg_t KPV_SCRAMBLER_CTRL;
 } km_kpv_t;
 
 
-static_assert(sizeof(km_kpv_t) == 0x888, "Packing error");
+static_assert(sizeof(km_kpv_t) == 0x1108, "Packing error");
 
 #ifdef __cplusplus
 }

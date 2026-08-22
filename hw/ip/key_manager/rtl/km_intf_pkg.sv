@@ -62,8 +62,8 @@ package km_intf_pkg;
     /** @brief ROM word-address width (12 bits = 4K words = 16 KB). */
     parameter int unsigned KM_ROM_MEM_ADDR_WIDTH = 12;
 
-    /** @brief SRAM word-address width (12 bits = 4K words = 16 KB). */
-    parameter int unsigned KM_SRAM_MEM_ADDR_WIDTH = 12;
+    /** @brief SRAM word-address width (13 bits = 8K words = 32 KB). */
+    parameter int unsigned KM_SRAM_MEM_ADDR_WIDTH = 13;
 
     /** @brief ROM memory request (CPU -> ROM hard macro). */
     typedef struct packed {
@@ -114,13 +114,15 @@ package km_intf_pkg;
      *  | Region | Base        | End         | Size  | Notes                                   |
      *  |--------|-------------|-------------|-------|-----------------------------------------|
      *  | ROM    | 0x0000_0000 | 0x0000_3FFF | 16 KB |                                         |
-     *  | SRAM   | 0x0000_4000 | 0x0000_7FFF | 16 KB |                                         |
-     *  | KPV    | 0x0000_D000 | 0x0000_DFFF |  4 KB |                                         |
-     *  | KMCSR  | 0x0000_E000 | 0x0000_EFFF |  4 KB |                                         |
-     *  | DRBG   | 0x0000_F000 | 0x0000_FFFF |  4 KB |                                         |
+     *  | ---    | 0x0000_4000 | 0x0000_7FFF | 16 KB | Unmapped (DECERR); reserved for a       |
+     *  |        |             |             |       | future ROM expansion to 32 KB           |
+     *  | SRAM   | 0x0000_8000 | 0x0000_FFFF | 32 KB |                                         |
      *  | MBOX   | 0x0001_0000 | 0x0001_0FFF |  4 KB |                                         |
      *  | OTP    | 0x0001_1000 | 0x0001_1FFF |  4 KB | External pass-through; HW remaps to     |
      *  |        |             |             |       | OTP_EFUSE_REMAP_BASE (MAP/CTRL/MMR)     |
+     *  | KPV    | 0x0001_2000 | 0x0001_3FFF |  8 KB | 64 slots; 8 KB-aligned                  |
+     *  | KMCSR  | 0x0001_4000 | 0x0001_4FFF |  4 KB |                                         |
+     *  | DRBG   | 0x0001_5000 | 0x0001_5FFF |  4 KB |                                         |
      *  | OTBN   | 0x0001_8000 | 0x0001_8FFF |  4 KB |                                         |
      *  | AES    | 0x0001_9000 | 0x0001_9FFF |  4 KB |                                         |
      *  | KMAC   | 0x0001_A000 | 0x0001_AFFF |  4 KB |                                         |
@@ -132,18 +134,18 @@ package km_intf_pkg;
     // Internal memory
     localparam km_addr_t ROM_BASE_ADDR     = 32'h0000_0000;
     localparam km_addr_t ROM_END_ADDR      = 32'h0000_3FFF;
-    localparam km_addr_t SRAM_BASE_ADDR    = 32'h0000_4000;
-    localparam km_addr_t SRAM_END_ADDR     = 32'h0000_7FFF;
+    localparam km_addr_t SRAM_BASE_ADDR    = 32'h0000_8000;
+    localparam km_addr_t SRAM_END_ADDR     = 32'h0000_FFFF;
 
     // Internal peripherals
-    localparam km_addr_t KPV_BASE_ADDR          = 32'h0000_D000;
-    localparam km_addr_t KPV_END_ADDR           = 32'h0000_DFFF;
-    localparam km_addr_t KMCSR_BASE_ADDR        = 32'h0000_E000;
-    localparam km_addr_t KMCSR_END_ADDR         = 32'h0000_EFFF;
-    localparam km_addr_t DRBG_SAMPLER_BASE_ADDR = 32'h0000_F000;
-    localparam km_addr_t DRBG_SAMPLER_END_ADDR  = 32'h0000_FFFF;
     localparam km_addr_t MBOX_BASE_ADDR         = 32'h0001_0000;
     localparam km_addr_t MBOX_END_ADDR          = 32'h0001_0FFF;
+    localparam km_addr_t KPV_BASE_ADDR          = 32'h0001_2000;
+    localparam km_addr_t KPV_END_ADDR           = 32'h0001_3FFF;
+    localparam km_addr_t KMCSR_BASE_ADDR        = 32'h0001_4000;
+    localparam km_addr_t KMCSR_END_ADDR         = 32'h0001_4FFF;
+    localparam km_addr_t DRBG_SAMPLER_BASE_ADDR = 32'h0001_5000;
+    localparam km_addr_t DRBG_SAMPLER_END_ADDR  = 32'h0001_5FFF;
 
     // OTP / eFuse access port
     // The crossbar routes 0x0001_1xxx to xbar master port 8; key_manager.sv
@@ -173,11 +175,13 @@ package km_intf_pkg;
 
     /** @brief Region sizes derived from the address ranges above. */
     localparam int unsigned ROM_SIZE_BYTES    = ROM_END_ADDR - ROM_BASE_ADDR + 1;   // 16 KB
-    localparam int unsigned SRAM_SIZE_BYTES   = SRAM_END_ADDR - SRAM_BASE_ADDR + 1;  // 16 KB
+    localparam int unsigned SRAM_SIZE_BYTES   = SRAM_END_ADDR - SRAM_BASE_ADDR + 1;  // 32 KB
     localparam int unsigned VROM_SIZE_BYTES   = VROM_END_ADDR - VROM_BASE_ADDR + 1;  // 64 KB
 
-    /** @brief SRAM write-lock granularity: 512 bytes per lockable region. */
-    localparam int unsigned SRAM_LOCK_REGION_BYTES = 512;
+    /**
+     * @brief SRAM write-lock granularity: 1 KB per lockable region.
+     */
+    localparam int unsigned SRAM_LOCK_REGION_BYTES = 1024;
     localparam int unsigned SRAM_NUM_LOCK_REGIONS  = SRAM_SIZE_BYTES / SRAM_LOCK_REGION_BYTES;
 
     // =========================================================================
@@ -234,4 +238,3 @@ package km_intf_pkg;
     } km_otp_data_t;
 
 endpackage : km_intf_pkg
-

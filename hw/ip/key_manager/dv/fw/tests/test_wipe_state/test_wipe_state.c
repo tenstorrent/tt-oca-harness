@@ -31,8 +31,8 @@
 #define KPV_SCRAMBLER_CTRL_REG \
     (*(volatile km_kpv__kpv_scrambler_ctrl_reg_t *)KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR)
 
-#define KPV_NUM_SLOTS 32u
-#define KPV_WORDS_PER_SLOT 16u
+#define KPV_NUM_SLOTS ROM_KM_KPV_NUM_SLOTS
+#define KPV_WORDS_PER_SLOT ROM_KM_KPV_WORDS_PER_SLOT
 #define KEY_PATTERN(s, w) (0xCA000000u | ((s) << 8) | (w))
 
 static void fill_kpv_keys(void) {
@@ -95,7 +95,9 @@ static void clear_wipe_state_irq(void) {
 
 int main(void) {
     TEST_INIT();
-    if (!tb_set_timeout(150000)) TEST_FAIL("timeout");
+    /* Each subtest walks every KPV word three times, so the budget scales with
+     * ROM_KM_KPV_NUM_SLOTS. */
+    if (!tb_set_timeout(400000)) TEST_FAIL("timeout");
 
     /* Enable WIPE_STATE IRQ */
     km_csr__irq_enable_reg_t en = {.w = KMCSR_IRQ_ENABLE_REG.w};

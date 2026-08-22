@@ -26,20 +26,22 @@
 #define ROM_KM_ROM_BASE 0x00000000
 /** @brief ROM size in bytes (16 KB). */
 #define ROM_KM_ROM_SIZE 0x00004000
+/* 0x0000_4000-0x0000_7FFF is unmapped and returns DECERR; it is held back for a
+ * future ROM expansion. */
 /** @brief SRAM base address. */
-#define ROM_KM_SRAM_BASE 0x00004000
-/** @brief SRAM size in bytes (16 KB). */
-#define ROM_KM_SRAM_SIZE 0x00004000
+#define ROM_KM_SRAM_BASE 0x00008000
+/** @brief SRAM size in bytes (32 KB). */
+#define ROM_KM_SRAM_SIZE 0x00008000
 /** @brief First address past the end of SRAM. */
 #define ROM_KM_SRAM_END (ROM_KM_SRAM_BASE + ROM_KM_SRAM_SIZE)
 
-/** @brief ROM warm-persist region base address (highest 512 B of SRAM, region 31). */
+/** @brief ROM warm-persist region base address (highest 1 KB of SRAM, region 31). */
 #define ROM_KM_PERSIST_BASE (ROM_KM_SRAM_END - ROM_KM_PERSIST_SIZE)
-/* ROM-owned warm-persist region: the highest 512 B of SRAM, reserved for ROM
+/* ROM-owned warm-persist region: the highest 1 KB of SRAM, reserved for ROM
  * firmware state that must survive warm reset. It is NOT for mutable
  * (SRAM-loaded) firmware, which ROM write-locks out of it before handoff. */
-/** @brief ROM warm-persist region size in bytes (512 B = one SRAM write-lock region). */
-#define ROM_KM_PERSIST_SIZE 0x00000200
+/** @brief ROM warm-persist region size in bytes (1 KB = one SRAM write-lock region). */
+#define ROM_KM_PERSIST_SIZE 0x00000400
 /** @brief SRAM write-lock region index covering the warm-persist region (top region). */
 #define ROM_KM_PERSIST_LOCK_REGION 31u
 /** @brief SRAM_LOCK bitmask for the warm-persist region (bit 31). */
@@ -48,11 +50,12 @@
 /**
  * @brief Granularity of one SRAM write-lock region in bytes.
  *
- * The 16 KB SRAM is divided into 32 regions of 512 B each.  The SRAM_LOCK
- * register has one bit per region.  Used by the mutable-firmware bounds check
- * and the firmware-region lock-mask computation.
+ * The 32 KB SRAM is divided into 32 regions of 1 KB each.  The SRAM_LOCK
+ * register has one bit per region, and 1 KB is the coarsest granularity that
+ * keeps the whole mask inside that one 32-bit register.  Used by the
+ * mutable-firmware bounds check and the firmware-region lock-mask computation.
  */
-#define SRAM_LOCK_REGION_BYTES 0x00000200u
+#define SRAM_LOCK_REGION_BYTES 0x00000400u
 
 /**
  * @brief Exclusive upper bound (CPU address) of the mutable-firmware load area.
@@ -81,15 +84,6 @@ extern const uint8_t __km_fw_load_limit[];
  * correctness does not depend solely on the reset value.
  */
 #define ROM_KM_ROM_IRQ_ENTRY 0x10u
-
-/** @brief Key Provisioning Vault register base address. */
-#define ROM_KM_KPV_BASE 0x0000D000
-/** @brief Key Manager CSR register base address. */
-#define ROM_KM_KMCSR_BASE 0x0000E000
-/** @brief DRBG sampler register base address. */
-#define ROM_KM_DRBG_BASE 0x0000F000
-/** @brief Mailbox register base address. */
-#define ROM_KM_MAILBOX_BASE 0x00010000
 
 /** @brief Words per mailbox FIFO (matches RTL MAILBOX_DEPTH default) */
 #define ROM_KM_MAILBOX_FIFO_DEPTH 16
@@ -134,7 +128,7 @@ extern const uint8_t __km_fw_load_limit[];
  *===========================================================================*/
 
 /** @brief Number of slots in the Key Provisioning Vault. */
-#define ROM_KM_KPV_NUM_SLOTS 32
+#define ROM_KM_KPV_NUM_SLOTS 64
 /** @brief 32-bit words per KPV slot. */
 #define ROM_KM_KPV_WORDS_PER_SLOT 16
 /** @brief Total 32-bit words across the entire KPV (largest shred region). */

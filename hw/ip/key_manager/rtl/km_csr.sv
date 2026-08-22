@@ -64,7 +64,7 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     output logic        scrambler_enable_o,   // Scrambler enable
     output logic        scrambler_lock_o,     // Scrambler lock status
 
-    // SRAM write-lock (to SRAM interface): bit[i]=1 locks region i (512 bytes each). Write-1-only.
+    // SRAM write-lock (to SRAM interface): bit[i]=1 locks region i. Write-1-only.
     output logic [31:0] sram_lock_bits_o,
     // SRAM write-lock violation (from SRAM interface): one-hot region that had attempted write while locked
     input  logic [31:0] sram_write_lock_violation_region_i,

@@ -618,7 +618,7 @@ this epoch (including a prior `CMD_EXEC_ROM`).
 *Description*
 
 Instructs the KM ROM to accept a mutable firmware image via the mailbox
-FIFO, load it into SRAM starting at address `0x4000`, verify the image
+FIFO, load it into SRAM starting at address `0x8000`, verify the image
 integrity with CRC-32C, and hand control to the loaded firmware.
 
 After sending the command, the SEP waits for the KM to confirm that it is
@@ -644,7 +644,7 @@ If the CRC check passes, the KM:
 . Scrambles the entire SRAM with a pseudo-random pattern (locked regions are
   silently skipped by hardware).
 . Clears all CPU general-purpose registers.
-. Jumps to `0x4000` (SRAM base).
+. Jumps to `0x8000` (SRAM base).
 
 The ROM never returns to the main loop.  The mutable firmware is responsible
 for sending its own ready message to the SEP.
@@ -655,7 +655,7 @@ for sending its own ready message to the SEP.
   the command returns _failure_ immediately and the image is not requested.
 * `FW_WORDS` must be non-zero and the loaded image must fit entirely below
   the static load ceiling `__km_fw_load_limit` (the worst-case ROM stack
-  bound, region-aligned to a 512-byte SRAM write-lock boundary), otherwise
+  bound, region-aligned to a 1 KB SRAM write-lock boundary), otherwise
   _invalid_arg_ is returned and no image is requested.  The ceiling is a
   build-time constant, so a warm-reset
   `CMD_SRAM_EXEC` restart whose ROM stack runs deeper than at load time can
@@ -2517,7 +2517,7 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
 . *Validate.*  The ROM checks `FW_WORDS > 0` and that the firmware image
   fits below the static load ceiling `__km_fw_load_limit` — a build-time
   constant computed by the linker as `STACK - __rom_max_stack`, rounded down
-  to a 512-byte SRAM write-lock region boundary, where `__rom_max_stack` is
+  to a 1 KB SRAM write-lock region boundary, where `__rom_max_stack` is
   the worst-case ROM stack depth validated against the production ELF (see
   <<km-rom-stack-budget>>).  If either check fails, the command returns
   _invalid_arg_ and no image is requested.
@@ -2528,7 +2528,7 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   streaming the image.
 
 . *Stream.*  The ROM polls the inbound FIFO directly (bypassing the normal
-  message buffer), storing each word into SRAM starting at `0x4000` and
+  message buffer), storing each word into SRAM starting at `0x8000` and
   accumulating a running CRC-32C.  A per-word guard (defense-in-depth on top
   of the static `__km_fw_load_limit` validation) ensures the destination
   address never reaches the load ceiling.
@@ -2579,7 +2579,7 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   unlocked by this point.  Surviving SW-domain key slots keep the write-lock they
   have carried since creation and are NOT read-locked, because mutable firmware
   has to read them to transfer keys to engine ports, to derive from them, and to
-  re-seal descriptors.  The SRAM write-lock mask is set to cover all 512-byte
+  re-seal descriptors.  The SRAM write-lock mask is set to cover all 1 KB
   regions that contain the loaded image.
 
 . *Disable IRQs and flush the mailbox.*  All KMCSR/mailbox IRQ enables are
@@ -2593,7 +2593,7 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
 
 . *Scramble.*  A stack-less assembly routine (`rom_handover_jump.S`) seeds a
   `xoshiro128++` PRNG from the value passed from C, iterates over the full
-  SRAM range `0x4000–0xC000`, and overwrites each address with a
+  SRAM range `0x8000`–`0xFFFF`, and overwrites each address with a
   pseudo-random word.  Hardware silently discards writes to write-locked
   regions (firmware image and `rom_persist`), so only ROM runtime data
   (stack, `.data`, `.bss`) is actually overwritten.  No stack pointer or
@@ -2621,7 +2621,7 @@ handled during the boot.
   minimises the window during which SRAM execution is enabled before the first
   SRAM fetch.
 
-. *Jump.*  `jalr zero, 0(x5)` transfers control to `0x4000`.  The ROM
+. *Jump.*  `jalr zero, 0(x5)` transfers control to `0x8000`.  The ROM
   never returns.  The mutable firmware is responsible for sending its own
   ready message to the SEP.
 
@@ -2676,7 +2676,7 @@ The KM CPU may never executre from from both in either ROM or mutable software m
 |===
 | Memory | Size | Holds | Executable
 | ROM | 16 KB | The immutable KM application. | Only before handover.
-| SRAM | 32 KB | ROM runtime data (`.data`, `.bss`, stack), and the mutable firmware image from `0x4000` upward. | Only after handover, and only the write-locked image region.
+| SRAM | 32 KB | ROM runtime data (`.data`, `.bss`, stack), and the mutable firmware image from `0x8000` upward. | Only after handover, and only the write-locked image region.
 |===
 
 Before handover the execute-permission whitelist names the ROM alone; the loaded
@@ -2789,7 +2789,7 @@ to enforce them on its behalf.
 [[km-rom-stack-budget]]
 ====== ROM Stack Budget and the Static Load Ceiling
 
-Mutable firmware is loaded from the SRAM base (`0x4000`) and grows upward,
+Mutable firmware is loaded from the SRAM base (`0x8000`) and grows upward,
 while the ROM stack grows downward from `STACK` (the top of the ROM's
 `.data`/`.bss`).  After a warm reset that follows mutable-firmware execution,
 the ROM re-runs and a subsequent `CMD_SRAM_EXEC` restart may drive the stack
@@ -2814,7 +2814,7 @@ The bound is enforced statically:
   same value the analyzer checks the image against.
 
 * The linker (`km_sram_layout.ld`) derives the load ceiling
-  `__km_fw_load_limit = (STACK - __rom_max_stack)`, rounded down to a 512-byte
+  `__km_fw_load_limit = (STACK - __rom_max_stack)`, rounded down to a 1 KB
   SRAM write-lock region so the image and ROM stack never share a lock region,
   and asserts that a non-empty load area remains.  `rom_cmd_sram_load_exec()`
   rejects any image whose top exceeds this symbol.
@@ -3688,7 +3688,7 @@ survives the handover: every other SRAM region is overwritten on the way out
 * `sram_fw_size`, the size of any loaded mutable firmware image.
 
 The region is a build-time constant, sized to hold all of the above and aligned
-to the 512-byte SRAM write-lock granularity so that it occupies whole lock
+to the 1 KB SRAM write-lock granularity so that it occupies whole lock
 regions and shares none with the ROM stack or with the loaded image.
 
 NOTE: Sizing `rom_persist` for the descriptor table makes it substantially

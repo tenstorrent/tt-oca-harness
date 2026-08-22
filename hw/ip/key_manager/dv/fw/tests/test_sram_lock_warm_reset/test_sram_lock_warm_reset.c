@@ -66,7 +66,7 @@
  * Not region 15 (known hang), not a phase-marker region. */
 #define TEST_REGION 6u
 #define TEST_REGION_MASK (1u << TEST_REGION)
-#define TEST_REGION_BASE (SRAM_BASE + (uint32_t)TEST_REGION * 512u)
+#define TEST_REGION_BASE (SRAM_BASE + (uint32_t)TEST_REGION * SRAM_LOCK_REGION_BYTES)
 #define TEST_WRITE_ADDR (TEST_REGION_BASE + 0x80u)
 
 /* Distinct data patterns for before/after lock. */

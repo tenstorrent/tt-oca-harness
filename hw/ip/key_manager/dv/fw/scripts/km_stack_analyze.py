@@ -11,8 +11,8 @@ deepest path.
 
 Why this exists
 ---------------
-Mutable firmware is loaded into SRAM starting at 0x4000 and grows up, while the
-ROM's stack grows *down* from the top of usable SRAM toward 0x4000.  After a
+Mutable firmware is loaded into SRAM starting at 0x8000 and grows up, while the
+ROM's stack grows *down* from the top of usable SRAM toward 0x8000.  After a
 warm reset that follows mutable-firmware execution, the ROM re-runs (e.g. a
 ``CMD_SRAM_EXEC`` restart) and its stack may descend deeper than it did at the
 moment the image was originally loaded.  The maximum mutable-firmware size must
@@ -204,7 +204,7 @@ def longest_path(funcs: dict[str, Func], root: str):
             return memo[name]
         f = funcs.get(name) or funcs.get(_base_name(name))
         if f is None:
-            # External/leaf symbol (e.g. SRAM 0x4000 handover target): depth 0.
+            # External/leaf symbol (e.g. SRAM 0x8000 handover target): depth 0.
             return (0, [name])
         reachable.add(f.name)
         if name in on_stack:

@@ -21,9 +21,9 @@
 #include "rom_kmcsr.h"
 #include "key_manager_fw.h"
 
-/* Use region 18 (0x4000 + 18*0x200 = 0x6400) — intentionally NOT locked. */
+/* Use region 18 (0x8000 + 18*0x400 = 0xC800) — intentionally NOT locked. */
 #define UNLOCKED_CODE_REGION 18u
-#define REGION_SIZE_BYTES 0x200u
+#define REGION_SIZE_BYTES SRAM_LOCK_REGION_BYTES
 #define SRAM_CODE_BASE (SRAM_BASE + (UNLOCKED_CODE_REGION * REGION_SIZE_BYTES))
 
 typedef uint32_t (*add1_fn_t)(uint32_t);

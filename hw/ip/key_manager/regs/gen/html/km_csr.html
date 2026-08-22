@@ -17,7 +17,7 @@
 <tr><td>0x10</td><td><a href="#IRQ_ENABLE">IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable/mask register</td></tr>
 <tr><td>0x14</td><td><a href="#SCRAMBLER_KEY">SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.</td></tr>
 <tr><td>0x18</td><td><a href="#SCRAMBLER_CTRL">SCRAMBLER_CTRL</a></td><td>RW</td><td>Scrambler control register</td></tr>
-<tr><td>0x1C</td><td><a href="#SRAM_LOCK">SRAM_LOCK</a></td><td>RW</td><td>SRAM write-lock bits. Bit[i]=1 locks region i (512 bytes each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.</td></tr>
+<tr><td>0x1C</td><td><a href="#SRAM_LOCK">SRAM_LOCK</a></td><td>RW</td><td>SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.</td></tr>
 <tr><td>0x20</td><td><a href="#IRQ_SET">IRQ_SET</a></td><td>W</td><td>Interrupt set register. Write 1 to trigger corresponding interrupt (for ISR testing). Write-only, reads return 0.</td></tr>
 <tr><td>0x24</td><td><a href="#SRAM_WRITE_LOCK_VIOLATION">SRAM_WRITE_LOCK_VIOLATION</a></td><td>RW</td><td>Which SRAM region(s) had write attempts while locked. Bit[i]=region i. Sticky, write 1 to clear each bit.</td></tr>
 <tr><td>0x28</td><td><a href="#RECOVERABLE_ERR">RECOVERABLE_ERR</a></td><td>RW</td><td>Recoverable error status. Firmware writes 1 to set (after recovering in ISR), writes 0 to clear (e.g. when SEP requests clear). Drives recoverable error event output.</td></tr>
@@ -173,7 +173,7 @@
 <h3 id="SRAM_LOCK">SRAM_LOCK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>lock_bits</td><td>RW</td><td>0x0</td><td>One bit per 512-byte SRAM region. Region 0 = 0x4000-0x41FF, region 31 = 0x7E00-0x7FFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
+<tr><td>31:0</td><td>lock_bits</td><td>RW</td><td>0x0</td><td>One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
 </table>
 <h3 id="IRQ_SET">IRQ_SET</h3>
 <table>
