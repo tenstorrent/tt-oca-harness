@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/register_tables.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+			<a class="navbar-item" href="../../ocah-contributing/latest/index.html">Starting with OCAH</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/02_tt_logo_standard_teal_black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-contributing" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Contributing Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../ocah-home/latest/index.html">Open Chiplet Atlas Harness (OCAH)</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></li>
+    <li>Starting as a contributor</li>
+    <li><a href="code_of_conduct.html">Code of Conduct</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="ocah-code-of-conduct"><a class="anchor" href="#ocah-code-of-conduct"></a><a class="link" href="#ocah-code-of-conduct">1. OCAH Code of Conduct</a></h2>
+<div class="sectionbody">
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This document is currently under development.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Simplified version of the OpenTitan Code of Conduct.</p>
+</li>
+<li>
+<p>Contribution documentation may not be required at this point.</p>
+</li>
+<li>
+<p>Some sections depend on governance structure</p>
+</li>
+</ul>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect2">
+<h3 id="code-of-conduct"><a class="anchor" href="#code-of-conduct"></a><a class="link" href="#code-of-conduct">1.1. Code of Conduct</a></h3>
+<div class="paragraph">
+<p>This code of conduct applies to all spaces managed on behalf of the OCAH project.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Be welcoming</strong>.</p>
+<div class="paragraph">
+<p>We strive to be a community that welcomes and supports people of all backgrounds and identities. This includes, but is not limited to members of any race, ethnicity, culture, national origin, colour, immigration status, social and economic class, educational level, sex, sexual orientation, gender identity and expression, age, size, family status, political belief, religion or lack thereof, and mental and physical ability.</p>
+</div>
+</li>
+<li>
+<p><strong>Be considerate</strong>.</p>
+<div class="paragraph">
+<p>Your work will be used by other people, and you in turn will depend on the work of others. Any decision you take will affect users and colleagues, and you should take those consequences into account. Remember that we’re a world-wide community, so you might not be communicating in someone else’s primary language. Many of our community members are here as part of their work, and content (words, images, videos) you share should be appropriate for professional workplaces.</p>
+</div>
+</li>
+<li>
+<p><strong>Be respectful</strong>.</p>
+<div class="paragraph">
+<p>Not all of us will agree all the time, but disagreement is no excuse for poor behaviour and poor manners. We might all experience some frustration now and then, but we cannot allow that frustration to turn into a personal attack. It’s important to remember that a community where people feel uncomfortable or threatened is not a productive one. Members of the community should be respectful when dealing with other members as well as with people outside the community.</p>
+</div>
+</li>
+<li>
+<p><strong>Be careful</strong></p>
+<div class="paragraph">
+<p>in the words and images that you choose and be kind to others. Do not insult or put down other participants. Harassment and other exclusionary behaviour aren’t acceptable. In general, if someone asks you to stop, then stop. Persisting in such behaviour after being asked to stop is considered harassment.</p>
+</div>
+<div class="paragraph">
+<p>This includes, but is not limited to:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Violent threats or language directed against another person.</p>
+</li>
+<li>
+<p>Discriminatory jokes and language.</p>
+</li>
+<li>
+<p>Posting sexually explicit or violent material.</p>
+</li>
+<li>
+<p>Posting (or threatening to post) other people’s personally identifying information ("doxing").</p>
+</li>
+<li>
+<p>Personal insults, especially those using racist or sexist terms.</p>
+</li>
+<li>
+<p>Unwelcome sexual attention.</p>
+</li>
+<li>
+<p>Advocating for, or encouraging, any of the above behaviour.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>When we disagree, try to understand why</strong>.</p>
+<div class="paragraph">
+<p>Disagreements, both social and technical, happen all the time. It is important that we resolve disagreements and differing views constructively.  Different people have different perspectives on issues. Being unable to understand why someone holds a viewpoint doesn’t mean that they’re wrong. Focus on helping to resolve issues and learning from mistakes.</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="reporting-problems"><a class="anchor" href="#reporting-problems"></a><a class="link" href="#reporting-problems">1.2. Reporting Problems</a></h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If you believe someone is violating the code of conduct you can report it to the Code of Conduct team by emailing XXXXXX.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>All reports will be kept confidential. This isn’t a public list and only members of the Code of Conduct team will receive the report.  If the violation occurs at an event such as a conference or workshop and requires immediate attention, you can also reach out to any of the event organisers or staff.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If you believe anyone is in physical danger, please notify appropriate law enforcement first. If you are unsure what law enforcement agency is appropriate, please include this in your report and we will attempt to notify them.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If you feel comfortable, please consider including:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Your contact info (so we can get in touch with you if we need to follow up).</p>
+</li>
+<li>
+<p>Names (real, nicknames, or pseudonyms) of any individuals involved. If there were other witnesses besides you, please try to include them as well.</p>
+</li>
+<li>
+<p>When and where the incident occurred. Please be as specific as possible.</p>
+</li>
+<li>
+<p>Your account of what occurred. If there is a publicly available record (e.g. a mailing list archive or a public IRC logger) please include a link.</p>
+</li>
+<li>
+<p>Any extra context you believe existed for the incident.</p>
+</li>
+<li>
+<p>If you believe this incident is ongoing.</p>
+</li>
+<li>
+<p>Any other information you believe we should have.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="what-happens-after-you-file-a-report"><a class="anchor" href="#what-happens-after-you-file-a-report"></a><a class="link" href="#what-happens-after-you-file-a-report">1.3. What happens after you file a report?</a></h3>
+<div class="paragraph">
+<p>You will receive an email from the Code of Conduct team acknowledging receipt within 24 hours (and we will aim to respond much quicker than that).
+The Code of Conduct team will immediately meet to review the incident and try to determine:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>What happened and who was involved.</p>
+</li>
+<li>
+<p>Whether this event constitutes a code of conduct violation.</p>
+</li>
+<li>
+<p>Whether this is an ongoing situation, or if there is a threat to anyone’s physical safety.</p>
+</li>
+<li>
+<p>Whether the incident requires escalation to the OpenTitan Governing Board</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>If this is determined to be an ongoing incident or a threat to physical safety, the working groups’ immediate priority will be to protect everyone involved. This means we may delay an "official" response until we believe that the situation has ended and that everyone is physically safe.</p>
+</div>
+<div class="paragraph">
+<p>The Code of Conduct team will try to contact other parties involved or witnessing the event to gain clarity on what happened and understand different perspectives. Once the Code of Conduct team has a complete account of the events they will make a decision as to how to respond.</p>
+</div>
+<div class="paragraph">
+<p>The Code of Conduct team may make any of the responses below, notifying the OpenTitan Governing Board of the action taken:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>No action, if we determine no violation occurred or it has already been appropriately resolved.</p>
+</li>
+<li>
+<p>Moderation or mediation to ongoing interactions (where appropriate, safe, and desired by both parties).</p>
+</li>
+<li>
+<p>A private reprimand from the working group to the individuals involved.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="attribution"><a class="anchor" href="#attribution"></a><a class="link" href="#attribution">1.4. Attribution</a></h3>
+<div class="paragraph">
+<p>This text is based on the <a href="https://opentitan.org/code-of-conduct/">OpenTitan Code of Conduct</a> which is based on the LLVM Code of Conduct.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca-footer.png" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/02_tt_logo_standard_teal_white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

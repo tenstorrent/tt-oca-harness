@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/register_tables.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+			<a class="navbar-item" href="../../ocah-contributing/latest/index.html">Starting with OCAH</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/02_tt_logo_standard_teal_black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-contributing" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Contributing Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../ocah-home/latest/index.html">Open Chiplet Atlas Harness (OCAH)</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></li>
+    <li>Starting as a user</li>
+    <li><a href="guidelines.html">Guidelines</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="ocah-development-guidelines"><a class="anchor" href="#ocah-development-guidelines"></a><a class="link" href="#ocah-development-guidelines">1. OCAH development guidelines</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="standards"><a class="anchor" href="#standards"></a><a class="link" href="#standards">1.1. Standards</a></h3>
+<div class="paragraph">
+<p>The OCAH design will follow industry or FOSS standards where appropriate:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>SystemVerilog RTL</p>
+</li>
+<li>
+<p>AMBA system buses</p>
+</li>
+<li>
+<p>SystemRDL memory map</p>
+</li>
+<li>
+<p>AsciiDoc documentation with Asciidoctor</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The hardware design is written in a synthesizable subset of
+SystemVerilog RTL language. The coding standards are adopted from the
+lowRISC organization and are also used in OpenTitan.</p>
+</div>
+<div class="paragraph">
+<p>System interconnect is implemented with AMBA standard buses. AXI4 and
+AXI4-lite is used for data interfaces and is generally configured with
+64-bit data and address. Control buses for accessing CSRs and other low
+speed sources are implemented with 32-bit APB.</p>
+</div>
+<div class="paragraph">
+<p>The system memory map and component CSRs (Configuration and Status
+Registers) are defined in SystemRDL. This is the single source of truth
+and all downstream representations are rendered from this source.
+Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
+SystemVerilog RTL.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="development-tools"><a class="anchor" href="#development-tools"></a><a class="link" href="#development-tools">1.2. Development Tools</a></h3>
+<div class="paragraph">
+<p>We aim primarily to use open source tools for the development of OCAH in
+order to eliminate commercial dependencies and enabling open-sourcing
+not only the design, but also the associated tools.</p>
+</div>
+<div class="paragraph">
+<p>The goal is to enable new adopters of OCAH to be able to immediately
+perform simulations and other analyses of the design using readily
+available free tools.</p>
+</div>
+<div class="paragraph">
+<p>For internal development and testing we will employ commercial tools to
+validate the OCAH design, proving readiness for chip deployment i.e.
+tapeout. This includes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Design verification</p>
+</li>
+<li>
+<p>lint tools for code quality</p>
+</li>
+<li>
+<p>logic synthesis</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="component-directory-organization"><a class="anchor" href="#component-directory-organization"></a><a class="link" href="#component-directory-organization">1.3. Component Directory Organization</a></h3>
+<div class="paragraph">
+<p>All components will have a uniform directory structure which has the
+following elements:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>README.md : component overview and quick start guide in Markdown
+format</p>
+</li>
+<li>
+<p>doc/ : detailed AsciiDoc documentation (architecture.adoc, interface.adoc,
+memmap.adoc, index.adoc)</p>
+</li>
+<li>
+<p>rtl : all SystemVerilog modules &lt;component&gt;_*.sv</p>
+</li>
+<li>
+<p>tb : unit level Verilator tests</p>
+</li>
+<li>
+<p>regs/ : &lt;component&gt;.rdl SystemRDL CSR memory map definition and generated collateral</p>
+</li>
+<li>
+<p>syn : logic synthesis constraints (optional)</p>
+</li>
+<li>
+<p>lint : lint waiver files</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="systemverilog-coding-guidelines"><a class="anchor" href="#systemverilog-coding-guidelines"></a><a class="link" href="#systemverilog-coding-guidelines">1.4. SystemVerilog Coding Guidelines</a></h3>
+<div class="paragraph">
+<p>The high level goals are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>avoid SystemVerilog constructs that are error prone or not consistently supported,
+particularly across open source tools</p>
+</li>
+<li>
+<p>ensure that the code is tidy and easy to read</p>
+</li>
+<li>
+<p>keep the code style consistent across the project&#8217;s code base regardless of who authored it</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>OCAH will <em>mostly</em> follow the OpenTitan SystemVerilog coding rules
+defined by lowRISC group in
+<a href="https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md">Verilog
+Coding Style</a>. That document is locally copied for convenience.</p>
+</div>
+<div class="paragraph">
+<p>This section highlights a few of the most important aspects as well as a
+few deviations from the OpenTitan rules. If there is a conflict between
+the two, the specification here takes precedence.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Use four spaces for indentation, rather than two for new files</p>
+</li>
+<li>
+<p>Use all upper case letters to name enums, constants (localparam), and
+parameters instead of UpperCamelCase.</p>
+</li>
+<li>
+<p>As stated in the lowRISC guidelines, SystemVerilog Interfaces can be
+limited in terms of tool support, so we <em>highly discourage</em> their use as
+they are not uniformly supported by open source tools. As an
+alternative, struct types can be used instead to bundle groups of input
+or output signals to make ports more abstract.</p>
+</li>
+<li>
+<p>Finite State Machines (FSMs) are powerful sequence control constructs
+but can spiral out of control quickly. Consequences are difficult to
+understand "next state" logic and long timing paths. Separate the
+combinatorial "next state" logic from the sequential state update into
+distinct always blocks. <strong>Do not</strong> combine the two into a single clocked
+always block. Opt for a
+<a href="https://en.wikipedia.org/wiki/Moore_machine">Moore machine</a>
+implementation when possible to aid in timing closure. If you have
+complexity of more than ten states or so, use a microsequencer approach.
+This is more scalable and maintainable.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>There will be additional rules that apply to security sensitive
+components such as ciphers. These will be documented in more detail, but
+here is a summary for now:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>FSM state encodings are one-hot with error checking</p>
+</li>
+<li>
+<p>Error detection is implemented on storage elements and some bus and
+computational elements</p>
+</li>
+<li>
+<p>Secret data is transferred and stored in secret-split fashion</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="rtl-code-comments"><a class="anchor" href="#rtl-code-comments"></a><a class="link" href="#rtl-code-comments">1.5. RTL Code Comments</a></h3>
+<div class="paragraph">
+<p>Include a description of the purpose and overall function of the module
+in the header.</p>
+</div>
+<div class="paragraph">
+<p>RTL code comments may be redundant or add little value to the code.
+Keep comments in the RTL as minimal as possible and, where possible,
+make the code self explanatory.</p>
+</div>
+<div class="paragraph">
+<p>Do not add a comment which describes the functionality of the code
+where the code is clear.</p>
+</div>
+<div class="paragraph">
+<p>If there is a tricky bit of code with some nuance, add a comment describing
+the overall goal or strategy of the code.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca-footer.png" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/02_tt_logo_standard_teal_white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

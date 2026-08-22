@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Filing issues :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../_/css/site.css">
     <link rel="stylesheet" href="../../_/css/extra.css">
@@ -87,38 +87,41 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="index.html">Contribution Guide</a>
+    <span class="nav-text">Starting as a user</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="#licensing.adoc">Licensing</a>
-  </li>
-  <li class="nav-item is-current-page" data-depth="2">
-    <a class="nav-link" href="contribution.html">Contributions</a>
+    <a class="nav-link" href="dependencies.html">Dependencies</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="#defects.adoc">Defect Reporting</a>
+    <a class="nav-link" href="workflows.html">Workflows</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="#code_of_conduct.adoc">Code of Conduct</a>
+    <a class="nav-link" href="guidelines.html">Guidelines</a>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>
-    <span class="nav-text">Getting Started Guide</span>
+    <span class="nav-text">Starting as a contributor</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="#guidelines.adoc">Guidelines</a>
+    <a class="nav-link" href="licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="contribution.html">Contributions</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="#dependencies.adoc">Dependencies</a>
+    <a class="nav-link" href="defects.html">Defect Reporting</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="#workflows.adoc">Workflows</a>
+    <a class="nav-link" href="documentation.html">Documentation</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="#documentation.adoc">Documentation</a>
+    <a class="nav-link" href="code_of_conduct.html">Code of Conduct</a>
   </li>
 </ul>
   </li>
@@ -193,7 +196,7 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></li>
-    <li><a href="index.html">Contribution Guide</a></li>
+    <li>Starting as a contributor</li>
     <li><a href="contribution.html">Contributions</a></li>
   </ul>
 </nav>
@@ -203,55 +206,413 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Filing issues</h1>
-<div id="preamble">
+<div class="sect1">
+<h2 id="getting-started-with-the-repository"><a class="anchor" href="#getting-started-with-the-repository"></a><a class="link" href="#getting-started-with-the-repository">1. Getting started with the repository</a></h2>
 <div class="sectionbody">
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
 <div class="paragraph">
-<p>Open a new issue from
-<a href="https://github.com/tenstorrent/tt-oca-harness/issues/new/choose">New issue</a>
-and pick <strong>Bug</strong>, <strong>Task</strong>, or <strong>Feature</strong>. Blank issues are off.
-Allowed values live in <code>.github/issue-taxonomy.yml</code>.</p>
-</div>
-<div class="paragraph">
-<p>Required: <strong>Workstream</strong>, <strong>Subsystem</strong>, <strong>Component</strong> (General if unsure),
-<strong>Priority</strong> (P2 if unsure), and <strong>Target release</strong> (<code>Future</code> if unscheduled).
-Description is optional. Do not pick a GitHub milestone.</p>
-</div>
-<div class="paragraph">
-<p>Do not pick labels. The form picks feed
-<a href="https://github.com/orgs/tenstorrent/projects/291">Project 291</a>
-(Component <strong>General</strong> does not get a label).</p>
-</div>
-<div class="paragraph">
-<p>Security reports must not be public issues. Use
-<a href="https://github.com/tenstorrent/tt-oca-harness/security/advisories/new">private vulnerability reporting</a>.</p>
-</div>
-</div>
-</div>
-<h1 id="pull-requests" class="sect0"><a class="anchor" href="#pull-requests"></a><a class="link" href="#pull-requests">Pull requests</a></h1>
-<div class="paragraph">
-<p>Open a pull request against <code>main</code>. The template asks for:</p>
+<p>This document is currently under development.</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Summary</strong> — optional. What changed and why</p>
+<p>Contribution documentation may not be required at this point.</p>
 </li>
 <li>
-<p><strong>Test plan</strong> — optional. Leave blank or write <code>N/A</code> if nothing was run</p>
+<p>Semantic Versioning may need considering in a silicon context</p>
+</li>
+</ul>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>OCAH development is hosted on GitHub under the Tenstorrent organization.
+Clone the public repository and use standard GitHub workflows for issues,
+pull requests, and code review.</p>
+</div>
+<div class="paragraph">
+<p>Development can proceed on either macOS or Linux. Open-source tools work on
+both platforms; commercial EDA tools such as VCS and Design Compiler are
+typically available on shared Linux build hosts when needed.</p>
+</div>
+<div class="paragraph">
+<p>Follow these steps to get set up and started with development.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Create a GitHub account if you do not already have one.</p>
 </li>
 <li>
-<p><strong>Closes</strong> — <code>Fixes #N</code> only if this PR should close issues on merge
-(or pick them under <strong>Development</strong>). Delete the section if nothing closes.</p>
+<p>Configure Git credential management on your machine:</p>
+<div class="literalblock">
+<div class="content">
+<pre>brew install git-credential-manager</pre>
+</div>
+</div>
 </li>
 <li>
-<p><strong>Notes</strong> — optional; delete if unused</p>
+<p>Generate an SSH key pair:</p>
+<div class="literalblock">
+<div class="content">
+<pre>ssh-keygen -t ed25519</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Start the SSH agent and add your key. You may want to add this to your
+shell startup script:</p>
+<div class="literalblock">
+<div class="content">
+<pre>eval "$(ssh-agent -s)"
+ssh-add &lt;name of your key&gt;</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Add the public key to your GitHub account under
+<a href="https://github.com/settings/keys" class="bare">https://github.com/settings/keys</a>. Verify the key with:</p>
+<div class="literalblock">
+<div class="content">
+<pre>ssh-add -l</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Clone the repository</p>
+<div class="literalblock">
+<div class="content">
+<pre>git clone git@github.com:tenstorrent/tt-oca.git
+cd tt-oca
+git checkout -b &lt;your-branch&gt;</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create a feature branch for your work (see below for branch management).</p>
+<div class="literalblock">
+<div class="content">
+<pre>git checkout -b &lt;your-branch&gt;</pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="development-flow"><a class="anchor" href="#development-flow"></a><a class="link" href="#development-flow">2. Development Flow</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>We strive for a development process that balances agility and clarity. To
+that end, we use the following conventions and processes:</p>
+</div>
+<div class="sect2">
+<h3 id="management-of-main-branch"><a class="anchor" href="#management-of-main-branch"></a><a class="link" href="#management-of-main-branch">2.1. Management of Main branch</a></h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Direct commits to <code>main</code> are not allowed. All changes must come through a PR.
+The main branch will be protected and no direct pushes are allowed.
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Development of each feature should happen on its own, dedicated
+branch</p>
+</li>
+<li>
+<p>A GitHub issue should be associated with the feature where possible,
+to facilitate discussion and review.</p>
+</li>
+<li>
+<p>The <code>main</code> branch is the target for all feature PRs.</p>
+</li>
+<li>
+<p>All PRs targeting <code>main</code> must pass a battery of basic smoke tests
+automatically run by the GitHub CI before a merge is allowed. Early in the project, there may not be meaningful tests, but these will
+be added as the project matures.</p>
+</li>
+<li>
+<p>The <code>main</code> branch should be kept 'working' at all times, meaning that
+every version should be useful for continued development and testing.
+Developers should be able to pull the latest <code>main</code> branch and run the
+code without major issues.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="management-of-release-branches"><a class="anchor" href="#management-of-release-branches"></a><a class="link" href="#management-of-release-branches">2.2. Management of Release branches</a></h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Direct commits to release branches are not allowed. All changes must come
+through a PR.
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>When a release is close to ready a release branch is created from
+<code>main</code> and named with the release major.patch version. This branch is
+used to finalize the release, e.g. by updating documentation, fixing any
+last minute bugs, etc.</p>
+</li>
+<li>
+<p>All changes to the release branch are based on PRs with GitHub issues
+targeting the release branch. If these changes also apply to <code>main</code>,
+then a PR should be created against those branches as well.</p>
+</li>
+<li>
+<p>All changes targeting the release branch must pass a battery of basic
+smoke tests automatically run by the GitHub CI before a merge is allowed
+as well as additional release specific tests.</p>
+</li>
+<li>
+<p>All changes to the release branch are also applied to <code>main</code></p>
+<div class="ulist">
+<ul>
+<li>
+<p>This means that the release branch is not merged back into <code>main</code> when
+the release is finalized. A trial merge can be done to ensure that all
+relevant changes are applied to <code>main</code>, but this is not strictly necessary.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>When the release is finalized, the release branch is tagged with the
+release version.</p>
+</li>
+<li>
+<p>Minor (point) releases are made on the same major release branch,
+e.g. <code>v1.0.x</code>, where <code>x</code> is the minor version number. This allows users
+to pull from the 'v1.0.x' branch to get the latest bug fixes and minor
+enhancements without having to switch to a new major release branch.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="pull-requests"><a class="anchor" href="#pull-requests"></a><a class="link" href="#pull-requests">2.3. Pull Requests</a></h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+All changes, however small, must go through a pull request and be reviewed
+before being accepted into the release codebase.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A pull request (PR in GitHub terminology or MR, merge request, in GitLab
+terminology) is GitHub&#8217;s process of controlled merging between branches.</p>
+</div>
+<div class="paragraph">
+<p>A pull request is a proposal to merge code changes from one branch into
+another (generally the main codebase).  It lets developers ask team members
+to review, discuss, and approve updates before adding them to the released
+project.</p>
+</div>
+<div class="paragraph">
+<p>Code changes not strictly related to the target feature, major change or issue
+should go into a separate PR.  We make use of this to document changes to the
+codebase and facilitate code review.</p>
+</div>
+<div class="paragraph">
+<p>A pull request (PR) should contain all the code changes required to address
+an issue, or all the code changes leading to the implementation of a new
+feature or a major change in the design.
+At the same time, a PR should be as small as possible to simplify and speed
+up the review process. It may make sense to break down larger contributions
+into multiple, self-contained PRs.</p>
+</div>
+<div class="paragraph">
+<p>For bug fixes - a single PR is ideal to fix a single bug.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="continuous-integration"><a class="anchor" href="#continuous-integration"></a><a class="link" href="#continuous-integration">2.4. Continuous Integration</a></h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+All changes to the source code are tested thoroughly in a continuous
+integration system.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Tests run automatically when changes are proposed for inclusion by submitting
+a pull request, and on the master branch after changes are merged. Changes
+which fail automated test cannot be submitted.
+This ensures that the source code meets certain quality criteria at all points
+in time, as defined by the tests which are executed.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="generated-content"><a class="anchor" href="#generated-content"></a><a class="link" href="#generated-content">2.5. Generated Content</a></h3>
+<div class="paragraph">
+<p>Content automatically generated from source should <em>not</em> be tracked with
+Git. Makefiles and scripts should generate this content on-demand as
+part of build and simulation flows. Tracking generated content has many
+downsides including:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Repository bloat from constantly changing generated content.  This is
+especially true when binary files are added.</p>
+</li>
+<li>
+<p>Unintended inconsistencies between source and generated content.
+For example incorrect code could go to tapeout because a designer forgot to
+run the RTL code generation script before checking in critical source
+script changes.
+Missing content is preferable to incorrect content.</p>
+</li>
+<li>
+<p>Unnecessary and confusing merge conflicts that may not be resolved
+properly, potentially leading to the same sort of design errors
+mentioned above.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>CI does not require those sections. Project taxonomy lives on issues, not PRs.
-Pull requests are reviewed weekly.</p>
+<p>There are exceptions where tracking generated content would be advisable,
+including:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Published specs and documentation generated from source for viewing
+directly from GitHub.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>We can consider setting up <a href="https://git-lfs.com/">Git LFS</a> to track large
+binary content if necessary.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="versioning"><a class="anchor" href="#versioning"></a><a class="link" href="#versioning">2.6. Versioning</a></h3>
+<div class="paragraph">
+<p>The OCAH project will use semantic versioning (semver) version 2 for
+releases. The version format is <code>MAJOR.MINOR.PATCH</code>, where:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>MAJOR version when you make incompatible API changes</p>
+</li>
+<li>
+<p>MINOR version when you add functionality in a backward compatible
+manner</p>
+</li>
+<li>
+<p>PATCH version when you make backward compatible bug fixes</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Additional labels for pre-release and build metadata are available as
+extensions to the MAJOR.MINOR.PATCH format.</p>
+</div>
+<div class="paragraph">
+<p>See the documentation on <a href="https://semver.org">semver</a> for more details.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="tracking-tasks-and-bugs-with-github"><a class="anchor" href="#tracking-tasks-and-bugs-with-github"></a><a class="link" href="#tracking-tasks-and-bugs-with-github">3. Tracking Tasks and Bugs with GitHub</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="working-with-issues"><a class="anchor" href="#working-with-issues"></a><a class="link" href="#working-with-issues">3.1. Working with Issues</a></h3>
+<div class="paragraph">
+<p>Development tasks are managed using GitHub issues. GitHub supports issue
+hierarchy, so Issues may have parent and child issues.  This allows grouping
+of related Issues which contribute to an overall goal.</p>
+</div>
+<div class="paragraph">
+<p>Labels are a valuable tool to group related tasks.  Care should be taken not
+to create too many new labels.  Always check first if there is an existing
+label to cover the topic on which you are working.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="working-with-milestones"><a class="anchor" href="#working-with-milestones"></a><a class="link" href="#working-with-milestones">3.2. Working with Milestones</a></h3>
+<div class="paragraph">
+<p>Milestones may be used to indicate a release point where a number of changes
+will be avaialble.  Assigning issues to milestones allows tracking of progress
+towards the overall goal.  Completion of milestones may trigger design reviews
+or progress updates.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="working-with-bugs"><a class="anchor" href="#working-with-bugs"></a><a class="link" href="#working-with-bugs">3.3. Working with Bugs</a></h3>
+<div class="paragraph">
+<p>Issues can also be used to track bugs. Design, verification, and firmware
+engineers may file bug issues against the design. Bug issues should be
+assigned to the owner of the affected code, who may then reassign the issue
+as appropriate to manage the corrective work. More detail on raising bugs
+is found in the section on <a href="defects.html" class="xref page">Defects</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="how-to-reference-issues-in-commit-messages-and-prs"><a class="anchor" href="#how-to-reference-issues-in-commit-messages-and-prs"></a><a class="link" href="#how-to-reference-issues-in-commit-messages-and-prs">3.4. How to reference issues in commit messages and PRs</a></h3>
+<div class="paragraph">
+<p>Commits and PRs related to existing issues or PRs should reference those.
+References should always be accompanied by a brief summary of the outcome
+of the referenced discussion and how the current PR/commit/issue relates
+to that.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="who-should-respond-to-filed-issues"><a class="anchor" href="#who-should-respond-to-filed-issues"></a><a class="link" href="#who-should-respond-to-filed-issues">3.5. Who should respond to filed issues?</a></h3>
+<div class="paragraph">
+<p>As a collaborative project, anyone who feels qualified to help is encouraged
+to get involved with issues.  If you’re working outside your usual area of
+expertise it is polite to say so.</p>
+</div>
+<div class="paragraph">
+<p>If you see an issue that might be of relevance for a particular team member,
+you are welcome to ping this person by commenting on the issue mentioning
+that person (e.g. “@githubname what do you think?”).</p>
+</div>
+</div>
+</div>
 </div>
 </article>
   </div>

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/register_tables.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+			<a class="navbar-item" href="../../ocah-contributing/latest/index.html">Starting with OCAH</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/02_tt_logo_standard_teal_black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-contributing" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Contributing Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../ocah-home/latest/index.html">Open Chiplet Atlas Harness (OCAH)</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></li>
+    <li>Starting as a user</li>
+    <li><a href="workflows.html">Workflows</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="workflows"><a class="anchor" href="#workflows"></a><a class="link" href="#workflows">1. Workflows</a></h2>
+<div class="sectionbody">
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This section is currently under development.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>This document specifies the development methodology for this project.</p>
+</div>
+<div class="sect2">
+<h3 id="build-with-bender-and-make"><a class="anchor" href="#build-with-bender-and-make"></a><a class="link" href="#build-with-bender-and-make">1.1. Build with Bender and Make</a></h3>
+<div class="paragraph">
+<p>Bender is used for managing IP dependencies and managing builds.</p>
+</div>
+<div class="paragraph">
+<p>Makefiles will be used for build automation. We have previously
+considered other flow such as Bazel but are hesitant to take on extra
+complexity.</p>
+</div>
+<div class="paragraph">
+<p>To initialise or update the Bender-generated file list, run the following
+command:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make generate_filelist</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="simulation-and-testing"><a class="anchor" href="#simulation-and-testing"></a><a class="link" href="#simulation-and-testing">1.2. Simulation and Testing</a></h3>
+<div class="sect3">
+<h4 id="simulation-with-verilator"><a class="anchor" href="#simulation-with-verilator"></a><a class="link" href="#simulation-with-verilator">1.2.1. Simulation with Verilator</a></h4>
+<div class="paragraph">
+<p>We will use open source tools as much as possible and hence will focus
+on using Verilator for unit tests. Verilator has comprehensive
+SystemVerilog (SV) support and is widely used in industry.</p>
+</div>
+<div class="paragraph">
+<p>Verilator ingests the RTL code along with the test code written in C/C
+to generate a program which is compiled and run with gcc. Writing tests
+in C/C has many benefits:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>high performance, typically better than commercial simulators</p>
+</li>
+<li>
+<p>incorporate third party reference code for ciphers as an example</p>
+</li>
+<li>
+<p>incorporate code for analysis</p>
+</li>
+<li>
+<p>enable development of emulation systems for firmware developers</p>
+</li>
+<li>
+<p>can be migrated to DPI based DV environments for sign-off verification</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="testbench-and-test-sequence"><a class="anchor" href="#testbench-and-test-sequence"></a><a class="link" href="#testbench-and-test-sequence">1.2.2. Testbench and Test Sequence</a></h4>
+<div class="paragraph">
+<p>Verilator is our main simulation engine, and we have several choices on
+how to create unit test benches and sequences for IP components and the
+SEP subsystem:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Plain <em>vanilla</em> SystemVerilog</p>
+</li>
+<li>
+<p>C/C++</p>
+</li>
+<li>
+<p>Python with cocotb</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The VeeR EL2 CPU which is used in SEP has cocotb based testbenches,
+while Caliptra uses mostly C with Verilator. Either choice will be fine
+and it is <em>TBD</em> which one we shall emphasize.</p>
+</div>
+<div class="paragraph">
+<p>We expect that chip integrators and TT verification engineers will use
+UVM in their verification flows. The UVM flow is however not in scope
+for the open source release of the OCAH project currently. We <em>may</em>
+release the UVM verification infrastructure to assist teams in full chip
+integration efforts, but that remains TBD.</p>
+</div>
+<div class="paragraph">
+<p>Antmicro has recently released a code coverage dashboard tool which
+works with Verilator. This <em>may</em> be used in the verification flows, but
+is TBD based on future evaluations.</p>
+</div>
+<div class="paragraph">
+<p>The testbench is run and configured using a Python script. Run the
+following command to see all available options:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">python3 tools/dv/run_dv.py --help</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="visual-debugging-and-waveform-viewer"><a class="anchor" href="#visual-debugging-and-waveform-viewer"></a><a class="link" href="#visual-debugging-and-waveform-viewer">1.2.3. Visual Debugging and Waveform Viewer</a></h4>
+<div class="paragraph">
+<p>We have two open source choices: the older GTKWave and Surfer. Surfer is
+the more modern of the two and runs in either the browser or standalone.
+It is under active development and has many nice features such as
+facilities for writing protocol interpreters so that we have mnemonic
+displays for things like opcodes instead of just raw binary or hex.</p>
+</div>
+<div class="paragraph">
+<p>Surfer binaries are available on MacOS, Linux and Windows, but can also
+run in the browser which is very convenient.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="references"><a class="anchor" href="#references"></a><a class="link" href="#references">1.2.4. References</a></h4>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://www.veripool.org/verilator">Verilator documents</a></p>
+</li>
+<li>
+<p><a href="https://www.cocotb.org">cocotb</a></p>
+</li>
+<li>
+<p><a href="https://github.com/antmicro/coverview">Coverview</a></p>
+</li>
+<li>
+<p><a href="https://surfer-project.org">Surfer project website</a></p>
+</li>
+<li>
+<p><a href="https://ics.jku.at/files/2024RISCVSummit_Surfer.pdf">RISC-V Summit
+paper on Surfer</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="linting"><a class="anchor" href="#linting"></a><a class="link" href="#linting">1.3. Linting</a></h3>
+<div class="paragraph">
+<p>We use linters within the development of OCAH to perform static analysis
+on the codebase. The below rules will check code for errors and poor
+formatting. They also enforce a consistent code style.</p>
+</div>
+<div class="sect3">
+<h4 id="verilog-style-and-lint-checking-with-verible"><a class="anchor" href="#verilog-style-and-lint-checking-with-verible"></a><a class="link" href="#verilog-style-and-lint-checking-with-verible">1.3.1. Verilog Style and Lint checking with Verible</a></h4>
+<div class="paragraph">
+<p>TODO</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="verilog-style-and-lint-checking-with-slang"><a class="anchor" href="#verilog-style-and-lint-checking-with-slang"></a><a class="link" href="#verilog-style-and-lint-checking-with-slang">1.3.2. Verilog Style and Lint checking with Slang</a></h4>
+<div class="paragraph">
+<p>TODO</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="tcl-script-style-and-lint-with-tclint"><a class="anchor" href="#tcl-script-style-and-lint-with-tclint"></a><a class="link" href="#tcl-script-style-and-lint-with-tclint">1.3.3. TCL Script Style and Lint with Tclint</a></h4>
+<div class="paragraph">
+<p>TODO</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="cc-style-and-link-with-clang-format"><a class="anchor" href="#cc-style-and-link-with-clang-format"></a><a class="link" href="#cc-style-and-link-with-clang-format">1.3.4. C/C++ Style and Link with Clang-Format</a></h4>
+<div class="paragraph">
+<p>TODO</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="references-2"><a class="anchor" href="#references-2"></a><a class="link" href="#references-2">1.3.5. References</a></h4>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://github.com/chipsalliance/verible">Verible GitHub</a></p>
+</li>
+<li>
+<p><a href="https://www.chipsalliance.org/news/integrating-language-server-protocol-in-verible">Verible
+LSP guide</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca-footer.png" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/02_tt_logo_standard_teal_white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>
