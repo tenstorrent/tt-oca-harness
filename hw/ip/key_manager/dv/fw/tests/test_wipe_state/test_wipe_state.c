@@ -31,17 +31,27 @@
 #define KPV_SCRAMBLER_CTRL_REG \
     (*(volatile km_kpv__kpv_scrambler_ctrl_reg_t *)KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR)
 
-#define KPV_NUM_SLOTS 32u
-#define KPV_WORDS_PER_SLOT 16u
+#define KPV_NUM_SLOTS ROM_KM_KPV_NUM_SLOTS
+#define KPV_WORDS_PER_SLOT ROM_KM_KPV_WORDS_PER_SLOT
 #define KEY_PATTERN(s, w) (0xCA000000u | ((s) << 8) | (w))
 
-static void fill_kpv_and_ctrl(void) {
+static void fill_kpv_keys(void) {
     for (unsigned int s = 0; s < KPV_NUM_SLOTS; s++) {
         for (unsigned int w = 0; w < KPV_WORDS_PER_SLOT; w++) {
             KPV_KEY_WORD_REG(s, w).w = KEY_PATTERN(s, w);
         }
-        KPV_CTRL_REG(s).f.last_dword = KPV_WORDS_PER_SLOT - 1u;
-        KPV_CTRL_REG(s).f.extend = 1u;
+    }
+}
+
+/* Sticky CTRL state for the wipe to clear; must run after the readback check,
+ * since lock_write would block the fill on the next subtest's pass. */
+static void lock_all_slots(void) {
+    for (unsigned int s = 0; s < KPV_NUM_SLOTS; s++) {
+        KPV_CTRL_REG(s).f.lock_write = 1u;
+        if (KPV_CTRL_REG(s).f.lock_write != 1u) {
+            TEST_FAIL("KPV CTRL slot %u lock_write not set (val=0x%08X)", s,
+                      (unsigned)KPV_CTRL_REG(s).w);
+        }
     }
 }
 
@@ -54,11 +64,6 @@ static void verify_kpv_readback(void) {
                 TEST_FAIL("KPV key slot %u word %u readback: expected 0x%08X, got 0x%08X", s, w,
                           expected, v);
             }
-        }
-        if (KPV_CTRL_REG(s).f.last_dword != KPV_WORDS_PER_SLOT - 1u ||
-            KPV_CTRL_REG(s).f.extend != 1u) {
-            TEST_FAIL("KPV CTRL slot %u readback mismatch (val=0x%08X)", s,
-                      (unsigned)KPV_CTRL_REG(s).w);
         }
     }
 }
@@ -90,7 +95,9 @@ static void clear_wipe_state_irq(void) {
 
 int main(void) {
     TEST_INIT();
-    if (!tb_set_timeout(150000)) TEST_FAIL("timeout");
+    /* Each subtest walks every KPV word three times, so the budget scales with
+     * ROM_KM_KPV_NUM_SLOTS. */
+    if (!tb_set_timeout(400000)) TEST_FAIL("timeout");
 
     /* Enable WIPE_STATE IRQ */
     km_csr__irq_enable_reg_t en = {.w = KMCSR_IRQ_ENABLE_REG.w};
@@ -105,12 +112,13 @@ int main(void) {
     KPV_SCRAMBLER_KEY_REG.w = 0xDEADBEEFu;
     KPV_SCRAMBLER_CTRL_REG.f.enable = 0u;
 
-    fill_kpv_and_ctrl();
+    fill_kpv_keys();
     verify_kpv_readback();
     if (KPV_SCRAMBLER_KEY_REG.w != 0xDEADBEEFu) {
         TEST_FAIL("Scrambler key readback: expected 0xDEADBEEF, got 0x%08X",
                   (unsigned)KPV_SCRAMBLER_KEY_REG.w);
     }
+    lock_all_slots();
 
     if (!tb_wipe_trigger(10000u)) TEST_FAIL("TB_CMD_WIPE_TRIGGER failed");
     {
@@ -131,8 +139,9 @@ int main(void) {
     KPV_SCRAMBLER_CTRL_REG.f.enable = 1u;
     KPV_SCRAMBLER_CTRL_REG.f.lock = 1u;
 
-    fill_kpv_and_ctrl();
+    fill_kpv_keys();
     verify_kpv_readback();
+    lock_all_slots();
 
     if (!tb_wipe_trigger(10000u)) TEST_FAIL("TB_CMD_WIPE_TRIGGER failed");
     {

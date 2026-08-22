@@ -176,7 +176,9 @@ static uint8_t fill_one_kpv_slot(void) {
 int main(void) {
     TEST_INIT();
 
-    if (!tb_set_timeout(3000000)) TEST_FAIL("Failed to set testbench timeout");
+    /* The KPV-full subtest walks one mailbox command per slot, so the budget
+     * scales with ROM_KM_KPV_NUM_SLOTS. */
+    if (!tb_set_timeout(6000000)) TEST_FAIL("Failed to set testbench timeout");
 
     if (!tb_drbg_set_seed(0xE826u, 5000)) TEST_FAIL("tb_drbg_set_seed failed");
 
@@ -306,13 +308,13 @@ int main(void) {
     /*=================================================================
      * KPV slot-fit failure → failure, no arg
      *
-     * Fill all 32 KPV slots with 1-word keys (KEY_SIZE=0 via CMD_KEY_GENERATE,
+     * Fill every KPV slot with a 1-word key (KEY_SIZE=0 via CMD_KEY_GENERATE,
      * 1 slot each), then attempt CMD_KEY_LOAD.  The load must fail because
      * no consecutive slots remain.  KPV must be unchanged after rejection.
      *=================================================================*/
     TEST_SUBTEST_START("KPV full → failure");
     {
-        /* Fill KPV: 32 slots × 1-word-key = 32 CMD_KEY_GENERATE calls. */
+        /* Fill KPV: one CMD_KEY_GENERATE per slot, each with a 1-word key. */
         uint8_t filled = 0u;
         for (uint8_t i = 0u; i < ROM_KM_KPV_NUM_SLOTS; i++) {
             uint8_t h = fill_one_kpv_slot();

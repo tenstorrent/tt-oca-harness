@@ -109,9 +109,13 @@ typedef union {
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bp 10
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bw 1
 #define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bp 11
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bw 21
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bm 0x800
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bp 11
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bw 1
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bp 12
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bw 20
 #define KM_CSR__IRQ_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -126,7 +130,8 @@ typedef union {
         uint32_t otp_change :1;
         uint32_t otp_sigint :1;
         uint32_t exec_violation :1;
-        uint32_t rsvd :21;
+        uint32_t rom_access_violation :1;
+        uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_status_reg_t;
@@ -176,9 +181,13 @@ typedef union {
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bp 10
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bw 1
 #define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 11
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 21
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bm 0x800
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bp 11
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 12
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 20
 #define KM_CSR__IRQ_ENABLE_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -193,7 +202,8 @@ typedef union {
         uint32_t otp_change_en :1;
         uint32_t otp_sigint_en :1;
         uint32_t exec_violation_en :1;
-        uint32_t rsvd :21;
+        uint32_t rom_access_violation_en :1;
+        uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_enable_reg_t;
@@ -288,9 +298,13 @@ typedef union {
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bp 10
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bw 1
 #define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_SET_REG__RSVD_bp 11
-#define KM_CSR__IRQ_SET_REG__RSVD_bw 21
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bm 0x800
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bp 11
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_SET_REG__RSVD_bp 12
+#define KM_CSR__IRQ_SET_REG__RSVD_bw 20
 #define KM_CSR__IRQ_SET_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -305,7 +319,8 @@ typedef union {
         uint32_t otp_change_set :1;
         uint32_t otp_sigint_set :1;
         uint32_t exec_violation_set :1;
-        uint32_t rsvd :21;
+        uint32_t rom_access_violation_set :1;
+        uint32_t rsvd :20;
     } f;
     uint32_t w;
 } km_csr__irq_set_reg_t;
@@ -653,9 +668,21 @@ typedef union {
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bp 6
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bw 26
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bp 9
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bw 23
 #define KM_CSR__OTP_READ_LOCK_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -665,7 +692,10 @@ typedef union {
         uint32_t sip_uid :1;
         uint32_t sys_uid :1;
         uint32_t class_key :1;
-        uint32_t rsvd :26;
+        uint32_t sep_chiplet_id :1;
+        uint32_t sep_sip_id :1;
+        uint32_t sep_sys_id :1;
+        uint32_t rsvd :23;
     } f;
     uint32_t w;
 } km_csr__otp_read_lock_reg_t;
@@ -695,9 +725,21 @@ typedef union {
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bp 6
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 26
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bp 9
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 23
 #define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -707,7 +749,10 @@ typedef union {
         uint32_t sip_uid :1;
         uint32_t sys_uid :1;
         uint32_t class_key :1;
-        uint32_t rsvd :26;
+        uint32_t sep_chiplet_id :1;
+        uint32_t sep_sip_id :1;
+        uint32_t sep_sys_id :1;
+        uint32_t rsvd :23;
     } f;
     uint32_t w;
 } km_csr__otp_change_status_reg_t;
@@ -737,9 +782,21 @@ typedef union {
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bp 5
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bw 1
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 6
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 26
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 9
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 23
 #define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
@@ -749,7 +806,10 @@ typedef union {
         uint32_t sip_uid :1;
         uint32_t sys_uid :1;
         uint32_t class_key :1;
-        uint32_t rsvd :26;
+        uint32_t sep_chiplet_id :1;
+        uint32_t sep_sip_id :1;
+        uint32_t sep_sys_id :1;
+        uint32_t rsvd :23;
     } f;
     uint32_t w;
 } km_csr__otp_read_lock_cold_reg_t;
@@ -856,10 +916,59 @@ typedef struct __attribute__ ((__packed__)) {
     km_csr__otp_read_lock_reg_t OTP_READ_LOCK;
     km_csr__otp_change_status_reg_t OTP_CHANGE_STATUS;
     km_csr__otp_read_lock_cold_reg_t OTP_READ_LOCK_COLD;
+    uint8_t RESERVED_30c_3ff[0xf4];
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_VAL_0;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_VAL_1;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_VAL_2;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_VAL_3;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_VAL_4;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_VAL_5;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_VAL_6;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_VAL_7;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_CPL_0;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_CPL_1;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_CPL_2;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_CPL_3;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_CPL_4;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_CPL_5;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_CPL_6;
+    km_csr__otp_dr_word_reg_t OTP_SEP_CHIPLET_ID_CPL_7;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_VAL_0;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_VAL_1;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_VAL_2;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_VAL_3;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_VAL_4;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_VAL_5;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_VAL_6;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_VAL_7;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_CPL_0;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_CPL_1;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_CPL_2;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_CPL_3;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_CPL_4;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_CPL_5;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_CPL_6;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SIP_ID_CPL_7;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_VAL_0;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_VAL_1;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_VAL_2;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_VAL_3;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_VAL_4;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_VAL_5;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_VAL_6;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_VAL_7;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_CPL_0;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_CPL_1;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_CPL_2;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_CPL_3;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_CPL_4;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_CPL_5;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_CPL_6;
+    km_csr__otp_dr_word_reg_t OTP_SEP_SYS_ID_CPL_7;
 } km_csr_t;
 
 
-static_assert(sizeof(km_csr_t) == 0x30c, "Packing error");
+static_assert(sizeof(km_csr_t) == 0x4c0, "Packing error");
 
 #ifdef __cplusplus
 }

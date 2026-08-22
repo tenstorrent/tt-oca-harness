@@ -613,7 +613,7 @@ module tb_key_manager;
     logic        sram_mem_req;
     logic        sram_mem_we;
     logic [3:0]  sram_mem_be;
-    logic [11:0] sram_mem_addr;
+    logic [km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH-1:0] sram_mem_addr;
     logic [31:0] sram_mem_wdata;
     logic        sram_mem_gnt;
     logic        sram_mem_rvalid;

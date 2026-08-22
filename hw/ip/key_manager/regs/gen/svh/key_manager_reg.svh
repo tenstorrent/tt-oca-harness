@@ -25,1623 +25,10 @@
 //==============================================================================
 
 
-localparam int unsigned KEY_MANAGER_REG_MAP_BASE_ADDR                                                             = 32'h0000D000;
-localparam int unsigned KEY_MANAGER_REG_MAP_SIZE                                                                  = 32'h0000F42C;
+localparam int unsigned KEY_MANAGER_REG_MAP_BASE_ADDR                                                             = 32'h00010000;
+localparam int unsigned KEY_MANAGER_REG_MAP_SIZE                                                                  = 32'h0000C42C;
 
 
-
-
-//==============================================================================
-// Addresses for Address Map: kpv
-//==============================================================================
-
-
-localparam int unsigned KPV_REG_MAP_BASE_ADDR                                                                     = 32'h0000D000;
-localparam int unsigned KPV_REG_MAP_SIZE                                                                          = 32'h00000888;
-
-
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[0]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_0__REG_FILE_BASE_ADDR                                                       = 32'h0000D000;
-localparam int unsigned KPV_KEY_ENTRY_0__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_0__REG_ADDR                                                         = 32'h0000D000;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_1__REG_ADDR                                                         = 32'h0000D004;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_2__REG_ADDR                                                         = 32'h0000D008;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_3__REG_ADDR                                                         = 32'h0000D00C;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_4__REG_ADDR                                                         = 32'h0000D010;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_5__REG_ADDR                                                         = 32'h0000D014;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_6__REG_ADDR                                                         = 32'h0000D018;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_7__REG_ADDR                                                         = 32'h0000D01C;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_8__REG_ADDR                                                         = 32'h0000D020;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_9__REG_ADDR                                                         = 32'h0000D024;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_10__REG_ADDR                                                        = 32'h0000D028;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_11__REG_ADDR                                                        = 32'h0000D02C;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_12__REG_ADDR                                                        = 32'h0000D030;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_13__REG_ADDR                                                        = 32'h0000D034;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_14__REG_ADDR                                                        = 32'h0000D038;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_0__WORD_15__REG_ADDR                                                        = 32'h0000D03C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[1]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_1__REG_FILE_BASE_ADDR                                                       = 32'h0000D040;
-localparam int unsigned KPV_KEY_ENTRY_1__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_0__REG_ADDR                                                         = 32'h0000D040;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_1__REG_ADDR                                                         = 32'h0000D044;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_2__REG_ADDR                                                         = 32'h0000D048;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_3__REG_ADDR                                                         = 32'h0000D04C;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_4__REG_ADDR                                                         = 32'h0000D050;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_5__REG_ADDR                                                         = 32'h0000D054;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_6__REG_ADDR                                                         = 32'h0000D058;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_7__REG_ADDR                                                         = 32'h0000D05C;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_8__REG_ADDR                                                         = 32'h0000D060;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_9__REG_ADDR                                                         = 32'h0000D064;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_10__REG_ADDR                                                        = 32'h0000D068;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_11__REG_ADDR                                                        = 32'h0000D06C;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_12__REG_ADDR                                                        = 32'h0000D070;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_13__REG_ADDR                                                        = 32'h0000D074;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_14__REG_ADDR                                                        = 32'h0000D078;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_1__WORD_15__REG_ADDR                                                        = 32'h0000D07C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[2]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_2__REG_FILE_BASE_ADDR                                                       = 32'h0000D080;
-localparam int unsigned KPV_KEY_ENTRY_2__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_0__REG_ADDR                                                         = 32'h0000D080;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_1__REG_ADDR                                                         = 32'h0000D084;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_2__REG_ADDR                                                         = 32'h0000D088;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_3__REG_ADDR                                                         = 32'h0000D08C;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_4__REG_ADDR                                                         = 32'h0000D090;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_5__REG_ADDR                                                         = 32'h0000D094;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_6__REG_ADDR                                                         = 32'h0000D098;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_7__REG_ADDR                                                         = 32'h0000D09C;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_8__REG_ADDR                                                         = 32'h0000D0A0;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_9__REG_ADDR                                                         = 32'h0000D0A4;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_10__REG_ADDR                                                        = 32'h0000D0A8;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_11__REG_ADDR                                                        = 32'h0000D0AC;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_12__REG_ADDR                                                        = 32'h0000D0B0;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_13__REG_ADDR                                                        = 32'h0000D0B4;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_14__REG_ADDR                                                        = 32'h0000D0B8;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_2__WORD_15__REG_ADDR                                                        = 32'h0000D0BC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[3]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_3__REG_FILE_BASE_ADDR                                                       = 32'h0000D0C0;
-localparam int unsigned KPV_KEY_ENTRY_3__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_0__REG_ADDR                                                         = 32'h0000D0C0;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_1__REG_ADDR                                                         = 32'h0000D0C4;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_2__REG_ADDR                                                         = 32'h0000D0C8;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_3__REG_ADDR                                                         = 32'h0000D0CC;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_4__REG_ADDR                                                         = 32'h0000D0D0;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_5__REG_ADDR                                                         = 32'h0000D0D4;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_6__REG_ADDR                                                         = 32'h0000D0D8;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_7__REG_ADDR                                                         = 32'h0000D0DC;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_8__REG_ADDR                                                         = 32'h0000D0E0;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_9__REG_ADDR                                                         = 32'h0000D0E4;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_10__REG_ADDR                                                        = 32'h0000D0E8;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_11__REG_ADDR                                                        = 32'h0000D0EC;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_12__REG_ADDR                                                        = 32'h0000D0F0;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_13__REG_ADDR                                                        = 32'h0000D0F4;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_14__REG_ADDR                                                        = 32'h0000D0F8;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_3__WORD_15__REG_ADDR                                                        = 32'h0000D0FC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[4]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_4__REG_FILE_BASE_ADDR                                                       = 32'h0000D100;
-localparam int unsigned KPV_KEY_ENTRY_4__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_0__REG_ADDR                                                         = 32'h0000D100;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_1__REG_ADDR                                                         = 32'h0000D104;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_2__REG_ADDR                                                         = 32'h0000D108;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_3__REG_ADDR                                                         = 32'h0000D10C;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_4__REG_ADDR                                                         = 32'h0000D110;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_5__REG_ADDR                                                         = 32'h0000D114;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_6__REG_ADDR                                                         = 32'h0000D118;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_7__REG_ADDR                                                         = 32'h0000D11C;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_8__REG_ADDR                                                         = 32'h0000D120;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_9__REG_ADDR                                                         = 32'h0000D124;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_10__REG_ADDR                                                        = 32'h0000D128;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_11__REG_ADDR                                                        = 32'h0000D12C;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_12__REG_ADDR                                                        = 32'h0000D130;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_13__REG_ADDR                                                        = 32'h0000D134;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_14__REG_ADDR                                                        = 32'h0000D138;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_4__WORD_15__REG_ADDR                                                        = 32'h0000D13C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[5]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_5__REG_FILE_BASE_ADDR                                                       = 32'h0000D140;
-localparam int unsigned KPV_KEY_ENTRY_5__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_0__REG_ADDR                                                         = 32'h0000D140;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_1__REG_ADDR                                                         = 32'h0000D144;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_2__REG_ADDR                                                         = 32'h0000D148;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_3__REG_ADDR                                                         = 32'h0000D14C;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_4__REG_ADDR                                                         = 32'h0000D150;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_5__REG_ADDR                                                         = 32'h0000D154;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_6__REG_ADDR                                                         = 32'h0000D158;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_7__REG_ADDR                                                         = 32'h0000D15C;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_8__REG_ADDR                                                         = 32'h0000D160;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_9__REG_ADDR                                                         = 32'h0000D164;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_10__REG_ADDR                                                        = 32'h0000D168;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_11__REG_ADDR                                                        = 32'h0000D16C;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_12__REG_ADDR                                                        = 32'h0000D170;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_13__REG_ADDR                                                        = 32'h0000D174;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_14__REG_ADDR                                                        = 32'h0000D178;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_5__WORD_15__REG_ADDR                                                        = 32'h0000D17C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[6]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_6__REG_FILE_BASE_ADDR                                                       = 32'h0000D180;
-localparam int unsigned KPV_KEY_ENTRY_6__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_0__REG_ADDR                                                         = 32'h0000D180;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_1__REG_ADDR                                                         = 32'h0000D184;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_2__REG_ADDR                                                         = 32'h0000D188;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_3__REG_ADDR                                                         = 32'h0000D18C;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_4__REG_ADDR                                                         = 32'h0000D190;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_5__REG_ADDR                                                         = 32'h0000D194;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_6__REG_ADDR                                                         = 32'h0000D198;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_7__REG_ADDR                                                         = 32'h0000D19C;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_8__REG_ADDR                                                         = 32'h0000D1A0;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_9__REG_ADDR                                                         = 32'h0000D1A4;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_10__REG_ADDR                                                        = 32'h0000D1A8;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_11__REG_ADDR                                                        = 32'h0000D1AC;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_12__REG_ADDR                                                        = 32'h0000D1B0;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_13__REG_ADDR                                                        = 32'h0000D1B4;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_14__REG_ADDR                                                        = 32'h0000D1B8;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_6__WORD_15__REG_ADDR                                                        = 32'h0000D1BC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[7]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_7__REG_FILE_BASE_ADDR                                                       = 32'h0000D1C0;
-localparam int unsigned KPV_KEY_ENTRY_7__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_0__REG_ADDR                                                         = 32'h0000D1C0;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_1__REG_ADDR                                                         = 32'h0000D1C4;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_2__REG_ADDR                                                         = 32'h0000D1C8;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_3__REG_ADDR                                                         = 32'h0000D1CC;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_4__REG_ADDR                                                         = 32'h0000D1D0;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_5__REG_ADDR                                                         = 32'h0000D1D4;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_6__REG_ADDR                                                         = 32'h0000D1D8;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_7__REG_ADDR                                                         = 32'h0000D1DC;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_8__REG_ADDR                                                         = 32'h0000D1E0;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_9__REG_ADDR                                                         = 32'h0000D1E4;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_10__REG_ADDR                                                        = 32'h0000D1E8;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_11__REG_ADDR                                                        = 32'h0000D1EC;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_12__REG_ADDR                                                        = 32'h0000D1F0;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_13__REG_ADDR                                                        = 32'h0000D1F4;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_14__REG_ADDR                                                        = 32'h0000D1F8;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_7__WORD_15__REG_ADDR                                                        = 32'h0000D1FC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[8]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_8__REG_FILE_BASE_ADDR                                                       = 32'h0000D200;
-localparam int unsigned KPV_KEY_ENTRY_8__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_0__REG_ADDR                                                         = 32'h0000D200;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_1__REG_ADDR                                                         = 32'h0000D204;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_2__REG_ADDR                                                         = 32'h0000D208;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_3__REG_ADDR                                                         = 32'h0000D20C;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_4__REG_ADDR                                                         = 32'h0000D210;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_5__REG_ADDR                                                         = 32'h0000D214;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_6__REG_ADDR                                                         = 32'h0000D218;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_7__REG_ADDR                                                         = 32'h0000D21C;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_8__REG_ADDR                                                         = 32'h0000D220;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_9__REG_ADDR                                                         = 32'h0000D224;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_10__REG_ADDR                                                        = 32'h0000D228;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_11__REG_ADDR                                                        = 32'h0000D22C;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_12__REG_ADDR                                                        = 32'h0000D230;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_13__REG_ADDR                                                        = 32'h0000D234;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_14__REG_ADDR                                                        = 32'h0000D238;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_8__WORD_15__REG_ADDR                                                        = 32'h0000D23C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[9]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_9__REG_FILE_BASE_ADDR                                                       = 32'h0000D240;
-localparam int unsigned KPV_KEY_ENTRY_9__REG_FILE_SIZE                                                            = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_0__REG_OFFSET                                                       = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_0__REG_ADDR                                                         = 32'h0000D240;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_1__REG_OFFSET                                                       = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_1__REG_ADDR                                                         = 32'h0000D244;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_2__REG_OFFSET                                                       = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_2__REG_ADDR                                                         = 32'h0000D248;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_3__REG_ADDR                                                         = 32'h0000D24C;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_4__REG_OFFSET                                                       = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_4__REG_ADDR                                                         = 32'h0000D250;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_5__REG_OFFSET                                                       = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_5__REG_ADDR                                                         = 32'h0000D254;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_6__REG_OFFSET                                                       = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_6__REG_ADDR                                                         = 32'h0000D258;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_7__REG_ADDR                                                         = 32'h0000D25C;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_8__REG_OFFSET                                                       = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_8__REG_ADDR                                                         = 32'h0000D260;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_9__REG_OFFSET                                                       = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_9__REG_ADDR                                                         = 32'h0000D264;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_10__REG_OFFSET                                                      = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_10__REG_ADDR                                                        = 32'h0000D268;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_11__REG_ADDR                                                        = 32'h0000D26C;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_12__REG_OFFSET                                                      = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_12__REG_ADDR                                                        = 32'h0000D270;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_13__REG_OFFSET                                                      = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_13__REG_ADDR                                                        = 32'h0000D274;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_14__REG_OFFSET                                                      = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_14__REG_ADDR                                                        = 32'h0000D278;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_9__WORD_15__REG_ADDR                                                        = 32'h0000D27C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[10]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_10__REG_FILE_BASE_ADDR                                                      = 32'h0000D280;
-localparam int unsigned KPV_KEY_ENTRY_10__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_0__REG_ADDR                                                        = 32'h0000D280;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_1__REG_ADDR                                                        = 32'h0000D284;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_2__REG_ADDR                                                        = 32'h0000D288;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_3__REG_ADDR                                                        = 32'h0000D28C;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_4__REG_ADDR                                                        = 32'h0000D290;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_5__REG_ADDR                                                        = 32'h0000D294;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_6__REG_ADDR                                                        = 32'h0000D298;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_7__REG_ADDR                                                        = 32'h0000D29C;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_8__REG_ADDR                                                        = 32'h0000D2A0;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_9__REG_ADDR                                                        = 32'h0000D2A4;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_10__REG_ADDR                                                       = 32'h0000D2A8;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_11__REG_ADDR                                                       = 32'h0000D2AC;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_12__REG_ADDR                                                       = 32'h0000D2B0;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_13__REG_ADDR                                                       = 32'h0000D2B4;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_14__REG_ADDR                                                       = 32'h0000D2B8;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_10__WORD_15__REG_ADDR                                                       = 32'h0000D2BC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[11]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_11__REG_FILE_BASE_ADDR                                                      = 32'h0000D2C0;
-localparam int unsigned KPV_KEY_ENTRY_11__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_0__REG_ADDR                                                        = 32'h0000D2C0;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_1__REG_ADDR                                                        = 32'h0000D2C4;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_2__REG_ADDR                                                        = 32'h0000D2C8;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_3__REG_ADDR                                                        = 32'h0000D2CC;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_4__REG_ADDR                                                        = 32'h0000D2D0;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_5__REG_ADDR                                                        = 32'h0000D2D4;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_6__REG_ADDR                                                        = 32'h0000D2D8;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_7__REG_ADDR                                                        = 32'h0000D2DC;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_8__REG_ADDR                                                        = 32'h0000D2E0;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_9__REG_ADDR                                                        = 32'h0000D2E4;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_10__REG_ADDR                                                       = 32'h0000D2E8;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_11__REG_ADDR                                                       = 32'h0000D2EC;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_12__REG_ADDR                                                       = 32'h0000D2F0;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_13__REG_ADDR                                                       = 32'h0000D2F4;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_14__REG_ADDR                                                       = 32'h0000D2F8;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_11__WORD_15__REG_ADDR                                                       = 32'h0000D2FC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[12]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_12__REG_FILE_BASE_ADDR                                                      = 32'h0000D300;
-localparam int unsigned KPV_KEY_ENTRY_12__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_0__REG_ADDR                                                        = 32'h0000D300;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_1__REG_ADDR                                                        = 32'h0000D304;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_2__REG_ADDR                                                        = 32'h0000D308;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_3__REG_ADDR                                                        = 32'h0000D30C;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_4__REG_ADDR                                                        = 32'h0000D310;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_5__REG_ADDR                                                        = 32'h0000D314;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_6__REG_ADDR                                                        = 32'h0000D318;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_7__REG_ADDR                                                        = 32'h0000D31C;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_8__REG_ADDR                                                        = 32'h0000D320;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_9__REG_ADDR                                                        = 32'h0000D324;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_10__REG_ADDR                                                       = 32'h0000D328;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_11__REG_ADDR                                                       = 32'h0000D32C;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_12__REG_ADDR                                                       = 32'h0000D330;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_13__REG_ADDR                                                       = 32'h0000D334;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_14__REG_ADDR                                                       = 32'h0000D338;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_12__WORD_15__REG_ADDR                                                       = 32'h0000D33C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[13]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_13__REG_FILE_BASE_ADDR                                                      = 32'h0000D340;
-localparam int unsigned KPV_KEY_ENTRY_13__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_0__REG_ADDR                                                        = 32'h0000D340;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_1__REG_ADDR                                                        = 32'h0000D344;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_2__REG_ADDR                                                        = 32'h0000D348;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_3__REG_ADDR                                                        = 32'h0000D34C;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_4__REG_ADDR                                                        = 32'h0000D350;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_5__REG_ADDR                                                        = 32'h0000D354;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_6__REG_ADDR                                                        = 32'h0000D358;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_7__REG_ADDR                                                        = 32'h0000D35C;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_8__REG_ADDR                                                        = 32'h0000D360;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_9__REG_ADDR                                                        = 32'h0000D364;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_10__REG_ADDR                                                       = 32'h0000D368;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_11__REG_ADDR                                                       = 32'h0000D36C;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_12__REG_ADDR                                                       = 32'h0000D370;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_13__REG_ADDR                                                       = 32'h0000D374;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_14__REG_ADDR                                                       = 32'h0000D378;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_13__WORD_15__REG_ADDR                                                       = 32'h0000D37C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[14]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_14__REG_FILE_BASE_ADDR                                                      = 32'h0000D380;
-localparam int unsigned KPV_KEY_ENTRY_14__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_0__REG_ADDR                                                        = 32'h0000D380;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_1__REG_ADDR                                                        = 32'h0000D384;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_2__REG_ADDR                                                        = 32'h0000D388;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_3__REG_ADDR                                                        = 32'h0000D38C;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_4__REG_ADDR                                                        = 32'h0000D390;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_5__REG_ADDR                                                        = 32'h0000D394;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_6__REG_ADDR                                                        = 32'h0000D398;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_7__REG_ADDR                                                        = 32'h0000D39C;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_8__REG_ADDR                                                        = 32'h0000D3A0;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_9__REG_ADDR                                                        = 32'h0000D3A4;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_10__REG_ADDR                                                       = 32'h0000D3A8;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_11__REG_ADDR                                                       = 32'h0000D3AC;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_12__REG_ADDR                                                       = 32'h0000D3B0;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_13__REG_ADDR                                                       = 32'h0000D3B4;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_14__REG_ADDR                                                       = 32'h0000D3B8;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_14__WORD_15__REG_ADDR                                                       = 32'h0000D3BC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[15]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_15__REG_FILE_BASE_ADDR                                                      = 32'h0000D3C0;
-localparam int unsigned KPV_KEY_ENTRY_15__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_0__REG_ADDR                                                        = 32'h0000D3C0;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_1__REG_ADDR                                                        = 32'h0000D3C4;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_2__REG_ADDR                                                        = 32'h0000D3C8;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_3__REG_ADDR                                                        = 32'h0000D3CC;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_4__REG_ADDR                                                        = 32'h0000D3D0;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_5__REG_ADDR                                                        = 32'h0000D3D4;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_6__REG_ADDR                                                        = 32'h0000D3D8;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_7__REG_ADDR                                                        = 32'h0000D3DC;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_8__REG_ADDR                                                        = 32'h0000D3E0;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_9__REG_ADDR                                                        = 32'h0000D3E4;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_10__REG_ADDR                                                       = 32'h0000D3E8;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_11__REG_ADDR                                                       = 32'h0000D3EC;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_12__REG_ADDR                                                       = 32'h0000D3F0;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_13__REG_ADDR                                                       = 32'h0000D3F4;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_14__REG_ADDR                                                       = 32'h0000D3F8;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_15__WORD_15__REG_ADDR                                                       = 32'h0000D3FC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[16]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_16__REG_FILE_BASE_ADDR                                                      = 32'h0000D400;
-localparam int unsigned KPV_KEY_ENTRY_16__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_0__REG_ADDR                                                        = 32'h0000D400;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_1__REG_ADDR                                                        = 32'h0000D404;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_2__REG_ADDR                                                        = 32'h0000D408;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_3__REG_ADDR                                                        = 32'h0000D40C;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_4__REG_ADDR                                                        = 32'h0000D410;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_5__REG_ADDR                                                        = 32'h0000D414;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_6__REG_ADDR                                                        = 32'h0000D418;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_7__REG_ADDR                                                        = 32'h0000D41C;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_8__REG_ADDR                                                        = 32'h0000D420;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_9__REG_ADDR                                                        = 32'h0000D424;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_10__REG_ADDR                                                       = 32'h0000D428;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_11__REG_ADDR                                                       = 32'h0000D42C;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_12__REG_ADDR                                                       = 32'h0000D430;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_13__REG_ADDR                                                       = 32'h0000D434;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_14__REG_ADDR                                                       = 32'h0000D438;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_16__WORD_15__REG_ADDR                                                       = 32'h0000D43C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[17]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_17__REG_FILE_BASE_ADDR                                                      = 32'h0000D440;
-localparam int unsigned KPV_KEY_ENTRY_17__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_0__REG_ADDR                                                        = 32'h0000D440;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_1__REG_ADDR                                                        = 32'h0000D444;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_2__REG_ADDR                                                        = 32'h0000D448;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_3__REG_ADDR                                                        = 32'h0000D44C;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_4__REG_ADDR                                                        = 32'h0000D450;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_5__REG_ADDR                                                        = 32'h0000D454;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_6__REG_ADDR                                                        = 32'h0000D458;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_7__REG_ADDR                                                        = 32'h0000D45C;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_8__REG_ADDR                                                        = 32'h0000D460;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_9__REG_ADDR                                                        = 32'h0000D464;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_10__REG_ADDR                                                       = 32'h0000D468;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_11__REG_ADDR                                                       = 32'h0000D46C;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_12__REG_ADDR                                                       = 32'h0000D470;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_13__REG_ADDR                                                       = 32'h0000D474;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_14__REG_ADDR                                                       = 32'h0000D478;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_17__WORD_15__REG_ADDR                                                       = 32'h0000D47C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[18]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_18__REG_FILE_BASE_ADDR                                                      = 32'h0000D480;
-localparam int unsigned KPV_KEY_ENTRY_18__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_0__REG_ADDR                                                        = 32'h0000D480;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_1__REG_ADDR                                                        = 32'h0000D484;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_2__REG_ADDR                                                        = 32'h0000D488;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_3__REG_ADDR                                                        = 32'h0000D48C;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_4__REG_ADDR                                                        = 32'h0000D490;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_5__REG_ADDR                                                        = 32'h0000D494;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_6__REG_ADDR                                                        = 32'h0000D498;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_7__REG_ADDR                                                        = 32'h0000D49C;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_8__REG_ADDR                                                        = 32'h0000D4A0;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_9__REG_ADDR                                                        = 32'h0000D4A4;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_10__REG_ADDR                                                       = 32'h0000D4A8;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_11__REG_ADDR                                                       = 32'h0000D4AC;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_12__REG_ADDR                                                       = 32'h0000D4B0;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_13__REG_ADDR                                                       = 32'h0000D4B4;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_14__REG_ADDR                                                       = 32'h0000D4B8;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_18__WORD_15__REG_ADDR                                                       = 32'h0000D4BC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[19]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_19__REG_FILE_BASE_ADDR                                                      = 32'h0000D4C0;
-localparam int unsigned KPV_KEY_ENTRY_19__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_0__REG_ADDR                                                        = 32'h0000D4C0;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_1__REG_ADDR                                                        = 32'h0000D4C4;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_2__REG_ADDR                                                        = 32'h0000D4C8;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_3__REG_ADDR                                                        = 32'h0000D4CC;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_4__REG_ADDR                                                        = 32'h0000D4D0;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_5__REG_ADDR                                                        = 32'h0000D4D4;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_6__REG_ADDR                                                        = 32'h0000D4D8;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_7__REG_ADDR                                                        = 32'h0000D4DC;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_8__REG_ADDR                                                        = 32'h0000D4E0;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_9__REG_ADDR                                                        = 32'h0000D4E4;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_10__REG_ADDR                                                       = 32'h0000D4E8;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_11__REG_ADDR                                                       = 32'h0000D4EC;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_12__REG_ADDR                                                       = 32'h0000D4F0;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_13__REG_ADDR                                                       = 32'h0000D4F4;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_14__REG_ADDR                                                       = 32'h0000D4F8;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_19__WORD_15__REG_ADDR                                                       = 32'h0000D4FC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[20]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_20__REG_FILE_BASE_ADDR                                                      = 32'h0000D500;
-localparam int unsigned KPV_KEY_ENTRY_20__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_0__REG_ADDR                                                        = 32'h0000D500;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_1__REG_ADDR                                                        = 32'h0000D504;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_2__REG_ADDR                                                        = 32'h0000D508;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_3__REG_ADDR                                                        = 32'h0000D50C;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_4__REG_ADDR                                                        = 32'h0000D510;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_5__REG_ADDR                                                        = 32'h0000D514;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_6__REG_ADDR                                                        = 32'h0000D518;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_7__REG_ADDR                                                        = 32'h0000D51C;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_8__REG_ADDR                                                        = 32'h0000D520;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_9__REG_ADDR                                                        = 32'h0000D524;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_10__REG_ADDR                                                       = 32'h0000D528;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_11__REG_ADDR                                                       = 32'h0000D52C;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_12__REG_ADDR                                                       = 32'h0000D530;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_13__REG_ADDR                                                       = 32'h0000D534;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_14__REG_ADDR                                                       = 32'h0000D538;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_20__WORD_15__REG_ADDR                                                       = 32'h0000D53C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[21]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_21__REG_FILE_BASE_ADDR                                                      = 32'h0000D540;
-localparam int unsigned KPV_KEY_ENTRY_21__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_0__REG_ADDR                                                        = 32'h0000D540;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_1__REG_ADDR                                                        = 32'h0000D544;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_2__REG_ADDR                                                        = 32'h0000D548;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_3__REG_ADDR                                                        = 32'h0000D54C;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_4__REG_ADDR                                                        = 32'h0000D550;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_5__REG_ADDR                                                        = 32'h0000D554;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_6__REG_ADDR                                                        = 32'h0000D558;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_7__REG_ADDR                                                        = 32'h0000D55C;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_8__REG_ADDR                                                        = 32'h0000D560;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_9__REG_ADDR                                                        = 32'h0000D564;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_10__REG_ADDR                                                       = 32'h0000D568;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_11__REG_ADDR                                                       = 32'h0000D56C;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_12__REG_ADDR                                                       = 32'h0000D570;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_13__REG_ADDR                                                       = 32'h0000D574;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_14__REG_ADDR                                                       = 32'h0000D578;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_21__WORD_15__REG_ADDR                                                       = 32'h0000D57C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[22]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_22__REG_FILE_BASE_ADDR                                                      = 32'h0000D580;
-localparam int unsigned KPV_KEY_ENTRY_22__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_0__REG_ADDR                                                        = 32'h0000D580;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_1__REG_ADDR                                                        = 32'h0000D584;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_2__REG_ADDR                                                        = 32'h0000D588;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_3__REG_ADDR                                                        = 32'h0000D58C;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_4__REG_ADDR                                                        = 32'h0000D590;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_5__REG_ADDR                                                        = 32'h0000D594;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_6__REG_ADDR                                                        = 32'h0000D598;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_7__REG_ADDR                                                        = 32'h0000D59C;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_8__REG_ADDR                                                        = 32'h0000D5A0;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_9__REG_ADDR                                                        = 32'h0000D5A4;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_10__REG_ADDR                                                       = 32'h0000D5A8;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_11__REG_ADDR                                                       = 32'h0000D5AC;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_12__REG_ADDR                                                       = 32'h0000D5B0;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_13__REG_ADDR                                                       = 32'h0000D5B4;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_14__REG_ADDR                                                       = 32'h0000D5B8;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_22__WORD_15__REG_ADDR                                                       = 32'h0000D5BC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[23]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_23__REG_FILE_BASE_ADDR                                                      = 32'h0000D5C0;
-localparam int unsigned KPV_KEY_ENTRY_23__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_0__REG_ADDR                                                        = 32'h0000D5C0;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_1__REG_ADDR                                                        = 32'h0000D5C4;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_2__REG_ADDR                                                        = 32'h0000D5C8;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_3__REG_ADDR                                                        = 32'h0000D5CC;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_4__REG_ADDR                                                        = 32'h0000D5D0;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_5__REG_ADDR                                                        = 32'h0000D5D4;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_6__REG_ADDR                                                        = 32'h0000D5D8;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_7__REG_ADDR                                                        = 32'h0000D5DC;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_8__REG_ADDR                                                        = 32'h0000D5E0;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_9__REG_ADDR                                                        = 32'h0000D5E4;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_10__REG_ADDR                                                       = 32'h0000D5E8;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_11__REG_ADDR                                                       = 32'h0000D5EC;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_12__REG_ADDR                                                       = 32'h0000D5F0;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_13__REG_ADDR                                                       = 32'h0000D5F4;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_14__REG_ADDR                                                       = 32'h0000D5F8;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_23__WORD_15__REG_ADDR                                                       = 32'h0000D5FC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[24]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_24__REG_FILE_BASE_ADDR                                                      = 32'h0000D600;
-localparam int unsigned KPV_KEY_ENTRY_24__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_0__REG_ADDR                                                        = 32'h0000D600;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_1__REG_ADDR                                                        = 32'h0000D604;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_2__REG_ADDR                                                        = 32'h0000D608;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_3__REG_ADDR                                                        = 32'h0000D60C;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_4__REG_ADDR                                                        = 32'h0000D610;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_5__REG_ADDR                                                        = 32'h0000D614;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_6__REG_ADDR                                                        = 32'h0000D618;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_7__REG_ADDR                                                        = 32'h0000D61C;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_8__REG_ADDR                                                        = 32'h0000D620;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_9__REG_ADDR                                                        = 32'h0000D624;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_10__REG_ADDR                                                       = 32'h0000D628;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_11__REG_ADDR                                                       = 32'h0000D62C;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_12__REG_ADDR                                                       = 32'h0000D630;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_13__REG_ADDR                                                       = 32'h0000D634;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_14__REG_ADDR                                                       = 32'h0000D638;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_24__WORD_15__REG_ADDR                                                       = 32'h0000D63C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[25]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_25__REG_FILE_BASE_ADDR                                                      = 32'h0000D640;
-localparam int unsigned KPV_KEY_ENTRY_25__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_0__REG_ADDR                                                        = 32'h0000D640;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_1__REG_ADDR                                                        = 32'h0000D644;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_2__REG_ADDR                                                        = 32'h0000D648;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_3__REG_ADDR                                                        = 32'h0000D64C;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_4__REG_ADDR                                                        = 32'h0000D650;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_5__REG_ADDR                                                        = 32'h0000D654;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_6__REG_ADDR                                                        = 32'h0000D658;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_7__REG_ADDR                                                        = 32'h0000D65C;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_8__REG_ADDR                                                        = 32'h0000D660;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_9__REG_ADDR                                                        = 32'h0000D664;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_10__REG_ADDR                                                       = 32'h0000D668;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_11__REG_ADDR                                                       = 32'h0000D66C;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_12__REG_ADDR                                                       = 32'h0000D670;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_13__REG_ADDR                                                       = 32'h0000D674;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_14__REG_ADDR                                                       = 32'h0000D678;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_25__WORD_15__REG_ADDR                                                       = 32'h0000D67C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[26]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_26__REG_FILE_BASE_ADDR                                                      = 32'h0000D680;
-localparam int unsigned KPV_KEY_ENTRY_26__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_0__REG_ADDR                                                        = 32'h0000D680;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_1__REG_ADDR                                                        = 32'h0000D684;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_2__REG_ADDR                                                        = 32'h0000D688;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_3__REG_ADDR                                                        = 32'h0000D68C;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_4__REG_ADDR                                                        = 32'h0000D690;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_5__REG_ADDR                                                        = 32'h0000D694;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_6__REG_ADDR                                                        = 32'h0000D698;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_7__REG_ADDR                                                        = 32'h0000D69C;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_8__REG_ADDR                                                        = 32'h0000D6A0;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_9__REG_ADDR                                                        = 32'h0000D6A4;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_10__REG_ADDR                                                       = 32'h0000D6A8;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_11__REG_ADDR                                                       = 32'h0000D6AC;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_12__REG_ADDR                                                       = 32'h0000D6B0;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_13__REG_ADDR                                                       = 32'h0000D6B4;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_14__REG_ADDR                                                       = 32'h0000D6B8;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_26__WORD_15__REG_ADDR                                                       = 32'h0000D6BC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[27]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_27__REG_FILE_BASE_ADDR                                                      = 32'h0000D6C0;
-localparam int unsigned KPV_KEY_ENTRY_27__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_0__REG_ADDR                                                        = 32'h0000D6C0;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_1__REG_ADDR                                                        = 32'h0000D6C4;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_2__REG_ADDR                                                        = 32'h0000D6C8;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_3__REG_ADDR                                                        = 32'h0000D6CC;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_4__REG_ADDR                                                        = 32'h0000D6D0;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_5__REG_ADDR                                                        = 32'h0000D6D4;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_6__REG_ADDR                                                        = 32'h0000D6D8;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_7__REG_ADDR                                                        = 32'h0000D6DC;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_8__REG_ADDR                                                        = 32'h0000D6E0;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_9__REG_ADDR                                                        = 32'h0000D6E4;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_10__REG_ADDR                                                       = 32'h0000D6E8;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_11__REG_ADDR                                                       = 32'h0000D6EC;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_12__REG_ADDR                                                       = 32'h0000D6F0;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_13__REG_ADDR                                                       = 32'h0000D6F4;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_14__REG_ADDR                                                       = 32'h0000D6F8;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_27__WORD_15__REG_ADDR                                                       = 32'h0000D6FC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[28]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_28__REG_FILE_BASE_ADDR                                                      = 32'h0000D700;
-localparam int unsigned KPV_KEY_ENTRY_28__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_0__REG_ADDR                                                        = 32'h0000D700;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_1__REG_ADDR                                                        = 32'h0000D704;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_2__REG_ADDR                                                        = 32'h0000D708;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_3__REG_ADDR                                                        = 32'h0000D70C;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_4__REG_ADDR                                                        = 32'h0000D710;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_5__REG_ADDR                                                        = 32'h0000D714;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_6__REG_ADDR                                                        = 32'h0000D718;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_7__REG_ADDR                                                        = 32'h0000D71C;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_8__REG_ADDR                                                        = 32'h0000D720;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_9__REG_ADDR                                                        = 32'h0000D724;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_10__REG_ADDR                                                       = 32'h0000D728;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_11__REG_ADDR                                                       = 32'h0000D72C;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_12__REG_ADDR                                                       = 32'h0000D730;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_13__REG_ADDR                                                       = 32'h0000D734;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_14__REG_ADDR                                                       = 32'h0000D738;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_28__WORD_15__REG_ADDR                                                       = 32'h0000D73C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[29]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_29__REG_FILE_BASE_ADDR                                                      = 32'h0000D740;
-localparam int unsigned KPV_KEY_ENTRY_29__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_0__REG_ADDR                                                        = 32'h0000D740;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_1__REG_ADDR                                                        = 32'h0000D744;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_2__REG_ADDR                                                        = 32'h0000D748;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_3__REG_ADDR                                                        = 32'h0000D74C;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_4__REG_ADDR                                                        = 32'h0000D750;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_5__REG_ADDR                                                        = 32'h0000D754;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_6__REG_ADDR                                                        = 32'h0000D758;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_7__REG_ADDR                                                        = 32'h0000D75C;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_8__REG_ADDR                                                        = 32'h0000D760;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_9__REG_ADDR                                                        = 32'h0000D764;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_10__REG_ADDR                                                       = 32'h0000D768;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_11__REG_ADDR                                                       = 32'h0000D76C;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_12__REG_ADDR                                                       = 32'h0000D770;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_13__REG_ADDR                                                       = 32'h0000D774;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_14__REG_ADDR                                                       = 32'h0000D778;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_29__WORD_15__REG_ADDR                                                       = 32'h0000D77C;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[30]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_30__REG_FILE_BASE_ADDR                                                      = 32'h0000D780;
-localparam int unsigned KPV_KEY_ENTRY_30__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_0__REG_ADDR                                                        = 32'h0000D780;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_1__REG_ADDR                                                        = 32'h0000D784;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_2__REG_ADDR                                                        = 32'h0000D788;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_3__REG_ADDR                                                        = 32'h0000D78C;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_4__REG_ADDR                                                        = 32'h0000D790;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_5__REG_ADDR                                                        = 32'h0000D794;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_6__REG_ADDR                                                        = 32'h0000D798;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_7__REG_ADDR                                                        = 32'h0000D79C;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_8__REG_ADDR                                                        = 32'h0000D7A0;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_9__REG_ADDR                                                        = 32'h0000D7A4;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_10__REG_ADDR                                                       = 32'h0000D7A8;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_11__REG_ADDR                                                       = 32'h0000D7AC;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_12__REG_ADDR                                                       = 32'h0000D7B0;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_13__REG_ADDR                                                       = 32'h0000D7B4;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_14__REG_ADDR                                                       = 32'h0000D7B8;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_30__WORD_15__REG_ADDR                                                       = 32'h0000D7BC;
-
-
-//==============================================================================
-// Register File: KEY_ENTRY[31]
-//==============================================================================
-
-localparam int unsigned KPV_KEY_ENTRY_31__REG_FILE_BASE_ADDR                                                      = 32'h0000D7C0;
-localparam int unsigned KPV_KEY_ENTRY_31__REG_FILE_SIZE                                                           = 32'h00000040;
-
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_0__REG_OFFSET                                                      = 32'h00000000;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_0__REG_ADDR                                                        = 32'h0000D7C0;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_1__REG_OFFSET                                                      = 32'h00000004;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_1__REG_ADDR                                                        = 32'h0000D7C4;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_2__REG_OFFSET                                                      = 32'h00000008;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_2__REG_ADDR                                                        = 32'h0000D7C8;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_3__REG_ADDR                                                        = 32'h0000D7CC;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_4__REG_OFFSET                                                      = 32'h00000010;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_4__REG_ADDR                                                        = 32'h0000D7D0;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_5__REG_OFFSET                                                      = 32'h00000014;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_5__REG_ADDR                                                        = 32'h0000D7D4;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_6__REG_OFFSET                                                      = 32'h00000018;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_6__REG_ADDR                                                        = 32'h0000D7D8;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_7__REG_ADDR                                                        = 32'h0000D7DC;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_8__REG_OFFSET                                                      = 32'h00000020;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_8__REG_ADDR                                                        = 32'h0000D7E0;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_9__REG_OFFSET                                                      = 32'h00000024;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_9__REG_ADDR                                                        = 32'h0000D7E4;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_10__REG_OFFSET                                                     = 32'h00000028;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_10__REG_ADDR                                                       = 32'h0000D7E8;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_11__REG_ADDR                                                       = 32'h0000D7EC;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_12__REG_OFFSET                                                     = 32'h00000030;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_12__REG_ADDR                                                       = 32'h0000D7F0;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_13__REG_OFFSET                                                     = 32'h00000034;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_13__REG_ADDR                                                       = 32'h0000D7F4;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_14__REG_OFFSET                                                     = 32'h00000038;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_14__REG_ADDR                                                       = 32'h0000D7F8;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
-localparam int unsigned KPV_KEY_ENTRY_31__WORD_15__REG_ADDR                                                       = 32'h0000D7FC;
-localparam int unsigned KPV_CTRL_0__REG_OFFSET                                                                    = 32'h00000800;
-localparam int unsigned KPV_CTRL_0__REG_ADDR                                                                      = 32'h0000D800;
-localparam int unsigned KPV_CTRL_1__REG_OFFSET                                                                    = 32'h00000804;
-localparam int unsigned KPV_CTRL_1__REG_ADDR                                                                      = 32'h0000D804;
-localparam int unsigned KPV_CTRL_2__REG_OFFSET                                                                    = 32'h00000808;
-localparam int unsigned KPV_CTRL_2__REG_ADDR                                                                      = 32'h0000D808;
-localparam int unsigned KPV_CTRL_3__REG_OFFSET                                                                    = 32'h0000080C;
-localparam int unsigned KPV_CTRL_3__REG_ADDR                                                                      = 32'h0000D80C;
-localparam int unsigned KPV_CTRL_4__REG_OFFSET                                                                    = 32'h00000810;
-localparam int unsigned KPV_CTRL_4__REG_ADDR                                                                      = 32'h0000D810;
-localparam int unsigned KPV_CTRL_5__REG_OFFSET                                                                    = 32'h00000814;
-localparam int unsigned KPV_CTRL_5__REG_ADDR                                                                      = 32'h0000D814;
-localparam int unsigned KPV_CTRL_6__REG_OFFSET                                                                    = 32'h00000818;
-localparam int unsigned KPV_CTRL_6__REG_ADDR                                                                      = 32'h0000D818;
-localparam int unsigned KPV_CTRL_7__REG_OFFSET                                                                    = 32'h0000081C;
-localparam int unsigned KPV_CTRL_7__REG_ADDR                                                                      = 32'h0000D81C;
-localparam int unsigned KPV_CTRL_8__REG_OFFSET                                                                    = 32'h00000820;
-localparam int unsigned KPV_CTRL_8__REG_ADDR                                                                      = 32'h0000D820;
-localparam int unsigned KPV_CTRL_9__REG_OFFSET                                                                    = 32'h00000824;
-localparam int unsigned KPV_CTRL_9__REG_ADDR                                                                      = 32'h0000D824;
-localparam int unsigned KPV_CTRL_10__REG_OFFSET                                                                   = 32'h00000828;
-localparam int unsigned KPV_CTRL_10__REG_ADDR                                                                     = 32'h0000D828;
-localparam int unsigned KPV_CTRL_11__REG_OFFSET                                                                   = 32'h0000082C;
-localparam int unsigned KPV_CTRL_11__REG_ADDR                                                                     = 32'h0000D82C;
-localparam int unsigned KPV_CTRL_12__REG_OFFSET                                                                   = 32'h00000830;
-localparam int unsigned KPV_CTRL_12__REG_ADDR                                                                     = 32'h0000D830;
-localparam int unsigned KPV_CTRL_13__REG_OFFSET                                                                   = 32'h00000834;
-localparam int unsigned KPV_CTRL_13__REG_ADDR                                                                     = 32'h0000D834;
-localparam int unsigned KPV_CTRL_14__REG_OFFSET                                                                   = 32'h00000838;
-localparam int unsigned KPV_CTRL_14__REG_ADDR                                                                     = 32'h0000D838;
-localparam int unsigned KPV_CTRL_15__REG_OFFSET                                                                   = 32'h0000083C;
-localparam int unsigned KPV_CTRL_15__REG_ADDR                                                                     = 32'h0000D83C;
-localparam int unsigned KPV_CTRL_16__REG_OFFSET                                                                   = 32'h00000840;
-localparam int unsigned KPV_CTRL_16__REG_ADDR                                                                     = 32'h0000D840;
-localparam int unsigned KPV_CTRL_17__REG_OFFSET                                                                   = 32'h00000844;
-localparam int unsigned KPV_CTRL_17__REG_ADDR                                                                     = 32'h0000D844;
-localparam int unsigned KPV_CTRL_18__REG_OFFSET                                                                   = 32'h00000848;
-localparam int unsigned KPV_CTRL_18__REG_ADDR                                                                     = 32'h0000D848;
-localparam int unsigned KPV_CTRL_19__REG_OFFSET                                                                   = 32'h0000084C;
-localparam int unsigned KPV_CTRL_19__REG_ADDR                                                                     = 32'h0000D84C;
-localparam int unsigned KPV_CTRL_20__REG_OFFSET                                                                   = 32'h00000850;
-localparam int unsigned KPV_CTRL_20__REG_ADDR                                                                     = 32'h0000D850;
-localparam int unsigned KPV_CTRL_21__REG_OFFSET                                                                   = 32'h00000854;
-localparam int unsigned KPV_CTRL_21__REG_ADDR                                                                     = 32'h0000D854;
-localparam int unsigned KPV_CTRL_22__REG_OFFSET                                                                   = 32'h00000858;
-localparam int unsigned KPV_CTRL_22__REG_ADDR                                                                     = 32'h0000D858;
-localparam int unsigned KPV_CTRL_23__REG_OFFSET                                                                   = 32'h0000085C;
-localparam int unsigned KPV_CTRL_23__REG_ADDR                                                                     = 32'h0000D85C;
-localparam int unsigned KPV_CTRL_24__REG_OFFSET                                                                   = 32'h00000860;
-localparam int unsigned KPV_CTRL_24__REG_ADDR                                                                     = 32'h0000D860;
-localparam int unsigned KPV_CTRL_25__REG_OFFSET                                                                   = 32'h00000864;
-localparam int unsigned KPV_CTRL_25__REG_ADDR                                                                     = 32'h0000D864;
-localparam int unsigned KPV_CTRL_26__REG_OFFSET                                                                   = 32'h00000868;
-localparam int unsigned KPV_CTRL_26__REG_ADDR                                                                     = 32'h0000D868;
-localparam int unsigned KPV_CTRL_27__REG_OFFSET                                                                   = 32'h0000086C;
-localparam int unsigned KPV_CTRL_27__REG_ADDR                                                                     = 32'h0000D86C;
-localparam int unsigned KPV_CTRL_28__REG_OFFSET                                                                   = 32'h00000870;
-localparam int unsigned KPV_CTRL_28__REG_ADDR                                                                     = 32'h0000D870;
-localparam int unsigned KPV_CTRL_29__REG_OFFSET                                                                   = 32'h00000874;
-localparam int unsigned KPV_CTRL_29__REG_ADDR                                                                     = 32'h0000D874;
-localparam int unsigned KPV_CTRL_30__REG_OFFSET                                                                   = 32'h00000878;
-localparam int unsigned KPV_CTRL_30__REG_ADDR                                                                     = 32'h0000D878;
-localparam int unsigned KPV_CTRL_31__REG_OFFSET                                                                   = 32'h0000087C;
-localparam int unsigned KPV_CTRL_31__REG_ADDR                                                                     = 32'h0000D87C;
-localparam int unsigned KPV_KPV_SCRAMBLER_KEY_REG_OFFSET                                                          = 32'h00000880;
-localparam int unsigned KPV_KPV_SCRAMBLER_KEY_REG_ADDR                                                            = 32'h0000D880;
-localparam int unsigned KPV_KPV_SCRAMBLER_CTRL_REG_OFFSET                                                         = 32'h00000884;
-localparam int unsigned KPV_KPV_SCRAMBLER_CTRL_REG_ADDR                                                           = 32'h0000D884;
-
-
-//==============================================================================
-// Addresses for Address Map: kmcsr
-//==============================================================================
-
-
-localparam int unsigned KMCSR_REG_MAP_BASE_ADDR                                                                   = 32'h0000E000;
-localparam int unsigned KMCSR_REG_MAP_SIZE                                                                        = 32'h0000030C;
-
-
-localparam int unsigned KMCSR_VERSION_REG_OFFSET                                                                  = 32'h00000000;
-localparam int unsigned KMCSR_VERSION_REG_ADDR                                                                    = 32'h0000E000;
-localparam int unsigned KMCSR_CTRL_REG_OFFSET                                                                     = 32'h00000004;
-localparam int unsigned KMCSR_CTRL_REG_ADDR                                                                       = 32'h0000E004;
-localparam int unsigned KMCSR_SOFT_RST_CODE_REG_OFFSET                                                            = 32'h00000008;
-localparam int unsigned KMCSR_SOFT_RST_CODE_REG_ADDR                                                              = 32'h0000E008;
-localparam int unsigned KMCSR_IRQ_STATUS_REG_OFFSET                                                               = 32'h0000000C;
-localparam int unsigned KMCSR_IRQ_STATUS_REG_ADDR                                                                 = 32'h0000E00C;
-localparam int unsigned KMCSR_IRQ_ENABLE_REG_OFFSET                                                               = 32'h00000010;
-localparam int unsigned KMCSR_IRQ_ENABLE_REG_ADDR                                                                 = 32'h0000E010;
-localparam int unsigned KMCSR_SCRAMBLER_KEY_REG_OFFSET                                                            = 32'h00000014;
-localparam int unsigned KMCSR_SCRAMBLER_KEY_REG_ADDR                                                              = 32'h0000E014;
-localparam int unsigned KMCSR_SCRAMBLER_CTRL_REG_OFFSET                                                           = 32'h00000018;
-localparam int unsigned KMCSR_SCRAMBLER_CTRL_REG_ADDR                                                             = 32'h0000E018;
-localparam int unsigned KMCSR_SRAM_LOCK_REG_OFFSET                                                                = 32'h0000001C;
-localparam int unsigned KMCSR_SRAM_LOCK_REG_ADDR                                                                  = 32'h0000E01C;
-localparam int unsigned KMCSR_IRQ_SET_REG_OFFSET                                                                  = 32'h00000020;
-localparam int unsigned KMCSR_IRQ_SET_REG_ADDR                                                                    = 32'h0000E020;
-localparam int unsigned KMCSR_SRAM_WRITE_LOCK_VIOLATION_REG_OFFSET                                                = 32'h00000024;
-localparam int unsigned KMCSR_SRAM_WRITE_LOCK_VIOLATION_REG_ADDR                                                  = 32'h0000E024;
-localparam int unsigned KMCSR_RECOVERABLE_ERR_REG_OFFSET                                                          = 32'h00000028;
-localparam int unsigned KMCSR_RECOVERABLE_ERR_REG_ADDR                                                            = 32'h0000E028;
-localparam int unsigned KMCSR_BOOT_STATUS_REG_OFFSET                                                              = 32'h0000002C;
-localparam int unsigned KMCSR_BOOT_STATUS_REG_ADDR                                                                = 32'h0000E02C;
-localparam int unsigned KMCSR_OTP_LIFE_CYCLE_REG_OFFSET                                                           = 32'h00000030;
-localparam int unsigned KMCSR_OTP_LIFE_CYCLE_REG_ADDR                                                             = 32'h0000E030;
-localparam int unsigned KMCSR_OTP_DEMOTION_STATE_REG_OFFSET                                                       = 32'h00000034;
-localparam int unsigned KMCSR_OTP_DEMOTION_STATE_REG_ADDR                                                         = 32'h0000E034;
-localparam int unsigned KMCSR_SRAM_EXEC_MODE_REG_OFFSET                                                           = 32'h00000038;
-localparam int unsigned KMCSR_SRAM_EXEC_MODE_REG_ADDR                                                             = 32'h0000E038;
-localparam int unsigned KMCSR_IRQ_ENTRY_ADDR_REG_OFFSET                                                           = 32'h000000B8;
-localparam int unsigned KMCSR_IRQ_ENTRY_ADDR_REG_ADDR                                                             = 32'h0000E0B8;
-localparam int unsigned KMCSR_IRQ_ENTRY_LOCK_REG_OFFSET                                                           = 32'h000000BC;
-localparam int unsigned KMCSR_IRQ_ENTRY_LOCK_REG_ADDR                                                             = 32'h0000E0BC;
-localparam int unsigned KMCSR_VUART_TX_REG_OFFSET                                                                 = 32'h00000100;
-localparam int unsigned KMCSR_VUART_TX_REG_ADDR                                                                   = 32'h0000E100;
-localparam int unsigned KMCSR_VUART_RX_REG_OFFSET                                                                 = 32'h00000104;
-localparam int unsigned KMCSR_VUART_RX_REG_ADDR                                                                   = 32'h0000E104;
-localparam int unsigned KMCSR_VUART_STATUS_REG_OFFSET                                                             = 32'h00000108;
-localparam int unsigned KMCSR_VUART_STATUS_REG_ADDR                                                               = 32'h0000E108;
-localparam int unsigned KMCSR_TB_RESULT_REG_OFFSET                                                                = 32'h00000110;
-localparam int unsigned KMCSR_TB_RESULT_REG_ADDR                                                                  = 32'h0000E110;
-localparam int unsigned KMCSR_TB_SIGNATURE_REG_OFFSET                                                             = 32'h00000114;
-localparam int unsigned KMCSR_TB_SIGNATURE_REG_ADDR                                                               = 32'h0000E114;
-localparam int unsigned KMCSR_TB_ERRCODE_REG_OFFSET                                                               = 32'h00000118;
-localparam int unsigned KMCSR_TB_ERRCODE_REG_ADDR                                                                 = 32'h0000E118;
-localparam int unsigned KMCSR_TB_SUBTEST_REG_OFFSET                                                               = 32'h0000011C;
-localparam int unsigned KMCSR_TB_SUBTEST_REG_ADDR                                                                 = 32'h0000E11C;
-localparam int unsigned KMCSR_TB_CMD_REG_OFFSET                                                                   = 32'h00000120;
-localparam int unsigned KMCSR_TB_CMD_REG_ADDR                                                                     = 32'h0000E120;
-localparam int unsigned KMCSR_TB_CMD_ARG_REG_OFFSET                                                               = 32'h00000124;
-localparam int unsigned KMCSR_TB_CMD_ARG_REG_ADDR                                                                 = 32'h0000E124;
-localparam int unsigned KMCSR_TB_CMD_STATUS_REG_OFFSET                                                            = 32'h00000128;
-localparam int unsigned KMCSR_TB_CMD_STATUS_REG_ADDR                                                              = 32'h0000E128;
-localparam int unsigned KMCSR_TB_CMD_RESULT_REG_OFFSET                                                            = 32'h0000012C;
-localparam int unsigned KMCSR_TB_CMD_RESULT_REG_ADDR                                                              = 32'h0000E12C;
-localparam int unsigned KMCSR_DEBUG_REG_OFFSET                                                                    = 32'h000001FC;
-localparam int unsigned KMCSR_DEBUG_REG_ADDR                                                                      = 32'h0000E1FC;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_0_REG_OFFSET                                                    = 32'h00000200;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_0_REG_ADDR                                                      = 32'h0000E200;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_1_REG_OFFSET                                                    = 32'h00000204;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_1_REG_ADDR                                                      = 32'h0000E204;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_2_REG_OFFSET                                                    = 32'h00000208;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_2_REG_ADDR                                                      = 32'h0000E208;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_3_REG_OFFSET                                                    = 32'h0000020C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_3_REG_ADDR                                                      = 32'h0000E20C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_4_REG_OFFSET                                                    = 32'h00000210;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_4_REG_ADDR                                                      = 32'h0000E210;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_5_REG_OFFSET                                                    = 32'h00000214;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_5_REG_ADDR                                                      = 32'h0000E214;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_6_REG_OFFSET                                                    = 32'h00000218;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_6_REG_ADDR                                                      = 32'h0000E218;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_7_REG_OFFSET                                                    = 32'h0000021C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_7_REG_ADDR                                                      = 32'h0000E21C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_0_REG_OFFSET                                                    = 32'h00000220;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_0_REG_ADDR                                                      = 32'h0000E220;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_1_REG_OFFSET                                                    = 32'h00000224;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_1_REG_ADDR                                                      = 32'h0000E224;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_2_REG_OFFSET                                                    = 32'h00000228;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_2_REG_ADDR                                                      = 32'h0000E228;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_3_REG_OFFSET                                                    = 32'h0000022C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_3_REG_ADDR                                                      = 32'h0000E22C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_4_REG_OFFSET                                                    = 32'h00000230;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_4_REG_ADDR                                                      = 32'h0000E230;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_5_REG_OFFSET                                                    = 32'h00000234;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_5_REG_ADDR                                                      = 32'h0000E234;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_6_REG_OFFSET                                                    = 32'h00000238;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_6_REG_ADDR                                                      = 32'h0000E238;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_7_REG_OFFSET                                                    = 32'h0000023C;
-localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_7_REG_ADDR                                                      = 32'h0000E23C;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_0_REG_OFFSET                                                        = 32'h00000240;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_0_REG_ADDR                                                          = 32'h0000E240;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_1_REG_OFFSET                                                        = 32'h00000244;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_1_REG_ADDR                                                          = 32'h0000E244;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_2_REG_OFFSET                                                        = 32'h00000248;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_2_REG_ADDR                                                          = 32'h0000E248;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_3_REG_OFFSET                                                        = 32'h0000024C;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_3_REG_ADDR                                                          = 32'h0000E24C;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_4_REG_OFFSET                                                        = 32'h00000250;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_4_REG_ADDR                                                          = 32'h0000E250;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_5_REG_OFFSET                                                        = 32'h00000254;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_5_REG_ADDR                                                          = 32'h0000E254;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_6_REG_OFFSET                                                        = 32'h00000258;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_6_REG_ADDR                                                          = 32'h0000E258;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_7_REG_OFFSET                                                        = 32'h0000025C;
-localparam int unsigned KMCSR_OTP_SIP_UID_VAL_7_REG_ADDR                                                          = 32'h0000E25C;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_0_REG_OFFSET                                                        = 32'h00000260;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_0_REG_ADDR                                                          = 32'h0000E260;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_1_REG_OFFSET                                                        = 32'h00000264;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_1_REG_ADDR                                                          = 32'h0000E264;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_2_REG_OFFSET                                                        = 32'h00000268;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_2_REG_ADDR                                                          = 32'h0000E268;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_3_REG_OFFSET                                                        = 32'h0000026C;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_3_REG_ADDR                                                          = 32'h0000E26C;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_4_REG_OFFSET                                                        = 32'h00000270;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_4_REG_ADDR                                                          = 32'h0000E270;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_5_REG_OFFSET                                                        = 32'h00000274;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_5_REG_ADDR                                                          = 32'h0000E274;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_6_REG_OFFSET                                                        = 32'h00000278;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_6_REG_ADDR                                                          = 32'h0000E278;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_7_REG_OFFSET                                                        = 32'h0000027C;
-localparam int unsigned KMCSR_OTP_SIP_UID_CPL_7_REG_ADDR                                                          = 32'h0000E27C;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_0_REG_OFFSET                                                        = 32'h00000280;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_0_REG_ADDR                                                          = 32'h0000E280;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_1_REG_OFFSET                                                        = 32'h00000284;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_1_REG_ADDR                                                          = 32'h0000E284;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_2_REG_OFFSET                                                        = 32'h00000288;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_2_REG_ADDR                                                          = 32'h0000E288;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_3_REG_OFFSET                                                        = 32'h0000028C;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_3_REG_ADDR                                                          = 32'h0000E28C;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_4_REG_OFFSET                                                        = 32'h00000290;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_4_REG_ADDR                                                          = 32'h0000E290;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_5_REG_OFFSET                                                        = 32'h00000294;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_5_REG_ADDR                                                          = 32'h0000E294;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_6_REG_OFFSET                                                        = 32'h00000298;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_6_REG_ADDR                                                          = 32'h0000E298;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_7_REG_OFFSET                                                        = 32'h0000029C;
-localparam int unsigned KMCSR_OTP_SYS_UID_VAL_7_REG_ADDR                                                          = 32'h0000E29C;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_0_REG_OFFSET                                                        = 32'h000002A0;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_0_REG_ADDR                                                          = 32'h0000E2A0;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_1_REG_OFFSET                                                        = 32'h000002A4;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_1_REG_ADDR                                                          = 32'h0000E2A4;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_2_REG_OFFSET                                                        = 32'h000002A8;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_2_REG_ADDR                                                          = 32'h0000E2A8;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_3_REG_OFFSET                                                        = 32'h000002AC;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_3_REG_ADDR                                                          = 32'h0000E2AC;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_4_REG_OFFSET                                                        = 32'h000002B0;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_4_REG_ADDR                                                          = 32'h0000E2B0;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_5_REG_OFFSET                                                        = 32'h000002B4;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_5_REG_ADDR                                                          = 32'h0000E2B4;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_6_REG_OFFSET                                                        = 32'h000002B8;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_6_REG_ADDR                                                          = 32'h0000E2B8;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_7_REG_OFFSET                                                        = 32'h000002BC;
-localparam int unsigned KMCSR_OTP_SYS_UID_CPL_7_REG_ADDR                                                          = 32'h0000E2BC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_0_REG_OFFSET                                                      = 32'h000002C0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_0_REG_ADDR                                                        = 32'h0000E2C0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_1_REG_OFFSET                                                      = 32'h000002C4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_1_REG_ADDR                                                        = 32'h0000E2C4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_2_REG_OFFSET                                                      = 32'h000002C8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_2_REG_ADDR                                                        = 32'h0000E2C8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_3_REG_OFFSET                                                      = 32'h000002CC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_3_REG_ADDR                                                        = 32'h0000E2CC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_4_REG_OFFSET                                                      = 32'h000002D0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_4_REG_ADDR                                                        = 32'h0000E2D0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_5_REG_OFFSET                                                      = 32'h000002D4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_5_REG_ADDR                                                        = 32'h0000E2D4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_6_REG_OFFSET                                                      = 32'h000002D8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_6_REG_ADDR                                                        = 32'h0000E2D8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_7_REG_OFFSET                                                      = 32'h000002DC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_7_REG_ADDR                                                        = 32'h0000E2DC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_0_REG_OFFSET                                                      = 32'h000002E0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_0_REG_ADDR                                                        = 32'h0000E2E0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_1_REG_OFFSET                                                      = 32'h000002E4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_1_REG_ADDR                                                        = 32'h0000E2E4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_2_REG_OFFSET                                                      = 32'h000002E8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_2_REG_ADDR                                                        = 32'h0000E2E8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_3_REG_OFFSET                                                      = 32'h000002EC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_3_REG_ADDR                                                        = 32'h0000E2EC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_4_REG_OFFSET                                                      = 32'h000002F0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_4_REG_ADDR                                                        = 32'h0000E2F0;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_5_REG_OFFSET                                                      = 32'h000002F4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_5_REG_ADDR                                                        = 32'h0000E2F4;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_6_REG_OFFSET                                                      = 32'h000002F8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_6_REG_ADDR                                                        = 32'h0000E2F8;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_7_REG_OFFSET                                                      = 32'h000002FC;
-localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_7_REG_ADDR                                                        = 32'h0000E2FC;
-localparam int unsigned KMCSR_OTP_READ_LOCK_REG_OFFSET                                                            = 32'h00000300;
-localparam int unsigned KMCSR_OTP_READ_LOCK_REG_ADDR                                                              = 32'h0000E300;
-localparam int unsigned KMCSR_OTP_CHANGE_STATUS_REG_OFFSET                                                        = 32'h00000304;
-localparam int unsigned KMCSR_OTP_CHANGE_STATUS_REG_ADDR                                                          = 32'h0000E304;
-localparam int unsigned KMCSR_OTP_READ_LOCK_COLD_REG_OFFSET                                                       = 32'h00000308;
-localparam int unsigned KMCSR_OTP_READ_LOCK_COLD_REG_ADDR                                                         = 32'h0000E308;
-
-
-//==============================================================================
-// Addresses for Address Map: drbg_sampler
-//==============================================================================
-
-
-localparam int unsigned DRBG_SAMPLER_REG_MAP_BASE_ADDR                                                            = 32'h0000F000;
-localparam int unsigned DRBG_SAMPLER_REG_MAP_SIZE                                                                 = 32'h00000010;
-
-
-localparam int unsigned DRBG_SAMPLER_DATA_REG_OFFSET                                                              = 32'h00000000;
-localparam int unsigned DRBG_SAMPLER_DATA_REG_ADDR                                                                = 32'h0000F000;
-localparam int unsigned DRBG_SAMPLER_CFG_REG_OFFSET                                                               = 32'h00000004;
-localparam int unsigned DRBG_SAMPLER_CFG_REG_ADDR                                                                 = 32'h0000F004;
-localparam int unsigned DRBG_SAMPLER_STATUS_REG_OFFSET                                                            = 32'h00000008;
-localparam int unsigned DRBG_SAMPLER_STATUS_REG_ADDR                                                              = 32'h0000F008;
-localparam int unsigned DRBG_SAMPLER_PREFETCH_DATA_REG_OFFSET                                                     = 32'h0000000C;
-localparam int unsigned DRBG_SAMPLER_PREFETCH_DATA_REG_ADDR                                                       = 32'h0000F00C;
 
 
 //==============================================================================
@@ -1852,6 +239,3091 @@ localparam int unsigned OTP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET        
 localparam int unsigned OTP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR                                            = 32'h00011568;
 localparam int unsigned OTP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET                                          = 32'h0000006C;
 localparam int unsigned OTP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR                                            = 32'h0001156C;
+
+
+//==============================================================================
+// Addresses for Address Map: kpv
+//==============================================================================
+
+
+localparam int unsigned KPV_REG_MAP_BASE_ADDR                                                                     = 32'h00012000;
+localparam int unsigned KPV_REG_MAP_SIZE                                                                          = 32'h00001108;
+
+
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[0]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_0__REG_FILE_BASE_ADDR                                                       = 32'h00012000;
+localparam int unsigned KPV_KEY_ENTRY_0__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_0__REG_ADDR                                                         = 32'h00012000;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_1__REG_ADDR                                                         = 32'h00012004;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_2__REG_ADDR                                                         = 32'h00012008;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_3__REG_ADDR                                                         = 32'h0001200C;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_4__REG_ADDR                                                         = 32'h00012010;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_5__REG_ADDR                                                         = 32'h00012014;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_6__REG_ADDR                                                         = 32'h00012018;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_7__REG_ADDR                                                         = 32'h0001201C;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_8__REG_ADDR                                                         = 32'h00012020;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_9__REG_ADDR                                                         = 32'h00012024;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_10__REG_ADDR                                                        = 32'h00012028;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_11__REG_ADDR                                                        = 32'h0001202C;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_12__REG_ADDR                                                        = 32'h00012030;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_13__REG_ADDR                                                        = 32'h00012034;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_14__REG_ADDR                                                        = 32'h00012038;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_0__WORD_15__REG_ADDR                                                        = 32'h0001203C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[1]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_1__REG_FILE_BASE_ADDR                                                       = 32'h00012040;
+localparam int unsigned KPV_KEY_ENTRY_1__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_0__REG_ADDR                                                         = 32'h00012040;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_1__REG_ADDR                                                         = 32'h00012044;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_2__REG_ADDR                                                         = 32'h00012048;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_3__REG_ADDR                                                         = 32'h0001204C;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_4__REG_ADDR                                                         = 32'h00012050;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_5__REG_ADDR                                                         = 32'h00012054;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_6__REG_ADDR                                                         = 32'h00012058;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_7__REG_ADDR                                                         = 32'h0001205C;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_8__REG_ADDR                                                         = 32'h00012060;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_9__REG_ADDR                                                         = 32'h00012064;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_10__REG_ADDR                                                        = 32'h00012068;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_11__REG_ADDR                                                        = 32'h0001206C;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_12__REG_ADDR                                                        = 32'h00012070;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_13__REG_ADDR                                                        = 32'h00012074;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_14__REG_ADDR                                                        = 32'h00012078;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_1__WORD_15__REG_ADDR                                                        = 32'h0001207C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[2]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_2__REG_FILE_BASE_ADDR                                                       = 32'h00012080;
+localparam int unsigned KPV_KEY_ENTRY_2__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_0__REG_ADDR                                                         = 32'h00012080;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_1__REG_ADDR                                                         = 32'h00012084;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_2__REG_ADDR                                                         = 32'h00012088;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_3__REG_ADDR                                                         = 32'h0001208C;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_4__REG_ADDR                                                         = 32'h00012090;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_5__REG_ADDR                                                         = 32'h00012094;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_6__REG_ADDR                                                         = 32'h00012098;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_7__REG_ADDR                                                         = 32'h0001209C;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_8__REG_ADDR                                                         = 32'h000120A0;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_9__REG_ADDR                                                         = 32'h000120A4;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_10__REG_ADDR                                                        = 32'h000120A8;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_11__REG_ADDR                                                        = 32'h000120AC;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_12__REG_ADDR                                                        = 32'h000120B0;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_13__REG_ADDR                                                        = 32'h000120B4;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_14__REG_ADDR                                                        = 32'h000120B8;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_2__WORD_15__REG_ADDR                                                        = 32'h000120BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[3]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_3__REG_FILE_BASE_ADDR                                                       = 32'h000120C0;
+localparam int unsigned KPV_KEY_ENTRY_3__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_0__REG_ADDR                                                         = 32'h000120C0;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_1__REG_ADDR                                                         = 32'h000120C4;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_2__REG_ADDR                                                         = 32'h000120C8;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_3__REG_ADDR                                                         = 32'h000120CC;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_4__REG_ADDR                                                         = 32'h000120D0;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_5__REG_ADDR                                                         = 32'h000120D4;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_6__REG_ADDR                                                         = 32'h000120D8;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_7__REG_ADDR                                                         = 32'h000120DC;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_8__REG_ADDR                                                         = 32'h000120E0;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_9__REG_ADDR                                                         = 32'h000120E4;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_10__REG_ADDR                                                        = 32'h000120E8;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_11__REG_ADDR                                                        = 32'h000120EC;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_12__REG_ADDR                                                        = 32'h000120F0;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_13__REG_ADDR                                                        = 32'h000120F4;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_14__REG_ADDR                                                        = 32'h000120F8;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_3__WORD_15__REG_ADDR                                                        = 32'h000120FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[4]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_4__REG_FILE_BASE_ADDR                                                       = 32'h00012100;
+localparam int unsigned KPV_KEY_ENTRY_4__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_0__REG_ADDR                                                         = 32'h00012100;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_1__REG_ADDR                                                         = 32'h00012104;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_2__REG_ADDR                                                         = 32'h00012108;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_3__REG_ADDR                                                         = 32'h0001210C;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_4__REG_ADDR                                                         = 32'h00012110;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_5__REG_ADDR                                                         = 32'h00012114;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_6__REG_ADDR                                                         = 32'h00012118;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_7__REG_ADDR                                                         = 32'h0001211C;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_8__REG_ADDR                                                         = 32'h00012120;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_9__REG_ADDR                                                         = 32'h00012124;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_10__REG_ADDR                                                        = 32'h00012128;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_11__REG_ADDR                                                        = 32'h0001212C;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_12__REG_ADDR                                                        = 32'h00012130;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_13__REG_ADDR                                                        = 32'h00012134;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_14__REG_ADDR                                                        = 32'h00012138;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_4__WORD_15__REG_ADDR                                                        = 32'h0001213C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[5]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_5__REG_FILE_BASE_ADDR                                                       = 32'h00012140;
+localparam int unsigned KPV_KEY_ENTRY_5__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_0__REG_ADDR                                                         = 32'h00012140;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_1__REG_ADDR                                                         = 32'h00012144;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_2__REG_ADDR                                                         = 32'h00012148;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_3__REG_ADDR                                                         = 32'h0001214C;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_4__REG_ADDR                                                         = 32'h00012150;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_5__REG_ADDR                                                         = 32'h00012154;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_6__REG_ADDR                                                         = 32'h00012158;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_7__REG_ADDR                                                         = 32'h0001215C;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_8__REG_ADDR                                                         = 32'h00012160;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_9__REG_ADDR                                                         = 32'h00012164;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_10__REG_ADDR                                                        = 32'h00012168;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_11__REG_ADDR                                                        = 32'h0001216C;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_12__REG_ADDR                                                        = 32'h00012170;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_13__REG_ADDR                                                        = 32'h00012174;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_14__REG_ADDR                                                        = 32'h00012178;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_5__WORD_15__REG_ADDR                                                        = 32'h0001217C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[6]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_6__REG_FILE_BASE_ADDR                                                       = 32'h00012180;
+localparam int unsigned KPV_KEY_ENTRY_6__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_0__REG_ADDR                                                         = 32'h00012180;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_1__REG_ADDR                                                         = 32'h00012184;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_2__REG_ADDR                                                         = 32'h00012188;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_3__REG_ADDR                                                         = 32'h0001218C;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_4__REG_ADDR                                                         = 32'h00012190;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_5__REG_ADDR                                                         = 32'h00012194;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_6__REG_ADDR                                                         = 32'h00012198;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_7__REG_ADDR                                                         = 32'h0001219C;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_8__REG_ADDR                                                         = 32'h000121A0;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_9__REG_ADDR                                                         = 32'h000121A4;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_10__REG_ADDR                                                        = 32'h000121A8;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_11__REG_ADDR                                                        = 32'h000121AC;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_12__REG_ADDR                                                        = 32'h000121B0;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_13__REG_ADDR                                                        = 32'h000121B4;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_14__REG_ADDR                                                        = 32'h000121B8;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_6__WORD_15__REG_ADDR                                                        = 32'h000121BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[7]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_7__REG_FILE_BASE_ADDR                                                       = 32'h000121C0;
+localparam int unsigned KPV_KEY_ENTRY_7__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_0__REG_ADDR                                                         = 32'h000121C0;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_1__REG_ADDR                                                         = 32'h000121C4;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_2__REG_ADDR                                                         = 32'h000121C8;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_3__REG_ADDR                                                         = 32'h000121CC;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_4__REG_ADDR                                                         = 32'h000121D0;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_5__REG_ADDR                                                         = 32'h000121D4;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_6__REG_ADDR                                                         = 32'h000121D8;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_7__REG_ADDR                                                         = 32'h000121DC;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_8__REG_ADDR                                                         = 32'h000121E0;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_9__REG_ADDR                                                         = 32'h000121E4;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_10__REG_ADDR                                                        = 32'h000121E8;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_11__REG_ADDR                                                        = 32'h000121EC;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_12__REG_ADDR                                                        = 32'h000121F0;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_13__REG_ADDR                                                        = 32'h000121F4;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_14__REG_ADDR                                                        = 32'h000121F8;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_7__WORD_15__REG_ADDR                                                        = 32'h000121FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[8]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_8__REG_FILE_BASE_ADDR                                                       = 32'h00012200;
+localparam int unsigned KPV_KEY_ENTRY_8__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_0__REG_ADDR                                                         = 32'h00012200;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_1__REG_ADDR                                                         = 32'h00012204;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_2__REG_ADDR                                                         = 32'h00012208;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_3__REG_ADDR                                                         = 32'h0001220C;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_4__REG_ADDR                                                         = 32'h00012210;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_5__REG_ADDR                                                         = 32'h00012214;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_6__REG_ADDR                                                         = 32'h00012218;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_7__REG_ADDR                                                         = 32'h0001221C;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_8__REG_ADDR                                                         = 32'h00012220;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_9__REG_ADDR                                                         = 32'h00012224;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_10__REG_ADDR                                                        = 32'h00012228;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_11__REG_ADDR                                                        = 32'h0001222C;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_12__REG_ADDR                                                        = 32'h00012230;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_13__REG_ADDR                                                        = 32'h00012234;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_14__REG_ADDR                                                        = 32'h00012238;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_8__WORD_15__REG_ADDR                                                        = 32'h0001223C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[9]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_9__REG_FILE_BASE_ADDR                                                       = 32'h00012240;
+localparam int unsigned KPV_KEY_ENTRY_9__REG_FILE_SIZE                                                            = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_0__REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_0__REG_ADDR                                                         = 32'h00012240;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_1__REG_OFFSET                                                       = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_1__REG_ADDR                                                         = 32'h00012244;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_2__REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_2__REG_ADDR                                                         = 32'h00012248;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_3__REG_OFFSET                                                       = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_3__REG_ADDR                                                         = 32'h0001224C;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_4__REG_OFFSET                                                       = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_4__REG_ADDR                                                         = 32'h00012250;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_5__REG_OFFSET                                                       = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_5__REG_ADDR                                                         = 32'h00012254;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_6__REG_OFFSET                                                       = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_6__REG_ADDR                                                         = 32'h00012258;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_7__REG_OFFSET                                                       = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_7__REG_ADDR                                                         = 32'h0001225C;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_8__REG_OFFSET                                                       = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_8__REG_ADDR                                                         = 32'h00012260;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_9__REG_OFFSET                                                       = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_9__REG_ADDR                                                         = 32'h00012264;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_10__REG_OFFSET                                                      = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_10__REG_ADDR                                                        = 32'h00012268;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_11__REG_OFFSET                                                      = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_11__REG_ADDR                                                        = 32'h0001226C;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_12__REG_OFFSET                                                      = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_12__REG_ADDR                                                        = 32'h00012270;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_13__REG_OFFSET                                                      = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_13__REG_ADDR                                                        = 32'h00012274;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_14__REG_OFFSET                                                      = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_14__REG_ADDR                                                        = 32'h00012278;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_15__REG_OFFSET                                                      = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_9__WORD_15__REG_ADDR                                                        = 32'h0001227C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[10]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_10__REG_FILE_BASE_ADDR                                                      = 32'h00012280;
+localparam int unsigned KPV_KEY_ENTRY_10__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_0__REG_ADDR                                                        = 32'h00012280;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_1__REG_ADDR                                                        = 32'h00012284;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_2__REG_ADDR                                                        = 32'h00012288;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_3__REG_ADDR                                                        = 32'h0001228C;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_4__REG_ADDR                                                        = 32'h00012290;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_5__REG_ADDR                                                        = 32'h00012294;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_6__REG_ADDR                                                        = 32'h00012298;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_7__REG_ADDR                                                        = 32'h0001229C;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_8__REG_ADDR                                                        = 32'h000122A0;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_9__REG_ADDR                                                        = 32'h000122A4;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_10__REG_ADDR                                                       = 32'h000122A8;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_11__REG_ADDR                                                       = 32'h000122AC;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_12__REG_ADDR                                                       = 32'h000122B0;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_13__REG_ADDR                                                       = 32'h000122B4;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_14__REG_ADDR                                                       = 32'h000122B8;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_10__WORD_15__REG_ADDR                                                       = 32'h000122BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[11]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_11__REG_FILE_BASE_ADDR                                                      = 32'h000122C0;
+localparam int unsigned KPV_KEY_ENTRY_11__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_0__REG_ADDR                                                        = 32'h000122C0;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_1__REG_ADDR                                                        = 32'h000122C4;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_2__REG_ADDR                                                        = 32'h000122C8;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_3__REG_ADDR                                                        = 32'h000122CC;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_4__REG_ADDR                                                        = 32'h000122D0;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_5__REG_ADDR                                                        = 32'h000122D4;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_6__REG_ADDR                                                        = 32'h000122D8;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_7__REG_ADDR                                                        = 32'h000122DC;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_8__REG_ADDR                                                        = 32'h000122E0;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_9__REG_ADDR                                                        = 32'h000122E4;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_10__REG_ADDR                                                       = 32'h000122E8;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_11__REG_ADDR                                                       = 32'h000122EC;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_12__REG_ADDR                                                       = 32'h000122F0;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_13__REG_ADDR                                                       = 32'h000122F4;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_14__REG_ADDR                                                       = 32'h000122F8;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_11__WORD_15__REG_ADDR                                                       = 32'h000122FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[12]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_12__REG_FILE_BASE_ADDR                                                      = 32'h00012300;
+localparam int unsigned KPV_KEY_ENTRY_12__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_0__REG_ADDR                                                        = 32'h00012300;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_1__REG_ADDR                                                        = 32'h00012304;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_2__REG_ADDR                                                        = 32'h00012308;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_3__REG_ADDR                                                        = 32'h0001230C;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_4__REG_ADDR                                                        = 32'h00012310;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_5__REG_ADDR                                                        = 32'h00012314;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_6__REG_ADDR                                                        = 32'h00012318;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_7__REG_ADDR                                                        = 32'h0001231C;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_8__REG_ADDR                                                        = 32'h00012320;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_9__REG_ADDR                                                        = 32'h00012324;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_10__REG_ADDR                                                       = 32'h00012328;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_11__REG_ADDR                                                       = 32'h0001232C;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_12__REG_ADDR                                                       = 32'h00012330;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_13__REG_ADDR                                                       = 32'h00012334;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_14__REG_ADDR                                                       = 32'h00012338;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_12__WORD_15__REG_ADDR                                                       = 32'h0001233C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[13]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_13__REG_FILE_BASE_ADDR                                                      = 32'h00012340;
+localparam int unsigned KPV_KEY_ENTRY_13__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_0__REG_ADDR                                                        = 32'h00012340;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_1__REG_ADDR                                                        = 32'h00012344;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_2__REG_ADDR                                                        = 32'h00012348;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_3__REG_ADDR                                                        = 32'h0001234C;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_4__REG_ADDR                                                        = 32'h00012350;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_5__REG_ADDR                                                        = 32'h00012354;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_6__REG_ADDR                                                        = 32'h00012358;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_7__REG_ADDR                                                        = 32'h0001235C;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_8__REG_ADDR                                                        = 32'h00012360;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_9__REG_ADDR                                                        = 32'h00012364;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_10__REG_ADDR                                                       = 32'h00012368;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_11__REG_ADDR                                                       = 32'h0001236C;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_12__REG_ADDR                                                       = 32'h00012370;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_13__REG_ADDR                                                       = 32'h00012374;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_14__REG_ADDR                                                       = 32'h00012378;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_13__WORD_15__REG_ADDR                                                       = 32'h0001237C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[14]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_14__REG_FILE_BASE_ADDR                                                      = 32'h00012380;
+localparam int unsigned KPV_KEY_ENTRY_14__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_0__REG_ADDR                                                        = 32'h00012380;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_1__REG_ADDR                                                        = 32'h00012384;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_2__REG_ADDR                                                        = 32'h00012388;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_3__REG_ADDR                                                        = 32'h0001238C;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_4__REG_ADDR                                                        = 32'h00012390;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_5__REG_ADDR                                                        = 32'h00012394;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_6__REG_ADDR                                                        = 32'h00012398;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_7__REG_ADDR                                                        = 32'h0001239C;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_8__REG_ADDR                                                        = 32'h000123A0;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_9__REG_ADDR                                                        = 32'h000123A4;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_10__REG_ADDR                                                       = 32'h000123A8;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_11__REG_ADDR                                                       = 32'h000123AC;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_12__REG_ADDR                                                       = 32'h000123B0;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_13__REG_ADDR                                                       = 32'h000123B4;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_14__REG_ADDR                                                       = 32'h000123B8;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_14__WORD_15__REG_ADDR                                                       = 32'h000123BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[15]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_15__REG_FILE_BASE_ADDR                                                      = 32'h000123C0;
+localparam int unsigned KPV_KEY_ENTRY_15__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_0__REG_ADDR                                                        = 32'h000123C0;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_1__REG_ADDR                                                        = 32'h000123C4;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_2__REG_ADDR                                                        = 32'h000123C8;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_3__REG_ADDR                                                        = 32'h000123CC;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_4__REG_ADDR                                                        = 32'h000123D0;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_5__REG_ADDR                                                        = 32'h000123D4;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_6__REG_ADDR                                                        = 32'h000123D8;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_7__REG_ADDR                                                        = 32'h000123DC;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_8__REG_ADDR                                                        = 32'h000123E0;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_9__REG_ADDR                                                        = 32'h000123E4;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_10__REG_ADDR                                                       = 32'h000123E8;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_11__REG_ADDR                                                       = 32'h000123EC;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_12__REG_ADDR                                                       = 32'h000123F0;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_13__REG_ADDR                                                       = 32'h000123F4;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_14__REG_ADDR                                                       = 32'h000123F8;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_15__WORD_15__REG_ADDR                                                       = 32'h000123FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[16]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_16__REG_FILE_BASE_ADDR                                                      = 32'h00012400;
+localparam int unsigned KPV_KEY_ENTRY_16__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_0__REG_ADDR                                                        = 32'h00012400;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_1__REG_ADDR                                                        = 32'h00012404;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_2__REG_ADDR                                                        = 32'h00012408;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_3__REG_ADDR                                                        = 32'h0001240C;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_4__REG_ADDR                                                        = 32'h00012410;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_5__REG_ADDR                                                        = 32'h00012414;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_6__REG_ADDR                                                        = 32'h00012418;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_7__REG_ADDR                                                        = 32'h0001241C;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_8__REG_ADDR                                                        = 32'h00012420;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_9__REG_ADDR                                                        = 32'h00012424;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_10__REG_ADDR                                                       = 32'h00012428;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_11__REG_ADDR                                                       = 32'h0001242C;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_12__REG_ADDR                                                       = 32'h00012430;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_13__REG_ADDR                                                       = 32'h00012434;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_14__REG_ADDR                                                       = 32'h00012438;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_16__WORD_15__REG_ADDR                                                       = 32'h0001243C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[17]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_17__REG_FILE_BASE_ADDR                                                      = 32'h00012440;
+localparam int unsigned KPV_KEY_ENTRY_17__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_0__REG_ADDR                                                        = 32'h00012440;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_1__REG_ADDR                                                        = 32'h00012444;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_2__REG_ADDR                                                        = 32'h00012448;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_3__REG_ADDR                                                        = 32'h0001244C;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_4__REG_ADDR                                                        = 32'h00012450;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_5__REG_ADDR                                                        = 32'h00012454;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_6__REG_ADDR                                                        = 32'h00012458;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_7__REG_ADDR                                                        = 32'h0001245C;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_8__REG_ADDR                                                        = 32'h00012460;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_9__REG_ADDR                                                        = 32'h00012464;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_10__REG_ADDR                                                       = 32'h00012468;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_11__REG_ADDR                                                       = 32'h0001246C;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_12__REG_ADDR                                                       = 32'h00012470;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_13__REG_ADDR                                                       = 32'h00012474;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_14__REG_ADDR                                                       = 32'h00012478;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_17__WORD_15__REG_ADDR                                                       = 32'h0001247C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[18]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_18__REG_FILE_BASE_ADDR                                                      = 32'h00012480;
+localparam int unsigned KPV_KEY_ENTRY_18__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_0__REG_ADDR                                                        = 32'h00012480;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_1__REG_ADDR                                                        = 32'h00012484;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_2__REG_ADDR                                                        = 32'h00012488;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_3__REG_ADDR                                                        = 32'h0001248C;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_4__REG_ADDR                                                        = 32'h00012490;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_5__REG_ADDR                                                        = 32'h00012494;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_6__REG_ADDR                                                        = 32'h00012498;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_7__REG_ADDR                                                        = 32'h0001249C;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_8__REG_ADDR                                                        = 32'h000124A0;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_9__REG_ADDR                                                        = 32'h000124A4;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_10__REG_ADDR                                                       = 32'h000124A8;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_11__REG_ADDR                                                       = 32'h000124AC;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_12__REG_ADDR                                                       = 32'h000124B0;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_13__REG_ADDR                                                       = 32'h000124B4;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_14__REG_ADDR                                                       = 32'h000124B8;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_18__WORD_15__REG_ADDR                                                       = 32'h000124BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[19]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_19__REG_FILE_BASE_ADDR                                                      = 32'h000124C0;
+localparam int unsigned KPV_KEY_ENTRY_19__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_0__REG_ADDR                                                        = 32'h000124C0;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_1__REG_ADDR                                                        = 32'h000124C4;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_2__REG_ADDR                                                        = 32'h000124C8;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_3__REG_ADDR                                                        = 32'h000124CC;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_4__REG_ADDR                                                        = 32'h000124D0;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_5__REG_ADDR                                                        = 32'h000124D4;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_6__REG_ADDR                                                        = 32'h000124D8;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_7__REG_ADDR                                                        = 32'h000124DC;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_8__REG_ADDR                                                        = 32'h000124E0;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_9__REG_ADDR                                                        = 32'h000124E4;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_10__REG_ADDR                                                       = 32'h000124E8;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_11__REG_ADDR                                                       = 32'h000124EC;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_12__REG_ADDR                                                       = 32'h000124F0;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_13__REG_ADDR                                                       = 32'h000124F4;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_14__REG_ADDR                                                       = 32'h000124F8;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_19__WORD_15__REG_ADDR                                                       = 32'h000124FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[20]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_20__REG_FILE_BASE_ADDR                                                      = 32'h00012500;
+localparam int unsigned KPV_KEY_ENTRY_20__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_0__REG_ADDR                                                        = 32'h00012500;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_1__REG_ADDR                                                        = 32'h00012504;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_2__REG_ADDR                                                        = 32'h00012508;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_3__REG_ADDR                                                        = 32'h0001250C;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_4__REG_ADDR                                                        = 32'h00012510;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_5__REG_ADDR                                                        = 32'h00012514;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_6__REG_ADDR                                                        = 32'h00012518;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_7__REG_ADDR                                                        = 32'h0001251C;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_8__REG_ADDR                                                        = 32'h00012520;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_9__REG_ADDR                                                        = 32'h00012524;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_10__REG_ADDR                                                       = 32'h00012528;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_11__REG_ADDR                                                       = 32'h0001252C;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_12__REG_ADDR                                                       = 32'h00012530;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_13__REG_ADDR                                                       = 32'h00012534;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_14__REG_ADDR                                                       = 32'h00012538;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_20__WORD_15__REG_ADDR                                                       = 32'h0001253C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[21]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_21__REG_FILE_BASE_ADDR                                                      = 32'h00012540;
+localparam int unsigned KPV_KEY_ENTRY_21__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_0__REG_ADDR                                                        = 32'h00012540;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_1__REG_ADDR                                                        = 32'h00012544;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_2__REG_ADDR                                                        = 32'h00012548;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_3__REG_ADDR                                                        = 32'h0001254C;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_4__REG_ADDR                                                        = 32'h00012550;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_5__REG_ADDR                                                        = 32'h00012554;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_6__REG_ADDR                                                        = 32'h00012558;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_7__REG_ADDR                                                        = 32'h0001255C;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_8__REG_ADDR                                                        = 32'h00012560;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_9__REG_ADDR                                                        = 32'h00012564;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_10__REG_ADDR                                                       = 32'h00012568;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_11__REG_ADDR                                                       = 32'h0001256C;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_12__REG_ADDR                                                       = 32'h00012570;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_13__REG_ADDR                                                       = 32'h00012574;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_14__REG_ADDR                                                       = 32'h00012578;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_21__WORD_15__REG_ADDR                                                       = 32'h0001257C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[22]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_22__REG_FILE_BASE_ADDR                                                      = 32'h00012580;
+localparam int unsigned KPV_KEY_ENTRY_22__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_0__REG_ADDR                                                        = 32'h00012580;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_1__REG_ADDR                                                        = 32'h00012584;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_2__REG_ADDR                                                        = 32'h00012588;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_3__REG_ADDR                                                        = 32'h0001258C;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_4__REG_ADDR                                                        = 32'h00012590;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_5__REG_ADDR                                                        = 32'h00012594;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_6__REG_ADDR                                                        = 32'h00012598;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_7__REG_ADDR                                                        = 32'h0001259C;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_8__REG_ADDR                                                        = 32'h000125A0;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_9__REG_ADDR                                                        = 32'h000125A4;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_10__REG_ADDR                                                       = 32'h000125A8;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_11__REG_ADDR                                                       = 32'h000125AC;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_12__REG_ADDR                                                       = 32'h000125B0;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_13__REG_ADDR                                                       = 32'h000125B4;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_14__REG_ADDR                                                       = 32'h000125B8;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_22__WORD_15__REG_ADDR                                                       = 32'h000125BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[23]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_23__REG_FILE_BASE_ADDR                                                      = 32'h000125C0;
+localparam int unsigned KPV_KEY_ENTRY_23__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_0__REG_ADDR                                                        = 32'h000125C0;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_1__REG_ADDR                                                        = 32'h000125C4;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_2__REG_ADDR                                                        = 32'h000125C8;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_3__REG_ADDR                                                        = 32'h000125CC;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_4__REG_ADDR                                                        = 32'h000125D0;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_5__REG_ADDR                                                        = 32'h000125D4;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_6__REG_ADDR                                                        = 32'h000125D8;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_7__REG_ADDR                                                        = 32'h000125DC;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_8__REG_ADDR                                                        = 32'h000125E0;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_9__REG_ADDR                                                        = 32'h000125E4;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_10__REG_ADDR                                                       = 32'h000125E8;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_11__REG_ADDR                                                       = 32'h000125EC;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_12__REG_ADDR                                                       = 32'h000125F0;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_13__REG_ADDR                                                       = 32'h000125F4;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_14__REG_ADDR                                                       = 32'h000125F8;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_23__WORD_15__REG_ADDR                                                       = 32'h000125FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[24]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_24__REG_FILE_BASE_ADDR                                                      = 32'h00012600;
+localparam int unsigned KPV_KEY_ENTRY_24__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_0__REG_ADDR                                                        = 32'h00012600;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_1__REG_ADDR                                                        = 32'h00012604;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_2__REG_ADDR                                                        = 32'h00012608;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_3__REG_ADDR                                                        = 32'h0001260C;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_4__REG_ADDR                                                        = 32'h00012610;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_5__REG_ADDR                                                        = 32'h00012614;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_6__REG_ADDR                                                        = 32'h00012618;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_7__REG_ADDR                                                        = 32'h0001261C;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_8__REG_ADDR                                                        = 32'h00012620;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_9__REG_ADDR                                                        = 32'h00012624;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_10__REG_ADDR                                                       = 32'h00012628;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_11__REG_ADDR                                                       = 32'h0001262C;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_12__REG_ADDR                                                       = 32'h00012630;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_13__REG_ADDR                                                       = 32'h00012634;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_14__REG_ADDR                                                       = 32'h00012638;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_24__WORD_15__REG_ADDR                                                       = 32'h0001263C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[25]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_25__REG_FILE_BASE_ADDR                                                      = 32'h00012640;
+localparam int unsigned KPV_KEY_ENTRY_25__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_0__REG_ADDR                                                        = 32'h00012640;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_1__REG_ADDR                                                        = 32'h00012644;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_2__REG_ADDR                                                        = 32'h00012648;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_3__REG_ADDR                                                        = 32'h0001264C;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_4__REG_ADDR                                                        = 32'h00012650;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_5__REG_ADDR                                                        = 32'h00012654;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_6__REG_ADDR                                                        = 32'h00012658;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_7__REG_ADDR                                                        = 32'h0001265C;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_8__REG_ADDR                                                        = 32'h00012660;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_9__REG_ADDR                                                        = 32'h00012664;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_10__REG_ADDR                                                       = 32'h00012668;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_11__REG_ADDR                                                       = 32'h0001266C;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_12__REG_ADDR                                                       = 32'h00012670;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_13__REG_ADDR                                                       = 32'h00012674;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_14__REG_ADDR                                                       = 32'h00012678;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_25__WORD_15__REG_ADDR                                                       = 32'h0001267C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[26]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_26__REG_FILE_BASE_ADDR                                                      = 32'h00012680;
+localparam int unsigned KPV_KEY_ENTRY_26__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_0__REG_ADDR                                                        = 32'h00012680;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_1__REG_ADDR                                                        = 32'h00012684;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_2__REG_ADDR                                                        = 32'h00012688;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_3__REG_ADDR                                                        = 32'h0001268C;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_4__REG_ADDR                                                        = 32'h00012690;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_5__REG_ADDR                                                        = 32'h00012694;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_6__REG_ADDR                                                        = 32'h00012698;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_7__REG_ADDR                                                        = 32'h0001269C;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_8__REG_ADDR                                                        = 32'h000126A0;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_9__REG_ADDR                                                        = 32'h000126A4;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_10__REG_ADDR                                                       = 32'h000126A8;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_11__REG_ADDR                                                       = 32'h000126AC;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_12__REG_ADDR                                                       = 32'h000126B0;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_13__REG_ADDR                                                       = 32'h000126B4;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_14__REG_ADDR                                                       = 32'h000126B8;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_26__WORD_15__REG_ADDR                                                       = 32'h000126BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[27]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_27__REG_FILE_BASE_ADDR                                                      = 32'h000126C0;
+localparam int unsigned KPV_KEY_ENTRY_27__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_0__REG_ADDR                                                        = 32'h000126C0;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_1__REG_ADDR                                                        = 32'h000126C4;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_2__REG_ADDR                                                        = 32'h000126C8;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_3__REG_ADDR                                                        = 32'h000126CC;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_4__REG_ADDR                                                        = 32'h000126D0;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_5__REG_ADDR                                                        = 32'h000126D4;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_6__REG_ADDR                                                        = 32'h000126D8;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_7__REG_ADDR                                                        = 32'h000126DC;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_8__REG_ADDR                                                        = 32'h000126E0;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_9__REG_ADDR                                                        = 32'h000126E4;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_10__REG_ADDR                                                       = 32'h000126E8;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_11__REG_ADDR                                                       = 32'h000126EC;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_12__REG_ADDR                                                       = 32'h000126F0;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_13__REG_ADDR                                                       = 32'h000126F4;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_14__REG_ADDR                                                       = 32'h000126F8;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_27__WORD_15__REG_ADDR                                                       = 32'h000126FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[28]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_28__REG_FILE_BASE_ADDR                                                      = 32'h00012700;
+localparam int unsigned KPV_KEY_ENTRY_28__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_0__REG_ADDR                                                        = 32'h00012700;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_1__REG_ADDR                                                        = 32'h00012704;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_2__REG_ADDR                                                        = 32'h00012708;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_3__REG_ADDR                                                        = 32'h0001270C;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_4__REG_ADDR                                                        = 32'h00012710;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_5__REG_ADDR                                                        = 32'h00012714;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_6__REG_ADDR                                                        = 32'h00012718;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_7__REG_ADDR                                                        = 32'h0001271C;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_8__REG_ADDR                                                        = 32'h00012720;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_9__REG_ADDR                                                        = 32'h00012724;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_10__REG_ADDR                                                       = 32'h00012728;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_11__REG_ADDR                                                       = 32'h0001272C;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_12__REG_ADDR                                                       = 32'h00012730;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_13__REG_ADDR                                                       = 32'h00012734;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_14__REG_ADDR                                                       = 32'h00012738;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_28__WORD_15__REG_ADDR                                                       = 32'h0001273C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[29]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_29__REG_FILE_BASE_ADDR                                                      = 32'h00012740;
+localparam int unsigned KPV_KEY_ENTRY_29__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_0__REG_ADDR                                                        = 32'h00012740;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_1__REG_ADDR                                                        = 32'h00012744;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_2__REG_ADDR                                                        = 32'h00012748;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_3__REG_ADDR                                                        = 32'h0001274C;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_4__REG_ADDR                                                        = 32'h00012750;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_5__REG_ADDR                                                        = 32'h00012754;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_6__REG_ADDR                                                        = 32'h00012758;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_7__REG_ADDR                                                        = 32'h0001275C;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_8__REG_ADDR                                                        = 32'h00012760;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_9__REG_ADDR                                                        = 32'h00012764;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_10__REG_ADDR                                                       = 32'h00012768;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_11__REG_ADDR                                                       = 32'h0001276C;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_12__REG_ADDR                                                       = 32'h00012770;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_13__REG_ADDR                                                       = 32'h00012774;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_14__REG_ADDR                                                       = 32'h00012778;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_29__WORD_15__REG_ADDR                                                       = 32'h0001277C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[30]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_30__REG_FILE_BASE_ADDR                                                      = 32'h00012780;
+localparam int unsigned KPV_KEY_ENTRY_30__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_0__REG_ADDR                                                        = 32'h00012780;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_1__REG_ADDR                                                        = 32'h00012784;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_2__REG_ADDR                                                        = 32'h00012788;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_3__REG_ADDR                                                        = 32'h0001278C;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_4__REG_ADDR                                                        = 32'h00012790;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_5__REG_ADDR                                                        = 32'h00012794;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_6__REG_ADDR                                                        = 32'h00012798;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_7__REG_ADDR                                                        = 32'h0001279C;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_8__REG_ADDR                                                        = 32'h000127A0;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_9__REG_ADDR                                                        = 32'h000127A4;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_10__REG_ADDR                                                       = 32'h000127A8;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_11__REG_ADDR                                                       = 32'h000127AC;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_12__REG_ADDR                                                       = 32'h000127B0;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_13__REG_ADDR                                                       = 32'h000127B4;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_14__REG_ADDR                                                       = 32'h000127B8;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_30__WORD_15__REG_ADDR                                                       = 32'h000127BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[31]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_31__REG_FILE_BASE_ADDR                                                      = 32'h000127C0;
+localparam int unsigned KPV_KEY_ENTRY_31__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_0__REG_ADDR                                                        = 32'h000127C0;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_1__REG_ADDR                                                        = 32'h000127C4;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_2__REG_ADDR                                                        = 32'h000127C8;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_3__REG_ADDR                                                        = 32'h000127CC;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_4__REG_ADDR                                                        = 32'h000127D0;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_5__REG_ADDR                                                        = 32'h000127D4;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_6__REG_ADDR                                                        = 32'h000127D8;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_7__REG_ADDR                                                        = 32'h000127DC;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_8__REG_ADDR                                                        = 32'h000127E0;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_9__REG_ADDR                                                        = 32'h000127E4;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_10__REG_ADDR                                                       = 32'h000127E8;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_11__REG_ADDR                                                       = 32'h000127EC;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_12__REG_ADDR                                                       = 32'h000127F0;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_13__REG_ADDR                                                       = 32'h000127F4;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_14__REG_ADDR                                                       = 32'h000127F8;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_31__WORD_15__REG_ADDR                                                       = 32'h000127FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[32]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_32__REG_FILE_BASE_ADDR                                                      = 32'h00012800;
+localparam int unsigned KPV_KEY_ENTRY_32__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_0__REG_ADDR                                                        = 32'h00012800;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_1__REG_ADDR                                                        = 32'h00012804;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_2__REG_ADDR                                                        = 32'h00012808;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_3__REG_ADDR                                                        = 32'h0001280C;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_4__REG_ADDR                                                        = 32'h00012810;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_5__REG_ADDR                                                        = 32'h00012814;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_6__REG_ADDR                                                        = 32'h00012818;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_7__REG_ADDR                                                        = 32'h0001281C;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_8__REG_ADDR                                                        = 32'h00012820;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_9__REG_ADDR                                                        = 32'h00012824;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_10__REG_ADDR                                                       = 32'h00012828;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_11__REG_ADDR                                                       = 32'h0001282C;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_12__REG_ADDR                                                       = 32'h00012830;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_13__REG_ADDR                                                       = 32'h00012834;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_14__REG_ADDR                                                       = 32'h00012838;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_32__WORD_15__REG_ADDR                                                       = 32'h0001283C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[33]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_33__REG_FILE_BASE_ADDR                                                      = 32'h00012840;
+localparam int unsigned KPV_KEY_ENTRY_33__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_0__REG_ADDR                                                        = 32'h00012840;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_1__REG_ADDR                                                        = 32'h00012844;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_2__REG_ADDR                                                        = 32'h00012848;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_3__REG_ADDR                                                        = 32'h0001284C;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_4__REG_ADDR                                                        = 32'h00012850;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_5__REG_ADDR                                                        = 32'h00012854;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_6__REG_ADDR                                                        = 32'h00012858;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_7__REG_ADDR                                                        = 32'h0001285C;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_8__REG_ADDR                                                        = 32'h00012860;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_9__REG_ADDR                                                        = 32'h00012864;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_10__REG_ADDR                                                       = 32'h00012868;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_11__REG_ADDR                                                       = 32'h0001286C;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_12__REG_ADDR                                                       = 32'h00012870;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_13__REG_ADDR                                                       = 32'h00012874;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_14__REG_ADDR                                                       = 32'h00012878;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_33__WORD_15__REG_ADDR                                                       = 32'h0001287C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[34]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_34__REG_FILE_BASE_ADDR                                                      = 32'h00012880;
+localparam int unsigned KPV_KEY_ENTRY_34__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_0__REG_ADDR                                                        = 32'h00012880;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_1__REG_ADDR                                                        = 32'h00012884;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_2__REG_ADDR                                                        = 32'h00012888;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_3__REG_ADDR                                                        = 32'h0001288C;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_4__REG_ADDR                                                        = 32'h00012890;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_5__REG_ADDR                                                        = 32'h00012894;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_6__REG_ADDR                                                        = 32'h00012898;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_7__REG_ADDR                                                        = 32'h0001289C;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_8__REG_ADDR                                                        = 32'h000128A0;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_9__REG_ADDR                                                        = 32'h000128A4;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_10__REG_ADDR                                                       = 32'h000128A8;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_11__REG_ADDR                                                       = 32'h000128AC;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_12__REG_ADDR                                                       = 32'h000128B0;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_13__REG_ADDR                                                       = 32'h000128B4;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_14__REG_ADDR                                                       = 32'h000128B8;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_34__WORD_15__REG_ADDR                                                       = 32'h000128BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[35]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_35__REG_FILE_BASE_ADDR                                                      = 32'h000128C0;
+localparam int unsigned KPV_KEY_ENTRY_35__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_0__REG_ADDR                                                        = 32'h000128C0;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_1__REG_ADDR                                                        = 32'h000128C4;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_2__REG_ADDR                                                        = 32'h000128C8;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_3__REG_ADDR                                                        = 32'h000128CC;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_4__REG_ADDR                                                        = 32'h000128D0;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_5__REG_ADDR                                                        = 32'h000128D4;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_6__REG_ADDR                                                        = 32'h000128D8;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_7__REG_ADDR                                                        = 32'h000128DC;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_8__REG_ADDR                                                        = 32'h000128E0;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_9__REG_ADDR                                                        = 32'h000128E4;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_10__REG_ADDR                                                       = 32'h000128E8;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_11__REG_ADDR                                                       = 32'h000128EC;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_12__REG_ADDR                                                       = 32'h000128F0;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_13__REG_ADDR                                                       = 32'h000128F4;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_14__REG_ADDR                                                       = 32'h000128F8;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_35__WORD_15__REG_ADDR                                                       = 32'h000128FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[36]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_36__REG_FILE_BASE_ADDR                                                      = 32'h00012900;
+localparam int unsigned KPV_KEY_ENTRY_36__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_0__REG_ADDR                                                        = 32'h00012900;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_1__REG_ADDR                                                        = 32'h00012904;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_2__REG_ADDR                                                        = 32'h00012908;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_3__REG_ADDR                                                        = 32'h0001290C;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_4__REG_ADDR                                                        = 32'h00012910;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_5__REG_ADDR                                                        = 32'h00012914;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_6__REG_ADDR                                                        = 32'h00012918;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_7__REG_ADDR                                                        = 32'h0001291C;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_8__REG_ADDR                                                        = 32'h00012920;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_9__REG_ADDR                                                        = 32'h00012924;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_10__REG_ADDR                                                       = 32'h00012928;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_11__REG_ADDR                                                       = 32'h0001292C;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_12__REG_ADDR                                                       = 32'h00012930;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_13__REG_ADDR                                                       = 32'h00012934;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_14__REG_ADDR                                                       = 32'h00012938;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_36__WORD_15__REG_ADDR                                                       = 32'h0001293C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[37]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_37__REG_FILE_BASE_ADDR                                                      = 32'h00012940;
+localparam int unsigned KPV_KEY_ENTRY_37__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_0__REG_ADDR                                                        = 32'h00012940;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_1__REG_ADDR                                                        = 32'h00012944;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_2__REG_ADDR                                                        = 32'h00012948;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_3__REG_ADDR                                                        = 32'h0001294C;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_4__REG_ADDR                                                        = 32'h00012950;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_5__REG_ADDR                                                        = 32'h00012954;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_6__REG_ADDR                                                        = 32'h00012958;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_7__REG_ADDR                                                        = 32'h0001295C;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_8__REG_ADDR                                                        = 32'h00012960;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_9__REG_ADDR                                                        = 32'h00012964;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_10__REG_ADDR                                                       = 32'h00012968;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_11__REG_ADDR                                                       = 32'h0001296C;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_12__REG_ADDR                                                       = 32'h00012970;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_13__REG_ADDR                                                       = 32'h00012974;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_14__REG_ADDR                                                       = 32'h00012978;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_37__WORD_15__REG_ADDR                                                       = 32'h0001297C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[38]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_38__REG_FILE_BASE_ADDR                                                      = 32'h00012980;
+localparam int unsigned KPV_KEY_ENTRY_38__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_0__REG_ADDR                                                        = 32'h00012980;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_1__REG_ADDR                                                        = 32'h00012984;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_2__REG_ADDR                                                        = 32'h00012988;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_3__REG_ADDR                                                        = 32'h0001298C;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_4__REG_ADDR                                                        = 32'h00012990;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_5__REG_ADDR                                                        = 32'h00012994;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_6__REG_ADDR                                                        = 32'h00012998;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_7__REG_ADDR                                                        = 32'h0001299C;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_8__REG_ADDR                                                        = 32'h000129A0;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_9__REG_ADDR                                                        = 32'h000129A4;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_10__REG_ADDR                                                       = 32'h000129A8;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_11__REG_ADDR                                                       = 32'h000129AC;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_12__REG_ADDR                                                       = 32'h000129B0;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_13__REG_ADDR                                                       = 32'h000129B4;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_14__REG_ADDR                                                       = 32'h000129B8;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_38__WORD_15__REG_ADDR                                                       = 32'h000129BC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[39]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_39__REG_FILE_BASE_ADDR                                                      = 32'h000129C0;
+localparam int unsigned KPV_KEY_ENTRY_39__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_0__REG_ADDR                                                        = 32'h000129C0;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_1__REG_ADDR                                                        = 32'h000129C4;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_2__REG_ADDR                                                        = 32'h000129C8;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_3__REG_ADDR                                                        = 32'h000129CC;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_4__REG_ADDR                                                        = 32'h000129D0;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_5__REG_ADDR                                                        = 32'h000129D4;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_6__REG_ADDR                                                        = 32'h000129D8;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_7__REG_ADDR                                                        = 32'h000129DC;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_8__REG_ADDR                                                        = 32'h000129E0;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_9__REG_ADDR                                                        = 32'h000129E4;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_10__REG_ADDR                                                       = 32'h000129E8;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_11__REG_ADDR                                                       = 32'h000129EC;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_12__REG_ADDR                                                       = 32'h000129F0;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_13__REG_ADDR                                                       = 32'h000129F4;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_14__REG_ADDR                                                       = 32'h000129F8;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_39__WORD_15__REG_ADDR                                                       = 32'h000129FC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[40]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_40__REG_FILE_BASE_ADDR                                                      = 32'h00012A00;
+localparam int unsigned KPV_KEY_ENTRY_40__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_0__REG_ADDR                                                        = 32'h00012A00;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_1__REG_ADDR                                                        = 32'h00012A04;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_2__REG_ADDR                                                        = 32'h00012A08;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_3__REG_ADDR                                                        = 32'h00012A0C;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_4__REG_ADDR                                                        = 32'h00012A10;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_5__REG_ADDR                                                        = 32'h00012A14;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_6__REG_ADDR                                                        = 32'h00012A18;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_7__REG_ADDR                                                        = 32'h00012A1C;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_8__REG_ADDR                                                        = 32'h00012A20;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_9__REG_ADDR                                                        = 32'h00012A24;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_10__REG_ADDR                                                       = 32'h00012A28;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_11__REG_ADDR                                                       = 32'h00012A2C;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_12__REG_ADDR                                                       = 32'h00012A30;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_13__REG_ADDR                                                       = 32'h00012A34;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_14__REG_ADDR                                                       = 32'h00012A38;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_40__WORD_15__REG_ADDR                                                       = 32'h00012A3C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[41]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_41__REG_FILE_BASE_ADDR                                                      = 32'h00012A40;
+localparam int unsigned KPV_KEY_ENTRY_41__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_0__REG_ADDR                                                        = 32'h00012A40;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_1__REG_ADDR                                                        = 32'h00012A44;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_2__REG_ADDR                                                        = 32'h00012A48;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_3__REG_ADDR                                                        = 32'h00012A4C;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_4__REG_ADDR                                                        = 32'h00012A50;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_5__REG_ADDR                                                        = 32'h00012A54;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_6__REG_ADDR                                                        = 32'h00012A58;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_7__REG_ADDR                                                        = 32'h00012A5C;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_8__REG_ADDR                                                        = 32'h00012A60;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_9__REG_ADDR                                                        = 32'h00012A64;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_10__REG_ADDR                                                       = 32'h00012A68;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_11__REG_ADDR                                                       = 32'h00012A6C;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_12__REG_ADDR                                                       = 32'h00012A70;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_13__REG_ADDR                                                       = 32'h00012A74;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_14__REG_ADDR                                                       = 32'h00012A78;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_41__WORD_15__REG_ADDR                                                       = 32'h00012A7C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[42]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_42__REG_FILE_BASE_ADDR                                                      = 32'h00012A80;
+localparam int unsigned KPV_KEY_ENTRY_42__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_0__REG_ADDR                                                        = 32'h00012A80;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_1__REG_ADDR                                                        = 32'h00012A84;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_2__REG_ADDR                                                        = 32'h00012A88;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_3__REG_ADDR                                                        = 32'h00012A8C;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_4__REG_ADDR                                                        = 32'h00012A90;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_5__REG_ADDR                                                        = 32'h00012A94;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_6__REG_ADDR                                                        = 32'h00012A98;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_7__REG_ADDR                                                        = 32'h00012A9C;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_8__REG_ADDR                                                        = 32'h00012AA0;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_9__REG_ADDR                                                        = 32'h00012AA4;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_10__REG_ADDR                                                       = 32'h00012AA8;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_11__REG_ADDR                                                       = 32'h00012AAC;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_12__REG_ADDR                                                       = 32'h00012AB0;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_13__REG_ADDR                                                       = 32'h00012AB4;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_14__REG_ADDR                                                       = 32'h00012AB8;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_42__WORD_15__REG_ADDR                                                       = 32'h00012ABC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[43]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_43__REG_FILE_BASE_ADDR                                                      = 32'h00012AC0;
+localparam int unsigned KPV_KEY_ENTRY_43__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_0__REG_ADDR                                                        = 32'h00012AC0;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_1__REG_ADDR                                                        = 32'h00012AC4;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_2__REG_ADDR                                                        = 32'h00012AC8;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_3__REG_ADDR                                                        = 32'h00012ACC;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_4__REG_ADDR                                                        = 32'h00012AD0;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_5__REG_ADDR                                                        = 32'h00012AD4;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_6__REG_ADDR                                                        = 32'h00012AD8;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_7__REG_ADDR                                                        = 32'h00012ADC;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_8__REG_ADDR                                                        = 32'h00012AE0;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_9__REG_ADDR                                                        = 32'h00012AE4;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_10__REG_ADDR                                                       = 32'h00012AE8;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_11__REG_ADDR                                                       = 32'h00012AEC;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_12__REG_ADDR                                                       = 32'h00012AF0;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_13__REG_ADDR                                                       = 32'h00012AF4;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_14__REG_ADDR                                                       = 32'h00012AF8;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_43__WORD_15__REG_ADDR                                                       = 32'h00012AFC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[44]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_44__REG_FILE_BASE_ADDR                                                      = 32'h00012B00;
+localparam int unsigned KPV_KEY_ENTRY_44__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_0__REG_ADDR                                                        = 32'h00012B00;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_1__REG_ADDR                                                        = 32'h00012B04;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_2__REG_ADDR                                                        = 32'h00012B08;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_3__REG_ADDR                                                        = 32'h00012B0C;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_4__REG_ADDR                                                        = 32'h00012B10;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_5__REG_ADDR                                                        = 32'h00012B14;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_6__REG_ADDR                                                        = 32'h00012B18;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_7__REG_ADDR                                                        = 32'h00012B1C;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_8__REG_ADDR                                                        = 32'h00012B20;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_9__REG_ADDR                                                        = 32'h00012B24;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_10__REG_ADDR                                                       = 32'h00012B28;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_11__REG_ADDR                                                       = 32'h00012B2C;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_12__REG_ADDR                                                       = 32'h00012B30;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_13__REG_ADDR                                                       = 32'h00012B34;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_14__REG_ADDR                                                       = 32'h00012B38;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_44__WORD_15__REG_ADDR                                                       = 32'h00012B3C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[45]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_45__REG_FILE_BASE_ADDR                                                      = 32'h00012B40;
+localparam int unsigned KPV_KEY_ENTRY_45__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_0__REG_ADDR                                                        = 32'h00012B40;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_1__REG_ADDR                                                        = 32'h00012B44;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_2__REG_ADDR                                                        = 32'h00012B48;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_3__REG_ADDR                                                        = 32'h00012B4C;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_4__REG_ADDR                                                        = 32'h00012B50;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_5__REG_ADDR                                                        = 32'h00012B54;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_6__REG_ADDR                                                        = 32'h00012B58;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_7__REG_ADDR                                                        = 32'h00012B5C;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_8__REG_ADDR                                                        = 32'h00012B60;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_9__REG_ADDR                                                        = 32'h00012B64;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_10__REG_ADDR                                                       = 32'h00012B68;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_11__REG_ADDR                                                       = 32'h00012B6C;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_12__REG_ADDR                                                       = 32'h00012B70;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_13__REG_ADDR                                                       = 32'h00012B74;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_14__REG_ADDR                                                       = 32'h00012B78;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_45__WORD_15__REG_ADDR                                                       = 32'h00012B7C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[46]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_46__REG_FILE_BASE_ADDR                                                      = 32'h00012B80;
+localparam int unsigned KPV_KEY_ENTRY_46__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_0__REG_ADDR                                                        = 32'h00012B80;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_1__REG_ADDR                                                        = 32'h00012B84;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_2__REG_ADDR                                                        = 32'h00012B88;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_3__REG_ADDR                                                        = 32'h00012B8C;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_4__REG_ADDR                                                        = 32'h00012B90;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_5__REG_ADDR                                                        = 32'h00012B94;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_6__REG_ADDR                                                        = 32'h00012B98;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_7__REG_ADDR                                                        = 32'h00012B9C;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_8__REG_ADDR                                                        = 32'h00012BA0;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_9__REG_ADDR                                                        = 32'h00012BA4;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_10__REG_ADDR                                                       = 32'h00012BA8;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_11__REG_ADDR                                                       = 32'h00012BAC;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_12__REG_ADDR                                                       = 32'h00012BB0;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_13__REG_ADDR                                                       = 32'h00012BB4;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_14__REG_ADDR                                                       = 32'h00012BB8;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_46__WORD_15__REG_ADDR                                                       = 32'h00012BBC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[47]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_47__REG_FILE_BASE_ADDR                                                      = 32'h00012BC0;
+localparam int unsigned KPV_KEY_ENTRY_47__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_0__REG_ADDR                                                        = 32'h00012BC0;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_1__REG_ADDR                                                        = 32'h00012BC4;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_2__REG_ADDR                                                        = 32'h00012BC8;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_3__REG_ADDR                                                        = 32'h00012BCC;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_4__REG_ADDR                                                        = 32'h00012BD0;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_5__REG_ADDR                                                        = 32'h00012BD4;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_6__REG_ADDR                                                        = 32'h00012BD8;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_7__REG_ADDR                                                        = 32'h00012BDC;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_8__REG_ADDR                                                        = 32'h00012BE0;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_9__REG_ADDR                                                        = 32'h00012BE4;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_10__REG_ADDR                                                       = 32'h00012BE8;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_11__REG_ADDR                                                       = 32'h00012BEC;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_12__REG_ADDR                                                       = 32'h00012BF0;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_13__REG_ADDR                                                       = 32'h00012BF4;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_14__REG_ADDR                                                       = 32'h00012BF8;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_47__WORD_15__REG_ADDR                                                       = 32'h00012BFC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[48]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_48__REG_FILE_BASE_ADDR                                                      = 32'h00012C00;
+localparam int unsigned KPV_KEY_ENTRY_48__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_0__REG_ADDR                                                        = 32'h00012C00;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_1__REG_ADDR                                                        = 32'h00012C04;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_2__REG_ADDR                                                        = 32'h00012C08;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_3__REG_ADDR                                                        = 32'h00012C0C;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_4__REG_ADDR                                                        = 32'h00012C10;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_5__REG_ADDR                                                        = 32'h00012C14;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_6__REG_ADDR                                                        = 32'h00012C18;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_7__REG_ADDR                                                        = 32'h00012C1C;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_8__REG_ADDR                                                        = 32'h00012C20;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_9__REG_ADDR                                                        = 32'h00012C24;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_10__REG_ADDR                                                       = 32'h00012C28;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_11__REG_ADDR                                                       = 32'h00012C2C;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_12__REG_ADDR                                                       = 32'h00012C30;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_13__REG_ADDR                                                       = 32'h00012C34;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_14__REG_ADDR                                                       = 32'h00012C38;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_48__WORD_15__REG_ADDR                                                       = 32'h00012C3C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[49]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_49__REG_FILE_BASE_ADDR                                                      = 32'h00012C40;
+localparam int unsigned KPV_KEY_ENTRY_49__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_0__REG_ADDR                                                        = 32'h00012C40;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_1__REG_ADDR                                                        = 32'h00012C44;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_2__REG_ADDR                                                        = 32'h00012C48;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_3__REG_ADDR                                                        = 32'h00012C4C;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_4__REG_ADDR                                                        = 32'h00012C50;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_5__REG_ADDR                                                        = 32'h00012C54;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_6__REG_ADDR                                                        = 32'h00012C58;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_7__REG_ADDR                                                        = 32'h00012C5C;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_8__REG_ADDR                                                        = 32'h00012C60;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_9__REG_ADDR                                                        = 32'h00012C64;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_10__REG_ADDR                                                       = 32'h00012C68;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_11__REG_ADDR                                                       = 32'h00012C6C;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_12__REG_ADDR                                                       = 32'h00012C70;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_13__REG_ADDR                                                       = 32'h00012C74;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_14__REG_ADDR                                                       = 32'h00012C78;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_49__WORD_15__REG_ADDR                                                       = 32'h00012C7C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[50]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_50__REG_FILE_BASE_ADDR                                                      = 32'h00012C80;
+localparam int unsigned KPV_KEY_ENTRY_50__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_0__REG_ADDR                                                        = 32'h00012C80;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_1__REG_ADDR                                                        = 32'h00012C84;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_2__REG_ADDR                                                        = 32'h00012C88;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_3__REG_ADDR                                                        = 32'h00012C8C;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_4__REG_ADDR                                                        = 32'h00012C90;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_5__REG_ADDR                                                        = 32'h00012C94;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_6__REG_ADDR                                                        = 32'h00012C98;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_7__REG_ADDR                                                        = 32'h00012C9C;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_8__REG_ADDR                                                        = 32'h00012CA0;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_9__REG_ADDR                                                        = 32'h00012CA4;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_10__REG_ADDR                                                       = 32'h00012CA8;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_11__REG_ADDR                                                       = 32'h00012CAC;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_12__REG_ADDR                                                       = 32'h00012CB0;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_13__REG_ADDR                                                       = 32'h00012CB4;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_14__REG_ADDR                                                       = 32'h00012CB8;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_50__WORD_15__REG_ADDR                                                       = 32'h00012CBC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[51]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_51__REG_FILE_BASE_ADDR                                                      = 32'h00012CC0;
+localparam int unsigned KPV_KEY_ENTRY_51__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_0__REG_ADDR                                                        = 32'h00012CC0;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_1__REG_ADDR                                                        = 32'h00012CC4;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_2__REG_ADDR                                                        = 32'h00012CC8;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_3__REG_ADDR                                                        = 32'h00012CCC;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_4__REG_ADDR                                                        = 32'h00012CD0;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_5__REG_ADDR                                                        = 32'h00012CD4;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_6__REG_ADDR                                                        = 32'h00012CD8;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_7__REG_ADDR                                                        = 32'h00012CDC;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_8__REG_ADDR                                                        = 32'h00012CE0;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_9__REG_ADDR                                                        = 32'h00012CE4;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_10__REG_ADDR                                                       = 32'h00012CE8;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_11__REG_ADDR                                                       = 32'h00012CEC;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_12__REG_ADDR                                                       = 32'h00012CF0;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_13__REG_ADDR                                                       = 32'h00012CF4;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_14__REG_ADDR                                                       = 32'h00012CF8;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_51__WORD_15__REG_ADDR                                                       = 32'h00012CFC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[52]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_52__REG_FILE_BASE_ADDR                                                      = 32'h00012D00;
+localparam int unsigned KPV_KEY_ENTRY_52__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_0__REG_ADDR                                                        = 32'h00012D00;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_1__REG_ADDR                                                        = 32'h00012D04;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_2__REG_ADDR                                                        = 32'h00012D08;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_3__REG_ADDR                                                        = 32'h00012D0C;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_4__REG_ADDR                                                        = 32'h00012D10;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_5__REG_ADDR                                                        = 32'h00012D14;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_6__REG_ADDR                                                        = 32'h00012D18;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_7__REG_ADDR                                                        = 32'h00012D1C;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_8__REG_ADDR                                                        = 32'h00012D20;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_9__REG_ADDR                                                        = 32'h00012D24;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_10__REG_ADDR                                                       = 32'h00012D28;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_11__REG_ADDR                                                       = 32'h00012D2C;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_12__REG_ADDR                                                       = 32'h00012D30;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_13__REG_ADDR                                                       = 32'h00012D34;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_14__REG_ADDR                                                       = 32'h00012D38;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_52__WORD_15__REG_ADDR                                                       = 32'h00012D3C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[53]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_53__REG_FILE_BASE_ADDR                                                      = 32'h00012D40;
+localparam int unsigned KPV_KEY_ENTRY_53__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_0__REG_ADDR                                                        = 32'h00012D40;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_1__REG_ADDR                                                        = 32'h00012D44;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_2__REG_ADDR                                                        = 32'h00012D48;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_3__REG_ADDR                                                        = 32'h00012D4C;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_4__REG_ADDR                                                        = 32'h00012D50;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_5__REG_ADDR                                                        = 32'h00012D54;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_6__REG_ADDR                                                        = 32'h00012D58;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_7__REG_ADDR                                                        = 32'h00012D5C;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_8__REG_ADDR                                                        = 32'h00012D60;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_9__REG_ADDR                                                        = 32'h00012D64;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_10__REG_ADDR                                                       = 32'h00012D68;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_11__REG_ADDR                                                       = 32'h00012D6C;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_12__REG_ADDR                                                       = 32'h00012D70;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_13__REG_ADDR                                                       = 32'h00012D74;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_14__REG_ADDR                                                       = 32'h00012D78;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_53__WORD_15__REG_ADDR                                                       = 32'h00012D7C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[54]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_54__REG_FILE_BASE_ADDR                                                      = 32'h00012D80;
+localparam int unsigned KPV_KEY_ENTRY_54__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_0__REG_ADDR                                                        = 32'h00012D80;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_1__REG_ADDR                                                        = 32'h00012D84;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_2__REG_ADDR                                                        = 32'h00012D88;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_3__REG_ADDR                                                        = 32'h00012D8C;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_4__REG_ADDR                                                        = 32'h00012D90;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_5__REG_ADDR                                                        = 32'h00012D94;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_6__REG_ADDR                                                        = 32'h00012D98;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_7__REG_ADDR                                                        = 32'h00012D9C;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_8__REG_ADDR                                                        = 32'h00012DA0;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_9__REG_ADDR                                                        = 32'h00012DA4;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_10__REG_ADDR                                                       = 32'h00012DA8;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_11__REG_ADDR                                                       = 32'h00012DAC;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_12__REG_ADDR                                                       = 32'h00012DB0;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_13__REG_ADDR                                                       = 32'h00012DB4;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_14__REG_ADDR                                                       = 32'h00012DB8;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_54__WORD_15__REG_ADDR                                                       = 32'h00012DBC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[55]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_55__REG_FILE_BASE_ADDR                                                      = 32'h00012DC0;
+localparam int unsigned KPV_KEY_ENTRY_55__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_0__REG_ADDR                                                        = 32'h00012DC0;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_1__REG_ADDR                                                        = 32'h00012DC4;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_2__REG_ADDR                                                        = 32'h00012DC8;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_3__REG_ADDR                                                        = 32'h00012DCC;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_4__REG_ADDR                                                        = 32'h00012DD0;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_5__REG_ADDR                                                        = 32'h00012DD4;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_6__REG_ADDR                                                        = 32'h00012DD8;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_7__REG_ADDR                                                        = 32'h00012DDC;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_8__REG_ADDR                                                        = 32'h00012DE0;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_9__REG_ADDR                                                        = 32'h00012DE4;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_10__REG_ADDR                                                       = 32'h00012DE8;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_11__REG_ADDR                                                       = 32'h00012DEC;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_12__REG_ADDR                                                       = 32'h00012DF0;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_13__REG_ADDR                                                       = 32'h00012DF4;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_14__REG_ADDR                                                       = 32'h00012DF8;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_55__WORD_15__REG_ADDR                                                       = 32'h00012DFC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[56]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_56__REG_FILE_BASE_ADDR                                                      = 32'h00012E00;
+localparam int unsigned KPV_KEY_ENTRY_56__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_0__REG_ADDR                                                        = 32'h00012E00;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_1__REG_ADDR                                                        = 32'h00012E04;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_2__REG_ADDR                                                        = 32'h00012E08;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_3__REG_ADDR                                                        = 32'h00012E0C;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_4__REG_ADDR                                                        = 32'h00012E10;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_5__REG_ADDR                                                        = 32'h00012E14;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_6__REG_ADDR                                                        = 32'h00012E18;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_7__REG_ADDR                                                        = 32'h00012E1C;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_8__REG_ADDR                                                        = 32'h00012E20;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_9__REG_ADDR                                                        = 32'h00012E24;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_10__REG_ADDR                                                       = 32'h00012E28;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_11__REG_ADDR                                                       = 32'h00012E2C;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_12__REG_ADDR                                                       = 32'h00012E30;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_13__REG_ADDR                                                       = 32'h00012E34;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_14__REG_ADDR                                                       = 32'h00012E38;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_56__WORD_15__REG_ADDR                                                       = 32'h00012E3C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[57]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_57__REG_FILE_BASE_ADDR                                                      = 32'h00012E40;
+localparam int unsigned KPV_KEY_ENTRY_57__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_0__REG_ADDR                                                        = 32'h00012E40;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_1__REG_ADDR                                                        = 32'h00012E44;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_2__REG_ADDR                                                        = 32'h00012E48;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_3__REG_ADDR                                                        = 32'h00012E4C;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_4__REG_ADDR                                                        = 32'h00012E50;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_5__REG_ADDR                                                        = 32'h00012E54;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_6__REG_ADDR                                                        = 32'h00012E58;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_7__REG_ADDR                                                        = 32'h00012E5C;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_8__REG_ADDR                                                        = 32'h00012E60;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_9__REG_ADDR                                                        = 32'h00012E64;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_10__REG_ADDR                                                       = 32'h00012E68;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_11__REG_ADDR                                                       = 32'h00012E6C;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_12__REG_ADDR                                                       = 32'h00012E70;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_13__REG_ADDR                                                       = 32'h00012E74;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_14__REG_ADDR                                                       = 32'h00012E78;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_57__WORD_15__REG_ADDR                                                       = 32'h00012E7C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[58]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_58__REG_FILE_BASE_ADDR                                                      = 32'h00012E80;
+localparam int unsigned KPV_KEY_ENTRY_58__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_0__REG_ADDR                                                        = 32'h00012E80;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_1__REG_ADDR                                                        = 32'h00012E84;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_2__REG_ADDR                                                        = 32'h00012E88;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_3__REG_ADDR                                                        = 32'h00012E8C;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_4__REG_ADDR                                                        = 32'h00012E90;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_5__REG_ADDR                                                        = 32'h00012E94;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_6__REG_ADDR                                                        = 32'h00012E98;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_7__REG_ADDR                                                        = 32'h00012E9C;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_8__REG_ADDR                                                        = 32'h00012EA0;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_9__REG_ADDR                                                        = 32'h00012EA4;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_10__REG_ADDR                                                       = 32'h00012EA8;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_11__REG_ADDR                                                       = 32'h00012EAC;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_12__REG_ADDR                                                       = 32'h00012EB0;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_13__REG_ADDR                                                       = 32'h00012EB4;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_14__REG_ADDR                                                       = 32'h00012EB8;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_58__WORD_15__REG_ADDR                                                       = 32'h00012EBC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[59]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_59__REG_FILE_BASE_ADDR                                                      = 32'h00012EC0;
+localparam int unsigned KPV_KEY_ENTRY_59__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_0__REG_ADDR                                                        = 32'h00012EC0;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_1__REG_ADDR                                                        = 32'h00012EC4;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_2__REG_ADDR                                                        = 32'h00012EC8;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_3__REG_ADDR                                                        = 32'h00012ECC;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_4__REG_ADDR                                                        = 32'h00012ED0;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_5__REG_ADDR                                                        = 32'h00012ED4;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_6__REG_ADDR                                                        = 32'h00012ED8;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_7__REG_ADDR                                                        = 32'h00012EDC;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_8__REG_ADDR                                                        = 32'h00012EE0;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_9__REG_ADDR                                                        = 32'h00012EE4;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_10__REG_ADDR                                                       = 32'h00012EE8;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_11__REG_ADDR                                                       = 32'h00012EEC;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_12__REG_ADDR                                                       = 32'h00012EF0;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_13__REG_ADDR                                                       = 32'h00012EF4;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_14__REG_ADDR                                                       = 32'h00012EF8;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_59__WORD_15__REG_ADDR                                                       = 32'h00012EFC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[60]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_60__REG_FILE_BASE_ADDR                                                      = 32'h00012F00;
+localparam int unsigned KPV_KEY_ENTRY_60__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_0__REG_ADDR                                                        = 32'h00012F00;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_1__REG_ADDR                                                        = 32'h00012F04;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_2__REG_ADDR                                                        = 32'h00012F08;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_3__REG_ADDR                                                        = 32'h00012F0C;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_4__REG_ADDR                                                        = 32'h00012F10;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_5__REG_ADDR                                                        = 32'h00012F14;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_6__REG_ADDR                                                        = 32'h00012F18;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_7__REG_ADDR                                                        = 32'h00012F1C;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_8__REG_ADDR                                                        = 32'h00012F20;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_9__REG_ADDR                                                        = 32'h00012F24;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_10__REG_ADDR                                                       = 32'h00012F28;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_11__REG_ADDR                                                       = 32'h00012F2C;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_12__REG_ADDR                                                       = 32'h00012F30;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_13__REG_ADDR                                                       = 32'h00012F34;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_14__REG_ADDR                                                       = 32'h00012F38;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_60__WORD_15__REG_ADDR                                                       = 32'h00012F3C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[61]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_61__REG_FILE_BASE_ADDR                                                      = 32'h00012F40;
+localparam int unsigned KPV_KEY_ENTRY_61__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_0__REG_ADDR                                                        = 32'h00012F40;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_1__REG_ADDR                                                        = 32'h00012F44;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_2__REG_ADDR                                                        = 32'h00012F48;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_3__REG_ADDR                                                        = 32'h00012F4C;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_4__REG_ADDR                                                        = 32'h00012F50;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_5__REG_ADDR                                                        = 32'h00012F54;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_6__REG_ADDR                                                        = 32'h00012F58;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_7__REG_ADDR                                                        = 32'h00012F5C;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_8__REG_ADDR                                                        = 32'h00012F60;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_9__REG_ADDR                                                        = 32'h00012F64;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_10__REG_ADDR                                                       = 32'h00012F68;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_11__REG_ADDR                                                       = 32'h00012F6C;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_12__REG_ADDR                                                       = 32'h00012F70;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_13__REG_ADDR                                                       = 32'h00012F74;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_14__REG_ADDR                                                       = 32'h00012F78;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_61__WORD_15__REG_ADDR                                                       = 32'h00012F7C;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[62]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_62__REG_FILE_BASE_ADDR                                                      = 32'h00012F80;
+localparam int unsigned KPV_KEY_ENTRY_62__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_0__REG_ADDR                                                        = 32'h00012F80;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_1__REG_ADDR                                                        = 32'h00012F84;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_2__REG_ADDR                                                        = 32'h00012F88;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_3__REG_ADDR                                                        = 32'h00012F8C;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_4__REG_ADDR                                                        = 32'h00012F90;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_5__REG_ADDR                                                        = 32'h00012F94;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_6__REG_ADDR                                                        = 32'h00012F98;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_7__REG_ADDR                                                        = 32'h00012F9C;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_8__REG_ADDR                                                        = 32'h00012FA0;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_9__REG_ADDR                                                        = 32'h00012FA4;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_10__REG_ADDR                                                       = 32'h00012FA8;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_11__REG_ADDR                                                       = 32'h00012FAC;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_12__REG_ADDR                                                       = 32'h00012FB0;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_13__REG_ADDR                                                       = 32'h00012FB4;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_14__REG_ADDR                                                       = 32'h00012FB8;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_62__WORD_15__REG_ADDR                                                       = 32'h00012FBC;
+
+
+//==============================================================================
+// Register File: KEY_ENTRY[63]
+//==============================================================================
+
+localparam int unsigned KPV_KEY_ENTRY_63__REG_FILE_BASE_ADDR                                                      = 32'h00012FC0;
+localparam int unsigned KPV_KEY_ENTRY_63__REG_FILE_SIZE                                                           = 32'h00000040;
+
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_0__REG_OFFSET                                                      = 32'h00000000;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_0__REG_ADDR                                                        = 32'h00012FC0;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_1__REG_OFFSET                                                      = 32'h00000004;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_1__REG_ADDR                                                        = 32'h00012FC4;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_2__REG_OFFSET                                                      = 32'h00000008;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_2__REG_ADDR                                                        = 32'h00012FC8;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_3__REG_OFFSET                                                      = 32'h0000000C;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_3__REG_ADDR                                                        = 32'h00012FCC;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_4__REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_4__REG_ADDR                                                        = 32'h00012FD0;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_5__REG_OFFSET                                                      = 32'h00000014;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_5__REG_ADDR                                                        = 32'h00012FD4;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_6__REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_6__REG_ADDR                                                        = 32'h00012FD8;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_7__REG_OFFSET                                                      = 32'h0000001C;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_7__REG_ADDR                                                        = 32'h00012FDC;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_8__REG_OFFSET                                                      = 32'h00000020;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_8__REG_ADDR                                                        = 32'h00012FE0;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_9__REG_OFFSET                                                      = 32'h00000024;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_9__REG_ADDR                                                        = 32'h00012FE4;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_10__REG_OFFSET                                                     = 32'h00000028;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_10__REG_ADDR                                                       = 32'h00012FE8;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_11__REG_OFFSET                                                     = 32'h0000002C;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_11__REG_ADDR                                                       = 32'h00012FEC;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_12__REG_OFFSET                                                     = 32'h00000030;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_12__REG_ADDR                                                       = 32'h00012FF0;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_13__REG_OFFSET                                                     = 32'h00000034;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_13__REG_ADDR                                                       = 32'h00012FF4;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_14__REG_OFFSET                                                     = 32'h00000038;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_14__REG_ADDR                                                       = 32'h00012FF8;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_15__REG_OFFSET                                                     = 32'h0000003C;
+localparam int unsigned KPV_KEY_ENTRY_63__WORD_15__REG_ADDR                                                       = 32'h00012FFC;
+localparam int unsigned KPV_CTRL_0__REG_OFFSET                                                                    = 32'h00001000;
+localparam int unsigned KPV_CTRL_0__REG_ADDR                                                                      = 32'h00013000;
+localparam int unsigned KPV_CTRL_1__REG_OFFSET                                                                    = 32'h00001004;
+localparam int unsigned KPV_CTRL_1__REG_ADDR                                                                      = 32'h00013004;
+localparam int unsigned KPV_CTRL_2__REG_OFFSET                                                                    = 32'h00001008;
+localparam int unsigned KPV_CTRL_2__REG_ADDR                                                                      = 32'h00013008;
+localparam int unsigned KPV_CTRL_3__REG_OFFSET                                                                    = 32'h0000100C;
+localparam int unsigned KPV_CTRL_3__REG_ADDR                                                                      = 32'h0001300C;
+localparam int unsigned KPV_CTRL_4__REG_OFFSET                                                                    = 32'h00001010;
+localparam int unsigned KPV_CTRL_4__REG_ADDR                                                                      = 32'h00013010;
+localparam int unsigned KPV_CTRL_5__REG_OFFSET                                                                    = 32'h00001014;
+localparam int unsigned KPV_CTRL_5__REG_ADDR                                                                      = 32'h00013014;
+localparam int unsigned KPV_CTRL_6__REG_OFFSET                                                                    = 32'h00001018;
+localparam int unsigned KPV_CTRL_6__REG_ADDR                                                                      = 32'h00013018;
+localparam int unsigned KPV_CTRL_7__REG_OFFSET                                                                    = 32'h0000101C;
+localparam int unsigned KPV_CTRL_7__REG_ADDR                                                                      = 32'h0001301C;
+localparam int unsigned KPV_CTRL_8__REG_OFFSET                                                                    = 32'h00001020;
+localparam int unsigned KPV_CTRL_8__REG_ADDR                                                                      = 32'h00013020;
+localparam int unsigned KPV_CTRL_9__REG_OFFSET                                                                    = 32'h00001024;
+localparam int unsigned KPV_CTRL_9__REG_ADDR                                                                      = 32'h00013024;
+localparam int unsigned KPV_CTRL_10__REG_OFFSET                                                                   = 32'h00001028;
+localparam int unsigned KPV_CTRL_10__REG_ADDR                                                                     = 32'h00013028;
+localparam int unsigned KPV_CTRL_11__REG_OFFSET                                                                   = 32'h0000102C;
+localparam int unsigned KPV_CTRL_11__REG_ADDR                                                                     = 32'h0001302C;
+localparam int unsigned KPV_CTRL_12__REG_OFFSET                                                                   = 32'h00001030;
+localparam int unsigned KPV_CTRL_12__REG_ADDR                                                                     = 32'h00013030;
+localparam int unsigned KPV_CTRL_13__REG_OFFSET                                                                   = 32'h00001034;
+localparam int unsigned KPV_CTRL_13__REG_ADDR                                                                     = 32'h00013034;
+localparam int unsigned KPV_CTRL_14__REG_OFFSET                                                                   = 32'h00001038;
+localparam int unsigned KPV_CTRL_14__REG_ADDR                                                                     = 32'h00013038;
+localparam int unsigned KPV_CTRL_15__REG_OFFSET                                                                   = 32'h0000103C;
+localparam int unsigned KPV_CTRL_15__REG_ADDR                                                                     = 32'h0001303C;
+localparam int unsigned KPV_CTRL_16__REG_OFFSET                                                                   = 32'h00001040;
+localparam int unsigned KPV_CTRL_16__REG_ADDR                                                                     = 32'h00013040;
+localparam int unsigned KPV_CTRL_17__REG_OFFSET                                                                   = 32'h00001044;
+localparam int unsigned KPV_CTRL_17__REG_ADDR                                                                     = 32'h00013044;
+localparam int unsigned KPV_CTRL_18__REG_OFFSET                                                                   = 32'h00001048;
+localparam int unsigned KPV_CTRL_18__REG_ADDR                                                                     = 32'h00013048;
+localparam int unsigned KPV_CTRL_19__REG_OFFSET                                                                   = 32'h0000104C;
+localparam int unsigned KPV_CTRL_19__REG_ADDR                                                                     = 32'h0001304C;
+localparam int unsigned KPV_CTRL_20__REG_OFFSET                                                                   = 32'h00001050;
+localparam int unsigned KPV_CTRL_20__REG_ADDR                                                                     = 32'h00013050;
+localparam int unsigned KPV_CTRL_21__REG_OFFSET                                                                   = 32'h00001054;
+localparam int unsigned KPV_CTRL_21__REG_ADDR                                                                     = 32'h00013054;
+localparam int unsigned KPV_CTRL_22__REG_OFFSET                                                                   = 32'h00001058;
+localparam int unsigned KPV_CTRL_22__REG_ADDR                                                                     = 32'h00013058;
+localparam int unsigned KPV_CTRL_23__REG_OFFSET                                                                   = 32'h0000105C;
+localparam int unsigned KPV_CTRL_23__REG_ADDR                                                                     = 32'h0001305C;
+localparam int unsigned KPV_CTRL_24__REG_OFFSET                                                                   = 32'h00001060;
+localparam int unsigned KPV_CTRL_24__REG_ADDR                                                                     = 32'h00013060;
+localparam int unsigned KPV_CTRL_25__REG_OFFSET                                                                   = 32'h00001064;
+localparam int unsigned KPV_CTRL_25__REG_ADDR                                                                     = 32'h00013064;
+localparam int unsigned KPV_CTRL_26__REG_OFFSET                                                                   = 32'h00001068;
+localparam int unsigned KPV_CTRL_26__REG_ADDR                                                                     = 32'h00013068;
+localparam int unsigned KPV_CTRL_27__REG_OFFSET                                                                   = 32'h0000106C;
+localparam int unsigned KPV_CTRL_27__REG_ADDR                                                                     = 32'h0001306C;
+localparam int unsigned KPV_CTRL_28__REG_OFFSET                                                                   = 32'h00001070;
+localparam int unsigned KPV_CTRL_28__REG_ADDR                                                                     = 32'h00013070;
+localparam int unsigned KPV_CTRL_29__REG_OFFSET                                                                   = 32'h00001074;
+localparam int unsigned KPV_CTRL_29__REG_ADDR                                                                     = 32'h00013074;
+localparam int unsigned KPV_CTRL_30__REG_OFFSET                                                                   = 32'h00001078;
+localparam int unsigned KPV_CTRL_30__REG_ADDR                                                                     = 32'h00013078;
+localparam int unsigned KPV_CTRL_31__REG_OFFSET                                                                   = 32'h0000107C;
+localparam int unsigned KPV_CTRL_31__REG_ADDR                                                                     = 32'h0001307C;
+localparam int unsigned KPV_CTRL_32__REG_OFFSET                                                                   = 32'h00001080;
+localparam int unsigned KPV_CTRL_32__REG_ADDR                                                                     = 32'h00013080;
+localparam int unsigned KPV_CTRL_33__REG_OFFSET                                                                   = 32'h00001084;
+localparam int unsigned KPV_CTRL_33__REG_ADDR                                                                     = 32'h00013084;
+localparam int unsigned KPV_CTRL_34__REG_OFFSET                                                                   = 32'h00001088;
+localparam int unsigned KPV_CTRL_34__REG_ADDR                                                                     = 32'h00013088;
+localparam int unsigned KPV_CTRL_35__REG_OFFSET                                                                   = 32'h0000108C;
+localparam int unsigned KPV_CTRL_35__REG_ADDR                                                                     = 32'h0001308C;
+localparam int unsigned KPV_CTRL_36__REG_OFFSET                                                                   = 32'h00001090;
+localparam int unsigned KPV_CTRL_36__REG_ADDR                                                                     = 32'h00013090;
+localparam int unsigned KPV_CTRL_37__REG_OFFSET                                                                   = 32'h00001094;
+localparam int unsigned KPV_CTRL_37__REG_ADDR                                                                     = 32'h00013094;
+localparam int unsigned KPV_CTRL_38__REG_OFFSET                                                                   = 32'h00001098;
+localparam int unsigned KPV_CTRL_38__REG_ADDR                                                                     = 32'h00013098;
+localparam int unsigned KPV_CTRL_39__REG_OFFSET                                                                   = 32'h0000109C;
+localparam int unsigned KPV_CTRL_39__REG_ADDR                                                                     = 32'h0001309C;
+localparam int unsigned KPV_CTRL_40__REG_OFFSET                                                                   = 32'h000010A0;
+localparam int unsigned KPV_CTRL_40__REG_ADDR                                                                     = 32'h000130A0;
+localparam int unsigned KPV_CTRL_41__REG_OFFSET                                                                   = 32'h000010A4;
+localparam int unsigned KPV_CTRL_41__REG_ADDR                                                                     = 32'h000130A4;
+localparam int unsigned KPV_CTRL_42__REG_OFFSET                                                                   = 32'h000010A8;
+localparam int unsigned KPV_CTRL_42__REG_ADDR                                                                     = 32'h000130A8;
+localparam int unsigned KPV_CTRL_43__REG_OFFSET                                                                   = 32'h000010AC;
+localparam int unsigned KPV_CTRL_43__REG_ADDR                                                                     = 32'h000130AC;
+localparam int unsigned KPV_CTRL_44__REG_OFFSET                                                                   = 32'h000010B0;
+localparam int unsigned KPV_CTRL_44__REG_ADDR                                                                     = 32'h000130B0;
+localparam int unsigned KPV_CTRL_45__REG_OFFSET                                                                   = 32'h000010B4;
+localparam int unsigned KPV_CTRL_45__REG_ADDR                                                                     = 32'h000130B4;
+localparam int unsigned KPV_CTRL_46__REG_OFFSET                                                                   = 32'h000010B8;
+localparam int unsigned KPV_CTRL_46__REG_ADDR                                                                     = 32'h000130B8;
+localparam int unsigned KPV_CTRL_47__REG_OFFSET                                                                   = 32'h000010BC;
+localparam int unsigned KPV_CTRL_47__REG_ADDR                                                                     = 32'h000130BC;
+localparam int unsigned KPV_CTRL_48__REG_OFFSET                                                                   = 32'h000010C0;
+localparam int unsigned KPV_CTRL_48__REG_ADDR                                                                     = 32'h000130C0;
+localparam int unsigned KPV_CTRL_49__REG_OFFSET                                                                   = 32'h000010C4;
+localparam int unsigned KPV_CTRL_49__REG_ADDR                                                                     = 32'h000130C4;
+localparam int unsigned KPV_CTRL_50__REG_OFFSET                                                                   = 32'h000010C8;
+localparam int unsigned KPV_CTRL_50__REG_ADDR                                                                     = 32'h000130C8;
+localparam int unsigned KPV_CTRL_51__REG_OFFSET                                                                   = 32'h000010CC;
+localparam int unsigned KPV_CTRL_51__REG_ADDR                                                                     = 32'h000130CC;
+localparam int unsigned KPV_CTRL_52__REG_OFFSET                                                                   = 32'h000010D0;
+localparam int unsigned KPV_CTRL_52__REG_ADDR                                                                     = 32'h000130D0;
+localparam int unsigned KPV_CTRL_53__REG_OFFSET                                                                   = 32'h000010D4;
+localparam int unsigned KPV_CTRL_53__REG_ADDR                                                                     = 32'h000130D4;
+localparam int unsigned KPV_CTRL_54__REG_OFFSET                                                                   = 32'h000010D8;
+localparam int unsigned KPV_CTRL_54__REG_ADDR                                                                     = 32'h000130D8;
+localparam int unsigned KPV_CTRL_55__REG_OFFSET                                                                   = 32'h000010DC;
+localparam int unsigned KPV_CTRL_55__REG_ADDR                                                                     = 32'h000130DC;
+localparam int unsigned KPV_CTRL_56__REG_OFFSET                                                                   = 32'h000010E0;
+localparam int unsigned KPV_CTRL_56__REG_ADDR                                                                     = 32'h000130E0;
+localparam int unsigned KPV_CTRL_57__REG_OFFSET                                                                   = 32'h000010E4;
+localparam int unsigned KPV_CTRL_57__REG_ADDR                                                                     = 32'h000130E4;
+localparam int unsigned KPV_CTRL_58__REG_OFFSET                                                                   = 32'h000010E8;
+localparam int unsigned KPV_CTRL_58__REG_ADDR                                                                     = 32'h000130E8;
+localparam int unsigned KPV_CTRL_59__REG_OFFSET                                                                   = 32'h000010EC;
+localparam int unsigned KPV_CTRL_59__REG_ADDR                                                                     = 32'h000130EC;
+localparam int unsigned KPV_CTRL_60__REG_OFFSET                                                                   = 32'h000010F0;
+localparam int unsigned KPV_CTRL_60__REG_ADDR                                                                     = 32'h000130F0;
+localparam int unsigned KPV_CTRL_61__REG_OFFSET                                                                   = 32'h000010F4;
+localparam int unsigned KPV_CTRL_61__REG_ADDR                                                                     = 32'h000130F4;
+localparam int unsigned KPV_CTRL_62__REG_OFFSET                                                                   = 32'h000010F8;
+localparam int unsigned KPV_CTRL_62__REG_ADDR                                                                     = 32'h000130F8;
+localparam int unsigned KPV_CTRL_63__REG_OFFSET                                                                   = 32'h000010FC;
+localparam int unsigned KPV_CTRL_63__REG_ADDR                                                                     = 32'h000130FC;
+localparam int unsigned KPV_KPV_SCRAMBLER_KEY_REG_OFFSET                                                          = 32'h00001100;
+localparam int unsigned KPV_KPV_SCRAMBLER_KEY_REG_ADDR                                                            = 32'h00013100;
+localparam int unsigned KPV_KPV_SCRAMBLER_CTRL_REG_OFFSET                                                         = 32'h00001104;
+localparam int unsigned KPV_KPV_SCRAMBLER_CTRL_REG_ADDR                                                           = 32'h00013104;
+
+
+//==============================================================================
+// Addresses for Address Map: kmcsr
+//==============================================================================
+
+
+localparam int unsigned KMCSR_REG_MAP_BASE_ADDR                                                                   = 32'h00014000;
+localparam int unsigned KMCSR_REG_MAP_SIZE                                                                        = 32'h000004C0;
+
+
+localparam int unsigned KMCSR_VERSION_REG_OFFSET                                                                  = 32'h00000000;
+localparam int unsigned KMCSR_VERSION_REG_ADDR                                                                    = 32'h00014000;
+localparam int unsigned KMCSR_CTRL_REG_OFFSET                                                                     = 32'h00000004;
+localparam int unsigned KMCSR_CTRL_REG_ADDR                                                                       = 32'h00014004;
+localparam int unsigned KMCSR_SOFT_RST_CODE_REG_OFFSET                                                            = 32'h00000008;
+localparam int unsigned KMCSR_SOFT_RST_CODE_REG_ADDR                                                              = 32'h00014008;
+localparam int unsigned KMCSR_IRQ_STATUS_REG_OFFSET                                                               = 32'h0000000C;
+localparam int unsigned KMCSR_IRQ_STATUS_REG_ADDR                                                                 = 32'h0001400C;
+localparam int unsigned KMCSR_IRQ_ENABLE_REG_OFFSET                                                               = 32'h00000010;
+localparam int unsigned KMCSR_IRQ_ENABLE_REG_ADDR                                                                 = 32'h00014010;
+localparam int unsigned KMCSR_SCRAMBLER_KEY_REG_OFFSET                                                            = 32'h00000014;
+localparam int unsigned KMCSR_SCRAMBLER_KEY_REG_ADDR                                                              = 32'h00014014;
+localparam int unsigned KMCSR_SCRAMBLER_CTRL_REG_OFFSET                                                           = 32'h00000018;
+localparam int unsigned KMCSR_SCRAMBLER_CTRL_REG_ADDR                                                             = 32'h00014018;
+localparam int unsigned KMCSR_SRAM_LOCK_REG_OFFSET                                                                = 32'h0000001C;
+localparam int unsigned KMCSR_SRAM_LOCK_REG_ADDR                                                                  = 32'h0001401C;
+localparam int unsigned KMCSR_IRQ_SET_REG_OFFSET                                                                  = 32'h00000020;
+localparam int unsigned KMCSR_IRQ_SET_REG_ADDR                                                                    = 32'h00014020;
+localparam int unsigned KMCSR_SRAM_WRITE_LOCK_VIOLATION_REG_OFFSET                                                = 32'h00000024;
+localparam int unsigned KMCSR_SRAM_WRITE_LOCK_VIOLATION_REG_ADDR                                                  = 32'h00014024;
+localparam int unsigned KMCSR_RECOVERABLE_ERR_REG_OFFSET                                                          = 32'h00000028;
+localparam int unsigned KMCSR_RECOVERABLE_ERR_REG_ADDR                                                            = 32'h00014028;
+localparam int unsigned KMCSR_BOOT_STATUS_REG_OFFSET                                                              = 32'h0000002C;
+localparam int unsigned KMCSR_BOOT_STATUS_REG_ADDR                                                                = 32'h0001402C;
+localparam int unsigned KMCSR_OTP_LIFE_CYCLE_REG_OFFSET                                                           = 32'h00000030;
+localparam int unsigned KMCSR_OTP_LIFE_CYCLE_REG_ADDR                                                             = 32'h00014030;
+localparam int unsigned KMCSR_OTP_DEMOTION_STATE_REG_OFFSET                                                       = 32'h00000034;
+localparam int unsigned KMCSR_OTP_DEMOTION_STATE_REG_ADDR                                                         = 32'h00014034;
+localparam int unsigned KMCSR_SRAM_EXEC_MODE_REG_OFFSET                                                           = 32'h00000038;
+localparam int unsigned KMCSR_SRAM_EXEC_MODE_REG_ADDR                                                             = 32'h00014038;
+localparam int unsigned KMCSR_IRQ_ENTRY_ADDR_REG_OFFSET                                                           = 32'h000000B8;
+localparam int unsigned KMCSR_IRQ_ENTRY_ADDR_REG_ADDR                                                             = 32'h000140B8;
+localparam int unsigned KMCSR_IRQ_ENTRY_LOCK_REG_OFFSET                                                           = 32'h000000BC;
+localparam int unsigned KMCSR_IRQ_ENTRY_LOCK_REG_ADDR                                                             = 32'h000140BC;
+localparam int unsigned KMCSR_VUART_TX_REG_OFFSET                                                                 = 32'h00000100;
+localparam int unsigned KMCSR_VUART_TX_REG_ADDR                                                                   = 32'h00014100;
+localparam int unsigned KMCSR_VUART_RX_REG_OFFSET                                                                 = 32'h00000104;
+localparam int unsigned KMCSR_VUART_RX_REG_ADDR                                                                   = 32'h00014104;
+localparam int unsigned KMCSR_VUART_STATUS_REG_OFFSET                                                             = 32'h00000108;
+localparam int unsigned KMCSR_VUART_STATUS_REG_ADDR                                                               = 32'h00014108;
+localparam int unsigned KMCSR_TB_RESULT_REG_OFFSET                                                                = 32'h00000110;
+localparam int unsigned KMCSR_TB_RESULT_REG_ADDR                                                                  = 32'h00014110;
+localparam int unsigned KMCSR_TB_SIGNATURE_REG_OFFSET                                                             = 32'h00000114;
+localparam int unsigned KMCSR_TB_SIGNATURE_REG_ADDR                                                               = 32'h00014114;
+localparam int unsigned KMCSR_TB_ERRCODE_REG_OFFSET                                                               = 32'h00000118;
+localparam int unsigned KMCSR_TB_ERRCODE_REG_ADDR                                                                 = 32'h00014118;
+localparam int unsigned KMCSR_TB_SUBTEST_REG_OFFSET                                                               = 32'h0000011C;
+localparam int unsigned KMCSR_TB_SUBTEST_REG_ADDR                                                                 = 32'h0001411C;
+localparam int unsigned KMCSR_TB_CMD_REG_OFFSET                                                                   = 32'h00000120;
+localparam int unsigned KMCSR_TB_CMD_REG_ADDR                                                                     = 32'h00014120;
+localparam int unsigned KMCSR_TB_CMD_ARG_REG_OFFSET                                                               = 32'h00000124;
+localparam int unsigned KMCSR_TB_CMD_ARG_REG_ADDR                                                                 = 32'h00014124;
+localparam int unsigned KMCSR_TB_CMD_STATUS_REG_OFFSET                                                            = 32'h00000128;
+localparam int unsigned KMCSR_TB_CMD_STATUS_REG_ADDR                                                              = 32'h00014128;
+localparam int unsigned KMCSR_TB_CMD_RESULT_REG_OFFSET                                                            = 32'h0000012C;
+localparam int unsigned KMCSR_TB_CMD_RESULT_REG_ADDR                                                              = 32'h0001412C;
+localparam int unsigned KMCSR_DEBUG_REG_OFFSET                                                                    = 32'h000001FC;
+localparam int unsigned KMCSR_DEBUG_REG_ADDR                                                                      = 32'h000141FC;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_0_REG_OFFSET                                                    = 32'h00000200;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_0_REG_ADDR                                                      = 32'h00014200;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_1_REG_OFFSET                                                    = 32'h00000204;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_1_REG_ADDR                                                      = 32'h00014204;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_2_REG_OFFSET                                                    = 32'h00000208;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_2_REG_ADDR                                                      = 32'h00014208;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_3_REG_OFFSET                                                    = 32'h0000020C;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_3_REG_ADDR                                                      = 32'h0001420C;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_4_REG_OFFSET                                                    = 32'h00000210;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_4_REG_ADDR                                                      = 32'h00014210;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_5_REG_OFFSET                                                    = 32'h00000214;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_5_REG_ADDR                                                      = 32'h00014214;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_6_REG_OFFSET                                                    = 32'h00000218;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_6_REG_ADDR                                                      = 32'h00014218;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_7_REG_OFFSET                                                    = 32'h0000021C;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_VAL_7_REG_ADDR                                                      = 32'h0001421C;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_0_REG_OFFSET                                                    = 32'h00000220;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_0_REG_ADDR                                                      = 32'h00014220;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_1_REG_OFFSET                                                    = 32'h00000224;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_1_REG_ADDR                                                      = 32'h00014224;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_2_REG_OFFSET                                                    = 32'h00000228;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_2_REG_ADDR                                                      = 32'h00014228;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_3_REG_OFFSET                                                    = 32'h0000022C;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_3_REG_ADDR                                                      = 32'h0001422C;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_4_REG_OFFSET                                                    = 32'h00000230;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_4_REG_ADDR                                                      = 32'h00014230;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_5_REG_OFFSET                                                    = 32'h00000234;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_5_REG_ADDR                                                      = 32'h00014234;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_6_REG_OFFSET                                                    = 32'h00000238;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_6_REG_ADDR                                                      = 32'h00014238;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_7_REG_OFFSET                                                    = 32'h0000023C;
+localparam int unsigned KMCSR_OTP_CHIPLET_UID_CPL_7_REG_ADDR                                                      = 32'h0001423C;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_0_REG_OFFSET                                                        = 32'h00000240;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_0_REG_ADDR                                                          = 32'h00014240;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_1_REG_OFFSET                                                        = 32'h00000244;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_1_REG_ADDR                                                          = 32'h00014244;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_2_REG_OFFSET                                                        = 32'h00000248;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_2_REG_ADDR                                                          = 32'h00014248;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_3_REG_OFFSET                                                        = 32'h0000024C;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_3_REG_ADDR                                                          = 32'h0001424C;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_4_REG_OFFSET                                                        = 32'h00000250;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_4_REG_ADDR                                                          = 32'h00014250;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_5_REG_OFFSET                                                        = 32'h00000254;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_5_REG_ADDR                                                          = 32'h00014254;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_6_REG_OFFSET                                                        = 32'h00000258;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_6_REG_ADDR                                                          = 32'h00014258;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_7_REG_OFFSET                                                        = 32'h0000025C;
+localparam int unsigned KMCSR_OTP_SIP_UID_VAL_7_REG_ADDR                                                          = 32'h0001425C;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_0_REG_OFFSET                                                        = 32'h00000260;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_0_REG_ADDR                                                          = 32'h00014260;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_1_REG_OFFSET                                                        = 32'h00000264;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_1_REG_ADDR                                                          = 32'h00014264;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_2_REG_OFFSET                                                        = 32'h00000268;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_2_REG_ADDR                                                          = 32'h00014268;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_3_REG_OFFSET                                                        = 32'h0000026C;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_3_REG_ADDR                                                          = 32'h0001426C;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_4_REG_OFFSET                                                        = 32'h00000270;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_4_REG_ADDR                                                          = 32'h00014270;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_5_REG_OFFSET                                                        = 32'h00000274;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_5_REG_ADDR                                                          = 32'h00014274;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_6_REG_OFFSET                                                        = 32'h00000278;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_6_REG_ADDR                                                          = 32'h00014278;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_7_REG_OFFSET                                                        = 32'h0000027C;
+localparam int unsigned KMCSR_OTP_SIP_UID_CPL_7_REG_ADDR                                                          = 32'h0001427C;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_0_REG_OFFSET                                                        = 32'h00000280;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_0_REG_ADDR                                                          = 32'h00014280;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_1_REG_OFFSET                                                        = 32'h00000284;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_1_REG_ADDR                                                          = 32'h00014284;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_2_REG_OFFSET                                                        = 32'h00000288;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_2_REG_ADDR                                                          = 32'h00014288;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_3_REG_OFFSET                                                        = 32'h0000028C;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_3_REG_ADDR                                                          = 32'h0001428C;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_4_REG_OFFSET                                                        = 32'h00000290;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_4_REG_ADDR                                                          = 32'h00014290;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_5_REG_OFFSET                                                        = 32'h00000294;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_5_REG_ADDR                                                          = 32'h00014294;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_6_REG_OFFSET                                                        = 32'h00000298;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_6_REG_ADDR                                                          = 32'h00014298;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_7_REG_OFFSET                                                        = 32'h0000029C;
+localparam int unsigned KMCSR_OTP_SYS_UID_VAL_7_REG_ADDR                                                          = 32'h0001429C;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_0_REG_OFFSET                                                        = 32'h000002A0;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_0_REG_ADDR                                                          = 32'h000142A0;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_1_REG_OFFSET                                                        = 32'h000002A4;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_1_REG_ADDR                                                          = 32'h000142A4;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_2_REG_OFFSET                                                        = 32'h000002A8;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_2_REG_ADDR                                                          = 32'h000142A8;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_3_REG_OFFSET                                                        = 32'h000002AC;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_3_REG_ADDR                                                          = 32'h000142AC;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_4_REG_OFFSET                                                        = 32'h000002B0;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_4_REG_ADDR                                                          = 32'h000142B0;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_5_REG_OFFSET                                                        = 32'h000002B4;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_5_REG_ADDR                                                          = 32'h000142B4;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_6_REG_OFFSET                                                        = 32'h000002B8;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_6_REG_ADDR                                                          = 32'h000142B8;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_7_REG_OFFSET                                                        = 32'h000002BC;
+localparam int unsigned KMCSR_OTP_SYS_UID_CPL_7_REG_ADDR                                                          = 32'h000142BC;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_0_REG_OFFSET                                                      = 32'h000002C0;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_0_REG_ADDR                                                        = 32'h000142C0;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_1_REG_OFFSET                                                      = 32'h000002C4;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_1_REG_ADDR                                                        = 32'h000142C4;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_2_REG_OFFSET                                                      = 32'h000002C8;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_2_REG_ADDR                                                        = 32'h000142C8;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_3_REG_OFFSET                                                      = 32'h000002CC;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_3_REG_ADDR                                                        = 32'h000142CC;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_4_REG_OFFSET                                                      = 32'h000002D0;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_4_REG_ADDR                                                        = 32'h000142D0;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_5_REG_OFFSET                                                      = 32'h000002D4;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_5_REG_ADDR                                                        = 32'h000142D4;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_6_REG_OFFSET                                                      = 32'h000002D8;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_6_REG_ADDR                                                        = 32'h000142D8;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_7_REG_OFFSET                                                      = 32'h000002DC;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_VAL_7_REG_ADDR                                                        = 32'h000142DC;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_0_REG_OFFSET                                                      = 32'h000002E0;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_0_REG_ADDR                                                        = 32'h000142E0;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_1_REG_OFFSET                                                      = 32'h000002E4;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_1_REG_ADDR                                                        = 32'h000142E4;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_2_REG_OFFSET                                                      = 32'h000002E8;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_2_REG_ADDR                                                        = 32'h000142E8;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_3_REG_OFFSET                                                      = 32'h000002EC;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_3_REG_ADDR                                                        = 32'h000142EC;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_4_REG_OFFSET                                                      = 32'h000002F0;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_4_REG_ADDR                                                        = 32'h000142F0;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_5_REG_OFFSET                                                      = 32'h000002F4;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_5_REG_ADDR                                                        = 32'h000142F4;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_6_REG_OFFSET                                                      = 32'h000002F8;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_6_REG_ADDR                                                        = 32'h000142F8;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_7_REG_OFFSET                                                      = 32'h000002FC;
+localparam int unsigned KMCSR_OTP_CLASS_KEY_CPL_7_REG_ADDR                                                        = 32'h000142FC;
+localparam int unsigned KMCSR_OTP_READ_LOCK_REG_OFFSET                                                            = 32'h00000300;
+localparam int unsigned KMCSR_OTP_READ_LOCK_REG_ADDR                                                              = 32'h00014300;
+localparam int unsigned KMCSR_OTP_CHANGE_STATUS_REG_OFFSET                                                        = 32'h00000304;
+localparam int unsigned KMCSR_OTP_CHANGE_STATUS_REG_ADDR                                                          = 32'h00014304;
+localparam int unsigned KMCSR_OTP_READ_LOCK_COLD_REG_OFFSET                                                       = 32'h00000308;
+localparam int unsigned KMCSR_OTP_READ_LOCK_COLD_REG_ADDR                                                         = 32'h00014308;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_0_REG_OFFSET                                                 = 32'h00000400;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_0_REG_ADDR                                                   = 32'h00014400;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_1_REG_OFFSET                                                 = 32'h00000404;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_1_REG_ADDR                                                   = 32'h00014404;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_2_REG_OFFSET                                                 = 32'h00000408;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_2_REG_ADDR                                                   = 32'h00014408;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_3_REG_OFFSET                                                 = 32'h0000040C;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_3_REG_ADDR                                                   = 32'h0001440C;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_4_REG_OFFSET                                                 = 32'h00000410;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_4_REG_ADDR                                                   = 32'h00014410;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_5_REG_OFFSET                                                 = 32'h00000414;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_5_REG_ADDR                                                   = 32'h00014414;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_6_REG_OFFSET                                                 = 32'h00000418;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_6_REG_ADDR                                                   = 32'h00014418;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_7_REG_OFFSET                                                 = 32'h0000041C;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_VAL_7_REG_ADDR                                                   = 32'h0001441C;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_0_REG_OFFSET                                                 = 32'h00000420;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_0_REG_ADDR                                                   = 32'h00014420;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_1_REG_OFFSET                                                 = 32'h00000424;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_1_REG_ADDR                                                   = 32'h00014424;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_2_REG_OFFSET                                                 = 32'h00000428;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_2_REG_ADDR                                                   = 32'h00014428;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_3_REG_OFFSET                                                 = 32'h0000042C;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_3_REG_ADDR                                                   = 32'h0001442C;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_4_REG_OFFSET                                                 = 32'h00000430;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_4_REG_ADDR                                                   = 32'h00014430;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_5_REG_OFFSET                                                 = 32'h00000434;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_5_REG_ADDR                                                   = 32'h00014434;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_6_REG_OFFSET                                                 = 32'h00000438;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_6_REG_ADDR                                                   = 32'h00014438;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_7_REG_OFFSET                                                 = 32'h0000043C;
+localparam int unsigned KMCSR_OTP_SEP_CHIPLET_ID_CPL_7_REG_ADDR                                                   = 32'h0001443C;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_0_REG_OFFSET                                                     = 32'h00000440;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_0_REG_ADDR                                                       = 32'h00014440;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_1_REG_OFFSET                                                     = 32'h00000444;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_1_REG_ADDR                                                       = 32'h00014444;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_2_REG_OFFSET                                                     = 32'h00000448;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_2_REG_ADDR                                                       = 32'h00014448;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_3_REG_OFFSET                                                     = 32'h0000044C;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_3_REG_ADDR                                                       = 32'h0001444C;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_4_REG_OFFSET                                                     = 32'h00000450;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_4_REG_ADDR                                                       = 32'h00014450;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_5_REG_OFFSET                                                     = 32'h00000454;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_5_REG_ADDR                                                       = 32'h00014454;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_6_REG_OFFSET                                                     = 32'h00000458;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_6_REG_ADDR                                                       = 32'h00014458;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_7_REG_OFFSET                                                     = 32'h0000045C;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_VAL_7_REG_ADDR                                                       = 32'h0001445C;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_0_REG_OFFSET                                                     = 32'h00000460;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_0_REG_ADDR                                                       = 32'h00014460;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_1_REG_OFFSET                                                     = 32'h00000464;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_1_REG_ADDR                                                       = 32'h00014464;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_2_REG_OFFSET                                                     = 32'h00000468;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_2_REG_ADDR                                                       = 32'h00014468;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_3_REG_OFFSET                                                     = 32'h0000046C;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_3_REG_ADDR                                                       = 32'h0001446C;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_4_REG_OFFSET                                                     = 32'h00000470;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_4_REG_ADDR                                                       = 32'h00014470;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_5_REG_OFFSET                                                     = 32'h00000474;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_5_REG_ADDR                                                       = 32'h00014474;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_6_REG_OFFSET                                                     = 32'h00000478;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_6_REG_ADDR                                                       = 32'h00014478;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_7_REG_OFFSET                                                     = 32'h0000047C;
+localparam int unsigned KMCSR_OTP_SEP_SIP_ID_CPL_7_REG_ADDR                                                       = 32'h0001447C;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_0_REG_OFFSET                                                     = 32'h00000480;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_0_REG_ADDR                                                       = 32'h00014480;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_1_REG_OFFSET                                                     = 32'h00000484;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_1_REG_ADDR                                                       = 32'h00014484;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_2_REG_OFFSET                                                     = 32'h00000488;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_2_REG_ADDR                                                       = 32'h00014488;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_3_REG_OFFSET                                                     = 32'h0000048C;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_3_REG_ADDR                                                       = 32'h0001448C;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_4_REG_OFFSET                                                     = 32'h00000490;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_4_REG_ADDR                                                       = 32'h00014490;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_5_REG_OFFSET                                                     = 32'h00000494;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_5_REG_ADDR                                                       = 32'h00014494;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_6_REG_OFFSET                                                     = 32'h00000498;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_6_REG_ADDR                                                       = 32'h00014498;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_7_REG_OFFSET                                                     = 32'h0000049C;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_VAL_7_REG_ADDR                                                       = 32'h0001449C;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_0_REG_OFFSET                                                     = 32'h000004A0;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_0_REG_ADDR                                                       = 32'h000144A0;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_1_REG_OFFSET                                                     = 32'h000004A4;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_1_REG_ADDR                                                       = 32'h000144A4;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_2_REG_OFFSET                                                     = 32'h000004A8;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_2_REG_ADDR                                                       = 32'h000144A8;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_3_REG_OFFSET                                                     = 32'h000004AC;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_3_REG_ADDR                                                       = 32'h000144AC;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_4_REG_OFFSET                                                     = 32'h000004B0;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_4_REG_ADDR                                                       = 32'h000144B0;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_5_REG_OFFSET                                                     = 32'h000004B4;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_5_REG_ADDR                                                       = 32'h000144B4;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_6_REG_OFFSET                                                     = 32'h000004B8;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_6_REG_ADDR                                                       = 32'h000144B8;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_7_REG_OFFSET                                                     = 32'h000004BC;
+localparam int unsigned KMCSR_OTP_SEP_SYS_ID_CPL_7_REG_ADDR                                                       = 32'h000144BC;
+
+
+//==============================================================================
+// Addresses for Address Map: drbg_sampler
+//==============================================================================
+
+
+localparam int unsigned DRBG_SAMPLER_REG_MAP_BASE_ADDR                                                            = 32'h00015000;
+localparam int unsigned DRBG_SAMPLER_REG_MAP_SIZE                                                                 = 32'h00000010;
+
+
+localparam int unsigned DRBG_SAMPLER_DATA_REG_OFFSET                                                              = 32'h00000000;
+localparam int unsigned DRBG_SAMPLER_DATA_REG_ADDR                                                                = 32'h00015000;
+localparam int unsigned DRBG_SAMPLER_CFG_REG_OFFSET                                                               = 32'h00000004;
+localparam int unsigned DRBG_SAMPLER_CFG_REG_ADDR                                                                 = 32'h00015004;
+localparam int unsigned DRBG_SAMPLER_STATUS_REG_OFFSET                                                            = 32'h00000008;
+localparam int unsigned DRBG_SAMPLER_STATUS_REG_ADDR                                                              = 32'h00015008;
+localparam int unsigned DRBG_SAMPLER_PREFETCH_DATA_REG_OFFSET                                                     = 32'h0000000C;
+localparam int unsigned DRBG_SAMPLER_PREFETCH_DATA_REG_ADDR                                                       = 32'h0001500C;
 
 
 //==============================================================================
@@ -2268,6 +3740,43 @@ localparam int unsigned ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_REG_ADDR    
 // Default values for registers
 //==============================================================================
 
+localparam longint unsigned KM_MAILBOX_KM_WRITE_DATA_REG_REG_DEFAULT                                              = 32'h00000000;
+localparam longint unsigned KM_MAILBOX_KM_WRITE_SEPARATOR_REG_REG_DEFAULT                                         = 32'h00000000;
+localparam longint unsigned KM_MAILBOX_KM_READ_DATA_REG_REG_DEFAULT                                               = 32'h00000000;
+localparam longint unsigned KM_MAILBOX_KM_STATUS_REG_REG_DEFAULT                                                  = 32'h00000005;
+localparam longint unsigned KM_MAILBOX_KM_IRQ_STATUS_REG_REG_DEFAULT                                              = 32'h00000000;
+localparam longint unsigned KM_MAILBOX_KM_IRQ_ENABLE_REG_REG_DEFAULT                                              = 32'h00000000;
+localparam longint unsigned KM_MAILBOX_KM_CTRL_REG_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_LOCKS_REG_DEFAULT                                                       = 64'h0000000000000000;
+localparam longint unsigned SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT                                                    = 32'h000000F0;
+localparam longint unsigned SEP_EFUSE_MAP_SBOOT_DIS_REG_DEFAULT                                                   = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_REG_DEFAULT                                                  = 64'h0000000000000000;
+localparam longint unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_DEFAULT                                         = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_STATUS_RPT_REG_DEFAULT                                                  = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_DEFAULT                                       = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_DEFAULT                                          = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_DEFAULT                                           = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_DEFAULT                                          = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_DEFAULT                                           = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_DEFAULT                                           = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_DEFAULT                                          = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_MISC_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_DEFAULT                                           = 32'h00000000;
+localparam longint unsigned SEP_EFUSE_MAP_RESERVED_LAST_64_REG_DEFAULT                                            = 64'h0000000000000000;
+localparam longint unsigned SEP_EFUSE_MAP_RESERVED_LAST_32_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT                          = 32'h00000000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT                                   = 32'h00000000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT                                      = 32'h00000000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT                    = 32'h00000000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT                       = 32'h00000000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT                               = 32'h00800000;
+localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT                            = 32'h00800000;
+localparam longint unsigned EFUSE_MMR_RMA_TOKEN_I_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT                                             = 32'h00000000;
+localparam longint unsigned EFUSE_MMR_TOKEN_EOP_REG_DEFAULT                                                       = 32'h00000000;
+localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned KEY_ENTRY_RF_KEY_WORD_REG_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned KM_KPV_CTRL_REG_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_REG_DEFAULT                                              = 32'h00000000;
@@ -2309,43 +3818,6 @@ localparam longint unsigned KM_DRBG_SAMPLER_DATA_REG_REG_DEFAULT                
 localparam longint unsigned KM_DRBG_SAMPLER_CFG_REG_REG_DEFAULT                                                   = 32'h01000000;
 localparam longint unsigned KM_DRBG_SAMPLER_STATUS_REG_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned KM_DRBG_SAMPLER_PREFETCH_DATA_REG_REG_DEFAULT                                         = 32'h00000000;
-localparam longint unsigned KM_MAILBOX_KM_WRITE_DATA_REG_REG_DEFAULT                                              = 32'h00000000;
-localparam longint unsigned KM_MAILBOX_KM_WRITE_SEPARATOR_REG_REG_DEFAULT                                         = 32'h00000000;
-localparam longint unsigned KM_MAILBOX_KM_READ_DATA_REG_REG_DEFAULT                                               = 32'h00000000;
-localparam longint unsigned KM_MAILBOX_KM_STATUS_REG_REG_DEFAULT                                                  = 32'h00000005;
-localparam longint unsigned KM_MAILBOX_KM_IRQ_STATUS_REG_REG_DEFAULT                                              = 32'h00000000;
-localparam longint unsigned KM_MAILBOX_KM_IRQ_ENABLE_REG_REG_DEFAULT                                              = 32'h00000000;
-localparam longint unsigned KM_MAILBOX_KM_CTRL_REG_REG_DEFAULT                                                    = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_LOCKS_REG_DEFAULT                                                       = 64'h0000000000000000;
-localparam longint unsigned SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT                                                    = 32'h000000F0;
-localparam longint unsigned SEP_EFUSE_MAP_SBOOT_DIS_REG_DEFAULT                                                   = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_DEFAULT                                            = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_REG_DEFAULT                                                  = 64'h0000000000000000;
-localparam longint unsigned SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_REG_DEFAULT                                         = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_STATUS_RPT_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SEP_ROM_CTRL_REG_DEFAULT                                                = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_REG_DEFAULT                                       = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SPI_DISCOVERY_CTRL_REG_DEFAULT                                          = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_DQ_TIMING_REG_DEFAULT                                           = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_DQS_TIMING_REG_DEFAULT                                          = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_GATE_LPBK_REG_DEFAULT                                           = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_DLL_SLAVE_REG_DEFAULT                                           = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_DLL_MASTER_REG_DEFAULT                                          = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SPI_PHY_MISC_REG_DEFAULT                                                = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_SPI_RB_VALID_TIME_REG_DEFAULT                                           = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_RESERVED_LAST_64_REG_DEFAULT                                            = 64'h0000000000000000;
-localparam longint unsigned SEP_EFUSE_MAP_RESERVED_LAST_32_REG_DEFAULT                                            = 32'h00000000;
-localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_REG_DEFAULT                          = 32'h00000000;
-localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_DEFAULT                                   = 32'h00000000;
-localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_REG_DEFAULT                                      = 32'h00000000;
-localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ_DATA_REG_DEFAULT                    = 32'h00000000;
-localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_REG_DEFAULT                       = 32'h00000000;
-localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT                               = 32'h00800000;
-localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_DEFAULT                            = 32'h00800000;
-localparam longint unsigned EFUSE_MMR_RMA_TOKEN_I_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT                                             = 32'h00000000;
-localparam longint unsigned EFUSE_MMR_TOKEN_EOP_REG_DEFAULT                                                       = 32'h00000000;
-localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned OTBN_WRAPPER_KEY_KEY_WORD_REG_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned OTBN_WRAPPER_KEY_KEY_CTRL_REG_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned AES_WRAPPER_KEY_KEY_WORD_REG_REG_DEFAULT                                              = 32'h00000000;
@@ -2366,390 +3838,6 @@ localparam longint unsigned ABR_SHAREDKEY_RF_SK_IRQ_ENABLE_REG_REG_DEFAULT      
 //==============================================================================
 // Bit Fields for Address Map: key_manager
 //==============================================================================
-
-localparam int unsigned KEY_ENTRY_RF_KEY_WORD_REG_DATA_MASK                                                       = 32'hFFFFFFFF;
-localparam int unsigned KEY_ENTRY_RF_KEY_WORD_REG_DATA_SHIFT                                                      = 0;
-
-localparam int unsigned KM_KPV_CTRL_REG_LOCK_WRITE_MASK                                                           = 32'h1;
-localparam int unsigned KM_KPV_CTRL_REG_LOCK_WRITE_SHIFT                                                          = 0;
-
-localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_MASK                                                             = 32'h2;
-localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_SHIFT                                                            = 1;
-
-localparam int unsigned KM_KPV_CTRL_REG_ERASE_MASK                                                                = 32'h4;
-localparam int unsigned KM_KPV_CTRL_REG_ERASE_SHIFT                                                               = 2;
-
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_MASK                                                               = 32'h8;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_3_SHIFT                                                              = 3;
-
-localparam int unsigned KM_KPV_CTRL_REG_EXTEND_MASK                                                               = 32'h70;
-localparam int unsigned KM_KPV_CTRL_REG_EXTEND_SHIFT                                                              = 4;
-
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_16_7_MASK                                                            = 32'h1FF80;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_16_7_SHIFT                                                           = 7;
-
-localparam int unsigned KM_KPV_CTRL_REG_LAST_DWORD_MASK                                                           = 32'h1E0000;
-localparam int unsigned KM_KPV_CTRL_REG_LAST_DWORD_SHIFT                                                          = 17;
-
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_31_21_MASK                                                           = 32'hFFE00000;
-localparam int unsigned KM_KPV_CTRL_REG_RSVD_31_21_SHIFT                                                          = 21;
-
-localparam int unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_KEY_MASK                                                     = 32'hFFFFFFFF;
-localparam int unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_KEY_SHIFT                                                    = 0;
-
-localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_ENABLE_MASK                                                 = 32'h1;
-localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_ENABLE_SHIFT                                                = 0;
-
-localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_LOCK_MASK                                                   = 32'h2;
-localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_LOCK_SHIFT                                                  = 1;
-
-localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_RSVD_MASK                                                   = 32'hFFFFFFFC;
-localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_RSVD_SHIFT                                                  = 2;
-
-localparam int unsigned KM_CSR_VERSION_REG_PATCH_MASK                                                             = 32'hFF;
-localparam int unsigned KM_CSR_VERSION_REG_PATCH_SHIFT                                                            = 0;
-
-localparam int unsigned KM_CSR_VERSION_REG_MINOR_MASK                                                             = 32'hFF00;
-localparam int unsigned KM_CSR_VERSION_REG_MINOR_SHIFT                                                            = 8;
-
-localparam int unsigned KM_CSR_VERSION_REG_MAJOR_MASK                                                             = 32'hFF0000;
-localparam int unsigned KM_CSR_VERSION_REG_MAJOR_SHIFT                                                            = 16;
-
-localparam int unsigned KM_CSR_VERSION_REG_RSVD_MASK                                                              = 32'hFF000000;
-localparam int unsigned KM_CSR_VERSION_REG_RSVD_SHIFT                                                             = 24;
-
-localparam int unsigned KM_CSR_CTRL_REG_RSVD_MASK                                                                 = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_CTRL_REG_RSVD_SHIFT                                                                = 0;
-
-localparam int unsigned KM_CSR_SOFT_RST_CODE_REG_CODE_MASK                                                        = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_SOFT_RST_CODE_REG_CODE_SHIFT                                                       = 0;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_PARITY_ERR_MASK                                                 = 32'h1;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_PARITY_ERR_SHIFT                                                = 0;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_SRAM_PARITY_ERR_MASK                                                = 32'h2;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_SRAM_PARITY_ERR_SHIFT                                               = 1;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_WRITE_ERR_MASK                                                  = 32'h4;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_WRITE_ERR_SHIFT                                                 = 2;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_SRAM_WRITE_LOCK_ERR_MASK                                            = 32'h8;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_SRAM_WRITE_LOCK_ERR_SHIFT                                           = 3;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_SLVERR_MASK                                                     = 32'h10;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_SLVERR_SHIFT                                                    = 4;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_DECERR_MASK                                                     = 32'h20;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_DECERR_SHIFT                                                    = 5;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_DRBG_ERR_MASK                                                       = 32'h40;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_DRBG_ERR_SHIFT                                                      = 6;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_WIPE_STATE_MASK                                                     = 32'h80;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_WIPE_STATE_SHIFT                                                    = 7;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_CHANGE_MASK                                                     = 32'h100;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_CHANGE_SHIFT                                                    = 8;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_MASK                                                     = 32'h200;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_SHIFT                                                    = 9;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_MASK                                                 = 32'h400;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_SHIFT                                                = 10;
-
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_MASK                                                           = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT                                                          = 11;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_PARITY_EN_MASK                                                  = 32'h1;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_PARITY_EN_SHIFT                                                 = 0;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_SRAM_PARITY_EN_MASK                                                 = 32'h2;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_SRAM_PARITY_EN_SHIFT                                                = 1;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_WRITE_EN_MASK                                                   = 32'h4;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_WRITE_EN_SHIFT                                                  = 2;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_SRAM_WRITE_LOCK_EN_MASK                                             = 32'h8;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_SRAM_WRITE_LOCK_EN_SHIFT                                            = 3;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_SLVERR_EN_MASK                                                  = 32'h10;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_SLVERR_EN_SHIFT                                                 = 4;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_DECERR_EN_MASK                                                  = 32'h20;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_DECERR_EN_SHIFT                                                 = 5;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_DRBG_ERR_EN_MASK                                                    = 32'h40;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_DRBG_ERR_EN_SHIFT                                                   = 6;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_WIPE_STATE_EN_MASK                                                  = 32'h80;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_WIPE_STATE_EN_SHIFT                                                 = 7;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_CHANGE_EN_MASK                                                  = 32'h100;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_CHANGE_EN_SHIFT                                                 = 8;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_SIGINT_EN_MASK                                                  = 32'h200;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_SIGINT_EN_SHIFT                                                 = 9;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_EXEC_VIOLATION_EN_MASK                                              = 32'h400;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_EXEC_VIOLATION_EN_SHIFT                                             = 10;
-
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_MASK                                                           = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT                                                          = 11;
-
-localparam int unsigned KM_CSR_SCRAMBLER_KEY_REG_KEY_MASK                                                         = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_SCRAMBLER_KEY_REG_KEY_SHIFT                                                        = 0;
-
-localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_ENABLE_MASK                                                     = 32'h1;
-localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_ENABLE_SHIFT                                                    = 0;
-
-localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_LOCK_MASK                                                       = 32'h2;
-localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_LOCK_SHIFT                                                      = 1;
-
-localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_RSVD_MASK                                                       = 32'hFFFFFFFC;
-localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_RSVD_SHIFT                                                      = 2;
-
-localparam int unsigned KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK                                                       = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_SRAM_LOCK_REG_LOCK_BITS_SHIFT                                                      = 0;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_PARITY_ERR_SET_MASK                                                = 32'h1;
-localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_PARITY_ERR_SET_SHIFT                                               = 0;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_SRAM_PARITY_ERR_SET_MASK                                               = 32'h2;
-localparam int unsigned KM_CSR_IRQ_SET_REG_SRAM_PARITY_ERR_SET_SHIFT                                              = 1;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_WRITE_ERR_SET_MASK                                                 = 32'h4;
-localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_WRITE_ERR_SET_SHIFT                                                = 2;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_SRAM_WRITE_LOCK_ERR_SET_MASK                                           = 32'h8;
-localparam int unsigned KM_CSR_IRQ_SET_REG_SRAM_WRITE_LOCK_ERR_SET_SHIFT                                          = 3;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_SLVERR_SET_MASK                                                    = 32'h10;
-localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_SLVERR_SET_SHIFT                                                   = 4;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_DECERR_SET_MASK                                                    = 32'h20;
-localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_DECERR_SET_SHIFT                                                   = 5;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_DRBG_ERR_SET_MASK                                                      = 32'h40;
-localparam int unsigned KM_CSR_IRQ_SET_REG_DRBG_ERR_SET_SHIFT                                                     = 6;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_WIPE_STATE_SET_MASK                                                    = 32'h80;
-localparam int unsigned KM_CSR_IRQ_SET_REG_WIPE_STATE_SET_SHIFT                                                   = 7;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_CHANGE_SET_MASK                                                    = 32'h100;
-localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_CHANGE_SET_SHIFT                                                   = 8;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_SIGINT_SET_MASK                                                    = 32'h200;
-localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_SIGINT_SET_SHIFT                                                   = 9;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_MASK                                                = 32'h400;
-localparam int unsigned KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_SHIFT                                               = 10;
-
-localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_MASK                                                              = 32'hFFFFF800;
-localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_SHIFT                                                             = 11;
-
-localparam int unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_VIOLATION_BITS_MASK                                  = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_VIOLATION_BITS_SHIFT                                 = 0;
-
-localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RECOVERABLE_ERR_MASK                                           = 32'h1;
-localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RECOVERABLE_ERR_SHIFT                                          = 0;
-
-localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RSVD_MASK                                                      = 32'hFFFFFFFE;
-localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RSVD_SHIFT                                                     = 1;
-
-localparam int unsigned KM_CSR_BOOT_STATUS_REG_COLD_BOOT_DONE_MASK                                                = 32'h1;
-localparam int unsigned KM_CSR_BOOT_STATUS_REG_COLD_BOOT_DONE_SHIFT                                               = 0;
-
-localparam int unsigned KM_CSR_BOOT_STATUS_REG_RSVD_MASK                                                          = 32'hFFFFFFFE;
-localparam int unsigned KM_CSR_BOOT_STATUS_REG_RSVD_SHIFT                                                         = 1;
-
-localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_VALUE_MASK                                                      = 32'hFF;
-localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_VALUE_SHIFT                                                     = 0;
-
-localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_RSVD_MASK                                                       = 32'hFFFFFF00;
-localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_RSVD_SHIFT                                                      = 8;
-
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_1_VALUE_MASK                                         = 32'h3;
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_1_VALUE_SHIFT                                        = 0;
-
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_2_VALUE_MASK                                         = 32'hC;
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_2_VALUE_SHIFT                                        = 2;
-
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_RSVD_MASK                                                   = 32'hFFFFFFF0;
-localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_RSVD_SHIFT                                                  = 4;
-
-localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_ENABLE_MASK                                                     = 32'h1;
-localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_ENABLE_SHIFT                                                    = 0;
-
-localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_RSVD_MASK                                                       = 32'hFFFFFFFE;
-localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_RSVD_SHIFT                                                      = 1;
-
-localparam int unsigned KM_CSR_IRQ_ENTRY_ADDR_REG_ADDR_MASK                                                       = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_IRQ_ENTRY_ADDR_REG_ADDR_SHIFT                                                      = 0;
-
-localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_LOCK_MASK                                                       = 32'h1;
-localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_LOCK_SHIFT                                                      = 0;
-
-localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_RSVD_MASK                                                       = 32'hFFFFFFFE;
-localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_RSVD_SHIFT                                                      = 1;
-
-localparam int unsigned KM_CSR_VUART_TX_REG_TX_BYTE_MASK                                                          = 32'hFF;
-localparam int unsigned KM_CSR_VUART_TX_REG_TX_BYTE_SHIFT                                                         = 0;
-
-localparam int unsigned KM_CSR_VUART_TX_REG_RSVD0_MASK                                                            = 32'h7FFFFF00;
-localparam int unsigned KM_CSR_VUART_TX_REG_RSVD0_SHIFT                                                           = 8;
-
-localparam int unsigned KM_CSR_VUART_TX_REG_DATA_VALID_MASK                                                       = 32'h80000000;
-localparam int unsigned KM_CSR_VUART_TX_REG_DATA_VALID_SHIFT                                                      = 31;
-
-localparam int unsigned KM_CSR_VUART_RX_REG_RX_BYTE_MASK                                                          = 32'hFF;
-localparam int unsigned KM_CSR_VUART_RX_REG_RX_BYTE_SHIFT                                                         = 0;
-
-localparam int unsigned KM_CSR_VUART_RX_REG_RSVD0_MASK                                                            = 32'h7FFFFF00;
-localparam int unsigned KM_CSR_VUART_RX_REG_RSVD0_SHIFT                                                           = 8;
-
-localparam int unsigned KM_CSR_VUART_RX_REG_DATA_VALID_MASK                                                       = 32'h80000000;
-localparam int unsigned KM_CSR_VUART_RX_REG_DATA_VALID_SHIFT                                                      = 31;
-
-localparam int unsigned KM_CSR_VUART_STATUS_REG_TX_READY_MASK                                                     = 32'h1;
-localparam int unsigned KM_CSR_VUART_STATUS_REG_TX_READY_SHIFT                                                    = 0;
-
-localparam int unsigned KM_CSR_VUART_STATUS_REG_RX_VALID_MASK                                                     = 32'h2;
-localparam int unsigned KM_CSR_VUART_STATUS_REG_RX_VALID_SHIFT                                                    = 1;
-
-localparam int unsigned KM_CSR_VUART_STATUS_REG_PRINT_ENABLE_MASK                                                 = 32'h4;
-localparam int unsigned KM_CSR_VUART_STATUS_REG_PRINT_ENABLE_SHIFT                                                = 2;
-
-localparam int unsigned KM_CSR_VUART_STATUS_REG_RSVD_MASK                                                         = 32'hFFFFFFF8;
-localparam int unsigned KM_CSR_VUART_STATUS_REG_RSVD_SHIFT                                                        = 3;
-
-localparam int unsigned KM_CSR_TB_RESULT_REG_RESULT_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_TB_RESULT_REG_RESULT_SHIFT                                                         = 0;
-
-localparam int unsigned KM_CSR_TB_SIGNATURE_REG_SIGNATURE_MASK                                                    = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_TB_SIGNATURE_REG_SIGNATURE_SHIFT                                                   = 0;
-
-localparam int unsigned KM_CSR_TB_ERRCODE_REG_ERRCODE_MASK                                                        = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_TB_ERRCODE_REG_ERRCODE_SHIFT                                                       = 0;
-
-localparam int unsigned KM_CSR_TB_SUBTEST_REG_SUBTEST_MASK                                                        = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_TB_SUBTEST_REG_SUBTEST_SHIFT                                                       = 0;
-
-localparam int unsigned KM_CSR_TB_CMD_REG_CMD_MASK                                                                = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_TB_CMD_REG_CMD_SHIFT                                                               = 0;
-
-localparam int unsigned KM_CSR_TB_CMD_ARG_REG_ARG_MASK                                                            = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_TB_CMD_ARG_REG_ARG_SHIFT                                                           = 0;
-
-localparam int unsigned KM_CSR_TB_CMD_STATUS_REG_STATUS_MASK                                                      = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_TB_CMD_STATUS_REG_STATUS_SHIFT                                                     = 0;
-
-localparam int unsigned KM_CSR_TB_CMD_RESULT_REG_RESULT_MASK                                                      = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_TB_CMD_RESULT_REG_RESULT_SHIFT                                                     = 0;
-
-localparam int unsigned KM_CSR_DEBUG_REG_MAGIC_MASK                                                               = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_DEBUG_REG_MAGIC_SHIFT                                                              = 0;
-
-localparam int unsigned KM_CSR_OTP_DR_WORD_REG_VALUE_MASK                                                         = 32'hFFFFFFFF;
-localparam int unsigned KM_CSR_OTP_DR_WORD_REG_VALUE_SHIFT                                                        = 0;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_LIFE_CYCLE_MASK                                                  = 32'h1;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_LIFE_CYCLE_SHIFT                                                 = 0;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_DEMOTION_MASK                                                    = 32'h2;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_DEMOTION_SHIFT                                                   = 1;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK                                                 = 32'h4;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_SHIFT                                                = 2;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SIP_UID_MASK                                                     = 32'h8;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SIP_UID_SHIFT                                                    = 3;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SYS_UID_MASK                                                     = 32'h10;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SYS_UID_SHIFT                                                    = 4;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_MASK                                                   = 32'h20;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_SHIFT                                                  = 5;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_MASK                                                        = 32'hFFFFFFC0;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT                                                       = 6;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_MASK                                              = 32'h1;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_SHIFT                                             = 0;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_DEMOTION_MASK                                                = 32'h2;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_DEMOTION_SHIFT                                               = 1;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CHIPLET_UID_MASK                                             = 32'h4;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CHIPLET_UID_SHIFT                                            = 2;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SIP_UID_MASK                                                 = 32'h8;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SIP_UID_SHIFT                                                = 3;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_MASK                                                 = 32'h10;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_SHIFT                                                = 4;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_MASK                                               = 32'h20;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_SHIFT                                              = 5;
-
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_MASK                                                    = 32'hFFFFFFC0;
-localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_SHIFT                                                   = 6;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_LIFE_CYCLE_MASK                                             = 32'h1;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_LIFE_CYCLE_SHIFT                                            = 0;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_DEMOTION_MASK                                               = 32'h2;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_DEMOTION_SHIFT                                              = 1;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CHIPLET_UID_MASK                                            = 32'h4;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CHIPLET_UID_SHIFT                                           = 2;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SIP_UID_MASK                                                = 32'h8;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SIP_UID_SHIFT                                               = 3;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SYS_UID_MASK                                                = 32'h10;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SYS_UID_SHIFT                                               = 4;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CLASS_KEY_MASK                                              = 32'h20;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CLASS_KEY_SHIFT                                             = 5;
-
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_MASK                                                   = 32'hFFFFFFC0;
-localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_SHIFT                                                  = 6;
-
-localparam int unsigned KM_DRBG_SAMPLER_DATA_REG_DATA_MASK                                                        = 32'hFFFFFFFF;
-localparam int unsigned KM_DRBG_SAMPLER_DATA_REG_DATA_SHIFT                                                       = 0;
-
-localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_PREFETCH_MASK                                                     = 32'h1;
-localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_PREFETCH_SHIFT                                                    = 0;
-
-localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_RSVD_MASK                                                         = 32'hFFFE;
-localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_RSVD_SHIFT                                                        = 1;
-
-localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_TIMEOUT_MASK                                                      = 32'hFFFF0000;
-localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_TIMEOUT_SHIFT                                                     = 16;
-
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_DRBG_READY_MASK                                                = 32'h1;
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_DRBG_READY_SHIFT                                               = 0;
-
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_PREFETCHED_MASK                                                = 32'h2;
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_PREFETCHED_SHIFT                                               = 1;
-
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_TIMEOUT_ERR_MASK                                               = 32'h4;
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_TIMEOUT_ERR_SHIFT                                              = 2;
-
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_STREAM_ERR_MASK                                                = 32'h8;
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_STREAM_ERR_SHIFT                                               = 3;
-
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_RSVD_MASK                                                      = 32'hF0;
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_RSVD_SHIFT                                                     = 4;
-
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_COUNT_BAD_MASK                                                 = 32'hFF00;
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_COUNT_BAD_SHIFT                                                = 8;
-
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_COUNT_GOOD_MASK                                                = 32'hFFFF0000;
-localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_COUNT_GOOD_SHIFT                                               = 16;
-
-localparam int unsigned KM_DRBG_SAMPLER_PREFETCH_DATA_REG_DATA_MASK                                               = 32'hFFFFFFFF;
-localparam int unsigned KM_DRBG_SAMPLER_PREFETCH_DATA_REG_DATA_SHIFT                                              = 0;
 
 localparam int unsigned KM_MAILBOX_KM_WRITE_DATA_REG_DATA_MASK                                                    = 32'hFFFFFFFF;
 localparam int unsigned KM_MAILBOX_KM_WRITE_DATA_REG_DATA_SHIFT                                                   = 0;
@@ -3294,6 +4382,414 @@ localparam int unsigned EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_SHIFT       
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_MASK                                             = 32'h3F;
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_SHIFT                                            = 0;
 
+localparam int unsigned KEY_ENTRY_RF_KEY_WORD_REG_DATA_MASK                                                       = 32'hFFFFFFFF;
+localparam int unsigned KEY_ENTRY_RF_KEY_WORD_REG_DATA_SHIFT                                                      = 0;
+
+localparam int unsigned KM_KPV_CTRL_REG_LOCK_WRITE_MASK                                                           = 32'h1;
+localparam int unsigned KM_KPV_CTRL_REG_LOCK_WRITE_SHIFT                                                          = 0;
+
+localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_MASK                                                             = 32'h2;
+localparam int unsigned KM_KPV_CTRL_REG_LOCK_USE_SHIFT                                                            = 1;
+
+localparam int unsigned KM_KPV_CTRL_REG_ERASE_MASK                                                                = 32'h4;
+localparam int unsigned KM_KPV_CTRL_REG_ERASE_SHIFT                                                               = 2;
+
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_31_3_MASK                                                            = 32'hFFFFFFF8;
+localparam int unsigned KM_KPV_CTRL_REG_RSVD_31_3_SHIFT                                                           = 3;
+
+localparam int unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_KEY_MASK                                                     = 32'hFFFFFFFF;
+localparam int unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_KEY_SHIFT                                                    = 0;
+
+localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_ENABLE_MASK                                                 = 32'h1;
+localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_ENABLE_SHIFT                                                = 0;
+
+localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_LOCK_MASK                                                   = 32'h2;
+localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_LOCK_SHIFT                                                  = 1;
+
+localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_RSVD_MASK                                                   = 32'hFFFFFFFC;
+localparam int unsigned KM_KPV_KPV_SCRAMBLER_CTRL_REG_RSVD_SHIFT                                                  = 2;
+
+localparam int unsigned KM_CSR_VERSION_REG_PATCH_MASK                                                             = 32'hFF;
+localparam int unsigned KM_CSR_VERSION_REG_PATCH_SHIFT                                                            = 0;
+
+localparam int unsigned KM_CSR_VERSION_REG_MINOR_MASK                                                             = 32'hFF00;
+localparam int unsigned KM_CSR_VERSION_REG_MINOR_SHIFT                                                            = 8;
+
+localparam int unsigned KM_CSR_VERSION_REG_MAJOR_MASK                                                             = 32'hFF0000;
+localparam int unsigned KM_CSR_VERSION_REG_MAJOR_SHIFT                                                            = 16;
+
+localparam int unsigned KM_CSR_VERSION_REG_RSVD_MASK                                                              = 32'hFF000000;
+localparam int unsigned KM_CSR_VERSION_REG_RSVD_SHIFT                                                             = 24;
+
+localparam int unsigned KM_CSR_CTRL_REG_RSVD_MASK                                                                 = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_CTRL_REG_RSVD_SHIFT                                                                = 0;
+
+localparam int unsigned KM_CSR_SOFT_RST_CODE_REG_CODE_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_SOFT_RST_CODE_REG_CODE_SHIFT                                                       = 0;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_PARITY_ERR_MASK                                                 = 32'h1;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_PARITY_ERR_SHIFT                                                = 0;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_SRAM_PARITY_ERR_MASK                                                = 32'h2;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_SRAM_PARITY_ERR_SHIFT                                               = 1;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_WRITE_ERR_MASK                                                  = 32'h4;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_WRITE_ERR_SHIFT                                                 = 2;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_SRAM_WRITE_LOCK_ERR_MASK                                            = 32'h8;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_SRAM_WRITE_LOCK_ERR_SHIFT                                           = 3;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_SLVERR_MASK                                                     = 32'h10;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_SLVERR_SHIFT                                                    = 4;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_DECERR_MASK                                                     = 32'h20;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_AXI_DECERR_SHIFT                                                    = 5;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_DRBG_ERR_MASK                                                       = 32'h40;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_DRBG_ERR_SHIFT                                                      = 6;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_WIPE_STATE_MASK                                                     = 32'h80;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_WIPE_STATE_SHIFT                                                    = 7;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_CHANGE_MASK                                                     = 32'h100;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_CHANGE_SHIFT                                                    = 8;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_MASK                                                     = 32'h200;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_OTP_SIGINT_SHIFT                                                    = 9;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_MASK                                                 = 32'h400;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_EXEC_VIOLATION_SHIFT                                                = 10;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_ACCESS_VIOLATION_MASK                                           = 32'h800;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_ROM_ACCESS_VIOLATION_SHIFT                                          = 11;
+
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_MASK                                                           = 32'hFFFFF000;
+localparam int unsigned KM_CSR_IRQ_STATUS_REG_RSVD_SHIFT                                                          = 12;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_PARITY_EN_MASK                                                  = 32'h1;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_PARITY_EN_SHIFT                                                 = 0;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_SRAM_PARITY_EN_MASK                                                 = 32'h2;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_SRAM_PARITY_EN_SHIFT                                                = 1;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_WRITE_EN_MASK                                                   = 32'h4;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_WRITE_EN_SHIFT                                                  = 2;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_SRAM_WRITE_LOCK_EN_MASK                                             = 32'h8;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_SRAM_WRITE_LOCK_EN_SHIFT                                            = 3;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_SLVERR_EN_MASK                                                  = 32'h10;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_SLVERR_EN_SHIFT                                                 = 4;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_DECERR_EN_MASK                                                  = 32'h20;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_AXI_DECERR_EN_SHIFT                                                 = 5;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_DRBG_ERR_EN_MASK                                                    = 32'h40;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_DRBG_ERR_EN_SHIFT                                                   = 6;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_WIPE_STATE_EN_MASK                                                  = 32'h80;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_WIPE_STATE_EN_SHIFT                                                 = 7;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_CHANGE_EN_MASK                                                  = 32'h100;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_CHANGE_EN_SHIFT                                                 = 8;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_SIGINT_EN_MASK                                                  = 32'h200;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_OTP_SIGINT_EN_SHIFT                                                 = 9;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_EXEC_VIOLATION_EN_MASK                                              = 32'h400;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_EXEC_VIOLATION_EN_SHIFT                                             = 10;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_ACCESS_VIOLATION_EN_MASK                                        = 32'h800;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_ROM_ACCESS_VIOLATION_EN_SHIFT                                       = 11;
+
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_MASK                                                           = 32'hFFFFF000;
+localparam int unsigned KM_CSR_IRQ_ENABLE_REG_RSVD_SHIFT                                                          = 12;
+
+localparam int unsigned KM_CSR_SCRAMBLER_KEY_REG_KEY_MASK                                                         = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_SCRAMBLER_KEY_REG_KEY_SHIFT                                                        = 0;
+
+localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_ENABLE_MASK                                                     = 32'h1;
+localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_ENABLE_SHIFT                                                    = 0;
+
+localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_LOCK_MASK                                                       = 32'h2;
+localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_LOCK_SHIFT                                                      = 1;
+
+localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_RSVD_MASK                                                       = 32'hFFFFFFFC;
+localparam int unsigned KM_CSR_SCRAMBLER_CTRL_REG_RSVD_SHIFT                                                      = 2;
+
+localparam int unsigned KM_CSR_SRAM_LOCK_REG_LOCK_BITS_MASK                                                       = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_SRAM_LOCK_REG_LOCK_BITS_SHIFT                                                      = 0;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_PARITY_ERR_SET_MASK                                                = 32'h1;
+localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_PARITY_ERR_SET_SHIFT                                               = 0;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_SRAM_PARITY_ERR_SET_MASK                                               = 32'h2;
+localparam int unsigned KM_CSR_IRQ_SET_REG_SRAM_PARITY_ERR_SET_SHIFT                                              = 1;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_WRITE_ERR_SET_MASK                                                 = 32'h4;
+localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_WRITE_ERR_SET_SHIFT                                                = 2;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_SRAM_WRITE_LOCK_ERR_SET_MASK                                           = 32'h8;
+localparam int unsigned KM_CSR_IRQ_SET_REG_SRAM_WRITE_LOCK_ERR_SET_SHIFT                                          = 3;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_SLVERR_SET_MASK                                                    = 32'h10;
+localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_SLVERR_SET_SHIFT                                                   = 4;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_DECERR_SET_MASK                                                    = 32'h20;
+localparam int unsigned KM_CSR_IRQ_SET_REG_AXI_DECERR_SET_SHIFT                                                   = 5;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_DRBG_ERR_SET_MASK                                                      = 32'h40;
+localparam int unsigned KM_CSR_IRQ_SET_REG_DRBG_ERR_SET_SHIFT                                                     = 6;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_WIPE_STATE_SET_MASK                                                    = 32'h80;
+localparam int unsigned KM_CSR_IRQ_SET_REG_WIPE_STATE_SET_SHIFT                                                   = 7;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_CHANGE_SET_MASK                                                    = 32'h100;
+localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_CHANGE_SET_SHIFT                                                   = 8;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_SIGINT_SET_MASK                                                    = 32'h200;
+localparam int unsigned KM_CSR_IRQ_SET_REG_OTP_SIGINT_SET_SHIFT                                                   = 9;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_MASK                                                = 32'h400;
+localparam int unsigned KM_CSR_IRQ_SET_REG_EXEC_VIOLATION_SET_SHIFT                                               = 10;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_ACCESS_VIOLATION_SET_MASK                                          = 32'h800;
+localparam int unsigned KM_CSR_IRQ_SET_REG_ROM_ACCESS_VIOLATION_SET_SHIFT                                         = 11;
+
+localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_MASK                                                              = 32'hFFFFF000;
+localparam int unsigned KM_CSR_IRQ_SET_REG_RSVD_SHIFT                                                             = 12;
+
+localparam int unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_VIOLATION_BITS_MASK                                  = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_SRAM_WRITE_LOCK_VIOLATION_REG_VIOLATION_BITS_SHIFT                                 = 0;
+
+localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RECOVERABLE_ERR_MASK                                           = 32'h1;
+localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RECOVERABLE_ERR_SHIFT                                          = 0;
+
+localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RSVD_MASK                                                      = 32'hFFFFFFFE;
+localparam int unsigned KM_CSR_RECOVERABLE_ERR_REG_RSVD_SHIFT                                                     = 1;
+
+localparam int unsigned KM_CSR_BOOT_STATUS_REG_COLD_BOOT_DONE_MASK                                                = 32'h1;
+localparam int unsigned KM_CSR_BOOT_STATUS_REG_COLD_BOOT_DONE_SHIFT                                               = 0;
+
+localparam int unsigned KM_CSR_BOOT_STATUS_REG_RSVD_MASK                                                          = 32'hFFFFFFFE;
+localparam int unsigned KM_CSR_BOOT_STATUS_REG_RSVD_SHIFT                                                         = 1;
+
+localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_VALUE_MASK                                                      = 32'hFF;
+localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_VALUE_SHIFT                                                     = 0;
+
+localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_RSVD_MASK                                                       = 32'hFFFFFF00;
+localparam int unsigned KM_CSR_OTP_LIFE_CYCLE_REG_RSVD_SHIFT                                                      = 8;
+
+localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_1_VALUE_MASK                                         = 32'h3;
+localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_1_VALUE_SHIFT                                        = 0;
+
+localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_2_VALUE_MASK                                         = 32'hC;
+localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_DEMOTE_2_VALUE_SHIFT                                        = 2;
+
+localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_RSVD_MASK                                                   = 32'hFFFFFFF0;
+localparam int unsigned KM_CSR_OTP_DEMOTION_STATE_REG_RSVD_SHIFT                                                  = 4;
+
+localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_ENABLE_MASK                                                     = 32'h1;
+localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_ENABLE_SHIFT                                                    = 0;
+
+localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_RSVD_MASK                                                       = 32'hFFFFFFFE;
+localparam int unsigned KM_CSR_SRAM_EXEC_MODE_REG_RSVD_SHIFT                                                      = 1;
+
+localparam int unsigned KM_CSR_IRQ_ENTRY_ADDR_REG_ADDR_MASK                                                       = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_IRQ_ENTRY_ADDR_REG_ADDR_SHIFT                                                      = 0;
+
+localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_LOCK_MASK                                                       = 32'h1;
+localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_LOCK_SHIFT                                                      = 0;
+
+localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_RSVD_MASK                                                       = 32'hFFFFFFFE;
+localparam int unsigned KM_CSR_IRQ_ENTRY_LOCK_REG_RSVD_SHIFT                                                      = 1;
+
+localparam int unsigned KM_CSR_VUART_TX_REG_TX_BYTE_MASK                                                          = 32'hFF;
+localparam int unsigned KM_CSR_VUART_TX_REG_TX_BYTE_SHIFT                                                         = 0;
+
+localparam int unsigned KM_CSR_VUART_TX_REG_RSVD0_MASK                                                            = 32'h7FFFFF00;
+localparam int unsigned KM_CSR_VUART_TX_REG_RSVD0_SHIFT                                                           = 8;
+
+localparam int unsigned KM_CSR_VUART_TX_REG_DATA_VALID_MASK                                                       = 32'h80000000;
+localparam int unsigned KM_CSR_VUART_TX_REG_DATA_VALID_SHIFT                                                      = 31;
+
+localparam int unsigned KM_CSR_VUART_RX_REG_RX_BYTE_MASK                                                          = 32'hFF;
+localparam int unsigned KM_CSR_VUART_RX_REG_RX_BYTE_SHIFT                                                         = 0;
+
+localparam int unsigned KM_CSR_VUART_RX_REG_RSVD0_MASK                                                            = 32'h7FFFFF00;
+localparam int unsigned KM_CSR_VUART_RX_REG_RSVD0_SHIFT                                                           = 8;
+
+localparam int unsigned KM_CSR_VUART_RX_REG_DATA_VALID_MASK                                                       = 32'h80000000;
+localparam int unsigned KM_CSR_VUART_RX_REG_DATA_VALID_SHIFT                                                      = 31;
+
+localparam int unsigned KM_CSR_VUART_STATUS_REG_TX_READY_MASK                                                     = 32'h1;
+localparam int unsigned KM_CSR_VUART_STATUS_REG_TX_READY_SHIFT                                                    = 0;
+
+localparam int unsigned KM_CSR_VUART_STATUS_REG_RX_VALID_MASK                                                     = 32'h2;
+localparam int unsigned KM_CSR_VUART_STATUS_REG_RX_VALID_SHIFT                                                    = 1;
+
+localparam int unsigned KM_CSR_VUART_STATUS_REG_PRINT_ENABLE_MASK                                                 = 32'h4;
+localparam int unsigned KM_CSR_VUART_STATUS_REG_PRINT_ENABLE_SHIFT                                                = 2;
+
+localparam int unsigned KM_CSR_VUART_STATUS_REG_RSVD_MASK                                                         = 32'hFFFFFFF8;
+localparam int unsigned KM_CSR_VUART_STATUS_REG_RSVD_SHIFT                                                        = 3;
+
+localparam int unsigned KM_CSR_TB_RESULT_REG_RESULT_MASK                                                          = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_TB_RESULT_REG_RESULT_SHIFT                                                         = 0;
+
+localparam int unsigned KM_CSR_TB_SIGNATURE_REG_SIGNATURE_MASK                                                    = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_TB_SIGNATURE_REG_SIGNATURE_SHIFT                                                   = 0;
+
+localparam int unsigned KM_CSR_TB_ERRCODE_REG_ERRCODE_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_TB_ERRCODE_REG_ERRCODE_SHIFT                                                       = 0;
+
+localparam int unsigned KM_CSR_TB_SUBTEST_REG_SUBTEST_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_TB_SUBTEST_REG_SUBTEST_SHIFT                                                       = 0;
+
+localparam int unsigned KM_CSR_TB_CMD_REG_CMD_MASK                                                                = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_TB_CMD_REG_CMD_SHIFT                                                               = 0;
+
+localparam int unsigned KM_CSR_TB_CMD_ARG_REG_ARG_MASK                                                            = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_TB_CMD_ARG_REG_ARG_SHIFT                                                           = 0;
+
+localparam int unsigned KM_CSR_TB_CMD_STATUS_REG_STATUS_MASK                                                      = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_TB_CMD_STATUS_REG_STATUS_SHIFT                                                     = 0;
+
+localparam int unsigned KM_CSR_TB_CMD_RESULT_REG_RESULT_MASK                                                      = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_TB_CMD_RESULT_REG_RESULT_SHIFT                                                     = 0;
+
+localparam int unsigned KM_CSR_DEBUG_REG_MAGIC_MASK                                                               = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_DEBUG_REG_MAGIC_SHIFT                                                              = 0;
+
+localparam int unsigned KM_CSR_OTP_DR_WORD_REG_VALUE_MASK                                                         = 32'hFFFFFFFF;
+localparam int unsigned KM_CSR_OTP_DR_WORD_REG_VALUE_SHIFT                                                        = 0;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_LIFE_CYCLE_MASK                                                  = 32'h1;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_LIFE_CYCLE_SHIFT                                                 = 0;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_DEMOTION_MASK                                                    = 32'h2;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_DEMOTION_SHIFT                                                   = 1;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_MASK                                                 = 32'h4;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CHIPLET_UID_SHIFT                                                = 2;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SIP_UID_MASK                                                     = 32'h8;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SIP_UID_SHIFT                                                    = 3;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SYS_UID_MASK                                                     = 32'h10;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SYS_UID_SHIFT                                                    = 4;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_MASK                                                   = 32'h20;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_CLASS_KEY_SHIFT                                                  = 5;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_CHIPLET_ID_MASK                                              = 32'h40;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_CHIPLET_ID_SHIFT                                             = 6;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_SIP_ID_MASK                                                  = 32'h80;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_SIP_ID_SHIFT                                                 = 7;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_SYS_ID_MASK                                                  = 32'h100;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_SEP_SYS_ID_SHIFT                                                 = 8;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_MASK                                                        = 32'hFFFFFE00;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_REG_RSVD_SHIFT                                                       = 9;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_MASK                                              = 32'h1;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_LIFE_CYCLE_SHIFT                                             = 0;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_DEMOTION_MASK                                                = 32'h2;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_DEMOTION_SHIFT                                               = 1;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CHIPLET_UID_MASK                                             = 32'h4;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CHIPLET_UID_SHIFT                                            = 2;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SIP_UID_MASK                                                 = 32'h8;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SIP_UID_SHIFT                                                = 3;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_MASK                                                 = 32'h10;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SYS_UID_SHIFT                                                = 4;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_MASK                                               = 32'h20;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_CLASS_KEY_SHIFT                                              = 5;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_CHIPLET_ID_MASK                                          = 32'h40;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_CHIPLET_ID_SHIFT                                         = 6;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_SIP_ID_MASK                                              = 32'h80;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_SIP_ID_SHIFT                                             = 7;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_SYS_ID_MASK                                              = 32'h100;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_SEP_SYS_ID_SHIFT                                             = 8;
+
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_MASK                                                    = 32'hFFFFFE00;
+localparam int unsigned KM_CSR_OTP_CHANGE_STATUS_REG_RSVD_SHIFT                                                   = 9;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_LIFE_CYCLE_MASK                                             = 32'h1;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_LIFE_CYCLE_SHIFT                                            = 0;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_DEMOTION_MASK                                               = 32'h2;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_DEMOTION_SHIFT                                              = 1;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CHIPLET_UID_MASK                                            = 32'h4;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CHIPLET_UID_SHIFT                                           = 2;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SIP_UID_MASK                                                = 32'h8;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SIP_UID_SHIFT                                               = 3;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SYS_UID_MASK                                                = 32'h10;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SYS_UID_SHIFT                                               = 4;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CLASS_KEY_MASK                                              = 32'h20;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_CLASS_KEY_SHIFT                                             = 5;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_CHIPLET_ID_MASK                                         = 32'h40;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_CHIPLET_ID_SHIFT                                        = 6;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_SIP_ID_MASK                                             = 32'h80;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_SIP_ID_SHIFT                                            = 7;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_SYS_ID_MASK                                             = 32'h100;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_SEP_SYS_ID_SHIFT                                            = 8;
+
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_MASK                                                   = 32'hFFFFFE00;
+localparam int unsigned KM_CSR_OTP_READ_LOCK_COLD_REG_RSVD_SHIFT                                                  = 9;
+
+localparam int unsigned KM_DRBG_SAMPLER_DATA_REG_DATA_MASK                                                        = 32'hFFFFFFFF;
+localparam int unsigned KM_DRBG_SAMPLER_DATA_REG_DATA_SHIFT                                                       = 0;
+
+localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_PREFETCH_MASK                                                     = 32'h1;
+localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_PREFETCH_SHIFT                                                    = 0;
+
+localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_RSVD_MASK                                                         = 32'hFFFE;
+localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_RSVD_SHIFT                                                        = 1;
+
+localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_TIMEOUT_MASK                                                      = 32'hFFFF0000;
+localparam int unsigned KM_DRBG_SAMPLER_CFG_REG_TIMEOUT_SHIFT                                                     = 16;
+
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_DRBG_READY_MASK                                                = 32'h1;
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_DRBG_READY_SHIFT                                               = 0;
+
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_PREFETCHED_MASK                                                = 32'h2;
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_PREFETCHED_SHIFT                                               = 1;
+
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_TIMEOUT_ERR_MASK                                               = 32'h4;
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_TIMEOUT_ERR_SHIFT                                              = 2;
+
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_STREAM_ERR_MASK                                                = 32'h8;
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_STREAM_ERR_SHIFT                                               = 3;
+
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_RSVD_MASK                                                      = 32'hF0;
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_RSVD_SHIFT                                                     = 4;
+
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_COUNT_BAD_MASK                                                 = 32'hFF00;
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_COUNT_BAD_SHIFT                                                = 8;
+
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_COUNT_GOOD_MASK                                                = 32'hFFFF0000;
+localparam int unsigned KM_DRBG_SAMPLER_STATUS_REG_COUNT_GOOD_SHIFT                                               = 16;
+
+localparam int unsigned KM_DRBG_SAMPLER_PREFETCH_DATA_REG_DATA_MASK                                               = 32'hFFFFFFFF;
+localparam int unsigned KM_DRBG_SAMPLER_PREFETCH_DATA_REG_DATA_SHIFT                                              = 0;
+
 localparam int unsigned OTBN_WRAPPER_KEY_KEY_WORD_REG_DATA_MASK                                                   = 32'hFFFFFFFF;
 localparam int unsigned OTBN_WRAPPER_KEY_KEY_WORD_REG_DATA_SHIFT                                                  = 0;
 
@@ -3397,339 +4893,6 @@ localparam int unsigned ABR_SHAREDKEY_RF_SK_IRQ_ENABLE_REG_RSVD_SHIFT           
 
 
 
-
-
-
-typedef struct packed {
-    logic [31:0]   data ;
-} key_entry_rf_key_word_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [10:0]   rsvd_31_21 ;
-    logic [3:0]   last_dword ;
-    logic [9:0]   rsvd_16_7 ;
-    logic [2:0]   extend ;
-    logic [0:0]   rsvd_3 ;
-    logic [0:0]   erase ;
-    logic [0:0]   lock_use ;
-    logic [0:0]   lock_write ;
-} km_kpv_ctrl_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   key ;
-} km_kpv_kpv_scrambler_key_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [29:0]   rsvd ;
-    logic [0:0]   lock ;
-    logic [0:0]   enable ;
-} km_kpv_kpv_scrambler_ctrl_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [7:0]   rsvd ;
-    logic [7:0]   major ;
-    logic [7:0]   minor ;
-    logic [7:0]   patch ;
-} km_csr_version_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   rsvd ;
-} km_csr_ctrl_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   code ;
-} km_csr_soft_rst_code_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [20:0]   rsvd ;
-    logic [0:0]   exec_violation ;
-    logic [0:0]   otp_sigint ;
-    logic [0:0]   otp_change ;
-    logic [0:0]   wipe_state ;
-    logic [0:0]   drbg_err ;
-    logic [0:0]   axi_decerr ;
-    logic [0:0]   axi_slverr ;
-    logic [0:0]   sram_write_lock_err ;
-    logic [0:0]   rom_write_err ;
-    logic [0:0]   sram_parity_err ;
-    logic [0:0]   rom_parity_err ;
-} km_csr_irq_status_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [20:0]   rsvd ;
-    logic [0:0]   exec_violation_en ;
-    logic [0:0]   otp_sigint_en ;
-    logic [0:0]   otp_change_en ;
-    logic [0:0]   wipe_state_en ;
-    logic [0:0]   drbg_err_en ;
-    logic [0:0]   axi_decerr_en ;
-    logic [0:0]   axi_slverr_en ;
-    logic [0:0]   sram_write_lock_en ;
-    logic [0:0]   rom_write_en ;
-    logic [0:0]   sram_parity_en ;
-    logic [0:0]   rom_parity_en ;
-} km_csr_irq_enable_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   key ;
-} km_csr_scrambler_key_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [29:0]   rsvd ;
-    logic [0:0]   lock ;
-    logic [0:0]   enable ;
-} km_csr_scrambler_ctrl_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   lock_bits ;
-} km_csr_sram_lock_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [20:0]   rsvd ;
-    logic [0:0]   exec_violation_set ;
-    logic [0:0]   otp_sigint_set ;
-    logic [0:0]   otp_change_set ;
-    logic [0:0]   wipe_state_set ;
-    logic [0:0]   drbg_err_set ;
-    logic [0:0]   axi_decerr_set ;
-    logic [0:0]   axi_slverr_set ;
-    logic [0:0]   sram_write_lock_err_set ;
-    logic [0:0]   rom_write_err_set ;
-    logic [0:0]   sram_parity_err_set ;
-    logic [0:0]   rom_parity_err_set ;
-} km_csr_irq_set_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   violation_bits ;
-} km_csr_sram_write_lock_violation_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [30:0]   rsvd ;
-    logic [0:0]   recoverable_err ;
-} km_csr_recoverable_err_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [30:0]   rsvd ;
-    logic [0:0]   cold_boot_done ;
-} km_csr_boot_status_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [23:0]   rsvd ;
-    logic [7:0]   value ;
-} km_csr_otp_life_cycle_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [27:0]   rsvd ;
-    logic [1:0]   demote_2_value ;
-    logic [1:0]   demote_1_value ;
-} km_csr_otp_demotion_state_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [30:0]   rsvd ;
-    logic [0:0]   enable ;
-} km_csr_sram_exec_mode_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   addr ;
-} km_csr_irq_entry_addr_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [30:0]   rsvd ;
-    logic [0:0]   lock ;
-} km_csr_irq_entry_lock_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   data_valid ;
-    logic [22:0]   rsvd0 ;
-    logic [7:0]   tx_byte ;
-} km_csr_vuart_tx_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   data_valid ;
-    logic [22:0]   rsvd0 ;
-    logic [7:0]   rx_byte ;
-} km_csr_vuart_rx_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [28:0]   rsvd ;
-    logic [0:0]   print_enable ;
-    logic [0:0]   rx_valid ;
-    logic [0:0]   tx_ready ;
-} km_csr_vuart_status_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   result ;
-} km_csr_tb_result_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   signature ;
-} km_csr_tb_signature_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   errcode ;
-} km_csr_tb_errcode_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   subtest ;
-} km_csr_tb_subtest_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   cmd ;
-} km_csr_tb_cmd_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   arg ;
-} km_csr_tb_cmd_arg_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   status ;
-} km_csr_tb_cmd_status_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   result ;
-} km_csr_tb_cmd_result_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   magic ;
-} km_csr_debug_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   value ;
-} km_csr_otp_dr_word_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [25:0]   rsvd ;
-    logic [0:0]   class_key ;
-    logic [0:0]   sys_uid ;
-    logic [0:0]   sip_uid ;
-    logic [0:0]   chiplet_uid ;
-    logic [0:0]   demotion ;
-    logic [0:0]   life_cycle ;
-} km_csr_otp_read_lock_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [25:0]   rsvd ;
-    logic [0:0]   class_key ;
-    logic [0:0]   sys_uid ;
-    logic [0:0]   sip_uid ;
-    logic [0:0]   chiplet_uid ;
-    logic [0:0]   demotion ;
-    logic [0:0]   life_cycle ;
-} km_csr_otp_change_status_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [25:0]   rsvd ;
-    logic [0:0]   class_key ;
-    logic [0:0]   sys_uid ;
-    logic [0:0]   sip_uid ;
-    logic [0:0]   chiplet_uid ;
-    logic [0:0]   demotion ;
-    logic [0:0]   life_cycle ;
-} km_csr_otp_read_lock_cold_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   data ;
-} km_drbg_sampler_data_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [15:0]   timeout ;
-    logic [14:0]   rsvd ;
-    logic [0:0]   prefetch ;
-} km_drbg_sampler_cfg_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [15:0]   count_good ;
-    logic [7:0]   count_bad ;
-    logic [3:0]   rsvd ;
-    logic [0:0]   stream_err ;
-    logic [0:0]   timeout_err ;
-    logic [0:0]   prefetched ;
-    logic [0:0]   drbg_ready ;
-} km_drbg_sampler_status_reg_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   data ;
-} km_drbg_sampler_prefetch_data_reg_reg_t;
 
 
 
@@ -4168,6 +5331,347 @@ typedef struct packed {
 typedef struct packed {
     logic [5:0]   token_match_status ;
 } efuse_mmr_token_match_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} key_entry_rf_key_word_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [28:0]   rsvd_31_3 ;
+    logic [0:0]   erase ;
+    logic [0:0]   lock_use ;
+    logic [0:0]   lock_write ;
+} km_kpv_ctrl_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   key ;
+} km_kpv_kpv_scrambler_key_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [29:0]   rsvd ;
+    logic [0:0]   lock ;
+    logic [0:0]   enable ;
+} km_kpv_kpv_scrambler_ctrl_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [7:0]   rsvd ;
+    logic [7:0]   major ;
+    logic [7:0]   minor ;
+    logic [7:0]   patch ;
+} km_csr_version_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   rsvd ;
+} km_csr_ctrl_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   code ;
+} km_csr_soft_rst_code_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [19:0]   rsvd ;
+    logic [0:0]   rom_access_violation ;
+    logic [0:0]   exec_violation ;
+    logic [0:0]   otp_sigint ;
+    logic [0:0]   otp_change ;
+    logic [0:0]   wipe_state ;
+    logic [0:0]   drbg_err ;
+    logic [0:0]   axi_decerr ;
+    logic [0:0]   axi_slverr ;
+    logic [0:0]   sram_write_lock_err ;
+    logic [0:0]   rom_write_err ;
+    logic [0:0]   sram_parity_err ;
+    logic [0:0]   rom_parity_err ;
+} km_csr_irq_status_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [19:0]   rsvd ;
+    logic [0:0]   rom_access_violation_en ;
+    logic [0:0]   exec_violation_en ;
+    logic [0:0]   otp_sigint_en ;
+    logic [0:0]   otp_change_en ;
+    logic [0:0]   wipe_state_en ;
+    logic [0:0]   drbg_err_en ;
+    logic [0:0]   axi_decerr_en ;
+    logic [0:0]   axi_slverr_en ;
+    logic [0:0]   sram_write_lock_en ;
+    logic [0:0]   rom_write_en ;
+    logic [0:0]   sram_parity_en ;
+    logic [0:0]   rom_parity_en ;
+} km_csr_irq_enable_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   key ;
+} km_csr_scrambler_key_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [29:0]   rsvd ;
+    logic [0:0]   lock ;
+    logic [0:0]   enable ;
+} km_csr_scrambler_ctrl_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   lock_bits ;
+} km_csr_sram_lock_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [19:0]   rsvd ;
+    logic [0:0]   rom_access_violation_set ;
+    logic [0:0]   exec_violation_set ;
+    logic [0:0]   otp_sigint_set ;
+    logic [0:0]   otp_change_set ;
+    logic [0:0]   wipe_state_set ;
+    logic [0:0]   drbg_err_set ;
+    logic [0:0]   axi_decerr_set ;
+    logic [0:0]   axi_slverr_set ;
+    logic [0:0]   sram_write_lock_err_set ;
+    logic [0:0]   rom_write_err_set ;
+    logic [0:0]   sram_parity_err_set ;
+    logic [0:0]   rom_parity_err_set ;
+} km_csr_irq_set_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   violation_bits ;
+} km_csr_sram_write_lock_violation_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [30:0]   rsvd ;
+    logic [0:0]   recoverable_err ;
+} km_csr_recoverable_err_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [30:0]   rsvd ;
+    logic [0:0]   cold_boot_done ;
+} km_csr_boot_status_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [23:0]   rsvd ;
+    logic [7:0]   value ;
+} km_csr_otp_life_cycle_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [27:0]   rsvd ;
+    logic [1:0]   demote_2_value ;
+    logic [1:0]   demote_1_value ;
+} km_csr_otp_demotion_state_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [30:0]   rsvd ;
+    logic [0:0]   enable ;
+} km_csr_sram_exec_mode_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   addr ;
+} km_csr_irq_entry_addr_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [30:0]   rsvd ;
+    logic [0:0]   lock ;
+} km_csr_irq_entry_lock_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   data_valid ;
+    logic [22:0]   rsvd0 ;
+    logic [7:0]   tx_byte ;
+} km_csr_vuart_tx_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   data_valid ;
+    logic [22:0]   rsvd0 ;
+    logic [7:0]   rx_byte ;
+} km_csr_vuart_rx_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [28:0]   rsvd ;
+    logic [0:0]   print_enable ;
+    logic [0:0]   rx_valid ;
+    logic [0:0]   tx_ready ;
+} km_csr_vuart_status_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   result ;
+} km_csr_tb_result_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   signature ;
+} km_csr_tb_signature_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   errcode ;
+} km_csr_tb_errcode_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   subtest ;
+} km_csr_tb_subtest_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   cmd ;
+} km_csr_tb_cmd_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   arg ;
+} km_csr_tb_cmd_arg_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   status ;
+} km_csr_tb_cmd_status_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   result ;
+} km_csr_tb_cmd_result_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   magic ;
+} km_csr_debug_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   value ;
+} km_csr_otp_dr_word_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [22:0]   rsvd ;
+    logic [0:0]   sep_sys_id ;
+    logic [0:0]   sep_sip_id ;
+    logic [0:0]   sep_chiplet_id ;
+    logic [0:0]   class_key ;
+    logic [0:0]   sys_uid ;
+    logic [0:0]   sip_uid ;
+    logic [0:0]   chiplet_uid ;
+    logic [0:0]   demotion ;
+    logic [0:0]   life_cycle ;
+} km_csr_otp_read_lock_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [22:0]   rsvd ;
+    logic [0:0]   sep_sys_id ;
+    logic [0:0]   sep_sip_id ;
+    logic [0:0]   sep_chiplet_id ;
+    logic [0:0]   class_key ;
+    logic [0:0]   sys_uid ;
+    logic [0:0]   sip_uid ;
+    logic [0:0]   chiplet_uid ;
+    logic [0:0]   demotion ;
+    logic [0:0]   life_cycle ;
+} km_csr_otp_change_status_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [22:0]   rsvd ;
+    logic [0:0]   sep_sys_id ;
+    logic [0:0]   sep_sip_id ;
+    logic [0:0]   sep_chiplet_id ;
+    logic [0:0]   class_key ;
+    logic [0:0]   sys_uid ;
+    logic [0:0]   sip_uid ;
+    logic [0:0]   chiplet_uid ;
+    logic [0:0]   demotion ;
+    logic [0:0]   life_cycle ;
+} km_csr_otp_read_lock_cold_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} km_drbg_sampler_data_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [15:0]   timeout ;
+    logic [14:0]   rsvd ;
+    logic [0:0]   prefetch ;
+} km_drbg_sampler_cfg_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [15:0]   count_good ;
+    logic [7:0]   count_bad ;
+    logic [3:0]   rsvd ;
+    logic [0:0]   stream_err ;
+    logic [0:0]   timeout_err ;
+    logic [0:0]   prefetched ;
+    logic [0:0]   drbg_ready ;
+} km_drbg_sampler_status_reg_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} km_drbg_sampler_prefetch_data_reg_reg_t;
 
 
 

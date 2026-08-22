@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-= SEP verification plan — Phase 3 (deferred advanced / security / integration)
+= SEP verification plan — Phase 3 (T.B.D.)
 :toc: left
 :toclevels: 2
 :sectnums:
@@ -8,32 +8,37 @@
 
 [IMPORTANT]
 ====
-*Nothing in this document is committed scope.* Phase 3 is a candidate list, not a
-contract. Unlike link:verification_plan_phase1.adoc[Phase 1] — where a row exists only if a run can prove it —
-every entry here is unimplemented by definition, so nothing is graded and no proof is
-cited. Read it as a direction note plus two worked candidates.
+*Phase 3 is T.B.D.* Nothing in this document is committed scope, scheduled
+work, or an execute list. Finish Phase 1 (closed) and Phase 2 (active)
+first. Unlike link:verification_plan_phase1.adoc[Phase 1] — where a row
+exists only if a run can prove it — every entry here is unimplemented by
+definition, so nothing is graded and no proof is cited. Read the rest as
+a holding note: direction plus names parked so they are not implemented
+as a second Phase 2 spine.
 ====
 
 == Where Phase 3 sits
 
-Phase 1 (smoke plus subsystem representatives) is closed, and its record is
+Phase 1 (smoke plus subsystem representatives) is signed off, and its record is
 `verification_plan_phase1.adoc`. Phase 2 (iconic features, by IP) is active, in
-`verification_plan_phase2.adoc`. Phase 3 collects what both earlier phases explicitly
-*deferred*: advanced corner cases, error and security permutations, and the deeper
-cross-IP integration edges that are not the iconic feature.
+`verification_plan_phase2.adoc`. Phase 3 will collect what both earlier phases
+explicitly *defer*: advanced corner cases, error and security permutations,
+deeper cross-IP edges that are not the iconic feature, and code-coverage
+close-out. That work is not scheduled.
 
 [[direction]]
 == Direction: Phase 3 moves to a new UVM testbench
 
-Phase 1 and Phase 2 stay on the existing cocotb/PyUVM environment and are being finished
-there. Phase 3 will not extend it. It will be built on a new UVM environment, and the
-first deliverable is a *UVM environment bring-up plus smoke test*, not any candidate
-below.
+Phase 1 and Phase 2 stay on the existing cocotb/PyUVM environment and finish
+there. Phase 3 will not extend it. When it starts, it will be a new UVM
+environment, and the first deliverable is a *UVM environment bring-up plus
+smoke test*, not any candidate below.
 
-The reason is fit, not preference. Phase 3 work is error injection, stress, and security
-permutation — which wants constrained-random UVM infrastructure rather than the directed
-cocotb flow this environment is built around. The candidate list below is therefore left
-as-is and unscheduled; it will be revisited once the UVM environment exists.
+The reason is fit, not preference. Phase 3 work is error injection, stress,
+security permutation, and coverage-bin close-out — which wants
+constrained-random UVM infrastructure rather than the directed cocotb flow
+this environment is built around. The names below stay unscheduled. Revisit
+them only after the UVM environment exists.
 
 == What qualifies as Phase 3
 
@@ -56,11 +61,12 @@ outcome, checker list, run and fuse mode, DV-infrastructure needs, and deltas fr
 reference — *before* any code is written. Neither candidate below has one yet.
 ====
 
-== Candidates
+== Holding notes (not scheduled)
 
-Both arrived from reference-suite updates that landed after this environment last synced.
-Neither is an iconic-feature gap, so both are Phase 3 rather than Phase 2. No tracking issues
-exist yet; owners should file them rather than inventing numbers here.
+These names arrived from reference-suite updates that landed after this
+environment last synced. Neither is an iconic-feature gap, so both stay
+out of Phase 2. They are not an execute list. No tracking issues exist
+yet; do not invent numbers here.
 
 === `sep_km_sw_emergency_wipe_test`
 
