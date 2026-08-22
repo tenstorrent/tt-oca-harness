@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/register_tables.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+			<a class="navbar-item" href="../../../ocah-contributing/latest/index.html">Starting with OCAH</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/02_tt_logo_standard_teal_black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-contributing" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Contribution Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#licensing.adoc">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#defects.adoc">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#code_of_conduct.adoc">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Getting Started Guide</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#guidelines.adoc">Guidelines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#dependencies.adoc">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#workflows.adoc">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#documentation.adoc">Documentation</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Contributing Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas Harness (OCAH)</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="dtp-simulation-defines"><a class="anchor" href="#dtp-simulation-defines"></a><a class="link" href="#dtp-simulation-defines">1. Simulation and test defines</a></h3>
+<div class="paragraph">
+<p>DTP RTL and DV compiles select simulation behavior with preprocessor defines
+(<code>+define+NAME</code> or <code>-D NAME</code>). The open-source DV runner applies a shared
+native-profile set to every DUT, then DTP-specific overlays for Verilator and
+the SV-UVM framework. Lint and synthesis apply <code>SYNTHESIS</code> instead of the DV
+set.</p>
+</div>
+<div class="paragraph">
+<p>Runtime environment variables (<code>DTP_TEST_LOOPS</code>, <code>DTP_AXI_SCOREBOARD_NEGATIVE</code>)
+and simulator plusargs (<code>+DTP_JTAG_TAP_CHECKER_NEGATIVE</code>) are not preprocessor
+defines; those knobs are documented in <code>hw/sys/dtp/dv/README.md</code>.</p>
+</div>
+<div class="sect3">
+<h4 id="how-the-dtp-dv-flow-applies-defines"><a class="anchor" href="#how-the-dtp-dv-flow-applies-defines"></a><a class="link" href="#how-the-dtp-dv-flow-applies-defines">1.1. How the DTP DV flow applies defines</a></h4>
+<div class="paragraph">
+<p>A DTP simulation compile merges these layers, in this order:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The shared native profile
+(<code>hw/common/dv/configs/profiles/native.toml</code>,
+<code>[target_defaults.default].defines</code>) — the same set for every native-profile
+DUT, including both the cocotb and SV-UVM frameworks. That set includes
+<code>SIMULATION</code>.</p>
+</li>
+<li>
+<p>The DTP Verilator overlay (<code>hw/sys/dtp/dv/dtp_sim_cfg.toml</code>,
+<code>[targets.default.tools.verilator].flags</code>) — extra <code>define</code> flags only
+when the tool is Verilator.</p>
+</li>
+<li>
+<p>The SV-UVM overlay (<code>[frameworks.uvm.targets.default].defines</code>) —
+<code>DTP_UVM_TB</code>, only when the run is <code>--dut dtp --framework uvm</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>python3 tools/dv/run_dv.py --define NAME</code> appends a further <code>define</code> for
+that run. The supported DTP configuration is the merged set above.</p>
+</div>
+<div class="paragraph">
+<p>Lint and synthesis (<code>make lint-slang</code> / <code>make synth-all</code> with <code>BLOCK=dtp</code>)
+do not use the native DV profile. They pass <code>-D SYNTHESIS=1</code> from
+<code>OCAH_FLOW_COMMON_DEFINES</code> in <code>flows/common.mk</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="defines-the-dtp-flows-consume"><a class="anchor" href="#defines-the-dtp-flows-consume"></a><a class="link" href="#defines-the-dtp-flows-consume">1.2. Defines the DTP flows consume</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Applied by</th>
+<th class="tableblock halign-left valign-top">Why</th>
+<th class="tableblock halign-left valign-top">With the define</th>
+<th class="tableblock halign-left valign-top">Without the define</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIMULATION</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Native profile (every DTP DV tool)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Marks a simulation compile. Vendored OpenTitan prims in the DTP graph gate
+simulation-only paths on this name.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Those prim paths compile in.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Those prim paths are omitted.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DTP_UVM_TB</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP SV-UVM overlay (<code>dtp_sim_cfg.toml</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Selects the SV-UVM shape of the shared testbench top <code>dtp_uvm_top</code> in
+<code>hw/sys/dtp/dv/tb/tb_top.sv</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The module has no pin-level port list. An in-module harness owns the clock,
+<code>ocah_jtag_if</code> / <code>dtp_tb_if</code> instances, quiescent tie-offs, and <code>run_test()</code>.
+Required for <code>--framework uvm</code> (VCS). The testbench architecture document
+(<code>hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc</code>) describes that shape.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The module exposes the cocotb pin-level port list. Required for the default
+cocotb/PyUVM flow. Defining it on a cocotb compile removes those ports and the
+Python tests cannot bind.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>VERILATOR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP Verilator overlay</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tells assertion headers that the compiler is Verilator, which does not
+support concurrent SVA.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/common/assert/ocah_assert.svh</code> and the OpenTitan <code>prim_assert.sv</code> that
+<code>dtp_pkg</code> includes leave <code>OCAH_INC_ASSERT</code> / <code>OCAH_OT_INC_ASSERT</code> undefined, so
+concurrent assertion macros expand to nothing.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On Verilator, concurrent SVA in those headers is parsed and the compile fails
+or the tool rejects the constructs. On VCS/Xcelium this define is not set, so
+those headers keep SVA enabled unless another gate (<code>SYNTHESIS</code>) applies.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ASSERTS_OFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP Verilator overlay</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Turns off the PULP <code>common_cells</code> assertion macros (<code>OCAH_PULP_INC_ASSERT</code> in
+<code>assertions.svh</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>common_cells</code> <code>OCAH_PULP_ASSERT_I</code> / <code>OCAH_PULP_ASSERT</code> / <code>OCAH_PULP_ASSERT_INIT</code>
+macros expand to nothing. DTP pulls <code>common_cells</code> in through Bender
+(<code>common_cells_rtl</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On Verilator those macros compile as SVA and typically fail the compile. On
+VCS/Xcelium this define is not set; <code>common_cells</code> macros stay enabled unless
+<code>SYNTHESIS</code> is also set.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>COMMON_CELLS_ASSERTS_OFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Native profile (every DTP DV tool)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Turns off the inline assertion blocks inside <code>common_cells</code> modules
+(<code>fifo_v3</code>, <code>cdc_fifo_gray</code>, <code>rr_arb_tree</code>, and others that DTP&#8217;s AXI/CDC path
+instantiates) that are compiled only when <code>COMMON_CELLS_ASSERTS_OFF</code> is unset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Those inline asserts are omitted. DTP tests do not rely on them; scoreboards
+and Python/UVM checkers are the pass/fail evidence.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The inline asserts compile. On Verilator they usually fail the compile even
+if <code>ASSERTS_OFF</code> is set, because they are independent of <code>OCAH_PULP_INC_ASSERT</code>.
+On commercial simulators they can fire during JTAG2AXI and cross-trigger
+traffic that the DTP tests already check in software.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYNTHESIS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lint and synthesis (<code>OCAH_FLOW_COMMON_DEFINES</code>); not the DTP DV profile</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Elaborates the production netlist view: no simulation-only SVA, no
+simulation-only initial blocks.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag2axi</code> concurrent <code>OCAH_OT_ASSERT</code> properties are omitted.
+<code>prim_assert</code> / <code>ocah_assert</code> also leave their include-assert macros undefined.
+DTP DV does not set this define, so a <code>--dut dtp</code> run is not a synthesis view.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The JTAG2AXI SVA compiles. On VCS/Xcelium cocotb that means those properties
+are live; on Verilator <code>VERILATOR</code> still compiles them out. Defining
+<code>SYNTHESIS</code> on a DTP DV compile would drop that SVA and is not the supported
+test configuration.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>UVM</code> is not a DTP config define. The SV-UVM flow gets it from the simulator
+(<code>-ntb_opts uvm</code>). Assertion error macros then report through <code>uvm_report_error</code>
+instead of <code>$error</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="inherited-native-profile-defines-dtp-sources-do-not-consume"><a class="anchor" href="#inherited-native-profile-defines-dtp-sources-do-not-consume"></a><a class="link" href="#inherited-native-profile-defines-dtp-sources-do-not-consume">1.3. Inherited native-profile defines DTP sources do not consume</a></h4>
+<div class="paragraph">
+<p>The native profile also passes the following names on every DTP DV compile.
+No DTP RTL, DTP testbench, or DTP-compile-unit vendored source branches on
+them. They are part of the shared native-profile set applied to every DUT.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DISABLE_ASSERT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No DTP compile-unit source tests this name. Verilator assertion gating is
+<code>VERILATOR</code>, <code>ASSERTS_OFF</code>, and <code>COMMON_CELLS_ASSERTS_OFF</code> above.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NO_LIBCELL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No DTP compile-unit source tests this name.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INITIALIZE_MEMORY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No DTP compile-unit source tests this name.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOM=0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIRRTL/Chisel simulation random seed. Unused by DTP (no Chisel-generated
+CPU in this compile).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOMIZE_MEM_INIT</code>, <code>RANDOMIZE_REG_INIT</code>, <code>RANDOMIZE_GARBAGE_ASSIGN</code>,
+<code>RANDOMIZE_INVALID_ASSIGN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIRRTL/Chisel register and memory initialization. Unused by DTP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOMIZE_DELAY=0.02</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIRRTL/Chisel simulation delay. Unused by DTP.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="bender-targets"><a class="anchor" href="#bender-targets"></a><a class="link" href="#bender-targets">1.4. Bender targets</a></h4>
+<div class="paragraph">
+<p><code>hw/sys/dtp/dv/dtp_sim_cfg.toml</code> sets <code>bender_targets = ["dtp", "simulation"]</code>.
+Those are Bender target names, not preprocessor defines. <code>dtp</code> selects the DTP
+RTL source graph. <code>simulation</code> selects simulation-only files from vendored
+packages. They do not appear as <code>+define+dtp</code> / <code>+define+simulation</code> unless a
+tool is also told to do that separately.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca-footer.png" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/02_tt_logo_standard_teal_white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

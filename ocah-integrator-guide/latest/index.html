@@ -8818,7 +8818,98 @@ SMN integration procedures, network topology, and management interfaces.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="prim-cell-replacement"><a class="anchor" href="#prim-cell-replacement"></a><a class="link" href="#prim-cell-replacement">4. Prim Cell Replacement and Don&#8217;t-Touch Constraints</a></h2>
+<h2 id="project-defines"><a class="anchor" href="#project-defines"></a><a class="link" href="#project-defines">4. Project Defines</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Compile-time defines that apply across OCAH rather than to a single block.</p>
+</div>
+<div class="sect2">
+<h3 id="simulation-define"><a class="anchor" href="#simulation-define"></a><a class="link" href="#simulation-define">4.1. <code>SIMULATION</code></a></h3>
+<div class="paragraph">
+<p><code>SIMULATION</code> selects the verification view of OCAH RTL. Set it on every
+simulation compile and on no other kind of build:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">+define+SIMULATION   # VCS, Xcelium
+-DSIMULATION         # Verilator, Icarus</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>OCAH&#8217;s own DV flows set it; a compile driven by an adopter&#8217;s testbench does not.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Do not let <code>SIMULATION</code> reach synthesis, formal, or a gate-level flow. It
+enables <code>initial</code> blocks, <code>$readmemh</code>, <code>$random</code> and DPI exports; a tool that
+skips those rather than rejecting them yields a netlist that does not
+correspond to the RTL you verified.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Without the define, these testbench hooks are not compiled in and the plusargs
+are silently ignored:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Plusarg</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>+skip_fuse_sense</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_shadow_regs</code> reports fuse sense complete immediately rather than
+sensing the bank through the adopter&#8217;s SHIM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>+smc_shadow_reg_preload=&lt;file&gt;</code>,
+<code>+sep_shadow_reg_preload=&lt;file&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Loads the shadow registers from a hex image. Takes effect only alongside
+<code>+skip_fuse_sense</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>+rom_bin64=&lt;file&gt;</code>, <code>+rom_hex=&lt;file&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Preloads <code>OCAH4CORECluster_rom_ext</code>, the SMC CPU ROM simulation model. Applies
+only to integrations that use the reference memory swaps.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The define also zeroes the RMA and security-disable token and digest bits in
+<code>efuse_token_processing</code> at time 0, which have no reset and otherwise power up
+X, and routes OpenTitan assertion failures in the SEP <code>prim_assert</code> shim to
+<code>$error</code> on non-UVM runs.</p>
+</div>
+<div class="paragraph">
+<p>Three models it enables make simulation deliberately non-deterministic:
+<code>gdffsync</code> in the entropy source injects metastability on the second
+synchronizer flop, <code>prim_flop_2sync</code> and its Caliptra and Adams Bridge
+equivalents insert <code>prim_cdc_rand_delay</code> ahead of the synchronizer, and
+<code>prim_lfsr</code> and <code>prim_double_lfsr</code> randomize their default seed on simulators
+other than Verilator (<code>+prim_lfsr_use_default_seed=1</code> pins it). Two runs of one
+test are therefore not identical unless the simulator seed is fixed; record the
+seed with any failure you intend to reproduce.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="prim-cell-replacement"><a class="anchor" href="#prim-cell-replacement"></a><a class="link" href="#prim-cell-replacement">5. Prim Cell Replacement and Don&#8217;t-Touch Constraints</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>OCAH primitives (<code>prim_stdbuf</code>, <code>prim_and2</code>, <code>prim_clkgater</code>, the
@@ -8831,7 +8922,7 @@ library.</p>
 adopter&#8217;s synthesis and place-and-route flows constrain them.</p>
 </div>
 <div class="sect2">
-<h3 id="prim-cell-replacement-naming"><a class="anchor" href="#prim-cell-replacement-naming"></a><a class="link" href="#prim-cell-replacement-naming">4.1. Naming Requirement</a></h3>
+<h3 id="prim-cell-replacement-naming"><a class="anchor" href="#prim-cell-replacement-naming"></a><a class="link" href="#prim-cell-replacement-naming">5.1. Naming Requirement</a></h3>
 <div class="paragraph">
 <p><strong>Every library cell instantiated inside a replacement primitive must have
 <code>d0nt_</code> in its instance name.</strong></p>
@@ -8918,7 +9009,7 @@ apply the equivalent constraints to whatever names they use.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="prim-cell-replacement-constraints"><a class="anchor" href="#prim-cell-replacement-constraints"></a><a class="link" href="#prim-cell-replacement-constraints">4.2. Constraint Requirement</a></h3>
+<h3 id="prim-cell-replacement-constraints"><a class="anchor" href="#prim-cell-replacement-constraints"></a><a class="link" href="#prim-cell-replacement-constraints">5.2. Constraint Requirement</a></h3>
 <div class="paragraph">
 <p><strong>In synthesis, apply <code>set_size_only</code> to every cell matching <code>d0nt_</code>, then
 <code>set_dont_touch</code> to every cell matching <code>d0nt_clk</code>. Every step after synthesis
@@ -8963,7 +9054,7 @@ clock path belong to clock tree synthesis, which owns them explicitly, rather
 than to a logic-optimization pass making a substitution it believes is free.</p>
 </div>
 <div class="sect3">
-<h4 id="prim-cell-replacement-post-synthesis"><a class="anchor" href="#prim-cell-replacement-post-synthesis"></a><a class="link" href="#prim-cell-replacement-post-synthesis">4.2.1. After Synthesis</a></h4>
+<h4 id="prim-cell-replacement-post-synthesis"><a class="anchor" href="#prim-cell-replacement-post-synthesis"></a><a class="link" href="#prim-cell-replacement-post-synthesis">5.2.1. After Synthesis</a></h4>
 <div class="paragraph">
 <p>The <code>dont_touch</code> on <code>d0nt_clk*</code> is a synthesis-only constraint. Once synthesis
 has handed off the netlist, release the clock cells to <code>size_only</code> and carry
@@ -9026,7 +9117,7 @@ clock-tree or filler ECOs&#8201;&#8212;&#8201;clearing <code>eco_honor_dont_touc
 </div>
 </div>
 <div class="sect2">
-<h3 id="prim-cell-replacement-simulation"><a class="anchor" href="#prim-cell-replacement-simulation"></a><a class="link" href="#prim-cell-replacement-simulation">4.3. Simulation</a></h3>
+<h3 id="prim-cell-replacement-simulation"><a class="anchor" href="#prim-cell-replacement-simulation"></a><a class="link" href="#prim-cell-replacement-simulation">5.3. Simulation</a></h3>
 <div class="paragraph">
 <p>These constraints have no functional effect and no simulation impact. All OCAH
 simulation flows compile with <code>+define+NO_LIBCELL</code>, which selects the behavioral
@@ -9041,7 +9132,7 @@ check. RTL simulation cannot detect their loss.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="cdc-timing-constraints"><a class="anchor" href="#cdc-timing-constraints"></a><a class="link" href="#cdc-timing-constraints">5. CDC Timing Constraints</a></h2>
+<h2 id="cdc-timing-constraints"><a class="anchor" href="#cdc-timing-constraints"></a><a class="link" href="#cdc-timing-constraints">6. CDC Timing Constraints</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>OCAH ships synthesis constraints that bound every clock-domain crossing in the
@@ -9073,7 +9164,7 @@ overrides.</p>
 <code>async_clock_groups.tcl</code> and <code>cdc_max_delay_procs.tcl</code>.</p>
 </div>
 <div class="sect2">
-<h3 id="why-crossings-are-bounded-rather-than-timed"><a class="anchor" href="#why-crossings-are-bounded-rather-than-timed"></a><a class="link" href="#why-crossings-are-bounded-rather-than-timed">5.1. Why crossings are bounded rather than timed</a></h3>
+<h3 id="why-crossings-are-bounded-rather-than-timed"><a class="anchor" href="#why-crossings-are-bounded-rather-than-timed"></a><a class="link" href="#why-crossings-are-bounded-rather-than-timed">6.1. Why crossings are bounded rather than timed</a></h3>
 <div class="paragraph">
 <p>A clock-domain crossing has no fixed phase relationship, so it cannot be timed
 against a capture edge. Its correctness still depends on delay, though: every CDC
@@ -9087,7 +9178,7 @@ element&#8217;s guarantee still holds.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="what-is-constrained"><a class="anchor" href="#what-is-constrained"></a><a class="link" href="#what-is-constrained">5.2. What is constrained</a></h3>
+<h3 id="what-is-constrained"><a class="anchor" href="#what-is-constrained"></a><a class="link" href="#what-is-constrained">6.2. What is constrained</a></h3>
 <div class="paragraph">
 <p>Every CDC element in each block is enumerated and given its own <code>set_max_delay</code>,
 sized from the clock that actually captures it as read from the netlist. Muxed
@@ -9141,7 +9232,7 @@ and <code>T_src</code> does not enter the guarantee. This makes slow-to-fast and
 equally safe.</p>
 </div>
 <div class="sect3">
-<h4 id="why-protocol-protected-data-still-needs-a-bound"><a class="anchor" href="#why-protocol-protected-data-still-needs-a-bound"></a><a class="link" href="#why-protocol-protected-data-still-needs-a-bound">5.2.1. Why protocol-protected data still needs a bound</a></h4>
+<h4 id="why-protocol-protected-data-still-needs-a-bound"><a class="anchor" href="#why-protocol-protected-data-still-needs-a-bound"></a><a class="link" href="#why-protocol-protected-data-still-needs-a-bound">6.2.1. Why protocol-protected data still needs a bound</a></h4>
 <div class="paragraph">
 <p>The payload of a gray-pointer FIFO or a req/ack handshake never passes through a
 synchronizer&#8201;&#8212;&#8201;only the pointer or request does. So this is not a metastability
@@ -9226,7 +9317,7 @@ listed (see <a href="#cdc-integration-checklist">Integration checklist</a> item 
 </div>
 </div>
 <div class="sect2">
-<h3 id="cdc-two-layers"><a class="anchor" href="#cdc-two-layers"></a><a class="link" href="#cdc-two-layers">5.3. The two layers</a></h3>
+<h3 id="cdc-two-layers"><a class="anchor" href="#cdc-two-layers"></a><a class="link" href="#cdc-two-layers">6.3. The two layers</a></h3>
 <div class="paragraph">
 <p>The per-instance bounds take effect only on top of a correctly configured
 clock-group layer. That layer decides whether the tool considers inter-domain
@@ -9290,7 +9381,7 @@ that are separate domains upstream but share a clock in SEP.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="what-is-covered"><a class="anchor" href="#what-is-covered"></a><a class="link" href="#what-is-covered">5.4. What is covered</a></h3>
+<h3 id="what-is-covered"><a class="anchor" href="#what-is-covered"></a><a class="link" href="#what-is-covered">6.4. What is covered</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 33.3333%;">
@@ -9335,14 +9426,14 @@ instantiates three JTAG2AXI bridges in the SMU configuration and two on its own.
 </div>
 </div>
 <div class="sect2">
-<h3 id="cdc-integration-checklist"><a class="anchor" href="#cdc-integration-checklist"></a><a class="link" href="#cdc-integration-checklist">5.5. Integration checklist</a></h3>
+<h3 id="cdc-integration-checklist"><a class="anchor" href="#cdc-integration-checklist"></a><a class="link" href="#cdc-integration-checklist">6.5. Integration checklist</a></h3>
 <div class="paragraph">
 <p>Five things must change, three should be checked. None of them requires editing
 per-instance data by hand; every change is either a one-line policy edit or a
 regeneration.</p>
 </div>
 <div class="sect3">
-<h4 id="1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"><a class="anchor" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"></a><a class="link" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper">5.5.1. 1. Repoint the constraints at the pin of the cell inside the prim wrapper</a></h4>
+<h4 id="1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"><a class="anchor" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"></a><a class="link" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper">6.5.1. 1. Repoint the constraints at the pin of the cell inside the prim wrapper</a></h4>
 <div class="paragraph">
 <p>This is the most important change.</p>
 </div>
@@ -9408,7 +9499,7 @@ path and the capturing clock regardless of the module they were named after.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="2-point-the-files-at-your-hierarchy-or-regenerate"><a class="anchor" href="#2-point-the-files-at-your-hierarchy-or-regenerate"></a><a class="link" href="#2-point-the-files-at-your-hierarchy-or-regenerate">5.5.2. 2. Point the files at your hierarchy, or regenerate</a></h4>
+<h4 id="2-point-the-files-at-your-hierarchy-or-regenerate"><a class="anchor" href="#2-point-the-files-at-your-hierarchy-or-regenerate"></a><a class="link" href="#2-point-the-files-at-your-hierarchy-or-regenerate">6.5.2. 2. Point the files at your hierarchy, or regenerate</a></h4>
 <div class="paragraph">
 <p>The checked-in <code>&lt;block&gt;_cdc_max_delay_generated.tcl</code> files are written against the
 OCAH hierarchy, with paths relative to the block&#8217;s own top and clocks named as
@@ -9454,7 +9545,7 @@ not the child&#8217;s file with a prefix.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="3-set-the-default-bound"><a class="anchor" href="#3-set-the-default-bound"></a><a class="link" href="#3-set-the-default-bound">5.5.3. 3. Set the default bound</a></h4>
+<h4 id="3-set-the-default-bound"><a class="anchor" href="#3-set-the-default-bound"></a><a class="link" href="#3-set-the-default-bound">6.5.3. 3. Set the default bound</a></h4>
 <div class="paragraph">
 <p>The 20 ns / -20 ns figures are a starting point. Both are
 <code>info exists</code>-guarded in <code>flows/synth/constraints/async_clock_groups.tcl</code>, so
@@ -9482,7 +9573,7 @@ hold is not a real requirement.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="4-declare-your-own-clock-groups"><a class="anchor" href="#4-declare-your-own-clock-groups"></a><a class="link" href="#4-declare-your-own-clock-groups">5.5.4. 4. Declare your own clock groups</a></h4>
+<h4 id="4-declare-your-own-clock-groups"><a class="anchor" href="#4-declare-your-own-clock-groups"></a><a class="link" href="#4-declare-your-own-clock-groups">6.5.4. 4. Declare your own clock groups</a></h4>
 <div class="paragraph">
 <p><code>set_async_clock_groups</code> is called from each block&#8217;s <code>constraints.sdc</code> with that
 block&#8217;s group list. Each inner list is one asynchronous group and globs are
@@ -9506,7 +9597,7 @@ unless you hit a <code>TIM-184</code> conflict.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="5-declare-periods-for-generated-clocks"><a class="anchor" href="#5-declare-periods-for-generated-clocks"></a><a class="link" href="#5-declare-periods-for-generated-clocks">5.5.5. 5. Declare periods for generated clocks</a></h4>
+<h4 id="5-declare-periods-for-generated-clocks"><a class="anchor" href="#5-declare-periods-for-generated-clocks"></a><a class="link" href="#5-declare-periods-for-generated-clocks">6.5.5. 5. Declare periods for generated clocks</a></h4>
 <div class="paragraph">
 <p>A generated clock exposes no readable <code>period</code> attribute in Design Compiler, so
 any generated clock that clocks a CDC element needs an explicit entry in
@@ -9524,7 +9615,7 @@ a clean run means you have them all. Keep them in step with your
 </div>
 </div>
 <div class="sect3">
-<h4 id="also-check"><a class="anchor" href="#also-check"></a><a class="link" href="#also-check">5.5.6. Also check</a></h4>
+<h4 id="also-check"><a class="anchor" href="#also-check"></a><a class="link" href="#also-check">6.5.6. Also check</a></h4>
 <div class="paragraph">
 <p><strong>Hierarchy preservation.</strong> The reference flow applies <code>set_ungroup false</code> and
 <code>set_boundary_optimization false</code> to the CDC designs before <code>compile</code>. How much
@@ -9549,7 +9640,7 @@ PrimeTime, making item 5 unnecessary.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="confirming-it-worked"><a class="anchor" href="#confirming-it-worked"></a><a class="link" href="#confirming-it-worked">5.6. Confirming it worked</a></h3>
+<h3 id="confirming-it-worked"><a class="anchor" href="#confirming-it-worked"></a><a class="link" href="#confirming-it-worked">6.6. Confirming it worked</a></h3>
 <div class="paragraph">
 <p>Load the constraints and check the summary:</p>
 </div>
@@ -9590,7 +9681,7 @@ the constraints did not load, not that the design has no crossings.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="scope-and-limitations"><a class="anchor" href="#scope-and-limitations"></a><a class="link" href="#scope-and-limitations">5.7. Scope and limitations</a></h3>
+<h3 id="scope-and-limitations"><a class="anchor" href="#scope-and-limitations"></a><a class="link" href="#scope-and-limitations">6.7. Scope and limitations</a></h3>
 <div class="paragraph">
 <p>The 20 ns default is loose by design. Against a 1 ns clock it permits twenty clock
 periods of delay into a synchronizer input. It is a safety net that keeps
