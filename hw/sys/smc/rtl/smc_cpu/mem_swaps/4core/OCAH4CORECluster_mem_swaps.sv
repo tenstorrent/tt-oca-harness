@@ -205,8 +205,8 @@ module OCAH4CORECluster_rom_ext
     .cfg_i(prim_rom_pkg::rom_cfg_t'(mem_cfg_i))
   );
 
-// The UVM chiplet testbench defines SIM and the OSS flow defines SIMULATION.
-// Both must preload, until those testbenches converge on SIMULATION.
+// The UVM chiplet testbench defines SIM and the OSS flow defines SIMULATION;
+// both must preload the ROM.
 `ifdef SIMULATION
   `define OCAH_ROM_EXT_PRELOAD
 `elsif SIM
