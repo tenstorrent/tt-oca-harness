@@ -15,25 +15,26 @@ This document is the verification contract for *Phase 1* of the SEP open-source 
 environment: the bring-up smoke suite plus the twenty-one representative subsystem tests
 selected to carry the widest coverage per test.
 
-Phase 1 is *signed off*. Every testcase listed here is implemented, runs
-in the cocotb/PyUVM + Verilator flow, and is expected to pass in
-regression. One checker is an honest `FAILED` spec-vs-RTL row (issue
-626); it does not block sign-off. Boot ROM *firmware* contracts
-(production ROM boot flow, integrity reject) are out of this plan —
-ROM-FW owner, not this VPLAN. ROM *hardware* access stays
-(`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`). This document
-records what each test *proves*, and the exact evidence in its log that
-proves it.
+Each entry records what the test *proves* and the log line that proves it.
+Tests run in the cocotb/PyUVM + Verilator flow; Verilator is the
+acceptance engine (see <<Acceptance flow>>).
 
-Iconic leftovers this spine does not claim are Phase 2 work. They are
-listed once in <<phase2-handoff>>. Do not stretch a Phase 1 entry to
-cover them.
+Boot ROM *firmware* contracts (production ROM boot flow, integrity
+reject) belong to the ROM-FW plan, not this one. ROM *hardware* access
+stays here (`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`).
 
-What this document is *not*: it is not a status tracker and not a coverage percentage.
-There is no functional-coverage number for this environment: it has no SystemVerilog
-covergroups at all (`cov/config` and `cov/sv` are empty placeholders), and RTL and
-vendor-IP SVA are compiled out under the Verilator acceptance flow. Coverage here means "this
-behaviour has a test whose log demonstrably proves it", nothing more.
+CHK-JTAG-MMR-DENY is a spec-versus-RTL mismatch: `hw/sys/sep/doc/periphs.adoc`
+requires DECERR on a non-token MMR in PROD; the RTL returns OKAY on
+`EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH`. The checker stays `FAILED` until
+the RTL or the spec changes (issue 626).
+
+Behaviours this spine does not claim are listed in
+<<claims-outside-contract>>.
+
+Coverage here means a named behaviour has a test whose log proves it.
+There is no functional-coverage number: `cov/config` and `cov/sv` are
+empty, and RTL and vendor-IP SVA are compiled out under the Verilator
+acceptance flow.
 
 Each testcase in this plan traces to a reference test in Tenstorrent's internal SEP
 verification suite. Those references are recorded internally and are deliberately not
@@ -135,7 +136,7 @@ not evidence the row is still true.
 The same obligation applies to stimulus. Every step must be traceable to a line in the
 kept log, so the plan can be checked against what the test actually did rather than
 against what it was written to do. Steps that cannot be traced are listed as
-`NOT-LOGGED`. There are none in this signed-off plan.
+`NOT-LOGGED`. There are none in this plan.
 
 == Testcase entries — bring-up and smoke
 
@@ -3183,7 +3184,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 // ---------------------------------------------------------------------------
 
-== Audit summary
+== Evidence inventory
 
 31 testcases, 153 steps, 151 checkers.
 
@@ -3208,68 +3209,60 @@ not here. Every stage after the injection point is real logic and is golden-chec
 | `FAILED` | 1
 |===
 
-A running test's checkers are `PROVEN` or `FAILED`. Rows that could not fail on
-this DUT were deleted, not parked as `GUARD`. Alive-mode CHK5 names only live
-beats; bit-exact per-sink is the small KM ROM tests. The one `FAILED` row is
-CHK-JTAG-MMR-DENY: `hw/sys/sep/doc/periphs.adoc` requires DECERR on a non-token MMR in PROD;
-the RTL returned OKAY (resp=0) on `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH` at
-`0x1093056c` (run `20260820_165856`). Tracked as
-https://github.com/tenstorrent/tt-oca-harness/issues/626.
-It is a DUT/spec question, not a missing Phase 1 test, and does not
-block sign-off.
+A running test's checkers are `PROVEN` or `FAILED`. Rows that cannot fail
+on this DUT are deleted, not parked as `GUARD`. Alive-mode CHK5 names
+only live beats; bit-exact per-sink is the small KM ROM tests. The one
+`FAILED` row is CHK-JTAG-MMR-DENY; see <<open-items>>.
 
+[[claims-outside-contract]]
 [[phase2-handoff]]
 [[need-extended]]
-=== Phase 2 handoff
+=== Claims outside this contract
 
-These claims are outside the Phase 1 contract. Phase 2 covers them:
-extend a Phase 2 test that already owns the claim, or add the named new
-Phase 2 test. Do not stretch the Phase 1 entry.
+These behaviours are not in the Phase 1 checker set. The Phase 2
+document specifies them.
 
 [cols="2,3,3",options="header"]
 |===
-| Phase 1 entry | Claim outside this contract | Phase 2 vehicle
+| Phase 1 entry | Claim outside this contract | Specified in
 
 | `sep_esrc_e2e_smoke_test`,
   `sep_drbg_real_sink_multi_km_aes_test`
 | Dual-sink bit-exact CHK5 routing
-| Extend
-  `sep_crypto_edn_multisink_arbitration_test` /
+| `sep_crypto_edn_multisink_arbitration_test`,
   `sep_crypto_edn_round_robin_grant_test`
 
 | `sep_efuse_lcc_lc_state_stitch_test`
 | Demote × LC × DIS product; standalone RMA token path
-| New demote RAND-REP
+| Phase 2 demote RAND-REP
 
 | `sep_efuse_image_test`
-| Program × lock matrix
-| New remaining row (spare/test field, never `LC_STATE`)
+| Program × lock matrix on a spare/test field (never `LC_STATE`)
+| Phase 2 eFuse remaining row
 
 | `sep_km_otbn_sideload_kat_test`,
   `sep_km_aes_sideload_kat_test`,
   `sep_km_hmac_sideload_kat_test`,
   `sep_km_kmac_sideload_kat_test`
 | KM mailbox command set
-| New remaining row
+| Phase 2 KM remaining row
 
 | `sep_lcc_uvm_inbound_filter_gating_test`
 | Inbound source-ID × r/w product; live outbound remap
-| Extend `sep_fabric_inbound_filter_rule_matrix_test`;
-  new outbound remap row if fabric is still a hole
+| `sep_fabric_inbound_filter_rule_matrix_test`;
+  Phase 2 outbound-remap row
 
 | `sep_otbn_mem_smoke_test`
 | OTBN as a compute engine
-| New remaining row
+| Phase 2 OTBN remaining row
 |===
 
 [[open-items]]
-=== Open items
-
-One honest spec-vs-RTL fail. It does not block Phase 1 sign-off.
+=== Spec-versus-RTL mismatches
 
 [cols="2,3,3",options="header"]
 |===
-| Testcase | Item | What would close it
+| Testcase | Checker | Resolution
 
 | `sep_efuse_jtag_axil_el2_cpu_mux_test`
 | CHK-JTAG-MMR-DENY: non-token MMR in PROD must DECERR
@@ -3293,13 +3286,10 @@ it builds no console decoder.
 
 === Entries whose checkers share one proof line
 
-Three firmware tests evaluate several conditions but print a single pass
-line, so their checker rows cite the same evidence:
+Three firmware tests evaluate several conditions and print a single pass
+line. Their checker rows cite that same evidence. The firmware counters
+still gate PASS:
 
 * `sep_spi_ot_dma_rx_test` — 3 of 3 checkers
 * `sep_dma_cpu_contention_test` — 5 of 5 checkers, one carrying a value-bearing substring
 * `sep_mailbox_plic_test` — 4 of 4 checkers, two carrying value-bearing substrings
-
-The firmware counters are real and gate PASS. A later logging patch can
-emit one line per condition; that is evidence hygiene, not a Phase 1
-scorecard hole.
