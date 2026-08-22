@@ -1720,11 +1720,7 @@ simulation compile and on no other kind of build:
 -DSIMULATION         # Verilator, Icarus
 ----
 
-The open DV runner sets it for every DUT, from the shared native profile in
-`hw/common/dv/configs/profiles/native.toml`; an adopter running OCAH RTL in
-their own testbench passes it themselves. Lint and synthesis pass `SYNTHESIS`
-instead, from `OCAH_FLOW_COMMON_DEFINES` in `flows/common.mk`. OCAH simulation
-flows also set `NO_LIBCELL`, described in <<prim-cell-replacement-simulation>>.
+OCAH's own DV flows set it; a compile driven by an adopter's testbench does not.
 
 [WARNING]
 ====
