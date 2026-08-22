@@ -53,7 +53,7 @@ class sep_efuse_image_test(sep_base_test):
         # Burn 10 distinct random known-zero fuse bits (real W1S through the
         # frontdoor), seeded by the run seed for reproducibility. The generic efuse
         # model's field_storage is persistent, so the resense must show the initial
-        # image PLUS exactly these bits -- no mid-run image swap.
+        # image plus exactly these bits.
         rng = random.Random(self.random_seed())
         burn_offsets = sorted(rng.sample(range(_UID_NBITS), _NUM_BURN))
         golden = SepEfuseImage()

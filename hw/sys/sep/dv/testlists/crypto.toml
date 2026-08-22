@@ -99,10 +99,9 @@ args = ["+skip_fuse_sense"]
 # DRBG real-sink multi-consumer KM + AES concurrent: one real DRBG/EDN stream feeds two real sinks at once -- KM AXIS
 # (rom_main + interleaved CMD_KEY_GENERATE DRBG pulls) and AES native crypto-EDN
 # (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
-# shared DRBG is correct; CHK5_km + CHK5_aes observed (>=1 beat each) prove
-# concurrent multi-sink consumption. Per-sink bit-exact (which word to which sink)
-# is the documented delta (needs the reference suite AXIS1 pre-adapter tap + arbiter trace,
-# not built; sep_drbg_scoreboard raises NotImplementedError for crypto golden).
+# shared DRBG is correct. CHK5 scores AES golden (AES beats == AXIS1 order) and
+# KM membership (each KM word is a genbits-golden word). Dual-crypto-sink
+# bit-exact routing is a Phase 2 claim, not this test.
 # no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
 # oscillators under Verilator. rom_main.rom.parhex from tracked source.
 name = "sep_drbg_real_sink_multi_km_aes_test"

@@ -48,11 +48,10 @@ OTBN_DMEM_SHARE0_HI = 0x60
 OTBN_DMEM_SHARE1_LO = 0x80
 OTBN_DMEM_SHARE1_HI = 0xA0
 
-# Assembled OTBN key-dump program
-# (fw/sep/tests/otbn_km_sideload_keydump/otbn_src/keydump.s, extended to also dump
-# the raw shares). Reads the sideload key WSRs (KEY_S0_L=4, KEY_S0_H=5, KEY_S1_L=6,
-# KEY_S1_H=7), reconstructs key = share0 ^ share1, and writes both the key and the
-# two raw shares to DMEM. bn.sid encoding: (wdr_idx_reg<<20)|(base_reg<<15)|(0b101<<12)|0x0B.
+# Assembled OTBN key-dump program (OTBN_KEYDUMP_PROG). Reads the sideload key
+# WSRs (KEY_S0_L=4, KEY_S0_H=5, KEY_S1_L=6, KEY_S1_H=7), reconstructs
+# key = share0 ^ share1, and writes both the key and the two raw shares to
+# DMEM. bn.sid encoding: (wdr_idx_reg<<20)|(base_reg<<15)|(0b101<<12)|0x0B.
 OTBN_KEYDUMP_PROG = (
     0x0040700B,  # bn.wsrr w0, KEY_S0_L    (share0[255:0])
     0x0060708B,  # bn.wsrr w1, KEY_S1_L    (share1[255:0])

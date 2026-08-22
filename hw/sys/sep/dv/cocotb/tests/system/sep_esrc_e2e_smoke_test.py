@@ -12,7 +12,7 @@ generators, wait for a seed, then enable EDN last.
 The KM only pulls from the EDN->KM stream when its own PicoRV32 requests entropy
 (km_drbg_sampler asserts TREADY on a CPU DATA read or an enabled prefetch -- never
 autonomously). So this test releases the KM CPU and runs a tiny KM ROM image
-(km_rom_entropy.parhex, loaded via the `entropy` run mode's +km_rom_hex) that
+(km_rom_entropy.parhex, loaded via +km_rom_hex in crypto.toml) that
 disables the sampler read-timeout and issues a single blocking DRBG DATA read --
 making the KM genuinely consume one genbits word (a real tvalid && tready
 handshake) and store it to KM SRAM word0.
@@ -52,8 +52,8 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         # fails on any stage mismatch; CHK2 actual data = AXI frontdoor FIFO_RDATA),
         # drives the ESRC noise, and runs the reference suite config order through EDN-enable.
         # CHK5_pool golden: the entropy FIFO already pulls mux endpoint [2] from
-        # reset, so this smoke also proves AXIS2==pool native routing. FIFO aperture
-        # drain / watermark / stall stay a later consume test.
+        # reset, so this smoke also proves AXIS2==pool native routing. This smoke
+        # does not drain the 0x1095_0000 FIFO aperture.
         await self.bring_up_entropy(strict=True, score_sinks={"pool": "golden"})
 
         # Concurrent FIFO_RDATA drain so the FIFO never overflows during the long
