@@ -275,9 +275,9 @@ module key_manager_reg (
         decoded_reg_strb.kpv = cpuif_req_masked & (cpuif_addr >= 17'h12000) & (cpuif_addr <= 17'h12000 + 17'h1107);
         is_external |= cpuif_req_masked & (cpuif_addr >= 17'h12000) & (cpuif_addr <= 17'h12000 + 17'h1107);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h12000) & (cpuif_addr <= 17'h12000 + 17'h1107);
-        decoded_reg_strb.kmcsr = cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h30b);
-        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h30b);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h30b);
+        decoded_reg_strb.kmcsr = cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h4bf);
+        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h4bf);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h4bf);
         decoded_reg_strb.drbg_sampler = cpuif_req_masked & (cpuif_addr >= 17'h15000) & (cpuif_addr <= 17'h15000 + 17'hf);
         is_external |= cpuif_req_masked & (cpuif_addr >= 17'h15000) & (cpuif_addr <= 17'h15000 + 17'hf);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h15000) & (cpuif_addr <= 17'h15000 + 17'hf);
@@ -362,7 +362,7 @@ module key_manager_reg (
     assign hwif_out.kpv.wr_biten = decoded_wr_biten;
     // External region: key_manager.kmcsr
     assign hwif_out.kmcsr.req = decoded_reg_strb.kmcsr;
-    assign hwif_out.kmcsr.addr = decoded_addr[9:0];
+    assign hwif_out.kmcsr.addr = decoded_addr[10:0];
     assign hwif_out.kmcsr.req_is_wr = decoded_req_is_wr;
     assign hwif_out.kmcsr.wr_data = decoded_wr_data;
     assign hwif_out.kmcsr.wr_biten = decoded_wr_biten;
@@ -486,7 +486,7 @@ module key_manager_reg (
         if((rd_mux_addr >= 17'h12000) && (rd_mux_addr <= 17'h12000 + 17'h1107)) begin
             readback_data_var = hwif_in.kpv.rd_data;
         end
-        if((rd_mux_addr >= 17'h14000) && (rd_mux_addr <= 17'h14000 + 17'h30b)) begin
+        if((rd_mux_addr >= 17'h14000) && (rd_mux_addr <= 17'h14000 + 17'h4bf)) begin
             readback_data_var = hwif_in.kmcsr.rd_data;
         end
         if((rd_mux_addr >= 17'h15000) && (rd_mux_addr <= 17'h15000 + 17'hf)) begin

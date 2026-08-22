@@ -385,6 +385,7 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     //      Either register alone is sufficient to suppress CSR readback. ----
     logic otp_lock_life_cycle, otp_lock_demotion, otp_lock_chiplet;
     logic otp_lock_sip, otp_lock_sys, otp_lock_class_key;
+    logic otp_lock_chip_id, otp_lock_sip_id, otp_lock_sys_id;
 
     assign otp_lock_life_cycle  = hwif_out.OTP_READ_LOCK.life_cycle.value
                                 | hwif_out.OTP_READ_LOCK_COLD.life_cycle.value;
@@ -398,6 +399,12 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
                                 | hwif_out.OTP_READ_LOCK_COLD.sys_uid.value;
     assign otp_lock_class_key   = hwif_out.OTP_READ_LOCK.class_key.value
                                 | hwif_out.OTP_READ_LOCK_COLD.class_key.value;
+    assign otp_lock_chip_id     = hwif_out.OTP_READ_LOCK.sep_chiplet_id.value
+                                | hwif_out.OTP_READ_LOCK_COLD.sep_chiplet_id.value;
+    assign otp_lock_sip_id      = hwif_out.OTP_READ_LOCK.sep_sip_id.value
+                                | hwif_out.OTP_READ_LOCK_COLD.sep_sip_id.value;
+    assign otp_lock_sys_id      = hwif_out.OTP_READ_LOCK.sep_sys_id.value
+                                | hwif_out.OTP_READ_LOCK_COLD.sep_sys_id.value;
 
     // ---- Registered encoded OTP captures ----
     // The raw encoded signals from otp_data_i are registered here.  All
@@ -407,14 +414,16 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     //
     // otp_prev_valid suppresses a spurious change pulse on the first cycle
     // after reset before any valid OTP data has been captured.  Lifecycle and
-    // demotion captures persist across warm resets.  The secret captures are
-    // additionally cleared by warm reset (which also carries the soft reset)
-    // and reload from otp_data_i on the first cycle after release.
+    // demotion captures persist across warm resets.  The secret and public
+    // identity captures are additionally cleared by warm reset (which also
+    // carries the soft reset) and reload from otp_data_i on the first cycle
+    // after release.
     logic         otp_prev_valid;
     logic [7:0]   lc_enc_r;
     logic [1:0]   dem1_enc_r, dem2_enc_r;
     logic [511:0] chiplet_enc_r, sip_enc_r, sys_enc_r;
     logic [511:0] class_key_enc_r;
+    logic [511:0] chip_id_enc_r, sip_id_enc_r, sys_id_enc_r;
 
     always_ff @(posedge clk_i or negedge cold_rst_ni) begin
         if (!cold_rst_ni) begin
@@ -426,12 +435,18 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
             sip_enc_r       <= '0;
             sys_enc_r       <= '0;
             class_key_enc_r <= '0;
+            chip_id_enc_r   <= '0;
+            sip_id_enc_r    <= '0;
+            sys_id_enc_r    <= '0;
         end else if (!warm_rst_ni) begin
             otp_prev_valid  <= 1'b0;
             chiplet_enc_r   <= '0;
             sip_enc_r       <= '0;
             sys_enc_r       <= '0;
             class_key_enc_r <= '0;
+            chip_id_enc_r   <= '0;
+            sip_id_enc_r    <= '0;
+            sys_id_enc_r    <= '0;
         end else begin
             otp_prev_valid  <= 1'b1;
             lc_enc_r        <= otp_data_i.life_cycle;
@@ -441,12 +456,16 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
             sip_enc_r       <= otp_data_i.sip_uid;
             sys_enc_r       <= otp_data_i.sys_uid;
             class_key_enc_r <= otp_data_i.class_key;
+            chip_id_enc_r   <= otp_data_i.sep_chiplet_id;
+            sip_id_enc_r    <= otp_data_i.sep_sip_id;
+            sys_id_enc_r    <= otp_data_i.sep_sys_id;
         end
     end
 
     // ---- Dual-rail decoders (operate on the registered captures) ----
     // Decoders for LC (Width=4) and demotion (Width=1) fields.
-    // Decoders for 256-bit fields (Width=256): chiplet_uid, sip_uid, sys_uid, class_key.
+    // Decoders for 256-bit fields (Width=256): chiplet_uid, sip_uid, sys_uid,
+    // class_key, sep_chiplet_id, sep_sip_id, sep_sys_id.
 
     logic [3:0]   lc_decoded;
     logic         lc_sigint;
@@ -517,6 +536,36 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
         .sigint_o(class_key_sigint)
     );
 
+    logic [255:0] chip_id_decoded;
+    logic         chip_id_sigint;
+    prim_diff_decode_multi #(.Width(256), .AsyncOn(1'b0)) u_chip_id_dec (
+        .clk_i,
+        .rst_ni  (cold_rst_ni),
+        .data_i  (chip_id_enc_r),
+        .data_o  (chip_id_decoded),
+        .sigint_o(chip_id_sigint)
+    );
+
+    logic [255:0] sip_id_decoded;
+    logic         sip_id_sigint;
+    prim_diff_decode_multi #(.Width(256), .AsyncOn(1'b0)) u_sip_id_dec (
+        .clk_i,
+        .rst_ni  (cold_rst_ni),
+        .data_i  (sip_id_enc_r),
+        .data_o  (sip_id_decoded),
+        .sigint_o(sip_id_sigint)
+    );
+
+    logic [255:0] sys_id_decoded;
+    logic         sys_id_sigint;
+    prim_diff_decode_multi #(.Width(256), .AsyncOn(1'b0)) u_sys_id_dec (
+        .clk_i,
+        .rst_ni  (cold_rst_ni),
+        .data_i  (sys_id_enc_r),
+        .data_o  (sys_id_decoded),
+        .sigint_o(sys_id_sigint)
+    );
+
     // ---- Change detection ----
     // A change pulse fires when the incoming otp_data_i differs from the
     // registered capture of the previous cycle (encoded comparison).  This is
@@ -526,6 +575,7 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     // firmware always sees the new CSR value when it reads the status.
     logic lc_change_pulse, dem_change_pulse, chiplet_change_pulse;
     logic sip_change_pulse, sys_change_pulse, class_key_change_pulse;
+    logic chip_id_change_pulse, sip_id_change_pulse, sys_id_change_pulse;
     logic otp_change_any, otp_sigint_any;
 
     assign lc_change_pulse        = otp_prev_valid && (otp_data_i.life_cycle       != lc_enc_r);
@@ -539,11 +589,19 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
                                     (otp_data_i.sys_uid != sys_enc_r);
     assign class_key_change_pulse = otp_prev_valid &&
                                     (otp_data_i.class_key != class_key_enc_r);
+    assign chip_id_change_pulse   = otp_prev_valid &&
+                                    (otp_data_i.sep_chiplet_id != chip_id_enc_r);
+    assign sip_id_change_pulse    = otp_prev_valid &&
+                                    (otp_data_i.sep_sip_id != sip_id_enc_r);
+    assign sys_id_change_pulse    = otp_prev_valid &&
+                                    (otp_data_i.sep_sys_id != sys_id_enc_r);
 
     assign otp_change_any = lc_change_pulse | dem_change_pulse | chiplet_change_pulse |
-                            sip_change_pulse | sys_change_pulse | class_key_change_pulse;
+                            sip_change_pulse | sys_change_pulse | class_key_change_pulse |
+                            chip_id_change_pulse | sip_id_change_pulse | sys_id_change_pulse;
     assign otp_sigint_any = lc_sigint | dem1_sigint | dem2_sigint |
-                            chiplet_sigint | sip_sigint | sys_sigint | class_key_sigint;
+                            chiplet_sigint | sip_sigint | sys_sigint | class_key_sigint |
+                            chip_id_sigint | sip_id_sigint | sys_id_sigint;
 
     // ---- OTP_CHANGE_STATUS register drives ----
     assign hwif_in.OTP_CHANGE_STATUS.life_cycle.next    = 1'b0;
@@ -558,6 +616,12 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     assign hwif_in.OTP_CHANGE_STATUS.sys_uid.hwset      = sys_change_pulse;
     assign hwif_in.OTP_CHANGE_STATUS.class_key.next     = 1'b0;
     assign hwif_in.OTP_CHANGE_STATUS.class_key.hwset    = class_key_change_pulse;
+    assign hwif_in.OTP_CHANGE_STATUS.sep_chiplet_id.next  = 1'b0;
+    assign hwif_in.OTP_CHANGE_STATUS.sep_chiplet_id.hwset = chip_id_change_pulse;
+    assign hwif_in.OTP_CHANGE_STATUS.sep_sip_id.next      = 1'b0;
+    assign hwif_in.OTP_CHANGE_STATUS.sep_sip_id.hwset     = sip_id_change_pulse;
+    assign hwif_in.OTP_CHANGE_STATUS.sep_sys_id.next      = 1'b0;
+    assign hwif_in.OTP_CHANGE_STATUS.sep_sys_id.hwset     = sys_id_change_pulse;
 
     // ---- IRQ_STATUS OTP_CHANGE and OTP_SIGINT hwset drives ----
     // (next fields were tied off above; here we provide the hwset side)
@@ -647,6 +711,60 @@ module km_csr import km_intf_pkg::*; import km_csr_reg_pkg::*; import axi_pkg::*
     assign hwif_in.OTP_CLASS_KEY_CPL_5.value.next = otp_lock_class_key ? '0 : class_key_enc_r[447:416];
     assign hwif_in.OTP_CLASS_KEY_CPL_6.value.next = otp_lock_class_key ? '0 : class_key_enc_r[479:448];
     assign hwif_in.OTP_CLASS_KEY_CPL_7.value.next = otp_lock_class_key ? '0 : class_key_enc_r[511:480];
+
+    // SEP_CHIPLET_ID
+    assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_0.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 31:  0];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_1.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 63: 32];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_2.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[ 95: 64];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_3.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[127: 96];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_4.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[159:128];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_5.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[191:160];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_6.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[223:192];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_VAL_7.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[255:224];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_0.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[287:256];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_1.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[319:288];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_2.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[351:320];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_3.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[383:352];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_4.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[415:384];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_5.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[447:416];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_6.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[479:448];
+    assign hwif_in.OTP_SEP_CHIPLET_ID_CPL_7.value.next = otp_lock_chip_id ? '0 : chip_id_enc_r[511:480];
+
+    // SEP_SIP_ID
+    assign hwif_in.OTP_SEP_SIP_ID_VAL_0.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 31:  0];
+    assign hwif_in.OTP_SEP_SIP_ID_VAL_1.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 63: 32];
+    assign hwif_in.OTP_SEP_SIP_ID_VAL_2.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[ 95: 64];
+    assign hwif_in.OTP_SEP_SIP_ID_VAL_3.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[127: 96];
+    assign hwif_in.OTP_SEP_SIP_ID_VAL_4.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[159:128];
+    assign hwif_in.OTP_SEP_SIP_ID_VAL_5.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[191:160];
+    assign hwif_in.OTP_SEP_SIP_ID_VAL_6.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[223:192];
+    assign hwif_in.OTP_SEP_SIP_ID_VAL_7.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[255:224];
+    assign hwif_in.OTP_SEP_SIP_ID_CPL_0.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[287:256];
+    assign hwif_in.OTP_SEP_SIP_ID_CPL_1.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[319:288];
+    assign hwif_in.OTP_SEP_SIP_ID_CPL_2.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[351:320];
+    assign hwif_in.OTP_SEP_SIP_ID_CPL_3.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[383:352];
+    assign hwif_in.OTP_SEP_SIP_ID_CPL_4.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[415:384];
+    assign hwif_in.OTP_SEP_SIP_ID_CPL_5.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[447:416];
+    assign hwif_in.OTP_SEP_SIP_ID_CPL_6.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[479:448];
+    assign hwif_in.OTP_SEP_SIP_ID_CPL_7.value.next = otp_lock_sip_id ? '0 : sip_id_enc_r[511:480];
+
+    // SEP_SYS_ID
+    assign hwif_in.OTP_SEP_SYS_ID_VAL_0.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 31:  0];
+    assign hwif_in.OTP_SEP_SYS_ID_VAL_1.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 63: 32];
+    assign hwif_in.OTP_SEP_SYS_ID_VAL_2.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[ 95: 64];
+    assign hwif_in.OTP_SEP_SYS_ID_VAL_3.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[127: 96];
+    assign hwif_in.OTP_SEP_SYS_ID_VAL_4.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[159:128];
+    assign hwif_in.OTP_SEP_SYS_ID_VAL_5.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[191:160];
+    assign hwif_in.OTP_SEP_SYS_ID_VAL_6.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[223:192];
+    assign hwif_in.OTP_SEP_SYS_ID_VAL_7.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[255:224];
+    assign hwif_in.OTP_SEP_SYS_ID_CPL_0.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[287:256];
+    assign hwif_in.OTP_SEP_SYS_ID_CPL_1.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[319:288];
+    assign hwif_in.OTP_SEP_SYS_ID_CPL_2.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[351:320];
+    assign hwif_in.OTP_SEP_SYS_ID_CPL_3.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[383:352];
+    assign hwif_in.OTP_SEP_SYS_ID_CPL_4.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[415:384];
+    assign hwif_in.OTP_SEP_SYS_ID_CPL_5.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[447:416];
+    assign hwif_in.OTP_SEP_SYS_ID_CPL_6.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[479:448];
+    assign hwif_in.OTP_SEP_SYS_ID_CPL_7.value.next = otp_lock_sys_id ? '0 : sys_id_enc_r[511:480];
 
     //=========================================================================
     // Soft Reset Output

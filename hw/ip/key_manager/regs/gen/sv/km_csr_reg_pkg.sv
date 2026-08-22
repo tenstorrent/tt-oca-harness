@@ -7,8 +7,8 @@
 package km_csr_reg_pkg;
 
     localparam KM_CSR_REG_DATA_WIDTH = 32;
-    localparam KM_CSR_REG_MIN_ADDR_WIDTH = 10;
-    localparam KM_CSR_REG_SIZE = 'h30c;
+    localparam KM_CSR_REG_MIN_ADDR_WIDTH = 11;
+    localparam KM_CSR_REG_SIZE = 'h4c0;
 
     typedef struct {
         logic next;
@@ -246,12 +246,30 @@ package km_csr_reg_pkg;
     } km_csr__otp_change_status_reg__class_key__in_t;
 
     typedef struct {
+        logic next;
+        logic hwset;
+    } km_csr__otp_change_status_reg__sep_chiplet_id__in_t;
+
+    typedef struct {
+        logic next;
+        logic hwset;
+    } km_csr__otp_change_status_reg__sep_sip_id__in_t;
+
+    typedef struct {
+        logic next;
+        logic hwset;
+    } km_csr__otp_change_status_reg__sep_sys_id__in_t;
+
+    typedef struct {
         km_csr__otp_change_status_reg__life_cycle__in_t life_cycle;
         km_csr__otp_change_status_reg__demotion__in_t demotion;
         km_csr__otp_change_status_reg__chiplet_uid__in_t chiplet_uid;
         km_csr__otp_change_status_reg__sip_uid__in_t sip_uid;
         km_csr__otp_change_status_reg__sys_uid__in_t sys_uid;
         km_csr__otp_change_status_reg__class_key__in_t class_key;
+        km_csr__otp_change_status_reg__sep_chiplet_id__in_t sep_chiplet_id;
+        km_csr__otp_change_status_reg__sep_sip_id__in_t sep_sip_id;
+        km_csr__otp_change_status_reg__sep_sys_id__in_t sep_sys_id;
     } km_csr__otp_change_status_reg__in_t;
 
     typedef struct {
@@ -334,6 +352,54 @@ package km_csr_reg_pkg;
         km_csr__otp_dr_word_reg__in_t OTP_CLASS_KEY_CPL_6;
         km_csr__otp_dr_word_reg__in_t OTP_CLASS_KEY_CPL_7;
         km_csr__otp_change_status_reg__in_t OTP_CHANGE_STATUS;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_VAL_0;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_VAL_1;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_VAL_2;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_VAL_3;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_VAL_4;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_VAL_5;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_VAL_6;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_VAL_7;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_CPL_0;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_CPL_1;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_CPL_2;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_CPL_3;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_CPL_4;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_CPL_5;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_CPL_6;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_CHIPLET_ID_CPL_7;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_VAL_0;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_VAL_1;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_VAL_2;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_VAL_3;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_VAL_4;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_VAL_5;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_VAL_6;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_VAL_7;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_CPL_0;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_CPL_1;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_CPL_2;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_CPL_3;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_CPL_4;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_CPL_5;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_CPL_6;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SIP_ID_CPL_7;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_VAL_0;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_VAL_1;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_VAL_2;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_VAL_3;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_VAL_4;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_VAL_5;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_VAL_6;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_VAL_7;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_CPL_0;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_CPL_1;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_CPL_2;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_CPL_3;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_CPL_4;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_CPL_5;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_CPL_6;
+        km_csr__otp_dr_word_reg__in_t OTP_SEP_SYS_ID_CPL_7;
     } km_csr__in_t;
 
     typedef struct {
@@ -696,12 +762,27 @@ package km_csr_reg_pkg;
     } km_csr__otp_read_lock_reg__class_key__out_t;
 
     typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_reg__sep_chiplet_id__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_reg__sep_sip_id__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_reg__sep_sys_id__out_t;
+
+    typedef struct {
         km_csr__otp_read_lock_reg__life_cycle__out_t life_cycle;
         km_csr__otp_read_lock_reg__demotion__out_t demotion;
         km_csr__otp_read_lock_reg__chiplet_uid__out_t chiplet_uid;
         km_csr__otp_read_lock_reg__sip_uid__out_t sip_uid;
         km_csr__otp_read_lock_reg__sys_uid__out_t sys_uid;
         km_csr__otp_read_lock_reg__class_key__out_t class_key;
+        km_csr__otp_read_lock_reg__sep_chiplet_id__out_t sep_chiplet_id;
+        km_csr__otp_read_lock_reg__sep_sip_id__out_t sep_sip_id;
+        km_csr__otp_read_lock_reg__sep_sys_id__out_t sep_sys_id;
     } km_csr__otp_read_lock_reg__out_t;
 
     typedef struct {
@@ -729,12 +810,27 @@ package km_csr_reg_pkg;
     } km_csr__otp_change_status_reg__class_key__out_t;
 
     typedef struct {
+        logic value;
+    } km_csr__otp_change_status_reg__sep_chiplet_id__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_change_status_reg__sep_sip_id__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_change_status_reg__sep_sys_id__out_t;
+
+    typedef struct {
         km_csr__otp_change_status_reg__life_cycle__out_t life_cycle;
         km_csr__otp_change_status_reg__demotion__out_t demotion;
         km_csr__otp_change_status_reg__chiplet_uid__out_t chiplet_uid;
         km_csr__otp_change_status_reg__sip_uid__out_t sip_uid;
         km_csr__otp_change_status_reg__sys_uid__out_t sys_uid;
         km_csr__otp_change_status_reg__class_key__out_t class_key;
+        km_csr__otp_change_status_reg__sep_chiplet_id__out_t sep_chiplet_id;
+        km_csr__otp_change_status_reg__sep_sip_id__out_t sep_sip_id;
+        km_csr__otp_change_status_reg__sep_sys_id__out_t sep_sys_id;
     } km_csr__otp_change_status_reg__out_t;
 
     typedef struct {
@@ -762,12 +858,27 @@ package km_csr_reg_pkg;
     } km_csr__otp_read_lock_cold_reg__class_key__out_t;
 
     typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__sep_chiplet_id__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__sep_sip_id__out_t;
+
+    typedef struct {
+        logic value;
+    } km_csr__otp_read_lock_cold_reg__sep_sys_id__out_t;
+
+    typedef struct {
         km_csr__otp_read_lock_cold_reg__life_cycle__out_t life_cycle;
         km_csr__otp_read_lock_cold_reg__demotion__out_t demotion;
         km_csr__otp_read_lock_cold_reg__chiplet_uid__out_t chiplet_uid;
         km_csr__otp_read_lock_cold_reg__sip_uid__out_t sip_uid;
         km_csr__otp_read_lock_cold_reg__sys_uid__out_t sys_uid;
         km_csr__otp_read_lock_cold_reg__class_key__out_t class_key;
+        km_csr__otp_read_lock_cold_reg__sep_chiplet_id__out_t sep_chiplet_id;
+        km_csr__otp_read_lock_cold_reg__sep_sip_id__out_t sep_sip_id;
+        km_csr__otp_read_lock_cold_reg__sep_sys_id__out_t sep_sys_id;
     } km_csr__otp_read_lock_cold_reg__out_t;
 
     typedef struct {

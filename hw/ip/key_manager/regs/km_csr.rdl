@@ -812,10 +812,10 @@ addrmap km_csr {
     // Each field exposes: VAL_0..7 (value[255:0] in 32-bit words) and
     //                     CPL_0..7 (complement[255:0] in 32-bit words).
     // All fields: sw=r; hw=w; no reset (read-through).
-    // Read-lock: controlled by OTP_READ_LOCK; locked reads return zero (set in km_csr.sv).
+    // Read-lock: OTP_READ_LOCK | OTP_READ_LOCK_COLD; locked reads return zero (set in km_csr.sv).
     reg otp_dr_word_reg {
         name = "OTP_DR_WORD";
-        desc = "Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.";
+        desc = "Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.";
         field {
             name = "VALUE";
             desc = "32-bit OTP word. No reset; power-up value undefined.";
@@ -1138,7 +1138,7 @@ addrmap km_csr {
     tb_cmd_result_reg TB_CMD_RESULT @ 0x12C;
 
     //=========================================================================
-    // Dual-Rail OTP Readout Registers (0x200-0x2FC)
+    // Dual-Rail OTP Readout Registers (secrets 0x200-0x2FC, public IDs 0x400-0x4BF)
     //=========================================================================
     // Each 256-bit OTP field is exposed as 8 value words (VAL_0..7) and
     // 8 complement words (CPL_0..7), i.e. the {~value, value} dual-rail.
@@ -1218,6 +1218,62 @@ addrmap km_csr {
     otp_dr_word_reg OTP_CLASS_KEY_CPL_5 @ 0x2F4;
     otp_dr_word_reg OTP_CLASS_KEY_CPL_6 @ 0x2F8;
     otp_dr_word_reg OTP_CLASS_KEY_CPL_7 @ 0x2FC;
+
+    // Public per-owner identity fields.
+
+    // SEP_CHIPLET_ID: value words @ 0x400-0x41C, complement words @ 0x420-0x43C
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_0 @ 0x400;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_1 @ 0x404;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_2 @ 0x408;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_3 @ 0x40C;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_4 @ 0x410;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_5 @ 0x414;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_6 @ 0x418;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_7 @ 0x41C;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_0 @ 0x420;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_1 @ 0x424;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_2 @ 0x428;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_3 @ 0x42C;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_4 @ 0x430;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_5 @ 0x434;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_6 @ 0x438;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_7 @ 0x43C;
+
+    // SEP_SIP_ID: value words @ 0x440-0x45C, complement words @ 0x460-0x47C
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_0 @ 0x440;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_1 @ 0x444;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_2 @ 0x448;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_3 @ 0x44C;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_4 @ 0x450;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_5 @ 0x454;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_6 @ 0x458;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_7 @ 0x45C;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_0 @ 0x460;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_1 @ 0x464;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_2 @ 0x468;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_3 @ 0x46C;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_4 @ 0x470;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_5 @ 0x474;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_6 @ 0x478;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_7 @ 0x47C;
+
+    // SEP_SYS_ID: value words @ 0x480-0x49C, complement words @ 0x4A0-0x4BC
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_0 @ 0x480;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_1 @ 0x484;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_2 @ 0x488;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_3 @ 0x48C;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_4 @ 0x490;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_5 @ 0x494;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_6 @ 0x498;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_7 @ 0x49C;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_0 @ 0x4A0;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_1 @ 0x4A4;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_2 @ 0x4A8;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_3 @ 0x4AC;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_4 @ 0x4B0;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_5 @ 0x4B4;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_6 @ 0x4B8;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_7 @ 0x4BC;
 
     //=========================================================================
     // OTP_READ_LOCK Register (0x300) - Write-1-only, warm reset domain
@@ -1299,12 +1355,42 @@ addrmap km_csr {
         } class_key[5:5];
 
         field {
+            name = "SEP_CHIPLET_ID";
+            desc = "Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_chiplet_id[6:6];
+
+        field {
+            name = "SEP_SIP_ID";
+            desc = "Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_sip_id[7:7];
+
+        field {
+            name = "SEP_SYS_ID";
+            desc = "Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_sys_id[8:8];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
+            reset = 23'h0;
+        } rsvd[31:9];
     };
 
     otp_read_lock_reg OTP_READ_LOCK @ 0x300;
@@ -1383,12 +1469,39 @@ addrmap km_csr {
         } class_key[5:5];
 
         field {
+            name = "SEP_CHIPLET_ID";
+            desc = "Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } sep_chiplet_id[6:6];
+
+        field {
+            name = "SEP_SIP_ID";
+            desc = "Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } sep_sip_id[7:7];
+
+        field {
+            name = "SEP_SYS_ID";
+            desc = "Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } sep_sys_id[8:8];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
+            reset = 23'h0;
+        } rsvd[31:9];
     };
 
     otp_read_lock_cold_reg OTP_READ_LOCK_COLD @ 0x308;
@@ -1476,12 +1589,48 @@ addrmap km_csr {
         } class_key[5:5];
 
         field {
+            name = "SEP_CHIPLET_ID";
+            desc = "OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_chiplet_id[6:6];
+
+        field {
+            name = "SEP_SIP_ID";
+            desc = "OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_sip_id[7:7];
+
+        field {
+            name = "SEP_SYS_ID";
+            desc = "OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_sys_id[8:8];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
+            reset = 23'h0;
+        } rsvd[31:9];
     };
 
     otp_change_status_reg OTP_CHANGE_STATUS @ 0x304;

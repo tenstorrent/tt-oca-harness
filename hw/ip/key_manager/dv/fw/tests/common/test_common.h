@@ -185,7 +185,8 @@ typedef km_mailbox_sep__irq_enable_reg_t KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
 #define TB_CMD_OTP_WRITE_CHANGED \
     0x0000002D /* Drive changed OTP pattern (different 256-bit values); result = 1 */
 #define TB_CMD_OTP_WRITE_SIGINT \
-    0x0000002E /* Drive a corrupted dual-rail on chiplet_uid (value != ~cpl); result = 1 */
+    0x0000002E /* Drive a corrupted dual-rail (value != ~cpl) on the field whose OTP_READ_LOCK bit \
+                  position arg carries; result = 1 */
 #define TB_CMD_SEP_MBOX_DRAIN_CTRL \
     0x0000002F /* Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); \
                   arg=1 arm, 0 disarm; result = 1 */
@@ -575,16 +576,28 @@ static inline int tb_otp_write_changed(void) {
 }
 
 /**
+ * Ask testbench to drive OTP port with a CORRUPTED dual-rail encoding on the
+ * selected field (value != ~complement on one word), to trigger OTP_SIGINT.
+ * All other fields remain validly dual-rail encoded.
+ * @param field_bp  Field's bit position in OTP_READ_LOCK, i.e. one of the
+ *                  generated KM_CSR__OTP_READ_LOCK_REG__<FIELD>_bp
+ * @return 1 if acknowledged, 0 if timeout/error (call TEST_FAIL on 0)
+ */
+static inline int tb_otp_write_sigint_field(uint32_t field_bp) {
+    if (!tb_send_cmd(TB_CMD_OTP_WRITE_SIGINT, field_bp, 5000u)) {
+        TEST_FAIL("TB_CMD_OTP_WRITE_SIGINT failed (timeout or TB_STATUS_ERR)");
+    }
+    return 1;
+}
+
+/**
  * Ask testbench to drive OTP port with a CORRUPTED dual-rail encoding on
  * chiplet_uid (value != ~complement on one word), to trigger OTP_SIGINT.
  * All other fields remain validly dual-rail encoded.
  * @return 1 if acknowledged, 0 if timeout/error (call TEST_FAIL on 0)
  */
 static inline int tb_otp_write_sigint(void) {
-    if (!tb_send_cmd(TB_CMD_OTP_WRITE_SIGINT, 0, 5000u)) {
-        TEST_FAIL("TB_CMD_OTP_WRITE_SIGINT failed (timeout or TB_STATUS_ERR)");
-    }
-    return 1;
+    return tb_otp_write_sigint_field(KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bp);
 }
 
 /**

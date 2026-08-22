@@ -51,6 +51,7 @@ from key_manager_reg import (
     KMCSR_RECOVERABLE_ERR_REG_ADDR,
     KMCSR_REG_MAP_BASE_ADDR,
     KM_CSR_DEBUG_REG_REG_DEFAULT,
+    KM_CSR_OTP_READ_LOCK_REG_reg_t,
     MAILBOX_KM_KM_READ_DATA_REG_ADDR,
 )
 
@@ -113,7 +114,7 @@ TB_CMD_DRBG_TVALID_GLITCH = 0x0000002A  # One-shot: assert TVALID for 1 cycle th
 TB_CMD_DRBG_QUEUE_BEAT = 0x0000002B    # Queue one DRBG beat: arg[3:0]=TSTRB; tdata from last SET_NEXT_VALUE; result = 1
 TB_CMD_KM_WARM_RESET = 0x0000002C      # Pulse warm_rst_n for MIN_RESET_CYCLES+2 cycles; result = 1
 TB_CMD_OTP_WRITE_CHANGED = 0x0000002D  # Drive changed 256-bit OTP patterns (triggers OTP_CHANGE IRQ); result = 1
-TB_CMD_OTP_WRITE_SIGINT = 0x0000002E   # Drive corrupted dual-rail on chiplet_uid (triggers OTP_SIGINT IRQ); result = 1
+TB_CMD_OTP_WRITE_SIGINT = 0x0000002E   # Drive corrupted dual-rail on one 256-bit field (triggers OTP_SIGINT IRQ); arg = field's OTP_READ_LOCK bit position; result = 1
 TB_CMD_SEP_MBOX_DRAIN_CTRL = 0x0000002F  # Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); arg=1 arm, 0 disarm; result = 1
 TB_CMD_ABR_SK_LOAD = 0x00000030  # Inject shared-key into ABR reg block: arg=word_index (0-7); pre-fill tb_abr_sk_load_data via DRBG_SET_NEXT_VALUE then call with arg=0xFF to assert hwset; result = 1
 TB_CMD_ABR_SK_IRQ_STATUS_READ = 0x00000031  # Read ABR ML-KEM shared-key IRQ status (abr_mlkem_sharedkey_irq signal); result = 0 or 1
@@ -121,6 +122,41 @@ TB_CMD_ABR_SK_IRQ_STATUS_READ = 0x00000031  # Read ABR ML-KEM shared-key IRQ sta
 TB_STATUS_IDLE = 0x00000000
 TB_STATUS_ACK = 0x00000001
 TB_STATUS_ERR = 0xFFFFFFFF
+
+# OTP field names by OTP_READ_LOCK bit position, from the generated register
+# layout.  TB_CMD_OTP_WRITE_SIGINT carries that bit position as its argument, so
+# firmware selects a field with KM_CSR__OTP_READ_LOCK_REG__<FIELD>_bp and both
+# sides name the field through the same generated collateral.
+OTP_LOCK_FIELDS = tuple(
+    name for name, *_ in KM_CSR_OTP_READ_LOCK_REG_reg_t._fields_ if name != "rsvd"
+)
+
+# Those of them that are 256-bit dual-rail members of km_otp_data_t; life_cycle
+# and demotion are narrow encoded fields driven separately.
+OTP_DR_FIELDS = tuple(n for n in OTP_LOCK_FIELDS if n not in ("life_cycle", "demotion"))
+
+# First byte of each field's 32-byte ramp pattern.  Each field gets a distinct
+# base in both sets so a swapped or mis-decoded readback cannot look correct,
+# and every changed value differs from its own baseline.
+OTP_PATTERN_BASE = {
+    "chiplet_uid": 0x00,
+    "sip_uid": 0x20,
+    "sys_uid": 0x40,
+    "class_key": 0x60,
+    "sep_chiplet_id": 0x10,
+    "sep_sip_id": 0x30,
+    "sep_sys_id": 0x50,
+}
+
+OTP_PATTERN_BASE_CHANGED = {
+    "chiplet_uid": 0x80,
+    "sip_uid": 0xA0,
+    "sys_uid": 0xC0,
+    "class_key": 0xE0,
+    "sep_chiplet_id": 0x90,
+    "sep_sip_id": 0xB0,
+    "sep_sys_id": 0xD0,
+}
 
 
 async def reset_dut(dut, cycles=20):
@@ -146,7 +182,7 @@ def drive_otp_idle(dut):
       life_cycle[7:0]         : {~4'd0, 4'd0} = 8'hF0
       demotion_state_1[1:0]   : {~1'b0, 1'b0} = 2'b10
       demotion_state_2[1:0]   : {~1'b0, 1'b0} = 2'b10
-      chiplet/sip/sys/class   : {256{1'b1}, 256{1'b0}}  (512-bit)
+      256-bit fields          : {256{1'b1}, 256{1'b0}}  (512-bit)
     """
     try:
         otp = dut.otp_data
@@ -156,10 +192,8 @@ def drive_otp_idle(dut):
             otp.demotion_state_2.value = 0b10
         # {256{1'b1}, 256{1'b0}} = all-ones complement over all-zeros value
         dr_zero = ((1 << 256) - 1) << 256
-        otp.chiplet_uid.value = dr_zero
-        otp.sip_uid.value     = dr_zero
-        otp.sys_uid.value     = dr_zero
-        otp.class_key.value   = dr_zero
+        for name in OTP_DR_FIELDS:
+            getattr(otp, name).value = dr_zero
     except AttributeError:
         pass  # otp_data port not present in this elaboration
 
@@ -1917,15 +1951,33 @@ class TestbenchCommandHandler:
         cpl = (~value_256b) & mask256
         return (cpl << 256) | (value_256b & mask256)
 
+    @staticmethod
+    def _ramp_256(base):
+        """Build a 256-bit value from 32 ascending bytes starting at base."""
+        return sum(((i + base) & 0xFF) << (i * 8) for i in range(32))
+
+    def _drive_otp_dr_fields(self, otp_data, bases, corrupt_field=None):
+        """Drive every 256-bit dual-rail field from its ramp pattern.
+
+        When corrupt_field is given, that one field's complement half has bit 0
+        left un-inverted so the KMCSR decoder reports a dual-rail violation
+        while every other field stays valid, making OTP_SIGINT attributable.
+        """
+        mask256 = (1 << 256) - 1
+        for name in OTP_DR_FIELDS:
+            value = self._ramp_256(bases[name])
+            if name == corrupt_field:
+                cpl = (((~value) & mask256) ^ 1)
+                getattr(otp_data, name).value = (cpl << 256) | (value & mask256)
+            else:
+                getattr(otp_data, name).value = self._make_dr(value)
+
     async def _handle_otp_write(self, arg):
         """Drive OTP data port with known pattern (read-through, no strobe).
 
         Pattern (valid dual-rail throughout):
           life_cycle=0xA5 (lc=0x5), demotion_state_1=0b01 (d1=1), demotion_state_2=0b10 (d2=0)
-          chiplet_uid: dual-rail of bytes 0x00..0x1F (512-bit)
-          sip_uid:     dual-rail of bytes 0x20..0x3F (512-bit)
-          sys_uid:     dual-rail of bytes 0x40..0x5F (512-bit)
-          class_key:   dual-rail of bytes 0x60..0x7F (512-bit)
+          256-bit fields: 32-byte ramps from the OTP_PATTERN_BASE bases
         """
         if not hasattr(self.dut, "otp_data"):
             self.dut._log.warning("[TB CMD] OTP signals not found on DUT")
@@ -1945,15 +1997,7 @@ class TestbenchCommandHandler:
                 )
                 return 0
 
-            chiplet_value = sum((i & 0xFF) << (i * 8) for i in range(32))
-            sip_value = sum(((i + 0x20) & 0xFF) << (i * 8) for i in range(32))
-            sys_value = sum(((i + 0x40) & 0xFF) << (i * 8) for i in range(32))
-            class_value = sum(((i + 0x60) & 0xFF) << (i * 8) for i in range(32))
-
-            otp_data.chiplet_uid.value = self._make_dr(chiplet_value)
-            otp_data.sip_uid.value = self._make_dr(sip_value)
-            otp_data.sys_uid.value = self._make_dr(sys_value)
-            otp_data.class_key.value = self._make_dr(class_value)
+            self._drive_otp_dr_fields(otp_data, OTP_PATTERN_BASE)
         except Exception as e:
             self.dut._log.error(f"[TB CMD] OTP_WRITE failed: {e}")
             return 0
@@ -1966,10 +2010,7 @@ class TestbenchCommandHandler:
 
         Changed pattern (valid dual-rail, differs from baseline in every field):
           life_cycle=0xC3 (lc=0x3), demotion_state_1=0b10 (d1=0), demotion_state_2=0b01 (d2=1)
-          chiplet_uid: dual-rail of bytes 0x80..0x9F (512-bit)
-          sip_uid:     dual-rail of bytes 0xA0..0xBF (512-bit)
-          sys_uid:     dual-rail of bytes 0xC0..0xDF (512-bit)
-          class_key:   dual-rail of bytes 0xE0..0xFF (512-bit)
+          256-bit fields: 32-byte ramps from the OTP_PATTERN_BASE_CHANGED bases
         """
         if not hasattr(self.dut, "otp_data"):
             self.dut._log.warning("[TB CMD] OTP signals not found on DUT")
@@ -1989,15 +2030,7 @@ class TestbenchCommandHandler:
                 )
                 return 0
 
-            chiplet_value = sum(((i + 0x80) & 0xFF) << (i * 8) for i in range(32))
-            sip_value = sum(((i + 0xA0) & 0xFF) << (i * 8) for i in range(32))
-            sys_value = sum(((i + 0xC0) & 0xFF) << (i * 8) for i in range(32))
-            class_value = sum(((i + 0xE0) & 0xFF) << (i * 8) for i in range(32))
-
-            otp_data.chiplet_uid.value = self._make_dr(chiplet_value)
-            otp_data.sip_uid.value = self._make_dr(sip_value)
-            otp_data.sys_uid.value = self._make_dr(sys_value)
-            otp_data.class_key.value = self._make_dr(class_value)
+            self._drive_otp_dr_fields(otp_data, OTP_PATTERN_BASE_CHANGED)
         except Exception as e:
             self.dut._log.error(f"[TB CMD] OTP_WRITE_CHANGED failed: {e}")
             return 0
@@ -2006,20 +2039,27 @@ class TestbenchCommandHandler:
         return 1
 
     async def _handle_otp_write_sigint(self, arg):
-        """Drive OTP port with a CORRUPTED dual-rail encoding on chiplet_uid.
+        """Drive the OTP port with a CORRUPTED dual-rail encoding on one field.
 
-        chiplet_uid[255:0] is a valid value but chiplet_uid[511:256] has bit 0
-        intentionally NOT inverted (value[0] == cpl[0] instead of value[0] != cpl[0]).
-        This should trigger OTP_SIGINT in hardware and an unrecoverable fault.
-        All other fields remain valid dual-rail.
+        arg selects the field by its OTP_READ_LOCK bit position, defaulting to
+        chiplet_uid.  That field's value half is valid but its complement half
+        has bit 0 intentionally NOT inverted, which should trigger OTP_SIGINT in
+        hardware and an unrecoverable fault.  All other fields stay valid.
         """
         if not hasattr(self.dut, "otp_data"):
             self.dut._log.warning("[TB CMD] OTP signals not found on DUT")
             return 0
+        field_bp = int(arg) if arg is not None else OTP_LOCK_FIELDS.index("chiplet_uid")
+        field = OTP_LOCK_FIELDS[field_bp] if field_bp < len(OTP_LOCK_FIELDS) else None
+        if field not in OTP_DR_FIELDS:
+            self.dut._log.error(
+                f"[TB CMD] OTP_WRITE_SIGINT: lock bit {field_bp} is not a dual-rail field"
+            )
+            return 0
         try:
             otp_data = self.dut.otp_data
-            # life_cycle / demotion are VALID dual-rail here; only chiplet_uid is
-            # corrupted, so otp_sigint is attributable solely to chiplet_uid.
+            # life_cycle / demotion are VALID dual-rail here, so otp_sigint is
+            # attributable solely to the selected field.
             otp_data.life_cycle.value = 0xA5
 
             if hasattr(otp_data, "demotion_state_1") and hasattr(otp_data, "demotion_state_2"):
@@ -2031,24 +2071,12 @@ class TestbenchCommandHandler:
                 )
                 return 0
 
-            chiplet_value = sum((i & 0xFF) << (i * 8) for i in range(32))
-            mask256 = (1 << 256) - 1
-            cpl_corrupted = ((~chiplet_value) & mask256) ^ 1  # Flip one complement bit
-            chiplet_corrupted = (cpl_corrupted << 256) | (chiplet_value & mask256)
-
-            sip_value = sum(((i + 0x20) & 0xFF) << (i * 8) for i in range(32))
-            sys_value = sum(((i + 0x40) & 0xFF) << (i * 8) for i in range(32))
-            class_value = sum(((i + 0x60) & 0xFF) << (i * 8) for i in range(32))
-
-            otp_data.chiplet_uid.value = chiplet_corrupted
-            otp_data.sip_uid.value = self._make_dr(sip_value)
-            otp_data.sys_uid.value = self._make_dr(sys_value)
-            otp_data.class_key.value = self._make_dr(class_value)
+            self._drive_otp_dr_fields(otp_data, OTP_PATTERN_BASE, corrupt_field=field)
         except Exception as e:
             self.dut._log.error(f"[TB CMD] OTP_WRITE_SIGINT failed: {e}")
             return 0
         await RisingEdge(self.dut.clk)
-        self.dut._log.info("[TB CMD] OTP_WRITE_SIGINT: drove corrupted dual-rail on chiplet_uid")
+        self.dut._log.info(f"[TB CMD] OTP_WRITE_SIGINT: drove corrupted dual-rail on {field}")
         return 1
 
     async def _handle_wipe_trigger(self, arg):

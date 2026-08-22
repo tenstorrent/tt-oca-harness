@@ -221,9 +221,10 @@ package km_intf_pkg;
      * @details Life-cycle field is differentially encoded (4-bit value in
      *          8 bits); demotion state fields are 1-bit values encoded into
      *          2 bits each.  The four 256-bit secret fields (chiplet_uid,
-     *          class_key, sip_uid, sys_uid) are dual-rail encoded by
-     *          prim_diff_encode_multi in sep_crypto.sv: the 512-bit wire
-     *          carries {~value[255:0], value[255:0]}.
+     *          class_key, sip_uid, sys_uid) and the three 256-bit public
+     *          identity fields (sep_chiplet_id, sep_sip_id, sep_sys_id) are
+     *          dual-rail encoded by prim_diff_encode_multi in sep_crypto.sv:
+     *          the 512-bit wire carries {~value[255:0], value[255:0]}.
      *
      *          Layout: [511:256] = complement (~value), [255:0] = value.
      */
@@ -235,6 +236,9 @@ package km_intf_pkg;
         logic [511:0] class_key;            // 256-bit class key, dual-rail: {~key, key}
         logic [511:0] sip_uid;              // 256-bit SIP UID, dual-rail: {~uid, uid}
         logic [511:0] sys_uid;              // 256-bit system UID, dual-rail: {~uid, uid}
+        logic [511:0] sep_chiplet_id;       // 256-bit chiplet public ID, dual-rail: {~id, id}
+        logic [511:0] sep_sip_id;           // 256-bit SiP public ID, dual-rail: {~id, id}
+        logic [511:0] sep_sys_id;           // 256-bit system public ID, dual-rail: {~id, id}
     } km_otp_data_t;
 
 endpackage : km_intf_pkg

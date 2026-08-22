@@ -31,7 +31,7 @@ This data comes from the following sources:
 * OTP secret fields: CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY
 ** Once these fields have been pushed into the Key Manager, the corresponding read lock bits will be set in order to prevent software from accessing these values
 * OTP public fields: SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID
-** Per-owner public identity values that personalize each owner's identity root. Being public they are not read-locked; only their integrity matters
+** Per-owner public identity values that personalize each owner's identity root. Being public, only their integrity matters
 * Test control signals
 * Configuration parameters e.g. version numbers
 
@@ -1043,14 +1043,19 @@ relationship.
 |`OTP_SIP_UID_VAL/CPL_0..7` |8 × 32-bit |256-bit SIP_UID dual-rail words.
 |`OTP_SYS_UID_VAL/CPL_0..7` |8 × 32-bit |256-bit SYS_UID dual-rail words.
 |`OTP_CLASS_KEY_VAL/CPL_0..7` |8 × 32-bit |256-bit CLASS_KEY dual-rail words.
-|`OTP_READ_LOCK` |6-bit |Write-one-to-set read-lock bits (warm reset domain), one per field. Cleared by warm or cold reset.
-|`OTP_READ_LOCK_COLD` |6-bit |Write-one-to-set read-lock bits (cold reset domain), one per field. Survives warm reset; cleared only by cold reset. Effective lock = `OTP_READ_LOCK` \| `OTP_READ_LOCK_COLD`.
-|`OTP_CHANGE_STATUS` |6-bit |Sticky write-1-to-clear flags: set when a monitored field's decoded value changes.
+|`OTP_SEP_CHIPLET_ID_VAL/CPL_0..7` |8 × 32-bit |256-bit SEP_CHIPLET_ID dual-rail words.
+|`OTP_SEP_SIP_ID_VAL/CPL_0..7` |8 × 32-bit |256-bit SEP_SIP_ID dual-rail words.
+|`OTP_SEP_SYS_ID_VAL/CPL_0..7` |8 × 32-bit |256-bit SEP_SYS_ID dual-rail words.
+|`OTP_READ_LOCK` |9-bit |Write-one-to-set read-lock bits (warm reset domain), one per field. Cleared by warm or cold reset.
+|`OTP_READ_LOCK_COLD` |9-bit |Write-one-to-set read-lock bits (cold reset domain), one per field. Survives warm reset; cleared only by cold reset. Effective lock = `OTP_READ_LOCK` \| `OTP_READ_LOCK_COLD`.
+|`OTP_CHANGE_STATUS` |9-bit |Sticky write-1-to-clear flags: set when a monitored field's decoded value changes.
 |===
 
 *Dual-rail integrity.* The hardware continuously checks that each value word is
 the bitwise inverse of its complement word. Any violation raises the
 `OTP_SIGINT` interrupt, which ROM firmware treats as an unrecoverable fault.
+This applies to the public identity fields as much as to the secrets: a flipped
+bit there would silently personalize `ID_ROOT` with the wrong identity.
 
 *Change detection.* When a monitored field's decoded value changes, the hardware
 sets the corresponding `OTP_CHANGE_STATUS` bit and raises the `OTP_CHANGE`
@@ -1099,12 +1104,16 @@ warm reset, and no cold reset is required to restore keys in the ROM-only
 baseline.
 
 Concretely, this safeguard is the `OTP_READ_LOCK` register: one
-write-one-to-set bit per OTP readout field (life-cycle, demotion, and the four
-256-bit secrets). Setting a bit causes the hardware to return zero for that
-field's value and complement words. ROM applies the lock using a triple-write
-convention (three consecutive writes) so it commits even under a single-bit
-glitch. `OTP_CHANGE_STATUS` shares the same warm reset domain for the same
-reasons.
+write-one-to-set bit per OTP readout field (life-cycle, demotion, the four
+256-bit secrets, and the three 256-bit public identities). Setting a bit causes
+the hardware to return zero for that field's value and complement words. ROM
+applies the lock using a triple-write convention (three consecutive writes) so
+it commits even under a single-bit glitch. `OTP_CHANGE_STATUS` shares the same
+warm reset domain for the same reasons.
+
+ROM does not lock the public identity fields at handover, since concealing them
+buys nothing. Their lock bits exist so the block is uniform and so a caller that
+wants to freeze `ID_ROOT` re-derivation has the same means it has for the UIDs.
 
 A parallel *cold-reset-domain* register, `OTP_READ_LOCK_COLD`, provides the
 same write-one-to-set, per-field locking semantics but survives warm reset

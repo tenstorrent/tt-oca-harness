@@ -837,8 +837,9 @@ module sep_crypto #(
     // LC state and demotion state arrive already differentially encoded from
     // their respective sources (shadow register and LCC output).
     // The four 256-bit secret fields (chiplet_uid, class_key, sip_uid, sys_uid)
-    // are dual-rail encoded here at the source (Sep->KM boundary) using
-    // prim_diff_encode_multi so that any fault on the wire is detectable.
+    // and the three 256-bit public identity fields (sep_chiplet_id, sep_sip_id,
+    // sep_sys_id) are dual-rail encoded here at the source (Sep->KM boundary)
+    // using prim_diff_encode_multi so that any fault on the wire is detectable.
     // Encoded format: data_o = {~value[255:0], value[255:0]} (512 bits total).
 
     km_intf_pkg::km_otp_data_t km_otp_data;
@@ -849,7 +850,7 @@ module sep_crypto #(
     assign km_otp_data.demotion_state_1 = lcc_demote_state_1_o;
     assign km_otp_data.demotion_state_2 = lcc_demote_state_2_o;
 
-    // Dual-rail encode all four 256-bit KM-routed OTP fields.
+    // Dual-rail encode every 256-bit KM-routed OTP field.
     // OutputFlop=0: purely combinational encode (no pipeline latency).
     prim_diff_encode_multi #(
         .Width      (256),
@@ -889,6 +890,37 @@ module sep_crypto #(
         .rst_ni (rst_ni),
         .data_i (shadow_regs_o.fields.sys_uid.uid),
         .data_o (km_otp_data.sys_uid)
+    );
+
+    // The SEP_*_ID fuses are not in the efuse map yet, so encode a zero value.
+    prim_diff_encode_multi #(
+        .Width      (256),
+        .OutputFlop (1'b0)
+    ) u_sep_chiplet_id_enc (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .data_i (256'b0),
+        .data_o (km_otp_data.sep_chiplet_id)
+    );
+
+    prim_diff_encode_multi #(
+        .Width      (256),
+        .OutputFlop (1'b0)
+    ) u_sep_sip_id_enc (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .data_i (256'b0),
+        .data_o (km_otp_data.sep_sip_id)
+    );
+
+    prim_diff_encode_multi #(
+        .Width      (256),
+        .OutputFlop (1'b0)
+    ) u_sep_sys_id_enc (
+        .clk_i  (clk_i),
+        .rst_ni (rst_ni),
+        .data_i (256'b0),
+        .data_o (km_otp_data.sep_sys_id)
     );
 
 
