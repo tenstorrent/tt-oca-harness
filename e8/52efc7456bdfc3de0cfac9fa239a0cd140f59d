@@ -1,0 +1,20 @@
+doc/integrator/src/index.adoc
+  s_c5151d462a6a92::t_c2e0dca6586694 886
+  s_c5151d462a6a92::t_de05665cc8665c 43-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e852efc7456bdfc3de0cfac9fa239a0cd140f59d",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
