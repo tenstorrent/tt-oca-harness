@@ -293,7 +293,7 @@ module efuse_token_processing
     // Simulation handling: no-reset elements power up as X
     ///////////////////////////////////////////////////////
 
-    `ifdef SIM
+    `ifdef SIMULATION
         initial begin
             $display("[INFO] Initialize the tokens and token digest valid bits for simulation. They don't have a reset value.");
         end
