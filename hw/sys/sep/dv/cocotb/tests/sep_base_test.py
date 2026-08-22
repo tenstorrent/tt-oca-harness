@@ -461,6 +461,7 @@ class sep_base_test(uvm_test):
                 dut.rst_ni,
                 name="sep_jtag_axil",
                 reset_active_level=False,
+                raise_on_error=False,
             ).sequence
         return self._jtag_axil
 
@@ -470,28 +471,17 @@ class sep_base_test(uvm_test):
 
         resp_code is the AXI response (OKAY=0, SLVERR=2, DECERR=3; -1 if
         unreadable). A non-completing access (wedge) fails the test rather than
-        hanging silently. Uses init_read/init_write so the caller inspects the
-        response code itself (a denied access returns DECERR, not an exception).
+        hanging silently. Uses the common VIP ``*_result`` API with
+        ``check_response=False`` so a denied access returns DECERR instead of
+        raising.
         """
         m = self.jtag_axil_master()
+        kwargs = {"check_response": False, "timeout_ns": timeout_ns}
         if write:
-            event = m.init_write(address=addr, data=wdata.to_bytes(4, "little"))
-        else:
-            event = m.init_read(address=addr, length=4)
-        try:
-            await with_timeout(event.wait(), timeout_ns, "ns")
-        except SimTimeoutError as exc:
-            raise AssertionError(
-                f"JTAG AXI-Lite op @ 0x{addr:08x} did not complete within {timeout_ns} ns"
-            ) from exc
-        resp = event.data
-        code = getattr(resp, "resp", None)
-        try:
-            code = int(code[0] if isinstance(code, (list, tuple)) else code)
-        except Exception:
-            code = -1
-        rdata = 0 if write else int.from_bytes(resp.data, "little")
-        return code, rdata
+            result = await m.write_result(addr, wdata, **kwargs)
+            return result.resp, 0
+        result = await m.read_result(addr, **kwargs)
+        return result.resp, result.data
 
     # --- entropy (ESRC->DRBG->CSRNG->EDN->KM) bring-up observers --------------
     # Shared poll/check helpers for any entropy-consumer test (the SEQUENCES that
