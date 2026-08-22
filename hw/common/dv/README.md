@@ -93,7 +93,6 @@ a protocol already represented here; extend the existing stable wrapper.
 | `ocah_axi_vip` | **Promoted** (both sides) | `ocah_axi_vip/cocotb/examples/example_register_access.py`, `example_axi_scoreboard_selftest.py` | DTP, SEP, and SMC use the shared AXI/AXI-Lite master and slave agents through the per-side `*Sequence` APIs; the checker/reference-model/scoreboard stack is gated by the DTP jtag2axi decode-error, security-gating, and SLVERR/DECERR injection tests; DUT-local agents retain address and scoreboard policy. SV layer (interface/SVA/responder modules/passive UVM stack/UVM slave agent) is consumed by `--dut dtp --framework uvm`, where the UVM slave agent answers the SMC OTP AXI-Lite port; the UVM master side is not shipped yet |
 | `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 (master side) | `ocah_jtag_vip/cocotb/examples/example_idcode.py`, `example_slave_selftest.py` | DTP, SMC, and SMU consume the master TAP API; the slave side (reactive TAP device) ships selftest-validated with no gating DUT consumer yet — DUT JTAG host ports are the intended first integration; iJTAG, boundary-scan, and DUT TDR maps remain local |
 | `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | SEP is the gating DUT consumer; true quad/octal lanes, DDR, and vendor timing remain deferred |
-| `ocah_apb_vip` | Experimental / unadopted | No package-local example | No real DUT consumer; add an APB example and gating integration before promotion |
 | `ocah_i3c_vip` | Experimental / dependency-gated | `ocah_i3c_vip/cocotb/examples/example_priv_rw.py` | SMC use is optional/non-gating until the backend is reproducibly provisioned and a DUT test gates it |
 | `ocah_uart_vip` | Experimental / dependency-gated | `ocah_uart_vip/cocotb/examples/example_loopback.py` | SMC has a consumer, but the optional backend is not part of the locked default environment |
 
@@ -111,7 +110,7 @@ its status.
 
 | Capability | Classification / reason | Owner | Promotion condition and next action | Follow-up |
 |------------|-------------------------|-------|-------------------------------------|-----------|
-| APB shared wrapper | Experimental: documented API, but no package-local example or real DUT adopter | Shared DV + first APB adopter | Add an APB example and make one DUT regression gate real APB traffic | Historical baseline [#3288](https://github.com/tenstorrent/tt-oca-hw/issues/3288); open a #3299 child when adopted |
+| APB shared wrapper | No shared package: no DUT exposes an APB surface to a testbench today | Shared DV + first APB adopter | Introduce a shared APB VIP only when a DUT regression gates real APB traffic | Historical baseline [#3288](https://github.com/tenstorrent/tt-oca-hw/issues/3288); open a #3299 child when adopted |
 | UART | Experimental/dependency-gated: SMC consumer exists, but the optional backend is not locked consistently | Shared UART VIP + SMC DV | Resolve backend version/license policy, lock it in the supported environment, and retain a passing SMC loopback | Open a #3299 child when dependency work starts |
 | I2C | No shared package: the SMC-local clock-sampled model (`hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py`) owns I2C/SMBus/PMBus traffic because `cocotbext-i2c` edge waits miss open-drain transitions under Verilator | SMC DV | Introduce a shared I2C VIP only when a second subsystem needs one and the open-drain timing fix is protocol-neutral | Open a #3299 child if a shared package is introduced |
 | I3C SDR | Experimental/dependency-gated: current SMC use is optional and non-gating | Shared I3C VIP + SMC/SMU DV | Reproducibly provision the backend and make a DUT smoke test gating rather than advisory | SMU consumer [#3547](https://github.com/tenstorrent/tt-oca-hw/issues/3547) |
@@ -255,6 +254,6 @@ notes:
   `SmcSysAxiDriver`, which binds the shared `ocah_axi_vip.OcahAxiMasterAgent`.
   The local layer owns SMC/PyUVM sequencing and policy; the AXI protocol engine
   remains shared.
-- `ocah_axi_vip.OcahAxiMonitor`, `OcahAxiLiteMonitor`, and
-  `ocah_apb_vip.OcahApbMonitor` are OCAH-owned passive samplers that emit plain
-  item dataclasses. The released master/responder BFMs remain cocotbext-backed.
+- `ocah_axi_vip.OcahAxiMonitor` and `OcahAxiLiteMonitor` are OCAH-owned
+  passive samplers that emit plain item dataclasses. The released
+  master/responder BFMs remain cocotbext-backed.

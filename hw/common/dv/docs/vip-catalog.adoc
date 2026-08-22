@@ -53,12 +53,6 @@ shared SV interface, and UVM agent. iJTAG and DUT TDR maps remain local.
 |NOR flash responder and passive monitor. Quad/octal personalities currently
 use single-bit data timing; DDR and vendor timing are deferred.
 
-|`ocah_apb_vip`
-|Experimental / unadopted
-|`cocotbext-axi` APB support
-|Master, responder/RAM, results, item, monitor, and checker. A package-local
-example and real DUT consumer are still required.
-
 |`ocah_i3c_vip`
 |Experimental / dependency-gated
 |Vendored `cocotbext-i3c`
@@ -129,15 +123,9 @@ sequence items and scoreboards.
 [[shared-vip-apb]]
 === APB
 
-Package: `hw/common/dv/vip/ocah_apb_vip/`
-
-`OcahApbMaster`, `OcahApbSlave`, and `OcahApbRam` mirror the AXI-Lite register
-access shape. `OcahApbReadResult` and `OcahApbWriteResult` expose `pslverr`,
-`ok`, and timeout state. `OcahApbMonitor` emits `OcahApbItem` records consumed
-by `OcahApbChecker`.
-
-Promotion requires a package-local example and a real DUT regression. Until
-then it is available for opt-in experiments but is not a milestone-gating VIP.
+No shared APB package ships. No DUT exposes an APB surface to a testbench
+today; a shared APB VIP is introduced only when a DUT regression gates real
+APB traffic.
 
 [[shared-vip-jtag]]
 === JTAG
