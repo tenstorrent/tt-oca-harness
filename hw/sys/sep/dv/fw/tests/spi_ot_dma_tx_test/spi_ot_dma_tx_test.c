@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OpenTitan-SPI DMA-TX firmware test (OSS rep SPI DMA-TX breadth). The complement of the
 // Phase-1 sep_spi_ot_dma_rx (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA
@@ -121,9 +122,6 @@ static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
 }
 
 static void spi_init(void) {
-    // Nonfree: route pads to OT and release cs_force_high (needs NONFREE_ROOT
-    // overlay so spi_mux_select_ot is not a no-op). Open SEP has no mux.
-    sep_spi_mux_release_cs();
     // RX_WM=1 (RX kept quiescent), TX_WM drives the refill trigger.
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
            (TX_WATERMARK << SPI_CONTROLLER__CTRL__TX_WATERMARK_bp) |
@@ -383,10 +381,14 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     }
 
     // --- Flash device completion: poll RDSR until WIP=0 before readback ---
+    // The flash BFM is instant-ready, so the first defined RDSR already has
+    // WIP=0. This poll is fail-closed on 0xFF/timeout, not a busy-then-idle
+    // waveform. CHK-DMA-TX below is the data proof.
     if (flash_wait_wip_clear()) {
         errors++;
         return errors;
     }
+    sep_mbx_puts("CHK-WIP PASS: RDSR returned a defined status with WIP=0\n");
 
     // --- CHK-DMA-TX: read the flash back -> it equals the DMA-fed data ---
     if (flash_read(addr, rd, nwords)) {

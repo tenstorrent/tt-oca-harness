@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for sep_axi_smoke_test.
 
 Real AXI traffic over the CPU LSU bus (no booted CPU):

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap round 2: mailbox multi-instance sweep.
 
 Round 1 `smc_mailbox_inbound_test` only touches inbound mailbox 0. RTL

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP outbound-mailbox -> PIC -> CPU interrupt-delivery firmware test (OSS port
 // of the reference sep_mailbox_plic_test). The EL2 CPU arms outbound mailbox 0 to

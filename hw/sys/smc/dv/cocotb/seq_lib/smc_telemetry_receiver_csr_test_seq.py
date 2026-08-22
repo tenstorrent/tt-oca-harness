@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-6: TELEMETRY CSR + INTR_TEST IRQ + ATB message into receiver 0.
 
 ATB framing mirrors hw/comp/telemetry_receiver/tb_vcs/test_telemetry_receiver.py

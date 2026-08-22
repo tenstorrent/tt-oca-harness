@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Passive monitor at the slave-side observation point.
 
 The slave side watches the same IEEE 1149.1 wire as the master side, so the

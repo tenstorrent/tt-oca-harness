@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smc_reset_unit_wdt_scratch_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
 
 Was: WDT Force pulse. Re-enable with legal TB pin / frontdoor / real LCC.

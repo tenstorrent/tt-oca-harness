@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP CPU IFU/LSU local-alias-remap test (PyUVM).
 
 OSS port of the reference suite ``sep_cpu_ifu_lsu_alias_remap_matrix_test``.
@@ -14,7 +15,7 @@ fetches+executes an instruction through the alias (stronger than the reference s
 IFU-port write).
 
 This MUST be a CPU-firmware test: the OSS no_cpu AXI splice is POST-remap, so a
-no_cpu driver would bypass E12 entirely. Firmware-self-checking; start.S emits the
+no_cpu driver would bypass the CPU-side remapper entirely. Firmware-self-checking; start.S emits the
 PASS/FAIL magic. No fuse data is read, so the testlist entry uses +skip_fuse_sense.
 """
 

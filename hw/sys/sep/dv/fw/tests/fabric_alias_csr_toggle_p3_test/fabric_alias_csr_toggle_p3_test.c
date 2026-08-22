@@ -457,7 +457,7 @@ static int test_register_address_mapping_coverage(void) {
 }
 
 int main(void) {
-    printf("Alias CSR Toggle P3 Test\n");
+    printf("Alias CSR Toggle Test\n");
     printf("Goals: alias_remap_reg 82.81%% -> 90%%+ (needs 7.19%% improvement)\n");
     printf("Strategy: Precise Alias CSR field toggles; full register coverage\n\n");
 
@@ -503,7 +503,7 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    printf("\n=== ALIAS CSR TOGGLE P3 TEST PASSED ===\n");
+    printf("\n=== ALIAS CSR TOGGLE TEST PASSED ===\n");
     printf("Expected improvement: alias_remap_reg 82.81%% -> 90%%+ (7.19%% improvement)\n");
 
     test_pass("fabric_alias_csr_toggle_p3_test");

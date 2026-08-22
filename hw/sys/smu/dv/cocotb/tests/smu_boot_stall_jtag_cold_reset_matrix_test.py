@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_boot_stall_jtag_cold_reset_matrix_test - P2-I3a boot-stall sticky matrix.
 
 Deepens P1 smu_dft_dtp_boot_stall_test with an explicit TRST-clear contrast:

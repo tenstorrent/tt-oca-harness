@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_bsr_extest_loopback_test - P4 EXTEST BSR scan loopback.
 
 Loads IR=EXTEST, shifts compact 8-bit patterns through the TB scan_in<-scan_out

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP UVM base test: builds the env, brings up clocks/resets, runs a scenario."""
 
 from __future__ import annotations

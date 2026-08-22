@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_no_sep_configuration_test (SMU_005 rev 3).
 
 Proves SEP=0 lc_state_o==8'hf0 only. Direct SMN→SMC path deferred: SYS_IN

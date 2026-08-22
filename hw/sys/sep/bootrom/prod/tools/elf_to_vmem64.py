@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """
 Convert a RISC-V ELF into 64-bit $readmemh VMEM format for the SEP Boot ROM.
 

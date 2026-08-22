@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Slave-engine selftest: the reactive TAP device judged by the master model.
 
 Runs standalone (``python example_slave_selftest.py``) with no simulator: a

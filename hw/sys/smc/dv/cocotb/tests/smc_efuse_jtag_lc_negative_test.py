@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC eFuse JTAG lifecycle *negative* test (PROD deny + identity allow).
 
 Drives product ports only:

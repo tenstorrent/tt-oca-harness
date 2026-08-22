@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan HMAC run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Configures the HMAC engine for keyed HMAC-SHA256, pushes a message through the

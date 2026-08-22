@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Field-aware CSR catalog for OSS-safe SMC register tests."""
 
 from __future__ import annotations

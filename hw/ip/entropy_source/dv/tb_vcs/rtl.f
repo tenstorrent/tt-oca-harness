@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 // RTL File List for Entropy Source
 // Use $OCH_ROOT environment variable for portability
 

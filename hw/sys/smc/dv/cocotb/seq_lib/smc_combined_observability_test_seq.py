@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_combined_observability_test.
 
 Cross-agent sequence: samples both the reset observables and the I2C

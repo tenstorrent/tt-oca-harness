@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP dual-CPU eFuse AXI-lite mux coexistence test (PyUVM).
 
 OSS port of the reference-suite ``sep_efuse_km_axil_cpu_mux_coexist_test``.

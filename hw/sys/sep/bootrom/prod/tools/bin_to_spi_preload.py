@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Convert a raw binary file to Verilog $readmemh hex format (.spi_preload).
 
 Usage: python3 bin_to_spi_preload.py input.bin output.spi_preload

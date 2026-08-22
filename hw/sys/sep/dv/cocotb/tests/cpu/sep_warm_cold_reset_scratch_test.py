@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP warm/cold reset scratch-bank retention (PyUVM).
 
 OSS port of reference suite ``sep_clock_uvm_warm_reset_vs_cold_reset_test``.

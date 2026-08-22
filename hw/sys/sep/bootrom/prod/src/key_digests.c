@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // ROM-embedded public key digests for secure boot.
 //
 // Each entry is the SHA-256 digest of the RSA-3072 modulus (384 bytes, big-endian).

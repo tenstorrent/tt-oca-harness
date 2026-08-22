@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP Secure-DMA basic-breadth firmware test (OSS rep DMA basic breadth). reference provenance:
 // uvm_tests/dma sep_dma_uvm_reg_rw / reg_reset / cfg_regwen / range_regwen /
@@ -37,8 +38,9 @@
 #include "sep_mailbox.h"
 #include "sep_dma.h"
 
-#define SRC_BASE 0x10000000u // SEP SRAM
-#define DST_BASE 0x10000800u // +2 KiB, no overlap with the 1 KiB busy-lock copy
+#define SRAM_BASE 0x10000000u
+#define SRAM_SIZE 0x00040000u
+#define DMA_PARAM_MAGIC 0xDA0A11C0u
 #define ASID_OT_BOTH \
     (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset | (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << 4))
 #define DONE_OR_ERR (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)
@@ -48,6 +50,19 @@
 // with neither DONE nor ERROR) instead of wedging the whole run on one poll. A
 // real 256 B copy completes in well under this many CSR-read iterations.
 #define POLL_ITERS 4000
+#define MAX_COPY_WORDS 8u
+
+// Scenario block. Layout: [0]=magic, [1]=src_off, [2]=dst_off, [3]=copy_bytes
+// (16 or 32, 4-byte aligned), [4]=fill seed. The cocotb test patches this from
+// the run seed; committed defaults keep a standalone directed image.
+volatile uint32_t g_dma_params[5] = {
+    DMA_PARAM_MAGIC, 0x0u, 0x800u, 0x10u, 0x1234567u,
+};
+
+static uint32_t src_base;
+static uint32_t dst_base;
+static uint32_t copy_bytes;
+static uint32_t fill_seed;
 
 static inline uint32_t rd(uint32_t a) {
     return *(volatile uint32_t *)a;
@@ -122,8 +137,8 @@ static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint
 }
 
 static void fill_src_words(uint32_t n, uint32_t *snap) {
-    volatile uint32_t *s = (volatile uint32_t *)SRC_BASE;
-    uint32_t lfsr = 0x1234567u;
+    volatile uint32_t *s = (volatile uint32_t *)src_base;
+    uint32_t lfsr = fill_seed;
     for (uint32_t i = 0; i < n; i++) {
         lfsr = lfsr * 1664525u + 1013904223u;
         s[i] = lfsr;
@@ -135,7 +150,7 @@ static void fill_src_words(uint32_t n, uint32_t *snap) {
 
 // Clear ``n`` destination words to a sentinel so untouched-neighbor checks are real.
 static void clear_dst_words(uint32_t n, uint32_t sentinel) {
-    volatile uint32_t *d = (volatile uint32_t *)DST_BASE;
+    volatile uint32_t *d = (volatile uint32_t *)dst_base;
     for (uint32_t i = 0; i < n; i++) {
         d[i] = sentinel;
     }
@@ -187,9 +202,9 @@ static int chk_cfg_regwen(void) {
     // lock on its very next CSR read, without bloating sim time.
     const uint32_t len = 0x100u;
     fill_src_words(len / 4, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SRC_BASE);
+    wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src_base);
     wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
-    wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DST_BASE);
+    wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst_base);
     wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0);
     wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, ASID_OT_BOTH);
     wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
@@ -213,10 +228,10 @@ static int chk_cfg_regwen(void) {
         sep_mbx_putc('\n');
         e++;
     }
-    // A config write while locked must be rejected (SRC_ADDR_LO holds SRC_BASE).
+    // A config write while locked must be rejected (SRC_ADDR_LO holds src_base).
     wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, 0xDEADBEEFu);
     uint32_t after = rd(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR);
-    if (after != SRC_BASE) {
+    if (after != src_base) {
         sep_mbx_puts("FAIL: CHK-CFG-REGWEN config write not rejected while locked, got ");
         sep_mbx_puthex(after);
         sep_mbx_putc('\n');
@@ -253,7 +268,7 @@ static int chk_cfg_regwen(void) {
 static int chk_range_regwen(void) {
     int e = 0;
     // (a) Range gating: RANGE_VALID still 0 (reset) -> a transfer errors.
-    uint32_t st = dma_run(SRC_BASE, DST_BASE, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
+    uint32_t st = dma_run(src_base, dst_base, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
     uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
@@ -300,7 +315,7 @@ static int chk_range_regwen(void) {
 
 // Verify ``n`` destination words match ``expect[i]`` and ``DST[n]`` is the sentinel.
 static int check_words(const uint32_t *expect, uint32_t n, uint32_t sentinel, const char *tag) {
-    volatile uint32_t *d = (volatile uint32_t *)DST_BASE;
+    volatile uint32_t *d = (volatile uint32_t *)dst_base;
     for (uint32_t i = 0; i < n; i++) {
         if (d[i] != expect[i]) {
             sep_mbx_puts("FAIL: ");
@@ -331,11 +346,11 @@ static int check_words(const uint32_t *expect, uint32_t n, uint32_t sentinel, co
 // the kept log names which mode failed and why.
 static int run_mode(const char *tag, uint32_t total, uint32_t chunk, uint32_t src_cfg,
                     uint32_t dst_cfg, const uint32_t *exp, uint32_t nexp, uint32_t sentinel) {
-    clear_dst_words(5, sentinel);
+    clear_dst_words(nexp + 1, sentinel);
     uint32_t st = (chunk < total)
-                      ? dma_run_chunked(SRC_BASE, DST_BASE, total, chunk, SEP_DMA_WIDTH_4B, src_cfg,
+                      ? dma_run_chunked(src_base, dst_base, total, chunk, SEP_DMA_WIDTH_4B, src_cfg,
                                         dst_cfg, SEP_DMA_OPCODE_COPY)
-                      : dma_run(SRC_BASE, DST_BASE, total, chunk, SEP_DMA_WIDTH_4B, src_cfg,
+                      : dma_run(src_base, dst_base, total, chunk, SEP_DMA_WIDTH_4B, src_cfg,
                                 dst_cfg, SEP_DMA_OPCODE_COPY);
     int bad = 0;
     if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm)) {
@@ -358,41 +373,41 @@ static int run_mode(const char *tag, uint32_t total, uint32_t chunk, uint32_t sr
 static int chk_copy_mode(void) {
     int e = 0;
     const uint32_t SENT = 0xA5A5A5A5u;
-    uint32_t snap[4];
-    uint32_t exp[4];
+    uint32_t snap[MAX_COPY_WORDS];
+    uint32_t exp[MAX_COPY_WORDS];
+    const uint32_t nwords = copy_bytes / 4u;
+    const uint32_t half = nwords / 2u;
 
-    fill_src_words(4, snap); // independent expected image, not re-read from SRAM
+    fill_src_words(nwords, snap); // independent expected image, not re-read from SRAM
 
     // (1) INCR/INCR linear copy: dst[i] = src[i].
-    exp[0] = snap[0];
-    exp[1] = snap[1];
-    exp[2] = snap[2];
-    exp[3] = snap[3];
-    e += run_mode("CHK-COPY-MODE INCR", 0x10u, 0x10u, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, 4, SENT);
+    for (uint32_t i = 0; i < nwords; i++) {
+        exp[i] = snap[i];
+    }
+    e += run_mode("CHK-COPY-MODE INCR", copy_bytes, copy_bytes, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, nwords, SENT);
 
     // (2) FIXED src (re-read in place) + INCR dst: dst[i] = src[0] (replicate).
-    exp[0] = snap[0];
-    exp[1] = snap[0];
-    exp[2] = snap[0];
-    exp[3] = snap[0];
-    e += run_mode("CHK-COPY-MODE FIXED-src", 0x10u, 0x10u, SECURE_DMA__SRC_CONFIG__WRAP_bm,
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, 4, SENT);
+    for (uint32_t i = 0; i < nwords; i++) {
+        exp[i] = snap[0];
+    }
+    e += run_mode("CHK-COPY-MODE FIXED-src", copy_bytes, copy_bytes, SECURE_DMA__SRC_CONFIG__WRAP_bm,
+                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, nwords, SENT);
 
-    // (3) INCR src + FIXED dst (overwrite in place): dst[0] = src[3], dst[1] untouched.
-    exp[0] = snap[3];
-    e += run_mode("CHK-COPY-MODE FIXED-dst", 0x10u, 0x10u, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
-                  SECURE_DMA__SRC_CONFIG__WRAP_bm, exp, 1, SENT);
+    // (3) INCR src + FIXED dst (overwrite in place): dst[0] = src[last], dst[1] untouched.
+    exp[0] = snap[nwords - 1u];
+    e += run_mode("CHK-COPY-MODE FIXED-dst", copy_bytes, copy_bytes,
+                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__SRC_CONFIG__WRAP_bm, exp, 1, SENT);
 
-    // (4) WRAP src (chunk < total) + INCR dst: total 16 / chunk 8 -> 2 chunks of
-    // 2 words; the source wraps to its start each chunk, so dst = [s0,s1,s0,s1].
-    exp[0] = snap[0];
-    exp[1] = snap[1];
-    exp[2] = snap[0];
-    exp[3] = snap[1];
-    e += run_mode("CHK-COPY-MODE WRAP-src", 0x10u, 0x08u,
+    // (4) WRAP src (chunk < total) + INCR dst: two chunks of half words; the source
+    // wraps to its start each chunk, so dst = first half twice.
+    for (uint32_t i = 0; i < half; i++) {
+        exp[i] = snap[i];
+        exp[half + i] = snap[i];
+    }
+    e += run_mode("CHK-COPY-MODE WRAP-src", copy_bytes, copy_bytes / 2u,
                   (SECURE_DMA__SRC_CONFIG__INCREMENT_bm | SECURE_DMA__SRC_CONFIG__WRAP_bm),
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, 4, SENT);
+                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, nwords, SENT);
 
     if (!e) {
         sep_mbx_puts("CHK-COPY-MODE PASS: INCR linear / FIXED-src replicate / "
@@ -405,15 +420,15 @@ static int chk_copy_mode(void) {
 static int chk_width(void) {
     int e = 0;
     const uint32_t SENT = 0x5A5A5A5Au;
-    const uint32_t bytes = 16u;
-    volatile uint8_t *sb = (volatile uint8_t *)SRC_BASE;
-    volatile uint8_t *db = (volatile uint8_t *)DST_BASE;
+    const uint32_t bytes = copy_bytes;
+    volatile uint8_t *sb = (volatile uint8_t *)src_base;
+    volatile uint8_t *db = (volatile uint8_t *)dst_base;
     uint32_t widths[3] = {SEP_DMA_WIDTH_1B, SEP_DMA_WIDTH_2B, SEP_DMA_WIDTH_4B};
 
     fill_src_words(bytes / 4, 0);
     for (int w = 0; w < 3; w++) {
         clear_dst_words(bytes / 4 + 1, SENT);
-        uint32_t st = dma_run(SRC_BASE, DST_BASE, bytes, bytes, widths[w],
+        uint32_t st = dma_run(src_base, dst_base, bytes, bytes, widths[w],
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
         // Read the width back. Without this the three iterations are indistinguishable:
@@ -453,9 +468,10 @@ static int chk_width(void) {
 static int chk_done_rw1c(void) {
     int e = 0;
     const uint32_t SENT = 0x33333333u;
-    fill_src_words(4, 0);
-    clear_dst_words(5, SENT);
-    uint32_t st = dma_run(SRC_BASE, DST_BASE, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
+    const uint32_t nwords = copy_bytes / 4u;
+    fill_src_words(nwords, 0);
+    clear_dst_words(nwords + 1, SENT);
+    uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
     if (!(st & SECURE_DMA__STATUS__DONE_bm)) {
@@ -480,9 +496,10 @@ static int chk_done_rw1c(void) {
 static int chk_err_opcode(void) {
     int e = 0;
     const uint32_t SENT = 0xC3C3C3C3u;
-    uint32_t snap[4];
-    fill_src_words(4, snap);
-    uint32_t st = dma_run(SRC_BASE, DST_BASE, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
+    const uint32_t nwords = copy_bytes / 4u;
+    uint32_t snap[MAX_COPY_WORDS];
+    fill_src_words(nwords, snap);
+    uint32_t st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_INVALID);
     uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
@@ -504,8 +521,8 @@ static int chk_err_opcode(void) {
     wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C); // clear error
 
     // Recovery: a subsequent good COPY succeeds with no error.
-    clear_dst_words(5, SENT);
-    st = dma_run(SRC_BASE, DST_BASE, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
+    clear_dst_words(nwords + 1, SENT);
+    st = dma_run(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                  SEP_DMA_OPCODE_COPY);
     err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
@@ -517,8 +534,8 @@ static int chk_err_opcode(void) {
         sep_mbx_puts(")\n");
         e++;
     } else {
-        volatile uint32_t *d = (volatile uint32_t *)DST_BASE;
-        for (uint32_t i = 0; i < 4; i++) {
+        volatile uint32_t *d = (volatile uint32_t *)dst_base;
+        for (uint32_t i = 0; i < nwords; i++) {
             if (d[i] != snap[i]) {
                 sep_mbx_puts("FAIL: CHK-ERR-OPCODE recovery copy word ");
                 sep_mbx_puthex(i);
@@ -544,6 +561,30 @@ int main(void) {
 
     sep_outbound_filter_init(); // open the 0x8000_0000 console window
     sep_mbx_puts("SEP DMA basic test\n");
+
+    if (g_dma_params[0] != DMA_PARAM_MAGIC) {
+        sep_mbx_puts("FAIL: bad DMA param magic\n");
+        return 1;
+    }
+    src_base = SRAM_BASE + g_dma_params[1];
+    dst_base = SRAM_BASE + g_dma_params[2];
+    copy_bytes = g_dma_params[3];
+    fill_seed = g_dma_params[4];
+    if (copy_bytes < 16u || copy_bytes > (MAX_COPY_WORDS * 4u) || (copy_bytes & 0xFu) ||
+        (g_dma_params[1] & 0xFu) || (g_dma_params[2] & 0xFu) ||
+        (g_dma_params[1] + 0x100u) > SRAM_SIZE || (g_dma_params[2] + 0x100u) > SRAM_SIZE) {
+        sep_mbx_puts("FAIL: bad DMA param range\n");
+        return 1;
+    }
+    sep_mbx_puts("SCENARIO src=");
+    sep_mbx_puthex(src_base);
+    sep_mbx_puts(" dst=");
+    sep_mbx_puthex(dst_base);
+    sep_mbx_puts(" nbytes=");
+    sep_mbx_puthex(copy_bytes);
+    sep_mbx_puts(" fill=");
+    sep_mbx_puthex(fill_seed);
+    sep_mbx_putc('\n');
 
     errors += chk_reset();        // must run before any DMA write
     errors += chk_range_regwen(); // proves gating, then locks a full valid range

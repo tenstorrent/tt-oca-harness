@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared LIVE observation helpers for SMC clock-gating cocotb sequences."""
 
 from __future__ import annotations

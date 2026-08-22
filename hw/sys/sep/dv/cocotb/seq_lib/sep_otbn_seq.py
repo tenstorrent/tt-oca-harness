@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OTBN run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Loads an OTBN program into IMEM over the AXI front door (the OTBN TL/AXI adapter
@@ -10,7 +11,7 @@ sep_km_otbn_sideload_kat_test_seq run mechanics.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
+from sep_reg_meta import sym, OTBN
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -22,6 +23,8 @@ OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
 OTBN_ADDR_CMD = OTBN_BASE + 0x010
 OTBN_ADDR_STATUS = OTBN_BASE + 0x018
 OTBN_ADDR_ERRBIT = OTBN_BASE + 0x01C
+OTBN_ADDR_LOAD_CHECKSUM = OTBN.addr("LOAD_CHECKSUM")
+OTBN_LOAD_CHECKSUM_RESET = OTBN.reset32("LOAD_CHECKSUM")
 OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
 OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 
@@ -121,6 +124,16 @@ class SepOtbn(SepAxiRegDriver):
 
     async def read_dmem(self, offset: int) -> int:
         return await self._rd(OTBN_DMEM_BASE + offset)
+
+    async def write_dmem(self, offset: int, val: int) -> None:
+        await self._wr(OTBN_DMEM_BASE + offset, val & 0xFFFF_FFFF)
+
+    async def write_load_checksum(self, val: int) -> None:
+        """LOAD_CHECKSUM is a 32-bit RW CSR in the OTBN rst_ni domain (reset 0)."""
+        await self._wr(OTBN_ADDR_LOAD_CHECKSUM, val & 0xFFFF_FFFF)
+
+    async def read_load_checksum(self) -> int:
+        return await self._rd(OTBN_ADDR_LOAD_CHECKSUM)
 
     async def read_dmem_words(self, base_offset: int, count: int) -> list[int]:
         return [await self.read_dmem(base_offset + i * 4) for i in range(count)]

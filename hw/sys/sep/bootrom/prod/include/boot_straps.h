@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Boot strap parsing for OROM.
 //
 // Reads latched strap values from SMC reset unit registers (accessed via SEP's

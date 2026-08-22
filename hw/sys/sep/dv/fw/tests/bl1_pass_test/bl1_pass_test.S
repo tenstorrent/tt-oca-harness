@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Minimal BL1 test payload for OROM boot flow verification.
 //
 // After the Boot ROM loads this image into ICCM and jumps to _start,

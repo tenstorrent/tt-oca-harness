@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Thin entry point for the native OSS DV launcher.
 
 Before handing off to :mod:`runlib.cli`, the bootstrap resolves the repository

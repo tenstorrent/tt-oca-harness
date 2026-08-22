@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: EFUSE_INTERFACE_CTRL + EFUSE_SHIM_CTRL (TC_SMC_P1CG_05).
 
 Existing eFuse tests touch chip_config + permission boundary but the

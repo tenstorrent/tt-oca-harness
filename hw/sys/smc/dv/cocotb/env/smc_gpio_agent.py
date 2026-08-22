@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS GPIO-observer UVM agent.
 
 Passive agent that samples the OR-of-vector GPIO observability outputs

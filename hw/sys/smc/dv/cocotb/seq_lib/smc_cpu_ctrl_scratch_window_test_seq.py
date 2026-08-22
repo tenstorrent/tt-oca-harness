@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU-control scratch-window write/readback depth test."""
 
 from __future__ import annotations

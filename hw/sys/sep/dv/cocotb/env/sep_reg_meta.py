@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register metadata accessor over the generated SystemRDL Python header.
 
 Tests and sequences must NOT keep their own copies of register offsets, reset

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_xtrig_ctm_four_phase_test — DEFERRED (needs CT peer / no Force).
 
 Product-pin remap is enrolled as smu_xtrig_ctm_remap_test. Full four-phase

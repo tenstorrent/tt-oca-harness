@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM non-secure boot test (PyUVM) -- real Boot ROM, SPI stubbed.
 
-Boots the VeeR EL2 core from the REAL production Boot ROM (fw/sep/bootcode,
-copied+trimmed into hw/sys/sep/bootrom/prod) at ROM_BASE. SPI is stubbed
-(src/sep_spi.c) because the OSS `sep` DUT has no licensed xSPI, so the ROM takes
+Boots the VeeR EL2 core from the REAL production Boot ROM
+(`hw/sys/sep/bootrom/prod`) at ROM_BASE. SPI is stubbed
+(`hw/sys/sep/bootrom/prod/src/sep_spi.c`) because the OSS `sep` DUT has no
+pad-muxed SPI host, so the ROM takes
 its non-SPI (SMC-SRAM) manifest path. The manifest + BL1 payload are provided by
 a behavioral SMC responder in the testbench; BL1 signals PASS on the mailbox.
 

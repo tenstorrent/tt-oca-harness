@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC P2-15 — lifecycle-gated eFuse JTAG access-control matrix.
 
 Exercises the SMC-OTP JTAG access-control policy end-to-end using product

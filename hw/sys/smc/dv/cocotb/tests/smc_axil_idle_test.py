@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM AXI-Lite master idle test.
 
 Samples the OR of all SMC AXI-Lite downstream master *_valid signals

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP reset-controller + WDT sanity firmware test (OSS port combining the reference suite
 // sep_reset_ctrl_csr_test and wdt_sanity_test). Two phases, one EL2 boot:

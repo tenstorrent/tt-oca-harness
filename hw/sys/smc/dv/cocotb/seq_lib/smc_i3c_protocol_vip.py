@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS I3C protocol VIP wrapper.
 
 Thin DUT-local bind of ``ocah_i3c_vip`` split-port BFMs onto SMC

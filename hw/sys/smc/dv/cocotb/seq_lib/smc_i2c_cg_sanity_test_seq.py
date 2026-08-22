@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_i2c_cg_sanity_test.
 
 Dispatches one SmcI2cItem SAMPLE transaction. The agent driver reads

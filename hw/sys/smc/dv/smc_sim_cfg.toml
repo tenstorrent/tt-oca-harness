@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Launch entry: `--dut smc` (discovered by the directory convention).
@@ -102,7 +105,6 @@ description = "OSS SMC cocotb target"
 build_dir = "hw/sys/smc/dv/build/cocotb"
 defines = [
   "SYNTHESIS",
-  "SIM",
 ]
 
 [targets.default.tools.verilator]

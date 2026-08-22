@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_ZEROER_AXICLK_CG_TEST ANCHOR: smc_zeroer_axiclk_cg_test
 DV-CARD-REVISION: 1 RECORD-SHA256: 67c81eca9fc764cc694026df6a7da34a406f4c5528305cc17e43d9d6b9a045db

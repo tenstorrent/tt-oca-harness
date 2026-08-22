@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Canonical aidv evidence map for OSS SMU tests.
 
 Each test lists (CHK_ID, TOKEN, EXPECT) triples. Scoreboard logs

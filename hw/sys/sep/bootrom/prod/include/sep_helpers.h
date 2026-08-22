@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Helper utilities for OCH SEP bootcode.
 //
 // Freestanding (no libc) helper routines for range checks and explicit clearing.

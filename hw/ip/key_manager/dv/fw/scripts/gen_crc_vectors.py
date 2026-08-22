@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Generate the expected CRC-8/ROHC and CRC-32C values used by test_rom_crc.c.
 
 This is an independent software model of the two CRC modes the hardware
