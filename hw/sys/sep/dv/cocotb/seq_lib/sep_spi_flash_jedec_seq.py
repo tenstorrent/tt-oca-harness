@@ -19,13 +19,13 @@ from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 
-SPI_CONTROLLER_CONTROL = sym("SPI_CONTROLLER_CONTROL_REG_ADDR")
+SPI_CONTROLLER_CTRL = sym("SPI_CONTROLLER_CTRL_REG_ADDR")
 SPI_CONTROLLER_STATUS = sym("SPI_CONTROLLER_STATUS_REG_ADDR")
-SPI_CONTROLLER_CONFIGOPTS = sym("SPI_CONTROLLER_CONFIGOPTS_REG_ADDR")
+SPI_CONTROLLER_CFG = sym("SPI_CONTROLLER_CFG_REG_ADDR")
 SPI_CONTROLLER_CSID = sym("SPI_CONTROLLER_CSID_REG_ADDR")
-SPI_CONTROLLER_COMMAND = sym("SPI_CONTROLLER_COMMAND_REG_ADDR")
-SPI_CONTROLLER_RXDATA = sym("SPI_CONTROLLER_RXDATA_0__MEM_BASE_ADDR")
-SPI_CONTROLLER_TXDATA = sym("SPI_CONTROLLER_TXDATA_0__MEM_BASE_ADDR")
+SPI_CONTROLLER_CMD = sym("SPI_CONTROLLER_CMD_REG_ADDR")
+SPI_CONTROLLER_RXDATA = sym("SPI_CONTROLLER_RXDATA_REG_ADDR")
+SPI_CONTROLLER_TXDATA = sym("SPI_CONTROLLER_TXDATA_REG_ADDR")
 SPI_CONTROLLER_ERROR_STATUS = sym("SPI_CONTROLLER_ERROR_STATUS_REG_ADDR")
 
 SPI_JEDEC_ID = 0x20BA18
@@ -76,17 +76,17 @@ class sep_spi_flash_jedec_seq(uvm_sequence):
         raise AssertionError("SPI controller did not become idle")
 
     async def body(self) -> None:
-        await self._write(SPI_CONTROLLER_CONTROL, 0xA000_007F)
-        await self._write(SPI_CONTROLLER_CONFIGOPTS, 0x0222_0009)
+        await self._write(SPI_CONTROLLER_CTRL, 0xA000_007F)
+        await self._write(SPI_CONTROLLER_CFG, 0x0222_0009)
         await self._write(SPI_CONTROLLER_CSID, 0)
         await self._write(SPI_CONTROLLER_ERROR_STATUS, 0xFFFF_FFFF)
 
         await self._wait_ready()
         await self._write(SPI_CONTROLLER_TXDATA, 0x0000_009F)
-        await self._write(SPI_CONTROLLER_COMMAND, (2 << 12) | (1 << 9))
+        await self._write(SPI_CONTROLLER_CMD, (2 << 12) | (1 << 9))
 
         await self._wait_ready()
-        await self._write(SPI_CONTROLLER_COMMAND, (1 << 12) | 2)
+        await self._write(SPI_CONTROLLER_CMD, (1 << 12) | 2)
         await self._wait_idle()
         self.rxdata = await self._read(SPI_CONTROLLER_RXDATA, SPI_RX_JEDEC_WORD)
         await self._read(SPI_CONTROLLER_ERROR_STATUS, 0)
