@@ -52,7 +52,7 @@
      OCH_SEP_FIELD_RESET(SPI_CONTROLLER__EVENT_ENABLE, IDLE))
 
 /*
- * ERROR_STATUS field macros are PeakRDL-mangled in blocks/spi_controller.h;
+ * ERROR_STATUS field macros are PeakRDL-mangled in spi_controller.h;
  * och_sep_common.h only aliases *_bm. Every field resets to 0, so the
  * aggregate is identically zero (same as the pre-refactor check).
  */
