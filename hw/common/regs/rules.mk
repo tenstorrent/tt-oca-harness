@@ -39,6 +39,12 @@ ocah_reg_run_ral      = "$(UV)" run peakrdl uvm $(call ocah_reg_incdirs,$(1)) "$
 # unrolling it triples the register count for consumers that only ever walk the
 # first element anyway.
 ocah_reg_run_json     = "$(UV)" run python "$(OCAH_ROOT)/tools/regs/rdljson.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) --repo-root "$(OCAH_ROOT)" --compact_arrays "$(2)" "$(3)" 2>&1 | tee "$(4)"
+# IP-XACT 1685-2014 component XML, straight from the stock peakrdl-ipxact
+# exporter. Fixed vendor/library/version and an explicit --standard keep the
+# output byte-stable for the regen gate (the exporter embeds no timestamps or
+# paths); --name defaults to the top component's own name. $(2) = input RDL,
+# $(3) = output xml, $(4) = log.
+ocah_reg_run_ipxact   = "$(UV)" run peakrdl ip-xact $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --vendor tenstorrent.com --library ocah --version 1.0 --standard 2014 2>&1 | tee "$(4)"
 
 # Refresh one committed vendored RDL from its upstream hjson. This is intentionally
 # NOT a make file rule on the RDL path: the committed RDL must never become a
@@ -72,7 +78,13 @@ $(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP)
 	@$(ocah_sh) '$(call ocah_reg_run_svh,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_svh_output,$(1)),$(call ocah_reg_build,$(1))/svh.log)'
 	@$(ocah_reg_stamp) "$(call ocah_reg_svh_output,$(1))"
 
-$(call ocah_reg_build,$(1))/.generated: $(call ocah_reg_sv_target,$(1)) $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1)) $(call ocah_reg_svpkg_output,$(1)) $(call ocah_reg_svh_output,$(1)) $(call ocah_reg_py_output,$(1))
+$(call ocah_reg_ipxact_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) | uv-sync
+	@mkdir -p "$(call ocah_reg_gen,$(1))/ipxact" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating IP-XACT component for $(1)"
+	@$(ocah_sh) '$(call ocah_reg_run_ipxact,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_ipxact_output,$(1)),$(call ocah_reg_build,$(1))/ipxact.log)'
+	@$(ocah_reg_stamp) "$(call ocah_reg_ipxact_output,$(1))"
+
+$(call ocah_reg_build,$(1))/.generated: $(call ocah_reg_sv_target,$(1)) $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1)) $(call ocah_reg_svpkg_output,$(1)) $(call ocah_reg_svh_output,$(1)) $(call ocah_reg_py_output,$(1)) $(call ocah_reg_ipxact_output,$(1))
 	@mkdir -p "$(call ocah_reg_build,$(1))"
 	@touch "$$@"
 endef

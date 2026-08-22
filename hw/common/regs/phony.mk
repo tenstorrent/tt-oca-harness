@@ -46,6 +46,11 @@ ocah-regen-regs-py: $(OCAH_REGEN_REG_PY)
 .PHONY: ocah-regen-regs-json
 ocah-regen-regs-json: $(OCAH_REGEN_REG_JSON)
 
+## Regenerate IP-XACT component descriptions for OCAH register blocks.
+## @param TARGET=smc Optional register block basename to regenerate
+.PHONY: ocah-regen-regs-ipxact
+ocah-regen-regs-ipxact: $(OCAH_REGEN_REG_IPXACT)
+
 ## Regenerate UVM RAL register models for the OCAH register blocks that opt in.
 ## @param TARGET=smc Optional register block basename to regenerate
 .PHONY: ocah-regen-regs-ral
@@ -90,6 +95,7 @@ OCAH_PHONY += \
   ocah-regen-regs-py \
   ocah-regen-regs-ral \
   ocah-regen-regs-json \
+  ocah-regen-regs-ipxact \
   ocah-regen-regs-adoc \
   ocah-regen-regs-html \
   ocah-regen-regs-clean \
