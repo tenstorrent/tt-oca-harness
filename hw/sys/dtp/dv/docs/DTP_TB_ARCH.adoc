@@ -314,7 +314,8 @@ shared between both frameworks. `+define+DTP_UVM_TB` (set by the
 `[frameworks.uvm]` overlay) switches its shape — without it the module exposes the cocotb pin
 port list; with it the ports become internal TB signals and an in-module
 harness adds the clock, interface instances, quiescent tie-offs, and
-`run_test()`. The class library mirrors the cocotb directory conventions
+`run_test()`. Preprocessor defines used by DTP compiles, including
+`DTP_UVM_TB`, are listed in `hw/sys/dtp/doc/defines.adoc`. The class library mirrors the cocotb directory conventions
 under `uvm/`:
 
 [arabic]

@@ -39,17 +39,13 @@
 #include "el2_pic.h"
 
 /*
- * The vendor SPI shim blocks (och_sep_cdns_spi_ctrl, och_sep_spi_mux_ctrl) have
- * no include line of their own: they are sub-blocks of sep_external, and
- * the nonfree variant of that header - which the register overlay puts ahead of
- * the open one - carries them inline. Including the per-block headers as well
- * would redeclare every type. A pure-open build resolves the open
- * sep_external.h, which has neither block, so firmware that touches them
- * needs the overlay, exactly as before.
+ * Proprietary SPI shim blocks are not included here: they live in a nonfree
+ * wrapper header that an overlay would put ahead of the open sep_external.h.
+ * A pure-open build has neither block. Firmware that programs them belongs
+ * with that wrapper, not in this tree.
  *
- * efuse_shim_ctrl follows the same rule since the shim moved to the base of the
- * sep_external window. It differs from the SPI blocks in that both variants of
- * sep_external.h carry it, so a pure-open build still sees the open model.
+ * efuse_shim_ctrl is different: both variants of sep_external.h carry it, so
+ * a pure-open build still sees the open model.
  */
 
 /*

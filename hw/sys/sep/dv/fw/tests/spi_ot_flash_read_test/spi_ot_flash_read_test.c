@@ -15,7 +15,7 @@
  * => WRITE_REG(TXDATA, 0x00000003) -> sends 0x03, 0x00, 0x00, 0x00 in order
  *
  * Test Flow:
- * 1. Configure SPI mux for OpenTitan, enable controller
+ * 1. Enable controller
  * 2. JEDEC presence proof (0x9F) against enrolled Winbond W25Q512JV
  * 3. Segment 1: TX 4 bytes (0x03 + addr 0x000000), CSAAT=1
  * 4. Segment 2: RX 16 bytes, CSAAT=0
@@ -38,7 +38,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define SPI_CLKDIV spi_clkdiv()
 #define TIMEOUT_LIMIT 200000
@@ -107,8 +106,6 @@ int main(void) {
     int pass = 1;
     uint32_t i;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d\n", SPI_CLKDIV);

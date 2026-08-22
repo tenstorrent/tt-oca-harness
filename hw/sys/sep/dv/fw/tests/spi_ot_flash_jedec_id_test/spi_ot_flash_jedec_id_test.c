@@ -7,7 +7,7 @@
  * Issues a standard JEDEC Read ID command (0x9F) to the SPI flash device
  * using a two-segment transaction on the OpenTitan SPI controller.
  *
- * Signal path: OT SPI Controller -> SPI Mux -> GPIO pads -> Flash model
+ * Signal path: OT SPI Controller -> GPIO pads -> Flash model
  *
  * TX byte packing (LITTLE_ENDIAN=1): TXDATA[7:0] is transmitted first.
  * WRITE_REG(TXDATA, 0x0000009F) -> sends 0x9F on the bus
@@ -15,7 +15,7 @@
  * byte[0] = manufacturer ID, byte[1] = memory type, byte[2] = capacity
  *
  * Test Flow:
- * 1. Configure SPI mux for OpenTitan, enable controller
+ * 1. Enable controller
  * 2. Segment 1: TX 0x9F (JEDEC ID cmd), CSAAT=1
  * 3. Segment 2: RX 3 bytes (MFR + type + capacity), CSAAT=0
  * 4. Read and log JEDEC response from RXDATA
@@ -37,7 +37,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define SPI_CLKDIV spi_clkdiv()
 #define TIMEOUT_LIMIT 200000
@@ -104,8 +103,6 @@ int main(void) {
 
     int pass = 1;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d, CPOL=0, CPHA=0\n\n", SPI_CLKDIV);

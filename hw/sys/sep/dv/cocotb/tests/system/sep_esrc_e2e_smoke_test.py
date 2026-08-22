@@ -24,7 +24,9 @@ handshake) AND lands it in KM SRAM, and CSRNG/EDN err_code + recov_alert are zer
 On top of the alive checks, the CHK1..CHK5 golden-vs-probe scoreboard
 (sep_drbg_scoreboard + sep_entropy_golden) runs bit-exact and STRICT: decorrelator
 SR -> BIW+SHA whitener -> 384b seed -> CTR_DRBG genbits -> EDN/KM beats, each stage
-the golden input to the next, every stage compared against its DUT probe.
+the golden input to the next, every stage compared against its DUT probe. CHK5_pool
+scores mux endpoint [2] (AXIS2 == pool native EDN beats). The 0x1095 FIFO drain is
+not this smoke.
 """
 
 from __future__ import annotations
@@ -49,7 +51,10 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         # Shared entropy bring-up: starts the STRICT CHK1..CHK5 scoreboard (report()
         # fails on any stage mismatch; CHK2 actual data = AXI frontdoor FIFO_RDATA),
         # drives the ESRC noise, and runs the reference suite config order through EDN-enable.
-        await self.bring_up_entropy(strict=True)
+        # CHK5_pool golden: the entropy FIFO already pulls mux endpoint [2] from
+        # reset, so this smoke also proves AXIS2==pool native routing. FIFO aperture
+        # drain / watermark / stall stay a later consume test.
+        await self.bring_up_entropy(strict=True, score_sinks={"pool": "golden"})
 
         # Concurrent FIFO_RDATA drain so the FIFO never overflows during the long
         # genbits/KM phase (forked after the last bring-up write so it owns the AXI
@@ -73,4 +78,4 @@ class sep_esrc_e2e_smoke_test(sep_base_test):
         self.logger.info("ESRC->DRBG->CSRNG->EDN->KM alive; KM consumed entropy; alerts clean")
 
         await self.stop_fifo_drain()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
