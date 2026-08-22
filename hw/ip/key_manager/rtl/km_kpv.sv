@@ -13,14 +13,24 @@
  *          bridges to the register file through an optional 1024x32 scrambler.
  *
  *          Per-slot CTRL registers implement:
- *          - lock_write / lock_use sticky W1S bits.
+ *          - lock_write / lock_use / seal sticky W1S bits.  A slot with seal
+ *            set is sealed: hardware holds lock_write set alongside it, so the
+ *            data is readable but not writable.
+ *          - Erase is never blocked, but the seal changes its outcome.  An
+ *            unsealed slot's CTRL is cleared, freeing the slot for reuse.  A
+ *            sealed slot is retired instead: lock_write stays set and lock_use
+ *            is set, so the destroyed contents cannot be read and the slot
+ *            cannot be refilled until warm reset.
  *
  *          Scrambler key/ctrl lock: the stored scrambler key is held in a
  *          local flop; when locked the CSR returns zero to software but
  *          hardware scramblers continue using the provisioned value.
  *
  *          Wipe: wipe_pulse_i zeroes key data, CTRL sticky bits
- *          (via hwclr), and scrambler key/ctrl.
+ *          (via hwclr), and scrambler key/ctrl.  It releases a sealed or
+ *          retired slot, which is sound only because no KM CPU execution
+ *          follows a wipe before warm reset: a trap halts the CPU, and
+ *          wipe_state_i is a tamper input.
  *
  * @param axil_req_t          KM-side AXI-Lite request type.
  * @param axil_resp_t         KM-side AXI-Lite response type.
@@ -141,7 +151,8 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     // that slot, emitting a logical {slot, word} address and pseudo-random
     // data.  These are routed through the shared KPV scrambler and the regfile
     // write port (the eraser takes priority while busy).  On completion an
-    // erase_done pulse clears the slot CTRL register (including erase + locks).
+    // erase_done pulse either clears the slot CTRL register or, on a sealed
+    // slot, retires it (see the hwif drives below).
     //==========================================================================
     logic [NUM_SLOTS-1:0] erase_req;
     logic                 erase_wr_en;
@@ -151,9 +162,14 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     logic [NUM_SLOTS-1:0] erase_done;
     logic                 erase_busy;
 
+    /** @brief Per-slot seal state, which decides an erase's outcome. */
+    logic [NUM_SLOTS-1:0] slot_sealed;
+
     always_comb begin
-        for (int i = 0; i < NUM_SLOTS; i++)
-            erase_req[i] = kpv_hwif_out.CTRL[i].erase.value;
+        for (int i = 0; i < NUM_SLOTS; i++) begin
+            erase_req[i]   = kpv_hwif_out.CTRL[i].erase.value;
+            slot_sealed[i] = kpv_hwif_out.CTRL[i].seal.value;
+        end
     end
 
     km_kpv_eraser #(
@@ -173,7 +189,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
     );
 
     //==========================================================================
-    // KPV hwif_in: CTRL swwel, scrambler key/ctrl lock, wipe via hwclr/next
+    // KPV hwif_in: CTRL lock/retire drives, scrambler key/ctrl lock, wipe
     //==========================================================================
 
     // Scrambler key stored separately for HW use.
@@ -203,10 +219,22 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
 
     always_comb begin
         for (int i = 0; i < NUM_SLOTS; i++) begin
-            // Wipe (all slots) or per-slot erase completion: clear sticky
-            // W1S fields and the self-clearing erase trigger via hwclr.
-            kpv_hwif_in.CTRL[i].lock_write.hwclr = wipe_pulse_i | erase_done[i];
-            kpv_hwif_in.CTRL[i].lock_use.hwclr   = wipe_pulse_i | erase_done[i];
+            // A seal implies a write lock, so hardware holds lock_write set for
+            // as long as the slot is sealed.  That also carries lock_write
+            // through a retiring erase, which is what stops the slot being
+            // refilled once its key has been destroyed.
+            kpv_hwif_in.CTRL[i].lock_write.hwset = slot_sealed[i] & ~wipe_pulse_i;
+            // Retirement: completing an erase on a sealed slot read-locks it so
+            // the destroyed contents cannot be read back.
+            kpv_hwif_in.CTRL[i].lock_use.hwset   = erase_done[i] & slot_sealed[i] &
+                                                   ~wipe_pulse_i;
+            // Erasing an unsealed slot frees it: the whole CTRL register clears.
+            // A wipe frees every slot, sealed or not.
+            kpv_hwif_in.CTRL[i].lock_write.hwclr = wipe_pulse_i |
+                                                   (erase_done[i] & ~slot_sealed[i]);
+            kpv_hwif_in.CTRL[i].lock_use.hwclr   = wipe_pulse_i |
+                                                   (erase_done[i] & ~slot_sealed[i]);
+            kpv_hwif_in.CTRL[i].seal.hwclr       = wipe_pulse_i;
             kpv_hwif_in.CTRL[i].erase.hwclr      = wipe_pulse_i | erase_done[i];
         end
         // Scrambler key/ctrl lock
@@ -258,10 +286,13 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
         end
     end
 
-    // KM lock checks (at external req time)
+    // KM lock checks (at external req time).  A seal counts as a write lock in
+    // its own right: lock_write follows a seal write through hwset a cycle
+    // later, and a write arriving in that cycle must not slip through.
     logic km_ext_lock_write, km_ext_lock_use;
     assign km_ext_lock_write =
-        kpv_hwif_out.CTRL[km_ext_slot].lock_write.value;
+        kpv_hwif_out.CTRL[km_ext_slot].lock_write.value |
+        slot_sealed[km_ext_slot];
     assign km_ext_lock_use =
         kpv_hwif_out.CTRL[km_ext_slot].lock_use.value;
 
@@ -387,7 +418,7 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
         // CTRL writes are always AXI-OKAY so lock_use can still be set after
         // lock_write; other fields retain their existing field-level behavior.
         km_wr_violation = km_is_key &
-            kpv_hwif_out.CTRL[km_slot].lock_write.value;
+            (kpv_hwif_out.CTRL[km_slot].lock_write.value | slot_sealed[km_slot]);
         km_rd_violation = km_is_key &
             kpv_hwif_out.CTRL[km_slot].lock_use.value;
     end

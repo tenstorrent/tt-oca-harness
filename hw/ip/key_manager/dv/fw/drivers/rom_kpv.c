@@ -9,7 +9,8 @@
  * Scrambler control, slot shredding (single and bulk), key read/write, and
  * lock operations.  Shredding drives the hardware erase path, which overwrites
  * each slot through the KPV scrambler and clears its control register, so
- * write-locked slots are wiped too.
+ * write-locked slots are wiped too.  A sealed slot is erased like any other,
+ * but ends up retired rather than free.
  */
 
 #include "rom_kpv.h"
@@ -112,7 +113,8 @@ void rom_kpv_shred_all(void) {
  *
  * Calls rom_kpv_erase_slot on the slot ROM_KM_SHRED_ITER+1 times.  Each erase
  * overwrites the slot data with LFSR output (through the KPV scrambler) and
- * clears the slot CTRL register, so this also wipes write-locked slots.
+ * clears the slot CTRL register, so this also wipes write-locked slots.  A
+ * sealed slot ends up retired instead of free.
  *
  * @param[in]  slot Slot index to shred.
  */
@@ -123,9 +125,10 @@ void rom_kpv_shred_slot(uint8_t slot) {
 /**
  * @brief Hardware-erase one slot, then wait for completion.
  *
- * Asserts CTRL.erase and busy-waits until hardware self-clears the erase bit
- * (slot data overwritten with LFSR output and CTRL cleared, incl. locks —
- * erase is not gated by the slot locks).
+ * Asserts CTRL.erase and busy-waits until hardware self-clears the erase bit.
+ * Nothing gates an erase: not lock_write, not lock_use, not a seal.  An
+ * unsealed slot comes back with its CTRL cleared and is reusable; a sealed slot
+ * is retired instead (lock_write held, lock_use set), its data destroyed.
  *
  * @param[in] slot Slot index.
  */
@@ -141,8 +144,7 @@ void rom_kpv_erase_slot(uint8_t slot) {
     KPV_CTRL(slot).w = ctrl.w;
 
     /* Wait until hardware self-clears the erase bit: the slot data has been
-     * overwritten and its CTRL register (incl. locks) cleared, so the slot is
-     * reusable. */
+     * overwritten and the slot's lock state settled. */
     while (KPV_CTRL(slot).f.erase)
         ;
 }
@@ -230,4 +232,30 @@ void rom_kpv_read_lock(uint8_t slot) {
     KPV_CTRL(slot).w = ctrl.w;
     KPV_CTRL(slot).w = ctrl.w;
     KPV_CTRL(slot).w = ctrl.w;
+}
+
+int rom_kpv_seal_slot(uint8_t slot) {
+    /* Only the seal is written; hardware sets lock_write alongside it. */
+    km_kpv__ctrl_reg_t ctrl = {0};
+    ctrl.f.seal = 1;
+    /* Triple-write convention — same rationale as rom_kpv_write_lock. */
+    KPV_CTRL(slot).w = ctrl.w;
+    KPV_CTRL(slot).w = ctrl.w;
+    KPV_CTRL(slot).w = ctrl.w;
+
+    return rom_kpv_slot_sealed(slot) ? 0 : -1;
+}
+
+int rom_kpv_slot_sealed(uint8_t slot) {
+    km_kpv__ctrl_reg_t ctrl;
+    ctrl.w = KPV_CTRL(slot).w;
+
+    return (ctrl.f.lock_write && ctrl.f.seal) ? 1 : 0;
+}
+
+int rom_kpv_slot_retired(uint8_t slot) {
+    km_kpv__ctrl_reg_t ctrl;
+    ctrl.w = KPV_CTRL(slot).w;
+
+    return (ctrl.f.seal && ctrl.f.lock_use) ? 1 : 0;
 }

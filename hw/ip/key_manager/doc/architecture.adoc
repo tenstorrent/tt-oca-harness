@@ -173,7 +173,7 @@ below); the KMCSR warm subset (`IRQ_STATUS`/`IRQ_ENABLE`/`IRQ_SET`,
 `IRQ_ENTRY_ADDR`/`IRQ_ENTRY_LOCK`, `OTP_READ_LOCK`,
 `OTP_CHANGE_STATUS`, and the firmware test-bench registers);
 all DRBG sampler CSRs and datapath-control state; the KPV per-slot lock
-bits (`lock_write`, `lock_use`); and the KM-side mailbox
+bits (`lock_write`, `lock_use`, `seal`); and the KM-side mailbox
 write/read state machines, IRQ, control, and status fields.
 |===
 
@@ -441,25 +441,63 @@ KM control registers for each slot have the following fields:
 * Lock_write[0]
 ** Prevents KM firmware from overwriting this key entry’s data register until
 the next KM reset (cleared by either a cold or a warm reset — the KPV
-per-slot lock bits are in the warm reset domain). The control bits
-_lock_write_ and _lock_use_ (lower two bits) remain writable even when _lock_write_
-is set. Writes to key entry data when _lock_write_ is set trigger AXI SLVERR
-and do not update storage. This field is read-any, write-one-only.
+per-slot lock bits are in the warm reset domain). The CTRL register itself
+remains writable when _lock_write_ is set, so the other lock bits can still be
+taken and the slot can still be erased. Writes to key entry data when
+_lock_write_ is set trigger AXI SLVERR and do not update storage. Hardware
+holds this field set for as long as _seal_ is set, so sealing a slot
+write-locks it without a separate write here. This field is read-any,
+write-one-only.
 * Lock_use[1]
 ** Prevents KM firmware from reading this key entry’s data register
 until the next KM reset (cold or warm). Key entry reads when _lock_use_
-is set return AXI SLVERR with read data 0. This field is read-any,
-write-one-only.
+is set return AXI SLVERR with read data 0. Hardware sets this field when an
+erase of a sealed slot completes, so the destroyed contents cannot be read
+back. This field is read-any, write-one-only.
 * Erase[2]
-** Write-one to start a hardware erase of this slot. The hardware
-overwrites all 16 key words of the slot with pseudorandom data and
-clears the slot CTRL register — including _lock_write_ and _lock_use_ — so
-the slot becomes reusable. Erase is intentionally *not* blocked by
-_lock_write_ or _lock_use_. The hardware self-clears this bit when the
-erase completes; firmware can poll it to detect completion. This field is
-read-any, write-one-only.
-* Reserved[31:3]
+** Write-one to start a hardware erase of this slot. The hardware overwrites
+all 16 key words of the slot with pseudorandom data. Erase is never blocked:
+neither _lock_write_, _lock_use_ nor _seal_ prevents it. The slot's seal state
+when the erase completes decides the outcome. On an unsealed slot the CTRL
+register is cleared — including _lock_write_ and _lock_use_ — so the slot
+becomes reusable. On a sealed slot the slot is *retired* instead: _lock_write_
+stays set and _lock_use_ is set. A seal taken while an erase is already in
+flight therefore still retires the slot. The
+hardware self-clears this bit when the erase completes; firmware can poll it to
+detect completion. This field is read-any, write-one-only.
+* Seal[3]
+** Seals this key entry until the next KM reset (cold or warm — the KPV
+per-slot lock bits are in the warm reset domain). Setting this field also sets
+_lock_write_ in hardware, so one CTRL write seals the slot. Erase remains
+available, and erasing a sealed slot retires it rather than freeing it, so a
+sealed slot's material can be destroyed but its slot never reused. This field
+is read-any, write-one-only.
+* Reserved[31:4]
 ** TBD
+
+*Sealed and retired slots.* A slot with _seal_ set is *sealed*: readable, but
+not writable, because hardware holds _lock_write_ set alongside the seal. That
+surviving _lock_write_ is evidence that the slot holds what it held when the
+seal was taken, which is what lets firmware that inherits the vault after a
+handover trust material provisioned before it (see the KM firmware
+specification). A write lock on its own would prove nothing, since an erase
+clears it and frees the slot to be rewritten with chosen material and
+re-locked.
+
+Erasing a sealed slot is still permitted, and leaves it *retired*: _lock_write_
+held, _lock_use_ set, _seal_ still set, and the data destroyed. A retired slot
+can be neither read, rewritten nor reused until the next warm reset, and
+repeating the erase changes nothing. Revocation and reuse are therefore
+separate: firmware can destroy a sealed key it no longer trusts without
+handing the slot to whoever asked for the destruction.
+
+An emergency wipe releases a sealed or retired slot: it zeroes key data and
+clears every CTRL bit, _seal_ included (<<wipe-state>>). That is sound because
+no KM CPU execution follows a wipe before a warm reset — a CPU trap halts the
+core, and _wipe_state_ is asserted by the SEP rather than by KM firmware — so a
+slot cannot be released and rewritten within one boot cycle. An integrator that
+gives KM firmware a path to assert _wipe_state_, or that lets the CPU continue
+after a wipe, breaks that property.
 
 Reset values: All KPV control registers (CTRL) reset to 0. All KPV key
 entry data registers (64 slots × 512 bits) have no reset value: they

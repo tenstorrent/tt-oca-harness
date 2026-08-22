@@ -25,7 +25,7 @@ addrmap km_kpv {
     //=========================================================================
     // cpuif_reset quiesces the KM-port AXI CPUIF on warm reset.
     // field_reset is intentionally NOT set: instead, every writable CTRL field
-    // (LOCK_WRITE, LOCK_USE, ERASE) carries an explicit
+    // (LOCK_WRITE, LOCK_USE, ERASE, SEAL) carries an explicit
     // `resetsignal = WARM_RST_N`, so a warm reset clears a slot's full control
     // state and it cannot carry stale metadata into a later erase/shred.
     // Key data and the scrambler key deliberately omit a reset (default arst_n;
@@ -71,7 +71,7 @@ addrmap km_kpv {
 
     //=========================================================================
     // KM Control Register (per slot)
-    // Lock_write[0], Lock_use[1], Erase[2], Reserved[31:3]
+    // Lock_write[0], Lock_use[1], Erase[2], Seal[3], Reserved[31:4]
     //=========================================================================
     reg ctrl_reg {
         name = "CTRL";
@@ -79,22 +79,29 @@ addrmap km_kpv {
 
         field {
             name = "LOCK_WRITE";
-            desc = "Prevents KM write to this key entry data and control until reset. Read-any, write-1-only.";
+            desc = "Prevents KM write to this key entry data until reset; this register stays
+                    writable so that a locked slot can still be read-locked and erased.
+                    Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
+                    set, so sealing a slot write-locks it without a separate write here.";
             sw = rw;
             hw = r;
             onwrite = woset;
-            hwclr = true;  // HW can clear on wipe
+            hwset = true;  // HW holds set while SEAL is set
+            hwclr = true;  // HW can clear on wipe, or on erase of an unsealed slot
             resetsignal = WARM_RST_N;
             reset = 1'b0;
         } lock_write[0:0];
 
         field {
             name = "LOCK_USE";
-            desc = "Prevents KM read of this key entry data until reset. Read-any, write-1-only.";
+            desc = "Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+                    Hardware sets this bit when an erase of a sealed slot completes, retiring
+                    the slot: its destroyed contents cannot be read back.";
             sw = rw;
             hw = r;
             onwrite = woset;
-            hwclr = true;  // HW can clear on wipe
+            hwset = true;  // HW sets when an erase retires a sealed slot
+            hwclr = true;  // HW can clear on wipe, or on erase of an unsealed slot
             resetsignal = WARM_RST_N;
             reset = 1'b0;
         } lock_use[1:1];
@@ -102,9 +109,14 @@ addrmap km_kpv {
         field {
             name = "ERASE";
             desc = "Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
-                    words (through the KPV scrambler) and the slot CTRL register is cleared.
-                    Hardware self-clears this bit when the erase completes. Not blocked by
-                    lock_write or lock_use.";
+                    words (through the KPV scrambler). Hardware self-clears this bit when the
+                    erase completes. Never blocked: neither lock_write, lock_use nor seal
+                    prevents an erase. The slot's seal state when the erase completes decides
+                    the outcome. Unsealed, the slot CTRL register is cleared and the slot is
+                    reusable. Sealed, lock_write stays set and lock_use is set, retiring the
+                    slot: its data is destroyed and it can be neither read, rewritten nor
+                    reused until warm reset. A seal taken while an erase is already in flight
+                    therefore still retires the slot.";
             sw = rw;
             hw = r;
             onwrite = woset;
@@ -114,12 +126,27 @@ addrmap km_kpv {
         } erase[2:2];
 
         field {
-            name = "RSVD_31_3";
+            name = "SEAL";
+            desc = "Seals this key entry until warm reset. Read-any, write-1-only. Setting this
+                    bit also sets lock_write in hardware, so a single write seals the slot: its
+                    data can be read but not overwritten. Erase remains available, and erasing
+                    a sealed slot retires it rather than freeing it (see ERASE), so a sealed
+                    slot's material can be destroyed but its slot never reused.";
+            sw = rw;
+            hw = r;
+            onwrite = woset;
+            hwclr = true;  // HW can clear on wipe
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } seal[3:3];
+
+        field {
+            name = "RSVD_31_4";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 29'h0;
-        } rsvd_31_3[31:3];
+            reset = 28'h0;
+        } rsvd_31_4[31:4];
     };
 
     // 64 control registers at 0x1000 - 0x10FC, clear of the key-entry region
