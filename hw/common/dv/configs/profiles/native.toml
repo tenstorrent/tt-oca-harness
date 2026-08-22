@@ -43,6 +43,7 @@ cache_key_extra = []
 # target.tools.<tool>.flags.
 [target_defaults.default]
 defines = [
+  "SIMULATION",
   "SIM",
   "NO_LIBCELL",
   "DISABLE_ASSERT",
