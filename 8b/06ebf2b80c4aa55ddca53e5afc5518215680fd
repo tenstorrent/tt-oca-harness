@@ -1,0 +1,21 @@
+hw/sys/sep/dv/fw/tests/otbn_sw_error_test/otbn_src/bad_insn_addr.s
+  s_d92d2a109468b1::t_14cf0ce31a5270 1-2
+hw/sys/sep/dv/fw/tests/otbn_sw_error_test/otbn_src/loop_error.s
+  s_d92d2a109468b1::t_5003ca859aad68 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "8b06ebf2b80c4aa55ddca53e5afc5518215680fd",
+  "prompts": {},
+  "sessions": {
+    "s_d92d2a109468b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b492c1-e7d7-41da-a567-28bef8004840",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
