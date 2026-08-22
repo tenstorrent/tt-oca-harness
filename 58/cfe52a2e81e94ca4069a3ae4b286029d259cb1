@@ -1,0 +1,21 @@
+hw/sys/sep/dv/cocotb/seq_lib/sep_spi_flash_jedec_seq.py
+  s_c5151d462a6a92::t_c7fd96ee842677 22,24,26-28
+  s_c5151d462a6a92::t_5602d8ec9f7575 79-80
+  s_c5151d462a6a92::t_5b019f37a390a0 86,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "58cfe52a2e81e94ca4069a3ae4b286029d259cb1",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
