@@ -6,7 +6,7 @@
 `ifndef SEP_CPU_CTRL_RAL_PKG_SV
 `define SEP_CPU_CTRL_RAL_PKG_SV
     
-    // Reg - sep_cpu_ctrl.CLOCK_GATE_CTRL
+    // reg - sep_cpu_ctrl.CLOCK_GATE_CTRL
     class sep_cpu_ctrl__CLOCK_GATE_CTRL extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__CLOCK_GATE_CTRL)
         rand uvm_reg_field pka_cg_enable;
@@ -21,7 +21,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__CLOCK_GATE_CTRL
 
-    // Reg - sep_cpu_ctrl.REFERENCE_COUNTER
+    // reg - sep_cpu_ctrl.REFERENCE_COUNTER
     class sep_cpu_ctrl__REFERENCE_COUNTER extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__REFERENCE_COUNTER)
         rand uvm_reg_field rc;
@@ -36,7 +36,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__REFERENCE_COUNTER
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_INTERRUPT
+    // reg - sep_cpu_ctrl.TIMEOUT_INTERRUPT
     class sep_cpu_ctrl__TIMEOUT_INTERRUPT extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_INTERRUPT)
         rand uvm_reg_field reserved;
@@ -51,7 +51,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_INTERRUPT
 
-    // Reg - sep_cpu_ctrl.PKA_CTRL
+    // reg - sep_cpu_ctrl.PKA_CTRL
     class sep_cpu_ctrl__PKA_CTRL extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__PKA_CTRL)
         rand uvm_reg_field pka_dpa_disable;
@@ -72,7 +72,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__PKA_CTRL
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_COUNT_DMA
+    // reg - sep_cpu_ctrl.TIMEOUT_COUNT_DMA
     class sep_cpu_ctrl__TIMEOUT_COUNT_DMA extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_COUNT_DMA)
         rand uvm_reg_field reserved;
@@ -87,7 +87,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_COUNT_DMA
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_COUNT_SYS_IN
+    // reg - sep_cpu_ctrl.TIMEOUT_COUNT_SYS_IN
     class sep_cpu_ctrl__TIMEOUT_COUNT_SYS_IN extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_COUNT_SYS_IN)
         rand uvm_reg_field reserved;
@@ -102,7 +102,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_COUNT_SYS_IN
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_INBOUND
+    // reg - sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_INBOUND
     class sep_cpu_ctrl__TIMEOUT_COUNT_MAILBOX_INBOUND extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_COUNT_MAILBOX_INBOUND)
         rand uvm_reg_field reserved;
@@ -117,7 +117,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_COUNT_MAILBOX_INBOUND
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_OUTBOUND
+    // reg - sep_cpu_ctrl.TIMEOUT_COUNT_MAILBOX_OUTBOUND
     class sep_cpu_ctrl__TIMEOUT_COUNT_MAILBOX_OUTBOUND extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_COUNT_MAILBOX_OUTBOUND)
         rand uvm_reg_field reserved;
@@ -132,7 +132,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_COUNT_MAILBOX_OUTBOUND
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_WRITE
+    // reg - sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_WRITE
     class sep_cpu_ctrl__TIMEOUT_COUNT_ENTROPY_WRITE extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_COUNT_ENTROPY_WRITE)
         rand uvm_reg_field reserved;
@@ -147,7 +147,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_COUNT_ENTROPY_WRITE
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_READ
+    // reg - sep_cpu_ctrl.TIMEOUT_COUNT_ENTROPY_READ
     class sep_cpu_ctrl__TIMEOUT_COUNT_ENTROPY_READ extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_COUNT_ENTROPY_READ)
         rand uvm_reg_field reserved;
@@ -162,7 +162,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_COUNT_ENTROPY_READ
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_COUNT_FILTER_OUT
+    // reg - sep_cpu_ctrl.TIMEOUT_COUNT_FILTER_OUT
     class sep_cpu_ctrl__TIMEOUT_COUNT_FILTER_OUT extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_COUNT_FILTER_OUT)
         rand uvm_reg_field reserved;
@@ -177,7 +177,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_COUNT_FILTER_OUT
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_COUNT_ALIAS_REMAP
+    // reg - sep_cpu_ctrl.TIMEOUT_COUNT_ALIAS_REMAP
     class sep_cpu_ctrl__TIMEOUT_COUNT_ALIAS_REMAP extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_COUNT_ALIAS_REMAP)
         rand uvm_reg_field reserved;
@@ -192,7 +192,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_COUNT_ALIAS_REMAP
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_ENABLE
+    // reg - sep_cpu_ctrl.TIMEOUT_ENABLE
     class sep_cpu_ctrl__TIMEOUT_ENABLE extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_ENABLE)
         rand uvm_reg_field reserved;
@@ -207,7 +207,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_ENABLE
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_CLEAR
+    // reg - sep_cpu_ctrl.TIMEOUT_CLEAR
     class sep_cpu_ctrl__TIMEOUT_CLEAR extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_CLEAR)
         rand uvm_reg_field reserved;
@@ -222,7 +222,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_CLEAR
 
-    // Reg - sep_cpu_ctrl.TIMEOUT_MODE
+    // reg - sep_cpu_ctrl.TIMEOUT_MODE
     class sep_cpu_ctrl__TIMEOUT_MODE extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__TIMEOUT_MODE)
         rand uvm_reg_field reserved;
@@ -237,7 +237,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__TIMEOUT_MODE
 
-    // Reg - sep_cpu_ctrl.SEP_TEST_CTRL
+    // reg - sep_cpu_ctrl.SEP_TEST_CTRL
     class sep_cpu_ctrl__SEP_TEST_CTRL extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_TEST_CTRL)
         rand uvm_reg_field sep_standalone;
@@ -267,7 +267,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_TEST_CTRL
 
-    // Reg - sep_cpu_ctrl.SEP_GLOBAL_BASE_ADDR
+    // reg - sep_cpu_ctrl.SEP_GLOBAL_BASE_ADDR
     class sep_cpu_ctrl__SEP_GLOBAL_BASE_ADDR extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_GLOBAL_BASE_ADDR)
         rand uvm_reg_field addr;
@@ -282,7 +282,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_GLOBAL_BASE_ADDR
 
-    // Reg - sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR
+    // reg - sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR
     class sep_cpu_ctrl__SEP_LOCAL_BASE_ADDR extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_LOCAL_BASE_ADDR)
         rand uvm_reg_field addr;
@@ -297,7 +297,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_LOCAL_BASE_ADDR
 
-    // Reg - sep_cpu_ctrl.SEP_REGION_SIZE
+    // reg - sep_cpu_ctrl.SEP_REGION_SIZE
     class sep_cpu_ctrl__SEP_REGION_SIZE extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_REGION_SIZE)
         rand uvm_reg_field size;
@@ -312,7 +312,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_REGION_SIZE
 
-    // Reg - sep_cpu_ctrl.SMU_GLOBAL_BASE_ADDR
+    // reg - sep_cpu_ctrl.SMU_GLOBAL_BASE_ADDR
     class sep_cpu_ctrl__SMU_GLOBAL_BASE_ADDR extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SMU_GLOBAL_BASE_ADDR)
         rand uvm_reg_field addr;
@@ -327,7 +327,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SMU_GLOBAL_BASE_ADDR
 
-    // Reg - sep_cpu_ctrl.SMU_REGION_SIZE
+    // reg - sep_cpu_ctrl.SMU_REGION_SIZE
     class sep_cpu_ctrl__SMU_REGION_SIZE extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SMU_REGION_SIZE)
         rand uvm_reg_field size;
@@ -342,7 +342,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SMU_REGION_SIZE
 
-    // Reg - sep_cpu_ctrl.SMC_FUSE_SENSE_STATUS
+    // reg - sep_cpu_ctrl.SMC_FUSE_SENSE_STATUS
     class sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS)
         rand uvm_reg_field smc_fuse_sense_done;
@@ -357,7 +357,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS
 
-    // Reg - sep_cpu_ctrl.SEP_FUSE_SENSE_STATUS
+    // reg - sep_cpu_ctrl.SEP_FUSE_SENSE_STATUS
     class sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS)
         rand uvm_reg_field sep_fuse_sense_done;
@@ -372,7 +372,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS
 
-    // Reg - sep_cpu_ctrl.SEP_STRAPS
+    // reg - sep_cpu_ctrl.SEP_STRAPS
     class sep_cpu_ctrl__SEP_STRAPS extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_STRAPS)
         rand uvm_reg_field test_en;
@@ -390,7 +390,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_STRAPS
 
-    // Reg - sep_cpu_ctrl.RAS_BANK_INFO
+    // reg - sep_cpu_ctrl.RAS_BANK_INFO
     class sep_cpu_ctrl__RAS_BANK_INFO extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__RAS_BANK_INFO)
         rand uvm_reg_field bank_chip;
@@ -408,7 +408,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__RAS_BANK_INFO
 
-    // Reg - sep_cpu_ctrl.SEP_SW_DEBUG
+    // reg - sep_cpu_ctrl.SEP_SW_DEBUG
     class sep_cpu_ctrl__SEP_SW_DEBUG extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_SW_DEBUG)
         rand uvm_reg_field sep_sw_debug;
@@ -423,7 +423,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_SW_DEBUG
 
-    // Reg - sep_cpu_ctrl.SEP_NMI_VEC
+    // reg - sep_cpu_ctrl.SEP_NMI_VEC
     class sep_cpu_ctrl__SEP_NMI_VEC extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_NMI_VEC)
         rand uvm_reg_field rsvd;
@@ -441,7 +441,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_NMI_VEC
 
-    // Reg - sep_cpu_ctrl.SEP_NMI_VEC_LOCK
+    // reg - sep_cpu_ctrl.SEP_NMI_VEC_LOCK
     class sep_cpu_ctrl__SEP_NMI_VEC_LOCK extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_NMI_VEC_LOCK)
         rand uvm_reg_field lock;
@@ -456,7 +456,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_NMI_VEC_LOCK
 
-    // Reg - sep_cpu_ctrl.EXT_TRNG_SRC_SEL
+    // reg - sep_cpu_ctrl.EXT_TRNG_SRC_SEL
     class sep_cpu_ctrl__EXT_TRNG_SRC_SEL extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__EXT_TRNG_SRC_SEL)
         rand uvm_reg_field sel;
@@ -471,7 +471,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__EXT_TRNG_SRC_SEL
 
-    // Reg - sep_cpu_ctrl.EXT_TRNG_SRC_SEL_LOCK
+    // reg - sep_cpu_ctrl.EXT_TRNG_SRC_SEL_LOCK
     class sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK)
         rand uvm_reg_field lock;
@@ -486,7 +486,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK
 
-    // Reg - sep_cpu_ctrl.KM_WIPE_CTRL
+    // reg - sep_cpu_ctrl.KM_WIPE_CTRL
     class sep_cpu_ctrl__KM_WIPE_CTRL extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__KM_WIPE_CTRL)
         rand uvm_reg_field wipe_state;
@@ -501,7 +501,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__KM_WIPE_CTRL
 
-    // Reg - sep_cpu_ctrl.SEP_VERSION_ID
+    // reg - sep_cpu_ctrl.SEP_VERSION_ID
     class sep_cpu_ctrl__SEP_VERSION_ID extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_VERSION_ID)
         rand uvm_reg_field version_id;
@@ -516,7 +516,7 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_VERSION_ID
 
-    // Addrmap - sep_cpu_ctrl
+    // addrmap - sep_cpu_ctrl
     class sep_cpu_ctrl extends uvm_reg_block;
         `uvm_object_utils(sep_cpu_ctrl)
         rand sep_cpu_ctrl__CLOCK_GATE_CTRL CLOCK_GATE_CTRL;
