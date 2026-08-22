@@ -52,6 +52,15 @@ The cocotb runner adds `hw/common/dv/vip` to `PYTHONPATH` so tests can import
 the unified wrappers and their local backends.
 The ownership and promotion checklist is in `hw/common/dv/README.md`.
 
+## Simulation defines
+
+DTP DV, lint, and synthesis compiles pass preprocessor defines that switch the
+shared testbench shape, gate assertions, and select a simulation vs synthesis
+view. The inventory — each define, why it exists, and what a DTP build does with
+or without it — is in [`../doc/defines.adoc`](../doc/defines.adoc). Runtime
+environment variables and plusargs in the commands below are not preprocessor
+defines.
+
 ## Running
 
 ```bash
@@ -91,6 +100,11 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
 
 # Smoke + functional group
 python3 tools/dv/run_dv.py --dut dtp --items functional
+
+# Debug-disable closure: the two per-gate matrices plus every directed
+# gating test for the eleven dbg_disable_t fields
+python3 tools/dv/run_dv.py --dut dtp --items dbg_disable
+python3 tools/dv/run_dv.py --dut dtp --items dbg_disable --regress --reseed 3
 
 # Commercial backends for coverage (same PyUVM tests)
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --cov

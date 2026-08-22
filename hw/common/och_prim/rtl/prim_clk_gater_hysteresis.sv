@@ -69,7 +69,7 @@ module prim_clk_gater_hysteresis #(
 
 	wire __unused = hyst_cnt_nxt[HYST_WIDTH]; // Since we block the decrement when hyst_cnt_q is already 0, no need to capture carry-out
 
-`ifdef SIM
+`ifdef SIMULATION
 `ifdef GATER_CHK
 	`export_dpi_get(int, gater, rst_ni)
 	`export_dpi_get(int, gater, enable_i)

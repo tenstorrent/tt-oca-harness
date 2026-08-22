@@ -396,7 +396,7 @@ static int test_concurrent_multi_region_stress(void) {
 }
 
 int main(void) {
-    printf("Local Alias Remap Toggle P3 Test\n");
+    printf("Local Alias Remap Toggle Test\n");
     printf("Goals: axi_local_alias_remap 64.33%% -> 90%%+ (needs 25.67%% improvement)\n");
     printf("Strategy: Local-alias remap toggle stress; full CSR field coverage\n\n");
 
@@ -447,7 +447,7 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    printf("\n=== LOCAL ALIAS REMAP TOGGLE P3 TEST PASSED ===\n");
+    printf("\n=== LOCAL ALIAS REMAP TOGGLE TEST PASSED ===\n");
     printf("Expected improvement: axi_local_alias_remap 64.33%% -> 90%%+ (25.67%% improvement)\n");
 
     test_pass("fabric_local_alias_remap_toggle_p3_test");

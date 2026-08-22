@@ -20,6 +20,7 @@ _dv_root_str = str(_DV_ROOT)
 if _dv_root_str not in sys.path:
     sys.path.insert(0, _dv_root_str)
 
+from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable
 from env.dtp_env import DtpEnv
 from env.dtp_env_cfg import DtpEnvCfg
 
@@ -250,15 +251,15 @@ class dtp_base_test(uvm_test):
         ):
             if hasattr(dut, name):
                 getattr(dut, name).value = 0
-        for name in (
-            "feat_ctrl_sip_debug",
-            "feat_ctrl_soc_debug",
-            "feat_ctrl_ap_debug",
-            "feat_ctrl_sep_debug",
-            "feat_ctrl_fuse_test",
-        ):
-            if hasattr(dut, name):
-                getattr(dut, name).value = 1
+        # Startup vector, driven while POR is still asserted: all eleven
+        # active-high disables cleared so tests begin with full debug access
+        # and assert the disables they gate explicitly. The DUT itself is
+        # fail-closed until its TCK-domain synchronizers pass the cleared
+        # values through.
+        startup = {name: 0 for name in DBG_DISABLE_FIELDS}
+        for name, value in startup.items():
+            getattr(dut, f"dbg_disable_{name}").value = value
+        self.logger.info("dbg_disable startup vector: %s", format_dbg_disable(startup))
         cocotb.start_soon(Clock(dut.clk_i, self.cfg.sys_clk_period_ns, units="ns").start())
         await ClockCycles(dut.clk_i, 5)
         dut.pwr_on_rst_ni.value = 1

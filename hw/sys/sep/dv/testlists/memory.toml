@@ -14,7 +14,7 @@ name = "sep_boot_rom_smoke_test"
 module = "cpu.sep_boot_rom_smoke_test"
 seed = 1
 timeout_sec = 3600
-tags = ["smoke", "boot", "cpu", "boot_rom", "memory", "ci"]
+tags = ["smoke", "boot", "cpu", "rom", "memory", "ci"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
