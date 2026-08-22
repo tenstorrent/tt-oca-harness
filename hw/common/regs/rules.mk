@@ -9,6 +9,12 @@
 .SECONDEXPANSION:
 
 # Prepend SPDX to generated register files after PeakRDL / custom exporters.
+# Always pass the exact file(s) a recipe emitted, never a directory: several
+# blocks share one regs/gen/sv (the key_manager top and its ten sibling RDLs,
+# each a leaf) and composite sub-blocks share regs/gen/sv/blocks. Stamping the
+# whole directory made every block's recipe read-modify-write the others' files,
+# which truncated them non-deterministically under the flow's default -j. The
+# stamper accepts many paths and no-ops on ones that do not exist.
 ocah_reg_stamp = python3 "$(OCAH_ROOT)/tools/regs/stamp_spdx.py"
 
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
@@ -95,7 +101,7 @@ $(call ocah_reg_sv_stamp,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) |
 	@mkdir -p "$(call ocah_reg_gen,$(1))/sv" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_gen,$(1))/sv,$(call ocah_reg_name,$(1)),$(call ocah_reg_build,$(1))/peakrdl_sv.log)'
-	@$(ocah_reg_stamp) "$(call ocah_reg_gen,$(1))/sv"
+	@$(ocah_reg_stamp) "$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_reg.sv" "$(call ocah_reg_gen,$(1))/sv/$(call ocah_reg_name,$(1))_reg_pkg.sv"
 	@touch "$$@"
 
 $(call ocah_reg_sv_outputs,$(1)): $(call ocah_reg_sv_stamp,$(1))
@@ -109,7 +115,7 @@ $(call ocah_reg_sv_block_dir,$(1))/%_reg.sv: $(call ocah_reg_root,$(1))/regs/blo
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating register SV for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_regblock,$(1),$$<,$$(@D),$$*,$(1)/regs/build/peakrdl_sv_$$*.log)'
-	@$(ocah_reg_stamp) "$$(@D)"
+	@$(ocah_reg_stamp) "$$(@D)/$$*_reg.sv" "$$(@D)/$$*_reg_pkg.sv"
 
 $(call ocah_reg_c_block_dir,$(1))/%.h: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) | uv-sync
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
