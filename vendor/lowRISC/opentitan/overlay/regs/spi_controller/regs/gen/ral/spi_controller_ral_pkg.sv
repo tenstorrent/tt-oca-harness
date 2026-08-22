@@ -6,23 +6,23 @@
 `ifndef SPI_CONTROLLER_RAL_PKG_SV
 `define SPI_CONTROLLER_RAL_PKG_SV
     
-    // reg - spi_controller.INTR_STATUS
-    class spi_controller__INTR_STATUS extends uvm_reg;
-        `uvm_object_utils(spi_controller__INTR_STATUS)
+    // reg - spi_controller.INTR_STATE
+    class spi_controller__INTR_STATE extends uvm_reg;
+        `uvm_object_utils(spi_controller__INTR_STATE)
         rand uvm_reg_field ERROR;
         rand uvm_reg_field SPI_EVENT;
 
-        function new(string name = "spi_controller__INTR_STATUS");
+        function new(string name = "spi_controller__INTR_STATE");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
         virtual function void build();
             this.ERROR = uvm_reg_field::type_id::create("ERROR");
-            this.ERROR.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.ERROR.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.SPI_EVENT = uvm_reg_field::type_id::create("SPI_EVENT");
-            this.SPI_EVENT.configure(this, 1, 4, "RO", 1, 'h0, 1, 1, 0);
+            this.SPI_EVENT.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : spi_controller__INTR_STATUS
+    endclass : spi_controller__INTR_STATE
 
     // reg - spi_controller.INTR_ENABLE
     class spi_controller__INTR_ENABLE extends uvm_reg;
@@ -38,7 +38,7 @@
             this.ERROR = uvm_reg_field::type_id::create("ERROR");
             this.ERROR.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
             this.SPI_EVENT = uvm_reg_field::type_id::create("SPI_EVENT");
-            this.SPI_EVENT.configure(this, 1, 4, "RW", 0, 'h0, 1, 1, 0);
+            this.SPI_EVENT.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : spi_controller__INTR_ENABLE
 
@@ -54,22 +54,37 @@
 
         virtual function void build();
             this.ERROR = uvm_reg_field::type_id::create("ERROR");
-            this.ERROR.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.ERROR.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
             this.SPI_EVENT = uvm_reg_field::type_id::create("SPI_EVENT");
-            this.SPI_EVENT.configure(this, 1, 4, "RW", 0, 'h0, 1, 1, 0);
+            this.SPI_EVENT.configure(this, 1, 1, "WO", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : spi_controller__INTR_TEST
 
-    // reg - spi_controller.CTRL
-    class spi_controller__CTRL extends uvm_reg;
-        `uvm_object_utils(spi_controller__CTRL)
+    // reg - spi_controller.ALERT_TEST
+    class spi_controller__ALERT_TEST extends uvm_reg;
+        `uvm_object_utils(spi_controller__ALERT_TEST)
+        rand uvm_reg_field FATAL_FAULT;
+
+        function new(string name = "spi_controller__ALERT_TEST");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.FATAL_FAULT = uvm_reg_field::type_id::create("FATAL_FAULT");
+            this.FATAL_FAULT.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : spi_controller__ALERT_TEST
+
+    // reg - spi_controller.CONTROL
+    class spi_controller__CONTROL extends uvm_reg;
+        `uvm_object_utils(spi_controller__CONTROL)
         rand uvm_reg_field RX_WATERMARK;
         rand uvm_reg_field TX_WATERMARK;
         rand uvm_reg_field OUTPUT_EN;
         rand uvm_reg_field SW_RST;
         rand uvm_reg_field SPIEN;
 
-        function new(string name = "spi_controller__CTRL");
+        function new(string name = "spi_controller__CONTROL");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -81,11 +96,11 @@
             this.OUTPUT_EN = uvm_reg_field::type_id::create("OUTPUT_EN");
             this.OUTPUT_EN.configure(this, 1, 29, "RW", 0, 'h0, 1, 1, 0);
             this.SW_RST = uvm_reg_field::type_id::create("SW_RST");
-            this.SW_RST.configure(this, 1, 30, "WO", 1, 'h0, 1, 1, 0);
+            this.SW_RST.configure(this, 1, 30, "RW", 0, 'h0, 1, 1, 0);
             this.SPIEN = uvm_reg_field::type_id::create("SPIEN");
             this.SPIEN.configure(this, 1, 31, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : spi_controller__CTRL
+    endclass : spi_controller__CONTROL
 
     // reg - spi_controller.STATUS
     class spi_controller__STATUS extends uvm_reg;
@@ -141,9 +156,9 @@
         endfunction : build
     endclass : spi_controller__STATUS
 
-    // reg - spi_controller.CFG
-    class spi_controller__CFG extends uvm_reg;
-        `uvm_object_utils(spi_controller__CFG)
+    // reg - spi_controller.CONFIGOPTS
+    class spi_controller__CONFIGOPTS extends uvm_reg;
+        `uvm_object_utils(spi_controller__CONFIGOPTS)
         rand uvm_reg_field CLKDIV;
         rand uvm_reg_field CSNIDLE;
         rand uvm_reg_field CSNTRAIL;
@@ -152,7 +167,7 @@
         rand uvm_reg_field CPHA;
         rand uvm_reg_field CPOL;
 
-        function new(string name = "spi_controller__CFG");
+        function new(string name = "spi_controller__CONFIGOPTS");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
@@ -172,7 +187,7 @@
             this.CPOL = uvm_reg_field::type_id::create("CPOL");
             this.CPOL.configure(this, 1, 31, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : spi_controller__CFG
+    endclass : spi_controller__CONFIGOPTS
 
     // reg - spi_controller.CSID
     class spi_controller__CSID extends uvm_reg;
@@ -189,57 +204,61 @@
         endfunction : build
     endclass : spi_controller__CSID
 
-    // reg - spi_controller.CMD
-    class spi_controller__CMD extends uvm_reg;
-        `uvm_object_utils(spi_controller__CMD)
-        rand uvm_reg_field LEN;
+    // reg - spi_controller.COMMAND
+    class spi_controller__COMMAND extends uvm_reg;
+        `uvm_object_utils(spi_controller__COMMAND)
         rand uvm_reg_field CSAAT;
         rand uvm_reg_field SPEED;
         rand uvm_reg_field DIRECTION;
+        rand uvm_reg_field LEN;
 
-        function new(string name = "spi_controller__CMD");
+        function new(string name = "spi_controller__COMMAND");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
         virtual function void build();
-            this.LEN = uvm_reg_field::type_id::create("LEN");
-            this.LEN.configure(this, 9, 0, "WO", 0, 'h0, 1, 1, 0);
             this.CSAAT = uvm_reg_field::type_id::create("CSAAT");
-            this.CSAAT.configure(this, 1, 9, "WO", 0, 'h0, 1, 1, 0);
+            this.CSAAT.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
             this.SPEED = uvm_reg_field::type_id::create("SPEED");
-            this.SPEED.configure(this, 2, 10, "WO", 0, 'h0, 1, 1, 0);
+            this.SPEED.configure(this, 2, 1, "WO", 0, 'h0, 1, 1, 0);
             this.DIRECTION = uvm_reg_field::type_id::create("DIRECTION");
-            this.DIRECTION.configure(this, 2, 12, "WO", 0, 'h0, 1, 1, 0);
+            this.DIRECTION.configure(this, 2, 3, "WO", 0, 'h0, 1, 1, 0);
+            this.LEN = uvm_reg_field::type_id::create("LEN");
+            this.LEN.configure(this, 20, 5, "WO", 0, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : spi_controller__CMD
+    endclass : spi_controller__COMMAND
 
-    // reg - spi_controller.RXDATA
-    class spi_controller__RXDATA extends uvm_reg;
+    // mem - spi_controller.RXDATA[]
+    class spi_controller__RXDATA extends uvm_reg_block;
         `uvm_object_utils(spi_controller__RXDATA)
-        rand uvm_reg_field RXDATA;
-
+        rand uvm_mem m_mem;
+        
         function new(string name = "spi_controller__RXDATA");
-            super.new(name, 32, UVM_NO_COVERAGE);
+            super.new(name);
         endfunction : new
 
         virtual function void build();
-            this.RXDATA = uvm_reg_field::type_id::create("RXDATA");
-            this.RXDATA.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.default_map = create_map("reg_map", 0, 4.0, UVM_NO_ENDIAN);
+            this.m_mem = new("m_mem", 1, 32, "RW");
+            this.m_mem.configure(this);
+            this.default_map.add_mem(this.m_mem, 0);
         endfunction : build
     endclass : spi_controller__RXDATA
 
-    // reg - spi_controller.TXDATA
-    class spi_controller__TXDATA extends uvm_reg;
+    // mem - spi_controller.TXDATA[]
+    class spi_controller__TXDATA extends uvm_reg_block;
         `uvm_object_utils(spi_controller__TXDATA)
-        rand uvm_reg_field TXDATA;
-
+        rand uvm_mem m_mem;
+        
         function new(string name = "spi_controller__TXDATA");
-            super.new(name, 32, UVM_NO_COVERAGE);
+            super.new(name);
         endfunction : new
 
         virtual function void build();
-            this.TXDATA = uvm_reg_field::type_id::create("TXDATA");
-            this.TXDATA.configure(this, 32, 0, "WO", 0, 'h0, 1, 1, 0);
+            this.default_map = create_map("reg_map", 0, 4.0, UVM_NO_ENDIAN);
+            this.m_mem = new("m_mem", 1, 32, "RW");
+            this.m_mem.configure(this);
+            this.default_map.add_mem(this.m_mem, 0);
         endfunction : build
     endclass : spi_controller__TXDATA
 
@@ -260,13 +279,13 @@
             this.CMDBUSY = uvm_reg_field::type_id::create("CMDBUSY");
             this.CMDBUSY.configure(this, 1, 0, "RW", 0, 'h1, 1, 1, 0);
             this.OVERFLOW = uvm_reg_field::type_id::create("OVERFLOW");
-            this.OVERFLOW.configure(this, 1, 4, "RW", 0, 'h1, 1, 1, 0);
+            this.OVERFLOW.configure(this, 1, 1, "RW", 0, 'h1, 1, 1, 0);
             this.UNDERFLOW = uvm_reg_field::type_id::create("UNDERFLOW");
-            this.UNDERFLOW.configure(this, 1, 8, "RW", 0, 'h1, 1, 1, 0);
+            this.UNDERFLOW.configure(this, 1, 2, "RW", 0, 'h1, 1, 1, 0);
             this.CMDINVAL = uvm_reg_field::type_id::create("CMDINVAL");
-            this.CMDINVAL.configure(this, 1, 12, "RW", 0, 'h1, 1, 1, 0);
+            this.CMDINVAL.configure(this, 1, 3, "RW", 0, 'h1, 1, 1, 0);
             this.CSIDINVAL = uvm_reg_field::type_id::create("CSIDINVAL");
-            this.CSIDINVAL.configure(this, 1, 16, "RW", 0, 'h1, 1, 1, 0);
+            this.CSIDINVAL.configure(this, 1, 4, "RW", 0, 'h1, 1, 1, 0);
         endfunction : build
     endclass : spi_controller__ERROR_ENABLE
 
@@ -288,15 +307,15 @@
             this.CMDBUSY = uvm_reg_field::type_id::create("CMDBUSY");
             this.CMDBUSY.configure(this, 1, 0, "W1C", 1, 'h0, 1, 1, 0);
             this.OVERFLOW = uvm_reg_field::type_id::create("OVERFLOW");
-            this.OVERFLOW.configure(this, 1, 4, "W1C", 1, 'h0, 1, 1, 0);
+            this.OVERFLOW.configure(this, 1, 1, "W1C", 1, 'h0, 1, 1, 0);
             this.UNDERFLOW = uvm_reg_field::type_id::create("UNDERFLOW");
-            this.UNDERFLOW.configure(this, 1, 8, "W1C", 1, 'h0, 1, 1, 0);
+            this.UNDERFLOW.configure(this, 1, 2, "W1C", 1, 'h0, 1, 1, 0);
             this.CMDINVAL = uvm_reg_field::type_id::create("CMDINVAL");
-            this.CMDINVAL.configure(this, 1, 12, "W1C", 1, 'h0, 1, 1, 0);
+            this.CMDINVAL.configure(this, 1, 3, "W1C", 1, 'h0, 1, 1, 0);
             this.CSIDINVAL = uvm_reg_field::type_id::create("CSIDINVAL");
-            this.CSIDINVAL.configure(this, 1, 16, "W1C", 1, 'h0, 1, 1, 0);
+            this.CSIDINVAL.configure(this, 1, 4, "W1C", 1, 'h0, 1, 1, 0);
             this.ACCESSINVAL = uvm_reg_field::type_id::create("ACCESSINVAL");
-            this.ACCESSINVAL.configure(this, 1, 20, "W1C", 1, 'h0, 1, 1, 0);
+            this.ACCESSINVAL.configure(this, 1, 5, "W1C", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : spi_controller__ERROR_STATUS
 
@@ -318,31 +337,32 @@
             this.RXFULL = uvm_reg_field::type_id::create("RXFULL");
             this.RXFULL.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
             this.TXEMPTY = uvm_reg_field::type_id::create("TXEMPTY");
-            this.TXEMPTY.configure(this, 1, 4, "RW", 0, 'h0, 1, 1, 0);
+            this.TXEMPTY.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
             this.RXWM = uvm_reg_field::type_id::create("RXWM");
-            this.RXWM.configure(this, 1, 8, "RW", 0, 'h0, 1, 1, 0);
+            this.RXWM.configure(this, 1, 2, "RW", 0, 'h0, 1, 1, 0);
             this.TXWM = uvm_reg_field::type_id::create("TXWM");
-            this.TXWM.configure(this, 1, 12, "RW", 0, 'h0, 1, 1, 0);
+            this.TXWM.configure(this, 1, 3, "RW", 0, 'h0, 1, 1, 0);
             this.READY = uvm_reg_field::type_id::create("READY");
-            this.READY.configure(this, 1, 16, "RW", 0, 'h0, 1, 1, 0);
+            this.READY.configure(this, 1, 4, "RW", 0, 'h0, 1, 1, 0);
             this.IDLE = uvm_reg_field::type_id::create("IDLE");
-            this.IDLE.configure(this, 1, 20, "RW", 0, 'h0, 1, 1, 0);
+            this.IDLE.configure(this, 1, 5, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : spi_controller__EVENT_ENABLE
 
     // addrmap - spi_controller
     class spi_controller extends uvm_reg_block;
         `uvm_object_utils(spi_controller)
-        rand spi_controller__INTR_STATUS INTR_STATUS;
+        rand spi_controller__INTR_STATE INTR_STATE;
         rand spi_controller__INTR_ENABLE INTR_ENABLE;
         rand spi_controller__INTR_TEST INTR_TEST;
-        rand spi_controller__CTRL CTRL;
+        rand spi_controller__ALERT_TEST ALERT_TEST;
+        rand spi_controller__CONTROL CONTROL;
         rand spi_controller__STATUS STATUS;
-        rand spi_controller__CFG CFG;
+        rand spi_controller__CONFIGOPTS CONFIGOPTS;
         rand spi_controller__CSID CSID;
-        rand spi_controller__CMD CMD;
-        rand spi_controller__RXDATA RXDATA;
-        rand spi_controller__TXDATA TXDATA;
+        rand spi_controller__COMMAND COMMAND;
+        rand spi_controller__RXDATA RXDATA[1];
+        rand spi_controller__TXDATA TXDATA[1];
         rand spi_controller__ERROR_ENABLE ERROR_ENABLE;
         rand spi_controller__ERROR_STATUS ERROR_STATUS;
         rand spi_controller__EVENT_ENABLE EVENT_ENABLE;
@@ -353,11 +373,11 @@
 
         virtual function void build();
             this.default_map = create_map("reg_map", 0, 4, UVM_NO_ENDIAN);
-            this.INTR_STATUS = spi_controller__INTR_STATUS::type_id::create("INTR_STATUS");
-            this.INTR_STATUS.configure(this);
+            this.INTR_STATE = spi_controller__INTR_STATE::type_id::create("INTR_STATE");
+            this.INTR_STATE.configure(this);
 
-            this.INTR_STATUS.build();
-            this.default_map.add_reg(this.INTR_STATUS, 'h0);
+            this.INTR_STATE.build();
+            this.default_map.add_reg(this.INTR_STATE, 'h0);
             this.INTR_ENABLE = spi_controller__INTR_ENABLE::type_id::create("INTR_ENABLE");
             this.INTR_ENABLE.configure(this);
 
@@ -368,41 +388,48 @@
 
             this.INTR_TEST.build();
             this.default_map.add_reg(this.INTR_TEST, 'h8);
-            this.CTRL = spi_controller__CTRL::type_id::create("CTRL");
-            this.CTRL.configure(this);
+            this.ALERT_TEST = spi_controller__ALERT_TEST::type_id::create("ALERT_TEST");
+            this.ALERT_TEST.configure(this);
 
-            this.CTRL.build();
-            this.default_map.add_reg(this.CTRL, 'h10);
+            this.ALERT_TEST.build();
+            this.default_map.add_reg(this.ALERT_TEST, 'hc);
+            this.CONTROL = spi_controller__CONTROL::type_id::create("CONTROL");
+            this.CONTROL.configure(this);
+
+            this.CONTROL.build();
+            this.default_map.add_reg(this.CONTROL, 'h10);
             this.STATUS = spi_controller__STATUS::type_id::create("STATUS");
             this.STATUS.configure(this);
 
             this.STATUS.build();
             this.default_map.add_reg(this.STATUS, 'h14);
-            this.CFG = spi_controller__CFG::type_id::create("CFG");
-            this.CFG.configure(this);
+            this.CONFIGOPTS = spi_controller__CONFIGOPTS::type_id::create("CONFIGOPTS");
+            this.CONFIGOPTS.configure(this);
 
-            this.CFG.build();
-            this.default_map.add_reg(this.CFG, 'h18);
+            this.CONFIGOPTS.build();
+            this.default_map.add_reg(this.CONFIGOPTS, 'h18);
             this.CSID = spi_controller__CSID::type_id::create("CSID");
             this.CSID.configure(this);
 
             this.CSID.build();
             this.default_map.add_reg(this.CSID, 'h1c);
-            this.CMD = spi_controller__CMD::type_id::create("CMD");
-            this.CMD.configure(this);
+            this.COMMAND = spi_controller__COMMAND::type_id::create("COMMAND");
+            this.COMMAND.configure(this);
 
-            this.CMD.build();
-            this.default_map.add_reg(this.CMD, 'h20);
-            this.RXDATA = spi_controller__RXDATA::type_id::create("RXDATA");
-            this.RXDATA.configure(this);
-
-            this.RXDATA.build();
-            this.default_map.add_reg(this.RXDATA, 'h24);
-            this.TXDATA = spi_controller__TXDATA::type_id::create("TXDATA");
-            this.TXDATA.configure(this);
-
-            this.TXDATA.build();
-            this.default_map.add_reg(this.TXDATA, 'h28);
+            this.COMMAND.build();
+            this.default_map.add_reg(this.COMMAND, 'h20);
+            foreach(this.RXDATA[i0]) begin
+                this.RXDATA[i0] = spi_controller__RXDATA::type_id::create($sformatf("RXDATA[%0d]", i0));
+                this.RXDATA[i0].configure(this);
+                this.RXDATA[i0].build();
+                this.default_map.add_submap(this.RXDATA[i0].default_map, 'h24 + i0*'h4);
+            end
+            foreach(this.TXDATA[i0]) begin
+                this.TXDATA[i0] = spi_controller__TXDATA::type_id::create($sformatf("TXDATA[%0d]", i0));
+                this.TXDATA[i0].configure(this);
+                this.TXDATA[i0].build();
+                this.default_map.add_submap(this.TXDATA[i0].default_map, 'h28 + i0*'h4);
+            end
             this.ERROR_ENABLE = spi_controller__ERROR_ENABLE::type_id::create("ERROR_ENABLE");
             this.ERROR_ENABLE.configure(this);
 
