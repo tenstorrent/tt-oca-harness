@@ -52,14 +52,19 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 # the open DV placeholder and the Samsung shim that shadows it, and only the
 # latter gets a RAL.
 #
-# aes/hmac/kmac/otbn/aon_timer/secure_dma/spi_controller and efuse_mmr are RAL
+# aes/hmac/kmac/otbn/aon_timer/secure_dma and efuse_mmr are RAL
 # leaves, not sub-blocks: their RDL was deduplicated out of the SEP blocks/ tree
 # (#599), so the composite glob no longer sees them. As leaves they emit their
 # RAL at the block's own home (the vendored overlay, or hw/ip/efuse) -- exactly
 # as csrng/edn already do -- and the SEP DV testbench includes each by bare name
 # via a +incdir on that home. Sub-blocks below are the ones with no other home.
+#
+# spi_controller stays a composite sub-block (not deduped in #599): its vendored
+# overlay RDL describes a different, newer spi_host layout than the overlay
+# spi_controller_reg_pkg.sv the SEP DUT actually instantiates, so the DUT-matching
+# blocks/ copy is retained until the overlay is reconciled (see #1086).
 OCAH_REG_RAL_SUB_BLOCKS ?= \
-  sep_efuse_map \
+  sep_efuse_map spi_controller \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
 OCAH_REG_RAL_LEAF_BLOCKS ?= \
   hw/common/axi/axi_alias_remap/regs/alias_remap \
@@ -77,8 +82,7 @@ OCAH_REG_RAL_LEAF_BLOCKS ?= \
   vendor/lowRISC/opentitan/overlay/regs/hmac \
   vendor/lowRISC/opentitan/overlay/regs/kmac \
   vendor/lowRISC/opentitan/overlay/regs/otbn \
-  vendor/lowRISC/opentitan/overlay/regs/secure_dma \
-  vendor/lowRISC/opentitan/overlay/regs/spi_controller
+  vendor/lowRISC/opentitan/overlay/regs/secure_dma
 # Overlay append hooks (the nonfree vendor shim blocks the SEP TB drives).
 OCAH_REG_RAL_SUB_BLOCKS += $(OCAH_REG_RAL_SUB_BLOCKS_EXTRA)
 OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
