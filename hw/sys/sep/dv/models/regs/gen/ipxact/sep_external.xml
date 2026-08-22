@@ -11,7 +11,7 @@
     <ipxact:memoryMap>
       <ipxact:name>sep_external</ipxact:name>
       <ipxact:displayName>SEP External</ipxact:displayName>
-      <ipxact:description>SEP external adopter/vendor address map (licensed xSPI, etc.)</ipxact:description>
+      <ipxact:description>SEP external address map (eFuse SHIM control and execute-in-place window).</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>efuse_shim_ctrl</ipxact:name>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>

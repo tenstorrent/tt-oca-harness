@@ -14546,7 +14546,7 @@ goes low</ipxact:description>
         <ipxact:registerFile>
           <ipxact:name>sep_external</ipxact:name>
           <ipxact:displayName>SEP External</ipxact:displayName>
-          <ipxact:description>SEP external adopter/vendor address map (licensed xSPI, etc.)</ipxact:description>
+          <ipxact:description>SEP external address map (eFuse SHIM control and execute-in-place window).</ipxact:description>
           <ipxact:addressOffset>'h20000000</ipxact:addressOffset>
           <ipxact:range>'h20000000</ipxact:range>
           <ipxact:registerFile>
