@@ -245,14 +245,32 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         await self.write_single_and_check(addr, data, context="gate.baseline")
         await self.expect_smc_axi_activity(before=before, read=False, context="gate.baseline")
 
-        for idx, bit_name in enumerate(("ap_debug", "soc_debug"), start=1):
-            self.log_step(idx + 1, "Gate SMC fabric write with %s", bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
-            raw = pack_single_op(DtpJtag2AxiOp.WRITE, addr + (idx * AXI_BEAT_BYTES), data)
+        # Two assert/release passes of the one direct disable prove the gate
+        # is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"smc_jtag2axi_pass{idx}"
+            self.log_step(idx + 1, "Gate SMC fabric write with smc_jtag2axi (pass %d)", idx)
+            await self.disable_debug_bits("smc_jtag2axi")
+            # Preload a sentinel at the gated-attempt address: the blocked
+            # write must leave memory untouched, both while gated and after
+            # the disable is released (a delayed replay would overwrite it).
+            gate_addr = addr + (idx * AXI_BEAT_BYTES)
+            sentinel = 0x5EA1_0000_0000_0000 | idx
+            self.write_mem_int(gate_addr, sentinel, 3)
+            raw = pack_single_op(DtpJtag2AxiOp.WRITE, gate_addr, data)
             await self.load_ir(DtpJtagInstr.SMC_AXI_SINGLE_OP, back_to_rti=True)
             await self.shift_dr(raw, 132, back_to_rti=True)
             await self.expect_no_smc_axi_activity(8, context=f"gate.{bit_name}.no_axi")
-            await self.clear_lifecycle()
+            self.assert_equal(
+                f"gate.{bit_name}.sentinel", self.read_mem_int(gate_addr, 3), sentinel
+            )
+            await self.enable_all_debug()
+            await self.wait_sys_cycles(8)
+            self.assert_equal(
+                f"gate.{bit_name}.sentinel_post_release",
+                self.read_mem_int(gate_addr, 3),
+                sentinel,
+            )
             before = await self.axi_activity_counts()
             item = await self.write_single_and_check(
                 addr + (idx * 0x40),
@@ -268,7 +286,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             self.operation_count += 1
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "single_write": self.run_single_write,
             "single_write_data_verify": self.run_single_write_data_verify,
@@ -281,7 +299,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         if self.scenario not in scenarios:
             raise ValueError(f"unknown write-side JTAG2AXI scenario {self.scenario!r}")
         await scenarios[self.scenario]()
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "SMC fabric write-side scenario complete",
             scenario=self.scenario,

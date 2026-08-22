@@ -4,14 +4,15 @@
 // JTAG2AXI single-op scenario for the DTP SV-UVM flow (issue #3295), run
 // against one target ("smc_otp" AXI-Lite or "smc_axi" AXI4):
 //
-//   1. reset + TAP reset + lifecycle enable;
+//   1. reset + TAP reset + clearing the lifecycle debug disables;
 //   2. randomized single write + readback loop (JTAG status checked here;
 //      response/readback truth is owned by the shared AXI scoreboard);
 //   3. armed SLVERR write and armed DECERR read (JTAG status SLVERR/DECERR
 //      AND scoreboard CHK-AXI-RESP with expected non-OKAY + CHK-AXI-ERR-INJ);
 //   4. recovery write + readback after disarming;
-//   5. security gating: drop one required lifecycle bit, issue an op, prove
-//      zero request activity (CHK-AXI-GATE-*), restore, prove recovery.
+//   5. security gating: assert exactly the target's dbg_disable bit, issue
+//      an op, prove zero request activity (CHK-AXI-GATE-*), restore, prove
+//      recovery.
 //
 // Every random choice is logged with the loop index for replay.
 
@@ -54,7 +55,7 @@ class dtp_jtag2axi_single_op_seq extends dtp_jtag2axi_base_seq;
         tap_reset();
         step(1'b0);  // TLR -> RTI: IR/DR scans require Run-Test/Idle
         check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after TLR->RTI step");
-        enable_all_lifecycle();
+        enable_all_debug();
 
         // -- 1. randomized write + readback ---------------------------------
         for (int unsigned idx = 0; idx < random_ops; idx++) begin
@@ -90,11 +91,8 @@ class dtp_jtag2axi_single_op_seq extends dtp_jtag2axi_base_seq;
         single_read(t, err_wr_addr + 64'h40, status, rdata);
         check_status("recovery.read", status, J2A_SUCCESS);
 
-        // -- 5. security gating: drop one required lifecycle bit -------------
-        if (t.name == "smc_otp")
-            set_lifecycle(1'b1, 1'b1, 1'b1, 1'b1, 1'b0);  // fuse_test gates smc_otp
-        else
-            set_lifecycle(1'b1, 1'b1, 1'b0, 1'b1, 1'b1);  // ap_debug gates smc_axi
+        // -- 5. security gating: assert exactly the target's disable ---------
+        gate_target(t);
         sample_activity(t, gate_before_aw, gate_before_w, gate_before_ar);
         issue_single(t, J2A_OP_READ, 64'h0000_0040);
         #200ns;
@@ -106,7 +104,7 @@ class dtp_jtag2axi_single_op_seq extends dtp_jtag2axi_base_seq;
         // Delayed-leak protection: a bridge that queued the gated request and
         // replays it once the gate re-opens must be caught — counters must
         // still be flat after re-enable, before any sanctioned traffic.
-        enable_all_lifecycle();
+        enable_all_debug();
         #200ns;
         sample_activity(t, gate_after_aw, gate_after_w, gate_after_ar);
         expect_no_activity_evidence(t,
