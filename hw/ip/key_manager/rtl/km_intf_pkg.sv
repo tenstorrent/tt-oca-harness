@@ -110,25 +110,36 @@ package km_intf_pkg;
     /**
      * @brief Key Manager CPU address map constants.
      *
-     * @details
+     * @details Every register-block port spans exactly the window its block
+     *          decodes, 2^MIN_ADDR_WIDTH bytes taken from the generated
+     *          register package, so no register is reachable from more than one
+     *          address. The sizes below are what those widths yield today.
+     *
      *  | Region | Base        | End         | Size  | Notes                                   |
      *  |--------|-------------|-------------|-------|-----------------------------------------|
      *  | ROM    | 0x0000_0000 | 0x0000_3FFF | 16 KB |                                         |
      *  | ---    | 0x0000_4000 | 0x0000_7FFF | 16 KB | Unmapped (DECERR); reserved for a       |
      *  |        |             |             |       | future ROM expansion to 32 KB           |
      *  | SRAM   | 0x0000_8000 | 0x0000_FFFF | 32 KB |                                         |
-     *  | MBOX   | 0x0001_0000 | 0x0001_0FFF |  4 KB |                                         |
+     *  | MBOX   | 0x0001_0000 | 0x0001_001F |  32 B |                                         |
      *  | OTP    | 0x0001_1000 | 0x0001_1FFF |  4 KB | External pass-through; HW remaps to     |
-     *  |        |             |             |       | OTP_EFUSE_REMAP_BASE (MAP/CTRL/MMR)     |
+     *  |        |             |             |       | OTP_EFUSE_REMAP_BASE (MAP/CTRL/MMR),    |
+     *  |        |             |             |       | which needs the whole page              |
      *  | KPV    | 0x0001_2000 | 0x0001_3FFF |  8 KB | 64 slots; 8 KB-aligned                  |
-     *  | KMCSR  | 0x0001_4000 | 0x0001_4FFF |  4 KB |                                         |
-     *  | DRBG   | 0x0001_5000 | 0x0001_5FFF |  4 KB |                                         |
-     *  | OTBN   | 0x0001_8000 | 0x0001_8FFF |  4 KB |                                         |
-     *  | AES    | 0x0001_9000 | 0x0001_9FFF |  4 KB |                                         |
-     *  | KMAC   | 0x0001_A000 | 0x0001_AFFF |  4 KB |                                         |
-     *  | HMAC   | 0x0001_B000 | 0x0001_BFFF |  4 KB |                                         |
-     *  | ABR    | 0x0001_C000 | 0x0001_CFFF |  4 KB |                                         |
+     *  | KMCSR  | 0x0001_4000 | 0x0001_47FF |  2 KB |                                         |
+     *  | DRBG   | 0x0001_5000 | 0x0001_500F |  16 B |                                         |
+     *  | OTBN   | 0x0001_8000 | 0x0001_807F | 128 B |                                         |
+     *  | AES    | 0x0001_9000 | 0x0001_907F | 128 B |                                         |
+     *  | KMAC   | 0x0001_A000 | 0x0001_A07F | 128 B |                                         |
+     *  | HMAC   | 0x0001_B000 | 0x0001_B07F | 128 B |                                         |
+     *  | ABR    | 0x0001_C000 | 0x0001_C7FF |  2 KB |                                         |
      *  | VROM   | 0x1000_0000 | 0x1000_FFFF | 64 KB |                                         |
+     *
+     *          Addresses between one port's end and the next port's base are
+     *          outside every crossbar rule, so the crossbar answers DECERR;
+     *          unmapped offsets inside a port's window reach its register
+     *          block, which is generated with --err-if-bad-addr and answers
+     *          SLVERR.
      */
 
     // Internal memory
@@ -137,15 +148,35 @@ package km_intf_pkg;
     localparam km_addr_t SRAM_BASE_ADDR    = 32'h0000_8000;
     localparam km_addr_t SRAM_END_ADDR     = 32'h0000_FFFF;
 
+    /**
+     * @brief Last address of a rule that spans one register block's decode
+     *        window.
+     *
+     * @details A block keeps only `addr_width` low address bits, so a rule any
+     *          wider than its window would let the block's registers repeat
+     *          through the rest of the rule under a second set of addresses.
+     */
+    function automatic km_addr_t km_window_end(km_addr_t base, int unsigned addr_width);
+        return base + km_addr_t'((32'd1 << addr_width) - 1);
+    endfunction
+
     // Internal peripherals
-    localparam km_addr_t MBOX_BASE_ADDR         = 32'h0001_0000;
-    localparam km_addr_t MBOX_END_ADDR          = 32'h0001_0FFF;
-    localparam km_addr_t KPV_BASE_ADDR          = 32'h0001_2000;
-    localparam km_addr_t KPV_END_ADDR           = 32'h0001_3FFF;
-    localparam km_addr_t KMCSR_BASE_ADDR        = 32'h0001_4000;
-    localparam km_addr_t KMCSR_END_ADDR         = 32'h0001_4FFF;
+    localparam km_addr_t MBOX_BASE_ADDR = 32'h0001_0000;
+    localparam km_addr_t MBOX_END_ADDR = km_window_end(
+        MBOX_BASE_ADDR, km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH
+    );
+    localparam km_addr_t KPV_BASE_ADDR = 32'h0001_2000;
+    localparam km_addr_t KPV_END_ADDR = km_window_end(
+        KPV_BASE_ADDR, km_kpv_reg_pkg::KM_KPV_REG_MIN_ADDR_WIDTH
+    );
+    localparam km_addr_t KMCSR_BASE_ADDR = 32'h0001_4000;
+    localparam km_addr_t KMCSR_END_ADDR = km_window_end(
+        KMCSR_BASE_ADDR, km_csr_reg_pkg::KM_CSR_REG_MIN_ADDR_WIDTH
+    );
     localparam km_addr_t DRBG_SAMPLER_BASE_ADDR = 32'h0001_5000;
-    localparam km_addr_t DRBG_SAMPLER_END_ADDR  = 32'h0001_5FFF;
+    localparam km_addr_t DRBG_SAMPLER_END_ADDR = km_window_end(
+        DRBG_SAMPLER_BASE_ADDR, km_drbg_sampler_reg_pkg::KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH
+    );
 
     // OTP / eFuse access port
     // The crossbar routes 0x0001_1xxx to xbar master port 8; key_manager.sv
@@ -154,20 +185,32 @@ package km_intf_pkg;
     // is reached correctly.
     // Accessible sub-regions: MAP/shadow (offset 0x000-0x3FF),
     //   CTRL (offset 0x400-0x41B), MMR (offset 0x500-0x56F).
+    // This rule is a full 4 KB page: the remap keeps addr[11:0] and the
+    // sub-regions run to 0x56F.
     localparam km_addr_t OTP_BASE_ADDR = 32'h0001_1000;
-    localparam km_addr_t OTP_END_ADDR  = 32'h0001_1FFF;
+    localparam km_addr_t OTP_END_ADDR = 32'h0001_1FFF;
 
     // External crypto engine ports
-    localparam km_addr_t OTBN_BASE_ADDR    = 32'h0001_8000;
-    localparam km_addr_t OTBN_END_ADDR     = 32'h0001_8FFF;
-    localparam km_addr_t AES_BASE_ADDR     = 32'h0001_9000;
-    localparam km_addr_t AES_END_ADDR      = 32'h0001_9FFF;
-    localparam km_addr_t KMAC_BASE_ADDR    = 32'h0001_A000;
-    localparam km_addr_t KMAC_END_ADDR     = 32'h0001_AFFF;
-    localparam km_addr_t HMAC_BASE_ADDR    = 32'h0001_B000;
-    localparam km_addr_t HMAC_END_ADDR     = 32'h0001_BFFF;
-    localparam km_addr_t ABR_BASE_ADDR     = 32'h0001_C000;
-    localparam km_addr_t ABR_END_ADDR      = 32'h0001_CFFF;
+    localparam km_addr_t OTBN_BASE_ADDR = 32'h0001_8000;
+    localparam km_addr_t OTBN_END_ADDR = km_window_end(
+        OTBN_BASE_ADDR, otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+    );
+    localparam km_addr_t AES_BASE_ADDR = 32'h0001_9000;
+    localparam km_addr_t AES_END_ADDR = km_window_end(
+        AES_BASE_ADDR, aes_wrapper_key_reg_pkg::AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+    );
+    localparam km_addr_t KMAC_BASE_ADDR = 32'h0001_A000;
+    localparam km_addr_t KMAC_END_ADDR = km_window_end(
+        KMAC_BASE_ADDR, kmac_wrapper_key_reg_pkg::KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+    );
+    localparam km_addr_t HMAC_BASE_ADDR = 32'h0001_B000;
+    localparam km_addr_t HMAC_END_ADDR = km_window_end(
+        HMAC_BASE_ADDR, hmac_wrapper_key_reg_pkg::HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+    );
+    localparam km_addr_t ABR_BASE_ADDR = 32'h0001_C000;
+    localparam km_addr_t ABR_END_ADDR = km_window_end(
+        ABR_BASE_ADDR, abr_wrapper_key_reg_pkg::ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+    );
 
     // Testbench virtual ROM (rodata)
     localparam km_addr_t VROM_BASE_ADDR    = 32'h1000_0000;

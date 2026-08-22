@@ -83,6 +83,8 @@ module km_axi_lite_xbar import km_intf_pkg::*; import axi_pkg::*; #(
     input  axil_resp_t otp_resp_i
 );
 
+    `include "prim_assert.sv"
+
     //=========================================================================
     // Type Definitions for Crossbar
     //=========================================================================
@@ -144,6 +146,45 @@ module km_axi_lite_xbar import km_intf_pkg::*; import axi_pkg::*; #(
         // Index 9: Adams Bridge
         '{idx: 9, start_addr: ABR_BASE_ADDR,          end_addr: 33'(ABR_END_ADDR + 1'b1)}
     };
+
+    //=========================================================================
+    // Address Map Validation
+    //=========================================================================
+    // A slave keeps only the low address bits of its own decode window, so a
+    // rule has to be a power of two and aligned to its base, or the slave's
+    // registers repeat under a second set of addresses inside the same rule.
+    // The window sizes come from the generated register packages, but a moved
+    // base or an added rule can still break either property.
+
+    /** @brief Every rule is a power of two in size and aligned to that size. */
+    function automatic bit km_addr_map_aligned();
+        logic [KM_AXI_ADDR_WIDTH:0] base;
+        logic [KM_AXI_ADDR_WIDTH:0] size;
+        for (int unsigned i = 0; i < XbarCfg.NoAddrRules; i++) begin
+            base = {1'b0, AddrMap[i].start_addr};
+            size = AddrMap[i].end_addr - base;
+            if (size == '0) return 1'b0;
+            if ((size & (size - 1)) != '0) return 1'b0;
+            if ((base & (size - 1)) != '0) return 1'b0;
+        end
+        return 1'b1;
+    endfunction
+
+    /** @brief No two rules cover a common address. */
+    function automatic bit km_addr_map_disjoint();
+        for (int unsigned i = 0; i < XbarCfg.NoAddrRules; i++) begin
+            for (int unsigned j = i + 1; j < XbarCfg.NoAddrRules; j++) begin
+                if (({1'b0, AddrMap[i].start_addr} < AddrMap[j].end_addr) &&
+                    ({1'b0, AddrMap[j].start_addr} < AddrMap[i].end_addr)) begin
+                    return 1'b0;
+                end
+            end
+        end
+        return 1'b1;
+    endfunction
+
+    `OCAH_OT_ASSERT_INIT(AddrMapAligned_A, km_addr_map_aligned())
+    `OCAH_OT_ASSERT_INIT(AddrMapDisjoint_A, km_addr_map_disjoint())
 
     //=========================================================================
     // Internal Crossbar Signals
