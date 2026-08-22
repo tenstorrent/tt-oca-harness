@@ -285,6 +285,7 @@ met). Five more `PROVEN` rows reach the 85% target.
 | Crypto EDN arbitration (two live clients)
 | PROVEN
 | Same-cycle dual request, both acked, consecutive grants alternate.
+  Dual-sink CHK5 routing is bit-exact against the AXIS1 grant order.
 
 | eFuse sense + shadow + persist
 | PROVEN

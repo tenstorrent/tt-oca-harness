@@ -118,8 +118,8 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # pull the shared crypto-EDN leg concurrently off one verified DRBG stream.
 # Two real crypto clients contend the round-robin arbiter (distinct from the KM+AES
 # test above: there AES was the sole crypto client + KM was the second leg). No KM
-# firmware / no rom_main / no real fuse-sense. CHK1..CHK4 bit-exact + per-sink
-# MEMBERSHIP (each AES and each KMAC word is a genbits-golden word) + both-beats +
+# firmware / no rom_main / no real fuse-sense. CHK1..CHK4 bit-exact + dual-sink
+# CHK5 ROUTING (each AES/KMAC beat equals the AXIS1 grant) + both-beats +
 # both-KAT under contention. +esrc_noise_force (masking entropy) + +skip_fuse_sense.
 name = "sep_crypto_edn_multisink_arbitration_test"
 module = "crypto.sep_crypto_edn_multisink_arbitration_test"
@@ -136,7 +136,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # EDN is enabled, then the real entropy chain is brought up so prim_arbiter_ppc
 # inside drbg_axis_edn_adapter has to grant both. Distinct from the AES+KMAC
 # time-span overlap test above, which cannot hold two edn_req bits together.
-# Strict CHK1..CHK4 + CHK5_aes/CHK5_otbn_urnd membership (two live sinks).
+# Strict CHK1..CHK4 + CHK5_aes/CHK5_otbn_urnd ROUTING (two live sinks).
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1
