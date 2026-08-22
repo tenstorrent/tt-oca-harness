@@ -131,13 +131,16 @@ jobs:
             # SMU has no `all` group; `sep0_all` is the enrolled SEP=0 release set
             # (no c_compile / RISC-V toolchain stage on hosted runners).
             nightly_items: sep0_all
-            nightly_coverage: false
-            nightly_timeout: 90
+            nightly_coverage: true
+            nightly_timeout: 180
           - dut: smc
             tool: verilator
             runner: ubuntu-latest
             # SMC has no `all` group; `smoke` is the enrolled CI set and has no
             # firmware c_compile stage (cpu boot lives in other groups).
+            # nightly_coverage stays false: the SMC simulation completes without
+            # writing the native Verilator coverage database, so a coverage run
+            # cannot produce the native evidence the result gate requires.
             nightly_items: smoke
             nightly_coverage: false
             nightly_timeout: 90
