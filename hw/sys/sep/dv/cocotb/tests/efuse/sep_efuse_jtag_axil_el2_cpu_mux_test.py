@@ -33,7 +33,7 @@ Checkers (each logged):
 
 OSS deltas (documented): real PROD-sense replaces the reference suite's backdoor
 ``force_jtag_lc_state``; a fixed CPU loop window replaces the reference suite's backdoor
-``uvm_hdl_deposit`` UVM_DONE release (mirrors the #1 coexist port).
+``uvm_hdl_deposit`` UVM_DONE release. A live CPU loop window replaces that deposit.
 """
 
 from __future__ import annotations
