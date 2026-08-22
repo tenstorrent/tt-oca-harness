@@ -434,10 +434,17 @@ insufficient evidence, FIPS violation or illegal segmentation.
 | `CHK-OVERLAP PASS: AES and KMAC crypto-EDN beat windows overlap over [`
 | PROVEN
 
+| CHK-ROUTING
+| Each AES post-adapter beat and each KMAC post-adapter beat equals the AXIS1 word
+  the adapter granted that cycle. Unscored clients (OTBN wipe) still consume AXIS1
+  words; those grants are popped so AES/KMAC stay aligned.
+| `CHK-ROUTING PASS: CHK5_aes match=` and `CHK5_kmac match=` with
+  `equal the AXIS1 grant-order stream (mismatch=0)`
+| PROVEN
+
 | CHK-MEMBERSHIP
-| Every word either sink received is a member of the CHK4 genbits golden set, tallied by
-  removal from a working copy of the pool — so a word delivered twice, or to both sinks,
-  exhausts its count and is scored a miss.
+| Every word either sink received is a member of the CHK4 genbits golden set
+  (AXIS1 is chained to genbits in `report()`).
 | `CHK-MEMBERSHIP PASS: every AES and every KMAC crypto-EDN word is a CHK4 genbits-golden word`
 | PROVEN
 
@@ -460,7 +467,7 @@ methodology, recorded here so the chain of custody is explicit.
 Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
 Testlist:: `crypto.toml` (enrolled in `no_cpu` and `all`)
-Status:: Graded. Kept Verilator log `20260820_210207`.
+Status:: Graded. Kept Verilator log `20260822_135844`.
 
 ==== Description
 
@@ -533,26 +540,34 @@ grants still alternate (AES then URND). That is the round-robin decision.
 | CHK1..CHK4
 | Strict entropy scoreboard on the same bring-up that feeds the dual-req window.
   FIFO drain after the seed, then `report()`.
-| `CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd membership PASS` (Verilator
-  `20260821_052822`; that run: decor 2175 / compress 24 / seed 1 / genbits 19 --
+| `CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS` (Verilator
+  `20260822_135844`; that run: decor 2175 / compress 24 / seed 1 / genbits 19 --
   counts vary per seed, `mismatch=0` does not)
 | PROVEN
 
+| CHK-ROUTING
+| Each AES post-adapter beat and each OTBN URND post-adapter beat equals the
+  AXIS1 word the adapter granted that cycle.
+| `CHK-ROUTING PASS: CHK5_aes match=` and `CHK5_otbn_urnd match=` with
+  `equal the AXIS1 grant-order stream (mismatch=0)`
+| PROVEN
+
 | CHK5_aes / CHK5_otbn_urnd
-| Both live sinks: every delivered word is a CHK4 genbits word (membership).
-  Dual-sink bit-exact routing still needs the unported arbiter-assignment trace.
-| `CHK5_aes       membership match=` and `CHK5_otbn_urnd membership match=` rows
-  (word counts vary per seed)
+| Both live sinks: `report()` rows show `mismatch=0` against the AXIS1
+  grant-order stream (word counts vary per seed).
+| `CHK5_aes       dut_items=` and `CHK5_otbn_urnd dut_items=` rows with
+  `mismatch=0`
 | PROVEN
 |===
 
 NOTE: Standing rule — any test that moves data across the DRBG runs CHK1..CHK4
 (strict scoreboard, FIFO drain, `report()`) and enables CHK5 on every live sink.
-CHK5 mode is the strongest the stimulus allows: golden when one sink and the pull
-order is predictable; membership when more than one crypto sink is live; observe
-when firmware-driven order is not golden-predictable (`rom_main`). This test uses
-membership. `sep_aes_mode_keysize_rand_test` and
-`sep_kmac_mode_strength_rand_test` park unused clients and use routing golden.
+CHK5 mode is the strongest the stimulus allows: golden routing when the adapter
+grant order is observed from `edn_ack` (one or more crypto sinks); membership
+when the pull order is firmware-driven; observe when even membership is not
+scored (`rom_main` KM). This test uses golden routing.
+`sep_aes_mode_keysize_rand_test` and `sep_kmac_mode_strength_rand_test` park
+unused clients and use the same routing compare.
 
 [[sep_drbg_gen_segmentation_test]]
 === sep_drbg_gen_segmentation_test
@@ -1875,8 +1890,10 @@ CHK1..CHK4 and CHK5 on every test that moves data across the DRBG is a standing
 rule. The three former crypto holes are `PROVEN`. CHK5 on mux endpoint [2]
 (entropy pool) is a scoreboard sink (`pool`); the e2e smoke scores it golden
 (Verilator `20260821_070123`, `CHK5_pool match=31`). Dual-sink bit-exact CHK5
-routing still needs the unported arbiter-assignment trace; until that lands,
-membership plus alternate grant is the proven EDN-arbiter claim.
+routing is `PROVEN` on
+<<sep_crypto_edn_multisink_arbitration_test>> and
+<<sep_crypto_edn_round_robin_grant_test>> (Verilator `20260822_135757` /
+`20260822_135844`).
 
 The AES 9-cell row is mode × key-size. The CTR cell re-runs ENCRYPT
 (keystream identity); the DECRYPT opcode is <<phase3-dump>>, not a silent
@@ -1904,10 +1921,8 @@ named new Phase 2 test.
 | Area | Scorecard row | Phase 2 action
 
 | Entropy (ESRC / DRBG / EDN)
-| Consume is `PROVEN`; dual-sink bit-exact CHK5 routing is not
-| Extend `sep_crypto_edn_multisink_arbitration_test` and
-  `sep_crypto_edn_round_robin_grant_test`. Health tests and the
-  ring oscillator stay Phase 3 T.B.D.
+| Consume and dual-sink bit-exact CHK5 routing are `PROVEN`
+| Health tests and the ring oscillator stay Phase 3 T.B.D.
 
 | Lifecycle
 | `feat_ctrl` vs `LC_STATE` is `PROVEN`; demote product and
@@ -1935,11 +1950,6 @@ not pull the work back onto a Phase 1 e2e / smoke test.
 [cols="2,2,3",options="header"]
 |===
 | Existing Phase 2 test | Upgrade | Why not a new test
-
-| `sep_crypto_edn_multisink_arbitration_test`,
-  `sep_crypto_edn_round_robin_grant_test`
-| Dual-sink bit-exact CHK5 routing
-| Grant-membership is already proven here; consume e2e stays Phase 1
 
 | `sep_fabric_inbound_filter_rule_matrix_test`
 | Source-ID × r/w-enable product
@@ -2010,6 +2020,12 @@ tree; the wrap-up Verilator log is the grade. Do not add a sibling test.
 [cols="2,2,3",options="header"]
 |===
 | Landed | How | Former names that map here
+
+| Dual-sink CHK5 routing
+| `sep_crypto_edn_multisink_arbitration_test` and
+  `sep_crypto_edn_round_robin_grant_test` score each live sink's
+  post-adapter beat against the AXIS1 word granted that cycle
+| (no leftover name; grant-membership was the prior grade)
 
 | Inbound-filter matrix
 | `sep_fabric_inbound_filter_rule_matrix_test` walks entry 0 and 7 × two

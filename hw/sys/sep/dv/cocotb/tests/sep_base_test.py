@@ -647,12 +647,12 @@ class sep_base_test(uvm_test):
 
         ``score_sinks`` is an optional name->mode map for the crypto EDN sinks
         (``aes``/``kmac``/``otbn_rnd``/``otbn_urnd``) and the entropy-pool sink
-        (``pool``, EDN endpoint [2]). Each is ``"golden"`` (single live client on
-        that mux leg: crypto vs AXIS1, pool vs AXIS2), ``"membership"`` (each
+        (``pool``, EDN endpoint [2]). Each is ``"golden"`` (bit-exact ROUTING:
+        each post-adapter beat equals the AXIS1/AXIS2 word granted that cycle;
+        one or more live crypto clients are legal), ``"membership"`` (each
         word is a CHK4 genbits word), ``"observe"`` (>=1 real beat, no value
-        compare), or omitted (disabled). Park unused crypto clients before
-        calling this when using crypto ``golden``. The pool is a sole client of
-        mux [2], so ``{"pool": "golden"}`` is always legal.
+        compare), or omitted (disabled). The pool is a sole client of mux [2],
+        so ``{"pool": "golden"}`` is always legal.
         """
         from env.sep_drbg_scoreboard import SepDrbgScoreboard
         from seq_lib.sep_esrc_bringup_seq import (
