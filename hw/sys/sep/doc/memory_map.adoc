@@ -236,12 +236,12 @@ The secure DMA controller register map follows.
 
 ifdef::backend-html5[]
 ++++
-include::partial$sep/regs/gen/html/blocks/secure_dma.html[]
+include::ip:partial$secure_dma/regs/gen/html/secure_dma.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/secure_dma.adoc[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[]
 endif::backend-pdf[]
 
 ==== SPI Controller
