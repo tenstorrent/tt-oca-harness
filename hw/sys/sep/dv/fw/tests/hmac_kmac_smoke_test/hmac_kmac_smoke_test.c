@@ -18,8 +18,7 @@
 //   result is checked for completion / no-error / non-degenerate masking, NOT
 //   against an exact KMAC/Keccak software reference (no bare-metal Keccak model
 //   is ported). The HMAC side carries the exact-digest rigor. This is a "smoke".
-//   The OSS port also FIXES the reference suite kmac entropy bug by using SW entropy mode
-//   (see sep_kmac.h) so it cannot hang on an unseeded EDN.
+//   KMAC uses SOFTWARE entropy (see sep_kmac.h) so the engine does not wait on EDN.
 //
 // main() returns the error count; start.S turns 0 -> PASS magic / non-zero ->
 // FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard gates on.

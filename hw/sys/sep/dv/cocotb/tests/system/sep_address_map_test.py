@@ -8,8 +8,7 @@ read-checks across the map, plus write->readback of the pure-RW registers. The
 scoreboard checks the AXI response on every access and the value on every read.
 
 Every expected value (offset, reset, implemented-field mask) is derived from the
-generated SystemRDL export via env/sep_reg_meta.py — see sep_address_map_seq for
-the derivation and for the documented CLOCK_GATE_CTRL scope delta.
+generated SystemRDL export via env/sep_reg_meta.py — see sep_address_map_seq.
 """
 
 from __future__ import annotations
