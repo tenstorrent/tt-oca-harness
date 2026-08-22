@@ -11,7 +11,9 @@
 
 This is the high-level plan for verifying the SEP subsystem in the open-source
 tree. It says *what each phase is for*, *how coverage is counted*, and *what
-every test must satisfy* — including Phase 3's new UVM testbench.
+every test must satisfy*. Phase 1 is signed off. Phase 2 is the active
+cocotb work. Phase 3 is T.B.D.: a future UVM environment, not an
+execute list.
 
 It is not a test-by-test contract. Those live in the per-phase verification
 plans (see <<documents>>). A passing run is never a substitute for those
@@ -30,40 +32,55 @@ other.
 | cocotb / PyUVM + Verilator
 | Smoke + 21 representatives. Datapath-driven. The fewest tests that carry
   the most behaviour.
-| Closed. The spine of the suite.
+| Signed off. The spine of the suite. Phase 1 testcases stay Phase 1.
+  Iconic leftovers sit in the Phase 2 handoff table. Phase 2 covers
+  them: extend a Phase 2 test that already owns the claim, or add the
+  named new Phase 2 test. Do not stretch the Phase 1 e2e / smoke
+  entry into a matrix.
 
 | *Phase 2*
 | same cocotb environment
 | Per-IP iconic feature tests, randomized where the feature has a legal
   matrix or knob space. Plus the cross-IP edges a per-IP bench cannot see.
-| Phase 1 + Phase 2 together cover *> 60%* of SEP.
+  Extend an existing test before adding a sibling.
+| Phase 1 + Phase 2 together: floor *> 60%*, target *85%* of in-scope
+  iconic-feature rows (`PROVEN` only).
 
 | *Phase 3*
 | *new* UVM testbench
-| UVM smoke first, then coverage-driven stimulus and corner cases.
-| Combined code coverage from all three phases targets *> 95%*, plus the
-  corners Phase 1 and Phase 2 do not reach.
+| T.B.D. First deliverable later: UVM bring-up plus smoke, then
+  coverage-driven corners.
+| Not scheduled. Code-coverage close-out is a Phase 3 job, not a
+  Phase 1 / Phase 2 number.
 |===
 
-The architecture spec (`hw/sys/sep/doc/`) is the 60% denominator. Iconic =
-the mode, command, or contract that makes that IP itself. Deferred /
-not-in-bare-SEP (AGP, local UART and GPIO, proprietary SPI PHY, ROM
-patch, next-gen DMA-AES, DCLS-in-SEP, PCR vault) are *out* of the 60%
-count. ROM-*firmware* contracts are out of this VPLAN — ROM-FW owner.
-A backlog *name* is not a credit. A `FAILED` spec-gap is honest and is
-not a 60% credit either.
+The architecture spec (`hw/sys/sep/doc/`) is the feature-scorecard
+denominator. Iconic = the mode, command, or contract that makes that IP
+itself. Deferred / not-in-bare-SEP (AGP, local UART and GPIO, proprietary
+SPI PHY, ROM patch, next-gen DMA-AES, DCLS-in-SEP, PCR vault) are *out*
+of the count. ROM-*firmware* contracts are out of this VPLAN — ROM-FW
+owner. A backlog *name* is not a credit. A `FAILED` spec-gap is honest
+and is not a feature credit either.
 
-The 60% scorecard is <<iconic-scorecard>> — feature coverage, not checker
-count. A graded test with `PROVEN` checkers is evidence *behind* a feature
-row; it does not by itself make the feature `PROVEN`. `PARTIAL` is a
-feature grade only (a test exists, the iconic claim is not fully proven).
-Checker tables stay binary (`PROVEN` / `FAILED`). A `FAILED` checker is
-not a 60% credit. Phase 2
+The scorecard is <<iconic-scorecard>> — feature coverage, not checker
+count and not line coverage. The directed environment has no
+SystemVerilog covergroups, and RTL SVA is compiled out under Verilator,
+so an 85% *code-coverage* figure cannot be proven here. A graded test
+with `PROVEN` checkers is evidence *behind* a feature row; it does not
+by itself make the feature `PROVEN`. `PARTIAL` is a feature grade only
+(a test exists, the iconic claim is not fully proven). Checker tables
+stay binary (`PROVEN` / `FAILED`). A `FAILED` checker is not a feature
+credit. Phase 2
 link:verification_plan_phase2.adoc#iconic-remaining[iconic remaining]
-holds the `GAP` rows to implement, in row order.
+holds the `GAP` rows. A Phase 1 leftover claim is listed in the Phase 2
+handoff table and stays outside the signed-off Phase 1 contract. Phase 2
+covers it: extend a Phase 2 test that already owns that IP/claim, or add
+the named new Phase 2 test. Do not stretch the Phase 1 e2e / smoke entry
+into a matrix.
 
-Phase 1 and Phase 2 stay on the existing cocotb environment and finish there.
-Phase 3 does not extend that environment — it starts a new UVM bench.
+Phase 1 and Phase 2 stay on the existing cocotb environment and finish
+there. Phase 3 does not extend that environment — it starts a new UVM
+bench when that work is scheduled.
 
 === Phase 1 — smoke + representatives
 
@@ -105,36 +122,40 @@ sees ``gen_last``. Phase 2's `sep_drbg_gen_segmentation_test` programs
 Generate at that length, so `gen_last` fires and the trailing CTR_DRBG
 Update is actually scored.
 
-Phase 1 + Phase 2 is the cocotb baseline. Together they must cover more than
-60% of SEP. Completeness of that baseline beats compression: merge and
-randomize to *reach* the 60%, do not drop a real gap to keep the test count
-pretty.
+Phase 1 + Phase 2 is the cocotb baseline. Together they must cover more
+than 60% of in-scope iconic-feature rows, and they target 85%
+(`PROVEN` rows on <<iconic-scorecard>>). Completeness of that baseline
+beats compression: merge, extend, and randomize to *reach* the target,
+do not drop a real gap to keep the test count pretty.
 
 Iconic representatives that are not yet coded stay *named* in
 `verification_plan_phase2.adoc` until they are. That plan is the execute
-list for new Phase 2 tests. Existing tests that shipped a one-point
-stand-in for a matrix are strengthened in place rather than replaced.
-Former leftover names are mapped there to `COVERED_BY` / `MERGED_INTO` or
-to Phase 3. Do not port them as 69 directed tests. There is no separate
-improvement worklist.
+list for new Phase 2 tests. Existing Phase 2 tests that shipped a
+one-point stand-in for a matrix are strengthened in place. A leftover
+from the Phase 1 handoff table is covered by that Phase 2 extend or by
+the named new Phase 2 row — not by turning the Phase 1 representative
+into the matrix. Former leftover names are mapped there to `COVERED_BY` /
+`MERGED_INTO` or held for Phase 3. Do not port them as 69 directed
+tests. There is no separate improvement worklist.
+
+The active Phase 2 attention set is entropy (ESRC / DRBG / EDN),
+lifecycle, eFuse, and Key Manager.
 
 Detail: `verification_plan_phase2.adoc`.
 
-=== Phase 3 — new UVM bench, coverage-driven
+=== Phase 3 — T.B.D.
 
-A new UVM testbench. First deliverable is bring-up plus a UVM smoke test, not
-a corner-case list.
+A new UVM testbench, not scheduled. When it starts, the first
+deliverable is bring-up plus a UVM smoke test, not a corner-case list.
+After smoke, stimulus is coverage-driven: constrained-random traffic
+aimed at holes left by Phase 1 + Phase 2, plus the corner, error, and
+security cases those phases deferred.
 
-After smoke, stimulus is coverage-driven: constrained-random traffic aimed at
-the holes in the *combined* coverage of Phase 1 + Phase 2, plus the corner,
-error, and security cases those phases deferred.
+Phase 3 is deliberately *low overlap* with Phase 1 and Phase 2. It does
+not re-implement those tests. A Phase 3 test whose bins are already hit
+by the cocotb suite is rejected. Code-coverage close-out lives here.
 
-Phase 3 is deliberately *low overlap* with Phase 1 and Phase 2. It does not
-re-implement those tests. A Phase 3 test whose bins are already hit by the
-cocotb suite is rejected — the coverage it would add is already paid for.
-Phase 3 exists to close what is still open.
-
-Detail: `verification_plan_phase3.adoc` (revisited once the UVM environment exists).
+Detail: `verification_plan_phase3.adoc`. Not an execute list.
 
 == How coverage is counted
 
@@ -142,33 +163,42 @@ Two different numbers. Do not mix them.
 
 Feature coverage (Phase 1 + Phase 2)::
 The iconic claim for each in-scope IP, graded on <<iconic-scorecard>>.
-Target: *> 60% of SEP*, counting only `PROVEN` feature rows. There is no
-SystemVerilog covergroup number for this — the directed environment has
-none, and RTL SVA is compiled out under the Verilator acceptance flow.
-A `PARTIAL` feature (a test exists, the iconic claim is incomplete) and a
-`GAP` (no test yet) are not credits. Per-test checker tables are the
-evidence behind a row, not a substitute for it.
+Floor: *> 60%* `PROVEN` feature rows. Target: *85%* `PROVEN` feature
+rows (24 of 28 in-scope rows). There is no SystemVerilog covergroup
+number for this — the directed environment has none, and RTL SVA is
+compiled out under the Verilator acceptance flow. A `PARTIAL` feature
+(a test exists, the iconic claim is incomplete) and a `GAP` (no test
+yet) are not credits. Per-test checker tables are the evidence behind a
+row, not a substitute for it.
 
-Code coverage (all three phases, combined)::
-Measured on the DUT from Phase 1, Phase 2, *and* Phase 3 runs together.
-Target: *> 95%*, with Phase 3 also carrying the corner cases. Phase 3 is
-planned against the *union* of the earlier runs, so it spends its budget on
-uncovered bins rather than on a second copy of the Phase 1 representatives.
+Code coverage::
+A Phase 3 job, T.B.D. Not measured on the cocotb / Verilator baseline
+and not a Phase 1 / Phase 2 close-out number.
 
-A bin Phase 1 already hits is a Phase 1 bin, even if a Phase 3 test could hit
-it too. Credit once, at the earliest phase that proved it.
+A feature Phase 1 already proves is a Phase 1 credit, even if a later
+test could hit it too. Credit once, at the earliest phase that proved
+it.
 
 [[iconic-scorecard]]
 === Iconic scorecard (in-scope SEP)
 
-Out of the 60% count: AGP, local UART/GPIO (spec: remote, in SMC), licensed
-SPI PHY, vendor TRNG core, ROM patch, next-gen DMA-AES, DCLS-in-SEP, PCR
-vault, ROM-FW contracts.
+Out of the feature-scorecard count: AGP, local UART/GPIO (spec: remote,
+in SMC), licensed SPI PHY, proprietary entropy and SPI leaves in
+nonfree, ROM patch, next-gen DMA-AES, DCLS-in-SEP, PCR vault, ROM-FW
+contracts.
 
 Feature grades are independent of checker grades. Close `GAP` then
-`PARTIAL`, in the order of Phase 2
-link:verification_plan_phase2.adoc#iconic-remaining[iconic remaining].
+`PARTIAL`. Prefer an in-place extend of a Phase 2 test that already
+owns the claim; add a named remaining row when no such Phase 2 test
+exists. Do not stretch a Phase 1 e2e / smoke entry to close a
+handoff leftover. See Phase 2
+link:verification_plan_phase2.adoc#iconic-remaining[iconic remaining]
+and
+link:verification_plan_phase2.adoc#pending-upgrades[pending upgrades].
 Do not treat a `PARTIAL` as done by pointing at a graded entry.
+
+Nineteen of twenty-eight in-scope rows are `PROVEN` (the 60% floor is
+met). Five more `PROVEN` rows reach the 85% target.
 
 [cols="2,2,3",options="header"]
 |===
@@ -182,7 +212,7 @@ Do not treat a `PARTIAL` as done by pointing at a graded entry.
 | PARTIAL
 | Block-by-default, 12-cell allow/block walk, and `SEP_DBG` gating are
   proven. CHK-OWNERSHIP-WINDOW is `FAILED` (RTL vs `fabric.adoc`, issue
-  1050) — honest, not a 60% credit. Source-ID × r/w-enable product is
+  1050) — honest, not a feature credit. Source-ID × r/w-enable product is
   not walked.
 
 | Outbound filter / AP-STEE live remap
@@ -282,7 +312,7 @@ Do not treat a `PARTIAL` as done by pointing at a graded entry.
 | SPI-OT flash + DMA
 | PROVEN
 | JEDEC, RX, TX, flash cmd, host CSR/IRQ. Dual/quad are BFM-gated, not a
-  60% hole. There is no pad mux in this open build.
+  feature-scorecard hole. There is no pad mux in this open build.
 
 | WDT bark → NMI, pet, lock
 | PROVEN
@@ -299,7 +329,7 @@ Do not treat a `PARTIAL` as done by pointing at a graded entry.
 | JTAG vs CPU vs KM eFuse mux
 | PROVEN
 | Two mux-coexistence tests. Extra-MMR deny is `FAILED` (issue 626) —
-  RTL vs spec, not a missing test, and not a 60% credit for that slice.
+  RTL vs spec, not a missing test, and not a feature credit for that slice.
 
 | Secure boot negative (bad sig / revoke / rollback)
 | out
@@ -308,7 +338,7 @@ Do not treat a `PARTIAL` as done by pointing at a graded entry.
 
 `PROVEN` feature rows in the count; `PARTIAL`, `GAP`, and `out` are not.
 A `FAILED` checker on an otherwise-proven feature (inbound ownership,
-JTAG extra-MMR) is named on the row and is not a 60% credit for that
+JTAG extra-MMR) is named on the row and is not a feature credit for that
 slice.
 
 == Quality bar
@@ -405,8 +435,8 @@ Phase 1 / 2 bench::
 cocotb / PyUVM, already in this tree.
 
 Phase 3 bench::
-New UVM environment. Same DUT, same quality bar, different stimulus engine.
-Not created yet.
+T.B.D. New UVM environment. Same DUT, same quality bar, different
+stimulus engine. Not created and not scheduled.
 
 [[documents]]
 == Documents
@@ -419,16 +449,18 @@ Not created yet.
 | The plan: phases, coverage model, quality bar.
 
 | `verification_plan_phase1.adoc`
-| Phase 1 contract. Smoke plus the twenty-one representative tests, with evidence-items.
+| Phase 1 contract. Smoke plus the twenty-one representative tests, with
+  evidence-items. Signed off. Iconic leftovers are a Phase 2 handoff,
+  not open Phase 1 work.
 
 | `verification_plan_phase2.adoc`
-| Phase 2 contract. Graded iconic entries plus the named remaining iconic
-  work. Former leftover names are mapped, not listed as a worklist.
+| Phase 2 contract. Graded iconic entries, pending in-place upgrades
+  (including extends of Phase 1 names), and named remaining `GAP`s.
+  Former leftover names are mapped, not listed as a worklist.
 
 | `verification_plan_phase3.adoc`
-| Phase 3 holding area. Corners, error/security permutations, and the UVM
-  smoke. Revisited after the UVM environment exists. New tests that are
-  not Phase 2 iconic remaining are created from this plan.
+| Phase 3 T.B.D. Holding note only. Not committed scope and not an
+  execute list.
 
 | `README.md`
 | How to build and run. Not a verification contract.

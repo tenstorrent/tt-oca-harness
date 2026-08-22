@@ -5,8 +5,9 @@
 OSS port of the reference suite ``sep_efuse_jtag_axil_el2_cpu_mux_test``. Boots
 the VeeR EL2 core running the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR
 read loop) and, CONCURRENTLY, drives the DUT's real SEP-OTP JTAG AXI-Lite port
-(``axil_sep_otp_jtag``, brought out as ``j_axi_*`` in tb_top) via a cocotbext-axi
-AxiLiteMaster. Both masters arbitrate at the eFuse interface controller's
+(``axil_sep_otp_jtag``, brought out as ``j_axi_*`` in tb_top) via
+``ocah_axi_vip.OcahAxiLiteMasterSequence``. Both masters arbitrate at the eFuse
+interface controller's
 AXI-Lite mux -- proving CPU + JTAG coexistence with no corruption.
 
 The OTP image is real-sensed at LC_STATE=PROD, which makes the JTAG path

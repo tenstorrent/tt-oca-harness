@@ -11,12 +11,13 @@
 The record of what Phase 2 verifies and what evidence backs each claim. It follows
 `oss_dv_plan.adoc`: one *iconic* feature per in-scope IP, randomized when the feature
 has a legal matrix or knob space, plus the cross-IP edges a per-IP bench cannot
-see. Phase 1 + Phase 2 together are the cocotb baseline (*> 60%* of SEP,
-counted as `PROVEN` *feature* rows on
+see. Phase 1 + Phase 2 together are the cocotb baseline: floor *> 60%*,
+target *85%* of in-scope SEP, counted as `PROVEN` *feature* rows on
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard],
-not as a count of `PROVEN` checkers). The architecture spec is the denominator; AGP,
-local UART/GPIO, proprietary SPI PHY, ROM patch, next-gen DMA-AES, DCLS-in-SEP
-and PCR vault are out of that count. A `FAILED` spec-gap is not a 60% credit.
+not as a count of `PROVEN` checkers and not as line coverage. The
+architecture spec is the denominator; AGP, local UART/GPIO, proprietary
+SPI PHY, ROM patch, next-gen DMA-AES, DCLS-in-SEP and PCR vault are out
+of that count. A `FAILED` spec-gap is not a feature credit.
 
 It uses the same grade rules as `verification_plan_phase1.adoc`. Those rules are
 not restated here. Read that document first if you are auditing this one.
@@ -26,19 +27,27 @@ checker names log text a kept Verilator run actually contains. A matching tag in
 that log is not the proof — an independent audit still has to show the checker
 can fail.
 
-What this document is *not*: a coverage percentage, a 69-name breadth ledger, or
-a second copy of Phase 1. Boot ROM *firmware* contracts are out of this plan
-(ROM-FW owner). ROM *hardware* access stays: IFU fetch and LSU read/write-ignore.
+What this document is *not*: a code-coverage percentage, a 69-name breadth
+ledger, or a second copy of Phase 1. Boot ROM *firmware* contracts are out
+of this plan (ROM-FW owner). ROM *hardware* access stays: IFU fetch and
+LSU read/write-ignore.
 
 === Scope
 
 Phase 2 builds on the Phase 1 baseline rather than replacing it. The 21 Phase 1
 representatives are graded only in `verification_plan_phase1.adoc`. This document
 grades the net-new Phase 2 entries and *names* the iconic work that is still
-open. New tests are created from <<iconic-remaining>> (and from
-`verification_plan_phase3.adoc` for corners). Existing tests that still need a
-matrix or a stronger checker are <<existing-upgrades>>. A leftover directed
-name is not coverage. There is no separate improvement worklist.
+open. A leftover from the signed-off Phase 1 handoff table is covered
+here: extend a Phase 2 test that already owns that claim, or add the
+named new test.
+Do not stretch the Phase 1 e2e / smoke entry. New tests are created
+from <<iconic-remaining>> when no Phase 2 vehicle exists. Phase 3
+corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
+directed name is not coverage. There is no separate improvement
+worklist.
+
+The active attention set is entropy (ESRC / DRBG / EDN), lifecycle,
+eFuse, and Key Manager. See <<attention>>.
 
 [cols="3,1,4",options="header"]
 |===
@@ -52,13 +61,22 @@ name is not coverage. There is no separate improvement worklist.
 | 22
 | <<entries>> below
 
+| Phase 1 handoff leftovers
+| see <<attention>>
+| covered by a Phase 2 extend or a named new Phase 2 test.
+  The Phase 1 test stays Phase 1.
+
+| Pending in-place upgrades
+| see <<pending-upgrades>>
+| same names; strengthen in place
+
 | Iconic remaining — new tests
 | see <<iconic-remaining>>
-| Phase 2 execute; not a grade
+| Phase 2 execute when an extend cannot carry the claim
 
-| Existing-test upgrades
+| Landed existing-test upgrades
 | see <<existing-upgrades>>
-| same names; strengthen in place
+| same names; already strengthened
 
 | Former ledger names that are already covered
 | see <<compress>>
@@ -66,7 +84,7 @@ name is not coverage. There is no separate improvement worklist.
 
 | Former ledger names that are Phase 3
 | see <<phase3-dump>>
-| `verification_plan_phase3.adoc`
+| `verification_plan_phase3.adoc` (T.B.D.)
 |===
 
 [[audit]]
@@ -1132,6 +1150,7 @@ later sample would pass. The wording reads as an always-property.
 Tier:: Tier 2
 Run mode:: `cpu`, firmware `pic_irq_source_map_test`, `+skip_fuse_sense`
 Testlist:: `cpu.toml`
+Need-extended:: seeded subset of the PIC source map
 
 ==== Description
 
@@ -1865,21 +1884,84 @@ The AES 9-cell row is mode × key-size. The CTR cell re-runs ENCRYPT
 not a seeded map. RMA token match stays inside the stitch test, not a
 standalone iconic.
 
-New Phase 2 tests are <<iconic-remaining>>. Strengthening tests that already
-exist is <<existing-upgrades>>. Boot ROM firmware is <<rom-fw-out-of-scope>>.
+New Phase 2 tests are <<iconic-remaining>> only when <<pending-upgrades>>
+cannot carry the claim. Boot ROM firmware is <<rom-fw-out-of-scope>>.
 Latch-timing of `TEST_EN`, pool FIFO drain / watermark / stall, health tests,
-ring oscillator, KM wipe, and inbound negative product are Phase 3
+ring oscillator, KM wipe, and inbound negative product are Phase 3 T.B.D.
 (`verification_plan_phase3.adoc`).
+
+[[attention]]
+== Attention set
+
+These IPs still have an iconic hole or a leftover *claim* listed on the
+signed-off Phase 1 handoff table. Closing that claim is Phase 2
+scorecard work (toward 85%). Do not stretch the Phase 1 e2e / smoke
+entry. Extend a Phase 2 test that already owns the claim, or add the
+named new Phase 2 test.
+
+[cols="2,2,3",options="header"]
+|===
+| Area | Scorecard row | Phase 2 action
+
+| Entropy (ESRC / DRBG / EDN)
+| Consume is `PROVEN`; dual-sink bit-exact CHK5 routing is not
+| Extend `sep_crypto_edn_multisink_arbitration_test` and
+  `sep_crypto_edn_round_robin_grant_test`. Health tests and the
+  ring oscillator stay Phase 3 T.B.D.
+
+| Lifecycle
+| `feat_ctrl` vs `LC_STATE` is `PROVEN`; demote product and
+  standalone RMA are `PARTIAL`
+| New demote RAND-REP. The stitch test stays the LC→`feat_ctrl` e2e.
+
+| eFuse
+| Sense / shadow / persist is `PROVEN`; program × lock is `GAP`
+| New remaining row on a spare/test field (never `LC_STATE`).
+  Token match stays eFuse-owned; LCC consumes the result.
+
+| Key Manager
+| Sideload consume is `PROVEN`; mailbox command set is `GAP`
+| New remaining RAND-REP (generate / transfer / revoke-or-shred /
+  illegal→error). Sideload KATs stay consume proofs. Wipe stays
+  Phase 3 T.B.D.
+|===
+
+[[pending-upgrades]]
+== Pending in-place upgrades
+
+Strengthen these existing *Phase 2* names. Do not add a sibling, and do
+not pull the work back onto a Phase 1 e2e / smoke test.
+
+[cols="2,2,3",options="header"]
+|===
+| Existing Phase 2 test | Upgrade | Why not a new test
+
+| `sep_crypto_edn_multisink_arbitration_test`,
+  `sep_crypto_edn_round_robin_grant_test`
+| Dual-sink bit-exact CHK5 routing
+| Grant-membership is already proven here; consume e2e stays Phase 1
+
+| `sep_fabric_inbound_filter_rule_matrix_test`
+| Source-ID × r/w-enable product
+| The 12-cell allow/block walk is already this test.
+  CHK-OWNERSHIP-WINDOW stays hard (`FAILED`)
+
+| `sep_pic_irq_source_map_delivery_test`
+| Seeded subset of the PIC source map
+| Three directed sources already live here
+|===
 
 [[iconic-remaining]]
 == Iconic remaining — new tests
 
-Create these from this plan, in row order. Do *not* implement the old 69-name
-list as 69 tests. A graded <<entries>> row is checker evidence, not a
-feature-level `PROVEN` on the 60% scorecard — see
-link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard]. The rows below
-are feature `GAP`s (no test yet for that iconic claim). Checker tables stay
-binary; `PARTIAL` is a feature grade there, not a checker grade here.
+Create these from this plan, in row order, and only when
+<<pending-upgrades>> cannot carry the claim. Do *not* implement the old
+69-name list as 69 tests. A graded <<entries>> row is checker evidence,
+not a feature-level `PROVEN` on the scorecard — see
+link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard]. The rows
+below are feature `GAP`s (no test yet for that iconic claim). Checker
+tables stay binary; `PARTIAL` is a feature grade there, not a checker
+grade here.
 
 [cols="2,2,3",options="header"]
 |===
@@ -1897,7 +1979,8 @@ binary; `PARTIAL` is a feature grade there, not a checker grade here.
 
 | Lifecycle demote product
 | One RAND-REP: LC × demote × a small legal DIS subset, `feat_ctrl` vs
-  golden *and* one live filter/debug-gate
+  golden *and* one live filter/debug-gate. The Phase 1 stitch test
+  stays the LC→`feat_ctrl` e2e.
 | `sep_lcc_demote_feat_ctrl_matrix_test`;
   `MERGED_INTO`: `sep_lcc_uvm_demote_comprehensive_test`,
   `sep_lcc_uvm_prod_dbg_flavour_test`
@@ -1911,18 +1994,18 @@ binary; `PARTIAL` is a feature grade there, not a checker grade here.
 | `sep_clock_uvm_clock_gate_control_test`
 
 | Live outbound remap
-| One RANDCFG only if fabric is still a 60% hole after the inbound-filter
-  existing-test upgrade: translated hit + filtered miss
+| One RANDCFG only if fabric is still a feature-scorecard hole after the
+  inbound-filter existing-test upgrade: translated hit + filtered miss
 | `sep_fabric_output_remap_datapath_proxy_test`;
   `MERGED_INTO`: `sep_outbound_filter_cfg_test`,
   `sep_outbound_path_selection_test`
 |===
 
 [[existing-upgrades]]
-== Existing-test upgrades
+== Landed existing-test upgrades
 
-These strengthened a graded entry in place. Stimulus is in this tree; the wrap-up
-Verilator log is the grade. Do not add a sibling test.
+These already strengthened a graded entry in place. Stimulus is in this
+tree; the wrap-up Verilator log is the grade. Do not add a sibling test.
 
 [cols="2,2,3",options="header"]
 |===
@@ -2069,8 +2152,8 @@ or `FAILED` checker on a graded entry.
 == Names deferred to Phase 3
 
 Error, security, coverage-bin, and corner names mapped out of Phase 2. This is
-a provenance dump (`COVERED_BY` / deferred-to-Phase-3), not an execute worklist
-and not committed Phase 3 scope. Do not grade them here.
+a provenance dump (`COVERED_BY` / deferred-to-Phase-3 T.B.D.), not an execute
+worklist and not committed Phase 3 scope. Do not grade them here.
 
 [cols="2,3",options="header"]
 |===
