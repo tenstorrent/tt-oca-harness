@@ -4,16 +4,15 @@
 /*
  * OCH SEP ROM — OpenTitan SPI Host driver (public API).
  *
- * Parallel to sep_spi.h. Unlike a memory-mapped proprietary SPI host, the
- * OpenTitan controller has no XIP window: flash is reached only through
- * command/FIFO transactions (see src/sep_ot_spi.c). The boot path links only the
- * bring-up + read entry points; --gc-sections drops the optional flash
- * write/erase code (and PIO read when the DMA path is built).
+ * Parallel to sep_spi.h. The OpenTitan controller has no XIP window: flash is
+ * reached only through command/FIFO transactions (see src/sep_ot_spi.c). The
+ * boot path links only the bring-up + read entry points; --gc-sections drops
+ * the optional flash write/erase code (and PIO read when the DMA path is built).
  *
  * Register bindings: the sep.h umbrella (SPI_CONTROLLER_* + SECURE_DMA_*),
- * already on the ROM include path. There is no pad mux in this open DUT. A
- * companion build whose wrapper muxes the OCAH SPI host and a proprietary SPI
- * may override ot_spi_select_pad_mux(); the open stub is empty.
+ * already on the ROM include path. There is no pad mux in this open DUT, so
+ * ot_spi_select_pad_mux() is a weak empty stub: a wrapper build whose pads are
+ * shared may override it.
  * Freestanding: no libc, no heap. MMIO via include/rom_mmio.h.
  *
  * The controller is chosen at build time; this driver is linked only when
