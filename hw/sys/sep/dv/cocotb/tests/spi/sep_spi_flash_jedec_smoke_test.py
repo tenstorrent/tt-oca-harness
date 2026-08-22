@@ -33,10 +33,8 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
         await flash.start()
         try:
             await self.bring_up_no_cpu()
-            # No CS-release step: the SPI pad mux is a nonfree shim block, absent
-            # from this pure-open build, so tb_top drives the pads straight off the
-            # wrapper's struct port and nothing holds CS deasserted. An overlay
-            # build would need spi_sel=1 as well -- see sep_base_test.start_seq.
+            # No pad-mux step: this DUT drives the OT SPI host onto the pads
+            # directly.
             seq = sep_spi_flash_jedec_seq("spi_flash_jedec_seq")
             await self.start_seq(seq)
             transactions = flash.get_transactions()

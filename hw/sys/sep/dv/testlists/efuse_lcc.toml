@@ -36,8 +36,8 @@ tags = ["lcc", "subsystem", "efuse"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # Program-failure injection = deterministic floor + seed-driven extras:
-# count=1 -> fail the first program attempt of every OTP bit (re-arms on each
-# resense/reset), so the retry path runs on EVERY leaf regardless of
+# count=1 fails the first program attempt after each reset (one failure per
+# reset, not per bit), so the retry path runs once per sense regardless of
 # seed -- the floor that the test's non-vacuity assert relies on.
 # percent=30 -> after the floor, inject extra failures probabilistically; the
 # generic efuse model's LFSR is seeded from the regression RANDOM_SEED
@@ -60,9 +60,8 @@ args = [
 # single image proves allowed-MMR coexistence AND the LC-gated shadow deny
 # (0xbadcab1e) with no backdoor force. cpu run mode + REAL fuse sense (NO
 # +skip_fuse_sense -- the JTAG LC gate depends on the sensed lc_state).
-# CHK-JTAG-MMR-DENY currently FAILS (RTL OKAY vs periphs.adoc DECERR);
-# https://github.com/tenstorrent/tt-oca-harness/issues/626 -- expected red,
-# not an XFAIL.
+# CHK-JTAG-MMR-DENY currently FAILS (RTL OKAY vs hw/sys/sep/doc/periphs.adoc DECERR on a
+# non-token MMR in PROD). Expected red, not an XFAIL.
 name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"

@@ -24,12 +24,10 @@ sets the flag -- so this test needs no special eFuse image, unlike the reference
 flow which ships a PROD preload to force it.
 
 NOTE ON ENTROPY: this run does NOT exercise the entropy chain. OTBN cannot execute
-until URND is reseeded, and nothing in the boot flow brings up
+until URND is reseeded, and the boot flow does not bring up
 entropy_source/CSRNG/EDN, so the testlist opts into +sep_crypto_edn_force to grant
 OTBN's EDN handshakes directly. That supplies entropy only -- the RSA assertions
-below are untouched, so a pass still means the signature genuinely verified. See
-testlists/cpu.toml and tb_top.sv for the open question of who is meant to bring up
-DRBG/EDN before the ROM runs RSA.
+below are untouched, so a pass still means the signature genuinely verified.
 """
 
 from __future__ import annotations
