@@ -173,8 +173,9 @@ Protocol VIP wrappers (under `hw/sys/smc/dv/cocotb/seq_lib/`):
 |=======================================================================
 |Wrapper |Upstream |Purpose
 |`SmcI2cMasterVip` / `SmcI2cEepromSlave` / `SmcI2cBusMonitor`
-|`cocotbext-i2c` |I2C0 pin-level master + slave + monitor with
-split-port polarity + wired-AND adapter
+|(SMC-local, native cocotb) |I2C0 pin-level master + slave + monitor with
+split-port polarity + wired-AND adapter; clock-sampled because edge waits
+miss open-drain transitions under Verilator
 
 |`SmcI3cSlaveVip` |`cocotbext-i3c` |I3C0 pin-level target subclass with
 `sda/scl` property overrides for polarity inversion

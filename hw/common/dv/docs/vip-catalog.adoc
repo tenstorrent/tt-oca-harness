@@ -59,12 +59,6 @@ use single-bit data timing; DDR and vendor timing are deferred.
 |Master, responder/RAM, results, item, monitor, and checker. A package-local
 example and real DUT consumer are still required.
 
-|`ocah_i2c_vip`
-|Experimental
-|`cocotbext-i2c`
-|Master, target/device, EEPROM memory, monitor, and split-port adapters. SMC
-still owns a local open-drain/timing adaptation.
-
 |`ocah_i3c_vip`
 |Experimental / dependency-gated
 |Vendored `cocotbext-i3c`
@@ -182,14 +176,11 @@ DDR, vendor-accurate BUSY timing, and vendor-specific commands are deferred.
 [[shared-vip-i2c]]
 === I2C
 
-Package: `hw/common/dv/vip/ocah_i2c_vip/`
-
-The package provides active master, target/device, EEPROM memory, passive
-monitor, and split-port open-drain adapters. The supported baseline is 7-bit
-Standard/Fast mode with write, read, and combined transfers.
-
-SMC currently retains local timing/polarity integration. Reusable fixes should
-be moved into this package rather than creating another shared I2C VIP.
+No shared I2C package ships. The SMC-local clock-sampled model
+(`hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py`) owns I2C/SMBus/PMBus
+traffic because `cocotbext-i2c` edge waits miss open-drain transitions under
+Verilator. A shared I2C VIP is introduced only when a second subsystem needs
+one and the open-drain timing fix is protocol-neutral.
 
 [[shared-vip-i3c]]
 === I3C

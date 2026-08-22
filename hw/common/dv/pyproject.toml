@@ -20,10 +20,10 @@ dependencies = [
   # metadata); cocotbext-axi replaces the in-house AXI/AXI-Lite VIP.
   "cocotbext-axi>=0.1.24,<0.2",
   "cocotbext-jtag>=0.4.0,<0.5",
-  # cocotbext-i2c backs the SMC SMBus/PMBus protocol VIP (SmcI2cMasterVip /
-  # SmcI2cEepromSlave). Without it those tests fall back to a no-op stub and
-  # fail with AttributeError / "cocotbext-i2c is not installed".
-  "cocotbext-i2c>=0.1.2,<0.2",
+  # cocotbext-i2c is intentionally absent: the SMC I2C/SMBus/PMBus protocol
+  # VIP (SmcI2cMasterVip / SmcI2cEepromSlave) is implemented natively in
+  # hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py because cocotbext-i2c
+  # edge waits miss open-drain transitions under Verilator.
   # cocotbext-uart is intentionally omitted here: Cycode Licenses Compliance
   # cannot verify its PyPI MIT metadata ("License Not Detected or Verified" on
   # hw/common/dv pyproject line with cocotbext-uart). OcahUartConsole /

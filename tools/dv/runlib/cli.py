@@ -849,7 +849,6 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         ("pyuvm", "pyuvm"),
         ("cocotbext-axi", "cocotbext-axi"),
         ("cocotbext-jtag", "cocotbext-jtag"),
-        ("cocotbext-i2c", "cocotbext-i2c"),
     ]
     for label, dist_name in distributions:
         version = _dist_version(dist_name)

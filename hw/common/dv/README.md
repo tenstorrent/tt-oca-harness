@@ -94,7 +94,6 @@ a protocol already represented here; extend the existing stable wrapper.
 | `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 (master side) | `ocah_jtag_vip/cocotb/examples/example_idcode.py`, `example_slave_selftest.py` | DTP, SMC, and SMU consume the master TAP API; the slave side (reactive TAP device) ships selftest-validated with no gating DUT consumer yet — DUT JTAG host ports are the intended first integration; iJTAG, boundary-scan, and DUT TDR maps remain local |
 | `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | SEP is the gating DUT consumer; true quad/octal lanes, DDR, and vendor timing remain deferred |
 | `ocah_apb_vip` | Experimental / unadopted | No package-local example | No real DUT consumer; add an APB example and gating integration before promotion |
-| `ocah_i2c_vip` | Experimental | `ocah_i2c_vip/cocotb/examples/example_i2c_eeprom.py` | SMC still needs DUT-local split-port/timing adaptation; upstream reusable fixes instead of creating another I2C VIP |
 | `ocah_i3c_vip` | Experimental / dependency-gated | `ocah_i3c_vip/cocotb/examples/example_priv_rw.py` | SMC use is optional/non-gating until the backend is reproducibly provisioned and a DUT test gates it |
 | `ocah_uart_vip` | Experimental / dependency-gated | `ocah_uart_vip/cocotb/examples/example_loopback.py` | SMC has a consumer, but the optional backend is not part of the locked default environment |
 
@@ -114,7 +113,7 @@ its status.
 |------------|-------------------------|-------|-------------------------------------|-----------|
 | APB shared wrapper | Experimental: documented API, but no package-local example or real DUT adopter | Shared DV + first APB adopter | Add an APB example and make one DUT regression gate real APB traffic | Historical baseline [#3288](https://github.com/tenstorrent/tt-oca-hw/issues/3288); open a #3299 child when adopted |
 | UART | Experimental/dependency-gated: SMC consumer exists, but the optional backend is not locked consistently | Shared UART VIP + SMC DV | Resolve backend version/license policy, lock it in the supported environment, and retain a passing SMC loopback | Open a #3299 child when dependency work starts |
-| I2C | Experimental: SMC still needs a DUT-local split-port/open-drain timing workaround | Shared I2C VIP + SMC DV | Move only protocol-neutral split-port/timing fixes upstream, document them, and gate with a real SMC transaction | Open a #3299 child when promotion starts |
+| I2C | No shared package: the SMC-local clock-sampled model (`hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py`) owns I2C/SMBus/PMBus traffic because `cocotbext-i2c` edge waits miss open-drain transitions under Verilator | SMC DV | Introduce a shared I2C VIP only when a second subsystem needs one and the open-drain timing fix is protocol-neutral | Open a #3299 child if a shared package is introduced |
 | I3C SDR | Experimental/dependency-gated: current SMC use is optional and non-gating | Shared I3C VIP + SMC/SMU DV | Reproducibly provision the backend and make a DUT smoke test gating rather than advisory | SMU consumer [#3547](https://github.com/tenstorrent/tt-oca-hw/issues/3547) |
 | Entropy source/monitor | No shared package: SEP-local models drive `esrc_noise_ext_i` and check the ESRC-to-DRBG-to-EDN chain | SEP DV | Introduce a shared entropy VIP only when a second subsystem needs one and gates it with a real regression | Open a #3299 child if a shared package is introduced |
 | Memory-image helper | Deferred: no shared package or frozen image/preload format contract | Shared DV + first firmware-bearing DUT | Define plain image/preload/result types, document ownership and format, add an example, and gate one DUT | Open a #3299 child before implementation |
@@ -245,8 +244,9 @@ notes:
 - `hw/sys/sep/dv/cocotb/env/__init__.py` still patches cocotbext stream
   initialization before SEP AXI masters are constructed.
 - SMC I3C uses a DUT-local bind over `ocah_i3c_vip` split-port helpers. SMC
-  I2C still uses `smc_i2c_protocol_vip.py` because its Verilator/open-drain
-  timing workaround has not yet been promoted into `ocah_i2c_vip`.
+  I2C uses the DUT-local `smc_i2c_protocol_vip.py` clock-sampled model; no
+  shared I2C package ships because `cocotbext-i2c` edge waits miss open-drain
+  transitions under Verilator.
 - SMC CPU JTAG uses `ocah_jtag_vip` for bus/device bind; active-high
   `tb_cpu_jtag_reset` stays DUT-local (not mapped to bus `trst`) because
   `cocotbext-jtag` assumes IEEE active-low TRST.
