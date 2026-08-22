@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_jtag_bypass_test.
 
 Checks both DTP BYPASS instruction encodings using raw IR/DR scans, with a

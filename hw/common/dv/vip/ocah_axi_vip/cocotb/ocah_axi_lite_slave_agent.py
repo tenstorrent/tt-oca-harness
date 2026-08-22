@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Composed AXI4-Lite slave agent: responder driver + sequence API.
 
 `OcahAxiLiteSlaveAgent` builds the memory-backed `OcahAxiLiteSlaveDriver` and

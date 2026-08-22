@@ -956,9 +956,11 @@ under 30 minutes of wall clock per pull request.
 
 |`nightly`
 |Daily `schedule` (18:00 UTC), or `workflow_dispatch` with `tier=nightly`
-|The full `all` group with `--reseed 3 --sim-jobs 4`: every test runs with
-three random seeds (~450 recorded, replayable scheduler leaves). Nightly is
-not a merge gate; a red nightly run is a triage signal.
+|Each DUT's configured `nightly_items` group runs with `--reseed 3 --sim-jobs
+4`. DTP runs `all` with reference-only Verilator coverage; the score is
+published but does not determine test pass/fail. The other DUTs run without
+coverage until separately qualified. Nightly is not a merge gate; a red nightly
+run is a triage signal.
 |===
 
 Pull requests never run the `all` regression; the tier is selected by the
@@ -967,11 +969,14 @@ triggering event, so PR cost stays bounded by the smoke group.
 Each job writes an explicit per-run directory
 (`build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; the workflow run id keeps the
 recorded run identity unique for downstream trend history), gates on the
-native run-level
-`result.json` (`schema_version` 1, matching `flow`/`tool`, `status` `PASS`),
-and uploads the unchanged run-directory hierarchy as
-`dv-run-<dut>-<tool>-<tier>` with 14-day retention, including on failure.
-Explicit run directories never create or update the `latest` symlink.
+native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
+`status` `PASS`). Coverage-enabled jobs additionally require a numeric score
+and recorded report/summary paths, but do not enforce a score threshold. The
+workflow uploads
+`dv-run-<dut>-<tool>-<tier>` with 14-day retention, including on failure;
+per-leaf Verilator `coverage.dat` inputs are excluded after merge while the
+merged coverage report and normalized summary remain. Explicit run directories
+never create or update the `latest` symlink.
 
 === CI support matrix
 

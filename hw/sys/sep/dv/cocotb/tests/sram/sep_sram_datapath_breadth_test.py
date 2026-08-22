@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP external-SRAM datapath-breadth test (PyUVM).
 
 Memory-subsystem Phase-2 rep SRAM datapath breadth. reference provenance: uvm_tests/sram

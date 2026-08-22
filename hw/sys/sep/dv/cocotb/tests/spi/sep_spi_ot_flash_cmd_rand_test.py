@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI flash command-breadth test (PyUVM, cpu-firmware, randomized).
 
 SPI-subsystem Phase-2 rep SPI flash command breadth (lead of the dedicated OpenTitan-SPI sweep). A
@@ -13,7 +14,7 @@ and runs the spi_ot_flash_cmd firmware, which drives the OT SPI host (@
 
 cpu-firmware mode (not no_cpu): every reference spi_ot flash test + the Phase-1
 sep_spi_ot_dma_rx run the multi-command SPI flash sequence from firmware.
-Distinct from #3 sep_spi_ot_dma_rx (RX+DMA) and the JEDEC smoke.
+Distinct from `sep_spi_ot_dma_rx_test` (RX+DMA) and the JEDEC smoke.
 
 Randomization (this test is the SINGLE source of randomness; AGENTS.md s9/s11):
   The scenario -- flash address (page-aligned), word count (1..16), and the data
@@ -29,11 +30,12 @@ Checks:
     CHK-ERASE            : sector ERASE -> READ returns all 0xFF.
     CHK-NO-ERROR         : OT SPI ERROR_STATUS == 0 throughout.
   cocotb golden cross-check (independent of the firmware readback):
-    - exactly 6 BFM transactions in the expected opcode order;
+    - exactly the BFM-visible opcode sequence (JEDEC, WRDI, RDSR, WREN, primary
+      program/read, FAST_READ, neighbour program/read, erase, primary read,
+      neighbour read);
     - the PAGE PROGRAM (0x02) landed at the random addr with the random data;
-    - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards).
-  CHK-WIP / CHK-DUAL-QUAD: DEFERRED (instant-ready BFM; single-bit DQ, no
-    0x3B/0x6B) -- infra-gated.
+    - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards)
+      and left the neighbour 4 KiB sector intact.
 
 main() returns the error count; start.S emits PASS (0xCAFEBABE) / FAIL
 (0xDEADBEEF) magic, which the boot scoreboard gates on (+ banner + ICCM exec).
@@ -54,6 +56,7 @@ import pyuvm
 
 from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_dtcm_param_patch import patch_param_block
 from ocah_spi_vip import OcahSpiFlash
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -74,57 +77,6 @@ _PAGE_SIZE = 256
 _SECTOR_SIZE = 4096
 
 
-def _parse_hex_cells(path: str) -> dict:
-    """Parse a Verilog $readmemh-style byte image into {byte_addr: value}."""
-    cells: dict = {}
-    addr = 0
-    with open(path) as fh:
-        for line in fh:
-            tok = line.strip()
-            if not tok:
-                continue
-            if tok.startswith("@"):
-                addr = int(tok[1:], 16)
-                continue
-            for byte in tok.split():
-                cells[addr] = int(byte, 16)
-                addr += 1
-    return cells
-
-
-def _find_magic(cells: dict, magic_le: bytes) -> int:
-    """Return the byte address where the little-endian magic bytes start."""
-    for base in sorted(cells):
-        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le))):
-            return base
-    raise RuntimeError("SPI1_PARAM_MAGIC not found in DTCM image")
-
-
-def _patch_hex(src: str, dst: str, patches: dict) -> None:
-    """Rewrite ``src`` to ``dst`` replacing bytes at the addresses in ``patches``,
-    preserving the original @addr / 16-byte-per-line layout exactly."""
-    out = []
-    addr = 0
-    with open(src) as fh:
-        for raw in fh:
-            line = raw.rstrip("\n")
-            tok = line.strip()
-            if tok.startswith("@"):
-                addr = int(tok[1:], 16)
-                out.append(line)
-                continue
-            if not tok:
-                out.append(line)
-                continue
-            new_toks = []
-            for byte in tok.split():
-                new_toks.append(f"{patches[addr]:02X}" if addr in patches else byte)
-                addr += 1
-            out.append(" ".join(new_toks))
-    with open(dst, "w") as fh:
-        fh.write("\n".join(out) + "\n")
-
-
 @dataclass(frozen=True)
 class SepSpiFlashCmdCfg:
     """Single source of truth for the SPI flash command-breadth scenario.
@@ -139,9 +91,24 @@ class SepSpiFlashCmdCfg:
     addr: int
     data: list[int]
 
-    # BFM opcode order the firmware must drive: WREN, PAGE PROGRAM, READ, WREN,
-    # SECTOR ERASE, READ. (Bare class attr, not a dataclass field -- no annotation.)
-    EXPECTED_OPS = [0x06, 0x02, 0x03, 0x06, 0x20, 0x03]
+    # BFM opcode order the firmware must drive (bare class attr, not a field):
+    # JEDEC, WRDI, RDSR, WREN, RDSR, then WREN/PP/READ (primary), FAST_READ,
+    # WREN/PP/READ (neighbour), WREN/ERASE/READ (primary), READ (neighbour).
+    EXPECTED_OPS = [
+        0x9F, 0x06, 0x05, 0x04, 0x05,
+        0x06, 0x02, 0x03, 0x0B,
+        0x06, 0x02, 0x03,
+        0x06, 0x20, 0x03, 0x03,
+    ]
+
+    @property
+    def neigh_addr(self) -> int:
+        """Adjacent 4 KiB sector; matches firmware ``addr ^ 0x1000``."""
+        return self.addr ^ 0x1000
+
+    def neigh_bytes(self) -> bytes:
+        """PAGE PROGRAM payload the firmware writes to the neighbour sector."""
+        return b"".join((w ^ 0xFFFFFFFF).to_bytes(4, "little") for w in self.data)
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepSpiFlashCmdCfg":
@@ -184,14 +151,8 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             return _DTCM_HEX, None
 
         cfg = SepSpiFlashCmdCfg.from_seed(self.random_seed())
-        cells = _parse_hex_cells(_DTCM_HEX)
-        base = _find_magic(cells, _PARAM_MAGIC.to_bytes(4, "little"))
-        patches = {}
-        for k, word in enumerate(cfg.param_words()):
-            for b in range(4):
-                patches[base + 4 * k + b] = (word >> (8 * b)) & 0xFF
         patched = os.path.join(os.getcwd(), "sep_dtcm_spi1.hex")
-        _patch_hex(_DTCM_HEX, patched, patches)
+        patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(
             "SPI flash command breadth scenario (seed=%d): addr=0x%06x nwords=%d data=%s",
             cfg.seed, cfg.addr, cfg.nwords, [f"0x{w:08x}" for w in cfg.data],
@@ -245,7 +206,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                               [f"0x{o:02x}" for o in cfg.EXPECTED_OPS])
             raise AssertionError("SPI flash command breadth golden: unexpected BFM opcode sequence")
 
-        pp = txns[1]
+        pp = txns[6]
         exp_bytes = cfg.pp_bytes()
         if pp.get("addr") != cfg.addr or bytes(pp.get("data_in") or b"") != exp_bytes:
             self.logger.error(
@@ -254,10 +215,31 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 cfg.addr, exp_bytes.hex())
             raise AssertionError("SPI flash command breadth golden: PAGE PROGRAM addr/data mismatch")
 
+        neigh_pp = txns[10]
+        neigh_bytes = cfg.neigh_bytes()
+        if neigh_pp.get("addr") != cfg.neigh_addr or bytes(neigh_pp.get("data_in") or b"") != neigh_bytes:
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: neighbour PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
+                neigh_pp.get("addr", 0), bytes(neigh_pp.get("data_in") or b"").hex(),
+                cfg.neigh_addr, neigh_bytes.hex())
+            raise AssertionError("SPI flash command breadth golden: neighbour PAGE PROGRAM mismatch")
+
         erased = flash.read_memory(cfg.addr, cfg.nwords * 4)
         if erased != b"\xff" * (cfg.nwords * 4):
             self.logger.error("SPI flash command breadth GOLDEN FAIL: post-erase mem not 0xFF: %s",
                               erased.hex())
             raise AssertionError("SPI flash command breadth golden: sector erase did not wipe the page")
-        self.logger.info("SPI flash command breadth GOLDEN PASS: PP@0x%06x %dB landed + erase wiped it",
-                         cfg.addr, cfg.nwords * 4)
+        neigh_left = flash.read_memory(cfg.neigh_addr, cfg.nwords * 4)
+        if neigh_left != neigh_bytes:
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: neighbour 0x%06x wiped or corrupted: %s vs %s",
+                cfg.neigh_addr, neigh_left.hex(), neigh_bytes.hex())
+            raise AssertionError("SPI flash command breadth golden: sector erase wiped the neighbour")
+        self.logger.info(
+            "SPI flash command breadth GOLDEN PASS: PP@0x%06x %dB landed, erase wiped it, "
+            "neighbour 0x%06x intact, opcodes=%s",
+            cfg.addr, cfg.nwords * 4, cfg.neigh_addr,
+            [f"0x{o:02x}" for o in cfg.EXPECTED_OPS])
+        self.logger.info(
+            "CHK-RAND-REP PASS: walked BFM-visible opcodes "
+            "JEDEC/WREN/RDSR/WRDI/PP/READ/FAST/ERASE (dual/quad infra-gated)")

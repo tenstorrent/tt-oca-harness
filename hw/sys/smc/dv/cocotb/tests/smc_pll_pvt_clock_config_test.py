@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PLL/PVT clock CSR precheck — DEFERRED (rtl_placeholder).
 
 Shelved until real adopter PLL/PVT IP replaces integration OKAY wraps.

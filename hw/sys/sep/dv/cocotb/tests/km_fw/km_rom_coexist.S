@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
 # KM (PicoRV32) ROM firmware for the SEP OSS dual-CPU eFuse AXI-lite mux
-# coexistence test (reference TEST 10.3 sep_efuse_km_axil_cpu_mux_coexist_test).
+# coexistence test (reference sep_efuse_km_axil_cpu_mux_coexist_test).
 #
 # The Key Manager contends with the EL2 host at the shared eFuse AXI-lite mux:
 # after a mailbox handshake with the EL2 it free-runs eFuse MMR writes so the EL2

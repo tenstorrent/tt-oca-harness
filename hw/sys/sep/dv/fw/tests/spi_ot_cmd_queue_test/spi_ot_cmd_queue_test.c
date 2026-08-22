@@ -2,21 +2,21 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Command Queue Test - TC_SPIOT_007 (P0)
+ * SPI OT Command Queue Test
  *
  * Verifies command queue functionality, CMDQD monitoring, CSID selection,
  * and error conditions (CMDBUSY, CMDINVAL, CSIDINVAL).
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Verify CMDQD=0 initially
- *   3. Write CSID=0, issue CMD, check CMDQD
- *   4. Test CMDINVAL error with invalid SPEED=3
- *   5. Test CSIDINVAL error with CSID > NUM_CS
- *   6. Verify ERROR_STATUS W1C clear
+ * 1. Enable controller
+ * 2. Verify CMDQD=0 initially
+ * 3. Write CSID=0, issue CMD, check CMDQD
+ * 4. Test CMDINVAL error with invalid SPEED=3
+ * 5. Test CSIDINVAL error with CSID > NUM_CS
+ * 6. Verify ERROR_STATUS W1C clear
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_cmd_queue_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_cmd_queue_test STACK=sim
  *
  */
 
@@ -27,7 +27,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -73,7 +72,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Command Queue Test (TC_SPIOT_007)\n");
+    printf("SPI OT Command Queue Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -83,8 +82,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

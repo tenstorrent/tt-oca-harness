@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Lifecycle-Controller (LCC) golden model for the SEP OSS flow.
 
 Pure-Python reference for what the SEP `sep_lifecycle_ctrl` block computes on its
@@ -11,12 +12,8 @@ NOT transcribed from ``hw/sys/sep/rtl/sep_lifecycle_ctrl.sv``. That direction is
 deliberate and it matters: an expectation that shares a source with the thing it
 measures cannot disagree with it.
 
-Earlier revisions of this file did transcribe the RTL, because the RTL and the chapter
-disagreed on the PROD demotion branch and the RTL was what shipped. That disagreement
-is resolved -- the spec updates behind PR #242 changed the RTL to match the chapter --
-so the model is now taken from the chapter, as the note in this file used to instruct.
-Keep it that way. If a future decode change makes them disagree again, follow the
-chapter and let the test fail; do not re-transcribe the RTL.
+Keep it that way. If a future decode change makes the RTL and the chapter
+disagree, follow the chapter and let the test fail; do not transcribe the RTL.
 
 Also holds the lifecycle-state encoding / transition validators: legal encoding,
 W1S monotonicity, valid transition, and terminal stability. These express the
@@ -197,8 +194,6 @@ _LCC_GOLDEN_VECTORS = (
     (LC_PROD, 0, 0, {"demote_2": 1}, 0xFFFF_0000_FFFF_0000),      # PROD+DEMOTE_2: DBG_2 only
     # DEMOTE in PROD only RELAXES its group to the DIS vectors -- it does not force
     # them open. sep_debug (bit 0) is disabled here, so DEMOTE_1 must leave it off.
-    # This is the vector that pins the difference from the pre-#242 decode, where
-    # the branch forced all of [31:0] to 1 regardless of the DIS bits.
     (LC_PROD, 0x1, 0, {"demote_1": 1}, 0xFFFF_0000_0000_FFFE),
     # In TEST_DEV a demotion DOES force its group open over the DIS vectors, and
     # only its own group -- so an all-ones SIP_DIS still leaves the other group off.
@@ -209,6 +204,14 @@ _LCC_GOLDEN_VECTORS = (
     (LC_RMA_CHIP_1, 0, 0, {}, _FULL_NO_TEST),                     # RMA_CHIPLET: all ones
     (LC_PROD, 0, 0, {"sec_dis": 1, "secure_tm": 1}, M64),        # SEC_DIS override = all ones
     (LC_TEST_DEV, 0xFFFF_FFFF_FFFF_FFFF, 0, {"sigint_err": 1}, 0),   # sigint -> all disabled
+    # SEC_DIS overrides sigint to all-ones; the SECURE_TM gate still applies last.
+    (LC_TEST_DEV, 0, 0, {"sigint_err": 1, "sec_dis": 1}, _FULL_NO_TEST),
+    (LC_TEST_DEV, 0, 0, {"sigint_err": 1, "sec_dis": 1, "secure_tm": 1}, M64),
+    # Stitch-test DIS vectors: DFT group is 0xF000 with secure_tm=1, forced 0 without.
+    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {},
+     0xF000_0000_F000_F000),
+    (LC_TEST_DEV, 0x0F0F_0F0F_0F0F_0F0F, 0x00FF_00FF_00FF_00FF, {"secure_tm": 1},
+     0xF000_F000_F000_F000),
 )
 
 

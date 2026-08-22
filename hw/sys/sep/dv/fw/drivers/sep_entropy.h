@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP real-entropy bring-up (ESRC -> DRBG -> CSRNG -> EDN) firmware driver.
 // Header-only. Programs the OpenTitan-style entropy stack over the EL2 LSU bus so

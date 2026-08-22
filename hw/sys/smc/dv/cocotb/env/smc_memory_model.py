@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMC testcase memory model.
 
 This model is intentionally testbench-local. It does not backdoor into DUT

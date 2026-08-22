@@ -2,21 +2,21 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT TX FIFO Test - TC_SPIOT_005 (P0)
+ * SPI OT TX FIFO Test
  *
  * Verifies TX FIFO write, status monitoring (TXQD, TXEMPTY, TXFULL, TXWM),
  * overflow error detection, and SW_RST drain behavior.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Verify TXEMPTY=1 initially
- *   3. Write multiple words to TXDATA, monitor TXQD
- *   4. Test TX watermark (TXWM) with configurable TX_WATERMARK
- *   5. Write until TXFULL, verify overflow error
- *   6. SW_RST, verify TXEMPTY after reset
+ * 1. Enable controller
+ * 2. Verify TXEMPTY=1 initially
+ * 3. Write multiple words to TXDATA, monitor TXQD
+ * 4. Test TX watermark (TXWM) with configurable TX_WATERMARK
+ * 5. Write until TXFULL, verify overflow error
+ * 6. SW_RST, verify TXEMPTY after reset
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_tx_fifo_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_tx_fifo_test STACK=sim
  *
  */
 
@@ -26,7 +26,6 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 #define TX_FILL_LIMIT 256 /* upper bound while probing TXFULL */
@@ -46,7 +45,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT TX FIFO Test (TC_SPIOT_005)\n");
+    printf("SPI OT TX FIFO Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -54,8 +53,6 @@ int main(void) {
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

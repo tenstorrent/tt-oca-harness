@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """axil_mailbox interface breadth (randomized-rep, TX path).
 
 no_cpu host-AXI test of the SEP axil_mailbox MECHANICS over the CPU-LSU master,
@@ -135,11 +136,23 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         )
         irqp = await self.mb.rd_csr(IRQP)
         assert irqp & IRQ_WTIRQ, f"IRQP.wtirq not gated-set by IRQEN+IRQS (0x{irqp:08x})"
+        await self.mb.wr_csr(IRQEN, 0)
+        irqp_masked = await self.mb.rd_csr(IRQP)
+        irqs_held = await self.mb.rd_csr(IRQS)
+        assert (irqp_masked & IRQ_WTIRQ) == 0, (
+            f"IRQP.wtirq stayed set with IRQEN=0 (IRQP=0x{irqp_masked:08x}) -- pending "
+            f"mirrors status rather than being gated by enable"
+        )
+        assert irqs_held & IRQ_WTIRQ, (
+            f"IRQS.wtirq dropped when IRQEN was cleared (0x{irqs_held:08x})"
+        )
+        await self.mb.wr_csr(IRQEN, IRQ_WTIRQ)
         await self.mb.wr_csr(IRQS, IRQ_WTIRQ)                # W1C while still above
         reassert = await self.mb.rd_csr(IRQS)
         assert reassert & IRQ_WTIRQ, "wtirq should re-assert after W1C while still above threshold"
         self.logger.info(
-            "CHK-WIRQT PASS: write-threshold IRQ set (tx=%d>%d), IRQP gated, level-held re-assert",
+            "CHK-WIRQT PASS: write-threshold IRQ set (tx=%d>%d), IRQP gated by IRQEN "
+            "(drops when enable is cleared, IRQS stays), level-held re-assert",
             self.gold.tx, self.gold.wirqt,
         )
         # Phase 2 -- top up to full.

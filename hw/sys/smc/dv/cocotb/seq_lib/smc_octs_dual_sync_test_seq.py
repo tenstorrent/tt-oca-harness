@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-5 OCTS dual-chiplet sync: SECONDARY inject then PRIMARY outbound.
 
 The DUT PRIMARY drives OCTS sync/credit pads and the master BFM tracks the

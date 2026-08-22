@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Load SMC CSR addresses from the generated PeakRDL C header (authoritative map)."""
 
 from __future__ import annotations

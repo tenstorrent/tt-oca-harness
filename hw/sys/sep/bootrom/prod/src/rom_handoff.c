@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // OROM BL1 handoff: find image, copy to SRAM, jump.
 //
 // BL1 handoff sequence:

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_072: fabric_alias_wrap_maximum_intensity_test
+ * fabric_alias_wrap_maximum_intensity_test
  *
  * Goal: axi_alias_remap_wrap 39.13% -> 90%+ (needs 50.87% improvement) [critical]
  * Strategy: Maximum-intensity alias-wrap test; full module activation
@@ -598,53 +598,53 @@ static int test_wrap_edge_case_boundary_exhaustive(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_072: Alias Wrap Maximum Intensity Test\n");
+    printf("Alias Wrap Maximum Intensity Test\n");
     printf("Goals: axi_alias_remap_wrap 39.13%% -> 90%%+ (needs 50.87%% improvement) [critical]\n");
     printf("Strategy: Maximum-intensity alias-wrap test; full module activation\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_072");
+        test_fail("fabric_alias_wrap_maximum_intensity_test");
         return TEST_FAIL;
     }
 
     // Run all maximum-intensity alias wrap scenarios
     if (test_exhaustive_alias_wrap_combinations() != 0) {
-        test_fail("TC_FABRIC_072 - Exhaustive Alias Wrap Combinations");
+        test_fail("Exhaustive Alias Wrap Combinations");
         return TEST_FAIL;
     }
 
     if (test_maximum_wrap_frequency_stress() != 0) {
-        test_fail("TC_FABRIC_072 - Maximum Wrap Frequency Stress");
+        test_fail("Maximum Wrap Frequency Stress");
         return TEST_FAIL;
     }
 
     if (test_pathological_wrap_scenarios() != 0) {
-        test_fail("TC_FABRIC_072 - Pathological Wrap Scenarios");
+        test_fail("Pathological Wrap Scenarios");
         return TEST_FAIL;
     }
 
     if (test_wrap_state_machine_exhaustive() != 0) {
-        test_fail("TC_FABRIC_072 - Wrap State Machine Exhaustive");
+        test_fail("Wrap State Machine Exhaustive");
         return TEST_FAIL;
     }
 
     if (test_maximum_concurrent_wrap_stress() != 0) {
-        test_fail("TC_FABRIC_072 - Maximum Concurrent Wrap Stress");
+        test_fail("Maximum Concurrent Wrap Stress");
         return TEST_FAIL;
     }
 
     if (test_wrap_edge_case_boundary_exhaustive() != 0) {
-        test_fail("TC_FABRIC_072 - Wrap Edge Case Boundary Exhaustive");
+        test_fail("Wrap Edge Case Boundary Exhaustive");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_072: ALIAS WRAP MAXIMUM INTENSITY TEST PASSED ===\n");
+    printf("\n=== ALIAS WRAP MAXIMUM INTENSITY TEST PASSED ===\n");
     printf("Expected improvement: axi_alias_remap_wrap 39.13%% -> 90%%+ (50.87%% MASSIVE "
            "improvement!)\n");
     printf("This test provides the most critical coverage improvement for the entire fabric "
            "system.\n");
 
-    test_pass("TC_FABRIC_072");
+    test_pass("fabric_alias_wrap_maximum_intensity_test");
     return TEST_PASS;
 }

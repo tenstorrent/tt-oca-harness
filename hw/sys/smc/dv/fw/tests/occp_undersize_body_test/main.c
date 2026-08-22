@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"

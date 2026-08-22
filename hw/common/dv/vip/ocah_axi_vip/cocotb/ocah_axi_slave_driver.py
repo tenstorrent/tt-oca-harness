@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AXI4 slave driver: fault-capable memory-backed responder engine.
 
 `OcahAxiSlaveDriver` is the cocotbext-backed RAM responder that answers AXI4

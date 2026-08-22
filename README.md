@@ -1,5 +1,7 @@
 # tt-oca-harness
 
+## Overview
+
 Open Chiplet Atlas Harness (OCAH) — the open hardware tree for the OCA design:
 RTL, register descriptions, generated collateral, and documentation.
 
@@ -9,6 +11,30 @@ RTL, register descriptions, generated collateral, and documentation.
 > provisional. As the documentation matures, most of the material collected in this
 > README will migrate into the user guide and other doc products under [`doc/`](doc/);
 > for now this file is the landing place for the essentials.
+
+## Getting Started
+
+```bash
+git clone https://github.com/tenstorrent/tt-oca-harness.git
+cd tt-oca-harness
+make help
+```
+
+See [Contributing](#contributing) and [`CONTRIBUTING.md`](CONTRIBUTING.md) for
+the local workflow, license-header form, and lint targets. Container and
+toolchain setup is in [`tools/docker/README.md`](tools/docker/README.md).
+
+## Repository layout
+
+| Path | Contents |
+|------|----------|
+| `hw/common/` | Shared RTL: primitives (`och_prim`, `och_prim_generic`), TL-UL, AXI network/monitor elements, register-flow makefiles. |
+| `hw/ip/` | Reusable IP blocks, grouped by family where applicable (e.g. `jtag/`, `uart/`, `cross_trigger/`). |
+| `hw/sys/` | Subsystems (`smc`, `sep`, `smu`, `dtp`) that integrate the IP blocks. |
+| `hw/top/` | Top-level integration. |
+| `doc/` | Documentation products (TRM, Integrator Guide, …); see [Documentation](#documentation). |
+| `vendor/` | Third-party IP vendored via Bender; see [Third-party imports](#third-party-vendor-package-imports). |
+| `tools/`, `scripts/` | Register-flow, documentation, and container helpers. |
 
 ## Register generation
 
@@ -150,3 +176,22 @@ vendor_package:
 `bender vendor init` re-fetches the pinned commit, copies the selected files, excludes
 `exclude_from_upstream:` paths, and re-applies all patches from `patch_dir` in
 lexicographic order.
+
+## Contributing
+
+Contributions are welcome under the Apache License 2.0. Read
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, the pull-request process,
+SPDX header form, and local lint/format commands. This project follows the
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+## License
+
+- Hardware, software, and scripts: [`LICENSE`](LICENSE) (Apache License 2.0).
+  [`LICENSE_understanding.txt`](LICENSE_understanding.txt) is a short reading
+  note for that license.
+- Documentation: [`LICENSE-DOCS`](LICENSE-DOCS) (CC-BY-4.0) where that file
+  applies.
+- Third-party notices: [`NOTICE`](NOTICE).
+
+By contributing you agree that your contributions are licensed as described
+in [`CONTRIBUTING.md`](CONTRIBUTING.md).

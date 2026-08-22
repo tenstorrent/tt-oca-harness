@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_066: fabric_output_remap_advanced_p3_test
+ * fabric_output_remap_advanced_p3_test
  *
  * Goal: Advanced output_remap scenarios; full performance optimization
  * Strategy: Advanced output-remap scenarios; complex configuration combinations
@@ -484,55 +484,55 @@ static int test_system_integration_stress(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_066: Output Remap Advanced P3 Test\n");
+    printf("Output Remap Advanced Test\n");
     printf("Goals: Advanced output_remap scenarios; full performance optimization\n");
     printf("Strategy: Advanced output-remap scenarios; complex configuration combinations\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_066");
+        test_fail("fabric_output_remap_advanced_p3_test");
         return TEST_FAIL;
     }
 
     // Run all advanced output-remap scenarios
     if (test_multi_level_address_translation() != 0) {
-        test_fail("TC_FABRIC_066 - Multi Level Address Translation");
+        test_fail("Multi Level Address Translation");
         return TEST_FAIL;
     }
 
     if (test_dynamic_region_reconfiguration() != 0) {
-        test_fail("TC_FABRIC_066 - Dynamic Region Reconfiguration");
+        test_fail("Dynamic Region Reconfiguration");
         return TEST_FAIL;
     }
 
     if (test_complex_overlap_resolution() != 0) {
-        test_fail("TC_FABRIC_066 - Complex Overlap Resolution");
+        test_fail("Complex Overlap Resolution");
         return TEST_FAIL;
     }
 
     if (test_cache_coherency_advanced_scenarios() != 0) {
-        test_fail("TC_FABRIC_066 - Cache Coherency Advanced Scenarios");
+        test_fail("Cache Coherency Advanced Scenarios");
         return TEST_FAIL;
     }
 
     if (test_performance_critical_patterns() != 0) {
-        test_fail("TC_FABRIC_066 - Performance Critical Patterns");
+        test_fail("Performance Critical Patterns");
         return TEST_FAIL;
     }
 
     if (test_error_recovery_advanced_scenarios() != 0) {
-        test_fail("TC_FABRIC_066 - Error Recovery Advanced Scenarios");
+        test_fail("Error Recovery Advanced Scenarios");
         return TEST_FAIL;
     }
 
     if (test_system_integration_stress() != 0) {
-        test_fail("TC_FABRIC_066 - System Integration Stress");
+        test_fail("System Integration Stress");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_066: OUTPUT REMAP ADVANCED P3 TEST PASSED ===\n");
+    printf("\n=== OUTPUT REMAP ADVANCED TEST PASSED ===\n");
     printf("Expected improvement: output_remap advanced scenarios and performance optimization\n");
 
-    test_pass("TC_FABRIC_066");
+    test_pass("fabric_output_remap_advanced_p3_test");
     return TEST_PASS;
 }

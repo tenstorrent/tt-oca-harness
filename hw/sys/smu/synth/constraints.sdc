@@ -673,7 +673,8 @@ set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_cloc
 
 # `jtag_ic_reset_ext_o` is a real `smu` top-level output (the external slice
 # of DTP's IC_RESET TDR), modeled the same as the other JTAG_TCK-domain state
-# outputs above.
+# outputs above. Width follows `ic_reset_ext_t`; the integrator carries the SEP
+# xSPI reset overrides here, so the wildcard must stay a wildcard.
 set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ic_reset_ext_o*}] -add_delay
 
 # DTP Clock Stop Output
@@ -764,14 +765,12 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # SEP SPI Interface
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports spi_irq_i] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports ot_spi_irq_o] -add_delay
 
 # SEP External
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_external_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_external_resp_i*}] -add_delay
 
 # SEP Reset
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports sep_reset_n_o] -add_delay
 
 # SEP CPU Trace
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_cpu_trace_o*}] -add_delay

@@ -52,6 +52,15 @@ The cocotb runner adds `hw/common/dv/vip` to `PYTHONPATH` so tests can import
 the unified wrappers and their local backends.
 The ownership and promotion checklist is in `hw/common/dv/README.md`.
 
+## Simulation defines
+
+DTP DV, lint, and synthesis compiles pass preprocessor defines that switch the
+shared testbench shape, gate assertions, and select a simulation vs synthesis
+view. The inventory — each define, why it exists, and what a DTP build does with
+or without it — is in [`../doc/defines.adoc`](../doc/defines.adoc). Runtime
+environment variables and plusargs in the commands below are not preprocessor
+defines.
+
 ## Running
 
 ```bash

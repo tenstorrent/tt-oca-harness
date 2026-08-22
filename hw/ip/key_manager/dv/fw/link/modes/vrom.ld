@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* Copyright 2026 Tenstorrent Inc. */
 /* Key Manager Firmware Linker Script - default for tests (execute from VROM) */
 /* Minimal bootstrap in ROM (reset, IRQ vec, IRQ handler); main .text and .rodata in VROM (0x1000_0000). */

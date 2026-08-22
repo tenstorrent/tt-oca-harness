@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP PIC interrupt-source MAP + multi-source delivery firmware test (OSS rep
 // PIC source-map delivery). reference provenance: fw/sep/tests/otbn_plic_test (OTBN done -> PIC src 30
@@ -36,8 +37,8 @@
 //                     registered/PIC-enabled sources (the other two counts hold). Scope
 //                     note: only these three sources are PIC-enabled, so an untracked
 //                     source cannot deliver an ISR here; full 32-bit sep_internal_interrupts
-//                     vector isolation is COVERED_BY the no_cpu sep_irq_ip_to_aggregator_test
-//                     (#14), which probes the whole aggregate vector.
+//                     vector isolation is COVERED_BY the no_cpu sep_irq_ip_to_aggregator_test,
+//                     which probes the whole aggregate vector.
 
 #include <stdint.h>
 
@@ -74,7 +75,7 @@
 
 #define MBOX_TRIGGER_WORD 0x4700CAFEu
 #define ISR_WAIT_ITERS 200000
-#define STORM_CHECK_ITERS 256
+#define STORM_CHECK_ITERS 4096
 
 // Per-source observation slots, indexed by SRC_*.
 enum { SRC_MBOX = 0, SRC_OTBN = 1, SRC_CSRNG = 2, SRC_N = 3 };
@@ -158,7 +159,7 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src, uint3
     int errors = 0;
     uint32_t snap[SRC_N];
 
-    wr32(intr_enable, bit); // unmask the done interrupt
+    wr32(intr_enable, bit); // unmask the done interrupt (already armed at start)
     for (int j = 0; j < SRC_N; j++) {
         snap[j] = g_count[j];
     }
@@ -181,11 +182,6 @@ static int run_intr_test_source(const char *name, int s, uint32_t pic_src, uint3
     // otbn_isr running already means the PIC claimed 30 -- reading claim_id() inside
     // it and comparing against 30 cannot disagree. CHK-DELIVER above is what carries
     // the source->PIC-id map: the handler at index N ran, therefore the PIC claimed N.
-    //
-    // To make the map a separately falsifiable check, register ONE shared handler on
-    // all three slots and bucket by claim_id(); a mis-mapped delivery would then land
-    // in the wrong bucket and fail CHK-DELIVER for the expected source. That is a
-    // firmware restructure, not a repair, so it is recorded rather than done here.
     (void)g_claim;
     if (!only_one_fired(s, snap)) { // CHK-ONEHOT
         sep_mbx_puts("FAIL: ");
@@ -239,6 +235,14 @@ int main(void) {
 
     pic_enable_interrupts();
 
+    // Arm every representative source before the quiet window so CHK-NONVAC and
+    // CHK-ONEHOT run with armed neighbours, not with the other IPs still masked.
+    wr32(OTBN_INTR_ENABLE, OTBN_DONE_BIT);
+    wr32(CSRNG_INTR_ENABLE, CSRNG_CMD_DONE_BIT);
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQS, SEP_AXIL_MBOX_IRQ_ALL);
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0xFFu); // usage 0 is not above 0xFF
+    sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, SEP_AXIL_MBOX_IRQ_ALL);
+
     // CHK-NONVAC: nothing asserted yet -> a quiet window must see no ISR.
     for (volatile int i = 0; i < STORM_CHECK_ITERS; i++) {
         __asm__ volatile("nop");
@@ -288,7 +292,9 @@ int main(void) {
         } else {
             sep_mbx_puts("CHK-IP-RW1C PASS: mailbox IRQS read back 0 after W1C\n");
         }
-        sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, 0u); // belt: mask after clear
+        // Keep IRQEN armed. Raise WIRQT past occupancy so the still-full FIFO cannot
+        // re-fire; OTBN/CSRNG one-hot then has the mailbox as an armed neighbour.
+        sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0xFFu);
     }
 
     // --- Source 2: OTBN done -> PIC source 30 (INTR_TEST; CHK-DELIVER) ---

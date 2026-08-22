@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Local-fabric CSR depth sweep over real SEP_IN AXI."""
 
 from __future__ import annotations

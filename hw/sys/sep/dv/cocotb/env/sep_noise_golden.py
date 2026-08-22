@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP DRBG noise-source golden model.
 
 This model is the SINGLE SOURCE of entropy noise for the cocotb env: each

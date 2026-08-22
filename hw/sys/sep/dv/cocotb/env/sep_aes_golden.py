@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Self-contained AES-256-ECB encryption golden for the KM->AES sideload KAT.
 
 Pure-Python, with no third-party crypto dependency so the environment stays
@@ -139,7 +140,7 @@ def aes_encrypt_block(key: bytes, block: bytes) -> bytes:
 
 
 def aes256_encrypt_block(key: bytes, block: bytes) -> bytes:
-    """AES-256 encrypt one block (kept for the ECB-256 KM sideload KAT, #11)."""
+    """AES-256 encrypt one block (kept for the ECB-256 KM AES sideload KAT)."""
     assert len(key) == 32, "AES-256 key must be 32 bytes"
     return aes_encrypt_block(key, block)
 

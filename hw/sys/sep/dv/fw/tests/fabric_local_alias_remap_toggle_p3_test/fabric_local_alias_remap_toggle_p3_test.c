@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_064: fabric_local_alias_remap_toggle_p3_test
+ * fabric_local_alias_remap_toggle_p3_test
  *
  * Goal: axi_local_alias_remap 64.33% -> 90%+ (needs 25.67% improvement)
  * Strategy: Local-alias remap toggle stress; full CSR field coverage
@@ -396,60 +396,60 @@ static int test_concurrent_multi_region_stress(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_064: Local Alias Remap Toggle P3 Test\n");
+    printf("Local Alias Remap Toggle Test\n");
     printf("Goals: axi_local_alias_remap 64.33%% -> 90%%+ (needs 25.67%% improvement)\n");
     printf("Strategy: Local-alias remap toggle stress; full CSR field coverage\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_064");
+        test_fail("fabric_local_alias_remap_toggle_p3_test");
         return TEST_FAIL;
     }
 
     // Run all local-alias remap toggle scenarios
     if (test_local_alias_csr_intensive_toggle() != 0) {
-        test_fail("TC_FABRIC_064 - Local Alias CSR Intensive Toggle");
+        test_fail("Local Alias CSR Intensive Toggle");
         return TEST_FAIL;
     }
 
     if (test_priority_resolution_comprehensive() != 0) {
-        test_fail("TC_FABRIC_064 - Priority Resolution Comprehensive");
+        test_fail("Priority Resolution Comprehensive");
         return TEST_FAIL;
     }
 
     if (test_local_master_access_patterns() != 0) {
-        test_fail("TC_FABRIC_064 - Local Master Access Patterns");
+        test_fail("Local Master Access Patterns");
         return TEST_FAIL;
     }
 
     if (test_address_range_boundary_toggle() != 0) {
-        test_fail("TC_FABRIC_064 - Address Range Boundary Toggle");
+        test_fail("Address Range Boundary Toggle");
         return TEST_FAIL;
     }
 
     if (test_cache_coherency_scenarios() != 0) {
-        test_fail("TC_FABRIC_064 - Cache Coherency Scenarios");
+        test_fail("Cache Coherency Scenarios");
         return TEST_FAIL;
     }
 
     if (test_disable_enable_sequence_comprehensive() != 0) {
-        test_fail("TC_FABRIC_064 - Disable Enable Sequence");
+        test_fail("Disable Enable Sequence");
         return TEST_FAIL;
     }
 
     if (test_error_injection_and_recovery() != 0) {
-        test_fail("TC_FABRIC_064 - Error Injection and Recovery");
+        test_fail("Error Injection and Recovery");
         return TEST_FAIL;
     }
 
     if (test_concurrent_multi_region_stress() != 0) {
-        test_fail("TC_FABRIC_064 - Concurrent Multi-Region Stress");
+        test_fail("Concurrent Multi-Region Stress");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_064: LOCAL ALIAS REMAP TOGGLE P3 TEST PASSED ===\n");
+    printf("\n=== LOCAL ALIAS REMAP TOGGLE TEST PASSED ===\n");
     printf("Expected improvement: axi_local_alias_remap 64.33%% -> 90%%+ (25.67%% improvement)\n");
 
-    test_pass("TC_FABRIC_064");
+    test_pass("fabric_local_alias_remap_toggle_p3_test");
     return TEST_PASS;
 }

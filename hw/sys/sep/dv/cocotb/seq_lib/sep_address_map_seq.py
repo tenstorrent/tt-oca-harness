@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for sep_address_map_test.
 
 Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bus:
@@ -29,9 +30,8 @@ generated symbol expresses. Blocks whose reset value IS exported
 (reset_ctrl/OTBN/HMAC/KMAC) take it from the header.
 
 Accepted scope delta — CLOCK_GATE_CTRL ungating:
-    An earlier revision of this sequence ungated per-block CSR clocks
-    (dma[1], mailbox[2], alias_remap[7], entropy_fifo[10]) before the fabric
-    walk. Those fields do not exist in this repository's RDL: sep_cpu_ctrl.rdl
+    This sequence does not ungate per-block CSR clocks before the fabric walk,
+    because no such gates exist: sep_cpu_ctrl.rdl
     declares CLOCK_GATE_CTRL as a placeholder with a single implemented bit
     (`pka_cg_enable[0:0]`, reset 0) and documents it as "not yet implemented".
     There is therefore nothing to ungate — every walked block is unconditionally
@@ -80,9 +80,7 @@ READ_CHECK = [
     "SMU_REGION_SIZE",
     "SMC_FUSE_SENSE_STATUS",
     "SEP_STRAPS",
-    # Field-packed reset (0xC000_0100) — value-checked here rather than
-    # resp-only, now that the reset comes from the generated header instead of a
-    # hand-copied literal. Stronger than the previous resp-only check.
+    # Field-packed reset (0xC000_0100) — value-checked against the generated header.
     "SEP_NMI_VEC",
     "SEP_NMI_VEC_LOCK",
     "EXT_TRNG_SRC_SEL",
@@ -138,8 +136,7 @@ WRITE_ONLY = [
 # hw-driven/state-dependent). The chosen offsets match the registers the reference suite's
 # reg-walk reads. Memory-backed ranges (SRAM/ROM/TCM, OTBN/KMAC mem, KM mem) and
 # the OTP-triggering eFuse interface regs (0x1093_04xx+) are NOT probed — they
-# would hang. Excluded for OSS hygiene: Cadence xSPI (0x2000_xxxx), the external
-# SPI-mux port, and the TRNG wrapper (DWC core is externalized in bare sep).
+# would hang. Excluded for OSS hygiene: proprietary IPs in nonfree.
 #
 # Blocks whose address AND reset value are exported by the generated header take
 # both from it; the rest keep an explicit address because no generated symbol
@@ -289,8 +286,8 @@ class sep_address_map_seq(uvm_sequence):
             await self._write(BASE + SEP_CPU_CTRL.offset(name), value, name=name)
 
         # CLOCK_GATE_CTRL write path: drive every implemented bit, read it back,
-        # restore the reset value. See the module docstring for why this no longer
-        # ungates per-block clocks (those fields do not exist in this RDL).
+        # restore the reset value. See the module docstring for why this does not
+        # ungate per-block clocks (those fields do not exist in this RDL).
         cg_addr = BASE + SEP_CPU_CTRL.offset("CLOCK_GATE_CTRL")
         cg_mask = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
         cg_reset = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")

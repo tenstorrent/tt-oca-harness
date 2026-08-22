@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // SMC/SEP coordination helpers for OROM.
 //
 // This provides optional observability channels via SMC scratch regs:

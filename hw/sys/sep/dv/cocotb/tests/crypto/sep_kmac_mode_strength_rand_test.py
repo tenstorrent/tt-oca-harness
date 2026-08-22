@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Standalone KMAC-engine mode x strength breadth, RAND-REP (KMAC mode/strength breadth).
 
 Drives the OpenTitan KMAC engine directly over the CPU-LSU AXI master (no_cpu, no
 firmware) across the SHA-3 / SHAKE / cSHAKE / KMAC family the Phase-1 KM->KMAC
-sideload KAT (#13, KMAC-256 keyed via keymgr, cross-check only) does not reach:
+sideload KAT (`sep_km_kmac_sideload_kat_test`, KMAC-256 keyed via keymgr,
+cross-check only) does not reach:
 
     SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256  (8 cells).
 
@@ -11,14 +13,15 @@ reference parity: MERGED_INTO the reference suite kmac mode/strength directed se
 KMAC coverage is a keyed KMAC cross-check (no standalone SHA3/SHAKE/cSHAKE digest
 golden), so the independent pure-Python Keccak golden (env/sep_kmac_golden.py:
 SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs NIST SP800-185) is the
-reference and this rep is stronger than the reference suite. DISTINCT from #13 (KMAC-256 via
-sideload, cross-check) -- KMAC mode/strength breadth is standalone SW-key with an exact golden.
+reference and this rep is stronger than the reference suite. DISTINCT from
+`sep_km_kmac_sideload_kat_test` (KMAC-256 via sideload, cross-check) -- KMAC
+mode/strength breadth is standalone SW-key with an exact golden.
 
 Entropy: the KMAC engine has masking hardwired on (EnMasking=1) and requires EDN
 entropy (entropy_mode=EDN) before it produces output, so the test brings up the
-real ESRC->DRBG->EDN stack (+esrc_noise_force) or the engine stalls. The DRBG
-scoreboard runs non-strict (KMAC mode/strength breadth's contract is KMAC correctness, not the entropy
-golden); reaching the digest checks proves masking entropy flowed.
+real ESRC->DRBG->EDN stack (+esrc_noise_force) or the engine stalls. OTBN/AES/HMAC
+are parked so KMAC is the only crypto EDN client: CHK1..CHK4 are bit-exact,
+CHK5_kmac is per-sink ROUTING golden. KM is unused.
 
 RAND-REP contract: a SepKmacCfg config object is the single source
 of truth for BOTH DUT programming (CFG + KEY_LEN + PREFIX + key + message tail)
@@ -31,6 +34,8 @@ Checkers:
   CHK-DONE-RW1C  per cell: INTR_STATE.kmac_done observed set -> W1C -> reads 0
                  (proven in sep_kmac_seq.run_family), and CMD DONE returns to idle
   CHK-ERR        per cell: ERR_CODE == 0 and INTR_STATE.kmac_err == 0
+  CHK1..CHK4     bit-exact entropy golden (strict scoreboard report)
+  CHK5_kmac      post-adapter KMAC beats == AXIS1 in order (single live crypto sink)
   CHK-RAND-REP   all 8 discrete cells walked in one invocation (seed logged)
 """
 
@@ -43,6 +48,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from env.sep_kmac_golden import kmac_family_words
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
+from seq_lib.sep_sw_reset_seq import SepSwReset
 
 # (mode, sec/strength, output bytes, key_bits[kmac only], customization S)
 CELLS = [
@@ -67,9 +73,13 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
-        # KMAC masking reseeds from EDN; bring the stack up (non-strict: KMAC mode/strength breadth
-        # proves KMAC, not the entropy golden) and drive the deterministic noise.
-        await self.bring_up_entropy(strict=False, score_km=False)
+        # Park every other crypto-EDN client so CHK5_kmac golden routing is
+        # in-order (one live sink). KMAC stays released for the masking reseed.
+        self.swrst = SepSwReset(self)
+        await self.swrst.park("otbn", "aes", "hmac")
+        await self.bring_up_entropy(
+            strict=True, score_km=False, score_sinks={"kmac": "golden"})
+        self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
         self.kmac = SepKmac(self)
@@ -93,7 +103,11 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             "KMAC cells produced duplicate digests, so they did not all run distinct "
             "configurations: "
             + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results)))
+        await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        assert self.drbg_sb.report()
+        self.logger.info(
+            "CHK1..CHK4 bit-exact + CHK5_kmac ROUTING (KMAC==AXIS1) PASS")
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
             "(SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256) in one "
@@ -118,15 +132,8 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             f"{cell} digest != golden:\n  digest={[hex(w) for w in digest]}\n"
             f"  golden={[hex(w) for w in golden]}")
 
-        # No CHK-NONVAC here. It used to assert `any(digest)` and that the digest
-        # differed from a wrong-mode and (for KMAC) wrong-key golden. With the digest
-        # already pinned bit-exact to its own golden above, all three reduce to
-        # relations between outputs of the same Python model -- they hold with the
-        # simulator switched off. One was weaker still: for the SHAKE-128/32B cell the
-        # wrong-mode golden is SHA3-128, which returns 4 words against the digest's 8,
-        # so that assert compared list lengths rather than doing any domain separation
-        # at all. Mode and key sensitivity are pinned where they belong: sep_kmac_golden
-        # self-tests every mode against hashlib and the NIST SP800-185 samples at import.
+        # Mode and key sensitivity live in sep_kmac_golden (hashlib / NIST SP800-185
+        # self-tests at import). This cell only compares digest == golden.
         await self.kmac.check_status_clean(cell)   # CHK-ERR
         self.logger.info("CHK-CELL PASS %s: digest==golden, DONE-RW1C, ERR clean, "
                          "non-vacuous (out=%dB, msg=%d words)", cell, outb, len(msg))

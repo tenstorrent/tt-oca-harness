@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Generate a static per-flow HTML report from normalized result JSON."""
 
 from __future__ import annotations

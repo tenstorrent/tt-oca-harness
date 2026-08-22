@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Simultaneous multi-source interrupt fan-in sources.
 
 sep_irq_simultaneous_fanin_no_alias_test drives SEVERAL IP interrupts at

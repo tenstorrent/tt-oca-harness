@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS I2C protocol VIP (clocked slave + timer master).
 
 Open-drain pad model on ``tb_top.sv``:

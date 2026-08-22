@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dft_gpio_boot_stall_test - GPIO pad boot-stall gates fuse_reset.
 
 SMC padring maps lsio_pad2core_data[57] to boot_stall_from_bp. With JTAG

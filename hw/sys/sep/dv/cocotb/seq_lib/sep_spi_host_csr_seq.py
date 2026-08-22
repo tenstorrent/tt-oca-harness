@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan SPI-host control-plane CSR map + config/driver for SPI host CSR/IRQ breadth
 (``sep_spi_ot_host_csr_irq_rand_test``).
 
@@ -72,10 +73,13 @@ EVT_EN_MASK = 0x0011_1111        # RXFULL/TXEMPTY/RXWM/TXWM/READY/IDLE
 # INTR / ERROR_STATUS bits
 INTR_ERROR = 0x1
 INTR_SPI_EVENT = 0x10
+ERR_CMDBUSY = 0x0000_0001
 ERR_OVERFLOW = 0x0000_0010
 ERR_UNDERFLOW = 0x0000_0100
 ERR_CMDINVAL = 0x0000_1000
 ERR_CSIDINVAL = 0x0001_0000
+ERR_ACCESSINVAL = 0x0010_0000
+CMD_FIFO_DEPTH = 4
 
 # spi_controller TX FIFO depth (spi_controller_data_fifos.sv TxDepth) -- writing
 # beyond it with the core disabled drives ERROR_STATUS.OVERFLOW.
@@ -133,11 +137,14 @@ class SepSpiHost:
     def __init__(self, test) -> None:
         self.test = test
 
-    async def wr(self, addr: int, data: int) -> None:
+    async def wr(self, addr: int, data: int, *, length: int = 4,
+                 size: int | None = None,
+                 allow_unverified_write_resp: bool = False) -> None:
         seq = SepAxiAccessSeq(f"spi_wr_0x{addr:08x}", op=SepAxiOp.WRITE,
-                              addr=addr, wdata=data, length=4)
+                              addr=addr, wdata=data, length=length, size=size,
+                              allow_unverified_write_resp=allow_unverified_write_resp)
         await self.test.start_seq(seq)
-        if not seq.resp_ok:
+        if not seq.resp_ok and not allow_unverified_write_resp:
             raise AssertionError(f"SPI CSR write @0x{addr:08x} not OKAY")
 
     async def rd(self, addr: int) -> int:

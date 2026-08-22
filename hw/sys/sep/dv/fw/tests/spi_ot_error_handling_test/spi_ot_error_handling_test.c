@@ -2,22 +2,22 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Error Handling Test - TC_SPIOT_012 (P0)
+ * SPI OT Error Handling Test
  *
  * Verifies error detection and reporting for all error conditions:
  * CMDBUSY, OVERFLOW, UNDERFLOW, CMDINVAL, CSIDINVAL.
  * Also tests ERROR_ENABLE masking and ERROR_STATUS W1C clearing.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Test ERROR_ENABLE defaults (all enabled)
- *   3. Test UNDERFLOW (read RXDATA when empty)
- *   4. Test ERROR_STATUS W1C clear
- *   5. Test ERROR_ENABLE interrupt masking (status still records the error)
- *   6. Re-enable all errors
+ * 1. Enable controller
+ * 2. Test ERROR_ENABLE defaults (all enabled)
+ * 3. Test UNDERFLOW (read RXDATA when empty)
+ * 4. Test ERROR_STATUS W1C clear
+ * 5. Test ERROR_ENABLE interrupt masking (status still records the error)
+ * 6. Re-enable all errors
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_error_handling_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_error_handling_test STACK=sim
  *
  */
 
@@ -29,7 +29,6 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -79,7 +78,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Error Handling Test (TC_SPIOT_012)\n");
+    printf("SPI OT Error Handling Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -95,8 +94,6 @@ int main(void) {
     uint32_t i;
     int timeout;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

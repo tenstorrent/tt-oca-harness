@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // SEP Virtual Console scratch-register protocol.
 //
 // Encodes text and numeric output into packed 32-bit writes to

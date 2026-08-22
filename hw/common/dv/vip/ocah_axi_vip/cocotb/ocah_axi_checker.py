@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Protocol sanity checker for OCAH AXI transaction items.
 
 Item-level protocol legality rules are retained in ``errors``; named exact-value

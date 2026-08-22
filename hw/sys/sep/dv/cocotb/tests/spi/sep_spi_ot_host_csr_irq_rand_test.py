@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI host control-plane CSR / IRQ / error breadth (PyUVM, no_cpu).
 
 SPI-subsystem Phase-2 rep SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
@@ -7,7 +8,7 @@ rx_fifo / cmd_queue / interrupt / error_handling / watermark / enable_disable /
 mux_select) into ONE rep. Drives the SEP-integrated spi_controller host CSRs
 (@0x10B0_0000, NUM_CS=1) directly over the CPU-LSU AXI splice (no_cpu, no
 firmware, no flash BFM) -- this is the host CONTROL plane, DISTINCT from SPI flash command breadth
-(flash command datapath) and #3 sep_spi_ot_dma_rx (flash READ + DMA).
+(flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
 
 Randomization (SINGLE source of randomness; AGENTS.md s9/s11): SepSpiHostCfg seeds
 legal field values for the register R/W walk + the watermark threshold from the
@@ -23,19 +24,18 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (CMD
                   SPEED=reserved), CSIDINVAL (CSID>=NUM_CS + CMD), OVERFLOW (write
-                  past the 72-deep TX FIFO with the core disabled).
+                  past the 72-deep TX FIFO with the core disabled), CMDBUSY
+                  (command FIFO full), ACCESSINVAL (3-byte TXDATA beat).
   CHK-WATERMARK : STATUS.TXWM moves as the TX FIFO occupancy crosses TX_WATERMARK
                   (occupancy proven by STATUS.TXQD).
   CHK-ENABLE    : SPIEN=0 holds a queued TX command off (FIFO not drained);
                   SPIEN=1 lets it execute (FIFO drains).
   CHK-NONVAC    : a written reg reads back different from its reset value.
 
-Deferred (documented, not silently dropped): ERROR_STATUS.CMDBUSY (needs a command
-issued mid-busy -- timing) and .ACCESSINVAL (needs a non-contiguous TXDATA
-byte-enable, which cocotbext-axi cannot express) are [GAP (deferred)]; RXWM and
-the irq-line delivery are covered by the RX-path tests (#3, SPI flash command breadth) / delivery
-tests (#14). the reference suite's mux-select is an OSS no-op (the OT SPI path is already the
-active bare-SEP path).
+RXWM and irq-line delivery are covered by the RX-path tests
+(`sep_spi_ot_flash_cmd_rand_test` / `sep_spi_ot_dma_rx_test`) and the delivery
+tests (`sep_irq_ip_to_aggregator_test`). The OT SPI mux-select path is a no-op
+here: the OT SPI host is already the active bare-SEP path.
 
 no_cpu / +skip_fuse_sense.
 """
@@ -51,7 +51,8 @@ from seq_lib.sep_spi_host_csr_seq import (
     STATUS, RXDATA, TXDATA, CMD, CTRL, CSID, CFG,
     INTR_STATUS, INTR_ENABLE, INTR_TEST, ERROR_STATUS,
     INTR_ERROR, INTR_SPI_EVENT,
-    ERR_OVERFLOW, ERR_UNDERFLOW, ERR_CMDINVAL, ERR_CSIDINVAL, TX_FIFO_DEPTH,
+    ERR_OVERFLOW, ERR_UNDERFLOW, ERR_CMDINVAL, ERR_CSIDINVAL, ERR_CMDBUSY,
+    ERR_ACCESSINVAL, TX_FIFO_DEPTH, CMD_FIFO_DEPTH,
     CMD_DIR_TX, CMD_SPEED_RESERVED,
     CTRL_SW_RST, CTRL_SPIEN, CTRL_OUTPUT_EN,
     ST_READY, ST_ACTIVE, ST_TXEMPTY, ST_RXEMPTY, ST_TXFULL, ST_RXFULL,
@@ -111,12 +112,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def _chk_reg_rw(self) -> None:
         nonvac_seen = False
         for name, addr, wmask, val in self.scfg.rw_regs:
-            # Observe the pre-write value rather than trusting the RESET_VALUES table.
-            # CHK-NONVAC used to compare the readback against that table, but the
-            # readback had already been asserted == val, so it reduced to
-            # `val != RESET_VALUES[name]` -- this run's seeded random number against a
-            # file-scope constant, with no DUT term left. Anchoring on an observed read
-            # makes it a real statement about the register.
+            # Observe the pre-write value. Comparing the post-write readback against
+            # RESET_VALUES would drop the DUT: the readback is already asserted == val.
             pre = await self.spi.rd(addr)
             await self.spi.wr(addr, val)
             rb = await self.spi.rd(addr)
@@ -214,14 +211,32 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             for _ in range(TX_FIFO_DEPTH + 8):
                 await self.spi.wr(TXDATA, 0x5A5A_5A5A)
 
+        async def trig_cmdbusy():
+            # Command FIFO is 4 deep. Enable the core with an empty TX FIFO so
+            # each TX command stalls in the queue; the write that finds it full
+            # sets ERROR_STATUS.CMDBUSY.
+            await self.spi.wr(CTRL, _CTRL_RESET | CTRL_SPIEN | CTRL_OUTPUT_EN)
+            for _ in range(CMD_FIFO_DEPTH + 2):
+                await self.spi.wr(CMD, CMD_DIR_TX)
+
+        async def trig_accessinval():
+            # RTL access_valid accepts 1/2/4-byte contiguous strobes, not 3-byte
+            # 4'b0111. A 32-bit beat of length 3 is a real DUT write, not a
+            # non-contiguous strobe the AXI master cannot express.
+            await self.spi.wr(TXDATA, 0x00A5A5A5, length=3, size=2,
+                              allow_unverified_write_resp=True)
+
         await self._trigger_err("UNDERFLOW", ERR_UNDERFLOW, trig_underflow)
         await self._trigger_err("CMDINVAL", ERR_CMDINVAL, trig_cmdinval)
         await self._trigger_err("CSIDINVAL", ERR_CSIDINVAL, trig_csidinval)
         await self._trigger_err("OVERFLOW", ERR_OVERFLOW, trig_overflow)
         await self._sw_rst_pulse()                           # drain the full TX FIFO
-        self.logger.info("CHK-ERR-W1C PASS: UNDERFLOW/CMDINVAL/CSIDINVAL/OVERFLOW each "
-                         "set by their trigger + W1C-clear. CMDBUSY/ACCESSINVAL deferred "
-                         "(mid-command timing / non-contiguous byte-enable infra-gated).")
+        await self._trigger_err("CMDBUSY", ERR_CMDBUSY, trig_cmdbusy)
+        await self._sw_rst_pulse()
+        await self._trigger_err("ACCESSINVAL", ERR_ACCESSINVAL, trig_accessinval)
+        await self._sw_rst_pulse()
+        self.logger.info("CHK-ERR-W1C PASS: UNDERFLOW/CMDINVAL/CSIDINVAL/OVERFLOW/"
+                         "CMDBUSY/ACCESSINVAL each set by their trigger + W1C-clear")
 
     # ---- CHK-WATERMARK ----------------------------------------------------
     async def _chk_watermark(self) -> None:
@@ -231,20 +246,37 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(CTRL, ctrl)
         st_empty = await self.spi.rd(STATUS)
         assert (st_empty & ST_TXQD) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
-        txwm_empty = bool(st_empty & ST_TXWM)
-        for _ in range(self.scfg.tx_fill_words):
+        # RTL: tx_wm = tx_qd < tx_watermark (asserted while there is room below the mark).
+        assert st_empty & ST_TXWM, (
+            f"CHK-WATERMARK STATUS.TXWM clear while TXQD=0 < wm (0x{st_empty:08x})"
+        )
+        wm = self.scfg.tx_watermark
+        for _ in range(wm - 1):
+            await self.spi.wr(TXDATA, 0xA5A5_A5A5)
+        st_below = await self.spi.rd(STATUS)
+        assert st_below & ST_TXWM, (
+            f"CHK-WATERMARK STATUS.TXWM clear at TXQD={st_below & ST_TXQD} < wm={wm} "
+            f"(0x{st_below:08x})"
+        )
+        await self.spi.wr(TXDATA, 0xA5A5_A5A5)  # the word that reaches the threshold
+        st_at = await self.spi.rd(STATUS)
+        assert not (st_at & ST_TXWM), (
+            f"CHK-WATERMARK STATUS.TXWM still set at TXQD={st_at & ST_TXQD} == wm={wm} "
+            f"(0x{st_at:08x})"
+        )
+        extra = self.scfg.tx_fill_words - wm
+        for _ in range(extra):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_full = await self.spi.rd(STATUS)
         txqd = st_full & ST_TXQD
         assert txqd == self.scfg.tx_fill_words, (
             f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {self.scfg.tx_fill_words}")
-        txwm_full = bool(st_full & ST_TXWM)
-        assert txwm_empty != txwm_full, (
-            f"CHK-WATERMARK STATUS.TXWM did not move across threshold "
-            f"{self.scfg.tx_watermark} (empty={txwm_empty} full={txwm_full})")
-        self.logger.info("CHK-WATERMARK PASS: TXWM moved %s->%s as TXQD crossed wm=%d "
-                         "(filled %d)", txwm_empty, txwm_full, self.scfg.tx_watermark,
-                         self.scfg.tx_fill_words)
+        assert not (st_full & ST_TXWM), (
+            f"CHK-WATERMARK STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})")
+        self.logger.info(
+            "CHK-WATERMARK PASS: TXWM 1->0 at exact wm=%d (TXQD %d->%d->%d, "
+            "tx_wm = qd < wm)",
+            wm, wm - 1, wm, txqd)
         await self._sw_rst_pulse()
 
     # ---- CHK-ENABLE -------------------------------------------------------
@@ -261,6 +293,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 drained_disabled = True
                 break
         assert not drained_disabled, "CHK-ENABLE: command executed while SPIEN=0"
+        st_held = await self.spi.rd(STATUS)
+        assert (st_held & ST_TXQD) == 1, (
+            f"CHK-ENABLE: TXQD={st_held & ST_TXQD} after SPIEN=0 window -- the queued "
+            f"command consumed the FIFO without STATUS.TXEMPTY (0x{st_held:08x})"
+        )
         # Enable -> the queued command runs -> FIFO drains.
         await self.spi.wr(CTRL, _CTRL_RESET | CTRL_SPIEN | CTRL_OUTPUT_EN)
         drained_enabled = False

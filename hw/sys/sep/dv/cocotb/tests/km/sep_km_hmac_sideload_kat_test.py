@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """KM -> HMAC sideload consume-proof KAT (reference suite, sep_km_hmac_sideload_kat_test).
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
@@ -29,7 +30,7 @@ VPLAN-parity checkers:
             per-engine key-bus AW monitor)
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
   CHK-PUB   HMAC public KEY CSRs read back zero after the sideload (the key is not
-            exposed on the frontdoor) -- reference P3 hmac_public_key_regs_read_zero
+            exposed on the frontdoor) -- hmac_public_key_regs_read_zero
   CHK-MAC   engine keyed digest == HMAC-SHA256(known_key, msg) golden (consume-proof)
   CHK-RW1C  HMAC done event W1C-clears (INTR_STATE.hmac_done -> 0)
   CHK-ERR   HMAC ERR_CODE == 0 and INTR_STATE.hmac_err == 0
@@ -37,11 +38,10 @@ VPLAN-parity checkers:
             HMAC is not an EDN consumer, so no crypto EDN sink is scored.
 
 Accepted scope deltas vs the reference suite (documented; no silent skips):
-  * the reference suite's backdoor SHARE0^SHARE1 reconstruction + key/mask non-degeneracy guards
-    + 8-representation search are replaced by the known-key golden value-compare
-    under the RTL-pinned convention (stronger: proves the exact key flowed). The
-    HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is out of frontdoor scope
-    (covered frontdoor by the OTBN KAT's CHK-F, as for the AES sideload KAT).
+  * known-key golden value-compare under the RTL-pinned convention (proves the
+    exact key flowed). The HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is
+    out of frontdoor scope (covered frontdoor by the OTBN KAT's CHK-F, as for the
+    AES sideload KAT).
   * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's
     key-bus AW monitor); CHK-MAC additionally proves HMAC got the correct key.
 
@@ -147,8 +147,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         )
         self.logger.info(
             "CHK-PUB HMAC public KEY frontdoor reads zero after sideload "
-            "(read path alive: STATUS=0x%08x)", ctl_pub,
-        )
+            "(read path alive: STATUS=%#010x)", ctl_pub)
 
         # CHK-MAC: keyed HMAC-SHA256 with the SIDELOAD key, value-checked vs golden.
         await self.hmac.configure_keyed_256()
@@ -179,5 +178,5 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         await self.km.check_outbound_empty("EOT")
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info("CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)")

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP Secure-DMA vs CPU-LSU SRAM contention firmware test (OSS port of the reference suite
-// dma_cpu_contention_test). Interconnect edge E8: the Secure-DMA master and the
+// dma_cpu_contention_test). The Secure-DMA master and the
 // CPU-LSU master concurrently drive the SEP-local AXI xbar to the shared SRAM
 // slave (0x1000_0000). The EL2 CPU kicks off a long SRAM->SRAM DMA copy, then
 // immediately runs its own store loop into a DISJOINT SRAM region while the DMA
@@ -13,7 +14,7 @@
 // 8:1) so the DMA is provably still busy when the CPU loop finishes -- that
 // mid-flight STATUS read is the non-vacuity proof that the two streams really
 // overlapped. (Sizes are kept small enough that the Verilator sim finishes well
-// inside the regression timeout; the E8 contention proof needs the imbalance and
+// inside the regression timeout; the contention proof needs the imbalance and
 // the overlap, not a large transfer -- the reference suite's 16 KiB/1 KiB is overkill here.)
 //
 // Checks (every failure increments errors; main() returns it and start.S turns

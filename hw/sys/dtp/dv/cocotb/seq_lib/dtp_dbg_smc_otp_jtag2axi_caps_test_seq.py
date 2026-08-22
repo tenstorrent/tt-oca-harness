@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_dbg_smc_otp_jtag2axi_caps_test."""
 
 from __future__ import annotations

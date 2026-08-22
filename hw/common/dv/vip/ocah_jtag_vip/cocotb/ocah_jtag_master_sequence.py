@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence-level API over the JTAG driver with named checker evidence.
 
 `OcahJtagMasterSequence` provides the scenario building blocks tests repeat around

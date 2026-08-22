@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """KM -> OTBN sideload consume-proof KAT (reference suite, sep_km_otbn_sideload_kat_test).
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
@@ -15,16 +16,16 @@ backdoor of the wrapper shares. Here the 12 distinct key words make an exact com
 catch any truncation, word-swap, or share-defeat bug.
 
 VPLAN-parity checkers (mapped to the reference suite's checker list):
-  CHK0       boot KM on real DRBG -> RESP_KM_READY                 (reference P1)
+  CHK0       boot KM on real DRBG -> RESP_KM_READY
   CHK-A      CMD_KEY_LOAD known key (replaces the reference suite's CMD_KEY_GENERATE+backdoor)
-  CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN                          (reference P4 transfer)
-  CHK-C      OTBN EXECUTE -> IDLE, ERR_BITS == 0                    (reference P6)
-  CHK-D/E    DMEM == exact known key; result_hi pad == 0           (reference P7, stronger)
+  CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN
+  CHK-C      OTBN EXECUTE -> IDLE, ERR_BITS == 0
+  CHK-D/E    DMEM == exact known key; result_hi pad == 0
   CHK-F      mask non-degeneracy: OTBN dumps its own KEY_S0/S1 WSRs (raw shares) to
              DMEM; host asserts share0/share1 are non-trivial, differ, neither equals
              the key, and share0^share1 == K -- 2-share masking proven NOT defeated,
-             frontdoor (reference P5, without the backdoor)
-  CHK1..CHK4 strict golden proof via the DRBG scoreboard (reference suite CHK0..CHK4);
+             frontdoor
+  CHK1..CHK4 strict golden proof via the DRBG scoreboard;
              CHK5 is alive/observed (not bit-exact, since the pull order is firmware/
              secure-wipe-driven, not golden-predictable). Two real EDN consumers are
              witnessed off one DRBG:
@@ -33,7 +34,7 @@ VPLAN-parity checkers (mapped to the reference suite's checker list):
                  drbg_axis_edn_adapter -> crypto_edn[3]); OTBN's post-op secure wipe
                  refreshes URND from the crypto EDN leg; score_sinks={"otbn_urnd":"observe"}.
                  Proves the crypto leg delivers real entropy, not only the KM leg.
-Key-bus isolation (reference P4 "others idle") is covered by construction: the transfer
+Key-bus isolation (other sideload targets idle) is covered by construction: the transfer
 dest mask is OTBN-only and AES/KMAC/HMAC are held parked in SW reset, so they cannot
 receive the key; CHK-D (exact distinct key) further proves OTBN consumed the correct
 sideloaded key, not stale/zero/another engine's. There is no RW1C done-status bit on
@@ -101,8 +102,8 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # the KM leg. observe = positive beat evidence, no bit-exact compare (secure-
         # wipe-driven pull order). Only OTBN-URND is scored: the key-dump program issues
         # no BN.WSRR(RND), so crypto_edn[2] (OTBN-RND) never fires here (empirically 0
-        # beats) -- exercising RND belongs to a dedicated consumer port (reference P3.3
-        # real_sink_otbn_rnd). AES/KMAC stay disabled (parked, no entropy requests).
+        # beats) -- exercising RND belongs to a dedicated consumer port.
+        # AES/KMAC stay disabled (parked, no entropy requests).
         await self.bring_up_entropy(
             strict=True, score_km="observe",
             score_sinks={"otbn_urnd": "observe"})
@@ -130,7 +131,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # run the key-dump (mirrors the reference suite's "release the target engine when ready to
         # receive the key + run the consume op"). Wait for OTBN's post-reset secure
         # wipe to finish (STATUS IDLE) BEFORE transferring, else the wipe can clobber
-        # the just-sideloaded key (reference P3->P4 ordering).
+        # the just-sideloaded key.
         await self.swrst.release("otbn")
         await self.otbn.wait_idle("post-reset")
 
@@ -181,7 +182,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
             "CHK-D/E KM->OTBN sideload KAT PASS: DMEM == known 384b key, padding=0"
         )
 
-        # CHK-F: 2-share masking non-degeneracy (reference P5, frontdoor). The keydump
+        # CHK-F: 2-share masking non-degeneracy (frontdoor). The keydump
         # also wrote OTBN's raw KEY_S0/S1 WSRs (the shares) to DMEM. Prove the
         # masking is real and not defeated: shares non-trivial, distinct, neither
         # equals the key, and share0 ^ share1 reconstructs the known key.
@@ -208,5 +209,5 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # error + recoverable-alert regs stayed zero across the run.
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info("CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)")

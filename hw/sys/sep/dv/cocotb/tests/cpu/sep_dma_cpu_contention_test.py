@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA vs CPU-LSU SRAM contention test (PyUVM).
 
-OSS port of the reference suite ``sep_dma_cpu_contention_test`` (interconnect edge E8).
+OSS port of the reference suite ``sep_dma_cpu_contention_test``.
 Boots the VeeR EL2 core and runs the dma_cpu_contention firmware: it starts a
 long SRAM->SRAM Secure-DMA copy and, while it is in flight, runs a CPU store
 loop into a disjoint SRAM region, so the DMA master and the CPU-LSU master

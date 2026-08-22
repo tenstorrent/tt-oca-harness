@@ -320,7 +320,7 @@ if __name__ == "__main__":
     # First valid at cycle 8 (init clk_divider=7 -> 7 decrements then sample),
     # every 8 thereafter. We count: total decor-valids over elapsed cycles.
     assert g.n_decor_valid >= 1, "no decor-valid events"
-    # Cadence proof on a fresh model: collect the cycle indices of valids.
+    # Timing-cadence proof on a fresh model: collect the cycle indices of valids.
     probe = SepEntropyGolden()
     valids = []
     for c in range(1, 200):

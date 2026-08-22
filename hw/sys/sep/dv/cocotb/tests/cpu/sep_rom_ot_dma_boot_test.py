@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM boot over the OpenTitan SPI host, SECURE_DMA drain (PyUVM).
 
 Sibling of ``sep_rom_non_secure_boot_test``. Same production Boot ROM, same BL1
@@ -184,7 +185,6 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
             )
             self.logger.info("CHK-ROM-PATH: required marker observed: %s", marker)
         for marker in self.forbidden_markers:
-            self.logger.info("CHK-ROM-PATH: forbidden marker absent: %s", marker)
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which means it did not take the intended "
                 f"path. Console: {console}"

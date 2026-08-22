@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric remap + filter CSR-bank driver.
 
 Combined-per-group CSR R/W sweep over the SEP "System block" fabric banks, driven
@@ -37,9 +38,8 @@ from sep_reg_meta import SEP_CPU_CTRL, sym
 # --- fabric clock ungate ------------------------------------------------------
 # Derived from the generated SystemRDL export, never hardcoded.
 # sep_cpu_ctrl.rdl declares CLOCK_GATE_CTRL as a placeholder with ONE implemented
-# bit (pka_cg_enable[0:0], reset 0); the per-block gates an earlier revision
-# assumed (dma[1], mailbox[2], alias_remap[7], entropy_fifo[10]) do not exist, so
-# every bank below is unconditionally clocked and there is nothing to ungate.
+# bit (pka_cg_enable[0:0], reset 0). There are no per-block gates, so every bank
+# below is unconditionally clocked and there is nothing to ungate.
 # Writing the full implemented mask keeps this step's CSR write-path coverage.
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")

@@ -15,9 +15,8 @@ filesets:
   # eFuse bank model + shim. Compiled after files_rtl so the sep subsystem packages
   # (sep_pkg/sep_crypto_pkg/sep_efuse_pkg/...) are already declared.
   #
-  # The SPI-mux register block is deliberately absent: it is a nonfree shim inside
-  # sep_axi_extension, so a pure-open build has no mux (see fw/drivers/spi_mux.h,
-  # which no-ops when the register is not present).
+  # The SPI pad mux is a nonfree wrapper block, so a pure-open build has
+  # no mux and firmware here does not program one.
   #
   # NOTE: files_tests below is a partial snapshot and has not tracked the env since
   # it was written. The native flow (tools/dv/run_dv.py) does not parse this file;

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // BL0 → BL1 shared state structure for OROM.
 //
 // Shared state used by ROM and BL1.

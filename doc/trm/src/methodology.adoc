@@ -241,8 +241,8 @@ ssh-add -l
 \6. Clone the repository and create a feature branch for your work.
 +
 ....
-git clone git@github.com:tenstorrent/tt-oca.git
-cd tt-oca
+git clone git@github.com:tenstorrent/tt-oca-harness.git
+cd tt-oca-harness
 git checkout -b <your-branch>
 ....
 

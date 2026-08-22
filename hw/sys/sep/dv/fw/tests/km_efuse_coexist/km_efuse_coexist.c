@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP dual-CPU eFuse AXI-lite mux coexistence firmware (EL2 host side).
 //
-// OSS port of the reference-suite TEST 10.3 sep_efuse_km_axil_cpu_mux_coexist_test.
+// OSS port of the reference-suite sep_efuse_km_axil_cpu_mux_coexist_test.
 // Two REAL CPUs contend at the SEP eFuse AXI-lite mux (u_km_efuse_axi_lite_mux):
 //   * this EL2 host firmware, and
 //   * the Key Manager (KM) PicoRV32 running km_rom_coexist (the KM ROM image).

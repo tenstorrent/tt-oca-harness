@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS zeroer datapath payload test.
 
 DV-CARD:          SMC_006   ANCHOR: smc_zeroer_dma_timeout_test

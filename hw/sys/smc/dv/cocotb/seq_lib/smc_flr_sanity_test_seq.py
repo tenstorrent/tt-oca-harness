@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_flr_sanity_test (Batch D).
 
 The public OSS TB does not yet expose a dedicated PCIe FLR source. This sequence

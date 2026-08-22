@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP WDT reset-input path test (PyUVM).
 
-OSS port of the reference suite ``sep_clock_uvm_wdt_rst_input_reset_path_test`` (subsystem
-, interconnect edge E9, SEP side). Verifies the SEP WDT reset-INPUT path:
+OSS port of the reference suite ``sep_clock_uvm_wdt_rst_input_reset_path_test``
+(SEP side). Verifies the SEP WDT reset-INPUT path:
 
     wdt_rst_ni -> sep_reset_ctrl -> CPU reset
 

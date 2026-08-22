@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Non-vacuous SMC and SEP boot scoreboards for the SMU wrapper OSS flow."""
 
 from __future__ import annotations

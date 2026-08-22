@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse/OTP image builder for the OSS cocotb flow.
 
 Builds the 256-word (8192-bit) SEP fuse array as a ``$readmemh`` image the
@@ -90,6 +91,13 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 # after it by one word.
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
+
+# Class-1a device secrets. sep_efuse_pkg.sv:563 SecretShadowRanges disconnects these
+# from the shadow-register hardware output while secure_tm is asserted, so no real
+# secret reaches a scannable consumer. Named, not derived: which fields are secret is
+# a security decision in the package, not a property of the map's shape, so a new
+# field must be classified deliberately rather than inherited by position.
+_SECRET_REGS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
 
 # Lock-field geometry, from sep_efuse_pkg. LOCKS (64-bit, OTP words 0-1) plus
 # LOCKS_SPARE (32-bit, word 2) form one 96-bit field holding two bits per protected
@@ -293,14 +301,12 @@ class SepEfuseImage:
         Stores the full differential encoding ``{~raw, raw}`` in LC_STATE[7:0],
         matching the real OTP and the reference-suite preload.
 
-        Storing the encoded form is a convenience, not a requirement. An earlier version
-        of this docstring claimed a bare raw nibble was "itself a differential error",
-        contradicting ``load_hex`` one screen up, which says either form works because
-        only ``[3:0]`` is significant. The runs settle it in load_hex's favour: the sense
-        FSM reads the raw nibble out of OTP and regenerates ``{~raw, raw}`` into the
-        shadow itself, so a staged image carrying a bare nibble still senses as a valid
-        pair. That is also why no staged image can present a BROKEN pair to the DUT --
-        see the lc_sigint_err note in the Phase 1 plan.
+        Storing the encoded form is a convenience, not a requirement: only ``[3:0]``
+        is significant. The sense FSM reads the raw nibble out of OTP and regenerates
+        ``{~raw, raw}`` into the shadow itself, so a staged image carrying a bare nibble
+        still senses as a valid
+        pair. That is also why no staged image can present a BROKEN pair to the DUT.
+        The stitch test injects that fault at the LCC decoder input (signed-off force).
         """
         if raw not in LEGAL_LC_RAW:
             raise ValueError(f"illegal LC raw code 0x{raw:x}")
@@ -334,12 +340,9 @@ class SepEfuseImage:
         Constraints (mirrors reference sep_efuse_item):
           * LC_STATE is restricted to the 7 legal raw codes (never an illegal
             encoding) — pinned via ``lc_raw`` or drawn from the legal set.
-          * There are no RESERVED_* fields any more. The v0.5.22 map replaced the
-            whole reserved tail with real registers (PQC hashes, SEP_*_ID,
-            SPARE0-7), and every one of them is randomized like any other data
-            field. An earlier revision of this docstring still promised they
-            stayed zero, and the loop below still tested for a ``reserved`` kind
-            that _derive_fields never emits.
+          * The map has no reserved tail: the whole range is real registers
+            (PQC hashes, SEP_*_ID, SPARE0-7), and every one is randomized like
+            any other data field. Nothing here is pinned to zero.
           * LOCKS stays unlocked unless ``lock_prob`` > 0, so every field reads
             back (read-locks would return 0xbadcab1e instead of data).
           * ``fixed`` pins named fields to explicit values after randomization.
@@ -405,22 +408,40 @@ class SepEfuseImage:
 
     # -- golden model ------------------------------------------------------
 
-    def shadow_word(self, word_idx: int) -> int:
+    def secret_words(self) -> frozenset:
+        """Word indices the DUT blanks while secure_tm is asserted."""
+        idx = set()
+        for name in _SECRET_REGS:
+            fld = self.field(name)
+            idx.update(range(fld.word, fld.word + fld.n_words))
+        return frozenset(idx)
+
+    def shadow_word(self, word_idx: int, *, secure_tm: int = 0) -> int:
         """Expected software-readback value for shadow word ``word_idx``.
 
-        Only LC_STATE is transformed by the sense FSM; all other
-        readable words read back verbatim (secure_tm=0, LOCKS unlocked).
+        LC_STATE is transformed by the sense FSM. With ``secure_tm`` asserted the
+        Class-1a secrets read back as zero -- the DUT disconnects them from the shadow
+        output (sep_efuse_pkg.sv SecretShadowRanges), so a golden that returned the
+        staged value would report 32 mismatches on a TEST_EN run. Everything else
+        reads back verbatim (LOCKS unlocked).
+
+        The blanking is conditional ON PURPOSE. Zeroing these words unconditionally
+        would stop the compare proving they sensed correctly at all, which is the
+        whole point of the post-sense check.
         """
+        if secure_tm and word_idx in self.secret_words():
+            return 0
         if word_idx == LC_WORD_IDX:
             upper = self.words[LC_WORD_IDX] & 0xFFFF_FF00
             return upper | lc_encode(self.lc_raw())
         return self.words[word_idx] & WORD_MASK
 
-    def expected_field(self, name: str) -> List[Tuple[int, int]]:
+    def expected_field(self, name: str, *, secure_tm: int = 0) -> List[Tuple[int, int]]:
         """(addr, expected) pairs the checker reads for ``name``."""
         fld = self.field(name)
         return [
-            (fld.shadow_addr + 4 * i, self.shadow_word(fld.word + i))
+            (fld.shadow_addr + 4 * i,
+             self.shadow_word(fld.word + i, secure_tm=secure_tm))
             for i in range(fld.n_words)
         ]
 

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * SEP_SMU_001  sep_smu_boot_health  --  minimal SEP boot-health firmware.
  *

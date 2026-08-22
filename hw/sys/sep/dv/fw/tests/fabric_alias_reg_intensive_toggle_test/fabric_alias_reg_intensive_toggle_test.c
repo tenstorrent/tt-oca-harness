@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_069: fabric_alias_reg_intensive_toggle_test
+ * fabric_alias_reg_intensive_toggle_test
  *
  * Goal: alias_remap_reg 82.81% -> 90%+ (needs 7.19% improvement)
  * Strategy: Deep CSR-field toggle stress across all 16 alias entries
@@ -208,45 +208,45 @@ static int test_cross_field_dependency_scenarios(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_069: Alias Reg Intensive Toggle Test\n");
+    printf("Alias Reg Intensive Toggle Test\n");
     printf("Goal: 82.81%% -> 90%%+ (needs 7.19%% improvement)\n");
     printf("Strategy: Deep CSR-field toggle stress across all 16 alias entries\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_069");
+        test_fail("fabric_alias_reg_intensive_toggle_test");
         return TEST_FAIL;
     }
 
     // Run all intensive toggle scenarios
     if (test_all_16_alias_entries_comprehensive() != 0) {
-        test_fail("TC_FABRIC_069 - 16 Alias Entries Comprehensive");
+        test_fail("16 Alias Entries Comprehensive");
         return TEST_FAIL;
     }
 
     if (test_enable_disable_state_transitions() != 0) {
-        test_fail("TC_FABRIC_069 - Enable/Disable Transitions");
+        test_fail("Enable/Disable Transitions");
         return TEST_FAIL;
     }
 
     if (test_region_validity_combinations() != 0) {
-        test_fail("TC_FABRIC_069 - Region Validity Combinations");
+        test_fail("Region Validity Combinations");
         return TEST_FAIL;
     }
 
     if (test_source_destination_address_patterns() != 0) {
-        test_fail("TC_FABRIC_069 - Address Patterns");
+        test_fail("Address Patterns");
         return TEST_FAIL;
     }
 
     if (test_cross_field_dependency_scenarios() != 0) {
-        test_fail("TC_FABRIC_069 - Cross-Field Dependencies");
+        test_fail("Cross-Field Dependencies");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_069: ALIAS REG INTENSIVE TOGGLE TEST PASSED ===\n");
+    printf("\n=== ALIAS REG INTENSIVE TOGGLE TEST PASSED ===\n");
     printf("Expected improvement: 82.81%% -> 90%+ coverage\n");
 
-    test_pass("TC_FABRIC_069");
+    test_pass("fabric_alias_reg_intensive_toggle_test");
     return TEST_PASS;
 }

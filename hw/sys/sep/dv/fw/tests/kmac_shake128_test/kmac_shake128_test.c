@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_012 - SHAKE128 XOF Test (P1)
+ * SHAKE128 XOF Test
  *
  * Verifies SHAKE128 eXtendable Output Function operation:
  * performs first squeeze, issues MANUAL_RUN for second squeeze,
@@ -158,7 +158,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_012: SHAKE128 XOF Test\n");
+    printf("  SHAKE128 XOF Test\n");
     printf("========================================\n\n");
 
     int result = test_shake128_xof();

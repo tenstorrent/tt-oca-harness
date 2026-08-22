@@ -2,14 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_HMAC_011 (P1) - Endian swap and digest swap test
+ * Endian swap and digest swap test
  *
  * Steps:
- *   1) Hash "abc" with endian_swap=0, digest_swap=0, save raw digest words
- *   2) Hash "abc" with endian_swap=1, digest_swap=0, save raw digest words
- *   3) Verify digests from step 1 and 2 are different
- *   4) Hash "abc" with endian_swap=0, digest_swap=1, save raw digest words
- *   5) Verify digest from step 4 differs from step 1
+ * 1) Hash "abc" with endian_swap=0, digest_swap=0, save raw digest words
+ * 2) Hash "abc" with endian_swap=1, digest_swap=0, save raw digest words
+ * 3) Verify digests from step 1 and 2 are different
+ * 4) Hash "abc" with endian_swap=0, digest_swap=1, save raw digest words
+ * 5) Verify digest from step 4 differs from step 1
  */
 
 #include <stdint.h>
@@ -106,7 +106,7 @@ static void print_digest(const char *label, const uint32_t d[8]) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("=== TC_HMAC_011: Endian swap and digest swap test ===\n");
+    printf("=== Endian swap and digest swap test ===\n");
     int pass = 1;
 
     /* Case 1: endian_swap=0, digest_swap=0 (baseline) */
@@ -175,10 +175,10 @@ int main(void) {
     }
 
     if (pass) {
-        printf("=== TC_HMAC_011 PASSED ===\n");
+        printf("=== PASSED ===\n");
         test_pass(0);
     } else {
-        printf("FAIL: TC_HMAC_011 endian/digest swap test\n");
+        printf("FAIL: endian/digest swap test\n");
         test_fail(1);
     }
 

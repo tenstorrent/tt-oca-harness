@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Generic single-beat AXI access sequence on the SEP CPU-LSU bus.
 
 A thin reusable wrapper so higher-level drivers (KM mailbox, OTBN exec) can issue

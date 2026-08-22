@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Crypto-EDN arbiter: two crypto-endpoint clients (AES + KMAC) contend.
 
 Top-down integration edge: AES (crypto_edn[0]) and KMAC (crypto_edn[1]) BOTH pull
 the shared crypto-EDN leg (drbg_axis_edn_adapter -> u_axis_edn_crypto round-robin
 arbiter, sep_crypto.sv) concurrently off ONE verified DRBG stream. This is the
-first time TWO real crypto clients contend the crypto arbiter -- TOP-20 #15
-(sep_drbg_real_sink_multi_km_aes) had AES as the SOLE crypto client (KMAC parked)
+first time TWO real crypto clients contend the crypto arbiter.
+`sep_drbg_real_sink_multi_km_aes_test` had AES as the SOLE crypto client (KMAC parked)
 and used KM (a different leg) as the second sink; the standalone AES/KMAC breadth
 tests are single-engine KATs. DISTINCT from all of those -- do NOT re-prove
 single-sink routing here.
@@ -25,7 +26,7 @@ This is stronger than the card's aggregate-AXIS1 membership: it proves EACH
 engine's delivered words are genuine genbits, not just the combined stream.
 
 Budget: total genbits consumption is kept < cfg.glen=32 blocks so the CHK4
-one-Generate-per-seed golden stays bit-exact (the #15 desync lesson). No KM boot
+one-Generate-per-seed golden stays bit-exact (do not overrun glen). No KM boot
 here, so the full 32-block budget is available for AES+KMAC; a few ops each is far
 under it.
 
@@ -64,7 +65,8 @@ from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 
 # AES SW-key path: arbitrary key (the test exercises the entropy datapath + the
-# arbiter, not a key contract -- same rationale as #15). Plaintext is seed-randomized.
+# arbiter, not a key contract -- same as `sep_drbg_real_sink_multi_km_aes_test`).
+# Plaintext is seed-randomized.
 AES_KEY = (
     0x0F0E0D0C, 0x0B0A0908, 0x07060504, 0x03020100,
     0x1F1E1D1C, 0x1B1A1918, 0x17161514, 0x13121110,
@@ -292,7 +294,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # Strict report: CHK1..CHK4 bit-exact + per-sink membership (each AES word and
         # each KMAC word is a genbits-golden word) -- raises on any mismatch, a starved
         # sink (matches<1), or a genbits protocol violation.
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info(
             "CHK-MEMBERSHIP PASS: every AES and every KMAC crypto-EDN word is a CHK4 "
             "genbits-golden word (per-sink removal tally) -- one DRBG partitions into "

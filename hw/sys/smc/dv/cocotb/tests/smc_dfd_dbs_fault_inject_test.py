@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """TB-glue: DBS capture latch demo (NOT DUT DFD RTL).
 
 DEFERRED from green (2026-07-29): tb_dfd_fault_inject only latches a

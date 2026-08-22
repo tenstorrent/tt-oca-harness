@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 //-----------------------------------------------------------------------------
 // Verilator Testbench Driver — scrambler_1024x32, BYTE_WISE=0
 // Copyright 2026 Tenstorrent Inc.

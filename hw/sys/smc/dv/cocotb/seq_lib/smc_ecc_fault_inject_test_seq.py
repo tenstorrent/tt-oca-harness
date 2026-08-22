@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U7-1 / P2-7: ECC SBE/DBE inject hooks on scratch bank0.
 
 DEFENDS: with inject armed, a real scratch bank0 read advances

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_telemetry_atb_handshake_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
 
 Was Force-based JTAG2AXI / feat_ctrl ungating under SEP=0. Use

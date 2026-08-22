@@ -2,32 +2,32 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Flash Read Test - TC_SPIOT_020 (P1)
+ * SPI OT Flash Read Test
  *
  * Issues a Standard Read command (0x03) to the SPI flash device using a
  * two-segment transaction on the OpenTitan SPI controller:
- *   Segment 1: TX command byte (0x03) + 24-bit address (4 bytes total), CSAAT=1
- *   Segment 2: RX 16 bytes of flash data, CSAAT=0
+ * Segment 1: TX command byte (0x03) + 24-bit address (4 bytes total), CSAAT=1
+ * Segment 2: RX 16 bytes of flash data, CSAAT=0
  *
  * TX byte packing (LITTLE_ENDIAN=1): TXDATA[7:0] is transmitted first.
- *   Packing cmd=0x03 + addr=0x000000 into one 32-bit word:
- *     byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
- *     => WRITE_REG(TXDATA, 0x00000003) -> sends 0x03, 0x00, 0x00, 0x00 in order
+ * Packing cmd=0x03 + addr=0x000000 into one 32-bit word:
+ * byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
+ * => WRITE_REG(TXDATA, 0x00000003) -> sends 0x03, 0x00, 0x00, 0x00 in order
  *
  * Test Flow:
- *   1. Configure SPI mux for OpenTitan, enable controller
- *   2. JEDEC presence proof (0x9F) against enrolled Winbond W25Q512JV
- *   3. Segment 1: TX 4 bytes (0x03 + addr 0x000000), CSAAT=1
- *   4. Segment 2: RX 16 bytes, CSAAT=0
- *   5. Compare RX words to erased 0xFFFFFFFF (only after JEDEC presence)
- *   6. Verify no SPI controller errors
+ * 1. Enable controller
+ * 2. JEDEC presence proof (0x9F) against enrolled Winbond W25Q512JV
+ * 3. Segment 1: TX 4 bytes (0x03 + addr 0x000000), CSAAT=1
+ * 4. Segment 2: RX 16 bytes, CSAAT=0
+ * 5. Compare RX words to erased 0xFFFFFFFF (only after JEDEC presence)
+ * 6. Verify no SPI controller errors
  *
  * Requires enrolled +spi_device_sel=4 (Winbond W25Q512JV). JEDEC must match
  * EF/40/20 before the erased-page 0xFF golden is trusted — a floating-MISO
  * all-0xFF path fails the presence check.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_flash_read_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_flash_read_test STACK=sim
  *
  */
 
@@ -38,7 +38,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define SPI_CLKDIV spi_clkdiv()
 #define TIMEOUT_LIMIT 200000
@@ -101,14 +100,12 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Flash Read Test (TC_SPIOT_020)\n");
+    printf("SPI OT Flash Read Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
     uint32_t i;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d\n", SPI_CLKDIV);
@@ -190,8 +187,8 @@ int main(void) {
      *
      * TX byte packing: TXDATA[7:0] first.
      * Pack [cmd=0x03][addr_h=0x00][addr_m=0x00][addr_l=0x00] into 32-bit:
-     *   byte[0]=0x03, byte[1]=0x00, byte[2]=0x00, byte[3]=0x00
-     *   => TXDATA = 0x00_00_00_03
+     * byte[0]=0x03, byte[1]=0x00, byte[2]=0x00, byte[3]=0x00
+     * => TXDATA = 0x00_00_00_03
      * ---------------------------------------------------------------- */
     printf("Step 1: TX READ cmd (0x03) + addr 0x%06x (4 bytes), CSAAT=1\n", FLASH_READ_ADDR);
     if (wait_for_ready(TIMEOUT_LIMIT)) {

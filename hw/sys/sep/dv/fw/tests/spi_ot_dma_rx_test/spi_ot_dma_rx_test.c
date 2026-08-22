@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware test (OSS port of the reference suite
-// sep_spi_ot_dma_rx_test, ). The EL2 CPU configures the OpenTitan
+// SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware test (OSS port of the
+// reference suite sep_spi_ot_dma_rx_test). The EL2 CPU configures the OpenTitan
 // SPI host, arms the Secure DMA in hardware-handshake mode (SRC = SPI RXDATA,
 // fixed/WRAP; DST = SRAM, incrementing), then issues a SPI read. As the SPI RX
 // FIFO crosses its watermark, the controller raises lsio_trigger, which drains a
@@ -9,9 +10,9 @@
 //
 //   spi_host.lsio_trigger_o -> sep.lsio_trigger[0] -> secure_dma.lsio_trigger_i[0]
 //
-// This whole datapath is internal to bare `sep` (hw/sep/sep.sv:899). Exercises
-// edge E7 (SPI-FIFO -> DMA) on the OpenTitan SPI line; the Cadence xSPI path is
-// out of the OSS DUT.
+// This whole datapath is internal to bare `sep`
+// (`hw/sys/sep/rtl/sep.sv`: `lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger`).
+// Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
 // PARITY-PLUS over reference suite: the reference test only checks "DMA done + no SPI error"
 // because it clocks idle MISO (no flash model) and leaves the received data
@@ -61,9 +62,6 @@ int main(void) {
     sep_mbx_puts("STEP filter init done; flash model preloaded by the host\n");
 
     // --- OpenTitan SPI host init ---------------------------------------------
-    // Nonfree: route pads to OT and release cs_force_high (needs NONFREE_ROOT
-    // overlay so spi_mux_select_ot is not a no-op). Open SEP has no mux.
-    sep_spi_mux_release_cs();
     // RX watermark = 4 words (asserts lsio_trigger), TX watermark = 0, enable the
     // controller + output.
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
@@ -187,30 +185,13 @@ int main(void) {
     // So 0xFFFFFFFF is exactly the signature of a broken RX path -- mis-wired
     // MISO, a garbled address phase, a misinterpreted opcode -- and accepting
     // it would let all three of those pass while the log claimed 0xA5.
-    //
-    // The nonfree overlay reads a real Winbond NOR whose erased cells return
-    // 0xFF, so the erased pattern stays acceptable there. Gate it on the same
-    // symbol that gates the pad mux (see fw/drivers/spi_mux.h).
     {
         uint32_t w0 = dst[0];
         int ok_pattern = (w0 == EXPECT_WORD);
-#ifdef OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL__SPI_SEL_bm
-        ok_pattern = ok_pattern || (w0 == 0xFFFFFFFFu); // erased Winbond NOR
-#endif
         for (uint32_t i = 0; i < RX_WORDS; i++) {
             if (!ok_pattern || dst[i] != w0) {
-                // Name what was actually required. The accepted set widens when the
-                // pad mux is compiled in, so a message hardcoding 0xA5A5A5A5 would
-                // misdescribe the erased-NOR case it deliberately tolerates. Report
-                // the two failure modes apart: a wrong pattern is a data-path bug, a
-                // non-uniform window is a partial or misaligned transfer.
                 if (!ok_pattern) {
-#ifdef OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL__SPI_SEL_bm
-                    sep_mbx_puts("FAIL: SRAM pattern wrong (expect 0xA5A5A5A5, or "
-                                 "0xFFFFFFFF erased)\n");
-#else
                     sep_mbx_puts("FAIL: SRAM pattern wrong (expect 0xA5A5A5A5)\n");
-#endif
                 } else {
                     sep_mbx_puts("FAIL: SRAM window not uniform (partial transfer)\n");
                 }

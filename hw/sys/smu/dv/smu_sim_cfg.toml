@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Phase-1 track is SEP=0 only (SMC + DTP + external SMN path; no real SEP RTL).
@@ -140,8 +143,6 @@ build_dir = "hw/sys/smu/dv/build/cocotb"
 defines = [
   # Match SMC OSS: no-op assertion/cover blocks that confuse commercial sims.
   "SYNTHESIS",
-  # Enable efuse_shadow_regs +skip_fuse_sense path (SIM-gated).
-  "SIM",
 ]
 
 [targets.default.tools.vcs]

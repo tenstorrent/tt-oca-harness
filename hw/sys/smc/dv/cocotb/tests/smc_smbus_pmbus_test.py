@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM SMBus + PMBus protocol test (P2 Phase A #1)."""
 
 from __future__ import annotations
