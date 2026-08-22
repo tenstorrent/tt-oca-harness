@@ -5,13 +5,12 @@
 Senses one generated fuse image, checks the software-visible shadow registers
 field-by-field against the golden, then programs ten random fuse bits through the
 frontdoor and resenses to prove the shadow tracks the PERSISTENT OTP image plus
-those newly write-one-to-set bits. This obeys real OTP semantics -- programmed bits
-persist across reset/resense and are never un-set -- instead of a non-physical
-mid-run image replacement (the generic efuse model loads its bank once at time 0).
+those newly write-one-to-set bits. Programmed bits persist in the model bank
+across reset; resense must match the initial image plus the burned bits.
 
 Exercises the eFuse goals: sense + resense, specific-or-random init, field
-constraints, reference suite-aligned fuse map, shadow-vs-loaded-mem comparison, and multi-bit
-W1S program persistence across a resense.
+constraints, the generated sep_efuse_map, shadow-vs-loaded-mem comparison, and
+multi-bit W1S program persistence across a resense.
 """
 
 from __future__ import annotations

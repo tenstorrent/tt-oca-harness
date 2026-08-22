@@ -24,7 +24,7 @@ from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from sep_reg_meta import sym
-from env.sep_efuse_image import SepEfuseImage, SHADOW_BASE, LC_WORD_IDX
+from env.sep_efuse_image import SepEfuseImage, LC_WORD_IDX
 from env.sep_lcc_golden import LCC_FEAT_CTRL, feat_ctrl_expected, lc_state_name
 
 # SEP local fabric addresses (sep_local_axi_xbar / sep_addr.h). The LCC

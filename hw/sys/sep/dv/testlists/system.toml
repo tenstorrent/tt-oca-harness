@@ -215,8 +215,6 @@ target = "lsu_stub_all_live"
 # wdt_sanity_test): SW_RESET_N=0x1E + per-IP reset-wire clears, bad-address D-bus
 # NMI x2, WDT bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
 # wdt_timer_rst_req_o output (tb_top probe). cpu run mode; +skip_fuse_sense.
-# Planning group = Reset & timer glue (SW_RESET_N/WDT are not CPU-core); its bad-addr
-# and bark->NMI checks cross-reference the CPU-complex ledger.
 name = "sep_reset_wdt_sanity_test"
 module = "cpu.sep_reset_wdt_sanity_test"
 firmware = "reset_wdt_sanity_test"
