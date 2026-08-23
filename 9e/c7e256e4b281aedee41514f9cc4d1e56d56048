@@ -1,0 +1,34 @@
+hw/ip/system_timer_octs/rtl/system_timer_octs_core.sv
+  s_c5151d462a6a92::t_c622603ac007b6 91
+hw/ip/i2c/rtl/i2c_pkg.sv
+  s_c5151d462a6a92::t_86672102a4648b 38-39
+hw/sys/sep/rtl/sep_pkg.sv
+  s_c5151d462a6a92::t_853ec98a010baf 8-11
+  s_c5151d462a6a92::t_48c38bcd83b491 306
+hw/ip/zeroer/rtl/zeroer.sv
+  s_c5151d462a6a92::t_d7e5f22464eca4 255
+hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
+  s_c5151d462a6a92::t_bc4f6e73768b47 16
+hw/ip/efuse/rtl/efuse_token_processing.sv
+  s_c5151d462a6a92::t_2ea8c0a312540d 288
+hw/sys/sep/rtl/sep.sv
+  s_c5151d462a6a92::t_bd03934232b041 253
+hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
+  s_c5151d462a6a92::t_5e93c6e3927ca7 338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "9ec7e256e4b281aedee41514f9cc4d1e56d56048",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
