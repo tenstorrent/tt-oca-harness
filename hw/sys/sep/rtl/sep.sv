@@ -73,9 +73,6 @@ module sep
         input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
 
         // TODO: Are these supposed to go into sep_safety?
-        // input logic wipe_i,
-        // output logic [7:0] error_o,
-        // output logic irq_o,
 
         // Memory macro interfaces
         output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
@@ -1050,33 +1047,15 @@ module sep
     //         // TODO: AXI master out
 
     //         // TODO: external safety/error interface
-    //         // input logic wipe_i,
-    //         // output logic [7:0] error_o,
-    //         // output logic irq_o,
 
-    //         .cpu_iccm_ecc_single_error_i(cpu_iccm_ecc_single_error),
-    //         .cpu_iccm_ecc_double_error_i(cpu_iccm_ecc_double_error),
-    //         .cpu_dccm_ecc_single_error_i(cpu_dccm_ecc_single_error),
-    //         .cpu_dccm_ecc_double_error_i(cpu_dccm_ecc_double_error),
     //         // TODO: Similar signals for the scratchpad RAM?
 
     //         `ifdef RV_LOCKSTEP_ENABLE
-    //         .cpu_disable_corruption_detection_o(cpu_disable_corruption_detection),
-    //         .cpu_lockstep_err_injection_en_o(cpu_lockstep_err_injection_en),
-    //         .cpu_corruption_detected_i(corruption_detected),
     //         `endif
 
     //         // TODO: Do we need more of these?
-    //         .cpu_dec_tlu_perfcnt0(cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
-    //         .cpu_dec_tlu_perfcnt1(cpu_dec_tlu_perfcnt1),
-    //         .cpu_dec_tlu_perfcnt2(cpu_dec_tlu_perfcnt2),
-    //         .cpu_dec_tlu_perfcnt3(cpu_dec_tlu_perfcnt3)
 
     //     );
-
-    // end else begin: NO_GEN_EN_SEP_SAFETY
-    //     ;
-    // end
 
     ////////////////
     // Secure DMA //

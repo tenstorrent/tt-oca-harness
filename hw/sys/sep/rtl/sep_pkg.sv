@@ -281,71 +281,12 @@ package sep_pkg;
     // AXI4-Lite definitions
     //////////
 
-    // NOTE: Don't change these values
-    // parameter int unsigned AXILITE_XBAR_LITEBRIDGE_MST_IDX = 0;  // The only master is the AXI4 to AXI4-Lite bridge
-
-    // NOTE: Don't change these values
-    // parameter int unsigned AXILITE_XBAR_SECURITY_SLV_IDX = 3;
-    // parameter int unsigned AXILITE_XBAR_IO_SLV_IDX = 2;
-    // parameter int unsigned AXILITE_XBAR_SYSTEM_SLV_IDX = 1;
     parameter int unsigned AXILITE_XBAR_EXTERNAL_SLV_IDX = 0;
 
-    // XBAR inputs are slave ports while outputs are master ports, this is the opposite of their actual roles from a system point of view
-    // parameter int unsigned AXILITE_XBAR_N_SLV = 1;  // The only master is the AXI4 to AXI4-Lite bridge
     parameter int unsigned AXILITE_XBAR_N_MST = 32'd4;  // Crypto/security + IO + SEP system peripherals + external master
 
     // FIXME: This param has been arbitrarily set as 4 for now, could we make it smaller?
     // parameter int unsigned AXILITE_XBAR_MAX_TRANSACTIONS = 4;
-
-    // parameter axi_pkg::xbar_rule_32_t sep_axilite_xbar_addr_rule_security = '{
-    //     idx:        AXILITE_XBAR_SECURITY_SLV_IDX,
-    //     start_addr: 32'h4000_0000,
-    //     end_addr:   32'h4400_0000
-    // };
-
-    // parameter axi_pkg::xbar_rule_32_t sep_axilite_xbar_addr_rule_io = '{
-    //     idx:        AXILITE_XBAR_IO_SLV_IDX,
-    //     start_addr: 32'h4400_0000,
-    //     end_addr:   32'h4800_0000
-    // };
-
-    // parameter axi_pkg::xbar_rule_32_t sep_axilite_xbar_addr_rule_system = '{
-    //     idx:        AXILITE_XBAR_SYSTEM_SLV_IDX,
-    //     start_addr: 32'h4800_0000,
-    //     end_addr:   32'h4C00_0000
-    // };
-
-    // parameter axi_pkg::xbar_rule_32_t sep_axilite_xbar_addr_rule_external = '{
-    //     idx:        AXILITE_XBAR_EXTERNAL_SLV_IDX,
-    //     start_addr: 32'h4C00_0000,
-    //     end_addr:   32'h5000_0000
-    // };
-
-    // parameter axi_pkg::xbar_rule_32_t[AXILITE_XBAR_N_MST-1:0] AXILITE_ADDR_MAP = '{
-    //     sep_axilite_xbar_addr_rule_security,
-    //     sep_axilite_xbar_addr_rule_io,
-    //     sep_axilite_xbar_addr_rule_system,
-    //     sep_axilite_xbar_addr_rule_external
-    // };
-
-    // parameter axi_pkg::xbar_cfg_t AXILITE_XBAR_CFG = '{
-    //     NoSlvPorts:         AXILITE_XBAR_N_SLV,
-    //     NoMstPorts:         AXILITE_XBAR_N_MST,
-    //     MaxMstTrans:        AXILITE_XBAR_MAX_TRANSACTIONS,
-    //     MaxSlvTrans:        AXILITE_XBAR_MAX_TRANSACTIONS,
-    //     FallThrough:        1,
-    //     // LatencyMode:        axi_pkg::CUT_ALL_PORTS,
-    //     // LatencyMode:        axi_pkg::NO_LATENCY,
-    //     LatencyMode:        axi_pkg::CUT_MST_PORTS,
-    //     PipelineStages:     0,
-    //     AxiIdWidthSlvPorts: 0,
-    //     AxiIdUsedSlvPorts:  0,
-    //     UniqueIds:          0,
-    //     SelHashIds:         0,
-    //     AxiAddrWidth:       32,
-    //     AxiDataWidth:       64,
-    //     NoAddrRules:        AXILITE_XBAR_N_MST
-    // };
 
     typedef logic[CPU_ADDR_WIDTH  -1:0] sep_axilite_xbar_addr_t;
     typedef logic[CPU_DATA_WIDTH  -1:0] sep_axilite_xbar_data_t;
