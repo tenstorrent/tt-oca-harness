@@ -176,9 +176,9 @@ int main(void) {
 
     /* Step 7: DMA INTR_SRC_ADDR_0 register (configure source address for handshake) */
     printf("\nStep 7: DMA INTR_SRC_ADDR_0 register\n");
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR,
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR(0),
               OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
-    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR);
+    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR(0));
     if (!check_reg("INTR_SRC_ADDR_0", read_val, OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR))
         pass = 0;
 
