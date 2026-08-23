@@ -98,28 +98,24 @@ a protocol already represented here; extend the existing stable wrapper.
 ### Deferred and experimental capability tracker
 
 Only **Promoted** rows in the maturity table above are safe dependencies for
-first-milestone P0/P1 tests. Experimental helpers may be used by explicitly
-opted-in tests, but cannot be the sole evidence for a milestone gate. Deferred
-capabilities are P2 follow-up work and must not block baseline transaction BFMs
-or portable P1 checkers.
+release-gating tests. Experimental helpers may be used by explicitly opted-in
+tests, but cannot be the sole evidence for a gate. Deferred capabilities are
+follow-up work and must not block baseline transaction BFMs or portable
+checkers.
 
-When a deferred item becomes active, open a focused child issue under
-[#3299](https://github.com/tenstorrent/tt-oca-hw/issues/3299) before changing
-its status.
-
-| Capability | Classification / reason | Owner | Promotion condition and next action | Follow-up |
-|------------|-------------------------|-------|-------------------------------------|-----------|
-| APB shared wrapper | No shared package: no DUT exposes an APB surface to a testbench today | Shared DV + first APB adopter | Introduce a shared APB VIP only when a DUT regression gates real APB traffic | Historical baseline [#3288](https://github.com/tenstorrent/tt-oca-hw/issues/3288); open a #3299 child when adopted |
-| UART | Experimental/dependency-gated: SMC consumer exists, but the optional backend is not locked consistently | Shared UART VIP + SMC DV | Resolve backend version/license policy, lock it in the supported environment, and retain a passing SMC loopback | Open a #3299 child when dependency work starts |
-| I2C | No shared package: the SMC-local clock-sampled model (`hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py`) owns I2C/SMBus/PMBus traffic because `cocotbext-i2c` edge waits miss open-drain transitions under Verilator | SMC DV | Introduce a shared I2C VIP only when a second subsystem needs one and the open-drain timing fix is protocol-neutral | Open a #3299 child if a shared package is introduced |
-| I3C SDR | No shared package: SMC gates on CSR decode plus a line-level pull-low check; the vendored I3C core remains an RTL dependency only | SMC/SMU DV + first I3C adopter | Introduce a shared I3C VIP only with a reproducibly provisioned backend and a gating DUT smoke test | SMU consumer [#3547](https://github.com/tenstorrent/tt-oca-hw/issues/3547) |
-| Entropy source/monitor | No shared package: SEP-local models drive `esrc_noise_ext_i` and check the ESRC-to-DRBG-to-EDN chain | SEP DV | Introduce a shared entropy VIP only when a second subsystem needs one and gates it with a real regression | Open a #3299 child if a shared package is introduced |
-| Memory-image helper | Deferred: no shared package or frozen image/preload format contract | Shared DV + first firmware-bearing DUT | Define plain image/preload/result types, document ownership and format, add an example, and gate one DUT | Open a #3299 child before implementation |
-| True QSPI/OSPI multi-lane data | Deferred: `ocah_spi_vip` currently uses single-bit data timing for quad/octal personalities | Shared SPI VIP + SEP/SMC DV | Specify lane turnaround/SDR-DDR timing, implement real multi-lane sampling/driving, and pass a DUT transfer test | Baseline scope [#3290](https://github.com/tenstorrent/tt-oca-hw/issues/3290); advanced work stays under #3299 |
-| Vendor-accurate flash BUSY timing and commands | Deferred: the first milestone is deterministic, instant-ready, and vendor-neutral | Shared SPI VIP + activating flash adopter | Select an adopter requirement, isolate vendor behavior behind a documented profile, and add status/timing checks | Open a #3299 child for the selected profile |
-| I3C HDR-DDR/HDR-BT | Deferred: backend/API and DUT support are not part of the SDR baseline | Activating DUT | Confirm backend support and license, define HDR items/timing, and add a gating HDR consumer; #3547 remains SDR-only | Open a #3299 child when HDR work starts |
-| Full iJTAG/boundary-scan promotion | Deferred: current DTP models encode fixed topology, lifecycle policy, and loopback fixtures | DTP/JTAG domain maintainers | Produce a topology/instrument-neutral model and demonstrate a second independent consumer | Ownership policy [#3292](https://github.com/tenstorrent/tt-oca-hw/issues/3292); open a #3299 child for promotion |
-| Commercial-simulator-only checker/coverage hooks | Deferred: portable checker evidence must exist before licensed-only depth can gate | Checker/DV infrastructure + protocol owner | Land portable item/checker semantics first, then add and validate commercial coverage hooks without making them mandatory for contributors | Checker parent [#2907](https://github.com/tenstorrent/tt-oca-hw/issues/2907); SPI checker [#3297](https://github.com/tenstorrent/tt-oca-hw/issues/3297) |
+| Capability | Classification / reason | Owner | Promotion condition and next action |
+|------------|-------------------------|-------|-------------------------------------|
+| APB shared wrapper | No shared package: no DUT exposes an APB surface to a testbench today | Shared DV + first APB adopter | Introduce a shared APB VIP only when a DUT regression gates real APB traffic |
+| UART | Experimental/dependency-gated: SMC consumer exists, but the optional backend is not locked consistently | Shared UART VIP + SMC DV | Resolve backend version/license policy, lock it in the supported environment, and retain a passing SMC loopback |
+| I2C | No shared package: the SMC-local clock-sampled model (`hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py`) owns I2C/SMBus/PMBus traffic because `cocotbext-i2c` edge waits miss open-drain transitions under Verilator | SMC DV | Introduce a shared I2C VIP only when a second subsystem needs one and the open-drain timing fix is protocol-neutral |
+| I3C SDR | No shared package: SMC gates on CSR decode plus a line-level pull-low check; the vendored I3C core remains an RTL dependency only | SMC/SMU DV + first I3C adopter | Introduce a shared I3C VIP only with a reproducibly provisioned backend and a gating DUT smoke test |
+| Entropy source/monitor | No shared package: SEP-local models drive `esrc_noise_ext_i` and check the ESRC-to-DRBG-to-EDN chain | SEP DV | Introduce a shared entropy VIP only when a second subsystem needs one and gates it with a real regression |
+| Memory-image helper | Deferred: no shared package or frozen image/preload format contract | Shared DV + first firmware-bearing DUT | Define plain image/preload/result types, document ownership and format, add an example, and gate one DUT |
+| True QSPI/OSPI multi-lane data | Deferred: `ocah_spi_vip` currently uses single-bit data timing for quad/octal personalities | Shared SPI VIP + SEP/SMC DV | Specify lane turnaround/SDR-DDR timing, implement real multi-lane sampling/driving, and pass a DUT transfer test |
+| Vendor-accurate flash BUSY timing and commands | Deferred: the released flash model is deterministic, instant-ready, and vendor-neutral | Shared SPI VIP + activating flash adopter | Select an adopter requirement, isolate vendor behavior behind a documented profile, and add status/timing checks |
+| I3C HDR-DDR/HDR-BT | Deferred: backend/API and DUT support are not part of the SDR baseline | Activating DUT | Confirm backend support and license, define HDR items/timing, and add a gating HDR consumer |
+| Full iJTAG/boundary-scan promotion | Deferred: current DTP models encode fixed topology, lifecycle policy, and loopback fixtures | DTP/JTAG domain maintainers | Produce a topology/instrument-neutral model and demonstrate a second independent consumer |
+| Commercial-simulator-only checker/coverage hooks | Deferred: portable checker evidence must exist before licensed-only depth can gate | Checker/DV infrastructure + protocol owner | Land portable item/checker semantics first, then add and validate commercial coverage hooks without making them mandatory for contributors |
 
 Two examples define the ownership boundary:
 
@@ -233,8 +229,7 @@ import fails, the report includes the setup step to rerun.
 ## Backend Import Policy
 
 New OSS DV code should import protocol helpers through `ocah_<proto>_vip`
-packages instead of directly importing backend packages. Remaining audited
-notes:
+packages instead of directly importing backend packages. Notes:
 
 - SEP/SMC AXI agents and Lite masters now use `ocah_axi_vip`
   (`OcahAxiMasterAgent` / `OcahAxiLiteMasterAgent`). Prefer `from_prefix` +
