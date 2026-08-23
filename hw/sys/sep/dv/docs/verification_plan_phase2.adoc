@@ -1945,9 +1945,10 @@ Coverage class:: `[STUB-CONST]` / `[DECODE-ONLY]`
 ==== Description
 
 `CLOCK_GATE_CTRL` implements one bit (`pka_cg_enable[0:0]`); RTL sinks it
-into an unused net. This is the iconic clock-gate representative: storage
-plus witness CSRs that still complete OKAY with the bit 0 and 1. It does
-not prove a live per-IP gate — no bit in this map clocks an IP off.
+into an unused net. The designer reduced the old per-IP enable map to
+this placeholder (tt-oca-hw #3950 / #3965). This is the iconic
+clock-gate representative: storage plus witness CSRs that still complete
+OKAY with the bit 0 and 1. No bit in this map clocks an IP off.
 
 ==== Steps
 
@@ -1984,8 +1985,9 @@ not prove a live per-IP gate — no bit in this map clocks an IP off.
 | PROVEN
 |===
 
-NOTE: this representative does not close the iconic "Clock-gate per IP"
-scorecard row. LIVE per-IP gating is unimplemented in this RTL.
+NOTE: this representative closes the iconic "Clock-gate per IP"
+scorecard row. The implemented contract is the designer placeholder,
+not a live per-IP gate.
 
 [[rom-fw-out-of-scope]]
 == Boot ROM firmware — out of this plan
@@ -2156,7 +2158,8 @@ tree; the wrap-up Verilator log is the grade. Do not add a sibling test.
 
 | Clock-gate placeholder
 | `sep_clock_gate_control_test` proves `pka_cg_enable` storage and
-  stub-const witness reachability. LIVE per-IP gating is unimplemented
+  stub-const witness reachability. Designer reduced the map; a live
+  per-IP gate is not in this RTL
 | `sep_clock_uvm_clock_gate_control_test`
 
 | DMA modes
