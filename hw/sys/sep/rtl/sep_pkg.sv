@@ -285,9 +285,6 @@ package sep_pkg;
 
     parameter int unsigned AXILITE_XBAR_N_MST = 32'd4;  // Crypto/security + IO + SEP system peripherals + external master
 
-    // FIXME: This param has been arbitrarily set as 4 for now, could we make it smaller?
-    // parameter int unsigned AXILITE_XBAR_MAX_TRANSACTIONS = 4;
-
     typedef logic[CPU_ADDR_WIDTH  -1:0] sep_axilite_xbar_addr_t;
     typedef logic[CPU_DATA_WIDTH  -1:0] sep_axilite_xbar_data_t;
     typedef logic[CPU_DATA_WIDTH/8-1:0] sep_axilite_xbar_strb_t;
@@ -415,7 +412,7 @@ package sep_pkg;
     parameter int unsigned AP_REMAP_SEL_W = $clog2(NUM_AP_OUTPUT_REMAP_REGIONS);
     parameter int unsigned NUM_STEE_OUTPUT_REMAP_REGIONS = 16;
     parameter int unsigned STEE_REMAP_SEL_W = $clog2(NUM_STEE_OUTPUT_REMAP_REGIONS);
-    parameter int unsigned ALIAS_REMAP_IDX_START = 12; // TODO: check this over
+    parameter int unsigned ALIAS_REMAP_IDX_START = 12;
     parameter int unsigned NUM_AP_OUTPUT_REMAP_IDX_START = 19; // 512KB region granularity
     parameter int unsigned NUM_STEE_OUTPUT_REMAP_IDX_START = 19; //  512KB region granularity
 

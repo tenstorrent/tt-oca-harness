@@ -618,19 +618,16 @@ module sep
 
         .sep_cpu_trace                  (sep_cpu_trace),
 
-        // FIXME: Forward this to safety island somehow or SEP-level CSRs
         .iccm_ecc_single_error          (cpu_iccm_ecc_single_error),
         .iccm_ecc_double_error          (cpu_iccm_ecc_double_error),
         .dccm_ecc_single_error          (cpu_dccm_ecc_single_error),
         .dccm_ecc_double_error          (cpu_dccm_ecc_double_error),
 
-        // FIXME: Forward this to safety island somehow or SEP-level CSRs
         .dec_tlu_perfcnt0               (cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
         .dec_tlu_perfcnt1               (cpu_dec_tlu_perfcnt1),
         .dec_tlu_perfcnt2               (cpu_dec_tlu_perfcnt2),
         .dec_tlu_perfcnt3               (cpu_dec_tlu_perfcnt3),
 
-      // FIXME: Forward this to safety island somehow or SEP-level CSRs
       `ifdef RV_LOCKSTEP_ENABLE
         .disable_corruption_detection_i (cpu_disable_corruption_detection),
         .lockstep_err_injection_en_i    (cpu_lockstep_err_injection_en),

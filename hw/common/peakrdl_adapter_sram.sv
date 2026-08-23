@@ -450,7 +450,6 @@ module peakrdl_adapter_sram
   assign unused_rerror = ecc_read_error[0];  // Correctable ECC errors not used
 
   // Simple FIFO-based design: 1 FIFO to track woffset for reads
-  // FIXME: These assertions were autogen'd, they might be wrong
 
   // Basic parameter validation
   `OCAH_OT_ASSERT_INIT(SramDwHasByteGranularity_A, SramDw % 8 == 0)

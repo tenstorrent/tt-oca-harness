@@ -1008,6 +1008,4 @@ module i2c_controller_fsm
     // Make sure we never attempt to send a single cycle glitch
     `OCAH_OT_ASSERT(SclOutputGlitch_A, $rose(scl_o) |-> ##1 scl_o)
 
-// TODO: Handle the assertion below
-
 endmodule

@@ -72,7 +72,7 @@ module dfd_apb2mmr
 	assign CsrWrData = pwdata;
 	assign prdata = CsrRdData;
 
-	assign pslverr = (pready && ~CsrHit) || CsrError; // FIXME: Check with PD if this will make timing
+	assign pslverr = (pready && ~CsrHit) || CsrError;
 
 	always_comb begin
 		CsrWrStrb = '0;

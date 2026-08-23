@@ -58,19 +58,16 @@ module sep_cpu (
 
     output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
 
-    // FIXME: Forward this to safety island somehow or SEP-level CSRs
     output logic iccm_ecc_single_error,
     output logic iccm_ecc_double_error,
     output logic dccm_ecc_single_error,
     output logic dccm_ecc_double_error,
 
-    // FIXME: Forward this to safety island somehow or SEP-level CSRs
     output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
     output logic dec_tlu_perfcnt1,
     output logic dec_tlu_perfcnt2,
     output logic dec_tlu_perfcnt3,
 
-  // FIXME: Forward this to safety island somehow or SEP-level CSRs
   `ifdef RV_LOCKSTEP_ENABLE
     input  logic disable_corruption_detection_i,
     input  logic lockstep_err_injection_en_i,
@@ -218,19 +215,16 @@ module sep_cpu (
     .dbg_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB master interface
     .dma_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB slave interface
 
-    // FIXME: Forward this to safety island somehow or SEP-level CSRs
     .iccm_ecc_single_error (iccm_ecc_single_error),
     .iccm_ecc_double_error (iccm_ecc_double_error),
     .dccm_ecc_single_error (dccm_ecc_single_error),
     .dccm_ecc_double_error (dccm_ecc_double_error),
 
-    // FIXME: Forward this to safety island somehow or SEP-level CSRs
     .dec_tlu_perfcnt0 (dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
     .dec_tlu_perfcnt1 (dec_tlu_perfcnt1),
     .dec_tlu_perfcnt2 (dec_tlu_perfcnt2),
     .dec_tlu_perfcnt3 (dec_tlu_perfcnt3),
 
-      // FIXME: Forward this to safety island somehow or SEP-level CSRs
       `ifdef RV_LOCKSTEP_ENABLE
     .disable_corruption_detection_i (disable_corruption_detection_i),
     .lockstep_err_injection_en_i    (lockstep_err_injection_en_i),
