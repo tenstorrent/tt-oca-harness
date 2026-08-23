@@ -12,17 +12,19 @@
 This is the high-level plan for verifying the SEP subsystem in the open-source
 tree. It says *what each phase is for*, *how coverage is counted*, and *what
 every test must satisfy*. Phase 1 is signed off. Phase 2 is the active
-cocotb work. Phase 3 is T.B.D.: a future UVM environment, not an
-execute list.
+cocotb work. Phase 2+ is the completeness extension of that same
+environment (28/28 iconic rows before UVM). Phase 3 is T.B.D.: a future
+UVM environment, not an execute list.
 
 It is not a test-by-test contract. Those live in the per-phase verification
 plans (see <<documents>>). A passing run is never a substitute for those
 contracts.
 
-== Three phases
+== Phases
 
-One DUT (`sep_wrapper`). Two environments. Three jobs that do not repeat each
-other.
+One DUT (`sep_wrapper`). Two environments. Phase 1, Phase 2, and Phase 2+
+share the cocotb bench. Phase 3 is a new UVM bench. The jobs do not
+repeat each other.
 
 [cols="1,2,2,2",options="header"]
 |===
@@ -46,12 +48,20 @@ other.
 | Phase 1 + Phase 2 together: floor *> 60%*, target *85%* of in-scope
   iconic-feature rows (`PROVEN` only).
 
+| *Phase 2+*
+| same cocotb environment
+| Completeness extension of Phase 2. Closes the remaining in-scope
+  scorecard rows before a UVM bench starts. Same quality bar; no new
+  environment.
+| Target *28/28* `PROVEN` in-scope rows. Detail:
+  link:verification_plan_phase2.adoc#phase2-plus[Phase 2+].
+
 | *Phase 3*
 | *new* UVM testbench
 | T.B.D. First deliverable later: UVM bring-up plus smoke, then
-  coverage-driven corners.
+  coverage-driven corners. Starts after Phase 2+.
 | Not scheduled. Code-coverage close-out is a Phase 3 job, not a
-  Phase 1 / Phase 2 number.
+  Phase 1 / Phase 2 / Phase 2+ number.
 |===
 
 The architecture spec (`hw/sys/sep/doc/`) is the feature-scorecard
@@ -143,15 +153,26 @@ lifecycle, eFuse, and Key Manager.
 
 Detail: `verification_plan_phase2.adoc`.
 
+=== Phase 2+ — 28/28 before UVM
+
+Same cocotb environment. Closes the six in-scope rows that Phase 2
+leaves `GAP` or `PARTIAL`: KM command set, eFuse program × lock,
+lifecycle demote, RMA token, live outbound remap, and inbound
+ownership. Five new tests plus the existing inbound matrix (ownership
+stays a hard assert; the row is `PROVEN` when issue 1050 matches
+`fabric.adoc`). Phase 3 does not start until this close-out finishes.
+
+Detail: link:verification_plan_phase2.adoc#phase2-plus[Phase 2+].
+
 === Phase 3 — T.B.D.
 
 A new UVM testbench, not scheduled. When it starts, the first
 deliverable is bring-up plus a UVM smoke test, not a corner-case list.
 After smoke, stimulus is coverage-driven: constrained-random traffic
-aimed at holes left by Phase 1 + Phase 2, plus the corner, error, and
+aimed at holes left by Phase 1 + Phase 2 + Phase 2+, plus the corner, error, and
 security cases those phases deferred.
 
-Phase 3 is deliberately *low overlap* with Phase 1 and Phase 2. It does
+Phase 3 is deliberately *low overlap* with Phase 1, Phase 2, and Phase 2+. It does
 not re-implement those tests. A Phase 3 test whose bins are already hit
 by the cocotb suite is rejected. Code-coverage close-out lives here.
 
@@ -161,10 +182,11 @@ Detail: `verification_plan_phase3.adoc`. Not an execute list.
 
 Two different numbers. Do not mix them.
 
-Feature coverage (Phase 1 + Phase 2)::
+Feature coverage (Phase 1 + Phase 2 + Phase 2+)::
 The iconic claim for each in-scope IP, graded on <<iconic-scorecard>>.
-Floor: *> 60%* `PROVEN` feature rows. Target: *85%* `PROVEN` feature
-rows (24 of 28 in-scope rows). There is no SystemVerilog covergroup
+Floor: *> 60%* `PROVEN` feature rows. Phase 2 target: *85%* `PROVEN`
+feature rows (24 of 28 in-scope rows). Phase 2+ target: *28/28* before
+UVM. There is no SystemVerilog covergroup
 number for this — the directed environment has none, and RTL SVA is
 compiled out under the Verilator acceptance flow. A `PARTIAL` feature
 (a test exists, the iconic claim is incomplete) and a `GAP` (no test
@@ -212,12 +234,13 @@ met). Two more `PROVEN` rows reach the 85% target.
 | PARTIAL
 | Block-by-default, 16-cell allow/block + source-ID walk, and `SEP_DBG`
   gating are proven. CHK-OWNERSHIP-WINDOW is `FAILED` (RTL vs
-  `fabric.adoc`, issue 1050) — honest, not a feature credit.
+  `fabric.adoc`, issue 1050). Phase 2+ keeps that assert hard; the row
+  is `PROVEN` when the checker matches the spec.
 
 | Outbound filter / AP-STEE live remap
 | GAP
-| CSR bank R/W only. No proof a programmed region translates or that the
-  outbound filter drops a forbidden beat.
+| CSR bank R/W only. Phase 2+ live-datapath test
+  (`sep_fabric_output_remap_datapath_proxy_test`).
 
 | CPU alias window (LSU + IFU)
 | PROVEN
@@ -274,8 +297,8 @@ met). Two more `PROVEN` rows reach the 85% target.
 
 | KM as KM: mailbox + command set
 | GAP
-| Generate / transfer appear only inside sideload KATs. No command-set
-  RAND-REP.
+| Generate / transfer appear only inside sideload KATs. Phase 2+
+  `sep_km_command_set_rand_test`.
 
 | Entropy ESRC → DRBG → EDN consume
 | PROVEN
@@ -293,7 +316,7 @@ met). Two more `PROVEN` rows reach the 85% target.
 
 | eFuse program × lock
 | GAP
-| Lock/permission matrix is not a test.
+| Phase 2+ `sep_efuse_program_lock_matrix_test` on a spare/test field.
 
 | Lifecycle `feat_ctrl` vs `LC_STATE`
 | PROVEN
@@ -302,13 +325,13 @@ met). Two more `PROVEN` rows reach the 85% target.
 
 | Lifecycle demote (DBG_1 / DBG_2, TEST_DEV vs PROD)
 | PARTIAL
-| `DEMOTE_1` and `DEMOTE_2` independence are proven. The demote × LC ×
-  DIS product is not walked.
+| `DEMOTE_1` and `DEMOTE_2` independence are proven. Phase 2+
+  `sep_lcc_demote_feat_ctrl_matrix_test` walks the product.
 
 | RMA token match → LC update
 | PARTIAL
-| Inside the stitch test's RMA legs, not a standalone randomizable token
-  path.
+| Inside the stitch test's RMA legs. Phase 2+
+  `sep_efuse_rma_token_rand_test` (do not stretch the stitch e2e).
 
 | SPI-OT flash + DMA
 | PROVEN
@@ -325,11 +348,10 @@ met). Two more `PROVEN` rows reach the 85% target.
 
 | Clock-gate per IP
 | PROVEN
-| Designer reduced `CLOCK_GATE_CTRL` to one unused `pka_cg_enable`
-  placeholder (tt-oca-hw #3950 / #3965). `sep_clock_gate_control_test`
-  proves that storage and that AES / HMAC / OTBN / SW_DEBUG stay
-  reachable with the bit 0 and 1. A live per-IP gate is not in this
-  RTL — not a DV hole.
+| `CLOCK_GATE_CTRL` is one unused `pka_cg_enable` bit.
+  `sep_clock_gate_control_test` proves that storage and that AES /
+  HMAC / OTBN / SW_DEBUG stay reachable with the bit 0 and 1. A live
+  per-IP gate is not in this RTL — not a DV hole.
 
 | JTAG vs CPU vs KM eFuse mux
 | PROVEN
@@ -459,9 +481,10 @@ stimulus engine. Not created and not scheduled.
   not open Phase 1 work.
 
 | `verification_plan_phase2.adoc`
-| Phase 2 contract. Graded iconic entries, pending in-place upgrades
-  (including extends of Phase 1 names), and named remaining `GAP`s.
-  Former leftover names are mapped, not listed as a worklist.
+| Phase 2 contract plus the Phase 2+ extension (`#phase2-plus`).
+  Graded iconic entries, pending in-place upgrades, named remaining
+  `GAP`s, and the 28/28 close-out before UVM. Former leftover names
+  are mapped, not listed as a worklist.
 
 | `verification_plan_phase3.adoc`
 | Phase 3 T.B.D. Holding note only. Not committed scope and not an

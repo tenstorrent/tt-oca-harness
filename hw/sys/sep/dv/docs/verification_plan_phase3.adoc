@@ -9,8 +9,9 @@
 [IMPORTANT]
 ====
 *Phase 3 is T.B.D.* Nothing in this document is committed scope, scheduled
-work, or an execute list. Finish Phase 1 (closed) and Phase 2 (active)
-first. Unlike link:verification_plan_phase1.adoc[Phase 1] — where a row
+work, or an execute list. Finish Phase 1 (closed), Phase 2 (active), and
+Phase 2+ (28/28 on the cocotb bench) first. Unlike
+link:verification_plan_phase1.adoc[Phase 1] — where a row
 exists only if a run can prove it — every entry here is unimplemented by
 definition, so nothing is graded and no proof is cited. Read the rest as
 a holding note: direction plus names parked so they are not implemented
@@ -21,7 +22,9 @@ as a second Phase 2 spine.
 
 Phase 1 (smoke plus subsystem representatives) is signed off, and its record is
 `verification_plan_phase1.adoc`. Phase 2 (iconic features, by IP) is active, in
-`verification_plan_phase2.adoc`. Phase 3 will collect what both earlier phases
+`verification_plan_phase2.adoc`, including the Phase 2+ extension that
+closes the scorecard to 28/28 on the same cocotb environment. Phase 3
+starts after that close-out. Phase 3 will collect what the earlier phases
 explicitly *defer*: advanced corner cases, error and security permutations,
 deeper cross-IP edges that are not the iconic feature, and code-coverage
 close-out. That work is not scheduled.
@@ -29,8 +32,8 @@ close-out. That work is not scheduled.
 [[direction]]
 == Direction: Phase 3 moves to a new UVM testbench
 
-Phase 1 and Phase 2 stay on the existing cocotb/PyUVM environment and finish
-there. Phase 3 will not extend it. When it starts, it will be a new UVM
+Phase 1, Phase 2, and Phase 2+ stay on the existing cocotb/PyUVM
+environment and finish there. Phase 3 will not extend it. When it starts, it will be a new UVM
 environment, and the first deliverable is a *UVM environment bring-up plus
 smoke test*, not any candidate below.
 
@@ -176,7 +179,8 @@ coverage hole list.
 | Fabric gap-matrix
 
 | `sep_fabric_outbound_tail_closure_test`
-| Outbound tail-closure
+| Outbound tail-closure. Iconic live remap is Phase 2+
+  (`sep_fabric_output_remap_datapath_proxy_test`)
 
 | `sep_irq_extended_connectivity_test`
 | PIC map coverage-bin walk
@@ -191,7 +195,7 @@ coverage hole list.
 | Locked-field IRQ path
 
 | `sep_outbound_source_id_policy_test`
-| Outbound source-ID policy matrix
+| Outbound source-ID policy matrix (not the iconic live remap)
 
 | `sep_smc_alias_region_routing_test`
 | SMC-side alias routing
