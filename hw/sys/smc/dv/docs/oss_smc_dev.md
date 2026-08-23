@@ -86,7 +86,7 @@ Effort: ~5 days tests + 3 days shared infra = **8 days**
 | 15 | Default reg read | `smc_default_reg_rd_test` | `smc_default_reg_rd_test` | `SmcAxiLiteCsrAgent` |
 | 16 | ECAM | `smc_ecam_sanity_test` | `smc_ecam_sanity_test` | `SmcAxiLiteCsrAgent` (ECAM space) |
 | 17 | ECC | `smc_ecc_test` | `smc_ecc_sanity_test` | `SmcAxiMasterAgent` + ECC inject |
-| 18 | AVSBus | `smc_avsbus_sanity_test` | `smc_avsbus_sanity_test` | `SmcAvsBusAgent` (new) |
+| 18 | AVSBus | `smc_avsbus_sanity_test` | `smc_avsbus_sanity_test` | proxy CSR/status checks (no pad-level AVSBus VIP) |
 | 19 | DBS sanity | `smc_dbs_sanity_test` | `smc_dbs_sanity_test` | `SmcAxiLiteCsrAgent` + DBS BFM |
 | 20 | DFD sanity | `smc_dfd_sanity_test` | `smc_dfd_sanity_test` | `SmcAxiLiteCsrAgent` + DFD observe |
 
@@ -147,7 +147,7 @@ Effort: ~18 days tests + 6 days infra = **24 days**
 | I9 | `SmcJtagAgent` | `ocah_jtag_vip` | copy from DTP | 0.5 |
 | I10 | `SmcI3cAgent` | none (no I3C VIP ships) | same | 1.0 |
 | I11 | `SmcOtpResponderAgent` | SEP OTP shim | copy from SEP | 1.0 |
-| I12 | `SmcAvsBusAgent` (new BFM) | — | — | 2.0 |
+| I12 | `SmcAvsBusAgent` | none (needs a real pad-level AVSBus VIP) | — | 2.0 |
 | I13 | `SmcOctsAgent` (new BFM) | — | — | 2.0 |
 | I14 | `SmcAtbAgent` (new BFM) | — | — | 1.5 |
 | I15 | CPU-LSU force-splice + scratch helper | SEP tb_top | copy from SEP | 2.0 |

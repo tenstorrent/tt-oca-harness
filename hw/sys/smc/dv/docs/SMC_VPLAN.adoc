@@ -184,9 +184,6 @@ miss open-drain transitions under Verilator
 
 |`OcahSpiFlash` (library import) |`ocah_spi_vip` |SPI flash BFM class
 (memory + JEDEC/preload/status APIs)
-
-|`smc_sideband_fake_bfm_vip` |(in-house) |AVSBus/OCTS frame
-encode/decode + reset-invariant scoreboard
 |=======================================================================
 
 [[external-peripheral-macro-boundary-responders-bus-terminators]]
@@ -1668,10 +1665,9 @@ reproducible pad-level backend exists
 |`smc_spi_loopback_test` |`ocah_spi_vip` library import + mock signals
 |OcahSpiFlash JEDEC/preload/SpiMode + 5 low-speed peripheral CSR reads
 
-|`smc_sideband_avsbus_octs_bfm_test` |new `smc_sideband_fake_bfm_vip` —
-Python-side scoreboard |AVSBus/OCTS frame encode + reset-invariant
-scoreboard cross-checked against 20 sideband CSR reads (13 AVSBus + 7
-OCTS)
+|`smc_sideband_avsbus_octs_bfm_test` |deferred — fake BFM retired under
+the no-fake-BFM policy |Needs a real pad-level AVSBus/OCTS VIP; sideband
+coverage stays with the proxy CSR/status tests
 |=======================================================================
 
 *Pin-driven follow-up* (still roadmap, not blocking Phase A closure):

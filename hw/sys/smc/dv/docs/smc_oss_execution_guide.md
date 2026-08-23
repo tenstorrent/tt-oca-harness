@@ -428,7 +428,7 @@ Promotion history, by area — each group moved from CSR-only proxy to
 | CPU JTAG | `smc_ijtag_basic_test`, `smc_chiplet_reg_jtag_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_dft_timeout_proxy_test`, `smc_jtag_reset_proxy_test` | TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required |
 | Mailbox | `smc_mailbox_irq_test`, `smc_mailbox_data_error_test`, `smc_mailbox_event_irq_test` | DV-only `tb_sep_mailbox_interrupts` source + `tb_mailbox_irq_any` checker prove SEP mailbox interrupt bits reach the SMC peripheral vector |
 | GPIO / external IRQ | `smc_gpio_irq_active_test`, `smc_gpio_strap_sanity_test`, `smc_external_interrupts_test` | DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert |
-| Sideband (AVSBus/OCTS) | `smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `octs_sanity_test` | `tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug` bounded observability alongside real CSR decode/timeout |
+| Sideband (AVSBus/OCTS) | `smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `octs_sanity_test` | `tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug` bounded observability alongside real CSR decode/timeout. These tests record `proxy=True`; full promotion needs a real pad-level AVSBus/OCTS BFM |
 | CPU / OCCP | `smc_cpu_sanity_test`, `smc_cpu_ctrl_scratch_window_test`, `smc_cpu_ctrl_map_depth_test`, `smc_cpu_to_sep_axi_test`, `smc_occp_sanity_secure_error_test` | SEP_IN AXI master-BFM substitutes for firmware traffic; CPU-control map + scratch write/read/restore + reset/powergood checks |
 | eFuse / OTP | `smc_efuse_permission_boundary_test`, `smc_efuse_chip_config_read_test`, `smc_efuse_otp_clock_config_depth_test`, `smc_efuse_otp_clock_test` | eFuse-derived chip-config surface for version/LC/RAS semantics + OTP clock-gate restore + eFuse-bank AXI-Lite idle checker |
 | ECC / DFD / DBS | `smc_dfd_sanity_test`, `smc_dbs_idle_test`, `smc_ecc_dfd_dbs_sanity_test`, `smc_cpu_ecc_lint_pint_depth_test` | RAS/debug CSR checks plus bounded fault observability on sync IRQ, downstream AXI-Lite idle, and reset |
@@ -589,11 +589,11 @@ implementations:
   preload/mem round-trip + SpiMode enum smoke, combined with five low-speed
   peripheral CSR reads via `SmcCsrSeq` (UART_LOG, AVS, OCTS). No `tb_top` pin
   needed. A full pin-driven byte-level proof awaits a Verilator-safe SPI pad lift.
-- `smc_sideband_avsbus_octs_bfm_test` — a new `smc_sideband_fake_bfm_vip`
-  provides AVSBus SVID/SVDATA and OCTS timer-frame encode/decode plus a
-  reset-invariant scoreboard (AVS_INTERRUPT_CLEAR / OCTS_TIMER_COUNT quiet at
-  reset), cross-checked against 20 sideband CSR reads (13 AVSBus + 7 OCTS). A
-  full pin-driven external BFM proof awaits a Verilator-safe telemetry pad lift.
+- `smc_sideband_avsbus_octs_bfm_test` — deferred under the no-fake-BFM
+  policy: the Python-side fake BFM was retired because it never drove DUT
+  pads. The test raises until a real pad-level AVSBus/OCTS VIP exists;
+  sideband coverage stays with the proxy CSR/status tests. A full pin-driven
+  external BFM proof awaits a Verilator-safe telemetry pad lift.
 
 Closure evidence: Xcelium `p2_phase_a` **6/6 PASS 80.1 s**; Verilator
 `p2_phase_a` **6/6 PASS 157.9 s**.
@@ -629,7 +629,7 @@ refer to this section for how the infrastructure underneath is delivered.
 | JTAG/iJTAG VIP | TAP-level built / passing | JTAG triplet | `SmcJtagTap` in `seq_lib/smc_jtag_protocol_vip.py`, `SmcCpuTapDevice(idcode=0x10CA0555, ir_len=5, IDCODE@0x01, DTMCS@0x10, DMI@0x11)`. IR/DR access beyond the default IDCODE latch proven end-to-end |
 | UART VIP | built / dependency-gated | `smc_uart_loopback_test` | `SmcUartVip` wraps `cocotbext-uart` UartSource + UartSink; 8-N-1 loopback at 115200 baud. Blocked on the undeclared `cocotbext-uart` dependency |
 | SPI VIP | library-level built / passing | `smc_spi_loopback_test` | `ocah_spi_vip.OcahSpiFlash` library integration + mock signals; full pin-driven loopback needs a Verilator-safe SPI pad lift |
-| Sideband fake BFM | built / passing | `smc_sideband_avsbus_octs_bfm_test` | `smc_sideband_fake_bfm_vip` — AVSBus/OCTS frame encode + reset-invariant scoreboard; pin-driven external BFM needs a Verilator-safe telemetry pad lift |
+| Sideband pad-level BFM | missing | `smc_sideband_avsbus_octs_bfm_test` (deferred) | Fake BFM retired under the no-fake-BFM policy (never drove DUT pads); needs a real pad-level AVSBus/OCTS VIP plus a Verilator-safe telemetry pad lift |
 | Output-fabric responder / memory slave | built / passing | `smc_input_output_fabric_wr_rd_test`, `smc_output_filter_remap_security_test`, `smc_output_fabric_wr_rd_responder_test` | JTAG AXI final VIP path drives real write/read and allow/block checks |
 | CPU firmware loader or force-splice | missing | `smc_cpu_sanity_test`, `smc_occp_sanity_secure_error_test` | Copy the SEP CPU/firmware pattern only after the fabric path is stable |
 | eFuse/OTP shim usage plan | partial | `smc_efuse_permission_boundary_test` | Verilator stubs exist; safe CSR/shim semantics need classification |
