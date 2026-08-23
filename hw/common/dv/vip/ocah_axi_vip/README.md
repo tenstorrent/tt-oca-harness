@@ -18,8 +18,7 @@ that:
 3. Upstream API changes (`cocotbext-axi` or project VIPs) are absorbed at the
    wrapper boundary, not scattered across test files.
 
-This package satisfies task #14 (base bus BFM) and is the foundation that
-tasks #15–#20 (protocol-specific BFMs) build on.
+This package is the base bus BFM that the protocol-specific VIPs build on.
 
 ---
 
@@ -52,12 +51,12 @@ environment):
 | Memory-backed AXI4-Lite responder | `OcahAxiLiteSlaveAgent` |
 | Passive observation without driving the bus | `OcahAxiMonitor` / `OcahAxiLiteMonitor` |
 | Item-level protocol sanity checks | `OcahAxiChecker` |
-| AXI-Stream (e.g. entropy data path) | **Out of scope** — see task #19 (SEP entropy BFM) |
+| AXI-Stream (e.g. entropy data path) | **Out of scope** for this package — stream sources stay DUT-local |
 
 Do not use `cocotbext-axi` types (`AxiMaster`, `AxiLiteMaster`, etc.)
 directly in new test files; always go through this package. Existing SEP files
-are the no-touch compatibility reference for this release and are not migrated
-as part of GH #3288.
+are the no-touch compatibility reference for this release and are not
+migrated.
 
 ---
 

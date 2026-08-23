@@ -20,12 +20,12 @@ error behavior, and a named real DUT consumer.
 
 |Experimental
 |Useful API exists, but a dependency, integration, documentation, or gating
-consumer is missing. Experimental VIP cannot be the sole P0/P1 milestone
-evidence.
+consumer is missing. Experimental VIP cannot be the sole evidence for a
+release gate.
 
 |Deferred
-|Capability is intentionally outside the current milestone. It must not block
-baseline transaction BFMs or portable checker work.
+|Capability is intentionally out of scope for the current release. It must
+not block baseline transaction BFMs or portable checker work.
 |===
 
 [[shared-vip-catalog-summary]]
