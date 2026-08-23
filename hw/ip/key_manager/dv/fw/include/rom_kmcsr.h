@@ -111,7 +111,7 @@ void rom_kmcsr_irq_entry_lock_set(void);
 /**
  * @brief Read the SRAM write-lock region mask.
  *
- * @return `SRAM_LOCK.lock_bits`, one bit per 512-byte SRAM region.
+ * @return `SRAM_LOCK.lock_bits`, one bit per 1 KB SRAM region.
  */
 static inline uint32_t rom_kmcsr_sram_lock_read(void) {
     return ROM_KMCSR_SRAM_LOCK_REG.f.lock_bits;
@@ -123,7 +123,7 @@ static inline uint32_t rom_kmcsr_sram_lock_read(void) {
  * The register write is issued three times so a single skipped store (e.g.
  * from a fault-injection glitch) cannot leave a region writable.
  *
- * @param region_mask One bit per 512-byte SRAM region; bits are sticky.
+ * @param region_mask One bit per 1 KB SRAM region; bits are sticky.
  */
 static inline void rom_kmcsr_sram_lock_set(uint32_t region_mask) {
     km_csr__sram_lock_reg_t w = {0};
@@ -136,11 +136,14 @@ static inline void rom_kmcsr_sram_lock_set(uint32_t region_mask) {
 /**
  * @brief Enable SRAM execution mode (write-1-only), with triple write.
  *
- * Sets SRAM_EXEC_MODE.enable.  Once set, instruction fetch is permitted from
- * ROM and from write-locked SRAM regions; all other regions remain forbidden.
- * Cleared by warm or cold reset.  The register write is issued three
- * consecutive times to harden against single-event upsets and voltage-glitch
- * attacks that could cause a write to be skipped.
+ * Sets SRAM_EXEC_MODE.enable, permitting instruction fetch from write-locked
+ * SRAM regions; all other regions remain forbidden.  This also arms the ROM
+ * lockout, which engages on the first committed fetch from write-locked SRAM
+ * and from then on blocks ROM fetches and reads, so the ROM stays executable
+ * for the remainder of the handover sequence but not beyond it.  Cleared by
+ * warm or cold reset.  The register write is issued three consecutive times to
+ * harden against single-event upsets and voltage-glitch attacks that could
+ * cause a write to be skipped.
  */
 static inline void rom_kmcsr_sram_exec_mode_set(void) {
     km_csr__sram_exec_mode_reg_t w = {0};

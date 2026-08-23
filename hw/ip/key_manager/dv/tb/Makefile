@@ -275,19 +275,63 @@ endif
 	@echo "Running firmware test: $(FW_TEST)"
 	$(MAKE) TEST=test_firmware FW_TEST=$(FW_TEST) run VUART_PRINT=$(VUART_PRINT) WAVES=$(WAVES) DEBUG=$(DEBUG)
 
-# Run simulation without recompilation
+# Run simulation without recompilation. Runs from the test's own log directory so
+# that concurrent runs of the shared simv (see the regression below) do not share
+# a working directory for the files VCS drops at runtime. Wave and log paths are
+# absolute, so only those runtime droppings move.
 .PHONY: run_no_compile
 run_no_compile: | $(TEST_LOG_DIR)
 	@echo "Simulation output will be logged to: $(SIM_OUTPUT_LOG)"
-	@set -o pipefail; cd "$(SIM_BUILD)" && \
-	./simv $(SIM_ARGS) +COCOTB_LOG_LEVEL=$(COCOTB_LOG_LEVEL) 2>&1 | tee "$(SIM_OUTPUT_LOG)"
+	@set -o pipefail; cd "$(TEST_LOG_DIR)" && \
+	"$(SIM_BUILD)/simv" $(SIM_ARGS) +COCOTB_LOG_LEVEL=$(COCOTB_LOG_LEVEL) 2>&1 | tee "$(SIM_OUTPUT_LOG)"
+
+# Compile the testbench without running a test, so a caller can separate the one
+# compile from the many runs. TEST selects which SIM_BUILD is populated.
+.PHONY: compile_first
+compile_first: $(SIM_BUILD)/simv
+	@echo "Testbench compiled: $(SIM_BUILD)/simv"
 
 #===========================================================================
-# Regression: build all firmware, compile once, run each test
+# Regression: build all firmware, compile once, run every test in parallel
 #===========================================================================
 # Discover firmware tests from the open DV firmware tree (per-test directories).
 FW_TESTS := $(notdir $(wildcard $(KM_ROOT)/dv/fw/tests/test_*))
+
+# Concurrent simulations. Each job is one simv process of a small design, so the
+# practical ceiling is VCS runtime licences rather than cores or memory.
 PARALLEL_JOBS ?= 16
+
+# Every firmware test runs the same testbench and takes its image from a plusarg,
+# so the whole regression shares one simv: compile it once up front, then let the
+# per-test jobs go straight to run_no_compile.
+#
+# SIM_BUILD is pinned on each recursive command line rather than left to TEST.
+# Cocotb exports SIM_BUILD, so a sub-make inherits it from the environment, and an
+# inherited value already satisfies this Makefile's `SIM_BUILD ?=` — passing only
+# TEST would leave the child pointing at the parent's build directory.
+REGRESSION_SIM_BUILD := $(abspath sim/build/test_firmware)
+REGRESSION_STATUS_DIR := $(abspath sim/regression_status)
+REGRESSION_JOBS := $(addprefix regression-run-,$(FW_TESTS))
+
+# One test. Failures are recorded rather than raised so that a single bad test
+# does not stop the other jobs; the summary below turns the status files into the
+# regression's exit code. Deliberately not .PHONY: make does not apply pattern
+# rules to phony targets, and nothing creates a file by this name anyway, so the
+# recipe runs on every invocation.
+regression-run-%:
+	@mkdir -p "$(REGRESSION_STATUS_DIR)" "sim/logs/$*"
+	@start=$$SECONDS; \
+	$(MAKE) --no-print-directory run_no_compile \
+		TEST=test_firmware FW_TEST=$* SIM_BUILD="$(REGRESSION_SIM_BUILD)" \
+		> sim/logs/$*/regression_run.log 2>&1 || true; \
+	elapsed=$$((SECONDS - start)); \
+	if grep -qE "PASSED|PASS=1[[:space:]]+FAIL=0" sim/logs/$*/regression_run.log; then \
+		echo PASSED > "$(REGRESSION_STATUS_DIR)/$*"; \
+		echo "[$*] PASSED ($${elapsed}s)"; \
+	else \
+		echo FAILED > "$(REGRESSION_STATUS_DIR)/$*"; \
+		echo "[$*] FAILED ($${elapsed}s)"; \
+	fi
 
 .PHONY: regression
 regression:
@@ -296,24 +340,21 @@ regression:
 		exit 2; \
 	fi
 	@echo "==================================================================="
-	@echo "Key Manager Testbench - Regression ($(words $(FW_TESTS)) tests)"
+	@echo "Key Manager Testbench - Regression ($(words $(FW_TESTS)) tests, $(PARALLEL_JOBS) at a time)"
 	@echo "==================================================================="
 	@mkdir -p "$(CYCLE_COUNT_DIR)"
 	@$(MAKE) clean 2>/dev/null || true
+	@rm -rf "$(REGRESSION_STATUS_DIR)"
 	@$(MAKE) build_all_fw
-	@passed=0; failed=0; \
-	for t in $(FW_TESTS); do \
-		mkdir -p sim/logs/$$t; \
-		echo "[$$t] Starting..."; \
-		$(MAKE) run_fw FW_TEST=$$t > sim/logs/$$t/regression_run.log 2>&1 || true; \
-		if grep -qE "PASSED|PASS=1[[:space:]]+FAIL=0" sim/logs/$$t/regression_run.log; then \
-			echo "[$$t] PASSED"; passed=$$((passed+1)); \
-		else \
-			echo "[$$t] FAILED"; failed=$$((failed+1)); \
-		fi; \
-	done; \
+	@$(MAKE) compile_first TEST=test_firmware SIM_BUILD="$(REGRESSION_SIM_BUILD)"
+	@$(MAKE) --no-print-directory -k -j$(PARALLEL_JOBS) $(REGRESSION_JOBS)
+	@passed=$$(grep -lx PASSED "$(REGRESSION_STATUS_DIR)"/* 2>/dev/null | wc -l); \
+	failed=$$(grep -lx FAILED "$(REGRESSION_STATUS_DIR)"/* 2>/dev/null | wc -l); \
 	echo "==================================================================="; \
 	echo "Summary: $$passed passed, $$failed failed"; \
+	if [ $$failed -gt 0 ]; then \
+		echo "Failed: $$(grep -lx FAILED "$(REGRESSION_STATUS_DIR)"/* | xargs -n1 basename | tr '\n' ' ')"; \
+	fi; \
 	echo "==================================================================="; \
 	if [ $$failed -gt 0 ]; then exit 1; fi
 
@@ -327,6 +368,7 @@ help:
 	@echo "  build_fw FW_TEST=<t> - Build one firmware image only"
 	@echo "  build_all_fw       - Build all key_manager firmware images"
 	@echo "  filelist           - Generate RTL and testbench filelists"
+	@echo "  compile_first      - Compile the testbench without running a test"
 	@echo "  regression         - Build all firmware and run every test_* image"
 	@echo "  clean / clean_all  - Remove simulation artifacts and filelists"
 	@echo "  help               - Show this help message"
@@ -337,6 +379,7 @@ help:
 	@echo "  WAVES=1 FSDB=1     - Waveform dumping (VCD default; FSDB optional)"
 	@echo "  DEBUG=1            - Broader VCS debug access"
 	@echo "  VUART_PRINT=1      - Enable VUART printf output"
+	@echo "  PARALLEL_JOBS=<n>  - Concurrent regression simulations (default: 16)"
 	@echo ""
 	@echo "Firmware is built by the shared open DV firmware dispatcher:"
 	@echo "  make -f ocah.mk ocah-dv-fw-tests TARGET=key_manager [TEST=<t>]"

@@ -9,7 +9,7 @@ OUTPUT_ARCH( "riscv" )
 
 MEMORY {
     rom(rx):  ORIGIN = 0x00000000, LENGTH = 0x4000  /* 16KB ROM */
-    sram(rwx): ORIGIN = 0x00004000, LENGTH = 0x4000  /* 16KB SRAM */
+    sram(rwx): ORIGIN = 0x00008000, LENGTH = 0x8000  /* 32KB SRAM */
     vrom(r):  ORIGIN = 0x10000000, LENGTH = 0x10000  /* 64KB Virtual ROM (testbench only) */
 }
 

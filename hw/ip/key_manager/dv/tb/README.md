@@ -252,19 +252,23 @@ The `PRINT_ENABLE` bit in `VUART_STATUS` register (bit 2) controls whether firmw
 | Region | Address Range | Description |
 |--------|---------------|-------------|
 | ROM | 0x0000_0000 - 0x0000_3FFF | 16KB instruction ROM |
-| SRAM | 0x0000_4000 - 0x0000_7FFF | 16KB data SRAM |
-| Reserved | 0x0000_8000 - 0x0000_CFFF | Reserved (20KB) |
-| KPV | 0x0000_D000 - 0x0000_DFFF | Key and Policy Vault (4KB) |
-| KMCSR | 0x0000_E000 - 0x0000_EFFF | Control/Status registers (4KB) |
-| DRBG Sampler | 0x0000_F000 - 0x0000_FFFF | DRBG data/config/status (4KB) |
-| Mailbox KM | 0x0001_0000 - 0x0001_0FFF | Mailbox KM-side interface (4KB decode; registers in lower 2KB) |
+| Reserved | 0x0000_4000 - 0x0000_7FFF | Unmapped (DECERR) |
+| SRAM | 0x0000_8000 - 0x0000_FFFF | 32KB data SRAM |
+| Mailbox KM | 0x0001_0000 - 0x0001_001F | Mailbox KM-side interface (32B) |
 | **OTP/eFuse** | **0x0001_1000 - 0x0001_1FFF** | **eFuse AXI-Lite responder model (testbench only; see below)** |
-| Reserved | 0x0001_2000 - 0x0001_7FFF | Reserved (24KB) |
-| OTBN | 0x0001_8000 - 0x0001_8FFF | OTBN accelerator port (4KB) |
-| AES | 0x0001_9000 - 0x0001_9FFF | AES accelerator port (4KB) |
-| KMAC | 0x0001_A000 - 0x0001_AFFF | KMAC accelerator port (4KB) |
-| HMAC | 0x0001_B000 - 0x0001_BFFF | HMAC accelerator port (4KB) |
+| KPV | 0x0001_2000 - 0x0001_3FFF | Key and Policy Vault (8KB) |
+| KMCSR | 0x0001_4000 - 0x0001_47FF | Control/Status registers (2KB) |
+| DRBG Sampler | 0x0001_5000 - 0x0001_500F | DRBG data/config/status (16B) |
+| OTBN | 0x0001_8000 - 0x0001_807F | OTBN accelerator port (128B) |
+| AES | 0x0001_9000 - 0x0001_907F | AES accelerator port (128B) |
+| KMAC | 0x0001_A000 - 0x0001_A07F | KMAC accelerator port (128B) |
+| HMAC | 0x0001_B000 - 0x0001_B07F | HMAC accelerator port (128B) |
+| ABR | 0x0001_C000 - 0x0001_C7FF | Adams Bridge accelerator port (2KB) |
 | **VROM** | **0x1000_0000 - 0x1000_FFFF** | **64KB Virtual ROM (testbench only; main code + rodata)** |
+
+Each peripheral window is only as wide as its register block decodes. Addresses
+between windows return DECERR and unmapped offsets inside a window return
+SLVERR, which `test_km_addr_alias` sweeps the map to confirm.
 
 ### eFuse AXI-Lite Responder Model (OTP/eFuse window)
 
@@ -303,7 +307,7 @@ const char *msg = "Hello, World!";  // Stored in VROM at 0x1000_0000+
 const uint32_t lookup_table[] = {0, 1, 2, 3};  // Stored in VROM
 
 // Regular variables go to SRAM
-uint32_t counter = 0;  // Stored in SRAM at 0x0000_4000+
+uint32_t counter = 0;  // Stored in SRAM at 0x0000_8000+
 ```
 
 **Testbench Loading:**
@@ -315,23 +319,23 @@ uint32_t counter = 0;  // Stored in SRAM at 0x0000_4000+
 
 | Address | Register | Description |
 |---------|----------|-------------|
-| 0xE000 | VERSION | IP version (read-only, 0x0001_0000 = 1.0.0) |
-| 0xE004 | CTRL | Control register (currently reserved) |
-| 0xE008 | SOFT_RST_CODE | Write `0x53525354` (`SRST`) to trigger soft reset |
-| 0xE00C | IRQ_STATUS | Interrupt status (sticky error bits) |
-| 0xE010 | IRQ_ENABLE | Interrupt enable mask |
-| 0xE014 | SCRAMBLER_KEY | SRAM scrambler key (32-bit) |
-| 0xE018 | SCRAMBLER_CTRL | Scrambler enable and lock control |
-| 0xE020 | IRQ_SET | Software interrupt trigger (write-only) |
-| 0xE038 | SRAM_EXEC_MODE | Execute-permission whitelist mode |
-| 0xE0B8 | IRQ_ENTRY_ADDR | Programmable IRQ handler address (`km_csr.rdl`; ADDR field gated when locked) |
-| 0xE0BC | IRQ_ENTRY_LOCK | Lock for IRQ entry programming (write-one-set) |
-| 0xE100 | VUART_TX | Virtual UART transmit register |
-| 0xE104 | VUART_RX | Virtual UART receive register |
-| 0xE108 | VUART_STATUS | Virtual UART status register |
-| 0xE1FC | DEBUG | Debug register (read-only, 0xCAFEBEEF) |
+| 0x14000 | VERSION | IP version (read-only, 0x0001_0000 = 1.0.0) |
+| 0x14004 | CTRL | Control register (currently reserved) |
+| 0x14008 | SOFT_RST_CODE | Write `0x53525354` (`SRST`) to trigger soft reset |
+| 0x1400C | IRQ_STATUS | Interrupt status (sticky error bits) |
+| 0x14010 | IRQ_ENABLE | Interrupt enable mask |
+| 0x14014 | SCRAMBLER_KEY | SRAM scrambler key (32-bit) |
+| 0x14018 | SCRAMBLER_CTRL | Scrambler enable and lock control |
+| 0x14020 | IRQ_SET | Software interrupt trigger (write-only) |
+| 0x14038 | SRAM_EXEC_MODE | Execute-permission whitelist mode |
+| 0x140B8 | IRQ_ENTRY_ADDR | Programmable IRQ handler address (`km_csr.rdl`; ADDR field gated when locked) |
+| 0x140BC | IRQ_ENTRY_LOCK | Lock for IRQ entry programming (write-one-set) |
+| 0x14100 | VUART_TX | Virtual UART transmit register |
+| 0x14104 | VUART_RX | Virtual UART receive register |
+| 0x14108 | VUART_STATUS | Virtual UART status register |
+| 0x141FC | DEBUG | Debug register (read-only, 0xCAFEBEEF) |
 
-#### VUART_STATUS Register (0xE108)
+#### VUART_STATUS Register (0x14108)
 
 | Bit | Name | Description |
 |-----|------|-------------|
@@ -340,7 +344,7 @@ uint32_t counter = 0;  // Stored in SRAM at 0x0000_4000+
 | 2 | PRINT_ENABLE | Enable VUART printing (testbench-controlled, disabled by default) |
 | 31:3 | RSVD | Reserved |
 
-#### IRQ_STATUS Register (0xE00C)
+#### IRQ_STATUS Register (0x1400C)
 
 | Bit | Name | Description |
 |-----|------|-------------|
@@ -359,7 +363,7 @@ uint32_t counter = 0;  // Stored in SRAM at 0x0000_4000+
 The error bits (parity, ROM write, SRAM write-lock, AXI errors, DRBG, wipe, exec_violation) are **sticky**: once set by hardware,
 they remain set until firmware writes 1 to clear them (W1C = write-1-to-clear).
 
-#### IRQ_SET Register (0xE020)
+#### IRQ_SET Register (0x14020)
 
 | Bit | Name | Description |
 |-----|------|-------------|
@@ -384,14 +388,14 @@ The test framework uses dedicated KMCSR registers for firmware-testbench communi
 
 | Address | Register | Description |
 |---------|----------|-------------|
-| 0xE110 | TB_RESULT | Test result: 0=fail, 1=pass |
-| 0xE114 | TB_SIGNATURE | Completion signature: 0x600D600D (pass) or 0xBADBADBA (fail) |
-| 0xE118 | TB_ERRCODE | Optional error code for debugging |
-| 0xE11C | TB_SUBTEST | Current subtest number |
-| 0xE120 | TB_CMD | Command to testbench (write triggers action) |
-| 0xE124 | TB_CMD_ARG | Argument for testbench command |
-| 0xE128 | TB_CMD_STATUS | Status from testbench (0=idle, 1=ack, 2=error) |
-| 0xE12C | TB_CMD_RESULT | Result from testbench command (read-only) |
+| 0x14110 | TB_RESULT | Test result: 0=fail, 1=pass |
+| 0x14114 | TB_SIGNATURE | Completion signature: 0x600D600D (pass) or 0xBADBADBA (fail) |
+| 0x14118 | TB_ERRCODE | Optional error code for debugging |
+| 0x1411C | TB_SUBTEST | Current subtest number |
+| 0x14120 | TB_CMD | Command to testbench (write triggers action) |
+| 0x14124 | TB_CMD_ARG | Argument for testbench command |
+| 0x14128 | TB_CMD_STATUS | Status from testbench (0=idle, 1=ack, 2=error) |
+| 0x1412C | TB_CMD_RESULT | Result from testbench command (read-only) |
 
 ### Testbench Commands
 

@@ -64,7 +64,7 @@
 #define SOFT_RST_CODE_MAGIC 0x53525354u
 
 /* SRAM word used as phase marker.
- * Must be below BSS_START (currently 0x7670) so crt0.s does not clear it
+ * Must be below BSS_START so crt0.s does not clear it
  * when it re-executes after each warm reset (crt0 only clears the .bss
  * section, not the full SRAM).  Convention in this TB: use an address in
  * the mid-SRAM range that is also well above any plausible stack depth.
@@ -78,8 +78,8 @@
 #define TEST_IRQ_ENTRY_ADDR 0x10000100u
 
 /* SRAM write-lock region used to test warm-reset clearing.
- * Region 5 covers 0x5400-0x55FF — well below BSS/data/stack (packed from top
- * of SRAM) and not the phase-marker region (22) or the known hang region (15).
+ * Region 5 covers 0x9400-0x97FF — well below BSS/data/stack (packed from top
+ * of SRAM) and not the phase-marker region (11) or the known hang region (15).
  * The test only needs to set the bit and check it clears; no write to the
  * locked region is performed, so no CPU fault risk. */
 #define TEST_SRAM_LOCK_REGION 5u

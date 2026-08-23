@@ -230,13 +230,13 @@ module key_manager_reg (
     // Address Decode
     //--------------------------------------------------------------------------
     typedef struct {
-        logic kpv;
-        logic kmcsr;
-        logic drbg_sampler;
         logic mailbox_km;
         logic otp_efuse_map;
         logic otp_efuse_ctrl;
         logic otp_efuse_mmr;
+        logic kpv;
+        logic kmcsr;
+        logic drbg_sampler;
         logic otbn_wrapper_key;
         logic aes_wrapper_key;
         logic kmac_wrapper_key;
@@ -260,15 +260,6 @@ module key_manager_reg (
         is_external = '0;
         is_valid_addr = '1; // No valid address check
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.kpv = cpuif_req_masked & (cpuif_addr >= 17'hd000) & (cpuif_addr <= 17'hd000 + 17'h887);
-        is_external |= cpuif_req_masked & (cpuif_addr >= 17'hd000) & (cpuif_addr <= 17'hd000 + 17'h887);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'hd000) & (cpuif_addr <= 17'hd000 + 17'h887);
-        decoded_reg_strb.kmcsr = cpuif_req_masked & (cpuif_addr >= 17'he000) & (cpuif_addr <= 17'he000 + 17'h30b);
-        is_external |= cpuif_req_masked & (cpuif_addr >= 17'he000) & (cpuif_addr <= 17'he000 + 17'h30b);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'he000) & (cpuif_addr <= 17'he000 + 17'h30b);
-        decoded_reg_strb.drbg_sampler = cpuif_req_masked & (cpuif_addr >= 17'hf000) & (cpuif_addr <= 17'hf000 + 17'hf);
-        is_external |= cpuif_req_masked & (cpuif_addr >= 17'hf000) & (cpuif_addr <= 17'hf000 + 17'hf);
-        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'hf000) & (cpuif_addr <= 17'hf000 + 17'hf);
         decoded_reg_strb.mailbox_km = cpuif_req_masked & (cpuif_addr >= 17'h10000) & (cpuif_addr <= 17'h10000 + 17'h1b);
         is_external |= cpuif_req_masked & (cpuif_addr >= 17'h10000) & (cpuif_addr <= 17'h10000 + 17'h1b);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h10000) & (cpuif_addr <= 17'h10000 + 17'h1b);
@@ -281,6 +272,15 @@ module key_manager_reg (
         decoded_reg_strb.otp_efuse_mmr = cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h6f);
         is_external |= cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h6f);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h11500) & (cpuif_addr <= 17'h11500 + 17'h6f);
+        decoded_reg_strb.kpv = cpuif_req_masked & (cpuif_addr >= 17'h12000) & (cpuif_addr <= 17'h12000 + 17'h1107);
+        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h12000) & (cpuif_addr <= 17'h12000 + 17'h1107);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h12000) & (cpuif_addr <= 17'h12000 + 17'h1107);
+        decoded_reg_strb.kmcsr = cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h4bf);
+        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h4bf);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h14000) & (cpuif_addr <= 17'h14000 + 17'h4bf);
+        decoded_reg_strb.drbg_sampler = cpuif_req_masked & (cpuif_addr >= 17'h15000) & (cpuif_addr <= 17'h15000 + 17'hf);
+        is_external |= cpuif_req_masked & (cpuif_addr >= 17'h15000) & (cpuif_addr <= 17'h15000 + 17'hf);
+        is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h15000) & (cpuif_addr <= 17'h15000 + 17'hf);
         decoded_reg_strb.otbn_wrapper_key = cpuif_req_masked & (cpuif_addr >= 17'h18000) & (cpuif_addr <= 17'h18000 + 17'h63);
         is_external |= cpuif_req_masked & (cpuif_addr >= 17'h18000) & (cpuif_addr <= 17'h18000 + 17'h63);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 17'h18000) & (cpuif_addr <= 17'h18000 + 17'h63);
@@ -330,24 +330,6 @@ module key_manager_reg (
 
     
 
-    // External region: key_manager.kpv
-    assign hwif_out.kpv.req = decoded_reg_strb.kpv;
-    assign hwif_out.kpv.addr = decoded_addr[11:0];
-    assign hwif_out.kpv.req_is_wr = decoded_req_is_wr;
-    assign hwif_out.kpv.wr_data = decoded_wr_data;
-    assign hwif_out.kpv.wr_biten = decoded_wr_biten;
-    // External region: key_manager.kmcsr
-    assign hwif_out.kmcsr.req = decoded_reg_strb.kmcsr;
-    assign hwif_out.kmcsr.addr = decoded_addr[9:0];
-    assign hwif_out.kmcsr.req_is_wr = decoded_req_is_wr;
-    assign hwif_out.kmcsr.wr_data = decoded_wr_data;
-    assign hwif_out.kmcsr.wr_biten = decoded_wr_biten;
-    // External region: key_manager.drbg_sampler
-    assign hwif_out.drbg_sampler.req = decoded_reg_strb.drbg_sampler;
-    assign hwif_out.drbg_sampler.addr = decoded_addr[3:0];
-    assign hwif_out.drbg_sampler.req_is_wr = decoded_req_is_wr;
-    assign hwif_out.drbg_sampler.wr_data = decoded_wr_data;
-    assign hwif_out.drbg_sampler.wr_biten = decoded_wr_biten;
     // External region: key_manager.mailbox_km
     assign hwif_out.mailbox_km.req = decoded_reg_strb.mailbox_km;
     assign hwif_out.mailbox_km.addr = decoded_addr[4:0];
@@ -372,6 +354,24 @@ module key_manager_reg (
     assign hwif_out.otp_efuse_mmr.req_is_wr = decoded_req_is_wr;
     assign hwif_out.otp_efuse_mmr.wr_data = decoded_wr_data;
     assign hwif_out.otp_efuse_mmr.wr_biten = decoded_wr_biten;
+    // External region: key_manager.kpv
+    assign hwif_out.kpv.req = decoded_reg_strb.kpv;
+    assign hwif_out.kpv.addr = decoded_addr[12:0];
+    assign hwif_out.kpv.req_is_wr = decoded_req_is_wr;
+    assign hwif_out.kpv.wr_data = decoded_wr_data;
+    assign hwif_out.kpv.wr_biten = decoded_wr_biten;
+    // External region: key_manager.kmcsr
+    assign hwif_out.kmcsr.req = decoded_reg_strb.kmcsr;
+    assign hwif_out.kmcsr.addr = decoded_addr[10:0];
+    assign hwif_out.kmcsr.req_is_wr = decoded_req_is_wr;
+    assign hwif_out.kmcsr.wr_data = decoded_wr_data;
+    assign hwif_out.kmcsr.wr_biten = decoded_wr_biten;
+    // External region: key_manager.drbg_sampler
+    assign hwif_out.drbg_sampler.req = decoded_reg_strb.drbg_sampler;
+    assign hwif_out.drbg_sampler.addr = decoded_addr[3:0];
+    assign hwif_out.drbg_sampler.req_is_wr = decoded_req_is_wr;
+    assign hwif_out.drbg_sampler.wr_data = decoded_wr_data;
+    assign hwif_out.drbg_sampler.wr_biten = decoded_wr_biten;
     // External region: key_manager.otbn_wrapper_key
     assign hwif_out.otbn_wrapper_key.req = decoded_reg_strb.otbn_wrapper_key;
     assign hwif_out.otbn_wrapper_key.addr = decoded_addr[6:0];
@@ -409,13 +409,13 @@ module key_manager_reg (
     always_comb begin
         automatic logic wr_ack;
         wr_ack = '0;
-        wr_ack |= hwif_in.kpv.wr_ack;
-        wr_ack |= hwif_in.kmcsr.wr_ack;
-        wr_ack |= hwif_in.drbg_sampler.wr_ack;
         wr_ack |= hwif_in.mailbox_km.wr_ack;
         wr_ack |= hwif_in.otp_efuse_map.wr_ack;
         wr_ack |= hwif_in.otp_efuse_ctrl.wr_ack;
         wr_ack |= hwif_in.otp_efuse_mmr.wr_ack;
+        wr_ack |= hwif_in.kpv.wr_ack;
+        wr_ack |= hwif_in.kmcsr.wr_ack;
+        wr_ack |= hwif_in.drbg_sampler.wr_ack;
         wr_ack |= hwif_in.otbn_wrapper_key.wr_ack;
         wr_ack |= hwif_in.aes_wrapper_key.wr_ack;
         wr_ack |= hwif_in.kmac_wrapper_key.wr_ack;
@@ -434,13 +434,13 @@ module key_manager_reg (
     always_comb begin
         automatic logic rd_ack;
         rd_ack = '0;
-        rd_ack |= hwif_in.kpv.rd_ack;
-        rd_ack |= hwif_in.kmcsr.rd_ack;
-        rd_ack |= hwif_in.drbg_sampler.rd_ack;
         rd_ack |= hwif_in.mailbox_km.rd_ack;
         rd_ack |= hwif_in.otp_efuse_map.rd_ack;
         rd_ack |= hwif_in.otp_efuse_ctrl.rd_ack;
         rd_ack |= hwif_in.otp_efuse_mmr.rd_ack;
+        rd_ack |= hwif_in.kpv.rd_ack;
+        rd_ack |= hwif_in.kmcsr.rd_ack;
+        rd_ack |= hwif_in.drbg_sampler.rd_ack;
         rd_ack |= hwif_in.otbn_wrapper_key.rd_ack;
         rd_ack |= hwif_in.aes_wrapper_key.rd_ack;
         rd_ack |= hwif_in.kmac_wrapper_key.rd_ack;
@@ -471,15 +471,6 @@ module key_manager_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if((rd_mux_addr >= 17'hd000) && (rd_mux_addr <= 17'hd000 + 17'h887)) begin
-            readback_data_var = hwif_in.kpv.rd_data;
-        end
-        if((rd_mux_addr >= 17'he000) && (rd_mux_addr <= 17'he000 + 17'h30b)) begin
-            readback_data_var = hwif_in.kmcsr.rd_data;
-        end
-        if((rd_mux_addr >= 17'hf000) && (rd_mux_addr <= 17'hf000 + 17'hf)) begin
-            readback_data_var = hwif_in.drbg_sampler.rd_data;
-        end
         if((rd_mux_addr >= 17'h10000) && (rd_mux_addr <= 17'h10000 + 17'h1b)) begin
             readback_data_var = hwif_in.mailbox_km.rd_data;
         end
@@ -491,6 +482,15 @@ module key_manager_reg (
         end
         if((rd_mux_addr >= 17'h11500) && (rd_mux_addr <= 17'h11500 + 17'h6f)) begin
             readback_data_var = hwif_in.otp_efuse_mmr.rd_data;
+        end
+        if((rd_mux_addr >= 17'h12000) && (rd_mux_addr <= 17'h12000 + 17'h1107)) begin
+            readback_data_var = hwif_in.kpv.rd_data;
+        end
+        if((rd_mux_addr >= 17'h14000) && (rd_mux_addr <= 17'h14000 + 17'h4bf)) begin
+            readback_data_var = hwif_in.kmcsr.rd_data;
+        end
+        if((rd_mux_addr >= 17'h15000) && (rd_mux_addr <= 17'h15000 + 17'hf)) begin
+            readback_data_var = hwif_in.drbg_sampler.rd_data;
         end
         if((rd_mux_addr >= 17'h18000) && (rd_mux_addr <= 17'h18000 + 17'h63)) begin
             readback_data_var = hwif_in.otbn_wrapper_key.rd_data;

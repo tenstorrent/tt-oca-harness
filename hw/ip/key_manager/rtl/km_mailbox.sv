@@ -354,11 +354,16 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     //=========================================================================
 
     // Combinational address decode for KM (used for immediate routing decisions)
-    logic [11:0] km_aw_addr, km_ar_addr;
+    //
+    // Portal compares span the register block's address width: a wider slice
+    // would match every address that repeats a portal's offset.
+    localparam int unsigned KM_REG_ADDR_W = km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH;
+
+    logic [KM_REG_ADDR_W-1:0] km_aw_addr, km_ar_addr;
     logic km_aw_is_write_data, km_ar_is_read_data, km_aw_is_reg_block, km_ar_is_reg_block;
 
-    assign km_aw_addr = km_axil_req_i.aw.addr[11:0];
-    assign km_ar_addr = km_axil_req_i.ar.addr[11:0];
+    assign km_aw_addr = km_axil_req_i.aw.addr[KM_REG_ADDR_W-1:0];
+    assign km_ar_addr = km_axil_req_i.ar.addr[KM_REG_ADDR_W-1:0];
 
     assign km_aw_is_write_data = (km_aw_addr == KM_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR);
     assign km_ar_is_read_data = (km_ar_addr == KM_MAILBOX_KM_KM_READ_DATA_BASE_ADDR);
@@ -610,7 +615,7 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     // KM Register Block Interface
     //-------------------------------------------------------------------------
     logic km_reg_awready, km_reg_awvalid;
-    logic [km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH-1:0] km_reg_awaddr;
+    logic [KM_REG_ADDR_W-1:0] km_reg_awaddr;
     logic [2:0] km_reg_awprot;
     logic km_reg_wready, km_reg_wvalid;
     logic [31:0] km_reg_wdata;
@@ -618,7 +623,7 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
     logic km_reg_bready, km_reg_bvalid;
     logic [1:0] km_reg_bresp;
     logic km_reg_arready, km_reg_arvalid;
-    logic [km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH-1:0] km_reg_araddr;
+    logic [KM_REG_ADDR_W-1:0] km_reg_araddr;
     logic [2:0] km_reg_arprot;
     logic km_reg_rready, km_reg_rvalid;
     logic [31:0] km_reg_rdata;
@@ -626,14 +631,14 @@ module km_mailbox import km_intf_pkg::*; import axi_pkg::*; import km_mailbox_se
 
     // Route to register block only for register addresses
     assign km_reg_awvalid = km_axil_req_i.aw_valid && km_aw_is_reg_block;
-    assign km_reg_awaddr  = km_axil_req_i.aw.addr[km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH-1:0];
+    assign km_reg_awaddr  = km_axil_req_i.aw.addr[KM_REG_ADDR_W-1:0];
     assign km_reg_awprot  = km_axil_req_i.aw.prot;
     assign km_reg_wvalid  = km_axil_req_i.w_valid && km_aw_is_reg_block;
     assign km_reg_wdata   = km_axil_req_i.w.data;
     assign km_reg_wstrb   = km_axil_req_i.w.strb;
     assign km_reg_bready  = km_axil_req_i.b_ready;
     assign km_reg_arvalid = km_axil_req_i.ar_valid && km_ar_is_reg_block;
-    assign km_reg_araddr  = km_axil_req_i.ar.addr[km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH-1:0];
+    assign km_reg_araddr  = km_axil_req_i.ar.addr[KM_REG_ADDR_W-1:0];
     assign km_reg_arprot  = km_axil_req_i.ar.prot;
     assign km_reg_rready  = km_axil_req_i.r_ready;
 

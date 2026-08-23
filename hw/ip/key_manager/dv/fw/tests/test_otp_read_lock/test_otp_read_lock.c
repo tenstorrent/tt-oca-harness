@@ -11,8 +11,9 @@
  *   2. Lock chiplet_uid: subsequent reads return all-zero (hardware masks).
  *   3. Lock class_key:   subsequent reads return all-zero.
  *   4. Other fields (sip_uid, sys_uid) remain readable after the above locks.
- *   5. Write-1-only: writing 0 to OTP_READ_LOCK does not clear set bits.
- *   6. OTP_CHANGE_STATUS can be read and W1C-cleared.
+ *   5. The three public identity fields lock and mask independently.
+ *   6. Write-1-only: writing 0 to OTP_READ_LOCK does not clear set bits.
+ *   7. OTP_CHANGE_STATUS can be read and W1C-cleared.
  *
  * Run: make run_fw FW_TEST=test_otp_read_lock
  */
@@ -89,7 +90,67 @@ int main(void) {
     if (buf[0] == 0 && buf[1] == 0) TEST_FAIL("sys_uid: unexpectedly zero after unrelated lock");
     TEST_SUBTEST_PASS();
 
-    /* 5. Write-1-only: writing 0 to OTP_READ_LOCK does not clear locked bits */
+    /* 5. The public identity fields lock the same way the secrets do */
+    TEST_SUBTEST_START("Pre-lock: public identity fields readable");
+    rc = rom_otp_read_sep_chiplet_id(buf);
+    if (rc != 0) TEST_FAIL("sep_chiplet_id: pre-lock dual-rail check failed");
+    if (buf[0] == 0 && buf[1] == 0) TEST_FAIL("sep_chiplet_id: pre-lock returns zero");
+
+    rc = rom_otp_read_sep_sip_id(buf);
+    if (rc != 0) TEST_FAIL("sep_sip_id: pre-lock dual-rail check failed");
+    if (buf[0] == 0 && buf[1] == 0) TEST_FAIL("sep_sip_id: pre-lock returns zero");
+
+    rc = rom_otp_read_sep_sys_id(buf);
+    if (rc != 0) TEST_FAIL("sep_sys_id: pre-lock dual-rail check failed");
+    if (buf[0] == 0 && buf[1] == 0) TEST_FAIL("sep_sys_id: pre-lock returns zero");
+    TEST_SUBTEST_PASS();
+
+    TEST_SUBTEST_START("Lock sep_chiplet_id only");
+    rom_otp_set_read_lock(KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bm);
+    (void)rom_otp_read_sep_chiplet_id(buf);
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != 0) {
+            TEST_FAIL("sep_chiplet_id[%u]: post-lock returns non-zero 0x%08X", i, buf[i]);
+        }
+    }
+    /* The neighbouring identity fields must not be caught by that one lock. */
+    rc = rom_otp_read_sep_sip_id(buf);
+    if (rc != 0 || (buf[0] == 0 && buf[1] == 0)) {
+        TEST_FAIL("sep_sip_id: locked by the sep_chiplet_id lock bit");
+    }
+    rc = rom_otp_read_sep_sys_id(buf);
+    if (rc != 0 || (buf[0] == 0 && buf[1] == 0)) {
+        TEST_FAIL("sep_sys_id: locked by the sep_chiplet_id lock bit");
+    }
+    TEST_SUBTEST_PASS();
+
+    TEST_SUBTEST_START("Lock sep_sip_id and sep_sys_id");
+    rom_otp_set_read_lock(KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bm |
+                          KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bm);
+    (void)rom_otp_read_sep_sip_id(buf);
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != 0) {
+            TEST_FAIL("sep_sip_id[%u]: post-lock returns non-zero 0x%08X", i, buf[i]);
+        }
+    }
+    (void)rom_otp_read_sep_sys_id(buf);
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != 0) {
+            TEST_FAIL("sep_sys_id[%u]: post-lock returns non-zero 0x%08X", i, buf[i]);
+        }
+    }
+    /* sip_uid and sys_uid share a name prefix but not a lock bit. */
+    rc = rom_otp_read_sip_uid(buf);
+    if (rc != 0 || (buf[0] == 0 && buf[1] == 0)) {
+        TEST_FAIL("sip_uid: locked by an identity lock bit");
+    }
+    rc = rom_otp_read_sys_uid(buf);
+    if (rc != 0 || (buf[0] == 0 && buf[1] == 0)) {
+        TEST_FAIL("sys_uid: locked by an identity lock bit");
+    }
+    TEST_SUBTEST_PASS();
+
+    /* 6. Write-1-only: writing 0 to OTP_READ_LOCK does not clear locked bits */
     TEST_SUBTEST_START("Write-1-only: 0-write cannot clear locked bits");
     {
         /* Directly write 0 to the register */

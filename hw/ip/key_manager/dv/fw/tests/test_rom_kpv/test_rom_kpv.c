@@ -10,6 +10,7 @@
  * - Scrambler init; shred with scrambler off, verify shred worked, then turn
  *   scrambler on and verify it is working; lock. Continue with rest.
  * - Shred-all, write/read key, write-lock, read-lock, shred-slot.
+ * - Rejection of a word count that would spill out of a slot.
  *
  * Requires the DRBG to be initialized first (for the scrambler key).
  *
@@ -171,11 +172,11 @@ int main(void) {
         for (i = 0; i < 16; i++) {
             key_in[i] = 0x01020304u + i;
         }
-        int rc = rom_kpv_write_key(0, key_in, 16);
+        int rc = rom_kpv_write_slot(0, key_in, 16);
         if (rc != 0) {
-            TEST_FAIL("write_key slot 0 returned %d", rc);
+            TEST_FAIL("write_slot slot 0 returned %d", rc);
         }
-        TEST_LOG("  write_key slot 0 ok");
+        TEST_LOG("  write_slot slot 0 ok");
     }
     TEST_SUBTEST_PASS();
 
@@ -183,19 +184,17 @@ int main(void) {
     TEST_SUBTEST_START("Read key from slot 0");
     {
         uint32_t key_out[16];
-        uint8_t key_len = 0;
         uint32_t i;
 
-        int rc = rom_kpv_read_key(0, key_out, &key_len);
+        int rc = rom_kpv_read_slot(0, key_out, 16);
         if (rc != 0) {
-            TEST_FAIL("read_key slot 0 returned %d", rc);
+            TEST_FAIL("read_slot slot 0 returned %d", rc);
         }
-        TEST_ASSERT_EQ(key_len, 16u, "key_len");
         for (i = 0; i < 16; i++) {
             uint32_t expected = 0x01020304u + i;
             TEST_ASSERT_EQ(key_out[i], expected, "key word");
         }
-        TEST_LOG("  read_key slot 0 matches");
+        TEST_LOG("  read_slot slot 0 matches");
     }
     TEST_SUBTEST_PASS();
 
@@ -208,9 +207,9 @@ int main(void) {
             new_key[i] = 0xFFu;
         }
         rom_kpv_write_lock(0);
-        int rc = rom_kpv_write_key(0, new_key, 16);
+        int rc = rom_kpv_write_slot(0, new_key, 16);
         if (rc != -1) {
-            TEST_FAIL("write_key to write-locked slot should return -1, got %d", rc);
+            TEST_FAIL("write_slot to write-locked slot should return -1, got %d", rc);
         }
         TEST_LOG("  write-lock verified");
     }
@@ -220,12 +219,11 @@ int main(void) {
     TEST_SUBTEST_START("Read-lock slot 0");
     {
         uint32_t key_out[16];
-        uint8_t key_len = 0;
 
         rom_kpv_read_lock(0);
-        int rc = rom_kpv_read_key(0, key_out, &key_len);
+        int rc = rom_kpv_read_slot(0, key_out, 16);
         if (rc != -1) {
-            TEST_FAIL("read_key from read-locked slot should return -1, got %d", rc);
+            TEST_FAIL("read_slot from read-locked slot should return -1, got %d", rc);
         }
         TEST_LOG("  read-lock verified");
     }
@@ -254,12 +252,43 @@ int main(void) {
             for (uint32_t i = 0; i < 16; i++) {
                 key_in[i] = 0x11223300u + i;
             }
-            int wrc = rom_kpv_write_key(0, key_in, 16);
+            int wrc = rom_kpv_write_slot(0, key_in, 16);
             if (wrc != 0) {
-                TEST_FAIL("write_key to shredded slot 0 returned %d", wrc);
+                TEST_FAIL("write_slot to shredded slot 0 returned %d", wrc);
             }
         }
         TEST_LOG("  shred-slot on locked slot verified");
+    }
+    TEST_SUBTEST_PASS();
+
+    /* Slots are contiguous, so a word count past the end of one would spill
+     * into the next; both primitives must reject it before touching the KPV. */
+    TEST_SUBTEST_START("write_slot/read_slot reject an out-of-range word count");
+    {
+        uint32_t buf[ROM_KM_KPV_WORDS_PER_SLOT];
+        for (uint32_t i = 0; i < ROM_KM_KPV_WORDS_PER_SLOT; i++) {
+            buf[i] = 0xC0DE0000u + i;
+        }
+
+        if (rom_kpv_write_slot(0, buf, 0) != -1) {
+            TEST_FAIL("write_slot with n_words=0 should return -1");
+        }
+        if (rom_kpv_write_slot(0, buf, (uint8_t)(ROM_KM_KPV_WORDS_PER_SLOT + 1)) != -1) {
+            TEST_FAIL("write_slot with n_words=%u should return -1",
+                      (unsigned)ROM_KM_KPV_WORDS_PER_SLOT + 1u);
+        }
+        if (rom_kpv_read_slot(0, buf, 0) != -1) {
+            TEST_FAIL("read_slot with n_words=0 should return -1");
+        }
+        if (rom_kpv_read_slot(0, buf, (uint8_t)(ROM_KM_KPV_WORDS_PER_SLOT + 1)) != -1) {
+            TEST_FAIL("read_slot with n_words=%u should return -1",
+                      (unsigned)ROM_KM_KPV_WORDS_PER_SLOT + 1u);
+        }
+
+        /* The full-slot count remains legal. */
+        if (rom_kpv_write_slot(0, buf, (uint8_t)ROM_KM_KPV_WORDS_PER_SLOT) != 0) {
+            TEST_FAIL("write_slot with a full slot should succeed");
+        }
     }
     TEST_SUBTEST_PASS();
 
