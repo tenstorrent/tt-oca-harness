@@ -52,7 +52,6 @@ module sep
 
         input  logic ext_boot_seq_done_i,
 
-        // TODO: Do we need this?
         // DMI port for uncore
         input  logic        dmi_core_enable,
         input  logic        dmi_uncore_enable,
@@ -71,8 +70,6 @@ module sep
         input logic                      timer_int,
         input logic                      soft_int,
         input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
-
-        // TODO: Are these supposed to go into sep_safety?
 
         // Memory macro interfaces
         output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
@@ -253,7 +250,7 @@ module sep
     logic cpu_lockstep_err_injection_en;
     logic cpu_corruption_detected;
 
-    // FIXME: We dont need these for now
+    // Not currently used; tie off.
     assign cpu_disable_corruption_detection = '0;
     assign cpu_lockstep_err_injection_en = '0;
   `endif
@@ -1034,35 +1031,9 @@ module sep
         .sep_sw_rst_no              (sep_sw_rst_no)
     );
 
-    // TODO: AXI slave in + AXI master out (to CPU subsystem, indirectly connected to everything) + local CSRs
-    // TODO: Does this need to be wrapped in a ifdef or parameter?
-    // if (EN_SEP_SAFETY) begin: GEN_SEP_SAFETY
-
-    //     sep_safety safety (
-
-    //         .clk_i,
-    //         .rst_ni,
-
-    //         // TODO: AXI master in
-    //         // TODO: AXI master out
-
-    //         // TODO: external safety/error interface
-
-    //         // TODO: Similar signals for the scratchpad RAM?
-
-    //         `ifdef RV_LOCKSTEP_ENABLE
-    //         `endif
-
-    //         // TODO: Do we need more of these?
-
-    //     );
-
     ////////////////
     // Secure DMA //
     ////////////////
-
-    // TODO: Tie in unused signals or remove from wrapper
-    // TODO: Check over these parameters
 
     secure_dma_pkg::lsio_trigger_t lsio_trigger;
     assign lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger;

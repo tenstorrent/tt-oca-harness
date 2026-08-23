@@ -18,7 +18,6 @@
 // - No transaction splitting across multiple SRAM accesses
 // - ram_gnt_i is hardwired from ram_req_o (valid for OTBN instance but may not be valid for other instances)
 //
-// TODO:
 // - woffset FIFO integrity
 
 `include "prim_assert.sv"

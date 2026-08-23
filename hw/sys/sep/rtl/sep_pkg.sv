@@ -5,10 +5,10 @@ package sep_pkg;
 
     `include "axi/typedef.svh"
 
-    // TODO: Consider including och_sep_top_reg.svh here once efuse register
-    //       naming collision is resolved (sep_efuse_map_reg.svh uses same
-    //       identifier names with offset-based addresses vs absolute addresses
-    //       in och_sep_top_reg.svh)
+    // och_sep_top_reg.svh is intentionally not included here due to an efuse
+    // register naming collision: sep_efuse_map_reg.svh uses the same identifier
+    // names with offset-based addresses, whereas och_sep_top_reg.svh uses
+    // absolute addresses.
 
     parameter bit EN_EXTERNAL_MST = 1'b1;
 
@@ -303,7 +303,7 @@ package sep_pkg;
     `AXI_LITE_TYPEDEF_ALL(sep_axilite_xbar, sep_axilite_xbar_addr_t, sep_axilite_xbar_data_t, sep_axilite_xbar_strb_t)
 
     //////////
-    // External interface types (FIXME: Mostly placeholders for now)
+    // External interface types (mostly placeholders for now)
     //////////
 
     typedef logic sep_private_io_req_t;

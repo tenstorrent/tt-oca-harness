@@ -150,7 +150,6 @@ module sep_cpu (
       .o_q       (mpc_reset_run_req_sync)
   );
 
-  // TODO: Make it such that this is easier to replace with another CPU
   el2_veer_wrapper #(
     .RESET_VEC (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
   ) el2_veer_wrapper (
