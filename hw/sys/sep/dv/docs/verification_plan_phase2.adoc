@@ -41,8 +41,10 @@ open. A leftover from the signed-off Phase 1 handoff table is covered
 here: extend a Phase 2 test that already owns that claim, or add the
 named new test.
 Do not stretch the Phase 1 e2e / smoke entry. New tests are created
-from <<iconic-remaining>> when no Phase 2 vehicle exists. Phase 3
-corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
+from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
+is the completeness extension: same cocotb environment, target 28/28
+`PROVEN` scorecard rows, finished before Phase 3 starts a UVM bench.
+Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
 directed name is not coverage. There is no separate improvement
 worklist.
 
@@ -72,7 +74,11 @@ eFuse, and Key Manager. See <<attention>>.
 
 | Iconic remaining — new tests
 | see <<iconic-remaining>>
-| Phase 2 execute when an extend cannot carry the claim
+| Phase 2 names; <<phase2-plus>> executes them
+
+| Phase 2+ close-out
+| 6 scorecard rows
+| <<phase2-plus>> — 28/28 before UVM
 
 | Landed existing-test upgrades
 | see <<existing-upgrades>>
@@ -1945,10 +1951,9 @@ Coverage class:: `[STUB-CONST]` / `[DECODE-ONLY]`
 ==== Description
 
 `CLOCK_GATE_CTRL` implements one bit (`pka_cg_enable[0:0]`); RTL sinks it
-into an unused net. The designer reduced the old per-IP enable map to
-this placeholder (tt-oca-hw #3950 / #3965). This is the iconic
-clock-gate representative: storage plus witness CSRs that still complete
-OKAY with the bit 0 and 1. No bit in this map clocks an IP off.
+into an unused net. This is the iconic clock-gate representative: storage
+plus witness CSRs that still complete OKAY with the bit 0 and 1. No bit
+in this map clocks an IP off.
 
 ==== Steps
 
@@ -2045,9 +2050,9 @@ ring oscillator, KM wipe, and inbound negative product are Phase 3 T.B.D.
 
 These IPs still have an iconic hole or a leftover *claim* listed on the
 signed-off Phase 1 handoff table. Closing that claim is Phase 2
-scorecard work (toward 85%). Do not stretch the Phase 1 e2e / smoke
-entry. Extend a Phase 2 test that already owns the claim, or add the
-named new Phase 2 test.
+scorecard work (toward 85%) and <<phase2-plus>> (28/28 before UVM).
+Do not stretch the Phase 1 e2e / smoke entry. Extend a Phase 2 test that
+already owns the claim, or add the named new Phase 2 test.
 
 [cols="2,2,3",options="header"]
 |===
@@ -2069,7 +2074,7 @@ named new Phase 2 test.
 
 | Key Manager
 | Sideload consume is `PROVEN`; mailbox command set is `GAP`
-| New remaining RAND-REP (generate / transfer / revoke-or-shred /
+| <<phase2-plus>> RAND-REP (generate / transfer / revoke-or-shred /
   illegal→error). Sideload KATs stay consume proofs. Wipe stays
   Phase 3 T.B.D.
 |===
@@ -2090,7 +2095,8 @@ not a feature-level `PROVEN` on the scorecard — see
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard]. The rows
 below are feature `GAP`s (no test yet for that iconic claim). Checker
 tables stay binary; `PARTIAL` is a feature grade there, not a checker
-grade here.
+grade here. <<phase2-plus>> is the execute list that closes these rows
+and the two `PARTIAL` leftovers (RMA, inbound ownership) before UVM.
 
 [cols="2,2,3",options="header"]
 |===
@@ -2115,15 +2121,172 @@ grade here.
   `sep_lcc_uvm_prod_dbg_flavour_test`
 
 | Live outbound remap
-| Not executed in this wrap-up. After the inbound source-ID upgrade,
-  fabric is not a feature-scorecard hole: reachability is `PROVEN`,
-  inbound is no longer a missing-test gap, alias remap is live, outbound
-  *programming* is the CSR bank. Live AP-STEE translate + outbound drop
-  stays a named GAP; Phase 3 already owns the outbound tail names.
+| One live-datapath test: a programmed region translates, and the
+  outbound filter drops a forbidden beat. CSR-bank R/W stays on
+  `sep_fabric_remap_filter_csr_bank_test`. Phase 3 keeps tail-closure
+  and outbound source-ID policy.
 | `sep_fabric_output_remap_datapath_proxy_test`;
   `MERGED_INTO`: `sep_outbound_filter_cfg_test`,
   `sep_outbound_path_selection_test`
 |===
+
+[[phase2-plus]]
+== Phase 2+ — 28/28 before UVM
+
+Same cocotb / PyUVM + Verilator environment as Phase 2. Same DUT
+(`sep_wrapper`), same quality bar, same fuse/run-mode rules. Phase 2+
+does not start a UVM bench — that is Phase 3. It is the completeness
+extension of this document: every in-scope
+link:oss_dv_plan.adoc#iconic-scorecard[iconic-scorecard] row `PROVEN`
+before `verification_plan_phase3.adoc` begins.
+
+Phase 2 keeps its floor (*> 60%*) and target (*85%* = 24 of 28). Phase 2+
+is the remaining six rows. Do not stretch a Phase 1 e2e / smoke entry.
+Do not XFAIL a spec-vs-RTL checker.
+
+[cols="2,1,3,3",options="header"]
+|===
+| Scorecard row | Today | Phase 2+ close | Vehicle
+
+| Key Manager as a command device
+| GAP
+| New RAND-REP: generate / transfer / revoke-or-shred / illegal→error.
+  Mailbox protocol RANDCFG in the same test unless it does not fit.
+| `sep_km_command_set_rand_test`
+  (`sep_km_mailbox_protocol_rand_test` only if the protocol does not fit)
+
+| eFuse program × lock
+| GAP
+| New RAND-REP on a legal spare/test field. Never `LC_STATE`.
+| `sep_efuse_program_lock_matrix_test`
+
+| Lifecycle demote product
+| PARTIAL
+| New RAND-REP: LC × demote × a small legal DIS subset. `feat_ctrl` vs
+  golden *and* one live filter/debug-gate. The Phase 1 stitch test stays
+  the LC→`feat_ctrl` e2e.
+| `sep_lcc_demote_feat_ctrl_matrix_test`
+
+| RMA token match → LC update
+| PARTIAL
+| New RANDCFG. Token match updates LC; mismatch does not. Check LC
+  shadow and LCC `FEAT_CTRL` against independent goldens. Do not stretch
+  the Phase 1 stitch test into the token matrix.
+| `sep_efuse_rma_token_rand_test`
+
+| Outbound filter / AP-STEE live remap
+| GAP
+| One live-datapath test. A programmed region translates on a real
+  beat. The outbound filter drops a forbidden beat. CSR programming
+  stays on `sep_fabric_remap_filter_csr_bank_test`.
+| `sep_fabric_output_remap_datapath_proxy_test`
+
+| Inbound filter (ownership slice)
+| PARTIAL
+| No new test. The matrix already walks allow/block, source-ID, and
+  `SEP_DBG`. CHK-OWNERSHIP-WINDOW stays a hard assert (RTL OKAY vs
+  `fabric.adoc` DECERR, issue 1050). The row becomes `PROVEN` when that
+  checker matches the spec. Do not XFAIL. Do not invent a sibling.
+| `sep_fabric_inbound_filter_rule_matrix_test`
+|===
+
+Five new tests plus one existing-test RTL close. A planned card below is
+not a grade — promote it to <<entries>> only after a kept Verilator log
+proves every checker.
+
+=== Planned: sep_km_command_set_rand_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
+Testlist:: `km.toml`
+Randomization:: RAND-REP — generate / transfer / revoke-or-shred /
+illegal→error every seed; mailbox operands from the run seed
+
+Sideload KATs stay consume proofs. This test owns the mailbox command
+set. If mailbox protocol RANDCFG does not fit, add
+`sep_km_mailbox_protocol_rand_test` rather than overload this card.
+
+Checkers (planned):: command accepted or rejected per the KM spec;
+transfer makes the consumer-visible key match the generated value;
+revoke-or-shred makes a later consume fail closed; an illegal command
+returns the documented error and does not change key state.
+
+=== Planned: sep_efuse_program_lock_matrix_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, real fuse sense (no `+skip_fuse_sense`)
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-REP — lock × program on a legal spare/test field
+
+Never program `LC_STATE` here. The stitch test stays the LC e2e. After
+`PROGRAM_DONE`, clear `EFUSE_PROGRAM_CTRL` before any read.
+
+Checkers (planned):: an unlocked field programs and reads back; a locked
+field rejects program; resense matches the independent image golden.
+
+=== Planned: sep_lcc_demote_feat_ctrl_matrix_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, real fuse sense
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-REP — walk LC × `DEMOTE_1`/`DEMOTE_2` × a small
+legal DIS subset
+
+The Phase 1 stitch test stays the LC→`feat_ctrl` e2e. This test owns the
+product.
+
+Checkers (planned):: `feat_ctrl` matches the spec-derived golden for
+every walked cell; one live filter or debug-gate follows that golden
+(not CSR storage alone).
+
+=== Planned: sep_efuse_rma_token_rand_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, real fuse sense
+Testlist:: `efuse_lcc.toml`
+Randomization:: RANDCFG — legal token vs mismatch from the run seed
+
+Closes the RMA iconic row without stretching
+`sep_efuse_lcc_lc_state_stitch_test`.
+
+Checkers (planned):: a matching token allows the LC update; a mismatch
+does not; LC shadow and LCC `FEAT_CTRL` match independent goldens after
+resense.
+
+=== Planned: sep_fabric_output_remap_datapath_proxy_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense` unless the remap/filter check
+depends on sense
+Testlist:: `system.toml`
+Randomization:: RANDCFG — region base/size and one forbidden beat from
+the run seed
+
+The CSR bank is already proven. This test observes a translated beat and
+a dropped beat on the live outbound path. Phase 3 keeps
+`sep_fabric_outbound_tail_closure_test` and
+`sep_outbound_source_id_policy_test`.
+
+Checkers (planned):: a programmed region translates (observed address or
+response is the remapped target, not the programmed identity); a beat
+outside the allow set is DECERR or dropped; the CSR-only test is not
+re-run as the proof.
+
+=== Inbound ownership — no new test
+
+`sep_fabric_inbound_filter_rule_matrix_test` already owns the iconic
+inbound walk. CHK-OWNERSHIP-WINDOW is the remaining slice: after
+allow-listing the CFG window the external master must DECERR
+(`fabric.adoc`: only the SEP CPU programs the filter). RTL returns OKAY
+(issue 1050). Phase 2+ keeps that assert hard. The scorecard row moves
+to `PROVEN` when the checker is green. A JTAG-style “`PROVEN` plus named
+`FAILED` slice” is a scorecard-owner call, not a default here — inbound
+ownership is part of the iconic claim.
 
 [[existing-upgrades]]
 == Landed existing-test upgrades
@@ -2158,8 +2321,7 @@ tree; the wrap-up Verilator log is the grade. Do not add a sibling test.
 
 | Clock-gate placeholder
 | `sep_clock_gate_control_test` proves `pka_cg_enable` storage and
-  stub-const witness reachability. Designer reduced the map; a live
-  per-IP gate is not in this RTL
+  stub-const witness reachability. A live per-IP gate is not in this RTL
 | `sep_clock_uvm_clock_gate_control_test`
 
 | DMA modes
@@ -2339,7 +2501,7 @@ worklist and not committed Phase 3 scope. Do not grade them here.
 | Fabric gap-matrix
 
 | `sep_fabric_outbound_tail_closure_test`
-| Outbound tail-closure
+| Outbound tail-closure. Iconic live remap is <<phase2-plus>>
 
 | `sep_irq_extended_connectivity_test`
 | PIC map coverage-bin walk
@@ -2387,13 +2549,13 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 
 == Audit summary
 
-22 testcases, 47 steps, 118 checkers.
+24 testcases, 51 steps, 122 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 117
+| `PROVEN` | 121
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
