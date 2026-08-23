@@ -213,7 +213,118 @@ explains how they are wired together inside the SMU and how to select between th
 <code>smu.sv</code> logic-level core and the <code>smu_wrapper.sv</code> reference integration.</p>
 </div>
 <div class="sect2">
-<h3 id="smc-integration"><a class="anchor" href="#smc-integration"></a><a class="link" href="#smc-integration">2.1. System Management Controller (SMC) Integration</a></h3>
+<h3 id="address-map-integration"><a class="anchor" href="#address-map-integration"></a><a class="link" href="#address-map-integration">2.1. Address Map Integration</a></h3>
+<div class="paragraph">
+<p>The OCAH address map has three levels, and the assignment contract splits across
+the integrator, SEP firmware, and SMC firmware. Assign and program them from this
+section; the deeper subsystem and crossbar sections referenced below give the
+per-block detail.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Chiplet envelope (integrator).</strong> The SoC/chiplet address map assigns each
+subsystem a global base and reserved size, and the adopter&#8217;s fabric decoder
+routes those ranges to the SMU. The SMU crossbar preserves offsets and does not
+constrain envelope size, so the integrator owns non-overlap and containment at
+the SoC level.</p>
+</li>
+<li>
+<p><strong>SEP and SMC chiplet apertures (firmware).</strong> Each subsystem exposes a
+chiplet-visible aperture whose base and size are programmable at runtime.
+Inbound transactions to an aperture are remapped global-to-local before they
+reach the subsystem.</p>
+</li>
+<li>
+<p><strong>Local-alias views (fixed in RTL).</strong> Internally each subsystem addresses its
+own resources through a fixed local map: the SMC at <code>0xC000_0000</code> (see
+<a href="#smc-address-map-integration">Address Map and Aperture</a>), the SEP through its own local map. These are
+RTL-fixed and not integrator-assigned.</p>
+</li>
+</ul>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Address-map assignment contract</caption>
+<colgroup>
+<col style="width: 26%;">
+<col style="width: 20%;">
+<col style="width: 54%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Level</th>
+<th class="tableblock halign-left valign-top">Owner</th>
+<th class="tableblock halign-left valign-top">Assigned / programmed by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet envelope</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Integrator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SoC/chiplet address map + adopter fabric decode</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP chiplet aperture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_GLOBAL_BASE_ADDR</code> / <code>SEP_REGION_SIZE</code>
+(the <code>sep_cpu_ctrl</code> CSRs)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC chiplet aperture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC firmware</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GLOBAL_BASE</code> / <code>REGION_SIZE</code> (the SMC CPU
+Control CSRs at <code>0xC001_0000</code>)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP / SMC local view</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fixed (RTL)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Offsets within each subsystem&#8217;s local map
+(SMC local base <code>0xC000_0000</code>)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Programming order and constraints: firmware programs the SEP and SMC aperture
+CSRs during early boot, <strong>before any cross-subsystem AXI traffic is issued</strong>, and
+must keep the two apertures non-overlapping and inside the chiplet envelope the
+integrator assigned. The full runtime crossbar behaviour and the exact CSR
+plumbing are in <a href="#smu-firmware-programming-order">Firmware programming order</a> under <a href="#smu-composition">SMU Composition and Internal Wiring</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="address-map-collateral"><a class="anchor" href="#address-map-collateral"></a><a class="link" href="#address-map-collateral">2.1.1. Register collateral</a></h4>
+<div class="paragraph">
+<p>The machine-readable address map ships in the repository tree; integrators
+consume it from the release checkout or tarball rather than a separate package:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>System tops: <code>hw/sys/&lt;sys&gt;/regs/&lt;sys&gt;.rdl</code> (e.g. <code>hw/sys/sep/regs/sep.rdl</code>,
+<code>hw/sys/smc/regs/smc.rdl</code>).</p>
+</li>
+<li>
+<p>IP blocks: <code>hw/ip/&lt;ip&gt;/regs/&lt;ip&gt;.rdl</code>.</p>
+</li>
+<li>
+<p>Vendored blocks: <code>vendor/&#8230;&#8203;/overlay/regs/&lt;ip&gt;/regs/&lt;ip&gt;.rdl</code> or
+<code>vendor/&#8230;&#8203;/overlay/rdl/&lt;ip&gt;.rdl</code>.</p>
+</li>
+<li>
+<p>Generated outputs per block: <code>&lt;block&gt;/regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/</code>
+— C headers, SystemVerilog packages, Python models, UVM RAL, documentation, and
+IEEE 1685-2014 IP-XACT component descriptions.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For the architecture-level responsibility split between the integrator, firmware,
+and the internal SEP/SMC maps, see
+<a href="../../ocah-docs/latest/architecture.html#ocah-memory-map" class="xref page">OCAH Memory Map</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-integration"><a class="anchor" href="#smc-integration"></a><a class="link" href="#smc-integration">2.2. System Management Controller (SMC) Integration</a></h3>
 <div class="paragraph">
 <p>The System Management Controller (SMC) is a subsystem responsible for power
 management, clock control, reset sequencing, and peripheral interface
@@ -229,7 +340,7 @@ wrappers demonstrate this integration.</p>
 <code>hw/top/smc_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code>.</p>
 </div>
 <div class="sect3">
-<h4 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">2.1.1. Clock and Reset</a></h4>
+<h4 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">2.2.1. Clock and Reset</a></h4>
 <div class="paragraph">
 <p>The SMC requires three external clock inputs: <code>clk_smc_i</code> (primary system clock
 driving the CPU cluster, fabric, and peripherals), <code>clk_periph_i</code> (peripheral clock
@@ -257,7 +368,7 @@ deasserted; the DTP drives them through JTAG IC_RESET controls when enabled
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-address-map-integration"><a class="anchor" href="#smc-address-map-integration"></a><a class="link" href="#smc-address-map-integration">2.1.2. Address Map and Aperture</a></h4>
+<h4 id="smc-address-map-integration"><a class="anchor" href="#smc-address-map-integration"></a><a class="link" href="#smc-address-map-integration">2.2.2. Address Map and Aperture</a></h4>
 <div class="paragraph">
 <p>The SMC has a chiplet-visible aperture and an internal local address
 view. Internally, the SMC uses a fixed local base address of
@@ -278,7 +389,7 @@ reserved system range to the SMC block so that offsets are preserved:
 system base + offset maps to SMC-local <code>0xC000_0000</code> + offset.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Address Base Mapping</caption>
+<caption class="title">Table 2. Address Base Mapping</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 30%;">
@@ -342,7 +453,7 @@ refer to the SMC Memory Map documentation (<code>hw/sys/smc/doc/memmap.adoc</cod
 </div>
 </div>
 <div class="sect3">
-<h4 id="axi-interface-configuration"><a class="anchor" href="#axi-interface-configuration"></a><a class="link" href="#axi-interface-configuration">2.1.3. AXI Interface Configuration</a></h4>
+<h4 id="axi-interface-configuration"><a class="anchor" href="#axi-interface-configuration"></a><a class="link" href="#axi-interface-configuration">2.2.3. AXI Interface Configuration</a></h4>
 <div class="paragraph">
 <p>The SMC provides three distinct AXI interface groups serving different access
 paths. The <code>sys_axi_in</code> interface accepts requests from external system masters
@@ -374,7 +485,7 @@ this interface.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="gpio-pad-integration"><a class="anchor" href="#gpio-pad-integration"></a><a class="link" href="#gpio-pad-integration">2.1.4. GPIO Pad Integration</a></h4>
+<h4 id="gpio-pad-integration"><a class="anchor" href="#gpio-pad-integration"></a><a class="link" href="#gpio-pad-integration">2.2.4. GPIO Pad Integration</a></h4>
 <div class="paragraph">
 <p>GPIO pad integration requires careful attention to function assignment and pull
 requirements. The GPIO table below lists each signal, bump location, function,
@@ -397,7 +508,7 @@ the decoded bit assignments, including <code>BYPASS_SRAM_REPAIR</code> at
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-peripheral-connections"><a class="anchor" href="#smc-peripheral-connections"></a><a class="link" href="#smc-peripheral-connections">2.1.5. Peripheral Interface Connections</a></h4>
+<h4 id="smc-peripheral-connections"><a class="anchor" href="#smc-peripheral-connections"></a><a class="link" href="#smc-peripheral-connections">2.2.5. Peripheral Interface Connections</a></h4>
 <div class="paragraph">
 <p>The SMC exposes logic-level interfaces to several technology-specific
 subsystem components that the adopter instantiates externally. The
@@ -513,7 +624,7 @@ indicates completion of this sensing operation.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="memory-subsystem-integration"><a class="anchor" href="#memory-subsystem-integration"></a><a class="link" href="#memory-subsystem-integration">2.1.6. Memory Subsystem Integration</a></h4>
+<h4 id="memory-subsystem-integration"><a class="anchor" href="#memory-subsystem-integration"></a><a class="link" href="#memory-subsystem-integration">2.2.6. Memory Subsystem Integration</a></h4>
 <div class="paragraph">
 <p>The SMC includes an embedded RISC-V CPU cluster with associated memory
 interfaces. The <code>rom_intf_req_o</code> and <code>rom_intf_rsp_i</code> signals connect to boot
@@ -537,7 +648,7 @@ SRAM contents across resets.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="memory-repair-integration"><a class="anchor" href="#memory-repair-integration"></a><a class="link" href="#memory-repair-integration">2.1.7. Memory Repair Integration</a></h4>
+<h4 id="memory-repair-integration"><a class="anchor" href="#memory-repair-integration"></a><a class="link" href="#memory-repair-integration">2.2.7. Memory Repair Integration</a></h4>
 <div class="paragraph">
 <p>The SMC implements Built-In Redundancy Analysis (BIRA) memory repair to address
 manufacturing defects in SRAM arrays. Repair uses redundant memory elements
@@ -629,7 +740,7 @@ repair unless explicitly bypassed via strap configuration.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="interrupt-integration"><a class="anchor" href="#interrupt-integration"></a><a class="link" href="#interrupt-integration">2.1.8. Interrupt Integration</a></h4>
+<h4 id="interrupt-integration"><a class="anchor" href="#interrupt-integration"></a><a class="link" href="#interrupt-integration">2.2.8. Interrupt Integration</a></h4>
 <div class="paragraph">
 <p>The SMC aggregates interrupts from multiple sources into <code>cpu_interrupts_o</code>, which feeds
 the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
@@ -648,7 +759,7 @@ and handling patterns through the various interrupt input ports.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="telemetry-and-debug-integration"><a class="anchor" href="#telemetry-and-debug-integration"></a><a class="link" href="#telemetry-and-debug-integration">2.1.9. Telemetry and Debug Integration</a></h4>
+<h4 id="telemetry-and-debug-integration"><a class="anchor" href="#telemetry-and-debug-integration"></a><a class="link" href="#telemetry-and-debug-integration">2.2.9. Telemetry and Debug Integration</a></h4>
 <div class="paragraph">
 <p>For system-level debug and telemetry, the SMC implements ATB (Advanced Trace Bus) receiver
 interfaces. The telemetry interface group (<code>telemetry_atdata_i</code>, <code>telemetry_atid_i</code>,
@@ -669,7 +780,7 @@ connections that can be adapted to your debug requirements.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="bring-up-sequence"><a class="anchor" href="#bring-up-sequence"></a><a class="link" href="#bring-up-sequence">2.1.10. Bring-Up Sequence</a></h4>
+<h4 id="bring-up-sequence"><a class="anchor" href="#bring-up-sequence"></a><a class="link" href="#bring-up-sequence">2.2.10. Bring-Up Sequence</a></h4>
 <div class="paragraph">
 <p>The recommended bring-up sequence begins with asserting <code>rst_cold_ni</code> while stabilizing
 power supplies and clocks. Once all supplies reach nominal voltages, deassert <code>rst_cold_ni</code>
@@ -701,7 +812,7 @@ implementing your integration-specific bring-up procedures.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-port-interface"><a class="anchor" href="#smc-port-interface"></a><a class="link" href="#smc-port-interface">2.1.11. SMC Port Interface</a></h4>
+<h4 id="smc-port-interface"><a class="anchor" href="#smc-port-interface"></a><a class="link" href="#smc-port-interface">2.2.11. SMC Port Interface</a></h4>
 <div class="paragraph">
 <p>The SMC exposes a comprehensive set of interfaces for system integration. The following
 table defines all SMC top-level ports including clocks, resets, AXI interfaces, peripheral
@@ -709,7 +820,7 @@ connections, and control signals. Refer to the detailed SMC documentation for in
 signal descriptions and timing requirements.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
-<caption class="title">Table 2. SMC Port Declaration</caption>
+<caption class="title">Table 3. SMC Port Declaration</caption>
 <colgroup>
 <col>
 <col>
@@ -1653,7 +1764,7 @@ signal descriptions and timing requirements.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="gpio-pin-requirements"><a class="anchor" href="#gpio-pin-requirements"></a><a class="link" href="#gpio-pin-requirements">2.1.12. GPIO Pin Requirements</a></h4>
+<h4 id="gpio-pin-requirements"><a class="anchor" href="#gpio-pin-requirements"></a><a class="link" href="#gpio-pin-requirements">2.2.12. GPIO Pin Requirements</a></h4>
 <div class="paragraph">
 <p>The SMC provides GPIO functionality with multiplexed peripheral functions and
 test interfaces. The following table lists the signal and bump location,
@@ -1663,7 +1774,7 @@ default direction or decode configuration straps; use
 and <code>STRAPS_HI</code> register descriptions for those.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
-<caption class="title">Table 3. OCAH GPIO Requirements</caption>
+<caption class="title">Table 4. OCAH GPIO Requirements</caption>
 <colgroup>
 <col>
 <col>
@@ -2415,9 +2526,9 @@ maintain coherent timestamps across the system.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="dtp-integration"><a class="anchor" href="#dtp-integration"></a><a class="link" href="#dtp-integration">2.2. Debug &amp; Test Ports (DTP) Integration</a></h3>
+<h3 id="dtp-integration"><a class="anchor" href="#dtp-integration"></a><a class="link" href="#dtp-integration">2.3. Debug &amp; Test Ports (DTP) Integration</a></h3>
 <div class="sect3">
-<h4 id="configuration"><a class="anchor" href="#configuration"></a><a class="link" href="#configuration">2.2.1. Configuration</a></h4>
+<h4 id="configuration"><a class="anchor" href="#configuration"></a><a class="link" href="#configuration">2.3.1. Configuration</a></h4>
 <div class="paragraph">
 <p>The cross-trigger topology is fixed at elaboration by <code>dtp_pkg</code>, a committed
 source file at <code>hw/sys/dtp/rtl/dtp_pkg.sv</code>. <code>DEFAULT_NUM_CTP</code>,
@@ -2436,7 +2547,7 @@ hierarchy and is not a complete DTP recipe.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="instantiation"><a class="anchor" href="#instantiation"></a><a class="link" href="#instantiation">2.2.2. Instantiation</a></h4>
+<h4 id="instantiation"><a class="anchor" href="#instantiation"></a><a class="link" href="#instantiation">2.3.2. Instantiation</a></h4>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">dtp #(
@@ -2460,7 +2571,7 @@ hierarchy and is not a complete DTP recipe.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="clock-and-reset-2"><a class="anchor" href="#clock-and-reset-2"></a><a class="link" href="#clock-and-reset-2">2.2.3. Clock and Reset</a></h4>
+<h4 id="clock-and-reset-2"><a class="anchor" href="#clock-and-reset-2"></a><a class="link" href="#clock-and-reset-2">2.3.3. Clock and Reset</a></h4>
 <div class="ulist">
 <ul>
 <li>
@@ -2479,7 +2590,7 @@ hierarchy and is not a complete DTP recipe.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="constraints"><a class="anchor" href="#constraints"></a><a class="link" href="#constraints">2.2.4. Constraints</a></h4>
+<h4 id="constraints"><a class="anchor" href="#constraints"></a><a class="link" href="#constraints">2.3.4. Constraints</a></h4>
 <div class="ulist">
 <ul>
 <li>
@@ -2498,7 +2609,7 @@ hierarchy and is not a complete DTP recipe.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="stap-scan-chain-topology"><a class="anchor" href="#stap-scan-chain-topology"></a><a class="link" href="#stap-scan-chain-topology">2.2.5. STAP Scan Chain Topology</a></h4>
+<h4 id="stap-scan-chain-topology"><a class="anchor" href="#stap-scan-chain-topology"></a><a class="link" href="#stap-scan-chain-topology">2.3.5. STAP Scan Chain Topology</a></h4>
 <div class="paragraph">
 <p>The DTP secondary scan path chains multiple STAPs on a single PTAP-managed scan
 string. The fixed order on this string is: PTAP, I/O STAP (if
@@ -2552,7 +2663,7 @@ JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.</
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-port-interface"><a class="anchor" href="#dtp-port-interface"></a><a class="link" href="#dtp-port-interface">2.2.6. DTP Port Interface</a></h4>
+<h4 id="dtp-port-interface"><a class="anchor" href="#dtp-port-interface"></a><a class="link" href="#dtp-port-interface">2.3.6. DTP Port Interface</a></h4>
 <div class="paragraph">
 <p>The DTP exposes interfaces for JTAG TAP control, boundary scan, multiple STAP
 host ports, iJTAG scan chains, AXI debug bridges, cross trigger networks, and
@@ -2560,7 +2671,7 @@ CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
 the dedicated DTP documentation in <code>hw/sys/dtp/doc/</code> for internal design details.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
-<caption class="title">Table 4. DTP Port Declaration</caption>
+<caption class="title">Table 5. DTP Port Declaration</caption>
 <colgroup>
 <col>
 <col>
@@ -3280,7 +3391,7 @@ the dedicated DTP documentation in <code>hw/sys/dtp/doc/</code> for internal des
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-integration"><a class="anchor" href="#sep-integration"></a><a class="link" href="#sep-integration">2.3. Security Processor (SEP) Integration</a></h3>
+<h3 id="sep-integration"><a class="anchor" href="#sep-integration"></a><a class="link" href="#sep-integration">2.4. Security Processor (SEP) Integration</a></h3>
 <div class="paragraph">
 <p>The Security Processor (SEP) is the Root of Trust for the chiplet, providing
 a physically isolated execution environment for security-critical services
@@ -3296,7 +3407,7 @@ overview and interconnect fabric are described in
 <code>hw/sys/sep/doc/overview.adoc</code> and <code>hw/sys/sep/doc/fabric.adoc</code> respectively.</p>
 </div>
 <div class="sect3">
-<h4 id="module-overview"><a class="anchor" href="#module-overview"></a><a class="link" href="#module-overview">2.3.1. Module Overview</a></h4>
+<h4 id="module-overview"><a class="anchor" href="#module-overview"></a><a class="link" href="#module-overview">2.4.1. Module Overview</a></h4>
 <div class="paragraph">
 <p>The <code>sep.sv</code> module provides the complete SEP functionality with logic-level
 interfaces. Technology-specific components&#8201;&#8212;&#8201;SRAM, ROM, and eFuse shims&#8201;&#8212;&#8201;are
@@ -3316,7 +3427,7 @@ the SMU boundary with a <code>sep_</code> prefix.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="clock-and-reset-requirements"><a class="anchor" href="#clock-and-reset-requirements"></a><a class="link" href="#clock-and-reset-requirements">2.3.2. Clock and Reset Requirements</a></h4>
+<h4 id="clock-and-reset-requirements"><a class="anchor" href="#clock-and-reset-requirements"></a><a class="link" href="#clock-and-reset-requirements">2.4.2. Clock and Reset Requirements</a></h4>
 <div class="paragraph">
 <p>The SEP requires two clock inputs. Connect <code>clk_i</code> to the primary system clock
 driving all SEP internal logic. Connect <code>clk_wdt_i</code> to a 200 kHz clock source
@@ -3332,7 +3443,7 @@ the watchdog reset generated by the SMC reset unit. The SEP outputs
 </div>
 </div>
 <div class="sect3">
-<h4 id="axi-interfaces"><a class="anchor" href="#axi-interfaces"></a><a class="link" href="#axi-interfaces">2.3.3. AXI Interfaces</a></h4>
+<h4 id="axi-interfaces"><a class="anchor" href="#axi-interfaces"></a><a class="link" href="#axi-interfaces">2.4.3. AXI Interfaces</a></h4>
 <div class="paragraph">
 <p>The SEP connects to the system through three AXI paths. The <code>smn_outbound_axi</code>
 master interface allows SEP firmware to access system resources outside the SEP
@@ -3348,7 +3459,7 @@ SEP core. When unused, tie the response input to return DECERR.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="memory-interfaces"><a class="anchor" href="#memory-interfaces"></a><a class="link" href="#memory-interfaces">2.3.4. Memory Interfaces</a></h4>
+<h4 id="memory-interfaces"><a class="anchor" href="#memory-interfaces"></a><a class="link" href="#memory-interfaces">2.4.4. Memory Interfaces</a></h4>
 <div class="paragraph">
 <p>All SEP memory macros are instantiated externally and connected through
 dedicated request/response interfaces. The <code>sep_cpu_tcm</code> interface provides
@@ -3365,7 +3476,7 @@ SRAM macros.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="cryptographic-subsystem-connections"><a class="anchor" href="#cryptographic-subsystem-connections"></a><a class="link" href="#cryptographic-subsystem-connections">2.3.5. Cryptographic Subsystem Connections</a></h4>
+<h4 id="cryptographic-subsystem-connections"><a class="anchor" href="#cryptographic-subsystem-connections"></a><a class="link" href="#cryptographic-subsystem-connections">2.4.5. Cryptographic Subsystem Connections</a></h4>
 <div class="paragraph">
 <p>The SEP includes an internal entropy source that requires a ring-oscillator
 sample clock connected to <code>entropy_rosc_sample_clk_i</code>. This clock must be
@@ -3379,7 +3490,7 @@ to the PIC; <code>ext_trng_alarm_i</code> is reserved for RAS.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="efuse-and-lifecycle"><a class="anchor" href="#efuse-and-lifecycle"></a><a class="link" href="#efuse-and-lifecycle">2.3.6. eFuse and Lifecycle</a></h4>
+<h4 id="efuse-and-lifecycle"><a class="anchor" href="#efuse-and-lifecycle"></a><a class="link" href="#efuse-and-lifecycle">2.4.6. eFuse and Lifecycle</a></h4>
 <div class="paragraph">
 <p>The SEP accesses its own eFuse bank through the <code>efuse_bank_ctrl</code> AXI-Lite
 interface and the <code>efuse_shim_command</code> custom interface, mirroring the pattern
@@ -3401,7 +3512,7 @@ instantiates an AXI-Lite error slave on this path.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="spi-host-interface"><a class="anchor" href="#spi-host-interface"></a><a class="link" href="#spi-host-interface">2.3.7. SPI Host Interface</a></h4>
+<h4 id="spi-host-interface"><a class="anchor" href="#spi-host-interface"></a><a class="link" href="#spi-host-interface">2.4.7. SPI Host Interface</a></h4>
 <div class="paragraph">
 <p>The SEP provides a SPI host controller through the <code>sep_io_spi</code> interface,
 supporting single and quad modes. The controller&#8217;s own interrupt leaves the
@@ -3418,7 +3529,7 @@ their own integration logic. Tie the input low when unused.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="bring-up-considerations"><a class="anchor" href="#bring-up-considerations"></a><a class="link" href="#bring-up-considerations">2.3.8. Bring-Up Considerations</a></h4>
+<h4 id="bring-up-considerations"><a class="anchor" href="#bring-up-considerations"></a><a class="link" href="#bring-up-considerations">2.4.8. Bring-Up Considerations</a></h4>
 <div class="paragraph">
 <p>The SEP boot sequence begins after the SMC completes fuse sensing and releases
 the SEP reset. The SEP BL0 ROM firmware verifies the BL1 software image using
@@ -3433,14 +3544,14 @@ appropriate constants in the top-level integration.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-port-interface"><a class="anchor" href="#sep-port-interface"></a><a class="link" href="#sep-port-interface">2.3.9. SEP Port Interface</a></h4>
+<h4 id="sep-port-interface"><a class="anchor" href="#sep-port-interface"></a><a class="link" href="#sep-port-interface">2.4.9. SEP Port Interface</a></h4>
 <div class="paragraph">
 <p>The SEP exposes interfaces for clocks, resets, JTAG debug, CPU control, memory
 macros, AXI bus connections, cryptographic subsystem, eFuse, lifecycle,
 SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
-<caption class="title">Table 5. SEP Port Declaration</caption>
+<caption class="title">Table 6. SEP Port Declaration</caption>
 <colgroup>
 <col>
 <col>
@@ -4250,7 +4361,7 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="smu-composition"><a class="anchor" href="#smu-composition"></a><a class="link" href="#smu-composition">2.4. SMU Composition and Internal Wiring</a></h3>
+<h3 id="smu-composition"><a class="anchor" href="#smu-composition"></a><a class="link" href="#smu-composition">2.5. SMU Composition and Internal Wiring</a></h3>
 <div class="paragraph">
 <p>The System Management Unit (SMU) combines the SMC, DTP, and optionally the
 SEP into a unified subsystem. The interface descriptions in the preceding
@@ -4260,7 +4371,7 @@ adopters, how the SMU wires its subsystems together internally, and what
 additional configuration it exposes.</p>
 </div>
 <div class="sect3">
-<h4 id="smu-module-variants"><a class="anchor" href="#smu-module-variants"></a><a class="link" href="#smu-module-variants">2.4.1. Module Variants and IP Integration</a></h4>
+<h4 id="smu-module-variants"><a class="anchor" href="#smu-module-variants"></a><a class="link" href="#smu-module-variants">2.5.1. Module Variants and IP Integration</a></h4>
 <div class="paragraph">
 <p>OCAH core modules (<code>smc.sv</code>, <code>sep.sv</code>, <code>dtp.sv</code>, and the composite <code>smu.sv</code>)
 expose logic-level interfaces only. All technology-specific components&#8201;&#8212;&#8201;PLLs,
@@ -4333,7 +4444,7 @@ distribution network and feed them back through these DFX inputs.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="clock-and-reset-architecture"><a class="anchor" href="#clock-and-reset-architecture"></a><a class="link" href="#clock-and-reset-architecture">2.4.2. Clock and Reset Architecture</a></h4>
+<h4 id="clock-and-reset-architecture"><a class="anchor" href="#clock-and-reset-architecture"></a><a class="link" href="#clock-and-reset-architecture">2.5.2. Clock and Reset Architecture</a></h4>
 <div class="paragraph">
 <p>Connect <code>clk_smu_i</code> to the primary system clock and <code>clk_ref_i</code> to a stable
 reference source. The DTP operates on TCK for JTAG logic and on the system clock
@@ -4346,7 +4457,7 @@ interconnection details are described in <a href="#smc-dtp-interconnection">SMC-
 </div>
 </div>
 <div class="sect3">
-<h4 id="smu-axi-xbar-address-map"><a class="anchor" href="#smu-axi-xbar-address-map"></a><a class="link" href="#smu-axi-xbar-address-map">2.4.3. SMU AXI Crossbar Address Map</a></h4>
+<h4 id="smu-axi-xbar-address-map"><a class="anchor" href="#smu-axi-xbar-address-map"></a><a class="link" href="#smu-axi-xbar-address-map">2.5.3. SMU AXI Crossbar Address Map</a></h4>
 <div class="paragraph">
 <p>Inside the SMU, the <code>smu_axi_xbar</code> module routes traffic between three
 AXI4 manager/subordinate pairs: the SEP outbound master (<code>sep_out</code>),
@@ -4397,7 +4508,7 @@ address arithmetic is done on 57-bit widened sums; <code>ext_out</code> covers
 <code>0x0000_8000_0000</code> up to the top of the 56-bit address space.</p>
 </div>
 <div class="sect4">
-<h5 id="firmware-programming-order"><a class="anchor" href="#firmware-programming-order"></a><a class="link" href="#firmware-programming-order">Firmware programming order</a></h5>
+<h5 id="smu-firmware-programming-order"><a class="anchor" href="#smu-firmware-programming-order"></a><a class="link" href="#smu-firmware-programming-order">Firmware programming order</a></h5>
 <div class="paragraph">
 <p>Firmware must program <code>SEP_GLOBAL_BASE_ADDR</code> / <code>SEP_REGION_SIZE</code> and
 SMC <code>GLOBAL_BASE</code> / <code>REGION_SIZE</code> during early boot, <strong>before any
@@ -4414,7 +4525,7 @@ address maps.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smu-default-parameters"><a class="anchor" href="#smu-default-parameters"></a><a class="link" href="#smu-default-parameters">2.4.4. SMU Default Parameters</a></h4>
+<h4 id="smu-default-parameters"><a class="anchor" href="#smu-default-parameters"></a><a class="link" href="#smu-default-parameters">2.5.4. SMU Default Parameters</a></h4>
 <div class="paragraph">
 <p>The SMU exposes a set of configurable parameters that control DTP JTAG features,
 identification, cross trigger, and pipeline depths. The table below lists each
@@ -4567,7 +4678,7 @@ not by the OCAH packages; the parameter default
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-parameter-pass-through"><a class="anchor" href="#dtp-parameter-pass-through"></a><a class="link" href="#dtp-parameter-pass-through">2.4.5. DTP Parameter Pass-Through</a></h4>
+<h4 id="dtp-parameter-pass-through"><a class="anchor" href="#dtp-parameter-pass-through"></a><a class="link" href="#dtp-parameter-pass-through">2.5.5. DTP Parameter Pass-Through</a></h4>
 <div class="paragraph">
 <p>The SMU passes through most DTP parameters to allow integrator customization.
 Type parameters are set internally based on SMC package types.</p>
@@ -4884,7 +4995,7 @@ for integrator configuration.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-port-mapping"><a class="anchor" href="#dtp-port-mapping"></a><a class="link" href="#dtp-port-mapping">2.4.6. DTP Port Mapping</a></h4>
+<h4 id="dtp-port-mapping"><a class="anchor" href="#dtp-port-mapping"></a><a class="link" href="#dtp-port-mapping">2.5.6. DTP Port Mapping</a></h4>
 <div class="paragraph">
 <p>The following tables define the complete DTP port list as connected within the
 SMU. Ports marked "SMU external port" are exposed on the SMU boundary for
@@ -5793,7 +5904,7 @@ signals are dangling pending proper CTP-to-GPIO connection implementation.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-port-mapping"><a class="anchor" href="#smc-port-mapping"></a><a class="link" href="#smc-port-mapping">2.4.7. SMC Port Mapping</a></h4>
+<h4 id="smc-port-mapping"><a class="anchor" href="#smc-port-mapping"></a><a class="link" href="#smc-port-mapping">2.5.7. SMC Port Mapping</a></h4>
 <div class="paragraph">
 <p>The following tables define the complete SMC port list as connected within the
 SMU. Ports marked "SMU external port" are exposed on the SMU boundary. Ports
@@ -7055,7 +7166,7 @@ value of the straps.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-dtp-interconnection"><a class="anchor" href="#smc-dtp-interconnection"></a><a class="link" href="#smc-dtp-interconnection">2.4.8. SMC-DTP Internal Interconnection</a></h4>
+<h4 id="smc-dtp-interconnection"><a class="anchor" href="#smc-dtp-interconnection"></a><a class="link" href="#smc-dtp-interconnection">2.5.8. SMC-DTP Internal Interconnection</a></h4>
 <div class="paragraph">
 <p>The following table summarizes the key internal connections between the DTP and
 SMC within the SMU. These connections are not visible on the SMU boundary.</p>
@@ -7166,7 +7277,7 @@ SMC within the SMU. These connections are not visible on the SMU boundary.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="sep-conditional-wiring"><a class="anchor" href="#sep-conditional-wiring"></a><a class="link" href="#sep-conditional-wiring">2.4.9. SEP-Conditional Wiring</a></h4>
+<h4 id="sep-conditional-wiring"><a class="anchor" href="#sep-conditional-wiring"></a><a class="link" href="#sep-conditional-wiring">2.5.9. SEP-Conditional Wiring</a></h4>
 <div class="paragraph">
 <p>SEP-related interfaces are handled internally within the SMU. Their behavior
 depends on the module parameter <code>SEP</code>.</p>
@@ -7247,7 +7358,7 @@ when using req/ack mode (bit = 1).</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smu-port-interface"><a class="anchor" href="#smu-port-interface"></a><a class="link" href="#smu-port-interface">2.4.10. SMU Port Interface</a></h4>
+<h4 id="smu-port-interface"><a class="anchor" href="#smu-port-interface"></a><a class="link" href="#smu-port-interface">2.5.10. SMU Port Interface</a></h4>
 <div class="paragraph">
 <p>The SMU exposes a single consolidated boundary that an adopter connects to
 at the chip or chiplet level. The following table defines all SMU top-level
@@ -7257,7 +7368,7 @@ ports including clock, reset, JTAG, cross trigger, SMC-originated interfaces
 with <code>sep_</code> are only active when the module parameter <code>SEP=1</code>.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
-<caption class="title">Table 6. SMU Port Declaration</caption>
+<caption class="title">Table 7. SMU Port Declaration</caption>
 <colgroup>
 <col>
 <col>
