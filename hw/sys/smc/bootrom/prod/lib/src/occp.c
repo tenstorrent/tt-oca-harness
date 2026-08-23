@@ -1713,25 +1713,6 @@ static int smc_occp_init_i3c_channel(bool use_channel, uint8_t peripheral_contro
 
     if (use_channel) {
         /* Get efuse drive strength for I3C GPIO pins based on controller ID */
-        // switch (peripheral_controller_id)
-        // {
-        // case 0:
-        //     smc_set_gpio_drive(SMC_I3C_0_SCL_GPIO);
-        //     smc_set_gpio_drive(SMC_I3C_0_SDA_GPIO);
-        //     break;
-        // case 1:
-        //     smc_set_gpio_drive(SMC_I3C_1_SCL_GPIO);
-        //     smc_set_gpio_drive(SMC_I3C_1_SDA_GPIO);
-        //     break;
-        // case 3:
-        //     smc_set_gpio_drive(SMC_I3C_3_SCL_GPIO);
-        //     smc_set_gpio_drive(SMC_I3C_3_SDA_GPIO);
-        //     break;
-        // default:
-        //     /* Invalid controller ID - use default values */
-        //     simputshex16("Invalid I3C Peripheral Controller ID: ", peripheral_controller_id);
-        //     break;
-        // }
 
         enable_i3c_gpio_overrides(peripheral_controller_id);
 
