@@ -26,22 +26,25 @@ from sep_reg_meta import sym
 # sys.path as an import side effect, so it has to come first.
 import sep_reg  # noqa: E402
 
-# Stimulus randomness is deliberately the seeded, NON-cryptographic Mersenne Twister
-# from ``random``, and must stay that way. This generator is run TWICE per simulation
-# from two different processes -- once by dv_sim_prestage.py to stage the t=0 OTP image
-# the RTL $readmemh reads, and once inside the cocotb test to build the golden that the
-# post-sense backdoor compare checks that image against. The two runs agree only because
-# ``random.Random(seed)`` is reproducible from RANDOM_SEED. A cryptographically secure
-# source (``secrets``, ``random.SystemRandom``, ``os.urandom``) cannot be seeded, so
-# adopting one here would make every real-fuse-sense test fail its own shadow compare.
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+# Stimulus randomness is deliberately the seeded, NON-cryptographic SepSeededRng, and
+# must stay that way. This generator is run TWICE per simulation from two different
+# processes -- once by dv_sim_prestage.py to stage the t=0 OTP image the RTL $readmemh
+# reads, and once inside the cocotb test to build the golden that the post-sense
+# backdoor compare checks that image against. The two runs agree only because
+# SepSeededRng is a pure function of RANDOM_SEED. A cryptographically secure source
+# (``secrets``, ``random.SystemRandom``, ``os.urandom``) cannot be seeded, so adopting
+# one here would make every real-fuse-sense test fail its own shadow compare.
 #
 # Nothing this module produces is a secret, a token, or an access-control decision: the
 # values are fuse-array contents for a simulated DUT, written to a plaintext hex file in
-# the run directory and printed to the log. Static analysers flag the module on sight
-# (Cycode "weak PRNG"); this is the triage answer, not an oversight.
-import random
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+# the run directory and printed to the log.
+#
+# Bare sibling import: cocotb/env is on sys.path both in the sim (sep_sim_cfg.toml
+# ``python_paths``) and in the prestage hook, which inserts it explicitly.
+from sep_seeded_rng import SepSeededRng  # noqa: E402
 
 # Array geometry (sep_efuse_pkg: NumEfuseBits=8192, NumFuseWordWidth=32).
 NUM_FUSE_WORDS = 256
@@ -347,7 +350,7 @@ class SepEfuseImage:
             back (read-locks would return 0xbadcab1e instead of data).
           * ``fixed`` pins named fields to explicit values after randomization.
         """
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         # LOCKS and LOCKS_SPARE are one 96-bit vector, not two independent
         # fields. Build it once, then slice each register by its bit offset
         # from the LOCKS base: LOCKS <- [63:0], LOCKS_SPARE <- [95:64]
