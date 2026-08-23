@@ -1,0 +1,15 @@
+{
+  "date": "2026-08-23",
+  "sim_run_id": "32656730076",
+  "status": "FAIL",
+  "leaves": {
+    "total": 73,
+    "pass": 69
+  },
+  "failures": {
+    "infra": 1,
+    "design": 3,
+    "unknown": 0
+  },
+  "flaky_tests": []
+}
