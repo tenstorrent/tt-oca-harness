@@ -100,7 +100,7 @@ Effort: ~12 days tests + 7 days BFM infra = **19 days**
 | 22 | I2C target only | `smc_i2c_target_sanity_test` | `smc_i2c_target_sanity_test` | `smc_i2c_protocol_vip` (SMC-local) |
 | 23 | Dual I2C | `dual_i2c_test` | `smc_dual_i2c_test` | `smc_i2c_protocol_vip` (SMC-local) |
 | 24 | iJTAG | `smc_basic_ijtag_test` | `smc_ijtag_basic_test` | `ocah_jtag_vip` |
-| 25 | I3C → fabric | `smc_input_fabric_i3c_to_output_wr_rd_test` | `smc_i3c_to_fabric_test` | `ocah_i3c_vip` |
+| 25 | I3C → fabric | `smc_input_fabric_i3c_to_output_wr_rd_test` | `smc_i3c_to_fabric_test` | proxy CSR + pad checks (no I3C VIP) |
 | 26 | OCTS | `octs_sanity_test` | `smc_octs_sanity_test` | new OCAH-local BFM |
 | 27 | ATB | `atb_sanity_test` | `smc_atb_sanity_test` | new OCAH-local BFM |
 | 28 | eFuse OTP | `smc_efuse_otp_clock_config_test` | `smc_efuse_otp_clock_test` | OTP responder (SEP-derived) |
@@ -145,7 +145,7 @@ Effort: ~18 days tests + 6 days infra = **24 days**
 | I7 | `SmcMailboxAgent` | `ocah_axi_vip` AXI-Lite | I6 variant | 1.0 |
 | I8 | `SmcI2cMasterTargetAgent` | `smc_i2c_protocol_vip` (SMC-local) | upgrades observer | 1.5 |
 | I9 | `SmcJtagAgent` | `ocah_jtag_vip` | copy from DTP | 0.5 |
-| I10 | `SmcI3cAgent` | `ocah_i3c_vip` | same | 1.0 |
+| I10 | `SmcI3cAgent` | none (no I3C VIP ships) | same | 1.0 |
 | I11 | `SmcOtpResponderAgent` | SEP OTP shim | copy from SEP | 1.0 |
 | I12 | `SmcAvsBusAgent` (new BFM) | — | — | 2.0 |
 | I13 | `SmcOctsAgent` (new BFM) | — | — | 2.0 |

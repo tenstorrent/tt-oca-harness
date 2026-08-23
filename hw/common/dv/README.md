@@ -242,9 +242,10 @@ notes:
   `init_read`/`init_write` (or `*_result`) over direct `cocotbext.axi` imports.
 - `hw/sys/sep/dv/cocotb/env/__init__.py` still patches cocotbext stream
   initialization before SEP AXI masters are constructed.
-- SMC I3C uses a DUT-local bind over `ocah_i3c_vip` split-port helpers. SMC
-  I2C uses the DUT-local `smc_i2c_protocol_vip.py` clock-sampled model; no
-  shared I2C package ships because `cocotbext-i2c` edge waits miss open-drain
+- SMC I3C carries no protocol-level VIP: `smc_i3c_to_fabric_test` gates on
+  CSR decode plus a line-level external pull-low check. SMC I2C uses the
+  DUT-local `smc_i2c_protocol_vip.py` clock-sampled model; no shared I2C
+  package ships because `cocotbext-i2c` edge waits miss open-drain
   transitions under Verilator.
 - SMC CPU JTAG uses `ocah_jtag_vip` for bus/device bind; active-high
   `tb_cpu_jtag_reset` stays DUT-local (not mapped to bus `trst`) because

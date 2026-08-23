@@ -177,9 +177,6 @@ Protocol VIP wrappers (under `hw/sys/smc/dv/cocotb/seq_lib/`):
 split-port polarity + wired-AND adapter; clock-sampled because edge waits
 miss open-drain transitions under Verilator
 
-|`SmcI3cSlaveVip` |`cocotbext-i3c` |I3C0 pin-level target subclass with
-`sda/scl` property overrides for polarity inversion
-
 |`SmcJtagTap` (`SmcCpuTapDevice`) |`cocotbext-jtag` |CPU JTAG TAP driver
 — IDCODE=0x10CA_0555, IR=5, IDCODE@0x01, DTMCS@0x10, DMI@0x11
 
@@ -599,8 +596,7 @@ protocol). Optional pin VIP bind is non-gating. |1. Read
 `CLOCK_GATE_CONTROL = V0 \| (1<<9)` (enable I3C clock)3. Readback verify
 I3C bit set4. Restore `CLOCK_GATE_CONTROL = V0`5. Read `I3C0_HCI_VERSION`
 (0xC000_5000) with `allow_error`, expect **SLVERR + `0xBADCAB1E`**
-(`i3ccore_stub`)6. (VIP, non-gating) optional `cocotbext-i3c` bind on
-`tb_i3c0_*` |[ ] `CLOCK_GATE_CONTROL` snapshot readable[ ] I3C
+(`i3ccore_stub`) |[ ] `CLOCK_GATE_CONTROL` snapshot readable[ ] I3C
 clock-gate bit toggle + readback OK[ ] `CLOCK_GATE_CONTROL` restored to
 `V0`[ ] Window read completes with SLVERR + `0xBADCAB1E`[ ] `reads == 4`
 [ ] No UVM_ERROR |`CLOCK_GATE_CONTROL` (0xC001_0018)`I3C0_HCI_VERSION`
@@ -877,7 +873,7 @@ above (for P0 tests) or to their §P1 entry (for P1 depth tests).
 |IRQ propagation |`smc_mailbox_irq_test` (partial) |
 |`smc_gpio_irq_active_test`
 
-|I3C wrapper |`smc_i3c_to_fabric_test` (TC_SMC_P0_011, slave VIP) | |
+|I3C line/CSR checks |`smc_i3c_to_fabric_test` (TC_SMC_P0_011, proxy) | |
 
 |AXI error/recovery |`smc_axi_error_response_depth_test` |
 |`smc_zeroer_dma_timeout_test`
@@ -1661,9 +1657,9 @@ round-trip
 (0x08 + target<<1 + data_low + data_high) driven onto I2C0 pad; 256-byte
 listener slave at 0x08 captures payload at `mem[0xA0..0xA1]`
 
-|`smc_i3c_ccc_ibi_full_test` |extended `i3c_full_daa_and_ccc_proof` — 3
-directed SDR writes; SETDASA disabled |3 extra SDR writes at static
-addr; `TARGET::Performing write` × 3 events per test
+|`smc_i3c_ccc_ibi_full_test` |deferred — needs a real pad-level I3C VIP
+with DAT/DCT support |No I3C VIP ships; the test raises until a
+reproducible pad-level backend exists
 
 |`smc_uart_loopback_test` |new `SmcUartVip` — cocotbext-uart 0.1.4
 |8-N-1 UART frame (0x55 @ 115200 baud) drives `tb_uart0_rx_ext_drive`;
@@ -1677,13 +1673,6 @@ Python-side scoreboard |AVSBus/OCTS frame encode + reset-invariant
 scoreboard cross-checked against 20 sideband CSR reads (13 AVSBus + 7
 OCTS)
 |=======================================================================
-
-*cocotbext-i3c upstream target bug*: RSTDAA (CCC 0x06) and SETDASA (CCC
-0x87) both trip an assertion in the bundled I3C target’s `_run`
-coroutine (`self.header in [RESERVED,READ,WRITE]` — target sees
-`I3cHeader.NONE` after the CCC frame). The extended SDR-only proof
-avoids this path; a full DAA + directed-CCC promotion is roadmap once
-upstream fixes the target state machine.
 
 *Pin-driven follow-up* (still roadmap, not blocking Phase A closure):
 The full pin-driven SPI byte-level loopback and the pin-driven sideband

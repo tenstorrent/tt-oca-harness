@@ -47,13 +47,13 @@ Simulators are not provisioned by the repo. Put `verilator`, `xrun`, or `vcs` on
 | `cocotbext-axi` | SEP_IN / SYS_IN / JTAG AXI masters and monitors |
 | `cocotbext-jtag` | `SmcJtagTap` CPU TAP driver |
 
-Two extensions are **not** declared and degrade rather than hard-fail:
+One extension is **not** declared and degrades rather than hard-fails:
 
-- `cocotbext-i3c` — `smc_i3c_vip_utils` catches the import error and records a
-  diagnostic, so I3C tests fall back to line-level checks. Upstream ships it as a
-  bundled submodule rather than a PyPI release, which is why it is not pinned.
 - `cocotbext-uart` — needed by `SmcUartVip`; shared uv ownership is still
   deferred, so `smc_uart_loopback_test` cannot reach its byte-level proof.
+
+I3C has no VIP dependency: `smc_i3c_to_fabric_test` gates on CSR decode plus
+the `check_i3c0_external_pull_low` line-level check.
 
 ---
 
@@ -424,7 +424,7 @@ Promotion history, by area — each group moved from CSR-only proxy to
 |------|----------------|------------------------|
 | Output fabric | `smc_output_fabric_wr_rd_responder_test`, `smc_input_output_fabric_wr_rd_test`, `smc_output_filter_remap_security_test` | `tb_top` exposes flattened `s_axi_*` / `jtag_axi_*` inputs; SEP_IN programs the fabric and JTAG AXI traffic drives a DV-only output-fabric responder. Checks write/read completion, readback data, blocked-write `DECERR`, and `tb_output_axi_*` counters |
 | I2C | `smc_i2c_master_target_test`, `smc_i2c_p1_rdwr_protocol_test`, `smc_i2c_error_fifo_depth_test` | I2C0 resolved SCL/SDA exposed; release/pull-low behavior checked through the DUT override path |
-| I3C | `smc_i3c_to_fabric_test`, `smc_i3c_oca_write_read_sanity_test`, `smc_i3c_ibi_ccc_depth_test` | I3C0 resolved SCL/SDA exposed; external pull-low/release verified |
+| I3C | `smc_i3c_to_fabric_test` | I3C0 resolved SCL/SDA exposed; external pull-low/release verified via `check_i3c0_external_pull_low`; the CSR window gate is HCI_VERSION decode. The test records `proxy=True` — no protocol-level VIP traffic runs |
 | CPU JTAG | `smc_ijtag_basic_test`, `smc_chiplet_reg_jtag_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_dft_timeout_proxy_test`, `smc_jtag_reset_proxy_test` | TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required |
 | Mailbox | `smc_mailbox_irq_test`, `smc_mailbox_data_error_test`, `smc_mailbox_event_irq_test` | DV-only `tb_sep_mailbox_interrupts` source + `tb_mailbox_irq_any` checker prove SEP mailbox interrupt bits reach the SMC peripheral vector |
 | GPIO / external IRQ | `smc_gpio_irq_active_test`, `smc_gpio_strap_sanity_test`, `smc_external_interrupts_test` | DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert |
@@ -449,7 +449,10 @@ convention:
 | `env.smc_sys_axi_agent.SmcSysAxiDriver` | `ocah_axi_vip.OcahAxiMasterAgent` | Binds `s_axi_*`, `sys_axi_*`, or `jtag_axi_*` flattened ports and maps the shared AXI completion into SMC PyUVM items, timeout/error policy, scoreboard, and CSR helpers |
 | `smc_jtag_protocol_vip.SmcJtagTap` | `cocotbext.jtag` (`JTAGBus` + `JTAGDriver`) | `cocotbext.jtag` binds cleanly to the public `tb_cpu_jtag_{tck,tms,tdi,tdo,reset}` pins. `SmcCpuTapDevice(idcode=0x10CA0555, ir_len=5)` mirrors the JEP106 straps hard-coded in `tb_top.sv` |
 | `smc_i2c_protocol_vip.SmcI2cEepromSlave` / `SmcI2cBusMonitor` | native cocotb clock-sampled model | Implemented natively because `cocotbext-i2c` edge waits miss open-drain transitions under Verilator; the model samples the split-port `tb_i2c0_*`/`tb_i2c0_*_ext_low` pins on a clock and owns the pull-low polarity mapping directly |
-| `smc_i3c_protocol_vip.SmcI3cSlaveVip` | `cocotbext_i3c.I3CTarget` | Upstream ships as a bundled submodule rather than a PyPI package, so the wrapper augments `sys.path` at import time and degrades gracefully when absent. Overrides the `sda`/`scl` property setters with the same polarity inversion |
+
+I3C carries no protocol-level VIP: `smc_i3c_to_fabric_test` gates on CSR
+decode (HCI_VERSION) plus the `check_i3c0_external_pull_low` pad check and
+records `proxy=True`.
 
 `seq_lib/smc_jtag_vip_utils.check_cpu_jtag_pin_vip()` drives a full TRST pulse
 plus TMS-1 navigation to TEST_LOGIC_RESET, captures IDCODE via `cocotbext.jtag`,
@@ -487,8 +490,7 @@ fully driven defaults.
 low from t=0, breaking the OVRD-release check on all three I2C tests. Xcelium hid
 this because it initialized the `ext_low` ports differently in the same
 time-zero window; Verilator caught it. Fix: call
-`self.{sda,scl}_o.setimmediatevalue(0)` immediately after `super().__init__()`,
-mirroring what `SmcI3cSlaveVip` already did.
+`self.{sda,scl}_o.setimmediatevalue(0)` immediately after `super().__init__()`.
 
 **A `tb_top` pad lift destabilized the Verilator model.** Lifting SPI Octal Flash
 pads and telemetry packed-array pads to `tb_top.sv` produced a `Vtop::eval()`
@@ -497,44 +499,29 @@ reverted. A leftover trailing comma after removing the port bindings was then
 reported by the Verilator front-end as *Mixing positional and `.*`/named
 instantiation*.
 
-**I3C target needed a settle window.** A 1 us timer between slave/controller bind
-and the first `i3c_write` gives the target `_run` coroutine time to reach its
-edge-wait state; without it the first SDR frame slipped past target init on some
-test paths.
-
-**Missing extensions look like test failures.** The 5 JTAG tests hard-failed with
-`SmcJtagTapError: cocotbext-jtag is required`, and the 6 I3C tests with
-`ImportError: No module named 'cocotbext_i3c'`, purely because the packages were
-not importable. Neither was an RTL or TB defect. Confirm the dependency surface
+**Missing extensions look like test failures.** The 5 JTAG tests hard-failed
+with `SmcJtagTapError: cocotbext-jtag is required`, purely because the package
+was not importable — not an RTL or TB defect. Confirm the dependency surface
 before debugging a protocol test.
 
 ### Loopback proofs
 
-`SmcI2cMasterVip` (a `cocotbext.i2c.I2cMaster` subclass with the same polarity
-flip and open-drain wired-AND set) and `SmcI3cControllerVip` (a
-`cocotbext_i3c.I3cController` subclass with the shared polarity mixin) provide
-directed byte-level traffic:
+`SmcI2cMasterVip` (the SMC-local clock-sampled master) provides directed
+byte-level traffic:
 
 - `smc_i2c_master_target_test_seq` binds slave + master + monitor, issues
   `master.write(0x50, [offset=0x10, byte=0xAB])`, and asserts
   `slave.read_mem(0x10, 1) == 0xAB`. That is direct evidence a real
   START + ADDR(0x50) + DATA(0xAB) + STOP sequence traversed the `tb_i2c0_*` pins
   through the polarity + wired-AND adapter.
-- `smc_i3c_to_fabric_test_seq` binds target + controller and issues
-  `ctrl.i3c_write(addr=0x50, data=[0x5A])`; the target's
-  `TARGET:::Performing write at 0, data: [90]` log line confirms the byte
-  arrived. A T-bit ACK is not required for the proof, since a proper ACK needs
-  prior DAA/SETDASA enrolment, which is out of scope.
-- The directed I3C SDR write lives in
-  `smc_i3c_vip_utils.i3c_directed_sdr_write_proof`, called from
-  `check_i3c0_external_pull_low` (which every I3C test reaches) plus
-  `smc_i3c_multi_controller_csr_test`. All five I3C tests emit
-  `TARGET:::Performing write` at least once on both simulators.
 - I2C at Standard mode (100 kHz) needs more than 15 min of Verilator wall-clock
   for a 3-byte transaction, so the byte transaction is **gated on
   `cocotb.SIM_NAME` and skipped under Verilator** (the wrapper bind and polarity
-  adapter still run). Xcelium is the authoritative byte-level proof. The I3C
-  loopback is fast enough to run unconditionally on both.
+  adapter still run). Xcelium is the authoritative byte-level proof.
+
+I3C has no byte-level loopback: `smc_i3c_to_fabric_test` is gated on CSR
+decode (HCI_VERSION) plus the external pull-low pad check and records
+`proxy=True`.
 
 The `SmcI2cEepromSlave` slave-mode class is ready for real bus traffic. The
 remaining work is programming the SMC I2C0 DesignWare controller (`IC_CON`
@@ -545,9 +532,11 @@ until it is.
 
 ### Remaining blocker roadmap
 
-1. Deepen the I2C/I3C pin VIPs from line-level checks to directed
-   byte/CCC/IBI transactions. *Partially delivered by the wrappers above;
-   controller-side bring-up is the remaining piece.*
+1. Deepen the I2C pin VIP from line-level checks to directed byte
+   transactions. *Partially delivered by the wrappers above;
+   controller-side bring-up is the remaining piece.* I3C stays at
+   line-level + CSR-proxy checks until a real pad-level VIP with a
+   reproducible backend exists.
 2. Deepen CPU/JTAG from OSS-safe master-BFM and pin reset/idle checks to full
    firmware boot and TAP-level register access. *TAP-level IDCODE is covered via
    `SmcJtagTap`; full firmware boot depends on the OSS firmware loader.*
@@ -636,7 +625,7 @@ refer to this section for how the infrastructure underneath is delivered.
 | Mailbox data/error depth | built / static-checked | `smc_mailbox_data_error_test` | FIFO data path + illegal-access response checks (`mailbox_depth` tag, not canonical) |
 | Mailbox event / IRQ source | missing | `smc_mailbox_event_irq_test`, `smc_gpio_irq_active_test` completion | Current tests prove CSR decode/control only |
 | I2C VIP/BFM | monitor + master built / passing | I2C triplet + SMBus + PMBus + Host Notify | `SmcI2cBusMonitor` / `SmcI2cEepromSlave` / `SmcI2cMasterVip` in `seq_lib/smc_i2c_protocol_vip.py`. DesignWare controller CSR bring-up still follow-up |
-| I3C VIP/BFM | slave-level built / passing | I3C triplet + CCC/IBI SDR extension | `SmcI3cSlaveVip` in `seq_lib/smc_i3c_protocol_vip.py`. SMC I3C controller CSR bring-up is follow-up |
+| I3C VIP/BFM | missing | I3C triplet + CCC/IBI SDR extension | No I3C VIP ships; `smc_i3c_to_fabric_test` gates on CSR decode plus the external pull-low pad check (`proxy=True`). Needs a real pad-level VIP with a reproducible backend |
 | JTAG/iJTAG VIP | TAP-level built / passing | JTAG triplet | `SmcJtagTap` in `seq_lib/smc_jtag_protocol_vip.py`, `SmcCpuTapDevice(idcode=0x10CA0555, ir_len=5, IDCODE@0x01, DTMCS@0x10, DMI@0x11)`. IR/DR access beyond the default IDCODE latch proven end-to-end |
 | UART VIP | built / dependency-gated | `smc_uart_loopback_test` | `SmcUartVip` wraps `cocotbext-uart` UartSource + UartSink; 8-N-1 loopback at 115200 baud. Blocked on the undeclared `cocotbext-uart` dependency |
 | SPI VIP | library-level built / passing | `smc_spi_loopback_test` | `ocah_spi_vip.OcahSpiFlash` library integration + mock signals; full pin-driven loopback needs a Verilator-safe SPI pad lift |
