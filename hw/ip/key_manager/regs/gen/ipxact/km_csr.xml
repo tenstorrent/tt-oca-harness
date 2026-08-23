@@ -15,7 +15,7 @@
         <ipxact:displayName>Key Manager Control and Status Registers</ipxact:displayName>
         <ipxact:description>Control and status registers for the Key Manager subsystem</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'h30c</ipxact:range>
+        <ipxact:range>'h4c0</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>VERSION</ipxact:name>
@@ -275,8 +275,23 @@
           <ipxact:field>
             <ipxact:name>exec_violation</ipxact:name>
             <ipxact:displayName>EXEC_VIOLATION</ipxact:displayName>
-            <ipxact:description>Instruction fetch from a non-whitelisted (non-executable) memory region detected. Sticky, write 1 to clear.</ipxact:description>
+            <ipxact:description>Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.</ipxact:description>
             <ipxact:bitOffset>10</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rom_access_violation</ipxact:name>
+            <ipxact:displayName>ROM_ACCESS_VIOLATION</ipxact:displayName>
+            <ipxact:description>KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.</ipxact:description>
+            <ipxact:bitOffset>11</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
@@ -291,13 +306,13 @@
             <ipxact:name>rsvd</ipxact:name>
             <ipxact:displayName>RSVD</ipxact:displayName>
             <ipxact:description>Reserved</ipxact:description>
-            <ipxact:bitOffset>11</ipxact:bitOffset>
+            <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>21</ipxact:bitWidth>
+            <ipxact:bitWidth>20</ipxact:bitWidth>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -451,16 +466,29 @@
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>rsvd</ipxact:name>
-            <ipxact:displayName>RSVD</ipxact:displayName>
-            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:name>rom_access_violation_en</ipxact:name>
+            <ipxact:displayName>ROM_ACCESS_VIOLATION_EN</ipxact:displayName>
+            <ipxact:description>Enable ROM lockout violation interrupt</ipxact:description>
             <ipxact:bitOffset>11</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>21</ipxact:bitWidth>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:displayName>RSVD</ipxact:displayName>
+            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:bitOffset>12</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>20</ipxact:bitWidth>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -531,13 +559,13 @@
         <ipxact:register>
           <ipxact:name>SRAM_LOCK</ipxact:name>
           <ipxact:displayName>SRAM_LOCK</ipxact:displayName>
-          <ipxact:description>SRAM write-lock bits. Bit[i]=1 locks region i (512 bytes each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.</ipxact:description>
+          <ipxact:description>SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.</ipxact:description>
           <ipxact:addressOffset>'h1c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>lock_bits</ipxact:name>
             <ipxact:displayName>LOCK_BITS</ipxact:displayName>
-            <ipxact:description>One bit per 512-byte SRAM region. Region 0 = 0x4000-0x41FF, region 31 = 0x7E00-0x7FFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</ipxact:description>
+            <ipxact:description>One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -710,16 +738,30 @@
             <ipxact:access>write-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>rsvd</ipxact:name>
-            <ipxact:displayName>RSVD</ipxact:displayName>
-            <ipxact:description>Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)</ipxact:description>
+            <ipxact:name>rom_access_violation_set</ipxact:name>
+            <ipxact:displayName>ROM_ACCESS_VIOLATION_SET</ipxact:displayName>
+            <ipxact:description>Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)</ipxact:description>
             <ipxact:bitOffset>11</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>21</ipxact:bitWidth>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>write-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:displayName>RSVD</ipxact:displayName>
+            <ipxact:description>Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)</ipxact:description>
+            <ipxact:bitOffset>12</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>20</ipxact:bitWidth>
             <ipxact:access>write-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -882,13 +924,13 @@
         <ipxact:register>
           <ipxact:name>SRAM_EXEC_MODE</ipxact:name>
           <ipxact:displayName>SRAM_EXEC_MODE</ipxact:displayName>
-          <ipxact:description>Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM-only executable; 1=ROM + write-locked SRAM regions executable. Set by ROM stack-less handover immediately before jumping to mutable firmware.</ipxact:description>
+          <ipxact:description>Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.</ipxact:description>
           <ipxact:addressOffset>'h38</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>enable</ipxact:name>
             <ipxact:displayName>ENABLE</ipxact:displayName>
-            <ipxact:description>Execute-permission mode: 0=ROM-only whitelist; 1=ROM + write-locked SRAM whitelist. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.</ipxact:description>
+            <ipxact:description>Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1310,7 +1352,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_VAL_0</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h200</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1326,7 +1368,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_VAL_1</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h204</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1342,7 +1384,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_VAL_2</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h208</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1358,7 +1400,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_VAL_3</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h20c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1374,7 +1416,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_VAL_4</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h210</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1390,7 +1432,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_VAL_5</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h214</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1406,7 +1448,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_VAL_6</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h218</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1422,7 +1464,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_VAL_7</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h21c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1438,7 +1480,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_CPL_0</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h220</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1454,7 +1496,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_CPL_1</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h224</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1470,7 +1512,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_CPL_2</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h228</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1486,7 +1528,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_CPL_3</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h22c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1502,7 +1544,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_CPL_4</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h230</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1518,7 +1560,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_CPL_5</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h234</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1534,7 +1576,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_CPL_6</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h238</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1550,7 +1592,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CHIPLET_UID_CPL_7</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h23c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1566,7 +1608,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_VAL_0</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h240</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1582,7 +1624,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_VAL_1</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h244</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1598,7 +1640,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_VAL_2</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h248</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1614,7 +1656,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_VAL_3</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h24c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1630,7 +1672,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_VAL_4</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h250</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1646,7 +1688,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_VAL_5</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h254</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1662,7 +1704,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_VAL_6</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h258</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1678,7 +1720,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_VAL_7</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h25c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1694,7 +1736,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_CPL_0</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h260</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1710,7 +1752,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_CPL_1</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h264</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1726,7 +1768,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_CPL_2</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h268</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1742,7 +1784,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_CPL_3</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h26c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1758,7 +1800,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_CPL_4</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h270</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1774,7 +1816,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_CPL_5</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h274</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1790,7 +1832,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_CPL_6</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h278</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1806,7 +1848,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SIP_UID_CPL_7</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h27c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1822,7 +1864,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_VAL_0</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h280</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1838,7 +1880,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_VAL_1</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h284</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1854,7 +1896,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_VAL_2</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h288</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1870,7 +1912,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_VAL_3</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h28c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1886,7 +1928,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_VAL_4</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h290</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1902,7 +1944,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_VAL_5</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h294</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1918,7 +1960,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_VAL_6</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h298</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1934,7 +1976,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_VAL_7</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h29c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1950,7 +1992,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_CPL_0</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2a0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1966,7 +2008,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_CPL_1</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2a4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1982,7 +2024,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_CPL_2</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2a8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -1998,7 +2040,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_CPL_3</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2ac</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2014,7 +2056,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_CPL_4</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2b0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2030,7 +2072,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_CPL_5</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2b4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2046,7 +2088,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_CPL_6</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2b8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2062,7 +2104,7 @@
         <ipxact:register>
           <ipxact:name>OTP_SYS_UID_CPL_7</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2bc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2078,7 +2120,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_VAL_0</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2c0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2094,7 +2136,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_VAL_1</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2c4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2110,7 +2152,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_VAL_2</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2c8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2126,7 +2168,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_VAL_3</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2cc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2142,7 +2184,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_VAL_4</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2d0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2158,7 +2200,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_VAL_5</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2d4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2174,7 +2216,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_VAL_6</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2d8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2190,7 +2232,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_VAL_7</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2dc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2206,7 +2248,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_CPL_0</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2e0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2222,7 +2264,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_CPL_1</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2e4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2238,7 +2280,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_CPL_2</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2e8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2254,7 +2296,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_CPL_3</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2ec</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2270,7 +2312,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_CPL_4</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2f0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2286,7 +2328,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_CPL_5</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2f4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2302,7 +2344,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_CPL_6</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2f8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2318,7 +2360,7 @@
         <ipxact:register>
           <ipxact:name>OTP_CLASS_KEY_CPL_7</ipxact:name>
           <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
-          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.</ipxact:description>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
           <ipxact:addressOffset>'h2fc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
@@ -2422,16 +2464,58 @@
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>rsvd</ipxact:name>
-            <ipxact:displayName>RSVD</ipxact:displayName>
-            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:name>sep_chiplet_id</ipxact:name>
+            <ipxact:displayName>SEP_CHIPLET_ID</ipxact:displayName>
+            <ipxact:description>Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>26</ipxact:bitWidth>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>sep_sip_id</ipxact:name>
+            <ipxact:displayName>SEP_SIP_ID</ipxact:displayName>
+            <ipxact:description>Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>sep_sys_id</ipxact:name>
+            <ipxact:displayName>SEP_SYS_ID</ipxact:displayName>
+            <ipxact:description>Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:displayName>RSVD</ipxact:displayName>
+            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:bitOffset>9</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>23</ipxact:bitWidth>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -2532,16 +2616,61 @@
             <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>rsvd</ipxact:name>
-            <ipxact:displayName>RSVD</ipxact:displayName>
-            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:name>sep_chiplet_id</ipxact:name>
+            <ipxact:displayName>SEP_CHIPLET_ID</ipxact:displayName>
+            <ipxact:description>OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>26</ipxact:bitWidth>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>sep_sip_id</ipxact:name>
+            <ipxact:displayName>SEP_SIP_ID</ipxact:displayName>
+            <ipxact:description>OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>sep_sys_id</ipxact:name>
+            <ipxact:displayName>SEP_SYS_ID</ipxact:displayName>
+            <ipxact:description>OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:displayName>RSVD</ipxact:displayName>
+            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:bitOffset>9</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>23</ipxact:bitWidth>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -2636,16 +2765,826 @@
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>rsvd</ipxact:name>
-            <ipxact:displayName>RSVD</ipxact:displayName>
-            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:name>sep_chiplet_id</ipxact:name>
+            <ipxact:displayName>SEP_CHIPLET_ID</ipxact:displayName>
+            <ipxact:description>Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>26</ipxact:bitWidth>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>sep_sip_id</ipxact:name>
+            <ipxact:displayName>SEP_SIP_ID</ipxact:displayName>
+            <ipxact:description>Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.</ipxact:description>
+            <ipxact:bitOffset>7</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>sep_sys_id</ipxact:name>
+            <ipxact:displayName>SEP_SYS_ID</ipxact:displayName>
+            <ipxact:description>Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:displayName>RSVD</ipxact:displayName>
+            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:bitOffset>9</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>23</ipxact:bitWidth>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_VAL_0</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h400</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_VAL_1</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h404</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_VAL_2</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h408</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_VAL_3</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h40c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_VAL_4</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h410</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_VAL_5</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h414</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_VAL_6</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h418</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_VAL_7</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h41c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_CPL_0</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h420</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_CPL_1</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h424</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_CPL_2</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h428</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_CPL_3</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h42c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_CPL_4</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h430</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_CPL_5</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h434</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_CPL_6</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h438</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_CHIPLET_ID_CPL_7</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h43c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_VAL_0</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h440</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_VAL_1</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h444</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_VAL_2</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h448</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_VAL_3</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h44c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_VAL_4</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h450</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_VAL_5</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h454</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_VAL_6</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h458</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_VAL_7</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h45c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_CPL_0</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h460</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_CPL_1</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h464</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_CPL_2</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h468</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_CPL_3</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h46c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_CPL_4</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h470</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_CPL_5</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h474</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_CPL_6</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h478</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SIP_ID_CPL_7</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h47c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_VAL_0</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h480</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_VAL_1</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h484</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_VAL_2</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h488</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_VAL_3</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h48c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_VAL_4</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h490</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_VAL_5</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h494</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_VAL_6</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h498</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_VAL_7</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h49c</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_CPL_0</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h4a0</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_CPL_1</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h4a4</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_CPL_2</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h4a8</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_CPL_3</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h4ac</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_CPL_4</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h4b0</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_CPL_5</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h4b4</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_CPL_6</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h4b8</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>OTP_SEP_SYS_ID_CPL_7</ipxact:name>
+          <ipxact:displayName>OTP_DR_WORD</ipxact:displayName>
+          <ipxact:description>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</ipxact:description>
+          <ipxact:addressOffset>'h4bc</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>value</ipxact:name>
+            <ipxact:displayName>VALUE</ipxact:displayName>
+            <ipxact:description>32-bit OTP word. No reset; power-up value undefined.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>

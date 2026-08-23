@@ -15,13 +15,13 @@
         <ipxact:displayName>Key and Policy Vault (KM Port)</ipxact:displayName>
         <ipxact:description>Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'h888</ipxact:range>
+        <ipxact:range>'h1108</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>KEY_ENTRY</ipxact:name>
           <ipxact:displayName>KEY_ENTRY</ipxact:displayName>
           <ipxact:description>One key entry (16 x 32-bit words = 512 bits)</ipxact:description>
-          <ipxact:dim>32</ipxact:dim>
+          <ipxact:dim>64</ipxact:dim>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:range>'h40</ipxact:range>
           <ipxact:register>
@@ -45,14 +45,17 @@ Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</ipxac
         <ipxact:register>
           <ipxact:name>CTRL</ipxact:name>
           <ipxact:displayName>CTRL</ipxact:displayName>
-          <ipxact:description>Per-slot control: lock bits (W1S), Extend, Dest_valid, Last_dword</ipxact:description>
-          <ipxact:dim>32</ipxact:dim>
-          <ipxact:addressOffset>'h800</ipxact:addressOffset>
+          <ipxact:description>Per-slot control: lock bits (W1S) and the erase trigger</ipxact:description>
+          <ipxact:dim>64</ipxact:dim>
+          <ipxact:addressOffset>'h1000</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>lock_write</ipxact:name>
             <ipxact:displayName>LOCK_WRITE</ipxact:displayName>
-            <ipxact:description>Prevents KM write to this key entry data and control until reset. Read-any, write-1-only.</ipxact:description>
+            <ipxact:description>Prevents KM write to this key entry data until reset; this register stays
+writable so that a locked slot can still be read-locked and erased.
+Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
+set, so sealing a slot write-locks it without a separate write here.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -67,7 +70,9 @@ Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</ipxac
           <ipxact:field>
             <ipxact:name>lock_use</ipxact:name>
             <ipxact:displayName>LOCK_USE</ipxact:displayName>
-            <ipxact:description>Prevents KM read of this key entry data until reset. Read-any, write-1-only.</ipxact:description>
+            <ipxact:description>Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+Hardware sets this bit when an erase of a sealed slot completes, retiring
+the slot: its destroyed contents cannot be read back.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -83,9 +88,14 @@ Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</ipxac
             <ipxact:name>erase</ipxact:name>
             <ipxact:displayName>ERASE</ipxact:displayName>
             <ipxact:description>Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
-words (through the KPV scrambler) and the slot CTRL register is cleared.
-Hardware self-clears this bit when the erase completes. Not blocked by
-lock_write or lock_use.</ipxact:description>
+words (through the KPV scrambler). Hardware self-clears this bit when the
+erase completes. Never blocked: neither lock_write, lock_use nor seal
+prevents an erase. The slot's seal state when the erase completes decides
+the outcome. Unsealed, the slot CTRL register is cleared and the slot is
+reusable. Sealed, lock_write stays set and lock_use is set, retiring the
+slot: its data is destroyed and it can be neither read, rewritten nor
+reused until warm reset. A seal taken while an erase is already in flight
+therefore still retires the slot.</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -98,9 +108,13 @@ lock_write or lock_use.</ipxact:description>
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>rsvd_3</ipxact:name>
-            <ipxact:displayName>RSVD_3</ipxact:displayName>
-            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:name>seal</ipxact:name>
+            <ipxact:displayName>SEAL</ipxact:displayName>
+            <ipxact:description>Seals this key entry until warm reset. Read-any, write-1-only. Setting this
+bit also sets lock_write in hardware, so a single write seals the slot: its
+data can be read but not overwritten. Erase remains available, and erasing
+a sealed slot retires it rather than freeing it (see ERASE), so a sealed
+slot's material can be destroyed but its slot never reused.</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -108,60 +122,21 @@ lock_write or lock_use.</ipxact:description>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>extend</ipxact:name>
-            <ipxact:displayName>EXTEND</ipxact:displayName>
-            <ipxact:description>Zero-indexed number of additional slots for wide keys. Firmware enforced.</ipxact:description>
+            <ipxact:name>rsvd_31_4</ipxact:name>
+            <ipxact:displayName>RSVD_31_4</ipxact:displayName>
+            <ipxact:description>Reserved</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>3</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>rsvd_16_7</ipxact:name>
-            <ipxact:displayName>RSVD_16_7</ipxact:displayName>
-            <ipxact:description>Reserved</ipxact:description>
-            <ipxact:bitOffset>7</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>last_dword</ipxact:name>
-            <ipxact:displayName>LAST_DWORD</ipxact:displayName>
-            <ipxact:description>Last valid key word index [0,15]. Hardware returns 0 for reads beyond this.</ipxact:description>
-            <ipxact:bitOffset>17</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>4</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>rsvd_31_21</ipxact:name>
-            <ipxact:displayName>RSVD_31_21</ipxact:displayName>
-            <ipxact:description>Reserved</ipxact:description>
-            <ipxact:bitOffset>21</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>11</ipxact:bitWidth>
+            <ipxact:bitWidth>28</ipxact:bitWidth>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
@@ -169,7 +144,7 @@ lock_write or lock_use.</ipxact:description>
           <ipxact:name>KPV_SCRAMBLER_KEY</ipxact:name>
           <ipxact:displayName>KPV_SCRAMBLER_KEY</ipxact:displayName>
           <ipxact:description>32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.</ipxact:description>
-          <ipxact:addressOffset>'h880</ipxact:addressOffset>
+          <ipxact:addressOffset>'h1100</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>key</ipxact:name>
@@ -185,7 +160,7 @@ lock_write or lock_use.</ipxact:description>
           <ipxact:name>KPV_SCRAMBLER_CTRL</ipxact:name>
           <ipxact:displayName>KPV_SCRAMBLER_CTRL</ipxact:displayName>
           <ipxact:description>KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.</ipxact:description>
-          <ipxact:addressOffset>'h884</ipxact:addressOffset>
+          <ipxact:addressOffset>'h1104</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>enable</ipxact:name>
