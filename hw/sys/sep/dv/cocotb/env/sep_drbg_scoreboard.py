@@ -47,6 +47,11 @@ def _safe_int(sig):
         return None
 
 
+def _fmt_word(val, hexw: int) -> str:
+    """Hex word for the report log; X/Z stays visible instead of throwing."""
+    return "X/Z" if val is None else f"{val:0{hexw}x}"
+
+
 class _StreamResult:
     __slots__ = ("name", "width", "matches", "mismatches", "dut_items",
                  "pairs", "first_mismatch")
@@ -231,6 +236,9 @@ class SepDrbgScoreboard:
         self._axis1_member_misses = 0
         self._axis2_member_hits = 0
         self._axis2_member_misses = 0
+        # Granted/accepted beat whose packed data probe is X/Z. That is a
+        # malformed routed beat, not "didn't happen" -- report() fails on it.
+        self._xz_routed_beats = 0
         # Contention evidence: the sim-time (ns) of every post-adapter crypto-EDN beat
         # per sink, index-aligned with _sink_words. Two sinks whose beat time-spans
         # OVERLAP were being granted EDN words during an overlapping window -- i.e. the
@@ -448,6 +456,7 @@ class SepDrbgScoreboard:
         self._axis1_member_misses = 0
         self._axis2_member_hits = 0
         self._axis2_member_misses = 0
+        self._xz_routed_beats = 0
         # Pre-reset genbits are X/garbage, so any Generate they opened is not a
         # real unterminated command -- drop the segmentation state with them.
         self._genbits_in_gen = 0
@@ -512,6 +521,13 @@ class SepDrbgScoreboard:
         if len(r.pairs) < self.CAPTURE_N:
             r.pairs.append((r.dut_items - 1, None, actual, True))
 
+    def _note_xz_routed(self, where: str) -> None:
+        """A completed handshake whose packed data is X/Z. Fail in report()."""
+        self._xz_routed_beats += 1
+        self.log.error(
+            "CHK5 ROUTING FAIL: %s completed a beat with X/Z packed data "
+            "(unobservable, not 'didn't happen')", where)
+
     # --------------------------------------------------------------- monitors
     async def _mon_level(self, key, vld, sig, *, mask):
         """One item per cycle the valid is high."""
@@ -532,8 +548,10 @@ class SepDrbgScoreboard:
             await ReadOnly()
             if (_safe_int(vld) or 0) and (_safe_int(rdy) or 0):
                 v = _safe_int(sig)
-                if v is not None:
-                    self._record(key, v & mask)
+                if v is None:
+                    self._note_xz_routed(key)
+                    continue
+                self._record(key, v & mask)
 
     async def _mon_handshake_observed(self, key, vld, rdy, sig, *, mask,
                                      fips_check=None):
@@ -547,8 +565,10 @@ class SepDrbgScoreboard:
                 if fips_check is not None:
                     fips_check()
                 v = _safe_int(sig)
-                if v is not None:
-                    self._record_observed(key, v & mask)
+                if v is None:
+                    self._note_xz_routed(key)
+                    continue
+                self._record_observed(key, v & mask)
 
     def _note_pool_fips(self) -> None:
         """Sample pool_edn_fips_o on a completed pool EDN beat."""
@@ -580,12 +600,14 @@ class SepDrbgScoreboard:
             if req and ack:
                 self._note_crypto_fips(idx)
                 bus = _safe_int(d.crypto_edn_bus_o)
-                if bus is not None:
-                    v = (bus >> (32 * idx)) & 0xFFFFFFFF
-                    if observe:
-                        self._record_observed(key, v)
-                    else:
-                        self._record(key, v)
+                if bus is None:
+                    self._note_xz_routed(key)
+                    continue
+                v = (bus >> (32 * idx)) & 0xFFFFFFFF
+                if observe:
+                    self._record_observed(key, v)
+                else:
+                    self._record(key, v)
 
     async def _mon_axis1_tap(self):
         """Capture every accepted AXIS1 beat (crypto-leg pre-adapter word stream,
@@ -601,10 +623,12 @@ class SepDrbgScoreboard:
             await ReadOnly()
             if (_safe_int(d.axis1_tvalid_o) or 0) and (_safe_int(d.axis1_tready_o) or 0):
                 w = _safe_int(d.axis1_tdata_o)
-                if w is not None:
-                    w &= 0xFFFFFFFF
-                    self.axis1_q.append(w)
-                    self._axis1_words.append(w)
+                if w is None:
+                    self._note_xz_routed("AXIS1")
+                    continue
+                w &= 0xFFFFFFFF
+                self.axis1_q.append(w)
+                self._axis1_words.append(w)
 
     async def _mon_axis2_tap(self):
         """Capture every accepted AXIS2 beat (entropy-pool pre-adapter word stream,
@@ -618,10 +642,12 @@ class SepDrbgScoreboard:
             await ReadOnly()
             if (_safe_int(d.axis2_tvalid_o) or 0) and (_safe_int(d.axis2_tready_o) or 0):
                 w = _safe_int(d.axis2_tdata_o)
-                if w is not None:
-                    w &= 0xFFFFFFFF
-                    self.axis2_q.append(w)
-                    self._axis2_words.append(w)
+                if w is None:
+                    self._note_xz_routed("AXIS2")
+                    continue
+                w &= 0xFFFFFFFF
+                self.axis2_q.append(w)
+                self._axis2_words.append(w)
 
     async def _mon_pool_edn_golden(self):
         """Bit-exact pool ROUTING: each post-adapter pool beat equals the next AXIS2
@@ -638,6 +664,9 @@ class SepDrbgScoreboard:
                 self._note_pool_fips()
                 bus = _safe_int(d.pool_edn_bus_o)
                 if bus is None:
+                    self._note_xz_routed("CHK5_pool")
+                    exp = self.axis2_q.popleft() if self.axis2_q else None
+                    self._record_pair("CHK5_pool", exp, None)
                     continue
                 v = bus & 0xFFFFFFFF
                 exp = self.axis2_q.popleft() if self.axis2_q else None
@@ -656,8 +685,10 @@ class SepDrbgScoreboard:
             if req and ack:
                 self._note_pool_fips()
                 bus = _safe_int(d.pool_edn_bus_o)
-                if bus is not None:
-                    self._pool_words.append(bus & 0xFFFFFFFF)
+                if bus is None:
+                    self._note_xz_routed("CHK5_pool membership")
+                    continue
+                self._pool_words.append(bus & 0xFFFFFFFF)
 
     def _stash_sink_beat(self, name, word):
         """Record one post-adapter beat for sink_beats() / sink_beat_times()."""
@@ -693,6 +724,21 @@ class SepDrbgScoreboard:
                 continue
             bus = _safe_int(d.crypto_edn_bus_o)
             if bus is None:
+                names = [idx_name[idx] for idx in granted]
+                self._note_xz_routed(f"crypto-EDN grant {names}")
+                if len(granted) == 1:
+                    exp = self.axis1_q.popleft() if self.axis1_q else None
+                    idx = granted[0]
+                    self._note_crypto_fips(idx)
+                    if idx in golden_by_idx:
+                        key, _name = golden_by_idx[idx]
+                        self._record_pair(key, exp, None)
+                else:
+                    for idx in granted:
+                        self._note_crypto_fips(idx)
+                        if idx in golden_by_idx:
+                            key, _name = golden_by_idx[idx]
+                            self._record_pair(key, None, None)
                 continue
             if len(granted) > 1:
                 names = [idx_name[idx] for idx in granted]
@@ -731,8 +777,10 @@ class SepDrbgScoreboard:
             await ReadOnly()
             if (_safe_int(d.km_entropy_tvalid_o) or 0) and (_safe_int(d.km_entropy_tready_o) or 0):
                 w = _safe_int(d.km_entropy_tdata_o)
-                if w is not None:
-                    self._km_words.append(w & 0xFFFFFFFF)
+                if w is None:
+                    self._note_xz_routed("CHK5_km membership")
+                    continue
+                self._km_words.append(w & 0xFFFFFFFF)
 
     async def _mon_edn_sink_membership(self, idx, name):
         """Stash every native-EDN beat word delivered to crypto sink `idx` (the cycle
@@ -750,8 +798,10 @@ class SepDrbgScoreboard:
             if req and ack:
                 self._note_crypto_fips(idx)
                 bus = _safe_int(d.crypto_edn_bus_o)
-                if bus is not None:
-                    self._stash_sink_beat(name, (bus >> (32 * idx)) & 0xFFFFFFFF)
+                if bus is None:
+                    self._note_xz_routed(f"CHK5_{name} membership")
+                    continue
+                self._stash_sink_beat(name, (bus >> (32 * idx)) & 0xFFFFFFFF)
 
     async def _mon_handshake_rise(self, key, a, b, sig, *, mask):
         """One item per RISING edge of (a && b) -- a req/ack handshake completing.
@@ -922,15 +972,22 @@ class SepDrbgScoreboard:
                 self.log.info("CHK5_km membership: %d/%d KM AXIS words are genbits-golden "
                               "words (rom_main pull order is firmware-driven, not scored)",
                               rkm.matches, rkm.dut_items)
-            # Per-sink crypto membership (AES/KMAC/... concurrent). KM leg and crypto
-            # leg are disjoint draws from genbits, and the crypto sinks are disjoint
-            # slices of the crypto-leg AXIS1 stream, so removal order does not matter.
+            # Per-sink crypto membership. Those words are slices of the crypto-leg
+            # AXIS1 stream. When a golden crypto sink is also live the AXIS1 tally
+            # below removes every AXIS1 beat from `pool`; scoring membership against
+            # the same Counter would double-count (AES golden + KMAC membership
+            # would miss the KMAC beats a second time). Membership-only (no AXIS1
+            # tap) still removes from the shared pool so over-consumption vs KM /
+            # pool still shows.
+            member_pool = (
+                Counter(self._genbits_words) if self._axis1_needed else pool
+            ) if crypto_membership else pool
             for name in crypto_membership:
                 r = self.results[self._SINK_KEYS[name]]
                 for w in self._sink_words[name]:
                     r.dut_items += 1
-                    if pool[w] > 0:
-                        pool[w] -= 1
+                    if member_pool[w] > 0:
+                        member_pool[w] -= 1
                         r.matches += 1
                     else:
                         r.mismatches += 1
@@ -1014,17 +1071,17 @@ class SepDrbgScoreboard:
                               r.name, r.dut_items, r.matches, r.mismatches, left)
             hexw = max(1, r.width // 4)
             for (idx, exp, act, ok) in r.pairs[:12]:
-                es = "----" if exp is None else f"{exp:0{hexw}x}"
+                es = "----" if exp is None else _fmt_word(exp, hexw)
                 if sink_md == "observe":
-                    self.log.info("    [%-2d] OBS act=%0*x", idx, hexw, act)
+                    self.log.info("    [%-2d] OBS act=%s", idx, _fmt_word(act, hexw))
                 else:
-                    self.log.info("    [%-2d] %s exp=%s act=%0*x",
-                                  idx, "OK " if ok else "XX!", es, hexw, act)
+                    self.log.info("    [%-2d] %s exp=%s act=%s",
+                                  idx, "OK " if ok else "XX!", es, _fmt_word(act, hexw))
             if r.first_mismatch is not None:
                 idx, exp, act = r.first_mismatch
-                es = "----" if exp is None else f"{exp:0{hexw}x}"
-                self.log.info("    first mismatch [%d] exp=%s act=%0*x",
-                              idx, es, hexw, act)
+                es = "----" if exp is None else _fmt_word(exp, hexw)
+                self.log.info("    first mismatch [%d] exp=%s act=%s",
+                              idx, es, _fmt_word(act, hexw))
             if r.mismatches > 0:
                 any_fail = True
             # Minimum-evidence: a checkpoint that never scored (or scored too few)
@@ -1035,6 +1092,11 @@ class SepDrbgScoreboard:
                                "(checkpoint never fired / under-exercised)",
                                r.name, r.matches, need)
                 any_fail = True
+        if self._xz_routed_beats:
+            self.log.error(
+                "CHK5 ROUTING FAIL: %d accepted beat(s) had X/Z packed data",
+                self._xz_routed_beats)
+            any_fail = True
         # Protocol checks (CHK3/CHK4 semantics, independent of value match).
         if self._fips_violations:
             self.log.error("CHK4 FIPS violation: %d genbits with genbits_fips_o != 1",

@@ -32,6 +32,7 @@ class sep_otbn_compute_rand_test(sep_base_test):
         await self.swrst.park("aes", "hmac", "kmac")
         await self.bring_up_entropy(
             strict=True, score_km=False, score_sinks={"otbn_urnd": "observe"})
+        self.start_fifo_drain()
 
         cfg = SepOtbnComputeCfg.from_seed(self.random_seed())
         self.logger.info("OTBN compute RANDCFG %s", cfg.summary())
@@ -50,6 +51,10 @@ class sep_otbn_compute_rand_test(sep_base_test):
             self.logger.info(
                 "CHK-CELL PASS: OTBN %s a=0x%08x b=0x%08x result=0x%08x "
                 "ERR_BITS=0", op, a, b, got)
+
+        await self.stop_fifo_drain()
+        await self.check_entropy_alerts_zero()
+        assert self.drbg_sb.report()
 
         self.logger.info(
             "CHK-RANDCFG PASS: walked all %d discrete ops %s (seed=%d)",
