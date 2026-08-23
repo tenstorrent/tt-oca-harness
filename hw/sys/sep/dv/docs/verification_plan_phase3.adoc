@@ -10,7 +10,7 @@
 ====
 *Phase 3 is T.B.D.* Nothing in this document is committed scope, scheduled
 work, or an execute list. Finish Phase 1 (closed), Phase 2 (active), and
-Phase 2+ (28/28 on the cocotb bench) first. Unlike
+Phase 2+ (28 of 29 on the cocotb bench) first. Unlike
 link:verification_plan_phase1.adoc[Phase 1] — where a row
 exists only if a run can prove it — every entry here is unimplemented by
 definition, so nothing is graded and no proof is cited. Read the rest as
@@ -23,11 +23,15 @@ as a second Phase 2 spine.
 Phase 1 (smoke plus subsystem representatives) is signed off, and its record is
 `verification_plan_phase1.adoc`. Phase 2 (iconic features, by IP) is active, in
 `verification_plan_phase2.adoc`, including the Phase 2+ extension that
-closes the scorecard to 28/28 on the same cocotb environment. Phase 3
+closes the scorecard to 28 of 29 on the same cocotb environment. Phase 3
 starts after that close-out. Phase 3 will collect what the earlier phases
 explicitly *defer*: advanced corner cases, error and security permutations,
 deeper cross-IP edges that are not the iconic feature, and code-coverage
-close-out. That work is not scheduled.
+close-out. Code coverage is already *collected*: `[coverage.verilator]`
+in `sep_sim_cfg.toml` instruments line, expression, and user coverage and
+the nightly regression writes the database. What Phase 3 owns is the
+close-out threshold — no coverage policy exists under `cov/config/`, so
+nothing gates on a number today.
 
 [[direction]]
 == Direction: Phase 3 moves to a new UVM testbench
@@ -59,9 +63,10 @@ on the bare `sep` build — or record the DV-infrastructure gate that stops it b
 
 [NOTE]
 ====
-Every candidate needs a full detail card — owner, testlist entry, reference trace, mapping
-outcome, checker list, run and fuse mode, DV-infrastructure needs, and deltas from the
-reference — *before* any code is written. Neither candidate below has one yet.
+Every candidate needs a full written specification — owner, testlist entry, reference
+trace, mapping outcome, checker list, run and fuse mode, DV-infrastructure needs, and
+deltas from the reference — *before* any code is written. Neither candidate below has
+one yet.
 ====
 
 == Holding notes (not scheduled)

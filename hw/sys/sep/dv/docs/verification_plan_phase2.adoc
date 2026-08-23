@@ -11,13 +11,15 @@
 The record of what Phase 2 verifies and what evidence backs each claim. It follows
 `oss_dv_plan.adoc`: one *iconic* feature per in-scope IP, randomized when the feature
 has a legal matrix or knob space, plus the cross-IP edges a per-IP bench cannot
-see. Phase 1 + Phase 2 together are the cocotb baseline: floor *> 60%*,
-target *85%* of in-scope SEP, counted as `PROVEN` *feature* rows on
+see. Phase 1 + Phase 2 together are the cocotb baseline: floor 18 of 29,
+goal 25 of 29 in-scope rows, counted as `PROVEN` *feature* rows on
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard],
-not as a count of `PROVEN` checkers and not as line coverage. The
-architecture spec is the denominator; AGP, local UART/GPIO, proprietary
-SPI PHY, ROM patch, next-gen DMA-AES, DCLS-in-SEP and PCR vault are out
-of that count. A `FAILED` spec-gap is not a feature credit.
+not as a count of `PROVEN` checkers and not as line coverage. Those are
+scorecard goals, not coverage measurements. The architecture spec is the
+denominator. Excluded for OSS hygiene: peripherals outside bare SEP, and
+proprietary IPs in nonfree. Excluded as deferred: AGP, local UART/GPIO,
+ROM patch, next-gen DMA-AES, DCLS-in-SEP and PCR vault. A `FAILED`
+spec-gap is not a feature credit.
 
 It uses the same grade rules as `verification_plan_phase1.adoc`. Those rules are
 not restated here. Read that document first if you are auditing this one.
@@ -27,8 +29,10 @@ checker names log text a kept Verilator run actually contains. A matching tag in
 that log is not the proof — an independent audit still has to show the checker
 can fail.
 
-What this document is *not*: a code-coverage percentage, a 69-name breadth
-ledger, or a second copy of Phase 1. Boot ROM *firmware* contracts are out
+What this document is *not*: a code-coverage number, a 69-name breadth
+ledger, or a second copy of Phase 1. RTL line, expression, and user
+coverage are collected by the nightly Verilator run and graded nowhere
+yet; this document grades features. Boot ROM *firmware* contracts are out
 of this plan (ROM-FW owner). ROM *hardware* access stays: IFU fetch and
 LSU read/write-ignore.
 
@@ -42,7 +46,7 @@ here: extend a Phase 2 test that already owns that claim, or add the
 named new test.
 Do not stretch the Phase 1 e2e / smoke entry. New tests are created
 from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
-is the completeness extension: same cocotb environment, target 28/28
+is the completeness extension: same cocotb environment, goal 28 of 29
 `PROVEN` scorecard rows, finished before Phase 3 starts a UVM bench.
 Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
 directed name is not coverage. There is no separate improvement
@@ -55,9 +59,10 @@ eFuse, and Key Manager. See <<attention>>.
 |===
 | Group | Count | Where
 
-| Phase 1 baseline
+| Phase 1 representatives
 | 21
-| `verification_plan_phase1.adoc`
+| `verification_plan_phase1.adoc` (which also holds 10 smoke tests, for
+  31 Phase 1 entries in total)
 
 | Graded Phase 2 entries
 | 24
@@ -78,7 +83,7 @@ eFuse, and Key Manager. See <<attention>>.
 
 | Phase 2+ close-out
 | 6 scorecard rows
-| <<phase2-plus>> — 28/28 before UVM
+| <<phase2-plus>> — 28 of 29 before UVM
 
 | Landed existing-test upgrades
 | see <<existing-upgrades>>
@@ -98,8 +103,7 @@ eFuse, and Key Manager. See <<attention>>.
 
 Every entry graded here was audited against a kept log by an agent that had not written
 the test, with one instruction: find checks that cannot fail. That produced 26 findings
-across the 22 entries. All 26 are fixed; the fixes are in this branch's history, one
-commit per group.
+across the 22 entries. All 26 are fixed.
 
 Recording the classes, because they recur and because a reader deciding how much to trust
 these grades should know what was wrong before:
@@ -228,8 +232,8 @@ and SP800-38A F.2.1/F.5.1 — so the expectation is independent of the DUT.
 | Strict entropy scoreboard: decorrelator, compress, seed, and genbits match the
   chained golden. OTBN/KMAC/HMAC parked so AES is the only crypto EDN client.
 | `CHK1..CHK4 bit-exact + CHK5_aes ROUTING (AES==AXIS1) PASS` (Verilator
-  `20260821_053249`; that run: decor 5580 / compress 800 / seed 1 / genbits 64 --
-  counts vary per seed, `mismatch=0` does not)
+  `20260821_053249`; the decorrelator, compress, seed and genbits counts vary
+  per seed, `mismatch=0` does not)
 | PROVEN
 
 | CHK5_aes
@@ -361,8 +365,8 @@ and the NIST SP800-185 samples.
 | Strict entropy scoreboard: decorrelator, compress, seed, and genbits match the
   chained golden. OTBN/AES/HMAC parked so KMAC is the only crypto EDN client.
 | `CHK1..CHK4 bit-exact + CHK5_kmac ROUTING (KMAC==AXIS1) PASS` (Verilator
-  `20260821_053400`; that run: decor 3862 / compress 408 / seed 1 / genbits 28 --
-  counts vary per seed, `mismatch=0` does not)
+  `20260821_053400`; the decorrelator, compress, seed and genbits counts vary
+  per seed, `mismatch=0` does not)
 | PROVEN
 
 | CHK5_kmac
@@ -547,8 +551,8 @@ grants still alternate (AES then URND). That is the round-robin decision.
 | Strict entropy scoreboard on the same bring-up that feeds the dual-req window.
   FIFO drain after the seed, then `report()`.
 | `CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS` (Verilator
-  `20260822_135844`; that run: decor 2175 / compress 24 / seed 1 / genbits 19 --
-  counts vary per seed, `mismatch=0` does not)
+  `20260822_135844`; the decorrelator, compress, seed and genbits counts vary
+  per seed, `mismatch=0` does not)
 | PROVEN
 
 | CHK-ROUTING
@@ -950,7 +954,8 @@ NOTE: the walk is first and last inbound-filter entries, two address windows
 (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
 `src_id=0`, plus the source-ID product on entry 0 / window 0. CHK-OWNERSHIP-WINDOW
 stays hard. The ownership restore programs `src_id=0` / `user=0` so a
-src-miss cannot paper over issue 1050.
+src-miss cannot paper over the ownership gap (`fabric.adoc` requires DECERR to a
+non-CPU master; the RTL answers OKAY).
 
 [[sep_fabric_remap_filter_csr_bank_test]]
 === sep_fabric_remap_filter_csr_bank_test
@@ -1499,7 +1504,7 @@ OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C.
 
 [horizontal]
 Tier:: Tier 2
-Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 Testlist:: `memory.toml`
 
 ==== Description
@@ -1544,9 +1549,12 @@ SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port.
 | PROVEN
 
 | CHK-BOUNDARY
-| The base address and the last valid SRAM word both read and write exactly. One-past-top
-  decode-error is `sep_fabric_decode_error_response_test`, not this row: that address is
-  the ROM base.
+| The base address and the last valid SRAM word both read and write exactly. The extent is
+  the generated map, not a doc literal: `OCH_SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and
+  `OCH_SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`,
+  matching `SRAM_N_ENTRIES = 256 * 1024 / 8` in `hw/top/sep_ip_integration.sv`, so the top
+  valid 64-bit word is `0x1003fff8`. One-past-top decode-error is
+  `sep_fabric_decode_error_response_test`, not this row: that address is the ROM base.
 | `CHK-BOUNDARY PASS: base 0x10000000 and top valid word 0x1003fff8 R/W exact`
 | PROVEN
 
@@ -1656,6 +1664,8 @@ come from the run seed (`SepDmaBasicCfg`).
 [horizontal]
 Tier:: Tier 2
 Run mode:: `cpu`, firmware `rom_lsu_read_test`
+Image:: `+sep_boot_rom_hex=mem_rom_test_rom.hex` — the committed test ROM at
+`cocotb/tests/mem_rom_test_rom.hex`, not the production Boot ROM
 Testlist:: `memory.toml`
 
 ==== Description
@@ -2022,8 +2032,12 @@ ROM-FW plan exists, those four names are graded there.
 
 Hard `FAILED` spec-vs-RTL (keep hard; do not XFAIL):
 
-* CHK-JTAG-MMR-DENY — https://github.com/tenstorrent/tt-oca-harness/issues/626
-* CHK-OWNERSHIP-WINDOW — https://github.com/tenstorrent/tt-oca-harness/issues/1050
+* CHK-JTAG-MMR-DENY — JTAG in PROD may touch only the two RMA-token CSRs per
+  `hw/sys/sep/doc/periphs.adoc`; the RTL returns OKAY on a non-token MMR.
+  (Phase 1 entry `sep_efuse_jtag_axil_el2_cpu_mux_test`; graded there.)
+* CHK-OWNERSHIP-WINDOW — only the SEP CPU may program the inbound filter per
+  `hw/sys/sep/doc/fabric.adoc`; the RTL answers OKAY instead of DECERR to
+  another master. Owned by `sep_fabric_inbound_filter_rule_matrix_test`.
 
 CHK1..CHK4 and CHK5 on every test that moves data across the DRBG is a standing
 rule. The three former crypto holes are `PROVEN`. CHK5 on mux endpoint [2]
@@ -2050,7 +2064,7 @@ ring oscillator, KM wipe, and inbound negative product are Phase 3 T.B.D.
 
 These IPs still have an iconic hole or a leftover *claim* listed on the
 signed-off Phase 1 handoff table. Closing that claim is Phase 2
-scorecard work (toward 85%) and <<phase2-plus>> (28/28 before UVM).
+scorecard work (toward 25 of 29) and <<phase2-plus>> (28 of 29 before UVM).
 Do not stretch the Phase 1 e2e / smoke entry. Extend a Phase 2 test that
 already owns the claim, or add the named new Phase 2 test.
 
@@ -2131,7 +2145,7 @@ and the two `PARTIAL` leftovers (RMA, inbound ownership) before UVM.
 |===
 
 [[phase2-plus]]
-== Phase 2+ — 28/28 before UVM
+== Phase 2+ — 28 of 29 before UVM
 
 Same cocotb / PyUVM + Verilator environment as Phase 2. Same DUT
 (`sep_wrapper`), same quality bar, same fuse/run-mode rules. Phase 2+
@@ -2140,8 +2154,9 @@ extension of this document: every in-scope
 link:oss_dv_plan.adoc#iconic-scorecard[iconic-scorecard] row `PROVEN`
 before `verification_plan_phase3.adoc` begins.
 
-Phase 2 keeps its floor (*> 60%*) and target (*85%* = 24 of 28). Phase 2+
-is the remaining six rows. Do not stretch a Phase 1 e2e / smoke entry.
+Phase 2 keeps its floor of 18 of 29 and its goal of 25 of 29. Phase 2+
+closes six rows, reaching 28 of 29; the KM key/policy vault row stays
+`GAP` past Phase 2+ because no vehicle exists for it yet. Do not stretch a Phase 1 e2e / smoke entry.
 Do not XFAIL a spec-vs-RTL checker.
 
 [cols="2,1,3,3",options="header"]
@@ -2151,6 +2166,9 @@ Do not XFAIL a spec-vs-RTL checker.
 | Key Manager as a command device
 | GAP
 | New RAND-REP: generate / transfer / revoke-or-shred / illegal→error.
+  A sealed slot must be erasable but then retired, never replaced, and a
+  DRBG fault during a command must report `IRQ_STATUS.DRBG_ERR` rather
+  than an AXI error response.
   Mailbox protocol RANDCFG in the same test unless it does not fit.
 | `sep_km_command_set_rand_test`
   (`sep_km_mailbox_protocol_rand_test` only if the protocol does not fit)
@@ -2184,13 +2202,13 @@ Do not XFAIL a spec-vs-RTL checker.
 | Inbound filter (ownership slice)
 | PARTIAL
 | No new test. The matrix already walks allow/block, source-ID, and
-  `SEP_DBG`. CHK-OWNERSHIP-WINDOW stays a hard assert (RTL OKAY vs
-  `fabric.adoc` DECERR, issue 1050). The row becomes `PROVEN` when that
-  checker matches the spec. Do not XFAIL. Do not invent a sibling.
+  `SEP_DBG`. CHK-OWNERSHIP-WINDOW stays a hard assert: `fabric.adoc`
+  requires DECERR to a non-CPU master programming the filter and the RTL
+  answers OKAY. The row becomes `PROVEN` when that checker matches the spec. Do not XFAIL. Do not invent a sibling.
 | `sep_fabric_inbound_filter_rule_matrix_test`
 |===
 
-Five new tests plus one existing-test RTL close. A planned card below is
+Five new tests plus one existing-test RTL close. A planned entry below is
 not a grade — promote it to <<entries>> only after a kept Verilator log
 proves every checker.
 
@@ -2205,12 +2223,15 @@ illegal→error every seed; mailbox operands from the run seed
 
 Sideload KATs stay consume proofs. This test owns the mailbox command
 set. If mailbox protocol RANDCFG does not fit, add
-`sep_km_mailbox_protocol_rand_test` rather than overload this card.
+`sep_km_mailbox_protocol_rand_test` rather than overload this entry.
 
 Checkers (planned):: command accepted or rejected per the KM spec;
 transfer makes the consumer-visible key match the generated value;
-revoke-or-shred makes a later consume fail closed; an illegal command
-returns the documented error and does not change key state.
+revoke-or-shred makes a later consume fail closed; erasing a sealed slot
+destroys its material and leaves the slot retired rather than reusable;
+a DRBG fault during a command raises `IRQ_STATUS.DRBG_ERR` and does not
+surface as an AXI error response; an illegal command returns the
+documented error and does not change key state.
 
 === Planned: sep_efuse_program_lock_matrix_test
 
@@ -2282,8 +2303,8 @@ re-run as the proof.
 `sep_fabric_inbound_filter_rule_matrix_test` already owns the iconic
 inbound walk. CHK-OWNERSHIP-WINDOW is the remaining slice: after
 allow-listing the CFG window the external master must DECERR
-(`fabric.adoc`: only the SEP CPU programs the filter). RTL returns OKAY
-(issue 1050). Phase 2+ keeps that assert hard. The scorecard row moves
+(`fabric.adoc`: only the SEP CPU programs the filter). RTL returns OKAY.
+Phase 2+ keeps that assert hard. The scorecard row moves
 to `PROVEN` when the checker is green. A JTAG-style “`PROVEN` plus named
 `FAILED` slice” is a scorecard-owner call, not a default here — inbound
 ownership is part of the iconic claim.
@@ -2394,7 +2415,8 @@ or `FAILED` checker on a graded entry.
 
 | `sep_inbound_filter_programming_ownership_test`
 | CHK-OWNERSHIP on `sep_fabric_inbound_filter_rule_matrix_test`
-  (`FAILED` on the CFG window; issue 1050)
+  (`FAILED` on the CFG window: `fabric.adoc` requires DECERR to a non-CPU
+  master, the RTL answers OKAY)
 
 | `sep_irq_connectivity_test`
 | `sep_pic_irq_source_map_delivery_test`,

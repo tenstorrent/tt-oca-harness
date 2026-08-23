@@ -20,8 +20,9 @@ Tests run in the cocotb/PyUVM + Verilator flow; Verilator is the
 acceptance engine (see <<Acceptance flow>>).
 
 Boot ROM *firmware* contracts (production ROM boot flow, integrity
-reject) belong to the ROM-FW plan, not this one. ROM *hardware* access
-stays here (`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`).
+reject) belong to the ROM-FW owner, not this plan. When a ROM-FW plan
+exists, those names are graded there. ROM *hardware* access stays here
+(`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`).
 
 CHK-JTAG-MMR-DENY is a spec-versus-RTL mismatch: `hw/sys/sep/doc/periphs.adoc`
 requires DECERR on a non-token MMR in PROD; the RTL returns OKAY on
@@ -32,9 +33,13 @@ Behaviours this spine does not claim are listed in
 <<claims-outside-contract>>.
 
 Coverage here means a named behaviour has a test whose log proves it.
-There is no functional-coverage number: `cov/config` and `cov/sv` are
-empty, and RTL and vendor-IP SVA are compiled out under the Verilator
-acceptance flow.
+There is no functional-coverage number: `cov/config` and `cov/sv` hold
+only `.gitkeep`, and RTL and vendor-IP SVA are compiled out under the
+Verilator acceptance flow. RTL *code* coverage is a separate and
+unrelated number: `[coverage.verilator]` in `sep_sim_cfg.toml`
+instruments line, expression, and user coverage and the nightly
+regression collects it, but no threshold is set and no grade in this
+plan rests on it.
 
 Each testcase in this plan traces to a reference test in Tenstorrent's internal SEP
 verification suite. Those references are recorded internally and are deliberately not
@@ -140,7 +145,7 @@ against what it was written to do. Steps that cannot be traced are listed as
 
 == Testcase entries — bring-up and smoke
 
-Eleven short tests that prove each memory, peripheral and register block is
+Ten short tests that prove each memory, peripheral and register block is
 reachable and responds. They are the first thing to run after any build change:
 if one of these fails, no result from the representative tests below is meaningful.
 
@@ -3255,6 +3260,14 @@ document specifies them.
 | `sep_otbn_mem_smoke_test`
 | OTBN as a compute engine
 | Phase 2 OTBN remaining row
+
+| `sep_efuse_lcc_lc_state_stitch_test`
+| Lifecycle codes the walk does not enter. The stitch walk covers four of the
+  seven legal codes in `cocotb/env/sep_lcc_golden.py` (`LC_TEST_DEV`, `LC_PROD`,
+  `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and
+  `LC_PROD_END` (`0x8`) are never programmed, so no `FEAT_CTRL` claim is made
+  for them.
+| Not specified in Phase 2 either; no entry owns these codes yet
 |===
 
 [[open-items]]
