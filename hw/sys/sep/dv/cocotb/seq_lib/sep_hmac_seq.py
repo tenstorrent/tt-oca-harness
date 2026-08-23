@@ -39,7 +39,7 @@ HMAC_DIGEST_0 = HMAC_BASE + 0x0A4
 HMAC_MSG_FIFO = HMAC_BASE + 0x1000
 HMAC_NUM_PUBLIC_KEY = 32
 
-# CFG keyed HMAC-SHA256, 256-bit key (hw/sys/sep/regs/gen/adoc/blocks/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
+# CFG keyed HMAC-SHA256, 256-bit key (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
 # digest_size SHA2_256 -> bit5, key_length 256 -> bit10 (field [14:9]=2);
 # endian_swap/digest_swap = 0 (digest word0 = MSB == standard big-endian digest).
 HMAC_CFG_KEYED_256 = 0x0000_0423

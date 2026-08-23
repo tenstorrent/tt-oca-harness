@@ -180,7 +180,7 @@ int main(void) {
            READ_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
 
     // Set the transfer width to 4 bytes
-    secure_dma__TRANSFER_WIDTH_t transfer_width = {.f = {.WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
+    secure_dma__TRANSFER_WIDTH_t transfer_width = {.f = {.TRANSACTION_WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, transfer_width.w);
 
     // Set the chunk data size (single chunk = total size)

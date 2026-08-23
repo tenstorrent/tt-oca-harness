@@ -136,6 +136,14 @@ for otdir in "$ROOT"/vendor/lowRISC/opentitan/overlay/regs/*/; do
   stage_gen_html "$otdir/regs/gen/html" "$MOD/ip/partials/$ip/regs/gen/html"
 done
 
+# --- pulp-platform overlay: the iDMA frontend register block (dma_ctrl) is
+#     generated into the pulp overlay's flat rdl/gen tree rather than hw/ip,
+#     because it is instantiated through the SMC DMA wrapper. The overlay vends a
+#     single block, so stage its flat gen under the block-named ip partial
+#     namespace (ip:partial$dma_ctrl) like the OpenTitan overlay above. ---
+stage_gen_adoc "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/adoc" "$MOD/ip/partials/dma_ctrl/regs/gen/adoc"
+stage_gen_html "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/html" "$MOD/ip/partials/dma_ctrl/regs/gen/html"
+
 # --- images: aggregate hw doc images into doc/assets (PDF) and module images
 #     (HTML). Flattened by basename so references resolve regardless of source. ---
 while IFS= read -r img; do
