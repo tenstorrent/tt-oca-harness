@@ -114,6 +114,10 @@ tests = [
     "sep_crypto_edn_round_robin_grant_test",
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
+    "sep_efuse_program_lock_matrix_test",
+    "sep_lcc_demote_feat_ctrl_matrix_test",
+    "sep_efuse_rma_token_rand_test",
+    "sep_fabric_output_remap_datapath_proxy_test",
 ]
 
 [[groups]]
@@ -182,6 +186,10 @@ tests = [
     "sep_crypto_edn_round_robin_grant_test",
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
+    "sep_efuse_program_lock_matrix_test",
+    "sep_lcc_demote_feat_ctrl_matrix_test",
+    "sep_efuse_rma_token_rand_test",
+    "sep_fabric_output_remap_datapath_proxy_test",
 ]
 
 [[groups]]

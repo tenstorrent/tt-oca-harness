@@ -69,3 +69,39 @@ seed = 1
 timeout_sec = 3600
 tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
+
+[[tests]]
+# eFuse program x write-lock on a legal spare field (never LC_STATE). RAND-REP:
+# unlocked program + write-lock reject every seed; spare index and bit offsets
+# from the run seed. Real fuse sense. Clear-after-program.
+name = "sep_efuse_program_lock_matrix_test"
+module = "efuse.sep_efuse_program_lock_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset. RAND-REP.
+# feat_ctrl vs spec golden and one live inbound-filter gate per cell. Real fuse
+# sense. The stitch test stays the LC->feat_ctrl e2e.
+name = "sep_lcc_demote_feat_ctrl_matrix_test"
+module = "lcc.sep_lcc_demote_feat_ctrl_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["lcc", "demote", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# RMA token match vs mismatch -> LC update. RANDCFG: token values from the run
+# seed; SIP and CHIPLET both walk match and mismatch. Real fuse sense. Does not
+# stretch the stitch e2e.
+name = "sep_efuse_rma_token_rand_test"
+module = "efuse.sep_efuse_rma_token_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"

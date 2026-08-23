@@ -2149,11 +2149,10 @@ Do not XFAIL a spec-vs-RTL checker.
 | Scorecard row | Today | Phase 2+ close | Vehicle
 
 | Key Manager as a command device
-| GAP
-| New RAND-REP: generate / transfer / revoke-or-shred / illegal→error.
-  Mailbox protocol RANDCFG in the same test unless it does not fit.
-| `sep_km_command_set_rand_test`
-  (`sep_km_mailbox_protocol_rand_test` only if the protocol does not fit)
+| PARKED
+| Do not code until KM design readiness is explicit. Sideload KATs stay
+  the consume proofs.
+| `sep_km_command_set_rand_test` (parked)
 
 | eFuse program × lock
 | GAP
@@ -2190,11 +2189,12 @@ Do not XFAIL a spec-vs-RTL checker.
 | `sep_fabric_inbound_filter_rule_matrix_test`
 |===
 
-Five new tests plus one existing-test RTL close. A planned card below is
-not a grade — promote it to <<entries>> only after a kept Verilator log
+Four new tests plus one existing-test RTL close. The KM command-set
+vehicle is parked (design readiness). A planned card below is not a
+grade — promote it to <<entries>> only after a kept Verilator log
 proves every checker.
 
-=== Planned: sep_km_command_set_rand_test
+=== Parked: sep_km_command_set_rand_test
 
 [horizontal]
 Tier:: Tier 2
@@ -2202,23 +2202,23 @@ Run mode:: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
 Testlist:: `km.toml`
 Randomization:: RAND-REP — generate / transfer / revoke-or-shred /
 illegal→error every seed; mailbox operands from the run seed
-
-Sideload KATs stay consume proofs. This test owns the mailbox command
-set. If mailbox protocol RANDCFG does not fit, add
-`sep_km_mailbox_protocol_rand_test` rather than overload this card.
+Status:: Parked. KM design readiness is not confirmed; do not code this
+vehicle until that is explicit. Sideload KATs stay the consume proofs.
 
 Checkers (planned):: command accepted or rejected per the KM spec;
 transfer makes the consumer-visible key match the generated value;
 revoke-or-shred makes a later consume fail closed; an illegal command
 returns the documented error and does not change key state.
 
-=== Planned: sep_efuse_program_lock_matrix_test
+=== Implemented: sep_efuse_program_lock_matrix_test
 
 [horizontal]
 Tier:: Tier 2
 Run mode:: `no_cpu`, real fuse sense (no `+skip_fuse_sense`)
 Testlist:: `efuse_lcc.toml`
 Randomization:: RAND-REP — lock × program on a legal spare/test field
+Status:: Stimulus in tree. Promote to <<entries>> after a kept Verilator
+log proves every checker.
 
 Never program `LC_STATE` here. The stitch test stays the LC e2e. After
 `PROGRAM_DONE`, clear `EFUSE_PROGRAM_CTRL` before any read.
@@ -2226,7 +2226,7 @@ Never program `LC_STATE` here. The stitch test stays the LC e2e. After
 Checkers (planned):: an unlocked field programs and reads back; a locked
 field rejects program; resense matches the independent image golden.
 
-=== Planned: sep_lcc_demote_feat_ctrl_matrix_test
+=== Implemented: sep_lcc_demote_feat_ctrl_matrix_test
 
 [horizontal]
 Tier:: Tier 2
@@ -2234,6 +2234,8 @@ Run mode:: `no_cpu`, real fuse sense
 Testlist:: `efuse_lcc.toml`
 Randomization:: RAND-REP — walk LC × `DEMOTE_1`/`DEMOTE_2` × a small
 legal DIS subset
+Status:: Stimulus in tree. Promote to <<entries>> after a kept Verilator
+log proves every checker.
 
 The Phase 1 stitch test stays the LC→`feat_ctrl` e2e. This test owns the
 product.
@@ -2242,13 +2244,15 @@ Checkers (planned):: `feat_ctrl` matches the spec-derived golden for
 every walked cell; one live filter or debug-gate follows that golden
 (not CSR storage alone).
 
-=== Planned: sep_efuse_rma_token_rand_test
+=== Implemented: sep_efuse_rma_token_rand_test
 
 [horizontal]
 Tier:: Tier 2
 Run mode:: `no_cpu`, real fuse sense
 Testlist:: `efuse_lcc.toml`
 Randomization:: RANDCFG — legal token vs mismatch from the run seed
+Status:: Stimulus in tree. Promote to <<entries>> after a kept Verilator
+log proves every checker.
 
 Closes the RMA iconic row without stretching
 `sep_efuse_lcc_lc_state_stitch_test`.
@@ -2257,7 +2261,7 @@ Checkers (planned):: a matching token allows the LC update; a mismatch
 does not; LC shadow and LCC `FEAT_CTRL` match independent goldens after
 resense.
 
-=== Planned: sep_fabric_output_remap_datapath_proxy_test
+=== Implemented: sep_fabric_output_remap_datapath_proxy_test
 
 [horizontal]
 Tier:: Tier 2
@@ -2266,6 +2270,8 @@ depends on sense
 Testlist:: `system.toml`
 Randomization:: RANDCFG — region base/size and one forbidden beat from
 the run seed
+Status:: Stimulus in tree. Promote to <<entries>> after a kept Verilator
+log proves every checker.
 
 The CSR bank is already proven. This test observes a translated beat and
 a dropped beat on the live outbound path. Phase 3 keeps

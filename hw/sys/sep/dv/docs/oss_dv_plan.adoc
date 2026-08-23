@@ -155,12 +155,14 @@ Detail: `verification_plan_phase2.adoc`.
 
 === Phase 2+ — 28/28 before UVM
 
-Same cocotb environment. Closes the six in-scope rows that Phase 2
-leaves `GAP` or `PARTIAL`: KM command set, eFuse program × lock,
-lifecycle demote, RMA token, live outbound remap, and inbound
-ownership. Five new tests plus the existing inbound matrix (ownership
-stays a hard assert; the row is `PROVEN` when issue 1050 matches
-`fabric.adoc`). Phase 3 does not start until this close-out finishes.
+Same cocotb environment. Closes the in-scope rows that Phase 2
+leaves `GAP` or `PARTIAL` except the parked KM command-set row:
+eFuse program × lock, lifecycle demote, RMA token, live outbound
+remap, and inbound ownership. Four new tests plus the existing inbound
+matrix (ownership stays a hard assert; the row is `PROVEN` when issue
+1050 matches `fabric.adoc`). `sep_km_command_set_rand_test` stays
+parked until KM design readiness is explicit. Phase 3 does not start
+until this close-out finishes (KM unparked or explicitly left out).
 
 Detail: link:verification_plan_phase2.adoc#phase2-plus[Phase 2+].
 
@@ -298,7 +300,8 @@ met). Two more `PROVEN` rows reach the 85% target.
 | KM as KM: mailbox + command set
 | GAP
 | Generate / transfer appear only inside sideload KATs. Phase 2+
-  `sep_km_command_set_rand_test`.
+  `sep_km_command_set_rand_test` is parked until KM design readiness is
+  confirmed.
 
 | Entropy ESRC → DRBG → EDN consume
 | PROVEN

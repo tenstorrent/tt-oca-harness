@@ -1,0 +1,140 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset.
+
+RAND-REP. Walks TEST_DEV and PROD against (0,0)/(1,0)/(0,1)/(1,1) demote
+cells, first with DIS=0 and then with a seed-extended pinned DIS pair.
+``feat_ctrl`` is checked against the spec-derived golden. One live inbound
+filter probe per cell follows ``sep_debug`` (DECERR when 0, OKAY when 1).
+
+The stitch test stays the LC->feat_ctrl e2e. This test owns the product.
+Real fuse sense. DEMOTE is write-once-set; resense returns the CSRs to 0.
+"""
+
+from __future__ import annotations
+
+import cocotb
+import pyuvm
+
+from sep_base_test import sep_base_test
+from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage
+from env.sep_lcc_golden import (
+    LC_PROD, LC_TEST_DEV, feat_ctrl_expected, lc_state_name,
+)
+from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
+from seq_lib.sep_lcc_demote_matrix_seq import SepLccDemoteMatrixCfg
+from seq_lib.sep_lcc_inbound_filter_gating_seq import (
+    RESP_DECERR, SepExtAxiProbeSeq, SepLccDemoteSeq, SepLccFeatCtrlCheckSeq,
+)
+from seq_lib.sep_lcc_stitch_check_seq import LC_STATE_SHADOW
+
+_MAX_SENSE_CYCLES = 20_000
+_LC_STATE_BIT_BASE = LC_WORD_IDX * 32
+RESP_OKAY = 0
+
+
+@pyuvm.test()
+class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
+    """Walk the demote product; feat_ctrl vs golden and one live filter gate."""
+
+    async def _check_cell(
+        self,
+        image: SepEfuseImage,
+        *,
+        demote_1: int,
+        demote_2: int,
+        tag: str,
+    ) -> None:
+        sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
+        feat = feat_ctrl_expected(
+            image.lc_raw(), image.field_int("SIP_DIS"), image.field_int("SYS_DIS"),
+            demote_1=demote_1, demote_2=demote_2, sec_dis=sec_dis,
+        )
+        ctl = SepLccFeatCtrlCheckSeq(feat)
+        await self.start_seq(ctl)
+        assert ctl.sep_debug == (feat & 1), (
+            f"{tag}: sep_debug={ctl.sep_debug} != FEAT_CTRL[0] of 0x{feat:016x}"
+        )
+        probe = SepExtAxiProbeSeq(LC_STATE_SHADOW)
+        await self.start_ext_seq(probe)
+        want = RESP_OKAY if ctl.sep_debug else RESP_DECERR
+        assert probe.resp_code == want, (
+            f"{tag}: ext probe resp={probe.resp_code}, expected {want} "
+            f"(sep_debug={ctl.sep_debug})"
+        )
+        self.logger.info(
+            "CHK-FEAT-CTRL PASS: %s FEAT_CTRL=0x%016x sep_debug=%d",
+            tag, ctl.feat_ctrl, ctl.sep_debug)
+        self.logger.info(
+            "CHK-LIVE-GATE PASS: %s ext %s (sep_debug=%d)",
+            tag, "OKAY" if want == RESP_OKAY else "DECERR", ctl.sep_debug)
+
+    async def _walk_demotes(self, image: SepEfuseImage, *, dis_tag: str) -> int:
+        n = 0
+        lc = lc_state_name(image.lc_raw())
+        await self._check_cell(image, demote_1=0, demote_2=0, tag=f"{lc}/{dis_tag}/d00")
+        n += 1
+        d1 = SepLccDemoteSeq(group=1)
+        await self.start_seq(d1)
+        await self._check_cell(image, demote_1=1, demote_2=0, tag=f"{lc}/{dis_tag}/d10")
+        n += 1
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        await self._check_cell(image, demote_1=0, demote_2=0, tag=f"{lc}/{dis_tag}/d00b")
+        d2 = SepLccDemoteSeq(group=2)
+        await self.start_seq(d2)
+        await self._check_cell(image, demote_1=0, demote_2=1, tag=f"{lc}/{dis_tag}/d01")
+        n += 1
+        d1b = SepLccDemoteSeq(group=1)
+        await self.start_seq(d1b)
+        await self._check_cell(image, demote_1=1, demote_2=1, tag=f"{lc}/{dis_tag}/d11")
+        n += 1
+        return n
+
+    async def run_scenario(self) -> None:
+        cfg = SepLccDemoteMatrixCfg(self.random_seed())
+        self.logger.info("lcc demote matrix: %s", cfg.summary())
+
+        sip0, sys0 = cfg.dis_zero
+        # t=0 OTP load is staged by cocotb/dv_sim_prestage.py with DIS=0 / TEST_DEV.
+        image = self.select_efuse_image(
+            lc_raw=LC_TEST_DEV, fixed={"SIP_DIS": sip0, "SYS_DIS": sys0})
+        self.write_efuse_image(image)
+        await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+
+        cells = 0
+        cells += await self._walk_demotes(image, dis_tag="dis0")
+
+        await self.start_seq(sep_efuse_otp_program_seq(_LC_STATE_BIT_BASE + 0))
+        image.set_lc_state(LC_PROD)
+        self.write_efuse_image(image)
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        cells += await self._walk_demotes(image, dis_tag="dis0")
+
+        sip1, sys1 = cfg.dis_pinned
+        # W1S the pinned DIS bits into OTP (image started at 0).
+        for name, value in (("SIP_DIS", sip1), ("SYS_DIS", sys1)):
+            fld = SepEfuseImage.field(name)
+            for word_i in range(fld.n_words):
+                word = (value >> (32 * word_i)) & 0xFFFF_FFFF
+                cur = image.words[fld.word + word_i]
+                new_bits = word & ~cur
+                bit = 0
+                while new_bits:
+                    if new_bits & 1:
+                        await self.start_seq(
+                            sep_efuse_otp_program_seq(fld.word * 32 + word_i * 32 + bit))
+                        image.words[fld.word + word_i] |= 1 << bit
+                    new_bits >>= 1
+                    bit += 1
+        self.write_efuse_image(image)
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        cells += await self._walk_demotes(image, dis_tag="dis_pinned")
+
+        # TEST_DEV cannot be restored (OTP W1S). The zero-DIS TEST_DEV product
+        # already ran; the pinned DIS product is proven at PROD.
+        assert cells == cfg.n_cells(), (
+            f"walked {cells} demote cells, expected {cfg.n_cells()}"
+        )
+        self.logger.info(
+            "CHK-RAND-REP PASS: walked %d demote cells "
+            "(TEST_DEV/PROD x dis0 + PROD x pinned DIS)", cells)
