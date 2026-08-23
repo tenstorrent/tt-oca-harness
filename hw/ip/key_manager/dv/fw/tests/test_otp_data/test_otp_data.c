@@ -13,8 +13,11 @@
  *   life_cycle     = 0xA5  (dual-rail; decodes to lc=0x5)
  *   demotion_state = 0b01/0b10 (dual-rail; decodes to demote_1=1, demote_2=0)
  *   chiplet_uid    = bytes 0x00..0x1F (dual-rail, 256-bit value)
+ *   sep_chiplet_id = bytes 0x10..0x2F (dual-rail, 256-bit value)
  *   sip_uid        = bytes 0x20..0x3F (dual-rail, 256-bit value)
+ *   sep_sip_id     = bytes 0x30..0x4F (dual-rail, 256-bit value)
  *   sys_uid        = bytes 0x40..0x5F (dual-rail, 256-bit value)
+ *   sep_sys_id     = bytes 0x50..0x6F (dual-rail, 256-bit value)
  *   class_key      = bytes 0x60..0x7F (dual-rail, 256-bit value)
  *
  * Uses rom_otp.h driver functions which verify dual-rail integrity.
@@ -49,6 +52,18 @@ static const uint32_t exp_sys[ROM_KM_OTP_WORDS] = {0x43424140u, 0x47464544u, 0x4
 static const uint32_t exp_class[ROM_KM_OTP_WORDS] = {0x63626160u, 0x67666564u, 0x6B6A6968u,
                                                      0x6F6E6D6Cu, 0x73727170u, 0x77767574u,
                                                      0x7B7A7978u, 0x7F7E7D7Cu};
+
+static const uint32_t exp_chip_id[ROM_KM_OTP_WORDS] = {0x13121110u, 0x17161514u, 0x1B1A1918u,
+                                                       0x1F1E1D1Cu, 0x23222120u, 0x27262524u,
+                                                       0x2B2A2928u, 0x2F2E2D2Cu};
+
+static const uint32_t exp_sip_id[ROM_KM_OTP_WORDS] = {0x33323130u, 0x37363534u, 0x3B3A3938u,
+                                                      0x3F3E3D3Cu, 0x43424140u, 0x47464544u,
+                                                      0x4B4A4948u, 0x4F4E4D4Cu};
+
+static const uint32_t exp_sys_id[ROM_KM_OTP_WORDS] = {0x53525150u, 0x57565554u, 0x5B5A5958u,
+                                                      0x5F5E5D5Cu, 0x63626160u, 0x67666564u,
+                                                      0x6B6A6968u, 0x6F6E6D6Cu};
 
 int main(void) {
     uint32_t buf[ROM_KM_OTP_WORDS];
@@ -147,6 +162,45 @@ int main(void) {
     for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
         if (buf[i] != exp_class[i]) {
             TEST_FAIL("CLASS_KEY[%u]: expected 0x%08X, got 0x%08X", i, exp_class[i], buf[i]);
+        }
+    }
+    TEST_SUBTEST_PASS();
+
+    /* --- SEP_CHIPLET_ID dual-rail readout --- */
+    TEST_SUBTEST_START("OTP_SEP_CHIPLET_ID dual-rail readout");
+    rc = rom_otp_read_sep_chiplet_id(buf);
+    if (rc != 0) {
+        TEST_FAIL("SEP_CHIPLET_ID: dual-rail integrity check failed");
+    }
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != exp_chip_id[i]) {
+            TEST_FAIL("SEP_CHIPLET_ID[%u]: expected 0x%08X, got 0x%08X", i, exp_chip_id[i], buf[i]);
+        }
+    }
+    TEST_SUBTEST_PASS();
+
+    /* --- SEP_SIP_ID dual-rail readout --- */
+    TEST_SUBTEST_START("OTP_SEP_SIP_ID dual-rail readout");
+    rc = rom_otp_read_sep_sip_id(buf);
+    if (rc != 0) {
+        TEST_FAIL("SEP_SIP_ID: dual-rail integrity check failed");
+    }
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != exp_sip_id[i]) {
+            TEST_FAIL("SEP_SIP_ID[%u]: expected 0x%08X, got 0x%08X", i, exp_sip_id[i], buf[i]);
+        }
+    }
+    TEST_SUBTEST_PASS();
+
+    /* --- SEP_SYS_ID dual-rail readout --- */
+    TEST_SUBTEST_START("OTP_SEP_SYS_ID dual-rail readout");
+    rc = rom_otp_read_sep_sys_id(buf);
+    if (rc != 0) {
+        TEST_FAIL("SEP_SYS_ID: dual-rail integrity check failed");
+    }
+    for (unsigned i = 0; i < ROM_KM_OTP_WORDS; i++) {
+        if (buf[i] != exp_sys_id[i]) {
+            TEST_FAIL("SEP_SYS_ID[%u]: expected 0x%08X, got 0x%08X", i, exp_sys_id[i], buf[i]);
         }
     }
     TEST_SUBTEST_PASS();

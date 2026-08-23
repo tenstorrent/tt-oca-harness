@@ -12,7 +12,7 @@
 #include "rom_kmcsr.h"
 
 /* Place the instance at the start of the .rom_persist section, which the
- * linker fixes at 0x0000_7E00 (top of SRAM, region 31). The `used` attribute
+ * linker fixes at 0x0000_FC00 (top of SRAM, region 31). The `used` attribute
  * prevents the compiler from discarding it when there are no direct references
  * in a given translation unit. */
 rom_persist_t rom_persist __attribute__((section(".rom_persist"), used));

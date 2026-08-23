@@ -7,8 +7,8 @@
 package km_kpv_reg_pkg;
 
     localparam KM_KPV_REG_DATA_WIDTH = 32;
-    localparam KM_KPV_REG_MIN_ADDR_WIDTH = 12;
-    localparam KM_KPV_REG_SIZE = 'h888;
+    localparam KM_KPV_REG_MIN_ADDR_WIDTH = 13;
+    localparam KM_KPV_REG_SIZE = 'h1108;
 
     typedef struct {
         logic rd_ack;
@@ -18,10 +18,12 @@ package km_kpv_reg_pkg;
 
     typedef struct {
         logic hwclr;
+        logic hwset;
     } km_kpv__ctrl_reg__lock_write__in_t;
 
     typedef struct {
         logic hwclr;
+        logic hwset;
     } km_kpv__ctrl_reg__lock_use__in_t;
 
     typedef struct {
@@ -29,21 +31,14 @@ package km_kpv_reg_pkg;
     } km_kpv__ctrl_reg__erase__in_t;
 
     typedef struct {
-        logic [2:0] next;
-        logic swwel;
-    } km_kpv__ctrl_reg__extend__in_t;
-
-    typedef struct {
-        logic [3:0] next;
-        logic swwel;
-    } km_kpv__ctrl_reg__last_dword__in_t;
+        logic hwclr;
+    } km_kpv__ctrl_reg__seal__in_t;
 
     typedef struct {
         km_kpv__ctrl_reg__lock_write__in_t lock_write;
         km_kpv__ctrl_reg__lock_use__in_t lock_use;
         km_kpv__ctrl_reg__erase__in_t erase;
-        km_kpv__ctrl_reg__extend__in_t extend;
-        km_kpv__ctrl_reg__last_dword__in_t last_dword;
+        km_kpv__ctrl_reg__seal__in_t seal;
     } km_kpv__ctrl_reg__in_t;
 
     typedef struct {
@@ -72,8 +67,8 @@ package km_kpv_reg_pkg;
 
     typedef struct {
         logic WARM_RST_N;
-        km_kpv__key_entry_rf__external__in_t KEY_ENTRY[32];
-        km_kpv__ctrl_reg__in_t CTRL[32];
+        km_kpv__key_entry_rf__external__in_t KEY_ENTRY[64];
+        km_kpv__ctrl_reg__in_t CTRL[64];
         km_kpv__kpv_scrambler_key_reg__in_t KPV_SCRAMBLER_KEY;
         km_kpv__kpv_scrambler_ctrl_reg__in_t KPV_SCRAMBLER_CTRL;
     } km_kpv__in_t;
@@ -99,19 +94,14 @@ package km_kpv_reg_pkg;
     } km_kpv__ctrl_reg__erase__out_t;
 
     typedef struct {
-        logic [2:0] value;
-    } km_kpv__ctrl_reg__extend__out_t;
-
-    typedef struct {
-        logic [3:0] value;
-    } km_kpv__ctrl_reg__last_dword__out_t;
+        logic value;
+    } km_kpv__ctrl_reg__seal__out_t;
 
     typedef struct {
         km_kpv__ctrl_reg__lock_write__out_t lock_write;
         km_kpv__ctrl_reg__lock_use__out_t lock_use;
         km_kpv__ctrl_reg__erase__out_t erase;
-        km_kpv__ctrl_reg__extend__out_t extend;
-        km_kpv__ctrl_reg__last_dword__out_t last_dword;
+        km_kpv__ctrl_reg__seal__out_t seal;
     } km_kpv__ctrl_reg__out_t;
 
     typedef struct {
@@ -136,8 +126,8 @@ package km_kpv_reg_pkg;
     } km_kpv__kpv_scrambler_ctrl_reg__out_t;
 
     typedef struct {
-        km_kpv__key_entry_rf__external__out_t KEY_ENTRY[32];
-        km_kpv__ctrl_reg__out_t CTRL[32];
+        km_kpv__key_entry_rf__external__out_t KEY_ENTRY[64];
+        km_kpv__ctrl_reg__out_t CTRL[64];
         km_kpv__kpv_scrambler_key_reg__out_t KPV_SCRAMBLER_KEY;
         km_kpv__kpv_scrambler_ctrl_reg__out_t KPV_SCRAMBLER_CTRL;
     } km_kpv__out_t;

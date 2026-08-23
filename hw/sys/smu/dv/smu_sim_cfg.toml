@@ -89,6 +89,15 @@ ccache = true
 # Parallelize Verilator codegen + cocotb make C++ compile.
 build_jobs = 8
 
+[coverage.verilator]
+# Instrument line/branch (--coverage-line), expression, and SVL user coverage;
+# toggle instrumentation stays off for this DUT. SMU compiles the SMC cluster
+# and SEP-adjacent fabric, so with toggle on a single test leaf's coverage
+# database is ~0.5 GB (tens of GB across a reseeded regression before merge),
+# which does not fit standard CI runner disk; toggle is also the costliest
+# instrumentation at sim time. Replaces the simulator-default `--coverage`
+# (which enables all forms including toggle).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
 [frameworks.cocotb]
 python_root = "hw/sys/smu/dv/cocotb"

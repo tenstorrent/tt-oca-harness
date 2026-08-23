@@ -105,6 +105,21 @@ int rom_otp_read_class_key(uint32_t out[ROM_KM_OTP_WORDS]) {
                        KEY_MANAGER_KMCSR_OTP_CLASS_KEY_CPL_0_BASE_ADDR, out);
 }
 
+int rom_otp_read_sep_chiplet_id(uint32_t out[ROM_KM_OTP_WORDS]) {
+    return otp_dr_read(KEY_MANAGER_KMCSR_OTP_SEP_CHIPLET_ID_VAL_0_BASE_ADDR,
+                       KEY_MANAGER_KMCSR_OTP_SEP_CHIPLET_ID_CPL_0_BASE_ADDR, out);
+}
+
+int rom_otp_read_sep_sip_id(uint32_t out[ROM_KM_OTP_WORDS]) {
+    return otp_dr_read(KEY_MANAGER_KMCSR_OTP_SEP_SIP_ID_VAL_0_BASE_ADDR,
+                       KEY_MANAGER_KMCSR_OTP_SEP_SIP_ID_CPL_0_BASE_ADDR, out);
+}
+
+int rom_otp_read_sep_sys_id(uint32_t out[ROM_KM_OTP_WORDS]) {
+    return otp_dr_read(KEY_MANAGER_KMCSR_OTP_SEP_SYS_ID_VAL_0_BASE_ADDR,
+                       KEY_MANAGER_KMCSR_OTP_SEP_SYS_ID_CPL_0_BASE_ADDR, out);
+}
+
 /*---------------------------------------------------------------------------
  * Read-lock
  *---------------------------------------------------------------------------*/

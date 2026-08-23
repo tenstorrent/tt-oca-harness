@@ -13,716 +13,6 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - km_kpv::key_word_reg
-#define KM_KPV__KEY_WORD_REG__DATA_bm 0xffffffff
-#define KM_KPV__KEY_WORD_REG__DATA_bp 0
-#define KM_KPV__KEY_WORD_REG__DATA_bw 32
-
-// regfile - km_kpv::key_entry_rf
-typedef struct __attribute__ ((__packed__)) {
-    uint32_t WORD[16];
-} km_kpv__key_entry_rf_t;
-
-// reg - km_kpv::ctrl_reg
-#define KM_KPV__CTRL_REG__LOCK_WRITE_bm 0x1
-#define KM_KPV__CTRL_REG__LOCK_WRITE_bp 0
-#define KM_KPV__CTRL_REG__LOCK_WRITE_bw 1
-#define KM_KPV__CTRL_REG__LOCK_WRITE_reset 0x0
-#define KM_KPV__CTRL_REG__LOCK_USE_bm 0x2
-#define KM_KPV__CTRL_REG__LOCK_USE_bp 1
-#define KM_KPV__CTRL_REG__LOCK_USE_bw 1
-#define KM_KPV__CTRL_REG__LOCK_USE_reset 0x0
-#define KM_KPV__CTRL_REG__ERASE_bm 0x4
-#define KM_KPV__CTRL_REG__ERASE_bp 2
-#define KM_KPV__CTRL_REG__ERASE_bw 1
-#define KM_KPV__CTRL_REG__ERASE_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_3_bm 0x8
-#define KM_KPV__CTRL_REG__RSVD_3_bp 3
-#define KM_KPV__CTRL_REG__RSVD_3_bw 1
-#define KM_KPV__CTRL_REG__RSVD_3_reset 0x0
-#define KM_KPV__CTRL_REG__EXTEND_bm 0x70
-#define KM_KPV__CTRL_REG__EXTEND_bp 4
-#define KM_KPV__CTRL_REG__EXTEND_bw 3
-#define KM_KPV__CTRL_REG__EXTEND_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_16_7_bm 0x1ff80
-#define KM_KPV__CTRL_REG__RSVD_16_7_bp 7
-#define KM_KPV__CTRL_REG__RSVD_16_7_bw 10
-#define KM_KPV__CTRL_REG__RSVD_16_7_reset 0x0
-#define KM_KPV__CTRL_REG__LAST_DWORD_bm 0x1e0000
-#define KM_KPV__CTRL_REG__LAST_DWORD_bp 17
-#define KM_KPV__CTRL_REG__LAST_DWORD_bw 4
-#define KM_KPV__CTRL_REG__LAST_DWORD_reset 0x0
-#define KM_KPV__CTRL_REG__RSVD_31_21_bm 0xffe00000
-#define KM_KPV__CTRL_REG__RSVD_31_21_bp 21
-#define KM_KPV__CTRL_REG__RSVD_31_21_bw 11
-#define KM_KPV__CTRL_REG__RSVD_31_21_reset 0x0
-
-// reg - km_kpv::kpv_scrambler_key_reg
-#define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bm 0xffffffff
-#define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bp 0
-#define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bw 32
-
-// reg - km_kpv::kpv_scrambler_ctrl_reg
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bm 0x1
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bp 0
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bw 1
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_reset 0x0
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bm 0x2
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bp 1
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bw 1
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_reset 0x0
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bm 0xfffffffc
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bp 2
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bw 30
-#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_reset 0x0
-
-// addrmap - km_kpv
-typedef struct __attribute__ ((__packed__)) {
-    km_kpv__key_entry_rf_t KEY_ENTRY[32];
-    uint32_t CTRL[32];
-    uint32_t KPV_SCRAMBLER_KEY;
-    uint32_t KPV_SCRAMBLER_CTRL;
-} km_kpv_t;
-
-// reg - km_csr::version_reg
-#define KM_CSR__VERSION_REG__PATCH_bm 0xff
-#define KM_CSR__VERSION_REG__PATCH_bp 0
-#define KM_CSR__VERSION_REG__PATCH_bw 8
-#define KM_CSR__VERSION_REG__PATCH_reset 0x0
-#define KM_CSR__VERSION_REG__MINOR_bm 0xff00
-#define KM_CSR__VERSION_REG__MINOR_bp 8
-#define KM_CSR__VERSION_REG__MINOR_bw 8
-#define KM_CSR__VERSION_REG__MINOR_reset 0x0
-#define KM_CSR__VERSION_REG__MAJOR_bm 0xff0000
-#define KM_CSR__VERSION_REG__MAJOR_bp 16
-#define KM_CSR__VERSION_REG__MAJOR_bw 8
-#define KM_CSR__VERSION_REG__MAJOR_reset 0x1
-#define KM_CSR__VERSION_REG__RSVD_bm 0xff000000
-#define KM_CSR__VERSION_REG__RSVD_bp 24
-#define KM_CSR__VERSION_REG__RSVD_bw 8
-#define KM_CSR__VERSION_REG__RSVD_reset 0x0
-
-// reg - km_csr::ctrl_reg
-#define KM_CSR__CTRL_REG__RSVD_bm 0xffffffff
-#define KM_CSR__CTRL_REG__RSVD_bp 0
-#define KM_CSR__CTRL_REG__RSVD_bw 32
-#define KM_CSR__CTRL_REG__RSVD_reset 0x0
-
-// reg - km_csr::soft_rst_code_reg
-#define KM_CSR__SOFT_RST_CODE_REG__CODE_bm 0xffffffff
-#define KM_CSR__SOFT_RST_CODE_REG__CODE_bp 0
-#define KM_CSR__SOFT_RST_CODE_REG__CODE_bw 32
-#define KM_CSR__SOFT_RST_CODE_REG__CODE_reset 0x0
-
-// reg - km_csr::irq_status_reg
-#define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bm 0x1
-#define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bp 0
-#define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bw 1
-#define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bm 0x2
-#define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bp 1
-#define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bw 1
-#define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bm 0x4
-#define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bp 2
-#define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bw 1
-#define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bm 0x8
-#define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bp 3
-#define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bw 1
-#define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm 0x10
-#define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bp 4
-#define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bw 1
-#define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bm 0x20
-#define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bp 5
-#define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bw 1
-#define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bm 0x40
-#define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bp 6
-#define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bw 1
-#define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bm 0x80
-#define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bp 7
-#define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bw 1
-#define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bm 0x100
-#define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bp 8
-#define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bw 1
-#define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bm 0x200
-#define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bp 9
-#define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bw 1
-#define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bm 0x400
-#define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bp 10
-#define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bw 1
-#define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_reset 0x0
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bp 11
-#define KM_CSR__IRQ_STATUS_REG__RSVD_bw 21
-#define KM_CSR__IRQ_STATUS_REG__RSVD_reset 0x0
-
-// reg - km_csr::irq_enable_reg
-#define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bm 0x1
-#define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bp 0
-#define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bm 0x2
-#define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bp 1
-#define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bm 0x4
-#define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bp 2
-#define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bm 0x8
-#define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bp 3
-#define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bm 0x10
-#define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bp 4
-#define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bm 0x20
-#define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bp 5
-#define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bm 0x40
-#define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bp 6
-#define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bm 0x80
-#define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bp 7
-#define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bm 0x100
-#define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bp 8
-#define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bm 0x200
-#define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bp 9
-#define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bm 0x400
-#define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bp 10
-#define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bw 1
-#define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_reset 0x0
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 11
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 21
-#define KM_CSR__IRQ_ENABLE_REG__RSVD_reset 0x0
-
-// reg - km_csr::scrambler_key_reg
-#define KM_CSR__SCRAMBLER_KEY_REG__KEY_bm 0xffffffff
-#define KM_CSR__SCRAMBLER_KEY_REG__KEY_bp 0
-#define KM_CSR__SCRAMBLER_KEY_REG__KEY_bw 32
-
-// reg - km_csr::scrambler_ctrl_reg
-#define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bm 0x1
-#define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bp 0
-#define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bw 1
-#define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_reset 0x0
-#define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bm 0x2
-#define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bp 1
-#define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bw 1
-#define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_reset 0x0
-#define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bm 0xfffffffc
-#define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bp 2
-#define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bw 30
-#define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_reset 0x0
-
-// reg - km_csr::sram_lock_reg
-#define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bm 0xffffffff
-#define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bp 0
-#define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bw 32
-#define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_reset 0x0
-
-// reg - km_csr::irq_set_reg
-#define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bm 0x1
-#define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bp 0
-#define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bm 0x2
-#define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bp 1
-#define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bm 0x4
-#define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bp 2
-#define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bm 0x8
-#define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bp 3
-#define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bm 0x10
-#define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bp 4
-#define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bm 0x20
-#define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bp 5
-#define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bm 0x40
-#define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bp 6
-#define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bm 0x80
-#define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bp 7
-#define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bm 0x100
-#define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bp 8
-#define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bm 0x200
-#define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bp 9
-#define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bm 0x400
-#define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bp 10
-#define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bw 1
-#define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_reset 0x0
-#define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff800
-#define KM_CSR__IRQ_SET_REG__RSVD_bp 11
-#define KM_CSR__IRQ_SET_REG__RSVD_bw 21
-#define KM_CSR__IRQ_SET_REG__RSVD_reset 0x0
-
-// reg - km_csr::sram_write_lock_violation_reg
-#define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bm 0xffffffff
-#define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bp 0
-#define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bw 32
-#define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_reset 0x0
-
-// reg - km_csr::recoverable_err_reg
-#define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bm 0x1
-#define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bp 0
-#define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bw 1
-#define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_reset 0x0
-#define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bm 0xfffffffe
-#define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bp 1
-#define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bw 31
-#define KM_CSR__RECOVERABLE_ERR_REG__RSVD_reset 0x0
-
-// reg - km_csr::boot_status_reg
-#define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bm 0x1
-#define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bp 0
-#define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bw 1
-#define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_reset 0x0
-#define KM_CSR__BOOT_STATUS_REG__RSVD_bm 0xfffffffe
-#define KM_CSR__BOOT_STATUS_REG__RSVD_bp 1
-#define KM_CSR__BOOT_STATUS_REG__RSVD_bw 31
-#define KM_CSR__BOOT_STATUS_REG__RSVD_reset 0x0
-
-// reg - km_csr::otp_life_cycle_reg
-#define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bm 0xff
-#define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bp 0
-#define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bw 8
-#define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bm 0xffffff00
-#define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bp 8
-#define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bw 24
-#define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_reset 0x0
-
-// reg - km_csr::otp_demotion_state_reg
-#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bm 0x3
-#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bp 0
-#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bw 2
-#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bm 0xc
-#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bp 2
-#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bw 2
-#define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bm 0xfffffff0
-#define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bp 4
-#define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bw 28
-#define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_reset 0x0
-
-// reg - km_csr::sram_exec_mode_reg
-#define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bm 0x1
-#define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bp 0
-#define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bw 1
-#define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_reset 0x0
-#define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bm 0xfffffffe
-#define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bp 1
-#define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bw 31
-#define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_reset 0x0
-
-// reg - km_csr::irq_entry_addr_reg
-#define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bm 0xffffffff
-#define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bp 0
-#define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bw 32
-#define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_reset 0x10
-
-// reg - km_csr::irq_entry_lock_reg
-#define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bm 0x1
-#define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bp 0
-#define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bw 1
-#define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_reset 0x0
-#define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bm 0xfffffffe
-#define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bp 1
-#define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bw 31
-#define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_reset 0x0
-
-// reg - km_csr::vuart_tx_reg
-#define KM_CSR__VUART_TX_REG__TX_BYTE_bm 0xff
-#define KM_CSR__VUART_TX_REG__TX_BYTE_bp 0
-#define KM_CSR__VUART_TX_REG__TX_BYTE_bw 8
-#define KM_CSR__VUART_TX_REG__TX_BYTE_reset 0x0
-#define KM_CSR__VUART_TX_REG__RSVD0_bm 0x7fffff00
-#define KM_CSR__VUART_TX_REG__RSVD0_bp 8
-#define KM_CSR__VUART_TX_REG__RSVD0_bw 23
-#define KM_CSR__VUART_TX_REG__RSVD0_reset 0x0
-#define KM_CSR__VUART_TX_REG__DATA_VALID_bm 0x80000000
-#define KM_CSR__VUART_TX_REG__DATA_VALID_bp 31
-#define KM_CSR__VUART_TX_REG__DATA_VALID_bw 1
-#define KM_CSR__VUART_TX_REG__DATA_VALID_reset 0x0
-
-// reg - km_csr::vuart_rx_reg
-#define KM_CSR__VUART_RX_REG__RX_BYTE_bm 0xff
-#define KM_CSR__VUART_RX_REG__RX_BYTE_bp 0
-#define KM_CSR__VUART_RX_REG__RX_BYTE_bw 8
-#define KM_CSR__VUART_RX_REG__RX_BYTE_reset 0x0
-#define KM_CSR__VUART_RX_REG__RSVD0_bm 0x7fffff00
-#define KM_CSR__VUART_RX_REG__RSVD0_bp 8
-#define KM_CSR__VUART_RX_REG__RSVD0_bw 23
-#define KM_CSR__VUART_RX_REG__RSVD0_reset 0x0
-#define KM_CSR__VUART_RX_REG__DATA_VALID_bm 0x80000000
-#define KM_CSR__VUART_RX_REG__DATA_VALID_bp 31
-#define KM_CSR__VUART_RX_REG__DATA_VALID_bw 1
-#define KM_CSR__VUART_RX_REG__DATA_VALID_reset 0x0
-
-// reg - km_csr::vuart_status_reg
-#define KM_CSR__VUART_STATUS_REG__TX_READY_bm 0x1
-#define KM_CSR__VUART_STATUS_REG__TX_READY_bp 0
-#define KM_CSR__VUART_STATUS_REG__TX_READY_bw 1
-#define KM_CSR__VUART_STATUS_REG__TX_READY_reset 0x1
-#define KM_CSR__VUART_STATUS_REG__RX_VALID_bm 0x2
-#define KM_CSR__VUART_STATUS_REG__RX_VALID_bp 1
-#define KM_CSR__VUART_STATUS_REG__RX_VALID_bw 1
-#define KM_CSR__VUART_STATUS_REG__RX_VALID_reset 0x0
-#define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bm 0x4
-#define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bp 2
-#define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bw 1
-#define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_reset 0x0
-#define KM_CSR__VUART_STATUS_REG__RSVD_bm 0xfffffff8
-#define KM_CSR__VUART_STATUS_REG__RSVD_bp 3
-#define KM_CSR__VUART_STATUS_REG__RSVD_bw 29
-#define KM_CSR__VUART_STATUS_REG__RSVD_reset 0x0
-
-// reg - km_csr::tb_result_reg
-#define KM_CSR__TB_RESULT_REG__RESULT_bm 0xffffffff
-#define KM_CSR__TB_RESULT_REG__RESULT_bp 0
-#define KM_CSR__TB_RESULT_REG__RESULT_bw 32
-#define KM_CSR__TB_RESULT_REG__RESULT_reset 0x0
-
-// reg - km_csr::tb_signature_reg
-#define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bm 0xffffffff
-#define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bp 0
-#define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bw 32
-#define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_reset 0x0
-
-// reg - km_csr::tb_errcode_reg
-#define KM_CSR__TB_ERRCODE_REG__ERRCODE_bm 0xffffffff
-#define KM_CSR__TB_ERRCODE_REG__ERRCODE_bp 0
-#define KM_CSR__TB_ERRCODE_REG__ERRCODE_bw 32
-#define KM_CSR__TB_ERRCODE_REG__ERRCODE_reset 0x0
-
-// reg - km_csr::tb_subtest_reg
-#define KM_CSR__TB_SUBTEST_REG__SUBTEST_bm 0xffffffff
-#define KM_CSR__TB_SUBTEST_REG__SUBTEST_bp 0
-#define KM_CSR__TB_SUBTEST_REG__SUBTEST_bw 32
-#define KM_CSR__TB_SUBTEST_REG__SUBTEST_reset 0x0
-
-// reg - km_csr::tb_cmd_reg
-#define KM_CSR__TB_CMD_REG__CMD_bm 0xffffffff
-#define KM_CSR__TB_CMD_REG__CMD_bp 0
-#define KM_CSR__TB_CMD_REG__CMD_bw 32
-#define KM_CSR__TB_CMD_REG__CMD_reset 0x0
-
-// reg - km_csr::tb_cmd_arg_reg
-#define KM_CSR__TB_CMD_ARG_REG__ARG_bm 0xffffffff
-#define KM_CSR__TB_CMD_ARG_REG__ARG_bp 0
-#define KM_CSR__TB_CMD_ARG_REG__ARG_bw 32
-#define KM_CSR__TB_CMD_ARG_REG__ARG_reset 0x0
-
-// reg - km_csr::tb_cmd_status_reg
-#define KM_CSR__TB_CMD_STATUS_REG__STATUS_bm 0xffffffff
-#define KM_CSR__TB_CMD_STATUS_REG__STATUS_bp 0
-#define KM_CSR__TB_CMD_STATUS_REG__STATUS_bw 32
-#define KM_CSR__TB_CMD_STATUS_REG__STATUS_reset 0x0
-
-// reg - km_csr::tb_cmd_result_reg
-#define KM_CSR__TB_CMD_RESULT_REG__RESULT_bm 0xffffffff
-#define KM_CSR__TB_CMD_RESULT_REG__RESULT_bp 0
-#define KM_CSR__TB_CMD_RESULT_REG__RESULT_bw 32
-#define KM_CSR__TB_CMD_RESULT_REG__RESULT_reset 0x0
-
-// reg - km_csr::debug_reg
-#define KM_CSR__DEBUG_REG__MAGIC_bm 0xffffffff
-#define KM_CSR__DEBUG_REG__MAGIC_bp 0
-#define KM_CSR__DEBUG_REG__MAGIC_bw 32
-#define KM_CSR__DEBUG_REG__MAGIC_reset 0xcafebeef
-
-// reg - km_csr::otp_dr_word_reg
-#define KM_CSR__OTP_DR_WORD_REG__VALUE_bm 0xffffffff
-#define KM_CSR__OTP_DR_WORD_REG__VALUE_bp 0
-#define KM_CSR__OTP_DR_WORD_REG__VALUE_bw 32
-
-// reg - km_csr::otp_read_lock_reg
-#define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bm 0x1
-#define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bp 0
-#define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bw 1
-#define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bm 0x2
-#define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bp 1
-#define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bw 1
-#define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm 0x4
-#define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bp 2
-#define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bw 1
-#define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bm 0x8
-#define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bp 3
-#define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bw 1
-#define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bm 0x10
-#define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bp 4
-#define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bw 1
-#define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bm 0x20
-#define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bp 5
-#define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bw 1
-#define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bp 6
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bw 26
-#define KM_CSR__OTP_READ_LOCK_REG__RSVD_reset 0x0
-
-// reg - km_csr::otp_change_status_reg
-#define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bm 0x1
-#define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bp 0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bw 1
-#define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_reset 0x0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bm 0x2
-#define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bp 1
-#define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bw 1
-#define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_reset 0x0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bm 0x4
-#define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bp 2
-#define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bw 1
-#define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_reset 0x0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bm 0x8
-#define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bp 3
-#define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bw 1
-#define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_reset 0x0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bm 0x10
-#define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bp 4
-#define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bw 1
-#define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_reset 0x0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bm 0x20
-#define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bp 5
-#define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bw 1
-#define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bp 6
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 26
-#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_reset 0x0
-
-// reg - km_csr::otp_read_lock_cold_reg
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bm 0x1
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bp 0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bw 1
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bm 0x2
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bp 1
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bw 1
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm 0x4
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bp 2
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bw 1
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm 0x8
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bp 3
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bw 1
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bm 0x10
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bp 4
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bw 1
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bm 0x20
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bp 5
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bw 1
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_reset 0x0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xffffffc0
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 6
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 26
-#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_reset 0x0
-
-// addrmap - km_csr
-typedef struct __attribute__ ((__packed__)) {
-    uint32_t VERSION;
-    uint32_t CTRL;
-    uint32_t SOFT_RST_CODE;
-    uint32_t IRQ_STATUS;
-    uint32_t IRQ_ENABLE;
-    uint32_t SCRAMBLER_KEY;
-    uint32_t SCRAMBLER_CTRL;
-    uint32_t SRAM_LOCK;
-    uint32_t IRQ_SET;
-    uint32_t SRAM_WRITE_LOCK_VIOLATION;
-    uint32_t RECOVERABLE_ERR;
-    uint32_t BOOT_STATUS;
-    uint32_t OTP_LIFE_CYCLE;
-    uint32_t OTP_DEMOTION_STATE;
-    uint32_t SRAM_EXEC_MODE;
-    uint8_t RESERVED_3c_b7[0x7c];
-    uint32_t IRQ_ENTRY_ADDR;
-    uint32_t IRQ_ENTRY_LOCK;
-    uint8_t RESERVED_c0_ff[0x40];
-    uint32_t VUART_TX;
-    uint32_t VUART_RX;
-    uint32_t VUART_STATUS;
-    uint8_t RESERVED_10c_10f[0x4];
-    uint32_t TB_RESULT;
-    uint32_t TB_SIGNATURE;
-    uint32_t TB_ERRCODE;
-    uint32_t TB_SUBTEST;
-    uint32_t TB_CMD;
-    uint32_t TB_CMD_ARG;
-    uint32_t TB_CMD_STATUS;
-    uint32_t TB_CMD_RESULT;
-    uint8_t RESERVED_130_1fb[0xcc];
-    uint32_t DEBUG;
-    uint32_t OTP_CHIPLET_UID_VAL_0;
-    uint32_t OTP_CHIPLET_UID_VAL_1;
-    uint32_t OTP_CHIPLET_UID_VAL_2;
-    uint32_t OTP_CHIPLET_UID_VAL_3;
-    uint32_t OTP_CHIPLET_UID_VAL_4;
-    uint32_t OTP_CHIPLET_UID_VAL_5;
-    uint32_t OTP_CHIPLET_UID_VAL_6;
-    uint32_t OTP_CHIPLET_UID_VAL_7;
-    uint32_t OTP_CHIPLET_UID_CPL_0;
-    uint32_t OTP_CHIPLET_UID_CPL_1;
-    uint32_t OTP_CHIPLET_UID_CPL_2;
-    uint32_t OTP_CHIPLET_UID_CPL_3;
-    uint32_t OTP_CHIPLET_UID_CPL_4;
-    uint32_t OTP_CHIPLET_UID_CPL_5;
-    uint32_t OTP_CHIPLET_UID_CPL_6;
-    uint32_t OTP_CHIPLET_UID_CPL_7;
-    uint32_t OTP_SIP_UID_VAL_0;
-    uint32_t OTP_SIP_UID_VAL_1;
-    uint32_t OTP_SIP_UID_VAL_2;
-    uint32_t OTP_SIP_UID_VAL_3;
-    uint32_t OTP_SIP_UID_VAL_4;
-    uint32_t OTP_SIP_UID_VAL_5;
-    uint32_t OTP_SIP_UID_VAL_6;
-    uint32_t OTP_SIP_UID_VAL_7;
-    uint32_t OTP_SIP_UID_CPL_0;
-    uint32_t OTP_SIP_UID_CPL_1;
-    uint32_t OTP_SIP_UID_CPL_2;
-    uint32_t OTP_SIP_UID_CPL_3;
-    uint32_t OTP_SIP_UID_CPL_4;
-    uint32_t OTP_SIP_UID_CPL_5;
-    uint32_t OTP_SIP_UID_CPL_6;
-    uint32_t OTP_SIP_UID_CPL_7;
-    uint32_t OTP_SYS_UID_VAL_0;
-    uint32_t OTP_SYS_UID_VAL_1;
-    uint32_t OTP_SYS_UID_VAL_2;
-    uint32_t OTP_SYS_UID_VAL_3;
-    uint32_t OTP_SYS_UID_VAL_4;
-    uint32_t OTP_SYS_UID_VAL_5;
-    uint32_t OTP_SYS_UID_VAL_6;
-    uint32_t OTP_SYS_UID_VAL_7;
-    uint32_t OTP_SYS_UID_CPL_0;
-    uint32_t OTP_SYS_UID_CPL_1;
-    uint32_t OTP_SYS_UID_CPL_2;
-    uint32_t OTP_SYS_UID_CPL_3;
-    uint32_t OTP_SYS_UID_CPL_4;
-    uint32_t OTP_SYS_UID_CPL_5;
-    uint32_t OTP_SYS_UID_CPL_6;
-    uint32_t OTP_SYS_UID_CPL_7;
-    uint32_t OTP_CLASS_KEY_VAL_0;
-    uint32_t OTP_CLASS_KEY_VAL_1;
-    uint32_t OTP_CLASS_KEY_VAL_2;
-    uint32_t OTP_CLASS_KEY_VAL_3;
-    uint32_t OTP_CLASS_KEY_VAL_4;
-    uint32_t OTP_CLASS_KEY_VAL_5;
-    uint32_t OTP_CLASS_KEY_VAL_6;
-    uint32_t OTP_CLASS_KEY_VAL_7;
-    uint32_t OTP_CLASS_KEY_CPL_0;
-    uint32_t OTP_CLASS_KEY_CPL_1;
-    uint32_t OTP_CLASS_KEY_CPL_2;
-    uint32_t OTP_CLASS_KEY_CPL_3;
-    uint32_t OTP_CLASS_KEY_CPL_4;
-    uint32_t OTP_CLASS_KEY_CPL_5;
-    uint32_t OTP_CLASS_KEY_CPL_6;
-    uint32_t OTP_CLASS_KEY_CPL_7;
-    uint32_t OTP_READ_LOCK;
-    uint32_t OTP_CHANGE_STATUS;
-    uint32_t OTP_READ_LOCK_COLD;
-} km_csr_t;
-
-// reg - km_drbg_sampler::data_reg
-#define KM_DRBG_SAMPLER__DATA_REG__DATA_bm 0xffffffff
-#define KM_DRBG_SAMPLER__DATA_REG__DATA_bp 0
-#define KM_DRBG_SAMPLER__DATA_REG__DATA_bw 32
-
-// reg - km_drbg_sampler::cfg_reg
-#define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bm 0x1
-#define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bp 0
-#define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bw 1
-#define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_reset 0x0
-#define KM_DRBG_SAMPLER__CFG_REG__RSVD_bm 0xfffe
-#define KM_DRBG_SAMPLER__CFG_REG__RSVD_bp 1
-#define KM_DRBG_SAMPLER__CFG_REG__RSVD_bw 15
-#define KM_DRBG_SAMPLER__CFG_REG__RSVD_reset 0x0
-#define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bm 0xffff0000
-#define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bp 16
-#define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bw 16
-#define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_reset 0x100
-
-// reg - km_drbg_sampler::status_reg
-#define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bm 0x1
-#define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bp 0
-#define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bw 1
-#define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_reset 0x0
-#define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bm 0x2
-#define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bp 1
-#define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bw 1
-#define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_reset 0x0
-#define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bm 0x4
-#define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bp 2
-#define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bw 1
-#define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_reset 0x0
-#define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bm 0x8
-#define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bp 3
-#define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bw 1
-#define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_reset 0x0
-#define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bm 0xf0
-#define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bp 4
-#define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bw 4
-#define KM_DRBG_SAMPLER__STATUS_REG__RSVD_reset 0x0
-#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bm 0xff00
-#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bp 8
-#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bw 8
-#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_reset 0x0
-#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bm 0xffff0000
-#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bp 16
-#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bw 16
-#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_reset 0x0
-
-// reg - km_drbg_sampler::prefetch_data_reg
-#define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bm 0xffffffff
-#define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bp 0
-#define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bw 32
-
-// addrmap - km_drbg_sampler
-typedef struct __attribute__ ((__packed__)) {
-    uint32_t DATA;
-    uint32_t CFG;
-    uint32_t STATUS;
-    uint32_t PREFETCH_DATA;
-} km_drbg_sampler_t;
-
 // reg - km_mailbox_km::write_data_reg
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bm 0xffffffff
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bp 0
@@ -1622,6 +912,797 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t SEC_DISABLE_TOKEN_MATCH;
 } efuse_mmr_t;
 
+// reg - km_kpv::key_word_reg
+#define KM_KPV__KEY_WORD_REG__DATA_bm 0xffffffff
+#define KM_KPV__KEY_WORD_REG__DATA_bp 0
+#define KM_KPV__KEY_WORD_REG__DATA_bw 32
+
+// regfile - km_kpv::key_entry_rf
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t WORD[16];
+} km_kpv__key_entry_rf_t;
+
+// reg - km_kpv::ctrl_reg
+#define KM_KPV__CTRL_REG__LOCK_WRITE_bm 0x1
+#define KM_KPV__CTRL_REG__LOCK_WRITE_bp 0
+#define KM_KPV__CTRL_REG__LOCK_WRITE_bw 1
+#define KM_KPV__CTRL_REG__LOCK_WRITE_reset 0x0
+#define KM_KPV__CTRL_REG__LOCK_USE_bm 0x2
+#define KM_KPV__CTRL_REG__LOCK_USE_bp 1
+#define KM_KPV__CTRL_REG__LOCK_USE_bw 1
+#define KM_KPV__CTRL_REG__LOCK_USE_reset 0x0
+#define KM_KPV__CTRL_REG__ERASE_bm 0x4
+#define KM_KPV__CTRL_REG__ERASE_bp 2
+#define KM_KPV__CTRL_REG__ERASE_bw 1
+#define KM_KPV__CTRL_REG__ERASE_reset 0x0
+#define KM_KPV__CTRL_REG__RSVD_31_3_bm 0xfffffff8
+#define KM_KPV__CTRL_REG__RSVD_31_3_bp 3
+#define KM_KPV__CTRL_REG__RSVD_31_3_bw 29
+#define KM_KPV__CTRL_REG__RSVD_31_3_reset 0x0
+
+// reg - km_kpv::kpv_scrambler_key_reg
+#define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bm 0xffffffff
+#define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bp 0
+#define KM_KPV__KPV_SCRAMBLER_KEY_REG__KEY_bw 32
+
+// reg - km_kpv::kpv_scrambler_ctrl_reg
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bm 0x1
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bp 0
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bw 1
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_reset 0x0
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bm 0x2
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bp 1
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bw 1
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_reset 0x0
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bm 0xfffffffc
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bp 2
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_bw 30
+#define KM_KPV__KPV_SCRAMBLER_CTRL_REG__RSVD_reset 0x0
+
+// addrmap - km_kpv
+typedef struct __attribute__ ((__packed__)) {
+    km_kpv__key_entry_rf_t KEY_ENTRY[64];
+    uint32_t CTRL[64];
+    uint32_t KPV_SCRAMBLER_KEY;
+    uint32_t KPV_SCRAMBLER_CTRL;
+} km_kpv_t;
+
+// reg - km_csr::version_reg
+#define KM_CSR__VERSION_REG__PATCH_bm 0xff
+#define KM_CSR__VERSION_REG__PATCH_bp 0
+#define KM_CSR__VERSION_REG__PATCH_bw 8
+#define KM_CSR__VERSION_REG__PATCH_reset 0x0
+#define KM_CSR__VERSION_REG__MINOR_bm 0xff00
+#define KM_CSR__VERSION_REG__MINOR_bp 8
+#define KM_CSR__VERSION_REG__MINOR_bw 8
+#define KM_CSR__VERSION_REG__MINOR_reset 0x0
+#define KM_CSR__VERSION_REG__MAJOR_bm 0xff0000
+#define KM_CSR__VERSION_REG__MAJOR_bp 16
+#define KM_CSR__VERSION_REG__MAJOR_bw 8
+#define KM_CSR__VERSION_REG__MAJOR_reset 0x1
+#define KM_CSR__VERSION_REG__RSVD_bm 0xff000000
+#define KM_CSR__VERSION_REG__RSVD_bp 24
+#define KM_CSR__VERSION_REG__RSVD_bw 8
+#define KM_CSR__VERSION_REG__RSVD_reset 0x0
+
+// reg - km_csr::ctrl_reg
+#define KM_CSR__CTRL_REG__RSVD_bm 0xffffffff
+#define KM_CSR__CTRL_REG__RSVD_bp 0
+#define KM_CSR__CTRL_REG__RSVD_bw 32
+#define KM_CSR__CTRL_REG__RSVD_reset 0x0
+
+// reg - km_csr::soft_rst_code_reg
+#define KM_CSR__SOFT_RST_CODE_REG__CODE_bm 0xffffffff
+#define KM_CSR__SOFT_RST_CODE_REG__CODE_bp 0
+#define KM_CSR__SOFT_RST_CODE_REG__CODE_bw 32
+#define KM_CSR__SOFT_RST_CODE_REG__CODE_reset 0x0
+
+// reg - km_csr::irq_status_reg
+#define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bm 0x1
+#define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bp 0
+#define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_bw 1
+#define KM_CSR__IRQ_STATUS_REG__ROM_PARITY_ERR_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bm 0x2
+#define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bp 1
+#define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_bw 1
+#define KM_CSR__IRQ_STATUS_REG__SRAM_PARITY_ERR_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bm 0x4
+#define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bp 2
+#define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_bw 1
+#define KM_CSR__IRQ_STATUS_REG__ROM_WRITE_ERR_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bm 0x8
+#define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bp 3
+#define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_bw 1
+#define KM_CSR__IRQ_STATUS_REG__SRAM_WRITE_LOCK_ERR_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm 0x10
+#define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bp 4
+#define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bw 1
+#define KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bm 0x20
+#define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bp 5
+#define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bw 1
+#define KM_CSR__IRQ_STATUS_REG__AXI_DECERR_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bm 0x40
+#define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bp 6
+#define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_bw 1
+#define KM_CSR__IRQ_STATUS_REG__DRBG_ERR_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bm 0x80
+#define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bp 7
+#define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_bw 1
+#define KM_CSR__IRQ_STATUS_REG__WIPE_STATE_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bm 0x100
+#define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bp 8
+#define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_bw 1
+#define KM_CSR__IRQ_STATUS_REG__OTP_CHANGE_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bm 0x200
+#define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bp 9
+#define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_bw 1
+#define KM_CSR__IRQ_STATUS_REG__OTP_SIGINT_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bm 0x400
+#define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bp 10
+#define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_bw 1
+#define KM_CSR__IRQ_STATUS_REG__EXEC_VIOLATION_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bm 0x800
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bp 11
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_bw 1
+#define KM_CSR__IRQ_STATUS_REG__ROM_ACCESS_VIOLATION_reset 0x0
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bp 12
+#define KM_CSR__IRQ_STATUS_REG__RSVD_bw 20
+#define KM_CSR__IRQ_STATUS_REG__RSVD_reset 0x0
+
+// reg - km_csr::irq_enable_reg
+#define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bm 0x1
+#define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bp 0
+#define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__ROM_PARITY_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bm 0x2
+#define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bp 1
+#define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__SRAM_PARITY_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bm 0x4
+#define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bp 2
+#define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__ROM_WRITE_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bm 0x8
+#define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bp 3
+#define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__SRAM_WRITE_LOCK_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bm 0x10
+#define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bp 4
+#define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__AXI_SLVERR_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bm 0x20
+#define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bp 5
+#define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__AXI_DECERR_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bm 0x40
+#define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bp 6
+#define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__DRBG_ERR_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bm 0x80
+#define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bp 7
+#define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__WIPE_STATE_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bm 0x100
+#define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bp 8
+#define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__OTP_CHANGE_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bm 0x200
+#define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bp 9
+#define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__OTP_SIGINT_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bm 0x400
+#define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bp 10
+#define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__EXEC_VIOLATION_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bm 0x800
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bp 11
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_bw 1
+#define KM_CSR__IRQ_ENABLE_REG__ROM_ACCESS_VIOLATION_EN_reset 0x0
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bp 12
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_bw 20
+#define KM_CSR__IRQ_ENABLE_REG__RSVD_reset 0x0
+
+// reg - km_csr::scrambler_key_reg
+#define KM_CSR__SCRAMBLER_KEY_REG__KEY_bm 0xffffffff
+#define KM_CSR__SCRAMBLER_KEY_REG__KEY_bp 0
+#define KM_CSR__SCRAMBLER_KEY_REG__KEY_bw 32
+
+// reg - km_csr::scrambler_ctrl_reg
+#define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bm 0x1
+#define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bp 0
+#define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_bw 1
+#define KM_CSR__SCRAMBLER_CTRL_REG__ENABLE_reset 0x0
+#define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bm 0x2
+#define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bp 1
+#define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_bw 1
+#define KM_CSR__SCRAMBLER_CTRL_REG__LOCK_reset 0x0
+#define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bm 0xfffffffc
+#define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bp 2
+#define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_bw 30
+#define KM_CSR__SCRAMBLER_CTRL_REG__RSVD_reset 0x0
+
+// reg - km_csr::sram_lock_reg
+#define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bm 0xffffffff
+#define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bp 0
+#define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_bw 32
+#define KM_CSR__SRAM_LOCK_REG__LOCK_BITS_reset 0x0
+
+// reg - km_csr::irq_set_reg
+#define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bm 0x1
+#define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bp 0
+#define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__ROM_PARITY_ERR_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bm 0x2
+#define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bp 1
+#define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__SRAM_PARITY_ERR_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bm 0x4
+#define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bp 2
+#define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__ROM_WRITE_ERR_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bm 0x8
+#define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bp 3
+#define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__SRAM_WRITE_LOCK_ERR_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bm 0x10
+#define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bp 4
+#define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__AXI_SLVERR_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bm 0x20
+#define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bp 5
+#define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__AXI_DECERR_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bm 0x40
+#define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bp 6
+#define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__DRBG_ERR_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bm 0x80
+#define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bp 7
+#define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__WIPE_STATE_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bm 0x100
+#define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bp 8
+#define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__OTP_CHANGE_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bm 0x200
+#define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bp 9
+#define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__OTP_SIGINT_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bm 0x400
+#define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bp 10
+#define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__EXEC_VIOLATION_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bm 0x800
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bp 11
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_bw 1
+#define KM_CSR__IRQ_SET_REG__ROM_ACCESS_VIOLATION_SET_reset 0x0
+#define KM_CSR__IRQ_SET_REG__RSVD_bm 0xfffff000
+#define KM_CSR__IRQ_SET_REG__RSVD_bp 12
+#define KM_CSR__IRQ_SET_REG__RSVD_bw 20
+#define KM_CSR__IRQ_SET_REG__RSVD_reset 0x0
+
+// reg - km_csr::sram_write_lock_violation_reg
+#define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bm 0xffffffff
+#define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bp 0
+#define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_bw 32
+#define KM_CSR__SRAM_WRITE_LOCK_VIOLATION_REG__VIOLATION_BITS_reset 0x0
+
+// reg - km_csr::recoverable_err_reg
+#define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bm 0x1
+#define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bp 0
+#define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_bw 1
+#define KM_CSR__RECOVERABLE_ERR_REG__RECOVERABLE_ERR_reset 0x0
+#define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bm 0xfffffffe
+#define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bp 1
+#define KM_CSR__RECOVERABLE_ERR_REG__RSVD_bw 31
+#define KM_CSR__RECOVERABLE_ERR_REG__RSVD_reset 0x0
+
+// reg - km_csr::boot_status_reg
+#define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bm 0x1
+#define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bp 0
+#define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_bw 1
+#define KM_CSR__BOOT_STATUS_REG__COLD_BOOT_DONE_reset 0x0
+#define KM_CSR__BOOT_STATUS_REG__RSVD_bm 0xfffffffe
+#define KM_CSR__BOOT_STATUS_REG__RSVD_bp 1
+#define KM_CSR__BOOT_STATUS_REG__RSVD_bw 31
+#define KM_CSR__BOOT_STATUS_REG__RSVD_reset 0x0
+
+// reg - km_csr::otp_life_cycle_reg
+#define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bm 0xff
+#define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bp 0
+#define KM_CSR__OTP_LIFE_CYCLE_REG__VALUE_bw 8
+#define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bm 0xffffff00
+#define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bp 8
+#define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_bw 24
+#define KM_CSR__OTP_LIFE_CYCLE_REG__RSVD_reset 0x0
+
+// reg - km_csr::otp_demotion_state_reg
+#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bm 0x3
+#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bp 0
+#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_1_VALUE_bw 2
+#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bm 0xc
+#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bp 2
+#define KM_CSR__OTP_DEMOTION_STATE_REG__DEMOTE_2_VALUE_bw 2
+#define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bm 0xfffffff0
+#define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bp 4
+#define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_bw 28
+#define KM_CSR__OTP_DEMOTION_STATE_REG__RSVD_reset 0x0
+
+// reg - km_csr::sram_exec_mode_reg
+#define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bm 0x1
+#define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bp 0
+#define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_bw 1
+#define KM_CSR__SRAM_EXEC_MODE_REG__ENABLE_reset 0x0
+#define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bm 0xfffffffe
+#define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bp 1
+#define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_bw 31
+#define KM_CSR__SRAM_EXEC_MODE_REG__RSVD_reset 0x0
+
+// reg - km_csr::irq_entry_addr_reg
+#define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bm 0xffffffff
+#define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bp 0
+#define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_bw 32
+#define KM_CSR__IRQ_ENTRY_ADDR_REG__ADDR_reset 0x10
+
+// reg - km_csr::irq_entry_lock_reg
+#define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bm 0x1
+#define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bp 0
+#define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_bw 1
+#define KM_CSR__IRQ_ENTRY_LOCK_REG__LOCK_reset 0x0
+#define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bm 0xfffffffe
+#define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bp 1
+#define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_bw 31
+#define KM_CSR__IRQ_ENTRY_LOCK_REG__RSVD_reset 0x0
+
+// reg - km_csr::vuart_tx_reg
+#define KM_CSR__VUART_TX_REG__TX_BYTE_bm 0xff
+#define KM_CSR__VUART_TX_REG__TX_BYTE_bp 0
+#define KM_CSR__VUART_TX_REG__TX_BYTE_bw 8
+#define KM_CSR__VUART_TX_REG__TX_BYTE_reset 0x0
+#define KM_CSR__VUART_TX_REG__RSVD0_bm 0x7fffff00
+#define KM_CSR__VUART_TX_REG__RSVD0_bp 8
+#define KM_CSR__VUART_TX_REG__RSVD0_bw 23
+#define KM_CSR__VUART_TX_REG__RSVD0_reset 0x0
+#define KM_CSR__VUART_TX_REG__DATA_VALID_bm 0x80000000
+#define KM_CSR__VUART_TX_REG__DATA_VALID_bp 31
+#define KM_CSR__VUART_TX_REG__DATA_VALID_bw 1
+#define KM_CSR__VUART_TX_REG__DATA_VALID_reset 0x0
+
+// reg - km_csr::vuart_rx_reg
+#define KM_CSR__VUART_RX_REG__RX_BYTE_bm 0xff
+#define KM_CSR__VUART_RX_REG__RX_BYTE_bp 0
+#define KM_CSR__VUART_RX_REG__RX_BYTE_bw 8
+#define KM_CSR__VUART_RX_REG__RX_BYTE_reset 0x0
+#define KM_CSR__VUART_RX_REG__RSVD0_bm 0x7fffff00
+#define KM_CSR__VUART_RX_REG__RSVD0_bp 8
+#define KM_CSR__VUART_RX_REG__RSVD0_bw 23
+#define KM_CSR__VUART_RX_REG__RSVD0_reset 0x0
+#define KM_CSR__VUART_RX_REG__DATA_VALID_bm 0x80000000
+#define KM_CSR__VUART_RX_REG__DATA_VALID_bp 31
+#define KM_CSR__VUART_RX_REG__DATA_VALID_bw 1
+#define KM_CSR__VUART_RX_REG__DATA_VALID_reset 0x0
+
+// reg - km_csr::vuart_status_reg
+#define KM_CSR__VUART_STATUS_REG__TX_READY_bm 0x1
+#define KM_CSR__VUART_STATUS_REG__TX_READY_bp 0
+#define KM_CSR__VUART_STATUS_REG__TX_READY_bw 1
+#define KM_CSR__VUART_STATUS_REG__TX_READY_reset 0x1
+#define KM_CSR__VUART_STATUS_REG__RX_VALID_bm 0x2
+#define KM_CSR__VUART_STATUS_REG__RX_VALID_bp 1
+#define KM_CSR__VUART_STATUS_REG__RX_VALID_bw 1
+#define KM_CSR__VUART_STATUS_REG__RX_VALID_reset 0x0
+#define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bm 0x4
+#define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bp 2
+#define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_bw 1
+#define KM_CSR__VUART_STATUS_REG__PRINT_ENABLE_reset 0x0
+#define KM_CSR__VUART_STATUS_REG__RSVD_bm 0xfffffff8
+#define KM_CSR__VUART_STATUS_REG__RSVD_bp 3
+#define KM_CSR__VUART_STATUS_REG__RSVD_bw 29
+#define KM_CSR__VUART_STATUS_REG__RSVD_reset 0x0
+
+// reg - km_csr::tb_result_reg
+#define KM_CSR__TB_RESULT_REG__RESULT_bm 0xffffffff
+#define KM_CSR__TB_RESULT_REG__RESULT_bp 0
+#define KM_CSR__TB_RESULT_REG__RESULT_bw 32
+#define KM_CSR__TB_RESULT_REG__RESULT_reset 0x0
+
+// reg - km_csr::tb_signature_reg
+#define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bm 0xffffffff
+#define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bp 0
+#define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_bw 32
+#define KM_CSR__TB_SIGNATURE_REG__SIGNATURE_reset 0x0
+
+// reg - km_csr::tb_errcode_reg
+#define KM_CSR__TB_ERRCODE_REG__ERRCODE_bm 0xffffffff
+#define KM_CSR__TB_ERRCODE_REG__ERRCODE_bp 0
+#define KM_CSR__TB_ERRCODE_REG__ERRCODE_bw 32
+#define KM_CSR__TB_ERRCODE_REG__ERRCODE_reset 0x0
+
+// reg - km_csr::tb_subtest_reg
+#define KM_CSR__TB_SUBTEST_REG__SUBTEST_bm 0xffffffff
+#define KM_CSR__TB_SUBTEST_REG__SUBTEST_bp 0
+#define KM_CSR__TB_SUBTEST_REG__SUBTEST_bw 32
+#define KM_CSR__TB_SUBTEST_REG__SUBTEST_reset 0x0
+
+// reg - km_csr::tb_cmd_reg
+#define KM_CSR__TB_CMD_REG__CMD_bm 0xffffffff
+#define KM_CSR__TB_CMD_REG__CMD_bp 0
+#define KM_CSR__TB_CMD_REG__CMD_bw 32
+#define KM_CSR__TB_CMD_REG__CMD_reset 0x0
+
+// reg - km_csr::tb_cmd_arg_reg
+#define KM_CSR__TB_CMD_ARG_REG__ARG_bm 0xffffffff
+#define KM_CSR__TB_CMD_ARG_REG__ARG_bp 0
+#define KM_CSR__TB_CMD_ARG_REG__ARG_bw 32
+#define KM_CSR__TB_CMD_ARG_REG__ARG_reset 0x0
+
+// reg - km_csr::tb_cmd_status_reg
+#define KM_CSR__TB_CMD_STATUS_REG__STATUS_bm 0xffffffff
+#define KM_CSR__TB_CMD_STATUS_REG__STATUS_bp 0
+#define KM_CSR__TB_CMD_STATUS_REG__STATUS_bw 32
+#define KM_CSR__TB_CMD_STATUS_REG__STATUS_reset 0x0
+
+// reg - km_csr::tb_cmd_result_reg
+#define KM_CSR__TB_CMD_RESULT_REG__RESULT_bm 0xffffffff
+#define KM_CSR__TB_CMD_RESULT_REG__RESULT_bp 0
+#define KM_CSR__TB_CMD_RESULT_REG__RESULT_bw 32
+#define KM_CSR__TB_CMD_RESULT_REG__RESULT_reset 0x0
+
+// reg - km_csr::debug_reg
+#define KM_CSR__DEBUG_REG__MAGIC_bm 0xffffffff
+#define KM_CSR__DEBUG_REG__MAGIC_bp 0
+#define KM_CSR__DEBUG_REG__MAGIC_bw 32
+#define KM_CSR__DEBUG_REG__MAGIC_reset 0xcafebeef
+
+// reg - km_csr::otp_dr_word_reg
+#define KM_CSR__OTP_DR_WORD_REG__VALUE_bm 0xffffffff
+#define KM_CSR__OTP_DR_WORD_REG__VALUE_bp 0
+#define KM_CSR__OTP_DR_WORD_REG__VALUE_bw 32
+
+// reg - km_csr::otp_read_lock_reg
+#define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bm 0x1
+#define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bp 0
+#define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__LIFE_CYCLE_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bm 0x2
+#define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bp 1
+#define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__DEMOTION_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bm 0x4
+#define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bp 2
+#define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bm 0x8
+#define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bp 3
+#define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SIP_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bm 0x10
+#define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bp 4
+#define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SYS_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bm 0x20
+#define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bp 5
+#define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__CLASS_KEY_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bp 9
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_bw 23
+#define KM_CSR__OTP_READ_LOCK_REG__RSVD_reset 0x0
+
+// reg - km_csr::otp_change_status_reg
+#define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bm 0x1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bp 0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__LIFE_CYCLE_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bm 0x2
+#define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bp 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__DEMOTION_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bm 0x4
+#define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bp 2
+#define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__CHIPLET_UID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bm 0x8
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bp 3
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SIP_UID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bm 0x10
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bp 4
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SYS_UID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bm 0x20
+#define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bp 5
+#define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__CLASS_KEY_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_CHANGE_STATUS_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bp 9
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_bw 23
+#define KM_CSR__OTP_CHANGE_STATUS_REG__RSVD_reset 0x0
+
+// reg - km_csr::otp_read_lock_cold_reg
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bm 0x1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bp 0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__LIFE_CYCLE_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bm 0x2
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bp 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__DEMOTION_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bm 0x4
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bp 2
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CHIPLET_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bm 0x8
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bp 3
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SIP_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bm 0x10
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bp 4
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SYS_UID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bm 0x20
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bp 5
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__CLASS_KEY_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bm 0x40
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bp 6
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_CHIPLET_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bm 0x80
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bp 7
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SIP_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bm 0x100
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bp 8
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_bw 1
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__SEP_SYS_ID_reset 0x0
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bm 0xfffffe00
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bp 9
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_bw 23
+#define KM_CSR__OTP_READ_LOCK_COLD_REG__RSVD_reset 0x0
+
+// addrmap - km_csr
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t VERSION;
+    uint32_t CTRL;
+    uint32_t SOFT_RST_CODE;
+    uint32_t IRQ_STATUS;
+    uint32_t IRQ_ENABLE;
+    uint32_t SCRAMBLER_KEY;
+    uint32_t SCRAMBLER_CTRL;
+    uint32_t SRAM_LOCK;
+    uint32_t IRQ_SET;
+    uint32_t SRAM_WRITE_LOCK_VIOLATION;
+    uint32_t RECOVERABLE_ERR;
+    uint32_t BOOT_STATUS;
+    uint32_t OTP_LIFE_CYCLE;
+    uint32_t OTP_DEMOTION_STATE;
+    uint32_t SRAM_EXEC_MODE;
+    uint8_t RESERVED_3c_b7[0x7c];
+    uint32_t IRQ_ENTRY_ADDR;
+    uint32_t IRQ_ENTRY_LOCK;
+    uint8_t RESERVED_c0_ff[0x40];
+    uint32_t VUART_TX;
+    uint32_t VUART_RX;
+    uint32_t VUART_STATUS;
+    uint8_t RESERVED_10c_10f[0x4];
+    uint32_t TB_RESULT;
+    uint32_t TB_SIGNATURE;
+    uint32_t TB_ERRCODE;
+    uint32_t TB_SUBTEST;
+    uint32_t TB_CMD;
+    uint32_t TB_CMD_ARG;
+    uint32_t TB_CMD_STATUS;
+    uint32_t TB_CMD_RESULT;
+    uint8_t RESERVED_130_1fb[0xcc];
+    uint32_t DEBUG;
+    uint32_t OTP_CHIPLET_UID_VAL_0;
+    uint32_t OTP_CHIPLET_UID_VAL_1;
+    uint32_t OTP_CHIPLET_UID_VAL_2;
+    uint32_t OTP_CHIPLET_UID_VAL_3;
+    uint32_t OTP_CHIPLET_UID_VAL_4;
+    uint32_t OTP_CHIPLET_UID_VAL_5;
+    uint32_t OTP_CHIPLET_UID_VAL_6;
+    uint32_t OTP_CHIPLET_UID_VAL_7;
+    uint32_t OTP_CHIPLET_UID_CPL_0;
+    uint32_t OTP_CHIPLET_UID_CPL_1;
+    uint32_t OTP_CHIPLET_UID_CPL_2;
+    uint32_t OTP_CHIPLET_UID_CPL_3;
+    uint32_t OTP_CHIPLET_UID_CPL_4;
+    uint32_t OTP_CHIPLET_UID_CPL_5;
+    uint32_t OTP_CHIPLET_UID_CPL_6;
+    uint32_t OTP_CHIPLET_UID_CPL_7;
+    uint32_t OTP_SIP_UID_VAL_0;
+    uint32_t OTP_SIP_UID_VAL_1;
+    uint32_t OTP_SIP_UID_VAL_2;
+    uint32_t OTP_SIP_UID_VAL_3;
+    uint32_t OTP_SIP_UID_VAL_4;
+    uint32_t OTP_SIP_UID_VAL_5;
+    uint32_t OTP_SIP_UID_VAL_6;
+    uint32_t OTP_SIP_UID_VAL_7;
+    uint32_t OTP_SIP_UID_CPL_0;
+    uint32_t OTP_SIP_UID_CPL_1;
+    uint32_t OTP_SIP_UID_CPL_2;
+    uint32_t OTP_SIP_UID_CPL_3;
+    uint32_t OTP_SIP_UID_CPL_4;
+    uint32_t OTP_SIP_UID_CPL_5;
+    uint32_t OTP_SIP_UID_CPL_6;
+    uint32_t OTP_SIP_UID_CPL_7;
+    uint32_t OTP_SYS_UID_VAL_0;
+    uint32_t OTP_SYS_UID_VAL_1;
+    uint32_t OTP_SYS_UID_VAL_2;
+    uint32_t OTP_SYS_UID_VAL_3;
+    uint32_t OTP_SYS_UID_VAL_4;
+    uint32_t OTP_SYS_UID_VAL_5;
+    uint32_t OTP_SYS_UID_VAL_6;
+    uint32_t OTP_SYS_UID_VAL_7;
+    uint32_t OTP_SYS_UID_CPL_0;
+    uint32_t OTP_SYS_UID_CPL_1;
+    uint32_t OTP_SYS_UID_CPL_2;
+    uint32_t OTP_SYS_UID_CPL_3;
+    uint32_t OTP_SYS_UID_CPL_4;
+    uint32_t OTP_SYS_UID_CPL_5;
+    uint32_t OTP_SYS_UID_CPL_6;
+    uint32_t OTP_SYS_UID_CPL_7;
+    uint32_t OTP_CLASS_KEY_VAL_0;
+    uint32_t OTP_CLASS_KEY_VAL_1;
+    uint32_t OTP_CLASS_KEY_VAL_2;
+    uint32_t OTP_CLASS_KEY_VAL_3;
+    uint32_t OTP_CLASS_KEY_VAL_4;
+    uint32_t OTP_CLASS_KEY_VAL_5;
+    uint32_t OTP_CLASS_KEY_VAL_6;
+    uint32_t OTP_CLASS_KEY_VAL_7;
+    uint32_t OTP_CLASS_KEY_CPL_0;
+    uint32_t OTP_CLASS_KEY_CPL_1;
+    uint32_t OTP_CLASS_KEY_CPL_2;
+    uint32_t OTP_CLASS_KEY_CPL_3;
+    uint32_t OTP_CLASS_KEY_CPL_4;
+    uint32_t OTP_CLASS_KEY_CPL_5;
+    uint32_t OTP_CLASS_KEY_CPL_6;
+    uint32_t OTP_CLASS_KEY_CPL_7;
+    uint32_t OTP_READ_LOCK;
+    uint32_t OTP_CHANGE_STATUS;
+    uint32_t OTP_READ_LOCK_COLD;
+    uint8_t RESERVED_30c_3ff[0xf4];
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_0;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_1;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_2;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_3;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_4;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_5;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_6;
+    uint32_t OTP_SEP_CHIPLET_ID_VAL_7;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_0;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_1;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_2;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_3;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_4;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_5;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_6;
+    uint32_t OTP_SEP_CHIPLET_ID_CPL_7;
+    uint32_t OTP_SEP_SIP_ID_VAL_0;
+    uint32_t OTP_SEP_SIP_ID_VAL_1;
+    uint32_t OTP_SEP_SIP_ID_VAL_2;
+    uint32_t OTP_SEP_SIP_ID_VAL_3;
+    uint32_t OTP_SEP_SIP_ID_VAL_4;
+    uint32_t OTP_SEP_SIP_ID_VAL_5;
+    uint32_t OTP_SEP_SIP_ID_VAL_6;
+    uint32_t OTP_SEP_SIP_ID_VAL_7;
+    uint32_t OTP_SEP_SIP_ID_CPL_0;
+    uint32_t OTP_SEP_SIP_ID_CPL_1;
+    uint32_t OTP_SEP_SIP_ID_CPL_2;
+    uint32_t OTP_SEP_SIP_ID_CPL_3;
+    uint32_t OTP_SEP_SIP_ID_CPL_4;
+    uint32_t OTP_SEP_SIP_ID_CPL_5;
+    uint32_t OTP_SEP_SIP_ID_CPL_6;
+    uint32_t OTP_SEP_SIP_ID_CPL_7;
+    uint32_t OTP_SEP_SYS_ID_VAL_0;
+    uint32_t OTP_SEP_SYS_ID_VAL_1;
+    uint32_t OTP_SEP_SYS_ID_VAL_2;
+    uint32_t OTP_SEP_SYS_ID_VAL_3;
+    uint32_t OTP_SEP_SYS_ID_VAL_4;
+    uint32_t OTP_SEP_SYS_ID_VAL_5;
+    uint32_t OTP_SEP_SYS_ID_VAL_6;
+    uint32_t OTP_SEP_SYS_ID_VAL_7;
+    uint32_t OTP_SEP_SYS_ID_CPL_0;
+    uint32_t OTP_SEP_SYS_ID_CPL_1;
+    uint32_t OTP_SEP_SYS_ID_CPL_2;
+    uint32_t OTP_SEP_SYS_ID_CPL_3;
+    uint32_t OTP_SEP_SYS_ID_CPL_4;
+    uint32_t OTP_SEP_SYS_ID_CPL_5;
+    uint32_t OTP_SEP_SYS_ID_CPL_6;
+    uint32_t OTP_SEP_SYS_ID_CPL_7;
+} km_csr_t;
+
+// reg - km_drbg_sampler::data_reg
+#define KM_DRBG_SAMPLER__DATA_REG__DATA_bm 0xffffffff
+#define KM_DRBG_SAMPLER__DATA_REG__DATA_bp 0
+#define KM_DRBG_SAMPLER__DATA_REG__DATA_bw 32
+
+// reg - km_drbg_sampler::cfg_reg
+#define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bm 0x1
+#define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bp 0
+#define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_bw 1
+#define KM_DRBG_SAMPLER__CFG_REG__PREFETCH_reset 0x0
+#define KM_DRBG_SAMPLER__CFG_REG__RSVD_bm 0xfffe
+#define KM_DRBG_SAMPLER__CFG_REG__RSVD_bp 1
+#define KM_DRBG_SAMPLER__CFG_REG__RSVD_bw 15
+#define KM_DRBG_SAMPLER__CFG_REG__RSVD_reset 0x0
+#define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bm 0xffff0000
+#define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bp 16
+#define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_bw 16
+#define KM_DRBG_SAMPLER__CFG_REG__TIMEOUT_reset 0x100
+
+// reg - km_drbg_sampler::status_reg
+#define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bm 0x1
+#define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bp 0
+#define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_bw 1
+#define KM_DRBG_SAMPLER__STATUS_REG__DRBG_READY_reset 0x0
+#define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bm 0x2
+#define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bp 1
+#define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_bw 1
+#define KM_DRBG_SAMPLER__STATUS_REG__PREFETCHED_reset 0x0
+#define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bm 0x4
+#define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bp 2
+#define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_bw 1
+#define KM_DRBG_SAMPLER__STATUS_REG__TIMEOUT_ERR_reset 0x0
+#define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bm 0x8
+#define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bp 3
+#define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_bw 1
+#define KM_DRBG_SAMPLER__STATUS_REG__STREAM_ERR_reset 0x0
+#define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bm 0xf0
+#define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bp 4
+#define KM_DRBG_SAMPLER__STATUS_REG__RSVD_bw 4
+#define KM_DRBG_SAMPLER__STATUS_REG__RSVD_reset 0x0
+#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bm 0xff00
+#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bp 8
+#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_bw 8
+#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_BAD_reset 0x0
+#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bm 0xffff0000
+#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bp 16
+#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_bw 16
+#define KM_DRBG_SAMPLER__STATUS_REG__COUNT_GOOD_reset 0x0
+
+// reg - km_drbg_sampler::prefetch_data_reg
+#define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bm 0xffffffff
+#define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bp 0
+#define KM_DRBG_SAMPLER__PREFETCH_DATA_REG__DATA_bw 32
+
+// addrmap - km_drbg_sampler
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t DATA;
+    uint32_t CFG;
+    uint32_t STATUS;
+    uint32_t PREFETCH_DATA;
+} km_drbg_sampler_t;
+
 // reg - otbn_wrapper_key::key_word_reg
 #define OTBN_WRAPPER_KEY__KEY_WORD_REG__DATA_bm 0xffffffff
 #define OTBN_WRAPPER_KEY__KEY_WORD_REG__DATA_bp 0
@@ -1791,20 +1872,20 @@ typedef struct __attribute__ ((__packed__)) {
 
 // addrmap - key_manager
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t RESERVED_0_cfff[0xd000];
-    km_kpv_t kpv;
-    uint8_t RESERVED_d888_dfff[0x778];
-    km_csr_t kmcsr;
-    uint8_t RESERVED_e30c_efff[0xcf4];
-    km_drbg_sampler_t drbg_sampler;
-    uint8_t RESERVED_f010_ffff[0xff0];
+    uint8_t RESERVED_0_ffff[0x10000];
     km_mailbox_km_t mailbox_km;
     uint8_t RESERVED_1001c_10fff[0xfe4];
     sep_efuse_map_t otp_efuse_map;
     efuse_interface_ctrl_t otp_efuse_ctrl;
     uint8_t RESERVED_1141c_114ff[0xe4];
     efuse_mmr_t otp_efuse_mmr;
-    uint8_t RESERVED_11570_17fff[0x6a90];
+    uint8_t RESERVED_11570_11fff[0xa90];
+    km_kpv_t kpv;
+    uint8_t RESERVED_13108_13fff[0xef8];
+    km_csr_t kmcsr;
+    uint8_t RESERVED_144c0_14fff[0xb40];
+    km_drbg_sampler_t drbg_sampler;
+    uint8_t RESERVED_15010_17fff[0x2ff0];
     otbn_wrapper_key_t otbn_wrapper_key;
     uint8_t RESERVED_18064_18fff[0xf9c];
     aes_wrapper_key_t aes_wrapper_key;

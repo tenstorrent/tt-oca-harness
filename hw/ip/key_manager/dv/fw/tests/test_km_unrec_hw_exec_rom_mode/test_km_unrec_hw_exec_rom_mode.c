@@ -20,8 +20,8 @@
 #include "key_manager_fw.h"
 
 /* Target: an unlocked SRAM address well above the test BSS/stack.
- * Region 24 = 0x4000 + 24*0x200 = 0x7000.  Not locked here. */
-#define SRAM_CODE_BASE (SRAM_BASE + 0x3000u)
+ * Region 24 = 0x8000 + 24*0x400 = 0xE000.  Not locked here. */
+#define SRAM_CODE_BASE (SRAM_BASE + (24u * SRAM_LOCK_REGION_BYTES))
 
 /* Trivial function to copy to SRAM: returns its argument + 1. */
 typedef uint32_t (*add1_fn_t)(uint32_t);
