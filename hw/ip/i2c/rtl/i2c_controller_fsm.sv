@@ -1009,18 +1009,5 @@ module i2c_controller_fsm
     `OCAH_OT_ASSERT(SclOutputGlitch_A, $rose(scl_o) |-> ##1 scl_o)
 
 // TODO: Handle the assertion below
-//  // I2C bus outputs
-//  always_ff @(posedge clk_i or negedge rst_ni) begin
-//    if (~rst_ni) begin
-//      scl_q <= 1'b1;
-//      sda_q <= 1'b1;
-//    end else begin
-//      scl_q <= scl_d;
-//      sda_q <= sda_d;
-//    end
-//  end
-//
-//  // Check that we don't change SCL and SDA in the same clock cycle in host mode.
-//  `OCAH_OT_ASSERT(SclSdaChangeNotSimultaneous_A, !(host_enable_i && (scl_d != scl_q) && (sda_d != sda_q)))
 
 endmodule

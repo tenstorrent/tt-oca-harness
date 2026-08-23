@@ -95,13 +95,6 @@ module dfd_apb2mmr
 		.o_q(pready)
 	);
 
-	// dfd_rv_dff #(.WIDTH(1), .RESET_VALUE(1'b0), .BYP(0)) u_dff_pslverr (
-	//     .i_clk(clk),
-	//     .i_reset_n(reset_n),
-	//     .i_en(1'b1),
-	//     .i_d(),
-	//     .o_q(pslverr)
-	// );
 
 	dfd_rv_dff #(.WIDTH(1), .RESET_VALUE(1'b0), .BYP(0)) u_dff_reg_xfer_d1 (
 		.i_clk(clk),

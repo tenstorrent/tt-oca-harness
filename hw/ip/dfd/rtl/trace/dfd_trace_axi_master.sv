@@ -57,13 +57,6 @@ module dfd_trace_axi_master #(
     logic   [AXI_TXID_WIDTH-1:0]    tx_id;
     logic     [AXI_ID_WIDTH-1:0]    axi_id;
 
-    // always_ff @(posedge clk_i) begin
-    //     if (~rst_ni) begin
-    //         tx_id <= '0;
-    //     end else if (valid_i) begin
-    //         tx_id <= tx_id + 1'b1;
-    //     end
-    // end
 
     dfd_rv_dff #(.WIDTH(AXI_TXID_WIDTH), .RESET_VALUE(0)) tx_id_ff (
         .o_q          (tx_id),
@@ -202,99 +195,5 @@ module dfd_trace_axi_master #(
         endcase
     end
 
-    // always_ff @(posedge clk_i) begin
-    //     if (~rst_ni) begin
-    //         state           <= AWAIT_REQUEST;
-    //         ready_o         <= 1'b1;
-
-    //         axi_req_o   <= '0; 
-    //     end 
-    //     else begin
-    //         case (state)
-    //             AWAIT_REQUEST: begin
-    //                 if (valid_i) begin
-    //                     state               <= REQ_HANDSHAKE;
-    //                     ready_o             <= 1'b0;
-    //                     axi_req_o.aw_valid  <= 1'b1;
-    //                     axi_req_o.w_valid   <= 1'b1;
-    //                 end
-    //                 axi_req_o.aw.id     <= axi_id;
-    //                 axi_req_o.aw.size   <= 3'b110; // 64-bytes Transfer
-    //                 axi_req_o.aw.addr   <= $bits(axi_req_o.aw.addr)'(addr_i);
-    //                 axi_req_o.aw.prot   <= '0;
-    //                 axi_req_o.w.data    <= data_i;
-    //                 axi_req_o.w.last    <= 1'b1;
-    //                 axi_req_o.w.strb    <= '1; // Write only full 64-byte transfer
-    //                 axi_req_o.w.user    <= $bits(axi_req_o.w.user)'(axi_id);
-    //                 // axi_req_o.b_ready   <= 1'b1;
-    //             end
-    //             REQ_HANDSHAKE: begin
-    //                 if (axi_resp_i.aw_ready & axi_resp_i.w_ready) begin
-    //                     state               <= RESP_HANDSHAKE;
-    //                     axi_req_o.aw_valid  <= 1'b0;
-    //                     axi_req_o.aw.id     <= '0;
-    //                     axi_req_o.aw.addr   <= '0;
-    //                     axi_req_o.aw.prot   <= '0;
-    //                     axi_req_o.w_valid   <= 1'b0;
-    //                     axi_req_o.w.data    <= '0;
-    //                     axi_req_o.w.last    <= 1'b0;
-    //                     axi_req_o.w.strb    <= '0;
-    //                     axi_req_o.w.user    <= '0;
-    //                     axi_req_o.b_ready   <= 1'b1;
-    //                 end
-    //                 else if (axi_resp_i.aw_ready & ~axi_resp_i.w_ready) begin
-    //                     state               <= AW_HANDSHAKE;
-    //                     axi_req_o.aw_valid  <= 1'b0;
-    //                     axi_req_o.aw.id     <= '0;
-    //                     axi_req_o.aw.addr   <= '0;
-    //                     axi_req_o.aw.prot   <= '0; 
-    //                 end
-    //                 else if (~axi_resp_i.aw_ready & axi_resp_i.w_ready) begin
-    //                     state               <= W_HANDSHAKE;
-    //                     axi_req_o.w_valid   <= 1'b0;
-    //                     axi_req_o.w.data    <= '0;
-    //                     axi_req_o.w.last    <= 1'b0;
-    //                     axi_req_o.w.strb    <= '0;
-    //                     axi_req_o.w.user    <= '0;
-    //                     // axi_req_o.b_ready   <= 1'b1;
-    //                 end
-    //             end
-    //             AW_HANDSHAKE: begin
-    //                 if (axi_resp_i.w_ready) begin
-    //                     state               <= RESP_HANDSHAKE;
-    //                     axi_req_o.w_valid   <= 1'b0;
-    //                     axi_req_o.w.data    <= '0;
-    //                     axi_req_o.w.last    <= 1'b0;
-    //                     axi_req_o.w.strb    <= '0;
-    //                     axi_req_o.w.user    <= '0;
-    //                     axi_req_o.b_ready   <= 1'b1;
-    //                 end 
-    //             end
-    //             W_HANDSHAKE: begin
-    //                 if (axi_resp_i.aw_ready) begin
-    //                     state               <= RESP_HANDSHAKE;
-    //                     axi_req_o.aw_valid  <= 1'b0;
-    //                     axi_req_o.aw.id     <= '0;
-    //                     axi_req_o.aw.addr   <= '0;
-    //                     axi_req_o.aw.prot   <= '0;
-    //                     axi_req_o.b_ready   <= 1'b1;
-    //                 end 
-    //             end
-    //             RESP_HANDSHAKE: begin
-    //                 if (axi_resp_i.b_valid) begin
-    //                     state               <= AWAIT_REQUEST;
-    //                     ready_o             <= 1'b1;
-    //                     axi_req_o.b_ready   <= 1'b0;
-    //                 end
-    //             end
-    //             default: begin
-    //                 state           <= AWAIT_REQUEST;
-    //                 ready_o         <= 1'b1;
-
-    //                 axi_req_o       <= '0; 
-    //             end
-    //         endcase
-    //     end
-    // end
 endmodule
 

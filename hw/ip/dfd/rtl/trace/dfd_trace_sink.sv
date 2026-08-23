@@ -454,13 +454,6 @@ module dfd_trace_sink
   // 4.Once the frame of the core is incremented, then the global write pointer is updated. (Is it possible that, the more recent core is filled than the oldest one, in that use periodic slush request)
   // 5.New entry to RAM is started from the next_ptr and the same steps are repeated.
 
-  // dfd_rv_dff #(.WIDTH(30)) trdstlocalRamWpLow_ANY_ff (
-  //   .o_q          (trdstlocalRamWpLow_ANY),
-  //   .i_d          (~trdstRamMode_ANY?((trdstRamEnableStart_ANY_d1 | (~trdstStoponWrap_ANY & (trdstnextlocaltoupdateRamWpLow_ANY == trdstRamLimitLow_ANY)))?trdstRamStartLow_ANY:trdstnextlocaltoupdateRamWpLow_ANY):(trdstnextlocaltoupdateRamWpLow_ANY)), // Increment based on the frame_length
-  //   .i_en         ((|trdstcoreNewFrameStart_ANY) | trdstRamEnableStart_ANY_d1),
-  //   .i_clk        (clk),
-  //   .i_reset_n    (reset_n)
-  // );
 
   dfd_rv_dff #(.WIDTH(1)) trdstnextlocaltoupdateRamWpLowWrap_ANY_ff (.o_q(trdstnextlocaltoupdateRamWpLowWrap_ANY), .i_d((trdstnextlocaltoupdateRamWpLow_ANY >= trdstRamLimitLow_ANY)), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
 
@@ -664,14 +657,6 @@ module dfd_trace_sink
   // 4.Once the frame of the core is incremented, then the global write pointer is updated. (Is it possible that, the more recent core is filled than the oldest one, in that use periodic slush request)
   // 5.New entry to RAM is started from the next_ptr and the same steps are repeated.
 
-  // dfd_rv_dff #(.WIDTH(30)) trntrlocalRamWpLow_ANY_ff (
-  //   .o_q          (trntrlocalRamWpLow_ANY),
-  //   .i_d          (~trntrRamMode_ANY?((trntrRamEnableStart_ANY_d1 | (~trntrStoponWrap_ANY & (trntrnextlocaltoupdateRamWpLow_ANY == trntrRamLimitLow_ANY)))?trntrRamStartLow_ANY:trntrnextlocaltoupdateRamWpLow_ANY)
-  //                                   :(trntrnextlocaltoupdateRamWpLow_ANY)), // Increment based on the frame_length
-  //   .i_en         ((|trntrcoreNewFrameStart_ANY) | trntrRamEnableStart_ANY_d1),
-  //   .i_clk        (clk),
-  //   .i_reset_n    (reset_n)
-  // );
 
   dfd_rv_dff #(.WIDTH(1)) trntrnextlocaltoupdateRamWpLowWrap_ANY_ff (.o_q(trntrnextlocaltoupdateRamWpLowWrap_ANY), .i_d((trntrnextlocaltoupdateRamWpLow_ANY >= trntrRamLimitLow_ANY)), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
 
@@ -1052,30 +1037,6 @@ module dfd_trace_sink
   // --------------------------------------------------------------------------
   // Trace Sink RAM Connection (SRAM in trace_mem)
   // --------------------------------------------------------------------------
-  // 32KB = 8 instances of 512x64 macros
-  // for (genvar gc=0; gc<TRC_RAM_INSTANCES; gc++) begin: TrcSinkCells
-  //   dfd_rv_mem_model #(
-  //                   .ADDR_WIDTH(TRC_RAM_INDEX_WIDTH),
-  //                   .DATA_WIDTH(TRC_RAM_DATA_WIDTH),
-  //                   .RW_PORTS(1)
-  //   ) TrcSinkRam (
-  //     //Inputs
-  //     .i_clk                   (clk),
-  //     .i_reset_n               (reset_n),
-  //     .i_mem_chip_en           (TraceWrEn_TS0[gc/2] | TraceRdEn_TS1[gc]),
-  //     .i_mem_wr_en             (TraceWrEn_TS0[gc/2]),
-  //     .i_mem_rd_en             ('0),
-  //     .i_mem_addr              (TraceAddr_ANY[gc/2]),
-  //     .i_mem_wr_data           (TraceWrData_TS0[gc]), 
-  //     .i_mem_wr_mask_en        ('0),
-
-  //     .i_reg_mem_faulty_io     ('0),
-  //     .i_reg_mem_column_repair (1'b0),
-
-  //     //Outputs
-  //     .o_mem_rd_data           () 
-  //   );
-  // end
 
   always_comb begin: always_blk_1
     for (int gc = 0; gc<TRC_RAM_INSTANCES; gc++) begin
@@ -1092,9 +1053,6 @@ module dfd_trace_sink
   // --------------------------------------------------------------------------
   // Trace Sink RAM Read
   // --------------------------------------------------------------------------
-  // dfd_rv_dff #(.WIDTH(1)) TraceMemRdEn_ANY_ff (.o_q(TraceMemRdEn_ANY), .i_d(TraceMemRdEn_ANY_stg), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
-  // dfd_rv_dff #(.WIDTH(TRC_RAM_INDEX_WIDTH)) TraceMemRdAddr_TS1_ff (.o_q(TraceMemRdAddr_TS1), .i_d(TraceMemRdAddr_TS1_stg), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
-  // dfd_rv_dff #(.WIDTH(TRC_RAM_INSTANCES)) TraceMemPerWayRdEn_TS1_ff (.o_q(TraceMemPerWayRdEn_TS1), .i_d(TraceMemPerWayRdEn_TS1_stg), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
 
   assign TraceRdAddr_TS1 = TraceMemRdEn_ANY?TraceMemRdAddr_TS1:(trRamDataRdEn_ANY ? trntrRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH] : trdstRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH]);
   for (genvar i=0; i<TRC_RAM_INSTANCES; i++) begin : TraceReadEn
