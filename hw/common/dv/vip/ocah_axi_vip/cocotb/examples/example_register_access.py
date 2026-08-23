@@ -6,21 +6,20 @@ example_register_access.py — AXI master/slave agent usage examples.
 Demonstrates:
   1. AXI4-Lite single-beat register read/write  (OcahAxiLiteMasterAgent)
   2. AXI4 full-bus single and burst transactions (OcahAxiMasterAgent)
-  3. APB register access                         (OcahApbMaster)
-  4. Slave/RAM responder setup                   (OcahAxiLiteSlaveAgent, OcahApbRam)
-  5. Passive monitoring with checker callbacks   (OcahAxiMonitor)
+  3. Slave/RAM responder setup                   (OcahAxiLiteSlaveAgent)
+  4. Passive monitoring with checker callbacks   (OcahAxiMonitor)
 
 These are not stand-alone cocotb tests; they show the API patterns that a real
 test would follow.  Copy-paste the relevant block into your test module and
-replace ``dut.axil_if`` / ``dut.axi_if`` / ``dut.apb_if`` with the actual
-handle names in your testbench.
+replace ``dut.axil_if`` / ``dut.axi_if`` with the actual handle names in your
+testbench.
 
 Assumptions / conventions
 --------------------------
 - Clock is driven externally by the test; these snippets call cocotb.start_soon
   for the Clock helper before using the masters.
-- Interface names shown (axil_if, axi_if, apb_if) match the signal definitions
-  in axi4_lite_intf.sv, axi4_intf.sv, and apb_intf.sv respectively.
+- Interface names shown (axil_if, axi_if) match the signal definitions in
+  axi4_lite_intf.sv and axi4_intf.sv respectively.
 - All data values are plain Python ints; no cocotb BinaryValue objects.
 - DUT register addresses shown below are illustrative; substitute the actual
   address map from your register specification.
@@ -40,7 +39,6 @@ from ocah_axi_vip import (
     RESP_DECERR,
     RESP_SLVERR,
 )
-from ocah_apb_vip import OcahApbChecker, OcahApbMaster, OcahApbMonitor, OcahApbRam
 
 
 # ---------------------------------------------------------------------------
@@ -159,46 +157,14 @@ async def example_axi4_burst_access(dut):
 
 
 # ---------------------------------------------------------------------------
-# Example 3 — APB register access
-# ---------------------------------------------------------------------------
-
-@cocotb.test()
-async def example_apb_register_access(dut):
-    """Write and read registers over APB."""
-
-    cocotb.start_soon(Clock(dut.pclk, 20, units="ns").start())  # 50 MHz
-
-    master = OcahApbMaster(
-        dut.apb_if,
-        dut.pclk,           # APB BFM needs the clock handle separately
-        name="apb_host",
-        timeout_cycles=200,
-        data_width=32,
-    )
-    master.init_signals()
-    await master.wait_for_reset()
-
-    # ---------- write ----------
-    write_result = await master.write_result(0x0000_0010, 0x5A5A_5A5A)
-    assert write_result.ok, "APB write returned PSLVERR"
-
-    # ---------- read ----------
-    val = await master.read(0x0000_0010)
-    assert val == 0x5A5A_5A5A, f"APB read mismatch: 0x{val:08X}"
-
-    cocotb.log.info("example_apb_register_access PASSED")
-
-
-# ---------------------------------------------------------------------------
-# Example 4 — Memory-backed responders
+# Example 3 — Memory-backed responder
 # ---------------------------------------------------------------------------
 
 @cocotb.test()
 async def example_memory_backed_responders(dut):
-    """Show AXI-Lite and APB RAM responder construction."""
+    """Show AXI-Lite RAM responder construction."""
 
     cocotb.start_soon(Clock(dut.aclk, 10, units="ns").start())
-    cocotb.start_soon(Clock(dut.pclk, 20, units="ns").start())
 
     axil_ram = OcahAxiLiteSlaveAgent.from_prefix(
         dut,
@@ -210,24 +176,13 @@ async def example_memory_backed_responders(dut):
     ).sequence
     axil_ram.write32(0x10, 0xA5A5_5A5A)
     axil_ram.inject_error(0x20, RESP_DECERR, read=True, write=False)
-
-    apb_ram = OcahApbRam.from_prefix(
-        dut,
-        "cfg_apb",
-        dut.pclk,
-        dut.presetn,
-        reset_active_level=False,
-        size=2**16,
-    )
-    apb_ram.write32(0x10, 0x5A5A_A5A5)
-    apb_ram.inject_error(0x20, RESP_SLVERR, read=True, write=False)
+    axil_ram.inject_error(0x30, RESP_SLVERR, read=True, write=False)
 
     assert axil_ram.read32(0x10) == 0xA5A5_5A5A
-    assert apb_ram.read32(0x10) == 0x5A5A_A5A5
 
 
 # ---------------------------------------------------------------------------
-# Example 5 — Passive monitoring with checkers
+# Example 4 — Passive monitoring with checkers
 # ---------------------------------------------------------------------------
 
 @cocotb.test()
@@ -276,29 +231,3 @@ async def example_axi4_monitor_checker(dut):
     cocotb.log.info(f"Monitor stats: {stats}")
 
     cocotb.log.info("example_axi4_monitor_checker PASSED")
-
-
-@cocotb.test()
-async def example_apb_monitor_checker(dut):
-    """Show APB monitor + checker item flow."""
-
-    cocotb.start_soon(Clock(dut.pclk, 20, units="ns").start())
-
-    master = OcahApbMaster(dut.apb_if, dut.pclk, name="apb_host")
-    monitor = OcahApbMonitor(dut.apb_if, dut.pclk, name="apb_mon")
-    checker = OcahApbChecker()
-    checker.attach_monitor(monitor)
-
-    observed = []
-    monitor.add_item_callback(observed.append)
-
-    master.init_signals()
-    await master.wait_for_reset()
-    await monitor.start()
-    await master.write(0x20, 0x1234_5678)
-    await master.read(0x20)
-    await Timer(100, units="ns")
-    await monitor.stop()
-
-    assert observed
-    checker.assert_clean()
