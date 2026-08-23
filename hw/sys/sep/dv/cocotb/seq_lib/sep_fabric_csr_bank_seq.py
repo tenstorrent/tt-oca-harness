@@ -7,8 +7,7 @@ over the CPU-LSU AXI master (no_cpu). Proves field R/W + 64-bit upper-word acces
 the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_width
 field. RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
 NOT write-once-set -- only the filter locked bit is woset. CSR layer only --
-functional remap translation and outbound-filter enforcement are infra-gated
-(ledger GAP-deferred), not claimed here.
+live remap translation and outbound-filter drop are not claimed here.
 
 All banks need the fabric clocks ungated first (CLOCK_GATE_CTRL); the existing
 sep_address_map_seq already does this with the same value.

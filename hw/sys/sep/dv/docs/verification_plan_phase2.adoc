@@ -58,7 +58,7 @@ eFuse, and Key Manager. See <<attention>>.
 | `verification_plan_phase1.adoc`
 
 | Graded Phase 2 entries
-| 22
+| 24
 | <<entries>> below
 
 | Phase 1 handoff leftovers
@@ -831,7 +831,9 @@ Testlist:: `system.toml`
 
 Brings the lifecycle controller up in PROD so the inbound filter is genuinely active
 (`sep_debug=0`, value-checked against the lifecycle golden), then walks first and last
-table entries, two address windows, and `{rw, read-only, write-only}` — 12 cells in one
+table entries, two address windows, and `{rw, read-only, write-only}` at
+`src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=5`
+with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one
 invocation. CHK-OWNERSHIP-WINDOW stays a hard assert.
 
 IMPORTANT: this entry establishes the filter is active by value-checking `FEAT_CTRL`
@@ -854,8 +856,9 @@ and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
 | LOGGED
 
 | 2
-| Walk first and last table entries, two windows, and `{rw, r, w}` — 12 cells.
-| `CHK-RAND-REP PASS: walked all 12 discrete cells`
+| Walk first and last table entries, two windows, `{rw, r, w}`, and the
+  source-ID match / mismatch cells — 16 cells.
+| `CHK-RAND-REP PASS: walked all 16 discrete cells`
 | LOGGED
 
 | 3
@@ -922,16 +925,26 @@ and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
 | `CHK-NONVAC PASS: allow + block both observed with filter active`
 | PROVEN
 
+| CHK-SRC-ID
+| A non-zero `FILTER_CONFIG.src_id` matches only the external master's
+  `user[3:0]`. The match cells keep r/w-allow gating; the mismatch cell
+  DECERRs with both allow bits set.
+| `CHK-SRC-ID PASS: cfg_src_id=0x5 user=0x5 matched`
+| PROVEN
+
 | CHK-RAND-REP
-| First and last inbound-filter entries, two address windows, and `{rw, r, w}` —
-  12 cells in one invocation.
-| `CHK-RAND-REP PASS: walked all 12 discrete cells`
+| First and last inbound-filter entries, two address windows, `{rw, r, w}`
+  at match-all, plus entry 0 / window 0 source-ID match and mismatch —
+  16 cells in one invocation.
+| `CHK-RAND-REP PASS: walked all 16 discrete cells`
 | PROVEN
 |===
 
 NOTE: the walk is first and last inbound-filter entries, two address windows
-(`SEP_SW_DEBUG` and scratch-cold[0]), and `{rw, read-only, write-only}` — 12
-cells in one invocation. CHK-OWNERSHIP-WINDOW stays hard.
+(`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
+`src_id=0`, plus the source-ID product on entry 0 / window 0. CHK-OWNERSHIP-WINDOW
+stays hard. The ownership restore programs `src_id=0` / `user=0` so a
+src-miss cannot paper over issue 1050.
 
 [[sep_fabric_remap_filter_csr_bank_test]]
 === sep_fabric_remap_filter_csr_bank_test
@@ -1165,7 +1178,7 @@ later sample would pass. The wording reads as an always-property.
 Tier:: Tier 2
 Run mode:: `cpu`, firmware `pic_irq_source_map_test`, `+skip_fuse_sense`
 Testlist:: `cpu.toml`
-Need-extended:: seeded subset of the PIC source map
+Randomization:: RANDCFG — MUST trio every seed; two extras from the run seed
 
 ==== Description
 
@@ -1180,7 +1193,8 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | # | Step | Proof | Status
 
 | 1
-| Arm three PIC sources and wait a quiet window with no ISR.
+| Arm the MUST PIC sources plus the seeded extras and wait a quiet window
+  with no ISR.
 | `CHK-NONVAC PASS: no spurious ISR before any trigger`
 | LOGGED
 
@@ -1197,8 +1211,8 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | ID | Check | Proof | Status
 
 | CHK-NONVAC
-| No spurious interrupt service before any trigger, over a quiet window with all three
-  sources' interrupt enables already armed.
+| No spurious interrupt service before any trigger, over a quiet window with every
+  selected source's interrupt enable already armed.
 | `CHK-NONVAC PASS: no spurious ISR before any trigger`
 | PROVEN
 
@@ -1211,9 +1225,9 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | PROVEN
 
 | CHK-ONEHOT
-| Triggering one source does not fire a neighbour. All three PIC sources stay interrupt-
-  enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy
-  rather than masking IRQEN).
+| Triggering one source does not fire a neighbour. Every selected PIC source stays
+  interrupt-enabled throughout, including after the mailbox ISR (WIRQT is raised
+  past occupancy rather than masking IRQEN).
 | `CHK-ONEHOT PASS: `
 | PROVEN
 
@@ -1225,8 +1239,14 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 
 | CHK-PIC-COMPLETE
 | No source re-fires after its handler cleared it — the claim completed, no storm. The
-  quiet window runs with all three sources still interrupt-enabled.
+  quiet window runs with every selected source still interrupt-enabled.
 | `CHK-PIC-COMPLETE PASS: no source re-fired after its ISR cleared it`
+| PROVEN
+
+| CHK-RANDCFG
+| Firmware consumed the patched MUST trio plus two seed-selected extras
+  (logged `SCENARIO` line matches the Python config).
+| `CHK-RANDCFG PASS: MUST`
 | PROVEN
 |===
 
@@ -1855,6 +1875,118 @@ Wakeup and watchdog tick, threshold expiry, cause, and bark/bite on the AON time
 | PROVEN
 |===
 
+[[sep_otbn_compute_rand_test]]
+=== sep_otbn_compute_rand_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+Testlist:: `crypto.toml`
+Randomization:: RANDCFG — ADD/XOR/AND every seed; operands from the run seed
+
+==== Description
+
+Loads a tiny RV32I program into OTBN IMEM, stages two seeded DMEM operands,
+issues EXECUTE, and checks `ERR_BITS==0` plus the DMEM result against an
+independent Python golden. Distinct from `sep_otbn_mem_smoke_test` (no
+EXECUTE) and from the KM sideload key-dump.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring up `no_cpu`, park AES/HMAC/KMAC, bring up entropy for OTBN URND wipe.
+| `OcahAxiMasterSequence ready`
+| LOGGED
+
+| 2
+| Walk ADD, XOR, AND against the independent golden.
+| `CHK-RANDCFG PASS: walked all 3 discrete ops`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-ERRBITS
+| Every compute cell retires with `ERR_BITS==0`.
+| `CHK-ERRBITS PASS: every compute cell retired with ERR_BITS=0`
+| PROVEN
+
+| CHK-DMEM
+| Every compute cell's DMEM result equals the Python golden for that op
+  and those operands.
+| `CHK-DMEM PASS: every compute cell DMEM result matched the golden`
+| PROVEN
+
+| CHK-RANDCFG
+| ADD, XOR, and AND ran in one invocation. Operands come from the run seed.
+| `CHK-RANDCFG PASS: walked all 3 discrete ops`
+| PROVEN
+|===
+
+NOTE: CHK status is the contract. A kept Verilator log is the grade.
+
+[[sep_clock_gate_control_test]]
+=== sep_clock_gate_control_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+Testlist:: `system.toml`
+Coverage class:: `[STUB-CONST]` / `[DECODE-ONLY]`
+
+==== Description
+
+`CLOCK_GATE_CTRL` implements one bit (`pka_cg_enable[0:0]`); RTL sinks it
+into an unused net. This is the iconic clock-gate representative: storage
+plus witness CSRs that still complete OKAY with the bit 0 and 1. It does
+not prove a live per-IP gate — no bit in this map clocks an IP off.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Write `pka_cg_enable` 1 then 0 and read it back.
+| `CHK-STORAGE PASS: CLOCK_GATE_CTRL.pka_cg_enable writes and reads back`
+| LOGGED
+
+| 2
+| Read AES / HMAC / OTBN / SW_DEBUG CSRs with the bit 0 and 1.
+| `CHK-STUB-CONST PASS: enable=`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-STORAGE
+| The implemented bit writes and reads back in both directions.
+| `CHK-STORAGE PASS: CLOCK_GATE_CTRL.pka_cg_enable writes and reads back`
+| PROVEN
+
+| CHK-STUB-CONST
+| AES STATUS, HMAC INTR_STATE, OTBN STATUS, and SW_DEBUG still complete
+  OKAY with `pka_cg_enable` 0 and 1. The bit does not gate those IPs.
+| `CHK-STUB-CONST PASS: enable=`
+| PROVEN
+|===
+
+NOTE: this representative does not close the iconic "Clock-gate per IP"
+scorecard row. LIVE per-IP gating is unimplemented in this RTL.
+
 [[rom-fw-out-of-scope]]
 == Boot ROM firmware — out of this plan
 
@@ -1897,9 +2029,8 @@ routing is `PROVEN` on
 
 The AES 9-cell row is mode × key-size. The CTR cell re-runs ENCRYPT
 (keystream identity); the DECRYPT opcode is <<phase3-dump>>, not a silent
-9-cell decrypt. PIC remains three directed sources on the existing IRQ test,
-not a seeded map. RMA token match stays inside the stitch test, not a
-standalone iconic.
+9-cell decrypt. PIC walks the MUST trio plus a seeded extras subset. RMA token match
+stays inside the stitch test, not a standalone iconic.
 
 New Phase 2 tests are <<iconic-remaining>> only when <<pending-upgrades>>
 cannot carry the claim. Boot ROM firmware is <<rom-fw-out-of-scope>>.
@@ -1944,22 +2075,8 @@ named new Phase 2 test.
 [[pending-upgrades]]
 == Pending in-place upgrades
 
-Strengthen these existing *Phase 2* names. Do not add a sibling, and do
-not pull the work back onto a Phase 1 e2e / smoke test.
-
-[cols="2,2,3",options="header"]
-|===
-| Existing Phase 2 test | Upgrade | Why not a new test
-
-| `sep_fabric_inbound_filter_rule_matrix_test`
-| Source-ID × r/w-enable product
-| The 12-cell allow/block walk is already this test.
-  CHK-OWNERSHIP-WINDOW stays hard (`FAILED`)
-
-| `sep_pic_irq_source_map_delivery_test`
-| Seeded subset of the PIC source map
-| Three directed sources already live here
-|===
+No remaining in-place upgrades outside the attention set. The inbound
+source-ID product and the PIC seeded subset are in <<existing-upgrades>>.
 
 [[iconic-remaining]]
 == Iconic remaining — new tests
@@ -1995,17 +2112,12 @@ grade here.
   `MERGED_INTO`: `sep_lcc_uvm_demote_comprehensive_test`,
   `sep_lcc_uvm_prod_dbg_flavour_test`
 
-| OTBN as a compute engine
-| One directed-then-RANDCFG: IMEM program, `ERR_BITS==0`, DMEM == golden
-| no leftover name (the old list never named compute)
-
-| Clock-gate per IP
-| One iconic representative; none exists
-| `sep_clock_uvm_clock_gate_control_test`
-
 | Live outbound remap
-| One RANDCFG only if fabric is still a feature-scorecard hole after the
-  inbound-filter existing-test upgrade: translated hit + filtered miss
+| Not executed in this wrap-up. After the inbound source-ID upgrade,
+  fabric is not a feature-scorecard hole: reachability is `PROVEN`,
+  inbound is no longer a missing-test gap, alias remap is live, outbound
+  *programming* is the CSR bank. Live AP-STEE translate + outbound drop
+  stays a named GAP; Phase 3 already owns the outbound tail names.
 | `sep_fabric_output_remap_datapath_proxy_test`;
   `MERGED_INTO`: `sep_outbound_filter_cfg_test`,
   `sep_outbound_path_selection_test`
@@ -2029,8 +2141,23 @@ tree; the wrap-up Verilator log is the grade. Do not add a sibling test.
 
 | Inbound-filter matrix
 | `sep_fabric_inbound_filter_rule_matrix_test` walks entry 0 and 7 × two
-  windows × rw/r/w. CHK-OWNERSHIP-WINDOW stays hard
+  windows × rw/r/w at match-all plus the source-ID match / mismatch
+  product. CHK-OWNERSHIP-WINDOW stays hard
 | `sep_inbound_id_remap_test`
+
+| PIC source map
+| `sep_pic_irq_source_map_delivery_test` walks mailbox / OTBN / HMAC
+  every seed plus two seed-selected INTR_TEST extras
+| `sep_irq_connectivity_test`
+
+| OTBN compute
+| `sep_otbn_compute_rand_test` walks ADD/XOR/AND; operands from the seed
+| (no leftover name)
+
+| Clock-gate placeholder
+| `sep_clock_gate_control_test` proves `pka_cg_enable` storage and
+  stub-const witness reachability. LIVE per-IP gating is unimplemented
+| `sep_clock_uvm_clock_gate_control_test`
 
 | DMA modes
 | `sep_dma_basic_test` keeps the mode/width walk; src/dst/length/fill come
