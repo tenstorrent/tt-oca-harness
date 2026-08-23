@@ -197,8 +197,8 @@ and
 link:verification_plan_phase2.adoc#pending-upgrades[pending upgrades].
 Do not treat a `PARTIAL` as done by pointing at a graded entry.
 
-Twenty-one of twenty-eight in-scope rows are `PROVEN` (the 60% floor is
-met). Three more `PROVEN` rows reach the 85% target.
+Twenty-two of twenty-eight in-scope rows are `PROVEN` (the 60% floor is
+met). Two more `PROVEN` rows reach the 85% target.
 
 [cols="2,2,3",options="header"]
 |===
@@ -324,10 +324,12 @@ met). Three more `PROVEN` rows reach the 85% target.
 | AES, HMAC, KMAC, OTBN walked; KM held by reset default.
 
 | Clock-gate per IP
-| GAP
-| Placeholder representative exists (`sep_clock_gate_control_test`):
-  storage + stub-const witnesses. LIVE per-IP gating is unimplemented
-  in this RTL — not a feature credit.
+| PROVEN
+| Designer reduced `CLOCK_GATE_CTRL` to one unused `pka_cg_enable`
+  placeholder (tt-oca-hw #3950 / #3965). `sep_clock_gate_control_test`
+  proves that storage and that AES / HMAC / OTBN / SW_DEBUG stay
+  reachable with the bit 0 and 1. A live per-IP gate is not in this
+  RTL — not a DV hole.
 
 | JTAG vs CPU vs KM eFuse mux
 | PROVEN
