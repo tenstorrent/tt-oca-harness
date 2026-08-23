@@ -197,8 +197,8 @@ and
 link:verification_plan_phase2.adoc#pending-upgrades[pending upgrades].
 Do not treat a `PARTIAL` as done by pointing at a graded entry.
 
-Nineteen of twenty-eight in-scope rows are `PROVEN` (the 60% floor is
-met). Five more `PROVEN` rows reach the 85% target.
+Twenty-one of twenty-eight in-scope rows are `PROVEN` (the 60% floor is
+met). Three more `PROVEN` rows reach the 85% target.
 
 [cols="2,2,3",options="header"]
 |===
@@ -210,10 +210,9 @@ met). Five more `PROVEN` rows reach the 85% target.
 
 | Inbound filter: POR block-all, CPU-programmed allow, `SEP_DBG` bypass
 | PARTIAL
-| Block-by-default, 12-cell allow/block walk, and `SEP_DBG` gating are
-  proven. CHK-OWNERSHIP-WINDOW is `FAILED` (RTL vs `fabric.adoc`, issue
-  1050) — honest, not a feature credit. Source-ID × r/w-enable product is
-  not walked.
+| Block-by-default, 16-cell allow/block + source-ID walk, and `SEP_DBG`
+  gating are proven. CHK-OWNERSHIP-WINDOW is `FAILED` (RTL vs
+  `fabric.adoc`, issue 1050) — honest, not a feature credit.
 
 | Outbound filter / AP-STEE live remap
 | GAP
@@ -234,8 +233,9 @@ met). Five more `PROVEN` rows reach the 85% target.
 | Hello-world, ROM IFU, LSU read / write-ignored.
 
 | PIC source map
-| PARTIAL
-| Three representative sources, directed. Not a seeded subset of the map.
+| PROVEN
+| MUST trio (mailbox, OTBN, HMAC) every seed plus two seed-selected
+  INTR_TEST extras. Delivery, one-hot, RW1C, no-storm.
 
 | DMA copy + inline SHA-256 + LSIO
 | PROVEN
@@ -264,8 +264,8 @@ met). Five more `PROVEN` rows reach the 85% target.
 | 8-cell RAND-REP.
 
 | OTBN as a compute engine
-| GAP
-| Sideload key-dump and IMEM/DMEM smoke. No OTBN program that computes.
+| PROVEN
+| ADD/XOR/AND RANDCFG; `ERR_BITS==0` and DMEM == independent golden.
 
 | KM sideload consume (AES/HMAC/KMAC/OTBN)
 | PROVEN
@@ -325,7 +325,9 @@ met). Five more `PROVEN` rows reach the 85% target.
 
 | Clock-gate per IP
 | GAP
-| No iconic representative.
+| Placeholder representative exists (`sep_clock_gate_control_test`):
+  storage + stub-const witnesses. LIVE per-IP gating is unimplemented
+  in this RTL — not a feature credit.
 
 | JTAG vs CPU vs KM eFuse mux
 | PROVEN

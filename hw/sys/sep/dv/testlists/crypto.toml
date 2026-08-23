@@ -17,6 +17,22 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# OTBN compute RANDCFG. no_cpu direct-AXI: IMEM program, EXECUTE, ERR_BITS==0,
+# DMEM result == independent golden. Walks ADD/XOR/AND; operands from the run
+# seed. Entropy bring-up for post-reset URND wipe (+esrc_noise_force);
+# +skip_fuse_sense. Distinct from IMEM/DMEM smoke (no EXECUTE) and from the
+# KM sideload key-dump.
+name = "sep_otbn_compute_rand_test"
+module = "otbn.sep_otbn_compute_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["otbn", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 name = "sep_esrc_e2e_smoke_test"
 module = "system.sep_esrc_e2e_smoke_test"
 seed = 1

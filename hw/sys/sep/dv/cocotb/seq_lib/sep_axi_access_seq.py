@@ -29,6 +29,7 @@ class SepAxiAccessSeq(uvm_sequence):
         size: int | None = None,
         allow_unverified_write_resp: bool = False,
         expect_error: bool = False,
+        user: int = 0,
     ) -> None:
         super().__init__(name)
         self._op = op
@@ -45,6 +46,8 @@ class SepAxiAccessSeq(uvm_sequence):
         # failing, and fails a probe that wrongly returns OKAY (e.g. a read from an
         # empty mailbox FIFO must SLVERR).
         self._expect_error = expect_error
+        # Packed AWUSER/ARUSER (inbound FILTER_CONFIG.src_id matches user[3:0]).
+        self._user = user
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
@@ -58,6 +61,7 @@ class SepAxiAccessSeq(uvm_sequence):
         item.size = self._size
         item.allow_unverified_write_resp = self._allow_unverified_write_resp
         item.expect_error = self._expect_error
+        item.user = self._user
         await self.start_item(item)
         await self.finish_item(item)
         self.rdata = item.rdata
