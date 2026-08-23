@@ -90,6 +90,11 @@ $(call ocah_reg_ipxact_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_U
 	@$(ocah_sh) '$(call ocah_reg_run_ipxact,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_ipxact_output,$(1)),$(call ocah_reg_build,$(1))/ipxact.log)'
 	@$(ocah_reg_stamp) "$(call ocah_reg_ipxact_output,$(1))"
 
+$(call ocah_reg_dep_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/dep_scanner.py | uv-sync
+	@mkdir -p "$(call ocah_reg_build,$(1))"
+	@echo "Scanning register includes for $(1)"
+	@$(ocah_sh) '"$(UV)" run python "$(OCAH_ROOT)/tools/regs/dep_scanner.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) "$(call ocah_reg_rdl,$(1))" $(foreach t,$(call ocah_reg_dep_targets,$(1)),--target "$(t)") -o "$(call ocah_reg_dep_output,$(1))"'
+
 $(call ocah_reg_build,$(1))/.generated: $(call ocah_reg_sv_target,$(1)) $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1)) $(call ocah_reg_svpkg_output,$(1)) $(call ocah_reg_svh_output,$(1)) $(call ocah_reg_py_output,$(1)) $(call ocah_reg_ipxact_output,$(1))
 	@mkdir -p "$(call ocah_reg_build,$(1))"
 	@touch "$$@"
@@ -207,3 +212,10 @@ $(foreach block,$(filter $(OCAH_REG_RAL_LEAF_BLOCKS),$(OCAH_REG_PLAIN_BLOCK_IDS)
 # JSON applies to a top of either shape, so it loops over all blocks, not the
 # composite/leaf split.
 $(foreach block,$(filter $(OCAH_REG_JSON_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(call ocah_reg_json_rule,$(block))))
+
+# Pull in the per-block depfiles (built by the rule in ocah_reg_block_rules): each
+# adds its `include`d RDLs as prerequisites of that block's generated outputs, so
+# an include-only change rebuilds the top collateral. Silent `-` so a missing
+# depfile on a clean tree is not an error — make builds it, re-reads it, and the
+# include prerequisites take effect. Depfiles live in the gitignored build dir.
+-include $(OCAH_REGEN_REG_DEPS)
