@@ -7,7 +7,7 @@ CPU-LSU master (no_cpu). Exercises the aon_timer internals beyond the bark/bite/
 story: the WKUP (wakeup) timer + its wkup_expired RW1C status, the WDOG
 counter/pet, and the WDOG_REGWEN config-lock.
 
-Register map (hw/sys/sep/regs/blocks/aon_timer/aon_timer.rdl; offsets verified):
+Register map (vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl; offsets verified):
   WKUP_CTRL   +0x04  enable[0], prescaler[12:1]
   WKUP_THOLD  +0x08 (hi) / +0x0C (lo)   64-bit threshold
   WKUP_COUNT  +0x10 (hi) / +0x14 (lo)   64-bit counter (RW by sw + hw)

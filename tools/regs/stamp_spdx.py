@@ -11,6 +11,7 @@ already-committed collateral.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -27,7 +28,12 @@ HEADERS = {
     ".py": f"# {SPDX_ID}\n# {SPDX_COPY}\n\n",
     ".adoc": f"// {SPDX_ID}\n// {SPDX_COPY}\n\n",
     ".html": f"<!-- {SPDX_ID} -->\n<!-- {SPDX_COPY} -->\n",
+    ".xml": f"<!-- {SPDX_ID} -->\n<!-- {SPDX_COPY} -->\n",
 }
+
+# An XML declaration, when present, must stay the very first thing in the file,
+# so the SPDX comment is inserted immediately after it rather than prepended.
+_XML_DECL_RE = re.compile(r"^<\?xml[^>]*\?>\s*\n")
 
 
 def stamp_file(path: Path) -> bool:
@@ -39,7 +45,13 @@ def stamp_file(path: Path) -> bool:
         return False
     if "SPDX-License-Identifier" in "\n".join(text.splitlines()[:25]):
         return False
-    path.write_text(HEADERS[path.suffix] + text, encoding="utf-8")
+    header = HEADERS[path.suffix]
+    decl = _XML_DECL_RE.match(text) if path.suffix == ".xml" else None
+    if decl:
+        text = text[: decl.end()] + header + text[decl.end():]
+    else:
+        text = header + text
+    path.write_text(text, encoding="utf-8")
     return True
 
 

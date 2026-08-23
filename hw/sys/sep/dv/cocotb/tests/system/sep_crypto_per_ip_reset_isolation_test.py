@@ -208,7 +208,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # value it held stably across the prior re-reads). For AES this is asserted as
         # "!= C", NOT "== 0", and that is RTL-correct, not a hidden reset bug: the
         # OpenTitan AES DATA_OUT registers are, per spec, "cleared with pseudo-random
-        # data" on reset (hw/sys/sep/regs/gen/adoc/blocks/aes.adoc -- the DATA_REG.SEC_WIPE SCA
+        # data" on reset (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc -- the DATA_REG.SEC_WIPE SCA
         # countermeasure), so an AES-domain reset replaces the ciphertext with PRNG
         # data rather than a clean 0. DATA_OUT is fully inside aes_sw_rst_ni
         # (sep_crypto.sv) so there is no out-of-domain ciphertext leak. (The 4-word
