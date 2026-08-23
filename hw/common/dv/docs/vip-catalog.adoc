@@ -53,12 +53,6 @@ shared SV interface, and UVM agent. iJTAG and DUT TDR maps remain local.
 |NOR flash responder and passive monitor. Quad/octal personalities currently
 use single-bit data timing; DDR and vendor timing are deferred.
 
-|`ocah_i3c_vip`
-|Experimental / dependency-gated
-|Vendored `cocotbext-i3c`
-|SDR controller, target, monitor, and split-port adapters. Backend provisioning
-and a gating DUT transaction remain open.
-
 |`ocah_uart_vip`
 |Experimental / dependency-gated
 |Optional `cocotbext-uart`
@@ -173,18 +167,10 @@ one and the open-drain timing fix is protocol-neutral.
 [[shared-vip-i3c]]
 === I3C
 
-Package: `hw/common/dv/vip/ocah_i3c_vip/`
-
-The package exposes:
-
-* `OcahI3cBus` for a testbench controller driving a DUT target;
-* `OcahI3cTarget` for a testbench target responding to a DUT controller;
-* `OcahI3cMonitor` for passive START/STOP-level observation;
-* split-port controller/target adapters for open-drain OCAH testbenches.
-
-The current scope is SDR private traffic and a CCC subset. ENTDAA arbitration,
-target-initiated IBI, byte-level passive decode, HDR modes, and reproducible
-backend provisioning remain limited or deferred.
+No shared I3C package ships. SMC gates I3C on CSR decode plus a line-level
+external pull-low check; the vendored I3C core is an RTL dependency only. A
+shared I3C VIP is introduced only with a reproducibly provisioned backend and
+a gating DUT smoke test.
 
 [[shared-vip-uart]]
 === UART
