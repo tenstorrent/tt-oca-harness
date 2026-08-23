@@ -30,8 +30,8 @@ OCAH_REG_PLACEHOLDER_BLOCKS ?= oca_i3c_wrap
 # pll_wrap/pvt_wrap are free-tree DV register models (hw/sys/smc/dv/models/regs)
 # whose real RTL is the vendor PLL/PVT IP, not regblock: only their addrmap_pkg is
 # committed. The nonfree overlay also lists them (EXTRA below), but they must be in
-# the free base too so the peakrdl-only #255 gate -- which never reads nonfree -- is
-# self-consistent and does not emit uncommitted <blk>_reg[_pkg].sv.
+# the free base too so the peakrdl-only regen-diff gate -- which never reads nonfree
+# -- is self-consistent and does not emit uncommitted <blk>_reg[_pkg].sv.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
@@ -52,17 +52,15 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 # the open DV placeholder and the Samsung shim that shadows it, and only the
 # latter gets a RAL.
 #
-# aes/hmac/kmac/otbn/aon_timer/secure_dma and efuse_mmr are RAL
-# leaves, not sub-blocks: their RDL was deduplicated out of the SEP blocks/ tree
-# (#599), so the composite glob no longer sees them. As leaves they emit their
-# RAL at the block's own home (the vendored overlay, or hw/ip/efuse) -- exactly
-# as csrng/edn already do -- and the SEP DV testbench includes each by bare name
-# via a +incdir on that home. Sub-blocks below are the ones with no other home.
+# aes/hmac/kmac/otbn/aon_timer/secure_dma and efuse_mmr are RAL leaves, not
+# sub-blocks: they are homed at the vendored overlay (or hw/ip/efuse), not in the
+# SEP blocks/ tree, so the composite glob does not see them. As leaves they emit
+# their RAL at that home -- as csrng/edn do -- and the SEP DV testbench includes
+# each by bare name via a +incdir on it. Sub-blocks below have no other home.
 #
-# spi_controller stays a composite sub-block (not deduped in #599): its vendored
-# overlay RDL describes a different, newer spi_host layout than the overlay
-# spi_controller_reg_pkg.sv the SEP DUT actually instantiates, so the DUT-matching
-# blocks/ copy is retained until the overlay is reconciled (see #1086).
+# spi_controller is a composite sub-block homed in blocks/: its vendored overlay
+# RDL describes a different, newer spi_host layout than the spi_controller_reg_pkg.sv
+# the SEP DUT instantiates, so the DUT-matching blocks/ copy is the generated one.
 OCAH_REG_RAL_SUB_BLOCKS ?= \
   sep_efuse_map spi_controller \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
