@@ -99,31 +99,28 @@ a protocol already represented here; extend the existing stable wrapper.
 | `ocah_i3c_vip` | Experimental / dependency-gated | `ocah_i3c_vip/cocotb/examples/example_priv_rw.py` | SMC use is optional/non-gating until the backend is reproducibly provisioned and a DUT test gates it |
 | `ocah_uart_vip` | Experimental / dependency-gated | `ocah_uart_vip/cocotb/examples/example_loopback.py` | SMC has a consumer, but the optional backend is not part of the locked default environment |
 
-### Deferred and experimental capability tracker
+### Deferred and experimental capabilities
 
 Only **Promoted** rows in the maturity table above are safe dependencies for
 first-milestone P0/P1 tests. Experimental helpers may be used by explicitly
 opted-in tests, but cannot be the sole evidence for a milestone gate. Deferred
-capabilities are P2 follow-up work and must not block baseline transaction BFMs
-or portable P1 checkers.
+capabilities are follow-up work and must not block baseline transaction BFMs
+or portable checkers. Track activation of a deferred capability in the issue
+tracker before changing its classification here.
 
-When a deferred item becomes active, open a focused child issue under
-[#3299](https://github.com/tenstorrent/tt-oca-hw/issues/3299) before changing
-its status.
-
-| Capability | Classification / reason | Owner | Promotion condition and next action | Follow-up |
-|------------|-------------------------|-------|-------------------------------------|-----------|
-| APB shared wrapper | Experimental: documented API, but no package-local example or real DUT adopter | Shared DV + first APB adopter | Add an APB example and make one DUT regression gate real APB traffic | Historical baseline [#3288](https://github.com/tenstorrent/tt-oca-hw/issues/3288); open a #3299 child when adopted |
-| UART | Experimental/dependency-gated: SMC consumer exists, but the optional backend is not locked consistently | Shared UART VIP + SMC DV | Resolve backend version/license policy, lock it in the supported environment, and retain a passing SMC loopback | Open a #3299 child when dependency work starts |
-| I2C | Experimental: SMC still needs a DUT-local split-port/open-drain timing workaround | Shared I2C VIP + SMC DV | Move only protocol-neutral split-port/timing fixes upstream, document them, and gate with a real SMC transaction | Open a #3299 child when promotion starts |
-| I3C SDR | Experimental/dependency-gated: current SMC use is optional and non-gating | Shared I3C VIP + SMC/SMU DV | Reproducibly provision the backend and make a DUT smoke test gating rather than advisory | SMU consumer [#3547](https://github.com/tenstorrent/tt-oca-hw/issues/3547) |
-| Entropy source/monitor | Experimental: deterministic API/example exists without a real DUT consumer | Shared entropy VIP + first entropy adopter | Add a subsystem integration that drives and checks the shared source/monitor API | Open a #3299 child when a consumer is selected |
-| Memory-image helper | Deferred: no shared package or frozen image/preload format contract | Shared DV + first firmware-bearing DUT | Define plain image/preload/result types, document ownership and format, add an example, and gate one DUT | Open a #3299 child before implementation |
-| True QSPI/OSPI multi-lane data | Deferred: `ocah_spi_vip` currently uses single-bit data timing for quad/octal personalities | Shared SPI VIP + SEP/SMC DV | Specify lane turnaround/SDR-DDR timing, implement real multi-lane sampling/driving, and pass a DUT transfer test | Baseline scope [#3290](https://github.com/tenstorrent/tt-oca-hw/issues/3290); advanced work stays under #3299 |
-| Vendor-accurate flash BUSY timing and commands | Deferred: the first milestone is deterministic, instant-ready, and vendor-neutral | Shared SPI VIP + activating flash adopter | Select an adopter requirement, isolate vendor behavior behind a documented profile, and add status/timing checks | Open a #3299 child for the selected profile |
-| I3C HDR-DDR/HDR-BT | Deferred: backend/API and DUT support are not part of the SDR baseline | Shared I3C VIP + activating DUT | Confirm backend support and license, define HDR items/timing, and add a gating HDR consumer; #3547 remains SDR-only | Open a #3299 child when HDR work starts |
-| Full iJTAG/boundary-scan promotion | Deferred: current DTP models encode fixed topology, lifecycle policy, and loopback fixtures | DTP/JTAG domain maintainers | Produce a topology/instrument-neutral model and demonstrate a second independent consumer | Ownership policy [#3292](https://github.com/tenstorrent/tt-oca-hw/issues/3292); open a #3299 child for promotion |
-| Commercial-simulator-only checker/coverage hooks | Deferred: portable checker evidence must exist before licensed-only depth can gate | Checker/DV infrastructure + protocol owner | Land portable item/checker semantics first, then add and validate commercial coverage hooks without making them mandatory for contributors | Checker parent [#2907](https://github.com/tenstorrent/tt-oca-hw/issues/2907); SPI checker [#3297](https://github.com/tenstorrent/tt-oca-hw/issues/3297) |
+| Capability | Classification / reason | Promotion condition |
+|------------|-------------------------|---------------------|
+| APB shared wrapper | Experimental: documented API, but no package-local example or real DUT adopter | Add an APB example and make one DUT regression gate real APB traffic |
+| UART | Experimental/dependency-gated: SMC consumer exists, but the optional backend is not locked consistently | Resolve backend version/license policy, lock it in the supported environment, and retain a passing SMC loopback |
+| I2C | Experimental: SMC still needs a DUT-local split-port/open-drain timing workaround | Move only protocol-neutral split-port/timing fixes upstream, document them, and gate with a real SMC transaction |
+| I3C SDR | Experimental/dependency-gated: current SMC use is optional and non-gating | Reproducibly provision the backend and make a DUT smoke test gating rather than advisory |
+| Entropy source/monitor | Experimental: deterministic API/example exists without a real DUT consumer | Add a subsystem integration that drives and checks the shared source/monitor API |
+| Memory-image helper | Deferred: no shared package or frozen image/preload format contract | Define plain image/preload/result types, document ownership and format, add an example, and gate one DUT |
+| True QSPI/OSPI multi-lane data | Deferred: `ocah_spi_vip` currently uses single-bit data timing for quad/octal personalities | Specify lane turnaround/SDR-DDR timing, implement real multi-lane sampling/driving, and pass a DUT transfer test |
+| Vendor-accurate flash BUSY timing and commands | Deferred: the first milestone is deterministic, instant-ready, and vendor-neutral | Select an adopter requirement, isolate vendor behavior behind a documented profile, and add status/timing checks |
+| I3C HDR-DDR/HDR-BT | Deferred: backend/API and DUT support are not part of the SDR baseline | Confirm backend support and license, define HDR items/timing, and add a gating HDR consumer |
+| Full iJTAG/boundary-scan promotion | Deferred: current DTP models encode fixed topology, lifecycle policy, and loopback fixtures | Produce a topology/instrument-neutral model and demonstrate a second independent consumer |
+| Commercial-simulator-only checker/coverage hooks | Deferred: portable checker evidence must exist before licensed-only depth can gate | Land portable item/checker semantics first, then add and validate commercial coverage hooks without making them mandatory for contributors |
 
 Two examples define the ownership boundary:
 
