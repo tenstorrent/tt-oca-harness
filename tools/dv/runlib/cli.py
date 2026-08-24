@@ -1032,14 +1032,32 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
-def list_flows(flows: dict[str, Flow]) -> None:
+def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
+    print(f"{'NAME':<16} {'KIND':<5} {'FRAMEWORKS':<22} {'TOOLS':<44} {'DESCRIPTION'}")
+    freesims = {name: not bool(attrs["license_env"]) for name, attrs in simulators.items()}
+    freeframeworks:dict[str,bool] = {}
+    for sim, free in freesims.items():
+        for framework in simulators[sim]['frameworks']:
+            freeframeworks[framework] = free or freeframeworks.get(framework, False)
     for flow in sorted(flows.values(), key=lambda item: item.name):
-        tool = flow.default_tool or (flow.tools[0] if flow.tools else "-")
-        if flow.license == "required-commercial":
-            tool += " (licensed)"
-        frameworks = ",".join(flow.frameworks) or flow.framework or "-"
-        print(f"{flow.name:<16} {flow.kind:<3} {frameworks:<12} {tool:<20} {flow.description}")
-
+        toolsArr = [
+            (f"[{tool}]" if tool==flow.default_tool else tool)
+            if freesims[tool] else
+            (f"[{tool}(licensed)]" if tool==flow.default_tool else tool + "(licensed)" )
+            for tool in sorted(flow.tools, key=lambda x : (0,0) if x==flow.default_tool else (1,str.lower(x)))
+        ]
+        tool = flow.default_tool or "-"
+        if freesims[tool] and flow.default_tool:
+            tool += "(licensed)"
+        tools = (",".join(toolsArr)) or tool
+        frameworksArr = [
+            (f"[{framework}]" if (flow.framework and framework==flow.framework) or (not flow.framework and framework==flow.default_framework) else framework)
+            if (freeframeworks[framework]) else
+            (f"[{framework}(licensed)]" if (flow.framework and framework==flow.framework) or (not flow.framework and framework==flow.default_framework) else framework+"(licensed)")
+            for framework in sorted(flow.frameworks, key=lambda x : (0,0) if x==flow.default_framework else (1,str.lower(x)))
+        ]
+        frameworks = ",".join(frameworksArr) or flow.framework or "-"
+        print(f"{flow.name:<16} {flow.kind:<5} {frameworks:<22} {tools:<44} {flow.description}")
 
 def _implemented_counts(flow: Flow, catalog: TestCatalog) -> dict[str, int]:
     """Scenario count per implemented framework — the binding-matrix summary."""
@@ -2531,7 +2549,7 @@ def main(argv: list[str] | None = None) -> int:
             elif args.json:
                 list_flows_json(root, duts)
             else:
-                list_flows(duts)
+                list_flows(duts, simulators)
             return 0
 
         if not args.dut:
