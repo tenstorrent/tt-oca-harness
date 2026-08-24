@@ -55,33 +55,25 @@ package sep_crypto_pkg;
     parameter axi_pkg::xbar_rule_32_t km_rule = '{
         idx:        6,
         start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
-        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR + 32'h0000_1000  // 4KB decode window
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_KM_MAILBOX_SEP_SIZE
     };
-
-    // DRBG: spec allocates 0x1091_5000-0x1091_5FFF (4KB), split into CSRNG + EDN
-    localparam logic [31:0] DRBG_CSRNG_BASE_ADDR = 32'h1091_5000;
-    localparam logic [31:0] DRBG_EDN_BASE_ADDR   = 32'h1091_5800;
 
     parameter axi_pkg::xbar_rule_32_t csrng_rule = '{
         idx:        7,
-        start_addr: DRBG_CSRNG_BASE_ADDR,
-        end_addr:   DRBG_EDN_BASE_ADDR
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_CSRNG_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_CSRNG_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_CSRNG_SIZE
     };
 
     parameter axi_pkg::xbar_rule_32_t edn_rule = '{
         idx:        8,
-        start_addr: DRBG_EDN_BASE_ADDR,
-        end_addr:   32'h1091_6000
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_EDN_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_EDN_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_EDN_SIZE
     };
-
-    // ESRC: OCH spec 0x1091_6000–0x1091_6FFF (4 kB)
-    localparam logic [31:0] ENTROPY_SOURCE_BASE_ADDR = 32'h1091_6000;
-    localparam logic [31:0] ENTROPY_SOURCE_END_ADDR  = 32'h1091_7000;
 
     parameter axi_pkg::xbar_rule_32_t entropy_source_rule = '{
         idx:        9,
-        start_addr: ENTROPY_SOURCE_BASE_ADDR,
-        end_addr:   ENTROPY_SOURCE_END_ADDR
+        start_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
+        end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_ENTROPY_SOURCE_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_ENTROPY_SOURCE_SIZE
     };
 
     // TRNG: OCH spec 0x1091_7000–0x1091_7FFF (4 kB) — passthrough to sep_ip_integration
