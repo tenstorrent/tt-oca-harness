@@ -20,21 +20,27 @@ Tests run in the cocotb/PyUVM + Verilator flow; Verilator is the
 acceptance engine (see <<Acceptance flow>>).
 
 Boot ROM *firmware* contracts (production ROM boot flow, integrity
-reject) belong to the ROM-FW plan, not this one. ROM *hardware* access
-stays here (`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`).
+reject) belong to the ROM-FW owner, not this plan. When a ROM-FW plan
+exists, those names are graded there. ROM *hardware* access stays here
+(`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`).
 
 CHK-JTAG-MMR-DENY is a spec-versus-RTL mismatch: `hw/sys/sep/doc/periphs.adoc`
 requires DECERR on a non-token MMR in PROD; the RTL returns OKAY on
 `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH`. The checker stays `FAILED` until
-the RTL or the spec changes (issue 626).
+the RTL or the spec changes: `hw/sys/sep/doc/periphs.adoc` restricts the JTAG
+port in PROD and RMA_SIP to the RMA token registers only.
 
 Behaviours this spine does not claim are listed in
 <<claims-outside-contract>>.
 
 Coverage here means a named behaviour has a test whose log proves it.
-There is no functional-coverage number: `cov/config` and `cov/sv` are
-empty, and RTL and vendor-IP SVA are compiled out under the Verilator
-acceptance flow.
+There is no functional-coverage number: `cov/config` and `cov/sv` hold
+only `.gitkeep`, and RTL and vendor-IP SVA are compiled out under the
+Verilator acceptance flow. RTL *code* coverage is a separate and
+unrelated number: `[coverage.verilator]` in `sep_sim_cfg.toml`
+instruments line, expression, and user coverage and the nightly
+regression collects it, but no threshold is set and no grade in this
+plan rests on it.
 
 Each testcase in this plan traces to a reference test in Tenstorrent's internal SEP
 verification suite. Those references are recorded internally and are deliberately not
@@ -140,7 +146,7 @@ against what it was written to do. Steps that cannot be traced are listed as
 
 == Testcase entries — bring-up and smoke
 
-Eleven short tests that prove each memory, peripheral and register block is
+Ten short tests that prove each memory, peripheral and register block is
 reachable and responds. They are the first thing to run after any build change:
 if one of these fails, no result from the representative tests below is meaningful.
 
@@ -1086,7 +1092,10 @@ inline hash engine consumed the same bytes that were copied.
 | PROVEN
 
 | CHK-DIGEST
-| The hardware digest equals an independent software SHA-256 over the same data.
+| The hardware digest equals an independent software SHA-256 over the same data. The
+  eight hardware digest words are read through the array-indexed accessor
+  `SHA2_DIGEST_0_BASE_ADDR(i)`, so a wrong array stride or a silently renamed register
+  shifts the assembled digest and the `memcmp` below fails.
 | `Expected (HW) = 0x` and `Computed (SW) = 0x`, then `All SHA-256 hash tests PASSED` --
   the firmware `memcmp`s the two 32-byte digests and increments its error count on a
   mismatch, and that verdict line prints only when the count is zero, so the equality is
@@ -1245,7 +1254,7 @@ released from reset, with AES, HMAC and KMAC held parked for the whole transfer.
 
 | 2
 | Park OTBN, AES, HMAC and KMAC; bring up the entropy stack with strict golden checking.
-| `CHK1 golden seeded from live ff_stage @ decor=e16f34d911772eaaa0b31f4f`
+| `CHK1 golden seeded from live ff_stage @ decor=`
 | LOGGED
 
 | 3
@@ -1978,7 +1987,7 @@ entropy rather than a constant.
 
 | 2
 | Bring up real entropy; release the Key Manager and wait for firmware ready.
-| `CHK1 golden seeded from live ff_stage @ decor=e16f34d911772eaaa0b31f4f` then `CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox`
+| `CHK1 golden seeded from live ff_stage @ decor=` then `CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox`
 | LOGGED
 
 | 3
@@ -2432,7 +2441,7 @@ injection on this path does and does not cover.
 
 | 2
 | Bring up entropy with strict golden checking and per-consumer scoring; wait for generated bits; start draining the queue; boot the Key Manager.
-| `CHK1 golden seeded from live ff_stage @ decor=e16f34d911772eaaa0b31f4f` and `CHK2 frontdoor: drained 16 FIFO_RDATA words`
+| `CHK1 golden seeded from live ff_stage @ decor=` and `CHK2 frontdoor: drained 16 FIFO_RDATA words`
 | LOGGED
 
 | 3
@@ -3096,7 +3105,7 @@ so what is checked is the queue's output rather than an internal signal.
 
 | 4
 | Start the golden scoreboard; drain the source queue through the front door.
-| `CHK1 golden seeded from live ff_stage @ decor=e16f34d911772eaaa0b31f4f` and `CHK2 frontdoor: drained 16 FIFO_RDATA words`
+| `CHK1 golden seeded from live ff_stage @ decor=` and `CHK2 frontdoor: drained 16 FIFO_RDATA words`
 | LOGGED
 
 | 5
@@ -3255,6 +3264,14 @@ document specifies them.
 | `sep_otbn_mem_smoke_test`
 | OTBN as a compute engine
 | Phase 2 OTBN remaining row
+
+| `sep_efuse_lcc_lc_state_stitch_test`
+| Lifecycle codes the walk does not enter. The stitch walk covers four of the
+  seven legal codes in `cocotb/env/sep_lcc_golden.py` (`LC_TEST_DEV`, `LC_PROD`,
+  `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and
+  `LC_PROD_END` (`0x8`) are never programmed, so no `FEAT_CTRL` claim is made
+  for them.
+| Not specified in Phase 2 either; no entry owns these codes yet
 |===
 
 [[open-items]]

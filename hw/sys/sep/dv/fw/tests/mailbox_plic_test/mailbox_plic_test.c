@@ -97,7 +97,8 @@ int main(void) {
     sep_mbx_puts("SEP mailbox PLIC test\n");
     sep_mbx_puts("STEP filter init done; mailbox CSR clock ungate written\n");
 
-    // Ungate the mailbox CSR clock (off at reset).
+    // CLOCK_GATE_CTRL bit 2 is not a defined field (map has only pka_cg_enable).
+    // Written for sequence parity; not on the proof path.
     sep_axil_mbox_clock_enable();
 
     // Route outbound mailbox 0 -> PIC source 1 -> ISR. The block is built

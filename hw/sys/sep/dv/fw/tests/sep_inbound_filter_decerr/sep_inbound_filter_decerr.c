@@ -51,8 +51,7 @@
 /*
  * PROD lifecycle state, differentially encoded. LC_STATE stores {~raw[3:0],
  * raw[3:0]}; PROD raw=0x1 -> 0xE1 (hw re-derives [7:4]). With the default DIS
- * vectors PROD gives feat_ctrl.sep_debug=0 -> inbound filter ACTIVE. Same path
- * as fw/sep/tests/lcc_inbound_filter_gating_test.
+ * vectors PROD gives feat_ctrl.sep_debug=0 -> inbound filter ACTIVE.
  */
 #define PROD_LC_STATE_DIFF_ENCODED 0xE1u
 
