@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+"""GPIO pad57 stall then JTAG override."""
+
+from __future__ import annotations
+
+import pyuvm
+from smc_base_test import smc_base_test
+from seq_lib.smc_mixed_boot_stall_test_seq import smc_mixed_boot_stall_test_seq
+
+
+@pyuvm.test()
+class smc_mixed_boot_stall_test(smc_base_test):
+    """GPIO gates fuse_reset; JTAG ovrd releases; val=1 cannot re-stall."""
+
+    auto_protocol_vip = False
+
+    async def run_scenario(self) -> None:
+        seq = smc_mixed_boot_stall_test_seq("mixed_boot_stall_seq")
+        await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
+        assert (
+            seq.gpio_gate_ok
+            and seq.ovrd_release_ok
+            and seq.val1_lockout_ok
+            and seq.ovrd_drop_ok
+        ), (
+            f"mixed boot stall incomplete gpio={seq.gpio_gate_ok} "
+            f"ovrd={seq.ovrd_release_ok} val1={seq.val1_lockout_ok} "
+            f"drop={seq.ovrd_drop_ok}"
+        )

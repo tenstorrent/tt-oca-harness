@@ -212,6 +212,135 @@ class SmcI2cEepromSlave:
             prev_sda = sda
 
 
+class SmcI2cNackSlave:
+    """Clocked I2C target that injects address- or data-phase NACKs.
+
+    Used by ``smc_i2c_p0_nack_test``. Drives SDA ACK/NACK on ``tb_i2c0_*``.
+    """
+
+    def __init__(
+        self,
+        *,
+        addr: int = 0x10,
+        nack_at_address: bool = False,
+        nack_at_data: bool = False,
+        name: str = "smc_i2c0_nack",
+    ) -> None:
+        if nack_at_address == nack_at_data:
+            raise ValueError("exactly one of nack_at_address / nack_at_data")
+        self.addr = addr & 0x7F
+        self.nack_at_address = nack_at_address
+        self.nack_at_data = nack_at_data
+        self.log = logging.getLogger(name)
+        self.addr_nacks = 0
+        self.data_nacks = 0
+        self.addr_acks = 0
+        sda, sda_ext, scl, scl_ext, clk = _pads()
+        self._sda = sda
+        self._sda_ext = sda_ext
+        self._scl = scl
+        self._scl_ext = scl_ext
+        self._clk = clk
+        self._id = id(self)
+        _set_ext_low(self._sda_ext, _SDA_LOW, self._id, False)
+        _set_ext_low(self._scl_ext, _SCL_LOW, self._id, False)
+        self.log.info(
+            "%s bound: addr=0x%02X nack_addr=%s nack_data=%s",
+            name,
+            self.addr,
+            nack_at_address,
+            nack_at_data,
+        )
+        self._task = cocotb.start_soon(self._run())
+
+    def stop(self) -> None:
+        if hasattr(self, "_task") and self._task is not None:
+            self._task.cancel()
+            self._task = None
+        _set_ext_low(self._sda_ext, _SDA_LOW, self._id, False)
+        _set_ext_low(self._scl_ext, _SCL_LOW, self._id, False)
+
+    def _pull_sda(self, low: bool) -> None:
+        _set_ext_low(self._sda_ext, _SDA_LOW, self._id, low)
+
+    async def _run(self) -> None:
+        prev_scl = 1
+        prev_sda = 1
+        phase = "idle"
+        bit_i = 0
+        shift = 0
+
+        while True:
+            await RisingEdge(self._clk)
+            try:
+                scl = int(self._scl.value)
+                sda = int(self._sda.value)
+            except ValueError:
+                scl = 1
+                sda = 1
+            rose = (not prev_scl) and scl
+            fell = prev_scl and (not scl)
+            start = prev_scl and scl and prev_sda and (not sda)
+            stop = prev_scl and scl and (not prev_sda) and sda
+
+            if start:
+                phase = "addr"
+                bit_i = 0
+                shift = 0
+                self._pull_sda(False)
+            elif stop:
+                phase = "idle"
+                self._pull_sda(False)
+            elif phase == "addr" and rose:
+                shift = ((shift << 1) | sda) & 0xFF
+                bit_i += 1
+                if bit_i >= 8:
+                    phase = "aack"
+                    bit_i = 0
+            elif phase == "aack" and fell:
+                addr7 = (shift >> 1) & 0x7F
+                if addr7 != self.addr:
+                    self._pull_sda(False)
+                    phase = "idle"
+                elif self.nack_at_address:
+                    # Hold released SDA through the 9th SCL rise (NACK sample).
+                    self._pull_sda(False)
+                    self.addr_nacks += 1
+                    phase = "nack_hold"
+                else:
+                    self._pull_sda(True)  # ACK address
+                    self.addr_acks += 1
+                    phase = "wack_hold"
+                    shift = 0
+                    bit_i = 0
+            elif phase == "nack_hold" and rose:
+                phase = "idle"
+                self._pull_sda(False)
+            elif phase == "wack_hold" and rose:
+                phase = "wack_rel"
+            elif phase == "wack_rel" and fell:
+                self._pull_sda(False)
+                phase = "wdata"
+            elif phase == "wdata" and rose:
+                shift = ((shift << 1) | sda) & 0xFF
+                bit_i += 1
+                if bit_i >= 8:
+                    phase = "wack"
+                    bit_i = 0
+            elif phase == "wack" and fell:
+                if self.nack_at_data:
+                    self._pull_sda(False)  # NACK data — hold through sample
+                    self.data_nacks += 1
+                    phase = "nack_hold"
+                else:
+                    self._pull_sda(True)
+                    phase = "wack_hold"
+                    shift = 0
+
+            prev_scl = scl
+            prev_sda = sda
+
+
 class SmcI2cBusMonitor:
     """Passive START/STOP observer (never ACKs)."""
 

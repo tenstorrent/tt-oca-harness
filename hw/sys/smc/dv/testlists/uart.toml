@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+# Nightly Tier A: commercial UART depth BFMs.
+[[tests]]
+name = "smc_uart_fifo_basic_trigger_reset_test"
+module = "smc_uart_fifo_basic_trigger_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_irq_sources_priority_test"
+module = "smc_uart_irq_sources_priority_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_error_conditions_test"
+module = "smc_uart_error_conditions_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_uart_cross_3to0"]
+
+[[tests]]
+name = "smc_uart_baud_word_parity_format_test"
+module = "smc_uart_baud_word_parity_format_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_extremes_misc_test"
+module = "smc_uart_extremes_misc_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_sanity_test"
+module = "smc_uart_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_uart_cross_3to0"]
+
+[[groups]]
+name = "uart"
+tests = [
+    "smc_uart_fifo_basic_trigger_reset_test",
+    "smc_uart_irq_sources_priority_test",
+    "smc_uart_error_conditions_test",
+    "smc_uart_baud_word_parity_format_test",
+    "smc_uart_extremes_misc_test",
+    "smc_uart_sanity_test",
+]
