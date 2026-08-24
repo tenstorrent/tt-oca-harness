@@ -68,11 +68,13 @@ path into the chiplet, and the LC state permit it.
 
 *Secret-bearing logic (Class 2)* -- crypto-engine key / round-key storage and
 the Key Manager key vault / shared key storage -- is placed on a *dedicated
-secret-bearing scan chain* so DFT keeps coverage, but is *never
-scan-dumpable*, for any owner or LC state. It is governed by `secure_tm`, not
-the `*_DBG` bits: under `secure_tm = 1` the secret sources (UID / `CLASS_KEY`)
-are disconnected from these consumers, and under `secure_tm = 0` the chain is
-tied off.
+secure scan chain* so DFT keeps coverage, but is *never scan-dumpable*, for any
+owner or LC state. The `*_DBG` bits decide whether that chain is reachable, as
+they do for any chain; what makes it undumpable is the command class. The DFT
+controller admits a *test* command on it only when `secure_tm = 1`, admits
+nothing at `secure_tm = 0`, and never admits a *dump* command at all. Under
+`secure_tm = 1` the secret sources (UID / `CLASS_KEY`) are disconnected from
+these consumers, so a permitted test shift moves no real secret.
 
 *Secrets and integrity-critical fields (Class 1)* are excluded from every scan
 chain (never scannable):
@@ -130,7 +132,7 @@ the SECURE_TM signal which is consumed by
 ** Shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers
 ** Any downstream registers in the path from these registers to the test enablement signals for DTAP or fuse write enablement signals are also non-scannable
 *** Dedicated test registers may be inserted in the path while in SECURE_TM mode to enable testing of downstream logic
-** During scan test (`secure_tm = 1`) the secret-source outputs (UID / `CLASS_KEY`) are disconnected from the Class 2 secret-bearing consumers, so no real secret is shifted; during scan dump (`secure_tm = 0`) the Class 2 secret-bearing chain is tied off (never dumpable). See the Lifecycle Controller chapter, _`secure_tm` and Scan Dump_.
+** During scan test (`secure_tm = 1`) the secret-source outputs (UID / `CLASS_KEY`) are disconnected from the Class 2 consumers, so no real secret is shifted. On the Class 2 secure chain the DFT controller admits a test command only at `secure_tm = 1`, admits no command at `secure_tm = 0`, and never admits a dump command (never dumpable). See the Lifecycle Controller chapter, _`secure_tm` and the Secure Scan Chain_.
 ** Disable writing to any OTP fuse state to prevent updates.
 * OTP controller
 ** Disable _writing_ of shadow registers: LOCKS, LC_STATE, SIP_DIS and SYS_DIS

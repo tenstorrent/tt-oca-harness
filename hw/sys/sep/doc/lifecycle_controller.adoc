@@ -417,7 +417,7 @@ SIP_DIS.DBG_1 / DBG_2 and SYS_DIS.DBG_1 / DBG_2.
 
 |0 |debug (DBG_1) |SEP_DBG |Coarse-grained debug enable for the *SEP* scope: the local gate for SEP internal state. `1'b1`: SEP-scope debug / scan-dump access disabled and inbound (`ext`) traffic is filtered before it can reach SEP internal state. `1'b0`: enabled -- inbound traffic bypasses the filter and scan dump is allowed. SEP_DBG is a local gate, not the chiplet ingress: SIP_DBG (bit 24) admits external debug traffic into the chiplet, and SEP_DBG then governs whether that traffic can reach SEP internal state -- debugging SEP assets from an external debugger requires both.
 
-|1 |debug (DBG_1) |CHIPLET_DBG |Coarse-grained debug enable for the *chiplet* scope. `1'b1`: chiplet-scope debug / scan-dump access disabled. `1'b0`: enabled. Does not gate the crypto / KM secret-bearing chain, which is `secure_tm`-gated and never dumpable. In addition, when chiplet-scope debug is disabled (CHIPLET_DBG set in SIP_DIS or SYS_DIS), secure boot is enforced in the TEST_DEV lifecycle state, so a locked-down debug posture cannot be bypassed by loading unsigned code in TEST_DEV.
+|1 |debug (DBG_1) |CHIPLET_DBG |Coarse-grained debug enable for the *chiplet* scope. `1'b1`: chiplet-scope debug / scan-dump access disabled. `1'b0`: enabled. Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while `secure_tm = 1`. In addition, when chiplet-scope debug is disabled (CHIPLET_DBG set in SIP_DIS or SYS_DIS), secure boot is enforced in the TEST_DEV lifecycle state, so a locked-down debug posture cannot be bypassed by loading unsigned code in TEST_DEV.
 
 |2 |debug (DBG_1) |SEP_FUSE_DBG |`1'b1`: the DFT-inserted access path into the SEP OTP is disabled. `1'b0`: enabled. This gate also covers the OTP IP-vendor test and calibration interface (used during ATE for vendor-specific OTP test functions and internal-voltage calibration), which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
 
@@ -648,44 +648,74 @@ DRBG/EDN, Adams Bridge, and TRNG sequential state; KM/OTBN companion SRAMs
 (see <<class-2-asset-manifest>>)
 |Yes
 |*Never*
-|*Dedicated secret-bearing scan chain.* Scannable for DFT coverage when
-`secure_tm = 1`; the secret-bearing shadow registers (UIDs / `CLASS_KEY`) remain
-disconnected from downstream, so these consumers hold no real secret during
-scan test. *Scan dump is never permitted -- for any owner or LC state*: under
-`secure_tm = 0` the chain is tied off (see <<secure-tm-vs-scandump>>). This is
-independent of the `*_DBG` feature control bits.
+|*Dedicated secure scan chain.* Reachable when its SIB is opened by the
+`*_DBG` feature control bits; a *test* command is then admitted only when
+`secure_tm = 1`, and at `secure_tm = 0` no command is admitted at all. The
+secret-bearing shadow registers (UIDs / `CLASS_KEY`) are disconnected from
+downstream while `secure_tm = 1`, so these consumers hold no real secret during
+scan test. *Scan dump is never permitted -- for any owner or LC state*: a dump
+command is never admitted on this chain (see <<secure-tm-vs-scandump>>).
 
 |*3* +
 (general logic)
 |The rest of the logic not classified above
 |Yes
 |Yes (gated)
-|*General scan chains.* Scannable and scan-dumpable when permitted by `secure_tm`, the `*_DBG` feature control bits (the scope's local gate -- `SEP_DBG` or `CHIPLET_DBG` -- plus the `SIP_DBG` debug-access path; see <<multiple-security-domains>>), and the LC state.
+|*General scan chains.* Scannable and scan-dumpable when permitted by the `*_DBG` feature control bits (the scope's local gate -- `SEP_DBG` or `CHIPLET_DBG` -- plus the `SIP_DBG` debug-access path; see <<multiple-security-domains>>) and the LC state. `secure_tm` plays no part here: these chains hold no secret, so both command classes are admitted whenever the chain is reachable.
 |=======================================================================
 
 [[secure-tm-vs-scandump]]
-====== `secure_tm` and Scan Dump
+====== `secure_tm` and the Secure Scan Chain
 
 `secure_tm` is the secure-test-mode indicator: the `TEST_EN` strap latched into
 the internal `SECURE_TM` signal. It is latched when SEP fuse sensing completes
 if `SEC_DIS` is not asserted, or on chiplet cold-reset release if `SEC_DIS` is
-asserted (see the Test Mode section). Tests can be enabled only when
-`SECURE_TM = 1`.
+asserted (see the Test Mode section).
 
-`secure_tm` protects secrets at *two* points, which together let the crypto and
-Key Manager logic stay on the scan chain (maximizing DFT coverage) while never
-exposing secrets:
+`secure_tm` is deliberately *not* an authorization signal -- it carries no owner
+identity and proves nothing about who is attached to the JTAG port. It is a
+*coercion*: it forces the part into a configuration in which no secret is
+present and no fuse can be programmed, and the secure chain may be shifted only
+in that configuration. Authorization is carried by the `*_DBG` feature control
+bits and the LC state, which decide whether the chain is reachable at all.
 
-* *During scan test (`secure_tm = 1`):* the secret-bearing shadow-register
-outputs (`CHIPLET_UID` / `SIP_UID` / `SYS_UID`, `CLASS_KEY`) are
-*disconnected* from downstream logic, OTP fuse-write enables are tied inactive,
-and `LOCKS` / `LC_STATE` / `SIP_DIS` / `SYS_DIS` are locked against updates
-(see _Fuse Controller (OTP)_). So Class 2 consumers can be shifted and tested
-without any real secret being present in them.
+`secure_tm` has four uses. The last three are what make the first one safe:
 
-* *During scan dump (`secure_tm = 0`):* the dedicated Class 2 secret-bearing
-scan chain is tied off, so its contents can never be extracted via debug --
-*independent* of the `*_DBG` feature control bits and of the LC state.
+. *Gates test commands on the secure scan chain*, as described below.
+
+. *Blocks lifecycle shadow-register updates.* `LOCKS`, `LC_STATE`, `SIP_DIS`,
+and `SYS_DIS` are locked against updates from every source -- SEP, OTP, JTAG,
+and TRoot -- so a disabled feature cannot be enabled while the part is shiftable
+(see _Fuse Controller (OTP)_).
+
+. *Ties off the fuse program path.* The OTP fuse-write enable inputs are held
+inactive, so no shift sequence can reach the fuse array or trip the program
+sequencer.
+
+. *Disconnects the secret sources.* The secret-bearing shadow-register outputs
+(`CHIPLET_UID` / `SIP_UID` / `SYS_UID`, `CLASS_KEY`) are cut from downstream
+logic, so Class 2 consumers can be shifted and tested with no real secret
+present in them.
+
+Access to the secure scan chain is governed by two independent conditions, both
+of which must hold:
+
+* *Reachability* -- the DFT secure chain SIB must be open, which requires the
+same feature control conditions as the SEP debug S-TAP (see
+<<feature-bit-to-scan-chain-mapping>>). This is the authorization question, and
+`secure_tm` plays no part in it.
+
+* *Command class* -- with the SIB open, the DFT controller admits a *test*
+command on the secure chain only when `secure_tm = 1`. At `secure_tm = 0` no
+command is admitted on that chain at all. A *dump* command is never admitted, at
+either value of `secure_tm`, for any owner or LC state.
+
+Gating at the command, rather than masking the chain output, is what makes the
+guarantee hold when debug and test share one chain. An attacker who can reach
+the chain cannot simply declare "test" and shift the live state out: at
+`secure_tm = 0` the controller refuses the command outright, and at
+`secure_tm = 1` the shift is permitted only because uses 2 through 4 have
+already removed everything worth extracting.
 
 The Class 1 vs Class 2 split follows from *where each asset sits*:
 
@@ -695,13 +725,15 @@ reached over functional paths; `secure_tm = 1` cuts those paths during test.
 (Class 1a) or the integrity-critical control fields (Class 1b) -- the data lives
 in the registers themselves, so they are excluded from every scan chain.
 
-The `*_DBG` feature control bits are a separate, coarser control over
-*general* (Class 3) debug / scan-dump access. `SEP_DBG` and `CHIPLET_DBG` are
-local gates for their scopes' logic; `SIP_DBG` gates the debug-access path into
-the chiplet, so an external debugger reaches a scope's logic only when
-`SIP_DBG` and that scope's local gate are both open (see
-<<multiple-security-domains>>). None of these bits affect the Class 2
-secret-bearing chain, which is governed solely by `secure_tm`.
+The `*_DBG` feature control bits are the coarser, authorization-side control.
+`SEP_DBG` and `CHIPLET_DBG` are local gates for their scopes' logic; `SIP_DBG`
+gates the debug-access path into the chiplet, so an external debugger reaches a
+scope's logic only when `SIP_DBG` and that scope's local gate are both open (see
+<<multiple-security-domains>>). These bits decide *reachability* for every
+chain, the secure chain included -- they determine whether its SIB opens. What
+they do not do is authorize extraction: once the SIB is open the command-class
+rule still applies, so the secure chain stays undumpable whatever the `*_DBG`
+bits say.
 
 [[feature-bit-to-scan-chain-mapping]]
 ====== Feature-Bit to Scan-Chain Mapping
@@ -711,8 +743,10 @@ feature control bit in `feat_ctrl_o`; the bit's owner -- which predecessor DIS
 vector sets its default (see <<dis-vector-ownership>>) -- sets the multi-owner
 default policy. External access to any general chain additionally requires the
 `SIP_DBG` debug-access path into the chiplet to be open (see
-<<multiple-security-domains>>). The Class 2 secret-bearing chain is *not* gated
-by a feature control bit; it is governed by `secure_tm` and is never dumpable.
+<<multiple-security-domains>>). The Class 2 secure chain is reached through its
+own SIB, which the feature control bits gate in the same way; what distinguishes
+it is that reaching it never permits a dump, because the DFT controller admits
+only test commands there and only while `secure_tm = 1`.
 
 [width="100%",cols="<20%,<26%,<28%,<26%",options="header",]
 |=======================================================================
@@ -720,9 +754,11 @@ by a feature control bit; it is governed by `secure_tm` and is never dumpable.
 
 |1a / 1b (non-scannable) |-- |-- |Excluded from all scan chains.
 
-|2 (crypto / KM secret-bearing) |Dedicated secret-bearing chain |`secure_tm`
-(chain tied off when `secure_tm = 0`) |Never scan-dumpable, any owner / LC
-state. Scannable under `secure_tm = 1`, with shadow secrets disconnected.
+|2 (crypto / KM secret-bearing) |Dedicated secure chain |Command class -- a dump
+command is never admitted; a test command requires `secure_tm = 1` |Never
+scan-dumpable, any owner / LC state. Its SIB is feature-bit gated like any other
+chain, but opening it grants test access only, and only with the shadow secrets
+disconnected.
 
 |3 (general logic) |Per-scope general chains |Local scope `*_DBG` bit (`SEP_DBG`, `CHIPLET_DBG`) + `SIP_DBG` access path + LC state |Coarse-grained: a scope's general logic is scan-dumpable only when its local `*_DBG` bit enables it, the `SIP_DBG` debug-access path is open, and the LC state permits.
 |=======================================================================
