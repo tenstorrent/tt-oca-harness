@@ -132,7 +132,8 @@ module smc_uvm_top
     output logic tb_boot_stall_combined_o /*verilator public_flat_rw*/,
     input  wire logic tb_boot_stall_jtag_ovrd_i /*verilator public_flat_rw*/,
     input  wire logic tb_boot_stall_jtag_val_i /*verilator public_flat_rw*/,
-    // Independent pad-57 observe (gpio_pad_io), not a readback of TB drive bits.
+    // DUT-side pad-57 sample (pad2core after the pad cell), not gpio_pad_io /
+    // tb_pad_drive_* echo — boot-stall sequences assert the pad landed in-core.
     output logic tb_gpio_pad57 /*verilator public_flat_rw*/,
     // SEP WDT reset into SMC (smc_wrapper.sep_wdt_reset_n_i). Idle 1.
     input  wire logic tb_sep_wdt_reset_n /*verilator public_flat_rw*/,
@@ -1356,7 +1357,7 @@ module smc_uvm_top
     assign tb_axi_hang_irq_sys  = u_dut.u_smc.u_smc_base.hang_irq_sys_axi;
     assign tb_axi_hang_irq_sep  = u_dut.u_smc.u_smc_base.hang_irq_sep_axi;
     assign tb_axi_hang_irq_data = u_dut.u_smc.u_smc_base.hang_irq_data_accel;
-    assign tb_gpio_pad57      = gpio_pad_io[BOOT_STALL_PAD];
+    assign tb_gpio_pad57      = u_dut.u_smc.pad2core[BOOT_STALL_PAD];
     assign tb_uart_irq_any    = |uart_interrupt;
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
     assign tb_avsbus_irq      = u_dut.u_smc.peripheral_interrupts[22];

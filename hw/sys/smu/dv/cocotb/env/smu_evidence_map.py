@@ -227,6 +227,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-CPU-REG-STALL", "CPU_REG_STALL", "DEBUG_CONTROL boot_stall hold"),
     ],
     "smu_dtp_otp_smc_complete_rw_test": [
+        # CHK-OTP-GATED / OTP_GATED_NO_UPDATE intentionally dropped: gated-deny
+        # is not claimed on this leaf (see test docstring); MAP-RW only.
         ("CHK-OTP-MAP-RW", "OTP_MAP_RW_OK", "OTP+fabric+shadow match on RESERVED"),
     ],
     "smu_dtp_ptap_otp_instr_scan_test": [

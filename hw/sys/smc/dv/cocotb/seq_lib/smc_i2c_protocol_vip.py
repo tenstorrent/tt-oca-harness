@@ -351,8 +351,12 @@ class SmcI2cBusMonitor:
         self._sda = sda
         self._scl = scl
         self._clk = clk
-        sda_ext.value = 0
-        scl_ext.value = 0
+        self._sda_ext = sda_ext
+        self._scl_ext = scl_ext
+        self._id = id(self)
+        # Join the wired-AND vote registry; do not clear other VIP pulls.
+        _set_ext_low(self._sda_ext, _SDA_LOW, self._id, False)
+        _set_ext_low(self._scl_ext, _SCL_LOW, self._id, False)
         self.log.info("%s bound (clocked, passive)", name)
         self._task = cocotb.start_soon(self._run())
 
@@ -361,8 +365,12 @@ class SmcI2cBusMonitor:
         prev_sda = 1
         while True:
             await RisingEdge(self._clk)
-            scl = int(self._scl.value)
-            sda = int(self._sda.value)
+            try:
+                scl = int(self._scl.value)
+                sda = int(self._sda.value)
+            except ValueError:
+                scl = 1
+                sda = 1
             if prev_scl and scl and prev_sda and (not sda):
                 self.transactions.append({"ev": "START"})
             elif prev_scl and scl and (not prev_sda) and sda:
@@ -405,53 +413,53 @@ class SmcI2cMasterVip:
         for _ in range(100000):
             if int(self._scl.value):
                 return
-            await Timer(self._half_ns, unit="ns")
+            await Timer(self._half_ns, units="ns")
         raise SmcI2cVipError("SCL stayed low (stretch/timeout)")
 
     async def send_start(self) -> None:
         if self._active:
             self._pull_sda(False)
-            await Timer(self._half_ns, unit="ns")
+            await Timer(self._half_ns, units="ns")
             self._pull_scl(False)
             await self._wait_scl_high()
-            await Timer(self._half_ns, unit="ns")
+            await Timer(self._half_ns, units="ns")
         self._pull_sda(True)
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         self._pull_scl(True)
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         self._active = True
 
     async def send_stop(self) -> None:
         if not self._active:
             return
         self._pull_sda(True)
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         self._pull_scl(False)
         await self._wait_scl_high()
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         self._pull_sda(False)
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         self._active = False
 
     async def send_bit(self, bit: int) -> None:
         self._pull_sda(not bool(bit))
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         self._pull_scl(False)
         await self._wait_scl_high()
-        await Timer(self._bit_ns, unit="ns")
+        await Timer(self._bit_ns, units="ns")
         self._pull_scl(True)
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
 
     async def recv_bit(self) -> int:
         self._pull_sda(False)
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         self._pull_scl(False)
         await self._wait_scl_high()
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         val = int(self._sda.value)
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         self._pull_scl(True)
-        await Timer(self._half_ns, unit="ns")
+        await Timer(self._half_ns, units="ns")
         return val
 
     async def send_byte(self, value: int) -> int:

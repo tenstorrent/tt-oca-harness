@@ -319,7 +319,9 @@ module smu_uvm_top
     assign tb_stap_io_tck = stap_io_ctrl.tck;
     assign tb_stap_smc_tck = u_dut.dtp_smc_stap_tap_ctrl.tck;
     assign tb_stap_smc_trst_n = u_dut.dtp_smc_stap_tap_ctrl.trst_n;
-    assign tb_stap_smc_tdi = u_dut.dtp_smc_stap_tdo;
+    // jtag_tap_ctrl_t has no .tdi; DTP host_tdo_o (dtp_smc_stap_tdo) is the
+    // sole driver of SMC CPU TDI — probe the CPU pin, not the return TDO path.
+    assign tb_stap_smc_tdi = u_dut.u_smc.smc_cpu_jtag_TDI_i;
     assign tb_stap_smc_tms = u_dut.dtp_smc_stap_tap_ctrl.tms;
     assign tb_stap_smc_tdo_oen = u_dut.u_dtp.jtag_stap_smc_host_tdo_oen_o;
     assign tb_bsr_select = bsr_ctrl.select;

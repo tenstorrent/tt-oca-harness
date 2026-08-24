@@ -135,12 +135,17 @@ class smc_uart_irq_sources_priority_test_seq(SmcCsrSeq):
             )
 
     async def _expect_not_id(self, label: str, forbidden: int) -> None:
-        iir = await self._poll_iir(label, 8)
-        if _iir_pending(iir) and _iir_id(iir) == forbidden:
-            raise AssertionError(
-                f"{label}: gated source ID=0x{forbidden:x} still pending "
-                f"IIR=0x{iir:08x}"
-            )
+        # Do not early-return on any pending IIR: 16550 reports only the
+        # highest-priority source, so a leftover higher ID must not hide a
+        # gated forbidden that later becomes visible.
+        for _ in range(8):
+            iir = await self.csr_read(f"{label}_IIR", UART_IIR)
+            if _iir_pending(iir) and _iir_id(iir) == forbidden:
+                raise AssertionError(
+                    f"{label}: gated source ID=0x{forbidden:x} still pending "
+                    f"IIR=0x{iir:08x}"
+                )
+            await Timer(100, units="ns")
 
     async def _fail_if_id_still_pending(self, label: str, expect_id: int) -> None:
         iir = await self.csr_read(f"{label}_POST", UART_IIR)
