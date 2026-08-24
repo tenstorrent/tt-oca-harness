@@ -24,12 +24,6 @@ reject) belong to the ROM-FW owner, not this plan. When a ROM-FW plan
 exists, those names are graded there. ROM *hardware* access stays here
 (`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`).
 
-CHK-JTAG-MMR-DENY is a spec-versus-RTL mismatch: `hw/sys/sep/doc/periphs.adoc`
-requires DECERR on a non-token MMR in PROD; the RTL returns OKAY on
-`EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH`. The checker stays `FAILED` until
-the RTL or the spec changes: `hw/sys/sep/doc/periphs.adoc` restricts the JTAG
-port in PROD and RMA_SIP to the RMA token registers only.
-
 Behaviours this spine does not claim are listed in
 <<claims-outside-contract>>.
 
@@ -2623,7 +2617,9 @@ The debug-port counterpart to the two-processor coexistence test. Here the CPU s
 eFuse register traffic while the host concurrently drives the real debug-port register
 bus; both meet at the same multiplexer. It proves the two coexist without corruption
 or starvation, and — in the same production-sensed state — that the debug port is
-allowed at the register window but denied at the protected shadow window.
+allowed at the MMR token block (three TOKEN_I arrays, TOKEN_EOP, three
+MATCH registers) and denied at the shadow window and the program/read
+interface.
 
 Using one real sensed lifecycle state to show both the allow and the deny is what
 makes the allow/deny pair meaningful; a forced state could show either in isolation.
@@ -2669,6 +2665,18 @@ lifecycle state is not exercised: no test drives this port at another state.
 | `CHK-COEXIST PASS: CPU loop advanced 1->8 during 16 JTAG MMR rounds` and `CHK-CPU-MMR PASS: CPU eFuse MMR read error count stayed zero`
 | LOGGED
 
+| 7
+| Host: read `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and
+  `SEC_DISABLE_TOKEN_MATCH`; expect OKAY. The token block is legal JTAG
+  space in PROD.
+| `CHK-JTAG-TOKEN-BLOCK PASS: JTAG SEC_DISABLE_TOKEN_I / TOKEN_EOP / SEC_DISABLE_TOKEN_MATCH all OKAY in PROD`
+| LOGGED
+
+| 8
+| Host: read `EFUSE_PROGRAM_CTRL`; expect DECERR and `0xbadcab1e`.
+| `CHK-JTAG-IFACE-DENY PASS: JTAG program-interface read @0x10930404 denied with DECERR (resp=3, rdata=0xbadcab1e)`
+| LOGGED
+
 |===
 
 ==== Checkers
@@ -2708,13 +2716,22 @@ lifecycle state is not exercised: no test drives this port at another state.
 | `CHK-COEXIST PASS: CPU loop advanced 1->8 during 16 JTAG MMR rounds`
 | PROVEN
 
-| CHK-JTAG-MMR-DENY
-| In PROD, a JTAG read of `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH` (not a token
-  register) completes DECERR. `hw/sys/sep/doc/periphs.adoc`: the JTAG port can only read and
-  write `RMA_SIP_TOKEN_I` and `RMA_CHIPLET_TOKEN_I`.
-| `CHK-JTAG-MMR-DENY FAIL: spec requires DECERR on non-token MMR SEC_DISABLE_TOKEN_MATCH @0x1093056c in PROD; RTL returned resp=0 rdata=0x00000000`
-| FAILED — run `20260820_165856`. RTL returned OKAY. https://github.com/tenstorrent/tt-oca-harness/issues/626
+| CHK-JTAG-TOKEN-BLOCK
+| In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and
+  `SEC_DISABLE_TOKEN_MATCH` return OKAY. `hw/sys/sep/doc/periphs.adoc`
+  names the whole MMR token block, not only the two RMA `TOKEN_I` arrays.
+| `CHK-JTAG-TOKEN-BLOCK PASS: JTAG SEC_DISABLE_TOKEN_I / TOKEN_EOP / SEC_DISABLE_TOKEN_MATCH all OKAY in PROD`
+| PROVEN
+
+| CHK-JTAG-IFACE-DENY
+| In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes DECERR with
+  `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read
+  interface.
+| `CHK-JTAG-IFACE-DENY PASS: JTAG program-interface read @0x10930404 denied with DECERR (resp=3, rdata=0xbadcab1e)`
+| PROVEN
 |===
+
+Kept Verilator log: `20260824_152449`.
 
 // ---------------------------------------------------------------------------
 
@@ -3201,7 +3218,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Step proof | Count
 
-| `LOGGED` | 153
+| `LOGGED` | 155
 | `NOT-LOGGED` | 0
 |===
 
@@ -3209,19 +3226,18 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Grade | Count
 
-| `PROVEN` | 150
+| `PROVEN` | 152
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `STALE` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
 | `NOT-RUN` | 0
-| `FAILED` | 1
+| `FAILED` | 0
 |===
 
 A running test's checkers are `PROVEN` or `FAILED`. Rows that cannot fail
 on this DUT are deleted, not parked as `GUARD`. Alive-mode CHK5 names
-only live beats; bit-exact per-sink is the small KM ROM tests. The one
-`FAILED` row is CHK-JTAG-MMR-DENY; see <<open-items>>.
+only live beats; bit-exact per-sink is the small KM ROM tests.
 
 [[claims-outside-contract]]
 [[phase2-handoff]]
@@ -3277,14 +3293,10 @@ document specifies them.
 [[open-items]]
 === Spec-versus-RTL mismatches
 
-[cols="2,3,3",options="header"]
-|===
-| Testcase | Checker | Resolution
-
-| `sep_efuse_jtag_axil_el2_cpu_mux_test`
-| CHK-JTAG-MMR-DENY: non-token MMR in PROD must DECERR
-| RTL matches `hw/sys/sep/doc/periphs.adoc`, or the spec is revised. Issue 626.
-|===
+None in Phase 1. The retired CHK-JTAG-MMR-DENY expected DECERR on the
+MMR token block; current `hw/sys/sep/doc/periphs.adoc` allows that block
+and denies shadow, program/read interface, and SHIM. Inbound ownership
+(CHK-OWNERSHIP-WINDOW) is a Phase 2 open item.
 
 CHK4 generate-command segmentation on the Phase 1 `glen=32` rows names
 only that generated bits match the golden; Phase 2

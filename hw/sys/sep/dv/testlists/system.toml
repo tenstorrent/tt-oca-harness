@@ -252,3 +252,17 @@ tags = ["fabric", "remap", "filter", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Live local-master alias-remap offset. RANDCFG: region and source page from
+# the run seed. A programmed region rewrites a CPU-LSU filter-page beat to
+# CLOCK_GATE_CTRL; CSR-bank R/W stays on sep_fabric_remap_filter_csr_bank_test.
+# Distinct from the CPU high-alias window. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_local_alias_datapath_test"
+module = "system.sep_fabric_local_alias_datapath_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "remap", "alias", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
