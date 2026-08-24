@@ -3,8 +3,10 @@
 
 /*
  * DV-TESTCASE-CONTRACT: SMC_I2C_001 ANCHOR: smc_i2c_sanity_test
- * DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 05c04850274c21a60b62a72bc8b9b5d445197c42b5c2fe015289401ed4828e27
- * DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/tb/doc/testplan/i2c/dv_vplan_gen/SMC_I2C_VPLAN_DETAIL.md @ artifact_revision 1 ENV: c-fw
+ * DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256:
+ * 05c04850274c21a60b62a72bc8b9b5d445197c42b5c2fe015289401ed4828e27 DV-TESTCASE-CONTRACT-SOURCE:
+ * hw/sys/smc/dv/tb/doc/testplan/i2c/dv_vplan_gen/SMC_I2C_VPLAN_DETAIL.md @ artifact_revision 1 ENV:
+ * c-fw
  */
 
 /**
@@ -127,16 +129,14 @@ static void step_s2_fifo_reset_enable(uint32_t idx) {
 
     i2c_reset_fifos(idx, true, true, true, true);
 
-    host_st.w =
-        read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0)));
+    host_st.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0)));
     if (host_st.f.FMTLVL != 0 || host_st.f.RXLVL != 0) {
         fail_with(0xBAD00021, "HOST_FIFO_STATUS levels nonzero after reset-all");
     }
 
     fifo_cfg.f.RX_THRESH = I2C_DEFAULT_RX_THRESH;
     fifo_cfg.f.FMT_THRESH = I2C_DEFAULT_FMT_THRESH;
-    write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_BASE_ADDR(0)),
-              fifo_cfg.w);
+    write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_BASE_ADDR(0)), fifo_cfg.w);
 
     i2c_clear_interrupts(idx, 0xFFFFFFFFu);
 
@@ -154,8 +154,7 @@ static void step_s2_fifo_reset_enable(uint32_t idx) {
         fail_with(0xBAD00022, "ENABLEHOST not set after enable");
     }
 
-    host_st.w =
-        read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0)));
+    host_st.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0)));
     if (host_st.f.FMTLVL != 0 || host_st.f.RXLVL != 0) {
         fail_with(0xBAD00023, "HOST_FIFO_STATUS levels nonzero at ENABLEHOST");
     }
@@ -171,20 +170,19 @@ static void init_target_peer(const i2c_timing_config_t *timing) {
     int ret;
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl;
-    i2c_target_config_t tgt_cfg = {
-        .address0 = TARGET_ADDR,
-        .mask0 = 0x7F,
-        .address1 = 0,
-        .mask1 = 0,
-        .timing = *timing,
-        .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
-                 .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
-                 .rx_thresh = 0,
-                 .fmt_thresh = 0},
-        .enable_interrupts = false,
-        .ack_ctrl_mode = false,
-        .tx_stretch_ctrl = false,
-        .timeout_cycles = 0};
+    i2c_target_config_t tgt_cfg = {.address0 = TARGET_ADDR,
+                                   .mask0 = 0x7F,
+                                   .address1 = 0,
+                                   .mask1 = 0,
+                                   .timing = *timing,
+                                   .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
+                                            .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
+                                            .rx_thresh = 0,
+                                            .fmt_thresh = 0},
+                                   .enable_interrupts = false,
+                                   .ack_ctrl_mode = false,
+                                   .tx_stretch_ctrl = false,
+                                   .timeout_cycles = 0};
 
     ret = i2c_target_init(TARGET_IDX, &tgt_cfg);
     if (ret != I2C_OK) {
@@ -359,8 +357,7 @@ static void check_nonvac_order(void) {
         fail_with(0xBAD00060, "CHK-NONVAC missing ordered term");
     }
     if (!(g_ts_timing_program < g_ts_fifo_reset_enable &&
-          g_ts_fifo_reset_enable < g_ts_write_stop &&
-          g_ts_write_stop < g_ts_cmd_complete_clear)) {
+          g_ts_fifo_reset_enable < g_ts_write_stop && g_ts_write_stop < g_ts_cmd_complete_clear)) {
         fail_with(0xBAD00061, "CHK-NONVAC out of order");
     }
     simputs("  CHK-NONVAC: TIMING_PROGRAM < FIFO_RESET_ENABLE < WRITE_STOP < "

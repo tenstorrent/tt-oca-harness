@@ -31,35 +31,27 @@ SMC_STACKLESS_ENTRY(smu_cla_sep_cpu_debug_entry)
 #define WAIT_RSP(val, okvar) SMC_WAIT_EQ(SC3, (val), CLADBG_FW_POLL_LIMIT, okvar)
 #define WAIT_SC9(val, okvar) SMC_WAIT_EQ(SC9, (val), CLADBG_FW_POLL_LIMIT, okvar)
 
-#define FIRE_ACTION(eap0)                                                       \
-    do {                                                                        \
-        SMC_WR64(SMC_CLA_CDFDCSR_REG_ADDR, 1ull << 63);                         \
-        SMC_WR64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR,                            \
-                 CLADBG_CLA_CTRLSTATUS_EXPECT);                                 \
-        SMC_WR64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR, (eap0));                       \
-        SMC_WR64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR, 0ull);                         \
-        SMC_FENCE();                                                            \
+#define FIRE_ACTION(eap0) \
+    do { \
+        SMC_WR64(SMC_CLA_CDFDCSR_REG_ADDR, 1ull << 63); \
+        SMC_WR64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR, CLADBG_CLA_CTRLSTATUS_EXPECT); \
+        SMC_WR64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR, (eap0)); \
+        SMC_WR64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR, 0ull); \
+        SMC_FENCE(); \
     } while (0)
 
-#define CHECK_PUBLISH(eap0_expect)                                              \
-    do {                                                                        \
-        if (SMC_RD64(SMC_CLA_CDFDCSR_REG_ADDR) != CLADBG_CLA_CDFDCSR_EXPECT)    \
-            goto fail;                                                          \
-        if (SMC_RD64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR) !=                     \
-            CLADBG_CLA_CTRLSTATUS_EXPECT)                                       \
-            goto fail;                                                          \
-        if (SMC_RD64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR) != (eap0_expect))          \
-            goto fail;                                                          \
-        if (SMC_RD64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR) != 0ull)                   \
-            goto fail;                                                          \
-        SMC_WR32(SC4, (uint32_t)(SMC_RD64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR) &     \
-                                 0xFFFFFFFFu));                                 \
-        SMC_WR32(SC5, (uint32_t)((SMC_RD64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR) >>   \
-                                  32) &                                         \
-                                 0xFFFFFFFFu));                                 \
-        SMC_WR32(SC6, 0u);                                                      \
-        SMC_WR32(SC7, 0u);                                                      \
-        SMC_FENCE();                                                            \
+#define CHECK_PUBLISH(eap0_expect) \
+    do { \
+        if (SMC_RD64(SMC_CLA_CDFDCSR_REG_ADDR) != CLADBG_CLA_CDFDCSR_EXPECT) goto fail; \
+        if (SMC_RD64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR) != CLADBG_CLA_CTRLSTATUS_EXPECT) \
+            goto fail; \
+        if (SMC_RD64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR) != (eap0_expect)) goto fail; \
+        if (SMC_RD64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR) != 0ull) goto fail; \
+        SMC_WR32(SC4, (uint32_t)(SMC_RD64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR) & 0xFFFFFFFFu)); \
+        SMC_WR32(SC5, (uint32_t)((SMC_RD64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR) >> 32) & 0xFFFFFFFFu)); \
+        SMC_WR32(SC6, 0u); \
+        SMC_WR32(SC7, 0u); \
+        SMC_FENCE(); \
     } while (0)
 
 int main(void) {
@@ -74,8 +66,7 @@ int main(void) {
     SMC_WR32(SC7, 0u);
     SMC_WR32(SC9, 0u);
     SMC_FENCE();
-    if (SMC_RD32(SC0) != 0u || SMC_RD32(SC2) != 0u || SMC_RD32(SC3) != 0u)
-        goto fail;
+    if (SMC_RD32(SC0) != 0u || SMC_RD32(SC2) != 0u || SMC_RD32(SC3) != 0u) goto fail;
 
     SMC_WR64(SMC_CLA_CDFDCSR_REG_ADDR, 1ull << 63);
     SMC_WR64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR, CLADBG_CLA_CTRLSTATUS_EXPECT);
@@ -83,22 +74,17 @@ int main(void) {
     SMC_WR64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR, CLADBG_CLA_EAP1_RELEASE);
     SMC_WR32(SC1, CLADBG_ARM_TOKEN);
     SMC_FENCE();
-    if (SMC_RD64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR) != CLADBG_CLA_EAP0_RELEASE)
-        goto fail;
-    if (SMC_RD64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR) != CLADBG_CLA_EAP1_RELEASE)
-        goto fail;
+    if (SMC_RD64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR) != CLADBG_CLA_EAP0_RELEASE) goto fail;
+    if (SMC_RD64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR) != CLADBG_CLA_EAP1_RELEASE) goto fail;
     SMC_WR32(SC4, (uint32_t)((uint64_t)CLADBG_CLA_EAP0_RELEASE & 0xFFFFFFFFu));
-    SMC_WR32(SC5, (uint32_t)(((uint64_t)CLADBG_CLA_EAP0_RELEASE >> 32) &
-                             0xFFFFFFFFu));
+    SMC_WR32(SC5, (uint32_t)(((uint64_t)CLADBG_CLA_EAP0_RELEASE >> 32) & 0xFFFFFFFFu));
     SMC_WR32(SC6, (uint32_t)((uint64_t)CLADBG_CLA_EAP1_RELEASE & 0xFFFFFFFFu));
-    SMC_WR32(SC7, (uint32_t)(((uint64_t)CLADBG_CLA_EAP1_RELEASE >> 32) &
-                             0xFFFFFFFFu));
+    SMC_WR32(SC7, (uint32_t)(((uint64_t)CLADBG_CLA_EAP1_RELEASE >> 32) & 0xFFFFFFFFu));
     SMC_WR32(SC0, CLADBG_INIT_RELEASE_OK);
     SMC_FENCE();
 
     WAIT_RSP(CLADBG_READY, ok);
-    if (!ok)
-        goto fail;
+    if (!ok) goto fail;
 
     SMC_DELAY_ITERS(CLADBG_HOLD_ITERS);
 
@@ -122,8 +108,7 @@ int main(void) {
     SMC_FENCE();
     SMC_DELAY_ITERS(CLADBG_HOLD_ITERS);
     WAIT_SC9(CLADBG_DV_INVERT2_A, ok);
-    if (!ok)
-        goto fail;
+    if (!ok) goto fail;
 
     /* action[5] unmapped: restores mpc_reset_run_req=1. Wait for DV second
      * IC_RESET edge (cla[2]=0) then resume. */
@@ -133,8 +118,7 @@ int main(void) {
     SMC_FENCE();
     SMC_DELAY_ITERS(CLADBG_HOLD_ITERS);
     WAIT_SC9(CLADBG_DV_INVERT2_B, ok);
-    if (!ok)
-        goto fail;
+    if (!ok) goto fail;
 
     FIRE_ACTION(CLADBG_CLA_EAP0_ACT3);
     CHECK_PUBLISH(CLADBG_CLA_EAP0_ACT3);
@@ -150,8 +134,7 @@ int main(void) {
     SMC_WR32(SC2, CLADBG_GO_IDLE);
     SMC_FENCE();
     WAIT_RSP(CLADBG_IDLE_ACK, ok);
-    if (!ok)
-        goto fail;
+    if (!ok) goto fail;
     SMC_DELAY_ITERS(CLADBG_HALT_SETTLE_ITERS);
     FIRE_ACTION(CLADBG_CLA_EAP0_ACT3);
     CHECK_PUBLISH(CLADBG_CLA_EAP0_ACT3);
@@ -161,12 +144,10 @@ int main(void) {
 
     SMC_WR32(SC0, CLADBG_DONE);
     SMC_FENCE();
-    for (;;)
-        __asm__ volatile("wfi");
+    for (;;) __asm__ volatile("wfi");
 
 fail:
     SMC_WR32(SC0, CLADBG_TEST_FAIL);
     SMC_FENCE();
-    for (;;)
-        __asm__ volatile("wfi");
+    for (;;) __asm__ volatile("wfi");
 }

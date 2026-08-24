@@ -45,9 +45,8 @@ static int run_cla_debug_consumer(void) {
     sep_smc_open_window();
     {
         uint32_t s0 = READ_REG(CLADBG_STATUS_ALIAS_ADDR);
-        if (s0 == CLADBG_ACT0_ARMED || s0 == CLADBG_ACT1_ARMED ||
-            s0 == CLADBG_ACT2_ARMED || s0 == CLADBG_ACT5_ARMED ||
-            s0 == CLADBG_A3_BUSY_ARMED || s0 == CLADBG_A3_BUSY_HELD ||
+        if (s0 == CLADBG_ACT0_ARMED || s0 == CLADBG_ACT1_ARMED || s0 == CLADBG_ACT2_ARMED ||
+            s0 == CLADBG_ACT5_ARMED || s0 == CLADBG_A3_BUSY_ARMED || s0 == CLADBG_A3_BUSY_HELD ||
             s0 == CLADBG_A3_IDLE_ARMED || s0 == CLADBG_DONE) {
             goto busy_poll;
         }

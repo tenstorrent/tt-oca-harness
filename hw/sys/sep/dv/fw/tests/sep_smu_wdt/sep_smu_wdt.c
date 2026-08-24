@@ -100,12 +100,10 @@ static int arm_wdt_and_wait_bite(void) {
     if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0u) != 0) {
         return -2;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT005_BARK_THOLD) !=
-        0) {
+    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT005_BARK_THOLD) != 0) {
         return -3;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT005_BITE_THOLD) !=
-        0) {
+    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT005_BITE_THOLD) != 0) {
         return -4;
     }
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
@@ -114,8 +112,7 @@ static int arm_wdt_and_wait_bite(void) {
          AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) != 0u) {
         return -5;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR,
-                AON_TIMER__WDOG_CTRL__ENABLE_bm) != 0) {
+    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm) != 0) {
         return -6;
     }
 

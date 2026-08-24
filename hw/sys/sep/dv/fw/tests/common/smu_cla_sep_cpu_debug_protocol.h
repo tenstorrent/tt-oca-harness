@@ -42,8 +42,8 @@
 #define CLADBG_A3_BUSY_ARMED 0x00500003 /* action[3] PMU-halt fired, SEP BUSY; NO action[4] yet */
 #define CLADBG_A3_BUSY_HELD 0x00500005  /* action[3] held-window ended; action[4] about to fire */
 #define CLADBG_A3_IDLE_ARMED 0x00500004 /* action[3] PMU-halt fired, SEP IDLE(wfi) */
-#define CLADBG_ACT2_ARMED 0x00500007 /* action[2] reset-run (inverted); net + CHK-INVERT-2 */
-#define CLADBG_ACT5_ARMED 0x00500008 /* action[5] unmapped fired (SEP running); negative leg */
+#define CLADBG_ACT2_ARMED 0x00500007    /* action[2] reset-run (inverted); net + CHK-INVERT-2 */
+#define CLADBG_ACT5_ARMED 0x00500008    /* action[5] unmapped fired (SEP running); negative leg */
 #define CLADBG_DONE 0x0050000F
 #define CLADBG_TEST_FAIL 0xFFFFFFFF
 

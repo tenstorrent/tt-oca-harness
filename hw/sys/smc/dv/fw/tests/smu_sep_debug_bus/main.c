@@ -35,12 +35,12 @@ SMC_STACKLESS_ENTRY(smu_sep_debug_bus_entry)
 #define CLA_DFDCSR SMC_TOP_SMC_CLA_CDFDCSR_BASE_ADDR
 
 /* W2C is rise-edge only. Drop bit32 first so a later write of bit32 pulses. */
-#define DBG017_W2C_PULSE()                                                     \
-    do {                                                                       \
-        SMC_WR64(CLA_STATUS, 0ULL);                                            \
-        SMC_FENCE();                                                           \
-        SMC_WR64(CLA_STATUS, DBG017_CLA_W2C);                                  \
-        SMC_FENCE();                                                           \
+#define DBG017_W2C_PULSE() \
+    do { \
+        SMC_WR64(CLA_STATUS, 0ULL); \
+        SMC_FENCE(); \
+        SMC_WR64(CLA_STATUS, DBG017_CLA_W2C); \
+        SMC_FENCE(); \
     } while (0)
 
 __attribute__((naked, section(".text"), used)) void smu_sep_debug_bus_smc_pass_loop(void) {
@@ -165,8 +165,7 @@ int main(void) {
         }
         SMC_DELAY_ITERS(256);
     }
-    if ((st & 1ULL) == 0ULL ||
-        (((snap >> 48) & 0xFFFFULL) != (uint64_t)DBG017_MARKER_TRACE16)) {
+    if ((st & 1ULL) == 0ULL || (((snap >> 48) & 0xFFFFULL) != (uint64_t)DBG017_MARKER_TRACE16)) {
         /* Exact match missed after CDC hold. Dump live CLA + MATCH/MASK; do
          * not re-arm always-on (that is not CHK-BUS-UPDATE). */
         uint64_t match_rb = SMC_RD64(CLA_MATCH0);
@@ -176,8 +175,8 @@ int main(void) {
         SMC_WR32(DBG017_SMC_SCRATCH12, (uint32_t)snap);
         SMC_WR32(DBG017_SMC_SCRATCH13, (uint32_t)(snap >> 32));
         SMC_WR32(DBG017_SMC_SCRATCH14, (uint32_t)match_rb);
-        SMC_WR32(DBG017_SMC_SCRATCH15, (uint32_t)(match_rb >> 32) |
-                 (((uint32_t)(mask_rb >> 32) & 0xFFFFu) << 16));
+        SMC_WR32(DBG017_SMC_SCRATCH15,
+                 (uint32_t)(match_rb >> 32) | (((uint32_t)(mask_rb >> 32) & 0xFFFFu) << 16));
         SMC_FENCE();
         goto fail;
     }

@@ -3,8 +3,10 @@
 
 /*
  * DV-TESTCASE-CONTRACT: SMC_I2C_005 ANCHOR: smc_i2c_target_sanity_test
- * DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: 5c972994c38c327359c4bcd5203212319aceeb4b4e34308f503a5869797e28e4
- * DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/tb/doc/testplan/i2c/dv_vplan_gen/SMC_I2C_VPLAN_DETAIL.md @ artifact_revision 1 ENV: c-fw
+ * DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256:
+ * 5c972994c38c327359c4bcd5203212319aceeb4b4e34308f503a5869797e28e4 DV-TESTCASE-CONTRACT-SOURCE:
+ * hw/sys/smc/dv/tb/doc/testplan/i2c/dv_vplan_gen/SMC_I2C_VPLAN_DETAIL.md @ artifact_revision 1 ENV:
+ * c-fw
  */
 
 /**
@@ -236,7 +238,8 @@ static void ctrl_write_bytes_flags(uint8_t addr, const uint8_t *data, uint32_t l
                 write_reg(ctrl_base() + i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0)),
                           ist.w);
             }
-            write_reg(ctrl_base() + i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR(0)),
+            write_reg(ctrl_base() +
+                          i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR(0)),
                       0xFFFFFFFFu);
         }
         wait_fmtempty("CTRL_WR_NAKOK_IDLE", true);
@@ -407,7 +410,8 @@ static void step_s4_tx_read(void) {
     wait_fmtempty("S4_FMT", true);
 
     for (i = 0; i < 4u; i++) {
-        got[i] = (uint8_t)read_reg(ctrl_base() + i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0)));
+        got[i] =
+            (uint8_t)read_reg(ctrl_base() + i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0)));
         if (got[i] != expect[i]) {
             fail_with(0xBAD00050, "S4 RDATA mismatch");
         }
@@ -494,7 +498,8 @@ static void step_s5_stretch_ctrl(void) {
     wait_rxlvl(2, "S5_RX");
     wait_fmtempty("S5_FMT", true);
     for (i = 0; i < 2u; i++) {
-        got[i] = (uint8_t)read_reg(ctrl_base() + i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0)));
+        got[i] =
+            (uint8_t)read_reg(ctrl_base() + i2c_off(SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0)));
         if (got[i] != expect[i]) {
             fail_with(0xBAD00062, "S5 RDATA after confirm mismatch");
         }
