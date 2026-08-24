@@ -11,10 +11,10 @@
 
 This is the high-level plan for verifying the SEP subsystem in the open-source
 tree. It says *what each phase is for*, *how coverage is counted*, and *what
-every test must satisfy*. Phase 1 is signed off. Phase 2 is the active
-cocotb work. Phase 2+ is the completeness extension of that same
-environment (29 of 34 iconic rows before UVM). Phase 3 is a future UVM
-environment, not an execute list.
+every test must satisfy*. Phase 1 is signed off. Phase 2 baseline (25 of
+34) is closed. Phase 2+ is the active cocotb close-out (32 of 34 iconic
+rows before UVM). Phase 3 is a future UVM environment, not an execute
+list.
 
 It is not a test-by-test contract. Those live in the per-phase verification
 plans (see <<documents>>). A passing run is never a substitute for those
@@ -53,7 +53,8 @@ repeat each other.
 | Completeness extension of Phase 2. Closes the remaining in-scope
   scorecard rows before a UVM bench starts. Same quality bar; no new
   environment.
-| Goal 29 of 34 `PROVEN` in-scope rows. Detail:
+| Goal 32 of 34 `PROVEN` in-scope rows. KM command stays parked;
+  inbound ownership stays an RTL close. Detail:
   link:verification_plan_phase2.adoc#phase2-plus[Phase 2+].
 
 | *Phase 3*
@@ -151,30 +152,27 @@ into the matrix. Former leftover names are mapped there to `COVERED_BY` /
 `MERGED_INTO` or held for Phase 3. Do not port them as 69 directed
 tests. There is no separate improvement worklist.
 
-The active Phase 2 attention set is entropy (ESRC / DRBG / EDN),
-lifecycle, eFuse, and Key Manager.
+The active Phase 2+ attention set is entropy (ESRC / DRBG / EDN),
+lifecycle, eFuse, Key Manager, and fabric.
 
 Detail: `verification_plan_phase2.adoc`.
 
-=== Phase 2+ — 29 of 34 before UVM
+=== Phase 2+ — 32 of 34 before UVM
 
-Same cocotb environment. Five of the seven close-out rows are `PROVEN`
+Same cocotb environment. Five close-out rows are already `PROVEN`
 (program × lock, demote including lock, standalone RMA, live outbound
-remap, ESRC watermark arming). Remaining: KM command set (parked last)
-and inbound ownership (the existing matrix keeps CHK-OWNERSHIP-WINDOW
-hard; the row is `PROVEN` when the RTL answers DECERR to a non-CPU
-master programming the inbound filter, as `hw/sys/sep/doc/fabric.adoc`
-requires and the RTL does not today). Phase 3 does not start until this
-close-out finishes.
+remap, ESRC watermark arming). The scorecard is 27 of 34. Five iconic
+`GAP`s complete the 32-of-34 close-out: SEC_DIS override, eFuse
+set-only monotonicity, local-master alias datapath, ESRC `FIPS_LOCK`
+plus alert delivery, and the KM key/policy vault. Remaining after
+that: KM command set (parked) and inbound ownership (RTL; the existing
+matrix keeps CHK-OWNERSHIP-WINDOW hard). Phase 3 does not start until
+this close-out finishes, and its first deliverable is UVM bring-up
+plus smoke, not these rows.
 
-A review of spec against RTL against DV added four further `GAP` rows —
-SEC_DIS override, eFuse set-only monotonicity, local-master alias remap
-datapath, and ESRC configuration lock and alert delivery. These are *not* in
-the Phase 2+ close-out above; their vehicles are listed in
-`verification_plan_phase3.adoc` and the scorecard goal is unchanged at
-29 of 34. SEC_DIS is the one to argue about: it is cheap here and it is
-the largest open-everything lever in the design, so pulling it into
-Phase 2+ is a scorecard-owner call, not a default.
+Implementation order and the reachability / spec-vs-RTL traps live in
+link:verification_plan_phase2.adoc#phase2-plus[Phase 2+]. Do not XFAIL
+a spec-vs-RTL checker.
 
 Detail: link:verification_plan_phase2.adoc#phase2-plus[Phase 2+].
 
@@ -199,7 +197,7 @@ Two different numbers. Do not mix them.
 Feature coverage (the cocotb phases)::
 The iconic claim for each in-scope IP, graded on <<iconic-scorecard>>.
 These are scorecard goals, not measurements: floor 18 of 34 in-scope
-rows `PROVEN`, Phase 2 goal 25 of 34, Phase 2+ goal 29 of 34 before UVM.
+rows `PROVEN`, Phase 2 goal 25 of 34, Phase 2+ goal 32 of 34 before UVM.
 There is no SystemVerilog covergroup number for this — the directed
 environment has none, and RTL SVA is compiled out under the Verilator
 acceptance flow. A `PARTIAL` feature (a test exists, the iconic claim is
@@ -239,9 +237,11 @@ Do not treat a `PARTIAL` as done by pointing at a graded entry.
 
 Twenty-seven of thirty-four in-scope rows are `PROVEN`, which clears the
 floor of 18 and the Phase 2 goal of 25 of 34. Phase 2+ remaining before
-29 of 34: the KM command-set vehicle (parked last) and inbound ownership
-(RTL). The KM key/policy vault row stays `GAP` because no vehicle exists
-for it yet.
+32 of 34: the five iconic `GAP`s named in
+link:verification_plan_phase2.adoc#phase2-plus[Phase 2+] (SEC_DIS,
+eFuse set-only, local-master alias, ESRC `FIPS_LOCK` plus alert, KM
+vault). After those, KM command stays parked and inbound ownership
+stays an RTL close.
 
 [cols="2,2,3",options="header"]
 |===
@@ -325,13 +325,12 @@ for it yet.
 
 | KM key/policy vault: slot extent, seal, and SRAM write-lock
 | GAP
-| No test drives the KPV slot lifecycle. `hw/ip/key_manager/doc/architecture.adoc`
-  specifies 64 slots, a sealed slot that may be erased but is then retired
-  rather than reused, and slot extent held by the firmware key registry rather
-  than a CSR field; `hw/ip/key_manager/regs/km_csr.rdl` carries
-  `IRQ_STATUS.SRAM_WRITE_LOCK_ERR` for a write to a write-locked region. None
-  of that is exercised. The Phase 2+ Key Manager command-device entry carries
-  the seal contract; slot extent and the SRAM write-lock have no vehicle.
+| No test drives the KPV slot lifecycle. Phase 2+
+  `sep_km_key_policy_vault_test` owns slot extent and
+  `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`. Seal stays on the KM command-device
+  vehicle. Same firmware-contract caution as that vehicle: do not write
+  the card against `firmware.adoc` if shipped `rom_main` disagrees.
+  Implement last among the five.
 
 | Entropy ESRC → DRBG → EDN consume
 | PROVEN
@@ -348,9 +347,9 @@ for it yet.
   that the lock clears only on a hard reset. Separately the health
   monitor's alert path — the enable-gated sticky causes that reach the
   PIC — is only ever asserted to stay zero, so the alert is never proven
-  to propagate. Health-test quality itself is deferred in
-  `verification_plan_phase3.adoc`; the config lock and the alert path
-  are not.
+  to propagate. Health-test quality itself stays Phase 3. Phase 2+ owns
+  the lock and the alert as two vehicles on this row:
+  `sep_esrc_fips_lock_test` and `sep_esrc_alert_delivery_test`.
 
 | ESRC health-test watermark arming
 | PROVEN
@@ -424,13 +423,13 @@ for it yet.
   (`sep_lifecycle_ctrl.sv` forces all-ones; `efuse_token_processing.sv`
   exposes the shadow bank without `fuse_sense_done`). No test drives the
   token, so `sec_dis` is 0 in every run and the golden's override branch
-  is never taken against the DUT. First question for whoever writes the
-  vehicle: the comparator matches a SHA-256 digest of the written token
+  is never taken against the DUT. Phase 2+ `sep_sec_dis_override_test`.
+  First job: the comparator matches a SHA-256 digest of the written token
   against a metal-fixed expected constant that is all-zero in this tree,
-  so establish whether a match is reachable in simulation at all before
-  designing around it. An unreferenced firmware test
+  so settle whether a match is reachable in simulation before scoping the
+  rest. Do not add a backdoor. An unreferenced firmware test
   (`fw/tests/sep_efuse_fw_token_match_test`) already asserts a match on a
-  zero token; it is in no testlist, so it has never run to confirm that.
+  zero token; it is in no testlist.
 
 | eFuse set-only fields (anti-rollback monotonicity)
 | GAP
@@ -442,7 +441,8 @@ for it yet.
   eFuse shadow register at all, so that OR-merge never runs: fuse values
   reach the DUT through the staged OTP image and the program path, which
   is a different mechanism. The out-of-scope secure-boot row below is
-  firmware signature checking, not this fuse-side enforcement.
+  firmware signature checking, not this fuse-side enforcement. Phase 2+
+  `sep_efuse_set_only_monotonicity_test`.
 
 | Local-master alias remap datapath (16 regions)
 | GAP
@@ -452,6 +452,10 @@ for it yet.
   Coverage is CSR-only (`sep_fabric_remap_filter_csr_bank_test`); no test
   drives a beat through a programmed region, so a wrong offset, an
   inverted valid bit, or a stuck cacheable override would pass.
+  Phase 2+ `sep_fabric_local_alias_datapath_test`. Spec wants valid and
+  cacheable bits; RTL has neither and rewrites unprogrammed regions.
+  Prove offset on a real beat. Keep any missing-bit check a hard FAIL.
+  Do not XFAIL.
 
 | Secure boot negative (bad sig / revoke / rollback)
 | out
@@ -578,7 +582,7 @@ engine. It does not exist in this tree.
 | `verification_plan_phase2.adoc`
 | Phase 2 contract plus the Phase 2+ extension (`#phase2-plus`).
   Graded iconic entries, pending in-place upgrades, named remaining
-  `GAP`s, and the 28-of-29 close-out before UVM. Former leftover names
+  `GAP`s, and the 32-of-34 close-out before UVM. Former leftover names
   are mapped, not listed as a worklist.
 
 | `verification_plan_phase3.adoc`

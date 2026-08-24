@@ -46,7 +46,7 @@ here: extend a Phase 2 test that already owns that claim, or add the
 named new test.
 Do not stretch the Phase 1 e2e / smoke entry. New tests are created
 from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
-is the completeness extension: same cocotb environment, goal 29 of 34
+is the completeness extension: same cocotb environment, goal 32 of 34
 `PROVEN` scorecard rows, finished before Phase 3 starts a UVM bench.
 Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
 directed name is not coverage. There is no separate improvement
@@ -65,7 +65,7 @@ eFuse, and Key Manager. See <<attention>>.
   31 Phase 1 entries in total)
 
 | Graded Phase 2 entries
-| 29
+| 30
 | <<entries>> below
 
 | Phase 1 handoff leftovers
@@ -82,8 +82,8 @@ eFuse, and Key Manager. See <<attention>>.
 | Phase 2 names; <<phase2-plus>> executes them
 
 | Phase 2+ close-out
-| 7 scorecard rows
-| <<phase2-plus>> — 29 of 34 before UVM
+| 12 scorecard rows
+| <<phase2-plus>> — 32 of 34 before UVM
 
 | Landed existing-test upgrades
 | see <<existing-upgrades>>
@@ -2486,8 +2486,9 @@ no test asserts them today:
   and says unprogrammed regions are transparent pass-throughs. The RTL register
   has neither a valid bit nor a cacheable bit, and rewrites the address
   unconditionally, so an unprogrammed region zeroes the upper address bits
-  instead of passing through. The outbound sequence depends on the RTL
-  behaviour, so no test can catch the divergence.
+  instead of passing through. Phase 2+ `sep_fabric_local_alias_datapath_test`
+  owns the live-beat offset proof and keeps any missing-bit check a hard
+  FAIL. Do not XFAIL.
 * `hw/sys/sep/doc/attack_countermeasures.adoc` states "exactly 10" Class 2 scan
   roots. The RTL instantiates an eleventh on the entropy-pool EDN leg that is
   absent from the list, and nothing lints the manifest against the RTL. The
@@ -2526,7 +2527,7 @@ ring oscillator, KM wipe, and inbound negative product are Phase 3 T.B.D.
 
 These IPs still have an iconic hole or a leftover *claim* listed on the
 signed-off Phase 1 handoff table. Closing that claim is Phase 2
-scorecard work (toward 25 of 34) and <<phase2-plus>> (29 of 34 before UVM).
+scorecard work (toward 25 of 34) and <<phase2-plus>> (32 of 34 before UVM).
 Do not stretch the Phase 1 e2e / smoke entry. Extend a Phase 2 test that
 already owns the claim, or add the named new Phase 2 test.
 
@@ -2535,26 +2536,34 @@ already owns the claim, or add the named new Phase 2 test.
 | Area | Scorecard row | Phase 2 action
 
 | Entropy (ESRC / DRBG / EDN)
-| Consume and dual-sink bit-exact CHK5 routing are `PROVEN`
-| Health tests and the ring oscillator stay Phase 3 T.B.D.
+| Consume, dual-sink bit-exact CHK5, and watermark arming are `PROVEN`.
+  `FIPS_LOCK` plus alert delivery is a Phase 2+ `GAP` (two vehicles,
+  one scorecard row).
+| Health-test *quality* and the ring oscillator stay Phase 3 T.B.D.
 
 | Lifecycle
-| `feat_ctrl` vs `LC_STATE`, demote product, and standalone RMA are
-  `PROVEN`
+| `feat_ctrl` vs `LC_STATE`, demote product including lock, and
+  standalone RMA are `PROVEN`. SEC_DIS override is a Phase 2+ `GAP`.
 | Stitch stays the LC→`feat_ctrl` e2e.
 
 | eFuse
-| Sense / shadow / persist and program × lock are `PROVEN`
-| Token-match *fault* DV (sticky IRQ / PIC-mask, common-mode limit,
-  which-token bits, JTAG read after RMA_CHIP) is `PROVEN` on
-  `sep_efuse_rma_token_rand_test` (Verilator `20260824_140117`) and
-  `sep_efuse_token_match_fault_pic_test` (Verilator `20260824_140917`).
+| Sense / shadow / persist and program × lock are `PROVEN`. Token-match
+  *fault* DV is `PROVEN`. Set-only monotonicity is a Phase 2+ `GAP`.
+| Token-match fault: `sep_efuse_rma_token_rand_test` (Verilator
+  `20260824_140117`) and `sep_efuse_token_match_fault_pic_test`
+  (Verilator `20260824_140917`).
 
 | Key Manager
-| Sideload consume is `PROVEN`; mailbox command set is `GAP`
-| Parked last: <<phase2-plus>> RAND-REP (generate / transfer /
-  revoke-or-shred / illegal→error). Sideload KATs stay consume proofs.
-  Wipe stays Phase 3 T.B.D.
+| Sideload consume is `PROVEN`. Mailbox command set is `GAP` (parked;
+  leftover after 32 of 34). Key/policy vault is a Phase 2+ `GAP`
+  (implement last among the five).
+| Sideload KATs stay consume proofs. Wipe stays Phase 3 T.B.D.
+
+| Fabric
+| Live outbound remap is `PROVEN`. Inbound ownership stays `PARTIAL`
+  (RTL). Local-master alias datapath is a Phase 2+ `GAP`.
+| CHK-OWNERSHIP-WINDOW stays hard. Alias offset is a real-beat proof;
+  missing valid/cacheable bits stay a hard FAIL.
 |===
 
 [[pending-upgrades]]
@@ -2573,8 +2582,10 @@ not a feature-level `PROVEN` on the scorecard — see
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard]. The rows
 below are feature `GAP`s (no test yet for that iconic claim). Checker
 tables stay binary; `PARTIAL` is a feature grade there, not a checker
-grade here. Program × lock, demote, standalone RMA, and live outbound
-remap are graded in <<entries>>. What remains before UVM is the KM
+grade here. Program × lock, demote including lock, standalone RMA, live
+outbound remap, and watermark arming are graded in <<entries>>. What
+remains before 32 of 34 is the five Phase 2+ `GAP`s below, in
+implementation order. After those, remaining before UVM is the KM
 command vehicle (parked last) and inbound ownership (an RTL close, not a
 new test).
 
@@ -2582,30 +2593,62 @@ new test).
 |===
 | Remaining work | How | Former names that map here
 
+| eFuse set-only monotonicity
+| Shadow-path OR-merge: a write of 0 cannot clear a set bit on version,
+  revocation, and required-signer fields. Never `LC_STATE`. Implement
+  first among the five.
+| `sep_efuse_set_only_monotonicity_test`
+
+| ESRC `FIPS_LOCK` and alert delivery
+| Two vehicles, one scorecard row. Lock: a post-lock write to a
+  certified-configuration field is rejected; the lock clears only on
+  `rst_ni`. Alert: a health-test alert reaches PIC source 16, then
+  W1C-clears. Health-test *quality* stays Phase 3.
+| `sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`
+
+| SEC_DIS security-disable override
+| Match the metal-fixed digest so `sec_dis` asserts; prove
+  `feat_ctrl` all-ones and boot-with-sense-incomplete. Reachability of
+  the all-zero expected digest is the first job. No backdoor.
+| `sep_sec_dis_override_test`
+
+| Local-master alias remap datapath
+| Program a region, drive a real beat, prove the offset. Spec wants
+  valid and cacheable bits; RTL has neither. Keep any missing-bit check
+  a hard FAIL. Do not XFAIL.
+| `sep_fabric_local_alias_datapath_test`
+
+| KM key/policy vault
+| Slot extent and `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`. Seal stays on the
+  command-device vehicle. Implement last among the five. Do not write
+  the card against `firmware.adoc` if shipped `rom_main` disagrees.
+| `sep_km_key_policy_vault_test`
+
 | Key Manager as a command device
-| One RAND-REP (generate / transfer / revoke-or-shred / illegal→error) plus
-  mailbox protocol RANDCFG if it does not fit the same test
+| One RAND-REP (generate / transfer / revoke-or-shred / illegal→error)
+  plus mailbox protocol RANDCFG if it does not fit the same test.
+  Parked last (leftover after 32 of 34).
 | `sep_km_command_set_rand_test`, `sep_km_mailbox_protocol_rand_test`;
   `MERGED_INTO`: `sep_km_uvm_cmd_hw_ver_test`, `sep_km_uvm_mailbox_cmd_test`
 |===
 
 [[phase2-plus]]
-== Phase 2+ — 29 of 34 before UVM
+== Phase 2+ — 32 of 34 before UVM
 
 Same cocotb / PyUVM + Verilator environment as Phase 2. Same DUT
 (`sep_wrapper`), same quality bar, same fuse/run-mode rules. Phase 2+
 does not start a UVM bench — that is Phase 3. It closes the remaining
-in-scope rows that this phase chose to finish before UVM (29 of 34).
-Rows that stay `GAP` (KM vault, and the four spec-review gaps parked
-in `verification_plan_phase3.adoc`) are not a silent drop: they are
-out of this close-out on purpose.
+in-scope rows that this phase chose to finish before UVM (32 of 34).
+KM command set stays parked. Inbound ownership stays an RTL close.
+Do not leave these five `GAP`s as Phase 3 pretend-UVM items.
 
 Phase 2 keeps its floor of 18 of 34 and its goal of 25 of 34. Five of
-the seven Phase 2+ rows are `PROVEN`. The scorecard is 27 of 34.
-Remaining before 29 of 34: KM command set (parked last) and inbound
-ownership (RTL). The KM key/policy vault row stays `GAP` because no
-vehicle exists for it yet. Do not stretch a
-Phase 1 e2e / smoke entry. Do not XFAIL a spec-vs-RTL checker.
+the twelve Phase 2+ rows are `PROVEN`. The scorecard is 27 of 34.
+Remaining before 32 of 34: the five `GAP`s below, in implementation
+order (set-only, `FIPS_LOCK` plus alert, SEC_DIS, local-master alias,
+KM vault last). Remaining after that: KM command set (parked last)
+and inbound ownership (RTL). Do not stretch a Phase 1 e2e / smoke
+entry. Do not XFAIL a spec-vs-RTL checker.
 
 [cols="2,1,3,3",options="header"]
 |===
@@ -2618,7 +2661,7 @@ Phase 1 e2e / smoke entry. Do not XFAIL a spec-vs-RTL checker.
   DRBG fault during a command must report `IRQ_STATUS.DRBG_ERR` rather
   than an AXI error response.
   Mailbox protocol RANDCFG in the same test unless it does not fit.
-  Parked last.
+  Parked last (leftover after 32 of 34).
 | `sep_km_command_set_rand_test`
   (`sep_km_mailbox_protocol_rand_test` only if the protocol does not fit)
 
@@ -2631,7 +2674,7 @@ Phase 1 e2e / smoke entry. Do not XFAIL a spec-vs-RTL checker.
 | PROVEN
 | RAND-REP: LC × demote × a small legal DIS subset. `feat_ctrl` vs
   golden *and* one live filter/debug-gate. The Phase 1 stitch test stays
-  the LC→`feat_ctrl` e2e.
+  the LC→`feat_ctrl` e2e. Demote lock is on this vehicle.
 | `sep_lcc_demote_feat_ctrl_matrix_test`
 
 | RMA token match → LC update
@@ -2662,11 +2705,56 @@ Phase 1 e2e / smoke entry. Do not XFAIL a spec-vs-RTL checker.
   `CTRL.RESET`. Selector survives `CTRL.RESET`; unsupported maps to
   `REPCNT_HI`; a low watermark falls once events are allowed.
 | `sep_esrc_ht_watermark_arming_test`
+
+| eFuse set-only fields (anti-rollback monotonicity)
+| GAP
+| Implement first. Shadow-path OR-merge on version, revocation, and
+  required-signer fields. A write of 0 cannot clear a set bit. Never
+  `LC_STATE`. Program × lock stays a different mechanism.
+| `sep_efuse_set_only_monotonicity_test`
+
+| ESRC configuration lock and alert delivery
+| GAP
+| Two vehicles, one row. Lock: certified-configuration fields become
+  read-only after `FIPS_LOCK.LOCK=1`; the lock is write-1-only and
+  clears only on `rst_ni`. Alert: a health-test persistent failure
+  reaches PIC source 16 (`hw/sys/sep/doc/interrupts.adoc`); W1C-clear
+  and read back 0. Health-test *quality* stays Phase 3.
+| `sep_esrc_fips_lock_test`,
+  `sep_esrc_alert_delivery_test`
+
+| SEC_DIS security-disable override
+| GAP
+| After set-only and ESRC lock. First job: settle whether a SHA-256
+  match against the metal-fixed all-zero expected digest is reachable
+  in this tree. No backdoor. Then prove `feat_ctrl` all-ones regardless
+  of LC / DIS, and that the SEP boots with fuse sense incomplete.
+| `sep_sec_dis_override_test`
+
+| Local-master alias remap datapath
+| GAP
+| Program a region, drive a real beat, prove the offset. Spec
+  (`fabric.adoc`) wants valid and cacheable bits and transparent
+  unprogrammed regions; RTL has neither bit and rewrites unprogrammed
+  regions. Keep any missing-bit check a hard FAIL. Do not XFAIL.
+| `sep_fabric_local_alias_datapath_test`
+
+| KM key/policy vault
+| GAP
+| Implement last among the five. Slot extent and
+  `IRQ_STATUS.SRAM_WRITE_LOCK_ERR` / `SRAM_WRITE_LOCK_VIOLATION`. Seal
+  stays on the command-device vehicle. Same firmware-contract caution:
+  do not write the card against `firmware.adoc` if shipped `rom_main`
+  disagrees.
+| `sep_km_key_policy_vault_test`
 |===
 
-Five vehicles are graded in <<entries>>. The remaining planned entry
-(KM command set) is not a grade until a kept Verilator log proves every
-checker. Inbound ownership is an existing-test RTL close, not a new test.
+Five close-out vehicles are graded in <<entries>>. The five
+further planned entries (set-only, `FIPS_LOCK`, alert, SEC_DIS,
+local-master alias, KM vault — lock and alert share a scorecard row)
+are not a grade until a kept Verilator log proves every checker. KM
+command set stays parked. Inbound ownership is an existing-test RTL
+close, not a new test.
 
 [[sep_esrc_ht_watermark_arming_test]]
 === sep_esrc_ht_watermark_arming_test
@@ -2785,6 +2873,151 @@ destroys its material and leaves the slot retired rather than reusable;
 a DRBG fault during a command raises `IRQ_STATUS.DRBG_ERR` and does not
 surface as an AXI error response; an illegal command returns the
 documented error and does not change key state.
+
+=== Planned: sep_efuse_set_only_monotonicity_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`; omit `+skip_fuse_sense` so the shadow bank is live
+Testlist:: `efuse_lcc.toml`
+Randomization:: RANDCFG — which legal set-only field and which bit
+pattern come from the run seed; the OR-merge contract is directed
+
+Implement first among the five. Scope is the shadow-register write path
+that OR-merges new data with the stored value
+(`hw/sys/sep/doc/periphs.adoc`): `BL1_VERSION`, `BL2_VERSION`,
+`CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`. A write of
+zero cannot clear a set bit. Program × lock is a different mechanism;
+never program `LC_STATE`.
+
+Checkers (planned):: after a known 1 is sensed into a legal set-only
+field, a frontdoor write of 0 leaves that bit 1; a write that sets a
+previously-0 bit sticks; a subsequent write of 0 cannot clear it;
+readback matches the OR of stored and written data, not the write data
+alone.
+
+=== Planned: sep_esrc_fips_lock_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`
+Testlist:: `crypto.toml`
+Randomization:: RANDCFG — which certified-configuration field is the
+post-lock write target comes from the run seed; lock/unlock sequencing
+is directed
+
+One of two vehicles on the ESRC lock-and-alert scorecard row. Health-test
+*quality* stays Phase 3. `FIPS_LOCK.LOCK` is write-1-only; there is no
+debug-unlock path. Locked fields are the CTRL functional bits, health-test
+thresholds and window, ring-oscillator and sample-clock configuration,
+decorrelator setup, and `FIFO_CTRL.ENTROPY_CHURN_ENABLE`
+(`hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc`). Observe FIFOs
+stay writable under lock.
+
+Checkers (planned):: a post-lock write to a certified-configuration
+field is rejected (value unchanged); a write-0 to `FIPS_LOCK` leaves
+LOCK=1; `CTRL.RESET` does not clear the lock; `rst_ni` does; a
+pre-lock write of the same field succeeds so the reject is not a
+stuck register.
+
+=== Planned: sep_esrc_alert_delivery_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
+Testlist:: `crypto.toml`
+Randomization:: RAND-NONE — directed persistent-failure trip
+
+Second vehicle on the same scorecard row. Today's consume tests only
+assert entropy alerts stay zero. This test must trip
+`INTR_STATUS.PERSISTENT_FAILURE` / `MAIN_SM_STATUS.ALERT` by accumulating
+failing health-test windows to `ALERT_THRESHOLD`, prove the interrupt
+reaches PIC source 16 (`hw/sys/sep/doc/interrupts.adoc`), then W1C-clear
+and read back 0. Do not treat health-test *quality* (SP 800-90B cutoffs,
+ring oscillator) as this vehicle's job.
+
+Checkers (planned):: `MAIN_SM_STATUS.ALERT` and
+`INTR_STATUS.PERSISTENT_FAILURE` assert after the threshold; PIC source
+16 is claimed; W1C clears the IP bits and they read back 0; a run that
+never trips the threshold still logs the no-alert path so absence of
+FAIL is not the evidence.
+
+=== Planned: sep_sec_dis_override_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`; omit `+skip_fuse_sense` — boot-with-sense-incomplete
+is part of the claim
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-NONE until the all-zero digest match is shown
+reachable; do not randomize the token until that spike is green
+
+After set-only and ESRC lock. First job, before any override checker:
+the comparator matches a SHA-256 digest of the written token against a
+metal-fixed expected constant that is all-zero in this tree
+(`hw/sys/sep/doc/token_processing.adoc`,
+`hw/sys/sep/doc/security_disable.adoc`). Settle whether a match is
+reachable in simulation. No backdoor; no `force` of `sec_dis`. An
+unreferenced firmware test (`fw/tests/sep_efuse_fw_token_match_test`)
+asserts a zero-token match and is in no testlist — it is a hint, not
+evidence. If the match is unreachable, stop and record that; do not
+fake `sec_dis` to take the golden's override branch.
+
+Checkers (planned):: token match asserts `sec_dis`; `feat_ctrl` is
+all-ones regardless of `LC_STATE` and the DIS vectors; the SEP boots
+with fuse sense incomplete; releasing the match restores fail-closed
+`feat_ctrl`. Do not add a sibling for demote lock.
+
+=== Planned: sep_fabric_local_alias_datapath_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`
+Testlist:: `system.toml`
+Randomization:: RANDCFG — which of the 16 regions and the programmed
+offset come from the run seed; the beat is directed
+
+Distinct from the CPU high-alias window
+(`sep_cpu_ifu_lsu_alias_remap_matrix_test`). Scope is the sixteen
+programmable AP/STEE remappers ahead of the routing demux
+(`hw/sys/sep/doc/fabric.adoc`). CSR programming stays on
+`sep_fabric_remap_filter_csr_bank_test`. This vehicle drives a real
+beat through a programmed region and proves the offset.
+
+Spec wants a valid bit, a cacheable attribute, and transparent
+unprogrammed regions. RTL has neither bit and rewrites unprogrammed
+regions. Prove the offset on a live beat. Any checker that names the
+missing valid or cacheable bit stays a hard FAIL. Do not XFAIL. Same
+rule as CHK-OWNERSHIP-WINDOW.
+
+Checkers (planned):: a programmed region's output address on a real
+beat equals input plus the programmed offset; CSR-only coverage is not
+this proof. If a valid/cacheable/pass-through checker is written, it
+fails on today's RTL.
+
+=== Planned: sep_km_key_policy_vault_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
+Testlist:: `km.toml`
+Randomization:: RANDCFG — which slot and which locked SRAM region come
+from the run seed; extent and lock sequencing are directed
+
+Implement last among the five. Same risk class as the parked KM command
+vehicle: `hw/ip/key_manager/doc/firmware.adoc` may disagree with shipped
+`rom_main`. Write the card against the firmware that actually boots, and
+record a spec-vs-firmware gap rather than inventing a command the image
+does not implement. Seal stays on `sep_km_command_set_rand_test`. This
+vehicle owns slot extent (`hw/ip/key_manager/doc/architecture.adoc`: 64
+slots) and a write to a write-locked SRAM region raising
+`IRQ_STATUS.SRAM_WRITE_LOCK_ERR` / `SRAM_WRITE_LOCK_VIOLATION`, then
+W1C-clear and read back 0.
+
+Checkers (planned):: a legal slot in 0..63 is usable; an out-of-extent
+index is rejected; a write to a write-locked SRAM region sets
+`SRAM_WRITE_LOCK_ERR` and the matching violation bit; W1C clears both
+and they read back 0. Do not duplicate the seal/retire contract here.
 
 === Graded: sep_efuse_program_lock_matrix_test
 

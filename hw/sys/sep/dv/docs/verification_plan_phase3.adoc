@@ -9,25 +9,27 @@
 [IMPORTANT]
 ====
 *Phase 3 is T.B.D.* Nothing in this document is committed scope, scheduled
-work, or an execute list. Finish Phase 1 (closed), Phase 2 (active), and
-Phase 2+ (29 of 34 on the cocotb bench) first. Unlike
+work, or an execute list. Finish Phase 1 (closed), Phase 2 baseline
+(closed), and Phase 2+ (32 of 34 on the cocotb bench) first. Unlike
 link:verification_plan_phase1.adoc[Phase 1] — where a row
 exists only if a run can prove it — every entry here is unimplemented by
 definition, so nothing is graded and no proof is cited. Read the rest as
 a holding note: direction plus names parked so they are not implemented
-as a second Phase 2 spine.
+as a second Phase 2 spine. Iconic scorecard `GAP`s belong in Phase 2+;
+this dump is corners, error permutations, and coverage-bin work.
 ====
 
 == Where Phase 3 sits
 
 Phase 1 (smoke plus subsystem representatives) is signed off, and its record is
-`verification_plan_phase1.adoc`. Phase 2 (iconic features, by IP) is active, in
-`verification_plan_phase2.adoc`, including the Phase 2+ extension that
-closes the scorecard to 29 of 34 on the same cocotb environment. Phase 3
-starts after that close-out. Phase 3 will collect what the earlier phases
-explicitly *defer*: advanced corner cases, error and security permutations,
-deeper cross-IP edges that are not the iconic feature, and code-coverage
-close-out. Code coverage is already *collected*: `[coverage.verilator]`
+`verification_plan_phase1.adoc`. Phase 2 baseline (iconic features, by IP) is
+closed in `verification_plan_phase2.adoc`. Phase 2+ is the active close-out
+to 32 of 34 on the same cocotb environment. Phase 3 starts after that
+close-out. Its first deliverable is UVM bring-up plus smoke, not the
+iconic scorecard rows Phase 2+ owns. Phase 3 will collect what the earlier
+phases explicitly *defer*: advanced corner cases, error and security
+permutations, deeper cross-IP edges that are not the iconic feature, and
+code-coverage close-out. Code coverage is already *collected*: `[coverage.verilator]`
 in `sep_sim_cfg.toml` instruments line, expression, and user coverage and
 the nightly regression writes the database. What Phase 3 owns is the
 close-out threshold — no coverage policy exists under `cov/config/`, so
@@ -226,41 +228,10 @@ coverage hole list.
 | Inbound-filter negative product
 | Negative-path matrix; iconic inbound is allow vs block-by-default
 
-| `sep_sec_dis_override_test`
-| SEC_DIS forces all feature-control bits on and lets the SEP boot with
-  fuse sense incomplete. Scorecard `GAP`, where the reachability question
-  is recorded: the comparator matches a SHA-256 digest against a
-  metal-fixed constant, so settle whether a match is reachable in
-  simulation before scoping the rest. It is the largest single
-  open-everything lever in the design, which is the argument for pulling
-  it forward into Phase 2+ rather than leaving it here.
-
-| `sep_efuse_set_only_monotonicity_test`
-| A write of zero cannot clear a set bit on the version, revocation and
-  required-signer fields. Scorecard `GAP`; the whole anti-rollback claim
-  rests on it.
-
-| `sep_lcc_demote_lock_test`
-| Closed on `sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DEMOTE-LOCK`).
-  Do not add a sibling.
-
-| `sep_fabric_local_alias_datapath_test`
-| Drive a beat through a programmed alias region: offset applied, valid
-  bit honoured, cacheable attribute as programmed. Scorecard `GAP`;
-  today the coverage is CSR-only.
-
 | `sep_fabric_global_aperture_remap_test`
 | Inbound global-to-local remap with a non-zero aperture, and inbound
   filter windows programmed in global addresses ahead of it. Production
   uses a non-zero base; DV only ever runs the identity case.
-
-| `sep_esrc_fips_lock_test`
-| A post-lock write to a certified-configuration field is rejected, and
-  the lock clears only on a hard reset. Scorecard `GAP`.
-
-| `sep_esrc_alert_delivery_test`
-| A health-test alert propagates to its PIC source. Today alerts are
-  only ever asserted to stay zero. Scorecard `GAP`.
 
 | `sep_entropy_pool_aperture_test`
 | The pool's software aperture: status word, IRQ-cause word, and the pop
