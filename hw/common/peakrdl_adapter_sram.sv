@@ -155,9 +155,6 @@ module peakrdl_adapter_sram
   // =========================================================================
 
   // Read request FIFO: Store woffset for read operations only
-  // logic read_req_ack;
-  // assign read_req_ack = peakrdl_req_i & ~peakrdl_req_is_wr_i & read_req_fifo_wready;
-  // assign read_req_fifo_wvalid = read_req_ack;  // Push only for valid reads that can be accepted
   assign read_req_fifo_wvalid = peakrdl_req_i & ram_gnt_i & ~peakrdl_req_is_wr_i & read_req_fifo_wready;  // Push only for valid reads that can be accepted
   assign read_req_fifo_wdata = '{
     woffset: woffset

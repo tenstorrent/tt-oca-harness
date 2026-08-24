@@ -40,7 +40,6 @@ module dfd_rv_ffsN#(parameter DIR_L2H    = 1,              //Direction of Priori
    logic [1:0][PAD_WIDTH-1:0][NUM_SEL-1:0]  sum;
    
    assign data_out   [NUM_SEL-1:0] = data_mux [0][0][NUM_SEL-1:0];
-   //assign req_out    [NUM_SEL-1:0] = req_mux    [0][0][NUM_SEL-1:0][WIDTH-1:0];
    assign enc_req_out[NUM_SEL-1:0] = enc_req_mux[0][0][NUM_SEL-1:0];
    assign req_sum    [NUM_SEL-1:0] = sum [0][0];  
    always_comb for(int i=0;i<NUM_SEL;i++) req_out[i] = req_mux [0][0][i][WIDTH-1:0];

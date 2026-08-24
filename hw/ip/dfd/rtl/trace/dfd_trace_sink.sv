@@ -450,8 +450,6 @@ module dfd_trace_sink
 
   assign trdstlocalRamWpLow_ANY = ~trdstRamMode_ANY?((trdstRamEnableStart_ANY_d1 | (~trdstStoponWrap_ANY & trdstnextlocaltoupdateRamWpLowWrap_ANY))?trdstRamStartLow_ANY:trdstnextlocaltoupdateRamWpLow_ANY_stg)
                                                    :(trdstRamEnableStart_ANY_d1?trdstRamSMEMStartLow_ANY:trdstnextlocaltoupdateRamWpLow_ANY_stg); // Increment based on the frame_length
-  
-  // assign trdstnextlocalRamWpLow_ANY[0] = trdstlocalRamWpLow_ANY; //(trdstRamMode_ANY & trdstRamEnableStart_ANY_d1)?trdstRamSMEMStartLow_ANY:trdstlocalRamWpLow_ANY;
 
   dfd_rv_ffs_fast #(
     .DIR_L2H(1),
@@ -478,8 +476,6 @@ module dfd_trace_sink
 
   dfd_rv_dff #(.WIDTH(1)) trdstnorthcoresNewFrameStart_ANY_d1_ff (.o_q(trdstnorthcoresNewFrameStart_ANY_d1), .i_d(trdstnorthcoresNewFrameStart_ANY), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
   dfd_rv_dff #(.WIDTH(1)) trdstsouthcoresNewFrameStart_ANY_d1_ff (.o_q(trdstsouthcoresNewFrameStart_ANY_d1), .i_d(trdstsouthcoresNewFrameStart_ANY), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
-
-  // assign trdstnextlocaltoupdateRamWpLow_ANY = trdstnextlocalRamWpLow_ANY[3];
 
   dfd_rv_dff #(.WIDTH(30)) trdstnextlocaltoupdateRamWpLow_ANY_ff (.o_q(trdstnextlocaltoupdateRamWpLow_ANY_stg), .i_d(trdstnextlocaltoupdateRamWpLow_ANY), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
 
@@ -653,8 +649,6 @@ module dfd_trace_sink
 
   assign trntrlocalRamWpLow_ANY = ~trntrRamMode_ANY?((trntrRamEnableStart_ANY_d1 | (~trntrStoponWrap_ANY & trntrnextlocaltoupdateRamWpLowWrap_ANY))?trntrRamStartLow_ANY:trntrnextlocaltoupdateRamWpLow_ANY_stg)
                                                    :(trntrRamEnableStart_ANY_d1?trntrRamSMEMStartLow_ANY:trntrnextlocaltoupdateRamWpLow_ANY_stg); // Increment based on the frame_length
-  
-  // assign trntrnextlocalRamWpLow_ANY[0] = trntrlocalRamWpLow_ANY; //(trntrRamMode_ANY & trntrRamEnableStart_ANY_d1)?trntrRamSMEMStartLow_ANY:trntrlocalRamWpLow_ANY;
 
   dfd_rv_ffs_fast #(
     .DIR_L2H(1),
@@ -681,8 +675,6 @@ module dfd_trace_sink
 
   dfd_rv_dff #(.WIDTH(1)) trntrnorthcoresNewFrameStart_ANY_d1_ff (.o_q(trntrnorthcoresNewFrameStart_ANY_d1), .i_d(trntrnorthcoresNewFrameStart_ANY), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
   dfd_rv_dff #(.WIDTH(1)) trntrsouthcoresNewFrameStart_ANY_d1_ff (.o_q(trntrsouthcoresNewFrameStart_ANY_d1), .i_d(trntrsouthcoresNewFrameStart_ANY), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
-
-  // assign trntrnextlocaltoupdateRamWpLow_ANY =  trntrnextlocalRamWpLow_ANY[3];
 
   dfd_rv_dff #(.WIDTH(30)) trntrnextlocaltoupdateRamWpLow_ANY_ff (.o_q(trntrnextlocaltoupdateRamWpLow_ANY_stg), .i_d(trntrnextlocaltoupdateRamWpLow_ANY), .i_en(1'b1), .i_clk(clk), .i_reset_n(reset_n));
 

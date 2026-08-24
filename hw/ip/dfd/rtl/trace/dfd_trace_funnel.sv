@@ -366,9 +366,6 @@ end
     .i_reset_n    (reset_n)
   );
 
-  // assign slave_read_ready = CsrCs_d3 & CsrCs_d1;
-  // assign slave_busy = CsrCs_d1;
-
   // --------------------------------------------------------------------------
   // Trace Sink SMEM (AXI Interface)
   // --------------------------------------------------------------------------
