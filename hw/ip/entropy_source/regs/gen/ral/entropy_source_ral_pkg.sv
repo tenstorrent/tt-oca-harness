@@ -6,7 +6,7 @@
 `ifndef ENTROPY_SOURCE_RAL_PKG_SV
 `define ENTROPY_SOURCE_RAL_PKG_SV
     
-    // Reg - entropy_source.COMPONENT_ID
+    // reg - entropy_source.COMPONENT_ID
     class entropy_source__COMPONENT_ID extends uvm_reg;
         `uvm_object_utils(entropy_source__COMPONENT_ID)
         rand uvm_reg_field NAME;
@@ -27,7 +27,7 @@
         endfunction : build
     endclass : entropy_source__COMPONENT_ID
 
-    // Reg - entropy_source.CTRL
+    // reg - entropy_source.CTRL
     class entropy_source__CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__CTRL)
         rand uvm_reg_field RESET;
@@ -57,7 +57,7 @@
         endfunction : build
     endclass : entropy_source__CTRL
 
-    // Reg - entropy_source.STATUS
+    // reg - entropy_source.STATUS
     class entropy_source__STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__STATUS)
         rand uvm_reg_field RSVD;
@@ -72,7 +72,7 @@
         endfunction : build
     endclass : entropy_source__STATUS
 
-    // Reg - entropy_source.DEBUG_CTRL
+    // reg - entropy_source.DEBUG_CTRL
     class entropy_source__DEBUG_CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__DEBUG_CTRL)
         rand uvm_reg_field SELECT_SIGNAL;
@@ -90,7 +90,7 @@
         endfunction : build
     endclass : entropy_source__DEBUG_CTRL
 
-    // Reg - entropy_source.INTR_STATUS
+    // reg - entropy_source.INTR_STATUS
     class entropy_source__INTR_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__INTR_STATUS)
         rand uvm_reg_field HEALTH_TEST_FAILED;
@@ -126,7 +126,7 @@
         endfunction : build
     endclass : entropy_source__INTR_STATUS
 
-    // Reg - entropy_source.INTR_ENABLE
+    // reg - entropy_source.INTR_ENABLE
     class entropy_source__INTR_ENABLE extends uvm_reg;
         `uvm_object_utils(entropy_source__INTR_ENABLE)
         rand uvm_reg_field HEALTH_TEST_FAILED;
@@ -162,7 +162,7 @@
         endfunction : build
     endclass : entropy_source__INTR_ENABLE
 
-    // Reg - entropy_source.INTR_TEST
+    // reg - entropy_source.INTR_TEST
     class entropy_source__INTR_TEST extends uvm_reg;
         `uvm_object_utils(entropy_source__INTR_TEST)
         rand uvm_reg_field HEALTH_TEST_FAILED;
@@ -198,7 +198,7 @@
         endfunction : build
     endclass : entropy_source__INTR_TEST
 
-    // Reg - entropy_source.SHA256_STATUS
+    // reg - entropy_source.SHA256_STATUS
     class entropy_source__SHA256_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__SHA256_STATUS)
         rand uvm_reg_field BUSY;
@@ -219,7 +219,7 @@
         endfunction : build
     endclass : entropy_source__SHA256_STATUS
 
-    // Reg - entropy_source.FIFO_CTRL
+    // reg - entropy_source.FIFO_CTRL
     class entropy_source__FIFO_CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__FIFO_CTRL)
         rand uvm_reg_field ENABLE;
@@ -237,7 +237,7 @@
         endfunction : build
     endclass : entropy_source__FIFO_CTRL
 
-    // Reg - entropy_source.FIFO_STATUS
+    // reg - entropy_source.FIFO_STATUS
     class entropy_source__FIFO_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__FIFO_STATUS)
         rand uvm_reg_field LEVEL;
@@ -258,7 +258,7 @@
         endfunction : build
     endclass : entropy_source__FIFO_STATUS
 
-    // Reg - entropy_source.FIFO_RDATA
+    // reg - entropy_source.FIFO_RDATA
     class entropy_source__FIFO_RDATA extends uvm_reg;
         `uvm_object_utils(entropy_source__FIFO_RDATA)
         rand uvm_reg_field RDATA;
@@ -273,7 +273,7 @@
         endfunction : build
     endclass : entropy_source__FIFO_RDATA
 
-    // Reg - entropy_source.HEALTH_TEST_CTRL
+    // reg - entropy_source.HEALTH_TEST_CTRL
     class entropy_source__HEALTH_TEST_CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__HEALTH_TEST_CTRL)
         rand uvm_reg_field ENABLE;
@@ -291,7 +291,7 @@
         endfunction : build
     endclass : entropy_source__HEALTH_TEST_CTRL
 
-    // Reg - entropy_source.HEALTH_TEST_WINDOW_SIZE
+    // reg - entropy_source.HEALTH_TEST_WINDOW_SIZE
     class entropy_source__HEALTH_TEST_WINDOW_SIZE extends uvm_reg;
         `uvm_object_utils(entropy_source__HEALTH_TEST_WINDOW_SIZE)
         rand uvm_reg_field SIZE;
@@ -306,7 +306,7 @@
         endfunction : build
     endclass : entropy_source__HEALTH_TEST_WINDOW_SIZE
 
-    // Reg - entropy_source.MARKOV_TEST_PROB_THRESHOLDS
+    // reg - entropy_source.MARKOV_TEST_PROB_THRESHOLDS
     class entropy_source__MARKOV_TEST_PROB_THRESHOLDS extends uvm_reg;
         `uvm_object_utils(entropy_source__MARKOV_TEST_PROB_THRESHOLDS)
         rand uvm_reg_field PROB_01_THRESHOLD;
@@ -324,7 +324,7 @@
         endfunction : build
     endclass : entropy_source__MARKOV_TEST_PROB_THRESHOLDS
 
-    // Reg - entropy_source.HEALTH_TEST_STATUS
+    // reg - entropy_source.HEALTH_TEST_STATUS
     class entropy_source__HEALTH_TEST_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__HEALTH_TEST_STATUS)
         rand uvm_reg_field HEALTH_STATUS;
@@ -339,7 +339,7 @@
         endfunction : build
     endclass : entropy_source__HEALTH_TEST_STATUS
 
-    // Reg - entropy_source.REPETITION_TEST_COUNT
+    // reg - entropy_source.REPETITION_TEST_COUNT
     class entropy_source__REPETITION_TEST_COUNT extends uvm_reg;
         `uvm_object_utils(entropy_source__REPETITION_TEST_COUNT)
         rand uvm_reg_field REPETITION_COUNT;
@@ -354,7 +354,7 @@
         endfunction : build
     endclass : entropy_source__REPETITION_TEST_COUNT
 
-    // Reg - entropy_source.APT_PATTERN_COUNT_1BIT
+    // reg - entropy_source.APT_PATTERN_COUNT_1BIT
     class entropy_source__APT_PATTERN_COUNT_1BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PATTERN_COUNT_1BIT)
         rand uvm_reg_field PATTERN_COUNT;
@@ -375,7 +375,7 @@
         endfunction : build
     endclass : entropy_source__APT_PATTERN_COUNT_1BIT
 
-    // Reg - entropy_source.APT_PATTERN_COUNT_2BIT
+    // reg - entropy_source.APT_PATTERN_COUNT_2BIT
     class entropy_source__APT_PATTERN_COUNT_2BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PATTERN_COUNT_2BIT)
         rand uvm_reg_field PATTERN_COUNT;
@@ -396,7 +396,7 @@
         endfunction : build
     endclass : entropy_source__APT_PATTERN_COUNT_2BIT
 
-    // Reg - entropy_source.APT_PATTERN_COUNT_3BIT
+    // reg - entropy_source.APT_PATTERN_COUNT_3BIT
     class entropy_source__APT_PATTERN_COUNT_3BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PATTERN_COUNT_3BIT)
         rand uvm_reg_field PATTERN_COUNT;
@@ -417,7 +417,7 @@
         endfunction : build
     endclass : entropy_source__APT_PATTERN_COUNT_3BIT
 
-    // Reg - entropy_source.APT_PATTERN_COUNT_4BIT
+    // reg - entropy_source.APT_PATTERN_COUNT_4BIT
     class entropy_source__APT_PATTERN_COUNT_4BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PATTERN_COUNT_4BIT)
         rand uvm_reg_field PATTERN_COUNT;
@@ -438,7 +438,7 @@
         endfunction : build
     endclass : entropy_source__APT_PATTERN_COUNT_4BIT
 
-    // Reg - entropy_source.APT_PROPORTION_1BIT
+    // reg - entropy_source.APT_PROPORTION_1BIT
     class entropy_source__APT_PROPORTION_1BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PROPORTION_1BIT)
         rand uvm_reg_field LIMIT;
@@ -453,7 +453,7 @@
         endfunction : build
     endclass : entropy_source__APT_PROPORTION_1BIT
 
-    // Reg - entropy_source.APT_PROPORTION_2BIT
+    // reg - entropy_source.APT_PROPORTION_2BIT
     class entropy_source__APT_PROPORTION_2BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PROPORTION_2BIT)
         rand uvm_reg_field LIMIT;
@@ -468,7 +468,7 @@
         endfunction : build
     endclass : entropy_source__APT_PROPORTION_2BIT
 
-    // Reg - entropy_source.APT_PROPORTION_3BIT
+    // reg - entropy_source.APT_PROPORTION_3BIT
     class entropy_source__APT_PROPORTION_3BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PROPORTION_3BIT)
         rand uvm_reg_field LIMIT;
@@ -483,7 +483,7 @@
         endfunction : build
     endclass : entropy_source__APT_PROPORTION_3BIT
 
-    // Reg - entropy_source.APT_PROPORTION_4BIT
+    // reg - entropy_source.APT_PROPORTION_4BIT
     class entropy_source__APT_PROPORTION_4BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PROPORTION_4BIT)
         rand uvm_reg_field LIMIT;
@@ -498,7 +498,7 @@
         endfunction : build
     endclass : entropy_source__APT_PROPORTION_4BIT
 
-    // Reg - entropy_source.APT_PROPORTION_LO
+    // reg - entropy_source.APT_PROPORTION_LO
     class entropy_source__APT_PROPORTION_LO extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PROPORTION_LO)
         rand uvm_reg_field LIMIT;
@@ -513,7 +513,7 @@
         endfunction : build
     endclass : entropy_source__APT_PROPORTION_LO
 
-    // Reg - entropy_source.MARKOV_TEST_COUNTS_0
+    // reg - entropy_source.MARKOV_TEST_COUNTS_0
     class entropy_source__MARKOV_TEST_COUNTS_0 extends uvm_reg;
         `uvm_object_utils(entropy_source__MARKOV_TEST_COUNTS_0)
         rand uvm_reg_field COUNT_01;
@@ -531,7 +531,7 @@
         endfunction : build
     endclass : entropy_source__MARKOV_TEST_COUNTS_0
 
-    // Reg - entropy_source.MARKOV_TEST_COUNTS_1
+    // reg - entropy_source.MARKOV_TEST_COUNTS_1
     class entropy_source__MARKOV_TEST_COUNTS_1 extends uvm_reg;
         `uvm_object_utils(entropy_source__MARKOV_TEST_COUNTS_1)
         rand uvm_reg_field COUNT_00;
@@ -549,7 +549,7 @@
         endfunction : build
     endclass : entropy_source__MARKOV_TEST_COUNTS_1
 
-    // Reg - entropy_source.MARKOV_TEST_PROBABILITIES
+    // reg - entropy_source.MARKOV_TEST_PROBABILITIES
     class entropy_source__MARKOV_TEST_PROBABILITIES extends uvm_reg;
         `uvm_object_utils(entropy_source__MARKOV_TEST_PROBABILITIES)
         rand uvm_reg_field PROB_01;
@@ -573,7 +573,7 @@
         endfunction : build
     endclass : entropy_source__MARKOV_TEST_PROBABILITIES
 
-    // Reg - entropy_source.RING_OSC_ENABLE
+    // reg - entropy_source.RING_OSC_ENABLE
     class entropy_source__RING_OSC_ENABLE extends uvm_reg;
         `uvm_object_utils(entropy_source__RING_OSC_ENABLE)
         rand uvm_reg_field ENABLE;
@@ -591,7 +591,7 @@
         endfunction : build
     endclass : entropy_source__RING_OSC_ENABLE
 
-    // Reg - entropy_source.RING_OSC_TUNE
+    // reg - entropy_source.RING_OSC_TUNE
     class entropy_source__RING_OSC_TUNE extends uvm_reg;
         `uvm_object_utils(entropy_source__RING_OSC_TUNE)
         rand uvm_reg_field DETUNE;
@@ -609,7 +609,7 @@
         endfunction : build
     endclass : entropy_source__RING_OSC_TUNE
 
-    // Reg - entropy_source.RING_OSC_CTRL
+    // reg - entropy_source.RING_OSC_CTRL
     class entropy_source__RING_OSC_CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__RING_OSC_CTRL)
         rand uvm_reg_field SAMPLE_CLK_SELECT;
@@ -624,7 +624,7 @@
         endfunction : build
     endclass : entropy_source__RING_OSC_CTRL
 
-    // Reg - entropy_source.DECORRELATOR_CTRL
+    // reg - entropy_source.DECORRELATOR_CTRL
     class entropy_source__DECORRELATOR_CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__DECORRELATOR_CTRL)
         rand uvm_reg_field BYPASS;
@@ -642,7 +642,7 @@
         endfunction : build
     endclass : entropy_source__DECORRELATOR_CTRL
 
-    // Reg - entropy_source.DECORRELATOR_MASK
+    // reg - entropy_source.DECORRELATOR_MASK
     class entropy_source__DECORRELATOR_MASK extends uvm_reg;
         `uvm_object_utils(entropy_source__DECORRELATOR_MASK)
         rand uvm_reg_field ENTROPY_BYTE_MASK;
@@ -657,7 +657,7 @@
         endfunction : build
     endclass : entropy_source__DECORRELATOR_MASK
 
-    // Reg - entropy_source.MAIN_SM_STATUS
+    // reg - entropy_source.MAIN_SM_STATUS
     class entropy_source__MAIN_SM_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__MAIN_SM_STATUS)
         rand uvm_reg_field STATE;
@@ -687,7 +687,7 @@
         endfunction : build
     endclass : entropy_source__MAIN_SM_STATUS
 
-    // Reg - entropy_source.GENERATOR_0_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_0_HEALTH_STATUS
     class entropy_source__GENERATOR_0_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_0_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -702,7 +702,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_0_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_1_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_1_HEALTH_STATUS
     class entropy_source__GENERATOR_1_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_1_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -717,7 +717,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_1_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_2_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_2_HEALTH_STATUS
     class entropy_source__GENERATOR_2_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_2_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -732,7 +732,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_2_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_3_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_3_HEALTH_STATUS
     class entropy_source__GENERATOR_3_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_3_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -747,7 +747,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_3_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_4_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_4_HEALTH_STATUS
     class entropy_source__GENERATOR_4_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_4_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -762,7 +762,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_4_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_5_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_5_HEALTH_STATUS
     class entropy_source__GENERATOR_5_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_5_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -777,7 +777,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_5_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_6_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_6_HEALTH_STATUS
     class entropy_source__GENERATOR_6_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_6_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -792,7 +792,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_6_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_7_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_7_HEALTH_STATUS
     class entropy_source__GENERATOR_7_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_7_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -807,7 +807,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_7_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_8_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_8_HEALTH_STATUS
     class entropy_source__GENERATOR_8_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_8_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -822,7 +822,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_8_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_9_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_9_HEALTH_STATUS
     class entropy_source__GENERATOR_9_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_9_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -837,7 +837,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_9_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_10_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_10_HEALTH_STATUS
     class entropy_source__GENERATOR_10_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_10_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -852,7 +852,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_10_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_11_HEALTH_STATUS
+    // reg - entropy_source.GENERATOR_11_HEALTH_STATUS
     class entropy_source__GENERATOR_11_HEALTH_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_11_HEALTH_STATUS)
         rand uvm_reg_field STATUS;
@@ -867,7 +867,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_11_HEALTH_STATUS
 
-    // Reg - entropy_source.GENERATOR_0_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_0_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_0_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_0_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -882,7 +882,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_0_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_1_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_1_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_1_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_1_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -897,7 +897,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_1_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_2_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_2_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_2_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_2_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -912,7 +912,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_2_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_3_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_3_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_3_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_3_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -927,7 +927,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_3_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_4_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_4_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_4_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_4_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -942,7 +942,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_4_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_5_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_5_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_5_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_5_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -957,7 +957,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_5_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_6_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_6_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_6_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_6_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -972,7 +972,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_6_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_7_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_7_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_7_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_7_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -987,7 +987,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_7_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_8_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_8_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_8_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_8_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -1002,7 +1002,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_8_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_9_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_9_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_9_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_9_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -1017,7 +1017,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_9_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_10_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_10_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_10_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_10_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -1032,7 +1032,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_10_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.GENERATOR_11_SAMPLE_CLK_CONFIG
+    // reg - entropy_source.GENERATOR_11_SAMPLE_CLK_CONFIG
     class entropy_source__GENERATOR_11_SAMPLE_CLK_CONFIG extends uvm_reg;
         `uvm_object_utils(entropy_source__GENERATOR_11_SAMPLE_CLK_CONFIG)
         rand uvm_reg_field SAMPLE_CLK_DIVIDE;
@@ -1047,7 +1047,7 @@
         endfunction : build
     endclass : entropy_source__GENERATOR_11_SAMPLE_CLK_CONFIG
 
-    // Reg - entropy_source.HT_WATERMARK_NUM
+    // reg - entropy_source.HT_WATERMARK_NUM
     class entropy_source__HT_WATERMARK_NUM extends uvm_reg;
         `uvm_object_utils(entropy_source__HT_WATERMARK_NUM)
         rand uvm_reg_field WATERMARK_NUM;
@@ -1062,7 +1062,7 @@
         endfunction : build
     endclass : entropy_source__HT_WATERMARK_NUM
 
-    // Reg - entropy_source.HT_WATERMARK
+    // reg - entropy_source.HT_WATERMARK
     class entropy_source__HT_WATERMARK extends uvm_reg;
         `uvm_object_utils(entropy_source__HT_WATERMARK)
         rand uvm_reg_field WATERMARK_VALUE;
@@ -1077,7 +1077,7 @@
         endfunction : build
     endclass : entropy_source__HT_WATERMARK
 
-    // Reg - entropy_source.REPCNT_TOTAL_FAILS
+    // reg - entropy_source.REPCNT_TOTAL_FAILS
     class entropy_source__REPCNT_TOTAL_FAILS extends uvm_reg;
         `uvm_object_utils(entropy_source__REPCNT_TOTAL_FAILS)
         rand uvm_reg_field FAIL_COUNT;
@@ -1092,7 +1092,7 @@
         endfunction : build
     endclass : entropy_source__REPCNT_TOTAL_FAILS
 
-    // Reg - entropy_source.APT_HI_TOTAL_FAILS
+    // reg - entropy_source.APT_HI_TOTAL_FAILS
     class entropy_source__APT_HI_TOTAL_FAILS extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_HI_TOTAL_FAILS)
         rand uvm_reg_field FAIL_COUNT;
@@ -1107,7 +1107,7 @@
         endfunction : build
     endclass : entropy_source__APT_HI_TOTAL_FAILS
 
-    // Reg - entropy_source.APT_LO_TOTAL_FAILS
+    // reg - entropy_source.APT_LO_TOTAL_FAILS
     class entropy_source__APT_LO_TOTAL_FAILS extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_LO_TOTAL_FAILS)
         rand uvm_reg_field FAIL_COUNT;
@@ -1122,7 +1122,7 @@
         endfunction : build
     endclass : entropy_source__APT_LO_TOTAL_FAILS
 
-    // Reg - entropy_source.MARKOV_HI_TOTAL_FAILS
+    // reg - entropy_source.MARKOV_HI_TOTAL_FAILS
     class entropy_source__MARKOV_HI_TOTAL_FAILS extends uvm_reg;
         `uvm_object_utils(entropy_source__MARKOV_HI_TOTAL_FAILS)
         rand uvm_reg_field FAIL_COUNT;
@@ -1137,7 +1137,7 @@
         endfunction : build
     endclass : entropy_source__MARKOV_HI_TOTAL_FAILS
 
-    // Reg - entropy_source.MARKOV_LO_TOTAL_FAILS
+    // reg - entropy_source.MARKOV_LO_TOTAL_FAILS
     class entropy_source__MARKOV_LO_TOTAL_FAILS extends uvm_reg;
         `uvm_object_utils(entropy_source__MARKOV_LO_TOTAL_FAILS)
         rand uvm_reg_field FAIL_COUNT;
@@ -1152,7 +1152,7 @@
         endfunction : build
     endclass : entropy_source__MARKOV_LO_TOTAL_FAILS
 
-    // Reg - entropy_source.ALERT_SUMMARY_FAIL_COUNTS
+    // reg - entropy_source.ALERT_SUMMARY_FAIL_COUNTS
     class entropy_source__ALERT_SUMMARY_FAIL_COUNTS extends uvm_reg;
         `uvm_object_utils(entropy_source__ALERT_SUMMARY_FAIL_COUNTS)
         rand uvm_reg_field ANY_FAIL_COUNT;
@@ -1167,7 +1167,7 @@
         endfunction : build
     endclass : entropy_source__ALERT_SUMMARY_FAIL_COUNTS
 
-    // Reg - entropy_source.ALERT_FAIL_COUNTS
+    // reg - entropy_source.ALERT_FAIL_COUNTS
     class entropy_source__ALERT_FAIL_COUNTS extends uvm_reg;
         `uvm_object_utils(entropy_source__ALERT_FAIL_COUNTS)
         rand uvm_reg_field APT_LO_FAIL_COUNT;
@@ -1194,7 +1194,7 @@
         endfunction : build
     endclass : entropy_source__ALERT_FAIL_COUNTS
 
-    // Reg - entropy_source.FIPS_LOCK
+    // reg - entropy_source.FIPS_LOCK
     class entropy_source__FIPS_LOCK extends uvm_reg;
         `uvm_object_utils(entropy_source__FIPS_LOCK)
         rand uvm_reg_field LOCK;
@@ -1209,7 +1209,7 @@
         endfunction : build
     endclass : entropy_source__FIPS_LOCK
 
-    // Reg - entropy_source.ALERT_THRESHOLD
+    // reg - entropy_source.ALERT_THRESHOLD
     class entropy_source__ALERT_THRESHOLD extends uvm_reg;
         `uvm_object_utils(entropy_source__ALERT_THRESHOLD)
         rand uvm_reg_field THRESHOLD;
@@ -1224,7 +1224,7 @@
         endfunction : build
     endclass : entropy_source__ALERT_THRESHOLD
 
-    // Reg - entropy_source.MIN_ENTROPY_H
+    // reg - entropy_source.MIN_ENTROPY_H
     class entropy_source__MIN_ENTROPY_H extends uvm_reg;
         `uvm_object_utils(entropy_source__MIN_ENTROPY_H)
         rand uvm_reg_field H;
@@ -1239,7 +1239,7 @@
         endfunction : build
     endclass : entropy_source__MIN_ENTROPY_H
 
-    // Reg - entropy_source.RECOMMENDED_THRESHOLDS
+    // reg - entropy_source.RECOMMENDED_THRESHOLDS
     class entropy_source__RECOMMENDED_THRESHOLDS extends uvm_reg;
         `uvm_object_utils(entropy_source__RECOMMENDED_THRESHOLDS)
         rand uvm_reg_field RCT_LIMIT;
@@ -1257,7 +1257,7 @@
         endfunction : build
     endclass : entropy_source__RECOMMENDED_THRESHOLDS
 
-    // Reg - entropy_source.BIW_OBS_CTRL
+    // reg - entropy_source.BIW_OBS_CTRL
     class entropy_source__BIW_OBS_CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__BIW_OBS_CTRL)
         rand uvm_reg_field RAW_ENABLE;
@@ -1272,7 +1272,7 @@
         endfunction : build
     endclass : entropy_source__BIW_OBS_CTRL
 
-    // Reg - entropy_source.BIW_OBS_STATUS
+    // reg - entropy_source.BIW_OBS_STATUS
     class entropy_source__BIW_OBS_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__BIW_OBS_STATUS)
         rand uvm_reg_field LEVEL;
@@ -1293,7 +1293,7 @@
         endfunction : build
     endclass : entropy_source__BIW_OBS_STATUS
 
-    // Reg - entropy_source.BIW_OBS_RDATA
+    // reg - entropy_source.BIW_OBS_RDATA
     class entropy_source__BIW_OBS_RDATA extends uvm_reg;
         `uvm_object_utils(entropy_source__BIW_OBS_RDATA)
         rand uvm_reg_field RDATA;
@@ -1308,7 +1308,7 @@
         endfunction : build
     endclass : entropy_source__BIW_OBS_RDATA
 
-    // Reg - entropy_source.NOISE_OBS_CTRL
+    // reg - entropy_source.NOISE_OBS_CTRL
     class entropy_source__NOISE_OBS_CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__NOISE_OBS_CTRL)
         rand uvm_reg_field RAW_ENABLE;
@@ -1329,7 +1329,7 @@
         endfunction : build
     endclass : entropy_source__NOISE_OBS_CTRL
 
-    // Reg - entropy_source.NOISE_OBS_STATUS
+    // reg - entropy_source.NOISE_OBS_STATUS
     class entropy_source__NOISE_OBS_STATUS extends uvm_reg;
         `uvm_object_utils(entropy_source__NOISE_OBS_STATUS)
         rand uvm_reg_field LEVEL;
@@ -1350,7 +1350,7 @@
         endfunction : build
     endclass : entropy_source__NOISE_OBS_STATUS
 
-    // Reg - entropy_source.NOISE_OBS_RDATA
+    // reg - entropy_source.NOISE_OBS_RDATA
     class entropy_source__NOISE_OBS_RDATA extends uvm_reg;
         `uvm_object_utils(entropy_source__NOISE_OBS_RDATA)
         rand uvm_reg_field RDATA;
@@ -1365,7 +1365,7 @@
         endfunction : build
     endclass : entropy_source__NOISE_OBS_RDATA
 
-    // Addrmap - entropy_source
+    // addrmap - entropy_source
     class entropy_source extends uvm_reg_block;
         `uvm_object_utils(entropy_source)
         rand entropy_source__COMPONENT_ID COMPONENT_ID;

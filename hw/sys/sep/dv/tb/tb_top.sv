@@ -314,7 +314,19 @@ module sep_uvm_top
     output logic              axis1_tvalid_o,        // entropy_muxed_req[1].tvalid
     output logic              axis1_tready_o,        // entropy_muxed_rsp[1].tready
     output logic [31:0]       axis1_tdata_o,         // entropy_muxed_req[1].tdata (32b word)
-    // IP-interrupt aggregator (E10): observation-only mirror of the 34-bit
+    // CHK5 entropy-pool sink (EDN endpoint [2]): AXIS2 is the pre-adapter mux-leg
+    // stream (entropy_muxed_req[2]); pool_edn_* is the post-adapter native EDN
+    // handshake into sep_entropy_fifo (one client, so AXIS2==pool beats in order).
+    // Observation-only XMR, no force. No frontdoor equivalent of the 32-bit EDN
+    // beat -- the 0x1095 aperture is a packed 64-bit drain, Phase 3 FIFO consume.
+    output logic              axis2_tvalid_o,        // entropy_muxed_req[2].tvalid
+    output logic              axis2_tready_o,        // entropy_muxed_rsp[2].tready
+    output logic [31:0]       axis2_tdata_o,         // entropy_muxed_req[2].tdata (32b word)
+    output logic              pool_edn_req_o,        // entropy_pool_edn_req_i.edn_req
+    output logic              pool_edn_ack_o,        // entropy_pool_edn_rsp_o.edn_ack
+    output logic [31:0]       pool_edn_bus_o,        // entropy_pool_edn_rsp_o.edn_bus
+    output logic              pool_edn_fips_o,       // entropy_pool_edn_rsp_o.edn_fips
+    // IP-interrupt aggregator: observation-only mirror of the 34-bit
     // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
     // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
@@ -341,7 +353,8 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // DUT-flavor XMR roots. The DUT is `sep_wrapper`, so sep-internal state lives
     // under u_dut.u_sep and the OSS IP integration (memory macros, generic efuse
-    // model, OpenTitan SPI mux) under u_dut.u_sep_ip_integration. Every
+    // model) under u_dut.u_sep_ip_integration. The OpenTitan SPI host is inside
+    // the `sep` core. Every
     // sep-internal XMR read routes through `SEP_CORE / `SEP_IPI so one probe text
     // is used throughout.
     // ------------------------------------------------------------------
@@ -444,12 +457,10 @@ module sep_uvm_top
         $display("[SEP OSS DV] Reset-vector TDR programmed to 0x%08x", vector);
     endtask
 
-    // FIXME(SEP-DV): the current vendored VeeR tap dropped the reset-vector TDR,
-    // so this JTAG sequence shifts into a nonexistent register and is inert. The
-    // reset vector now reaches the CPU through the wrapper's direct `rst_vec`
-    // input (connected from rst_vec_i in the DUT instantiation below). Remove
-    // this TDR machinery once the +cpu_boot flow is re-validated on the direct
-    // port. Original rationale kept below for reference:
+    // The vendored VeeR tap has no reset-vector TDR, so this JTAG sequence
+    // shifts into a nonexistent register and is inert. The reset vector reaches
+    // the CPU through the wrapper's direct `rst_vec` input (connected from
+    // rst_vec_i in the DUT instantiation below).
     // The OSS top has no external JTAG client. Program RSTVEC while the primary
     // reset is asserted, before the cocotb CPU-boot flow releases reset. Poll on the
     // clock edge rather than a bare level `wait`: a cocotb (VPI)-driven rst_vec_i
@@ -570,13 +581,10 @@ module sep_uvm_top
         .lcc_demote_state_1_o         (),
         .lcc_demote_state_2_o         (),
 
-        // SPI: quad-lane struct boundary, bridged below to the legacy
+        // SPI: quad-lane struct boundary, bridged below to the
         // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
         // MISO returns on rsp.sd[1]). The SPI block IRQ loops back into the
-        // wrapper's interrupt aggregator input, matching the pre-port routing.
-        // FIXME(SEP-DV): the 4 SPI flash tests are unverified against this
-        // struct boundary (and the retired och_sep_spi_mux_ctrl CS-release CSR);
-        // re-validate them before re-enabling SPI coverage claims.
+        // wrapper's interrupt aggregator input.
         .sep_io_spi_req_o             (sep_io_spi_req_w),
         .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
         .spi_irq_i                    (sep_io_spi_req_w.irq),
@@ -749,7 +757,7 @@ module sep_uvm_top
     initial begin : backdoor_default_fill_nonzero
         for (int i = 0; i < 4096; i++)
             `SEP_IPI.u_km_rom.mem[i] = {bd_km_word_parity(32'h0000_0013), 32'h0000_0013};
-        for (int i = 0; i < 4096; i++)
+        for (int i = 0; i < 8192; i++)
             `SEP_IPI.u_km_sram.gen_ram_inst[0].u_mem.mem[i] = {4'hF, 32'h0};
         for (int i = 0; i < 4096; i++)
             `SEP_IPI.u_otbn_imem_sram.mem[i] = BD_OTBN_ZERO;
@@ -1028,7 +1036,7 @@ module sep_uvm_top
     assign sep_cpu_reset_n_o = `SEP_CORE.sep_cpu_reset_n;
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
-    // observation-only mirror for the IP->aggregator (E10) test. CSRNG INTR sources
+    // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
     // map to bits [21:24], EDN to [25:26] (sep.sv:451-461).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
 
@@ -1128,9 +1136,8 @@ module sep_uvm_top
     // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
     // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
     // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
-    // Rationale, cost and the open DE question live with the test that opts in
-    // (testlists/cpu.toml, sep_rom_ot_secure_boot_test) and in
-    // .dv/artifacts/SEP_ROM_SECURE_VS_NONSECURE_BOOT.md.
+    // The test that opts in is sep_rom_ot_secure_boot_test
+    // (testlists/rom_fw.toml).
     logic edn_force_on;
     logic otbn_rnd_ack_q, otbn_urnd_ack_q;
     initial begin
@@ -1215,6 +1222,14 @@ module sep_uvm_top
     assign axis1_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[1].tready;
     assign axis1_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tdata;
     assign km_entropy_tready_o  = `SEP_CORE.sep_crypto.entropy_muxed_rsp[0].tready;
+    // CHK5 pool (mux endpoint [2]): pre-adapter AXIS2 + post-adapter native EDN.
+    assign axis2_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tvalid;
+    assign axis2_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[2].tready;
+    assign axis2_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tdata;
+    assign pool_edn_req_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_req_i.edn_req;
+    assign pool_edn_ack_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_ack;
+    assign pool_edn_bus_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_bus;
+    assign pool_edn_fips_o      = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_fips;
 
     // Per-client crypto EDN taps (post drbg_axis_edn_adapter). edn_req is the
     // client's request, edn_ack the adapter's grant pulse, edn_bus the delivered

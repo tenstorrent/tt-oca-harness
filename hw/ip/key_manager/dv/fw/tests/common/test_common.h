@@ -18,15 +18,15 @@
  *   - Testbench probes these registers for completion and commands
  *   - VUART output is captured for debugging/logging
  *
- * Register Locations (KMCSR base 0xE000):
- *   - TB_RESULT    @ 0xE110 - Test result (0=fail, 1=pass)
- *   - TB_SIGNATURE @ 0xE114 - Completion signature
- *   - TB_ERRCODE   @ 0xE118 - Error code
- *   - TB_SUBTEST   @ 0xE11C - Current subtest number
- *   - TB_CMD       @ 0xE120 - Command from FW to TB
- *   - TB_CMD_ARG   @ 0xE124 - Command argument
- *   - TB_CMD_STATUS@ 0xE128 - Status from TB to FW
- *   - TB_CMD_RESULT@ 0xE12C - Result from TB to FW
+ * Register Locations (KMCSR base 0x14000):
+ *   - TB_RESULT    @ 0x14110 - Test result (0=fail, 1=pass)
+ *   - TB_SIGNATURE @ 0x14114 - Completion signature
+ *   - TB_ERRCODE   @ 0x14118 - Error code
+ *   - TB_SUBTEST   @ 0x1411C - Current subtest number
+ *   - TB_CMD       @ 0x14120 - Command from FW to TB
+ *   - TB_CMD_ARG   @ 0x14124 - Command argument
+ *   - TB_CMD_STATUS@ 0x14128 - Status from TB to FW
+ *   - TB_CMD_RESULT@ 0x1412C - Result from TB to FW
  *
  * Usage:
  *   #include "test_common.h"
@@ -51,6 +51,7 @@
 #include <stddef.h>
 #include "vuart.h"
 #include "key_manager_fw.h"
+#include "rom_defs.h"
 #include "rom_boot.h"
 #include "rom_picorv32.h"
 #include "rom_kmcsr.h"
@@ -98,7 +99,7 @@ typedef km_mailbox_sep__irq_enable_reg_t KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
     (*(volatile km_csr__tb_cmd_result_reg_t *)KEY_MANAGER_KMCSR_TB_CMD_RESULT_BASE_ADDR)
 
 /* SRAM base */
-#define SRAM_BASE 0x00004000
+#define SRAM_BASE ROM_KM_SRAM_BASE
 
 /* ROM region */
 #define ROM_BASE 0x00000000
@@ -184,7 +185,8 @@ typedef km_mailbox_sep__irq_enable_reg_t KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
 #define TB_CMD_OTP_WRITE_CHANGED \
     0x0000002D /* Drive changed OTP pattern (different 256-bit values); result = 1 */
 #define TB_CMD_OTP_WRITE_SIGINT \
-    0x0000002E /* Drive a corrupted dual-rail on chiplet_uid (value != ~cpl); result = 1 */
+    0x0000002E /* Drive a corrupted dual-rail (value != ~cpl) on the field whose OTP_READ_LOCK bit \
+                  position arg carries; result = 1 */
 #define TB_CMD_SEP_MBOX_DRAIN_CTRL \
     0x0000002F /* Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); \
                   arg=1 arm, 0 disarm; result = 1 */
@@ -574,16 +576,28 @@ static inline int tb_otp_write_changed(void) {
 }
 
 /**
+ * Ask testbench to drive OTP port with a CORRUPTED dual-rail encoding on the
+ * selected field (value != ~complement on one word), to trigger OTP_SIGINT.
+ * All other fields remain validly dual-rail encoded.
+ * @param field_bp  Field's bit position in OTP_READ_LOCK, i.e. one of the
+ *                  generated KM_CSR__OTP_READ_LOCK_REG__<FIELD>_bp
+ * @return 1 if acknowledged, 0 if timeout/error (call TEST_FAIL on 0)
+ */
+static inline int tb_otp_write_sigint_field(uint32_t field_bp) {
+    if (!tb_send_cmd(TB_CMD_OTP_WRITE_SIGINT, field_bp, 5000u)) {
+        TEST_FAIL("TB_CMD_OTP_WRITE_SIGINT failed (timeout or TB_STATUS_ERR)");
+    }
+    return 1;
+}
+
+/**
  * Ask testbench to drive OTP port with a CORRUPTED dual-rail encoding on
  * chiplet_uid (value != ~complement on one word), to trigger OTP_SIGINT.
  * All other fields remain validly dual-rail encoded.
  * @return 1 if acknowledged, 0 if timeout/error (call TEST_FAIL on 0)
  */
 static inline int tb_otp_write_sigint(void) {
-    if (!tb_send_cmd(TB_CMD_OTP_WRITE_SIGINT, 0, 5000u)) {
-        TEST_FAIL("TB_CMD_OTP_WRITE_SIGINT failed (timeout or TB_STATUS_ERR)");
-    }
-    return 1;
+    return tb_otp_write_sigint_field(KM_CSR__OTP_READ_LOCK_REG__CHIPLET_UID_bp);
 }
 
 /**

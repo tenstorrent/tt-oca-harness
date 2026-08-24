@@ -22,13 +22,15 @@
  *          The LFSR is seeded to all-ones on cold reset only (no warm reset);
  *          the exact seed value is not security-relevant.
  *
- * @param NUM_SLOTS       Number of key slots (default 32).
+ * @param NUM_SLOTS       Number of key slots (default 64).
  * @param WORDS_PER_SLOT  Words per slot (default 16).
+ * @param DATA_WIDTH      Key-data word width; also sizes the LFSR (default 32).
  */
 
 module km_kpv_eraser #(
-    parameter int unsigned NUM_SLOTS      = 32,
-    parameter int unsigned WORDS_PER_SLOT = 16
+    parameter int unsigned NUM_SLOTS      = 64,
+    parameter int unsigned WORDS_PER_SLOT = 16,
+    parameter int unsigned DATA_WIDTH     = 32
 ) (
     input  logic                 clk_i,
     input  logic                 cold_rst_ni,   // Cold reset (AASD); seeds LFSR all-ones
@@ -40,7 +42,7 @@ module km_kpv_eraser #(
     output logic                          wr_en_o,
     output logic [$clog2(NUM_SLOTS)-1:0]  wr_slot_o,
     output logic [$clog2(WORDS_PER_SLOT)-1:0] wr_word_o,
-    output logic [31:0]                   wr_data_o,
+    output logic [DATA_WIDTH-1:0]         wr_data_o,
 
     // One-cycle pulse per slot when its erase completes (last word written)
     output logic [NUM_SLOTS-1:0]      erase_done_o,
@@ -55,22 +57,22 @@ module km_kpv_eraser #(
     localparam logic [WORD_W-1:0] LAST_WORD = WORD_W'(WORDS_PER_SLOT - 1);
 
     // =========================================================================
-    // Pseudo-random source: maximal-length 32-bit Galois LFSR.
+    // Pseudo-random source: maximal-length Galois LFSR, one bit per data bit.
     // Seeded all-ones on cold reset only.  Advanced once per word written.
     // =========================================================================
-    logic [31:0] rnd_word;
-    logic        lfsr_en;
+    logic [DATA_WIDTH-1:0] rnd_word;
+    logic                  lfsr_en;
 
     prim_lfsr #(
         .LfsrType    ("GAL_XOR"),
-        .LfsrDw      (32),
-        .StateOutDw  (32),
-        .DefaultSeed (32'hFFFF_FFFF)
+        .LfsrDw      (DATA_WIDTH),
+        .StateOutDw  (DATA_WIDTH),
+        .DefaultSeed ({DATA_WIDTH{1'b1}})
     ) u_lfsr (
         .clk_i     (clk_i),
         .rst_ni    (cold_rst_ni),
         .seed_en_i (1'b0),
-        .seed_i    (32'h0),
+        .seed_i    ('0),
         .lfsr_en_i (lfsr_en),
         .entropy_i ('0),
         .state_o   (rnd_word)

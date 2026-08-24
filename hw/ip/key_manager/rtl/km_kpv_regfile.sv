@@ -6,7 +6,7 @@
  * @file km_kpv_regfile.sv
  * @brief Single-write, single-read register file for KPV key data storage.
  *
- * @details Stores 512 entries of 32-bit data (32 slots x 16 words per slot).
+ * @details Stores NUM_SLOTS x WORDS_PER_SLOT entries of DATA_WIDTH bits.
  *          - Write port: KM (Key Manager CPU).
  *          - Read port: KM only (combinational, zero-latency).
  *
@@ -14,13 +14,13 @@
  *          undefined for security.  The wipe input provides synchronous
  *          bulk-clear of all entries.
  *
- * @param NUM_SLOTS       Number of key slots (default 32).
+ * @param NUM_SLOTS       Number of key slots (default 64).
  * @param WORDS_PER_SLOT  Words per slot (default 16).
  * @param DATA_WIDTH      Data width in bits (default 32).
  */
 
 module km_kpv_regfile #(
-    parameter int unsigned NUM_SLOTS      = 32,
+    parameter int unsigned NUM_SLOTS      = 64,
     parameter int unsigned WORDS_PER_SLOT = 16,
     parameter int unsigned DATA_WIDTH     = 32
 ) (

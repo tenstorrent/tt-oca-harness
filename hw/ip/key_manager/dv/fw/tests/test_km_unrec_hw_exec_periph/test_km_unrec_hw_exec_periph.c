@@ -20,7 +20,7 @@
 #include "rom_boot.h"
 #include "key_manager_fw.h"
 
-/* Use KEY_MANAGER_KMCSR_VERSION_BASE_ADDR (0x0000_E000) as the illegal target.
+/* Use KEY_MANAGER_KMCSR_VERSION_BASE_ADDR (0x0001_4000) as the illegal target.
  * This address is in peripheral/AXI space — always non-executable. */
 #define PERIPH_EXEC_TARGET KEY_MANAGER_KMCSR_VERSION_BASE_ADDR
 

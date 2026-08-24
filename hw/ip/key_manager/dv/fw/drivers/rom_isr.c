@@ -155,17 +155,20 @@ __attribute__((cold)) void rom_isr_kmcsr(void) {
     if (status.f.axi_decerr && enable.f.axi_decerr_en)
         rom_trigger_unrecoverable(ROM_KM_UFAULT_AXI_DECERR);
 
-    if (status.f.axi_slverr && enable.f.axi_slverr_en)
-        rom_trigger_unrecoverable(ROM_KM_UFAULT_AXI_SLVERR);
-
     if (status.f.drbg_err && enable.f.drbg_err_en)
         rom_trigger_unrecoverable(ROM_KM_UFAULT_DRBG_ERR);
+
+    if (status.f.axi_slverr && enable.f.axi_slverr_en)
+        rom_trigger_unrecoverable(ROM_KM_UFAULT_AXI_SLVERR);
 
     if (status.f.otp_sigint && enable.f.otp_sigint_en)
         rom_trigger_unrecoverable(ROM_KM_UFAULT_OTP_SIGINT);
 
     if (status.f.exec_violation && enable.f.exec_violation_en)
         rom_trigger_unrecoverable(ROM_KM_UFAULT_EXEC);
+
+    if (status.f.rom_access_violation && enable.f.rom_access_violation_en)
+        rom_trigger_unrecoverable(ROM_KM_UFAULT_ROM_ACCESS);
 
     if (status.f.otp_change && enable.f.otp_change_en) {
         uint32_t changed = rom_otp_get_change_status();

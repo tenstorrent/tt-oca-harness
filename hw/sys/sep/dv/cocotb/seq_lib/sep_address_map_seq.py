@@ -136,8 +136,7 @@ WRITE_ONLY = [
 # hw-driven/state-dependent). The chosen offsets match the registers the reference suite's
 # reg-walk reads. Memory-backed ranges (SRAM/ROM/TCM, OTBN/KMAC mem, KM mem) and
 # the OTP-triggering eFuse interface regs (0x1093_04xx+) are NOT probed — they
-# would hang. Excluded for OSS hygiene: licensed xSPI (0x2000_xxxx), the external
-# SPI-mux port, and the TRNG wrapper (licensed TRNG core is externalized in bare sep).
+# would hang. Excluded for OSS hygiene: proprietary IPs in nonfree.
 #
 # Blocks whose address AND reset value are exported by the generated header take
 # both from it; the rest keep an explicit address because no generated symbol

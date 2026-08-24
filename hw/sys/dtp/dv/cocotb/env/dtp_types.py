@@ -264,7 +264,7 @@ class DtpJtag2AxiTargetCfg:
     beat_bytes: int
     memory_attr: str
     activity_prefix: str
-    security_disable_bits: tuple[str, ...]
+    dbg_disable_bit: str
 
     @property
     def single_op_len(self) -> int:
@@ -273,11 +273,6 @@ class DtpJtag2AxiTargetCfg:
     @property
     def series_ctrl_len(self) -> int:
         return 2 + self.size_bits + 2 + self.addr_width + 1
-
-    @property
-    def required_enable_bits(self) -> tuple[str, ...]:
-        """Lifecycle feat_ctrl enables that must all be high for this bridge."""
-        return self.security_disable_bits
 
 
 # SMC fabric debug AXI geometry (dtp_pkg: ADDR=56, DATA=64).
@@ -319,7 +314,7 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         beat_bytes=8,
         memory_attr="axi_ram",
         activity_prefix="smc_axi",
-        security_disable_bits=("soc_debug", "ap_debug"),
+        dbg_disable_bit="smc_jtag2axi",
     ),
     "smc_otp": DtpJtag2AxiTargetCfg(
         name="smc_otp",
@@ -336,7 +331,7 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         beat_bytes=4,
         memory_attr="smc_otp_axil_ram",
         activity_prefix="smc_otp_axil",
-        security_disable_bits=("fuse_test", "soc_debug", "ap_debug"),
+        dbg_disable_bit="smc_otp_jtag2axi",
     ),
     "sep_otp": DtpJtag2AxiTargetCfg(
         name="sep_otp",
@@ -353,7 +348,7 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         beat_bytes=4,
         memory_attr="sep_otp_axil_ram",
         activity_prefix="sep_otp_axil",
-        security_disable_bits=("fuse_test", "sep_debug", "soc_debug", "ap_debug"),
+        dbg_disable_bit="sep_otp_jtag2axi",
     ),
 }
 

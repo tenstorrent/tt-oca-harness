@@ -6,10 +6,10 @@
 // used by the FSM reference-model checks. Deliberately separate from the
 // shared ocah_jtag_if, which carries generic JTAG pins only.
 //
-// The JTAG2AXI additions (issue #3295) carry test-drivable lifecycle enables,
-// AXI responder error controls, the SVA suppress knob, and mirrors of the
-// tb_top request-activity pulse counters, so sequences never reach into
-// tb_top hierarchy directly.
+// The JTAG2AXI additions (issue #3295) carry the test-drivable lifecycle
+// debug disables, AXI responder error controls, the SVA suppress knob, and
+// mirrors of the tb_top request-activity pulse counters, so sequences never
+// reach into tb_top hierarchy directly.
 
 interface dtp_tb_if;
 
@@ -20,13 +20,11 @@ interface dtp_tb_if;
     // Driven by the DUT top (jtag_tap_pkg::tap_state_e, one-hot).
     logic [15:0] tap_state;
 
-    // Lifecycle feature enables (init 0 = the historical UVM-mode tie-off;
-    // JTAG2AXI sequences must enable the target's required bits first).
-    logic feat_ctrl_sip_debug = 1'b0;
-    logic feat_ctrl_soc_debug = 1'b0;
-    logic feat_ctrl_ap_debug  = 1'b0;
-    logic feat_ctrl_sep_debug = 1'b0;
-    logic feat_ctrl_fuse_test = 1'b0;
+    // Lifecycle debug disables (sep_lifecycle_ctrl_pkg::dbg_disable_t,
+    // active-high: 1 = interface disabled). Init '1 = fail-closed, matching
+    // the DUT synchronizers' reset value; JTAG2AXI sequences must clear the
+    // target's disable first.
+    sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable = '1;
 
     // Runtime enable for the shared AXI protocol SVA checkers.
     logic axi_sva_en = 1'b1;

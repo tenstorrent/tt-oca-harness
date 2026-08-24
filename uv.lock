@@ -89,18 +89,6 @@ wheels = [
 ]
 
 [[package]]
-name = "cocotbext-i2c"
-version = "0.1.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cocotb" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/55/a5/3936214377140bee2b582fc6326dd98df1f8c7b9ecbef8094044d69d52bf/cocotbext_i2c-0.1.2.tar.gz", hash = "sha256:188c6ff9cc999858eeb50560b41a2c7af0040f334abefb0971f8c40bf8818867", size = 9491, upload-time = "2025-09-07T19:35:25.358Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/21/5e1d2b2b1b30431bec7461df6ccc267fb447629f780ea196b92f1c8b3f50/cocotbext_i2c-0.1.2-py3-none-any.whl", hash = "sha256:d50d1c5f86c0841bfa3456d0de6700bab9ceb1d26c9e672dfd637e02bc4f84e2", size = 9644, upload-time = "2025-09-07T19:35:23.91Z" },
-]
-
-[[package]]
 name = "cocotbext-jtag"
 version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -298,7 +286,6 @@ source = { editable = "hw/common/dv" }
 dependencies = [
     { name = "cocotb" },
     { name = "cocotbext-axi" },
-    { name = "cocotbext-i2c" },
     { name = "cocotbext-jtag" },
     { name = "pyuvm" },
 ]
@@ -307,7 +294,6 @@ dependencies = [
 requires-dist = [
     { name = "cocotb", specifier = ">=2.0.0,<2.1" },
     { name = "cocotbext-axi", specifier = ">=0.1.24,<0.2" },
-    { name = "cocotbext-i2c", specifier = ">=0.1.2,<0.2" },
     { name = "cocotbext-jtag", specifier = ">=0.4.0,<0.5" },
     { name = "pyuvm", specifier = ">=4.0.0,<5" },
 ]
@@ -610,6 +596,7 @@ dependencies = [
     { name = "peakrdl" },
     { name = "peakrdl-cheader" },
     { name = "peakrdl-html" },
+    { name = "peakrdl-ipxact" },
     { name = "peakrdl-markdown" },
     { name = "peakrdl-rawheader" },
     { name = "peakrdl-regblock" },
@@ -633,6 +620,7 @@ requires-dist = [
     { name = "peakrdl", specifier = ">=1.4.0" },
     { name = "peakrdl-cheader", specifier = ">=1.1.0" },
     { name = "peakrdl-html", specifier = ">=2.12.2" },
+    { name = "peakrdl-ipxact", specifier = ">=3.4.0" },
     { name = "peakrdl-markdown", specifier = ">=1.0.3" },
     { name = "peakrdl-rawheader", specifier = ">=0.2.4" },
     { name = "peakrdl-regblock", specifier = ">=1.2.0" },

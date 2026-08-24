@@ -9,7 +9,7 @@
  * Also tests ERROR_ENABLE masking and ERROR_STATUS W1C clearing.
  *
  * Test Flow:
- * 1. Configure SPI mux, enable controller
+ * 1. Enable controller
  * 2. Test ERROR_ENABLE defaults (all enabled)
  * 3. Test UNDERFLOW (read RXDATA when empty)
  * 4. Test ERROR_STATUS W1C clear
@@ -29,7 +29,6 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -95,8 +94,6 @@ int main(void) {
     uint32_t i;
     int timeout;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

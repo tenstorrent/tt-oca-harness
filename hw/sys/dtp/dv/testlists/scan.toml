@@ -101,3 +101,11 @@ timeout_sec = 2400
 tags = ["scan"]
 run_modes = ["scan"]
 
+
+[[tests]]
+name = "dtp_scan_dbg_disable_matrix_test"
+module = "dtp_scan_dbg_disable_matrix_test"
+seed = 1
+timeout_sec = 2400
+tags = ["scan", "dbg_disable"]
+run_modes = ["scan"]

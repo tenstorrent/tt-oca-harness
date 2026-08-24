@@ -17,7 +17,7 @@
 
 #define SRAM_LOCK_REG (*(volatile uint32_t *)KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR)
 #define LOCK_REGION 4u
-#define REGION_SIZE_BYTES 0x200u
+#define REGION_SIZE_BYTES SRAM_LOCK_REGION_BYTES
 #define LOCKED_ADDR (SRAM_BASE + (LOCK_REGION * REGION_SIZE_BYTES))
 
 int rom_boot_wipe_enabled(void) {

@@ -102,88 +102,88 @@ localparam int unsigned SECURE_DMA_STATUS_REG_OFFSET                            
 localparam int unsigned SECURE_DMA_STATUS_REG_ADDR                                                                = 32'h10800050;
 localparam int unsigned SECURE_DMA_ERROR_CODE_REG_OFFSET                                                          = 32'h00000054;
 localparam int unsigned SECURE_DMA_ERROR_CODE_REG_ADDR                                                            = 32'h10800054;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_REG_OFFSET                                                       = 32'h00000058;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_REG_ADDR                                                         = 32'h10800058;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_1_REG_OFFSET                                                       = 32'h0000005C;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_1_REG_ADDR                                                         = 32'h1080005C;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_2_REG_OFFSET                                                       = 32'h00000060;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_2_REG_ADDR                                                         = 32'h10800060;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_3_REG_OFFSET                                                       = 32'h00000064;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_3_REG_ADDR                                                         = 32'h10800064;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_4_REG_OFFSET                                                       = 32'h00000068;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_4_REG_ADDR                                                         = 32'h10800068;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_5_REG_OFFSET                                                       = 32'h0000006C;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_5_REG_ADDR                                                         = 32'h1080006C;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_6_REG_OFFSET                                                       = 32'h00000070;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_6_REG_ADDR                                                         = 32'h10800070;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_7_REG_OFFSET                                                       = 32'h00000074;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_7_REG_ADDR                                                         = 32'h10800074;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_8_REG_OFFSET                                                       = 32'h00000078;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_8_REG_ADDR                                                         = 32'h10800078;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_9_REG_OFFSET                                                       = 32'h0000007C;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_9_REG_ADDR                                                         = 32'h1080007C;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_10_REG_OFFSET                                                      = 32'h00000080;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_10_REG_ADDR                                                        = 32'h10800080;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_11_REG_OFFSET                                                      = 32'h00000084;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_11_REG_ADDR                                                        = 32'h10800084;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_12_REG_OFFSET                                                      = 32'h00000088;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_12_REG_ADDR                                                        = 32'h10800088;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_13_REG_OFFSET                                                      = 32'h0000008C;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_13_REG_ADDR                                                        = 32'h1080008C;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_14_REG_OFFSET                                                      = 32'h00000090;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_14_REG_ADDR                                                        = 32'h10800090;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_15_REG_OFFSET                                                      = 32'h00000094;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_15_REG_ADDR                                                        = 32'h10800094;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_0__REG_OFFSET                                                    = 32'h00000058;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_0__REG_ADDR                                                      = 32'h10800058;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_1__REG_OFFSET                                                    = 32'h0000005C;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_1__REG_ADDR                                                      = 32'h1080005C;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_2__REG_OFFSET                                                    = 32'h00000060;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_2__REG_ADDR                                                      = 32'h10800060;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_3__REG_OFFSET                                                    = 32'h00000064;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_3__REG_ADDR                                                      = 32'h10800064;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_4__REG_OFFSET                                                    = 32'h00000068;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_4__REG_ADDR                                                      = 32'h10800068;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_5__REG_OFFSET                                                    = 32'h0000006C;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_5__REG_ADDR                                                      = 32'h1080006C;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_6__REG_OFFSET                                                    = 32'h00000070;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_6__REG_ADDR                                                      = 32'h10800070;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_7__REG_OFFSET                                                    = 32'h00000074;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_7__REG_ADDR                                                      = 32'h10800074;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_8__REG_OFFSET                                                    = 32'h00000078;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_8__REG_ADDR                                                      = 32'h10800078;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_9__REG_OFFSET                                                    = 32'h0000007C;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_9__REG_ADDR                                                      = 32'h1080007C;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_10__REG_OFFSET                                                   = 32'h00000080;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_10__REG_ADDR                                                     = 32'h10800080;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_11__REG_OFFSET                                                   = 32'h00000084;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_11__REG_ADDR                                                     = 32'h10800084;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_12__REG_OFFSET                                                   = 32'h00000088;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_12__REG_ADDR                                                     = 32'h10800088;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_13__REG_OFFSET                                                   = 32'h0000008C;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_13__REG_ADDR                                                     = 32'h1080008C;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_14__REG_OFFSET                                                   = 32'h00000090;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_14__REG_ADDR                                                     = 32'h10800090;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_15__REG_OFFSET                                                   = 32'h00000094;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_15__REG_ADDR                                                     = 32'h10800094;
 localparam int unsigned SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_OFFSET                                               = 32'h00000098;
 localparam int unsigned SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_ADDR                                                 = 32'h10800098;
 localparam int unsigned SECURE_DMA_CLEAR_INTR_SRC_REG_OFFSET                                                      = 32'h0000009C;
 localparam int unsigned SECURE_DMA_CLEAR_INTR_SRC_REG_ADDR                                                        = 32'h1080009C;
 localparam int unsigned SECURE_DMA_CLEAR_INTR_BUS_REG_OFFSET                                                      = 32'h000000A0;
 localparam int unsigned SECURE_DMA_CLEAR_INTR_BUS_REG_ADDR                                                        = 32'h108000A0;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_REG_OFFSET                                                     = 32'h000000A4;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_REG_ADDR                                                       = 32'h108000A4;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_1_REG_OFFSET                                                     = 32'h000000A8;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_1_REG_ADDR                                                       = 32'h108000A8;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_2_REG_OFFSET                                                     = 32'h000000AC;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_2_REG_ADDR                                                       = 32'h108000AC;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_3_REG_OFFSET                                                     = 32'h000000B0;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_3_REG_ADDR                                                       = 32'h108000B0;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_4_REG_OFFSET                                                     = 32'h000000B4;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_4_REG_ADDR                                                       = 32'h108000B4;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_5_REG_OFFSET                                                     = 32'h000000B8;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_5_REG_ADDR                                                       = 32'h108000B8;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_6_REG_OFFSET                                                     = 32'h000000BC;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_6_REG_ADDR                                                       = 32'h108000BC;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_7_REG_OFFSET                                                     = 32'h000000C0;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_7_REG_ADDR                                                       = 32'h108000C0;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_8_REG_OFFSET                                                     = 32'h000000C4;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_8_REG_ADDR                                                       = 32'h108000C4;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_9_REG_OFFSET                                                     = 32'h000000C8;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_9_REG_ADDR                                                       = 32'h108000C8;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_10_REG_OFFSET                                                    = 32'h000000CC;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_10_REG_ADDR                                                      = 32'h108000CC;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_REG_OFFSET                                                   = 32'h00000124;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_REG_ADDR                                                     = 32'h10800124;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_1_REG_OFFSET                                                   = 32'h00000128;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_1_REG_ADDR                                                     = 32'h10800128;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_2_REG_OFFSET                                                   = 32'h0000012C;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_2_REG_ADDR                                                     = 32'h1080012C;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_3_REG_OFFSET                                                   = 32'h00000130;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_3_REG_ADDR                                                     = 32'h10800130;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_4_REG_OFFSET                                                   = 32'h00000134;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_4_REG_ADDR                                                     = 32'h10800134;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_5_REG_OFFSET                                                   = 32'h00000138;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_5_REG_ADDR                                                     = 32'h10800138;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_6_REG_OFFSET                                                   = 32'h0000013C;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_6_REG_ADDR                                                     = 32'h1080013C;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_7_REG_OFFSET                                                   = 32'h00000140;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_7_REG_ADDR                                                     = 32'h10800140;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_8_REG_OFFSET                                                   = 32'h00000144;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_8_REG_ADDR                                                     = 32'h10800144;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_9_REG_OFFSET                                                   = 32'h00000148;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_9_REG_ADDR                                                     = 32'h10800148;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_10_REG_OFFSET                                                  = 32'h0000014C;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_10_REG_ADDR                                                    = 32'h1080014C;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_0__REG_OFFSET                                                  = 32'h000000A4;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_0__REG_ADDR                                                    = 32'h108000A4;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_1__REG_OFFSET                                                  = 32'h000000A8;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_1__REG_ADDR                                                    = 32'h108000A8;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_2__REG_OFFSET                                                  = 32'h000000AC;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_2__REG_ADDR                                                    = 32'h108000AC;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_3__REG_OFFSET                                                  = 32'h000000B0;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_3__REG_ADDR                                                    = 32'h108000B0;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_4__REG_OFFSET                                                  = 32'h000000B4;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_4__REG_ADDR                                                    = 32'h108000B4;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_5__REG_OFFSET                                                  = 32'h000000B8;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_5__REG_ADDR                                                    = 32'h108000B8;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_6__REG_OFFSET                                                  = 32'h000000BC;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_6__REG_ADDR                                                    = 32'h108000BC;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_7__REG_OFFSET                                                  = 32'h000000C0;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_7__REG_ADDR                                                    = 32'h108000C0;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_8__REG_OFFSET                                                  = 32'h000000C4;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_8__REG_ADDR                                                    = 32'h108000C4;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_9__REG_OFFSET                                                  = 32'h000000C8;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_9__REG_ADDR                                                    = 32'h108000C8;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_10__REG_OFFSET                                                 = 32'h000000CC;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_10__REG_ADDR                                                   = 32'h108000CC;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_OFFSET                                                = 32'h00000124;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_0__REG_ADDR                                                  = 32'h10800124;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_1__REG_OFFSET                                                = 32'h00000128;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_1__REG_ADDR                                                  = 32'h10800128;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_2__REG_OFFSET                                                = 32'h0000012C;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_2__REG_ADDR                                                  = 32'h1080012C;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_3__REG_OFFSET                                                = 32'h00000130;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_3__REG_ADDR                                                  = 32'h10800130;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_4__REG_OFFSET                                                = 32'h00000134;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_4__REG_ADDR                                                  = 32'h10800134;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_5__REG_OFFSET                                                = 32'h00000138;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_5__REG_ADDR                                                  = 32'h10800138;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_6__REG_OFFSET                                                = 32'h0000013C;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_6__REG_ADDR                                                  = 32'h1080013C;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_7__REG_OFFSET                                                = 32'h00000140;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_7__REG_ADDR                                                  = 32'h10800140;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_8__REG_OFFSET                                                = 32'h00000144;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_8__REG_ADDR                                                  = 32'h10800144;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_9__REG_OFFSET                                                = 32'h00000148;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_9__REG_ADDR                                                  = 32'h10800148;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_10__REG_OFFSET                                               = 32'h0000014C;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_10__REG_ADDR                                                 = 32'h1080014C;
 
 
 //==============================================================================
@@ -3875,12 +3875,12 @@ localparam longint unsigned SECURE_DMA_SRC_CONFIG_REG_DEFAULT                   
 localparam longint unsigned SECURE_DMA_DST_CONFIG_REG_DEFAULT                                                     = 32'h00000000;
 localparam longint unsigned SECURE_DMA_STATUS_REG_DEFAULT                                                         = 32'h00000000;
 localparam longint unsigned SECURE_DMA_ERROR_CODE_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SECURE_DMA_SHA2_DIGEST_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned SECURE_DMA_SHA2_DIGEST_0_REG_DEFAULT                                                  = 32'h00000000;
 localparam longint unsigned SECURE_DMA_HANDSHAKE_INTR_ENABLE_REG_DEFAULT                                          = 32'h000007FF;
 localparam longint unsigned SECURE_DMA_CLEAR_INTR_SRC_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned SECURE_DMA_CLEAR_INTR_BUS_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned SECURE_DMA_INTR_SRC_ADDR_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned SECURE_DMA_INTR_SRC_WR_VAL_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned SECURE_DMA_INTR_SRC_ADDR_0_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_REG_DEFAULT                                              = 32'h00000000;
 localparam longint unsigned AON_TIMER_ALERT_TEST_REG_DEFAULT                                                      = 32'h00000000;
 localparam longint unsigned AON_TIMER_WKUP_CTRL_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned AON_TIMER_WKUP_THOLD_HI_REG_DEFAULT                                                   = 32'h00000000;
@@ -4098,17 +4098,17 @@ localparam int unsigned SECURE_DMA_INTR_TEST_DMA_ERROR_SHIFT                    
 localparam int unsigned SECURE_DMA_ALERT_TEST_FATAL_FAULT_MASK                                                    = 32'h1;
 localparam int unsigned SECURE_DMA_ALERT_TEST_FATAL_FAULT_SHIFT                                                   = 0;
 
-localparam int unsigned SECURE_DMA_SRC_ADDR_LO_ADDR_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_SRC_ADDR_LO_ADDR_SHIFT                                                         = 0;
+localparam int unsigned SECURE_DMA_SRC_ADDR_LO_SRC_ADDR_LO_MASK                                                   = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_SRC_ADDR_LO_SRC_ADDR_LO_SHIFT                                                  = 0;
 
-localparam int unsigned SECURE_DMA_SRC_ADDR_HI_ADDR_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_SRC_ADDR_HI_ADDR_SHIFT                                                         = 0;
+localparam int unsigned SECURE_DMA_SRC_ADDR_HI_SRC_ADDR_HI_MASK                                                   = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_SRC_ADDR_HI_SRC_ADDR_HI_SHIFT                                                  = 0;
 
-localparam int unsigned SECURE_DMA_DST_ADDR_LO_ADDR_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_DST_ADDR_LO_ADDR_SHIFT                                                         = 0;
+localparam int unsigned SECURE_DMA_DST_ADDR_LO_DST_ADDR_LO_MASK                                                   = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_DST_ADDR_LO_DST_ADDR_LO_SHIFT                                                  = 0;
 
-localparam int unsigned SECURE_DMA_DST_ADDR_HI_ADDR_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_DST_ADDR_HI_ADDR_SHIFT                                                         = 0;
+localparam int unsigned SECURE_DMA_DST_ADDR_HI_DST_ADDR_HI_MASK                                                   = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_DST_ADDR_HI_DST_ADDR_HI_SHIFT                                                  = 0;
 
 localparam int unsigned SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_MASK                                                    = 32'hF;
 localparam int unsigned SECURE_DMA_ADDR_SPACE_ID_SRC_ASID_SHIFT                                                   = 0;
@@ -4131,14 +4131,14 @@ localparam int unsigned SECURE_DMA_RANGE_REGWEN_REGWEN_SHIFT                    
 localparam int unsigned SECURE_DMA_CFG_REGWEN_REGWEN_MASK                                                         = 32'hF;
 localparam int unsigned SECURE_DMA_CFG_REGWEN_REGWEN_SHIFT                                                        = 0;
 
-localparam int unsigned SECURE_DMA_TOTAL_DATA_SIZE_SIZE_MASK                                                      = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_TOTAL_DATA_SIZE_SIZE_SHIFT                                                     = 0;
+localparam int unsigned SECURE_DMA_TOTAL_DATA_SIZE_DATA_SIZE_MASK                                                 = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_TOTAL_DATA_SIZE_DATA_SIZE_SHIFT                                                = 0;
 
-localparam int unsigned SECURE_DMA_CHUNK_DATA_SIZE_SIZE_MASK                                                      = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_CHUNK_DATA_SIZE_SIZE_SHIFT                                                     = 0;
+localparam int unsigned SECURE_DMA_CHUNK_DATA_SIZE_DATA_SIZE_MASK                                                 = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_CHUNK_DATA_SIZE_DATA_SIZE_SHIFT                                                = 0;
 
-localparam int unsigned SECURE_DMA_TRANSFER_WIDTH_WIDTH_MASK                                                      = 32'h3;
-localparam int unsigned SECURE_DMA_TRANSFER_WIDTH_WIDTH_SHIFT                                                     = 0;
+localparam int unsigned SECURE_DMA_TRANSFER_WIDTH_TRANSACTION_WIDTH_MASK                                          = 32'h3;
+localparam int unsigned SECURE_DMA_TRANSFER_WIDTH_TRANSACTION_WIDTH_SHIFT                                         = 0;
 
 localparam int unsigned SECURE_DMA_CONTROL_OPCODE_MASK                                                            = 32'hF;
 localparam int unsigned SECURE_DMA_CONTROL_OPCODE_SHIFT                                                           = 0;
@@ -4212,8 +4212,8 @@ localparam int unsigned SECURE_DMA_ERROR_CODE_RANGE_VALID_ERROR_SHIFT           
 localparam int unsigned SECURE_DMA_ERROR_CODE_ASID_ERROR_MASK                                                     = 32'h80;
 localparam int unsigned SECURE_DMA_ERROR_CODE_ASID_ERROR_SHIFT                                                    = 7;
 
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_DATA_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_SHA2_DIGEST_DATA_SHIFT                                                         = 0;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_DATA_0_MASK                                                      = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_SHA2_DIGEST_0_DATA_0_SHIFT                                                     = 0;
 
 localparam int unsigned SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_MASK                                                = 32'h7FF;
 localparam int unsigned SECURE_DMA_HANDSHAKE_INTR_ENABLE_MASK_SHIFT                                               = 0;
@@ -4224,11 +4224,11 @@ localparam int unsigned SECURE_DMA_CLEAR_INTR_SRC_SOURCE_SHIFT                  
 localparam int unsigned SECURE_DMA_CLEAR_INTR_BUS_BUS_MASK                                                        = 32'h7FF;
 localparam int unsigned SECURE_DMA_CLEAR_INTR_BUS_BUS_SHIFT                                                       = 0;
 
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_ADDR_MASK                                                        = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_ADDR_SHIFT                                                       = 0;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_ADDR_0_MASK                                                    = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_INTR_SRC_ADDR_0_ADDR_0_SHIFT                                                   = 0;
 
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_WR_VAL_MASK                                                    = 32'hFFFFFFFF;
-localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_WR_VAL_SHIFT                                                   = 0;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_WR_VAL_0_MASK                                                = 32'hFFFFFFFF;
+localparam int unsigned SECURE_DMA_INTR_SRC_WR_VAL_0_WR_VAL_0_SHIFT                                               = 0;
 
 localparam int unsigned AON_TIMER_ALERT_TEST_FATAL_FAULT_MASK                                                     = 32'h1;
 localparam int unsigned AON_TIMER_ALERT_TEST_FATAL_FAULT_SHIFT                                                    = 0;
@@ -6203,25 +6203,25 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   addr ;
+    logic [31:0]   src_addr_lo ;
 } secure_dma_src_addr_lo_reg_t;
 
 
 
 typedef struct packed {
-    logic [31:0]   addr ;
+    logic [31:0]   src_addr_hi ;
 } secure_dma_src_addr_hi_reg_t;
 
 
 
 typedef struct packed {
-    logic [31:0]   addr ;
+    logic [31:0]   dst_addr_lo ;
 } secure_dma_dst_addr_lo_reg_t;
 
 
 
 typedef struct packed {
-    logic [31:0]   addr ;
+    logic [31:0]   dst_addr_hi ;
 } secure_dma_dst_addr_hi_reg_t;
 
 
@@ -6264,19 +6264,19 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   size ;
+    logic [31:0]   data_size ;
 } secure_dma_total_data_size_reg_t;
 
 
 
 typedef struct packed {
-    logic [31:0]   size ;
+    logic [31:0]   data_size ;
 } secure_dma_chunk_data_size_reg_t;
 
 
 
 typedef struct packed {
-    logic [1:0]   width ;
+    logic [1:0]   transaction_width ;
 } secure_dma_transfer_width_reg_t;
 
 
@@ -6334,8 +6334,8 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   data ;
-} secure_dma_sha2_digest_reg_t;
+    logic [31:0]   data_0 ;
+} secure_dma_sha2_digest_0_reg_t;
 
 
 
@@ -6358,14 +6358,14 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   addr ;
-} secure_dma_intr_src_addr_reg_t;
+    logic [31:0]   addr_0 ;
+} secure_dma_intr_src_addr_0_reg_t;
 
 
 
 typedef struct packed {
-    logic [31:0]   wr_val ;
-} secure_dma_intr_src_wr_val_reg_t;
+    logic [31:0]   wr_val_0 ;
+} secure_dma_intr_src_wr_val_0_reg_t;
 
 
 

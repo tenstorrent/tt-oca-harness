@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /* OTBN software error testcase: LOOP branch-at-end violation */
 
 .section .text.start

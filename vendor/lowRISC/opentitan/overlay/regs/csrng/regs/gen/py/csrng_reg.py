@@ -678,29 +678,14 @@ class CSRNG_ERR_CODE_reg_t(Structure):
     _fields_ = [
         ('sfifo_cmd_err', c_uint32, 1),
         ('sfifo_genbits_err', c_uint32, 1),
-        ('sfifo_cmdreq_err', c_uint32, 1),
-        ('sfifo_rcstage_err', c_uint32, 1),
-        ('sfifo_keyvrc_err', c_uint32, 1),
-        ('sfifo_updreq_err', c_uint32, 1),
-        ('sfifo_bencreq_err', c_uint32, 1),
-        ('sfifo_bencack_err', c_uint32, 1),
-        ('sfifo_pdata_err', c_uint32, 1),
-        ('sfifo_final_err', c_uint32, 1),
-        ('sfifo_gbencack_err', c_uint32, 1),
-        ('sfifo_grcstage_err', c_uint32, 1),
-        ('sfifo_ggenreq_err', c_uint32, 1),
-        ('sfifo_gadstage_err', c_uint32, 1),
-        ('sfifo_ggenbits_err', c_uint32, 1),
-        ('sfifo_blkenc_err', c_uint32, 1),
-        ('rsvd_0', c_uint32, 4),
+        ('rsvd_0', c_uint32, 18),
         ('cmd_stage_sm_err', c_uint32, 1),
         ('main_sm_err', c_uint32, 1),
-        ('drbg_gen_sm_err', c_uint32, 1),
-        ('drbg_updbe_sm_err', c_uint32, 1),
-        ('drbg_updob_sm_err', c_uint32, 1),
+        ('ctr_drbg_sm_err', c_uint32, 1),
+        ('rsvd_1', c_uint32, 2),
         ('aes_cipher_sm_err', c_uint32, 1),
-        ('cmd_gen_cnt_err', c_uint32, 1),
-        ('rsvd_1', c_uint32, 1),
+        ('ctr_err', c_uint32, 1),
+        ('rsvd_2', c_uint32, 1),
         ('fifo_write_err', c_uint32, 1),
         ('fifo_read_err', c_uint32, 1),
         ('fifo_state_err', c_uint32, 1),
@@ -756,13 +741,13 @@ class CSRNG_ERR_CODE_TEST_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-CSRNG_MAIN_SM_STATE_REG_DEFAULT = 0x0000004E
+CSRNG_MAIN_SM_STATE_REG_DEFAULT = 0x00000037
 class CSRNG_MAIN_SM_STATE_reg_t(Structure):
     _fields_ = [
-        ('main_sm_state', c_uint8, 8),
+        ('main_sm_state', c_uint8, 6),
     ]
 
-CSRNG_MAIN_SM_STATE_REG_DEFAULT = 0x0000004E
+CSRNG_MAIN_SM_STATE_REG_DEFAULT = 0x00000037
 
 class CSRNG_MAIN_SM_STATE_reg_u(Union):
     _fields_ = [
