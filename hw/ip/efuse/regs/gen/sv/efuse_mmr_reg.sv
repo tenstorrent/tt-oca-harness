@@ -99,6 +99,7 @@ module efuse_mmr_reg (
         logic RMA_SIP_TOKEN_MATCH;
         logic RMA_CHIPLET_TOKEN_MATCH;
         logic SEC_DISABLE_TOKEN_MATCH;
+        logic TOKEN_MATCH_FAULT;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
@@ -133,6 +134,7 @@ module efuse_mmr_reg (
         decoded_reg_strb.RMA_SIP_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h64) & !cpuif_req_is_wr;
         decoded_reg_strb.RMA_CHIPLET_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h68) & !cpuif_req_is_wr;
         decoded_reg_strb.SEC_DISABLE_TOKEN_MATCH = cpuif_req_masked & (cpuif_addr == 7'h6c) & !cpuif_req_is_wr;
+        decoded_reg_strb.TOKEN_MATCH_FAULT = cpuif_req_masked & (cpuif_addr == 7'h70) & !cpuif_req_is_wr;
         decoded_err = '0;
         decoded_req_is_external = is_external;
     end
@@ -381,6 +383,11 @@ module efuse_mmr_reg (
         end
         if(rd_mux_addr == 7'h6c) begin
             readback_data_var[5:0] = hwif_in.SEC_DISABLE_TOKEN_MATCH.token_match_status.next;
+        end
+        if(rd_mux_addr == 7'h70) begin
+            readback_data_var[0] = hwif_in.TOKEN_MATCH_FAULT.rma_sip_token_fault.next;
+            readback_data_var[8] = hwif_in.TOKEN_MATCH_FAULT.rma_chiplet_token_fault.next;
+            readback_data_var[16] = hwif_in.TOKEN_MATCH_FAULT.secure_disable_token_fault.next;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;

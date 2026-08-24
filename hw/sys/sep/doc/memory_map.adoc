@@ -95,9 +95,9 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 === Detailed Register Map
 
 The following register tables are generated from the SEP register description
-(RDL) sub-blocks under `hw/sys/sep/regs/`, plus the Entropy Source IP block
-under `hw/ip/entropy_source/regs/`. Each entry corresponds to a unit in the SEP
-memory map above.
+(RDL) sub-blocks under `hw/sys/sep/regs/`, plus the eFuse MMR and Entropy Source
+IP blocks under `hw/ip/efuse/regs/` and `hw/ip/entropy_source/regs/`. Each entry
+corresponds to a unit in the SEP memory map above.
 
 ==== CPU Control and Interrupts
 
@@ -136,6 +136,9 @@ include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[]
 endif::backend-pdf[]
 
 ==== Scratch and eFuse
+
+The eFuse MMR block is an IP-level block (`hw/ip/efuse/regs/`); its register map
+is generated from the IP RDL rather than the SEP aggregate.
 
 ifdef::backend-html5[]
 ++++

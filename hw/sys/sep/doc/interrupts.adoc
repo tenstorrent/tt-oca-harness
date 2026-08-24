@@ -21,10 +21,10 @@ tied to zero inside the core. Firmware programs source `N` by writing the
 [[sep-cpu-interrupt-vector-map]]
 ==== SEP CPU Interrupt Vector Map
 
-The PIC supports 255 external sources. Slots 1–38 are individually assigned to
+The PIC supports 255 external sources. Slots 1–39 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
 SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
-(SMC mailboxes, SPI). Slots 39–255 are reserved for chip-level external inputs
+(SMC mailboxes, SPI). Slots 40–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.
 
 [width="100%",cols="10%,35%,55%",options="header",]
@@ -184,7 +184,12 @@ not here; see <<sep-non-pic-paths>>.
 |Entropy pool fill stall
 |Entropy pool FIFO fill-path stall (fault: EDN not making progress)
 
-|`[39–255]`
+|`39`
+|Token match fault
+|eFuse token comparator redundancy fault (fault). The OR of the three sticky
+`TOKEN_MATCH_FAULT` bits, so it stays asserted until reset.
+
+|`[40–255]`
 |Reserved (external band)
 |Chip-level external interrupt inputs
 |=======================================================================
