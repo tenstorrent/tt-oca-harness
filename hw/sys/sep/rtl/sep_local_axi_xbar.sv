@@ -15,8 +15,8 @@
 // | cpu_tcm                | AXI4 | 0x0000_c000_0000 | 0x0000_c004_0000 |  256 KB |
 // | cpu_tcm                | AXI4 | 0x0000_c004_0000 | 0x0000_c006_0000 |  128 KB |
 // | sram                   | AXI4 | 0x0000_1000_0000 | 0x0000_1004_0000 |  256 KB |
-// | dma_csr                | AXI4 | 0x0000_1080_0000 | 0x0000_1080_1000 |    4 KB |
-// | sep_wdt                | AXI4 | 0x0000_1080_1000 | 0x0000_1080_2000 |    4 KB |
+// | dma_csr                | AXI4 | 0x0000_1080_0000 | 0x0000_1080_0150 |   336 B |
+// | sep_wdt                | AXI4 | 0x0000_1080_1000 | 0x0000_1080_1038 |    56 B |
 // | sep_reset_ctrl         | AXI4 | 0x0000_1080_3000 | 0x0000_1080_3008 |     8 B |
 // | sep_crypto             | AXI4 | 0x0000_1090_0000 | 0x0000_1095_0000 |  320 KB |
 // | sep_system_peripherals | AXI4 | 0x0000_1080_2000 | 0x0000_1080_2100 |   256 B |
@@ -130,10 +130,18 @@ module sep_local_axi_xbar
     '{idx: 0, start_addr: 32'hc0040000, end_addr: 33'hc0060000},
     // sram.main: 0x10000000 - 0x10040000
     '{idx: 1, start_addr: 32'h10000000, end_addr: 33'h10040000},
-    // dma_csr.main: 0x10800000 - 0x10801000
-    '{idx: 2, start_addr: 32'h10800000, end_addr: 33'h10801000},
-    // sep_wdt.main: 0x10801000 - 0x10802000
-    '{idx: 3, start_addr: 32'h10801000, end_addr: 33'h10802000},
+    // dma_csr.main: secure_dma register extent, not the 4 kB spec aperture --
+    // secure_dma_reg_top decodes 9 bits, so a wider window aliases.
+    '{idx: 2,
+      start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
+      end_addr:   33'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR +
+                      och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE)},
+    // sep_wdt.main: wdt_timer register extent, not the 4 kB spec aperture --
+    // aon_timer_reg_top decodes 6 bits, so a wider window aliases.
+    '{idx: 3,
+      start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR),
+      end_addr:   33'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR +
+                      och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE)},
     // sep_reset_ctrl.main: 0x10803000 - 0x10803008
     '{idx: 4, start_addr: 32'h10803000, end_addr: 33'h10803008},
     // sep_crypto.main: 0x10900000 - 0x10950000
