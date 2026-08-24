@@ -2020,7 +2020,7 @@ in this map clocks an IP off.
 | PROVEN
 |===
 
-NOTE: this representative closes the iconic "Clock-gate placeholder"
+NOTE: this representative closes the iconic "Clock-gate per IP"
 scorecard row. The implemented contract is the designer placeholder,
 not a live per-IP gate.
 
