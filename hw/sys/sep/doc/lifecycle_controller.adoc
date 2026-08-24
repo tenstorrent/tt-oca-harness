@@ -614,10 +614,10 @@ maps SEP asset classes to scan chains and to the gates that control each.
 [[asset-classes]]
 ====== Asset Classes
 
-SEP assets are partitioned into three classes. Class 1 (non-scannable) is split
-by protection rationale -- 1a (confidentiality) and 1b (integrity). Class 2
-(crypto / Key Manager secret-bearing) is scannable for test coverage but is
-*never* scan-dumpable. Class 3 is everything else.
+SEP assets are partitioned into three classes. Class 1 (non-scannable) and
+Class 2 (scannable for test coverage but *never* scan-dumpable) are each split by
+protection rationale -- *a* for confidentiality and *b* for integrity. Class 3 is
+everything else.
 
 [width="100%",cols="<9%,<30%,^11%,^13%,<37%",options="header",]
 |=======================================================================
@@ -641,8 +641,8 @@ by protection rationale -- 1a (confidentiality) and 1b (integrity). Class 2
 |No
 |*Excluded* from all scan chains. *Integrity* rationale: the values are not secret (digests are SHA-256 preimage-resistant), but scan shifting could change them and illegitimately enable a disabled feature or make an attacker-presented token match. Stability against scan-induced perturbation is required.
 
-|*2* +
-(crypto / KM secret-bearing)
+|*2a* +
+(secret-bearing; confidentiality)
 |The complete Key Manager; AES, HMAC-SHA2, KMAC-SHA3, OTBN, entropy,
 DRBG/EDN, Adams Bridge, and TRNG sequential state; KM/OTBN companion SRAMs
 (see <<class-2-asset-manifest>>)
@@ -655,6 +655,22 @@ secret-bearing shadow registers (UIDs / `CLASS_KEY`) are disconnected from
 downstream while `secure_tm = 1`, so these consumers hold no real secret during
 scan test. *Scan dump is never permitted -- for any owner or LC state*: a dump
 command is never admitted on this chain (see <<secure-tm-vs-scandump>>).
+
+|*2b* +
+(fuse program path; integrity)
+|Fuse programming *control* MMRs and *status* MMRs of the SEP fuse controller
+|Yes
+|*Never*
+|*Dedicated secure scan chain*, alongside Class 2a, under the same command-class
+rule. *Integrity* rationale: shifting is not read-only with respect to the flops
+it passes through. During a dump every flop in the chain takes on a succession of
+arbitrary transient values, so a program-control register on a dumpable chain
+would pass through the encoding for "program" during an ordinary dump, and the
+dump itself could burn fuses. Status registers are included because spoofed
+status can steer the program sequencer. Class 2 rather than Class 1 so the fuse
+controller keeps manufacturing defect coverage; at `secure_tm = 1` the OTP
+write-enable inputs are tied inactive, so scan toggling cannot reach the fuse
+array.
 
 |*3* +
 (general logic)
@@ -719,11 +735,21 @@ already removed everything worth extracting.
 
 The Class 1 vs Class 2 split follows from *where each asset sits*:
 
-* *Class 2 can be scannable* because its registers are *consumers* of secrets
-reached over functional paths; `secure_tm = 1` cuts those paths during test.
+* *Class 2 can be scannable* because the damage is reachable only over a
+functional path that `secure_tm = 1` cuts. Class 2a registers are *consumers* of
+secrets whose source is disconnected during test; the Class 2b fuse program MMRs
+can only burn a fuse through the OTP write-enable inputs, which are tied inactive
+during test.
 * *Class 1 cannot be scannable* because its registers *are* the secrets
 (Class 1a) or the integrity-critical control fields (Class 1b) -- the data lives
 in the registers themselves, so they are excluded from every scan chain.
+
+Class 2b is distinguished from Class 1b by whether a *second* gate stands between
+a perturbed register and the damage. Shifting `LOCKS` or `LC_STATE` (Class 1b)
+enables a disabled feature directly, with nothing further in the way, so those
+registers must leave every chain. Shifting a fuse program control register
+accomplishes nothing unless the write-enable path into the array is also live,
+and `secure_tm` holds it inactive whenever the chain may be shifted.
 
 The `*_DBG` feature control bits are the coarser, authorization-side control.
 `SEP_DBG` and `CHIPLET_DBG` are local gates for their scopes' logic; `SIP_DBG`
@@ -754,11 +780,12 @@ only test commands there and only while `secure_tm = 1`.
 
 |1a / 1b (non-scannable) |-- |-- |Excluded from all scan chains.
 
-|2 (crypto / KM secret-bearing) |Dedicated secure chain |Command class -- a dump
-command is never admitted; a test command requires `secure_tm = 1` |Never
-scan-dumpable, any owner / LC state. Its SIB is feature-bit gated like any other
-chain, but opening it grants test access only, and only with the shadow secrets
-disconnected.
+|2a (secret-bearing) + 2b (fuse program path) |Shared dedicated secure chain
+|Command class -- a dump command is never admitted; a test command requires
+`secure_tm = 1` |Never scan-dumpable, any owner / LC state. Its SIB is
+feature-bit gated like any other chain, but opening it grants test access only --
+with the shadow secrets disconnected (2a) and the OTP write-enables tied inactive
+(2b).
 
 |3 (general logic) |Per-scope general chains |Local scope `*_DBG` bit (`SEP_DBG`, `CHIPLET_DBG`) + `SIP_DBG` access path + LC state |Coarse-grained: a scope's general logic is scan-dumpable only when its local `*_DBG` bit enables it, the `SIP_DBG` debug-access path is open, and the LC state permits.
 |=======================================================================
