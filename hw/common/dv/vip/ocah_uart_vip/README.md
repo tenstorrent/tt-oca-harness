@@ -20,24 +20,25 @@ that:
 
 ---
 
-## Pinned Dependency
+## Dependency
 
 ```
-cocotbext-uart == 0.1.1   (MIT)
+cocotbext-uart >= 0.1.4, < 0.2   (MIT)
 ```
 
 Repository: <https://github.com/alexforencich/cocotbext-uart>
 
-Install with:
+The backend is vendored at `vendor/alexforencich/cocotbext-uart` (provenance
+and local patches documented there) and resolved by the locked environment:
 
 ```bash
-pip install cocotbext-uart==0.1.1
+uv sync --locked --group dv
 ```
 
-When `cocotbext-uart` is **not** installed, constructing `OcahUartConsole` or
-`OcahUartMonitor` raises `OcahUartImportError` with an actionable install
-message.  No other import-time side-effects occur.  This mirrors the
-`ocah_axi_vip` migration-plan pattern.
+When `cocotbext-uart` is **not** importable, constructing `OcahUartConsole` or
+`OcahUartMonitor` raises `OcahUartImportError` naming the supported version
+and the locked-environment sync command.  No other import-time side-effects
+occur.  This mirrors the `ocah_axi_vip` migration-plan pattern.
 
 ---
 
@@ -185,7 +186,7 @@ from ocah_uart_vip import OcahUartError, OcahUartImportError
 | Exception | When raised |
 |---|---|
 | `OcahUartError` | Timeout, framing error, or unexpected data |
-| `OcahUartImportError` | `cocotbext-uart` not installed |
+| `OcahUartImportError` | `cocotbext-uart` not importable (environment not synced from the lockfile) |
 
 To receive `None` on timeout instead of raising:
 

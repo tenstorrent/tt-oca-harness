@@ -99,6 +99,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/54/02/eee07b7e0762c15f7090dd4acc7653320e995eaf9c6fd0e754c92566885d/cocotbext_jtag-0.4.0.tar.gz", hash = "sha256:3c83a0353c79c8fc360af553d8540da0dd3375bac8a2cd8803e132da84d5b09b", size = 19784, upload-time = "2026-04-10T15:03:43.938Z" }
 
 [[package]]
+name = "cocotbext-uart"
+version = "0.1.4"
+source = { directory = "vendor/alexforencich/cocotbext-uart/upstream" }
+dependencies = [
+    { name = "cocotb" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cocotb" },
+    { name = "cocotb-test", marker = "extra == 'test'" },
+    { name = "pytest", marker = "extra == 'test'" },
+]
+provides-extras = ["test"]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -287,6 +303,7 @@ dependencies = [
     { name = "cocotb" },
     { name = "cocotbext-axi" },
     { name = "cocotbext-jtag" },
+    { name = "cocotbext-uart" },
     { name = "pyuvm" },
 ]
 
@@ -295,6 +312,7 @@ requires-dist = [
     { name = "cocotb", specifier = ">=2.0.0,<2.1" },
     { name = "cocotbext-axi", specifier = ">=0.1.24,<0.2" },
     { name = "cocotbext-jtag", specifier = ">=0.4.0,<0.5" },
+    { name = "cocotbext-uart", directory = "vendor/alexforencich/cocotbext-uart/upstream" },
     { name = "pyuvm", specifier = ">=4.0.0,<5" },
 ]
 

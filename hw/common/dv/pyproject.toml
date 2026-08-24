@@ -24,13 +24,17 @@ dependencies = [
   # VIP (SmcI2cMasterVip / SmcI2cEepromSlave) is implemented natively in
   # hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py because cocotbext-i2c
   # edge waits miss open-drain transitions under Verilator.
-  # cocotbext-uart is intentionally omitted here: Cycode Licenses Compliance
-  # cannot verify its PyPI MIT metadata ("License Not Detected or Verified" on
-  # hw/common/dv pyproject line with cocotbext-uart). OcahUartConsole /
-  # OcahUartMonitor import it optionally and raise OcahUartImportError with an
-  # install hint when absent. For UART pad tests install separately:
-  #   pip install 'cocotbext-uart>=0.1.4,<0.2'   # MIT
+  # cocotbext-uart (OcahUartConsole / OcahUartMonitor backend) resolves from
+  # the vendored MIT source at vendor/alexforencich/cocotbext-uart via the
+  # [tool.uv.sources] path entry below, not from PyPI: license review applies
+  # to in-repo sources (the PyPI distribution's license metadata is not
+  # machine-verifiable), and the 0.1.4 release needs a local cocotb 2.0
+  # compatibility patch (see the vendor README).
+  "cocotbext-uart>=0.1.4,<0.2",
 ]
+
+[tool.uv.sources]
+cocotbext-uart = { path = "../../../vendor/alexforencich/cocotbext-uart/upstream" }
 
 [tool.setuptools.packages.find]
 where = ["vip"]

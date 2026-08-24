@@ -29,13 +29,13 @@ All data crossing the API boundary is plain Python ``str``, ``bytes``, or
 
 Dependency
 ----------
-Pinned release::
+Supported release::
 
-    cocotbext-uart == 0.1.1
+    cocotbext-uart >= 0.1.4, < 0.2
 
-Install with::
-
-    pip install cocotbext-uart==0.1.1
+Resolved from the vendored source at ``vendor/alexforencich/cocotbext-uart``
+by the locked environment (``uv sync --locked --group dv``); no manual
+installation is needed.
 
 The wrapper follows the ``ocah_axi_vip`` migration-plan pattern: when the
 library is absent the constructor raises ``OcahUartImportError``; when it
@@ -89,10 +89,11 @@ class OcahUartImportError(ImportError):
     """Raised when cocotbext-uart is not installed in the environment."""
     def __str__(self) -> str:
         return (
-            "cocotbext-uart is required by OcahUartConsole but is not installed.\n"
-            "  Install it with:  pip install cocotbext-uart==0.1.1\n"
-            "  Pinned version:   cocotbext-uart == 0.1.1 (MIT)\n"
-            "  Repository:       https://github.com/alexforencich/cocotbext-uart\n"
+            "cocotbext-uart is required by OcahUartConsole but is not importable.\n"
+            "  Supported version: cocotbext-uart >=0.1.4,<0.2 (MIT)\n"
+            "  Provided by:       vendor/alexforencich/cocotbext-uart through the\n"
+            "                     locked environment: uv sync --locked --group dv\n"
+            "  Repository:        https://github.com/alexforencich/cocotbext-uart\n"
         )
 
 

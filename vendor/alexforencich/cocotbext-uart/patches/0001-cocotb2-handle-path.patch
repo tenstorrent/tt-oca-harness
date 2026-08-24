@@ -1,0 +1,24 @@
+--- a/cocotbext/uart/uart.py
++++ b/cocotbext/uart/uart.py
+@@ -33,7 +33,9 @@
+ 
+ class UartSource:
+     def __init__(self, data, baud=9600, bits=8, stop_bits=1, *args, **kwargs):
+-        self.log = logging.getLogger(f"cocotb.{data._path}")
++        # Local patch: cocotb 2.0 removed SimHandleBase._path; fall back to _name.
++        self.log = logging.getLogger(
++            f"cocotb.{getattr(data, '_path', None) or data._name}")
+         self._data = data
+         self._baud = baud
+         self._bits = bits
+@@ -154,7 +156,9 @@
+ class UartSink:
+ 
+     def __init__(self, data, baud=9600, bits=8, stop_bits=1, *args, **kwargs):
+-        self.log = logging.getLogger(f"cocotb.{data._path}")
++        # Local patch: cocotb 2.0 removed SimHandleBase._path; fall back to _name.
++        self.log = logging.getLogger(
++            f"cocotb.{getattr(data, '_path', None) or data._name}")
+         self._data = data
+         self._baud = baud
+         self._bits = bits

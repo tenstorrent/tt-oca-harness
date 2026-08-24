@@ -18,7 +18,8 @@ Assumptions
 - The DUT internally loops TXD back to RXD (loopback DUT or SMC console in
   echo mode).
 - Clock is started externally before these functions are called.
-- ``cocotbext-uart == 0.1.1`` is installed in the simulation Python environment.
+- ``cocotbext-uart >= 0.1.4, < 0.2`` is importable (provided by the locked
+  DV environment from ``vendor/alexforencich/cocotbext-uart``).
 """
 
 import cocotb
