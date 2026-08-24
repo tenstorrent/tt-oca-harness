@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2020 Western Digital Corporation or its affiliates.
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2020 Western Digital Corporation or its affiliates
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 #
 # VeeR EL2 Bare-Metal Startup Code for DV Environment
 #

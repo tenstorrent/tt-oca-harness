@@ -1,6 +1,3 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
-
 /* Copyright 2018 SiFive, Inc */
 
 #ifndef METAL__COMPILER_H

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG2AXI error and error-path security scenarios for GH issue #3212."""
 
 from __future__ import annotations
@@ -287,9 +288,13 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         size = cfg.default_size
         addr = self._addr(ERROR_BASE + 0x900, 1)
         data = 0xA5A5_5A5A_C3C3_3C3C & self.data_mask(size)
-        for idx, bit_name in enumerate(cfg.required_enable_bits, start=1):
-            self.log_step(idx, "Gate %s with lifecycle %s and attempt error-path write", self.target, bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
+        # Two assert/release passes of the target's direct disable prove the
+        # gate is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
+            self.log_step(idx, "Gate %s with %s (pass %d) and attempt error-path write",
+                          self.target, cfg.dbg_disable_bit, idx)
+            await self.disable_debug_bits(cfg.dbg_disable_bit)
             self.configure_target_error(self.target, addr, AXI_SLVERR, read=False, write=True)
             raw = pack_single_op(
                 DtpJtag2AxiOp.WRITE,
@@ -302,7 +307,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             await self.write_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"error_gate.{bit_name}.no_axi")
             self.clear_target_errors(self.target)
-            await self.clear_lifecycle()
+            await self.enable_all_debug()
             expected = self.configure_target_error(self.target, addr, AXI_DECERR, read=False, write=True)
             status, _ = await self.write_target_single_expect_status(
                 self.target,
@@ -323,7 +328,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         self.status = DtpJtag2AxiStatus.SUCCESS
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "error_single_write": self.run_error_single_write,
             "error_single_read": self.run_error_single_read,
@@ -340,7 +345,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         await scenarios[self.scenario]()
         self.clear_target_errors(self.target)
         self.clear_target_backpressure(self.target)
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "JTAG2AXI error scenario complete",
             target=self.target,

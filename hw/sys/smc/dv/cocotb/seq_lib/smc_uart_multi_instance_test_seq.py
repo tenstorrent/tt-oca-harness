@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: UART_LOG_ENGINE 1/2/3 CSR sweep (TC_SMC_P1CG_08).
 
 Existing UART tests only touch UART_LOG_ENGINE_0 (smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR", 0)). RTL

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP fabric decode-error / negative-response test (PyUVM).
 
 The CPU-LSU AXI master (no_cpu splice; the bare-sep primary

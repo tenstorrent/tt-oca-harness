@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smc_wdt_ip0_isolate_clamp_test — DEFERRED (pin / stimulus gap).
 
 Clamp mux exists in smc_4core_cpu (wdt_reset_raw x cluster_boundary_isolate).

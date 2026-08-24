@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS P1 coverage-gap round 2: filter 16 inbound + 16 outbound CONFIG sweep."""
 
 from __future__ import annotations

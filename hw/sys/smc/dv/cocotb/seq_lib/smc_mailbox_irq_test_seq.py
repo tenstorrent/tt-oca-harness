@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox CSR and IRQ-control smoke over real SYS AXI."""
 
 from __future__ import annotations

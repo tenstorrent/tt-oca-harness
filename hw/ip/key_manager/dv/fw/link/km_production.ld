@@ -1,12 +1,15 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* Copyright 2026 Tenstorrent Inc. */
 /* Key Manager Production Firmware Linker Script */
-/* ROM at 0x0000_0000, SRAM at 0x0000_4000, no VROM */
+/* ROM at 0x0000_0000, SRAM at 0x0000_8000, no VROM */
 
 OUTPUT_ARCH( "riscv" )
 
 MEMORY {
     rom(rx):   ORIGIN = 0x00000000, LENGTH = 0x4000  /* 16KB ROM */
-    sram(rwx): ORIGIN = 0x00004000, LENGTH = 0x4000  /* 16KB SRAM */
+    sram(rwx): ORIGIN = 0x00008000, LENGTH = 0x8000  /* 32KB SRAM */
 }
 
 ENTRY(_start)

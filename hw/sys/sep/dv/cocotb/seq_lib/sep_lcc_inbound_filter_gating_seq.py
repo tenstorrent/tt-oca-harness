@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """LCC sep_debug -> inbound-filter gating sequences for the SEP OSS flow.
 
 Stimulus for the inbound-filter-gating test (reference suite ``sep_lcc_uvm_inbound_filter

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP smoke startup. Completion markers go to the DCCM mailbox (top of
 // DCCM, below the stack guard) so the smoke has no external-bus dependency;

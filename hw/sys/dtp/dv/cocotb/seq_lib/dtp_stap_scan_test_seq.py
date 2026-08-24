@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """STAP/3DCR scan scenarios for GH issue #3213."""
 
 from __future__ import annotations
 
+from env.dtp_dbg_disable import STAP_DISABLE
 from env.dtp_scan_ref_model import STAP_ORDER
 
 from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
@@ -23,9 +25,9 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         self.scenario = scenario
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         await self.reset_tap()
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         match self.scenario:
             case "stap_sel_ds" | "stap_sel_smc" | "stap_sel_sep" | "stap_sel_extra":
                 await self.run_stap_select(self.STAP_BY_SCENARIO[self.scenario])
@@ -37,37 +39,148 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
                 await self.run_tms_hold()
             case _:
                 raise ValueError(f"unknown STAP scenario {self.scenario}")
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         await self.write_ptap_3dcr(config_hold=0, select=0, context="cleanup")
+
+    SELECTED_PAYLOAD = {"config_hold": 1, "stap_sel": 1, "tms_hold": 1}
+
+    def check_stap_forwarding(
+        self,
+        edges: int,
+        counts: dict[str, int],
+        *,
+        prefix: str,
+        forwarding: bool,
+        context: str,
+    ) -> None:
+        """A selected STAP forwards: tdo_oen pulses during shifts and tms
+        follows the live TMS (mixed samples). A deselected or gated STAP
+        with tms_hold=1 stored parks its tms high and never drives tdo_oen."""
+        tdo_oen = counts[f"{prefix}_tdo_oen"]
+        tms = counts[f"{prefix}_tms"]
+        if forwarding:
+            assert tdo_oen > 0, f"{context}: {prefix}_tdo_oen never pulsed while selected"
+            assert 0 < tms < edges, (
+                f"{context}: {prefix}_tms must follow the live TMS while "
+                f"selected (got {tms}/{edges} high samples)"
+            )
+        else:
+            assert tdo_oen == 0, (
+                f"{context}: {prefix}_tdo_oen pulsed {tdo_oen}x while deselected/gated"
+            )
+            assert tms == edges, (
+                f"{context}: {prefix}_tms must park at the stored tms_hold=1 "
+                f"(got {tms}/{edges} high samples)"
+            )
 
     async def run_stap_select(self, stap: str) -> None:
         self.log_banner(f"GH #3213 STAP selection: {stap}")
-        feat = {}
-        await self.select_stap(stap, feat_ctrl=feat, context=f"{stap}.select")
-        _, signals = await self.observe_stap_controls(stap, context=f"{stap}.observe")
-        self.check_stap_selected(stap, signals, selected=1, context=f"{stap}.selected")
+        prefix = self.stap_signal_prefix(stap)
+        watch = (f"{prefix}_tdo_oen", f"{prefix}_tms")
+        disable_field = STAP_DISABLE[stap]
+        rng = self.rng(f"stap_gate_{stap}")
 
-        gate_bits = {
-            "io": {"sip_debug": 0},
-            "smc": {"soc_debug": 0},
-            "sep": {"sep_debug": 0},
-            "extra0": {"ap_debug": 0},
-        }[stap]
-        await self.set_lifecycle(**gate_bits)
-        _, gated_signals = await self.observe_stap_controls(stap, context=f"{stap}.gated")
-        self.check_stap_selected(stap, gated_signals, selected=0, context=f"{stap}.gated")
+        async def configure(context: str, dbg: dict[str, int] | None = None) -> None:
+            await self.stap_chain_write(
+                ptap_select=1, ptap_config_hold=1, sib_en={stap: 1},
+                dbg_disable=dbg, context=f"{context}.open_sib",
+            )
+            await self.stap_chain_write(
+                payloads={stap: self.SELECTED_PAYLOAD},
+                dbg_disable=dbg, context=f"{context}.write_3dcr",
+            )
 
-        await self.clear_lifecycle()
-        await self.apply_trst()
-        await self.select_stap(stap, context=f"{stap}.recover")
-        _, recovered = await self.observe_stap_controls(stap, context=f"{stap}.recover_observe")
-        self.check_stap_selected(stap, recovered, selected=1, context=f"{stap}.recover")
-        self.log_summary("STAP select", stap=stap, gate_bits=gate_bits)
+        self.log_step(1, "Configure and select %s via composed TAP_3DCR scans", stap)
+        await self.stap_chain_flush(context=f"{stap}.flush")
+        await configure(f"{stap}.select")
+        window = self.start_scan_window(watch)
+        captured = await self.stap_chain_maintain(context=f"{stap}.observe")
+        edges, counts = self.check_scan_window(window, context=f"{stap}.selected_window")
+        self.check_stap_forwarding(edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.selected")
+        self.check_stap_chain_readback(captured, context=f"{stap}.selected_readback")
+
+        self.log_step(2, "Assert exactly %s: forwarding stops, gated update is ignored", disable_field)
+        await self.disable_debug_bits(disable_field)
+        # A randomized deselecting payload attempted while gated must be ignored.
+        attempt = {"config_hold": rng.randrange(0, 2), "stap_sel": 0, "tms_hold": 0}
+        self.log.info("%s gated 3DCR update attempt %s", stap, attempt)
+        window = self.start_scan_window(watch)
+        captured = await self.stap_chain_write(
+            payloads={stap: attempt},
+            dbg_disable={disable_field: 1},
+            context=f"{stap}.gated_update_attempt",
+        )
+        edges, counts = self.check_scan_window(window, context=f"{stap}.gated_window")
+        self.check_stap_forwarding(edges, counts, prefix=prefix, forwarding=False, context=f"{stap}.gated")
+        self.check_stap_chain_readback(captured, dbg_disable={disable_field: 1}, context=f"{stap}.gated_readback")
+
+        self.log_step(3, "Clear %s without reset: selection resumes from stored state", disable_field)
+        await self.enable_all_debug()
+        window = self.start_scan_window(watch)
+        captured = await self.stap_chain_maintain(context=f"{stap}.resume")
+        edges, counts = self.check_scan_window(window, context=f"{stap}.resume_window")
+        self.check_stap_forwarding(edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.resume")
+        self.check_stap_chain_readback(captured, context=f"{stap}.resume_readback")
+
+        neighbor = STAP_ORDER[(STAP_ORDER.index(stap) + 1) % len(STAP_ORDER)]
+        n_prefix = self.stap_signal_prefix(neighbor)
+        self.log_step(4, "With %s re-asserted, unrelated STAP %s stays usable", disable_field, neighbor)
+        await self.disable_debug_bits(disable_field)
+        await self.stap_chain_write(
+            sib_en={stap: 1, neighbor: 1},
+            dbg_disable={disable_field: 1},
+            context=f"{stap}.isolation_open",
+        )
+        await self.stap_chain_write(
+            payloads={neighbor: self.SELECTED_PAYLOAD},
+            dbg_disable={disable_field: 1},
+            context=f"{stap}.isolation_3dcr",
+        )
+        window = self.start_scan_window((f"{prefix}_tdo_oen", f"{n_prefix}_tdo_oen"))
+        await self.stap_chain_maintain(dbg_disable={disable_field: 1}, context=f"{stap}.isolation_observe")
+        self.check_scan_window(
+            window,
+            active=(f"{n_prefix}_tdo_oen",),
+            quiet=(f"{prefix}_tdo_oen",),
+            context=f"{stap}.isolation_window",
+        )
+
+        self.log_step(5, "Full recovery: fresh configuration after clearing %s", disable_field)
+        await self.enable_all_debug()
+        await self.stap_chain_flush(context=f"{stap}.recover_flush")
+        await configure(f"{stap}.recover")
+        window = self.start_scan_window(watch)
+        captured = await self.stap_chain_maintain(context=f"{stap}.recover_observe")
+        edges, counts = self.check_scan_window(window, context=f"{stap}.recover_window")
+        self.check_stap_forwarding(edges, counts, prefix=prefix, forwarding=True, context=f"{stap}.recover")
+        self.check_stap_chain_readback(captured, context=f"{stap}.recover_readback")
+
+        await self.stap_chain_flush(context=f"{stap}.cleanup")
+        self.log_summary(
+            "STAP select",
+            stap=stap,
+            disable_field=disable_field,
+            gated_update_attempt=attempt,
+            isolation_neighbor=neighbor,
+        )
+
+    HOST_SCAN_CONTROLS = (
+        "jtag_stap_host_select",
+        "jtag_stap_host_shift_en",
+        "jtag_stap_host_capture_en",
+        "jtag_stap_host_update_en",
+    )
 
     async def run_ext_stap_scan(self) -> None:
         self.log_banner("GH #3213 extended STAP scan interface")
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.enable")
+        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
         _, enabled = await self.shift_dr_observe(0x2, 2, context="ext.enabled_shift")
+        self.check_scan_window(
+            window,
+            active=("jtag_stap_host_select", "jtag_stap_host_shift_en"),
+            context="ext.enabled_window",
+        )
         self.check_observable(enabled, "jtag_stap_host_select", 1, context="ext.enabled")
 
         await self.write_ptap_3dcr(config_hold=0, select=0, context="ext.disable")
@@ -79,10 +192,31 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         )
 
         await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.gate_enable")
-        await self.set_lifecycle(ap_debug=0)
-        _, gated = await self.shift_dr_observe(0x2, 2, context="ext.ap_gated_shift")
-        self.check_observable(gated, "jtag_stap_host_select", 0, context="ext.ap_gated")
-        self.log_summary("extended STAP scan", checked=("enable", "disable", "ap_debug gate"))
+        await self.disable_debug_bits("stap_host")
+        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
+        _, gated = await self.shift_dr_observe(0x2, 2, context="ext.host_gated_shift")
+        self.check_scan_window(
+            window,
+            quiet=self.HOST_SCAN_CONTROLS,
+            context="ext.host_gated_window",
+        )
+        self.check_observable(gated, "jtag_stap_host_select", 0, context="ext.host_gated")
+
+        # Recovery without reset: normal host scan control resumes once the
+        # disable clears.
+        await self.enable_all_debug()
+        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
+        _, recovered = await self.shift_dr_observe(0x2, 2, context="ext.recover_shift")
+        self.check_scan_window(
+            window,
+            active=("jtag_stap_host_select", "jtag_stap_host_shift_en"),
+            context="ext.recover_window",
+        )
+        self.check_observable(recovered, "jtag_stap_host_select", 1, context="ext.recover")
+        self.log_summary(
+            "extended STAP scan",
+            checked=("enable", "disable", "stap_host gate window", "recover without reset"),
+        )
 
     async def run_config_hold(self) -> None:
         self.log_banner("GH #3213 PTAP/STAP CONFIG_HOLD behavior")

@@ -41,7 +41,7 @@ protocol BFMs behind a stable API:
 |-----------|-----|-----------|
 | JTAG TAP (IEEE 1149.1) | **`ocah_jtag_vip`** | `dtp`'s JTAG port is raw `{tck,tms,trst_n}`+`tdi`/`tdo` — pin-level. |
 | AXI4 debug manager (`axi_smc_dbg`) | **`ocah_axi_vip`** (`OcahAxiSlaveAgent`) | JTAG2AXI bridge drives it; memory model responds. |
-| AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteMasterAgent`/future responder) | Standard AXI-Lite. |
+| AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
 | AXI4-Lite CSR subordinate (`axil_xtrig`) | DUT-local `DtpFlatAxiLiteMaster` | Implemented for the flattened XTRIG fixture; migrate needed behavior into `ocah_axi_vip` rather than promoting a second AXI-Lite VIP. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
 | iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
@@ -51,6 +51,15 @@ protocol BFMs behind a stable API:
 The cocotb runner adds `hw/common/dv/vip` to `PYTHONPATH` so tests can import
 the unified wrappers and their local backends.
 The ownership and promotion checklist is in `hw/common/dv/README.md`.
+
+## Simulation defines
+
+DTP DV, lint, and synthesis compiles pass preprocessor defines that switch the
+shared testbench shape, gate assertions, and select a simulation vs synthesis
+view. The inventory — each define, why it exists, and what a DTP build does with
+or without it — is in [`../doc/defines.adoc`](../doc/defines.adoc). Runtime
+environment variables and plusargs in the commands below are not preprocessor
+defines.
 
 ## Running
 
@@ -91,6 +100,11 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
 
 # Smoke + functional group
 python3 tools/dv/run_dv.py --dut dtp --items functional
+
+# Debug-disable closure: the two per-gate matrices plus every directed
+# gating test for the eleven dbg_disable_t fields
+python3 tools/dv/run_dv.py --dut dtp --items dbg_disable
+python3 tools/dv/run_dv.py --dut dtp --items dbg_disable --regress --reseed 3
 
 # Commercial backends for coverage (same PyUVM tests)
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --cov

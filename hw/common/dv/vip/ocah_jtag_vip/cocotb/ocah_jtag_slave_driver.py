@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Reactive IEEE 1149.1 TAP device model (the VIP's slave-side driver).
 
 The slave side responds on TDO when the other end of the wire — a DUT JTAG

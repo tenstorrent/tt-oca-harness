@@ -15,18 +15,26 @@ This document is the verification contract for *Phase 1* of the SEP open-source 
 environment: the bring-up smoke suite plus the twenty-one representative subsystem tests
 selected to carry the widest coverage per test.
 
-Phase 1 is *closed*. Every testcase listed here is implemented, runs in the
-cocotb/PyUVM + Verilator flow, and is expected to pass in regression. Boot ROM
-*firmware* contracts (production ROM boot flow, integrity reject) are out of this
-plan — ROM-FW owner, not this VPLAN. ROM *hardware* access stays
-(`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`). This document records what
-each test *proves*, and the exact evidence in its log that proves it.
+Each entry records what the test *proves* and the log line that proves it.
+Tests run in the cocotb/PyUVM + Verilator flow; Verilator is the
+acceptance engine (see <<Acceptance flow>>).
 
-What this document is *not*: it is not a status tracker and not a coverage percentage.
-There is no functional-coverage number for this environment: it has no SystemVerilog
-covergroups at all (`cov/config` and `cov/sv` are empty placeholders), and RTL and
-vendor-IP SVA are compiled out under the Verilator acceptance flow. Coverage here means "this
-behaviour has a test whose log demonstrably proves it", nothing more.
+Boot ROM *firmware* contracts (production ROM boot flow, integrity
+reject) belong to the ROM-FW plan, not this one. ROM *hardware* access
+stays here (`sep_boot_rom_smoke_test`, `sep_rom_sanity_test`).
+
+CHK-JTAG-MMR-DENY is a spec-versus-RTL mismatch: `hw/sys/sep/doc/periphs.adoc`
+requires DECERR on a non-token MMR in PROD; the RTL returns OKAY on
+`EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH`. The checker stays `FAILED` until
+the RTL or the spec changes (issue 626).
+
+Behaviours this spine does not claim are listed in
+<<claims-outside-contract>>.
+
+Coverage here means a named behaviour has a test whose log proves it.
+There is no functional-coverage number: `cov/config` and `cov/sv` are
+empty, and RTL and vendor-IP SVA are compiled out under the Verilator
+acceptance flow.
 
 Each testcase in this plan traces to a reference test in Tenstorrent's internal SEP
 verification suite. Those references are recorded internally and are deliberately not
@@ -92,39 +100,18 @@ Checker status uses these grades:
 | `PROVEN`
 | The named proof is present in a kept Verilator log for the current test source.
 
-| `PARTIAL`
-| The checker holds, but a named sub-condition was not exercised in the graded run.
-  The unexercised part is stated in the row.
-
-| `GUARD`
-| The checker cannot fail on any DUT, because it guards a *build* precondition rather
-  than a hardware property — a linker-script alignment, a generated-register tie-off.
-  Kept because it does catch a regression in the thing it covers, graded separately so
-  it is never read as evidence about the design, and excluded from the proof count.
-
-| `INSUFFICIENT-EVIDENCE`
-| The check is implemented but the log does not carry enough to confirm it.
-
-| `NOT-RUN`
-| The checker exists in the plan but no run has graded it.
-
-| `STALE`
-| The proof is present in a kept log, but the artefact that produced it cannot be
-  rebuilt from this repository, so the grade describes something a reader cannot
-  reproduce.
-
 | `FAILED`
 | The proof contradicts the check.
 |===
 
+A running test's checkers are `PROVEN` or `FAILED`. `PARTIAL`, `GUARD`, and
+`INSUFFICIENT-EVIDENCE` are unused. A checker that cannot fail is deleted, not
+parked.
+
 A checker is rejected outright, regardless of run result, if it:
 
 * cannot fail — it asserts something true by construction, or compares a value to itself.
-  The single exception is a checker that guards a *build* precondition rather than a DUT
-  property — a linker-script alignment, a generated-register tie-off. Those are kept
-  because they catch a real regression in the thing they do cover, but they are graded
-  `GUARD`, never `PROVEN`, and they are excluded from the proof count. A checker that
-  cannot fail and has no such role is deleted, not reclassified;
+  Delete it. Do not park it as `GUARD`;
 * is vacuous — its loop or conditional body never executed in the graded run, and the
   test does not prove that it did;
 * was weakened to pass — an expected value edited to match observed hardware, an exact
@@ -141,14 +128,15 @@ such as the clock period, or a count that depends on how much traffic happened t
 Where the interesting thing is a number that varies, quote the invariant instead and say
 that the number varies. Reproduce spacing and column padding exactly, so an auditor can
 find the line. After editing this file, check every string it quotes against the
-corresponding kept log. A whole class of the proofs in an earlier revision of this
-document could never have matched any run. A matching tag is not the proof: the checker
-still has to be able to fail.
+corresponding kept log. A matching tag is not the proof: the checker
+still has to be able to fail. Re-audit the grade when the pass condition changes —
+the same quoted string can still match after the Check column inverts, and that is
+not evidence the row is still true.
 
 The same obligation applies to stimulus. Every step must be traceable to a line in the
 kept log, so the plan can be checked against what the test actually did rather than
 against what it was written to do. Steps that cannot be traced are listed as
-`NOT-LOGGED` and collected in <<open-items>>.
+`NOT-LOGGED`. There are none in this plan.
 
 == Testcase entries — bring-up and smoke
 
@@ -298,8 +286,7 @@ only claim that can honestly be made about them.
 
 | CHK-REFCNT-READ
 | Both halves of the reference counter read back the reset value exported by the
-  generated map. This was previously read with no expected value at all, so the row
-  reported whatever the DUT returned.
+  generated map.
 | `CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable as 0x00000000_00000000`
 | PROVEN
 
@@ -656,9 +643,8 @@ its own, and neither can an access pattern other than the one the plan describes
 | CHK-PRECOND
 | OTBN is neither `LOCKED` nor executing when the memories are accessed, so a bus access
   to them is legal. This is an exclusion, not an exact-state check: any other `STATUS`
-  value is acceptable. (An earlier revision excluded the two scramble-key-request states
-  instead and permitted execute, which was backwards — bus access is diverted and
-  flagged illegal only while OTBN executes.)
+  value is acceptable. Bus access is diverted and flagged illegal only while
+  OTBN executes.
 | `OTBN memory-access precondition OK: STATUS=0x00000004 (not LOCKED, not executing)`
 | PROVEN
 |===
@@ -1088,11 +1074,9 @@ inline hash engine consumed the same bytes that were copied.
 | ID | Check | Proof | Status
 
 | CHK-CFG
-| The DMA configuration lock is open before programming. A wrong value is counted as an
-  error, not merely printed — it previously warned and continued, so the row was
-  unfalsifiable. The firmware emits an `ERROR: CFG_REGWEN not unlocked` line and
-  increments its error count on a wrong value, and that count gates the mailbox PASS
-  magic, so a violation fails the run rather than appearing only in the console.
+| The DMA configuration lock is open before programming. A wrong value is
+  counted as an error: the firmware emits `ERROR: CFG_REGWEN not unlocked`,
+  increments its error count, and that count gates the mailbox PASS magic.
 | `CFG_REGWEN = 0x6 (expected 0x6 for unlocked)`
 | PROVEN
 
@@ -1107,8 +1091,7 @@ inline hash engine consumed the same bytes that were copied.
   the firmware `memcmp`s the two 32-byte digests and increments its error count on a
   mismatch, and that verdict line prints only when the count is zero, so the equality is
   enforced rather than eyeballed. The digest VALUE is deliberately not quoted: it depends
-  on the firmware build, and a run on 2026-08-20 produced
-  `0x1f816c9c...` where an earlier build produced `0x34b27328...`
+  on the firmware build.
 | PROVEN
 
 | CHK-COPY
@@ -1403,8 +1386,8 @@ token-gated programming path rather than forcing a state.
 demoted-PROD profiles.
 
 Only the two return-material states are token-gated; the production state is entered
-through the ungated write-one-to-set bit. Read <<lcc-golden-follows-rtl>> before
-treating the feature-control comparisons as proof that the decode is *correct*.
+through the ungated write-one-to-set bit. Feature-control comparisons
+are against the spec-derived golden; see <<lcc-golden-from-spec>>.
 
 The programming leg is deliberately made to fail. The testlist enables seeded
 physical program-failure injection, so the sequence must observe the failure, clear
@@ -1439,15 +1422,18 @@ of assuming programming always succeeds first time.
 
 | 5
 | After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and
-  prove the DFT group opens. Keep the strap high for the rest of the walk.
-| `CHK-SECURE-TM-OFF PASS` then `CHK-SECURE-TM-ON PASS`
-| implemented -- pending kept log
+  prove the DFT group opens. The strap is then lowered again; the rest of the walk
+  runs at `secure_tm=0`.
+| `CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL[47:32]=0` then
+  `CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL[47:32]=0xf000`
+| LOGGED
 
 | 6
 | Inject a broken LC_STATE pair at the LCC decoder input; prove fail-closed
   FEAT_CTRL=0; release and restore.
-| `CHK-SIGINT PASS` then `CHK-SIGINT-RELEASE PASS`
-| implemented -- pending kept log
+| `CHK-SIGINT PASS: inject took: lcc_sigint_err_probe_o=1, AXI FEAT_CTRL=0x0000000000000000 (fail-closed)`
+  then `CHK-SIGINT-RELEASE PASS: lcc_sigint_err_probe_o=0`
+| LOGGED
 
 |===
 
@@ -1463,19 +1449,20 @@ of assuming programming always succeeds first time.
   is also checked for legal encoding and a legal forward transition, using the code the
   DUT returned rather than the code the test programmed.
 | One `[lcc] observed LC code 0x0 (TEST_DEV) after programming TEST_DEV` line per state,
-  and the scoreboard summary reporting `12 value-verified` and `0 errors` (the total check count varies with the injected program-failure count)
+  and the scoreboard summary reporting `(24 value-verified, 0 expected-error), 0 errors`
+  (the total check count varies with the injected program-failure count)
 | PROVEN
 
 | CHK-GOLDEN
 | The feature-control output matches the golden decode at each of the four states, at
-  the pinned override vectors, with demote at its reset value. After the initial
-  TEST_DEV / `secure_tm=0` check the walk holds `secure_tm=1`, so RMA_SIP / RMA_CHIP
-  include the DFT group. Demote is not written here — the demoted branches are
-  covered by `sep_lcc_uvm_inbound_filter_gating_test`. See
-  <<lcc-golden-follows-rtl>> for what "matches the golden" does and does not
-  establish.
-| One `[lcc] state ... secure_tm=1 sigint=0 -> FEAT_CTRL=...` line per state
-| implemented -- pending kept log (values change vs the prior `secure_tm=0` walk)
+  the pinned override vectors, with demote at its reset value. The four-state walk runs
+  at `secure_tm=0`; TEST_DEV is additionally re-checked at `secure_tm=1`, which is where
+  the DFT group opening is proven (step 5). Demote is not written here — the demoted
+  branches are covered by `sep_lcc_uvm_inbound_filter_gating_test`.
+  See <<lcc-golden-from-spec>>.
+| One `[lcc] state ... secure_tm=0 sigint=0 -> FEAT_CTRL=...` line per state, plus the
+  TEST_DEV re-check `secure_tm=1 sigint=0 -> FEAT_CTRL=0xf000f000f000f000`
+| PROVEN
 
 | CHK-OTP-RETRY
 | An injected physical program failure is observed, cleared and retried to success.
@@ -1494,7 +1481,8 @@ of assuming programming always succeeds first time.
   strap at 0, FEAT_CTRL[47:32] is 0 and `secure_tm_o` is 0. After the strap is
   raised and the image is re-sensed, `secure_tm_o` is 1 and the DFT group matches
   the golden (non-zero under the pinned disable vectors).
-| `CHK-SECURE-TM-OFF PASS` then `CHK-SECURE-TM-ON PASS`
+| `CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL[47:32]=0` then
+  `CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL[47:32]=0xf000`
 | PROVEN
 
 | CHK-SECRET-BLANK
@@ -1503,67 +1491,50 @@ of assuming programming always succeeds first time.
   sensed shadow; with it raised the same field reads 0
   (`sep_efuse_pkg.sv` `SecretShadowRanges`). The staged value is asserted non-zero
   first, so a DUT that never sensed the secret at all cannot satisfy the blanked half.
-| `CHK-SECRET-BLANK PASS`
+| `CHK-SECRET-BLANK PASS: CLASS_KEY sensed` and
+  `at secure_tm=0 and 0 at secure_tm=1` (Class-1a secret disconnected; the sensed
+  key value varies per seed)
 | PROVEN
 
 | CHK-SECURE-TM-PROG-BLOCK
 | `efuse_guard.sv:110` empties the whole fuse command request while `secure_tm` is
-  asserted, so no OTP bit programs -- not only the secrets. The strap-up attempt on
-  LC_STATE bit 96 is required to fail. Non-vacuous by construction: the *same* bit
-  programs successfully one walk step later, so the refusal is attributable to
-  `secure_tm` rather than to a bad address.
-| `CHK-SECURE-TM-PROG-BLOCK PASS` with `CHK-OTP-RETRY PASS: OTP bit[96] programmed`
-  later in the same log
+  asserted, so no OTP bit programs -- not only the secrets. The program
+  interface then completes with `PROGRAM_DONE`+`PROGRAM_ERR` because
+  `secure_tm_blocked_i` is set (`efuse_program_interface.sv` `ST_WAIT_RESP`);
+  DONE is not starved. The strap-up attempt on LC_STATE bit 96 is required to
+  fail that way. Unique proof the command never reached the OTP bank: fail-injection
+  is consumed only on a real APB program, so the *same* bit must still retry on
+  the first real program after the strap drops.
+| `CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[96] failed after PROGRAM_ERR while secure_tm=1; first real program still retried`
+  with `CHK-OTP-RETRY PASS: OTP bit[96] programmed` later in the same log.
 | PROVEN
 
 | CHK-SIGINT
 | A signed-off force breaks the LC_STATE pair at the LCC decoder input. Observation
   is the DUT `lc_sigint_err_o` probe plus an AXI `FEAT_CTRL` readback of 0
   (fail-closed, `SEC_DIS` observed 0). Release restores both.
-| `CHK-SIGINT PASS` then `CHK-SIGINT-RELEASE PASS`
+| `CHK-SIGINT PASS: inject took: lcc_sigint_err_probe_o=1, AXI FEAT_CTRL=0x0000000000000000 (fail-closed)`
+  then `CHK-SIGINT-RELEASE PASS: lcc_sigint_err_probe_o=0`
 | PROVEN
 |===
 
-[[lcc-golden-follows-rtl]]
+[[lcc-golden-from-spec]]
 [NOTE]
 ====
-*Lifecycle decode: resolved. The golden is now derived from the specification, not
-transcribed from the RTL.*
+The lifecycle golden is derived from the specification, not from the RTL.
 
-This entry used to carry a warning that `cocotb/env/sep_lcc_golden.py` transcribed the
-combinational decode in `hw/sys/sep/rtl/sep_lifecycle_ctrl.sv` rather than deriving it
-from `hw/sys/sep/doc/lifecycle_controller.adoc`, and that the two disagreed for PROD
-with `DEMOTE_1`. A transcription cannot catch the decode being wrong in the same way
-the RTL is wrong, so the disagreement was recorded rather than papered over.
+`cocotb/env/sep_lcc_golden.py` reads
+`hw/sys/sep/doc/lifecycle_controller.adoc` (the per-LC-state feature
+control profile). Under that decode a PROD demotion relaxes its debug
+group to `~(SIP_DIS | SYS_DIS)`, Function always takes both vectors, and
+`DEMOTE_1` / `DEMOTE_2` act independently on `[15:0]` and `[31:16]`. The
+import-time KAT set includes a `DEMOTE_2`-only vector, a both-demoted
+vector, and a PROD vector with a `DBG_1` bit disabled.
 
-PR #242 landed and resolved it in favour of the chapter. Under the current decode a PROD
-demotion *relaxes* its debug group to `~(SIP_DIS | SYS_DIS)` instead of forcing every
-debug bit to 1, Function always takes both vectors, and `DEMOTE_1` / `DEMOTE_2` act
-independently on `[15:0]` and `[31:16]` rather than being mutually exclusive.
-
-All three consequences this note predicted then occurred, and all three are now fixed:
-
-* The golden is re-derived from Table 50 ("Per-LC-state feature control profile") of the
-  lifecycle-controller chapter — from the specification, deliberately not from the new
-  RTL, because transcribing again would reproduce the same blind spot in a new form. Its
-  import-time KAT set gained the three demote branches the old formula got wrong: a
-  `DEMOTE_2`-only vector, a both-demoted vector, and a PROD vector with a `DBG_1` bit
-  disabled, which pins the difference from the old decode by requiring that the
-  demotion *not* open it.
-* `sep_lcc_uvm_inbound_filter_gating_test` failed exactly as predicted
-  (`PROD_DBG_1 sep_debug must be 1, got 0`). Its `SIP_DIS`/`SYS_DIS` both disabled
-  `SEP_DBG`, which the old decode overrode and the new one honours. The vectors now
-  leave `DBG_1` bits 0 and 1 enabled so the demotion scenario is reachable, with the
-  staged t=0 image in `dv_sim_prestage.py` split to match. That test's "distinctive
-  value" argument moved from the hi word to the lo word, since demotion no longer
-  touches Function and the hi word is now identical in both phases.
-* `LC_STATE` moved from `0x008` to `0x00C` behind a new `LOCKS_SPARE`. Rather than
-  re-stating the new offsets, `sep_efuse_image.py` now *derives* its whole field table
-  from the generated map, with a self-check that the result tiles all 256 words. The
-  hardcoded copies in the stitch sequence and test, the image test, the address-map
-  probe and `fw/drivers/sep_efuse.h` are derived too. This is the lesson worth keeping:
-  a hand-written copy of a generated map is a latent failure that reports success, and
-  the firmware side had already been migrated to derivation for exactly this reason.
+`sep_efuse_image.py` derives the fuse-field table from the generated
+map and self-checks that the result tiles all 256 words. The stitch
+sequence, image test, address-map probe, and `fw/drivers/sep_efuse.h`
+use the same derived table.
 ====
 
 // ---------------------------------------------------------------------------
@@ -2589,12 +2560,19 @@ remap, so the window would be bypassed entirely and the test would prove nothing
 
 | CHK-CSR
 | The alias base register is writable and reads back. It is probed with a value distinct
-  from its reset value first — writing only the operating base would be unfalsifiable,
-  since that is also the field's reset value and a read-only register would pass. What
-  this still does not establish is that the CSR *drives* the remapper: every access below
-  runs at the reset base, so a design with the base hardwired would pass. Closing that
-  needs an access made while the alternate base is programmed.
+from its reset value first — writing only the operating base would be unfalsifiable,
+since that is also the field's reset value and a read-only register would pass.
+<<chk-base-live>> then proves the programmed base is actually consumed.
 | `CHK-CSR PASS: SEP_LOCAL_BASE writable (probed 0xe0000000), restored to 0xd0000000 (fixed 768MiB window -> 0x10000000)`
+| PROVEN
+
+[[chk-base-live]]
+| CHK-BASE-LIVE
+| A write through the alias window with a NON-reset base programmed lands at the
+  physical address that base selects. A remapper hardwired at the operating base
+  (`0xD000_0000`) would map `0xE000_0318` to `0x2000_0318`, not `0x1000_0318`, and
+  fails here. This is what makes CHK-CSR's probe more than a register readback.
+| `CHK-BASE-LIVE PASS: write@0xe0000318 with base 0xe0000000 -> phys 0x10000318 == marker (remapper consumes SEP_LOCAL_BASE)`
 | PROVEN
 
 | CHK-LSU-WR
@@ -2723,7 +2701,7 @@ lifecycle state is not exercised: no test drives this port at another state.
 
 | CHK-JTAG-MMR-DENY
 | In PROD, a JTAG read of `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH` (not a token
-  register) completes DECERR. `periphs.adoc`: the JTAG port can only read and
+  register) completes DECERR. `hw/sys/sep/doc/periphs.adoc`: the JTAG port can only read and
   write `RMA_SIP_TOKEN_I` and `RMA_CHIPLET_TOKEN_I`.
 | `CHK-JTAG-MMR-DENY FAIL: spec requires DECERR on non-token MMR SEC_DISABLE_TOKEN_MATCH @0x1093056c in PROD; RTL returned resp=0 rdata=0x00000000`
 | FAILED — run `20260820_165856`. RTL returned OKAY. https://github.com/tenstorrent/tt-oca-harness/issues/626
@@ -2970,11 +2948,8 @@ the allow case meaningful: it shows the read genuinely reached the lifecycle
 controller rather than being answered by something else on the path.
 
 Both halves of the feature-control register are compared exactly, in full, against the
-golden decode — not just the single debug bit. The gating property above is proven on
-live RTL and stands on its own. The *value* comparison does not: the golden follows the
-RTL rather than the lifecycle-controller chapter, and the two disagree precisely on the
-demoted-PROD case this test exercises. Read <<lcc-golden-follows-rtl>> before citing
-`CHK-DBG-FEAT` or `CHK-DBG-ALLOW` as evidence that the policy is correct.
+spec-derived golden decode — not just the single debug bit. See
+<<lcc-golden-from-spec>>.
 
 ==== Steps
 
@@ -3051,10 +3026,8 @@ demoted-PROD case this test exercises. Read <<lcc-golden-follows-rtl>> before ci
 | PROVEN
 
 | CHK-DBG-FEAT
-| After demotion the full feature-control value matches the golden decode and the debug
-  bit is set. The golden follows the RTL here, so this proves the decode is stable and
-  input-sensitive, not that the demotion policy is correct —
-  see <<lcc-golden-follows-rtl>>.
+| After demotion the full feature-control value matches the spec-derived
+  golden decode and the debug bit is set. See <<lcc-golden-from-spec>>.
 | `CHK-DBG-FEAT PASS: FEAT_CTRL=0xf0000000f000f003 == golden, sep_debug=1`
 | PROVEN
 
@@ -3170,6 +3143,14 @@ so what is checked is the queue's output rather than an internal signal.
 | `CHK5_km` row of the scoreboard report with `mismatch=0` (item counts vary per run)
 | PROVEN
 
+| CHK5_pool
+| Mux endpoint [2] (entropy-pool adapter): each post-adapter pool beat equals
+  the next AXIS2 word, and `pool_edn_fips_o=1` on every completed beat (the
+  adapter forwarded the DRBG FIPS bit). Does not drain `0x1095_0000`.
+| `CHK5_pool` row of the scoreboard report with `mismatch=0` (item counts vary per run)
+  and `CHK5_pool FIPS PASS` with `pool_edn_fips_o=1`
+| PROVEN
+
 | CHK-ALERTS
 | Generator and distribution error and alert status are clear.
 | The four alert reads returning zero: `AXI read  0x10915054 -> 0x0`, `AXI read  0x10915050 -> 0x0`, `AXI read  0x1091583c -> 0x0`, `AXI read  0x10915838 -> 0x0`
@@ -3203,15 +3184,15 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 // ---------------------------------------------------------------------------
 
-== Audit summary
+== Evidence inventory
 
-31 testcases, 154 steps, 148 checkers.
+31 testcases, 153 steps, 151 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Step proof | Count
 
-| `LOGGED` | 154
+| `LOGGED` | 153
 | `NOT-LOGGED` | 0
 |===
 
@@ -3219,7 +3200,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Grade | Count
 
-| `PROVEN` | 147
+| `PROVEN` | 150
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `STALE` | 0
@@ -3228,107 +3209,87 @@ not here. Every stage after the injection point is real logic and is golden-chec
 | `FAILED` | 1
 |===
 
-A running test's checkers are `PROVEN` or `FAILED`. Rows that could not fail on
-this DUT were deleted, not parked as `GUARD`. Alive-mode CHK5 names only live
-beats; bit-exact per-sink is the small KM ROM tests. The one `FAILED` row is
-CHK-JTAG-MMR-DENY: `periphs.adoc` requires DECERR on a non-token MMR in PROD;
-the RTL returned OKAY (resp=0) on `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH` at
-`0x1093056c` (run `20260820_165856`). Tracked as
-https://github.com/tenstorrent/tt-oca-harness/issues/626.
+A running test's checkers are `PROVEN` or `FAILED`. Rows that cannot fail
+on this DUT are deleted, not parked as `GUARD`. Alive-mode CHK5 names
+only live beats; bit-exact per-sink is the small KM ROM tests. The one
+`FAILED` row is CHK-JTAG-MMR-DENY; see <<open-items>>.
 
-The `STALE` grade is now unused. It existed for one entry whose boot-ROM image the
-repository could not rebuild; #451 wired that build into the flow and the entry has
-since been re-run against a flow-built image, so it is graded on its evidence like
-every other row. The grade definition is kept because the situation it names — a
-checker that passes on an artefact nobody else can reproduce — is worth being able
-to say.
+[[claims-outside-contract]]
+[[phase2-handoff]]
+[[need-extended]]
+=== Claims outside this contract
 
-[[open-items]]
-=== Open items
-
-These are `hw/sys/sep/doc` requirements that no implemented checker currently proves.
-JTAG non-token MMR deny is CHK-JTAG-MMR-DENY on `sep_efuse_jtag_axil_el2_cpu_mux_test`
-(`FAILED`, https://github.com/tenstorrent/tt-oca-harness/issues/626).
-`lc_sigint_err` fail-closed is CHK-SIGINT on `sep_efuse_lcc_lc_state_stitch_test`
-(signed-off decoder-input force; pending a kept log). The TEST_EN / `secure_tm`
-DFT-group gate is CHK-SECURE-TM on the same test (frontdoor strap; pending a kept
-log). `sep_lcc_uvm_inbound_filter_gating_test` stays on PROD, where the LC decode
-already zeros `[47:32]`, so that test does not need the strap.
-CHK5 bit-exact vs `rom_main` is not a spec checker; the small KM ROM tests already
-golden-compare CHK5. KMAC correctness is `sep_kmac_mode_strength_rand_test`.
+These behaviours are not in the Phase 1 checker set. The Phase 2
+document specifies them.
 
 [cols="2,3,3",options="header"]
 |===
-| Testcase | Item | What would close it
+| Phase 1 entry | Claim outside this contract | Specified in
 
-| (none remaining from the prior DFT / `lc_sigint` rows)
-| Latch-timing corners of `secure_tm` (cold-reset sample when `SEC_DIS=1` vs
-  sense-done sample) are still the backlog `sep_efuse_strap_secure_tm_latch_test`.
-  The stitch test proves the FEAT_CTRL gate, not every latch-timing path.
-| Implement the backlog latch test if those corners are required.
+| `sep_esrc_e2e_smoke_test`,
+  `sep_drbg_real_sink_multi_km_aes_test`
+| Dual-sink bit-exact CHK5 routing
+| `sep_crypto_edn_multisink_arbitration_test`,
+  `sep_crypto_edn_round_robin_grant_test`
+
+| `sep_efuse_lcc_lc_state_stitch_test`
+| Demote × LC × DIS product; standalone RMA token path
+| Phase 2 demote RAND-REP
+
+| `sep_efuse_image_test`
+| Program × lock matrix on a spare/test field (never `LC_STATE`)
+| Phase 2 eFuse remaining row
+
+| `sep_km_otbn_sideload_kat_test`,
+  `sep_km_aes_sideload_kat_test`,
+  `sep_km_hmac_sideload_kat_test`,
+  `sep_km_kmac_sideload_kat_test`
+| KM mailbox command set
+| Phase 2 KM remaining row
+
+| `sep_lcc_uvm_inbound_filter_gating_test`
+| Inbound source-ID × r/w product; live outbound remap
+| `sep_fabric_inbound_filter_rule_matrix_test`;
+  Phase 2 outbound-remap row
+
+| `sep_otbn_mem_smoke_test`
+| OTBN as a compute engine
+| Phase 2 OTBN remaining row
 |===
 
-One item has been closed since this table was first written. The lifecycle golden and
-the eFuse map it stages against were both listed here as pending PR #242; #242 landed,
-the golden is now derived from the lifecycle-controller chapter rather than transcribed
-from the RTL, and the field table is derived from the generated map. See
-<<lcc-golden-follows-rtl>>.
+[[open-items]]
+=== Spec-versus-RTL mismatches
 
-CHK4 generate-command segmentation on the Phase 1 `glen=32` rows names only that
-generated bits match the golden; `sep_drbg_gen_segmentation_test` owns segmentation.
-CHK5 on the `rom_main` sideload tests names only live beats; bit-exact CHK5 is the
-small KM ROM tests.
+[cols="2,3,3",options="header"]
+|===
+| Testcase | Checker | Resolution
+
+| `sep_efuse_jtag_axil_el2_cpu_mux_test`
+| CHK-JTAG-MMR-DENY: non-token MMR in PROD must DECERR
+| RTL matches `hw/sys/sep/doc/periphs.adoc`, or the spec is revised. Issue 626.
+|===
+
+CHK4 generate-command segmentation on the Phase 1 `glen=32` rows names
+only that generated bits match the golden; Phase 2
+`sep_drbg_gen_segmentation_test` owns segmentation. CHK5 on the
+`rom_main` sideload tests names only live beats; bit-exact CHK5 is the
+small KM ROM tests. Latch-timing corners of `secure_tm` are Phase 3 T.B.D.
 
 === Unlogged steps
 
 None. Every step in this plan is traceable to a line in its kept log.
-
-That was not true when this plan was first written: 34 steps left no trace. Nine of
-those were mislabelled — the evidence was in the log and the plan said otherwise — and
-the remaining twenty-five were closed by adding a step marker to the test. The markers
-are prints, not checks: they do not make any test prove more, they make the log show
-that a step ran. That matters because the steps that were invisible were almost all
-configuration writes, and a configuration write dropped by a refactor would otherwise
-leave a passing test and a silent log.
-
-Two steps are evidenced indirectly rather than by a marker, for reasons recorded in
-their entries: the boot-ROM staging is announced by the testbench rather than by
-firmware, and the debug-port mux test publishes its loop progress to cold scratch
-because it builds no console decoder.
+Step markers are prints, not checks: they show that a configuration
+write ran. Two steps are evidenced indirectly, for reasons recorded in
+their entries: the boot-ROM staging is announced by the testbench, and
+the debug-port mux test publishes loop progress to cold scratch because
+it builds no console decoder.
 
 === Entries whose checkers share one proof line
 
-Three firmware tests evaluate several conditions but print a single pass line, so
-their checker rows cite the same evidence:
+Three firmware tests evaluate several conditions and print a single pass
+line. Their checker rows cite that same evidence. The firmware counters
+still gate PASS:
 
 * `sep_spi_ot_dma_rx_test` — 3 of 3 checkers
 * `sep_dma_cpu_contention_test` — 5 of 5 checkers, one carrying a value-bearing substring
 * `sep_mailbox_plic_test` — 4 of 4 checkers, two carrying value-bearing substrings
-
-The conditions are genuinely evaluated in firmware and the counters behind them are
-real, but the log does not show which held. Printing one line per condition would make
-these entries self-evidencing. This is a logging change, not a test change.
-
-`sep_efuse_km_axil_cpu_mux_coexist_test` was previously listed here and is not in this
-class: its host-side observer prints and asserts every measured value separately.
-
-== Document history
-
-This plan supersedes the earlier Phase 1 plan and its separate detail file. Checker
-evidence was re-derived from a full Verilator regression rather than carried over.
-
-Every entry was then audited individually against its kept log, its test source and,
-for the firmware tests, its C. That pass found eleven checkers that could not fail —
-among them a suppressed write-response check that let two erroring writes pass, a SPI
-data check that accepted the exact value a broken receive path produces, a lifecycle
-transition check applied to a compile-time constant instead of to the DUT, three
-key-register reads whose read data is tied to zero in the generated register block, and
-a set of boot-ROM stage markers that were printed but never required. Each is fixed or,
-where fixing it needs a decision this document cannot make, recorded in
-<<open-items>>.
-
-The audit also found that a large share of the evidence strings this document quotes
-could never have matched any log — some pinned to a seed, some to counts that vary per
-run, some written as templates, some differing from the log only in column padding. All
-are corrected, and every string quoted in this document has been checked against the
-corresponding kept log. Re-check them after editing it.

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse image + shadow-readout + W1S-persistence test (OSS).
 
 Senses one generated fuse image, checks the software-visible shadow registers

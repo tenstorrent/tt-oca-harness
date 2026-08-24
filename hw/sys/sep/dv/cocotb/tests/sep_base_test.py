@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP UVM base test helpers.
 
 Concrete tests inherit this class for common import setup, environment build,
@@ -429,19 +430,10 @@ class sep_base_test(uvm_test):
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
 
-    # No spi_mux_release_cs() helper on the Python side. The SPI pad mux
-    # (och_sep_spi_mux_ctrl_ot SPI_MUX_CTRL: spi_sel + cs_force_high) is a NONFREE
-    # shim block inside sep_axi_extension, so a pure-open SEP -- what these cocotb
-    # tests build -- has no mux at all: the generated open register export contains
-    # no SPI_MUX symbol, tb_top drives the pads straight off the wrapper's struct
-    # port, and nothing holds chip-select deasserted. There is nothing to release.
-    # The old helper wrote a fixed 0x2000_0000 aperture, which DECERRs here.
-    #
-    # This is deliberately NOT symmetric with the firmware side: fw/drivers/spi_mux.h
-    # keeps a spi_mux_select_ot() that is #ifdef-gated on the mux register existing,
-    # because CPU firmware also runs in overlay builds where the mux IS present and
-    # must be pointed at the OT host (spi_sel=1), not merely CS-released. If these
-    # Python tests ever run against an overlay build, they need that same select.
+    # No spi_mux helper on the Python side. The SPI pad mux sits in a nonfree
+    # wrapper, so a pure-open SEP has no mux: pads come straight off the
+    # wrapper's struct port. Firmware that programs that mux lives with the
+    # wrapper, not in this tree.
 
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).
@@ -469,6 +461,7 @@ class sep_base_test(uvm_test):
                 dut.rst_ni,
                 name="sep_jtag_axil",
                 reset_active_level=False,
+                raise_on_error=False,
             ).sequence
         return self._jtag_axil
 
@@ -478,28 +471,17 @@ class sep_base_test(uvm_test):
 
         resp_code is the AXI response (OKAY=0, SLVERR=2, DECERR=3; -1 if
         unreadable). A non-completing access (wedge) fails the test rather than
-        hanging silently. Uses init_read/init_write so the caller inspects the
-        response code itself (a denied access returns DECERR, not an exception).
+        hanging silently. Uses the common VIP ``*_result`` API with
+        ``check_response=False`` so a denied access returns DECERR instead of
+        raising.
         """
         m = self.jtag_axil_master()
+        kwargs = {"check_response": False, "timeout_ns": timeout_ns}
         if write:
-            event = m.init_write(address=addr, data=wdata.to_bytes(4, "little"))
-        else:
-            event = m.init_read(address=addr, length=4)
-        try:
-            await with_timeout(event.wait(), timeout_ns, "ns")
-        except SimTimeoutError as exc:
-            raise AssertionError(
-                f"JTAG AXI-Lite op @ 0x{addr:08x} did not complete within {timeout_ns} ns"
-            ) from exc
-        resp = event.data
-        code = getattr(resp, "resp", None)
-        try:
-            code = int(code[0] if isinstance(code, (list, tuple)) else code)
-        except Exception:
-            code = -1
-        rdata = 0 if write else int.from_bytes(resp.data, "little")
-        return code, rdata
+            result = await m.write_result(addr, wdata, **kwargs)
+            return result.resp, 0
+        result = await m.read_result(addr, **kwargs)
+        return result.resp, result.data
 
     # --- entropy (ESRC->DRBG->CSRNG->EDN->KM) bring-up observers --------------
     # Shared poll/check helpers for any entropy-consumer test (the SEQUENCES that
@@ -664,11 +646,13 @@ class sep_base_test(uvm_test):
         bit-exact value compare.
 
         ``score_sinks`` is an optional name->mode map for the crypto EDN sinks
-        (``aes``/``kmac``/``otbn_rnd``/``otbn_urnd``), each ``"observe"`` or
-        ``"disabled"`` (omitted sinks default disabled). A sink set to ``"observe"``
-        requires >=1 real post-adapter EDN beat to that client, proving the SEP EDN
-        crypto leg delivers entropy -- used by tests that release a crypto consumer
-        (e.g. the OTBN KAT releases OTBN, whose secure wipe pulls URND).
+        (``aes``/``kmac``/``otbn_rnd``/``otbn_urnd``) and the entropy-pool sink
+        (``pool``, EDN endpoint [2]). Each is ``"golden"`` (single live client on
+        that mux leg: crypto vs AXIS1, pool vs AXIS2), ``"membership"`` (each
+        word is a CHK4 genbits word), ``"observe"`` (>=1 real beat, no value
+        compare), or omitted (disabled). Park unused crypto clients before
+        calling this when using crypto ``golden``. The pool is a sole client of
+        mux [2], so ``{"pool": "golden"}`` is always legal.
         """
         from env.sep_drbg_scoreboard import SepDrbgScoreboard
         from seq_lib.sep_esrc_bringup_seq import (
@@ -693,6 +677,7 @@ class sep_base_test(uvm_test):
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
             raise AssertionError("ESRC never produced a seed (drbg_seed_valid_o)")
+        self.drbg_sb.enable_chk5()
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
         return self.drbg_sb
 

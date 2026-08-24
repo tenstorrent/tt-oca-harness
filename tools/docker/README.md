@@ -24,7 +24,7 @@ default — see `flows/synth/yosys/README.md`.
 
 ## Quick start (`docker-run.sh`)
 
-From `tt-oca/` (or anywhere — the script resolves the repo root). Build the
+From the `tt-oca-harness` repo root (or anywhere — the script resolves the repo root). Build the
 firmware image once before `run` / `shell` / `verify`:
 
 ```bash
@@ -104,7 +104,7 @@ container. The DV `cgen` flow uses it to build firmware, e.g.
 
 ## Manual docker commands
 
-Equivalent commands without the helper (run from `tt-oca/`):
+Equivalent commands without the helper (run from the `tt-oca-harness` repo root):
 
 ```bash
 PDF_IMAGE=docker.io/asciidoctor/docker-asciidoctor:1.106.0@sha256:6266e05784c2d8ece9d9fe5e593b12c3beebebbc467135fd6f4a56269c93cea3

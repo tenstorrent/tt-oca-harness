@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base for direct-AXI register drivers on the SEP CPU-LSU bus.
 
 The OpenTitan crypto run-control drivers (AES/HMAC/KMAC/OTBN) and the CSRNG/EDN

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Routing verification for peripheral AXI-Lite external-macro windows — DEFERRED.
 
 Exercises pll/pvt OKAY wraps and idle smc_wrapper DTP CSR port after TB

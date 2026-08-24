@@ -259,17 +259,8 @@ module smu_wrapper
     input  logic mbist_pass_i,
     input  logic mbist_abort_i,
 
-    // SPI IRQ output from the open SPI controller, optionally muxed with adopter logic
-    output logic                        ot_spi_irq_o,
-
     // SPI IRQ from the selected open or adopter-provided SPI integration
     input  logic                        spi_irq_i,
-
-    output logic  sep_reset_n_o,
-    output logic  sep_cpu_reset_n_o,
-
-    // JTAG-generated SEP reset/override control, driven by the internal DTP
-    output sep_pkg::jtag_sep_reset_ctrl_t  jtag_sep_reset_ctrl_o,
 
     // OpenTitan SPI request, surfaced for observation; the loop closes in smu.sv
     output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
@@ -478,9 +469,6 @@ module smu_wrapper
     ) u_sep_ip_integration (
         .clk_i  (clk_smu_i),
         .rst_ni (rst_primary_smc_clk_no),
-
-        .sep_cpu_reset_n_i (sep_cpu_reset_n_o),
-        .sep_reset_n_i     (sep_reset_n_o),
 
         .test_en_i (test_en_i),
 

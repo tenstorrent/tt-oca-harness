@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP HMAC + KMAC CPU crypto smoke firmware test (OSS port combining the reference suite
 // hmac_test and kmac_test). Exercises the two OpenTitan crypto engines over the

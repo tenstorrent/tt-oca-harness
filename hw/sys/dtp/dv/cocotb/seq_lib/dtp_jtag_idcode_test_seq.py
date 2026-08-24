@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_jtag_idcode_test.
 
 Verifies the DTP primary TAP IDCODE data register through the OCAH JTAG BFM.

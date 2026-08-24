@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OpenTitan SPI-host firmware helpers for the OSS tests. Header-only.
 // Addresses and field masks come from generated sep_addr.h / spi_controller.h
@@ -10,7 +11,6 @@
 #include <stdint.h>
 
 #include "sep.h"
-#include "spi_mux.h"
 
 // CFG: CPOL/CPHA = 0 (Mode 0). CS timing CSNIDLE/TRAIL/LEAD=2 matches the OSS
 // flash BFM (composed from generated field positions, not a packed hex constant).
@@ -52,8 +52,7 @@
 
 /*
  * ERROR_STATUS field macros are PeakRDL-mangled in blocks/spi_controller.h;
- * och_sep_common.h only aliases *_bm. Every field resets to 0, so the
- * aggregate is identically zero (same as the pre-refactor check).
+ * och_sep_common.h only aliases *_bm. Every field resets to 0.
  */
 #define SPI_CONTROLLER__ERROR_STATUS_reset 0u
 
@@ -65,16 +64,8 @@ static inline void spi_wr(uint32_t addr, uint32_t value) {
     *(volatile uint32_t *)addr = value;
 }
 
-// SPI mux control. Out of reset SPI_MUX_CTRL selects the licensed SPI host
-// and forces CS# high, so an OT scenario must both point the mux at the OT host
-// (spi_sel=1) and release CS# (cs_force_high=0).
-static inline void sep_spi_mux_release_cs(void) {
-    spi_mux_select_ot();
-}
-
-// Spin until the controller can accept a new command (bounded so a wedged host
-// surfaces as a firmware timeout rather than an infinite loop).
 static inline int spi_wait_ready(int timeout) {
+    /* Bounded so a wedged host surfaces as a firmware timeout. */
     while (timeout-- > 0) {
         if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
             SPI_CONTROLLER__STATUS__READY_bm) {

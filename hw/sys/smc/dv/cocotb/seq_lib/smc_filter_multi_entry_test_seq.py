@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap round 2: filter multi-entry sweep.
 
 RTL exposes 16 inbound + 16 outbound filter entries. Round-1

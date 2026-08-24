@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap Round 4: SMC cluster BEU sweep (TC_SMC_P1CG_21).
 
 RTL exposes one Bus Error Unit (BEU) per core at 0xC801_0000 + core*0x1000

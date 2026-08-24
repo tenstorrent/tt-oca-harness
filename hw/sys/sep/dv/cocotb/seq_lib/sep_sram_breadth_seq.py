@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SRAM datapath-breadth config + driver for ``sep_sram_datapath_breadth_test``.
 
 `[RANDCFG]` rep: ``SepSramBreadthCfg`` is the single source of truth for BOTH the

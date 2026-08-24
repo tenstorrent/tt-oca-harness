@@ -1,18 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Inbound-filter per-entry RULE matrix.
 
 With the SEP inbound filter ACTIVE (feat_ctrl.sep_debug=0, real PROD fuse), the
-CPU-LSU master programs ONE inbound FILTER_CONFIG allow-entry and the EXTERNAL SMN
+CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the EXTERNAL SMN
 master (m_axi, the only path through u_inbound_filter) proves per-entry rule
 enforcement: an allowed address -> OKAY + exact CSR value; any other address ->
-DECERR (block-by-default); clearing read_allowed/write_allowed flips the matched
-read/write to DECERR. With smc_global_base=0 the inbound global->local remap is identity, so
+DECERR (block-by-default); read_allowed/write_allowed gate the matched
+read/write. With smc_global_base=0 the inbound global->local remap is identity, so
 the external master drives the SEP-local address directly.
 
-Exercises the per-entry filter rule, not the whole-filter skip path
-(sep_lcc_uvm_inbound_filter_gating_test proves the GLOBAL sep_debug skip gate,
-filter wholly on/off). This test stays at sep_debug=0 the whole time and proves
-the PER-ENTRY allow-by-rule vs block-by-default policy.
+Walks first and last table entries x two address windows x {rw, read-only,
+write-only} in one invocation (SepInboundFilterMatrixCfg is the single source
+of truth). Stays at sep_debug=0 the whole time and proves the PER-ENTRY
+allow-by-rule vs block-by-default policy, not the global sep_debug skip gate
+(sep_lcc_uvm_inbound_filter_gating_test).
 
 reference refs: fabric sep_inbound_filter_blockbydefault_test,
 sep_inbound_filter_programming_ownership_test, sep_inbound_id_remap_test. Mapping: COVERED_STRONGER -- real external AXI master
@@ -21,9 +23,10 @@ CHK-OWNERSHIP ports the CPU-vs-external asymmetry at the filter CFG CSR
 (0x10A2_1000): CPU-LSU reads the programmed rule, the external master completes
 DECERR on read and write, and the denied write does not land. That is the
 spec's "only the SEP CPU can program these filters" under the programmed allow
-window, which does not include the CFG address.
+window, which does not include the CFG address. CHK-OWNERSHIP-WINDOW keeps that
+assert hard after a second entry allow-lists the CFG address.
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
-=> filter active). RAND-NONE (directed).
+=> filter active). RAND-REP (entry x window x R/W-allow; window values from seed).
 """
 
 from __future__ import annotations
@@ -35,8 +38,8 @@ from sep_base_test import sep_base_test
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 from seq_lib.sep_inbound_filter_rule_seq import (
-    SepInboundFilterCfg, SepInboundFilter, ext_read_seq, ext_write_seq,
-    RESP_OKAY, RESP_DECERR,
+    SepInboundFilterCfg, SepInboundFilterMatrixCfg, SepInboundFilter,
+    ext_read_seq, ext_write_seq, RESP_OKAY, RESP_DECERR, FILTER_BEAT_MASK,
 )
 from seq_lib.sep_fabric_csr_bank_seq import FILTER_RW_MASK
 
@@ -85,72 +88,106 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         self.logger.info("inbound filter ACTIVE: %s sep_debug=0", lc_state_name(image.lc_raw()))
 
     async def run_scenario(self) -> None:
-        self.fcfg = SepInboundFilterCfg()
-        self.logger.info("inbound-filter config: %s", self.fcfg.summary())
+        mcfg = SepInboundFilterMatrixCfg.from_seed(self.random_seed())
+        self.logger.info("inbound-filter matrix: %s", mcfg.summary())
 
         await self._bring_up_prod_filter_active()
         self.filt = SepInboundFilter(self)
 
-        # Stage the allowed target with a distinctive value via the CPU-LSU (no filter).
-        await self.filt.stage_target(self.fcfg.allow_addr, self.fcfg.allow_value)
-        staged = await self.filt.read_cpu(self.fcfg.allow_addr)
-        assert staged == self.fcfg.allow_value, (
-            f"staged target 0x{self.fcfg.allow_addr:08x}=0x{staged:08x} != 0x{self.fcfg.allow_value:08x}"
-        )
+        for addr, val in mcfg.windows:
+            await self.filt.stage_target(addr, val)
+            staged = await self.filt.read_cpu(addr)
+            assert staged == val, (
+                f"staged target 0x{addr:08x}=0x{staged:08x} != 0x{val:08x}"
+            )
 
-        # ---- PROVE-FIRST core: program one allow-entry, prove allow vs block ----
+        first = True
+        for entry, widx, mode, addr, val, read_ok, write_ok in mcfg.cells():
+            await self.filt.disable_all()
+            cell = SepInboundFilterCfg(entry=entry, allow_addr=addr, allow_value=val)
+            await self.filt.program_rule(cell, read_allowed=read_ok, write_allowed=write_ok)
+
+            if read_ok:
+                resp, data = await self._ext_read(addr)
+                assert resp == RESP_OKAY, (
+                    f"cell entry={entry} w{widx} {mode}: allowed ext read resp={resp}"
+                )
+                assert data == val, (
+                    f"cell entry={entry} w{widx} {mode}: ext read 0x{data:08x} "
+                    f"!= staged 0x{val:08x}"
+                )
+                if first:
+                    self.logger.info(
+                        "CHK-ALLOW-RULE PASS: ext read 0x%08x -> OKAY, rdata=0x%08x",
+                        addr, data)
+            else:
+                resp, _ = await self._ext_read(addr)
+                assert resp == RESP_DECERR, (
+                    f"cell entry={entry} w{widx} {mode}: read_allowed=0 got resp={resp}"
+                )
+
+            if write_ok:
+                poke = val ^ 0xFFFF_0000
+                resp = await self._ext_write(addr, poke)
+                assert resp == RESP_OKAY, (
+                    f"cell entry={entry} w{widx} {mode}: allowed ext write resp={resp}"
+                )
+                landed = await self.filt.read_cpu(addr)
+                assert landed == poke, (
+                    f"cell entry={entry} w{widx} {mode}: ext write did not land "
+                    f"(0x{landed:08x})"
+                )
+                await self.filt.stage_target(addr, val)
+            else:
+                resp = await self._ext_write(addr, 0x5555_AAAA)
+                assert resp == RESP_DECERR, (
+                    f"cell entry={entry} w{widx} {mode}: write_allowed=0 got resp={resp}"
+                )
+
+            resp, _ = await self._ext_read(mcfg.blocked_addr)
+            assert resp == RESP_DECERR, (
+                f"cell entry={entry} w{widx} {mode}: blocked 0x{mcfg.blocked_addr:08x} "
+                f"resp={resp}, expected DECERR"
+            )
+            if first:
+                self.logger.info(
+                    "CHK-BLOCK-DEFAULT PASS: ext read 0x%08x -> DECERR (block-by-default)",
+                    mcfg.blocked_addr)
+            if mode == "r":
+                # read_ok=1 / write_ok=0: the allowed read already checked OKAY;
+                # this cell's DENY is the write.
+                self.logger.info(
+                    "CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write "
+                    "(DECERR) entry=%d window=%d", entry, widx)
+                self.logger.info(
+                    "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
+                    "(OKAY) entry=%d window=%d", entry, widx)
+            if mode == "w":
+                # read_ok=0 / write_ok=1: the allowed write already checked OKAY;
+                # this cell's DENY is the read.
+                self.logger.info(
+                    "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
+                    "(DECERR) entry=%d window=%d", entry, widx)
+                self.logger.info(
+                    "CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write "
+                    "(OKAY) entry=%d window=%d", entry, widx)
+            self.logger.info(
+                "CHK-CELL PASS: entry=%d window=%d mode=%s addr=0x%08x",
+                entry, widx, mode, addr)
+            first = False
+
+        self.logger.info(
+            "CHK-RAND-REP PASS: walked all %d discrete cells "
+            "(entries %s x %d windows x rw/r/w)",
+            mcfg.n_cells(), list(mcfg.entries), len(mcfg.windows))
+
+        # Restore entry 0 / window A / rw for the ownership checks.
+        await self.filt.disable_all()
+        win0_addr, win0_val = mcfg.windows[0]
+        self.fcfg = SepInboundFilterCfg(
+            entry=0, allow_addr=win0_addr, allow_value=win0_val)
         await self.filt.program_rule(self.fcfg, read_allowed=True, write_allowed=True)
 
-        # CHK-ALLOW-RULE: external read of the allowed addr -> OKAY + the exact staged value
-        # (proves the external path traversed the filter + remap and reached the real CSR).
-        resp, data = await self._ext_read(self.fcfg.allow_addr)
-        assert resp == RESP_OKAY, f"allowed ext read resp={resp}, expected OKAY (rule not enforced?)"
-        assert data == self.fcfg.allow_value, (
-            f"allowed ext read 0x{data:08x} != staged 0x{self.fcfg.allow_value:08x} "
-            f"(external path did not reach the CSR)"
-        )
-        self.logger.info("CHK-ALLOW-RULE PASS: ext read 0x%08x -> OKAY, rdata=0x%08x",
-                         self.fcfg.allow_addr, data)
-
-        # CHK-BLOCK-DEFAULT: external read of a non-allowed addr -> DECERR (block-by-default).
-        resp, _ = await self._ext_read(self.fcfg.blocked_addr)
-        assert resp == RESP_DECERR, (
-            f"non-allowed ext read 0x{self.fcfg.blocked_addr:08x} resp={resp}, expected DECERR"
-        )
-        self.logger.info("CHK-BLOCK-DEFAULT PASS: ext read 0x%08x -> DECERR (block-by-default)",
-                         self.fcfg.blocked_addr)
-
-        # ---- per-entry field enforcement (after the core is proven) ----
-        # CHK-READ-ALLOWED: clear read_allowed (write_allowed stays) -> the SAME allowed read is
-        # now DECERR; restore read_allowed -> OKAY again (read gated by read_allowed, matched to
-        # a READ probe).
-        await self.filt.program_rule(self.fcfg, read_allowed=False, write_allowed=True)
-        resp, _ = await self._ext_read(self.fcfg.allow_addr)
-        assert resp == RESP_DECERR, f"read_allowed=0 should block the read, got resp={resp}"
-        await self.filt.program_rule(self.fcfg, read_allowed=True, write_allowed=True)
-        resp, data = await self._ext_read(self.fcfg.allow_addr)
-        assert resp == RESP_OKAY and data == self.fcfg.allow_value, (
-            f"restoring read_allowed should re-allow the read (resp={resp}, data=0x{data:08x})"
-        )
-        self.logger.info("CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read (DECERR<->OKAY)")
-
-        # CHK-WRITE-ALLOWED: clear write_allowed (read_allowed stays) -> ext WRITE to the allowed
-        # addr is DECERR; set write_allowed -> the write is accepted (B-channel OKAY) and lands.
-        await self.filt.program_rule(self.fcfg, read_allowed=True, write_allowed=False)
-        resp = await self._ext_write(self.fcfg.allow_addr, 0x5555_AAAA)
-        assert resp == RESP_DECERR, f"write_allowed=0 should block the write, got resp={resp}"
-        await self.filt.program_rule(self.fcfg, read_allowed=True, write_allowed=True)
-        resp = await self._ext_write(self.fcfg.allow_addr, 0x5555_AAAA)
-        assert resp == RESP_OKAY, f"write_allowed=1 should accept the write, got resp={resp}"
-        landed = await self.filt.read_cpu(self.fcfg.allow_addr)
-        assert landed == 0x5555_AAAA, f"allowed ext write did not land (0x{landed:08x})"
-        self.logger.info("CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write (DECERR<->OKAY, landed)")
-
-        # CHK-OWNERSHIP: CPU-LSU vs external at the filter CFG CSR. The CPU reads
-        # the programmed rule; the external master is denied read and write with a
-        # completed DECERR; the denied write does not land. The allow window does
-        # not cover this CSR; CHK-ALLOW-RULE already showed OKAY on the allowed
-        # address in this run, so the DECERR is not a dead bus.
         cfg_addr = self.fcfg.cfg_addr
         expected_cfg = self.fcfg.config_word(read_allowed=True, write_allowed=True)
         cpu_cfg = await self.filt.read_cpu(cfg_addr)
@@ -177,29 +214,50 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             "R+W DECERR, rule intact",
             cfg_addr, cpu_cfg & FILTER_RW_MASK)
 
-        # CHK-NONVAC before the spec-vs-RTL window check: allow + block were already
-        # observed. The next assert is expected to FAIL on today's RTL.
         self.logger.info(
             "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)")
 
-        # fabric.adoc: "Only the SEP CPU can program these filters." The deny above
-        # could still be block-by-default (CFG is outside entry 0's window). A second
-        # entry allow-lists the CFG address with read+write; the spec sentence holds
-        # only if the external path still DECERR and still cannot land a write.
         own = SepInboundFilterCfg(entry=1)
         own.allow_addr = cfg_addr
         await self.filt.program_rule(own, read_allowed=True, write_allowed=True)
+        own_cfg = await self.filt.read_cpu(own.cfg_addr)
+        own_expected = own.config_word(read_allowed=True, write_allowed=True)
+        assert (own_cfg & FILTER_RW_MASK) == (own_expected & FILTER_RW_MASK), (
+            f"entry 1 FILTER_CONFIG not programmed: got 0x{own_cfg:08x}, "
+            f"expected rw 0x{own_expected & FILTER_RW_MASK:08x}"
+        )
+        own_start = await self.filt.read_cpu(own.start_addr_reg)
+        assert own_start == cfg_addr, (
+            f"entry 1 START_ADDR does not cover CFG: got 0x{own_start:08x}, "
+            f"expected 0x{cfg_addr:08x}"
+        )
+        own_end = await self.filt.read_cpu(own.end_addr_reg)
+        # HW writeback: same-beat window expands END to the last byte of the
+        # data-bus granule (filter_ctrl.rdl END_ADDR reset 0x7 / 8-byte beat).
+        expected_end = cfg_addr | FILTER_BEAT_MASK
+        assert own_end == expected_end, (
+            f"entry 1 END_ADDR not granule-expanded: got 0x{own_end:08x}, "
+            f"expected 0x{expected_end:08x} (START=0x{cfg_addr:08x} | beat_mask)"
+        )
+        own_end_hi = await self.filt.read_cpu(own.end_addr_reg + 4)
+        assert own_end_hi == 0, (
+            f"entry 1 END_ADDR hi is not 0: got 0x{own_end_hi:08x}"
+        )
+        self.logger.info(
+            "CHK-FILTER-PROGRAMMED PASS: entry 1 FILTER_CONFIG rw=0x%08x "
+            "START_ADDR=0x%08x END_ADDR=0x%08x",
+            own_cfg & FILTER_RW_MASK, own_start, own_end)
         resp, _ = await self._ext_read(cfg_addr)
         assert resp == RESP_DECERR, (
             f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
             f"0x{cfg_addr:08x} on entry 1, external read resp={resp}, expected "
-            f"DECERR (RTL vs fabric.adoc: only the SEP CPU programs the filter)"
+            f"DECERR (RTL vs hw/sys/sep/doc/fabric.adoc: only the SEP CPU programs the filter)"
         )
         resp = await self._ext_write(cfg_addr, 0xFFFF_FFFF)
         assert resp == RESP_DECERR, (
             f"CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg "
             f"0x{cfg_addr:08x} on entry 1, external write resp={resp}, expected "
-            f"DECERR (RTL vs fabric.adoc)"
+            f"DECERR (RTL vs hw/sys/sep/doc/fabric.adoc)"
         )
         cpu_cfg_after2 = await self.filt.read_cpu(cfg_addr)
         assert (cpu_cfg_after2 & FILTER_RW_MASK) == (expected_cfg & FILTER_RW_MASK), (

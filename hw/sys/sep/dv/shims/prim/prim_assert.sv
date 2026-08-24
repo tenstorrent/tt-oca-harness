@@ -57,7 +57,7 @@
   uvm_pkg::uvm_report_error("OCAH_OT_ASSERT FAILED", `OCAH_OT_PRIM_STRINGIFY(__name), uvm_pkg::UVM_NONE, \
                             `__FILE__, `__LINE__, "", 1);                                 \
 `else                                                                                     \
-`ifdef SIM                                                                                \
+`ifdef SIMULATION                                                                         \
   $error("%0t: (%0s:%0d) [%m] [OCAH_OT_ASSERT FAILED] %0s", $time, `__FILE__, `__LINE__,         \
          `OCAH_OT_PRIM_STRINGIFY(__name));                                                        \
 `else                                                                                     \

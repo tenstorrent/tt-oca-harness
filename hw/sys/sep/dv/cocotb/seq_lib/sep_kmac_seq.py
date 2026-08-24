@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan KMAC run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Runs one keyed KMAC-256 (cSHAKE, PREFIX="KMAC") over a message, with the key
@@ -246,7 +247,8 @@ class SepKmac(SepAxiRegDriver):
             if not seq.resp_ok:
                 raise AssertionError(f"KMAC partial MSG_FIFO write ({rem}B) not OKAY")
 
-    async def run_family(self, cfg: "SepKmacCfg", *, tag: str = "") -> list[int]:
+    async def run_family(self, cfg: "SepKmacCfg", *, tag: str = "",
+                         hold: bool = False) -> list[int]:
         """Run one KMAC-family op (sha3/shake/cshake/kmac SW-key) per ``cfg``;
         return the digest words (STATE share0 ^ share1, masking on). Proves the
         INTR_STATE.kmac_done RW1C contract (observed set -> W1C -> reads 0) before
@@ -279,9 +281,26 @@ class SepKmac(SepAxiRegDriver):
             s1 = await self._rd(KMAC_STATE_S1 + i * 4)
             digest.append((s0 ^ s1) & 0xFFFF_FFFF)
         await self._check_done_rw1c(tag)
+        if hold:
+            # Leave STATE in squeeze so a later re-read is the held result.
+            return digest
         await self._wr(KMAC_CMD, KMAC_CMD_DONE)
         await self._wait_idle("post-done")
         return digest
+
+    async def read_digest(self, nwords: int = KMAC_DIGEST_WORDS) -> list[int]:
+        """Re-read STATE share0^share1. Valid while the engine is still in squeeze
+        (after run_family(..., hold=True)); a domain reset perturbs it."""
+        digest = []
+        for i in range(nwords):
+            s0 = await self._rd(KMAC_STATE_S0 + i * 4)
+            s1 = await self._rd(KMAC_STATE_S1 + i * 4)
+            digest.append((s0 ^ s1) & 0xFFFF_FFFF)
+        return digest
+
+    async def read_status(self) -> int:
+        """Read STATUS (sha3_idle[0], sha3_squeeze[2], fifo_empty, ...)."""
+        return await self._rd(KMAC_STATUS)
 
     async def _check_done_rw1c(self, tag: str) -> None:
         """CHK-DONE-RW1C: after the message is absorbed (squeeze ready) the

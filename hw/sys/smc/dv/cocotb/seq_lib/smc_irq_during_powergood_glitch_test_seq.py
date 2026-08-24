@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_irq_during_powergood_glitch_test.
 
 Samples IRQ before a powergood glitch and again after recovery. Verifies no

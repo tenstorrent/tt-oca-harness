@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP firmware-boot test (PyUVM): boot the VeeR EL2 core from ICCM and run the
 prebuilt hello_world firmware.
 

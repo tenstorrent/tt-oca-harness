@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_id_width_conversion_test - SEP=0 external->SMC ID converter live path.
 
 Under SEP=0, ``smu_axi_in`` (8-bit ID) feeds ``axi_iw_converter`` -> SMC SYS_IN

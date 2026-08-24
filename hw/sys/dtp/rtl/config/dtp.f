@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # DTP (Debug and Test Ports) Module File List
 # Copyright 2025 Tenstorrent Inc.
 

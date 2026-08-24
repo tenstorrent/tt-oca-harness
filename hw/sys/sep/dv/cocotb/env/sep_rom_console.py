@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Boot ROM virtual-console decoder.
 
 The Boot ROM has no UART. It emits output through SEP cold_scratch[2] (probe word

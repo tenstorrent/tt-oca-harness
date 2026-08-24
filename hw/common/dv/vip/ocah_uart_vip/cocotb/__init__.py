@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 ocah_uart_vip — OCAH-stable cocotb wrappers for UART console traffic.
 

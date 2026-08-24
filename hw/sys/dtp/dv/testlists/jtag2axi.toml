@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # SMC fabric JTAG2AXI scenarios for DTP issue #3210.
@@ -625,4 +628,12 @@ module = "dtp_jtag2axi_sep_otp_axi_read_security_gating_test"
 seed = 1
 timeout_sec = 2400
 tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_dbg_disable_matrix_test"
+module = "dtp_jtag2axi_dbg_disable_matrix_test"
+seed = 1
+timeout_sec = 2400
+tags = ["jtag2axi", "dbg_disable"]
 run_modes = ["jtag2axi"]

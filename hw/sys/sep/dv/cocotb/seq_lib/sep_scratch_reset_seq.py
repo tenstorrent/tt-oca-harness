@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Scratch-register reset-domain driver for ``sep_warm_cold_reset_scratch_test``.
 
 Direct-AXI R/W of the SEP System-block dual scratch banks over the CPU-LSU bus

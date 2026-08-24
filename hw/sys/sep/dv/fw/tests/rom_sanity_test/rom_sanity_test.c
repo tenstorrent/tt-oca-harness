@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP boot-ROM IFU sanity firmware test (OSS port of the reference suite rom_sanity_test).
 // Edge: CPU IFU -> boot-ROM. Proves the VeeR EL2 instruction-fetch unit can

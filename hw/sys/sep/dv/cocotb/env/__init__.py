@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OSS PyUVM environment package.
 
-Wraps the open-source cocotbext-axi VIP in a UVM hierarchy:
+Wraps ``ocah_axi_vip`` in a UVM hierarchy:
 config -> CPU-LSU AXI master agent (sequencer/driver) -> scoreboard -> env.
 
 A 32-bit read on the 64-bit LSU bus leaves the unused byte lanes unknown; resolve

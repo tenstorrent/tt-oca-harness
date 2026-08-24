@@ -6,7 +6,7 @@
 // SystemRDL 2.0 Register Definition (Contract)
 //
 //
-// Base Address: 0x0000_F000
+// Base Address: 0x0001_5000
 // Size: 4KB (0x1000)
 //
 // Bridges KM CPU AXI4-Lite read requests to DRBG AXI-Stream interface.

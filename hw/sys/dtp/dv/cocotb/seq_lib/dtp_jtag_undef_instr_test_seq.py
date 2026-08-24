@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_jtag_undef_instr_test.
 
 Checks that reserved/undefined IR opcodes select the one-bit BYPASS path.

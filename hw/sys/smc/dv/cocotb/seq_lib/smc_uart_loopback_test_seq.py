@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-1: DUT UART0 TX capture (THR -> pad12 -> OcahUartConsole sink)."""
 
 from __future__ import annotations

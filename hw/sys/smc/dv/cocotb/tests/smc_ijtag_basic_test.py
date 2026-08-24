@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM iJTAG-adjacent pin-level smoke (Batch C)."""
 
 from __future__ import annotations

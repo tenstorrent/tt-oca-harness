@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-"""CSRNG/EDN interrupt-injection driver for the IP->aggregator (E10) test.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""CSRNG/EDN interrupt-injection driver for the IP->aggregator test.
 
 Drives each IP's INTR_ENABLE/INTR_TEST/INTR_STATE over the SEP AXI agent to
 inject a real interrupt via the standard OpenTitan INTR_TEST register and W1C-clear

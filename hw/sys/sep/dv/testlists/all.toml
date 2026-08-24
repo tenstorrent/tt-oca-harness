@@ -4,14 +4,17 @@ schema_version = 1
 # Aggregate testlist: merges category/IP testlists. Leaf files define each test
 # once; tags provide custom subsets, and this file owns the regression groups.
 #
-# Pre-merge gate: run the two class regressions, not the mixed `all` group (the
+# Pre-merge gate: run the three class regressions, not the mixed `all` group (the
 # mixed path uses conservative fan-out, and the heavy rom_main tests are the
-# known-flaky-under-`all`-concurrency set).
+# known-flaky-under-`all`-concurrency set). `rom_fw` is a third class: those
+# four tests use the `rom_boot` RTL target and the Boot ROM firmware profiles.
 #
 # python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
 # --tool verilator --stage flist --stage hdl_compile --stage sim
 # python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
 # --tool verilator --stage flist --stage hdl_compile --stage sim
+# python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress \
+# --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim
 #
 # Add `--stage c_compile` when CPU firmware is stale, or run it alone for a
 # firmware-only rebuild. Verilator is the acceptance backend; VCS/Xcelium are
@@ -25,12 +28,12 @@ schema_version = 1
 # XFAIL them. CI `--items smoke` does not include them. A class regression
 # is expected two-red until RTL:
 #   sep_efuse_jtag_axil_el2_cpu_mux_test       CHK-JTAG-MMR-DENY
-#     https://github.com/tenstorrent/tt-oca-harness/issues/626
+#     (hw/sys/sep/doc/periphs.adoc: JTAG in PROD may only touch the two RMA token CSRs)
 #   sep_fabric_inbound_filter_rule_matrix_test CHK-OWNERSHIP-WINDOW
-#     https://github.com/tenstorrent/tt-oca-harness/issues/1050
+#     (hw/sys/sep/doc/fabric.adoc: only the SEP CPU can program the inbound filter)
 #
 # Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They
-# still run in the `all` and `cpu` groups; this VPLAN does not grade them
+# run in the `all` and `rom_fw` groups, not `cpu`; this VPLAN does not grade them
 # (see docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
 includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", "efuse_lcc.toml", "spi.toml", "rom_fw.toml"]
 

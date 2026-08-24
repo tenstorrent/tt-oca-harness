@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM cold-reset test.
 
 DV-CARD:          SMC_001   ANCHOR: smc_cold_reset_test

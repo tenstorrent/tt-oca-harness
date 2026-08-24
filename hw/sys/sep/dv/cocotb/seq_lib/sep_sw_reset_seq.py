@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP per-engine software reset control (SW_RESET_N).
 
 Active-low: a set bit releases the engine, a clear bit holds it in reset. This

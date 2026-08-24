@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan AES run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Configures the AES core for ECB-256 encryption, writes the key shares / data,
@@ -35,7 +36,7 @@ AES_CTRL_SHADOWED = AES_BASE + 0x74
 AES_TRIGGER = AES_BASE + 0x80
 AES_STATUS = AES_BASE + 0x84
 
-# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / hw/sys/sep/regs/gen/adoc/blocks/aes.adoc):
+# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc):
 #   OPERATION[1:0]=01 ENC, MODE[7:2]=000001 ECB, KEY_LEN[10:8]=100 AES-256,
 #   SIDELOAD[11], PRNG_RESEED_RATE[14:12]=100 PER_8K, MANUAL_OPERATION[15]=0.
 AES_OP_ENC = 0b01
