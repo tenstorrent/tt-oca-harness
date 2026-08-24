@@ -3,8 +3,9 @@
 """RMA token match / mismatch stimulus for the standalone token RANDCFG.
 
 Writes a 256-bit token into the eFuse MMR input registers, pulses EOP, and
-polls the match status. A match is the documented 6'b010101 code; a mismatch
-must not produce that code. Token values come from the run seed. Digest
+polls the match status until it is a documented terminal code (match
+``6'b010101``, mismatch ``6'b101010``, or error ``6'b111111``). Token
+values come from the run seed. Digest
 compare is SHA-256 over the 32-byte big-endian token (same as the stitch
 walk). LC_STATE programming stays with ``sep_efuse_otp_program_seq``.
 """
@@ -24,13 +25,37 @@ from sep_reg_meta import sym
 _EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
 _RMA_SIP_TOKEN_I = _EFUSE_MMR_BASE + 0x00
 _RMA_CHIPLET_TOKEN_I = _EFUSE_MMR_BASE + 0x20
+_SEC_DISABLE_TOKEN_I = _EFUSE_MMR_BASE + 0x40
 _TOKEN_EOP = _EFUSE_MMR_BASE + 0x60
 _RMA_SIP_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x64
 _RMA_CHIPLET_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x68
+_SEC_DISABLE_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x6C
+_TOKEN_MATCH_FAULT = sym("EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR")
 _TOKEN_MATCH = 0x15
+_TOKEN_MISMATCH = 0x2A
+_TOKEN_ERROR = 0x3F
+_TOKEN_CODES = (_TOKEN_MATCH, _TOKEN_MISMATCH, _TOKEN_ERROR)
+
+TOKEN_MATCH = _TOKEN_MATCH
+TOKEN_MISMATCH = _TOKEN_MISMATCH
+TOKEN_ERROR = _TOKEN_ERROR
+TOKEN_MATCH_FAULT = _TOKEN_MATCH_FAULT
+FAULT_RMA_SIP = 0x1
+FAULT_RMA_CHIPLET = 0x100
+FAULT_SEC_DISABLE = 0x10000
+TOKEN_CMP_INJECT_OFF = 0
+TOKEN_CMP_INJECT_COLLAPSE = 1
+TOKEN_CMP_INJECT_DISAGREE = 2
+TOKEN_CMP_INJECT_COMMON = 3
+TOKEN_CMP_INJECT_COMMON_MATCH = 4
+TOKEN_CMP_SEL_SIP = 0
+TOKEN_CMP_SEL_CHIPLET = 1
+TOKEN_CMP_SEL_SEC = 2
+IRQ_TOKEN_MATCH_FAULT = 38
 
 TOKEN_RMA_SIP = 0
 TOKEN_RMA_CHIPLET = 1
+TOKEN_SEC_DISABLE = 2
 _LC_STATE_BIT_BASE = LC_WORD_IDX * 32
 
 _POLL_CYCLES = 200
@@ -47,7 +72,7 @@ class SepRmaTokenMatchSeq(uvm_sequence):
         name: str = "sep_rma_token_match_seq",
     ) -> None:
         super().__init__(name)
-        assert kind in (TOKEN_RMA_SIP, TOKEN_RMA_CHIPLET)
+        assert kind in (TOKEN_RMA_SIP, TOKEN_RMA_CHIPLET, TOKEN_SEC_DISABLE)
         self.kind = kind
         self.token = token
         self.matched: bool | None = None
@@ -77,11 +102,16 @@ class SepRmaTokenMatchSeq(uvm_sequence):
             eop_value = 0x0000_0001
             match_addr = _RMA_SIP_TOKEN_MATCH
             token_name = "RMA_SIP"
-        else:
+        elif self.kind == TOKEN_RMA_CHIPLET:
             token_base = _RMA_CHIPLET_TOKEN_I
             eop_value = 0x0000_0100
             match_addr = _RMA_CHIPLET_TOKEN_MATCH
             token_name = "RMA_CHIPLET"
+        else:
+            token_base = _SEC_DISABLE_TOKEN_I
+            eop_value = 0x0001_0000
+            match_addr = _SEC_DISABLE_TOKEN_MATCH
+            token_name = "SEC_DISABLE"
 
         for i in range(8):
             await self._write(
@@ -95,13 +125,16 @@ class SepRmaTokenMatchSeq(uvm_sequence):
             await ClockCycles(cocotb.top.clk_i, 1)
             result = await self._read(match_addr, "token_match") & 0x3F
             self.match_code = result
-            if result == _TOKEN_MATCH:
-                self.matched = True
-                cocotb.log.info("[rma] %s token matched (code=0x%02x)", token_name, result)
+            if result in _TOKEN_CODES:
+                self.matched = result == _TOKEN_MATCH
+                cocotb.log.info(
+                    "[rma] %s token code=0x%02x matched=%s",
+                    token_name, result, self.matched,
+                )
                 return
         self.matched = False
         cocotb.log.info(
-            "[rma] %s token did not match (last code=0x%02x)",
+            "[rma] %s token did not settle (last code=0x%02x)",
             token_name, self.match_code,
         )
 

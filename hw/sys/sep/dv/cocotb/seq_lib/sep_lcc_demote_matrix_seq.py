@@ -5,7 +5,9 @@
 RAND-REP. Discrete cells are walked every seed. DIS vectors are W1S-compatible
 so one OTP image can carry both: all-zero first, then the pinned non-zero pair.
 Demote is write-once-set; a resense (rst_ni pulse) returns the CSRs to 0 so
-each LC can walk (0,0), (1,0), (0,1), (1,1).
+each LC can walk (0,0), (1,0), (0,1), (1,1). After that walk the same vehicle
+locks one seed-selected DEMOTE register, proves a later demote write is
+ignored, and that rst_ni releases the lock.
 """
 
 from __future__ import annotations
@@ -31,6 +33,8 @@ class SepLccDemoteMatrixCfg:
         # pair) is logged so two seeds are not identical silent copies.
         self.extra_dbg1_bit = rng.randrange(1, 16)
         self.extra_dbg2_bit = rng.randrange(16, 32)
+        # Which DEMOTE_{1,2} register carries the lock-slice proof this seed.
+        self.lock_group = rng.choice((1, 2))
         self.lc_states = LC_WALK
         self.dis_zero = DIS_ZERO
         extra = (1 << self.extra_dbg1_bit) | (1 << self.extra_dbg2_bit)
@@ -42,7 +46,8 @@ class SepLccDemoteMatrixCfg:
             f"seed={self.seed} lc={self.lc_states} "
             f"dis_zero={self.dis_zero} dis_pinned="
             f"(0x{self.dis_pinned[0]:016x},0x{self.dis_pinned[1]:016x}) "
-            f"extra_dbg1_bit={self.extra_dbg1_bit} extra_dbg2_bit={self.extra_dbg2_bit}"
+            f"extra_dbg1_bit={self.extra_dbg1_bit} extra_dbg2_bit={self.extra_dbg2_bit} "
+            f"lock_group={self.lock_group}"
         )
 
     def n_cells(self) -> int:

@@ -9,6 +9,8 @@ filter probe per cell follows ``sep_debug`` (DECERR when 0, OKAY when 1).
 
 The stitch test stays the LC->feat_ctrl e2e. This test owns the product.
 Real fuse sense. DEMOTE is write-once-set; resense returns the CSRs to 0.
+After the product walk, one seed-selected group is locked: a later demote
+write is ignored until rst_ni.
 """
 
 from __future__ import annotations
@@ -24,7 +26,8 @@ from env.sep_lcc_golden import (
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_lcc_demote_matrix_seq import SepLccDemoteMatrixCfg
 from seq_lib.sep_lcc_inbound_filter_gating_seq import (
-    RESP_DECERR, SepExtAxiProbeSeq, SepLccDemoteSeq, SepLccFeatCtrlCheckSeq,
+    DEMOTE_BIT, DEMOTE_LOCK_BIT, RESP_DECERR, SepExtAxiProbeSeq,
+    SepLccDemoteSeq, SepLccFeatCtrlCheckSeq,
 )
 from seq_lib.sep_lcc_stitch_check_seq import LC_STATE_SHADOW
 
@@ -90,6 +93,51 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         n += 1
         return n
 
+    async def _check_lock(self, image: SepEfuseImage, *, group: int) -> None:
+        """Lock DEMOTE_{group} at 0, reject a later set, then rst_ni releases it."""
+        lc = lc_state_name(image.lc_raw())
+        tag = f"{lc}/lock_g{group}"
+
+        opened = SepLccDemoteSeq(group=group, value=DEMOTE_BIT)
+        await self.start_seq(opened)
+        assert opened.demote == 1 and opened.lock == 0, (
+            f"{tag}: unlocked demote write did not land (demote={opened.demote} lock={opened.lock})"
+        )
+        d1 = 1 if group == 1 else 0
+        d2 = 1 if group == 2 else 0
+        await self._check_cell(image, demote_1=d1, demote_2=d2, tag=f"{tag}/unlocked")
+
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+
+        locked = SepLccDemoteSeq(group=group, value=DEMOTE_LOCK_BIT)
+        await self.start_seq(locked)
+        assert locked.demote == 0 and locked.lock == 1, (
+            f"{tag}: lock write demote={locked.demote} lock={locked.lock}, expected 0/1"
+        )
+
+        blocked = SepLccDemoteSeq(
+            group=group, value=DEMOTE_BIT, expected=DEMOTE_LOCK_BIT)
+        await self.start_seq(blocked)
+        assert blocked.demote == 0 and blocked.lock == 1, (
+            f"{tag}: locked demote write landed (demote={blocked.demote} lock={blocked.lock})"
+        )
+        await self._check_cell(image, demote_1=0, demote_2=0, tag=f"{tag}/held")
+        self.logger.info(
+            "CHK-DEMOTE-LOCK PASS: %s lock held demote at 0; feat_ctrl stayed undemoted",
+            tag)
+
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        released = SepLccDemoteSeq(group=group, value=DEMOTE_BIT)
+        await self.start_seq(released)
+        assert released.demote == 1 and released.lock == 0, (
+            f"{tag}: post-rst_ni demote write did not land "
+            f"(demote={released.demote} lock={released.lock})"
+        )
+        await self._check_cell(image, demote_1=d1, demote_2=d2, tag=f"{tag}/released")
+        self.logger.info(
+            "CHK-DEMOTE-LOCK-RESET PASS: %s rst_ni released the lock; demote write landed",
+            tag)
+
     async def run_scenario(self) -> None:
         cfg = SepLccDemoteMatrixCfg(self.random_seed())
         self.logger.info("lcc demote matrix: %s", cfg.summary())
@@ -138,3 +186,6 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         self.logger.info(
             "CHK-RAND-REP PASS: walked %d demote cells "
             "(TEST_DEV/PROD x dis0 + PROD x pinned DIS)", cells)
+
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        await self._check_lock(image, group=cfg.lock_group)

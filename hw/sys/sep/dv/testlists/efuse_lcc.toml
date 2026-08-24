@@ -95,9 +95,10 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# RMA token match vs mismatch -> LC update. RANDCFG: token values from the run
-# seed; SIP and CHIPLET both walk match and mismatch. Real fuse sense. Does not
-# stretch the stitch e2e.
+# RMA token match vs mismatch -> LC update, then the comparator redundancy
+# fault path (collapse / disagree / common-mode / sticky IRQ). RANDCFG: token
+# values from the run seed; SIP and CHIPLET both walk match and mismatch.
+# Real fuse sense. Does not stretch the stitch e2e.
 name = "sep_efuse_rma_token_rand_test"
 module = "efuse.sep_efuse_rma_token_rand_test"
 seed = 1

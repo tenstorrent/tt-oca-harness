@@ -62,6 +62,10 @@ ESRC_FIFO_RDATA = 0x1091_6028    # read pops one word, decrements LEVEL (frontdo
 ESRC_HEALTH_TEST_CTRL = 0x1091_6030
 ESRC_HEALTH_TEST_WINDOW_SIZE = 0x1091_6034
 ESRC_HEALTH_TEST_STATUS = 0x1091_6040   # per-test pass/fail, read on a stall
+# Shared (not per-mode) health-test watermark. Offsets from
+# hw/ip/entropy_source/regs/gen/c/entropy_source_addr.h.
+ESRC_HT_WATERMARK_NUM = 0x1091_6130
+ESRC_HT_WATERMARK = 0x1091_6134
 # entropy_src_main_sm state: the OpenTitan boot/startup gate. entropy_source.sv
 # gates the whole stream on boot_phase_done, so this register says whether the
 # boot phase completed. {STATE[8:0], IDLE[9], ALERT[10], ERR[11]}

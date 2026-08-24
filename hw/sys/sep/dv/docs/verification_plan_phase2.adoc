@@ -11,8 +11,8 @@
 The record of what Phase 2 verifies and what evidence backs each claim. It follows
 `oss_dv_plan.adoc`: one *iconic* feature per in-scope IP, randomized when the feature
 has a legal matrix or knob space, plus the cross-IP edges a per-IP bench cannot
-see. Phase 1 + Phase 2 together are the cocotb baseline: floor 18 of 29,
-goal 25 of 29 in-scope rows, counted as `PROVEN` *feature* rows on
+see. Phase 1 + Phase 2 together are the cocotb baseline: floor 18 of 34,
+goal 25 of 34 in-scope rows, counted as `PROVEN` *feature* rows on
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard],
 not as a count of `PROVEN` checkers and not as line coverage. Those are
 scorecard goals, not coverage measurements. The architecture spec is the
@@ -46,7 +46,7 @@ here: extend a Phase 2 test that already owns that claim, or add the
 named new test.
 Do not stretch the Phase 1 e2e / smoke entry. New tests are created
 from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
-is the completeness extension: same cocotb environment, goal 28 of 29
+is the completeness extension: same cocotb environment, goal 29 of 34
 `PROVEN` scorecard rows, finished before Phase 3 starts a UVM bench.
 Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
 directed name is not coverage. There is no separate improvement
@@ -65,7 +65,7 @@ eFuse, and Key Manager. See <<attention>>.
   31 Phase 1 entries in total)
 
 | Graded Phase 2 entries
-| 24
+| 29
 | <<entries>> below
 
 | Phase 1 handoff leftovers
@@ -82,8 +82,8 @@ eFuse, and Key Manager. See <<attention>>.
 | Phase 2 names; <<phase2-plus>> executes them
 
 | Phase 2+ close-out
-| 6 scorecard rows
-| <<phase2-plus>> — 28 of 29 before UVM
+| 7 scorecard rows
+| <<phase2-plus>> — 29 of 34 before UVM
 
 | Landed existing-test upgrades
 | see <<existing-upgrades>>
@@ -2031,6 +2031,407 @@ NOTE: this representative closes the iconic "Clock-gate per IP"
 scorecard row. The implemented contract is the designer placeholder,
 not a live per-IP gate.
 
+[[sep_efuse_program_lock_matrix_test]]
+=== sep_efuse_program_lock_matrix_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-REP — unlocked program then write-lock reject on
+one `SPARE0..SPARE7` field; field and bit offsets from the run seed
+
+==== Description
+
+Program × lock on a legal spare field. Never `LC_STATE`. The stitch test
+stays the LC e2e. After every `PROGRAM_DONE`, `EFUSE_PROGRAM_CTRL` is
+cleared before the next read.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Program one seed-selected bit of the spare; OTP readback and resense
+  shadow match the independent image golden.
+| `CHK-UNLOCK-PROGRAM PASS:`
+| LOGGED
+
+| 2
+| Program that spare's write-lock, then reject a second bit
+  (`PROGRAM_ERR`). OTP and resense golden keep the rejected bit 0.
+| `CHK-LOCK-REJECT PASS:`
+| LOGGED
+
+| 3
+| Both discrete cells ran in one invocation.
+| `CHK-RAND-REP PASS: walked unlocked-program and write-lock-reject`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-UNLOCK-PROGRAM
+| An unlocked spare bit programs and reads back in OTP and after resense.
+| `CHK-UNLOCK-PROGRAM PASS:`
+| PROVEN
+
+| CHK-LOCK-REJECT
+| A write-locked spare rejects a later program; OTP and the post-resense
+  shadow match the independent golden (lock bit set, rejected bit 0).
+| `CHK-LOCK-REJECT PASS:`
+| PROVEN
+
+| CHK-RAND-REP
+| Unlock-program and lock-reject both ran on the same spare.
+| `CHK-RAND-REP PASS: walked unlocked-program and write-lock-reject`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_122050`.
+
+[[sep_lcc_demote_feat_ctrl_matrix_test]]
+=== sep_lcc_demote_feat_ctrl_matrix_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-REP — TEST_DEV and PROD ×
+`(0,0)/(1,0)/(0,1)/(1,1)` demote, first with DIS=0 then PROD with a
+seed-pinned DIS pair
+
+==== Description
+
+Owns the demote product, including the demote lock. The stitch test
+stays the LC→`feat_ctrl` e2e. `feat_ctrl` is checked against
+`env/sep_lcc_golden.py`. One live inbound filter probe per cell follows
+`sep_debug`. After the twelve-cell walk, one seed-selected `DEMOTE_{1,2}`
+is locked at 0: a later demote write is ignored and `feat_ctrl` stays
+undemoted until `rst_ni`.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Walk TEST_DEV and PROD at DIS=0 through the four demote cells.
+| `CHK-FEAT-CTRL PASS: TEST_DEV/` / `CHK-FEAT-CTRL PASS: PROD/dis0/`
+| LOGGED
+
+| 2
+| W1S a seed-pinned DIS pair and walk the four demote cells at PROD.
+| `CHK-FEAT-CTRL PASS: PROD/dis_pinned/`
+| LOGGED
+
+| 3
+| Every cell's inbound probe is OKAY iff `sep_debug=1`, else DECERR.
+| `CHK-LIVE-GATE PASS:`
+| LOGGED
+
+| 4
+| Lock one seed-selected `DEMOTE` at 0; a later demote write is ignored.
+| `CHK-DEMOTE-LOCK PASS:`
+| LOGGED
+
+| 5
+| `rst_ni` releases the lock; the same demote write then lands.
+| `CHK-DEMOTE-LOCK-RESET PASS:`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-FEAT-CTRL
+| `FEAT_CTRL` equals the spec-derived golden for every walked cell.
+| `CHK-FEAT-CTRL PASS:`
+| PROVEN
+
+| CHK-LIVE-GATE
+| External access of the LC shadow is OKAY when `sep_debug=1` and DECERR
+  when `sep_debug=0`. Not CSR storage alone.
+| `CHK-LIVE-GATE PASS:`
+| PROVEN
+
+| CHK-RAND-REP
+| Twelve demote cells ran in one invocation.
+| `CHK-RAND-REP PASS: walked 12 demote cells`
+| PROVEN
+
+| CHK-DEMOTE-LOCK
+| With `lock` set and `demote` still 0, a later demote write is ignored
+  and `feat_ctrl` stays at the undemoted golden.
+| `CHK-DEMOTE-LOCK PASS:`
+| PROVEN
+
+| CHK-DEMOTE-LOCK-RESET
+| After `rst_ni` the lock is 0 and the same demote write lands.
+| `CHK-DEMOTE-LOCK-RESET PASS:`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_144022`.
+
+[[sep_efuse_rma_token_rand_test]]
+=== sep_efuse_rma_token_rand_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+Testlist:: `efuse_lcc.toml`
+Randomization:: RANDCFG — SIP and CHIPLET tokens from the run seed;
+match and mismatch walked for both
+
+==== Description
+
+Standalone RMA token matrix plus the token-comparator redundancy fault
+path. Does not stretch the stitch e2e. A matching token authorizes the
+LC_STATE OTP bit; a mismatch is rejected and LC / `FEAT_CTRL` stay at
+the pre-attempt golden. After that walk the same vehicle injects
+common-mode both ways, collapse, and two-instance disagreement on the
+RMA_SIP comparator, checks `6'b111111` / sticky `TOKEN_MATCH_FAULT` /
+irq38, and names the common-mode hole in both directions (legal
+mismatch and legal match, no sticky).
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Start in PROD; LC shadow and `FEAT_CTRL` match the independent golden.
+| `CHK-LC-FEAT PASS: prod-baseline`
+| LOGGED
+
+| 2
+| Wrong SIP then CHIPLET token: no match code, program `PROGRAM_ERR`, LC
+  unchanged after resense.
+| `CHK-MISMATCH PASS:`
+| LOGGED
+
+| 3
+| Legal SIP then CHIPLET token: match code, LC advances, shadow and
+  `FEAT_CTRL` match the independent golden after resense.
+| `CHK-MATCH PASS:`
+| LOGGED
+
+| 4
+| Common-mode invert of all three RMA_SIP comparators on a valid token:
+  legal mismatch code, no sticky bit, IRQ low.
+| `CHK-COMMON-MODE PASS:`
+| LOGGED
+
+| 5
+| Common-mode invert of all three RMA_SIP comparators on a wrong token:
+  legal match code, no sticky bit, IRQ low (fail-open hole).
+| `CHK-COMMON-MODE-MATCH PASS:`
+| LOGGED
+
+| 6
+| Collapse instance 0, then two-instance disagree: match status
+  `6'b111111`, SIP sticky bit, `sep_internal_interrupts[38]`. Valid
+  retry plus write-0 leave the bit and IRQ asserted.
+| `CHK-COLLAPSE PASS:` / `CHK-DISAGREE PASS:` / `CHK-STICKY PASS:`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-LC-FEAT
+| LC shadow and LCC `FEAT_CTRL` match independent goldens after each
+  resense.
+| `CHK-LC-FEAT PASS:`
+| PROVEN
+
+| CHK-MISMATCH
+| A wrong token does not update LC.
+| `CHK-MISMATCH PASS:`
+| PROVEN
+
+| CHK-MATCH
+| A legal token updates LC (PROD → `RMA_SIP_1` → `RMA_CHIP_1`).
+| `CHK-MATCH PASS:`
+| PROVEN
+
+| CHK-RANDCFG
+| SIP and CHIPLET both walked match and mismatch; tokens from the seed.
+| `CHK-RANDCFG PASS: SIP and CHIPLET match+mismatch walked`
+| PROVEN
+
+| CHK-COMMON-MODE
+| All three comparators flipping a match to a legal mismatch does not
+  set a sticky bit or raise `sep_internal_interrupts[38]`.
+| `CHK-COMMON-MODE PASS:`
+| PROVEN
+
+| CHK-COMMON-MODE-MATCH
+| All three comparators flipping a mismatch to a legal match does not
+  set a sticky bit or raise `sep_internal_interrupts[38]`.
+| `CHK-COMMON-MODE-MATCH PASS:`
+| PROVEN
+
+| CHK-COLLAPSE
+| A collapsed differential pair forces `6'b111111` and the SIP sticky
+  bit.
+| `CHK-COLLAPSE PASS:`
+| PROVEN
+
+| CHK-DISAGREE
+| Two instances that disagree force `6'b111111` and keep the sticky bit.
+| `CHK-DISAGREE PASS:`
+| PROVEN
+
+| CHK-ERROR-CODE
+| A redundancy fault writes `6'b111111` on every match-status bit.
+| `CHK-ERROR-CODE PASS:`
+| PROVEN
+
+| CHK-STICKY
+| A valid-token retry and a write-0 leave `TOKEN_MATCH_FAULT` and irq38
+  asserted (`sw=r` until reset).
+| `CHK-STICKY PASS:`
+| PROVEN
+
+| CHK-IRQ-38
+| `sep_internal_interrupts[38]` (PIC source 39) asserts with the sticky
+  bit.
+| `CHK-IRQ-38 PASS:`
+| PROVEN
+
+| CHK-WHICH-TOKEN
+| Collapse on CHIPLET and SEC_DISABLE sets bits 8 and 16 (OR with SIP bit 0).
+| `CHK-WHICH-TOKEN PASS:`
+| PROVEN
+
+| CHK-JTAG-FAULT
+| After `RMA_CHIP_1`, a JTAG read of `TOKEN_MATCH_FAULT` matches the AXI
+  read (the standing PROD/RMA_SIP JTAG-deny red, tracked in <<open-items>>,
+  is a different check).
+| `CHK-JTAG-FAULT PASS:`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_140117`. Which-token and JTAG fault read
+added on that run.
+
+[[sep_efuse_token_match_fault_pic_test]]
+=== sep_efuse_token_match_fault_pic_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `cpu`, `+skip_fuse_sense`
+Testlist:: `cpu.toml`
+Randomization:: RAND-NONE — directed PIC claim/mask
+
+==== Description
+
+Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims
+source 39, reads the SEC_DISABLE sticky bit, and masks `meie[39]` so the
+level-high line does not re-enter. Host injects collapse on the SEC_DISABLE
+comparator after READY.
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-PIC-CLAIM
+| ISR `meihap` claim id is 39.
+| `CHK-PIC-CLAIM PASS:`
+| PROVEN
+
+| CHK-PIC-FAULT
+| `TOKEN_MATCH_FAULT` secure-disable bit is set.
+| `CHK-PIC-FAULT PASS:`
+| PROVEN
+
+| CHK-PIC-MASK
+| After `meie[39]=0` the ISR does not re-enter.
+| `CHK-PIC-MASK PASS:`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_140917`.
+
+[[sep_fabric_output_remap_datapath_proxy_test]]
+=== sep_fabric_output_remap_datapath_proxy_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+Testlist:: `system.toml`
+Randomization:: RANDCFG — AP/STEE bank, region, filter entry, and
+forbidden region from the run seed
+
+==== Description
+
+Live remap plus outbound-filter drop. CSR-bank R/W stays on
+`sep_fabric_remap_filter_csr_bank_test`. The allow window covers only
+the remapped mailbox address. An identity (untranslated) beat would miss
+that window and DECERR, so OKAY on the programmed AP/STEE address is the
+translate proof.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Program one region to `0x8000_0000` and allow-list the remapped beat.
+  CPU-LSU read of the window is OKAY.
+| `CHK-REMAP-TRANSLATE PASS:`
+| LOGGED
+
+| 2
+| A second region, left at offset 0, returns DECERR.
+| `CHK-FILTER-DROP PASS:`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-REMAP-TRANSLATE
+| The programmed window completes OKAY at the remapped target. Identity
+  would miss the allow window.
+| `CHK-REMAP-TRANSLATE PASS:`
+| PROVEN
+
+| CHK-FILTER-DROP
+| A beat outside the remapped allow set is DECERR.
+| `CHK-FILTER-DROP PASS:`
+| PROVEN
+
+| CHK-RANDCFG
+| Bank, region, and entry came from the run seed.
+| `CHK-RANDCFG PASS: bank=`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_122050`.
+
 [[rom-fw-out-of-scope]]
 == Boot ROM firmware — out of this plan
 
@@ -2066,6 +2467,39 @@ Hard `FAILED` spec-vs-RTL (keep hard; do not XFAIL):
   `hw/sys/sep/doc/fabric.adoc`; the RTL answers OKAY instead of DECERR to
   another master. Owned by `sep_fabric_inbound_filter_rule_matrix_test`.
 
+Spec-vs-RTL divergences found by review, not yet owned by a checker. Each is a
+document or manifest defect rather than a failing test; none is XFAILed, because
+no test asserts them today:
+
+* `hw/sys/sep/doc/crypto.adoc` numbers the two entropy-pool interrupts one lower
+  than the canonical table in `hw/sys/sep/doc/interrupts.adoc`. PIC source IDs
+  are 1-based, so aggregation index 36/37 is PIC source 37/38; `crypto.adoc`
+  quotes the 0-based index. Firmware following it would enable and mask the
+  wrong two sources.
+* `hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG
+  opcode, through which a debugger may redirect the first instruction fetch. The
+  vendored tap implements no such register; the vector reaches the CPU through a
+  direct wrapper input. The testbench shifts that opcode on every CPU-boot run
+  and says in its own comment that the sequence is inert — a stimulus that reads
+  as coverage and cannot fail. Remove it or give the claim an owner.
+* `hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute
+  and says unprogrammed regions are transparent pass-throughs. The RTL register
+  has neither a valid bit nor a cacheable bit, and rewrites the address
+  unconditionally, so an unprogrammed region zeroes the upper address bits
+  instead of passing through. The outbound sequence depends on the RTL
+  behaviour, so no test can catch the divergence.
+* `hw/sys/sep/doc/attack_countermeasures.adoc` states "exactly 10" Class 2 scan
+  roots. The RTL instantiates an eleventh on the entropy-pool EDN leg that is
+  absent from the list, and nothing lints the manifest against the RTL. The
+  manifest is the sole input deciding what is never scan-dumpable.
+
+DV-tree hygiene, tracked here so it is not mistaken for coverage: of the
+firmware tests under `fw/tests/`, only a small minority are named by any
+testlist or cocotb test; the rest cannot run. Some are superseded by cocotb
+vehicles and some are parked Phase 3 stubs, but nothing distinguishes those
+from tests that should be running — two of them would close scorecard rows
+above. Triage is needed before any of them is cited as evidence.
+
 CHK1..CHK4 and CHK5 on every test that moves data across the DRBG is a standing
 rule. The three former crypto holes are `PROVEN`. CHK5 on mux endpoint [2]
 (entropy pool) is a scoreboard sink (`pool`); the e2e smoke scores it golden
@@ -2077,8 +2511,9 @@ routing is `PROVEN` on
 
 The AES 9-cell row is mode × key-size. The CTR cell re-runs ENCRYPT
 (keystream identity); the DECRYPT opcode is <<phase3-dump>>, not a silent
-9-cell decrypt. PIC walks the MUST trio plus a seeded extras subset. RMA token match
-stays inside the stitch test, not a standalone iconic.
+9-cell decrypt. PIC walks the MUST trio plus a seeded extras subset.
+Standalone RMA is <<sep_efuse_rma_token_rand_test>>; the stitch test
+stays the LC e2e.
 
 New Phase 2 tests are <<iconic-remaining>> only when <<pending-upgrades>>
 cannot carry the claim. Boot ROM firmware is <<rom-fw-out-of-scope>>.
@@ -2091,7 +2526,7 @@ ring oscillator, KM wipe, and inbound negative product are Phase 3 T.B.D.
 
 These IPs still have an iconic hole or a leftover *claim* listed on the
 signed-off Phase 1 handoff table. Closing that claim is Phase 2
-scorecard work (toward 25 of 29) and <<phase2-plus>> (28 of 29 before UVM).
+scorecard work (toward 25 of 34) and <<phase2-plus>> (29 of 34 before UVM).
 Do not stretch the Phase 1 e2e / smoke entry. Extend a Phase 2 test that
 already owns the claim, or add the named new Phase 2 test.
 
@@ -2104,20 +2539,22 @@ already owns the claim, or add the named new Phase 2 test.
 | Health tests and the ring oscillator stay Phase 3 T.B.D.
 
 | Lifecycle
-| `feat_ctrl` vs `LC_STATE` is `PROVEN`; demote product and
-  standalone RMA are `PARTIAL`
-| New demote RAND-REP. The stitch test stays the LC→`feat_ctrl` e2e.
+| `feat_ctrl` vs `LC_STATE`, demote product, and standalone RMA are
+  `PROVEN`
+| Stitch stays the LC→`feat_ctrl` e2e.
 
 | eFuse
-| Sense / shadow / persist is `PROVEN`; program × lock is `GAP`
-| New remaining row on a spare/test field (never `LC_STATE`).
-  Token match stays eFuse-owned; LCC consumes the result.
+| Sense / shadow / persist and program × lock are `PROVEN`
+| Token-match *fault* DV (sticky IRQ / PIC-mask, common-mode limit,
+  which-token bits, JTAG read after RMA_CHIP) is `PROVEN` on
+  `sep_efuse_rma_token_rand_test` (Verilator `20260824_140117`) and
+  `sep_efuse_token_match_fault_pic_test` (Verilator `20260824_140917`).
 
 | Key Manager
 | Sideload consume is `PROVEN`; mailbox command set is `GAP`
-| <<phase2-plus>> RAND-REP (generate / transfer / revoke-or-shred /
-  illegal→error). Sideload KATs stay consume proofs. Wipe stays
-  Phase 3 T.B.D.
+| Parked last: <<phase2-plus>> RAND-REP (generate / transfer /
+  revoke-or-shred / illegal→error). Sideload KATs stay consume proofs.
+  Wipe stays Phase 3 T.B.D.
 |===
 
 [[pending-upgrades]]
@@ -2136,8 +2573,10 @@ not a feature-level `PROVEN` on the scorecard — see
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard]. The rows
 below are feature `GAP`s (no test yet for that iconic claim). Checker
 tables stay binary; `PARTIAL` is a feature grade there, not a checker
-grade here. <<phase2-plus>> is the execute list that closes these rows
-and the two `PARTIAL` leftovers (RMA, inbound ownership) before UVM.
+grade here. Program × lock, demote, standalone RMA, and live outbound
+remap are graded in <<entries>>. What remains before UVM is the KM
+command vehicle (parked last) and inbound ownership (an RTL close, not a
+new test).
 
 [cols="2,2,3",options="header"]
 |===
@@ -2148,43 +2587,25 @@ and the two `PARTIAL` leftovers (RMA, inbound ownership) before UVM.
   mailbox protocol RANDCFG if it does not fit the same test
 | `sep_km_command_set_rand_test`, `sep_km_mailbox_protocol_rand_test`;
   `MERGED_INTO`: `sep_km_uvm_cmd_hw_ver_test`, `sep_km_uvm_mailbox_cmd_test`
-
-| eFuse program × lock
-| One RAND-REP on a legal spare/test field (never `LC_STATE`)
-| `sep_efuse_program_lock_matrix_test`
-
-| Lifecycle demote product
-| One RAND-REP: LC × demote × a small legal DIS subset, `feat_ctrl` vs
-  golden *and* one live filter/debug-gate. The Phase 1 stitch test
-  stays the LC→`feat_ctrl` e2e.
-| `sep_lcc_demote_feat_ctrl_matrix_test`;
-  `MERGED_INTO`: `sep_lcc_uvm_demote_comprehensive_test`,
-  `sep_lcc_uvm_prod_dbg_flavour_test`
-
-| Live outbound remap
-| One live-datapath test: a programmed region translates, and the
-  outbound filter drops a forbidden beat. CSR-bank R/W stays on
-  `sep_fabric_remap_filter_csr_bank_test`. Phase 3 keeps tail-closure
-  and outbound source-ID policy.
-| `sep_fabric_output_remap_datapath_proxy_test`;
-  `MERGED_INTO`: `sep_outbound_filter_cfg_test`,
-  `sep_outbound_path_selection_test`
 |===
 
 [[phase2-plus]]
-== Phase 2+ — 28 of 29 before UVM
+== Phase 2+ — 29 of 34 before UVM
 
 Same cocotb / PyUVM + Verilator environment as Phase 2. Same DUT
 (`sep_wrapper`), same quality bar, same fuse/run-mode rules. Phase 2+
-does not start a UVM bench — that is Phase 3. It is the completeness
-extension of this document: every in-scope
-link:oss_dv_plan.adoc#iconic-scorecard[iconic-scorecard] row `PROVEN`
-before `verification_plan_phase3.adoc` begins.
+does not start a UVM bench — that is Phase 3. It closes the remaining
+in-scope rows that this phase chose to finish before UVM (29 of 34).
+Rows that stay `GAP` (KM vault, and the four spec-review gaps parked
+in `verification_plan_phase3.adoc`) are not a silent drop: they are
+out of this close-out on purpose.
 
-Phase 2 keeps its floor of 18 of 29 and its goal of 25 of 29. Phase 2+
-closes six rows, reaching 28 of 29; the KM key/policy vault row stays
-`GAP` past Phase 2+ because no vehicle exists for it yet. Do not stretch a Phase 1 e2e / smoke entry.
-Do not XFAIL a spec-vs-RTL checker.
+Phase 2 keeps its floor of 18 of 34 and its goal of 25 of 34. Five of
+the seven Phase 2+ rows are `PROVEN`. The scorecard is 27 of 34.
+Remaining before 29 of 34: KM command set (parked last) and inbound
+ownership (RTL). The KM key/policy vault row stays `GAP` because no
+vehicle exists for it yet. Do not stretch a
+Phase 1 e2e / smoke entry. Do not XFAIL a spec-vs-RTL checker.
 
 [cols="2,1,3,3",options="header"]
 |===
@@ -2197,30 +2618,31 @@ Do not XFAIL a spec-vs-RTL checker.
   DRBG fault during a command must report `IRQ_STATUS.DRBG_ERR` rather
   than an AXI error response.
   Mailbox protocol RANDCFG in the same test unless it does not fit.
+  Parked last.
 | `sep_km_command_set_rand_test`
   (`sep_km_mailbox_protocol_rand_test` only if the protocol does not fit)
 
 | eFuse program × lock
-| GAP
-| New RAND-REP on a legal spare/test field. Never `LC_STATE`.
+| PROVEN
+| RAND-REP on a legal spare/test field. Never `LC_STATE`.
 | `sep_efuse_program_lock_matrix_test`
 
 | Lifecycle demote product
-| PARTIAL
-| New RAND-REP: LC × demote × a small legal DIS subset. `feat_ctrl` vs
+| PROVEN
+| RAND-REP: LC × demote × a small legal DIS subset. `feat_ctrl` vs
   golden *and* one live filter/debug-gate. The Phase 1 stitch test stays
   the LC→`feat_ctrl` e2e.
 | `sep_lcc_demote_feat_ctrl_matrix_test`
 
 | RMA token match → LC update
-| PARTIAL
-| New RANDCFG. Token match updates LC; mismatch does not. Check LC
+| PROVEN
+| RANDCFG. Token match updates LC; mismatch does not. Check LC
   shadow and LCC `FEAT_CTRL` against independent goldens. Do not stretch
   the Phase 1 stitch test into the token matrix.
 | `sep_efuse_rma_token_rand_test`
 
 | Outbound filter / AP-STEE live remap
-| GAP
+| PROVEN
 | One live-datapath test. A programmed region translates on a real
   beat. The outbound filter drops a forbidden beat. CSR programming
   stays on `sep_fabric_remap_filter_csr_bank_test`.
@@ -2233,11 +2655,115 @@ Do not XFAIL a spec-vs-RTL checker.
   requires DECERR to a non-CPU master programming the filter and the RTL
   answers OKAY. The row becomes `PROVEN` when that checker matches the spec. Do not XFAIL. Do not invent a sibling.
 | `sep_fabric_inbound_filter_rule_matrix_test`
+
+| ESRC health-test watermark arming
+| PROVEN
+| Shared `HT_WATERMARK` arms per selected mode on MODULE_ENABLE and
+  `CTRL.RESET`. Selector survives `CTRL.RESET`; unsupported maps to
+  `REPCNT_HI`; a low watermark falls once events are allowed.
+| `sep_esrc_ht_watermark_arming_test`
 |===
 
-Five new tests plus one existing-test RTL close. A planned entry below is
-not a grade — promote it to <<entries>> only after a kept Verilator log
-proves every checker.
+Five vehicles are graded in <<entries>>. The remaining planned entry
+(KM command set) is not a grade until a kept Verilator log proves every
+checker. Inbound ownership is an existing-test RTL close, not a new test.
+
+[[sep_esrc_ht_watermark_arming_test]]
+=== sep_esrc_ht_watermark_arming_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
+Testlist:: `crypto.toml`
+Randomization:: RANDCFG — every supported selector × both arming paths
+every seed; illegal `HT_WATERMARK_NUM` and the low-mode fall selector
+from the run seed
+
+Scope is the watermark *arming* contract only. The ESRC → DRBG → EDN
+datapath row already owns CHK1–CHK4 and stays where it is; do not
+stretch `sep_esrc_e2e_smoke_test` into this.
+
+`health_test_clr` arms on a MODULE_ENABLE pulse *or* `CTRL.RESET`. The
+clear value follows the selected mode — `0x0000` for a high watermark,
+`0xFFFF` for `APT_LO` / `MARKOV_LO`. The selector lives on `rst_ni`, so
+it survives `CTRL.RESET`. An unsupported selector maps to `REPCNT_HI`.
+`HEALTH_TEST_CTRL.ENABLE` stays 0 on every arming leg. Each leg enters
+from the opposite polarity's arm value so the expected value can fail.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Every supported selector arms on MODULE_ENABLE 0→1.
+| `CHK-ARM-MEN PASS:`
+| LOGGED
+
+| 2
+| Every supported selector arms on `CTRL.RESET`; the selector survives.
+| `CHK-ARM-RST PASS:` / `CHK-SEL-PERSIST PASS:`
+| LOGGED
+
+| 3
+| Changing the selector does not re-arm. An unsupported value becomes
+  `REPCNT_HI`.
+| `CHK-NO-REARM PASS:` / `CHK-UNSUPPORTED PASS:`
+| LOGGED
+
+| 4
+| A low watermark falls once `HEALTH_TEST_CTRL.ENABLE` is allowed.
+| `CHK-LOW-FALL PASS:`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-ARM-MEN
+| Each supported selector arms to `0x0000` (high) or `0xFFFF` (low) on
+  MODULE_ENABLE 0→1.
+| `CHK-ARM-MEN PASS:`
+| PROVEN
+
+| CHK-ARM-RST
+| The same arm values on `CTRL.RESET`.
+| `CHK-ARM-RST PASS:`
+| PROVEN
+
+| CHK-SEL-PERSIST
+| `HT_WATERMARK_NUM` survives a `CTRL.RESET` pulse.
+| `CHK-SEL-PERSIST PASS:`
+| PROVEN
+
+| CHK-NO-REARM
+| A selector write leaves `HT_WATERMARK` at the entry value.
+| `CHK-NO-REARM PASS:`
+| PROVEN
+
+| CHK-UNSUPPORTED
+| An illegal selector resolves to `REPCNT_HI` and arms `0x0000`.
+| `CHK-UNSUPPORTED PASS:`
+| PROVEN
+
+| CHK-LOW-FALL
+| After arming a low mode, enabling health tests drops `HT_WATERMARK`
+  below `0xFFFF`.
+| `CHK-LOW-FALL PASS:`
+| PROVEN
+
+| CHK-RANDCFG
+| Ten selector × path cells plus the seed-selected illegal selector and
+  low-mode fall ran in one invocation.
+| `CHK-RANDCFG PASS: walked 10 selector x path cells`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_143944`.
 
 === Planned: sep_km_command_set_rand_test
 
@@ -2260,78 +2786,26 @@ a DRBG fault during a command raises `IRQ_STATUS.DRBG_ERR` and does not
 surface as an AXI error response; an illegal command returns the
 documented error and does not change key state.
 
-=== Implemented: sep_efuse_program_lock_matrix_test
+=== Graded: sep_efuse_program_lock_matrix_test
 
-[horizontal]
-Tier:: Tier 2
-Run mode:: `no_cpu`, real fuse sense (no `+skip_fuse_sense`)
-Testlist:: `efuse_lcc.toml`
-Randomization:: RAND-REP — lock × program on a legal spare/test field
-Status:: Stimulus in tree. Promote to <<entries>> after a kept Verilator
-log proves every checker.
+See <<sep_efuse_program_lock_matrix_test>>. Verilator `20260824_122050`.
 
-Never program `LC_STATE` here. The stitch test stays the LC e2e. After
-`PROGRAM_DONE`, clear `EFUSE_PROGRAM_CTRL` before any read.
+=== Graded: sep_lcc_demote_feat_ctrl_matrix_test
 
-Checkers (planned):: an unlocked field programs and reads back; a locked
-field rejects program; resense matches the independent image golden.
+See <<sep_lcc_demote_feat_ctrl_matrix_test>>. Verilator `20260824_144022`.
 
-=== Implemented: sep_lcc_demote_feat_ctrl_matrix_test
+=== Graded: sep_esrc_ht_watermark_arming_test
 
-[horizontal]
-Tier:: Tier 2
-Run mode:: `no_cpu`, real fuse sense
-Testlist:: `efuse_lcc.toml`
-Randomization:: RAND-REP — walk LC × `DEMOTE_1`/`DEMOTE_2` × a small
-legal DIS subset
-Status:: Stimulus in tree. Promote to <<entries>> after a kept Verilator
-log proves every checker.
+See <<sep_esrc_ht_watermark_arming_test>>. Verilator `20260824_143944`.
 
-The Phase 1 stitch test stays the LC→`feat_ctrl` e2e. This test owns the
-product.
+=== Graded: sep_efuse_rma_token_rand_test
 
-Checkers (planned):: `feat_ctrl` matches the spec-derived golden for
-every walked cell; one live filter or debug-gate follows that golden
-(not CSR storage alone).
+See <<sep_efuse_rma_token_rand_test>>. Verilator `20260824_122050`.
 
-=== Implemented: sep_efuse_rma_token_rand_test
+=== Graded: sep_fabric_output_remap_datapath_proxy_test
 
-[horizontal]
-Tier:: Tier 2
-Run mode:: `no_cpu`, real fuse sense
-Testlist:: `efuse_lcc.toml`
-Randomization:: RANDCFG — legal token vs mismatch from the run seed
-Status:: Stimulus in tree. Promote to <<entries>> after a kept Verilator
-log proves every checker.
-
-Closes the RMA iconic row without stretching
-`sep_efuse_lcc_lc_state_stitch_test`.
-
-Checkers (planned):: a matching token allows the LC update; a mismatch
-does not; LC shadow and LCC `FEAT_CTRL` match independent goldens after
-resense.
-
-=== Implemented: sep_fabric_output_remap_datapath_proxy_test
-
-[horizontal]
-Tier:: Tier 2
-Run mode:: `no_cpu`, `+skip_fuse_sense` unless the remap/filter check
-depends on sense
-Testlist:: `system.toml`
-Randomization:: RANDCFG — region base/size and one forbidden beat from
-the run seed
-Status:: Stimulus in tree. Promote to <<entries>> after a kept Verilator
-log proves every checker.
-
-The CSR bank is already proven. This test observes a translated beat and
-a dropped beat on the live outbound path. Phase 3 keeps
-`sep_fabric_outbound_tail_closure_test` and
-`sep_outbound_source_id_policy_test`.
-
-Checkers (planned):: a programmed region translates (observed address or
-response is the remapped target, not the programmed identity); a beat
-outside the allow set is DECERR or dropped; the CSR-only test is not
-re-run as the proof.
+See <<sep_fabric_output_remap_datapath_proxy_test>>. Verilator
+`20260824_122050`.
 
 === Inbound ownership — no new test
 
@@ -2606,13 +3080,13 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 
 == Audit summary
 
-24 testcases, 51 steps, 123 checkers.
+30 testcases, 71 steps, 163 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 122
+| `PROVEN` | 162
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
