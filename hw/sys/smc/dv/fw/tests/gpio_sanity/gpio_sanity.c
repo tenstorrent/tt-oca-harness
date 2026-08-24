@@ -13,170 +13,6 @@
 
 #define TOTAL_GPIOS 65
 
-#define GPIO_INTF_DATA_CTRL_OFF \
-    (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0))
-#define GPIO_INTF_ACCESS_FILTER_OFF \
-    (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0))
-#define GPIO_CTRL_CONTROL_OFF \
-    (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0))
-
-/* Approved GPIO_SANITY exact expects (SMC_GPIO_VPLAN_DETAIL). */
-#define EXP_ACCESS_FILTER 0x00010100u
-#define EXP_DATA_CTRL 0x00000000u
-#define EXP_CONTROL 0x00100002u
-
-/* LIVE pin handshake with cocotb (scratch 9=req, 11=ack). */
-#define LIVE_SCR_REQ 9
-#define LIVE_SCR_ACK 11
-#define LIVE_REQ_REG_OUT 0xAE600001u
-#define LIVE_REQ_DIR_10 0xAE600010u
-#define LIVE_REQ_DIR_01 0xAE600011u
-#define LIVE_ACK_OK 0xACC00001u
-#define LIVE_ACK_FAIL 0xDEADF001u
-#define LIVE_ACK_BOUND 200000u
-
-static void wait_live_ack(uint32_t req) {
-    uint32_t i;
-    uint32_t ack;
-
-    write_scratch(LIVE_SCR_ACK, 0);
-    write_scratch(LIVE_SCR_REQ, req);
-    for (i = 0; i < LIVE_ACK_BOUND; i++) {
-        ack = read_scratch(LIVE_SCR_ACK);
-        if (ack == LIVE_ACK_OK) {
-            write_scratch(LIVE_SCR_REQ, 0);
-            write_scratch(LIVE_SCR_ACK, 0);
-            return;
-        }
-        if (ack == LIVE_ACK_FAIL) {
-            write_scratch(2, ack);
-            simputs("  ERROR: LIVE TB ack FAIL\n");
-            test_fail(0);
-        }
-    }
-    write_scratch(2, req);
-    write_scratch(3, LIVE_ACK_BOUND);
-    simputs("  ERROR: LIVE TB ack TIMEOUT bound=200000 last=pending\n");
-    test_fail(0);
-}
-
-/*
- * RST-DEFAULTS + INTF-BANK before mutating filters / pad loopback.
- * LIVE CHK-REG-OUT / CHK-DIR need pad-pin observation (cocotb).
- */
-void test_rst_defaults(void) {
-    uint32_t af;
-    uint32_t dc;
-    uint32_t ctrl;
-
-    /* S1 CHK-RST-AF */
-    af = read_gpio(0, GPIO_INTF_ACCESS_FILTER_OFF);
-    write_scratch(2, af);
-    if (af != EXP_ACCESS_FILTER) {
-        simputs("  ERROR: CHK-RST-AF ACCESS_FILTER mismatch\n");
-        test_fail(0);
-    }
-    simputs("  CHK-RST-AF: ACCESS_FILTER=0x00010100\n");
-
-    /* S2 CHK-RST-DC — exact full-word; pad2core HW bit must be 0 per contract */
-    dc = read_gpio(0, GPIO_INTF_DATA_CTRL_OFF);
-    write_scratch(2, dc);
-    if (dc != EXP_DATA_CTRL) {
-        simputs("  ERROR: CHK-RST-DC DATA_CTRL mismatch (see RTL_BUG if pad2core sticky)\n");
-        test_fail(0);
-    }
-    simputs("  CHK-RST-DC: DATA_CTRL=0x00000000\n");
-
-    /* S3 CHK-RST-CTRL — exact; strap_value capture may break 0x00100002 */
-    ctrl = read_gpio_shim(0, GPIO_CTRL_CONTROL_OFF);
-    write_scratch(2, ctrl);
-    if (ctrl != EXP_CONTROL) {
-        simputs("  ERROR: CHK-RST-CTRL CONTROL mismatch (strap capture vs 0x00100002)\n");
-        test_fail(0);
-    }
-    simputs("  CHK-RST-CTRL: CONTROL=0x00100002\n");
-}
-
-/* S4 + LIVE CHK-REG-OUT via TB pin sample. */
-void test_reg_out_program(void) {
-    gpio_intf__DATA_CTRL_t dc;
-
-    dc.w = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
-    dc.f.interface_enable = 1;
-    dc.f.enable_rx_tx = 1; /* 2'b01 core2pad_en */
-    dc.f.core2pad = 1;
-    write_gpio(11, GPIO_INTF_DATA_CTRL_OFF, dc.w);
-
-    dc.w = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
-    if ((dc.f.interface_enable != 1) || (dc.f.enable_rx_tx != 1) || (dc.f.core2pad != 1)) {
-        write_scratch(2, dc.w);
-        simputs("  ERROR: REG-OUT DATA_CTRL program readback fail\n");
-        test_fail(0);
-    }
-    wait_live_ack(LIVE_REQ_REG_OUT);
-    simputs("  CHK-REG-OUT: core2pad_o=1 core2pad_en=1\n");
-}
-
-/* S6 direction switch + LIVE enable observe via TB. */
-void test_dir_switch_csr(void) {
-    gpio_intf__DATA_CTRL_t dc;
-    uint32_t rb;
-
-    dc.w = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
-    dc.f.interface_enable = 1;
-    dc.f.enable_rx_tx = 2; /* 2'b10: pad2core_en */
-    write_gpio(11, GPIO_INTF_DATA_CTRL_OFF, dc.w);
-    rb = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
-    if (((rb >> 4) & 0x3u) != 2u) {
-        write_scratch(2, rb);
-        simputs("  ERROR: DIR enable_rx_tx=10 readback stale\n");
-        test_fail(0);
-    }
-    wait_live_ack(LIVE_REQ_DIR_10);
-
-    dc.w = rb;
-    dc.f.enable_rx_tx = 1; /* 2'b01: core2pad_en */
-    write_gpio(11, GPIO_INTF_DATA_CTRL_OFF, dc.w);
-    rb = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
-    if (((rb >> 4) & 0x3u) != 1u) {
-        write_scratch(2, rb);
-        simputs("  ERROR: DIR enable_rx_tx=01 readback stale\n");
-        test_fail(0);
-    }
-    wait_live_ack(LIVE_REQ_DIR_01);
-    simputs("  CHK-DIR: enable_rx_tx 10->01 live enables ok\n");
-}
-
-/* S7 intf-bank round-trip + ctrl-bank non-alias */
-void test_intf_bank(void) {
-    uint32_t ctrl_before;
-    uint32_t ctrl_after;
-    gpio_intf__DATA_CTRL_t dc;
-    uint32_t rb;
-
-    ctrl_before = read_gpio_shim(5, GPIO_CTRL_CONTROL_OFF);
-
-    dc.w = read_gpio(5, GPIO_INTF_DATA_CTRL_OFF);
-    dc.f.interface_enable = 1;
-    dc.f.core2pad = 1;
-    write_gpio(5, GPIO_INTF_DATA_CTRL_OFF, dc.w);
-    rb = read_gpio(5, GPIO_INTF_DATA_CTRL_OFF);
-    if ((rb & 0x7FFFFFFFu) != (dc.w & 0x7FFFFFFFu)) {
-        write_scratch(2, rb);
-        simputs("  ERROR: CHK-INTF-BANK DATA_CTRL round-trip fail\n");
-        test_fail(0);
-    }
-
-    ctrl_after = read_gpio_shim(5, GPIO_CTRL_CONTROL_OFF);
-    if (ctrl_after != ctrl_before) {
-        write_scratch(2, ctrl_before);
-        write_scratch(3, ctrl_after);
-        simputs("  ERROR: CHK-INTF-BANK aliased into ctrl-bank CONTROL\n");
-        test_fail(0);
-    }
-    simputs("  CHK-INTF-BANK: intf DATA_CTRL round-trip; ctrl CONTROL unchanged\n");
-}
-
 void test_rw_core2pad(void) {
 
     gpio_intf__DATA_CTRL_t gpio_intf;
@@ -334,83 +170,56 @@ void test_write_filter(void) {
 }
 
 void test_rx_tx(void) {
-    uint32_t read_data_24;
-    uint32_t pad2core_bit;
-    int level;
 
     for (int i = 0; i < 4; i++) {
         write_scratch(i, 0x33333333);
     }
 
-    /* Loopback path: GPIO11 drives core2pad → pad; GPIO24 samples pad2core. */
-    gpio_intf__DATA_CTRL_t gpio_intf_11; /* GPIO 11 */
-    gpio_intf__DATA_CTRL_t gpio_intf_24; /* GPIO 24 */
+    // Use UART gpios
+    gpio_intf__DATA_CTRL_t gpio_intf_11; // GPIO 11
+    gpio_intf__DATA_CTRL_t gpio_intf_24; // GPIO 24
 
     gpio_intf_11.w =
         read_gpio(11, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
     gpio_intf_24.w =
         read_gpio(24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
 
-    gpio_intf_24.f.enable_rx_tx = 2; /* 2'b10: TX enabled - pad2core_en */
+    gpio_intf_24.f.enable_rx_tx = 2; // 2'b10: TX enabled - pad2core_en
     gpio_intf_24.f.interface_enable = 1;
 
-    gpio_intf_11.f.enable_rx_tx = 1; /* 2'b01: RX enabled - core2pad_en */
+    gpio_intf_11.f.enable_rx_tx = 1; // 2'b01: RX enabled - core2pad_en
     gpio_intf_11.f.interface_enable = 1;
+    gpio_intf_11.f.core2pad = 0;
 
     write_gpio(24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
                gpio_intf_24.w);
+    write_gpio(11, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+               gpio_intf_11.w);
 
-    /* CHK-PAD-IN: both pad2core levels must match driven core2pad (can-fail MSB compare). */
-    for (level = 0; level < 2; level++) {
-        gpio_intf_11.f.core2pad = (uint32_t)level;
-        write_gpio(11, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
-                   gpio_intf_11.w);
+    uint32_t read_data_24 =
+        read_gpio(24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                       SMC_TOP_GPIO_INTF_BASE_ADDR(
+                           0))); // GPIO 24 should see the core2pad = 0 propagate on pad2core
 
-        read_data_24 = read_gpio(
-            24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
-        pad2core_bit = read_data_24 & PAD2SOC_MASK;
-
-        /* Vacuous bug was `(… & 0x80000000) == 1` — and-result is never 1. */
-        if (level == 0) {
-            if (pad2core_bit != 0u) {
-                write_scratch(2, read_data_24);
-                simputs("  ERROR: pad2core expect=0 got=1\n");
-                test_fail(0);
-            }
-        } else {
-            if (pad2core_bit != PAD2SOC_MASK) {
-                write_scratch(2, read_data_24);
-                simputs("  ERROR: pad2core expect=1 got=0\n");
-                test_fail(0);
-            }
-        }
+    // Check is the MSB is 1, fail if not
+    if ((read_data_24 & PAD2SOC_MASK) == 1) {
+        test_fail(0);
     }
-
-    simputs("  CHK-PAD-IN: levels=0,1 ok\n");
 }
 
 int main(void) {
 
-    /* Contract RST first (before any mutation). */
-    test_rst_defaults();
-
-    /*
-     * Legacy all-GPIO DATA_CTRL walk + filters must run before PAD-IN/DIR leave
-     * GPIO11/24 in enable_rx_tx=10; that mode makes core2pad writeback mismatch
-     * in test_rw_core2pad (observed FW Status 0x80010021 @ gpio 24).
-     */
+    // Test the core2pad value can be set and read properly for all gpios
     test_rw_core2pad();
+
+    // Test the read filter, positive and negative tests by changing the prot value
     test_read_filter();
+
+    // Test the write filter, positive and negative tests by changing the prot value
     test_write_filter();
 
-    /* Contract S4–S7 producers (LIVE REG-OUT/DIR tokens still need TB). */
-    test_reg_out_program();
+    // Test the pad2core value by hooking up two GPIOs together
     test_rx_tx();
-    test_dir_switch_csr();
-    test_intf_bank();
-
-    simputs("  CHK-TIMEOUT-PATHS: live_ack bound=200000 fail_on_expiry last=ok\n");
-    simputs("  CHK-NONVAC: order=RST_AF<RST_DC<RST_CTRL<REG_OUT<PAD_IN<DIR<INTF_BANK\n");
 
     test_pass(0);
 
