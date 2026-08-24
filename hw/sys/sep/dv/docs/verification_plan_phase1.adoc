@@ -1091,7 +1091,10 @@ inline hash engine consumed the same bytes that were copied.
 | PROVEN
 
 | CHK-DIGEST
-| The hardware digest equals an independent software SHA-256 over the same data.
+| The hardware digest equals an independent software SHA-256 over the same data. The
+  eight hardware digest words are read through the array-indexed accessor
+  `SHA2_DIGEST_0_BASE_ADDR(i)`, so a wrong array stride or a silently renamed register
+  shifts the assembled digest and the `memcmp` below fails.
 | `Expected (HW) = 0x` and `Computed (SW) = 0x`, then `All SHA-256 hash tests PASSED` --
   the firmware `memcmp`s the two 32-byte digests and increments its error count on a
   mismatch, and that verdict line prints only when the count is zero, so the equality is
