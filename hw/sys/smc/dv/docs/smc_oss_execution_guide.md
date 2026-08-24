@@ -46,7 +46,9 @@ Simulators are not provisioned by the repo. Put `verilator`, `xrun`, or `vcs` on
 |---------|-------|
 | `cocotbext-axi` | SEP_IN / SYS_IN / JTAG AXI masters and monitors |
 | `cocotbext-jtag` | `SmcJtagTap` CPU TAP driver |
-| `cocotbext-uart` | `SmcUartVip` UART0 pad driver/sink (vendored at `vendor/alexforencich/cocotbext-uart`) |
+
+UART has no external VIP dependency: `SmcUartVip` binds the OCAH-native
+line engines in `ocah_uart_vip` (via `OcahUartConsole`) onto the UART0 pads.
 
 I3C has no VIP dependency: `smc_i3c_to_fabric_test` gates on CSR decode plus
 the `check_i3c0_external_pull_low` line-level check.
@@ -623,7 +625,7 @@ refer to this section for how the infrastructure underneath is delivered.
 | I2C VIP/BFM | monitor + master built / passing | I2C triplet + SMBus + PMBus + Host Notify | `SmcI2cBusMonitor` / `SmcI2cEepromSlave` / `SmcI2cMasterVip` in `seq_lib/smc_i2c_protocol_vip.py`. DesignWare controller CSR bring-up still follow-up |
 | I3C VIP/BFM | missing | I3C triplet + CCC/IBI SDR extension | No I3C VIP ships; `smc_i3c_to_fabric_test` gates on CSR decode plus the external pull-low pad check (`proxy=True`). Needs a real pad-level VIP with a reproducible backend |
 | JTAG/iJTAG VIP | TAP-level built / passing | JTAG triplet | `SmcJtagTap` in `seq_lib/smc_jtag_protocol_vip.py`, `SmcCpuTapDevice(idcode=0x10CA0555, ir_len=5, IDCODE@0x01, DTMCS@0x10, DMI@0x11)`. IR/DR access beyond the default IDCODE latch proven end-to-end |
-| UART VIP | built / passing | `smc_uart_loopback_test` | `SmcUartVip` wraps `cocotbext-uart` UartSource + UartSink; 8-N-1 loopback at 115200 baud. The backend resolves from the vendored `cocotbext-uart` in the locked environment |
+| UART VIP | built / passing | `smc_uart_loopback_test` | `SmcUartVip` wraps the OCAH-native line driver + sampler via `OcahUartConsole`; 8-N-1 loopback at 115200 baud, no external UART library |
 | SPI VIP | library-level built / passing | `smc_spi_loopback_test` | `ocah_spi_vip.OcahSpiFlash` library integration + mock signals; full pin-driven loopback needs a Verilator-safe SPI pad lift |
 | Sideband pad-level BFM | missing | `smc_sideband_avsbus_octs_bfm_test` (deferred) | Fake BFM retired under the no-fake-BFM policy (never drove DUT pads); needs a real pad-level AVSBus/OCTS VIP plus a Verilator-safe telemetry pad lift |
 | Output-fabric responder / memory slave | built / passing | `smc_input_output_fabric_wr_rd_test`, `smc_output_filter_remap_security_test`, `smc_output_fabric_wr_rd_responder_test` | JTAG AXI final VIP path drives real write/read and allow/block checks |

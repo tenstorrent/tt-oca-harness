@@ -849,8 +849,6 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         ("pyuvm", "pyuvm"),
         ("cocotbext-axi", "cocotbext-axi"),
         ("cocotbext-jtag", "cocotbext-jtag"),
-        # Resolved from the vendored source (vendor/alexforencich/cocotbext-uart).
-        ("cocotbext-uart", "cocotbext-uart"),
     ]
     for label, dist_name in distributions:
         version = _dist_version(dist_name)

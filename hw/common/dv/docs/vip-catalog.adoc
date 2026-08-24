@@ -55,9 +55,9 @@ use single-bit data timing; DDR and vendor timing are deferred.
 
 |`ocah_uart_vip`
 |Experimental
-|`cocotbext-uart` (vendored)
-|Console/source-sink wrapper and passive monitor. The backend resolves from
-`vendor/alexforencich/cocotbext-uart` in the locked environment.
+|OCAH-native cocotb model
+|Console wrapper, native 8-N-1 line driver/sampler, and passive monitor. No
+external UART library.
 
 |`ocah_checker`
 |Shared infrastructure
