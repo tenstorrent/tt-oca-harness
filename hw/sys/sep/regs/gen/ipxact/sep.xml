@@ -7011,7 +7011,7 @@ This register does *not* get cleared when the `kmac_err` interrupt state gets cl
         <ipxact:registerFile>
           <ipxact:name>efuse_mmr</ipxact:name>
           <ipxact:addressOffset>'h10930500</ipxact:addressOffset>
-          <ipxact:range>'h70</ipxact:range>
+          <ipxact:range>'h74</ipxact:range>
           <ipxact:register>
             <ipxact:name>RMA_SIP_TOKEN_I</ipxact:name>
             <ipxact:description>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</ipxact:description>
@@ -7152,6 +7152,51 @@ This register does *not* get cleared when the `kmac_err` interrupt state gets cl
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>6</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>TOKEN_MATCH_FAULT</ipxact:name>
+            <ipxact:description>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</ipxact:description>
+            <ipxact:addressOffset>'h70</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>rma_sip_token_fault</ipxact:name>
+              <ipxact:description>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>rma_chiplet_token_fault</ipxact:name>
+              <ipxact:description>A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>secure_disable_token_fault</ipxact:name>
+              <ipxact:description>A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.</ipxact:description>
+              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-only</ipxact:access>
             </ipxact:field>

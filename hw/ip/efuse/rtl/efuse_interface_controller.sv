@@ -128,7 +128,10 @@ module efuse_interface_controller
     output logic [7:0][31:0]                      sec_disable_token_o,
 
     // Locked Field Access Interrupt
-    output logic                                  locked_field_access_interrupt_o
+    output logic                                  locked_field_access_interrupt_o,
+
+    // Token Comparator Redundancy Fault Interrupt
+    output logic                                  token_match_fault_o
 );
 
     `include "prim_assert.sv"
@@ -431,6 +434,8 @@ module efuse_interface_controller
 
                 .security_disable_o         (security_disable_o),
 
+                .token_match_fault_o        (token_match_fault_o),
+
                 .shadow_regs_i              (shadow_regs),
                 .shadow_regs_o              (shadow_regs_o)
             );
@@ -445,6 +450,7 @@ module efuse_interface_controller
             assign rma_chiplet_token_match = 6'b010101;
             assign sec_disable_token_o = '0;
             assign security_disable_o = '0;
+            assign token_match_fault_o = '0;
 
             assign shadow_regs_o = (fuse_sense_done || security_disable_i ) ? shadow_regs : efuse_map_t'(0);
         end
