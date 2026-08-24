@@ -48,7 +48,6 @@ module dfd_rv_ffsN#(parameter DIR_L2H    = 1,              //Direction of Priori
    //Initialize leaf's of tree to data_in
    // spyglass disable_block W415a
    always_comb begin
-        automatic int MAX_BKT_AT_LVL;
         automatic int MAX_BKT_LOWER_LVL, MAX_BKT_CURR_LVL, NODE, LVL;
         automatic int unsigned LVL_CURR, LVL_PREV, LVL_START;
 

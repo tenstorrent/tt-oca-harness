@@ -79,11 +79,7 @@ module dfd_trace_funnel
   logic [22:0]                              CsrAddr;
   logic [31:0]                              CsrWrData;
   logic [1:0]                               CsrWrInstrType;
-  logic                                     CsrWrReady;
-  logic                                     CsrHit;
   logic [31:0]                              CsrRdData;
-  logic                                     slave_read_ready;
-  logic                                     slave_busy;
   logic                                     NxtCsrCs;
   logic                                     CsrCs_d1;
   logic                                     CsrCs_d2;

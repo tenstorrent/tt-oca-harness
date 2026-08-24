@@ -91,9 +91,6 @@ module dfd_unit
 	logic  tnif_dst_flush_out, tnif_ntr_flush_out;
 	logic  tnif_dst_bp_out, tnif_ntr_bp_out;
 
-	// MISC (unused)
-	logic [DEBUG_BUS_BYTE_ENABLE_WIDTH-1:0] debug_bus_byte_enable;
-	logic [DEBUG_SIGNALS_SOURCE_ID_WIDTH-1:0] debug_source;
 
 	generate
 		//Instantiate the Debug Sig Trace Gen Block if enabled

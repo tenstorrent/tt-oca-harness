@@ -176,8 +176,6 @@ module efuse_interface_controller
     efuse_axil_req_t  axil_jtag_req;
     efuse_axil_resp_t axil_jtag_resp;
 
-    efuse_axil_req_t  [efuse_pkg::NUM_END_POINTS_REG-1:0] axil_xbar_slv_reqs;
-    efuse_axil_resp_t [efuse_pkg::NUM_END_POINTS_REG-1:0] axil_xbar_slv_resps;
 
     // One to one connection, already a struct
     assign axil_xbar_mst_req = axil_req_i;

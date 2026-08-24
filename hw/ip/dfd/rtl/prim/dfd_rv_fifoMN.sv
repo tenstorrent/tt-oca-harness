@@ -35,7 +35,6 @@ module dfd_rv_fifoMN
 	logic [ENTRIES-1:0] [DATA_WIDTH-1:0]  mem;
 	logic [ENTRIES-1:0]                   wr_clk_en;
 	logic [ENTRIES-1:0] [DATA_WIDTH-1:0]  wr_data;
-	logic [DATA_WIDTH-1:0]                rd_mx_dat;
 	logic [ADDR_SIZE:0]                   nxt_cnt;
 	logic [ADDR_SIZE:0]                   psh_cnt,pop_cnt,clear_cnt;
 	logic [ADDR_SIZE:0]                   nxt_wr_ptr_wrap,nxt_rd_ptr_wrap;

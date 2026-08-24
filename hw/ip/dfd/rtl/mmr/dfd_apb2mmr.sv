@@ -40,10 +40,6 @@ module dfd_apb2mmr
 		input   logic                   CsrError
 	);
 
-	logic                                     CsrError_d1;
-
-	logic                                     trRamDataRdEn_ANY;
-	logic                                     trdstRamDataRdEn_ANY;
 	logic                                     apb_delay, apb_delay_d1;
 
 	// Read data takes 3 cycles to be reflected on the `trramdata` register
@@ -62,7 +58,7 @@ module dfd_apb2mmr
 	);
 
 	//APB <<--> CSR interface
-	logic reg_xfer, reg_xfer_d1, reg_xfer_mux;
+	logic reg_xfer, reg_xfer_d1;
 	assign CsrWrInstrType = {INST_WIDTH{1'b0}};
 	assign reg_xfer = (psel && ~penable && ~apb_delay) || apb_delay_d1; // End of Setup Phase
 	assign CsrAddr = paddr[MMR_ADDR_WIDTH-1:0];

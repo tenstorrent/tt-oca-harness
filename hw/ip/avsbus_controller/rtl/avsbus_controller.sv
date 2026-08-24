@@ -145,7 +145,6 @@ module avsbus_controller #(
   // External Registers
   logic [31:0] external_reg_wr_data;
   logic R_avs_cmd_wr_en;
-  logic R_avs_readback_wr_en;
   logic R_avs_readback_rd_en;
 
   //Register fields resync'd to/from other clock domains:

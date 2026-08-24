@@ -158,11 +158,10 @@ module dfd_trace_sink
   logic [7:0]                                                                     TrRamPendNtracePktVld_ANY, TrRamPendDstPktVld_ANY;
   logic [TRC_RAM_WAYS-1:0]                                                        TrdstRamPendPktInhibitRamRd_ANY, TrdstRamPendPktInhibitRamRd_ANY_stg;
   logic [TRC_RAM_WAYS-1:0]                                                        TrntrRamPendPktInhibitRamRd_ANY, TrntrRamPendPktInhibitRamRd_ANY_stg;
-  logic [TRC_RAM_WAYS-1:0][2:0]                                                   TrRamNorthCoreWrWayPendWriteCnt_ANY, TrRamSouthCoreWrWayPendWriteCnt_ANY, TrRamPerWayPendToWriteCnt_TS1, TrRamPerWayNextPendToWriteCnt_TS0;
+  logic [TRC_RAM_WAYS-1:0][2:0]                                                   TrRamPerWayPendToWriteCnt_TS1, TrRamPerWayNextPendToWriteCnt_TS0;
   logic [TRC_RAM_WAYS-1:0]                                                        TrRamFreeWayMask_ANY, TrRamFreeWayMaskPend_ANY, TrRamFreeWayMaskPend_ANY_stg;
 
   // Backpressure controls
-  logic [7:0]                                                                     TN_TR_InFlight_PktCnt;
   logic [5:0]                                                                     TN_TR_NTrace_NumPkt_PerFrame, TN_TR_Dst_NumPkt_PerFrame;
   logic [3:0]                                                                     InsnTrace_NumSetsPerFrame_ANY, DataTrace_NumSetsPerFrame_ANY;
   logic [3:0]                                                                     InsnTrace_NumInFlightFrame_ANY, DataTrace_NumInFlightFrame_ANY;
@@ -222,16 +221,8 @@ module dfd_trace_sink
   logic [DATA_WIDTH-1:0]                                                          TrRamNorthTraceWrData_TS0, TrRamSouthTraceWrData_TS0;
   logic                                                                           TrRamNorthTraceWrSrc_TS0, TrRamSouthTraceWrSrc_TS0;
 
-  logic                                                                           DataTraceWrEn_TS0;
-  logic                                                                           InsnTraceWrEn_TS0;
   logic [NUM_CORES-1:0]                                                           InsnTraceWrEnPerCore_TS0;
   logic [NUM_CORES-1:0]                                                           DataTraceWrEnPerCore_TS0;
-  logic [1:0]                                                                     DataTraceWrWay_TS0;
-  logic [1:0]                                                                     InsnTraceWrWay_TS0;
-  logic [TRC_RAM_INDEX_WIDTH-1:0]                                                 InsnTraceWrAddr_TS0;
-  logic [TRC_RAM_INDEX_WIDTH-1:0]                                                 DataTraceWrAddr_TS0;
-  logic [DATA_WIDTH-1:0]                                                          InsnTraceWrData_TS0;
-  logic [DATA_WIDTH-1:0]                                                          DataTraceWrData_TS0;
   
   logic [TRC_RAM_WAYS-1:0][TRC_RAM_INDEX_WIDTH-1:0]                               TraceWrAddr_TS0_stg, TraceWrAddr_TS0_stg_d1, TraceWrAddr_TS0;
   logic [TRC_RAM_INSTANCES-1:0][TRC_RAM_DATA_WIDTH-1:0]                           TraceWrData_TS0_stg, TraceWrData_TS0_stg_d1, TraceWrData_TS0;
@@ -246,15 +237,15 @@ module dfd_trace_sink
   logic                                                                           DataTraceRdEn_TS3;
   logic  [TRC_RAM_INSTANCES-1:0]                                                  TraceRdEn_TS1;
   logic  [TRC_RAM_INDEX_WIDTH-1:0]                                                TraceRdAddr_TS1;
-  logic  [TRC_RAM_INDEX_WIDTH-1:0]                                                TraceMemRdAddr_TS1, TraceMemRdAddr_TS1_stg;
-  logic  [TRC_RAM_INSTANCES-1:0]                                                  TraceMemPerWayRdEn_TS1, TraceMemPerWayRdEn_TS1_stg;
+  logic  [TRC_RAM_INDEX_WIDTH-1:0]                                                TraceMemRdAddr_TS1;
+  logic  [TRC_RAM_INSTANCES-1:0]                                                  TraceMemPerWayRdEn_TS1;
   // TS2
   logic  [TRC_RAM_INSTANCES-1:0]                                                  TraceRdEn_TS2;
   logic  [TRC_RAM_INSTANCES-1:0] [TRC_RAM_DATA_WIDTH-1:0]                         TraceRamData_TS2;
   logic  [TRC_RAM_DATA_WIDTH-1:0]                                                 TraceRamData64b_TS2;
   // Misc
   logic [TRC_RAM_WAYS-1:0][TRC_RAM_INDEX_WIDTH-1:0]                               TraceAddr_ANY;
-  logic                                                                           TraceMemRdEn_ANY, TraceMemRdEn_ANY_stg;
+  logic                                                                           TraceMemRdEn_ANY;
   logic                                                                           TrMemRamRd_NtraceOrDst_ANY;
   logic                                                                           TraceRamWrEn_TS0_stg, TraceRamWrEn_TS0_stg_d1;
   logic                                                                           trdstRamWrEn_TS0, trdstRamWrEn_TS0_stg, trdstRamWrEn_TS0_stg_d1;
