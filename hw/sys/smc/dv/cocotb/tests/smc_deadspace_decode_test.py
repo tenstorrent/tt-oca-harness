@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS deadspace-decode test (#214 / QUAS-4750 wrap-to-live class)."""
+"""SMC OSS deadspace-decode test (#214 wrap-to-live class)."""
 
 from __future__ import annotations
 

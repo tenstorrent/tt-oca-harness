@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Prove whether SMC register windows alias unmapped offsets onto live CSRs.
 
-Related: GitHub #214 / QUAS-4750 (undefined-space aliasing) and SEP #228.
+Related: GitHub #214 (undefined-space aliasing) and SEP #228.
 Golden legality is PeakRDL ``SIZE`` from ``smc_addr.h``, never the xbar window.
 A dead write that wraps onto a live register is the defect under test.
 """
@@ -42,14 +42,14 @@ class DeadspaceProbe:
 def _probes() -> tuple[DeadspaceProbe, ...]:
     return (
         DeadspaceProbe(
-            "reset_unit_sync",
-            smc_addr("SMC_TOP_SMC_RESET_UNIT_SYNC_REG_BASE_ADDR"),
-            0x100,
-        ),
-        DeadspaceProbe(
             "system_timer_preset_lo",
             smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR"),
             0x40,
+        ),
+        DeadspaceProbe(
+            "reset_unit_sync",
+            smc_addr("SMC_TOP_SMC_RESET_UNIT_SYNC_REG_BASE_ADDR"),
+            0x100,
         ),
         DeadspaceProbe(
             "base_config_hang_det_timeout",
@@ -87,6 +87,10 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             smc_addr("SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR"),
             0x20,
         ),
+        # PeakRDL I2C instance SIZE is 0x84, STRIDE is 0x200. live+0x100 lands
+        # in the SIZE-to-stride hole (not I2C1 at +0x200). expect_refuse is
+        # the #214 decode-window contract: OKAY-into-void and wrap onto
+        # INTR_ENABLE both fail this probe.
         DeadspaceProbe(
             "i2c0_intr_enable",
             smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR", 0),
