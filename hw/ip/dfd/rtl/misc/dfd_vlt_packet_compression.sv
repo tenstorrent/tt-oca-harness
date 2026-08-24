@@ -82,7 +82,7 @@ module dfd_vlt_packet_compression
 	logic [VLT_PACKET_WIDTH/8-1:0] retry_vlt_packet_byte_enable;
 	logic [$clog2(VLT_PACKET_WIDTH_IN_BYTES):0]   retry_vlt_packet_length_in_bytes;
 	logic [$clog2(VLT_PACKET_WIDTH_IN_BYTES):0]   incoming_packet_length_in_bytes;
-	logic retry_data_packet_tx, retry_ts_packet_tx,retry_trace_info_tx;
+	logic retry_data_packet_tx, retry_ts_packet_tx;
 	vlt_data_header_s vlt_data_header;
 	vlt_support_pkt_header0_s vlt_flush_header;
 	vlt_support_pkt_header vlt_ts_header;
@@ -91,7 +91,6 @@ module dfd_vlt_packet_compression
 	logic packet_lost;
 	logic next_packet_lost;
 	logic trace_start_in_trace_info,trace_stop_in_trace_info;
-	logic trace_start_in_xmitted_vlt_packet,trace_stop_in_xmitted_vlt_packet;
 	logic trace_start_in_next_xmitted_vlt_packet,trace_stop_in_next_xmitted_vlt_packet;
 	logic trace_start_to_xmt,trace_stop_to_xmt;
 	logic [VLT_HDR_TRACE_INFO_WIDTH-1:0] trace_info_to_xmt,next_vlt_packet_trace_info;
@@ -418,7 +417,6 @@ module dfd_vlt_packet_compression
 			next_packet_lost                = packet_lost;
 		end
 
-//FIXME_TIMING: MOve the fixed value add to previous clock. (Check with PD to see if this is needed)
 	always@(posedge clock)
 		if (!reset_n)
 			incoming_packet_length_in_bytes <= '0;

@@ -91,9 +91,6 @@ module dfd_unit
 	logic  tnif_dst_flush_out, tnif_ntr_flush_out;
 	logic  tnif_dst_bp_out, tnif_ntr_bp_out;
 
-	// MISC (unused)
-	logic [DEBUG_BUS_BYTE_ENABLE_WIDTH-1:0] debug_bus_byte_enable;
-	logic [DEBUG_SIGNALS_SOURCE_ID_WIDTH-1:0] debug_source;
 
 	generate
 		//Instantiate the Debug Sig Trace Gen Block if enabled
@@ -165,7 +162,7 @@ module dfd_unit
 				.trace_hardware_stop    (dst_hardware_stop),
 
 				.debug_bus_in           (debug_bus),
-				.debug_bus_byte_enable  ('0),  //FIXME_MUSTFIX_NONATHENA: Future optimization, if CLA implements Byte Enables.
+				.debug_bus_byte_enable  ('0),
 
 				.vlt_packet             (vlt_packet),
 				.vlt_packet_byte_enable (vlt_packet_byte_enable),

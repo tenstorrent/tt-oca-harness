@@ -19,7 +19,6 @@ module prim_clock_mux2 #(
   // need to use ##1 as this could break with inverted clocks that
   // start with a rising edge at the beginning of the simulation.
 
-  // TODO FIXME uncomment these once xprop issue is solved
   // `OCAH_OT_ASSERT(selKnown0, ##1 !$isunknown(sel_i), clk0_i, 0)
   // `OCAH_OT_ASSERT(selKnown1, ##1 !$isunknown(sel_i), clk1_i, 0)
 
