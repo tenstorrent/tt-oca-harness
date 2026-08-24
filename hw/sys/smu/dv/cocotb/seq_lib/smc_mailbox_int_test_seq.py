@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_mailbox_int_test (SMU_ALL_004 rev 8).
 
 DV-CARD:          SMU_ALL_004   ANCHOR: smc_mailbox_int_test

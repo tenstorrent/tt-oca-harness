@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: MMODE_REMAP + CLA + full ALIAS_REMAP sweep
 (TC_SMC_P1CG_16/17/18).
 

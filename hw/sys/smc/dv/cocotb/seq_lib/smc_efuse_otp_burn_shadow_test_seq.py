@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U7-5 / P2-6: OTP burn + shadow verify through smc_ip_integration efuse_bank_model.
 
 DEFENDS:

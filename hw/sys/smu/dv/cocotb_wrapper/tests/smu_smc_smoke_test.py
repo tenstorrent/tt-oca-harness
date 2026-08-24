@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC firmware smoke under the production SMU wrapper with SEP disabled."""
 
 from __future__ import annotations

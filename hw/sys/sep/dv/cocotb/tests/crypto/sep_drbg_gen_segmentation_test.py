@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""CHK4 Generate-segmentation contract, proven with a short glen.
+
+Every other entropy test leaves Generate unfinished, so CHK4's legality loop
+never runs ("segmentation NOT EXERCISED"). Two independent reasons, both needed
+to close it:
+
+  * ``EDN.BOOT_GEN_CMD`` resets to ``glen=4095``. ``EDN_CTRL_AUTO`` sets
+    ``BOOT_REQ``, so the first Generate is the boot command, not
+    ``GENERATE_CMD``. Programming only ``GENERATE_CMD`` (the default
+    ``SepEntropyCfg.glen`` path) does not shorten that command.
+  * Even after the boot generate is shortened, the length must be short enough
+    that several commands complete inside the usual block budget.
+
+This test sets ``SepEntropyCfg(glen=4, program_boot_generate=True)``. That one
+object programs ``BOOT_GEN_CMD``, ``GENERATE_CMD``, and the golden, so DUT and
+model stay in lockstep. Existing tests leave ``program_boot_generate`` False so
+their one-open-command CHK4 budgets stay put.
+
+What this proves that no other test does:
+  * ``gen_last`` is observed asserted, so the trailing CTR_DRBG Update runs;
+  * every completed command carries exactly ``cfg.glen`` blocks -- a segment of
+    any other length now fails;
+  * CHK1..CHK4 stay bit-exact across those Update boundaries.
+"""
+
+from __future__ import annotations
+
+import cocotb
+import pyuvm
+from cocotb.triggers import ClockCycles
+
+from sep_base_test import sep_base_test
+from seq_lib.sep_esrc_bringup_seq import SepEntropyCfg
+from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
+
+# Short enough that several Generates complete inside the usual budget, and > 1
+# so a command still spans multiple beats (glen=1 would make every beat a
+# boundary and hide an off-by-one in the countdown).
+SEGMENTATION_GLEN = 4
+
+
+@pyuvm.test()
+class sep_drbg_gen_segmentation_test(sep_base_test):
+    """Prove the Generate-command segmentation contract at a short glen."""
+
+    async def run_scenario(self) -> None:
+        await self.bring_up_no_cpu()
+
+        # KM must be out of reset to sink the genbits, same as the smoke test.
+        await self.start_seq(sep_km_release_seq("km_release"))
+
+        # The delta from the smoke test. glen feeds GENERATE_CMD and the golden;
+        # program_boot_generate also writes BOOT_GEN_CMD, which is the command
+        # BOOT_REQ actually issues (reset glen=4095). SepEntropyCfg is frozen.
+        cfg = SepEntropyCfg(glen=SEGMENTATION_GLEN, program_boot_generate=True)
+
+        await self.bring_up_entropy(cfg=cfg, strict=True)
+
+        # Concurrent FIFO_RDATA drain after the last bring-up write, matching the
+        # e2e smoke. Without it the entropy FIFO fills, the chain stalls, and only
+        # a single command's worth of blocks is ever produced -- far too few to
+        # observe a boundary. Starting it earlier would contend the AXI sequencer
+        # with the bring-up writes.
+        self.start_fifo_drain()
+
+        assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
+        assert await self.wait_km_entropy_handshake(), (
+            "KM never handshook a genbits word"
+        )
+        assert await self.wait_km_consumed_word(), "KM never consumed a genbits word"
+
+        # Keep draining until several Generate commands have had time to finish.
+        # At glen=4 the usual block budget spans multiple commands, so this is
+        # about letting them land, not about stretching the run.
+        sb = self.drbg_sb
+        target_blocks = SEGMENTATION_GLEN * 5
+        for _ in range(400):
+            if (sb.results["CHK4_genbits"].dut_items >= target_blocks
+                    and sum(sb.completed_generate_lengths().values()) >= 2):
+                break
+            await ClockCycles(cocotb.top.clk_i, 200)
+
+        await self.check_entropy_alerts_zero()
+        await self.stop_fifo_drain()
+
+        seg_hist = sb.completed_generate_lengths()
+        completed = sum(seg_hist.values())
+        # The whole point of the test: if this is 0 the run proved nothing about
+        # segmentation, and CHK4's legality check silently did not execute.
+        assert completed > 0, (
+            f"no Generate command completed at glen={SEGMENTATION_GLEN} "
+            f"({sb.results['CHK4_genbits'].dut_items} genbits observed, "
+            f"{sb.open_generate_remaining()} left in the open command). gen_last was never "
+            f"seen asserted, so this test did not exercise what it exists for."
+        )
+        # Every completed command must be exactly glen blocks. report() also
+        # checks this against legal_gen_lengths; assert here so the failure names
+        # the segmentation contract directly rather than a generic scoreboard error.
+        assert set(seg_hist) == {SEGMENTATION_GLEN}, (
+            f"Generate commands did not all carry glen={SEGMENTATION_GLEN} blocks: "
+            f"observed blocks/cmd {dict(sorted(seg_hist.items()))}"
+        )
+        self.logger.info(
+            "CHK4-SEGMENTATION PASS: %d Generate command(s) completed, each exactly "
+            "%d blocks; trailing CTR_DRBG Update exercised %d time(s)",
+            completed, SEGMENTATION_GLEN, completed,
+        )
+
+        # Bit-exactness across those Update boundaries is the actual regression
+        # guard for the demand-driven golden.
+        assert sb.report()

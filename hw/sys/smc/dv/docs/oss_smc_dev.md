@@ -3,10 +3,8 @@
 
 | Field | Value |
 |-------|-------|
-| Owner | minshaoho |
 | Scope | `hw/sys/smc/dv/cocotb/` (PyUVM-on-cocotb, DTP three-layer pattern) |
 | Related | `SMC_VPLAN.adoc`, `smc_oss_execution_guide.md`, `ref_test_dev.md` |
-| Source survey (non-OSS) | legacy SMC TB `dv/smc/tb/tb_uvm/` — 171 cocotb tests + 24 SV UVM tests |
 
 This is the planning half of the SMC OSS bring-up. It records the module-to-test
 mapping, the shared-infrastructure roadmap, and the design rules the ported tests
@@ -17,10 +15,9 @@ see `smc_oss_execution_guide.md`.
 
 ## 1. Scope & Goal
 
-For every functional module covered by the legacy SMC TB, pick **one most-representative
-testcase** and port it into the OSS tree following the DTP test architecture
-(`env/` + `seq_lib/` + `tests/`). Roughly **32 modules / ~30 testcases / 16
-shared infrastructure pieces**.
+For each functional module, select representative scenarios that follow the DTP
+test architecture (`env/` + `seq_lib/` + `tests/`) and share reusable
+infrastructure.
 
 ---
 
@@ -28,8 +25,8 @@ shared infrastructure pieces**.
 
 | Rule | Source | Consequence |
 |------|--------|-------------|
-| PyUVM-on-cocotb only; no SV UVM tests | DTP / SEP pattern | The 24 legacy SV UVM tests are not directly ported |
-| No firmware binary dependency | OSS philosophy | Firmware-driven legacy tests are rebuilt as BFM-driven Python tests |
+| PyUVM-on-cocotb only; no SV UVM tests | DTP / SEP pattern | Tests use the common Python environment |
+| No prebuilt firmware binary dependency | Reproducible builds | Firmware-driven behavior uses source-built images or BFM-driven Python tests |
 | All stimulus goes through BFM agents | DTP rule | One agent per external interface (I2C / JTAG / AXI / GPIO / OCTS / AVSBus / …) |
 | `tb_top` flattens and lifts internal signals to top-level | SEP rule | Internal observables exposed by `assign` XMR; BFMs hang off top-level ports |
 | Commercial sim is the live verification target; Verilator is best-effort | Pragmatic | Until the upstream Verilator codegen bug is fixed, live PASS via Xcelium / VCS |
@@ -89,7 +86,7 @@ Effort: ~5 days tests + 3 days shared infra = **8 days**
 | 15 | Default reg read | `smc_default_reg_rd_test` | `smc_default_reg_rd_test` | `SmcAxiLiteCsrAgent` |
 | 16 | ECAM | `smc_ecam_sanity_test` | `smc_ecam_sanity_test` | `SmcAxiLiteCsrAgent` (ECAM space) |
 | 17 | ECC | `smc_ecc_test` | `smc_ecc_sanity_test` | `SmcAxiMasterAgent` + ECC inject |
-| 18 | AVSBus | `smc_avsbus_sanity_test` | `smc_avsbus_sanity_test` | `SmcAvsBusAgent` (new) |
+| 18 | AVSBus | `smc_avsbus_sanity_test` | `smc_avsbus_sanity_test` | proxy CSR/status checks (no pad-level AVSBus VIP) |
 | 19 | DBS sanity | `smc_dbs_sanity_test` | `smc_dbs_sanity_test` | `SmcAxiLiteCsrAgent` + DBS BFM |
 | 20 | DFD sanity | `smc_dfd_sanity_test` | `smc_dfd_sanity_test` | `SmcAxiLiteCsrAgent` + DFD observe |
 
@@ -99,11 +96,11 @@ Effort: ~12 days tests + 7 days BFM infra = **19 days**
 
 | # | Module | Legacy test | OSS testcase | OCAH VIP |
 |---|--------|-------------|--------------|----------|
-| 21 | I2C controller↔target | `smc_i2c_sanity_test` | `smc_i2c_master_target_test` | `ocah_i2c_vip` |
-| 22 | I2C target only | `smc_i2c_target_sanity_test` | `smc_i2c_target_sanity_test` | `ocah_i2c_vip` |
-| 23 | Dual I2C | `dual_i2c_test` | `smc_dual_i2c_test` | `ocah_i2c_vip` |
+| 21 | I2C controller↔target | `smc_i2c_sanity_test` | `smc_i2c_master_target_test` | `smc_i2c_protocol_vip` (SMC-local) |
+| 22 | I2C target only | `smc_i2c_target_sanity_test` | `smc_i2c_target_sanity_test` | `smc_i2c_protocol_vip` (SMC-local) |
+| 23 | Dual I2C | `dual_i2c_test` | `smc_dual_i2c_test` | `smc_i2c_protocol_vip` (SMC-local) |
 | 24 | iJTAG | `smc_basic_ijtag_test` | `smc_ijtag_basic_test` | `ocah_jtag_vip` |
-| 25 | I3C → fabric | `smc_input_fabric_i3c_to_output_wr_rd_test` | `smc_i3c_to_fabric_test` | `ocah_i3c_vip` |
+| 25 | I3C → fabric | `smc_input_fabric_i3c_to_output_wr_rd_test` | `smc_i3c_to_fabric_test` | proxy CSR + pad checks (no I3C VIP) |
 | 26 | OCTS | `octs_sanity_test` | `smc_octs_sanity_test` | new OCAH-local BFM |
 | 27 | ATB | `atb_sanity_test` | `smc_atb_sanity_test` | new OCAH-local BFM |
 | 28 | eFuse OTP | `smc_efuse_otp_clock_config_test` | `smc_efuse_otp_clock_test` | OTP responder (SEP-derived) |
@@ -146,11 +143,11 @@ Effort: ~18 days tests + 6 days infra = **24 days**
 | I5 | `SmcAxiMasterAgent` | `ocah_axi_vip` | DTP `DtpAxiAgent` template | 1.0 |
 | I6 | `SmcAxiLiteCsrAgent` | `ocah_axi_vip` AXI-Lite | I5 variant | 1.0 |
 | I7 | `SmcMailboxAgent` | `ocah_axi_vip` AXI-Lite | I6 variant | 1.0 |
-| I8 | `SmcI2cMasterTargetAgent` | `ocah_i2c_vip` | upgrades observer | 1.5 |
+| I8 | `SmcI2cMasterTargetAgent` | `smc_i2c_protocol_vip` (SMC-local) | upgrades observer | 1.5 |
 | I9 | `SmcJtagAgent` | `ocah_jtag_vip` | copy from DTP | 0.5 |
-| I10 | `SmcI3cAgent` | `ocah_i3c_vip` | same | 1.0 |
+| I10 | `SmcI3cAgent` | none (no I3C VIP ships) | same | 1.0 |
 | I11 | `SmcOtpResponderAgent` | SEP OTP shim | copy from SEP | 1.0 |
-| I12 | `SmcAvsBusAgent` (new BFM) | — | — | 2.0 |
+| I12 | `SmcAvsBusAgent` | none (needs a real pad-level AVSBus VIP) | — | 2.0 |
 | I13 | `SmcOctsAgent` (new BFM) | — | — | 2.0 |
 | I14 | `SmcAtbAgent` (new BFM) | — | — | 1.5 |
 | I15 | CPU-LSU force-splice + scratch helper | SEP tb_top | copy from SEP | 2.0 |
@@ -226,7 +223,7 @@ Total: ~60 person-days, single mid-level engineer.
 | Verilator + PeakRDL codegen bug | All live Verilator runs blocked | Accept static + dry-run + commercial sim as verification; file a minimal upstream repro |
 | Missing OCAH BFMs (OCTS / ATB / AVSBus) | Some Batch B / C tests gated | Write OCAH-local simplified models (I12 / I13 / I14 in shared infra) |
 | CPU-LSU splice complexity | Batch D CPU tests hard | Copy the SEP `initial force` + XMR-read pattern verbatim |
-| Firmware-driven legacy test logic | Needs full re-design as BFM-driven | Re-scope what the firmware actually did (IRQ trigger, CSR write) into an equivalent BFM call |
+| Firmware-only test behavior | May need a BFM-driven equivalent | Express the hardware action, such as an IRQ trigger or CSR write, through the appropriate BFM |
 | `tb_top` port growth → bender filelist breakage | Batch C / D risk | Validate after every batch; stub immediately if any new Verilator surface fails |
 
 ---

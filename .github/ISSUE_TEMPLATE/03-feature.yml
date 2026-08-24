@@ -3,7 +3,6 @@
 
 name: Feature
 description: A new capability or externally meaningful behavior.
-title: "[Feature]: "
 type: Feature
 body:
   - type: markdown
@@ -30,6 +29,7 @@ body:
         - RDL
         - RELEASE
         - NONFREE
+        - FUSA
     validations:
       required: true
   - type: dropdown

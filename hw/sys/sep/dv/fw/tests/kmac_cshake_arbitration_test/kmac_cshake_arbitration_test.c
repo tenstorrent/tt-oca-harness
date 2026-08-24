@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_016 — KMAC cSHAKE Arbitration / Back-to-Back Test (P1, GitHub #1302)
+ * KMAC cSHAKE Arbitration / Back-to-Back Test
  *
  * Verifies that the KMAC cSHAKE datapath handles sequential SW-initiated
  * operations correctly with no state leakage between runs.
@@ -12,18 +12,18 @@
  *
  * Test flow (4 sequential cSHAKE-128 operations):
  *
- *   Op A — message "msg_a" (5 bytes)
- *   Op B — message "msg_b" (5 bytes, 1 byte differs from msg_a)
- *   Op C — message "msg_a" again (must match Op A output)
- *   Op D — message "msg_a" again (must match Op A output)
+ * Op A — message "msg_a" (5 bytes)
+ * Op B — message "msg_b" (5 bytes, 1 byte differs from msg_a)
+ * Op C — message "msg_a" again (must match Op A output)
+ * Op D — message "msg_a" again (must match Op A output)
  *
  * Checker summary (6 items):
- *   [1] Op A completes without timeout
- *   [2] Op B completes without timeout
- *   [3] Op C completes without timeout
- *   [4] Op D completes without timeout
- *   [5] digest_B != digest_A  (different inputs produce different outputs)
- *   [6] digest_C == digest_A  (same inputs produce same output; determinism)
+ * [1] Op A completes without timeout
+ * [2] Op B completes without timeout
+ * [3] Op C completes without timeout
+ * [4] Op D completes without timeout
+ * [5] digest_B != digest_A  (different inputs produce different outputs)
+ * [6] digest_C == digest_A  (same inputs produce same output; determinism)
  *
  */
 
@@ -142,7 +142,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_016: cSHAKE Arbitration Test\n");
+    printf("  cSHAKE Arbitration Test\n");
     printf("  4 back-to-back cSHAKE-128 operations\n");
     printf("========================================\n\n");
 
@@ -151,13 +151,13 @@ int main(void) {
 
     /*
      * Messages:
-     *   msg_a = "msg_a" (5 bytes): 0x67 0x5f 0x67 0x73 0x6d → LE word = 0x675f6d73 + byte 0x67
-     *   msg_b = "msg_b" (5 bytes): same but last char 'b'=0x62 instead of 'a'=0x61
+     * msg_a = "msg_a" (5 bytes): 0x67 0x5f 0x67 0x73 0x6d → LE word = 0x675f6d73 + byte 0x67
+     * msg_b = "msg_b" (5 bytes): same but last char 'b'=0x62 instead of 'a'=0x61
      * For simplicity, write as 32-bit words (5 bytes = 1 word + 1 byte packed):
-     *   word0: 0x5F67736D = "_gsm" (LE) — doesn't matter, just needs to be distinct
+     * word0: 0x5F67736D = "_gsm" (LE) — doesn't matter, just needs to be distinct
      * Actually let's use simple distinct patterns:
-     *   msg_a_words = {0xAAAAAAAA, 0x55555555}  (8 bytes)
-     *   msg_b_words = {0xBBBBBBBB, 0x44444444}  (8 bytes, distinct)
+     * msg_a_words = {0xAAAAAAAA, 0x55555555}  (8 bytes)
+     * msg_b_words = {0xBBBBBBBB, 0x44444444}  (8 bytes, distinct)
      */
     static const uint32_t msg_a[2] = {0xAAAAAAAAU, 0x55555555U};
     static const uint32_t msg_b[2] = {0xBBBBBBBBU, 0x44444444U};

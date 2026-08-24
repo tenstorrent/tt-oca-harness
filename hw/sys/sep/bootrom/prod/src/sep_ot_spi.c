@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * OCH SEP ROM - OpenTitan SPI Host driver.
  *
@@ -120,23 +123,8 @@ static uint32_t ot_rx_watermark_words(const ot_spi_params_t *p) {
 /* Controller-ready poll (defined with the transaction primitives below). */
 static int ot_spi_wait_ready(void);
 
-/* Program mux + controller registers from a parameter set and wait for ready. */
+/* Program controller registers from a parameter set and wait for ready. */
 static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
-    /* Select the OpenTitan controller on the SPI mux, release CS force-high.
-     *
-     * The mux is a nonfree shim block inside sep_external, so its registers
-     * only exist when the overlay supplies them. A pure-open build has no mux --
-     * the pads are already the OpenTitan host's and nothing forces CS# high --
-     * so the whole sequence compiles out. Guarded on the same symbol
-     * drivers/spi_mux.h uses; without this the open build fails to compile with
-     * 'OCH_SEP_TOP_SEP_EXTERNAL_..._BASE_ADDR' undeclared.
-     */
-#ifdef OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL__SPI_SEL_bm
-    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
-    mux.f.spi_sel = 1u; /* 0 = Cadence, 1 = OpenTitan */
-    mux.f.cs_force_high = 0u;
-    mmio_write32(OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR, mux.w);
-#endif
 
     /* Clock / mode / chip-select timing. */
     spi_controller__CFG_t cfg = {.w = 0u};
@@ -173,7 +161,10 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     return OT_SPI_OK;
 }
 
+__attribute__((weak)) void ot_spi_select_pad_mux(void) {}
+
 uint32_t ot_spi_init(void) {
+    ot_spi_select_pad_mux();
     /* Select the boot profile: build-time default BOOT_OT_SPI_PROFILE (0 = safe
      * default). Deferred runtime auto-selection (device probe / OTP fuse) will
      * replace this fixed choice here. */

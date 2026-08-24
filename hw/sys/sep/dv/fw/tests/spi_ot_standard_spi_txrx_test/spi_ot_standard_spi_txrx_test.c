@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Standard SPI TX/RX Test - TC_SPIOT_008 (P0)
+ * SPI OT Standard SPI TX/RX Test
  *
  * Verifies Standard SPI (x1) transmit and receive using the OpenTitan SPI
  * controller FIFO-based command interface.
@@ -12,15 +12,15 @@
  * and monitors STATUS/ERROR registers during the transaction.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller, set clock/config
- *   2. Load TX data into FIFO
- *   3. Issue TX command (Standard SPI, CSAAT=0)
- *   4. Monitor STATUS.ACTIVE until transaction completes
- *   5. Check for errors
- *   6. Issue multi-byte TX+RX sequence
+ * 1. Enable controller, set clock/config
+ * 2. Load TX data into FIFO
+ * 3. Issue TX command (Standard SPI, CSAAT=0)
+ * 4. Monitor STATUS.ACTIVE until transaction completes
+ * 5. Check for errors
+ * 6. Issue multi-byte TX+RX sequence
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_standard_spi_txrx_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_standard_spi_txrx_test STACK=sim
  *
  */
 
@@ -31,7 +31,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -61,7 +60,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Standard SPI TX/RX Test (TC_SPIOT_008)\n");
+    printf("SPI OT Standard SPI TX/RX Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -72,8 +71,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     uint32_t i;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

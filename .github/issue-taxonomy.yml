@@ -3,11 +3,10 @@
 
 schema_version: 1
 
-# Kill switch for the project curator. Leave false until OSPO credentials exist.
+# When false, the project curator emits no safe outputs.
 automation:
-  enabled: false
-  mode: staged
-  maximum_issues_per_run: 20
+  enabled: true
+  mode: apply
 
 repository: tenstorrent/tt-oca-harness
 
@@ -29,6 +28,7 @@ project:
       - RDL
       - RELEASE
       - NONFREE
+      - FUSA
     Subsystem:
       - OCAH
       - SMU
@@ -116,6 +116,7 @@ classification:
     - LC and EFUSE use the targeted Subsystem, SEP or SMC.
     - Cross-subsystem work must be proposed for human decomposition; never invent compound values.
     - NONFREE is the Workstream when the work lands in the companion repository.
+    - FUSA is the Workstream for functional-safety work.
 
 title:
   general_component_format: "[WORKSTREAM/SUBSYSTEM] Imperative title"

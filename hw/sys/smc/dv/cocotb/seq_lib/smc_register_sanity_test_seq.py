@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_register_sanity_test (Batch B).
 
 Real SYS AXI traffic through ``smc.sys_axi_in_req_i``:

@@ -4,13 +4,39 @@
 [[ctn-memory-map]]
 ==== Memory Map
 
-The Cross Trigger Network combines the Cross Trigger Matrix (CTM) and
-Cross Trigger Port (CTP) registers into a unified address space:
+The Cross Trigger Network combines the Cross Trigger Matrix (CTM) and Cross
+Trigger Port (CTP) registers into a unified address space:
 
 * 0x0000 - 0x01FF: Cross Trigger Matrix (CTM) - 512 bytes
 * 0x0200 - 0x02FF: Cross Trigger Ports (CTP[0-15]) - 16 bytes each
 
-// NOTE: The Cross Trigger Network has no generated register block (the Cross
-// Trigger Matrix RDL is template-only and not ported). The combined
-// CTM/CTP register table is therefore not auto-included here. Per-port registers
-// are documented under the Cross Trigger Port IP.
+The CTN itself has no register block of its own: it decodes the AXI-Lite CSR
+interface onto the CTM and CTP blocks it instantiates. The base addresses above
+come from `cross_trigger_network_pkg`, and the register content of each window
+is generated from the CTM and CTP SystemRDL sources.
+
+===== Cross Trigger Matrix Registers
+
+ifdef::backend-html5[]
+++++
+include::partial$cross_trigger_matrix/regs/gen/html/cross_trigger_matrix.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../cross_trigger_matrix/regs/gen/adoc/cross_trigger_matrix.adoc[]
+endif::backend-pdf[]
+
+===== Cross Trigger Port Registers
+
+Each CTP window repeats the following register layout.
+
+ifdef::backend-html5[]
+++++
+include::partial$cross_trigger_port/regs/gen/html/cross_trigger_port.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../cross_trigger_port/regs/gen/adoc/cross_trigger_port.adoc[]
+endif::backend-pdf[]

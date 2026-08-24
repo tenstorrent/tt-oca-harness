@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_005 (P0) - FIFO Status Monitoring Test
+ * FIFO Status Monitoring Test
  */
 
 #include <stdint.h>
@@ -116,7 +116,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_005: FIFO Status Test\n");
+    printf("  FIFO Status Test\n");
     printf("========================================\n");
 
     if (test_fifo_status() != 0) {

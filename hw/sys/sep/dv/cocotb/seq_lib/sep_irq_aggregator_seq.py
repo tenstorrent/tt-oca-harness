@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""CSRNG/EDN interrupt-injection driver for the IP->aggregator (E10) test.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""CSRNG/EDN interrupt-injection driver for the IP->aggregator test.
 
 Drives each IP's INTR_ENABLE/INTR_TEST/INTR_STATE over the SEP AXI agent to
 inject a real interrupt via the standard OpenTitan INTR_TEST register and W1C-clear
-it, mirroring OCAH sep_irq_ip_to_aggregator_test_seq. The aggregated
+it, mirroring reference sep_irq_ip_to_aggregator_test_seq. The aggregated
 sep_internal_interrupts bit is observed by the test through the tb_top
-sep_internal_interrupts_probe_o mirror (the OSS analog of OCAH's sep_irq_probe_if).
+sep_internal_interrupts_probe_o mirror (the OSS analog of the reference suite's sep_irq_probe_if).
 
 OpenTitan interrupt-register layout (per IP base):
   INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
@@ -43,7 +44,7 @@ class IrqSrc:
     agg_idx: int
 
 
-# OCAH sep_irq_ip_to_aggregator_test_seq sources -> sep.sv aggregator bits.
+# reference sep_irq_ip_to_aggregator_test_seq sources -> sep.sv aggregator bits.
 IRQ_TABLE = (
     IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, 23),
     IrqSrc("csrng_entropy_req",  CSRNG_BASE, 1, 24),

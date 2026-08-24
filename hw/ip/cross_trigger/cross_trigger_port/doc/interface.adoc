@@ -31,4 +31,4 @@
 
 The CTP depends on the following components:
 
-* `hw/common/prim` - Primitive cells (synchronizers, pulse stretcher)
+* `hw/common/och_prim` - Primitive cells (synchronizers, pulse stretcher)

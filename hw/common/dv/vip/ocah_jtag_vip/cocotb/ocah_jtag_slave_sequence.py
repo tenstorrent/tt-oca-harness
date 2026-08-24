@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence-level API over the slave driver with named checker evidence.
 
 The slave side is reactive — the external host supplies all TCK/TMS/TDI

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ic_reset_smc_multi_domain_test - P2-I5a IC_RESET SMC multi-domain.
 
 Exercises SMC fuse/warm/cool/cold IC_RESET ports one at a time and checks

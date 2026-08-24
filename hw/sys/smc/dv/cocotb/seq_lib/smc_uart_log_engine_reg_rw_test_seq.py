@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART/log-engine register RW depth test over real SEP_IN AXI."""
 
 from __future__ import annotations

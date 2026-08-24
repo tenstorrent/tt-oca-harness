@@ -21,7 +21,7 @@ FW_INCLUDES := -I$(FW_DIR)/include
 FW_REG_SYS := sep
 
 # Test discovery is unified in compile.mk; declare only the SEP deltas.
-FW_TEST_EXCLUDE_NAMES := bl1_pass_test
+FW_TEST_EXCLUDE_NAMES := bl1_pass_test sep_smu_spi_mux
 # drivers/ carries runtime headers (sep_mailbox.h etc.) that tests include directly.
 # The boot ROM's include/ holds the rom_*/boot_* headers that the sep_smc_* and
 # sep_smu_* tests include directly. The register headers are not here:

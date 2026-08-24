@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // ROM mailbox (STDOUT) interface for Phase 1 bring-up.
 //
 // This is intentionally tiny:
@@ -10,7 +13,7 @@
 
 #include "rom_mmio.h"
 
-// SEP STDOUT mailbox (same as dv/sep/tb/tb_uvm/sv/sep_wrap_uvm_top.sv monitor).
+// SEP firmware status mailbox observed by the DV harness.
 enum {
     ROM_MBX_ADDR = 0x80000000u,
 };

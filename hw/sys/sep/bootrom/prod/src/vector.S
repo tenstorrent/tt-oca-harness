@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* OCH SEP Boot ROM
  *
  * Code executes from Boot ROM (0x10040000) via the IFU AXI demux.
@@ -14,7 +17,7 @@
 
 #include "sep_addr.h"
 
-/* SEP STDOUT mailbox (same as dv/sep/tb/tb_uvm/sv/sep_wrap_uvm_top.sv monitor) */
+/* SEP firmware status mailbox observed by the DV harness. */
 .equ SEP_STDOUT_MBX, 0x80000000
 .equ SEP_FW_MAGIC0,  0xA5A55A5A
 .equ SEP_FW_PASS,    0xCAFEBABE

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Plain configuration object for the OCAH JTAG VIP components.
 
 One `OcahJtagMasterConfig` describes a TAP connection (naming, IR width, timing,

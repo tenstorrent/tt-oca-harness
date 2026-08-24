@@ -170,7 +170,8 @@ __attribute__((noreturn)) void rom_handover_finish(uint32_t fw_size_bytes) {
     rom_handover_lock_sensitive();
 
     /* --- Step 3: write-lock SRAM regions covering the firmware image ---
-     * Compute number of 512-byte regions occupied by the image (round up).
+     * Compute number of SRAM_LOCK_REGION_BYTES regions occupied by the image
+     * (round up).
      * The bounds-check in rom_cmd_sram_load_exec guarantees these regions are
      * disjoint from the ROM stack/data, so write-locking them cannot prevent
      * the scramble from erasing ROM private data.

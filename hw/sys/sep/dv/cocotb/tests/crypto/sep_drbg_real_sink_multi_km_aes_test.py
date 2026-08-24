@@ -1,21 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
-"""DRBG real-sink multi-consumer: KM + AES concurrent (OCAH P3.7).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""DRBG real-sink multi-consumer: KM + AES concurrent.
 
-One real DRBG/ESRC/EDN stream feeds TWO real entropy sinks concurrently -- edge E2
-(multi-rand): the KM AXIS endpoint (real KM firmware rom_main pulls the DRBG sampler)
+One real DRBG/ESRC/EDN stream feeds TWO real entropy sinks concurrently:
+the KM AXIS endpoint (real KM firmware rom_main pulls the DRBG sampler)
 and the AES native crypto-EDN leg (ECB-256 reseed+encrypt). KM and AES are driven as a
 TRUE cocotb fork so both contend at the EDN arbiter in the same window. The CHK5 proof
-is BIT-EXACT and genbits-anchored (stronger than OCAH):
+is BIT-EXACT and genbits-anchored (stronger than the reference suite):
 
   * AES (per-sink ROUTING, golden): each AES post-adapter beat == the next word on the
     AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], new tb_top probe).
     The drbg_axis_edn_adapter is round-robin, so this in-order equality holds because
     AES is the ONLY active crypto sink (OTBN/KMAC parked -> never request -> AES is
-    granted every word in order). This is exactly OCAH's AXIS1 routing proof.
-  * Genbits chain (stronger than OCAH): every AXIS1 word AND every KM AXIS word must be
+    granted every word in order). This is exactly the reference suite's AXIS1 routing proof.
+  * Genbits chain (stronger than the reference suite): every AXIS1 word AND every KM AXIS word must be
     a member of the CHK4 CTR_DRBG genbits-golden word multiset (report() tally, with
     removal) -- proving the one verified DRBG stream PARTITIONS into the two sinks.
-    OCAH treats the AXIS1 tap as its own golden; here it is anchored back to the
+    the reference suite treats the AXIS1 tap as its own golden; here it is anchored back to the
     bit-exact CTR_DRBG genbits.
   * KM (membership): rom_main's pull ORDER is firmware-driven (not order-predictable),
     so KM is scored bit-exact MEMBERSHIP (each KM word is a genbits-golden word) rather
@@ -40,12 +41,12 @@ Checkers:
               partition proof; a non-member word fails the run.
   CHK-CONCUR  KM AXIS beats AND AES crypto-EDN beats BOTH advance during the concurrent
               fork (per-sink beat delta > 0) -- both sinks consumed within the fork
-              window (the OSS analog of OCAH's fork count_good/ack-advance check;
-              like OCAH it evidences overlap, not strict same-cycle arbiter contention).
+              window (the OSS analog of the reference suite's fork count_good/ack-advance check;
+              like the reference suite it evidences overlap, not strict same-cycle arbiter contention).
   CSRNG/EDN error/recoverable-alert regs stay zero; AES STATUS no alert.
 
-Remaining delta vs OCAH (documented): per-sink bit-exact for >1 CONCURRENT crypto sink
-(e.g. AES+KMAC at once) would need OCAH's full per-endpoint arbiter-assignment trace
+Remaining delta vs the reference suite (documented): per-sink bit-exact for >1 CONCURRENT crypto sink
+(e.g. AES+KMAC at once) would need the reference suite's full per-endpoint arbiter-assignment trace
 (the round-robin reorder); the scoreboard rejects >1 golden crypto sink. KM bit-exact
 ORDER needs controlled KM firmware (rom_main is firmware-driven); KM here is bit-exact
 membership. Neither is required by this test's KM+AES scope.
@@ -97,7 +98,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
 
     def _km_beats(self) -> int:
         """Live count of KM AXIS beats (membership stash grows per beat)."""
-        return len(self.drbg_sb._km_words)
+        return self.drbg_sb.km_beats()
 
     def _aes_beats(self) -> int:
         """Live count of AES crypto-EDN beats (CHK5_aes golden compare, per beat)."""
@@ -123,7 +124,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # order is firmware-driven so not order-scored) and AES = "golden" (bit-exact
         # per-sink ROUTING: each AES post-adapter beat == the next AXIS1 pre-adapter
         # word -- the single-active-crypto-sink in-order case). Both are chained to the
-        # CHK4 genbits golden in report(). STRONGER than observe, and than OCAH (which
+        # CHK4 genbits golden in report(). STRONGER than observe, and than the reference suite (which
         # treats the AXIS1 tap as its own golden; here AXIS1 is anchored to genbits).
         await self.bring_up_entropy(
             strict=True, score_km="membership", score_sinks={"aes": "golden"})
@@ -176,8 +177,8 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         self.logger.info("CHK-AESKAT block-0 ciphertext == AES-256-ECB golden")
 
         # Both sinks consumed entropy DURING the concurrent fork (not just one) --
-        # evidences overlap (the OSS analog of OCAH's fork count_good/ack-advance
-        # check); like OCAH it shows both advanced in-window, not strict same-cycle
+        # evidences overlap (the OSS analog of the reference suite's fork count_good/ack-advance
+        # check); like the reference suite it shows both advanced in-window, not strict same-cycle
         # arbiter contention.
         km_after = self._km_beats()
         aes_after = self._aes_beats()
@@ -199,7 +200,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # Strict report runs the genbits-chain membership tally + per-sink checks and
         # raises on: CHK1..CHK4 mismatch, CHK5_aes routing mismatch / AXIS1 underrun,
         # any AXIS1 or KM word not in the genbits golden, or a starved sink.
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info(
             "CHK1..CHK4 bit-exact + CHK5_aes per-sink ROUTING (AES==AXIS1) + CHK5_km/"
-            "CHK5_axis1 genbits-membership + entropy alerts zero (bit-exact, > OCAH)")
+            "CHK5_axis1 genbits-membership + entropy alerts zero (bit-exact, > reference suite)")

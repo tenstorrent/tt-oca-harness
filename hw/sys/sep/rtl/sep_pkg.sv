@@ -217,7 +217,7 @@ package sep_pkg;
     parameter int unsigned CPU_SLV_ID_WIDTH  = SEP_32_64_6_12_ID_WIDTH; // 6-bit
 
     // Misc parameters
-    localparam int unsigned LC_STATE_BIT_POSITION = 64;
+    localparam int unsigned LC_STATE_BIT_POSITION = 96;
     localparam int unsigned LC_STATE_BIT_WIDTH = 4;
 
     //////////////////////////////////
@@ -714,13 +714,6 @@ package sep_pkg;
         logic aes_jtag_rst_n_ovrd;
         logic otbn_jtag_rst_n_ovrd;
         logic km_jtag_rst_n_ovrd;
-        logic spi_xspi_jtag_rst_n_ovrd;
-        logic spi_ctrl_reg_jtag_rst_n_ovrd;
-        logic spi_phy_reg_jtag_rst_n_ovrd;
-        logic spi_axi_jtag_rst_n_ovrd;
-        logic spi_phy_jtag_rst_n_ovrd;
-        logic spi_reg_jtag_rst_n_ovrd;
-        logic spi_xspi_reg_jtag_rst_n_ovrd;
     } jtag_sep_reset_ctrl_ovrd_t;
 
     typedef struct packed {
@@ -730,13 +723,6 @@ package sep_pkg;
         logic aes_jtag_rst_n_val;
         logic otbn_jtag_rst_n_val;
         logic km_jtag_rst_n_val;
-        logic spi_xspi_jtag_rst_n_val;
-        logic spi_ctrl_reg_jtag_rst_n_val;
-        logic spi_phy_reg_jtag_rst_n_val;
-        logic spi_axi_jtag_rst_n_val;
-        logic spi_phy_jtag_rst_n_val;
-        logic spi_reg_jtag_rst_n_val;
-        logic spi_xspi_reg_jtag_rst_n_val;
     } jtag_sep_reset_ctrl_val_t;
 
     typedef struct packed {

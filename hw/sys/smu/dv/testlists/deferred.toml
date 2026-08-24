@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Deferred / universe catalog — NOT included by testlists/all.toml.
@@ -16,11 +19,7 @@ schema_version = 1
 # blocker or plan status (`BLOCKER:` / `PLANNED:`), so blocked tests retain
 # their blocker details next to the test names.
 
-# ----- SEP=1 real SEP under SMU (mirror oca_smu yaml gates) -----
-# Commercial reference: oca_smu/dv/smu/tb/tb_uvm/yaml/testlist_smu_chiplet.yaml
-#   SMU_Dev_with_SEP_Regression          = probe / connectivity (no CPU exec)
-#   Manual_SMU_Blocked_SEP_Exec_Regression = needs SEP fetch/retire
-#
+# ----- SEP=1 real SEP under SMU -----
 # BLOCKER (#3582 residual, OSS wrapper 2026-07-23): at SEP CPU reset release
 # mpc_reset_run_req=1 / cla=0 / clocks run, but IFU never asserts
 # sep_boot_rom_req (boot_rom_reqs=0, o_cpu_halt_status=X, traces=0). Same
@@ -549,8 +548,7 @@ name = "smu_jtag_chain_enhanced_test"
 module = "smu_jtag_chain_enhanced_test"
 tags = ["deferred", "dtp", "depth"]
 
-# ----- Legacy os_oca/dv/smu/tb adds (2026-07 mid) — catalog only -----
-# Source: os_oca commits #3966/#3971/#3973/#3926/#3909 + P3 expand e84dfe55d.
+# ----- Additional deferred compatibility entries -----
 # Bodies stay OUT of enrolled sep0_all: pad/SVT TB, SEP=1 dual-CPU, Force-compat,
 # or already superseded by OSS deepeners below. Do NOT report as PASS.
 #

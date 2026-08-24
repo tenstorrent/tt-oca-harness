@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """IEEE 1149.1 TAP controller reference model for OCAH JTAG checking.
 
 Rule provenance: all TAP contracts are implemented from the public IEEE Std

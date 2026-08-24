@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS P1 coverage-gap: UART_LOG_ENGINE 1/2/3 CSR sweep."""
 
 from __future__ import annotations

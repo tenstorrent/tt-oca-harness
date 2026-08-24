@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Launch entry: selected by `--dut smu_wrapper` (registered in
@@ -128,7 +131,6 @@ python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
-  "dv/vip/cocotb",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
@@ -216,7 +218,6 @@ description = "Fallback: OSS wrapper no-SEP profile"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
 defines = [
   "SYNTHESIS",
-  "SIM",
   "SMU_NO_SEP",
   "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",
@@ -235,7 +236,6 @@ description = "OSS smu_wrapper with NoSepCfg and SEP=0"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
 defines = [
   "SYNTHESIS",
-  "SIM",
   "SMU_NO_SEP",
   "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",
@@ -254,7 +254,6 @@ description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl"
 defines = [
   "SYNTHESIS",
-  "SIM",
   "SMU_SEP_RTL",
   "TEC_RV_ICG=clockhdr",
   "RV_BUILD_AXI4=1",

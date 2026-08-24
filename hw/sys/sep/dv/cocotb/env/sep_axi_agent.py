@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP AXI UVM agent.
 
-Owns the AXI master mechanics via ``ocah_axi_vip.OcahAxiMasterSequence``: the driver
-translates ``SepAxiItem`` transactions into AXI reads/writes against a SEP
-master bus, and broadcasts completed transactions (with results) on an analysis
-port for the scoreboard. The sequence item lives here too so the whole AXI
-mechanism is one self-contained unit.
+PyUVM adapter over ``ocah_axi_vip.OcahAxiMasterSequence``. The driver
+translates ``SepAxiItem`` into the VIP ``*_result`` API, then broadcasts
+the completed item on an analysis port for the SEP scoreboard. Protocol
+timeout, response codes, and result packaging live in the common VIP.
 
 The agent is parameterized by bus ``prefix`` so the same machinery drives both
 SEP master interfaces brought out in tb_top:
@@ -22,7 +22,6 @@ from __future__ import annotations
 from enum import Enum
 
 import cocotb
-from cocotb.triggers import with_timeout
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -33,11 +32,6 @@ from pyuvm import (
 )
 
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
-
-try:  # cocotb < 2.0
-    from cocotb.result import SimTimeoutError
-except ImportError:  # cocotb >= 2.0
-    from cocotb.triggers import SimTimeoutError
 
 
 class SepAxiOp(Enum):
@@ -115,6 +109,8 @@ class SepAxiDriver(uvm_driver):
         # from time 0 (the CPU-LSU splice drives the bus from t=0; the external
         # m_axi master must also idle from t=0 so the inbound port never X-props).
         # Only the transaction loop waits for reset release.
+        # data_width=64 matches s_axi / m_axi. raise_on_error=False: the SEP
+        # scoreboard owns OKAY vs expect_error; the VIP must not raise first.
         self.axi = OcahAxiMasterAgent.from_prefix(
             dut,
             self.prefix,
@@ -122,6 +118,9 @@ class SepAxiDriver(uvm_driver):
             dut.rst_ni,
             name=f"sep_{self.prefix}",
             reset_active_level=False,
+            data_width=64,
+            timeout_ns=self.cfg.axi_timeout_ns,
+            raise_on_error=False,
         ).sequence
         await self.cfg.reset_done.wait()
         self.logger.info("OcahAxiMasterSequence ready on %s bus", self.prefix)
@@ -133,29 +132,37 @@ class SepAxiDriver(uvm_driver):
             self.seq_item_port.item_done()
 
     async def _drive(self, item: SepAxiItem) -> None:
+        # Byte-length helpers, not write_result/read_result: those encode one
+        # beat from data_width/size, which would widen a length=4 access on
+        # this 64-bit bus. SepAxiItem.length is the transfer size.
+        common = {
+            "size": item.size,
+            "burst": None,
+            "id": 0,
+            "prot": None,
+            "check_response": False,
+            "timeout_ns": self.cfg.axi_timeout_ns,
+            "allow_timeout": item.allow_timeout,
+        }
         if item.op is SepAxiOp.READ:
-            event = self.axi.init_read(address=item.addr, length=item.length, size=item.size)
-            resp = await self._timed_event(event, item, "read")
-            if resp is None:                       # allowed timeout (blocked probe)
+            result = await self.axi.read_bytes_result(item.addr, item.length, **common)
+            self._apply_result(item, result, "read")
+            if item.timed_out:
                 return
-            item.rdata = int.from_bytes(resp.data, "little")
-            item.resp_ok = self._resp_ok(resp)
-            item.resp_code = self._resp_code(resp)
+            item.rdata = (
+                int.from_bytes(result.data_bytes, "little") if result.data_bytes else result.data
+            )
             self.logger.info(
                 "AXI read  0x%08x -> 0x%x (ok=%s resp=%d)",
                 item.addr, item.rdata, item.resp_ok, item.resp_code,
             )
         elif item.op is SepAxiOp.WRITE:
-            event = self.axi.init_write(
-                address=item.addr,
-                data=item.wdata.to_bytes(item.length, "little"),
-                size=item.size,
+            result = await self.axi.write_bytes_result(
+                item.addr, item.wdata.to_bytes(item.length, "little"), **common
             )
-            resp = await self._timed_event(event, item, "write")
-            if resp is None:                       # allowed timeout (blocked probe)
+            self._apply_result(item, result, "write")
+            if item.timed_out:
                 return
-            item.resp_ok = self._resp_ok(resp)
-            item.resp_code = self._resp_code(resp)
             self.logger.info(
                 "AXI write 0x%08x <- 0x%x (ok=%s resp=%d)",
                 item.addr, item.wdata, item.resp_ok, item.resp_code,
@@ -163,63 +170,15 @@ class SepAxiDriver(uvm_driver):
         else:
             raise ValueError(f"unknown SEP AXI op {item.op}")
 
-    async def _timed_event(self, event, item: SepAxiItem, what: str):
-        """Await an AXI op with a local timeout so a wedged bus path fails fast.
-
-        Returns the completed event data, or ``None`` if the op timed out and the
-        item explicitly opted into ``allow_timeout`` for a sequence-specific
-        non-completing-access check. Otherwise a timeout is a test-fatal wedge.
-        """
-        try:
-            await with_timeout(event.wait(), self.cfg.axi_timeout_ns, "ns")
-            return event.data
-        except SimTimeoutError as exc:
-            if item.allow_timeout:
-                item.timed_out = True
-                item.resp_ok = False
-                self.logger.info(
-                    "AXI %s @ 0x%08x timed out (allowed by this sequence)",
-                    what, item.addr,
-                )
-                return None
-            raise AssertionError(
-                f"AXI {what} @ 0x{item.addr:08x} did not complete within "
-                f"{self.cfg.axi_timeout_ns} ns on the {self.prefix} bus - likely wedged"
-            ) from exc
-
-    @staticmethod
-    def _resp_ok(resp) -> bool:
-        """True only if every AXI response beat is OKAY/EXOKAY (resp code <= 1).
-
-        Fails closed: a missing or unparsable response counts as NOT ok, so an
-        unexpected cocotbext-axi response shape surfaces as a scoreboard error
-        instead of silently passing.
-        """
-        code = getattr(resp, "resp", None)
-        if code is None:
-            return False
-        try:
-            codes = code if isinstance(code, (list, tuple)) else [code]
-            return len(codes) > 0 and all(int(c) <= 1 for c in codes)
-        except Exception:
-            return False
-
-    @staticmethod
-    def _resp_code(resp) -> int:
-        """Worst (max) AXI response code across all beats, or -1 if unreadable.
-
-        OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3. A blocked external access can then
-        be required to return a SPECIFIC error (DECERR) rather than merely
-        not-OKAY, so the block check fails on a wedge or an unexpected SLVERR.
-        """
-        code = getattr(resp, "resp", None)
-        if code is None:
-            return -1
-        try:
-            codes = code if isinstance(code, (list, tuple)) else [code]
-            return max(int(c) for c in codes) if codes else -1
-        except Exception:
-            return -1
+    def _apply_result(self, item: SepAxiItem, result, what: str) -> None:
+        item.timed_out = result.timed_out
+        item.resp_ok = result.ok
+        item.resp_code = result.resp
+        if result.timed_out:
+            self.logger.info(
+                "AXI %s @ 0x%08x timed out (allowed by this sequence)",
+                what, item.addr,
+            )
 
 
 class SepAxiAgent(uvm_agent):

@@ -80,6 +80,9 @@ done
 for f in "$SRC"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/"
 done
+if [ "${OCAH_DOC_PRODUCT_INCLUDE_REVISION:-1}" != "1" ]; then
+  rm -f "$MOD/ROOT/pages/revision.adoc"
+fi
 mkdir -p "$MOD/ROOT/pages/meta"
 for f in "$META"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/meta/"
@@ -120,6 +123,26 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/ "$ROOT"/hw/common/axi/*/; do
   stage_gen_adoc "$ipdir/dv/models/regs/gen/adoc" "$MOD/ip/partials/$ip/dv/models/regs/gen/adoc"
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
+
+# --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
+#     collateral is generated into the lowRISC overlay rather than hw/ip, because
+#     they are instantiated through wrappers (e.g. the DRBG wraps CSRNG and EDN).
+#     Stage each under the ip module namespace so its generated maps include like
+#     any other IP. Overlay names do not collide with hw/ip. ---
+for otdir in "$ROOT"/vendor/lowRISC/opentitan/overlay/regs/*/; do
+  [ -d "$otdir" ] || continue
+  ip="$(basename "$otdir")"
+  stage_gen_adoc "$otdir/regs/gen/adoc" "$MOD/ip/partials/$ip/regs/gen/adoc"
+  stage_gen_html "$otdir/regs/gen/html" "$MOD/ip/partials/$ip/regs/gen/html"
+done
+
+# --- pulp-platform overlay: the iDMA frontend register block (dma_ctrl) is
+#     generated into the pulp overlay's flat rdl/gen tree rather than hw/ip,
+#     because it is instantiated through the SMC DMA wrapper. The overlay vends a
+#     single block, so stage its flat gen under the block-named ip partial
+#     namespace (ip:partial$dma_ctrl) like the OpenTitan overlay above. ---
+stage_gen_adoc "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/adoc" "$MOD/ip/partials/dma_ctrl/regs/gen/adoc"
+stage_gen_html "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/html" "$MOD/ip/partials/dma_ctrl/regs/gen/html"
 
 # --- images: aggregate hw doc images into doc/assets (PDF) and module images
 #     (HTML). Flattened by basename so references resolve regardless of source. ---

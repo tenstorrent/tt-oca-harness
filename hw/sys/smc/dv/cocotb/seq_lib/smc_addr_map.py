@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Load SMC / DMA CSR addresses from generated PeakRDL C headers (authoritative map).
 
 Mirrors ``smu_addr_map.py``: symbols come from

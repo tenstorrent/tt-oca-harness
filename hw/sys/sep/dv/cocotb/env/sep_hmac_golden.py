@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """HMAC-SHA256 golden for the KM->HMAC sideload KAT.
 
 Independent reference for the keyed-MAC the OpenTitan HMAC engine produces from a
 KM-sideloaded key. Uses the Python standard library (`hmac` + `hashlib`) -- this
 is stdlib, not a third-party crypto dependency, so the env stays self-contained
-(AGENTS.md §2). The construction is validated at import against RFC 4231 Test
+The construction is validated at import against RFC 4231 Test
 Case 1, so a transcription error fails loudly rather than silently agreeing with
-a broken DUT (AGENTS.md §7).
+a broken DUT.
 
-Register byte/word/endian convention (the structural RTL contract the OCAH
+Register byte/word/endian convention (the structural RTL contract the reference suite
 sep_km_hmac_sideload_kat_test_seq pins as key_word_rev=1, key_be=1, msg_be=0):
   * KEY: the hmac_wrapper packs KEY_SHARE[i] into key[i*32+:32], but hmac_core
     consumes secret_key_i[1023:768] for a 256-bit key, so the effective key WORD

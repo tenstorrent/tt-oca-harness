@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Real SEP RTL boot-readiness smoke under the OSS SMU wrapper."""
 
 from __future__ import annotations

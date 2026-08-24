@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM boot over the OpenTitan SPI host, SECURE_DMA drain (PyUVM).
 
 Sibling of ``sep_rom_non_secure_boot_test``. Same production Boot ROM, same BL1
@@ -86,6 +87,10 @@ _PROGRESS_EVERY = 50_000
 _SPI_PATH_MARKER = "BOOT_SPI"
 _SMC_PATH_MARKER = "WAIT_SMC_MANIFEST"
 _MANIFEST_OK_MARKER = "MANIFEST_OK"
+# Flash-relative manifest offset. This is the transport evidence that is NOT entailed
+# by BOOT_SPI: the SMC-SRAM branch prints an absolute 0x4006xxxx address, so only the
+# OT-SPI branch can print 0x00001000. See the note on forbidden_markers below.
+_MANIFEST_SRC_MARKER = "MANIFEST_SRC=0x00001000"
 
 
 @pyuvm.test()
@@ -105,7 +110,13 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
     # Console lines that must appear / must not appear. The subclass appends the
     # RSA markers; keeping them as class data is what lets the two variants share
     # one scenario without a copy.
-    required_markers = (_SPI_PATH_MARKER, _MANIFEST_OK_MARKER)
+    required_markers = (_SPI_PATH_MARKER, _MANIFEST_SRC_MARKER, _MANIFEST_OK_MARKER)
+    # Kept as a cheap guard, but it is NOT independent evidence: BOOT_SPI and
+    # WAIT_SMC_MANIFEST sit on complementary arms of the same predicate
+    # (boot_from_spi(straps)) within one boot, and there is no fallback edge -- if every
+    # SPI manifest slot fails the ROM errors out rather than retrying via SMC. So given
+    # the required BOOT_SPI marker passed, this forbid cannot fail. The non-entailed
+    # transport evidence is _MANIFEST_SRC_MARKER above.
     forbidden_markers = (_SMC_PATH_MARKER,)
 
     def build_phase(self) -> None:
@@ -158,12 +169,24 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         # the same BL1 mailbox magic -- so without these the test would still pass
         # with the strap unset and prove nothing about SPI. The signed subclass
         # extends these tuples to also demand the RSA markers.
+        # Guard the guards. An empty marker tuple or a dark console would otherwise
+        # make every check below vacuously true, and neither loop logged anything on
+        # success, so a 0-marker run was indistinguishable from a 5-marker one.
+        assert self.required_markers, (
+            "required_markers is empty -- the marker checks below would pass vacuously"
+        )
+        assert console, (
+            "ROM console is empty: the virt-console decoder produced no lines, so no "
+            "marker check below means anything"
+        )
         for marker in self.required_markers:
             assert any(marker in line for line in console), (
                 f"ROM never printed {marker}. Console: {console}"
             )
+            self.logger.info("CHK-ROM-PATH: required marker observed: %s", marker)
         for marker in self.forbidden_markers:
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which means it did not take the intended "
                 f"path. Console: {console}"
             )
+

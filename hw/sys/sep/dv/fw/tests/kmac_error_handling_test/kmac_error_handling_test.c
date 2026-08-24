@@ -2,11 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_007 (P0) - Error Detection Test
+ * Error Detection Test
  *
  * Tests:
- *   1. ErrSwPushedMsgFifo: Write MSG_FIFO without START
- *   2. ErrSwCmdSequence: Issue PROCESS without START
+ * 1. ErrSwPushedMsgFifo: Write MSG_FIFO without START
+ * 2. ErrSwCmdSequence: Issue PROCESS without START
  * Verifies packed ERR_CODE [31:24] and clears via CMD.err_processed.
  */
 
@@ -136,7 +136,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_007: Error Handling Test\n");
+    printf("  Error Handling Test\n");
     printf("========================================\n");
 
     if (test_err_sw_pushed_msg_fifo() != 0) test_errors++;

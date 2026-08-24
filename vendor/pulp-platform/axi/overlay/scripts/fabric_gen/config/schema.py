@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Pydantic models for fabric generator YAML schema validation."""
 from enum import Enum
 from typing import Dict, List, Optional

@@ -7,8 +7,7 @@
 === Overview
 
 This document defines functional coverage intent for the OCAH open-source DTP
-testbench. It mirrors the coverage categories from the working reference model in
-`dv/dtp/doc/DTP_FCOV.md`, adapted for the public PyUVM/Verilator flow.
+testbench and its PyUVM/Verilator flow.
 
 Verilator does not compile SystemVerilog `covergroup`, `coverpoint`, or `cross`.
 The OCAH open-source path should therefore use Python-side coverage/observation counters in
@@ -18,9 +17,8 @@ and full code coverage are collected with commercial simulators.
 [cols=",",options="header",]
 |===
 |Field |Value
-|Reference SPEC |`DTP_SPEC.md`
+|Reference SPEC |`DTP_SPEC.adoc`
 |Reference VPLAN |`DTP_VPLAN.adoc`
-|Reference full FCOV |`dv/dtp/doc/DTP_FCOV.md`
 |Open-source framework |PyUVM on cocotb
 |Open-source simulator |Verilator
 |===
@@ -51,11 +49,11 @@ and full code coverage are collected with commercial simulators.
 |TMP and IC_RESET TDRs |`tmp_ic_reset_cg` |Python-side checks in `debug_tdr`
 |Debug control |`debug_control_cg` |Python-side checks in `debug_tdr`
 |Capability TDRs |`caps_tdr_cg` |Python-side checks in `debug_tdr`
-|STAP / 3DCR |`stap_3dcr_cg` |Scan-routing and lifecycle bins
+|STAP / 3DCR |`stap_3dcr_cg` |Scan-routing and debug-disable bins
 |iJTAG SIBs |`ijtag_sib_cg` |IEEE 1687 SIB selection bins
 |Cross-trigger CTP |`ctp_cg` |Requires functional CTP CSR behavior in the selected simulator
 |Cross-trigger CTM |`ctm_cg` |Requires functional CTM CSR behavior in the selected simulator
-|Lifecycle security |`lifecycle_gating_cg` |Directed lifecycle feature-control bins
+|Debug-disable gating |`dbg_disable_cg` |Per-field 22-cell allowed/blocked contract, collected by the two `dbg_disable` matrix tests
 |===
 
 === Coverage Definitions
@@ -135,7 +133,7 @@ SMC fabric READ and WRITE scenarios sample SUCCESS response status.
 ==== `jtag2axi_robustness_cg`
 
 *Description*: Covers series operations, backpressure, and CDC clear/abort
-paths from the working reference plan.
+paths.
 
 [cols=",",options="header",]
 |===
@@ -215,7 +213,7 @@ These bins are sampled through `dtp_dbg_jtag_caps_test` and the three
 |STAP type |I/O, SMC, SEP, extra
 |3DCR fields |select, TMS hold, config hold
 |Chain behavior |SIB open, SIB closed, selected STAP in scan path
-|Security state |enabled, gated
+|Security state |enabled, gated by the STAP's `dbg_disable` field
 |===
 
 ==== `ijtag_sib_cg`
@@ -227,7 +225,7 @@ These bins are sampled through `dtp_dbg_jtag_caps_test` and the three
 |Coverpoint |Bins
 |SIB pattern |All DFD/DFT-secure/DFT-nonsecure on/off combinations
 |Instrument access |DFD, DFT secure, DFT non-secure
-|Security gating |enabled, gated by each relevant `feat_ctrl_i` bit
+|Security gating |enabled, gated by the SIB's `dbg_disable` field (`dft_secure`, `dft_nonsecure`, `dfd`)
 |===
 
 ==== `ctp_cg`
@@ -257,20 +255,47 @@ These bins are sampled through `dtp_dbg_jtag_caps_test` and the three
 |Destination index |all configured destination ports (26 default)
 |===
 
-==== `lifecycle_gating_cg`
+==== `dbg_disable_cg`
 
-*Description*: Covers enable-polarity lifecycle feature-control gating (`1 = enabled`, `0 = gated`).
+*Description*: Covers the per-field debug-disable gating contract for the
+eleven pre-resolved active-high disables of
+`sep_lifecycle_ctrl_pkg::dbg_disable_t` (`1 = interface disabled`). Deriving
+these fields from lifecycle policy is verified at the SEP level; DTP coverage
+closes on each field gating exactly its interface.
+
+The sample tuple is `(field, disable_value, observed_outcome)`. For each of
+the eleven fields, both legal cells are required:
+
+* `(field, 0, allowed)`
+* `(field, 1, blocked)`
+
+This produces 22 required cells. The contradictory tuples —
+`(field, 0, blocked)` and `(field, 1, allowed)` — are checker failures, never
+coverage bins.
 
 [cols=",",options="header",]
 |===
 |Coverpoint |Bins
-|`sip_debug` |enabled=1, gated=0
-|`soc_debug` |enabled=1, gated=0
-|`sep_debug` |enabled=1, gated=0
-|`ap_debug` |enabled=1, gated=0
-|`fuse_test` |enabled=1, gated=0
-|Feature under gate |STAP, iJTAG, SMC JTAG2AXI, SMC OTP JTAG2AXI, SEP OTP JTAG2AXI
+|Field |`stap_io`, `stap_smc`, `stap_sep`, `stap_extra`, `stap_host`, `dft_secure`, `dft_nonsecure`, `dfd`, `smc_jtag2axi`, `smc_otp_jtag2axi`, `sep_otp_jtag2axi`
+|Field outcome |`(field, 0, allowed)` and `(field, 1, blocked)` per field (22 cells)
+|Mask class |all clear, one-hot, multi-hot, all disabled
+|Unrelated-resource isolation |an enabled resource proven usable while another field is asserted
+|Release without replay |no queued operation completes after a disable clears
+|Recovery |a sanctioned operation succeeds after release
 |===
+
+Sampling rules:
+
+* A cell is recorded only after the associated functional checker passes;
+  coverage is never auto-hit from a test name or from writing a disable
+  input.
+* Every coverage log line records the field, the full named disable mask,
+  the attempted operation, and the observed result.
+* Each matrix test enforces its own cells before completing: the scan
+  matrix requires all 16 cells of its eight fields and the JTAG2AXI matrix
+  the 6 cells of its three bridge fields, so a passing `dbg_disable` group
+  run covers all 22 required cells. Each matrix also emits a JSON artifact
+  under its `coverage/` directory recording the cells it hit.
 
 === VPLAN to FCOV Traceability
 
@@ -284,8 +309,11 @@ These bins are sampled through `dtp_dbg_jtag_caps_test` and the three
 |JTAG instruction scenarios |`jtag_instruction_cg`, `tap_state_cg`
 |`debug_tdr` group |`tmp_ic_reset_cg`, `debug_control_cg`, `caps_tdr_cg`, `jtag_instruction_cg`
 |JTAG2AXI robustness scenarios |`jtag2axi_robustness_cg`, `jtag2axi_response_cg`
-|STAP / 3DCR scenarios |`stap_3dcr_cg`, `lifecycle_gating_cg`
-|iJTAG scenarios |`ijtag_sib_cg`, `lifecycle_gating_cg`
+|STAP / 3DCR scenarios |`stap_3dcr_cg`, `dbg_disable_cg`
+|iJTAG scenarios |`ijtag_sib_cg`, `dbg_disable_cg`
+|`dtp_scan_dbg_disable_matrix_test` |`dbg_disable_cg` scan-side cells (8 fields)
+|`dtp_jtag2axi_dbg_disable_matrix_test` |`dbg_disable_cg` bridge cells (3 fields)
+|`dbg_disable` group |Complete 22-cell `dbg_disable_cg` closure
 |CTP / CTM scenarios |`ctp_cg`, `ctm_cg`
 |===
 
@@ -301,8 +329,8 @@ These bins are sampled through `dtp_dbg_jtag_caps_test` and the three
 |===
 
 Python-side sampling should happen at transaction boundaries: completed IR scan,
-completed DR scan, completed JTAG2AXI response, CTP/CTM event, and lifecycle
-configuration change.
+completed DR scan, completed JTAG2AXI response, CTP/CTM event, and
+debug-disable configuration change.
 
 === Exclusions and Limitations
 
@@ -312,16 +340,5 @@ configuration change.
 |SV covergroups in Verilator |Unsupported by the tool
 |CTP/CTM CSR functional bins in Verilator flows that use CSR stubs |Generated CSR behavior is unavailable
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage
-|Legacy non-public VIP internals |Replaced by public VIP or OCAH-local DTP BFMs in the open-source flow
-|===
-
-=== Revision History
-
-[cols=",,,",options="header",]
-|===
-|Version |Date |Author |Description
-|1.0 |2026-06-09 |DV Team |OCAH open-source functional coverage plan aligned with DTP reference coverage and Verilator constraints
-|1.1 |2026-06-14 |DV Team |Annotated iJTAG SIB chains (DFT Secure/Non-Secure/DFD) and the CTM 26-port default per the OCAH design spec
-|1.2 |2026-06-15 |DV Team |Added Basic JTAG instruction/reset Python-side coverage notes and flattened DTP observables
-|1.3 |2026-06-22 |DV Team |Added debug TDR coverage notes for TMP/IC_RESET, DEBUG_CONTROL, and CAPS checks in `debug_tdr`
+|Protocol-specific behavior without shared VIP support |Covered by OCAH-local DTP BFMs
 |===

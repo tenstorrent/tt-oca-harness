@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP UVM base test helpers.
 
 Concrete tests inherit this class for common import setup, environment build,
@@ -111,8 +112,7 @@ class sep_base_test(uvm_test):
         dut.ext_boot_seq_done_i.value = 1
         dut.mpc_reset_run_req.value = 1 if cpu_run else 0
         # eFuse program-fail injection is seeded via the +sep_efuse_prog_fail_seed
-        # plusarg inside the generic efuse model (the old efuse_prog_fail_seed_i port
-        # was retired with the bare-sep responders).
+        # plusarg inside the generic efuse model.
         self._set_if_exists(dut, "i_cpu_run_req_i", 0)
         self._set_if_exists(dut, "tcm_load_i", 0)
         # WDT reset input deasserted by default (sep_cpu_reset_n then follows
@@ -124,6 +124,10 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "rst_vec_i", rst_vec)
         self._set_if_exists(dut, "esrc_noise_ext_i", 0)
         self._set_if_exists(dut, "spi_miso_i", 1)
+        # TEST_EN strap / LC sigint inject default off. Tests that need either
+        # polarity raise the port themselves after bring-up (or before sense).
+        self._set_if_exists(dut, "test_en_strap_i", 0)
+        self._set_if_exists(dut, "lc_sigint_inject_i", 0)
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""
@@ -136,7 +140,15 @@ class sep_base_test(uvm_test):
             )
         from seq_lib.sep_efuse_backdoor_check import check_efuse_shadow_backdoor
 
-        check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image)
+        # The strap the DUT latched, not what the test intended: reading secure_tm_o
+        # keeps the golden's secret-blanking tied to the DUT rather than to a flag the
+        # test could set wrongly.
+        secure_tm = 0
+        probe = getattr(cocotb.top, "secure_tm_o", None)
+        if probe is not None:
+            secure_tm = int(probe.value) & 0x1
+        check_efuse_shadow_backdoor(
+            self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
@@ -207,7 +219,7 @@ class sep_base_test(uvm_test):
         self.logger.info("Bringing up clocks and reset (CPU run, rst_vec=0x%x)", rst_vec)
         dut.rst_ni.value = 0
         self.drive_idle_defaults(dut, cpu_run=True, rst_vec=rst_vec)
-        # Match the old tb wiring for CPU boot: EL2 debug reset followed cold reset.
+        # CPU boot: EL2 debug reset follows cold reset.
         self._set_if_exists(dut, "dbg_rstb_i", 0)
         self.start_clocks(dut)
         await ClockCycles(dut.clk_i, 20)
@@ -283,7 +295,7 @@ class sep_base_test(uvm_test):
             self.logger.info("CPU boot: tcm_load_i pulse complete")
 
         await self.bring_up_cpu_boot(
-            rst_vec, pre_reset_hook=_load_tcm, run_pulse_cycles=run_pulse_cycles
+            rst_vec, pre_reset_hook=_load_tcm, run_pulse_cycles=run_pulse_cycles,
         )
 
         await self.poll_boot(
@@ -418,19 +430,10 @@ class sep_base_test(uvm_test):
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
 
-    # No spi_mux_release_cs() helper on the Python side. The SPI pad mux
-    # (och_sep_spi_mux_ctrl_ot SPI_MUX_CTRL: spi_sel + cs_force_high) is a NONFREE
-    # shim block inside sep_axi_extension, so a pure-open SEP -- what these cocotb
-    # tests build -- has no mux at all: the generated open register export contains
-    # no SPI_MUX symbol, tb_top drives the pads straight off the wrapper's struct
-    # port, and nothing holds chip-select deasserted. There is nothing to release.
-    # The old helper wrote a fixed 0x2000_0000 aperture, which DECERRs here.
-    #
-    # This is deliberately NOT symmetric with the firmware side: fw/drivers/spi_mux.h
-    # keeps a spi_mux_select_ot() that is #ifdef-gated on the mux register existing,
-    # because CPU firmware also runs in overlay builds where the mux IS present and
-    # must be pointed at the OT host (spi_sel=1), not merely CS-released. If these
-    # Python tests ever run against an overlay build, they need that same select.
+    # No spi_mux helper on the Python side. The SPI pad mux sits in a nonfree
+    # wrapper, so a pure-open SEP has no mux: pads come straight off the
+    # wrapper's struct port. Firmware that programs that mux lives with the
+    # wrapper, not in this tree.
 
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).
@@ -458,6 +461,7 @@ class sep_base_test(uvm_test):
                 dut.rst_ni,
                 name="sep_jtag_axil",
                 reset_active_level=False,
+                raise_on_error=False,
             ).sequence
         return self._jtag_axil
 
@@ -467,28 +471,17 @@ class sep_base_test(uvm_test):
 
         resp_code is the AXI response (OKAY=0, SLVERR=2, DECERR=3; -1 if
         unreadable). A non-completing access (wedge) fails the test rather than
-        hanging silently. Uses init_read/init_write so the caller inspects the
-        response code itself (a denied access returns DECERR, not an exception).
+        hanging silently. Uses the common VIP ``*_result`` API with
+        ``check_response=False`` so a denied access returns DECERR instead of
+        raising.
         """
         m = self.jtag_axil_master()
+        kwargs = {"check_response": False, "timeout_ns": timeout_ns}
         if write:
-            event = m.init_write(address=addr, data=wdata.to_bytes(4, "little"))
-        else:
-            event = m.init_read(address=addr, length=4)
-        try:
-            await with_timeout(event.wait(), timeout_ns, "ns")
-        except SimTimeoutError as exc:
-            raise AssertionError(
-                f"JTAG AXI-Lite op @ 0x{addr:08x} did not complete within {timeout_ns} ns"
-            ) from exc
-        resp = event.data
-        code = getattr(resp, "resp", None)
-        try:
-            code = int(code[0] if isinstance(code, (list, tuple)) else code)
-        except Exception:
-            code = -1
-        rdata = 0 if write else int.from_bytes(resp.data, "little")
-        return code, rdata
+            result = await m.write_result(addr, wdata, **kwargs)
+            return result.resp, 0
+        result = await m.read_result(addr, **kwargs)
+        return result.resp, result.data
 
     # --- entropy (ESRC->DRBG->CSRNG->EDN->KM) bring-up observers --------------
     # Shared poll/check helpers for any entropy-consumer test (the SEQUENCES that
@@ -640,7 +633,7 @@ class sep_base_test(uvm_test):
         Shared by every entropy-consumer test: starts the golden-vs-probe
         scoreboard (which drives the deterministic ESRC noise so the ring
         oscillators are alive under Verilator), proves the noise force took, then
-        runs the OCAH bring-up order (configure ESRC generators-off, enable CSRNG,
+        runs the reference suite bring-up order (configure ESRC generators-off, enable CSRNG,
         stage EDN, enable generators, wait for a seed, enable EDN). The caller does
         the consumer-specific steps afterwards (fork the FIFO drain, wait_genbits,
         release/boot its consumer). ``cfg`` defaults to ``SepEntropyCfg()``.
@@ -653,11 +646,13 @@ class sep_base_test(uvm_test):
         bit-exact value compare.
 
         ``score_sinks`` is an optional name->mode map for the crypto EDN sinks
-        (``aes``/``kmac``/``otbn_rnd``/``otbn_urnd``), each ``"observe"`` or
-        ``"disabled"`` (omitted sinks default disabled). A sink set to ``"observe"``
-        requires >=1 real post-adapter EDN beat to that client, proving the SEP EDN
-        crypto leg delivers entropy -- used by tests that release a crypto consumer
-        (e.g. the OTBN KAT releases OTBN, whose secure wipe pulls URND).
+        (``aes``/``kmac``/``otbn_rnd``/``otbn_urnd``) and the entropy-pool sink
+        (``pool``, EDN endpoint [2]). Each is ``"golden"`` (single live client on
+        that mux leg: crypto vs AXIS1, pool vs AXIS2), ``"membership"`` (each
+        word is a CHK4 genbits word), ``"observe"`` (>=1 real beat, no value
+        compare), or omitted (disabled). Park unused crypto clients before
+        calling this when using crypto ``golden``. The pool is a sole client of
+        mux [2], so ``{"pool": "golden"}`` is always legal.
         """
         from env.sep_drbg_scoreboard import SepDrbgScoreboard
         from seq_lib.sep_esrc_bringup_seq import (
@@ -682,6 +677,7 @@ class sep_base_test(uvm_test):
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
             raise AssertionError("ESRC never produced a seed (drbg_seed_valid_o)")
+        self.drbg_sb.enable_chk5()
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
         return self.drbg_sb
 

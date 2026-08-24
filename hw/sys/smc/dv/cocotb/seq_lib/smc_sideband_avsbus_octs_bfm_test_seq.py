@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Deferred: former fake-BFM sequence (file kept so imports do not break catalogs)."""
 
 raise ImportError(

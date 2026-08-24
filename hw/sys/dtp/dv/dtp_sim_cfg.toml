@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Launch entry: selected by `--dut dtp`. Two frameworks share this config and one tb_top:
@@ -43,7 +46,6 @@ python_root = "hw/sys/dtp/dv/cocotb"
 test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
-  "dv/vip/cocotb",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"

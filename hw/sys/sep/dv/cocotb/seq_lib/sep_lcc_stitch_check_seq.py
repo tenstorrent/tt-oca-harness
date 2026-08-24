@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """LCC lc_state-stitch checker sequence for the SEP OSS flow.
 
 After an eFuse image carrying a specific lifecycle state has been sensed, this
@@ -10,7 +11,7 @@ checks each against the golden reference:
     that was sensed (proves the sensed lc_state reached the software map).
   * FEAT_CTRL (64-bit, read as two 32-bit halves) == ``feat_ctrl_expected(...)``
     from the LCC golden model (proves eFuse lc_state -> LCC decode -> feature
-    control, interconnect edge E4/E11).
+    control).
 
 Both checks are exact-value (caught by the scoreboard's value-check / uvm_error),
 so each fails on a broken decode rather than merely "no X".
@@ -22,12 +23,13 @@ import cocotb
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from env.sep_efuse_image import SepEfuseImage, SHADOW_BASE
+from sep_reg_meta import sym
+from env.sep_efuse_image import SepEfuseImage, SHADOW_BASE, LC_WORD_IDX
 from env.sep_lcc_golden import LCC_FEAT_CTRL, feat_ctrl_expected, lc_state_name
 
 # SEP local fabric addresses (sep_local_axi_xbar / sep_addr.h). The LCC
 # register map lives in env.sep_lcc_golden (single source of truth).
-LC_STATE_SHADOW = SHADOW_BASE + 0x8     # 0x1093_0008, eFuse shadow word 2
+LC_STATE_SHADOW = sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR")
 
 
 class sep_lcc_stitch_check_seq(uvm_sequence):
@@ -37,14 +39,17 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         *,
         secure_tm: int = 0,
         sec_dis: int = 0,
+        sigint_err: int = 0,
         name: str = "sep_lcc_stitch_check_seq",
     ) -> None:
         super().__init__(name)
         self.image = image
         self.secure_tm = secure_tm
         self.sec_dis = sec_dis
+        self.sigint_err = sigint_err
         # Computed in body() and exposed for the test's transition checks/logging.
         self.observed_lc_raw: int | None = None
+        self.observed_feat: int | None = None
 
     async def _read_expect(self, addr: int, expected: int, label: str) -> int:
         item = SepAxiItem(f"rd_{label}_0x{addr:08x}")
@@ -58,26 +63,38 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
 
     async def body(self) -> None:
         lc_raw = self.image.lc_raw()
-        self.observed_lc_raw = lc_raw
         sip_dis = self.image.field_int("SIP_DIS")
         sys_dis = self.image.field_int("SYS_DIS")
         feat = feat_ctrl_expected(
             lc_raw, sip_dis, sys_dis,
             secure_tm=self.secure_tm, sec_dis=self.sec_dis,
+            sigint_err=self.sigint_err,
         )
 
         # (1) sensed lc_state reached the software-visible shadow map.
-        await self._read_expect(
-            LC_STATE_SHADOW, self.image.shadow_word(2), "lc_state_shadow"
+        shadow_rdata = await self._read_expect(
+            LC_STATE_SHADOW, self.image.shadow_word(LC_WORD_IDX), "lc_state_shadow"
         )
+        # Publish the code the DUT actually returned, not the one the image was
+        # built with. The test's transition check consumes this, so that check is
+        # driven by DUT data; sourcing it from the image would make it a compare
+        # between two test-side constants and it could never fail.
+        self.observed_lc_raw = shadow_rdata & 0xF
 
         # (2) LCC decoded that lc_state into the expected feature-control vector.
-        await self._read_expect(LCC_FEAT_CTRL, feat & 0xFFFF_FFFF, "feat_ctrl_lo")
-        await self._read_expect(
+        feat_lo = await self._read_expect(
+            LCC_FEAT_CTRL, feat & 0xFFFF_FFFF, "feat_ctrl_lo")
+        feat_hi = await self._read_expect(
             LCC_FEAT_CTRL + 4, (feat >> 32) & 0xFFFF_FFFF, "feat_ctrl_hi"
         )
+        # Publish the vector the DUT returned on AXI, not the golden that the
+        # sequence already compared it against. Callers log this as the observe
+        # half of the signed-off sigint inject (probe + FEAT_CTRL).
+        self.observed_feat = feat_lo | (feat_hi << 32)
 
         cocotb.log.info(
-            "[lcc] state %s (0x%x): SIP_DIS=0x%016x SYS_DIS=0x%016x -> FEAT_CTRL=0x%016x",
-            lc_state_name(lc_raw), lc_raw, sip_dis, sys_dis, feat,
+            "[lcc] state %s (0x%x): SIP_DIS=0x%016x SYS_DIS=0x%016x "
+            "secure_tm=%d sigint=%d -> FEAT_CTRL=0x%016x",
+            lc_state_name(lc_raw), lc_raw, sip_dis, sys_dis,
+            self.secure_tm, self.sigint_err, self.observed_feat,
         )

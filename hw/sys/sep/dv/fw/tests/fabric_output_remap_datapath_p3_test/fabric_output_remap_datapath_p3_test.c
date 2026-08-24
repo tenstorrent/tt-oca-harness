@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_063: fabric_output_remap_datapath_p3_test
+ * fabric_output_remap_datapath_p3_test
  *
  * Goal: output_remap 64.35% -> 90%+, output_remap_reg 86.06% -> 90%+ [near target]
  * Strategy: AP/STEE remap traffic covers every region index; full datapath matrix
@@ -260,46 +260,46 @@ static int test_region_boundary_crossing(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_063: Output Remap Datapath P3 Test\n");
+    printf("Output Remap Datapath Test\n");
     printf("Goals: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
     printf("Strategy: AP/STEE remap traffic covers every region index; full datapath matrix\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_063");
+        test_fail("fabric_output_remap_datapath_p3_test");
         return TEST_FAIL;
     }
 
     // Run all output-remap datapath scenarios
     if (test_ap_stee_full_16_regions() != 0) {
-        test_fail("TC_FABRIC_063 - AP STEE Full 16 Regions");
+        test_fail("AP STEE Full 16 Regions");
         return TEST_FAIL;
     }
 
     if (test_offset_preserve_bit_range_coverage() != 0) {
-        test_fail("TC_FABRIC_063 - Offset Preserve Bit Range");
+        test_fail("Offset Preserve Bit Range");
         return TEST_FAIL;
     }
 
     if (test_channel_separation_stress() != 0) {
-        test_fail("TC_FABRIC_063 - Channel Separation Stress");
+        test_fail("Channel Separation Stress");
         return TEST_FAIL;
     }
 
     if (test_complement_patterns_datapath() != 0) {
-        test_fail("TC_FABRIC_063 - Complement Patterns Datapath");
+        test_fail("Complement Patterns Datapath");
         return TEST_FAIL;
     }
 
     if (test_region_boundary_crossing() != 0) {
-        test_fail("TC_FABRIC_063 - Region Boundary Crossing");
+        test_fail("Region Boundary Crossing");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_063: OUTPUT REMAP DATAPATH P3 TEST PASSED ===\n");
+    printf("\n=== OUTPUT REMAP DATAPATH TEST PASSED ===\n");
     printf(
         "Expected improvement: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
 
-    test_pass("TC_FABRIC_063");
+    test_pass("fabric_output_remap_datapath_p3_test");
     return TEST_PASS;
 }

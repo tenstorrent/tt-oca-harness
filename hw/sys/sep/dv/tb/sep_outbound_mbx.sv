@@ -10,7 +10,7 @@
 // firmware has opened the SEP outbound filter.
 //
 // This module is a minimal always-ready AXI subordinate (so the firmware's
-// stores/loads never stall) plus a write-channel monitor that mirrors the OCAH
+// stores/loads never stall) plus a write-channel monitor that mirrors the reference suite
 // internal env decode (sep_wrap_uvm_top.sv): it assembles console characters
 // (byte-strobe stores) and latches fw_done/fw_pass on the magic sequence. The
 // decoded signals are surfaced to cocotb through tb_top.

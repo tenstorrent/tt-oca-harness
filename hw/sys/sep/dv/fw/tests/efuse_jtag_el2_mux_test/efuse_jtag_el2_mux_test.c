@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP eFuse JTAG-AXIL + EL2-CPU mux firmware test (OSS port of the OCAH
+// SEP eFuse JTAG-AXIL + EL2-CPU mux firmware test (OSS port of the reference suite
 // sep_efuse_jtag_el2_cpu_mux_test, EL2 side). The EL2 CPU continuously issues
 // eFuse-MMR read traffic through its host AXI path while, concurrently, the cocotb
 // side drives the DUT's real SEP-OTP JTAG AXI-Lite port (axil_sep_otp_jtag). Both
@@ -18,7 +19,7 @@
 //      the loop counter and error count to scratch-cold so the observer can
 //      confirm the CPU keeps making progress during the JTAG burst.
 //
-// OSS sync delta (documented, mirrors the #1 coexist port): OCAH releases the
+// OSS sync delta (documented, mirrors the #1 coexist port): reference releases the
 // loop with a backdoor uvm_hdl_deposit of UVM_DONE; cocotb cannot deposit an
 // internal register, so the EL2 runs as a live worker and the observer proves
 // coexistence by the loop counter advancing across the JTAG burst while the

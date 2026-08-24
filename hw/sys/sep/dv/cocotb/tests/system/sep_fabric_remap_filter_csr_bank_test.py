@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric remap + filter CSR-bank R/W breadth.
 
 Combined-per-group CSR sweep over the SEP System-block fabric banks on the CPU-LSU
@@ -11,10 +12,10 @@ to its field). RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W
 CHK-WOSET). CSR layer only -- functional remap translation and outbound-filter
 enforcement are infra-gated (ledger GAP-deferred).
 
-OCAH refs: sep_fabric_64bit_regwidth_test (, 64-bit + locked/valid
+reference refs: sep_fabric_64bit_regwidth_test (, 64-bit + locked/valid
 woset), sep_outbound_filter_cfg_test (, FILTER_CONFIG incl. RO
 data_bus_width=3), sep_cpuctrl_misc_regs_test, and the System-block
-subset of sep_reg_sanity_test @ 9ec8f9f4b. Mapping: COVERED_BY. Distinct from
+subset of sep_reg_sanity_test. Mapping: COVERED_BY. Distinct from
 sep_address_map_test (which only read-touched alias/AP remap for decode
 reachability -- no field R/W, no 64-bit upper word, no woset, no filter banks) and
 from the inbound-filter rule matrix test (real PROD fuse + external master; this is
@@ -63,7 +64,8 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         await self._chk_ap_stee_rw()
         await self._chk_filter_cfg_and_ro()
         await self._chk_woset()
-        self.logger.info("CHK-ALL PASS: fabric remap + filter CSR banks R/W + 64-bit + woset + RO")
+        # No CHK-ALL summary line. It asserted nothing, and a plan row keyed on it
+        # would record coverage against a string with no checker behind it.
 
     async def _chk_alias_rw_and_nonvac(self) -> None:
         """CHK-ALIAS-RW + CHK-NONVAC on the seeded alias-remap region (no woset touched)."""
@@ -76,16 +78,22 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         # CHK-NONVAC: a written value differs from the reset value (0) and is confined
         # to its field -- the neighbor END_lo stays 0 after we write START_lo (a
         # stuck-at-reset bank fails the readback; a field-bleed fails the neighbor).
+        # Read the register BEFORE writing it, so "differs from reset" is an observation
+        # of the DUT, not a property of the written value.
+        pre = await self.fab.read32(start_lo)
         rb = await self.fab.rw_readback(start_lo, c.start_lo)
         assert rb == c.start_lo, f"alias r{c.alias_rw_region} START_lo R/W: 0x{rb:08x} != 0x{c.start_lo:08x}"
-        assert c.start_lo != 0, "non-vacuity: START_lo pattern must differ from reset 0"
+        assert rb != pre, (
+            f"alias r{c.alias_rw_region} START_lo readback 0x{rb:08x} equals its "
+            f"pre-write value -- the write did not change observable state"
+        )
         neighbor = await self.fab.read32(end_lo)
         assert neighbor == 0, (
             f"alias END_lo neighbor changed to 0x{neighbor:08x} after START_lo write (not confined)"
         )
         self.logger.info(
-            "CHK-NONVAC PASS: alias r%d START_lo 0->0x%08x (differs from reset), neighbor END_lo 0",
-            c.alias_rw_region, c.start_lo,
+            "CHK-NONVAC PASS: alias r%d START_lo 0x%08x->0x%08x (observed change), "
+            "neighbor END_lo 0", c.alias_rw_region, pre, rb,
         )
 
         # CHK-ALIAS-RW: 64-bit START upper word (addr[55:32]=hi[23:0]; hi[31:24] reserved
@@ -148,7 +156,7 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
     async def _chk_woset(self) -> None:
         """CHK-VALID-RW + CHK-WOSET on region/entry 1 (woset locks are permanent -> last).
 
-        Per OCAH sep_fabric_64bit_regwidth_test, woset is the FILTER FILTER_CONFIG[63]
+        Per reference sep_fabric_64bit_regwidth_test, woset is the FILTER FILTER_CONFIG[63]
         (locked) bit only; the alias-remap REGION_ATTRS valid[63] bit is plain R/W
         (set sticks, clear works), which this test confirms as a distinct contract.
         woset_probe returns (after_set, after_clear): (1,1)=woset, (1,0)=RW.

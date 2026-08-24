@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cycle-level AXI4/AXI4-Lite protocol-rule watchers (practical subset).
 
 Pure-Python signal sampling (RisingEdge + ReadOnly), Verilator-friendly — no

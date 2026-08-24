@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AXI4 master sequence API: the VIP's test-facing stimulus surface.
 
 `OcahAxiMasterSequence` wraps one `OcahAxiMasterDriver` and provides the
@@ -139,6 +139,36 @@ class OcahAxiMasterSequence:
         """Issue a single-beat AXI4 write and return the response code."""
         return (await self.write_result(addr, data, **kwargs)).resp
 
+    async def write_bytes_result(
+        self,
+        addr: int,
+        payload: bytes,
+        *,
+        size: int | None = None,
+        burst: int | None = None,
+        id: int = 0,
+        prot: int | None = None,
+        check_response: bool = True,
+        timeout_ns: int | None = None,
+        allow_timeout: bool = False,
+    ) -> OcahAxiWriteResult:
+        """Issue a write of an explicit byte payload and return a plain result.
+
+        Use this when the transfer length is not one beat at ``data_width`` /
+        ``size`` (for example a 4-byte access on a 64-bit bus).
+        """
+        return await self._write_bytes_result(
+            addr,
+            bytes(payload),
+            size=size,
+            burst=burst,
+            id=id,
+            prot=prot,
+            check_response=check_response,
+            timeout_ns=timeout_ns,
+            allow_timeout=allow_timeout,
+        )
+
     async def read_result(
         self,
         addr: int,
@@ -167,6 +197,36 @@ class OcahAxiMasterSequence:
     async def read(self, addr: int, **kwargs: Any) -> int:
         """Issue a single-beat AXI4 read and return the first data word."""
         return (await self.read_result(addr, **kwargs)).data
+
+    async def read_bytes_result(
+        self,
+        addr: int,
+        length: int,
+        *,
+        size: int | None = None,
+        burst: int | None = None,
+        id: int = 0,
+        prot: int | None = None,
+        check_response: bool = True,
+        timeout_ns: int | None = None,
+        allow_timeout: bool = False,
+    ) -> OcahAxiReadResult:
+        """Issue a read of ``length`` bytes and return a plain result.
+
+        Use this when the transfer length is not one beat at ``data_width`` /
+        ``size`` (for example a 4-byte access on a 64-bit bus).
+        """
+        return await self._read_bytes_result(
+            addr,
+            int(length),
+            size=size,
+            burst=burst,
+            id=id,
+            prot=prot,
+            check_response=check_response,
+            timeout_ns=timeout_ns,
+            allow_timeout=allow_timeout,
+        )
 
     async def burst_write(
         self,

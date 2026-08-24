@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_067: fabric_output_remap_micro_optimization_test
+ * fabric_output_remap_micro_optimization_test
  *
  * Goal: output_remap 89.83% -> 90%+ (needs only 0.17% improvement)
  * Strategy: Micro boundary-case fill-in; focus on the last untouched toggle bits
@@ -170,45 +170,45 @@ static int test_parallel_micro_stress(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_067: Output Remap Micro-Optimization Test\n");
+    printf("Output Remap Micro-Optimization Test\n");
     printf("Goal: 89.83%% -> 90%%+ (needs 0.17%% improvement)\n");
     printf("Focus: Micro boundary-case fill-in; focus on the last untouched toggle bits\n\n");
 
     // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_067");
+        test_fail("fabric_output_remap_micro_optimization_test");
         return TEST_FAIL;
     }
 
     // Run all micro-tuning scenarios
     if (test_micro_boundary_edge_cases() != 0) {
-        test_fail("TC_FABRIC_067 - Boundary Edge Cases");
+        test_fail("Boundary Edge Cases");
         return TEST_FAIL;
     }
 
     if (test_offset_calculation_corners() != 0) {
-        test_fail("TC_FABRIC_067 - Offset Calculation");
+        test_fail("Offset Calculation");
         return TEST_FAIL;
     }
 
     if (test_channel_switching_micro_scenarios() != 0) {
-        test_fail("TC_FABRIC_067 - Channel Switching");
+        test_fail("Channel Switching");
         return TEST_FAIL;
     }
 
     if (test_non_standard_size_burst_modes() != 0) {
-        test_fail("TC_FABRIC_067 - Non-standard Modes");
+        test_fail("Non-standard Modes");
         return TEST_FAIL;
     }
 
     if (test_parallel_micro_stress() != 0) {
-        test_fail("TC_FABRIC_067 - Parallel Stress");
+        test_fail("Parallel Stress");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_067: OUTPUT REMAP MICRO-OPTIMIZATION TEST PASSED ===\n");
+    printf("\n=== OUTPUT REMAP MICRO-OPTIMIZATION TEST PASSED ===\n");
     printf("Expected improvement: 89.83%% -> 90%%+ coverage\n");
 
-    test_pass("TC_FABRIC_067");
+    test_pass("fabric_output_remap_micro_optimization_test");
     return TEST_PASS;
 }

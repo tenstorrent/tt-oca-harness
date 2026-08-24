@@ -101,8 +101,8 @@ module dtp
     // Power-on reset (for JTAG logic)
     input  logic pwr_on_rst_ni,  // Power-on reset for JTAG logic
 
-    // Lifecycle feature control
-    input  sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t  feat_ctrl_i,
+    // Per-TAP debug/test disables from the SEP lifecycle controller (active-high)
+    input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,
 
     // Primary JTAG TAP interface
     input  jtag_tap_ctrl_t  jtag_ptap_client_tap_ctrl_i,
@@ -281,7 +281,7 @@ module dtp
         .clk_i                       (clk_i),
         .rst_n_i                     (rst_n_i),
         .pwr_on_rst_ni               (pwr_on_rst_ni),
-        .feat_ctrl_i                 (feat_ctrl_i),
+        .dbg_disable_i               (dbg_disable_i),
         .ptap_client_tap_ctrl_i      (jtag_ptap_client_tap_ctrl_i),
         .ptap_client_tdi_i           (jtag_ptap_client_tdi_i),
         .ptap_client_tdo_o           (jtag_ptap_client_tdo_o),

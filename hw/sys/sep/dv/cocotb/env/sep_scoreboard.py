@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP UVM scoreboard.
 
 Subscribes to the AXI agent's completed-transaction stream and checks:

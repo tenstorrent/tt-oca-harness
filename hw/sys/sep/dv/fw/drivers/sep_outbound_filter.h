@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP outbound filter driver. Header-only.
 //
@@ -23,7 +24,7 @@
  * FILTER_CONFIG open window: read|write|entry_enabled|allow_burst.
  * Compose from generated FILTER_CTRL__FILTER_CONFIG__*_bm (filter_ctrl.h).
  * Do NOT set ALLOW_NS: EnNsFilter=1 and SEP CPU traffic is secure (ns=0).
- * Bit32 reserved: keep OCAH/XBAR golden (XBAR_SEP_OUTBOUND_CFG) until RTL/docs clarify.
+ * Bit32 reserved: keep reference suite/XBAR golden (XBAR_SEP_OUTBOUND_CFG) until RTL/docs clarify.
  */
 #define SEP_OUTBOUND_FILTER_CFG_OPEN \
     ((uint64_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | \

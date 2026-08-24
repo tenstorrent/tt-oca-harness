@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP per-engine software reset control (SW_RESET_N).
 
 Active-low: a set bit releases the engine, a clear bit holds it in reset. This
 helper keeps a shadow of the register so a test can release / park individual
-engines without a read-modify-write race, the way the OCAH consume base sequence
+engines without a read-modify-write race, the way the reference consume base sequence
 releases KM first and the target crypto engine later.
 
 The shadow is seeded with the HW reset default (hw/sys/sep/regs/rdl/

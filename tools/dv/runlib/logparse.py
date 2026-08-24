@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """PASS/FAIL parser policy handling for native DV runs."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P2-2 / U7-6: public secure-error negative via OTP program-fail + signature gate.
 
 Legacy OCCP is ROM firmware on the chiplet TB. On the OSS smc_wrapper unit TB the

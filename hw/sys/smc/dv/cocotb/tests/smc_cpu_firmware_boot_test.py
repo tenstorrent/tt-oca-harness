@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM CPU firmware boot test.
 
 DV-CARD:          SMC_002   ANCHOR: smc_cpu_firmware_boot_test

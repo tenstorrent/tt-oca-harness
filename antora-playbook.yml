@@ -9,9 +9,13 @@
 site:
   title: Open Chiplet Atlas Harness (OCAH) Documentation
   url: /
-  start_page: ocah-docs::index.adoc
+  start_page: ocah-home::index.adoc
 content:
   sources:
+    - url: .
+      branches: HEAD
+      start_path: doc/home
+      edit_url: false
     - url: .
       branches: HEAD
       start_path: doc/trm

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP VPLAN scenario `dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test`."""
 
 import pyuvm

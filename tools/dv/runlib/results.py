@@ -1,8 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Result aggregation and result.json generation."""
 
 from __future__ import annotations
 
 import json
+import os
 import platform
 import shlex
 import shutil
@@ -614,9 +618,14 @@ def regression_payload(
     args: Any | None = None,
     items: list[str] | None = None,
     elapsed_sec: float | None = None,
+    status_override: str | None = None,
+    progress: dict[str, Any] | None = None,
+    interruption: dict[str, Any] | None = None,
+    versions: dict[str, str] | None = None,
+    git_metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Aggregate regression leaf attempts into the durable scheduler summary."""
-    versions = tool_versions(root)
+    versions = versions if versions is not None else tool_versions(root)
     leaves = _leaf_attempts(jobs)
     final_jobs = [final for final, _ in leaves]
     failed_jobs = [job for job in final_jobs if job.get("status") in NON_PASS_STATUSES]
@@ -635,18 +644,22 @@ def regression_payload(
         _flaky_test_record(final, attempts, flow, tool, args)
         for final, attempts in flaky_leaves
     ]
-    status = aggregate_status(stages) if stages else aggregate_status([
-        StageResult(
-            stage=str(job.get("stage", "sim")),
-            item=str(job.get("item", "")),
-            status=str(job.get("status", "UNKNOWN")),
-            return_code=int(job.get("return_code") or 0),
-            duration_sec=float(job.get("duration_sec") or 0.0),
-            started_at=str(job.get("started_at", "")),
-            ended_at=str(job.get("ended_at", "")),
-        )
-        for job in final_jobs
-    ])
+    status = status_override or (
+        aggregate_status(stages)
+        if stages
+        else aggregate_status([
+            StageResult(
+                stage=str(job.get("stage", "sim")),
+                item=str(job.get("item", "")),
+                status=str(job.get("status", "UNKNOWN")),
+                return_code=int(job.get("return_code") or 0),
+                duration_sec=float(job.get("duration_sec") or 0.0),
+                started_at=str(job.get("started_at", "")),
+                ended_at=str(job.get("ended_at", "")),
+            )
+            for job in final_jobs
+        ])
+    )
 
     coverage = _coverage_provenance(
         stages,
@@ -670,7 +683,18 @@ def regression_payload(
     ):
         if coverage.get(key):
             artifacts[f"coverage_{key}"] = coverage[key]
-    return {
+    failure_buckets = _aggregate_failure_buckets(failed_jobs)
+    if interruption:
+        failure_buckets.append(
+            {
+                "kind": "interruption",
+                "signature": str(interruption.get("reason") or "run interrupted")[:120],
+                "count": 1,
+                "affected": list((progress or {}).get("interrupted") or []),
+                "examples": [],
+            }
+        )
+    payload = {
         "schema_version": 1,
         "producer": "run_dv.py",
         "generated_at": datetime.now(UTC).isoformat(),
@@ -689,18 +713,23 @@ def regression_payload(
         "run_dir": repo_rel(root, run_dir),
         "artifact_root": repo_rel(root, run_dir),
         "artifacts": artifacts,
-        "git": git_info(root),
+        "git": git_metadata if git_metadata is not None else git_info(root),
         "tool_versions": versions,
         "overrides": {"cli": cli_overrides(args)},
         "selection": _selection_payload(args, items),
         "tests": _tests_summary_from_jobs(leaves),
         "coverage": coverage,
-        "failure_buckets": _aggregate_failure_buckets(failed_jobs),
+        "failure_buckets": failure_buckets,
         "failed_tests": failed_tests,
         "flaky_tests": flaky_tests,
         "rerun_commands": [record["rerun"] for record in [*failed_tests, *flaky_tests] if record.get("rerun")],
         "jobs": jobs,
     }
+    if progress is not None:
+        payload["progress"] = progress
+    if interruption is not None:
+        payload["interruption"] = interruption
+    return payload
 
 
 def result_payload(
@@ -715,9 +744,14 @@ def result_payload(
     label: str = "",
     args: Any | None = None,
     executor: str = "local",
+    status_override: str | None = None,
+    progress: dict[str, Any] | None = None,
+    interruption: dict[str, Any] | None = None,
+    versions: dict[str, str] | None = None,
+    git_metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    status = aggregate_status(stages)
-    versions = tool_versions(root)
+    status = status_override or aggregate_status(stages)
+    versions = versions if versions is not None else tool_versions(root)
     payload = {
         "schema_version": 1,
         "flow": flow.name,
@@ -740,7 +774,7 @@ def result_payload(
         "overrides": {"cli": cli_overrides(args)},
         "tests": _tests_summary(stages),
         "coverage": _coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False))),
-        "git": git_info(root),
+        "git": git_metadata if git_metadata is not None else git_info(root),
         "tool_versions": versions,
         "stages": [_stage_dict(stage) for stage in stages],
     }
@@ -750,6 +784,10 @@ def result_payload(
     skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
     if skipped:
         payload["selection"] = {"skipped_unimplemented": skipped}
+    if progress is not None:
+        payload["progress"] = progress
+    if interruption is not None:
+        payload["interruption"] = interruption
     return payload
 
 
@@ -837,4 +875,12 @@ def rollup_payload(
 
 def write_result(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temporary = path.parent / f".{path.name}.tmp"
+    try:
+        temporary.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)

@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP PIC interrupt-source map + multi-source delivery test (PyUVM).
 
-CPU-complex Phase-2 rep PIC source-map delivery. OCAH provenance: fw `otbn_plic_test` (OTBN done ->
+CPU-complex Phase-2 rep PIC source-map delivery. reference provenance: fw `otbn_plic_test` (OTBN done ->
 PIC source 30 -> ISR) + system `sep_irq_connectivity_test` (source->PIC
 connectivity, force/INTR_TEST, no real ISR claim).
 
@@ -19,7 +20,7 @@ PIC source id = sep_internal_interrupts index + 1 (VeeR EL2 extintsrc_req is
 
 Distinct from Phase-1 `sep_mailbox_plic_test` (ONE source, mailbox=1) and from
 `sep_irq_ip_to_aggregator_test` (no_cpu, observes the AGGREGATE vector, no ISR
-claim): this is the MULTI-SOURCE delivery-to-CPU-ISR map. Stronger than the OCAH
+claim): this is the MULTI-SOURCE delivery-to-CPU-ISR map. Stronger than the reference suite
 connectivity test, which is force/INTR_TEST UVM with no real CPU ISR claim.
 
 Firmware-self-checking: the firmware returns its error count and start.S emits
@@ -30,7 +31,7 @@ meihap claim id), CHK-DELIVER (OTBN ISR wakes the CPU via WFI, no poll), CHK-IP-
 CHK-ONEHOT (only the asserted source's ISR fires among the three PIC-enabled sources),
 plus CHK-NONVAC (no spurious ISR before any trigger). The scoreboard also checks the
 banner and ICCM execution. Full 34-bit sep_internal_interrupts vector isolation is
-COVERED_BY the no_cpu `sep_irq_ip_to_aggregator_test` (#14); here only the three
+COVERED_BY the no_cpu `sep_irq_ip_to_aggregator_test`; here only the three
 representative sources are PIC-enabled, so this proves delivery-path one-hot, not the
 whole-vector wire isolation.
 

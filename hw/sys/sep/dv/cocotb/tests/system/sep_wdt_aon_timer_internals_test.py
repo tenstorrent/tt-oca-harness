@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """WDT / AON-timer internals.
 
 no_cpu host-AXI CSR test of the SEP WDT aon_timer internals separate from the
@@ -7,10 +8,10 @@ status, the WDOG counter advance + pet, and the WDOG_REGWEN config-lock. The WKU
 interrupt OUTPUT is unused in sep, so the expiry is proven via the polled
 INTR_STATE.wkup_expired CSR bit (full RW1C clear) -- no ISR/NMI needed.
 
-OCAH refs: clock sep_clock_uvm_aon_timer_operation_test (: counter advance
+reference refs: clock sep_clock_uvm_aon_timer_operation_test (: counter advance
 + bark), fw wdt_cfg_lock_test (WDOG_REGWEN lock), wdt_wkup_timer_test (:
-AON wakeup timer), wdt_pet_reset_test @ 9ec8f9f4b. Mapping:
-COVERED_STRONGER -- frontdoor CSR + full RW1C clear (OCAH reads WDOG_COUNT via
+AON wakeup timer), wdt_pet_reset_test. Mapping:
+COVERED_STRONGER -- frontdoor CSR + full RW1C clear (the reference suite reads WDOG_COUNT via
 uvm_hdl_read). Distinct from the bark->NMI vec/lock path and the bark/pet/disable/
 re-bark + bite->wdt_timer_rst_req_o path: this test proves the OTHER aon_timer
 internals (WKUP timer, REGWEN config-lock, plain counter/pet), NOT bark/bite/NMI.
@@ -42,7 +43,7 @@ from seq_lib.sep_wdt_aon_seq import (
 WKUP_CAUSE_BIT = 1 << 0
 
 # How much faster than the silicon 1000x ratio we run clk_wdt for this CSR test
-# (sim-timing knob, AGENTS.md §8): clk_wdt = WDT_CLK_RATIO x the core period -- still
+# (sim-timing knob): clk_wdt = WDT_CLK_RATIO x the core period -- still
 # slower than the core (a valid CDC ratio) so the aon_timer clk_i->clk_aon register
 # CDC (prim_reg_cdc busy-stall on a WKUP_CTRL/WDOG enable write) and the counters
 # resolve within the AXI timeout, while still exercising the count/expiry/lock paths.
@@ -98,7 +99,9 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wkup_expire()
         await self._chk_wdog_pet()
         await self._chk_regwen_lock_and_nonvac()
-        self.logger.info("CHK-ALL PASS: WDT aon_timer WKUP count+expiry, WDOG pet, REGWEN lock")
+        # No CHK-ALL summary: it asserted nothing, and every facet above already
+        # logs its own PASS line. A plan row keyed on a bare summary string would
+        # record coverage with no checker behind it.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""
@@ -114,7 +117,14 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         assert count2 > count1, (
             f"WKUP_COUNT did not advance on clk_wdt: count1={count1} count2={count2}"
         )
-        self.logger.info("CHK-WKUP-COUNT PASS: WKUP_COUNT %d -> %d (advances on clk_wdt)", count1, count2)
+        intr = await self.wdt.read(INTR_STATE)
+        assert (intr & INTR_WKUP_EXPIRED) == 0, (
+            f"CHK-WKUP-COUNT: high threshold expired in the count window "
+            f"(INTR_STATE=0x{intr:08x}, count2={count2}, thold={self.cfg_wdt.wkup_high_thold})"
+        )
+        self.logger.info(
+            "CHK-WKUP-COUNT PASS: WKUP_COUNT %d -> %d (advances on clk_wdt); "
+            "INTR_STATE.wkup_expired stayed 0 under the high threshold", count1, count2)
 
     async def _chk_wkup_expire(self) -> None:
         """CHK-WKUP-EXPIRE: small thold -> INTR_STATE.wkup_expired sets, then W1C -> 0."""
@@ -140,6 +150,13 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         assert cause & WKUP_CAUSE_BIT, f"WKUP_CAUSE.cause not set after wkup expiry (0x{cause:08x})"
         await self.wdt.write(WKUP_COUNT_HI, 0)                 # remove the wakeup condition
         await self.wdt.write(WKUP_COUNT_LO, 0)
+        # Sticky: dropping the count must leave the cause set, otherwise the write-0
+        # below cannot be blamed for the clear.
+        cause_held = await self.wdt.read(WKUP_CAUSE)
+        assert cause_held & WKUP_CAUSE_BIT, (
+            f"WKUP_CAUSE.cause cleared when COUNT was reset (0x{cause_held:08x}); "
+            f"the write-0 clear would then be unattributed"
+        )
         # OpenTitan aon_timer WKUP_CAUSE: SW writes 0 to acknowledge/clear the cause.
         await self.wdt.write(WKUP_CAUSE, 0)
         # WKUP_CAUSE is AON-domain (clk_aon=clk_wdt): the clear settles over a few clk_wdt
@@ -168,14 +185,23 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self.wdt.write(WDOG_BITE_THOLD, 0x00FF_FFFF)
         await self.wdt.write(WDOG_COUNT, 0)
         await self.wdt.write(WDOG_CTRL, WDOG_ENABLE)
-        await ClockCycles(cocotb.top.clk_i, 60 * self._tick)
+        # Run long enough that the pre-pet count dominates the CDC tolerance. With the
+        # old 60-tick window the count reached ~57 while the tolerance was 0x100 (256),
+        # so a pet that did nothing left count2 ~= 57 and still passed -- the check could
+        # not distinguish "pet reset the counter" from "pet was ignored".
+        await ClockCycles(cocotb.top.clk_i, 1200 * self._tick)
         count1 = await self.wdt.read(WDOG_COUNT)
-        assert count1 > 0, f"WDOG_COUNT did not advance (={count1})"
+        assert count1 >= 0x400, (
+            f"WDOG_COUNT only reached {count1} in the pre-pet window; it must exceed the "
+            f"CDC tolerance by a wide margin or the pet check below is vacuous")
         await self.wdt.write(WDOG_COUNT, 0)                    # pet
         count2 = await self.wdt.read(WDOG_COUNT)
         assert count2 <= 0x100, (
             f"WDOG_COUNT not reset by pet: was {count1}, after pet {count2} (>0x100 CDC tol)"
         )
+        assert count2 < count1 // 8, (
+            f"WDOG_COUNT after pet ({count2}) is not clearly below the pre-pet count "
+            f"({count1}) -- consistent with the pet being ignored")
         self.logger.info("CHK-WDOG-PET PASS: WDOG_COUNT %d -> pet -> %d (reset)", count1, count2)
 
     async def _chk_regwen_lock_and_nonvac(self) -> None:
@@ -202,7 +228,15 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"WDOG_BARK_THOLD changed after REGWEN lock: 0x{post:08x} (expected 0x{pre_val:08x}, "
             f"write resp={resp})"
         )
+        bite_pre = await self.wdt.read(WDOG_BITE_THOLD)
+        resp_bite = await self.wdt.write_tolerant(WDOG_BITE_THOLD, self.cfg_wdt.bark_postlock)
+        bite_post = await self.wdt.read(WDOG_BITE_THOLD)
+        assert bite_post == bite_pre, (
+            f"WDOG_BITE_THOLD changed after REGWEN lock: 0x{bite_post:08x} "
+            f"(expected 0x{bite_pre:08x}, write resp={resp_bite})"
+        )
         self.logger.info(
-            "CHK-REGWEN-LOCK PASS: post-lock WDOG_BARK_THOLD write ignored, stays 0x%08x "
-            "(write resp=%d)", post, resp,
+            "CHK-REGWEN-LOCK PASS: post-lock WDOG_BARK_THOLD and WDOG_BITE_THOLD writes "
+            "ignored, bark stays 0x%08x bite stays 0x%08x (write resp=%d/%d)",
+            post, bite_post, resp, resp_bite,
         )

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // SMC firmware that marks SEP bring-up ready for the OSS wrapper smoke.
 //
 // Aligns with OCCP smu_sep_smoke (SEP_SMU_001): SEP default-runs when

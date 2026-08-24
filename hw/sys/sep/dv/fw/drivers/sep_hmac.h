@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP HMAC (OpenTitan HMAC engine) firmware helpers, SHA-256 mode. Header-only.
 // Addresses and field masks come from generated sep_addr.h / hmac.h (via sep.h).

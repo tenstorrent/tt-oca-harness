@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared one-shot sequence helper used by cross-agent test sequences."""
 
 from __future__ import annotations

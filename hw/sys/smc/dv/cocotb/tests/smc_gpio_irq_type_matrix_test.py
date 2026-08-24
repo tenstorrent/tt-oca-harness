@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS GPIO interrupt-type (active-high / active-low level) matrix test."""
 
 from __future__ import annotations

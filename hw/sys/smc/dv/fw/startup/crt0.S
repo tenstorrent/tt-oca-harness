@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* Copyright (c) 2017-2018  SiFive Inc. All rights reserved.
 
    This copyrighted material is made available to anyone wishing to use,

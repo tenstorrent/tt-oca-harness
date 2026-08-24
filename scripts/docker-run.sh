@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
 #   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build     (re)build firmware image + publish to shared tarball cache
 #   ensure    make firmware image available (local -> cache -> build); auto-run
@@ -324,32 +324,49 @@ doc_product_paths() {
         programmer)  echo "doc/programmer antora-programmer-playbook.yml ocah-doc-programmer-setup ocah-doc-programmer-pdf" ;;
         appnotes)    echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
         contributing) echo "doc/contributing antora-contributing-playbook.yml ocah-doc-contributing-setup ocah-doc-contributing-pdf" ;;
-        *) echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, or contributing)" >&2; exit 1 ;;
+        home)        echo "doc/home antora-home-playbook.yml ocah-doc-home-setup" ;;
+        *) echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home or contributing)" >&2; exit 1 ;;
+    esac
+}
+
+doc_release_enabled() {
+    case "${OCAH_DOC_RELEASE:-1}" in
+        1|yes|true) return 0 ;;
+        *) return 1 ;;
     esac
 }
 
 doc_setup() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-    run_image "$DOC_PDF_IMAGE" env OCAH_DOC_REGEN_REGS=0 make "$setup_target"
+    run_image "$DOC_PDF_IMAGE" env \
+        OCAH_DOC_REGEN_REGS=0 \
+        OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
+        make "$setup_target"
 }
 
 doc_html() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
+    local release_args=()
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
     doc_setup "$product"
+    doc_release_enabled && release_args=(--attribute release)
     "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${USER_FLAGS[@]}"\
         -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
+        "${release_args[@]}" \
         --attribute "basedir=${basedir}" "$playbook"
 }
 
 doc_html_all() {
+    local release_arg=""
+    doc_release_enabled && release_arg="--attribute release"
     # This is the combined-architecture build.
     doc_setup trm
     doc_setup integrator
     doc_setup programmer
     doc_setup appnotes
-	doc_setup contributing
+    doc_setup home
+    doc_setup contributing
     # The prebuilt antora/antora:3.1.10 image has Antora pre-installed but
     # NOT @antora/lunr-extension (that's only added to the npx-based
     # OCAH_ANTORA path in doc/doc.mk, which real CI uses via `make
@@ -357,15 +374,19 @@ doc_html_all() {
     # needs its own install). `npm install` here writes into the
     # bind-mounted repo root, so it only needs to happen once per checkout
     # (harmless to repeat). Make sure node_modules/ is gitignored.
-    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm -e SITE_SEARCH_PROVIDER=lunr \
+    "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm \
+        -e SITE_SEARCH_PROVIDER=lunr -e OCAH_DOC_RELEASE_ARG="$release_arg" \
         -v "${ROOT}:/work${VOL}" -w /work "$DOC_HTML_IMAGE" \
-        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora antora-playbook.yml'
+        sh -c 'npm install --no-save --no-package-lock @antora/lunr-extension@1.0.0-alpha.13 && antora $OCAH_DOC_RELEASE_ARG antora-playbook.yml'
 }
 
 doc_pdf() {
     local product="${1:-trm}" basedir playbook setup_target pdf_target
     read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-    run_image "$DOC_PDF_IMAGE" env OCAH_DOC_REGEN_REGS=0 make "$pdf_target"
+    run_image "$DOC_PDF_IMAGE" env \
+        OCAH_DOC_REGEN_REGS=0 \
+        OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
+        make "$pdf_target"
 }
 
 # doc_stage: add PDFs + .nojekyll on top of the already-built combined
@@ -379,6 +400,7 @@ doc_stage() {
     local integrator_dist="${OCAH_INTEGRATOR_DIST:-doc/integrator/dist}" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
     local programmer_dist="${OCAH_PROGRAMMER_DIST:-doc/programmer/dist}" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
     local appnotes_dist="${OCAH_APPNOTES_DIST:-doc/appnotes/dist}" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
+    local contributing_dist="${OCAH_CONTRIBUTING_DIST:-doc/contributing/dist}" contributing_pdf="${OCAH_CONTRIBUTING_PDF:-ocah-contributing.pdf}"
 
     if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
         echo "error: missing combined HTML output at $ghpages_dir" >&2
@@ -411,6 +433,12 @@ doc_stage() {
         cp "$ROOT/$appnotes_dist/$appnotes_pdf" "$ROOT/$ghpages_dir/downloads/"
     else
         echo "warning: Application Notes PDF not found at $appnotes_dist/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
+    fi
+
+    if [[ -f "$ROOT/$contributing_dist/$contributing_pdf" ]]; then
+        cp "$ROOT/$contributing_dist/$contributing_pdf" "$ROOT/$ghpages_dir/downloads/"
+    else
+        echo "warning: Contributing PDF not found at $contributing_dist/$contributing_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf contributing)"
     fi
 
     echo "Staged GitHub Pages tree at $ghpages_dir"

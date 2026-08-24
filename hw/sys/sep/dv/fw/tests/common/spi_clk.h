@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * SPI clock helpers — frequency-robust SCLK.
  *
@@ -19,9 +22,6 @@
  * SPI tests should use eFuse/shadow preloads whose smu_pll_sysclk value matches
  * the simulated core clock. If unset (0), helpers fall back to the 100 MHz
  * reference clock.
- *
- * The Cadence xSPI controller uses its own divider register; its helper lives
- * with the Cadence register model in the nonfree companion repo.
  */
 #ifndef SPI_CLK_H
 #define SPI_CLK_H

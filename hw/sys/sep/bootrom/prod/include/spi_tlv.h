@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // SPI parameter TLV used by BL0/ROM SPI init.
 //
 // Minimal SPI TLV definition for the OCH SEP ROM bring-up environment

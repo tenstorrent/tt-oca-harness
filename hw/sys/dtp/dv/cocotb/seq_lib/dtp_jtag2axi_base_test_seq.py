@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG2AXI helper base sequence for DTP tests."""
 
 from __future__ import annotations
@@ -769,46 +770,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
         return unpack_series_data(result, size, with_status=True)
 
-    # --- lifecycle and AXI activity helpers ----------------------------------
-    async def set_lifecycle(self, **bits: int) -> None:
-        """Drive TB lifecycle enable bits; 1 means the feature is enabled."""
-        dut = cocotb.top
-        for name, value in bits.items():
-            signal = f"feat_ctrl_{name}"
-            if not hasattr(dut, signal):
-                raise AttributeError(f"{signal} is not exposed by tb_top")
-            getattr(dut, signal).value = value & 0x1
-            self.log.info("Lifecycle enable %s=%d", signal, value & 0x1)
-        await self.wait_sys_cycles(4)
-
-    async def enable_all_lifecycle(self) -> None:
-        await self.set_lifecycle(
-            sip_debug=1,
-            soc_debug=1,
-            ap_debug=1,
-            sep_debug=1,
-            fuse_test=1,
-        )
-
-    async def clear_lifecycle(self) -> None:
-        """Legacy restore helper: all protected lifecycle features enabled."""
-        await self.enable_all_lifecycle()
-
-    async def gate_lifecycle_bits(self, **bits: bool) -> None:
-        values = {
-            "sip_debug": 1,
-            "soc_debug": 1,
-            "ap_debug": 1,
-            "sep_debug": 1,
-            "fuse_test": 1,
-        }
-        for name, gated in bits.items():
-            if name not in values:
-                raise ValueError(f"unknown lifecycle feature {name!r}")
-            if gated:
-                values[name] = 0
-        await self.set_lifecycle(**values)
-
+    # --- AXI activity helpers -------------------------------------------------
     async def axi_activity_counts(self) -> dict[str, int]:
         """Sample SMC AXI request activity counters exposed by tb_top."""
         await ReadOnly()

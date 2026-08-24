@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fast source/filelist/artifact readiness gate for the SMU wrapper OSS flow."""
 
 from __future__ import annotations
@@ -12,14 +13,8 @@ from pathlib import Path
 
 
 DV_ROOT = Path(__file__).resolve().parents[1]
-# dv/ -> smu/ -> sys/ -> hw/ -> repo
 REPO_ROOT = DV_ROOT.parents[3]
-# Prefer in-tree tools/dv (OSS); fall back to legacy dv/oss path if present.
-_OSS_CANDIDATES = (
-    REPO_ROOT / "tools" / "dv",
-    REPO_ROOT / "dv" / "oss" / "tools" / "dv",
-)
-OSS_DV_TOOLS = next((p for p in _OSS_CANDIDATES if p.is_dir()), _OSS_CANDIDATES[0])
+OSS_DV_TOOLS = REPO_ROOT / "tools" / "dv"
 
 if str(OSS_DV_TOOLS) not in sys.path:
     sys.path.insert(0, str(OSS_DV_TOOLS))
@@ -75,7 +70,6 @@ REQUIRED_REFERENCE_ROOTS = (
 )
 
 FORBIDDEN_ENV_REFERENCES = (
-    "dv/smu/tb/tb_uvm",
     "testlist_smu_chiplet.yaml",
     "project_smu_chiplet.yaml",
 )

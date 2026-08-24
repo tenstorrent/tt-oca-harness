@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """axil_mailbox config + golden depth model (outbound aperture, TX path).
 
 The SEP axil_mailbox (vendor/pulp-platform/axi/.../axi_lite_mailbox.sv, wrapped by
@@ -7,7 +8,7 @@ side over the CPU-LSU master (NO inbound filter): the OUTBOUND aperture
 (outbound_mailbox_0 @ 0x10A0_0000). WRITE_DATA(+0x00) pushes the TX FIFO (SEP->peer);
 READ_DATA(+0x08) pops the RX FIFO (peer->SEP), which stays EMPTY here because the
 peer (SMC) side is not driven -> read returns the 0xFEEDDEAD sentinel + SLVERR. So
-this is the TX-path test, exactly like OCAH ("CPU not running -> RX always empty;
+this is the TX-path test, exactly like the reference suite ("CPU not running -> RX always empty;
 verify the TX path").
 
 STATUS has no exact-depth field (only empty/full/write_level_above/read_level_above),
@@ -23,8 +24,8 @@ Accepted deltas:
     occupancy because the permanent testcase is the TX-path randomized rep; a permanent
     peer-path closure should use the external master and its own checker contract.
 
-Geometry note: post-#3548 MAILBOX_SIZE=0x800, so inbound_mailbox_0 is at 0x10A0_0800
-(the pre-#3548 0x1000 stride put it at 0x10A0_1000 and mis-decoded 0x10A0_0800 onto
+Geometry note: MAILBOX_SIZE=0x800, so inbound_mailbox_0 is at 0x10A0_0800
+(the earlier 0x1000 stride put it at 0x10A0_1000 and mis-decoded 0x10A0_0800 onto
 the outbound port -- fixed).
 """
 

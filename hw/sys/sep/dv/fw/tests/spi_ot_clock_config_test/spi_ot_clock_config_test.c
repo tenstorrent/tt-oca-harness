@@ -2,20 +2,20 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Clock Config Test - TC_SPIOT_004 (P1)
+ * SPI OT Clock Config Test
  *
  * Verifies SPI clock divider (CLKDIV), polarity (CPOL), phase (CPHA),
  * full-cycle mode (FULLCYC), and CS timing (CSNIDLE, CSNLEAD, CSNTRAIL).
  *
  * Test Flow:
- *   1. Configure SPI mux for OpenTitan
- *   2. Test CLKDIV values: 0, 49, 0xFFFF
- *   3. Test all 4 SPI modes (CPOL/CPHA combinations)
- *   4. Test FULLCYC mode
- *   5. Test CS timing fields (CSNIDLE, CSNLEAD, CSNTRAIL)
+ * 1. Enable controller
+ * 2. Test CLKDIV values: 0, 49, 0xFFFF
+ * 3. Test all 4 SPI modes (CPOL/CPHA combinations)
+ * 4. Test FULLCYC mode
+ * 5. Test CS timing fields (CSNIDLE, CSNLEAD, CSNTRAIL)
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_clock_config_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_clock_config_test STACK=sim
  *
  */
 
@@ -25,7 +25,6 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -37,14 +36,12 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Clock Config Test (TC_SPIOT_004)\n");
+    printf("SPI OT Clock Config Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
     spi_controller__CFG_t cfg;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n\n");
 
     /* Step 1: Verify CFG default */
     printf("Step 1: CFG default check\n");

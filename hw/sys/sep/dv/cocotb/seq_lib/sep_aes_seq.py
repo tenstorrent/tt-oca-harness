@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan AES run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Configures the AES core for ECB-256 encryption, writes the key shares / data,
 triggers the masking-PRNG reseed, and runs one block, mirroring the AES op
-helpers in the OCAH sep_km_aes_sideload_kat_test_seq (RAL there; direct AXI
+helpers in the reference sep_km_aes_sideload_kat_test_seq (RAL there; direct AXI
 here, like SepOtbn). All accesses are 32-bit beats (size=2): the AES register
 block is 32-bit behind the wrapper's 64->32 dw-converter.
 
@@ -35,7 +36,7 @@ AES_CTRL_SHADOWED = AES_BASE + 0x74
 AES_TRIGGER = AES_BASE + 0x80
 AES_STATUS = AES_BASE + 0x84
 
-# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / hw/sys/sep/regs/gen/adoc/blocks/aes.adoc):
+# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc):
 #   OPERATION[1:0]=01 ENC, MODE[7:2]=000001 ECB, KEY_LEN[10:8]=100 AES-256,
 #   SIDELOAD[11], PRNG_RESEED_RATE[14:12]=100 PER_8K, MANUAL_OPERATION[15]=0.
 AES_OP_ENC = 0b01
@@ -70,7 +71,7 @@ def build_aes_ctrl(*, sideload: bool, operation: int = AES_OP_ENC,
                    reseed_rate: int = AES_PRS_RATE_PER_8K) -> int:
     """CTRL_SHADOWED word. OPERATION selects ENC/DEC, MODE the cipher mode
     (ECB/CBC/CTR), KEY_LEN the key width (128/192/256), SIDELOAD the KM key vs
-    KEY_SHARE. Defaults are ECB-256 (the KM sideload KAT #11 path)."""
+    KEY_SHARE. Defaults are ECB-256 (the KM AES sideload KAT path)."""
     return (
         operation
         | (mode << 2)
@@ -206,15 +207,26 @@ class SepAes(SepAxiRegDriver):
             out += await self.run_ecb_block(pt_words[i:i + 4])
         return out
 
-    async def read_public_key_shares(self) -> tuple[list[int], list[int]]:
-        """Read public KEY_SHARE0/1 CSRs.
+    async def read_public_key_shares(self) -> tuple[list[int], list[int], int]:
+        """Read the public KEY_SHARE0/1 CSRs, plus a positive control.
 
-        After a KM sideload, these public key registers must remain write-only and
-        read as zero; the sideloaded key is carried on the private KM key bus.
+        These key registers are declared write-only, and the generated register
+        block ties their read data to zero. That has a consequence worth stating
+        plainly: reading them back as zero is NOT by itself evidence that the
+        sideloaded key is unexposed -- they would read zero even if the key were
+        mirrored somewhere else, and even if the transfer never happened. What
+        the readback can do is catch the day someone makes them readable.
+
+        For that to be worth anything the read path has to be known alive, so we
+        also return STATUS, a readable register in the same CSR window reached
+        over the same bus. A caller that asserts the shares are zero must also
+        assert the control read is non-zero; otherwise a dead read path returning
+        zeros for everything would look identical to a pass.
         """
         s0 = [await self._rd(AES_KEY_SHARE0_0 + i * 4) for i in range(8)]
         s1 = [await self._rd(AES_KEY_SHARE1_0 + i * 4) for i in range(8)]
-        return s0, s1
+        control = await self._rd(AES_STATUS)
+        return s0, s1, control
 
     async def trigger_prng_reseed(self) -> None:
         """Reseed the masking PRNG from the entropy source, then wait idle."""

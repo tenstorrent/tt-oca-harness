@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SRAM datapath-breadth config + driver for ``sep_sram_datapath_breadth_test``.
 
 `[RANDCFG]` rep: ``SepSramBreadthCfg`` is the single source of truth for BOTH the
@@ -7,7 +8,7 @@ walked deterministically (so a single seed never skips one); only legal knobs
 (mask order, region offsets, write/init data, the sequential-window length) are
 seed-randomized, with masked values so they read back exactly.
 
-The SRAM port is 64-bit single-beat (AXI4-Lite-like; the OCAH "burst" tests are
+The SRAM port is 64-bit single-beat (AXI4-Lite-like; the reference suite "burst" tests are
 audit-only AWLEN=0/ARLEN=0 -- no multi-beat burst feature), so only single-beat
 accesses are issued. ``length`` selects the byte count: 8 = full 64-bit word,
 1..7 = a sub-word write/read whose WSTRB cocotbext-axi derives from addr+length.

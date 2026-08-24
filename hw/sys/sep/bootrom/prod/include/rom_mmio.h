@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Minimal MMIO helpers for ROM bring-up (freestanding).
 // Keep this header C/C++ friendly and usable from tiny ROM code.
 

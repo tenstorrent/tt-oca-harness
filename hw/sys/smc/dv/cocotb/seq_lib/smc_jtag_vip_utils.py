@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG protocol-VIP helpers for SMC OSS tests.
 
 These helpers drive the public CPU JTAG TAP via ``cocotbext.jtag`` and verify

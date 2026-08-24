@@ -94,8 +94,9 @@ int main(void) {
     TEST_SUBTEST_START("Verify changed-fields bitmask");
     {
         /*
-         * All six monitored fields should have changed:
-         *   life_cycle, demotion, chiplet_uid, sip_uid, sys_uid, class_key
+         * All nine monitored fields should have changed: life_cycle, demotion,
+         * chiplet_uid, sip_uid, sys_uid, class_key, sep_chiplet_id,
+         * sep_sip_id, sep_sys_id
          */
         uint32_t expected = ROM_KM_OTP_CHANGE_ALL_MASK;
         if ((g_changed_mask & expected) != expected) {

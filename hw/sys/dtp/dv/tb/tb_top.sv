@@ -28,7 +28,6 @@ module dtp_uvm_top
     import jtag_tap_pkg::*;
     import jtag_inst_reg_pkg::*;
     import dtp_pkg::*;
-    import sep_efuse_pkg::*;
 `ifndef DTP_UVM_TB
 (
     // System clock and reset (driven by cocotb)
@@ -103,12 +102,20 @@ module dtp_uvm_top
     output logic jtag_ic_reset_ext_ovrd,
     output logic jtag_ic_reset_ext_ctrl_n,
 
-    // Lifecycle feature-control stimulus. These bits are active-high enables.
-    input  wire logic feat_ctrl_sip_debug,
-    input  wire logic feat_ctrl_soc_debug,
-    input  wire logic feat_ctrl_ap_debug,
-    input  wire logic feat_ctrl_sep_debug,
-    input  wire logic feat_ctrl_fuse_test,
+    // Lifecycle debug-disable stimulus: the eleven pre-resolved active-high
+    // disables of sep_lifecycle_ctrl_pkg::dbg_disable_t, one scalar per field
+    // (1 = interface disabled). Packed unchanged into DTP's dbg_disable_i.
+    input  wire logic dbg_disable_stap_io,
+    input  wire logic dbg_disable_stap_smc,
+    input  wire logic dbg_disable_stap_sep,
+    input  wire logic dbg_disable_stap_extra,
+    input  wire logic dbg_disable_stap_host,
+    input  wire logic dbg_disable_dft_secure,
+    input  wire logic dbg_disable_dft_nonsecure,
+    input  wire logic dbg_disable_dfd,
+    input  wire logic dbg_disable_smc_jtag2axi,
+    input  wire logic dbg_disable_smc_otp_jtag2axi,
+    input  wire logic dbg_disable_sep_otp_jtag2axi,
 
     // SMC AXI request-valid pulse counters for no-activity security checks.
     output logic [31:0] smc_axi_awvalid_count,
@@ -259,9 +266,9 @@ module dtp_uvm_top
     logic jtag_ic_reset_sep_ovrd, jtag_ic_reset_sep_ctrl_n;
     logic jtag_ic_reset_ext_ovrd, jtag_ic_reset_ext_ctrl_n;
 
-    // Lifecycle feature-control stimulus
-    logic feat_ctrl_sip_debug, feat_ctrl_soc_debug, feat_ctrl_ap_debug;
-    logic feat_ctrl_sep_debug, feat_ctrl_fuse_test;
+    // Lifecycle debug-disable stimulus: the UVM harness connects the typed
+    // dtp_tb_if.dbg_disable struct straight to the DUT, so the per-field
+    // cocotb scalars have no UVM-shape counterparts.
 
     // Request-valid pulse counters
     logic [31:0] smc_axi_awvalid_count, smc_axi_wvalid_count, smc_axi_arvalid_count;
@@ -378,7 +385,7 @@ module dtp_uvm_top
     jtag_ic_reset_default_t jtag_ic_reset_smc;
     jtag_ic_reset_default_t jtag_ic_reset_sep;
     jtag_ic_reset_default_t jtag_ic_reset_ext;
-    sep_efuse_map_lc_disable_reg_t feat_ctrl;
+    sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable;
 
     assign jtag_bsr_select     = jtag_bsr_host_scan_ctrl.select;
     assign jtag_bsr_shift_en   = jtag_bsr_host_scan_ctrl.shift_en;
@@ -424,14 +431,22 @@ module dtp_uvm_top
     assign jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext.ovrd;
     assign jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext.val;
 
+`ifndef DTP_UVM_TB
+    // Pack the cocotb-driven per-field scalars unchanged into dbg_disable_i.
     always_comb begin
-        feat_ctrl = '0;
-        feat_ctrl.sip_debug = feat_ctrl_sip_debug;
-        feat_ctrl.soc_debug = feat_ctrl_soc_debug;
-        feat_ctrl.ap_debug = feat_ctrl_ap_debug;
-        feat_ctrl.sep_debug = feat_ctrl_sep_debug;
-        feat_ctrl.fuse_test = feat_ctrl_fuse_test;
+        dbg_disable.stap_io          = dbg_disable_stap_io;
+        dbg_disable.stap_smc         = dbg_disable_stap_smc;
+        dbg_disable.stap_sep         = dbg_disable_stap_sep;
+        dbg_disable.stap_extra       = dbg_disable_stap_extra;
+        dbg_disable.stap_host        = dbg_disable_stap_host;
+        dbg_disable.dft_secure       = dbg_disable_dft_secure;
+        dbg_disable.dft_nonsecure    = dbg_disable_dft_nonsecure;
+        dbg_disable.dfd              = dbg_disable_dfd;
+        dbg_disable.smc_jtag2axi     = dbg_disable_smc_jtag2axi;
+        dbg_disable.smc_otp_jtag2axi = dbg_disable_smc_otp_jtag2axi;
+        dbg_disable.sep_otp_jtag2axi = dbg_disable_sep_otp_jtag2axi;
     end
+`endif
 
     // ------------------------------------------------------------------
     // SMC fabric debug AXI4 manager: struct <-> flat-signal adapter so the
@@ -677,9 +692,9 @@ module dtp_uvm_top
         .rst_n_i                          (rst_n_i),
         .pwr_on_rst_ni                    (pwr_on_rst_ni),
 
-        // Lifecycle feature control is enable-polarity: all required bits set
-        // to 1 enables full debug access.
-        .feat_ctrl_i                      (feat_ctrl),
+        // Lifecycle debug gating: active-high disables pre-resolved per
+        // interface; '0 == nothing disabled (full debug access).
+        .dbg_disable_i                    (dbg_disable),
 
         // Primary JTAG TAP client
         .jtag_ptap_client_tap_ctrl_i      (jtag_ptap_client_tap_ctrl),
@@ -823,15 +838,12 @@ module dtp_uvm_top
     assign pwr_on_rst_ni     = u_tb_if.por_rst_n;
     assign u_tb_if.tap_state = jtag_ptap_state;
 
-    // Feature-control fuses and clock-stop requests: test-drivable lifecycle
-    // enables via dtp_tb_if (init 0 = the historical quiescent tie-off, so the
-    // sanity test's behavior is unchanged; JTAG2AXI sequences enable them).
-    assign xtrig_clk_stop_req  = '0;
-    assign feat_ctrl_sip_debug = u_tb_if.feat_ctrl_sip_debug;
-    assign feat_ctrl_soc_debug = u_tb_if.feat_ctrl_soc_debug;
-    assign feat_ctrl_ap_debug  = u_tb_if.feat_ctrl_ap_debug;
-    assign feat_ctrl_sep_debug = u_tb_if.feat_ctrl_sep_debug;
-    assign feat_ctrl_fuse_test = u_tb_if.feat_ctrl_fuse_test;
+    // Lifecycle debug disables and clock-stop requests: sequences drive the
+    // typed dbg_disable_t through dtp_tb_if (init '1 = fail-closed, so the
+    // sanity test's behavior is unchanged; JTAG2AXI sequences clear the
+    // disables they need).
+    assign xtrig_clk_stop_req = '0;
+    assign dbg_disable        = u_tb_if.dbg_disable;
 
     // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
     // answers JTAG2AXI OTP traffic (issue #3295). The slave interface carries

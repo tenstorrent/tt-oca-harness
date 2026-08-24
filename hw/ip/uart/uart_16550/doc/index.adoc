@@ -23,7 +23,8 @@ compatible with industry-standard UART protocols.
 * Comprehensive interrupt support with 6 priority levels
 * Direct Memory Access (DMA) signaling with immediate and hysteresis
 modes
-* Modem control interface (CTS, DSR, RI, DCD, RTS, DTR, OUT1, OUT2)
+* Modem control interface (CTS, DSR, RI, DCD, RTS, DTR, OUT1, OUT2) with
+change detection and interrupt; flow control is performed by software
 
 include::architecture.adoc[]
 include::interface.adoc[]

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_001 (P0) - KMAC Register Defaults and Read/Write Sanity Test
+ * KMAC Register Defaults and Read/Write Sanity Test
  *
  * Verifies default register values after reset, basic read/write
  * functionality for KMAC configuration and interrupt registers, and
@@ -17,7 +17,7 @@
 #include "sep_outbound_filter.h"
 #include "sep_kmac.h"
 
-/* Composed from generated field reset / bitmasks in blocks/kmac.h. */
+/* Composed from generated field reset / bitmasks in kmac.h. */
 #define KMAC_STATUS_RESET_VAL (KMAC__STATUS__SHA3_IDLE_bm | KMAC__STATUS__FIFO_EMPTY_bm)
 #define KMAC_CFG_REGWEN_RESET_VAL (KMAC__CFG_REGWEN__EN_bm)
 #define KMAC_CFG_SHADOWED_RESET_VAL (KMAC__CFG_SHADOWED__SIDELOAD_bm)
@@ -222,7 +222,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_001: Register Sanity Test\n");
+    printf("  Register Sanity Test\n");
     printf("========================================\n");
 
     test_register_defaults();

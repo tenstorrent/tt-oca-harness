@@ -18,14 +18,14 @@
 // filter is NOT in the path. Every other DUT port is tied to a benign idle
 // value so nothing X-props.
 //
-// This mirrors the OCAH SEP UVM env, which force-splices a flat cocotb AXI
+// This mirrors the reference SEP UVM env, which force-splices a flat cocotb AXI
 // interface onto these same CPU master ports (sep_wrap_uvm_top.sv via the
 // SEP_FORCE_W_AXI_MST_VIP macro). The CPU LSU splice is the primary stimulus
 // path. `smn_inbound` is additionally brought out as the flat `m_axi_*` master
 // (the DUT's real external inbound port, which traverses the inbound filter);
 // it idles unless a test drives it, and is used by the inbound-filter-gating
 // test to prove external AXI is blocked/allowed by feat_ctrl.sep_debug. This is
-// the OSS analog of OCAH's ext_axi_sqr (axi_system[0].master[0]).
+// the OSS analog of the reference suite's ext_axi_sqr (axi_system[0].master[0]).
 //
 // Two run modes, selected by the `+cpu_boot` plusarg:
 //   * no-CPU (default): runs on the stub build; the core is held off
@@ -65,6 +65,14 @@ module sep_uvm_top
     // Boot/run controls (driven by cocotb)
     input  wire logic ext_boot_seq_done_i,
     input  wire logic mpc_reset_run_req,
+    // TEST_EN strap (frontdoor DUT input). Latched into secure_tm on fuse-sense-done
+    // (or on cold-reset release when security_disable is set). Default 0 = functional
+    // mode; drive 1 before sense to open FEAT_CTRL[47:32].
+    input  wire logic test_en_strap_i,
+    // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
+    // pair onto the LCC decoder input (signed off -- no legal OTP image can present
+    // one). See the force block below.
+    input  wire logic lc_sigint_inject_i,
 
     // ------------------------------------------------------------------
     // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -127,7 +135,7 @@ module sep_uvm_top
     // real DUT port. Unlike the CPU-LSU splice (s_axi), which attaches to the
     // internal LSU bus, this path traverses the SEP inbound filter
     // (u_inbound_filter), which is block-by-default and is skipped
-    // only when feat_ctrl.sep_debug=1. The inbound-filter-gating test (#20) drives
+    // only when feat_ctrl.sep_debug=1. `sep_lcc_uvm_inbound_filter_gating_test` drives
     // it to prove external AXI is blocked (PROD) / allowed (PROD_DBG_1). Idle for
     // every other test (the agent drives these to a clean idle from t=0).
     // ------------------------------------------------------------------
@@ -188,7 +196,7 @@ module sep_uvm_top
     // which arbitrates with the CPU's eFuse-MMR path at the eFuse AXI-Lite mux and
     // is LC-state-gated (in PROD/RMA_SIP the JTAG path may read/write only the MMR
     // token region; a shadow/CSR access is routed to an error slave -> 0xbadcab1e).
-    // Used by the JTAG/eFuse mux test (#17). Idle for every other test.
+    // Used by `sep_efuse_jtag_axil_el2_cpu_mux_test`. Idle for every other test.
     // ------------------------------------------------------------------
     input  wire logic [31:0]  j_axi_awaddr,
     input  wire logic [2:0]   j_axi_awprot,
@@ -224,7 +232,7 @@ module sep_uvm_top
     // EL2 debugger reset INPUT to the DUT (sep.sv dbg_rstb_i, a real sep primary
     // input). Default-driven 1 (deasserted) by sep_base_test; the CPU debug-reset
     // isolation test pulses it to 0 to prove it does NOT disturb the system/CPU
-    // reset domain. Previously hardwired to rst_ni in this tb.
+    // reset domain.
     input  wire logic         dbg_rstb_i,
     output logic              o_cpu_run_ack_o,   // core run acknowledge (XMR-tapped)
     output logic              cpu_trace_valid_o, // retired-instruction valid
@@ -251,7 +259,7 @@ module sep_uvm_top
     // the dual-CPU eFuse-mux coexistence test can read the EL2 firmware's measured
     // summary (host loop count + KM-contention error counters) with no AXI master
     // -- the EL2 owns the LSU bus under +cpu_boot. The cold block survives the KM
-    // warm reset. Mirrors the OCAH UVM observer's uvm_hdl_read of the same registers.
+    // warm reset. Mirrors the reference UVM observer's uvm_hdl_read of the same registers.
     output logic [255:0]      scratch_cold_probe_o,
     output logic [31:0]       km_rom_req_count_o,
     output logic [31:0]       km_sram_req_count_o,
@@ -302,19 +310,38 @@ module sep_uvm_top
     // sequence the adapter hands to the crypto endpoints; with a single active
     // crypto sink the adapter is in-order so AES's post-adapter beats equal this
     // stream 1:1, and each word is also chained to the CHK4 genbits golden. Mirrors
-    // OCAH's hw_axis1_* tap (sep_entropy_noise_if.sv). Read-only XMR, no force.
+    // the reference suite's hw_axis1_* tap (sep_entropy_noise_if.sv). Read-only XMR, no force.
     output logic              axis1_tvalid_o,        // entropy_muxed_req[1].tvalid
     output logic              axis1_tready_o,        // entropy_muxed_rsp[1].tready
     output logic [31:0]       axis1_tdata_o,         // entropy_muxed_req[1].tdata (32b word)
-    // IP-interrupt aggregator (E10): observation-only mirror of the 34-bit
+    // CHK5 entropy-pool sink (EDN endpoint [2]): AXIS2 is the pre-adapter mux-leg
+    // stream (entropy_muxed_req[2]); pool_edn_* is the post-adapter native EDN
+    // handshake into sep_entropy_fifo (one client, so AXIS2==pool beats in order).
+    // Observation-only XMR, no force. No frontdoor equivalent of the 32-bit EDN
+    // beat -- the 0x1095 aperture is a packed 64-bit drain, Phase 3 FIFO consume.
+    output logic              axis2_tvalid_o,        // entropy_muxed_req[2].tvalid
+    output logic              axis2_tready_o,        // entropy_muxed_rsp[2].tready
+    output logic [31:0]       axis2_tdata_o,         // entropy_muxed_req[2].tdata (32b word)
+    output logic              pool_edn_req_o,        // entropy_pool_edn_req_i.edn_req
+    output logic              pool_edn_ack_o,        // entropy_pool_edn_rsp_o.edn_ack
+    output logic [31:0]       pool_edn_bus_o,        // entropy_pool_edn_rsp_o.edn_bus
+    output logic              pool_edn_fips_o,       // entropy_pool_edn_rsp_o.edn_fips
+    // IP-interrupt aggregator: observation-only mirror of the 34-bit
     // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
     // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
-    // mapped bit here. Mirrors the OCAH sep_irq_probe_if wire-tap of
+    // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
+    // Lifecycle status observability. security_disable and lc_sigint_err are DUT
+    // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
+    // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
+    output logic              lcc_security_disable_probe_o,
+    output logic              lcc_sigint_err_probe_o,
+    output logic              secure_tm_o,
     // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
     // asserted when the WDT count reaches BITE_THOLD). Brought out so the
-    // reset/WDT sanity test (#19) can observe the bite -> reset-request edge. This
+    // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
+    // reset-request edge. This
     // is a DUT output (frontdoor), not an internal-signal probe.
     output logic              wdt_timer_rst_req_o,
     output logic              spi_cs_n_o,
@@ -326,7 +353,8 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // DUT-flavor XMR roots. The DUT is `sep_wrapper`, so sep-internal state lives
     // under u_dut.u_sep and the OSS IP integration (memory macros, generic efuse
-    // model, OpenTitan SPI mux) under u_dut.u_sep_ip_integration. Every
+    // model) under u_dut.u_sep_ip_integration. The OpenTitan SPI host is inside
+    // the `sep` core. Every
     // sep-internal XMR read routes through `SEP_CORE / `SEP_IPI so one probe text
     // is used throughout.
     // ------------------------------------------------------------------
@@ -352,7 +380,13 @@ module sep_uvm_top
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
     sep_pkg::jtag_sep_reset_ctrl_t   jtag_sep_reset_ctrl_idle = '0;
-    sep_pkg::sep_straps_t            sep_straps_idle      = '0;
+    // TEST_EN strap is a real DUT input (sep_straps_i.test_straps.test_en). The
+    // rest of the strap struct stays idle-0. Not a force.
+    sep_pkg::sep_straps_t            sep_straps_drive;
+    always_comb begin
+        sep_straps_drive = '0;
+        sep_straps_drive.test_straps.test_en = test_en_strap_i;
+    end
 
     // Outbound mailbox responder buses and CPU trace (the only DUT struct nets the
     // wrapper flow still needs; the retired mem/efuse/spi responder buses are gone).
@@ -423,12 +457,10 @@ module sep_uvm_top
         $display("[SEP OSS DV] Reset-vector TDR programmed to 0x%08x", vector);
     endtask
 
-    // FIXME(SEP-DV): the current vendored VeeR tap dropped the reset-vector TDR,
-    // so this JTAG sequence shifts into a nonexistent register and is inert. The
-    // reset vector now reaches the CPU through the wrapper's direct `rst_vec`
-    // input (connected from rst_vec_i in the DUT instantiation below). Remove
-    // this TDR machinery once the +cpu_boot flow is re-validated on the direct
-    // port. Original rationale kept below for reference:
+    // The vendored VeeR tap has no reset-vector TDR, so this JTAG sequence
+    // shifts into a nonexistent register and is inert. The reset vector reaches
+    // the CPU through the wrapper's direct `rst_vec` input (connected from
+    // rst_vec_i in the DUT instantiation below).
     // The OSS top has no external JTAG client. Program RSTVEC while the primary
     // reset is asserted, before the cocotb CPU-boot flow releases reset. Poll on the
     // clock edge rather than a bare level `wait`: a cocotb (VPI)-driven rst_vec_i
@@ -482,7 +514,6 @@ module sep_uvm_top
         .dbg_rstb_i                   (dbg_rstb_i),
         .wdt_rst_ni                   (wdt_rst_ni_i),
         .entropy_rosc_sample_clk_i    (entropy_rosc_sample_clk_i),
-        .sep_reset_n_o                (dbg_sep_reset_n_o),
         .wdt_timer_rst_req_o          (wdt_timer_rst_req_o),
 
         // JTAG (TB-driven only during +cpu_boot reset-vector TDR setup)
@@ -550,22 +581,20 @@ module sep_uvm_top
         .lcc_demote_state_1_o         (),
         .lcc_demote_state_2_o         (),
 
-        // SPI: quad-lane struct boundary, bridged below to the legacy
+        // SPI: quad-lane struct boundary, bridged below to the
         // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
         // MISO returns on rsp.sd[1]). The SPI block IRQ loops back into the
-        // wrapper's interrupt aggregator input, matching the pre-port routing.
-        // FIXME(SEP-DV): the 4 SPI flash tests are unverified against this
-        // struct boundary (and the retired och_sep_spi_mux_ctrl CS-release CSR);
-        // re-validate them before re-enabling SPI coverage claims.
+        // wrapper's interrupt aggregator input.
         .sep_io_spi_req_o             (sep_io_spi_req_w),
         .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
         .spi_irq_i                    (sep_io_spi_req_w.irq),
 
         // New wrapper status/debug outputs: observability only, left open.
         .lc_state_o                   (),
-        .feat_ctrl_o                  (),
-        .lc_sigint_err_o              (),
-        .security_disable_o           (),
+        .dbg_disable_o                (),
+        .lc_sigint_err_o              (lcc_sigint_err_probe_o),
+        .security_disable_o           (lcc_security_disable_probe_o),
+        .secure_tm_o                  (secure_tm_o),
         .km_unrecoverable_err_o       (),
         .km_recoverable_err_o         (),
         .efuse_debug_bus_o            (),
@@ -577,8 +606,8 @@ module sep_uvm_top
         .smc_fuse_sense_done_i        (1'b0),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
-        // Straps
-        .sep_straps_i                 (sep_straps_idle),
+        // Straps (TEST_EN driven from test_en_strap_i; other fields idle-0)
+        .sep_straps_i                 (sep_straps_drive),
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
@@ -728,7 +757,7 @@ module sep_uvm_top
     initial begin : backdoor_default_fill_nonzero
         for (int i = 0; i < 4096; i++)
             `SEP_IPI.u_km_rom.mem[i] = {bd_km_word_parity(32'h0000_0013), 32'h0000_0013};
-        for (int i = 0; i < 4096; i++)
+        for (int i = 0; i < 8192; i++)
             `SEP_IPI.u_km_sram.gen_ram_inst[0].u_mem.mem[i] = {4'hF, 32'h0};
         for (int i = 0; i < 4096; i++)
             `SEP_IPI.u_otbn_imem_sram.mem[i] = BD_OTBN_ZERO;
@@ -765,11 +794,13 @@ module sep_uvm_top
         #0;  // let the default-fill initials settle first
         if ($value$plusargs("sep_boot_rom_hex=%s", img)) begin
             $readmemh(img, `SEP_IPI.u_sep_boot_rom.mem);
+            $display("[tb_backdoor_mem] boot ROM image loaded (%0s)", img);
         end else begin
             fd = $fopen("sep_boot_rom.hex", "r");
             if (fd != 0) begin
                 $fclose(fd);
                 $readmemh("sep_boot_rom.hex", `SEP_IPI.u_sep_boot_rom.mem);
+                $display("[tb_backdoor_mem] boot ROM image loaded (sep_boot_rom.hex)");
             end
         end
         if ($value$plusargs("sep_sram_hex=%s", img)) begin
@@ -828,13 +859,13 @@ module sep_uvm_top
 `undef BD_DCCM
 
     // ------------------------------------------------------------------
-    // CPU-LSU AXI splice (the OSS analog of SEP_FORCE_W_AXI_MST_VIP in OCAH).
+    // CPU-LSU AXI splice (the OSS analog of SEP_FORCE_W_AXI_MST_VIP in the reference suite).
     //
     // Inject: assemble the LSU req struct from the flat cocotb master inputs into
     // `lsu_req_drive` (always_comb). The sep_cpu stub reads this by upward
     // reference and drives its lsu_axi_req from it (single driver, plain assign,
     // no force — see shims/cpu/sep_cpu_stub.sv). Whole-signal only; no per-field
-    // drive. (OCAH force-splices the equivalent CPU master ports; the OSS no_cpu
+    // drive. (the reference suite force-splices the equivalent CPU master ports; the OSS no_cpu
     // build replaces the core with a stub, so the bus is single-driven and driven
     // rather than forced.)
     // ------------------------------------------------------------------
@@ -999,12 +1030,13 @@ module sep_uvm_top
     assign cpu_trace_addr_o  = cpu_trace_w.trace_rv_i_address_ip;
     assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.o_cpu_run_ack;
 
-    // CPU warm reset (internal net, not a sep port): the wdt-reset-path test reads
-    // it to confirm wdt_rst_ni -> sep_cpu_reset_n. Same XMR-probe style as above.
+    // SEP resets (internal nets, no longer sep ports): the reset-independence and
+    // wdt-reset-path tests read them. Same XMR-probe style as above.
+    assign dbg_sep_reset_n_o = `SEP_CORE.sep_reset_n;
     assign sep_cpu_reset_n_o = `SEP_CORE.sep_cpu_reset_n;
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
-    // observation-only mirror for the IP->aggregator (E10) test. CSRNG INTR sources
+    // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
     // map to bits [21:24], EDN to [25:26] (sep.sv:451-461).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
 
@@ -1032,6 +1064,30 @@ module sep_uvm_top
 `undef SCRATCH_COLD
 
     // ------------------------------------------------------------------
+    // LC differential-integrity error inject.
+    // SIGNED OFF 2026-08-20 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // No legal OTP image can present a broken {~raw, raw} LC_STATE pair: the
+    // sense FSM regenerates the pair from the raw nibble. The specification's
+    // fail-closed feat_ctrl=0 path therefore has no frontdoor stimulus.
+    // When lc_sigint_inject_i=1, force both rails of the LCC decoder input to 0
+    // so prim_diff_decode_multi asserts sigint (XNOR of equal rails). The
+    // software-visible LC_STATE shadow is not touched -- only the decoder
+    // input -- so the stitch test can still value-check the legal pair.
+    // Re-issue every clock (Verilator snapshots a force RHS). Release when the
+    // port drops so the legal pair returns. Default 0; outside AXI cones.
+`define LCC_DEC_DATA \
+    `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
+    always @(posedge clk_i) begin
+        if (lc_sigint_inject_i === 1'b1) begin
+            force `LCC_DEC_DATA = '0;
+        end else begin
+            release `LCC_DEC_DATA;
+        end
+    end
+`undef LCC_DEC_DATA
+
+    // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
     // ------------------------------------------------------------------
     // The ESRC ring oscillators' `#delay` feedback is ignored under Verilator, so
@@ -1052,7 +1108,7 @@ module sep_uvm_top
         `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[0].u_generator.u_decorrelator.noise_i;
 
     // Force the per-lane DECORRELATOR INPUT PORT (dcor.noise_i) directly -- the
-    // exact node the SR flop samples -- matching the OCAH UVM noise injection
+    // exact node the SR flop samples -- matching the reference UVM noise injection
     // (sep_entropy_noise_if::force_noise forces dcor.noise_i). Forcing the upstream
     // `noise_bit` wire instead lets the SR flop sample a different scheduling point
     // under Verilator, so the decorrelator golden cannot reproduce the RTL output.
@@ -1080,9 +1136,8 @@ module sep_uvm_top
     // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
     // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
     // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
-    // Rationale, cost and the open DE question live with the test that opts in
-    // (testlists/cpu.toml, sep_rom_ot_secure_boot_test) and in
-    // .dv/artifacts/SEP_ROM_SECURE_VS_NONSECURE_BOOT.md.
+    // The test that opts in is sep_rom_ot_secure_boot_test
+    // (testlists/rom_fw.toml).
     logic edn_force_on;
     logic otbn_rnd_ack_q, otbn_urnd_ack_q;
     initial begin
@@ -1160,12 +1215,21 @@ module sep_uvm_top
     assign km_entropy_tdata_o   = `SEP_CORE.sep_crypto.entropy_muxed_req[0].tdata;
     // CHK5 per-sink routing golden: the crypto-leg (mux endpoint [1]) AXIS word
     // stream feeding drbg_axis_edn_adapter. tvalid && tready = one word handed to a
-    // crypto endpoint (in #15 only AES requests, so this equals AES's post-adapter
-    // beats in order). Each word is also a CHK4 genbits-golden word (chained).
+    // crypto endpoint (in `sep_drbg_real_sink_multi_km_aes_test` only AES
+    // requests, so this equals AES's post-adapter beats in order). Each word is
+    // also a CHK4 genbits-golden word (chained).
     assign axis1_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tvalid;
     assign axis1_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[1].tready;
     assign axis1_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tdata;
     assign km_entropy_tready_o  = `SEP_CORE.sep_crypto.entropy_muxed_rsp[0].tready;
+    // CHK5 pool (mux endpoint [2]): pre-adapter AXIS2 + post-adapter native EDN.
+    assign axis2_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tvalid;
+    assign axis2_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[2].tready;
+    assign axis2_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tdata;
+    assign pool_edn_req_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_req_i.edn_req;
+    assign pool_edn_ack_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_ack;
+    assign pool_edn_bus_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_bus;
+    assign pool_edn_fips_o      = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_fips;
 
     // Per-client crypto EDN taps (post drbg_axis_edn_adapter). edn_req is the
     // client's request, edn_ack the adapter's grant pulse, edn_bus the delivered

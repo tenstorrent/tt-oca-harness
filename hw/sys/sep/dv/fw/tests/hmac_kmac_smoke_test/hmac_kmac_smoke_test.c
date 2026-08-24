@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP HMAC + KMAC CPU crypto smoke firmware test (OSS port combining the OCAH
+// SEP HMAC + KMAC CPU crypto smoke firmware test (OSS port combining the reference suite
 // hmac_test and kmac_test). Exercises the two OpenTitan crypto engines over the
 // real CPU->fabric path on bare `sep` (both internal, CSR clocks always on).
 //
 // HMAC (SHA-256 mode, 0x1091_1000): hash three messages -- empty, "abc",
 // "Hello OTBN." -- and compare each HW digest against an INDEPENDENT software
 // SHA-256 (fw/tests/common/sha256.c) computed over the same bytes. Also requires no
-// done-timeout and HMAC ERR_CODE == 0. (OCAH hard-codes the three NIST vectors;
+// done-timeout and HMAC ERR_CODE == 0. (reference suite hard-codes the three NIST vectors;
 // computing them in firmware is an equivalent, self-contained golden.)
 //
 // KMAC (KMAC128/cSHAKE, 0x1091_3000): run a masked hash of "test" with a zero
 // key using SOFTWARE entropy (no EDN), then check it reached done, ERR_CODE == 0,
 // and the unmasked digest (share0 ^ share1) is non-zero.
-//   Scope delta (documented, matches OCAH + the OSS VPLAN allowance): the KMAC
+//   Scope delta (documented, matches reference suite + the OSS VPLAN allowance): the KMAC
 //   result is checked for completion / no-error / non-degenerate masking, NOT
 //   against an exact KMAC/Keccak software reference (no bare-metal Keccak model
 //   is ported). The HMAC side carries the exact-digest rigor. This is a "smoke".
-//   The OSS port also FIXES the OCAH kmac entropy bug by using SW entropy mode
+//   The OSS port also FIXES the reference suite kmac entropy bug by using SW entropy mode
 //   (see sep_kmac.h) so it cannot hang on an unseeded EDN.
 //
 // main() returns the error count; start.S turns 0 -> PASS magic / non-zero ->

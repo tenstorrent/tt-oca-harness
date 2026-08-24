@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* Linker script for SEP bootcode (self-contained Boot ROM image).
  *
  * Code (.text), metadata, and read-only data (.rodata/.srodata) reside in and

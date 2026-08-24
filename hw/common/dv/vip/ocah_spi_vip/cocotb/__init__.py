@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 ocah_spi_vip — OCAH-stable SPI/QSPI/OSPI flash BFM for cocotb testbenches.
 

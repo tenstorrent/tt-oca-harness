@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-"""KM -> KMAC sideload consume-proof KAT (OCAH , sep_km_kmac_sideload_kat_test).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""KM -> KMAC sideload consume-proof KAT (reference suite, sep_km_kmac_sideload_kat_test).
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -8,8 +9,12 @@ KMAC-256 (cSHAKE, PREFIX="KMAC") over a fixed message; the test proves KMAC
 consumed exactly the sideloaded key.
 
 KMAC DOES have a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is
-a sideload-vs-SW cross-check -- and, as in OCAH , there is no KMAC golden
-(no stdlib cSHAKE/KMAC; OCAH itself uses no KMAC DPI). The OSS port is a FRONTDOOR
+a sideload-vs-SW cross-check rather than a comparison against a known answer. Note
+this is a gap in THIS test, not a missing capability: env/sep_kmac_golden.py is a
+pure-Python FIPS-202/SP800-185 KMAC model that self-tests at import against hashlib
+and the NIST sample vectors, and sep_kmac_mode_strength_rand_test already compares
+it bit-exactly against this same masked engine. Attaching it here would upgrade the
+cross-check below into a real known-answer test. The OSS port is a FRONTDOOR
 known-key variant: it loads a KNOWN distinct-word key, so the cross-check ties the
 sideload output to that specific key via the SW path, and the dummy-key negative
 reference proves the key actually drives the output. This sidesteps the 
@@ -19,7 +24,7 @@ KM-generated key.
 
 VPLAN-parity checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
-  CHK-A     CMD_KEY_LOAD known key (replaces OCAH CMD_KEY_GENERATE + backdoor)
+  CHK-A     CMD_KEY_LOAD known key (replaces reference CMD_KEY_GENERATE + backdoor)
   CHK-NEG   negative ref: keyed MAC with a DUMMY SW key -> c_dummy (a real op)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only KMAC of the four
             sideload targets released; AES/HMAC/OTBN parked
@@ -30,23 +35,23 @@ VPLAN-parity checkers:
             exactly the KM-delivered known key)
   CHK-ENT   KMAC consumed real DRBG/EDN masking entropy during the keyed ops --
             proven by the CHK5_kmac sink (>=1 post-adapter crypto-EDN beat to KMAC),
-            the OSS frontdoor analog of OCAH's backdoor kmac EDN ack-count delta
+            the OSS frontdoor analog of the reference suite's backdoor kmac EDN ack-count delta
   CHK-ERR   KMAC ERR_CODE == 0
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (KM boot/load consumer)
 
-Accepted scope deltas vs OCAH (documented; no silent skips):
-  * Like OCAH, no bit-exact KMAC golden -- the consume-proof is the cross-check.
-    The OSS port strengthens it with a KNOWN distinct-word key (vs OCAH's
+Accepted scope deltas vs the reference suite (documented; no silent skips):
+  * Like the reference suite, no bit-exact KMAC golden -- the consume-proof is the cross-check.
+    The OSS port strengthens it with a KNOWN distinct-word key (vs the reference suite's
     backdoor-reconstructed KM-generated key), so no backdoor and no key/mask
     non-degeneracy guards are needed (the known key is non-degenerate by
     construction; the wrapper-internal SHARE0 mask non-degeneracy is out of
     frontdoor scope, covered by the OTBN sideload KAT, as for the AES / HMAC KATs).
-  * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of OCAH's
+  * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's
     key-bus AW monitor); CHK-MAC additionally proves KMAC got the correct key.
 
 Boot recipe matches the OTBN/AES/HMAC KATs (real fuse-sense, valid PROD OTP image).
 KMAC IS an EDN consumer (masking entropy), so it is parked through KM boot/load for
-clean isolation + entropy dedication, then released before the transfer (OCAH P3),
+clean isolation + entropy dedication, then released before the transfer,
 after which its keyed ops pull real EDN masking entropy (scored via CHK5_kmac).
 """
 
@@ -65,7 +70,7 @@ KAT_KEY = (
     0xCCDDEEFF, 0x01234567, 0x89ABCDEF, 0xFEDCBA98,
 )
 
-# Fixed message (OCAH KMAC_MSG): bytes 0x00..0x1f as 8 words.
+# Fixed message (reference KMAC_MSG): bytes 0x00..0x1f as 8 words.
 KMAC_MSG = (
     0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F,
     0x10111213, 0x14151617, 0x18191A1B, 0x1C1D1E1F,
@@ -94,13 +99,13 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
 
         # Park all four sideload-target crypto engines: KM owns the EDN stream for
         # boot/keygen and the key bus is isolated. KMAC is released only before the
-        # transfer (OCAH P3) so its keyed ops pull EDN masking entropy afterwards.
+        # transfer so its keyed ops pull EDN masking entropy afterwards.
         await self.swrst.park("otbn", "aes", "hmac", "kmac")
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
         # (KM boot/load consumer). score_sinks kmac="observe": prove KMAC pulls real
         # post-adapter crypto-EDN masking beats during its keyed ops -- the frontdoor
-        # analog of OCAH's backdoor kmac EDN ack-count (CHK-ENT). The drain keeps the
+        # analog of the reference suite's backdoor kmac EDN ack-count (CHK-ENT). The drain keeps the
         # ESRC FIFO from overflowing during the long entropy phase.
         await self.bring_up_entropy(
             strict=True, score_km="observe", score_sinks={"kmac": "observe"})
@@ -124,7 +129,19 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         # CHK-NEG: negative reference -- keyed MAC with an unrelated DUMMY SW key.
         c_dummy = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=False,
                                             sw_key=list(KMAC_DUMMY_KEY))
-        self.logger.info("CHK-NEG dummy-key KMAC PASS: c_dummy=%s", [hex(w) for w in c_dummy])
+        # c_dummy is the negative reference CHK-SIDE compares against, so it has to be
+        # a real observation before that comparison means anything: an all-zero garbage
+        # read would satisfy `a_side != c_dummy` while proving nothing. There is no
+        # bit-exact KMAC golden wired up here (see the module docstring), so this is an
+        # alive-check, not a value check. An all-zero dummy digest would make CHK-SIDE
+        # vacuous.
+        assert any(w != 0 for w in c_dummy), (
+            "dummy-key KMAC returned an all-zero digest -- the negative reference is "
+            f"not a real observation, so CHK-SIDE below would be vacuous: {[hex(w) for w in c_dummy]}"
+        )
+        self.logger.info(
+            "CHK-NEG dummy-key KMAC PASS: non-zero digest observed (alive, not "
+            "value-compared): c_dummy=%s", [hex(w) for w in c_dummy])
 
         # CHK-ISO: only KMAC (of the four sideload targets) is released; others parked.
         rst = await self.swrst.read_back()
@@ -144,12 +161,18 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to KMAC)")
 
         # CHK-PUB: the sideloaded key is NOT exposed on the public KEY_SHARE CSRs.
-        s0_pub, s1_pub = await self.kmac.read_public_key_shares()
+        s0_pub, s1_pub, ctl_pub = await self.kmac.read_public_key_shares()
         assert all(w == 0 for w in s0_pub + s1_pub), (
             "KMAC public KEY_SHARE0/1 not all zero after sideload (key leak): "
             f"s0={[hex(w) for w in s0_pub if w]} s1={[hex(w) for w in s1_pub if w]}"
         )
-        self.logger.info("CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload")
+        assert ctl_pub != 0, (
+            "CHK-PUB positive control failed: KMAC STATUS read back 0 over the same "
+            "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
+        )
+        self.logger.info(
+            "CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload "
+            "(read path alive: STATUS=%#010x)", ctl_pub)
 
         # CHK-SIDE/CHK-MAC: sideload MAC, then SW-key MAC with the KNOWN key.
         a_side = await self.kmac.keyed_mac(list(KMAC_MSG), sideload=True)
@@ -165,7 +188,12 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
             f"  a_side ={[hex(w) for w in a_side]}\n"
             f"  b_swref={[hex(w) for w in b_swref]}"
         )
-        self.logger.info("CHK-MAC KM->KMAC sideload KAT PASS: sideload digest == SW-key(known) digest")
+        # Not "KAT": both digests come from this engine, so this is a cross-check
+        # against the known key, not a comparison with a known answer.
+        self.logger.info(
+            "CHK-MAC KM->KMAC sideload PASS: sideload digest == SW-key(known) digest "
+            "(engine cross-check, not a golden)"
+        )
 
         # CHK-ERR: KMAC raised no error across the keyed ops.
         await self.kmac.check_status_clean("EOT")
@@ -176,5 +204,5 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         await self.km.check_outbound_empty("EOT")
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info("CHK-ENT + CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)")

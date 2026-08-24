@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_no_sep_configuration_test — SMU P0 SEP=0 composition (SMU_005 rev 3).
 
 DV-CARD:          SMU_005   ANCHOR: smu_no_sep_configuration_test

@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Frontdoor OTP single-bit program sequence (write-one-to-set).
 
 Programs one eFuse bit through the ``EFUSE_PROGRAM_CTRL`` MMR and enforces the
-clear-after-program discipline (issue #3908: leaving ``program_enable`` asserted
+clear-after-program discipline (leaving ``program_enable`` asserted
 while a later read is issued starves the shared efuse command channel and hangs
 the read FSM). The generic efuse model's persistent W1S ``field_storage`` retains
 programmed bits across reset/resense, so a program followed by a resense proves the
@@ -79,7 +80,7 @@ class sep_efuse_otp_program_seq(uvm_sequence):
                 status = await self._access(SepAxiOp.READ, _EFUSE_PROGRAM_CTRL, label="program_status")
                 if not (status & _EFUSE_PROGRAM_DONE_BIT):
                     continue
-                # Clear program_enable BEFORE any subsequent read (issue #3908).
+                # Clear program_enable BEFORE any subsequent read .
                 await self._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=0, label="program_ctrl_clear")
                 if not (status & _EFUSE_PROGRAM_ERR_BIT):
                     if self.retry_count:

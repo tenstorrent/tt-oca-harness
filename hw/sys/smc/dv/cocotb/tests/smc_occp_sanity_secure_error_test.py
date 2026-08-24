@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS OCCP/secure-error public-path test (P2-2 / U7-6).
 
 Replaces the CPU-scratch substitute with OTP program-fail + signature gates
