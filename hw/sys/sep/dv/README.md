@@ -39,8 +39,11 @@ python3 $PY --dut sep --items all --list
 # 2. Green in minutes: the no-CPU AXI smoke subset. No firmware build needed.
 python3 $PY --dut sep --items all --tag smoke --stage sim
 
-# 3. One named test, from filelist through simulation.
-python3 $PY --dut sep --items sep_axi_smoke_test --stage flist --stage sim
+# 3. One named test, from filelist through simulation. Include
+#    --stage hdl_compile: --stage sim alone reuses whatever model is on disk,
+#    and a stale one can report a pass that the current RTL would not give.
+python3 $PY --dut sep --items sep_axi_smoke_test \
+  --stage flist --stage hdl_compile --stage sim
 ```
 
 Firmware-boot tests need their image built first:
@@ -75,7 +78,7 @@ checker is.
 What each test proves, and the exact log evidence that proves it:
 
 * [`docs/oss_dv_plan.adoc`](docs/oss_dv_plan.adoc) — the high-level plan: three
-  phases, coverage model, quality bar.
+  phases, coverage accounting, quality bar.
 * [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) —
   Phase 1 baseline, closed. States the shared contract above.
 * [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) —
@@ -96,8 +99,9 @@ flat `s_axi_*` ports). The no_cpu build swaps in the `sep_cpu` stub, which is th
 sole driver of that bus and drives `lsu_axi_req` from `tb_top`'s `lsu_req_drive`
 with a plain `assign` — not a `force`.
 
-* `sep_axi_smoke_test` — read `sep_cpu_ctrl.CLOCK_GATE_CTRL` + write/readback RW
-  registers.
+* `sep_axi_smoke_test` — reset-value read of `sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR`
+  (`+0x0C8`) for decode sanity, then a masked write/readback walk of
+  `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and `PKA_CTRL`.
 * `sep_address_map_test` — field-aware `sep_cpu_ctrl` sweep plus a SEP-local
   fabric walk across the LSU-reachable, OSS-clean blocks (DMA, WDT, reset_ctrl,
   OTBN/AES/HMAC/KMAC, CSRNG/EDN/entropy, lifecycle, KM/AXIL mailbox, eFuse
@@ -136,12 +140,15 @@ hw/sys/sep/dv/
 │   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
 │   └── dv_sim_prestage.py  # pre-sim hook (stages out/sep_efuse.hex)
 │                        # uvm/  — future sibling, not created
-├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
-│                        # + cov/sv/ (scaffold, empty)
+├── cov/                 # scaffold only -- cov/config/<tool>/ (questa, vcs,
+│                        #   verilator, xcelium) and cov/sv/ hold just .gitkeep.
+│                        #   Verilator coverage flags live in sep_sim_cfg.toml
+│                        #   ([coverage.verilator]); no coverage policy exists yet.
 ├── docs/                # verification plans + env reference (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
-├── models/              # SEP-local SystemRDL models (sep_axi_extension + generated)
+├── models/              # SEP-local SystemRDL: models/regs/sep_external.rdl
+│                        #   plus generated output under models/regs/gen/
 ├── shims/               # SEP-local behavioral sim-models (kept, accepted shims)
 │   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
 │   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)

@@ -24,13 +24,11 @@ so a truncated/word-swapped/wrong-key sideload changes the digest and fails.
 
 VPLAN-parity checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
-  CHK-A     CMD_KEY_LOAD known key (replaces reference CMD_KEY_GENERATE + backdoor)
+  CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only HMAC of the four
-            sideload targets released; AES/KMAC/OTBN parked (OSS analog of the reference suite's
-            per-engine key-bus AW monitor)
+            sideload targets released; AES/KMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
-  CHK-PUB   HMAC public KEY CSRs read back zero after the sideload (the key is not
-            exposed on the frontdoor) -- hmac_public_key_regs_read_zero
+  CHK-PUB   HMAC public KEY CSRs read back zero after the sideload (SepHmac.read_public_key)
   CHK-MAC   engine keyed digest == HMAC-SHA256(known_key, msg) golden (consume-proof)
   CHK-RW1C  HMAC done event W1C-clears (INTR_STATE.hmac_done -> 0)
   CHK-ERR   HMAC ERR_CODE == 0 and INTR_STATE.hmac_err == 0
@@ -160,15 +158,6 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             f"  golden={[hex(w) for w in golden]}"
         )
         self.logger.info("CHK-MAC KM->HMAC sideload KAT PASS: digest == HMAC-SHA256(known_key, msg) golden")
-
-        # No decoy-key comparison here, deliberately. `digest != golden(dummy_key)`
-        # is entailed by the CHK-MAC assert above: both goldens are pure functions
-        # of file-scope constants, so the inequality reduces to
-        # golden(KAT_KEY) != golden(HMAC_DUMMY_KEY), which is a constant and holds
-        # with the simulator switched off. It read as a second, independent
-        # discrimination and was not one. The decoy compare IS load-bearing in the
-        # KMAC sibling, where no absolute golden exists and the decoy digest is the
-        # only thing distinguishing the sideload key from the software one.
         self.logger.info("CHK-RW1C PASS: HMAC done event W1C-cleared (in run_keyed_mac)")
 
         # CHK-ERR: HMAC raised no error across the keyed op.

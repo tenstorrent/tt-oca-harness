@@ -71,6 +71,10 @@ class SepAxiItem(uvm_sequence_item):
         # Independent of allow_timeout: an expect_error probe still requires a real
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False
+        # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
+        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4). Default 0 keeps
+        # every existing caller bit-identical.
+        self.user: int = 0
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
         # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
         # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
@@ -143,6 +147,7 @@ class SepAxiDriver(uvm_driver):
             "check_response": False,
             "timeout_ns": self.cfg.axi_timeout_ns,
             "allow_timeout": item.allow_timeout,
+            "user": item.user,
         }
         if item.op is SepAxiOp.READ:
             result = await self.axi.read_bytes_result(item.addr, item.length, **common)
