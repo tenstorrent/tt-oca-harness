@@ -31,6 +31,9 @@
 `include "axil_mailbox_sep_wrap.rdl"
 `include "sep_cpu_ctrl.rdl"
 `include "sep_reset_ctrl.rdl"
+`include "csrng.rdl"
+`include "edn.rdl"
+`include "entropy_source.rdl"
 
 `include "spi_controller.rdl"
 `include "sep_external.rdl"
@@ -95,6 +98,16 @@ addrmap och_sep_top #(
     // Base: 0x1091_3000, Size: 4 KB (0x1000)
     // From sep_crypto_pkg.sv: kmac_rule
     kmac                        kmac                     @BASE_ADDR + 0x1091_3000;
+
+    // DRBG: CSRNG + EDN share the 4 KB aperture at 0x1091_5000, split at 0x800.
+    // From sep_crypto_pkg.sv: csrng_rule
+    csrng                       csrng                   @BASE_ADDR + 0x1091_5000;
+
+    // From sep_crypto_pkg.sv: edn_rule
+    edn                         edn                     @BASE_ADDR + 0x1091_5800;
+
+    // Entropy Source (ESRC)
+    entropy_source              entropy_source          @BASE_ADDR + 0x1091_6000;
 
     // Lifecycle Controller
     // Base: 0x1091_8000, Size: 32 kB (spec: LC at 0x1091_8000-0x1091_FFFF)
