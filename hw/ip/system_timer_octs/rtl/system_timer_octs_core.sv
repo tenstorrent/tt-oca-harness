@@ -88,7 +88,7 @@ module system_timer_octs_core
     // CDC Synchronization and Pulse Logic //
     /////////////////////////////////////////
 
-    // First flop the inputs to the edge detectors to ensure they are stable when sampled, TODO: check reset condition
+    // First flop the inputs to the edge detectors to ensure they are stable when sampled.
     logic timer_sync_load_flopped;
     logic timer_cnt_credit_flopped;
     always_ff @(posedge clk_i or negedge rst_ni) begin

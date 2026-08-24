@@ -146,8 +146,6 @@ module smc_base
   smc_pkg::smc_axil_32_64_resp_t axil_outbound_filter_ctrl_resp;
   smc_pkg::smc_axil_32_64_req_t  axil_mailbox_req;
   smc_pkg::smc_axil_32_64_resp_t axil_mailbox_resp;
-  smc_pkg::smc_axil_32_64_req_t  axil_dfd_ctrl_req;
-  smc_pkg::smc_axil_32_64_resp_t axil_dfd_ctrl_resp;
   smc_pkg::smc_axil_32_64_req_t  axil_smc_base_config_req;
   smc_pkg::smc_axil_32_64_resp_t axil_smc_base_config_resp;
 

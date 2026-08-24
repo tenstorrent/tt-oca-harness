@@ -409,7 +409,6 @@ module dfd_mmrs
 			logic         Trramstarthigh_Warl_Check_ANY, Trramlimithigh_Warl_Check_ANY;
 			logic         Warl_Updated_WrEn_ANY;
 			logic [31:0]  Trramstartlow_Warl_Data_ANY, Trramlimitlow_Warl_Data_ANY, Warl_Updated_Data_ANY, Warl_Muxed_CsrWrData;
-			logic         Trfusedisabled;
 
 			assign Trntrissrammode = ~DfdCsrs.TrCsrs.TrCsrTrramcontrol.Trrammode; // Check if the mode config is SRAM mode
 

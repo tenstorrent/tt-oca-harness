@@ -28,39 +28,6 @@ static void run_test_suite(test_context_t *ctx) {
     // Execute 25 random OCCP commands using shared function
     simputs("=== Max Size Read/Write OCCP Commands Test (25 commands) ===\n");
     execute_max_size_rw_commands(ctx, 3);
-
-    // // general status check
-    // retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
-    // if (retval == OCCP_SUCCESS) {
-    //   check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
-    //   increment_cmd_count(ctx);
-    // } else {
-    //   simputs("GET_STATUS: FAIL\n");
-    //   ctx->overall_result = false;
-    // }
-
-    // // EOT: drain ring buffers and check data correctness
-    // do {
-    //   retval = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_data);
-    //   if (retval == OCCP_SUCCESS) {
-    //     simputshex32("SEP Status: ", status_data);
-    //     simputs("GET_SEP_STATUS: PASS\n");
-    //   } else {
-    //     simputs("GET_SEP_STATUS: FAIL\n");
-    //     ctx->overall_result = false;
-    //   }
-    // } while (status_data != 0 && retval == OCCP_SUCCESS);
-
-    // do {
-    //   retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
-    //   if (retval == OCCP_SUCCESS) {
-    //     simputshex32("SMC Status: ", status_data);
-    //     simputs("GET_SMC_STATUS: PASS\n");
-    //   } else {
-    //     simputs("GET_SMC_STATUS: FAIL\n");
-    //     ctx->overall_result = false;
-    //   }
-    // } while (status_data != 0 && retval == OCCP_SUCCESS);
 }
 
 static void finalize_test_results(test_context_t *ctx) {
