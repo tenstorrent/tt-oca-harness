@@ -1,0 +1,32 @@
+hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
+  s_c5151d462a6a92::t_c4c49c8e9f2f87 39
+hw/ip/uart/uart_16550/rtl/uart_core.sv
+  s_c5151d462a6a92::t_c9d517183adaca 106
+hw/ip/dfd/rtl/misc/dfd_frame_filler.sv
+  s_c5151d462a6a92::t_b1da9056cfe5d3 46
+hw/ip/dfd/rtl/misc/dfd_vlt_packet_compression.sv
+  s_c5151d462a6a92::t_c2625447d0754a 85
+hw/ip/dfd/rtl/mmr/dfd_apb2mmr.sv
+  s_c5151d462a6a92::t_33fa30004cb0ec 61
+hw/ip/dfd/rtl/trace/dfd_trace_sink.sv
+  s_c5151d462a6a92::t_2925fa40f31763 241
+  s_c5151d462a6a92::t_c15a86a78bbe98 161
+  s_c5151d462a6a92::t_0bf7649ee15ecd 240
+  s_c5151d462a6a92::t_1fc762bf73c67a 248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "90acae26df1b94ee15250d6ce1c93f980255c5f8",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
