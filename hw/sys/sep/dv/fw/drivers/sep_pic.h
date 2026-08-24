@@ -22,6 +22,8 @@
 #define SEP_PIC_MEIPL_0 0xC0080004u     // priority (4-bit), 0 disables the source
 #define SEP_PIC_MEIE_0 0xC0082004u      // per-source enable
 #define SEP_PIC_MEIGWCTRL_0 0xC0084004u // gateway: [0]=polarity, [1]=irq_type
+#define SEP_PIC_MEIGWCLR_0 0xC0085004u  // write 1 to clear edge gateway
+#define SEP_PIC_MEIP_0 0xC0081000u      // pending words, 32 sources each
 
 // The vector table base symbol from the linker script (1024-byte aligned, 256
 // 32-bit entries in DCCM).
@@ -35,9 +37,12 @@ static inline void _pic_wr(uint32_t addr, uint32_t value) {
 }
 
 // Install a handler for an interrupt source (vector-table entry source_id).
+// Must be a 32-bit store: INTVEC_BASE is a char[] symbol, so a C pointer
+// write becomes four `sb`s under -mstrict-align, and EL2 DCCM drops them.
 static inline void pic_register_handler(uint32_t source_id, pic_handler_t handler) {
-    volatile uint32_t *vectbl = (volatile uint32_t *)INTVEC_BASE;
-    vectbl[source_id] = (uint32_t)handler;
+    uint32_t addr = (uint32_t)(uintptr_t)&INTVEC_BASE[source_id * 4u];
+    uint32_t val = (uint32_t)(uintptr_t)handler;
+    __asm__ volatile("sw %0, 0(%1)" ::"r"(val), "r"(addr) : "memory");
     __asm__ volatile("fence" ::: "memory");
 }
 
@@ -57,6 +62,28 @@ static inline void pic_enable_source(uint32_t source_id) {
 
 static inline void pic_disable_source(uint32_t source_id) {
     _pic_wr(SEP_PIC_MEIE_0 + (source_id - 1) * 4, 0);
+}
+
+static inline uint32_t pic_read_source_enable(uint32_t source_id) {
+    return *(volatile uint32_t *)(SEP_PIC_MEIE_0 + (source_id - 1) * 4);
+}
+
+static inline uint32_t pic_read_priority(uint32_t source_id) {
+    return *(volatile uint32_t *)(SEP_PIC_MEIPL_0 + (source_id - 1) * 4);
+}
+
+static inline uint32_t pic_read_gateway(uint32_t source_id) {
+    return *(volatile uint32_t *)(SEP_PIC_MEIGWCTRL_0 + (source_id - 1) * 4);
+}
+
+static inline void pic_clear_gateway(uint32_t source_id) {
+    _pic_wr(SEP_PIC_MEIGWCLR_0 + (source_id - 1) * 4, 1);
+}
+
+static inline uint32_t pic_source_pending(uint32_t source_id) {
+    /* meip bitmap is indexed by raw source_id (bit0 unused); neighbours use source_id-1. */
+    uint32_t word = *(volatile uint32_t *)(SEP_PIC_MEIP_0 + (source_id / 32u) * 4u);
+    return (word >> (source_id % 32u)) & 1u;
 }
 
 // Drop the PIC priority threshold/current level to 0 and enable machine
