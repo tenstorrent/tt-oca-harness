@@ -436,7 +436,10 @@ not here; see <a href="#sep-non-pic-paths">Non-PIC Interrupt Paths</a>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>39</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Token match fault</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse token comparator redundancy fault (fault). The OR of the three sticky
-<code>TOKEN_MATCH_FAULT</code> bits, so it stays asserted until reset.</p></td>
+<code>TOKEN_MATCH_FAULT</code> bits. Those bits are software-read-only and clear only on
+reset, so this source stays asserted. Firmware must mask PIC source 39 after
+it has observed the fault; there is no write-one-to-clear, and an unmasked
+handler re-enters.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[40–255]</code></p></td>

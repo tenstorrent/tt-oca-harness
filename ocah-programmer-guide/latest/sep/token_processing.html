@@ -391,8 +391,19 @@ for that token in the <code>TOKEN_MATCH_FAULT</code> register. The three sticky 
 combined into a single interrupt to the SEP CPU on PIC source 39; see
 <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>
 for the full slot map. Firmware reads the register to identify which
-comparators faulted. The fault bits clear only on reset, so a fault cannot be
-hidden by retrying with a valid token.</p>
+comparators faulted. The fault bits are software-read-only and clear only on
+reset, so a fault cannot be hidden by retrying with a valid token and the PIC
+source stays asserted. Firmware must mask PIC source 39 after it has observed
+the fault; there is no write-one-to-clear that drops the line, and an unmasked
+handler re-enters.</p>
+</div>
+<div class="paragraph">
+<p>The detector does not catch a common-mode fault. If all three comparators flip
+the same way they still agree and each still drives a legal differential pair,
+so the output is a legal match or mismatch code and no sticky bit is set.
+Invert of a match is a legal mismatch; invert of a mismatch is a legal match
+(fail-open). "Any deviation" here means a collapsed pair or a disagreement
+between instances, not full coverage of every possible fault.</p>
 </div>
 <div class="imageblock">
 <div class="content">
