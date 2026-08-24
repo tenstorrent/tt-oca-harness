@@ -368,7 +368,7 @@ stays `GAP` past Phase 2+ because no vehicle exists for it yet.
 | PROVEN
 | AES, HMAC, KMAC, OTBN walked; KM held by reset default.
 
-| Clock-gate per IP
+| Clock-gate placeholder
 | PROVEN
 | `CLOCK_GATE_CTRL` is one unused `pka_cg_enable` bit.
   `sep_clock_gate_control_test` proves that storage and that AES /

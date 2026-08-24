@@ -1261,8 +1261,10 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | PROVEN
 
 | CHK-IP-RW1C
-| Each source's IP interrupt-state bit is cleared by write-one-to-clear, re-read inside
-  the handler as the witness.
+| Event-type sources and the mailbox clear by write-one-to-clear of
+  `INTR_STATE` / IRQS. DMA is Status-type: `INTR_STATE` is read-only, and
+  the ISR writes `INTR_TEST=0` (and W1C `STATUS`). The witness is the IP
+  state bit re-read as 0 inside the handler.
 | `CHK-IP-RW1C PASS: `
 | PROVEN
 
@@ -2018,7 +2020,7 @@ in this map clocks an IP off.
 | PROVEN
 |===
 
-NOTE: this representative closes the iconic "Clock-gate per IP"
+NOTE: this representative closes the iconic "Clock-gate placeholder"
 scorecard row. The implemented contract is the designer placeholder,
 not a live per-IP gate.
 
