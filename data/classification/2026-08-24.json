@@ -1,0 +1,17 @@
+{
+  "date": "2026-08-24",
+  "sim_run_id": "32760410473",
+  "status": "FAIL",
+  "leaves": {
+    "total": 75,
+    "pass": 71
+  },
+  "failures": {
+    "infra": 1,
+    "design": 3,
+    "unknown": 0
+  },
+  "flaky_tests": [
+    "dtp_jtag2axi_smc_axi_read_random_ops_test"
+  ]
+}
