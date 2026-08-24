@@ -27,7 +27,8 @@ exists, those names are graded there. ROM *hardware* access stays here
 CHK-JTAG-MMR-DENY is a spec-versus-RTL mismatch: `hw/sys/sep/doc/periphs.adoc`
 requires DECERR on a non-token MMR in PROD; the RTL returns OKAY on
 `EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH`. The checker stays `FAILED` until
-the RTL or the spec changes (issue 626).
+the RTL or the spec changes: `hw/sys/sep/doc/periphs.adoc` restricts the JTAG
+port in PROD and RMA_SIP to the RMA token registers only.
 
 Behaviours this spine does not claim are listed in
 <<claims-outside-contract>>.
@@ -1253,7 +1254,7 @@ released from reset, with AES, HMAC and KMAC held parked for the whole transfer.
 
 | 2
 | Park OTBN, AES, HMAC and KMAC; bring up the entropy stack with strict golden checking.
-| `CHK1 golden seeded from live ff_stage @ decor=e16f34d911772eaaa0b31f4f`
+| `CHK1 golden seeded from live ff_stage @ decor=`
 | LOGGED
 
 | 3
@@ -1986,7 +1987,7 @@ entropy rather than a constant.
 
 | 2
 | Bring up real entropy; release the Key Manager and wait for firmware ready.
-| `CHK1 golden seeded from live ff_stage @ decor=e16f34d911772eaaa0b31f4f` then `CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox`
+| `CHK1 golden seeded from live ff_stage @ decor=` then `CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox`
 | LOGGED
 
 | 3
@@ -2440,7 +2441,7 @@ injection on this path does and does not cover.
 
 | 2
 | Bring up entropy with strict golden checking and per-consumer scoring; wait for generated bits; start draining the queue; boot the Key Manager.
-| `CHK1 golden seeded from live ff_stage @ decor=e16f34d911772eaaa0b31f4f` and `CHK2 frontdoor: drained 16 FIFO_RDATA words`
+| `CHK1 golden seeded from live ff_stage @ decor=` and `CHK2 frontdoor: drained 16 FIFO_RDATA words`
 | LOGGED
 
 | 3
@@ -3104,7 +3105,7 @@ so what is checked is the queue's output rather than an internal signal.
 
 | 4
 | Start the golden scoreboard; drain the source queue through the front door.
-| `CHK1 golden seeded from live ff_stage @ decor=e16f34d911772eaaa0b31f4f` and `CHK2 frontdoor: drained 16 FIFO_RDATA words`
+| `CHK1 golden seeded from live ff_stage @ decor=` and `CHK2 frontdoor: drained 16 FIFO_RDATA words`
 | LOGGED
 
 | 5

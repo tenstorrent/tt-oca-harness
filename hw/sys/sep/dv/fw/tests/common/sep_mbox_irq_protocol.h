@@ -141,8 +141,8 @@
 /* SEP inbound filter window over the WHOLE mailbox channel region so the SMC's pops/W1C/readbacks
  * at every inbound port reach the mailbox. DERIVED from the generated mailbox macros: START =
  * outbound base; END = last inbound channel (INBOUND_0 + 7*stride) + its register-block top
- * (REG_MAP_SIZE-1) = 0x10A0784F. allow_burst=0 -> the byte-granular END stores EXACTLY (003
- * lesson). */
+ * (REG_MAP_SIZE-1) = 0x10A0784F. allow_burst=0 -> the byte-granular END stores EXACTLY, as
+ * smc_sep_xbar shows. */
 #define SMU015_MBOX_FILTER_START ((unsigned long long)SMU015_MBOX_OUTBOUND_BASE)
 #define SMU015_MBOX_FILTER_END \
     ((unsigned long long)(SMU015_MBOX_INBOUND_BASE + 7 * SMU015_MBOX_CH_STRIDE + \

@@ -319,7 +319,8 @@ stays `GAP` past Phase 2+ because no vehicle exists for it yet.
   rather than reused, and slot extent held by the firmware key registry rather
   than a CSR field; `hw/ip/key_manager/regs/km_csr.rdl` carries
   `IRQ_STATUS.SRAM_WRITE_LOCK_ERR` for a write to a write-locked region. None
-  of that is exercised. No Phase 2+ vehicle.
+  of that is exercised. The Phase 2+ Key Manager command-device entry carries
+  the seal contract; slot extent and the SRAM write-lock have no vehicle.
 
 | Entropy ESRC → DRBG → EDN consume
 | PROVEN

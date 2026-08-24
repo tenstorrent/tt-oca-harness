@@ -63,8 +63,8 @@
  * pop its reply, so bit0 does not immediately re-assert. Mirrors sep_mailbox_plic_test. */
 #define MBOX_IRQ_ALL 0x7 /* write | read | error status bits             */
 
-/* Firmware poll bound (loop iterations) shared by both sides -- mirrors 004's
- * SMU_STALL_FW_POLL_LIMIT. Bounded so a missing peer times out to a fail marker instead
+/* Firmware poll bound (loop iterations) shared by both sides -- mirrors
+ * smu_smc_stall_sep's SMU_STALL_FW_POLL_LIMIT. Bounded so a missing peer times out to a fail marker instead
  * of hanging the simulation. */
 #define SEP_INTEROP_POLL_LIMIT 4000000
 

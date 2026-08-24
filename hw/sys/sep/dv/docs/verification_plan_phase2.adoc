@@ -2589,13 +2589,13 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 
 == Audit summary
 
-24 testcases, 51 steps, 122 checkers.
+24 testcases, 51 steps, 123 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 121
+| `PROVEN` | 122
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
