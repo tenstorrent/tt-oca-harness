@@ -6,7 +6,7 @@ reference ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivi
 test_seq). no_cpu: with the CPU held off, the host injects each CSRNG/EDN
 interrupt via its real INTR_TEST register and proves it propagates to the mapped
 bit of the sep_internal_interrupts aggregate vector that feeds the VeeR PIC --
-exercising the IP `intr_o` -> aggregator wiring (sep.sv:451-461), not merely that
+exercising the IP `intr_o` -> aggregator wiring (sep.sv:524-546), not merely that
 the IP raised its own status bit.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus

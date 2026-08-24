@@ -47,7 +47,6 @@ from __future__ import annotations
 
 import logging
 import os
-import random
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -57,6 +56,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -112,11 +112,11 @@ class SepSpiFlashCmdCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepSpiFlashCmdCfg":
-        rng = random.Random(seed)
-        sector = rng.randint(0, 31)
-        page = rng.randint(0, _SECTOR_SIZE // _PAGE_SIZE - 1)
+        rng = SepSeededRng(seed)
+        sector = rng.randrange(0, 32)
+        page = rng.randrange(0, _SECTOR_SIZE // _PAGE_SIZE)
         addr = sector * _SECTOR_SIZE + page * _PAGE_SIZE
-        nwords = rng.randint(1, _MAX_WORDS)
+        nwords = rng.randrange(1, _MAX_WORDS + 1)
         data = [rng.getrandbits(32) for _ in range(nwords)]
         return cls(seed=seed, addr=addr, data=list(data))
 

@@ -37,8 +37,7 @@ _ICCM_BASE = 0xC000_0000
 _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
-# Must match the banner dma_hash_test.c actually prints; the firmware was
-# retitled without updating this string.
+# Must match the banner dma_hash_test.c actually prints.
 _BANNER = "Secure DMA SHA-256 Hash Test"
 
 

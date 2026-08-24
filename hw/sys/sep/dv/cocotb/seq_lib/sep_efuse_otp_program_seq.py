@@ -6,13 +6,12 @@ Programs one eFuse bit through the ``EFUSE_PROGRAM_CTRL`` MMR and enforces the
 clear-after-program discipline (leaving ``program_enable`` asserted
 while a later read is issued starves the shared efuse command channel and hangs
 the read FSM). The generic efuse model's persistent W1S ``field_storage`` retains
-programmed bits across reset/resense, so a program followed by a resense proves the
-persistence path without any (non-physical) mid-run image swap.
+programmed bits across reset/resense, so a program followed by a resense proves
+the persistence path.
 
-Reused by the eFuse image persistence test and the LCC LC_STATE walk; parameterize
-``bit_addr`` (global fuse bit index = word*32 + bit). ``retry_count`` records how
-many injected program failures forced a retry, so a test can prove the retry path
-was exercised rather than passing vacuously.
+Parameterize ``bit_addr`` (global fuse bit index = word*32 + bit).
+``retry_count`` records how many injected program failures forced a retry, so a
+test can prove the retry path was exercised rather than passing vacuously.
 """
 
 from __future__ import annotations

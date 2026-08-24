@@ -17,6 +17,22 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# OTBN compute RANDCFG. no_cpu direct-AXI: IMEM program, EXECUTE, ERR_BITS==0,
+# DMEM result == independent golden. Walks ADD/XOR/AND; operands from the run
+# seed. Entropy bring-up for post-reset URND wipe (+esrc_noise_force);
+# +skip_fuse_sense. Distinct from IMEM/DMEM smoke (no EXECUTE) and from the
+# KM sideload key-dump.
+name = "sep_otbn_compute_rand_test"
+module = "otbn.sep_otbn_compute_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["otbn", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 name = "sep_esrc_e2e_smoke_test"
 module = "system.sep_esrc_e2e_smoke_test"
 seed = 1
@@ -99,10 +115,9 @@ args = ["+skip_fuse_sense"]
 # DRBG real-sink multi-consumer KM + AES concurrent: one real DRBG/EDN stream feeds two real sinks at once -- KM AXIS
 # (rom_main + interleaved CMD_KEY_GENERATE DRBG pulls) and AES native crypto-EDN
 # (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
-# shared DRBG is correct; CHK5_km + CHK5_aes observed (>=1 beat each) prove
-# concurrent multi-sink consumption. Per-sink bit-exact (which word to which sink)
-# is the documented delta (needs the reference suite AXIS1 pre-adapter tap + arbiter trace,
-# not built; sep_drbg_scoreboard raises NotImplementedError for crypto golden).
+# shared DRBG is correct. CHK5 scores AES golden (AES beats == AXIS1 order) and
+# KM membership (each KM word is a genbits-golden word). Dual-crypto-sink
+# bit-exact routing is a Phase 2 claim, not this test.
 # no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
 # oscillators under Verilator. rom_main.rom.parhex from tracked source.
 name = "sep_drbg_real_sink_multi_km_aes_test"
@@ -119,8 +134,8 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # pull the shared crypto-EDN leg concurrently off one verified DRBG stream.
 # Two real crypto clients contend the round-robin arbiter (distinct from the KM+AES
 # test above: there AES was the sole crypto client + KM was the second leg). No KM
-# firmware / no rom_main / no real fuse-sense. CHK1..CHK4 bit-exact + per-sink
-# MEMBERSHIP (each AES and each KMAC word is a genbits-golden word) + both-beats +
+# firmware / no rom_main / no real fuse-sense. CHK1..CHK4 bit-exact + dual-sink
+# CHK5 ROUTING (each AES/KMAC beat equals the AXIS1 grant) + both-beats +
 # both-KAT under contention. +esrc_noise_force (masking entropy) + +skip_fuse_sense.
 name = "sep_crypto_edn_multisink_arbitration_test"
 module = "crypto.sep_crypto_edn_multisink_arbitration_test"
@@ -137,7 +152,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # EDN is enabled, then the real entropy chain is brought up so prim_arbiter_ppc
 # inside drbg_axis_edn_adapter has to grant both. Distinct from the AES+KMAC
 # time-span overlap test above, which cannot hold two edn_req bits together.
-# Strict CHK1..CHK4 + CHK5_aes/CHK5_otbn_urnd membership (two live sinks).
+# Strict CHK1..CHK4 + CHK5_aes/CHK5_otbn_urnd ROUTING (two live sinks).
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1

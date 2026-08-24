@@ -151,6 +151,7 @@ class OcahAxiMasterSequence:
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
+        user: int = 0,
     ) -> OcahAxiWriteResult:
         """Issue a write of an explicit byte payload and return a plain result.
 
@@ -167,6 +168,7 @@ class OcahAxiMasterSequence:
             check_response=check_response,
             timeout_ns=timeout_ns,
             allow_timeout=allow_timeout,
+            user=user,
         )
 
     async def read_result(
@@ -210,6 +212,7 @@ class OcahAxiMasterSequence:
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
+        user: int = 0,
     ) -> OcahAxiReadResult:
         """Issue a read of ``length`` bytes and return a plain result.
 
@@ -226,6 +229,7 @@ class OcahAxiMasterSequence:
             check_response=check_response,
             timeout_ns=timeout_ns,
             allow_timeout=allow_timeout,
+            user=user,
         )
 
     async def burst_write(
@@ -384,8 +388,10 @@ class OcahAxiMasterSequence:
         check_response: bool,
         timeout_ns: int | None,
         allow_timeout: bool,
+        user: int = 0,
     ) -> OcahAxiWriteResult:
-        event = self.driver.init_write(addr, payload, id=id, size=size, **self._axkwargs(burst, prot))
+        event = self.driver.init_write(
+            addr, payload, id=id, size=size, **self._axkwargs(burst, prot, user))
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
@@ -417,8 +423,10 @@ class OcahAxiMasterSequence:
         check_response: bool,
         timeout_ns: int | None,
         allow_timeout: bool,
+        user: int = 0,
     ) -> OcahAxiReadResult:
-        event = self.driver.init_read(addr, length, id=id, size=size, **self._axkwargs(burst, prot))
+        event = self.driver.init_read(
+            addr, length, id=id, size=size, **self._axkwargs(burst, prot, user))
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
@@ -444,8 +452,8 @@ class OcahAxiMasterSequence:
         return result
 
     @staticmethod
-    def _axkwargs(burst: int | None, prot: int | None) -> dict[str, int]:
-        kwargs: dict[str, int] = {}
+    def _axkwargs(burst: int | None, prot: int | None, user: int = 0) -> dict[str, int]:
+        kwargs: dict[str, int] = {"user": user}
         if burst is not None:
             kwargs["burst"] = burst
         if prot is not None:
