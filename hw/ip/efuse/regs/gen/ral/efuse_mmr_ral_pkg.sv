@@ -117,6 +117,27 @@
         endfunction : build
     endclass : efuse_mmr__SEC_DISABLE_TOKEN_MATCH
 
+    // reg - efuse_mmr.TOKEN_MATCH_FAULT
+    class efuse_mmr__TOKEN_MATCH_FAULT extends uvm_reg;
+        `uvm_object_utils(efuse_mmr__TOKEN_MATCH_FAULT)
+        rand uvm_reg_field rma_sip_token_fault;
+        rand uvm_reg_field rma_chiplet_token_fault;
+        rand uvm_reg_field secure_disable_token_fault;
+
+        function new(string name = "efuse_mmr__TOKEN_MATCH_FAULT");
+            super.new(name, 32, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rma_sip_token_fault = uvm_reg_field::type_id::create("rma_sip_token_fault");
+            this.rma_sip_token_fault.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rma_chiplet_token_fault = uvm_reg_field::type_id::create("rma_chiplet_token_fault");
+            this.rma_chiplet_token_fault.configure(this, 1, 8, "RO", 1, 'h0, 1, 1, 0);
+            this.secure_disable_token_fault = uvm_reg_field::type_id::create("secure_disable_token_fault");
+            this.secure_disable_token_fault.configure(this, 1, 16, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : efuse_mmr__TOKEN_MATCH_FAULT
+
     // addrmap - efuse_mmr
     class efuse_mmr extends uvm_reg_block;
         `uvm_object_utils(efuse_mmr)
@@ -127,6 +148,7 @@
         rand efuse_mmr__RMA_SIP_TOKEN_MATCH RMA_SIP_TOKEN_MATCH;
         rand efuse_mmr__RMA_CHIPLET_TOKEN_MATCH RMA_CHIPLET_TOKEN_MATCH;
         rand efuse_mmr__SEC_DISABLE_TOKEN_MATCH SEC_DISABLE_TOKEN_MATCH;
+        rand efuse_mmr__TOKEN_MATCH_FAULT TOKEN_MATCH_FAULT;
 
         function new(string name = "efuse_mmr");
             super.new(name);
@@ -175,6 +197,11 @@
 
             this.SEC_DISABLE_TOKEN_MATCH.build();
             this.default_map.add_reg(this.SEC_DISABLE_TOKEN_MATCH, 'h6c);
+            this.TOKEN_MATCH_FAULT = efuse_mmr__TOKEN_MATCH_FAULT::type_id::create("TOKEN_MATCH_FAULT");
+            this.TOKEN_MATCH_FAULT.configure(this);
+
+            this.TOKEN_MATCH_FAULT.build();
+            this.default_map.add_reg(this.TOKEN_MATCH_FAULT, 'h70);
         endfunction : build
     endclass : efuse_mmr
 
