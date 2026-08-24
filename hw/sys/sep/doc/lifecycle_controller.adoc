@@ -796,6 +796,103 @@ Reserved-bit ranges available for adopter-defined scan chains (see
 * Debug group: bits 4-23 (DBG_1, 20 reserved bits) and bits 25-47 (DBG_2, 23 reserved bits)
 * Function group: bits 48-63 (16 reserved bits)
 
+[[dtp-path-gating]]
+====== Debug and Test Port Path Gating
+
+This section is *authoritative* for which feature control bits gate which Debug
+and Test Port (DTP) path. It formalizes the layered model of
+<<multiple-security-domains>> as a three-case ladder built only from debug bits.
+
+[width="100%",cols="^10%,<35%,<55%",options="header",]
+|=======================================================================
+|Case |Condition |Applies to
+
+|1
+|`SIP_DBG`
+|Paths that only enter or traverse the chiplet without reaching chiplet-internal
+resources.
+
+|2
+|`SIP_DBG & CHIPLET_DBG`
+|Paths reaching chiplet-internal resources.
+
+|3
+|`SIP_DBG & CHIPLET_DBG & SEP_DBG`
+|Paths reaching the SEP or the secure domain.
+|=======================================================================
+
+The cases are strictly nested (3 within 2 within 1). `SIP_DBG` is the baseline
+admission gate for every debug path, because it is the SiP-owner domain's gate on
+chiplet ingress; a path reaching chiplet-internal resources adds `CHIPLET_DBG`;
+a path touching SEP or secure-domain assets adds `SEP_DBG`.
+
+*Composition rule.* Each path enable is an explicit AND of *all* the bits its
+case requires, and a granular bit is an *additional* AND term on top of its case
+rather than a substitute for it. Because the composition is an AND, partial burns
+*fail safe*: `SEP_DBG` left open while `CHIPLET_DBG` is burned closed grants
+nothing.
+
+[width="100%",cols="<44%,<26%,<30%",options="header",]
+|=======================================================================
+|DTP path |Gating |Notes
+
+|I/O S-TAP host path |Case 1 |
+
+|External S-TAP return path |Case 1 |Onward forwarding to a downstream chiplet is
+part of the SiP-owner domain (see <<multiple-security-domains>>).
+
+|DFD iJTAG path |Case 1 |
+
+|SMC debug S-TAP host path |Case 2 |No dedicated SMC debug bit exists; see the
+note below.
+
+|DTP configurable (extra) S-TAP host paths |Case 2 |
+
+|Non-secure external DFT iJTAG path |Case 2 |The DFT non-secure chain SIB. Not
+gated by `secure_tm` -- see <<secure-tm-vs-scandump>>.
+
+|SMC fabric JTAG2AXI path |Case 2 |
+
+|SEP debug S-TAP host path |Case 3 |Gating `SEP_DBG` alone would be wrong; see
+the note below.
+
+|Secure external DFT iJTAG path |Case 3 |The DFT secure chain SIB. Reaching it
+grants test access only, under the command-class rule of
+<<secure-tm-vs-scandump>>.
+
+|DFT-inserted SEP fuse path |Case 3 `& SEP_FUSE_DBG` |Includes the OTP IP-vendor
+test and calibration interface, which is reachable only over this path.
+
+|DFT-inserted SMC fuse path |Case 2 `& SMC_FUSE_DBG` |
+
+|SEP / SMC OTP JTAG2AXIL path |*Ungated* |This path reaches only the fuse
+controller's register interface, whose own per-field `LOCKS` read/write access
+control is the enforcement point, so a feature control bit would be redundant.
+`LOCKS` is only in force once sensed, so this depends on nothing on this path
+being able to execute before fuse sensing completes.
+
+|Boundary scan (BSR) |_Not yet assigned_ |Requires a decision on whether
+board-level interconnect test must work in states where DFD and DFT are closed.
+|=======================================================================
+
+Two consequences are worth stating explicitly.
+
+*Case 3 spans both demotion sub-groups.* `SEP_DBG` and `CHIPLET_DBG` are DBG_1
+bits (opened by Demotion 1) while `SIP_DBG` is a DBG_2 bit (opened by
+Demotion 2), so no single demotion opens a Case 3 path. This is deliberate, but
+it means a debug session enabled by one demotion alone will find every Case 3
+path shut.
+
+*There is no `SMC_DBG` bit.* The SMC debug S-TAP reuses Case 2, so opening
+`CHIPLET_DBG` for any other Case 2 path also opens SMC debug. Separating the two
+would require allocating a dedicated bit from the reserved DBG_1 range.
+
+The failure mode this table exists to prevent is specific: it is tempting to gate
+the SEP debug S-TAP on `SEP_DBG` alone because the names match, but the layered
+model deliberately breaks that one-to-one mapping. Such a bug is invisible in
+ordinary testing -- in `TEST_DEV`, and after any demotion, the bits are open, so
+the path works and every test passes. It surfaces only under a partial lockdown.
+
 [[non-primary-chiplets]]
 ===== Non-Primary Chiplets
 
