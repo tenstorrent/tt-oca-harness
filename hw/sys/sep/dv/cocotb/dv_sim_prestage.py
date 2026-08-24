@@ -65,6 +65,19 @@ def _load_sep_efuse_image():
     spec.loader.exec_module(module)
     return module.SepEfuseImage
 
+
+def _rma_token_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_efuse_rma_token_rand_test``'s ``cfg.image_fixed()``."""
+    env_dir = _DV_ROOT / "cocotb" / "env"
+    if str(env_dir) not in sys.path:
+        sys.path.insert(0, str(env_dir))
+    path = env_dir / "sep_rma_token.py"
+    spec = importlib.util.spec_from_file_location("sep_rma_token", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.SepRmaTokenCfg(seed).image_fixed()
+
+
 # Common LC-gated field pins shared by several PROD-lifecycle tests.
 _SIP_SYS_DIS_PINS = {
     "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0F,
@@ -106,6 +119,27 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_km_hmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_otbn_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_drbg_real_sink_multi_km_aes_test": {"mode": "random", "lc_raw": 0x1},
+    # Spare-field lock x program. SPARE0..7 pinned 0 so the unlocked-then-lock
+    # walk starts from a known-zero field (lock_prob stays 0).
+    "sep_efuse_program_lock_matrix_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": {f"SPARE{i}": 0 for i in range(8)},
+    },
+    # Demote product starts at TEST_DEV with DIS=0; the pinned DIS pair is
+    # W1S-programmed after the first LC walk.
+    "sep_lcc_demote_feat_ctrl_matrix_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": {"SIP_DIS": 0, "SYS_DIS": 0},
+    },
+    # RMA token RANDCFG. Digests come from SepRmaTokenCfg(seed); see
+    # _rma_token_fixed() so the t=0 hex matches the test golden.
+    "sep_efuse_rma_token_rand_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "rma_token",
+    },
 }
 
 
@@ -158,6 +192,7 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
     preload_sel = _preload_from_args(sim_args)
     spec = EFUSE_IMAGE_REGISTRY.get(item)
     if preload_sel is None and spec is None:
+        print(f"[dv_sim_prestage] no-op item={item!r} (not in registry)", flush=True)
         return False
 
     SepEfuseImage = _load_sep_efuse_image()
@@ -176,14 +211,22 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
     elif spec.get("mode") == "preload":
         image.load(spec["preload"])
     else:
+        fixed = spec.get("fixed")
+        if spec.get("fixed_from") == "rma_token":
+            fixed = _rma_token_fixed(seed + int(spec.get("seed_offset", 0)))
         image.randomize(
             seed + int(spec.get("seed_offset", 0)),
             lc_raw=spec.get("lc_raw"),
             lock_prob=float(spec.get("lock_prob", 0.0)),
-            fixed=spec.get("fixed"),
+            fixed=fixed,
         )
 
     out_dir = Path(cwd) / "out"
     out_dir.mkdir(parents=True, exist_ok=True)
-    image.write_hex(out_dir / "sep_efuse.hex")
+    hex_path = out_dir / "sep_efuse.hex"
+    image.write_hex(hex_path)
+    print(
+        f"[dv_sim_prestage] staged {item} seed={seed} -> {hex_path}",
+        flush=True,
+    )
     return True
