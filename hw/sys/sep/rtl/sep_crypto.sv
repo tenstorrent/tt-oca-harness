@@ -159,7 +159,10 @@ module sep_crypto #(
     output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,
 
     // Locked Field Access Interrupt
-    output logic                               locked_field_access_interrupt_o
+    output logic                               locked_field_access_interrupt_o,
+
+    // Token Comparator Redundancy Fault Interrupt
+    output logic                               token_match_fault_o
 );
 
     /////////////////////////
@@ -806,7 +809,9 @@ module sep_crypto #(
         .sep_efuse_token_match_sip_debug_o(sep_efuse_token_match_sip_debug_o),
         .sep_efuse_token_match_chiplet_debug_o(sep_efuse_token_match_chiplet_debug_o),
 
-        .locked_field_access_interrupt_o       (locked_field_access_interrupt_o)
+        .locked_field_access_interrupt_o       (locked_field_access_interrupt_o),
+
+        .token_match_fault_o                   (token_match_fault_o)
     );
 
     sep_lifecycle_ctrl #(
