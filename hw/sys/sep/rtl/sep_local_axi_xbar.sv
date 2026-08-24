@@ -3,9 +3,10 @@
 
 // SEP local AXI crossbar.
 //
-// Hand-maintained: the address rules derive from och_sep_top_addrmap_pkg so the
-// RDL stays the single source of truth for every window, which fabric_gen's
-// static config cannot express. Do not regenerate over this file.
+// Hand-maintained: fabric_gen's static config cannot express this crossbar, so
+// it is not regenerated. The in-scope rules (dma_csr, sep_wdt) derive their
+// windows from och_sep_top_addrmap_pkg so the RDL stays authoritative for
+// those extents; the remaining rules are still literal apertures.
 //
 // ============================================================================
 // ADDRESS MAP
