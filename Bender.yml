@@ -523,7 +523,7 @@ sources:
       - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
-      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
+      - hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
   - target: any(dtp, sep)
     files:
@@ -992,7 +992,7 @@ sources:
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv
       - hw/sys/sep/rtl/aes_wrapper.sv
-      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv
+      - hw/sys/sep/rtl/sep_local_axi_xbar.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv
       - hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv
       - hw/sys/sep/rtl/hmac_wrapper.sv
