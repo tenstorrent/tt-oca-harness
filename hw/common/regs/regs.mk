@@ -19,7 +19,6 @@ OCAH_REGEN_REG_JOBS ?= 8
 # TODO: make register protocol selection uniform in a second cleanup stage and
 # remove these per-block overrides once the RTL/reg generation contract is common.
 OCAH_REG_CPU_IF_NAME_avsbus_controller ?= apb4-flat
-OCAH_REG_CPU_IF_NAME_efuse_bank ?= apb4-flat
 OCAH_REG_CPU_IF_NAME_efuse_interface_ctrl ?= apb4-flat
 OCAH_REG_CPU_IF_NAME_efuse_mmr ?= apb4-flat
 OCAH_REG_CPU_IF_NAME_entropy_source ?= axi4-lite

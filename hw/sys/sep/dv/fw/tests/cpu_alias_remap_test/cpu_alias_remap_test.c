@@ -31,7 +31,7 @@
 // are intentionally out of scope here.
 //
 // Checks (firmware-self-checking; start.S emits PASS/FAIL magic from main's rc):
-//   CHK-CSR    SEP_LOCAL_BASE/REGION_SIZE program + readback.
+//   CHK-CSR    SEP_LOCAL_BASE probe/restore (REGION_SIZE is not programmed).
 //   CHK-LSU-WR LSU write via the alias lands at the physical SRAM target
 //              (write alias 0xD000_0308 -> read direct 0x1000_0308 == marker).
 //   CHK-LSU-RD LSU read via the alias returns the physical SRAM target

@@ -11,13 +11,15 @@
 The record of what Phase 2 verifies and what evidence backs each claim. It follows
 `oss_dv_plan.adoc`: one *iconic* feature per in-scope IP, randomized when the feature
 has a legal matrix or knob space, plus the cross-IP edges a per-IP bench cannot
-see. Phase 1 + Phase 2 together are the cocotb baseline: floor *> 60%*,
-target *85%* of in-scope SEP, counted as `PROVEN` *feature* rows on
+see. Phase 1 + Phase 2 together are the cocotb baseline: floor 18 of 34,
+goal 25 of 34 in-scope rows, counted as `PROVEN` *feature* rows on
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard],
-not as a count of `PROVEN` checkers and not as line coverage. The
-architecture spec is the denominator; AGP, local UART/GPIO, proprietary
-SPI PHY, ROM patch, next-gen DMA-AES, DCLS-in-SEP and PCR vault are out
-of that count. A `FAILED` spec-gap is not a feature credit.
+not as a count of `PROVEN` checkers and not as line coverage. Those are
+scorecard goals, not coverage measurements. The architecture spec is the
+denominator. Excluded for OSS hygiene: peripherals outside bare SEP, and
+proprietary IPs in nonfree. Excluded as deferred: AGP, local UART/GPIO,
+ROM patch, next-gen DMA-AES, DCLS-in-SEP and PCR vault. A `FAILED`
+spec-gap is not a feature credit.
 
 It uses the same grade rules as `verification_plan_phase1.adoc`. Those rules are
 not restated here. Read that document first if you are auditing this one.
@@ -27,8 +29,10 @@ checker names log text a kept Verilator run actually contains. A matching tag in
 that log is not the proof — an independent audit still has to show the checker
 can fail.
 
-What this document is *not*: a code-coverage percentage, a 69-name breadth
-ledger, or a second copy of Phase 1. Boot ROM *firmware* contracts are out
+What this document is *not*: a code-coverage number, a 69-name breadth
+ledger, or a second copy of Phase 1. RTL line, expression, and user
+coverage are collected by the nightly Verilator run and graded nowhere
+yet; this document grades features. Boot ROM *firmware* contracts are out
 of this plan (ROM-FW owner). ROM *hardware* access stays: IFU fetch and
 LSU read/write-ignore.
 
@@ -41,8 +45,10 @@ open. A leftover from the signed-off Phase 1 handoff table is covered
 here: extend a Phase 2 test that already owns that claim, or add the
 named new test.
 Do not stretch the Phase 1 e2e / smoke entry. New tests are created
-from <<iconic-remaining>> when no Phase 2 vehicle exists. Phase 3
-corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
+from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
+is the completeness extension: same cocotb environment, goal 32 of 34
+`PROVEN` scorecard rows, finished before Phase 3 starts a UVM bench.
+Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
 directed name is not coverage. There is no separate improvement
 worklist.
 
@@ -53,12 +59,13 @@ eFuse, and Key Manager. See <<attention>>.
 |===
 | Group | Count | Where
 
-| Phase 1 baseline
+| Phase 1 representatives
 | 21
-| `verification_plan_phase1.adoc`
+| `verification_plan_phase1.adoc` (which also holds 10 smoke tests, for
+  31 Phase 1 entries in total)
 
 | Graded Phase 2 entries
-| 22
+| 30
 | <<entries>> below
 
 | Phase 1 handoff leftovers
@@ -72,7 +79,11 @@ eFuse, and Key Manager. See <<attention>>.
 
 | Iconic remaining — new tests
 | see <<iconic-remaining>>
-| Phase 2 execute when an extend cannot carry the claim
+| Phase 2 names; <<phase2-plus>> executes them
+
+| Phase 2+ close-out
+| 12 scorecard rows
+| <<phase2-plus>> — 32 of 34 before UVM
 
 | Landed existing-test upgrades
 | see <<existing-upgrades>>
@@ -92,8 +103,7 @@ eFuse, and Key Manager. See <<attention>>.
 
 Every entry graded here was audited against a kept log by an agent that had not written
 the test, with one instruction: find checks that cannot fail. That produced 26 findings
-across the 22 entries. All 26 are fixed; the fixes are in this branch's history, one
-commit per group.
+across the 22 entries. All 26 are fixed.
 
 Recording the classes, because they recur and because a reader deciding how much to trust
 these grades should know what was wrong before:
@@ -222,8 +232,8 @@ and SP800-38A F.2.1/F.5.1 — so the expectation is independent of the DUT.
 | Strict entropy scoreboard: decorrelator, compress, seed, and genbits match the
   chained golden. OTBN/KMAC/HMAC parked so AES is the only crypto EDN client.
 | `CHK1..CHK4 bit-exact + CHK5_aes ROUTING (AES==AXIS1) PASS` (Verilator
-  `20260821_053249`; that run: decor 5580 / compress 800 / seed 1 / genbits 64 --
-  counts vary per seed, `mismatch=0` does not)
+  `20260821_053249`; the decorrelator, compress, seed and genbits counts vary
+  per seed, `mismatch=0` does not)
 | PROVEN
 
 | CHK5_aes
@@ -355,8 +365,8 @@ and the NIST SP800-185 samples.
 | Strict entropy scoreboard: decorrelator, compress, seed, and genbits match the
   chained golden. OTBN/AES/HMAC parked so KMAC is the only crypto EDN client.
 | `CHK1..CHK4 bit-exact + CHK5_kmac ROUTING (KMAC==AXIS1) PASS` (Verilator
-  `20260821_053400`; that run: decor 3862 / compress 408 / seed 1 / genbits 28 --
-  counts vary per seed, `mismatch=0` does not)
+  `20260821_053400`; the decorrelator, compress, seed and genbits counts vary
+  per seed, `mismatch=0` does not)
 | PROVEN
 
 | CHK5_kmac
@@ -434,10 +444,17 @@ insufficient evidence, FIPS violation or illegal segmentation.
 | `CHK-OVERLAP PASS: AES and KMAC crypto-EDN beat windows overlap over [`
 | PROVEN
 
+| CHK-ROUTING
+| Each AES post-adapter beat and each KMAC post-adapter beat equals the AXIS1 word
+  the adapter granted that cycle. Unscored clients (OTBN wipe) still consume AXIS1
+  words; those grants are popped so AES/KMAC stay aligned.
+| `CHK-ROUTING PASS: CHK5_aes match=` and `CHK5_kmac match=` with
+  `equal the AXIS1 grant-order stream (mismatch=0)`
+| PROVEN
+
 | CHK-MEMBERSHIP
-| Every word either sink received is a member of the CHK4 genbits golden set, tallied by
-  removal from a working copy of the pool — so a word delivered twice, or to both sinks,
-  exhausts its count and is scored a miss.
+| Every word either sink received is a member of the CHK4 genbits golden set
+  (AXIS1 is chained to genbits in `report()`).
 | `CHK-MEMBERSHIP PASS: every AES and every KMAC crypto-EDN word is a CHK4 genbits-golden word`
 | PROVEN
 
@@ -460,7 +477,7 @@ methodology, recorded here so the chain of custody is explicit.
 Tier:: Tier 2
 Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
 Testlist:: `crypto.toml` (enrolled in `no_cpu` and `all`)
-Status:: Graded. Kept Verilator log `20260820_210207`.
+Status:: Graded. Kept Verilator log `20260822_135844`.
 
 ==== Description
 
@@ -533,26 +550,41 @@ grants still alternate (AES then URND). That is the round-robin decision.
 | CHK1..CHK4
 | Strict entropy scoreboard on the same bring-up that feeds the dual-req window.
   FIFO drain after the seed, then `report()`.
-| `CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd membership PASS` (Verilator
-  `20260821_052822`; that run: decor 2175 / compress 24 / seed 1 / genbits 19 --
-  counts vary per seed, `mismatch=0` does not)
+| `CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS` (Verilator
+  `20260822_135844`; the decorrelator, compress, seed and genbits counts vary
+  per seed, `mismatch=0` does not)
+| PROVEN
+
+| CHK-ROUTING
+| Each AES post-adapter beat and each OTBN URND post-adapter beat equals the
+  AXIS1 word the adapter granted that cycle.
+| `CHK-ROUTING PASS: CHK5_aes match=` and `CHK5_otbn_urnd match=` with
+  `equal the AXIS1 grant-order stream (mismatch=0)`
+| PROVEN
+
+| CHK-ROUTING
+| Each AES post-adapter beat and each OTBN URND post-adapter beat equals the
+  AXIS1 word the adapter granted that cycle.
+| `CHK-ROUTING PASS: CHK5_aes match=` and `CHK5_otbn_urnd match=` with
+  `equal the AXIS1 grant-order stream (mismatch=0)`
 | PROVEN
 
 | CHK5_aes / CHK5_otbn_urnd
-| Both live sinks: every delivered word is a CHK4 genbits word (membership).
-  Dual-sink bit-exact routing still needs the unported arbiter-assignment trace.
-| `CHK5_aes       membership match=` and `CHK5_otbn_urnd membership match=` rows
-  (word counts vary per seed)
+| Both live sinks: `report()` rows show `mismatch=0` against the AXIS1
+  grant-order stream (word counts vary per seed).
+| `CHK5_aes       dut_items=` and `CHK5_otbn_urnd dut_items=` rows with
+  `mismatch=0`
 | PROVEN
 |===
 
 NOTE: Standing rule — any test that moves data across the DRBG runs CHK1..CHK4
 (strict scoreboard, FIFO drain, `report()`) and enables CHK5 on every live sink.
-CHK5 mode is the strongest the stimulus allows: golden when one sink and the pull
-order is predictable; membership when more than one crypto sink is live; observe
-when firmware-driven order is not golden-predictable (`rom_main`). This test uses
-membership. `sep_aes_mode_keysize_rand_test` and
-`sep_kmac_mode_strength_rand_test` park unused clients and use routing golden.
+CHK5 mode is the strongest the stimulus allows: golden routing when the adapter
+grant order is observed from `edn_ack` (one or more crypto sinks); membership
+when the pull order is firmware-driven; observe when even membership is not
+scored (`rom_main` KM). This test uses golden routing.
+`sep_aes_mode_keysize_rand_test` and `sep_kmac_mode_strength_rand_test` park
+unused clients and use the same routing compare.
 
 [[sep_drbg_gen_segmentation_test]]
 === sep_drbg_gen_segmentation_test
@@ -604,6 +636,12 @@ it writes `BOOT_GEN_CMD`, `GENERATE_CMD`, and the golden. Existing tests leave
 | LOGGED
 
 | 5
+| Value-compare the word the KM firmware stored to KM SRAM against the word the DUT
+  delivered on the AXIS endpoint.
+| `CHK5_km_sram PASS: KM SRAM word0 = 0x`
+| LOGGED
+
+| 6
 | Require at least one completed Generate of exactly four blocks, then report the
   strict CHK1..CHK5 scoreboard.
 | `CHK4-SEGMENTATION PASS:` then `==== sep_drbg_scoreboard CHK1..CHK5 report ====`
@@ -629,17 +667,29 @@ it writes `BOOT_GEN_CMD`, `GENERATE_CMD`, and the golden. Existing tests leave
 | `CHK4_genbits   dut_items=4 match=4 mismatch=0`
 | PROVEN
 
-| CHK5
-| The Key Manager consumes an entropy word (post-mux handshake and SRAM landing), same
-  consumer close as the e2e smoke.
+| CHK5_km
+| The Key Manager consumes an entropy word on the post-mux AXIS endpoint and it matches
+  golden, same consumer close as the e2e smoke. Handshake only -- this row says nothing
+  about KM memory.
 | `CHK5_km        dut_items=1 match=1 mismatch=0`
+| PROVEN
+
+| CHK5_km_sram
+| The word the KM firmware stored to KM SRAM equals the word the DUT delivered on the
+  AXIS endpoint. `km_rom_entropy.S` reads one DRBG-sampler DATA word and stores exactly
+  that word to KM SRAM base + 0, so a wrong-word store, a dropped store, or a store to
+  the wrong offset fails here -- where a non-zero-only liveness poll passes. The stored
+  value is a genbits word and so differs per run; only the invariant is quoted.
+| `CHK5_km_sram PASS: KM SRAM word0 = 0x` followed by `== the delivered EDN->KM AXIS word`
 | PROVEN
 |===
 
 NOTE: the kept run completes the *boot* Generate (one command, four blocks) and
 then stops producing genbits -- the Key Manager ROM reads one word and parks.
 That is enough for the legality check to execute. A second AUTO Generate after
-the Update is not claimed.
+the Update is not claimed. The ROM reads exactly one word, so `CHK5_km_sram`
+compares that one delivered word against KM SRAM word 0; it does not claim a
+sequence of stores.
 
 [[sep_crypto_per_ip_reset_isolation_test]]
 === sep_crypto_per_ip_reset_isolation_test
@@ -816,7 +866,9 @@ Testlist:: `system.toml`
 
 Brings the lifecycle controller up in PROD so the inbound filter is genuinely active
 (`sep_debug=0`, value-checked against the lifecycle golden), then walks first and last
-table entries, two address windows, and `{rw, read-only, write-only}` — 12 cells in one
+table entries, two address windows, and `{rw, read-only, write-only}` at
+`src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=5`
+with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one
 invocation. CHK-OWNERSHIP-WINDOW stays a hard assert.
 
 IMPORTANT: this entry establishes the filter is active by value-checking `FEAT_CTRL`
@@ -839,8 +891,9 @@ and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
 | LOGGED
 
 | 2
-| Walk first and last table entries, two windows, and `{rw, r, w}` — 12 cells.
-| `CHK-RAND-REP PASS: walked all 12 discrete cells`
+| Walk first and last table entries, two windows, `{rw, r, w}`, and the
+  source-ID match / mismatch cells — 16 cells.
+| `CHK-RAND-REP PASS: walked all 16 discrete cells`
 | LOGGED
 
 | 3
@@ -907,16 +960,27 @@ and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
 | `CHK-NONVAC PASS: allow + block both observed with filter active`
 | PROVEN
 
+| CHK-SRC-ID
+| A non-zero `FILTER_CONFIG.src_id` matches only the external master's
+  `user[3:0]`. The match cells keep r/w-allow gating; the mismatch cell
+  DECERRs with both allow bits set.
+| `CHK-SRC-ID PASS: cfg_src_id=0x5 user=0x5 matched`
+| PROVEN
+
 | CHK-RAND-REP
-| First and last inbound-filter entries, two address windows, and `{rw, r, w}` —
-  12 cells in one invocation.
-| `CHK-RAND-REP PASS: walked all 12 discrete cells`
+| First and last inbound-filter entries, two address windows, `{rw, r, w}`
+  at match-all, plus entry 0 / window 0 source-ID match and mismatch —
+  16 cells in one invocation.
+| `CHK-RAND-REP PASS: walked all 16 discrete cells`
 | PROVEN
 |===
 
 NOTE: the walk is first and last inbound-filter entries, two address windows
-(`SEP_SW_DEBUG` and scratch-cold[0]), and `{rw, read-only, write-only}` — 12
-cells in one invocation. CHK-OWNERSHIP-WINDOW stays hard.
+(`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
+`src_id=0`, plus the source-ID product on entry 0 / window 0. CHK-OWNERSHIP-WINDOW
+stays hard. The ownership restore programs `src_id=0` / `user=0` so a
+src-miss cannot paper over the ownership gap (`fabric.adoc` requires DECERR to a
+non-CPU master; the RTL answers OKAY).
 
 [[sep_fabric_remap_filter_csr_bank_test]]
 === sep_fabric_remap_filter_csr_bank_test
@@ -1150,7 +1214,7 @@ later sample would pass. The wording reads as an always-property.
 Tier:: Tier 2
 Run mode:: `cpu`, firmware `pic_irq_source_map_test`, `+skip_fuse_sense`
 Testlist:: `cpu.toml`
-Need-extended:: seeded subset of the PIC source map
+Randomization:: RANDCFG — MUST trio every seed; two extras from the run seed
 
 ==== Description
 
@@ -1165,7 +1229,8 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | # | Step | Proof | Status
 
 | 1
-| Arm three PIC sources and wait a quiet window with no ISR.
+| Arm the MUST PIC sources plus the seeded extras and wait a quiet window
+  with no ISR.
 | `CHK-NONVAC PASS: no spurious ISR before any trigger`
 | LOGGED
 
@@ -1182,8 +1247,8 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | ID | Check | Proof | Status
 
 | CHK-NONVAC
-| No spurious interrupt service before any trigger, over a quiet window with all three
-  sources' interrupt enables already armed.
+| No spurious interrupt service before any trigger, over a quiet window with every
+  selected source's interrupt enable already armed.
 | `CHK-NONVAC PASS: no spurious ISR before any trigger`
 | PROVEN
 
@@ -1196,22 +1261,30 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | PROVEN
 
 | CHK-ONEHOT
-| Triggering one source does not fire a neighbour. All three PIC sources stay interrupt-
-  enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy
-  rather than masking IRQEN).
+| Triggering one source does not fire a neighbour. Every selected PIC source stays
+  interrupt-enabled throughout, including after the mailbox ISR (WIRQT is raised
+  past occupancy rather than masking IRQEN).
 | `CHK-ONEHOT PASS: `
 | PROVEN
 
 | CHK-IP-RW1C
-| Each source's IP interrupt-state bit is cleared by write-one-to-clear, re-read inside
-  the handler as the witness.
+| Event-type sources and the mailbox clear by write-one-to-clear of
+  `INTR_STATE` / IRQS. DMA is Status-type: `INTR_STATE` is read-only, and
+  the ISR writes `INTR_TEST=0` (and W1C `STATUS`). The witness is the IP
+  state bit re-read as 0 inside the handler.
 | `CHK-IP-RW1C PASS: `
 | PROVEN
 
 | CHK-PIC-COMPLETE
 | No source re-fires after its handler cleared it — the claim completed, no storm. The
-  quiet window runs with all three sources still interrupt-enabled.
+  quiet window runs with every selected source still interrupt-enabled.
 | `CHK-PIC-COMPLETE PASS: no source re-fired after its ISR cleared it`
+| PROVEN
+
+| CHK-RANDCFG
+| Firmware consumed the patched MUST trio plus two seed-selected extras
+  (logged `SCENARIO` line matches the Python config).
+| `CHK-RANDCFG PASS: MUST`
 | PROVEN
 |===
 
@@ -1458,7 +1531,7 @@ OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C.
 
 [horizontal]
 Tier:: Tier 2
-Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
 Testlist:: `memory.toml`
 
 ==== Description
@@ -1503,9 +1576,12 @@ SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port.
 | PROVEN
 
 | CHK-BOUNDARY
-| The base address and the last valid SRAM word both read and write exactly. One-past-top
-  decode-error is `sep_fabric_decode_error_response_test`, not this row: that address is
-  the ROM base.
+| The base address and the last valid SRAM word both read and write exactly. The extent is
+  the generated map, not a doc literal: `OCH_SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and
+  `OCH_SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`,
+  matching `SRAM_N_ENTRIES = 256 * 1024 / 8` in `hw/top/sep_ip_integration.sv`, so the top
+  valid 64-bit word is `0x1003fff8`. One-past-top decode-error is
+  `sep_fabric_decode_error_response_test`, not this row: that address is the ROM base.
 | `CHK-BOUNDARY PASS: base 0x10000000 and top valid word 0x1003fff8 R/W exact`
 | PROVEN
 
@@ -1615,6 +1691,8 @@ come from the run seed (`SepDmaBasicCfg`).
 [horizontal]
 Tier:: Tier 2
 Run mode:: `cpu`, firmware `rom_lsu_read_test`
+Image:: `+sep_boot_rom_hex=mem_rom_test_rom.hex` — the committed test ROM at
+`cocotb/tests/mem_rom_test_rom.hex`, not the production Boot ROM
 Testlist:: `memory.toml`
 
 ==== Description
@@ -1840,6 +1918,520 @@ Wakeup and watchdog tick, threshold expiry, cause, and bark/bite on the AON time
 | PROVEN
 |===
 
+[[sep_otbn_compute_rand_test]]
+=== sep_otbn_compute_rand_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense +esrc_noise_force`
+Testlist:: `crypto.toml`
+Randomization:: RANDCFG — ADD/XOR/AND every seed; operands from the run seed
+
+==== Description
+
+Loads a tiny RV32I program into OTBN IMEM, stages two seeded DMEM operands,
+issues EXECUTE, and checks `ERR_BITS==0` plus the DMEM result against an
+independent Python golden. Distinct from `sep_otbn_mem_smoke_test` (no
+EXECUTE) and from the KM sideload key-dump.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Bring up `no_cpu`, park AES/HMAC/KMAC, bring up entropy for OTBN URND wipe.
+| `OcahAxiMasterSequence ready`
+| LOGGED
+
+| 2
+| Walk ADD, XOR, AND against the independent golden.
+| `CHK-RANDCFG PASS: walked all 3 discrete ops`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-ERRBITS
+| Every compute cell retires with `ERR_BITS==0`.
+| `CHK-ERRBITS PASS: every compute cell retired with ERR_BITS=0`
+| PROVEN
+
+| CHK-DMEM
+| Every compute cell's DMEM result equals the Python golden for that op
+  and those operands.
+| `CHK-DMEM PASS: every compute cell DMEM result matched the golden`
+| PROVEN
+
+| CHK-RANDCFG
+| ADD, XOR, and AND ran in one invocation. Operands come from the run seed.
+| `CHK-RANDCFG PASS: walked all 3 discrete ops`
+| PROVEN
+|===
+
+NOTE: CHK status is the contract. A kept Verilator log is the grade.
+
+[[sep_clock_gate_control_test]]
+=== sep_clock_gate_control_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+Testlist:: `system.toml`
+Coverage class:: `[STUB-CONST]` / `[DECODE-ONLY]`
+
+==== Description
+
+`CLOCK_GATE_CTRL` implements one bit (`pka_cg_enable[0:0]`); RTL sinks it
+into an unused net. This is the iconic clock-gate representative: storage
+plus witness CSRs that still complete OKAY with the bit 0 and 1. No bit
+in this map clocks an IP off.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Write `pka_cg_enable` 1 then 0 and read it back.
+| `CHK-STORAGE PASS: CLOCK_GATE_CTRL.pka_cg_enable writes and reads back`
+| LOGGED
+
+| 2
+| Read AES / HMAC / OTBN / SW_DEBUG CSRs with the bit 0 and 1.
+| `CHK-STUB-CONST PASS: enable=`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-STORAGE
+| The implemented bit writes and reads back in both directions.
+| `CHK-STORAGE PASS: CLOCK_GATE_CTRL.pka_cg_enable writes and reads back`
+| PROVEN
+
+| CHK-STUB-CONST
+| AES STATUS, HMAC INTR_STATE, OTBN STATUS, and SW_DEBUG still complete
+  OKAY with `pka_cg_enable` 0 and 1. The bit does not gate those IPs.
+| `CHK-STUB-CONST PASS: enable=`
+| PROVEN
+|===
+
+NOTE: this representative closes the iconic "Clock-gate per IP"
+scorecard row. The implemented contract is the designer placeholder,
+not a live per-IP gate.
+
+[[sep_efuse_program_lock_matrix_test]]
+=== sep_efuse_program_lock_matrix_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-REP — unlocked program then write-lock reject on
+one `SPARE0..SPARE7` field; field and bit offsets from the run seed
+
+==== Description
+
+Program × lock on a legal spare field. Never `LC_STATE`. The stitch test
+stays the LC e2e. After every `PROGRAM_DONE`, `EFUSE_PROGRAM_CTRL` is
+cleared before the next read.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Program one seed-selected bit of the spare; OTP readback and resense
+  shadow match the independent image golden.
+| `CHK-UNLOCK-PROGRAM PASS:`
+| LOGGED
+
+| 2
+| Program that spare's write-lock, then reject a second bit
+  (`PROGRAM_ERR`). OTP and resense golden keep the rejected bit 0.
+| `CHK-LOCK-REJECT PASS:`
+| LOGGED
+
+| 3
+| Both discrete cells ran in one invocation.
+| `CHK-RAND-REP PASS: walked unlocked-program and write-lock-reject`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-UNLOCK-PROGRAM
+| An unlocked spare bit programs and reads back in OTP and after resense.
+| `CHK-UNLOCK-PROGRAM PASS:`
+| PROVEN
+
+| CHK-LOCK-REJECT
+| A write-locked spare rejects a later program; OTP and the post-resense
+  shadow match the independent golden (lock bit set, rejected bit 0).
+| `CHK-LOCK-REJECT PASS:`
+| PROVEN
+
+| CHK-RAND-REP
+| Unlock-program and lock-reject both ran on the same spare.
+| `CHK-RAND-REP PASS: walked unlocked-program and write-lock-reject`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_122050`.
+
+[[sep_lcc_demote_feat_ctrl_matrix_test]]
+=== sep_lcc_demote_feat_ctrl_matrix_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-REP — TEST_DEV and PROD ×
+`(0,0)/(1,0)/(0,1)/(1,1)` demote, first with DIS=0 then PROD with a
+seed-pinned DIS pair
+
+==== Description
+
+Owns the demote product, including the demote lock. The stitch test
+stays the LC→`feat_ctrl` e2e. `feat_ctrl` is checked against
+`env/sep_lcc_golden.py`. One live inbound filter probe per cell follows
+`sep_debug`. After the twelve-cell walk, one seed-selected `DEMOTE_{1,2}`
+is locked at 0: a later demote write is ignored and `feat_ctrl` stays
+undemoted until `rst_ni`.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Walk TEST_DEV and PROD at DIS=0 through the four demote cells.
+| `CHK-FEAT-CTRL PASS: TEST_DEV/` / `CHK-FEAT-CTRL PASS: PROD/dis0/`
+| LOGGED
+
+| 2
+| W1S a seed-pinned DIS pair and walk the four demote cells at PROD.
+| `CHK-FEAT-CTRL PASS: PROD/dis_pinned/`
+| LOGGED
+
+| 3
+| Every cell's inbound probe is OKAY iff `sep_debug=1`, else DECERR.
+| `CHK-LIVE-GATE PASS:`
+| LOGGED
+
+| 4
+| Lock one seed-selected `DEMOTE` at 0; a later demote write is ignored.
+| `CHK-DEMOTE-LOCK PASS:`
+| LOGGED
+
+| 5
+| `rst_ni` releases the lock; the same demote write then lands.
+| `CHK-DEMOTE-LOCK-RESET PASS:`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-FEAT-CTRL
+| `FEAT_CTRL` equals the spec-derived golden for every walked cell.
+| `CHK-FEAT-CTRL PASS:`
+| PROVEN
+
+| CHK-LIVE-GATE
+| External access of the LC shadow is OKAY when `sep_debug=1` and DECERR
+  when `sep_debug=0`. Not CSR storage alone.
+| `CHK-LIVE-GATE PASS:`
+| PROVEN
+
+| CHK-RAND-REP
+| Twelve demote cells ran in one invocation.
+| `CHK-RAND-REP PASS: walked 12 demote cells`
+| PROVEN
+
+| CHK-DEMOTE-LOCK
+| With `lock` set and `demote` still 0, a later demote write is ignored
+  and `feat_ctrl` stays at the undemoted golden.
+| `CHK-DEMOTE-LOCK PASS:`
+| PROVEN
+
+| CHK-DEMOTE-LOCK-RESET
+| After `rst_ni` the lock is 0 and the same demote write lands.
+| `CHK-DEMOTE-LOCK-RESET PASS:`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_144022`.
+
+[[sep_efuse_rma_token_rand_test]]
+=== sep_efuse_rma_token_rand_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+Testlist:: `efuse_lcc.toml`
+Randomization:: RANDCFG — SIP and CHIPLET tokens from the run seed;
+match and mismatch walked for both
+
+==== Description
+
+Standalone RMA token matrix plus the token-comparator redundancy fault
+path. Does not stretch the stitch e2e. A matching token authorizes the
+LC_STATE OTP bit; a mismatch is rejected and LC / `FEAT_CTRL` stay at
+the pre-attempt golden. After that walk the same vehicle injects
+common-mode both ways, collapse, and two-instance disagreement on the
+RMA_SIP comparator, checks `6'b111111` / sticky `TOKEN_MATCH_FAULT` /
+irq38, and names the common-mode hole in both directions (legal
+mismatch and legal match, no sticky).
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Start in PROD; LC shadow and `FEAT_CTRL` match the independent golden.
+| `CHK-LC-FEAT PASS: prod-baseline`
+| LOGGED
+
+| 2
+| Wrong SIP then CHIPLET token: no match code, program `PROGRAM_ERR`, LC
+  unchanged after resense.
+| `CHK-MISMATCH PASS:`
+| LOGGED
+
+| 3
+| Legal SIP then CHIPLET token: match code, LC advances, shadow and
+  `FEAT_CTRL` match the independent golden after resense.
+| `CHK-MATCH PASS:`
+| LOGGED
+
+| 4
+| Common-mode invert of all three RMA_SIP comparators on a valid token:
+  legal mismatch code, no sticky bit, IRQ low.
+| `CHK-COMMON-MODE PASS:`
+| LOGGED
+
+| 5
+| Common-mode invert of all three RMA_SIP comparators on a wrong token:
+  legal match code, no sticky bit, IRQ low (fail-open hole).
+| `CHK-COMMON-MODE-MATCH PASS:`
+| LOGGED
+
+| 6
+| Collapse instance 0, then two-instance disagree: match status
+  `6'b111111`, SIP sticky bit, `sep_internal_interrupts[38]`. Valid
+  retry plus write-0 leave the bit and IRQ asserted.
+| `CHK-COLLAPSE PASS:` / `CHK-DISAGREE PASS:` / `CHK-STICKY PASS:`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-LC-FEAT
+| LC shadow and LCC `FEAT_CTRL` match independent goldens after each
+  resense.
+| `CHK-LC-FEAT PASS:`
+| PROVEN
+
+| CHK-MISMATCH
+| A wrong token does not update LC.
+| `CHK-MISMATCH PASS:`
+| PROVEN
+
+| CHK-MATCH
+| A legal token updates LC (PROD → `RMA_SIP_1` → `RMA_CHIP_1`).
+| `CHK-MATCH PASS:`
+| PROVEN
+
+| CHK-RANDCFG
+| SIP and CHIPLET both walked match and mismatch; tokens from the seed.
+| `CHK-RANDCFG PASS: SIP and CHIPLET match+mismatch walked`
+| PROVEN
+
+| CHK-COMMON-MODE
+| All three comparators flipping a match to a legal mismatch does not
+  set a sticky bit or raise `sep_internal_interrupts[38]`.
+| `CHK-COMMON-MODE PASS:`
+| PROVEN
+
+| CHK-COMMON-MODE-MATCH
+| All three comparators flipping a mismatch to a legal match does not
+  set a sticky bit or raise `sep_internal_interrupts[38]`.
+| `CHK-COMMON-MODE-MATCH PASS:`
+| PROVEN
+
+| CHK-COLLAPSE
+| A collapsed differential pair forces `6'b111111` and the SIP sticky
+  bit.
+| `CHK-COLLAPSE PASS:`
+| PROVEN
+
+| CHK-DISAGREE
+| Two instances that disagree force `6'b111111` and keep the sticky bit.
+| `CHK-DISAGREE PASS:`
+| PROVEN
+
+| CHK-ERROR-CODE
+| A redundancy fault writes `6'b111111` on every match-status bit.
+| `CHK-ERROR-CODE PASS:`
+| PROVEN
+
+| CHK-STICKY
+| A valid-token retry and a write-0 leave `TOKEN_MATCH_FAULT` and irq38
+  asserted (`sw=r` until reset).
+| `CHK-STICKY PASS:`
+| PROVEN
+
+| CHK-IRQ-38
+| `sep_internal_interrupts[38]` (PIC source 39) asserts with the sticky
+  bit.
+| `CHK-IRQ-38 PASS:`
+| PROVEN
+
+| CHK-WHICH-TOKEN
+| Collapse on CHIPLET and SEC_DISABLE sets bits 8 and 16 (OR with SIP bit 0).
+| `CHK-WHICH-TOKEN PASS:`
+| PROVEN
+
+| CHK-JTAG-FAULT
+| After `RMA_CHIP_1`, a JTAG read of `TOKEN_MATCH_FAULT` matches the AXI
+  read (the standing PROD/RMA_SIP JTAG-deny red, tracked in <<open-items>>,
+  is a different check).
+| `CHK-JTAG-FAULT PASS:`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_140117`. Which-token and JTAG fault read
+added on that run.
+
+[[sep_efuse_token_match_fault_pic_test]]
+=== sep_efuse_token_match_fault_pic_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `cpu`, `+skip_fuse_sense`
+Testlist:: `cpu.toml`
+Randomization:: RAND-NONE — directed PIC claim/mask
+
+==== Description
+
+Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims
+source 39, reads the SEC_DISABLE sticky bit, and masks `meie[39]` so the
+level-high line does not re-enter. Host injects collapse on the SEC_DISABLE
+comparator after READY.
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-PIC-CLAIM
+| ISR `meihap` claim id is 39.
+| `CHK-PIC-CLAIM PASS:`
+| PROVEN
+
+| CHK-PIC-FAULT
+| `TOKEN_MATCH_FAULT` secure-disable bit is set.
+| `CHK-PIC-FAULT PASS:`
+| PROVEN
+
+| CHK-PIC-MASK
+| After `meie[39]=0` the ISR does not re-enter.
+| `CHK-PIC-MASK PASS:`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_140917`.
+
+[[sep_fabric_output_remap_datapath_proxy_test]]
+=== sep_fabric_output_remap_datapath_proxy_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`
+Testlist:: `system.toml`
+Randomization:: RANDCFG — AP/STEE bank, region, filter entry, and
+forbidden region from the run seed
+
+==== Description
+
+Live remap plus outbound-filter drop. CSR-bank R/W stays on
+`sep_fabric_remap_filter_csr_bank_test`. The allow window covers only
+the remapped mailbox address. An identity (untranslated) beat would miss
+that window and DECERR, so OKAY on the programmed AP/STEE address is the
+translate proof.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Program one region to `0x8000_0000` and allow-list the remapped beat.
+  CPU-LSU read of the window is OKAY.
+| `CHK-REMAP-TRANSLATE PASS:`
+| LOGGED
+
+| 2
+| A second region, left at offset 0, returns DECERR.
+| `CHK-FILTER-DROP PASS:`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-REMAP-TRANSLATE
+| The programmed window completes OKAY at the remapped target. Identity
+  would miss the allow window.
+| `CHK-REMAP-TRANSLATE PASS:`
+| PROVEN
+
+| CHK-FILTER-DROP
+| A beat outside the remapped allow set is DECERR.
+| `CHK-FILTER-DROP PASS:`
+| PROVEN
+
+| CHK-RANDCFG
+| Bank, region, and entry came from the run seed.
+| `CHK-RANDCFG PASS: bank=`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_122050`.
+
 [[rom-fw-out-of-scope]]
 == Boot ROM firmware — out of this plan
 
@@ -1868,21 +2460,61 @@ ROM-FW plan exists, those four names are graded there.
 
 Hard `FAILED` spec-vs-RTL (keep hard; do not XFAIL):
 
-* CHK-JTAG-MMR-DENY — https://github.com/tenstorrent/tt-oca-harness/issues/626
-* CHK-OWNERSHIP-WINDOW — https://github.com/tenstorrent/tt-oca-harness/issues/1050
+* CHK-JTAG-MMR-DENY — JTAG in PROD may touch only the two RMA-token CSRs per
+  `hw/sys/sep/doc/periphs.adoc`; the RTL returns OKAY on a non-token MMR.
+  (Phase 1 entry `sep_efuse_jtag_axil_el2_cpu_mux_test`; graded there.)
+* CHK-OWNERSHIP-WINDOW — only the SEP CPU may program the inbound filter per
+  `hw/sys/sep/doc/fabric.adoc`; the RTL answers OKAY instead of DECERR to
+  another master. Owned by `sep_fabric_inbound_filter_rule_matrix_test`.
+
+Spec-vs-RTL divergences found by review, not yet owned by a checker. Each is a
+document or manifest defect rather than a failing test; none is XFAILed, because
+no test asserts them today:
+
+* `hw/sys/sep/doc/crypto.adoc` numbers the two entropy-pool interrupts one lower
+  than the canonical table in `hw/sys/sep/doc/interrupts.adoc`. PIC source IDs
+  are 1-based, so aggregation index 36/37 is PIC source 37/38; `crypto.adoc`
+  quotes the 0-based index. Firmware following it would enable and mask the
+  wrong two sources.
+* `hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG
+  opcode, through which a debugger may redirect the first instruction fetch. The
+  vendored tap implements no such register; the vector reaches the CPU through a
+  direct wrapper input. The testbench shifts that opcode on every CPU-boot run
+  and says in its own comment that the sequence is inert — a stimulus that reads
+  as coverage and cannot fail. Remove it or give the claim an owner.
+* `hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute
+  and says unprogrammed regions are transparent pass-throughs. The RTL register
+  has neither a valid bit nor a cacheable bit, and rewrites the address
+  unconditionally, so an unprogrammed region zeroes the upper address bits
+  instead of passing through. Phase 2+ `sep_fabric_local_alias_datapath_test`
+  owns the live-beat offset proof and keeps any missing-bit check a hard
+  FAIL. Do not XFAIL.
+* `hw/sys/sep/doc/attack_countermeasures.adoc` states "exactly 10" Class 2 scan
+  roots. The RTL instantiates an eleventh on the entropy-pool EDN leg that is
+  absent from the list, and nothing lints the manifest against the RTL. The
+  manifest is the sole input deciding what is never scan-dumpable.
+
+DV-tree hygiene, tracked here so it is not mistaken for coverage: of the
+firmware tests under `fw/tests/`, only a small minority are named by any
+testlist or cocotb test; the rest cannot run. Some are superseded by cocotb
+vehicles and some are parked Phase 3 stubs, but nothing distinguishes those
+from tests that should be running — two of them would close scorecard rows
+above. Triage is needed before any of them is cited as evidence.
 
 CHK1..CHK4 and CHK5 on every test that moves data across the DRBG is a standing
 rule. The three former crypto holes are `PROVEN`. CHK5 on mux endpoint [2]
 (entropy pool) is a scoreboard sink (`pool`); the e2e smoke scores it golden
 (Verilator `20260821_070123`, `CHK5_pool match=31`). Dual-sink bit-exact CHK5
-routing still needs the unported arbiter-assignment trace; until that lands,
-membership plus alternate grant is the proven EDN-arbiter claim.
+routing is `PROVEN` on
+<<sep_crypto_edn_multisink_arbitration_test>> and
+<<sep_crypto_edn_round_robin_grant_test>> (Verilator `20260822_135757` /
+`20260822_135844`).
 
 The AES 9-cell row is mode × key-size. The CTR cell re-runs ENCRYPT
 (keystream identity); the DECRYPT opcode is <<phase3-dump>>, not a silent
-9-cell decrypt. PIC remains three directed sources on the existing IRQ test,
-not a seeded map. RMA token match stays inside the stitch test, not a
-standalone iconic.
+9-cell decrypt. PIC walks the MUST trio plus a seeded extras subset.
+Standalone RMA is <<sep_efuse_rma_token_rand_test>>; the stitch test
+stays the LC e2e.
 
 New Phase 2 tests are <<iconic-remaining>> only when <<pending-upgrades>>
 cannot carry the claim. Boot ROM firmware is <<rom-fw-out-of-scope>>.
@@ -1895,61 +2527,50 @@ ring oscillator, KM wipe, and inbound negative product are Phase 3 T.B.D.
 
 These IPs still have an iconic hole or a leftover *claim* listed on the
 signed-off Phase 1 handoff table. Closing that claim is Phase 2
-scorecard work (toward 85%). Do not stretch the Phase 1 e2e / smoke
-entry. Extend a Phase 2 test that already owns the claim, or add the
-named new Phase 2 test.
+scorecard work (toward 25 of 34) and <<phase2-plus>> (32 of 34 before UVM).
+Do not stretch the Phase 1 e2e / smoke entry. Extend a Phase 2 test that
+already owns the claim, or add the named new Phase 2 test.
 
 [cols="2,2,3",options="header"]
 |===
 | Area | Scorecard row | Phase 2 action
 
 | Entropy (ESRC / DRBG / EDN)
-| Consume is `PROVEN`; dual-sink bit-exact CHK5 routing is not
-| Extend `sep_crypto_edn_multisink_arbitration_test` and
-  `sep_crypto_edn_round_robin_grant_test`. Health tests and the
-  ring oscillator stay Phase 3 T.B.D.
+| Consume, dual-sink bit-exact CHK5, and watermark arming are `PROVEN`.
+  `FIPS_LOCK` plus alert delivery is a Phase 2+ `GAP` (two vehicles,
+  one scorecard row).
+| Health-test *quality* and the ring oscillator stay Phase 3 T.B.D.
 
 | Lifecycle
-| `feat_ctrl` vs `LC_STATE` is `PROVEN`; demote product and
-  standalone RMA are `PARTIAL`
-| New demote RAND-REP. The stitch test stays the LC→`feat_ctrl` e2e.
+| `feat_ctrl` vs `LC_STATE`, demote product including lock, and
+  standalone RMA are `PROVEN`. SEC_DIS override is a Phase 2+ `GAP`.
+| Stitch stays the LC→`feat_ctrl` e2e.
 
 | eFuse
-| Sense / shadow / persist is `PROVEN`; program × lock is `GAP`
-| New remaining row on a spare/test field (never `LC_STATE`).
-  Token match stays eFuse-owned; LCC consumes the result.
+| Sense / shadow / persist and program × lock are `PROVEN`. Token-match
+  *fault* DV is `PROVEN`. Set-only monotonicity is a Phase 2+ `GAP`.
+| Token-match fault: `sep_efuse_rma_token_rand_test` (Verilator
+  `20260824_140117`) and `sep_efuse_token_match_fault_pic_test`
+  (Verilator `20260824_140917`).
 
 | Key Manager
-| Sideload consume is `PROVEN`; mailbox command set is `GAP`
-| New remaining RAND-REP (generate / transfer / revoke-or-shred /
-  illegal→error). Sideload KATs stay consume proofs. Wipe stays
-  Phase 3 T.B.D.
+| Sideload consume is `PROVEN`. Mailbox command set is `GAP` (parked;
+  leftover after 32 of 34). Key/policy vault is a Phase 2+ `GAP`
+  (implement last among the five).
+| Sideload KATs stay consume proofs. Wipe stays Phase 3 T.B.D.
+
+| Fabric
+| Live outbound remap is `PROVEN`. Inbound ownership stays `PARTIAL`
+  (RTL). Local-master alias datapath is a Phase 2+ `GAP`.
+| CHK-OWNERSHIP-WINDOW stays hard. Alias offset is a real-beat proof;
+  missing valid/cacheable bits stay a hard FAIL.
 |===
 
 [[pending-upgrades]]
 == Pending in-place upgrades
 
-Strengthen these existing *Phase 2* names. Do not add a sibling, and do
-not pull the work back onto a Phase 1 e2e / smoke test.
-
-[cols="2,2,3",options="header"]
-|===
-| Existing Phase 2 test | Upgrade | Why not a new test
-
-| `sep_crypto_edn_multisink_arbitration_test`,
-  `sep_crypto_edn_round_robin_grant_test`
-| Dual-sink bit-exact CHK5 routing
-| Grant-membership is already proven here; consume e2e stays Phase 1
-
-| `sep_fabric_inbound_filter_rule_matrix_test`
-| Source-ID × r/w-enable product
-| The 12-cell allow/block walk is already this test.
-  CHK-OWNERSHIP-WINDOW stays hard (`FAILED`)
-
-| `sep_pic_irq_source_map_delivery_test`
-| Seeded subset of the PIC source map
-| Three directed sources already live here
-|===
+No remaining in-place upgrades outside the attention set. The inbound
+source-ID product and the PIC seeded subset are in <<existing-upgrades>>.
 
 [[iconic-remaining]]
 == Iconic remaining — new tests
@@ -1961,45 +2582,474 @@ not a feature-level `PROVEN` on the scorecard — see
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard]. The rows
 below are feature `GAP`s (no test yet for that iconic claim). Checker
 tables stay binary; `PARTIAL` is a feature grade there, not a checker
-grade here.
+grade here. Program × lock, demote including lock, standalone RMA, live
+outbound remap, and watermark arming are graded in <<entries>>. What
+remains before 32 of 34 is the five Phase 2+ `GAP`s below, in
+implementation order. After those, remaining before UVM is the KM
+command vehicle (parked last) and inbound ownership (an RTL close, not a
+new test).
 
 [cols="2,2,3",options="header"]
 |===
 | Remaining work | How | Former names that map here
 
+| eFuse set-only monotonicity
+| Shadow-path OR-merge: a write of 0 cannot clear a set bit on version,
+  revocation, and required-signer fields. Never `LC_STATE`. Implement
+  first among the five.
+| `sep_efuse_set_only_monotonicity_test`
+
+| ESRC `FIPS_LOCK` and alert delivery
+| Two vehicles, one scorecard row. Lock: a post-lock write to a
+  certified-configuration field is rejected; the lock clears only on
+  `rst_ni`. Alert: a health-test alert reaches PIC source 16, then
+  W1C-clears. Health-test *quality* stays Phase 3.
+| `sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`
+
+| SEC_DIS security-disable override
+| Match the metal-fixed digest so `sec_dis` asserts; prove
+  `feat_ctrl` all-ones and boot-with-sense-incomplete. Reachability of
+  the all-zero expected digest is the first job. No backdoor.
+| `sep_sec_dis_override_test`
+
+| Local-master alias remap datapath
+| Program a region, drive a real beat, prove the offset. Spec wants
+  valid and cacheable bits; RTL has neither. Keep any missing-bit check
+  a hard FAIL. Do not XFAIL.
+| `sep_fabric_local_alias_datapath_test`
+
+| KM key/policy vault
+| Slot extent and `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`. Seal stays on the
+  command-device vehicle. Implement last among the five. Do not write
+  the card against `firmware.adoc` if shipped `rom_main` disagrees.
+| `sep_km_key_policy_vault_test`
+
 | Key Manager as a command device
-| One RAND-REP (generate / transfer / revoke-or-shred / illegal→error) plus
-  mailbox protocol RANDCFG if it does not fit the same test
+| One RAND-REP (generate / transfer / revoke-or-shred / illegal→error)
+  plus mailbox protocol RANDCFG if it does not fit the same test.
+  Parked last (leftover after 32 of 34).
 | `sep_km_command_set_rand_test`, `sep_km_mailbox_protocol_rand_test`;
   `MERGED_INTO`: `sep_km_uvm_cmd_hw_ver_test`, `sep_km_uvm_mailbox_cmd_test`
+|===
+
+[[phase2-plus]]
+== Phase 2+ — 32 of 34 before UVM
+
+Same cocotb / PyUVM + Verilator environment as Phase 2. Same DUT
+(`sep_wrapper`), same quality bar, same fuse/run-mode rules. Phase 2+
+does not start a UVM bench — that is Phase 3. It closes the remaining
+in-scope rows that this phase chose to finish before UVM (32 of 34).
+KM command set stays parked. Inbound ownership stays an RTL close.
+Do not leave these five `GAP`s as Phase 3 pretend-UVM items.
+
+Phase 2 keeps its floor of 18 of 34 and its goal of 25 of 34. Five of
+the twelve Phase 2+ rows are `PROVEN`. The scorecard is 27 of 34.
+Remaining before 32 of 34: the five `GAP`s below, in implementation
+order (set-only, `FIPS_LOCK` plus alert, SEC_DIS, local-master alias,
+KM vault last). Remaining after that: KM command set (parked last)
+and inbound ownership (RTL). Do not stretch a Phase 1 e2e / smoke
+entry. Do not XFAIL a spec-vs-RTL checker.
+
+[cols="2,1,3,3",options="header"]
+|===
+| Scorecard row | Today | Phase 2+ close | Vehicle
+
+| Key Manager as a command device
+| GAP
+| New RAND-REP: generate / transfer / revoke-or-shred / illegal→error.
+  A sealed slot must be erasable but then retired, never replaced, and a
+  DRBG fault during a command must report `IRQ_STATUS.DRBG_ERR` rather
+  than an AXI error response.
+  Mailbox protocol RANDCFG in the same test unless it does not fit.
+  Parked last (leftover after 32 of 34).
+| `sep_km_command_set_rand_test`
+  (`sep_km_mailbox_protocol_rand_test` only if the protocol does not fit)
 
 | eFuse program × lock
-| One RAND-REP on a legal spare/test field (never `LC_STATE`)
+| PROVEN
+| RAND-REP on a legal spare/test field. Never `LC_STATE`.
 | `sep_efuse_program_lock_matrix_test`
 
 | Lifecycle demote product
-| One RAND-REP: LC × demote × a small legal DIS subset, `feat_ctrl` vs
-  golden *and* one live filter/debug-gate. The Phase 1 stitch test
-  stays the LC→`feat_ctrl` e2e.
-| `sep_lcc_demote_feat_ctrl_matrix_test`;
-  `MERGED_INTO`: `sep_lcc_uvm_demote_comprehensive_test`,
-  `sep_lcc_uvm_prod_dbg_flavour_test`
+| PROVEN
+| RAND-REP: LC × demote × a small legal DIS subset. `feat_ctrl` vs
+  golden *and* one live filter/debug-gate. The Phase 1 stitch test stays
+  the LC→`feat_ctrl` e2e. Demote lock is on this vehicle.
+| `sep_lcc_demote_feat_ctrl_matrix_test`
 
-| OTBN as a compute engine
-| One directed-then-RANDCFG: IMEM program, `ERR_BITS==0`, DMEM == golden
-| no leftover name (the old list never named compute)
+| RMA token match → LC update
+| PROVEN
+| RANDCFG. Token match updates LC; mismatch does not. Check LC
+  shadow and LCC `FEAT_CTRL` against independent goldens. Do not stretch
+  the Phase 1 stitch test into the token matrix.
+| `sep_efuse_rma_token_rand_test`
 
-| Clock-gate per IP
-| One iconic representative; none exists
-| `sep_clock_uvm_clock_gate_control_test`
+| Outbound filter / AP-STEE live remap
+| PROVEN
+| One live-datapath test. A programmed region translates on a real
+  beat. The outbound filter drops a forbidden beat. CSR programming
+  stays on `sep_fabric_remap_filter_csr_bank_test`.
+| `sep_fabric_output_remap_datapath_proxy_test`
 
-| Live outbound remap
-| One RANDCFG only if fabric is still a feature-scorecard hole after the
-  inbound-filter existing-test upgrade: translated hit + filtered miss
-| `sep_fabric_output_remap_datapath_proxy_test`;
-  `MERGED_INTO`: `sep_outbound_filter_cfg_test`,
-  `sep_outbound_path_selection_test`
+| Inbound filter (ownership slice)
+| PARTIAL
+| No new test. The matrix already walks allow/block, source-ID, and
+  `SEP_DBG`. CHK-OWNERSHIP-WINDOW stays a hard assert: `fabric.adoc`
+  requires DECERR to a non-CPU master programming the filter and the RTL
+  answers OKAY. The row becomes `PROVEN` when that checker matches the spec. Do not XFAIL. Do not invent a sibling.
+| `sep_fabric_inbound_filter_rule_matrix_test`
+
+| ESRC health-test watermark arming
+| PROVEN
+| Shared `HT_WATERMARK` arms per selected mode on MODULE_ENABLE and
+  `CTRL.RESET`. Selector survives `CTRL.RESET`; unsupported maps to
+  `REPCNT_HI`; a low watermark falls once events are allowed.
+| `sep_esrc_ht_watermark_arming_test`
+
+| eFuse set-only fields (anti-rollback monotonicity)
+| GAP
+| Implement first. Shadow-path OR-merge on version, revocation, and
+  required-signer fields. A write of 0 cannot clear a set bit. Never
+  `LC_STATE`. Program × lock stays a different mechanism.
+| `sep_efuse_set_only_monotonicity_test`
+
+| ESRC configuration lock and alert delivery
+| GAP
+| Two vehicles, one row. Lock: certified-configuration fields become
+  read-only after `FIPS_LOCK.LOCK=1`; the lock is write-1-only and
+  clears only on `rst_ni`. Alert: a health-test persistent failure
+  reaches PIC source 16 (`hw/sys/sep/doc/interrupts.adoc`); W1C-clear
+  and read back 0. Health-test *quality* stays Phase 3.
+| `sep_esrc_fips_lock_test`,
+  `sep_esrc_alert_delivery_test`
+
+| SEC_DIS security-disable override
+| GAP
+| After set-only and ESRC lock. First job: settle whether a SHA-256
+  match against the metal-fixed all-zero expected digest is reachable
+  in this tree. No backdoor. Then prove `feat_ctrl` all-ones regardless
+  of LC / DIS, and that the SEP boots with fuse sense incomplete.
+| `sep_sec_dis_override_test`
+
+| Local-master alias remap datapath
+| GAP
+| Program a region, drive a real beat, prove the offset. Spec
+  (`fabric.adoc`) wants valid and cacheable bits and transparent
+  unprogrammed regions; RTL has neither bit and rewrites unprogrammed
+  regions. Keep any missing-bit check a hard FAIL. Do not XFAIL.
+| `sep_fabric_local_alias_datapath_test`
+
+| KM key/policy vault
+| GAP
+| Implement last among the five. Slot extent and
+  `IRQ_STATUS.SRAM_WRITE_LOCK_ERR` / `SRAM_WRITE_LOCK_VIOLATION`. Seal
+  stays on the command-device vehicle. Same firmware-contract caution:
+  do not write the card against `firmware.adoc` if shipped `rom_main`
+  disagrees.
+| `sep_km_key_policy_vault_test`
 |===
+
+Five close-out vehicles are graded in <<entries>>. The five
+further planned entries (set-only, `FIPS_LOCK`, alert, SEC_DIS,
+local-master alias, KM vault — lock and alert share a scorecard row)
+are not a grade until a kept Verilator log proves every checker. KM
+command set stays parked. Inbound ownership is an existing-test RTL
+close, not a new test.
+
+[[sep_esrc_ht_watermark_arming_test]]
+=== sep_esrc_ht_watermark_arming_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
+Testlist:: `crypto.toml`
+Randomization:: RANDCFG — every supported selector × both arming paths
+every seed; illegal `HT_WATERMARK_NUM` and the low-mode fall selector
+from the run seed
+
+Scope is the watermark *arming* contract only. The ESRC → DRBG → EDN
+datapath row already owns CHK1–CHK4 and stays where it is; do not
+stretch `sep_esrc_e2e_smoke_test` into this.
+
+`health_test_clr` arms on a MODULE_ENABLE pulse *or* `CTRL.RESET`. The
+clear value follows the selected mode — `0x0000` for a high watermark,
+`0xFFFF` for `APT_LO` / `MARKOV_LO`. The selector lives on `rst_ni`, so
+it survives `CTRL.RESET`. An unsupported selector maps to `REPCNT_HI`.
+`HEALTH_TEST_CTRL.ENABLE` stays 0 on every arming leg. Each leg enters
+from the opposite polarity's arm value so the expected value can fail.
+
+==== Steps
+
+[cols="1,4,4,1",options="header"]
+|===
+| # | Step | Proof | Status
+
+| 1
+| Every supported selector arms on MODULE_ENABLE 0→1.
+| `CHK-ARM-MEN PASS:`
+| LOGGED
+
+| 2
+| Every supported selector arms on `CTRL.RESET`; the selector survives.
+| `CHK-ARM-RST PASS:` / `CHK-SEL-PERSIST PASS:`
+| LOGGED
+
+| 3
+| Changing the selector does not re-arm. An unsupported value becomes
+  `REPCNT_HI`.
+| `CHK-NO-REARM PASS:` / `CHK-UNSUPPORTED PASS:`
+| LOGGED
+
+| 4
+| A low watermark falls once `HEALTH_TEST_CTRL.ENABLE` is allowed.
+| `CHK-LOW-FALL PASS:`
+| LOGGED
+|===
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-ARM-MEN
+| Each supported selector arms to `0x0000` (high) or `0xFFFF` (low) on
+  MODULE_ENABLE 0→1.
+| `CHK-ARM-MEN PASS:`
+| PROVEN
+
+| CHK-ARM-RST
+| The same arm values on `CTRL.RESET`.
+| `CHK-ARM-RST PASS:`
+| PROVEN
+
+| CHK-SEL-PERSIST
+| `HT_WATERMARK_NUM` survives a `CTRL.RESET` pulse.
+| `CHK-SEL-PERSIST PASS:`
+| PROVEN
+
+| CHK-NO-REARM
+| A selector write leaves `HT_WATERMARK` at the entry value.
+| `CHK-NO-REARM PASS:`
+| PROVEN
+
+| CHK-UNSUPPORTED
+| An illegal selector resolves to `REPCNT_HI` and arms `0x0000`.
+| `CHK-UNSUPPORTED PASS:`
+| PROVEN
+
+| CHK-LOW-FALL
+| After arming a low mode, enabling health tests drops `HT_WATERMARK`
+  below `0xFFFF`.
+| `CHK-LOW-FALL PASS:`
+| PROVEN
+
+| CHK-RANDCFG
+| Ten selector × path cells plus the seed-selected illegal selector and
+  low-mode fall ran in one invocation.
+| `CHK-RANDCFG PASS: walked 10 selector x path cells`
+| PROVEN
+|===
+
+Kept Verilator log: `20260824_143944`.
+
+=== Planned: sep_km_command_set_rand_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
+Testlist:: `km.toml`
+Randomization:: RAND-REP — generate / transfer / revoke-or-shred /
+illegal→error every seed; mailbox operands from the run seed
+
+Sideload KATs stay consume proofs. This test owns the mailbox command
+set. If mailbox protocol RANDCFG does not fit, add
+`sep_km_mailbox_protocol_rand_test` rather than overload this entry.
+
+Checkers (planned):: command accepted or rejected per the KM spec;
+transfer makes the consumer-visible key match the generated value;
+revoke-or-shred makes a later consume fail closed; erasing a sealed slot
+destroys its material and leaves the slot retired rather than reusable;
+a DRBG fault during a command raises `IRQ_STATUS.DRBG_ERR` and does not
+surface as an AXI error response; an illegal command returns the
+documented error and does not change key state.
+
+=== Planned: sep_efuse_set_only_monotonicity_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`; omit `+skip_fuse_sense` so the shadow bank is live
+Testlist:: `efuse_lcc.toml`
+Randomization:: RANDCFG — which legal set-only field and which bit
+pattern come from the run seed; the OR-merge contract is directed
+
+Implement first among the five. Scope is the shadow-register write path
+that OR-merges new data with the stored value
+(`hw/sys/sep/doc/periphs.adoc`): `BL1_VERSION`, `BL2_VERSION`,
+`CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`. A write of
+zero cannot clear a set bit. Program × lock is a different mechanism;
+never program `LC_STATE`.
+
+Checkers (planned):: after a known 1 is sensed into a legal set-only
+field, a frontdoor write of 0 leaves that bit 1; a write that sets a
+previously-0 bit sticks; a subsequent write of 0 cannot clear it;
+readback matches the OR of stored and written data, not the write data
+alone.
+
+=== Planned: sep_esrc_fips_lock_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`
+Testlist:: `crypto.toml`
+Randomization:: RANDCFG — which certified-configuration field is the
+post-lock write target comes from the run seed; lock/unlock sequencing
+is directed
+
+One of two vehicles on the ESRC lock-and-alert scorecard row. Health-test
+*quality* stays Phase 3. `FIPS_LOCK.LOCK` is write-1-only; there is no
+debug-unlock path. Locked fields are the CTRL functional bits, health-test
+thresholds and window, ring-oscillator and sample-clock configuration,
+decorrelator setup, and `FIFO_CTRL.ENTROPY_CHURN_ENABLE`
+(`hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc`). Observe FIFOs
+stay writable under lock.
+
+Checkers (planned):: a post-lock write to a certified-configuration
+field is rejected (value unchanged); a write-0 to `FIPS_LOCK` leaves
+LOCK=1; `CTRL.RESET` does not clear the lock; `rst_ni` does; a
+pre-lock write of the same field succeeds so the reject is not a
+stuck register.
+
+=== Planned: sep_esrc_alert_delivery_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
+Testlist:: `crypto.toml`
+Randomization:: RAND-NONE — directed persistent-failure trip
+
+Second vehicle on the same scorecard row. Today's consume tests only
+assert entropy alerts stay zero. This test must trip
+`INTR_STATUS.PERSISTENT_FAILURE` / `MAIN_SM_STATUS.ALERT` by accumulating
+failing health-test windows to `ALERT_THRESHOLD`, prove the interrupt
+reaches PIC source 16 (`hw/sys/sep/doc/interrupts.adoc`), then W1C-clear
+and read back 0. Do not treat health-test *quality* (SP 800-90B cutoffs,
+ring oscillator) as this vehicle's job.
+
+Checkers (planned):: `MAIN_SM_STATUS.ALERT` and
+`INTR_STATUS.PERSISTENT_FAILURE` assert after the threshold; PIC source
+16 is claimed; W1C clears the IP bits and they read back 0; a run that
+never trips the threshold still logs the no-alert path so absence of
+FAIL is not the evidence.
+
+=== Planned: sep_sec_dis_override_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`; omit `+skip_fuse_sense` — boot-with-sense-incomplete
+is part of the claim
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-NONE until the all-zero digest match is shown
+reachable; do not randomize the token until that spike is green
+
+After set-only and ESRC lock. First job, before any override checker:
+the comparator matches a SHA-256 digest of the written token against a
+metal-fixed expected constant that is all-zero in this tree
+(`hw/sys/sep/doc/token_processing.adoc`,
+`hw/sys/sep/doc/security_disable.adoc`). Settle whether a match is
+reachable in simulation. No backdoor; no `force` of `sec_dis`. An
+unreferenced firmware test (`fw/tests/sep_efuse_fw_token_match_test`)
+asserts a zero-token match and is in no testlist — it is a hint, not
+evidence. If the match is unreachable, stop and record that; do not
+fake `sec_dis` to take the golden's override branch.
+
+Checkers (planned):: token match asserts `sec_dis`; `feat_ctrl` is
+all-ones regardless of `LC_STATE` and the DIS vectors; the SEP boots
+with fuse sense incomplete; releasing the match restores fail-closed
+`feat_ctrl`. Do not add a sibling for demote lock.
+
+=== Planned: sep_fabric_local_alias_datapath_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`
+Testlist:: `system.toml`
+Randomization:: RANDCFG — which of the 16 regions and the programmed
+offset come from the run seed; the beat is directed
+
+Distinct from the CPU high-alias window
+(`sep_cpu_ifu_lsu_alias_remap_matrix_test`). Scope is the sixteen
+programmable AP/STEE remappers ahead of the routing demux
+(`hw/sys/sep/doc/fabric.adoc`). CSR programming stays on
+`sep_fabric_remap_filter_csr_bank_test`. This vehicle drives a real
+beat through a programmed region and proves the offset.
+
+Spec wants a valid bit, a cacheable attribute, and transparent
+unprogrammed regions. RTL has neither bit and rewrites unprogrammed
+regions. Prove the offset on a live beat. Any checker that names the
+missing valid or cacheable bit stays a hard FAIL. Do not XFAIL. Same
+rule as CHK-OWNERSHIP-WINDOW.
+
+Checkers (planned):: a programmed region's output address on a real
+beat equals input plus the programmed offset; CSR-only coverage is not
+this proof. If a valid/cacheable/pass-through checker is written, it
+fails on today's RTL.
+
+=== Planned: sep_km_key_policy_vault_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
+Testlist:: `km.toml`
+Randomization:: RANDCFG — which slot and which locked SRAM region come
+from the run seed; extent and lock sequencing are directed
+
+Implement last among the five. Same risk class as the parked KM command
+vehicle: `hw/ip/key_manager/doc/firmware.adoc` may disagree with shipped
+`rom_main`. Write the card against the firmware that actually boots, and
+record a spec-vs-firmware gap rather than inventing a command the image
+does not implement. Seal stays on `sep_km_command_set_rand_test`. This
+vehicle owns slot extent (`hw/ip/key_manager/doc/architecture.adoc`: 64
+slots) and a write to a write-locked SRAM region raising
+`IRQ_STATUS.SRAM_WRITE_LOCK_ERR` / `SRAM_WRITE_LOCK_VIOLATION`, then
+W1C-clear and read back 0.
+
+Checkers (planned):: a legal slot in 0..63 is usable; an out-of-extent
+index is rejected; a write to a write-locked SRAM region sets
+`SRAM_WRITE_LOCK_ERR` and the matching violation bit; W1C clears both
+and they read back 0. Do not duplicate the seal/retire contract here.
+
+=== Graded: sep_efuse_program_lock_matrix_test
+
+See <<sep_efuse_program_lock_matrix_test>>. Verilator `20260824_122050`.
+
+=== Graded: sep_lcc_demote_feat_ctrl_matrix_test
+
+See <<sep_lcc_demote_feat_ctrl_matrix_test>>. Verilator `20260824_144022`.
+
+=== Graded: sep_esrc_ht_watermark_arming_test
+
+See <<sep_esrc_ht_watermark_arming_test>>. Verilator `20260824_143944`.
+
+=== Graded: sep_efuse_rma_token_rand_test
+
+See <<sep_efuse_rma_token_rand_test>>. Verilator `20260824_122050`.
+
+=== Graded: sep_fabric_output_remap_datapath_proxy_test
+
+See <<sep_fabric_output_remap_datapath_proxy_test>>. Verilator
+`20260824_122050`.
+
+=== Inbound ownership — no new test
+
+`sep_fabric_inbound_filter_rule_matrix_test` already owns the iconic
+inbound walk. CHK-OWNERSHIP-WINDOW is the remaining slice: after
+allow-listing the CFG window the external master must DECERR
+(`fabric.adoc`: only the SEP CPU programs the filter). RTL returns OKAY.
+Phase 2+ keeps that assert hard. The scorecard row moves
+to `PROVEN` when the checker is green. A JTAG-style “`PROVEN` plus named
+`FAILED` slice” is a scorecard-owner call, not a default here — inbound
+ownership is part of the iconic claim.
 
 [[existing-upgrades]]
 == Landed existing-test upgrades
@@ -2011,10 +3061,31 @@ tree; the wrap-up Verilator log is the grade. Do not add a sibling test.
 |===
 | Landed | How | Former names that map here
 
+| Dual-sink CHK5 routing
+| `sep_crypto_edn_multisink_arbitration_test` and
+  `sep_crypto_edn_round_robin_grant_test` score each live sink's
+  post-adapter beat against the AXIS1 word granted that cycle
+| (no leftover name; grant-membership was the prior grade)
+
 | Inbound-filter matrix
 | `sep_fabric_inbound_filter_rule_matrix_test` walks entry 0 and 7 × two
-  windows × rw/r/w. CHK-OWNERSHIP-WINDOW stays hard
+  windows × rw/r/w at match-all plus the source-ID match / mismatch
+  product. CHK-OWNERSHIP-WINDOW stays hard
 | `sep_inbound_id_remap_test`
+
+| PIC source map
+| `sep_pic_irq_source_map_delivery_test` walks mailbox / OTBN / HMAC
+  every seed plus two seed-selected INTR_TEST extras
+| `sep_irq_connectivity_test`
+
+| OTBN compute
+| `sep_otbn_compute_rand_test` walks ADD/XOR/AND; operands from the seed
+| (no leftover name)
+
+| Clock-gate placeholder
+| `sep_clock_gate_control_test` proves `pka_cg_enable` storage and
+  stub-const witness reachability. A live per-IP gate is not in this RTL
+| `sep_clock_uvm_clock_gate_control_test`
 
 | DMA modes
 | `sep_dma_basic_test` keeps the mode/width walk; src/dst/length/fill come
@@ -2086,7 +3157,8 @@ or `FAILED` checker on a graded entry.
 
 | `sep_inbound_filter_programming_ownership_test`
 | CHK-OWNERSHIP on `sep_fabric_inbound_filter_rule_matrix_test`
-  (`FAILED` on the CFG window; issue 1050)
+  (`FAILED` on the CFG window: `fabric.adoc` requires DECERR to a non-CPU
+  master, the RTL answers OKAY)
 
 | `sep_irq_connectivity_test`
 | `sep_pic_irq_source_map_delivery_test`,
@@ -2193,7 +3265,7 @@ worklist and not committed Phase 3 scope. Do not grade them here.
 | Fabric gap-matrix
 
 | `sep_fabric_outbound_tail_closure_test`
-| Outbound tail-closure
+| Outbound tail-closure. Iconic live remap is <<phase2-plus>>
 
 | `sep_irq_extended_connectivity_test`
 | PIC map coverage-bin walk
@@ -2241,13 +3313,13 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 
 == Audit summary
 
-22 testcases, 47 steps, 118 checkers.
+30 testcases, 71 steps, 163 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 117
+| `PROVEN` | 162
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
