@@ -589,11 +589,41 @@ class sep_base_test(uvm_test):
         return False
 
     async def wait_km_consumed_word(self, timeout: int = 2_000) -> bool:
-        """After the EDN->KM handshake, the KM firmware stores the consumed
-        entropy word to KM SRAM word0. Poll for it to land -- end-to-end proof
-        the word reached KM memory, not just the stream boundary. (A genbits word
-        is 0 with probability 2^-32, so nonzero is a sound liveness marker.)"""
+        """Poll KM SRAM word0 for the store the KM firmware issues after its
+        DRBG-sampler DATA read. Non-zero only: a liveness marker that the KM CPU
+        got past the blocking read and reached its store, NOT a check that the
+        right word landed. Follow it with check_km_sram_word_matches_consumed()
+        for that. (A genbits word is 0 with probability 2^-32.)"""
         return await self._wait_high(cocotb.top.km_sram_word0_o, timeout)
+
+    def check_km_sram_word_matches_consumed(self) -> int:
+        """Value-compare KM SRAM word0 against the word the DUT delivered on the
+        EDN->KM AXIS endpoint.
+
+        `km_rom_entropy.S` reads one DRBG-sampler DATA word and stores exactly
+        that word to KM SRAM base + 0, which `km_sram_word0_o` probes. So the
+        first CHK5_km AXIS beat the scoreboard tapped is the expected SRAM
+        content: a wrong-word store, a dropped store, or a store to the wrong
+        offset all fail here, where the non-zero poll passes. Logged under
+        `CHK5_km_sram` so the plan can cite it apart from the handshake row.
+        """
+        delivered = self.drbg_sb.km_words()
+        assert delivered, (
+            "CHK5_km_sram: no EDN->KM AXIS beat was tapped, so there is no "
+            "delivered word to compare KM SRAM word0 against"
+        )
+        expected = delivered[0]
+        actual = self.rd(cocotb.top.km_sram_word0_o)
+        assert actual == expected, (
+            f"CHK5_km_sram FAIL: KM SRAM word0 = 0x{actual:08x}, but the KM "
+            f"consumed 0x{expected:08x} on the AXIS endpoint "
+            f"({len(delivered)} beat(s) tapped)"
+        )
+        self.logger.info(
+            "CHK5_km_sram PASS: KM SRAM word0 = 0x%08x == the delivered "
+            "EDN->KM AXIS word (beat 1 of %d)", actual, len(delivered),
+        )
+        return actual
 
     async def check_entropy_alerts_zero(self):
         """Read + assert CSRNG/EDN err_code + recov_alert are all zero."""

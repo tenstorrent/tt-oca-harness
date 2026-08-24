@@ -557,6 +557,8 @@ class SepDrbgScoreboard:
                 if v is None:
                     self._note_xz_routed(key)
                     continue
+                if key == "CHK5_km":
+                    self._km_words.append(v & 0xFFFFFFFF)
                 self._record(key, v & mask)
 
     async def _mon_handshake_observed(self, key, vld, rdy, sig, *, mask,
@@ -574,6 +576,8 @@ class SepDrbgScoreboard:
                 if v is None:
                     self._note_xz_routed(key)
                     continue
+                if key == "CHK5_km":
+                    self._km_words.append(v & 0xFFFFFFFF)
                 self._record_observed(key, v & mask)
 
     def _note_pool_fips(self) -> None:
@@ -884,6 +888,15 @@ class SepDrbgScoreboard:
         Callable mid-run to snapshot the KM leg before and after a window.
         """
         return len(self._km_words)
+
+    def km_words(self):
+        """The Key-Manager AXIS entropy words tapped so far, in beat order.
+
+        Populated in every CHK5_km mode (golden, observe, membership), so a caller
+        can compare a word the KM firmware later stored to KM SRAM against the
+        word the DUT actually delivered on the AXIS endpoint. Returns a copy.
+        """
+        return list(self._km_words)
 
     def completed_generate_lengths(self):
         """Observed blocks-per-Generate histogram: {blocks_in_command: how_many_commands}.

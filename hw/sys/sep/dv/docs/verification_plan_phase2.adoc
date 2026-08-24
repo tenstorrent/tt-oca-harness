@@ -629,6 +629,12 @@ it writes `BOOT_GEN_CMD`, `GENERATE_CMD`, and the golden. Existing tests leave
 | LOGGED
 
 | 5
+| Value-compare the word the KM firmware stored to KM SRAM against the word the DUT
+  delivered on the AXIS endpoint.
+| `CHK5_km_sram PASS: KM SRAM word0 = 0x`
+| LOGGED
+
+| 6
 | Require at least one completed Generate of exactly four blocks, then report the
   strict CHK1..CHK5 scoreboard.
 | `CHK4-SEGMENTATION PASS:` then `==== sep_drbg_scoreboard CHK1..CHK5 report ====`
@@ -654,17 +660,29 @@ it writes `BOOT_GEN_CMD`, `GENERATE_CMD`, and the golden. Existing tests leave
 | `CHK4_genbits   dut_items=4 match=4 mismatch=0`
 | PROVEN
 
-| CHK5
-| The Key Manager consumes an entropy word (post-mux handshake and SRAM landing), same
-  consumer close as the e2e smoke.
+| CHK5_km
+| The Key Manager consumes an entropy word on the post-mux AXIS endpoint and it matches
+  golden, same consumer close as the e2e smoke. Handshake only -- this row says nothing
+  about KM memory.
 | `CHK5_km        dut_items=1 match=1 mismatch=0`
+| PROVEN
+
+| CHK5_km_sram
+| The word the KM firmware stored to KM SRAM equals the word the DUT delivered on the
+  AXIS endpoint. `km_rom_entropy.S` reads one DRBG-sampler DATA word and stores exactly
+  that word to KM SRAM base + 0, so a wrong-word store, a dropped store, or a store to
+  the wrong offset fails here -- where a non-zero-only liveness poll passes. The stored
+  value is a genbits word and so differs per run; only the invariant is quoted.
+| `CHK5_km_sram PASS: KM SRAM word0 = 0x` followed by `== the delivered EDN->KM AXIS word`
 | PROVEN
 |===
 
 NOTE: the kept run completes the *boot* Generate (one command, four blocks) and
 then stops producing genbits -- the Key Manager ROM reads one word and parks.
 That is enough for the legality check to execute. A second AUTO Generate after
-the Update is not claimed.
+the Update is not claimed. The ROM reads exactly one word, so `CHK5_km_sram`
+compares that one delivered word against KM SRAM word 0; it does not claim a
+sequence of stores.
 
 [[sep_crypto_per_ip_reset_isolation_test]]
 === sep_crypto_per_ip_reset_isolation_test
