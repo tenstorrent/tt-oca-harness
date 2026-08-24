@@ -210,13 +210,6 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         )
         self.logger.info("CHK-F KM->AES sideload KAT PASS: ct_side == AES(known_key, PT) golden")
 
-        # No ct_side != ct_dummy check here. Both are already pinned to their own
-        # goldens above, so the inequality reduces to AES(KAT_KEY) != AES(DUMMY_KEY)
-        # -- a property of two file-scope constants that holds with the simulator
-        # switched off. CHK-F proves the delivered key bit-exactly, which is
-        # strictly stronger. The HMAC sibling dropped the same check for the same
-        # reason; see sep_km_hmac_sideload_kat_test.
-
         # CHK-RT: decrypt ct_side with the SIDELOAD key and prove it
         # recovers the original plaintext -- the sideloaded key drives a full
         # ENC/DEC round-trip, not just one direction. The recovered PT is checked
@@ -233,9 +226,8 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info(
             "CHK-RT sideload round-trip PASS: DEC(ct_side) == original PT")
 
-        # CHK-H: write the KNOWN key through the SW KEY_SHARE path and prove it
-        # matches both the golden (SW path correct) and the sideload ciphertext
-        # (the reference consume cross-check: sideload and SW paths agree).
+        # CHK-H: write the KNOWN key through the SW KEY_SHARE path and prove
+        # the SW-key ciphertext equals AES(known_key, PT) golden.
         await self.aes.configure_ecb_enc_256(sideload=False)
         await self.aes.write_full_key(list(KAT_KEY))
         await self.aes.trigger_prng_reseed()
@@ -244,8 +236,6 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             "SW-key ciphertext != AES(known_key, PT) golden:\n"
             f"  ct_swref={[hex(w) for w in ct_swref]} golden={[hex(w) for w in golden]}"
         )
-        # No ct_side == ct_swref check: both are pinned to `golden` above, so the
-        # equality is entailed by those two asserts rather than observed.
         self.logger.info(
             "CHK-H consume-proof PASS: ct_swref == AES(known_key, PT) golden")
 

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_007  smu_sep_axi_extension_decode_test  -- shared protocol.
+ * smu_sep_axi_extension_decode_test  -- shared protocol.
  *
  * Card text still names SPI_MUX_CTRL @ 0x2000_0000. This RTL maps that page
  * to the eFuse shim; generated SPI_MUX_CTRL is 0x20001000 (sep_addr.h /

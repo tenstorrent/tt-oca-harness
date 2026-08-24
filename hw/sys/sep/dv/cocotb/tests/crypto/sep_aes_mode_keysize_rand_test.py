@@ -39,12 +39,11 @@ Checkers:
 
 from __future__ import annotations
 
-import random
-
 import pyuvm
 
 from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes_encrypt_words
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_aes_seq import SepAes, SepAesCfg, AES_OP_ENC, AES_OP_DEC
 from seq_lib.sep_sw_reset_seq import SepSwReset
 
@@ -70,7 +69,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
 
         self.aes = SepAes(self)
         seed = self.random_seed()
-        self.rng = random.Random(seed)
+        self.rng = SepSeededRng(seed)
         self.logger.info("AES mode/key-size breadth AES mode x key-size breadth: seed=%d", seed)
         await self.aes.trigger_prng_reseed()   # seed the masking PRNG from EDN
 

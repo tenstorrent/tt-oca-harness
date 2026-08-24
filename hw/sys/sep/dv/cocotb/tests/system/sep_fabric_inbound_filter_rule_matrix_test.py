@@ -11,14 +11,12 @@ read/write. With smc_global_base=0 the inbound global->local remap is identity, 
 the external master drives the SEP-local address directly.
 
 Walks first and last table entries x two address windows x {rw, read-only,
-write-only} in one invocation (SepInboundFilterMatrixCfg is the single source
-of truth). Stays at sep_debug=0 the whole time and proves the PER-ENTRY
-allow-by-rule vs block-by-default policy, not the global sep_debug skip gate
-(sep_lcc_uvm_inbound_filter_gating_test).
+write-only} at src_id=0 (match-all), plus entry 0 / window 0 x {rw, r, w} at
+src_id=5 with a matching AXI user and one src-mismatch cell. SepInboundFilterMatrixCfg
+is the single source of truth. Stays at sep_debug=0 the whole time and proves
+the PER-ENTRY allow-by-rule vs block-by-default policy, not the global
+sep_debug skip gate (sep_lcc_uvm_inbound_filter_gating_test).
 
-reference refs: fabric sep_inbound_filter_blockbydefault_test,
-sep_inbound_filter_programming_ownership_test, sep_inbound_id_remap_test. Mapping: COVERED_STRONGER -- real external AXI master
-through the live filter with an exact rdata value-check, vs the reference suite proxy / CSR-only.
 CHK-OWNERSHIP ports the CPU-vs-external asymmetry at the filter CFG CSR
 (0x10A2_1000): CPU-LSU reads the programmed rule, the external master completes
 DECERR on read and write, and the denied write does not land. That is the
@@ -26,7 +24,8 @@ spec's "only the SEP CPU can program these filters" under the programmed allow
 window, which does not include the CFG address. CHK-OWNERSHIP-WINDOW keeps that
 assert hard after a second entry allow-lists the CFG address.
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
-=> filter active). RAND-REP (entry x window x R/W-allow; window values from seed).
+=> filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
+values from seed).
 """
 
 from __future__ import annotations
@@ -53,13 +52,13 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     """Per-entry inbound-filter allow-rule vs block-by-default, via the external master."""
 
-    async def _ext_read(self, addr: int) -> tuple[int, int]:
-        seq = ext_read_seq(addr)
+    async def _ext_read(self, addr: int, *, user: int = 0) -> tuple[int, int]:
+        seq = ext_read_seq(addr, user=user)
         await self.start_ext_seq(seq)
         return seq.resp_code, (seq.rdata & 0xFFFF_FFFF)
 
-    async def _ext_write(self, addr: int, data: int) -> int:
-        seq = ext_write_seq(addr, data)
+    async def _ext_write(self, addr: int, data: int, *, user: int = 0) -> int:
+        seq = ext_write_seq(addr, data, user=user)
         await self.start_ext_seq(seq)
         return seq.resp_code
 
@@ -102,83 +101,112 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             )
 
         first = True
-        for entry, widx, mode, addr, val, read_ok, write_ok in mcfg.cells():
+        src_match_logged = False
+        src_mismatch_logged = False
+        for (entry, widx, mode, addr, val, read_ok, write_ok,
+             src_class, cfg_src_id, axi_user, expect_hit) in mcfg.cells():
             await self.filt.disable_all()
             cell = SepInboundFilterCfg(entry=entry, allow_addr=addr, allow_value=val)
+            cell.src_id = cfg_src_id
             await self.filt.program_rule(cell, read_allowed=read_ok, write_allowed=write_ok)
 
-            if read_ok:
-                resp, data = await self._ext_read(addr)
-                assert resp == RESP_OKAY, (
-                    f"cell entry={entry} w{widx} {mode}: allowed ext read resp={resp}"
+            if not expect_hit:
+                resp, _ = await self._ext_read(addr, user=axi_user)
+                assert resp == RESP_DECERR, (
+                    f"cell entry={entry} w{widx} {mode} {src_class}: "
+                    f"src mismatch read resp={resp}, expected DECERR"
                 )
-                assert data == val, (
-                    f"cell entry={entry} w{widx} {mode}: ext read 0x{data:08x} "
-                    f"!= staged 0x{val:08x}"
+                resp = await self._ext_write(addr, 0x5555_AAAA, user=axi_user)
+                assert resp == RESP_DECERR, (
+                    f"cell entry={entry} w{widx} {mode} {src_class}: "
+                    f"src mismatch write resp={resp}, expected DECERR"
                 )
-                if first:
+                if not src_mismatch_logged:
                     self.logger.info(
-                        "CHK-ALLOW-RULE PASS: ext read 0x%08x -> OKAY, rdata=0x%08x",
-                        addr, data)
+                        "CHK-SRC-ID PASS: cfg_src_id=0x%x user=0x%x -> DECERR "
+                        "(mismatch; allow bits do not apply)",
+                        cfg_src_id, axi_user)
+                    src_mismatch_logged = True
             else:
-                resp, _ = await self._ext_read(addr)
-                assert resp == RESP_DECERR, (
-                    f"cell entry={entry} w{widx} {mode}: read_allowed=0 got resp={resp}"
-                )
+                if read_ok:
+                    resp, data = await self._ext_read(addr, user=axi_user)
+                    assert resp == RESP_OKAY, (
+                        f"cell entry={entry} w{widx} {mode} {src_class}: "
+                        f"allowed ext read resp={resp}"
+                    )
+                    assert data == val, (
+                        f"cell entry={entry} w{widx} {mode} {src_class}: "
+                        f"ext read 0x{data:08x} != staged 0x{val:08x}"
+                    )
+                    if first:
+                        self.logger.info(
+                            "CHK-ALLOW-RULE PASS: ext read 0x%08x -> OKAY, rdata=0x%08x",
+                            addr, data)
+                else:
+                    resp, _ = await self._ext_read(addr, user=axi_user)
+                    assert resp == RESP_DECERR, (
+                        f"cell entry={entry} w{widx} {mode} {src_class}: "
+                        f"read_allowed=0 got resp={resp}"
+                    )
 
-            if write_ok:
-                poke = val ^ 0xFFFF_0000
-                resp = await self._ext_write(addr, poke)
-                assert resp == RESP_OKAY, (
-                    f"cell entry={entry} w{widx} {mode}: allowed ext write resp={resp}"
-                )
-                landed = await self.filt.read_cpu(addr)
-                assert landed == poke, (
-                    f"cell entry={entry} w{widx} {mode}: ext write did not land "
-                    f"(0x{landed:08x})"
-                )
-                await self.filt.stage_target(addr, val)
-            else:
-                resp = await self._ext_write(addr, 0x5555_AAAA)
-                assert resp == RESP_DECERR, (
-                    f"cell entry={entry} w{widx} {mode}: write_allowed=0 got resp={resp}"
-                )
+                if write_ok:
+                    poke = val ^ 0xFFFF_0000
+                    resp = await self._ext_write(addr, poke, user=axi_user)
+                    assert resp == RESP_OKAY, (
+                        f"cell entry={entry} w{widx} {mode} {src_class}: "
+                        f"allowed ext write resp={resp}"
+                    )
+                    landed = await self.filt.read_cpu(addr)
+                    assert landed == poke, (
+                        f"cell entry={entry} w{widx} {mode} {src_class}: "
+                        f"ext write did not land (0x{landed:08x})"
+                    )
+                    await self.filt.stage_target(addr, val)
+                else:
+                    resp = await self._ext_write(addr, 0x5555_AAAA, user=axi_user)
+                    assert resp == RESP_DECERR, (
+                        f"cell entry={entry} w{widx} {mode} {src_class}: "
+                        f"write_allowed=0 got resp={resp}"
+                    )
+                if src_class == "match" and not src_match_logged:
+                    self.logger.info(
+                        "CHK-SRC-ID PASS: cfg_src_id=0x%x user=0x%x matched "
+                        "(exact source-ID, r/w allow bits still apply)",
+                        cfg_src_id, axi_user)
+                    src_match_logged = True
 
-            resp, _ = await self._ext_read(mcfg.blocked_addr)
+            resp, _ = await self._ext_read(mcfg.blocked_addr, user=axi_user)
             assert resp == RESP_DECERR, (
-                f"cell entry={entry} w{widx} {mode}: blocked 0x{mcfg.blocked_addr:08x} "
-                f"resp={resp}, expected DECERR"
+                f"cell entry={entry} w{widx} {mode} {src_class}: "
+                f"blocked 0x{mcfg.blocked_addr:08x} resp={resp}, expected DECERR"
             )
             if first:
                 self.logger.info(
                     "CHK-BLOCK-DEFAULT PASS: ext read 0x%08x -> DECERR (block-by-default)",
                     mcfg.blocked_addr)
-            if mode == "r":
-                # read_ok=1 / write_ok=0: the allowed read already checked OKAY;
-                # this cell's DENY is the write.
+            if expect_hit and mode == "r":
                 self.logger.info(
                     "CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write "
-                    "(DECERR) entry=%d window=%d", entry, widx)
+                    "(DECERR) entry=%d window=%d src=%s", entry, widx, src_class)
                 self.logger.info(
                     "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
-                    "(OKAY) entry=%d window=%d", entry, widx)
-            if mode == "w":
-                # read_ok=0 / write_ok=1: the allowed write already checked OKAY;
-                # this cell's DENY is the read.
+                    "(OKAY) entry=%d window=%d src=%s", entry, widx, src_class)
+            if expect_hit and mode == "w":
                 self.logger.info(
                     "CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read "
-                    "(DECERR) entry=%d window=%d", entry, widx)
+                    "(DECERR) entry=%d window=%d src=%s", entry, widx, src_class)
                 self.logger.info(
                     "CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write "
-                    "(OKAY) entry=%d window=%d", entry, widx)
+                    "(OKAY) entry=%d window=%d src=%s", entry, widx, src_class)
             self.logger.info(
-                "CHK-CELL PASS: entry=%d window=%d mode=%s addr=0x%08x",
-                entry, widx, mode, addr)
+                "CHK-CELL PASS: entry=%d window=%d mode=%s src=%s addr=0x%08x",
+                entry, widx, mode, src_class, addr)
             first = False
 
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells "
-            "(entries %s x %d windows x rw/r/w)",
+            "(entries %s x %d windows x rw/r/w match-all + "
+            "entry0/window0 x rw/r/w match + 1 mismatch)",
             mcfg.n_cells(), list(mcfg.entries), len(mcfg.windows))
 
         # Restore entry 0 / window A / rw for the ownership checks.

@@ -153,13 +153,9 @@ module efuse_bank_reg (
             field_combo.EFUSE_BANK_REG[i0].dout.next = next_c;
             field_combo.EFUSE_BANK_REG[i0].dout.load_next = load_next_c;
         end
-        always_ff @(posedge clk or negedge arst_n) begin
-            if(~arst_n) begin
-                field_storage.EFUSE_BANK_REG[i0].dout.value <= 32'h0;
-            end else begin
-                if(field_combo.EFUSE_BANK_REG[i0].dout.load_next) begin
-                    field_storage.EFUSE_BANK_REG[i0].dout.value <= field_combo.EFUSE_BANK_REG[i0].dout.next;
-                end
+        always_ff @(posedge clk) begin
+            if(field_combo.EFUSE_BANK_REG[i0].dout.load_next) begin
+                field_storage.EFUSE_BANK_REG[i0].dout.value <= field_combo.EFUSE_BANK_REG[i0].dout.next;
             end
         end
         assign hwif_out.EFUSE_BANK_REG[i0].dout.value = field_storage.EFUSE_BANK_REG[i0].dout.value;

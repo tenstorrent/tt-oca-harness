@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-import random
-
 from cocotb.triggers import Event
 from pyuvm import uvm_object
+
+from env.sep_seeded_rng import SepSeededRng
 
 
 class SepEnvCfg(uvm_object):
@@ -25,7 +25,7 @@ class SepEnvCfg(uvm_object):
         # starts its cocotbext-axi master at the right time.
         self.reset_done = Event("sep_reset_done")
 
-    def randomize_timing(self, seed: int | None = None) -> None:
+    def randomize_timing(self, seed: int) -> None:
         """Randomize the system-clock period for timing variety (run_dv --seed)."""
-        rng = random.Random(seed)
-        self.sys_clk_period_ns = rng.randint(4, 20)
+        rng = SepSeededRng(seed)
+        self.sys_clk_period_ns = rng.randrange(4, 21)
