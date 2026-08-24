@@ -23,7 +23,8 @@
 //   CHK-NONVAC      : before any trigger, no ISR fires (quiet window).
 //   CHK-DELIVER     : each selected source wakes its CPU ISR (WFI, no poll).
 //                     OTBN also carries the source->PIC-id map.
-//   CHK-IP-RW1C     : the IP INTR_STATE / mailbox IRQS bit clears via W1C.
+//   CHK-IP-RW1C     : Event-type INTR_STATE / mailbox IRQS clear via W1C;
+//                     DMA Status-type INTR_STATE reads back 0 after INTR_TEST=0.
 //   CHK-PIC-COMPLETE: after the ISR clears the source the line de-asserts.
 //   CHK-ONEHOT      : only the asserted source's ISR fires among the selected
 //                     PIC-enabled sources.
@@ -31,6 +32,7 @@
 
 #include <stdint.h>
 
+#include "sep.h"
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 #include "sep_axil_mailbox.h"
@@ -42,10 +44,20 @@
 #define PIC_SRC_MAX 5
 #define PIC_KIND_MBOX 0
 #define PIC_KIND_INTR 1
+// Secure DMA uses prim_intr_hw IntrT=="Status": INTR_STATE is RO, and INTR_TEST
+// latches in test_q until software writes INTR_TEST=0. Event-type IPs (HMAC,
+// OTBN, CSRNG, EDN, KMAC) clear with a W1C of INTR_STATE.
+#define PIC_KIND_INTR_STATUS 2
 
 #define MBOX_TRIGGER_WORD 0x4700CAFEu
 #define ISR_WAIT_ITERS 200000
 #define STORM_CHECK_ITERS 4096
+// A claim that is not one of the selected sources, or a selected source whose
+// line stays asserted after the ISR W1C, re-enters this ISR before the delivery
+// wait can run. After this many such claims the ISR masks mie.meie so the
+// interrupted wfi completes and the walk can fail naming the id. Source 0 is
+// the tied no-interrupt source and has no MEIE word.
+#define UNEXPECTED_CLAIM_MAX 64
 
 struct pic_src_desc {
     uint32_t pic_src;
@@ -60,7 +72,7 @@ struct pic_src_desc {
 // Legal INTR_TEST / mailbox rows this firmware can deliver. PIC id = agg idx + 1.
 static const struct pic_src_desc k_catalog[] = {
     {1u,  PIC_KIND_MBOX, 0,          0,          0,          0,    "mailbox"},
-    {9u,  PIC_KIND_INTR, 0x10800000u, 0x10800004u, 0x10800008u, 0x1u, "DMA"},
+    {9u,  PIC_KIND_INTR_STATUS, 0x10800000u, 0x10800004u, 0x10800008u, 0x1u, "DMA"},
     {18u, PIC_KIND_INTR, 0x10911000u, 0x10911004u, 0x10911008u, 0x1u, "HMAC"},
     {21u, PIC_KIND_INTR, 0x10913000u, 0x10913004u, 0x10913008u, 0x1u, "KMAC"},
     {23u, PIC_KIND_INTR, 0x10913000u, 0x10913004u, 0x10913008u, 0x4u, "KMAC-err"},
@@ -79,6 +91,8 @@ static int g_n_src = 0;
 static volatile uint32_t g_count[PIC_SRC_MAX];
 static volatile uint32_t g_claim[PIC_SRC_MAX];
 static volatile uint32_t g_mbox_irqs_after = 0;
+static volatile uint32_t g_unexpected_id = 0;
+static volatile uint32_t g_unexpected_claims = 0;
 static int g_mbox_idx = -1;
 
 static inline uint32_t rd32(uint32_t a) {
@@ -103,6 +117,21 @@ static int idx_of_pic(uint32_t pic_src) {
     return -1;
 }
 
+static int is_ip_intr(uint32_t kind) {
+    return kind == PIC_KIND_INTR || kind == PIC_KIND_INTR_STATUS;
+}
+
+static void clear_ip_intr(const struct pic_src_desc *d) {
+    if (d->kind == PIC_KIND_INTR_STATUS) {
+        wr32(d->test, 0);
+        wr32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
+             SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
+                 SECURE_DMA__STATUS__CHUNK_DONE_bm);
+    } else {
+        wr32(d->state, d->bit);
+    }
+}
+
 static const struct pic_src_desc *catalog_of(uint32_t pic_src) {
     for (unsigned i = 0; i < sizeof(k_catalog) / sizeof(k_catalog[0]); i++) {
         if (k_catalog[i].pic_src == pic_src) {
@@ -124,21 +153,56 @@ void __attribute__((interrupt("machine"))) mbox_isr(void) {
     __asm__ volatile("fence" ::: "memory");
 }
 
+static void silence_and_bound(uint32_t id) {
+    if (g_unexpected_claims == 0) {
+        g_unexpected_id = id;
+    }
+    g_unexpected_claims++;
+    if (id >= 1u) {
+        pic_disable_source(id);
+    }
+    if (g_unexpected_claims > UNEXPECTED_CLAIM_MAX) {
+        __asm__ volatile("csrc mie, %0" :: "r"((uint32_t)(1u << 11)));
+    }
+}
+
 void __attribute__((interrupt("machine"))) pic_intr_isr(void) {
     uint32_t id = claim_id();
     int idx = idx_of_pic(id);
-    if (idx >= 0 && g_sel[idx].kind == PIC_KIND_INTR) {
-        g_claim[idx] = id;
-        wr32(g_sel[idx].state, g_sel[idx].bit);
-        g_count[idx]++;
+    if (idx >= 0 && is_ip_intr(g_sel[idx].kind)) {
+        if (g_count[idx] != 0) {
+            // Already handled this selected source; the line did not drop, so
+            // mret would re-enter before the delivery wait can observe the count.
+            silence_and_bound(id);
+        } else {
+            g_claim[idx] = id;
+            clear_ip_intr(&g_sel[idx]);
+            g_count[idx]++;
+        }
+    } else {
+        silence_and_bound(id);
     }
     __asm__ volatile("fence" ::: "memory");
+}
+
+static void report_unexpected(void) {
+    if (g_unexpected_claims == 0) {
+        return;
+    }
+    sep_mbx_puts("FAIL: unexpected PIC source id=");
+    sep_mbx_puthex(g_unexpected_id);
+    sep_mbx_puts(" claims=");
+    sep_mbx_puthex(g_unexpected_claims);
+    sep_mbx_puts("\n");
 }
 
 static int wait_isr(int s, uint32_t before) {
     int timeout = ISR_WAIT_ITERS;
     while (timeout-- > 0) {
         __asm__ volatile("wfi");
+        if (g_unexpected_claims != 0) {
+            return 0;
+        }
         if (g_count[s] != before) {
             return 1;
         }
@@ -207,13 +271,13 @@ static void arm_sources(void) {
 
     // OR INTR_ENABLE bits that share a base so two extras on one IP stay armed.
     for (int i = 0; i < g_n_src; i++) {
-        if (g_sel[i].kind != PIC_KIND_INTR) {
+        if (!is_ip_intr(g_sel[i].kind)) {
             continue;
         }
         uint32_t bits = 0;
         uint32_t base_en = g_sel[i].enable;
         for (int j = 0; j < g_n_src; j++) {
-            if (g_sel[j].kind == PIC_KIND_INTR && g_sel[j].enable == base_en) {
+            if (is_ip_intr(g_sel[j].kind) && g_sel[j].enable == base_en) {
                 bits |= g_sel[j].bit;
             }
         }
@@ -238,6 +302,7 @@ static int run_mbox(void) {
 
     if (!wait_isr(s, snap[s])) {
         sep_mbx_puts("FAIL: mailbox ISR never reached the CPU\n");
+        report_unexpected();
         return 1;
     }
     sep_mbx_puts("CHK-DELIVER PASS: mailbox ISR reached the CPU\n");
@@ -277,6 +342,7 @@ static int run_intr(int s) {
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(d->name);
         sep_mbx_puts(" ISR never reached the CPU\n");
+        report_unexpected();
         return 1;
     }
     sep_mbx_puts("CHK-DELIVER PASS: ");
@@ -338,8 +404,9 @@ int main(void) {
             spurious = 1;
         }
     }
-    if (spurious) {
+    if (spurious || g_unexpected_claims != 0) {
         sep_mbx_puts("FAIL: spurious ISR before any source asserted\n");
+        report_unexpected();
         errors++;
     } else {
         sep_mbx_puts("CHK-NONVAC PASS: no spurious ISR before any trigger "
