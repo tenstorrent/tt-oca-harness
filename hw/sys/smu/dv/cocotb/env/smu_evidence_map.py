@@ -7,9 +7,8 @@ Each test lists (CHK_ID, TOKEN, EXPECT) triples. Scoreboard logs
 ``CHK-NONVAC`` is emitted by SmuScoreboard.check_phase when checks > 0.
 
 Force-era / deferred names may still appear below for catalog continuity;
-they are **OUT** under the 2026-07-29 no-Force policy and must not be
-reported as green. Bodies: ``cocotb/tests_deferred/``. Checklist:
-``hw/sys/smc/doc/dv_hack_cleanup_checklist.md``.
+they are **OUT** under the no-Force policy and must not be
+reported as green. Bodies: ``cocotb/tests_deferred/``.
 """
 
 from __future__ import annotations

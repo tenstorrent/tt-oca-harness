@@ -431,7 +431,7 @@ threshold
 SMC P0 Verification Test Cases
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The *P0 slate* is the 14-test GitHub Project 335 alignment.
+The *P0 slate* is the set of 14 P0 tests, one per functional category.
 Every P0 test runs on the current OSS
 PyUVM/cocotb direct-AXI path with no private wrappers, and every
 `assert` documented below is honored by the local implementation.
@@ -652,34 +652,34 @@ Diagnostic observability bounded[ ] No UVM_ERROR
 (0xC001_0208)`CPU_DEBUG_BUS_MUX` (0xC001_0210)
 |=======================================================================
 
-[[smc-p0-github-project-alignment]]
-SMC P0 GitHub Project Alignment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[[smc-p0-category-alignment]]
+SMC P0 Category Alignment
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-GitHub Project 335 tracks the SMC P0 slate with these 14 category
-buckets (mirrors the TC_SMC_P0_NNN rows above):
+The SMC P0 slate spans these 14 functional categories (mirrors the
+TC_SMC_P0_NNN rows above):
 
-[cols=",,",options="header",]
+[cols=",",options="header",]
 |==============================================================
-|GitHub bucket |Category |P0 test
-|#3301 |reset |TC_SMC_P0_001 `smc_cold_reset_test`
-|#3302 |clock_pll |TC_SMC_P0_002 `smc_clk_running_test`
-|#3303 |gpio |TC_SMC_P0_003 `smc_gpio_observe_test`
-|#3304 |i2c |TC_SMC_P0_004 `smc_i2c_cg_sanity_test`
-|#3305 |interrupt |TC_SMC_P0_005 `smc_irq_observe_test`
-|#3306 |axil_csr |TC_SMC_P0_006 `smc_register_sanity_test`
-|#3307 |mailbox |TC_SMC_P0_007 `smc_mailbox_idle_test`
-|#3308 |fabric |TC_SMC_P0_008 `smc_input_fabric_axi_wr_rd_test`
-|#3309 |cpu_traffic |TC_SMC_P0_009 `smc_cpu_to_sep_axi_test`
-|#3310 |jtag |TC_SMC_P0_010 `smc_ijtag_basic_test`
-|#3311 |i3c |TC_SMC_P0_011 `smc_i3c_to_fabric_test`
-|#3312 |efuse_otp |TC_SMC_P0_012 `smc_efuse_otp_clock_test`
-|#3313 |avsbus |TC_SMC_P0_013 `smc_avsbus_sanity_test`
-|#3314 |dbs_dfd_ecam_ecc |TC_SMC_P0_014 `smc_dbs_idle_test`
+|Category |P0 test
+|reset |TC_SMC_P0_001 `smc_cold_reset_test`
+|clock_pll |TC_SMC_P0_002 `smc_clk_running_test`
+|gpio |TC_SMC_P0_003 `smc_gpio_observe_test`
+|i2c |TC_SMC_P0_004 `smc_i2c_cg_sanity_test`
+|interrupt |TC_SMC_P0_005 `smc_irq_observe_test`
+|axil_csr |TC_SMC_P0_006 `smc_register_sanity_test`
+|mailbox |TC_SMC_P0_007 `smc_mailbox_idle_test`
+|fabric |TC_SMC_P0_008 `smc_input_fabric_axi_wr_rd_test`
+|cpu_traffic |TC_SMC_P0_009 `smc_cpu_to_sep_axi_test`
+|jtag |TC_SMC_P0_010 `smc_ijtag_basic_test`
+|i3c |TC_SMC_P0_011 `smc_i3c_to_fabric_test`
+|efuse_otp |TC_SMC_P0_012 `smc_efuse_otp_clock_test`
+|avsbus |TC_SMC_P0_013 `smc_avsbus_sanity_test`
+|dbs_dfd_ecam_ecc |TC_SMC_P0_014 `smc_dbs_idle_test`
 |==============================================================
 
 The aggregate `project_p0` group in `testlists/all.toml` is the local
-source of truth for this GitHub mapping. Local-implementation notes:
+source of truth for this mapping. Local-implementation notes:
 
 * `smc_mailbox_idle_test` is a `pyuvm.test()` alias that reuses
 `smc_mailbox_irq_test_seq` (backing sequence at
@@ -689,13 +689,6 @@ source of truth for this GitHub mapping. Local-implementation notes:
 * `smc_avsbus_sanity_test` reuses
 `smc_sideband_protocol_smoke_test_seq`.
 * `smc_dbs_idle_test` reuses `smc_ecc_dfd_dbs_sanity_test_seq`.
-
-____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
-*Execution status + signoff evidence* for `project_p0`,
-`canonical_top6`, `canonical_top10`, `canonical_top20`,
-`vplan_triplets`, and `p2_phase_a` groups is tracked in
-`hw/sys/smc/dv/docs/smc_oss_execution_guide.md` (§6b Sign-off), not here.
-____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 [[legacy-migration-selection-matrix]]
 Legacy Migration Selection Matrix
@@ -842,8 +835,8 @@ in P1). This section only records the group membership and its purpose.
 `smc_output_filter_remap_security_test`, `smc_ecc_dfd_dbs_sanity_test`,
 `smc_multi_reset_csr_persistence_test`.
 
-The *`project_p0`* tag (14 tests, one per GitHub Project 335 category
-bucket #3301-#3314) is a strict subset of `canonical_top20`. Its
+The *`project_p0`* tag (14 tests, one per P0 functional category) is a
+strict subset of `canonical_top20`. Its
 per-test detail is captured in the SMC P0 Verification Test Cases table
 above.
 
@@ -1003,15 +996,8 @@ sanity |`smc_zeroer_dma_timeout_test`, `smc_zeroer_sanity_test`,
 |=======================================================================
 
 *P1 executable aggregate*: `vplan_triplets` contains 48 depth-tier
-tests. Project 335 tracks only the non-P0 P1 leaf set plus the later
-coverage-gap extensions under GitHub parent #2892; after P0 duplicate
-de-dupe and the Round 1-5 gap-fill additions, #2892 currently has 48 P1
-leaf testcase issues.
-
-_______________________________________________________________
-Per-test PASS/timings + run_dir evidence: see
-`smc_oss_execution_guide.md` §6d.
-_______________________________________________________________
+tests, covering the non-P0 P1 leaf set plus the coverage-gap
+extensions.
 
 [[p1-coverage-gap-depth-slate-round-1-13-new-tests]]
 P1 Coverage-Gap Depth Slate — Round 1 (13 New Tests)
@@ -1690,11 +1676,6 @@ external BFM require lifting the SPI 8-bit Octal Flash pads and
 telemetry packed-array pads to tb_top. A prior attempt destabilised the
 Verilator model and was reverted. Tracked as a Verilator-safe pad-lift
 refactor.
-
-___________________________________________________________________
-Per-test PASS/timings + run_dir evidence: see
-`smc_oss_execution_guide.md` §6b.
-___________________________________________________________________
 
 [[p1p2-migration-blocker-roadmap]]
 P1/P2 Migration Blocker Roadmap

@@ -6,10 +6,9 @@ Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — live green `phase1` **14**, `sep0_all` **19** (no Force; product-pin CTM).
 
-**Green / signoff policy (2026-07-29):** no DUT Force / no TB placeholder.
+**Green / signoff policy:** no DUT Force / no TB placeholder.
 Raise-stub Force-era bodies live under `cocotb/tests_deferred/` +
-`testlists/deferred.toml` — **not** reportable as PASS. Shared cleanup
-checklist: [`../../smc/doc/dv_hack_cleanup_checklist.md`](../../smc/doc/dv_hack_cleanup_checklist.md).
+`testlists/deferred.toml` — **not** reportable as PASS.
 
 **Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
 

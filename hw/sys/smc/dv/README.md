@@ -4,16 +4,14 @@
 Open-source DV environment for the SMC (System Management Controller) subsystem.
 Flow = cocotb/PyUVM on Verilator (functional backend) and VCS/Xcelium (coverage),
 driven by `tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for test development,
-`docs/SMC_VPLAN.adoc` for the verification plan, `docs/oss_smc_dev.md` for the
-porting plan, and `docs/smc_oss_execution_guide.md` for run recipes and recorded
-sign-off evidence.
+`docs/SMC_VPLAN.adoc` for the verification plan, and
+`docs/smc_oss_execution_guide.md` for run recipes.
 
-**Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
+**Green / signoff policy:** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
 demos (e.g. hardcoded DFD capture token) belong in `testlists/deferred.toml`
 — not reportable as feature PASS. Green `smc_i3c_to_fabric_test` is
-**stub-signature only** (fabric → `i3ccore_stub` SLVERR). Checklist:
-[`../doc/dv_hack_cleanup_checklist.md`](../doc/dv_hack_cleanup_checklist.md).
+**stub-signature only** (fabric → `i3ccore_stub` SLVERR).
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
 call sites need a one-line rationale comment at the call (what hangs without

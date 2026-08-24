@@ -75,6 +75,25 @@ following command to see all available options:
 python3 tools/dv/run_dv.py --help
 ```
 
+==== Subsystem DV Documentation
+
+Each subsystem keeps its durable DV documentation next to its testbench,
+with a `README.md` as the GitHub-native entry point. The structured
+AsciiDoc documents are:
+
+* Shared VIP layer:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/common/dv/docs/index.adoc[hw/common/dv/docs/index.adoc]
+* SEP:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/dv/docs/oss_dv_plan.adoc[DV plan],
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/dv/docs/verification_plan_phase1.adoc[verification plan (phase 1)],
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/dv/docs/verification_plan_phase2.adoc[(phase 2)],
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/dv/docs/verification_plan_phase3.adoc[(phase 3)],
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/dv/docs/dv_env_reference.adoc[environment reference]
+* SMC:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/dv/docs/SMC_VPLAN.adoc[verification plan]
+* DTP:
+  https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/dtp/dv/docs/index.adoc[hw/sys/dtp/dv/docs/index.adoc]
+
 ==== Visual Debugging and Waveform Viewer
 
 We have two open source choices: the older GTKWave and Surfer. Surfer is
