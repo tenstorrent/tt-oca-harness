@@ -28,6 +28,8 @@ from __future__ import annotations
 
 from sep_reg_meta import sym
 
+from env.sep_seeded_rng import SepSeededRng
+
 from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE, IrqSrc
 
 HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
@@ -67,10 +69,9 @@ class SepIrqFaninCfg:
     """
 
     def __init__(self, seed: int) -> None:
-        import random
         self.seed = seed
-        rng = random.Random(seed)
-        n = rng.randint(2, len(FANIN_SOURCES))
+        rng = SepSeededRng(seed)
+        n = rng.randrange(2, len(FANIN_SOURCES) + 1)
         self.sources = rng.sample(list(FANIN_SOURCES), n)
         # Baseline single source for non-vacuity (any one source; reproducible).
         self.baseline = rng.choice(list(FANIN_SOURCES))

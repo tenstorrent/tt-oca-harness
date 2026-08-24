@@ -34,17 +34,14 @@ Checkers (each logs positive evidence):
     the distinctive golden value 0xf0000000_f000f003 (proves the external path
     actually reached the LCC, not merely returned OKAY/all-ones).
   * CHK-IDENTITY   external access follows sep_debug: blocked@0, allowed@1 -- the
-    frontdoor (FEAT_CTRL[0]) replacement for the reference suite's backdoor filter_skip read.
+    frontdoor (FEAT_CTRL[0]) identity with the filter skip.
   * CHK-NONVAC     both block and allow outcomes observed (the A->B transition is
     real, not a single stuck state).
 
-Stronger than the reference suite: the reference suite reads ``filter_skip_i`` by backdoor ``uvm_hdl_read`` and
-checks only ``feat_ctrl[0]``; the OSS port reads FEAT_CTRL frontdoor with an exact
-64-bit golden value-check, requires the blocked external read to return DECERR,
-and proves the allowed external read returns the LCC's distinctive FEAT_CTRL high
-word. Scope delta: none functional. The reference suite async-flip ambiguity guard (firmware
-advances LC mid-probe) is unnecessary here -- sep_debug is driven deterministically
-between probes in the no_cpu flow.
+FEAT_CTRL is read frontdoor against the 64-bit lifecycle golden. A blocked
+external read must return DECERR; an allowed external read must return the
+LCC's distinctive FEAT_CTRL value. sep_debug is driven deterministically
+between probes.
 """
 
 from __future__ import annotations

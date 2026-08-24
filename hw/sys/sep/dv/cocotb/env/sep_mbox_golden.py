@@ -33,6 +33,8 @@ from __future__ import annotations
 
 from sep_reg_meta import SEP_CPU_CTRL, sym
 
+from env.sep_seeded_rng import SepSeededRng
+
 # --- outbound_mailbox_0 register map (single source of truth) -------------------
 OUTBOUND_BASE = sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")      # SEP/CPU aperture (CPU-LSU reachable, no filter)
 WRITE_DATA = 0x00                # 64-bit; pushes the TX FIFO (one access = one entry)
@@ -80,16 +82,15 @@ class SepMboxCfg:
     TOML ``reseed = N``."""
 
     def __init__(self, seed: int = 1, *, depth: int = MAILBOX_DEPTH) -> None:
-        import random
         self.seed = seed
         self.depth = depth
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         # RANDOM write threshold in [1, depth-1]: "exceeds threshold" is reachable and
         # a full FIFO always trips it.
-        self.wirqt = rng.randint(1, depth - 1)
+        self.wirqt = rng.randrange(1, depth)
         # RANDOM "message length" for the first fill batch: enough to cross WIRQT but
         # not necessarily fill (the test then tops up to full for the overflow check).
-        self.first_batch = rng.randint(self.wirqt + 1, depth)
+        self.first_batch = rng.randrange(self.wirqt + 1, depth + 1)
         # RANDOM distinct nonzero 64-bit payloads (data actually varies per seed), one
         # more than depth so the write-to-full overflow has its own value.
         self.payloads: list[int] = []

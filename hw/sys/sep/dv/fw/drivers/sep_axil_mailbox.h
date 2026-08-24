@@ -12,8 +12,9 @@
 //
 // In hw/sys/sep/rtl/sep.sv outbound_interrupt_o feeds sep_internal_interrupts[7:0]
 // (one slot per mailbox), so mailbox m -> sep_internal_interrupts[m] -> VeeR EL2
-// PIC source (m + 1). The block's CSR clock is gated off at reset; ungate it via
-// CLOCK_GATE_CTRL bit 2 (MAILBOX_CG) before touching any mailbox register.
+// PIC source (m + 1). CLOCK_GATE_CTRL in this map implements only
+// pka_cg_enable (bit 0). Bit 2 is written for sequence parity; it is not a
+// defined mailbox-clock field and is not on the proof path.
 //
 // IRQS is write-1-to-clear. Because the IRQ is level-based on FIFO occupancy
 // (usage > WIRQT), W1C alone re-asserts next cycle while the FIFO stays above
@@ -46,8 +47,9 @@
 // Mailbox 0 outbound interrupt -> sep_internal_interrupts[0] -> PIC source 1.
 #define SEP_AXIL_MBOX0_PIC_SRC 1u
 
-// CLOCK_GATE_CTRL (sep_cpu_ctrl @ 0x10A3_0008): bit 2 ungates the mailbox CSR
-// clock. Guarded so a TU that also pulls in sep_entropy.h keeps one definition.
+// CLOCK_GATE_CTRL (sep_cpu_ctrl @ 0x10A3_0008). Guarded so a TU that also
+// pulls in sep_entropy.h keeps one definition. SEP_CLOCK_GATE_MAILBOX is
+// not a defined field in this map.
 #ifndef SEP_CLOCK_GATE_CTRL
 #define SEP_CLOCK_GATE_CTRL 0x10A30008u
 #endif
@@ -62,8 +64,8 @@ static inline void sep_axil_mbox_wr(uint32_t addr, uint32_t value) {
     __asm__ volatile("fence" ::: "memory");
 }
 
-// Ungate the mailbox CSR clock (read-modify-write so reset gating of the other
-// blocks is preserved).
+// Write CLOCK_GATE_CTRL bit 2 (not a defined field). Read-modify-write so
+// other implemented bits stay as they were.
 static inline void sep_axil_mbox_clock_enable(void) {
     uint32_t cg = sep_axil_mbox_rd(SEP_CLOCK_GATE_CTRL);
     sep_axil_mbox_wr(SEP_CLOCK_GATE_CTRL, cg | SEP_CLOCK_GATE_MAILBOX);

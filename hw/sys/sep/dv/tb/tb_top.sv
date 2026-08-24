@@ -73,6 +73,18 @@ module sep_uvm_top
     // pair onto the LCC decoder input (signed off -- no legal OTP image can present
     // one). See the force block below.
     input  wire logic lc_sigint_inject_i,
+    // Token-comparator redundancy fault inject. Default 0. Encoding:
+    //   3'b000 off
+    //   3'b001 collapse instance 0 of the RMA_SIP comparator (both rails 0)
+    //   3'b010 disagree: instance 0 drives a legal mismatch pair while 1/2 match
+    //   3'b011 common-mode mismatch: all three legal mismatch (invert of a match)
+    //   3'b100 common-mode match: all three legal match (invert of a mismatch)
+    // Signed off -- no legal token/OTP image can break the three identical
+    // compare cones. See the force block below.
+    input  wire logic [2:0] token_cmp_fault_inject_i,
+    // Which token comparator the inject hits. Default 0.
+    //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
+    input  wire logic [1:0] token_cmp_fault_sel_i,
 
     // ------------------------------------------------------------------
     // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -1088,6 +1100,85 @@ module sep_uvm_top
 `undef LCC_DEC_DATA
 
     // ------------------------------------------------------------------
+    // Token-comparator redundancy fault inject.
+    // SIGNED OFF 2026-08-24 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // The three digest comparators see the same inputs. A legal token write
+    // can only produce a unanimous legal pair (match or mismatch). Collapse
+    // and two-instance disagreement have no frontdoor. Common-mode invert
+    // of every instance is the documented coverage hole: the detector does
+    // not fire when all three flip the same way. Force the gated instance
+    // rails of the selected token wrapper; TOKEN_MATCH_FAULT and the
+    // match-status CSR stay frontdoor-read. Default 0; released after the
+    // check; outside the AXI ready/valid cones. Re-issue every clock
+    // (Verilator snapshots a force RHS).
+`define TOKEN_PROC \
+    `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
+        .gen_mmr_reg.u_efuse_token_processing
+`define CMP_SIP  `TOKEN_PROC.u_triple_redundant_comparator_rma_sip_token
+`define CMP_CHIP `TOKEN_PROC.u_triple_redundant_comparator_rma_chiplet_token
+`define CMP_SEC  `TOKEN_PROC.u_triple_redundant_comparator_sec_disable_token
+    logic [2:0] token_cmp_force_p, token_cmp_force_n;
+    logic       token_cmp_do_force;
+    always_comb begin
+        token_cmp_force_p = 3'b000;
+        token_cmp_force_n = 3'b000;
+        token_cmp_do_force = 1'b0;
+        if (token_cmp_fault_inject_i === 3'b001) begin
+            token_cmp_force_p = 3'b110;
+            token_cmp_force_n = 3'b000;
+            token_cmp_do_force = 1'b1;
+        end else if (token_cmp_fault_inject_i === 3'b010) begin
+            token_cmp_force_p = 3'b110;
+            token_cmp_force_n = 3'b001;
+            token_cmp_do_force = 1'b1;
+        end else if (token_cmp_fault_inject_i === 3'b011) begin
+            token_cmp_force_p = 3'b000;
+            token_cmp_force_n = 3'b111;
+            token_cmp_do_force = 1'b1;
+        end else if (token_cmp_fault_inject_i === 3'b100) begin
+            token_cmp_force_p = 3'b111;
+            token_cmp_force_n = 3'b000;
+            token_cmp_do_force = 1'b1;
+        end
+    end
+    always @(posedge clk_i) begin
+        if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b00) begin
+            force `CMP_SIP.match_p = token_cmp_force_p;
+            force `CMP_SIP.match_n = token_cmp_force_n;
+            release `CMP_CHIP.match_p;
+            release `CMP_CHIP.match_n;
+            release `CMP_SEC.match_p;
+            release `CMP_SEC.match_n;
+        end else if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b01) begin
+            release `CMP_SIP.match_p;
+            release `CMP_SIP.match_n;
+            force `CMP_CHIP.match_p = token_cmp_force_p;
+            force `CMP_CHIP.match_n = token_cmp_force_n;
+            release `CMP_SEC.match_p;
+            release `CMP_SEC.match_n;
+        end else if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b10) begin
+            release `CMP_SIP.match_p;
+            release `CMP_SIP.match_n;
+            release `CMP_CHIP.match_p;
+            release `CMP_CHIP.match_n;
+            force `CMP_SEC.match_p = token_cmp_force_p;
+            force `CMP_SEC.match_n = token_cmp_force_n;
+        end else begin
+            release `CMP_SIP.match_p;
+            release `CMP_SIP.match_n;
+            release `CMP_CHIP.match_p;
+            release `CMP_CHIP.match_n;
+            release `CMP_SEC.match_p;
+            release `CMP_SEC.match_n;
+        end
+    end
+`undef CMP_SIP
+`undef CMP_CHIP
+`undef CMP_SEC
+`undef TOKEN_PROC
+
+    // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
     // ------------------------------------------------------------------
     // The ESRC ring oscillators' `#delay` feedback is ignored under Verilator, so
@@ -1284,7 +1375,10 @@ module sep_uvm_top
     assign otbn_imem_write_count_o = otbn_imem_wr_cnt_q;
     assign otbn_dmem_req_count_o   = otbn_dmem_req_cnt_q;
     assign otbn_dmem_write_count_o = otbn_dmem_wr_cnt_q;
-    // KM SRAM word 0 (post-descramble store): peek the real macro array.
+    // KM SRAM word 0: peek the real macro array. The KM SRAM is one unscrambled
+    // prim_ram_1p_adv (sep_ip_integration.u_km_sram) addressed by word index
+    // within the 32 KB km_intf_pkg SRAM window, so km_intf_pkg::SRAM_BASE_ADDR
+    // (0x0000_8000) + 0 is mem[0]. Both KM ROM images store their word there.
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
 

@@ -14,10 +14,11 @@ SMN master (m_axi, the only path through u_inbound_filter) probes them:
 This stays sep_debug=0 and proves PER-ENTRY rule enforcement (vs the global
 sep_debug skip gate). The filter CSR layout is defined in sep_fabric_csr_bank_seq.
 SepInboundFilterMatrixCfg is the single source of truth for the walked cells
-(entry x window x R/W-allow).
+(entry x window x R/W-allow x src-id class).
 
-src_id=0 in the rule is match-all (traffic_filter.sv), so the external master's
-ar/awuser[3:0]=0 still matches; allow_ns=1 matches the master's NONSECURE prot.
+FILTER_CONFIG.src_id=0 is match-all (traffic_filter.sv). A non-zero src_id
+matches only the external master's ar/awuser[3:0]. allow_ns=1 matches the
+master's NONSECURE prot.
 """
 
 from __future__ import annotations
@@ -57,6 +58,11 @@ RESP_DECERR = 3
 INFILT_N_ENTRIES = 8
 WALK_ENTRIES = (0, 7)
 ALLOW_MODES = (("rw", True, True), ("r", True, False), ("w", False, True))
+# Non-zero FILTER_CONFIG.src_id and a distinct AXI user[3:0] for the mismatch
+# cell. 0x5 is the CSR-bank RW pattern; 0xA is a legal 4-bit non-equal.
+SRC_ID_MATCH = 0x5
+SRC_ID_MISMATCH_USER = 0xA
+SRC_ID_USER_MASK = 0xF
 
 
 class SepInboundFilterCfg:
@@ -68,7 +74,7 @@ class SepInboundFilterCfg:
         self.allow_addr = allow_addr
         self.allow_value = allow_value
         self.blocked_addr = BLOCKED_ADDR
-        self.src_id = 0                       # match-all
+        self.src_id = 0                       # 0 = match-all; else exact user[3:0]
 
     @property
     def cfg_addr(self) -> int:
@@ -101,10 +107,12 @@ class SepInboundFilterMatrixCfg:
     """Single source of truth for the inbound-filter RAND-REP walk.
 
     Discrete cells (walked every seed): first and last table entries x two
-    address windows x {rw, read-only, write-only}. Continuous knobs (window
-    values) come from the run seed so a failing seed reproduces the staged
-    data. Entry 0 / window A / rw is always first so the original allow-rule
-    proof line still appears.
+    address windows x {rw, read-only, write-only} at src_id=0 (match-all),
+    plus entry 0 / window 0 x {rw, r, w} at src_id=5 / user=5 (exact match)
+    and one src-mismatch cell (src_id=5 / user=0xA, both allows set).
+    Continuous knobs (window values) come from the run seed so a failing seed
+    reproduces the staged data. Entry 0 / window A / rw / match-all is always
+    first so the allow-rule proof line still appears.
     """
 
     def __init__(self, *, seed: int, windows: list[tuple[int, int]]) -> None:
@@ -127,19 +135,29 @@ class SepInboundFilterMatrixCfg:
         return cls(seed=seed, windows=[(TARGET_ADDR, va), (WINDOW_B_ADDR, vb)])
 
     def cells(self):
-        """Yield (entry, window_idx, mode_name, addr, value, read_ok, write_ok)."""
+        """Yield (entry, window_idx, mode_name, addr, value, read_ok, write_ok,
+        src_class, cfg_src_id, axi_user, expect_hit)."""
         for entry in self.entries:
             for widx, (addr, val) in enumerate(self.windows):
                 for name, read_ok, write_ok in self.modes:
-                    yield entry, widx, name, addr, val, read_ok, write_ok
+                    yield (entry, widx, name, addr, val, read_ok, write_ok,
+                           "match-all", 0, 0, True)
+        addr0, val0 = self.windows[0]
+        for name, read_ok, write_ok in self.modes:
+            yield (0, 0, name, addr0, val0, read_ok, write_ok,
+                   "match", SRC_ID_MATCH, SRC_ID_MATCH & SRC_ID_USER_MASK, True)
+        yield (0, 0, "rw", addr0, val0, True, True,
+               "mismatch", SRC_ID_MATCH, SRC_ID_MISMATCH_USER, False)
 
     def n_cells(self) -> int:
-        return len(self.entries) * len(self.windows) * len(self.modes)
+        return (len(self.entries) * len(self.windows) * len(self.modes)
+                + len(self.modes) + 1)
 
     def summary(self) -> str:
         wins = " ".join(f"w{i}=0x{a:08x}/0x{v:08x}" for i, (a, v) in enumerate(self.windows))
         return (f"seed={self.seed} entries={self.entries} {wins} "
-                f"blocked=0x{self.blocked_addr:08x} cells={self.n_cells()}")
+                f"blocked=0x{self.blocked_addr:08x} cells={self.n_cells()} "
+                f"src_match=0x{SRC_ID_MATCH:x} src_mismatch_user=0x{SRC_ID_MISMATCH_USER:x}")
 
 
 class SepInboundFilter(SepAxiRegDriver):
@@ -173,15 +191,15 @@ class SepInboundFilter(SepAxiRegDriver):
         await self._wr(cfg.cfg_addr, cfg.config_word(read_allowed=read_allowed, write_allowed=write_allowed))
 
 
-def ext_read_seq(addr: int) -> SepAxiAccessSeq:
+def ext_read_seq(addr: int, *, user: int = 0) -> SepAxiAccessSeq:
     """A 32-bit external-master READ (run via start_ext_seq). allow_timeout stays
     False: a blocked access must return DECERR from the filter err-slave, not wedge."""
     return SepAxiAccessSeq("infilt_ext_rd", op=SepAxiOp.READ, addr=addr, length=4, size=2,
-                           expect_error=False)
+                           expect_error=False, user=user)
 
 
-def ext_write_seq(addr: int, data: int) -> SepAxiAccessSeq:
+def ext_write_seq(addr: int, data: int, *, user: int = 0) -> SepAxiAccessSeq:
     """A 32-bit external-master WRITE (run via start_ext_seq). allow_unverified_write_resp
     so a blocked write's DECERR is tolerated for inspection (the test asserts the code)."""
     return SepAxiAccessSeq("infilt_ext_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data,
-                           length=4, size=2, allow_unverified_write_resp=True)
+                           length=4, size=2, allow_unverified_write_resp=True, user=user)

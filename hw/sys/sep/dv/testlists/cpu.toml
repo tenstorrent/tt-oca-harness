@@ -62,18 +62,20 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Multi-source PIC source-id map + ISR delivery (the reference suite fw otbn_plic_test + system
-# sep_irq_connectivity_test). EL2 firmware registers PIC ISRs for three IPs and
-# proves the source->PIC-id map (mailbox[0]=src1, OTBN-done=src30, CSRNG-cmd-done
-# =src24, per interrupts.adoc Table 1; id == sep_internal_interrupts idx + 1) + real ISR claim + IP RW1C-clear
-# + one-hot isolation + no re-fire storm. mailbox via a real FIFO push; OTBN/CSRNG
-# via INTR_TEST (both released at SW_RESET_N=0x1E, clocked first). cpu run mode;
-# +skip_fuse_sense (no OTP read). CPU complex (the PIC lives inside the core).
+# Multi-source PIC source-id map + ISR delivery. EL2 firmware registers PIC
+# ISRs for the MUST trio (mailbox[0]=src1, OTBN-done=src30, HMAC-done=src18)
+# plus two seed-selected INTR_TEST extras, and proves the source->PIC-id map
+# (id == sep_internal_interrupts idx + 1) + real ISR claim + IP RW1C-clear
+# + one-hot isolation + no re-fire storm. mailbox via a real FIFO push;
+# others via INTR_TEST. cpu run mode; +skip_fuse_sense (no OTP read).
+# timeout_sec is 300 s because a passing seed finishes in ~80 s; an ISR that
+# never returns would otherwise sit until the 3600 s default.
 name = "sep_pic_irq_source_map_delivery_test"
 module = "cpu.sep_pic_irq_source_map_delivery_test"
 firmware = "pic_irq_source_map_test"
 seed = 1
-timeout_sec = 3600
+reseed = 3
+timeout_sec = 300
 tags = ["boot", "cpu", "interrupt", "pic", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -134,17 +136,34 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # CPU IFU/LSU local-alias-remap (the reference suite's
-# sep_cpu_ifu_lsu_alias_remap_matrix_test). EL2 firmware programs the alias window
-# (SEP_LOCAL_BASE=0xC000_0000/REGION_SIZE=0x4000_0000) and proves the CPU-side
-# IFU + LSU local-alias-remap (sep_cpu.sv u_lsu/u_ifu_local_alias_remap): a fabric
-# access to 0xD000_xxxx remaps to physical SRAM 0x1000_xxxx. MUST be cpu mode --
-# the no_cpu AXI splice is post-remap and would bypass the remap. +skip_fuse_sense (the
-# alias remap does not depend on sensed OTP). CPU complex (real CPU IFU/LSU).
+# sep_cpu_ifu_lsu_alias_remap_matrix_test). EL2 firmware uses SEP_LOCAL_BASE
+# reset 0xD000_0000 and the fixed 768 MiB window
+# (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE); REGION_SIZE is not programmed. Proves
+# the CPU-side IFU + LSU local-alias-remap
+# (sep_cpu.sv u_lsu/u_ifu_local_alias_remap): a fabric access to 0xD000_xxxx
+# remaps to physical SRAM 0x1000_xxxx. MUST be cpu mode -- the no_cpu AXI splice
+# is post-remap and would bypass the remap. +skip_fuse_sense (the alias remap
+# does not depend on sensed OTP). CPU complex (real CPU IFU/LSU).
 name = "sep_cpu_ifu_lsu_alias_remap_matrix_test"
 module = "cpu.sep_cpu_ifu_lsu_alias_remap_matrix_test"
 firmware = "cpu_alias_remap_test"
 seed = 1
 timeout_sec = 3600
 tags = ["fabric", "alias", "remap", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# PIC source 39 claim + mask for the token-comparator redundancy fault.
+# Firmware arms the source and presents a SEC_DISABLE token; the host injects
+# a collapse on that comparator (tb port). Proves claim id 39, the
+# SEC_DISABLE sticky bit, and that masking meie[39] stops re-entry.
+# +skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
+name = "sep_efuse_token_match_fault_pic_test"
+module = "efuse.sep_efuse_token_match_fault_pic_test"
+firmware = "token_match_fault_pic_test"
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "cpu", "interrupt", "pic", "efuse", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
