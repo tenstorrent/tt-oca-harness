@@ -68,11 +68,7 @@ _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
-_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
-# Block bases from the generated map. These are separate register blocks, not offsets
-# within the shadow map, so deriving them as _SHADOW_BASE + 0x400 / + 0x500 was a
-# hand-copied adjacency that happens to hold today -- the same defect class as the
-# field offsets above, one level up.
+# Block bases from the generated map.
 _EFUSE_CTRL_BASE = sym("EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")
 _EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
 _EFUSE_PROGRAM_CTRL = _EFUSE_CTRL_BASE + 0x4
@@ -86,8 +82,8 @@ _TOKEN_MATCH = 0x15
 _RMA_SIP_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR")
 _RMA_CHIPLET_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR")
 # sep_pkg::LC_STATE_BIT_POSITION -- efuse_guard gates program addresses BASE+1
-# (RMA_SIP token) and BASE+2 (RMA_CHIPLET token) on a token match. Derived, because
-# the literal 64 silently addressed LOCKS_SPARE once LC_STATE moved to word 3.
+# (RMA_SIP token) and BASE+2 (RMA_CHIPLET token) on a token match.
+# LC_WORD_IDX * 32 so the program address tracks the generated LC_STATE word.
 _LC_STATE_BIT_BASE = LC_WORD_IDX * 32
 
 _TOKEN_RMA_SIP = 0

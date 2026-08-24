@@ -9,7 +9,7 @@ TRUE cocotb fork so both contend at the EDN arbiter in the same window. The CHK5
 is BIT-EXACT and genbits-anchored (stronger than the reference suite):
 
   * AES (per-sink ROUTING, golden): each AES post-adapter beat == the next word on the
-    AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], new tb_top probe).
+    AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], tb_top axis1_*).
     The drbg_axis_edn_adapter is round-robin, so this in-order equality holds because
     AES is the ONLY active crypto sink (OTBN/KMAC parked -> never request -> AES is
     granted every word in order). This is exactly the reference suite's AXIS1 routing proof.
@@ -25,8 +25,8 @@ is BIT-EXACT and genbits-anchored (stronger than the reference suite):
 Consumption is bounded to a single CSRNG Generate (<= cfg.glen=32 genbits blocks) so
 the CHK4 genbits golden (one Generate per seed) stays bit-exact -- the genbits-word
 pool the membership tally draws from must cover all consumed words. 1 keygen + 2 AES
-blocks + KM boot ~ 24 blocks (< 32). A first over-driven attempt (53 blocks) tripped
-CHK4; the budget is measured (per-keygen ~6-7 blocks) and noted at the constants.
+blocks + KM boot ~ 24 blocks (< 32). The budget is measured (per-keygen ~6-7
+blocks) and noted at the constants.
 
 Checkers:
   CHK1..CHK4  bit-exact golden (decorrelator / compressor / seed / CTR_DRBG genbits)
@@ -77,17 +77,11 @@ AES_KEY = (
 AES_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
 # Concurrent-window consumers: KM keygen DRBG pulls (KM AXIS sink) interleaved with
-# AES reseed+encrypt blocks (crypto-EDN sink). Bounded so KM boot (~9 blocks) + these
-# stays within ONE CSRNG Generate (cfg.glen=32 genbits blocks) -- else the bit-exact
-# CHK4 golden (one Generate per seed) desyncs (a first over-driven attempt with
-# 4 keygen + 8 blocks produced 53 > 32 blocks and tripped CHK4). Budget (MEASURED on
-# VCS, not just estimated): each KM keygen costs ~6-7 genbits blocks, each AES
-# reseed+block ~2, KM boot ~13. 2 keygen + 3 blocks hit EXACTLY glen=32 (bit-exact
-# still held, but zero margin -- fragile). 1 keygen + 2 blocks = ~13 + ~7 + ~4 = ~24
-# blocks, ~8 headroom under glen=32. Keep the total under glen or the one-Generate-
-# per-seed CHK4 golden desyncs. If you raise these or KM boot entropy grows, re-confirm
-# CHK4 mismatch=0. Raising glen is NOT a safe substitute (longer Generates can drift
-# the seed boundary on a longer real-firmware run).
+# AES reseed+encrypt blocks (crypto-EDN sink). Bounded so KM boot + these stay
+# inside one CSRNG Generate (cfg.glen=32). Budget: each KM keygen ~6-7 genbits
+# blocks, each AES reseed+block ~2, KM boot ~13. KM_CMDS=1 and AES_BLOCKS=2
+# stay under glen (~24 blocks). Raising glen is not a substitute: a longer
+# Generate can drift the seed boundary on a longer firmware run.
 KM_CMDS = 1
 AES_BLOCKS = 2
 

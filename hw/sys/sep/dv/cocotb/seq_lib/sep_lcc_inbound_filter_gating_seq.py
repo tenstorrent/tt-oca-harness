@@ -113,12 +113,6 @@ class SepLccDemoteSeq(uvm_sequence):
         self.demote = rd.rdata & 0x1
 
 
-# Back-compatible alias: the original class only ever drove DEMOTE_1.
-class SepLccDemote1Seq(SepLccDemoteSeq):
-    def __init__(self, *, name: str = "lcc_demote1_seq") -> None:
-        super().__init__(group=1, name=name)
-
-
 # AXI response codes (axi_pkg): blocked inbound traffic is routed to axi_err_slv
 # with RESP_DECERR (axi_filter_wrap.sv), so a blocked external probe must return
 # exactly this -- not a timeout (which would mean a wedge) nor SLVERR.
