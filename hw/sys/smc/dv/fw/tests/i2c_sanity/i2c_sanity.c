@@ -227,7 +227,7 @@ static void step_s3_write_stop(void) {
     }
 
     ret = i2c_target_receive_transaction(TARGET_IDX, recv_buffer, sizeof(recv_buffer),
-                                         &received_len, I2C_TIMEOUT_DEFAULT);
+                                         &received_len, CMD_COMPLETE_BOUND);
     if (ret != I2C_OK) {
         fail_with(0xBAD00042, "Target receive failed");
     }
