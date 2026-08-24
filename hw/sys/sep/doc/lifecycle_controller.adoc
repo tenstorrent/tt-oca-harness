@@ -875,7 +875,7 @@ being able to execute before fuse sensing completes.
 board-level interconnect test must work in states where DFD and DFT are closed.
 |=======================================================================
 
-Several consequences are worth stating explicitly.
+Two consequences are worth stating explicitly.
 
 *Case 3 spans both demotion sub-groups.* `SEP_DBG` and `CHIPLET_DBG` are DBG_1
 bits (opened by Demotion 1) while `SIP_DBG` is a DBG_2 bit (opened by
@@ -886,27 +886,6 @@ path shut.
 *There is no `SMC_DBG` bit.* The SMC debug S-TAP reuses Case 2, so opening
 `CHIPLET_DBG` for any other Case 2 path also opens SMC debug. Separating the two
 would require allocating a dedicated bit from the reserved DBG_1 range.
-
-*The DFT non-secure chain constrains what may be stitched onto it.* That chain
-is Case 2 and is deliberately *not* subject to the command-class rule: whenever
-it is reachable, both command classes are admitted, so everything on it is
-dumpable by any actor who can open Case 2. It shall therefore carry no Class 2
-asset -- no secret-bearing register, and no register on the fuse program control
-or status path. This is a constraint on chain construction and the LCC cannot
-enforce it: the LCC governs whether a chain is reachable, never what was
-stitched onto it. Correct partitioning of Class 2 state onto the secure chain is
-the assumption that makes Case 2 gating sufficient for the non-secure chain.
-
-*Demotion reaches the non-secure chain, but never yields a secure-chain dump.*
-Demotion 1 and Demotion 2 together can open Case 3 -- in `TEST_DEV` outright, in
-`PROD` subject to the DIS vectors -- so a demoted part can reach both DFT chain
-SIBs. On the non-secure chain that is a genuine dump capability, which is the
-intended in-field debug affordance and is safe only by the partitioning
-constraint above. On the secure chain it is not, because the command-class rule
-is independent of the feature control bits: an in-field part has `secure_tm = 0`,
-at which the secure chain admits no command at all, and asserting `TEST_EN` to
-obtain `secure_tm = 1` coerces the secrets away before the chain will accept a
-test command. No combination of demotions grants scan access to Class 2 state.
 
 The failure mode this table exists to prevent is specific: it is tempting to gate
 the SEP debug S-TAP on `SEP_DBG` alone because the names match, but the layered
