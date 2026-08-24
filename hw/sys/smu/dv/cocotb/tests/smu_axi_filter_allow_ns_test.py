@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_filter_allow_ns_test — SMU Tier A allow_ns (SEP=0 J2A + s_axi)."""
 
 from __future__ import annotations

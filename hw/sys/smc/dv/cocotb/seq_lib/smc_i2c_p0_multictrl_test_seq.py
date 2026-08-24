@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Three host/target phases on I2C0/1/2; one pair enabled per phase. Requires +smc_i2c_shared_bus."""
 
 from __future__ import annotations

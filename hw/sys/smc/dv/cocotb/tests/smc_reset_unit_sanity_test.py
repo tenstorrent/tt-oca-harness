@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """COLD vs COLD_WARM across SEP WDT."""
 
 from __future__ import annotations

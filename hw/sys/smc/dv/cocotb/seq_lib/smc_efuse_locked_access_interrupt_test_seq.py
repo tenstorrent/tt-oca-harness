@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Locked-shadow IRQ on tb_efuse_locked_access_irq. Default hex read-locks CHIPLET_ID."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL REFERENCE_COUNTER advances on refclk."""
 
 from __future__ import annotations

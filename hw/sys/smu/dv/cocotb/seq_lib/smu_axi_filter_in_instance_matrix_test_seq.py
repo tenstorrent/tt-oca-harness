@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: inbound filter instance independence (FAB_SMC_023 subset).
 
 SEP=0 honest scope (no sep_in / no Force):

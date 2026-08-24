@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PVT temp_interrupt_i to peripheral_interrupts[27]."""
 
 from __future__ import annotations

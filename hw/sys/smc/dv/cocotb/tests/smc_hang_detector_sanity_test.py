@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Hang-detector IRQ enable/clear. No CPU firmware."""
 
 from __future__ import annotations

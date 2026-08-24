@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART0 SCR R/W without LCR/MCR/ECR side-effects; idle LSR has no DR/OE/PE/FE/BI."""
 
 from __future__ import annotations

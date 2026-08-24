@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SW RESET_CTRL.core0 to RESET_TIMEOUT.reset_applied."""
 
 from __future__ import annotations

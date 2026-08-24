@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: LOCAL_BASE vs GLOBAL_BASE equivalence (FAB_SMC_007 subset).
 
 SEP=0 honest scope (no sep_in / no Force):

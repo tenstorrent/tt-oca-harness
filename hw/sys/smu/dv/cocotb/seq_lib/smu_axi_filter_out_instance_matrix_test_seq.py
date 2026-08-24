@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: outbound filter instance CSR DECODE (FAB_SMC_025 S1).
 
 SEP=0 honest scope (no sep_in / no Force / no ext_out peer):

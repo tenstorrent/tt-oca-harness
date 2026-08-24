@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SYS-TIMER-OCTS: primary strap + free-run COUNT via product pin.
 
 S1: SMC_ATTRIBUTES.chiplet_is_primary vs tb_top hardwire.

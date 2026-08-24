@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse locked-shadow access IRQ. Not map/LC."""
 
 from __future__ import annotations

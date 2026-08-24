@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """ss_reset_complete_i to CSR bits 0/31; SW SS_WARM_RESET_N to ss_reset_ctrl_o[0]."""
 
 from __future__ import annotations

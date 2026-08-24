@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART0 MCR.LOOP: RCVR trigger then RX/TX FIFO reset clears LSR.DR / THRE."""
 
 from __future__ import annotations

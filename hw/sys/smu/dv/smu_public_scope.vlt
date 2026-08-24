@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 `verilator_config
 // SMU cocotb/Verilator public-signal scope.
 // (Comment lines must NOT start with the word "verilator" -- the lexer would treat

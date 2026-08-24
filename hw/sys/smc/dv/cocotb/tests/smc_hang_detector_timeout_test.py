@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Hang-detector stall timeout. Not irq_test."""
 
 from __future__ import annotations

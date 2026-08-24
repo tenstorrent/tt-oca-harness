@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """local_fabric_reg_bar_wr_test — SMU Tier A fabric config CSR delivery."""
 
 from __future__ import annotations

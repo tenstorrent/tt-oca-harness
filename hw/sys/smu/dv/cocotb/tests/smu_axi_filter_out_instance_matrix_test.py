@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_filter_out_instance_matrix_test — SMU Tier A outbound instance DECODE."""
 
 from __future__ import annotations

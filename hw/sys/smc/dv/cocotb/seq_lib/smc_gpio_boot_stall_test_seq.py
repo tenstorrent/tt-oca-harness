@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO pad 57 boot-stall. Requires +smc_hold_cpu_boot. Sticky cannot re-assert until primary reset."""
 
 from __future__ import annotations

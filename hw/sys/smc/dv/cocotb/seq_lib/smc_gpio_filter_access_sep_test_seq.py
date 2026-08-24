@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO ACCESS_FILTER AxPROT: privileged OKAY, unprivileged DECERR+0xBADCAB1E."""
 
 from __future__ import annotations

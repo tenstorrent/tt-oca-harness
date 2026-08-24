@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO wrap 0 rising/falling edge IRQ. Level types live in smc_gpio_irq_type_matrix_test."""
 
 from __future__ import annotations

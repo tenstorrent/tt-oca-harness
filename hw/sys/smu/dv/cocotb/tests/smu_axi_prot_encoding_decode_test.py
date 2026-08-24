@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_prot_encoding_decode_test — SMU Tier A AxPROT S9 (SEP=0 J2A + s_axi)."""
 
 from __future__ import annotations

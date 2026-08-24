@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse reset_n = sense && rst_ni && ext_boot_seq_done_i; fuse_reset_n is 16-stage. Requires +smc_hold_ext_boot. No Force."""
 
 from __future__ import annotations

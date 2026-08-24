@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_smc_stap_smoke_test — DTP-SMC-STAP TRST + TAP_3DCR select."""
 
 from __future__ import annotations

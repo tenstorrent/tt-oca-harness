@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROGRAM/READ timeout CSRs. No Force. timeout_enable|0 fires in ST_WAIT_RESP on this shim."""
 
 from __future__ import annotations

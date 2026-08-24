@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Packed jtag_reset_ctrl_i cool and SS0 warm override. Not DTP IC_RESET or SW SS_WARM_RESET_N."""
 
 from __future__ import annotations

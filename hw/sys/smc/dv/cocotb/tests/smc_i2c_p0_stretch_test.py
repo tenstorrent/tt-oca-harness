@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 target clock-stretch; I2C1 host waits."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SMU OSS cocotb top — Phase-1 SEP=0.
 // Instantiates bare `smu` with SEP=0, flattens JTAG + external SMN AXI for

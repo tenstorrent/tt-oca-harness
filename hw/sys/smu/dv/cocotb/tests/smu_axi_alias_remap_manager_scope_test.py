@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_alias_remap_manager_scope_test — SMU Tier A alias-remap (S3 LIVE)."""
 
 from __future__ import annotations

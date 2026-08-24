@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_i3c_mem_port_connectivity_test — FAB_SMC_031 local peripheral delivery."""
 
 from __future__ import annotations

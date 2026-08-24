@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_system_timer_octs_test — SMU Tier C OCTS primary free-run."""
 
 from __future__ import annotations

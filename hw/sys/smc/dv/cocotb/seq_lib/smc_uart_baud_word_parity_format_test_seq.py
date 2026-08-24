@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART0 MCR.LOOP sweep of baud × WLS/STB/parity; RX matches TX masked to word length."""
 
 from __future__ import annotations

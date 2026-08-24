@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: alias-remap manager scope (FAB_SMC_018 subset).
 
 SEP=0 honest scope (no sep_in / no Force):

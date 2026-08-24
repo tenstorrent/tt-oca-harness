@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """cfg_flr_pf_active_i cool reset. No Force; not rst_cool_ni. BMC/primary-chiplet not claimed."""
 
 from __future__ import annotations

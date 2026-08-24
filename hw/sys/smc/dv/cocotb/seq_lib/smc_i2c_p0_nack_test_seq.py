@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C1 ACK at 0x20 (+smc_i2c_shared_bus); address/data NACK via SmcI2cNackSlave at 0x10. HOSTIDLE may already be 1 after FMT STOP."""
 
 from __future__ import annotations

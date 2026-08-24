@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Hang-detector CTRL.irq_test on each lifted IRQ. Real bus-stall timeout is not claimed."""
 
 from __future__ import annotations

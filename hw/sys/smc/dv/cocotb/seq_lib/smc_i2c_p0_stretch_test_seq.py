@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C1 READ with TX_STRETCH_CTRL_EN; I2C0 TX_PENDING then TXDATA. Requires +smc_i2c_shared_bus."""
 
 from __future__ import annotations

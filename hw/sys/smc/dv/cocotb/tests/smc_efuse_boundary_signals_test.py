@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse ext_boot_seq_done / fuse_reset_n interlock (G6)."""
 
 from __future__ import annotations

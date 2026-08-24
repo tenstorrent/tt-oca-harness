@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG override forces stall low while pad 57 is held (clears sticky)."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP-IO-STAP: IO STAP host TCK edges during PTAP IDCODE / BYPASS scans.
 
 S1: During IDCODE IR+DR, ``tb_stap_io_tck`` (product ``jtag_stap_io_host_tap_ctrl_o.tck``)

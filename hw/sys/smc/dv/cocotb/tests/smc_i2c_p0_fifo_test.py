@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0/I2C1 FMT/TX/RX/ACQ threshold interrupts."""
 
 from __future__ import annotations

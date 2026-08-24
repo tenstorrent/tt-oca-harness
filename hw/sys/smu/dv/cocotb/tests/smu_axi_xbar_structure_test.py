@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_xbar_structure_test — SEP=0 xbar absent (Nightly FAB_SMU_003)."""
 
 from __future__ import annotations

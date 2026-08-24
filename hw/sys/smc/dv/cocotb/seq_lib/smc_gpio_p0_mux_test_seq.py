@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO wrap 0: interface_enable outranks lsio_select; clear drops register TX."""
 
 from __future__ import annotations

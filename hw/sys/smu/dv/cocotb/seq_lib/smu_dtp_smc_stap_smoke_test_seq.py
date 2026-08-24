@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP-SMC-STAP: TRST + TAP_3DCR select via select-gated host TMS.
 
 S1: PTAP TRST (active-low) is visible on ``tb_stap_smc_trst_n``.

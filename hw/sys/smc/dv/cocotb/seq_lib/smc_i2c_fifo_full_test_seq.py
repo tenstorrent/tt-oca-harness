@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CSR-only FMT/TX full and RX/ACQ empty. No pad traffic."""
 
 from __future__ import annotations

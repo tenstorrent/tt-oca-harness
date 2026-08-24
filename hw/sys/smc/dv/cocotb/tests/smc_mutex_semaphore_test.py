@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL MUTEX[0] take and release."""
 
 from __future__ import annotations

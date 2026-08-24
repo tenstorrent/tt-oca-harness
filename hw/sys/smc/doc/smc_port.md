@@ -1,4 +1,5 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 # SMC DV Port Plan — local nonfree2 → local oss2
 
 **Date:** 2026-08-19  

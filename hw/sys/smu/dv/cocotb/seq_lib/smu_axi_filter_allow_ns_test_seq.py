@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: inbound allow_ns admit/block via JTAG2AXI + s_axi.
 
 Honest SEP=0 scope (no sep_in_master, no Force):

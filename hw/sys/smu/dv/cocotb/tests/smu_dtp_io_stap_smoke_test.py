@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_io_stap_smoke_test — DTP-IO-STAP host TCK observe."""
 
 from __future__ import annotations

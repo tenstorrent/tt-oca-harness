@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C field masks from generated PeakRDL headers (shared by I2C sequences).
 
 Addresses stay in ``smc_addr_map``; this module only exports ``_bm`` field packs

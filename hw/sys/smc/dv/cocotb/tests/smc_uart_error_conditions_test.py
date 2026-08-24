@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART parity/framing/break. Requires +smc_uart_cross_3to0."""
 
 from __future__ import annotations

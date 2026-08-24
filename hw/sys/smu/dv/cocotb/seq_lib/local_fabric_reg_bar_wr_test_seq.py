@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: local fabric config-register delivery (FAB_SMC_032).
 
 SEP=0 honest scope (no sep_in / no Force):

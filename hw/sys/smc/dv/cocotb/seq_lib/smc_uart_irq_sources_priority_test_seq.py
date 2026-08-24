@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """UART0 IER/ITR: FIFO_ERROR > LSR > TIMEOUT > RDR > THRE > MODEM."""
 
 from __future__ import annotations

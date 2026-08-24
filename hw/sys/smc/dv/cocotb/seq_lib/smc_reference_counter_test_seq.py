@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL REFERENCE_COUNTER is a refclk CDC counter, not the OCTS timer."""
 
 from __future__ import annotations

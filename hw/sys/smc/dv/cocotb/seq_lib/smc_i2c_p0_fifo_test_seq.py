@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """ACQ_THRESHOLD (I2C1→I2C0, +smc_i2c_shared_bus) and TX_THRESHOLD on empty TX FIFO."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 target SMBALERT# + VIP ARA; external SMBSUS# on pad40. Not DUT-internal host SMBSUS."""
 
 from __future__ import annotations

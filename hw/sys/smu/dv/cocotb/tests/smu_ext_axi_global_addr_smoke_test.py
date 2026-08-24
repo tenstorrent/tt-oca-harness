@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ext_axi_global_addr_smoke_test — SMU Tier A LOCAL↔GLOBAL equivalence."""
 
 from __future__ import annotations

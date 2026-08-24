@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """captured_straps_i to reset_unit STRAPS_LO/HI."""
 
 from __future__ import annotations

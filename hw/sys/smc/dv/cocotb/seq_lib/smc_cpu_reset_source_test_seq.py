@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SW RESET_CTRL.core0. No Force. Does not claim drain withhold or isolate_req_o."""
 
 from __future__ import annotations

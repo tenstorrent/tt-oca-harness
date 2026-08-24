@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """captured_straps_i to STRAPS_LO/HI. Does not claim pad latch or boot-ROM decode."""
 
 from __future__ import annotations

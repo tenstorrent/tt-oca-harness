@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO pad57 stall then JTAG override. Sticky cannot re-assert until primary reset."""
 
 from __future__ import annotations

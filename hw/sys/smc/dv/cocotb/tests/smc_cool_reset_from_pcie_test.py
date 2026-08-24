@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PCIe cfg_flr_pf_active_i cool-reset. Not rst_cool_ni."""
 
 from __future__ import annotations

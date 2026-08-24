@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """temp_interrupt_i to peripheral_interrupts[27] after CDC. Analog PVT not claimed."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """ext_interrupts_i[0] after prim_sync3. Does not claim PLIC or bits 1..255."""
 
 from __future__ import annotations

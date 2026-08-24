@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C0 NACK vs pad VIP; I2C1 allow-path needs +smc_i2c_shared_bus."""
 
 from __future__ import annotations

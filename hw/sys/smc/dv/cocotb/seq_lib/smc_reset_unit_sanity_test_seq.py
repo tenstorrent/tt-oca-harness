@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """COLD vs COLD_WARM scratch across tb_sep_wdt_reset_n. No Force."""
 
 from __future__ import annotations

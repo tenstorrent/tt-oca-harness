@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP=0 elaboration: smu_axi_xbar must be absent (FAB_SMU_003 / Nightly).
 
 Positive control: gen_no_sep IW converters resolve. Then u_smu_axi_xbar must
