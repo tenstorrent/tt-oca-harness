@@ -13,7 +13,11 @@ addrmap efuse_bank {
             sw = rw;
             onwrite = woset;
             hw = r;
-            // No reset value: a fuse holds its state across every reset.
+            // No reset value: a fuse holds its state across every reset, so the
+            // storage must not be cleared by arst_n. A reset value here would
+            // make the generated storage async-reset to 0, which erases both the
+            // model's time-0 OTP image preload and any word programmed before a
+            // warm reset.
             desc = "Read Data from eFuse";
         } dout[31:0];
     };
