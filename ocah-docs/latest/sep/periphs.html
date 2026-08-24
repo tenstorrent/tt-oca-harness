@@ -234,9 +234,13 @@ lock is effective only for fuse fields that are software-visible.</p>
 <p>The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
 shown in the figure, and each interface has its own access control. In addition
-to the shadow-register access control defined by the fuse-field table below,
-the JTAG port shall be further restricted: in the PROD and RMA_SIP states it can
-only read and write RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.</p>
+to the shadow-register access control defined by the fuse-field table below, the
+JTAG port shall be further restricted: in the PROD and RMA_SIP states it may
+reach only the eFuse MMR token block. That block is the three token-input arrays
+(RMA_SIP_TOKEN_I, RMA_CHIPLET_TOKEN_I and SEC_DISABLE_TOKEN_I), the TOKEN_EOP
+register that triggers a match, and the three match-status registers. Every
+other JTAG access to the fuse block — the shadow registers, the interface
+control registers and the SHIM — shall complete with an error response.</p>
 </div>
 <div class="paragraph">
 <p>The fuse-programming protection shall enable the fuse-programming function only

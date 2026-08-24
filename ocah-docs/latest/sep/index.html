@@ -1610,9 +1610,9 @@ remap.</p>
 <h3 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">1.5. Detailed Register Map</a></h3>
 <div class="paragraph">
 <p>The following register tables are generated from the SEP register description
-(RDL) sub-blocks under <code>hw/sys/sep/regs/</code>, plus the Entropy Source IP block
-under <code>hw/ip/entropy_source/regs/</code>. Each entry corresponds to a unit in the SEP
-memory map above.</p>
+(RDL) sub-blocks under <code>hw/sys/sep/regs/</code>, plus the eFuse MMR and Entropy Source
+IP blocks under <code>hw/ip/efuse/regs/</code> and <code>hw/ip/entropy_source/regs/</code>. Each entry
+corresponds to a unit in the SEP memory map above.</p>
 </div>
 <div class="sect3">
 <h4 id="cpu-control-and-interrupts"><a class="anchor" href="#cpu-control-and-interrupts"></a><a class="link" href="#cpu-control-and-interrupts">1.5.1. CPU Control and Interrupts</a></h4>
@@ -1998,6 +1998,10 @@ memory map above.</p>
 </div>
 <div class="sect3">
 <h4 id="scratch-and-efuse"><a class="anchor" href="#scratch-and-efuse"></a><a class="link" href="#scratch-and-efuse">1.5.3. Scratch and eFuse</a></h4>
+<div class="paragraph">
+<p>The eFuse MMR block is an IP-level block (<code>hw/ip/efuse/regs/</code>); its register map
+is generated from the IP RDL rather than the SEP aggregate.</p>
+</div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -2475,6 +2479,7 @@ memory map above.</p>
 <tr><td>0x64</td><td><a href="#RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
 <tr><td>0x68</td><td><a href="#RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
 <tr><td>0x6C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x70</td><td><a href="#TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
 </table>
 <h2>Register Details:</h2>
 <h3 id="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
@@ -2519,6 +2524,16 @@ memory map above.</p>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>secure_disable_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>rma_chiplet_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>rma_sip_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</td></tr>
 </table>
 </div>
 </div>
@@ -4309,6 +4324,7 @@ SEP aggregate.</p>
 <tr><td>0x11564</td><td><a href="#RMA_SIP_TOKEN_MATCH">RMA_SIP_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
 <tr><td>0x11568</td><td><a href="#RMA_CHIPLET_TOKEN_MATCH">RMA_CHIPLET_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
 <tr><td>0x1156C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
+<tr><td>0x11570</td><td><a href="#TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
 <tr><td>0x12000 - 0x1203C</td><td><a href="#WORD_16_">WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
 <tr><td>0x13000 - 0x130FC</td><td><a href="#CTRL_64_">CTRL[64]</a></td><td>RW</td><td>Per-slot control: lock bits (W1S) and the erase trigger</td></tr>
 <tr><td>0x13100</td><td><a href="#KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.</td></tr>
@@ -4998,6 +5014,16 @@ SEP aggregate.</p>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:0</td><td>token_match_status</td><td>R</td><td>0x0</td><td>Store the status of the token match.  Match = 6&#x27;b010101, Mismatch = 6&#x27;b101010, Error = 6&#x27;b111111</td></tr>
+</table>
+<h3 id="TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>16</td><td>secure_disable_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.</td></tr>
+<tr><td>15:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>rma_chiplet_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.</td></tr>
+<tr><td>7:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>rma_sip_token_fault</td><td>R</td><td>0x0</td><td>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</td></tr>
 </table>
 <h3 id="WORD_16_">WORD[16]</h3>
 <table>
@@ -7812,10 +7838,10 @@ tied to zero inside the core. Firmware programs source <code>N</code> by writing
 <div class="sect3">
 <h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.7.1. SEP CPU Interrupt Vector Map</a></h4>
 <div class="paragraph">
-<p>The PIC supports 255 external sources. Slots 1–38 are individually assigned to
+<p>The PIC supports 255 external sources. Slots 1–39 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
 SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
-(SMC mailboxes, SPI). Slots 39–255 are reserved for chip-level external inputs
+(SMC mailboxes, SPI). Slots 40–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -8024,7 +8050,13 @@ not here; see <a href="#sep-non-pic-paths">Non-PIC Interrupt Paths</a>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO fill-path stall (fault: EDN not making progress)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[39–255]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>39</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Token match fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse token comparator redundancy fault (fault). The OR of the three sticky
+<code>TOKEN_MATCH_FAULT</code> bits, so it stays asserted until reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[40–255]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved (external band)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level external interrupt inputs</p></td>
 </tr>
@@ -8633,9 +8665,13 @@ lock is effective only for fuse fields that are software-visible.</p>
 <p>The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
 shown in the figure, and each interface has its own access control. In addition
-to the shadow-register access control defined by the fuse-field table below,
-the JTAG port shall be further restricted: in the PROD and RMA_SIP states it can
-only read and write RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.</p>
+to the shadow-register access control defined by the fuse-field table below, the
+JTAG port shall be further restricted: in the PROD and RMA_SIP states it may
+reach only the eFuse MMR token block. That block is the three token-input arrays
+(RMA_SIP_TOKEN_I, RMA_CHIPLET_TOKEN_I and SEC_DISABLE_TOKEN_I), the TOKEN_EOP
+register that triggers a match, and the three match-status registers. Every
+other JTAG access to the fuse block — the shadow registers, the interface
+control registers and the SHIM — shall complete with an error response.</p>
 </div>
 <div class="paragraph">
 <p>The fuse-programming protection shall enable the fuse-programming function only
@@ -9460,9 +9496,10 @@ transitions as well as disable security features. Tokens are:</p>
 <div class="paragraph">
 <p>The tokens directly affect the life cycle state machine processing and
 fuse sensing. so token processing is naturally done in the OTP
-Controller. Tokens are entered via the JTAG port and captured in a
-serial register for match processing described in the next section. The
-serial register has the following important properties:</p>
+Controller. Tokens are entered via the JTAG port into a dedicated
+eight-word register array per token, held in the eFuse MMR block, for
+match processing described in the next section. Those arrays have the
+following important properties:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -9560,15 +9597,17 @@ only ECO.</p>
 <p>The tokens are not directly compared with an internal value stored in
 OTP but instead first hashed using the SHA2-256 cryptographic hash
 algorithm. OTP holds the hash value, also known as the TOKEN_DIGEST. The
-OTP controller shall have a local, dedicated SHA256 hardware accelerator
-unit to perform the hashing of the input token, entered via JTAG.</p>
+OTP controller has a local, dedicated SHA256 hardware accelerator unit
+per token to perform the hashing of the input token.</p>
 </div>
 <div class="paragraph">
-<p>token_match = (SHA256(token[255:0]) == &lt;NAME&gt;_TOKEN_DIGEST[255:0]</p>
+<p>token_match = (SHA256(token[255:0]) == &lt;NAME&gt;_TOKEN_DIGEST[255:0])</p>
 </div>
 <div class="paragraph">
-<p>The above token matching logic is purely combinational and input values
-are never stored in any downstream, potentially scannable registers.</p>
+<p>The comparison itself is purely combinational, and neither the presented
+token nor the expected digest is ever stored in a scannable register.
+The SHA256 engine ahead of it is sequential and holds the computed digest
+until the next hash is started; see <a href="#token-match-sequence">Token Match Sequence</a>.</p>
 </div>
 <div class="paragraph">
 <p>The stored secrets are very security sensitive so special care must be
@@ -9588,25 +9627,81 @@ unlock the chip when the OTP fuse sensing logic is non-functional but we
 still need to unlock the chip. If we were to rely on the non-functioning
 OTP, we would be unable to unlock the chip.</p>
 </div>
+</div>
+<div class="sect4">
+<h5 id="token-match-sequence"><a class="anchor" href="#token-match-sequence"></a><a class="link" href="#token-match-sequence">Token Match Sequence</a></h5>
 <div class="paragraph">
-<p>The actual matching logic as a vulnerable attack point via FIB or fault
-injection. We protect this by using triple-redundant matching logic on
-fully differential signals resulting in a 6-bit output as illustrated
-below. The SHA256 hashing engine is also protected with redundancy
-coding of sensitive internal state. Any internally detected errors are
-signalled on the output error port.</p>
+<p>Each token has its own eight-word array in the eFuse MMR block, its own
+SHA256 engine and its own set of comparators. JTAG:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>writes the 256-bit token as eight 32-bit words to <code>RMA_SIP_TOKEN_I</code>,
+<code>RMA_CHIPLET_TOKEN_I</code> or <code>SEC_DISABLE_TOKEN_I</code></p>
+</li>
+<li>
+<p>writes the matching go bit in <code>TOKEN_EOP</code>, which pulses the hash start</p>
+</li>
+<li>
+<p>polls <code>RMA_SIP_TOKEN_MATCH</code>, <code>RMA_CHIPLET_TOKEN_MATCH</code> or
+<code>SEC_DISABLE_TOKEN_MATCH</code> for the 6-bit result</p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
-<p>Note that this is not a majority vote scheme i.e. all three comparators
-must return the same result. If a mismatch is detected, this may
-indicate a tampering attack and an alarm interrupt must be raised.
-Furthermore, if an error is detected in the SHA256 hashing engine or the
-OTP shadow register memory bank, then matching will always return a
-failure code on all three redundant outputs.</p>
+<p>Starting a hash clears that token&#8217;s digest-valid bit, so the comparators
+report idle rather than a stale result while a digest is in flight.</p>
+</div>
+<div class="paragraph">
+<p>The two RMA comparisons additionally wait for fuse sensing to complete,
+because their expected digests come from the OTP shadow registers. The
+SEC_DIS comparison does not, because its expected digest comes from
+gates. That is what lets SEC_DIS unlock a part whose fuse sensing is
+broken.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="token-matching-countermeasures"><a class="anchor" href="#token-matching-countermeasures"></a><a class="link" href="#token-matching-countermeasures">Matching Logic Countermeasures</a></h5>
+<div class="paragraph">
+<p>The actual matching logic is a vulnerable attack point via FIB or fault
+injection. We protect this by using triple-redundant matching logic on
+fully differential signals resulting in a 6-bit output as illustrated
+below.</p>
+</div>
+<div class="paragraph">
+<p>This is not a majority vote scheme. While a comparison is in flight two
+invariants must both hold: every comparator must drive a genuine
+differential pair, and all three comparators must agree with each other.
+Together these admit only the match and mismatch codes, so a fault
+manifests as one of two conditions:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a comparator whose differential pair collapsed, both rails at the same
+value</p>
+</li>
+<li>
+<p>comparators that disagree with each other, which is the case a majority
+vote would wave through as a match</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Either one raises a redundancy fault, which may indicate a tampering
+attack. The fault forces the error code onto all six output bits, so
+every downstream feature gate fails closed, and it sets the sticky bit
+for that token in the <code>TOKEN_MATCH_FAULT</code> register. The three sticky bits are
+combined into a single interrupt to the SEP CPU on PIC source 39; see
+<a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>
+for the full slot map. Firmware reads the register to identify which
+comparators faulted. The fault bits clear only on reset, so a fault cannot be
+hidden by retrying with a valid token.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/SEP_Token_Matching.png" alt="SEP_Token_Matching">
+<img src="_images/SEP_Token_Processing.png" alt="SEP_Token_Processing">
 </div>
 </div>
 <div class="paragraph">
@@ -9624,17 +9719,9 @@ Error = 6’b111111</p>
 <div class="sect4">
 <h5 id="post-token-matching-handling"><a class="anchor" href="#post-token-matching-handling"></a><a class="link" href="#post-token-matching-handling">Post Token Matching Handling</a></h5>
 <div class="paragraph">
-<p>After a token matching operation has completed and a LC state transition
-operation has been performed, the following takes place:</p>
-</div>
-<div class="paragraph">
-<p>disable all \{Debug, DFT, Functional} features making system inert
-if token match successful:
-initiate OTP LC state update operation</p>
-</div>
-<div class="paragraph">
-<p>Note that the above procedure takes place regardless whether the token
-match and LC state transition is successful or not.</p>
+<p>A token match does not by itself change the life cycle state. It
+authorizes a change, and the state is then updated by one of two paths
+described in <em>Fuse Controller (OTP)</em> in this chapter.</p>
 </div>
 </div>
 </div>

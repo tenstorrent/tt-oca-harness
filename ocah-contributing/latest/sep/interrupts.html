@@ -221,10 +221,10 @@ tied to zero inside the core. Firmware programs source <code>N</code> by writing
 <div class="sect3">
 <h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.1. SEP CPU Interrupt Vector Map</a></h4>
 <div class="paragraph">
-<p>The PIC supports 255 external sources. Slots 1–38 are individually assigned to
+<p>The PIC supports 255 external sources. Slots 1–39 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
 SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
-(SMC mailboxes, SPI). Slots 39–255 are reserved for chip-level external inputs
+(SMC mailboxes, SPI). Slots 40–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -433,7 +433,13 @@ not here; see <a href="#sep-non-pic-paths">Non-PIC Interrupt Paths</a>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entropy pool FIFO fill-path stall (fault: EDN not making progress)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[39–255]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>39</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Token match fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse token comparator redundancy fault (fault). The OR of the three sticky
+<code>TOKEN_MATCH_FAULT</code> bits, so it stays asserted until reset.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[40–255]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved (external band)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Chip-level external interrupt inputs</p></td>
 </tr>
