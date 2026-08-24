@@ -1,0 +1,54 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+/*
+ * SEP_SMU_009  smu_lifecycle_security_handoff_test  -- shared protocol.
+ *
+ * Producer is real SEP eFuse/LCC (no Force). Demote CSRs are W1S. This image
+ * sequences PROD blocked, DEMOTE_1, then DEMOTE_2 (d2-alone PVT is not claimed;
+ * filtered is already 1 after d1). Corrupt / secdis stay separate images.
+ *
+ * PVT consumer pad is BP_PVT_CLK_OBS after the 68->65 shrink (card GPIO57).
+ * Fallback hw2_ovrd on the dedicated obs GPIO_CTRL is forced inactive.
+ *
+ * SEP cannot frontdoor-program SMC PVT (0x4040_3000 traps on the SEP->SMC
+ * alias). Dedicated SMC firmware programs the CSRs at 0xC040_3xxx and
+ * publishes PVT_EN on scratch2. SEP only does LCC demote + scratch tokens.
+ */
+#ifndef SEP_SMU_LC_HANDOFF_PROTOCOL_H
+#define SEP_SMU_LC_HANDOFF_PROTOCOL_H
+
+#define LC009_SMC_IMAGE_FIRST_WORD 0x41014081
+#define LC009_SMC_ENTRY 0x00000000C00601B2ULL
+#define LC009_FW_POLL_LIMIT 4000000
+#define LC009_WINDOW_MCYCLE 32768
+
+#define LC009_LC_PROD_ENC 0xE1u
+#define LC009_DEMOTE_RAW 0x1u
+#define LC009_DEMOTE_ENC 0x1u
+#define LC009_HW2_OVRD_BIT 24u
+
+#define LC009_PVT_EN_ALIAS 0x40039090u
+#define LC009_SMC_SCRATCH2 0xC0039090u
+#define LC009_SMC_SCRATCH3 0xC0039098u
+#define LC009_SMC_SCRATCH9 0xC00390C8u
+#define LC009_SMC_SCRATCH10 0xC00390D0u
+
+#define LC009_PVT_PROCESS_CTRL 0xC0403000u
+#define LC009_PVT_CLK_OBS_CTRL 0xC0403004u
+#define LC009_PVT_CLK_CNT_CTRL 0xC0403060u
+#define LC009_PVT_REFCLK_LO 0xC0403064u
+#define LC009_PVT_GPIO_CTRL 0xC040101Cu
+#define LC009_PVT_OBS_DEFAULT 0x00001500u
+#define LC009_PVT_OBS_UPDATE (1u << 16)
+#define LC009_PVT_OBS_ENABLE 0x1u
+
+#define LC009_S0_FAIL 0x00920FA1u
+#define LC009_BRINGUP_OK 0x00920000u
+#define LC009_PVT_EN 0x00920001u
+#define LC009_ARMED 0x00920002u
+#define LC009_DEMOTE1 0x00920003u
+#define LC009_DEMOTE2 0x00920004u
+#define LC009_PASS 0x0092000Fu
+#define LC009_SMC_FAIL 0x009CFFEEu
+
+#endif /* SEP_SMU_LC_HANDOFF_PROTOCOL_H */

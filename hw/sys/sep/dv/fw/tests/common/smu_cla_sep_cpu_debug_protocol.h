@@ -42,8 +42,7 @@
 #define CLADBG_A3_BUSY_ARMED 0x00500003 /* action[3] PMU-halt fired, SEP BUSY; NO action[4] yet */
 #define CLADBG_A3_BUSY_HELD 0x00500005  /* action[3] held-window ended; action[4] about to fire */
 #define CLADBG_A3_IDLE_ARMED 0x00500004 /* action[3] PMU-halt fired, SEP IDLE(wfi) */
-#define CLADBG_ACT2_ARMED \
-    0x00500007 /* action[2] reset-run (inverted) fired (SEP running); net polarity only */
+#define CLADBG_ACT2_ARMED 0x00500007 /* action[2] reset-run (inverted); net + CHK-INVERT-2 */
 #define CLADBG_ACT5_ARMED 0x00500008 /* action[5] unmapped fired (SEP running); negative leg */
 #define CLADBG_DONE 0x0050000F
 #define CLADBG_TEST_FAIL 0xFFFFFFFF
@@ -65,6 +64,10 @@
 #define CLADBG_FW_POLL_LIMIT 4000000
 #define CLADBG_HALT_SETTLE_ITERS 2000
 #define CLADBG_HOLD_ITERS 8000
+/* DV->SMC handshake (scratch 9) so CHK-INVERT-2 can finish each reset edge
+ * before the next CLA action. */
+#define CLADBG_DV_INVERT2_A 0x0221A001
+#define CLADBG_DV_INVERT2_B 0x0221A002
 #define CLADBG_A3_HOLD_ITERS \
     20000 /* bounded action[3]-only hold (no action[4]) so the cocotb \
              can classify halt+stable BEFORE the release (~400us) */
