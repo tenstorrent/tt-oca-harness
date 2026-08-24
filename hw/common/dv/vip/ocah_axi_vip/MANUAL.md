@@ -392,9 +392,11 @@ Do not add this file to Verilator default filelists.
 
 ## DTP Usage
 
-DTP JTAG2AXI responders should use the shared OCAH fault APIs. The DTP-local
-`dtp_fault_axi.py` file only preserves compatibility names; it no longer owns
-backend subclassing.
+DTP JTAG2AXI responders construct the shared agents directly —
+`OcahAxiSlaveAgent.from_prefix(...).sequence` for the debug AXI4 port and
+`OcahAxiLiteSlaveAgent.from_prefix(...).sequence` for the SMC/SEP OTP
+AXI-Lite ports — and program faults and backpressure through the
+`OcahAxi[Lite]SlaveSequence` API. There is no DTP-local adapter layer.
 
 ## SEP Compatibility Reference
 

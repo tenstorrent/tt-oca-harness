@@ -5,18 +5,15 @@
 Senses one generated fuse image, checks the software-visible shadow registers
 field-by-field against the golden, then programs ten random fuse bits through the
 frontdoor and resenses to prove the shadow tracks the PERSISTENT OTP image plus
-those newly write-one-to-set bits. This obeys real OTP semantics -- programmed bits
-persist across reset/resense and are never un-set -- instead of a non-physical
-mid-run image replacement (the generic efuse model loads its bank once at time 0).
+those newly write-one-to-set bits. Programmed bits persist in the model bank
+across reset; resense must match the initial image plus the burned bits.
 
 Exercises the eFuse goals: sense + resense, specific-or-random init, field
-constraints, reference suite-aligned fuse map, shadow-vs-loaded-mem comparison, and multi-bit
-W1S program persistence across a resense.
+constraints, the generated sep_efuse_map, shadow-vs-loaded-mem comparison, and
+multi-bit W1S program persistence across a resense.
 """
 
 from __future__ import annotations
-
-import random
 
 import pyuvm
 
@@ -26,6 +23,7 @@ from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from sep_reg_meta import sym
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_seeded_rng import SepSeededRng
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -54,8 +52,8 @@ class sep_efuse_image_test(sep_base_test):
         # Burn 10 distinct random known-zero fuse bits (real W1S through the
         # frontdoor), seeded by the run seed for reproducibility. The generic efuse
         # model's field_storage is persistent, so the resense must show the initial
-        # image PLUS exactly these bits -- no mid-run image swap.
-        rng = random.Random(self.random_seed())
+        # image plus exactly these bits.
+        rng = SepSeededRng(self.random_seed())
         burn_offsets = sorted(rng.sample(range(_UID_NBITS), _NUM_BURN))
         golden = SepEfuseImage()
         golden.words = list(img.words)

@@ -127,10 +127,19 @@ in the `all` and `rom_fw` groups. They belong to the ROM-FW owner; the OSS suite
 grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
 `sep_rom_sanity_test`, `sep_boot_rom_lsu_read_test`).
 
-A named ROM run needs the Boot ROM + manifest + BL1 image. Those tests declare
-`firmware = { name = "boot_rom", mode = "boot_rom" }` (both keys; `mode` alone
-does not select `[c_build.boot_rom]`), so `c_compile` runs `[c_build.boot_rom]`
-(`hw/sys/sep/bootrom/prod/Makefile`). The one prerequisite a build step must not
+A named ROM run needs the Boot ROM + manifest + BL1 image. Each test declares
+both keys of a `firmware = { name = ..., mode = ... }` pair (`mode` alone does not
+select a `[c_build.*]` block), and the three profiles select three different
+blocks in `sep_sim_cfg.toml`, all driving
+`hw/sys/sep/bootrom/prod/Makefile`:
+
+`boot_rom`:: `sep_rom_non_secure_boot_test` — `[c_build.boot_rom]`, the SMC-SRAM
+  manifest path.
+`boot_rom_ot`:: `sep_rom_ot_dma_boot_test` and `sep_rom_ot_secure_boot_test` —
+  `[c_build.boot_rom_ot]`, the OpenTitan SPI host with the SECURE_DMA drain.
+`boot_rom_ot_pio`:: `sep_rom_ot_pio_boot_test` — `[c_build.boot_rom_ot_pio]`, the
+  same transport with the CPU-PIO drain.
+ The one prerequisite a build step must not
 mutate git for is the manifest packer submodule; without it the pack half dies
 with `No module named tt_boot_manifest`:
 
@@ -148,11 +157,18 @@ halves are split by tool dependency, so each runs where its tools are:
 `pack-images`:: Pure Python; its deps come from the submodule's own
   `pyproject.toml`, installed on demand by `uv` (no `pip3 install` needed).
 
-`[c_build.boot_rom]` performs exactly these two steps, probing for picolibc
-first:
+`[c_build.boot_rom]` performs exactly these two steps. It probes the host
+toolchain for picolibc first and builds natively when the probe succeeds; the
+container is the *fallback* for a host whose toolchain has no picolibc:
 
 [source,bash]
 ----
-scripts/docker-run.sh run make -C hw/sys/sep/bootrom/prod toolchain-images
+# host toolchain has picolibc:
+make -C hw/sys/sep/bootrom/prod toolchain-images \
+  GCC_PREFIX=... RISCV_TOOLCHAIN=... RISCV_PREFIX=...
+# otherwise, in the OCAH toolchain container:
+./scripts/docker-run.sh run-here make -C hw/sys/sep/bootrom/prod toolchain-images
+
+# pack-images is pure Python and always runs on the host:
 make -C hw/sys/sep/bootrom/prod pack-images
 ----

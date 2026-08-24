@@ -398,8 +398,9 @@ package sep_pkg;
     // Internal SEP interrupt sources occupying the low PIC slots; see the
     // sep_internal_interrupts aggregation in sep.sv for the slot map. Growing this
     // shifts the external sources up and narrows NUM_EXTERNAL_IRQS accordingly.
-    // 34,35 = Adams Bridge error / notif; 36,37 = entropy pool low / fill stall.
-    parameter int unsigned NUM_INTERNAL_IRQS = 38;
+    // 34,35 = Adams Bridge error / notif; 36,37 = entropy pool low / fill stall;
+    // 38 = eFuse token comparator redundancy fault.
+    parameter int unsigned NUM_INTERNAL_IRQS = 39;
     parameter int unsigned NUM_EXTERNAL_IRQS = pt.PIC_TOTAL_INT - NUM_INTERNAL_IRQS;
 
     /////////////////////////////////////////////

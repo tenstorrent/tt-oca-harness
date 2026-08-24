@@ -40,12 +40,11 @@ Checkers:
 
 from __future__ import annotations
 
-import random
-
 import pyuvm
 
 from sep_base_test import sep_base_test
 from env.sep_hmac_golden import hmac_or_sha_words
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_hmac_seq import SepHmac, SepHmacCfg
 
 # Legal keyed cells: sha_bits -> allowed key_bits. SHA-256 excludes Key_1024
@@ -73,7 +72,7 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.hmac = SepHmac(self)
         seed = self.random_seed()
-        self.rng = random.Random(seed)
+        self.rng = SepSeededRng(seed)
         self.logger.info("HMAC SHA-variant breadth HMAC SHA-variant breadth: seed=%d", seed)
 
         # CHK-CONV: pin the SW-key register byte convention once (bring-up).
@@ -165,7 +164,7 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
 
     async def _run_cell(self, sha_bits: int, hmac_en: bool,
                         key_bits: int | None, conv: dict) -> None:
-        msg = self._rand_words(self.rng.randint(1, 16))
+        msg = self._rand_words(self.rng.randrange(1, 17))
         key = self._rand_words(key_bits // 32) if hmac_en else []
         cfg = SepHmacCfg(sha_bits=sha_bits, hmac_en=hmac_en, key_bits=key_bits,
                          key_words=key, msg_words=msg, **conv)

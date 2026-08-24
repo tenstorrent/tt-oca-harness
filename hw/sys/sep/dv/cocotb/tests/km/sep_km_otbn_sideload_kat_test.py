@@ -17,7 +17,7 @@ catch any truncation, word-swap, or share-defeat bug.
 
 VPLAN-parity checkers (mapped to the reference suite's checker list):
   CHK0       boot KM on real DRBG -> RESP_KM_READY
-  CHK-A      CMD_KEY_LOAD known key (replaces the reference suite's CMD_KEY_GENERATE+backdoor)
+  CHK-A      CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN
   CHK-C      OTBN EXECUTE -> IDLE, ERR_BITS == 0
   CHK-D/E    DMEM == exact known key; result_hi pad == 0

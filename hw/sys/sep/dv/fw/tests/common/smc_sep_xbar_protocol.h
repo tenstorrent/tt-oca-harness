@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_003  smc_sep_xbar  --  shared protocol contract (single source of truth).
+ * smc_sep_xbar  --  shared protocol contract (single source of truth).
  *
  * Included by both firmwares (SEP consumer + SMC producer) and parsed by the
  * cocotb checker so DUT stimulus and DV expectations share one contract. Every

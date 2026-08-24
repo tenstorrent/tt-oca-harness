@@ -13,12 +13,10 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
   * WRITE_ONLY  — write a benign value to write-only (sw=w) regs (decode + write
                   path); they cannot be read back.
 
-followed by a SEP-local fabric walk that ports the reference sep_address_map_test
-(which runs sep_reg_walk_seq) to the LSU-reachable, OSS-clean subset: one defined,
-readable CSR per block — Secure DMA, WDT, cold/warm scratch, reset_ctrl, OTBN, AES,
-HMAC, KMAC, CSRNG, EDN, entropy source, lifecycle ctrl, KM mailbox, eFuse shadow,
-AXI-lite mailbox, alias-remap, output-remap, and the OpenTitan SPI host —
-confirming every block decodes on the LSU bus.
+followed by a walk of one readable CSR per LSU-reachable block — Secure DMA,
+WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
+source, lifecycle ctrl, KM mailbox, eFuse shadow, AXI-lite mailbox, alias-remap,
+output-remap, and the OpenTitan SPI host — confirming every block decodes.
 
 Expected values are SOURCE-DERIVED, never hardcoded. Offsets,
 reset values, and implemented-field masks all come from `env/sep_reg_meta.py`,
@@ -29,15 +27,10 @@ addresses encode a per-block editorial choice of "one safe, readable CSR" that n
 generated symbol expresses. Blocks whose reset value IS exported
 (reset_ctrl/OTBN/HMAC/KMAC) take it from the header.
 
-Accepted scope delta — CLOCK_GATE_CTRL ungating:
-    This sequence does not ungate per-block CSR clocks before the fabric walk,
-    because no such gates exist: sep_cpu_ctrl.rdl
-    declares CLOCK_GATE_CTRL as a placeholder with a single implemented bit
-    (`pka_cg_enable[0:0]`, reset 0) and documents it as "not yet implemented".
-    There is therefore nothing to ungate — every walked block is unconditionally
-    clocked in this build, which the walk itself proves by responding. The
-    write-path coverage that step provided is preserved: CLOCK_GATE_CTRL is still
-    written with its full implemented mask, read back, and restored.
+CLOCK_GATE_CTRL has one implemented bit (`pka_cg_enable[0:0]`, reset 0).
+This sequence writes that implemented mask, reads it back, and restores
+reset. Per-block CSR clocks are not gated in this RDL, so every walked
+block is unconditionally clocked.
 
 Most side-effecting registers are deliberately NOT written. The only address-aperture
 exception is the SEP local/global base/size triplet: it is write/read/restored
@@ -46,9 +39,7 @@ runs. SMU base/size remain reset-checked only. woset LOCK regs are never written
 because they would latch permanently. The scoreboard checks the AXI response on
 every access and the value on every checked read.
 
-This goes beyond the reference suite's reg-walk: it runs on the external AXI master, which cannot
-reach SW_RESET_N (so the reference suite delegates the reset controller to a directed test). The
-CPU LSU master reaches it, so we value-verify SW_RESET_N's reset value directly.
+SW_RESET_N is reachable on the CPU LSU; this sequence value-checks its reset.
 """
 
 from __future__ import annotations
@@ -147,8 +138,6 @@ FABRIC_BLOCKS = [
     ("SEP_SCRATCH_COLD", 0x1080_2000, None),        # SCRATCH[0] (RW)
     ("SEP_SCRATCH_WARM", 0x1080_2080, None),        # SCRATCH[0] (RW)
     # SW_RESET_N reset: KM[0]=0 held in reset, OTBN/AES/HMAC/KMAC[4:1]=1 released.
-    # the reference suite's ext_axi reg-walk delegates this register (can't reach it); the CPU LSU
-    # path reads it safely (a read has no side effect — only a write clears reset).
     (
         "SEP_RESET_CTRL",
         SEP_RESET_CTRL.addr("SW_RESET_N"),

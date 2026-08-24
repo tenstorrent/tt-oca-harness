@@ -4,32 +4,14 @@
 
 Toggles the I3C CSR clock-gate control, restores it, then proves the I3C
 wrapper CSR window is decoded by reading HCI_VERSION (OKAY + 0x120).
-
-Optional cocotbext-i3c VIP bind remains non-gating when the package is absent.
 """
 
 from __future__ import annotations
-
-import cocotb
 
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import I3C_CG_EN, smc_addr
 from .smc_base_test_seq import smc_base_test_seq
-
-try:
-    from .smc_i3c_vip_utils import (
-        get_or_bind_i3c_controller,
-        get_or_bind_i3c_slave,
-        i3c_directed_sdr_write_proof,
-    )
-
-    _I3C_PROTOCOL_VIP_AVAILABLE = True
-except Exception as _exc:  # noqa: BLE001 - optional at import time
-    get_or_bind_i3c_controller = None  # type: ignore[assignment]
-    get_or_bind_i3c_slave = None  # type: ignore[assignment]
-    i3c_directed_sdr_write_proof = None  # type: ignore[assignment]
-    _I3C_PROTOCOL_VIP_AVAILABLE = False
 
 CLOCK_GATE_CONTROL = smc_addr(
     "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
@@ -75,10 +57,6 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         await self.finish_item(item)
 
     async def body(self) -> None:
-        if _I3C_PROTOCOL_VIP_AVAILABLE:
-            get_or_bind_i3c_slave()
-            get_or_bind_i3c_controller()
-
         self.clock_gate_value = await self._read(
             "CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL
         )
@@ -106,20 +84,3 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
             f"I3C HCI_VERSION mismatch: got 0x{rdata & 0xFFFF_FFFF:08X}, "
             f"expected 0x{I3C_HCI_VERSION_RESET:08X}"
         )
-
-        if _I3C_PROTOCOL_VIP_AVAILABLE:
-            drove = await i3c_directed_sdr_write_proof()
-            if drove:
-                cocotb.log.info(
-                    "I3C loopback proof complete: real START + RSVD + ADDR + "
-                    "SDR-payload sequence driven onto tb_i3c0_* pins"
-                )
-            else:
-                cocotb.log.warning(
-                    "I3C loopback proof did NOT drive the bus (VIP unavailable "
-                    "or drive error); test still gated on CLOCK_GATE + HCI_VERSION"
-                )
-        else:
-            cocotb.log.info(
-                "cocotbext-i3c not installed; CSR/HCI_VERSION gate only"
-            )

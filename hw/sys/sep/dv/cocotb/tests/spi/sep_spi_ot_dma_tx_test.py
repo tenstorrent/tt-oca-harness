@@ -47,7 +47,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import os
-import random
 from pathlib import Path
 
 import cocotb
@@ -56,6 +55,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -108,7 +108,7 @@ class SepSpiDmaTxCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepSpiDmaTxCfg":
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         page_indices = rng.sample(range(_FLASH_PAGES), len(_LEGAL_NWORDS))
         cases = []
         for idx, (nwords, page_idx) in enumerate(zip(_LEGAL_NWORDS, page_indices)):
