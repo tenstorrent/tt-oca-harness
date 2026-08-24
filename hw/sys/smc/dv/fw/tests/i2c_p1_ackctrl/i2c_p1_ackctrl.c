@@ -209,16 +209,13 @@ int main(void) {
 
     write_scratch(1, 0x00000031);
 
-    // Note: Manual ACK mode test removed - requires additional ACK control logic
-    // Manual ACK mode needs explicit ACK/NACK control after each byte received
-    // Current test focuses on Automatic ACK mode which is the common use case
-
+    // Contract SMC_I2C_007 requires programmable ACK control (manual ACK/NACK /
+    // preview), not automatic-ACK-only loopback (Skill2 FIND-002). Until manual
+    // ACK stimulus and exact CHK-ACKCTRL-* checks exist, do not claim PASS.
     simputs("\n");
-    simputs("###################################################\n");
-    simputs("##   ACK Control Mode Test PASSED              ##\n");
-    simputs("###################################################\n");
-    write_scratch(1, 0xEBEDEBE4);
-    test_pass(0);
+    simputs("ERROR: Manual ACK mode not implemented; automatic-only is insufficient\n");
+    write_scratch(0, 0xBAD00032);
+    test_fail(0);
 
     return I2C_OK;
 }

@@ -180,33 +180,24 @@ int main(void) {
     simputs("    - STOP condition\n");
     simputs("  Testbench should verify GPIO toggle and decode transaction\n");
 
-    // Read 1 byte from target address 0x5a
-    // Note: This will generate START + address + read + STOP on GPIO
-    // Since no Target is configured, NACK is expected (but GPIO toggle still occurs)
+    // Read 1 byte from target address 0x5a. CTRL-READ requires a live Target that
+    // ACKs and returns data — NACK must not be treated as PASS (Skill2 FIND-002).
     unsigned char read_buffer[1];
     ret = i2c_controller_read(CONTROLLER_IDX, TARGET_ADDR, read_buffer, sizeof(read_buffer), true);
     if (ret != I2C_OK) {
-        // NACK is expected when no Target responds - GPIO toggle still occurred
-        if (ret == I2C_ERROR_NACK) {
-            simputs("  NOTE: NACK received (expected - no Target configured)\n");
-            simputs("  GPIO toggle verification: START + address 0x");
-            simputshex32("", TARGET_ADDR);
-            simputs(" + read bit was transmitted\n");
-            simputs("  Testbench should verify GPIO signals (SCL/SDA toggle)\n");
-        } else {
-            simputs("  ERROR: Controller read failed with error code: 0x");
-            simputshex32("", ret);
-            simputs("\n");
-            write_scratch(0, 0xBAD00040);
-            test_fail(0);
-        }
-    } else {
-        simputs("  Read transaction completed\n");
-        simputs("  Received data byte: 0x");
-        simputshex32("", read_buffer[0]);
+        simputs("  ERROR: Controller read failed with error code: 0x");
+        simputshex32("", ret);
         simputs("\n");
-        simputs("  Note: Data value depends on external target response\n");
+        if (ret == I2C_ERROR_NACK) {
+            simputs("  NACK is not success for CTRL-READ; configure a responding Target\n");
+        }
+        write_scratch(0, 0xBAD00040);
+        test_fail(0);
     }
+    simputs("  Read transaction completed\n");
+    simputs("  Received data byte: 0x");
+    simputshex32("", read_buffer[0]);
+    simputs("\n");
 
     write_scratch(1, 0x00000041);
 
