@@ -115,10 +115,6 @@ common_bender_targets = [
 # `sep_wrapper` adds hw/top/sep_{wrapper,ip_integration}.sv plus the vendored
 # prim_ram_1p/prim_ram_1p_adv/prim_rom memory models the IP integration needs.
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
-# No prim_assert shadow is needed: the vendored OpenTitan prim_assert.sv defines
-# OCAH_OT_INC_ASSERT only when neither VERILATOR nor SYNTHESIS is set, and every macro body
-# in prim_assert_standard_macros.svh is gated on it, so +define+SYNTHESIS neutralizes the
-# unsupported `##[1:$]` concurrent assumptions Verilator cannot parse.
 incdirs = ["hw/sys/sep/dv/tb"]
 
 [build.options]
