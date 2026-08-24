@@ -81,15 +81,7 @@ stage_gen_html() {
 # as a preprocess step on the aggregation source, so it also catches SVGs
 # checked in directly to a product's own assets/ that never pass through
 # the hw/*/doc aggregation loop at all.
-#
-# Deliberately sed+tr only (no perl), relying on draw.io's export being a
-# consistent, machine-generated pattern rather than arbitrary hand-written
-# SVG. draw.io exports the whole file as a single physical line, so this
-# flattens newlines first (a no-op on today's files, but keeps this working
-# if a future draw.io version pretty-prints instead) rather than using the
-# classic ":a;N;$!ba" sed slurp idiom -- that idiom's N command prints and
-# exits without ever running the substitution on a file with no next line
-# to read, which is exactly what a genuinely single-line file is.
+
 strip_drawio_switch_fallback() {
   local dir="$1"
   [ -d "$dir" ] || return 0
@@ -197,17 +189,7 @@ stage_module_assets "$COMMON_ASSETS"
 stage_module_assets "$ASSETS"
 
 # Postprocess every location that ends up holding a copy of these images --
-# after all copying above is done. This has to cover more than just the
-# per-module images/ directories: a product's own PDF build (via its
-# ":imagesdir: assets" attribute, resolved against $PRODUCT/assets while
-# asciidoctor-pdf runs directly on src/index.adoc) reads straight from
-# $ASSETS itself, never from the staged modules/*/assets/images/ copies --
-# those are only ever read by the HTML/Antora build. Missing $ASSETS here
-# was the reason the first version of this fix silently had no effect on
-# PDF output despite fixing HTML. $COMMON_ASSETS is included too since it's
-# a shared, pre-existing directory read by every product, not something
-# regenerated per-build; stripping it repeatedly across products is a
-# harmless no-op once it's already clean.
+# after all copying above is done. 
 strip_drawio_switch_fallback "$ASSETS"
 strip_drawio_switch_fallback "$COMMON_ASSETS"
 for m in $MODULES; do
