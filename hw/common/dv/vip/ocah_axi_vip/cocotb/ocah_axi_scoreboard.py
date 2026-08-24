@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AXI/AXI-Lite scoreboard pairing observed items with reference-model predictions.
 
 Composes the protocol-neutral ``ocah_checker.OcahChecker`` evidence core per the
@@ -24,7 +24,7 @@ from ocah_checker import OcahChecker
 
 from .ocah_axi_item import OcahAxiItem
 from .ocah_axi_ref_model import OcahAxiRefModel
-from .results import RESP_EXOKAY, RESP_OKAY
+from .ocah_axi_results import RESP_EXOKAY, RESP_OKAY
 
 CHK_RESP = "CHK-AXI-RESP"
 CHK_RESP_EXPECTED = "CHK-AXI-RESP-EXPECTED"

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_crossbar_error_handling_test — SMU_ALL_008 Option-B PWRGOOD-only (r18).
 
 DV-CARD:          SMU_ALL_008   ANCHOR: smu_axi_crossbar_error_handling_test

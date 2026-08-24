@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM 8-sample AXI-Lite burst idle test.
 
 DV-CARD:          SMC_003   ANCHOR: smc_axil_burst_idle_test

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 // Minimal BL1 test payload for OROM boot flow verification (C version).
 //
 // After the Boot ROM loads this image into ICCM (.text) and DCCM (.data),
@@ -14,10 +17,12 @@
 //   .rodata → DCCM (0xC0040000) — LSU reads data here
 //   .bss    → DCCM              — LSU reads/writes here
 //
-// Self-contained: no external headers, no crt0 needed.
-// BL1 inherits CPU state (SP, PMA, mtvec) from the ROM.
+// No crt0: BL1 inherits CPU state (SP, PMA, mtvec) from the ROM.
+// Fuse addresses come from the generated sep_addr.h.
 
 #include <stdint.h>
+
+#include "../../../../regs/gen/c/sep_addr.h"
 
 // ---------------------------------------------------------------------------
 // BSS zeroing (DCCM is uninitialized RAM)
@@ -85,26 +90,25 @@ static void bl1_puthex32(uint32_t val) {
 // ---------------------------------------------------------------------------
 // Fuse read-lock verification
 //
-// ROM locks CLASS_KEY, RMA_SIP_TOKEN, RMA_CHIPLET_TOKEN before BL1 handoff.
-// We verify by:
+// ROM locks CLASS_KEY, RMA_SIP_TOKEN_DIGEST, and RMA_CHIPLET_TOKEN_DIGEST
+// before BL1 handoff. Addresses come from sep_addr.h. We verify by:
 //   1. Reading the LOCKS register and checking read-lock bits are set
 //   2. Reading the actual locked fields and verifying they return 0xBADCAB1E
 //
-// NOTE: The RTL now returns 0xBADCAB1E for locked field reads (no SLVERR).
-// This allows safe verification without triggering NMI exceptions.
+// Locked-field reads return 0xBADCAB1E (no SLVERR), so the check does not
+// take an NMI.
 // ---------------------------------------------------------------------------
-#define EFUSE_LOCKS_ADDR 0x10930000u
+#define EFUSE_LOCKS_ADDR OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR
 
-// Read-lock bit positions in the LOCKS register (same as ROM's fuse_lock.h):
-//   CLASS_KEY_READ_LOCK       = bit 15
-//   RMA_SOP_TOKEN_READ_LOCK   = bit 13
-//   RMA_CHIPLET_TOKEN_READ_LOCK = bit 11
+// Read-lock bits in LOCKS (same mask as ROM fuse_lock.c):
+//   CLASS_KEY_READ_LOCK                     = bit 15
+//   RMA_CHIPLET_TOKEN_DIGEST_READ_LOCK      = bit 13
+//   RMA_SIP_TOKEN_DIGEST_READ_LOCK          = bit 11
 #define FUSE_SECRET_READ_LOCK_MASK 0x0000A800u
 
-// Locked field addresses for direct read verification
-#define CLASS_KEY_ADDR 0x10930064u
-#define RMA_SIP_TOKEN_ADDR 0x10930024u
-#define RMA_CHIPLET_TOKEN_ADDR 0x10930044u
+#define CLASS_KEY_ADDR OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
+#define RMA_SIP_TOKEN_ADDR OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR
+#define RMA_CHIPLET_TOKEN_ADDR OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR
 #define LOCKED_FIELD_READ_VALUE 0xBADCAB1Eu
 
 // Returns 0 if all secret fuse read-lock bits are set, nonzero on failure.

@@ -36,6 +36,8 @@ module efuse_token_processing
 
     output logic                     security_disable_o,
 
+    output logic                     token_match_fault_o,
+
     input  efuse_map_t               shadow_regs_i,
     output efuse_map_t               shadow_regs_o
 );
@@ -51,6 +53,9 @@ module efuse_token_processing
     logic [5:0] rma_sip_token_match_q_n0_scan;
     logic [5:0] rma_chiplet_token_match_q_n0_scan;
     logic [5:0] sec_disable_token_match_q;
+    // Comparator redundancy faults, indexed {sec_disable, rma_chiplet, rma_sip}
+    logic [2:0] token_match_fault;
+    logic [2:0] token_match_fault_sticky_q;
 
     logic [7:0][31:0] sip_rma_token_raw_n0_scan;
     logic [7:0][31:0] chiplet_rma_token_raw_n0_scan;
@@ -93,6 +98,10 @@ module efuse_token_processing
     assign mmr_hwif_in.RMA_SIP_TOKEN_MATCH.token_match_status.next = rma_sip_token_match_q_n0_scan;
     assign mmr_hwif_in.RMA_CHIPLET_TOKEN_MATCH.token_match_status.next = rma_chiplet_token_match_q_n0_scan;
     assign mmr_hwif_in.SEC_DISABLE_TOKEN_MATCH.token_match_status.next = sec_disable_token_match_q;
+
+    assign mmr_hwif_in.TOKEN_MATCH_FAULT.rma_sip_token_fault.next = token_match_fault_sticky_q[0];
+    assign mmr_hwif_in.TOKEN_MATCH_FAULT.rma_chiplet_token_fault.next = token_match_fault_sticky_q[1];
+    assign mmr_hwif_in.TOKEN_MATCH_FAULT.secure_disable_token_fault.next = token_match_fault_sticky_q[2];
 
     // The plaintext token registers are external in the RDL so their Class 1
     // storage can be implemented explicitly at the RTL boundary.
@@ -195,15 +204,17 @@ module efuse_token_processing
     efuse_triple_redundant_comparator u_triple_redundant_comparator_rma_sip_token (
         .compute_comparison_vld_i(compute_rma_sip_token_match),
         .token_digest_i(rma_sip_token_sha256_digest),
-        .token_expected_i(shadow_regs_i.f.rma_sip_token_digest.token_digest),
-        .token_match_o(rma_sip_token_match)
+        .token_expected_i(shadow_regs_i.fields.rma_sip_token_digest.token_digest),
+        .token_match_o(rma_sip_token_match),
+        .redundancy_fault_o(token_match_fault[0])
     );
 
     efuse_triple_redundant_comparator u_triple_redundant_comparator_rma_chiplet_token (
         .compute_comparison_vld_i(compute_rma_chiplet_token_match),
         .token_digest_i(rma_chiplet_token_sha256_digest),
-        .token_expected_i(shadow_regs_i.f.rma_chiplet_token_digest.token_digest),
-        .token_match_o(rma_chiplet_token_match)
+        .token_expected_i(shadow_regs_i.fields.rma_chiplet_token_digest.token_digest),
+        .token_match_o(rma_chiplet_token_match),
+        .redundancy_fault_o(token_match_fault[1])
     );
 
     // Reconstruct the 256-bit secure-disable token from 32 rev cells (8 bits each) so the
@@ -233,7 +244,8 @@ module efuse_token_processing
         .compute_comparison_vld_i(sec_disable_token_digest_vld_sticky),
         .token_digest_i(sec_disable_token_sha256_digest_sticky),
         .token_expected_i(sec_disable_token_rev),
-        .token_match_o(sec_disable_token_match)
+        .token_match_o(sec_disable_token_match),
+        .redundancy_fault_o(token_match_fault[2])
     );
 
     // Flop the match results to the output ports, helps with timing closure and prevents glitches on the output ports
@@ -242,12 +254,18 @@ module efuse_token_processing
             rma_sip_token_match_q_n0_scan <= '0;
             rma_chiplet_token_match_q_n0_scan <= '0;
             sec_disable_token_match_q <= '0;
+            token_match_fault_sticky_q <= '0;
         end else begin
             rma_sip_token_match_q_n0_scan <= rma_sip_token_match;
             rma_chiplet_token_match_q_n0_scan <= rma_chiplet_token_match;
             sec_disable_token_match_q <= sec_disable_token_match;
+            // Set-only: a tamper indication survives until the next reset so a
+            // transient glitch attack cannot be papered over by a later retry.
+            token_match_fault_sticky_q <= token_match_fault_sticky_q | token_match_fault;
         end
     end
+
+    assign token_match_fault_o = |token_match_fault_sticky_q;
 
     /////////////////////
     // Security Disable
@@ -273,7 +291,7 @@ module efuse_token_processing
     always_comb begin
         // Default: zero the output and set LC state to invalid
         shadow_regs_o = efuse_map_t'(0);
-        shadow_regs_o.f.lc_state.lc_state = LC_STATE_INVALID;
+        shadow_regs_o.fields.lc_state.lc_state = LC_STATE_INVALID;
 
         // Guard shadow registers from being exposed downstream until fuse sensing is complete,
         // Unless we are in security disable mode, then expose the shadow registers downstream.
@@ -293,7 +311,7 @@ module efuse_token_processing
     // Simulation handling: no-reset elements power up as X
     ///////////////////////////////////////////////////////
 
-    `ifdef SIM
+    `ifdef SIMULATION
         initial begin
             $display("[INFO] Initialize the tokens and token digest valid bits for simulation. They don't have a reset value.");
         end

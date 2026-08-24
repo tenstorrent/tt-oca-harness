@@ -527,6 +527,7 @@ sources:
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
   - target: any(dtp, sep)
     files:
+      - hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv
       - hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
   - target: sep
     files:

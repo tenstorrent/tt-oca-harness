@@ -1,5 +1,7 @@
 # tt-oca-harness
 
+## Overview
+
 Open Chiplet Atlas Harness (OCAH) — the open hardware tree for the OCA design:
 RTL, register descriptions, generated collateral, and documentation.
 
@@ -9,6 +11,18 @@ RTL, register descriptions, generated collateral, and documentation.
 > provisional. As the documentation matures, most of the material collected in this
 > README will migrate into the user guide and other doc products under [`doc/`](doc/);
 > for now this file is the landing place for the essentials.
+
+## Getting Started
+
+```bash
+git clone https://github.com/tenstorrent/tt-oca-harness.git
+cd tt-oca-harness
+make help
+```
+
+See [Contributing](#contributing) and [`CONTRIBUTING.md`](CONTRIBUTING.md) for
+the local workflow, license-header form, and lint targets. Container and
+toolchain setup is in [`tools/docker/README.md`](tools/docker/README.md).
 
 ## Repository layout
 
@@ -21,46 +35,6 @@ RTL, register descriptions, generated collateral, and documentation.
 | `doc/` | Documentation products (TRM, Integrator Guide, …); see [Documentation](#documentation). |
 | `vendor/` | Third-party IP vendored via Bender; see [Third-party imports](#third-party-vendor-package-imports). |
 | `tools/`, `scripts/` | Register-flow, documentation, and container helpers. |
-
-## Documentation
-
-Published docs: [https://tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
-(landing page: TRM at `/trm/`, Integrator Guide at `/integrator/`). While Pages
-visibility is private, that URL redirects to the repo’s private Pages host;
-readers need GitHub access to this repository. CI deploys on pushes to `main`
-(see `.github/workflows/doc.yml`). In Settings → Pages, use **Deploy from a
-branch** → `gh-pages` → `/ (root)`.
-
-Documentation is authored in AsciiDoc and built with Antora (HTML site) and
-asciidoctor-pdf (PDF). The toolchain ships as container images, so no local Node or
-Ruby install is required — the recommended entry point is the container wrapper:
-
-```bash
-scripts/docker-run.sh doc-html trm    # HTML site → doc/trm/_build/html_antora/
-scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/trm/dist/ocah-trm.pdf
-```
-
-Use `integrator` in place of `trm` to build the Integrator Guide. The images
-(`docker.io/antora/antora`, `docker.io/asciidoctor/docker-asciidoctor`) are pulled once
-and cached; override them with `OCAH_DOC_HTML_IMAGE` / `OCAH_DOC_PDF_IMAGE` to point at
-an internal registry mirror.
-
-If you already have `npx` and `asciidoctor-pdf` on your `PATH` (e.g. inside the project
-container), you can invoke the make targets directly instead:
-
-```bash
-make ocah-doc-trm-html
-make ocah-doc-trm-pdf
-make ocah-doc-integrator-html
-make ocah-doc-integrator-pdf
-```
-
-To build both HTML products and push them to the `gh-pages` branch (requires `uv`
-and push rights; temporary until custom hosting — see `doc/gh-pages.mk`):
-
-```bash
-make ocah-doc-deploy-ghpages
-```
 
 ## Register generation
 
@@ -202,3 +176,22 @@ vendor_package:
 `bender vendor init` re-fetches the pinned commit, copies the selected files, excludes
 `exclude_from_upstream:` paths, and re-applies all patches from `patch_dir` in
 lexicographic order.
+
+## Contributing
+
+Contributions are welcome under the Apache License 2.0. Read
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, the pull-request process,
+SPDX header form, and local lint/format commands. This project follows the
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+## License
+
+- Hardware, software, and scripts: [`LICENSE`](LICENSE) (Apache License 2.0).
+  [`LICENSE_understanding.txt`](LICENSE_understanding.txt) is a short reading
+  note for that license.
+- Documentation: [`LICENSE-DOCS`](LICENSE-DOCS) (CC-BY-4.0) where that file
+  applies.
+- Third-party notices: [`NOTICE`](NOTICE).
+
+By contributing you agree that your contributions are licensed as described
+in [`CONTRIBUTING.md`](CONTRIBUTING.md).

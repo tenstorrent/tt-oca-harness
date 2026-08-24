@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP boot-ROM smoke test.
 
 Boots VeeR EL2 from the OSS behavioral boot-ROM responder and checks that the

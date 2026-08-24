@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Stateful AXI/AXI-Lite reference model: shadow memory + response expectations.
 
 Pure Python (no cocotb imports) so scoreboard mechanics can be validated without
@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from .results import RESP_EXOKAY, RESP_OKAY
+from .ocah_axi_results import RESP_EXOKAY, RESP_OKAY
 
 _SUCCESS_RESPS = (RESP_OKAY, RESP_EXOKAY)
 

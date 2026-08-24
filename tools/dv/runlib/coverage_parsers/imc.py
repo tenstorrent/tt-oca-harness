@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Detailed and scalar parsing for IMC/Xcelium coverage reports."""
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OSS PyUVM sequence library."""
 
 from .sep_address_map_seq import sep_address_map_seq

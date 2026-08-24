@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Passive AXI response monitor for SMC SYS_OUT (output fabric) bus (U6-2).
 
 Snoops ``tb_output_axi_{b,r}*`` lifted from ``output_axi_req/resp`` in tb_top.

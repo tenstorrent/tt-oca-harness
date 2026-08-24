@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_no_sep_configuration_test — SMU P0 SEP=0 composition (SMU_005 rev 3).
 
 DV-CARD:          SMU_005   ANCHOR: smu_no_sep_configuration_test
 DV-CARD-REVISION: 3   RECORD-SHA256: 8198628add94387a6c5471526c9e6cc0f6d1c09d8a88650a8f6f75cd8f9c9993
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_VPLAN_DETAIL.md @ artifact_revision 3   ENV: cocotb
+DV-CARD-SOURCE:   testlists/all.toml (card source retired) @ artifact_revision 3   ENV: cocotb
 """
 
 from __future__ import annotations

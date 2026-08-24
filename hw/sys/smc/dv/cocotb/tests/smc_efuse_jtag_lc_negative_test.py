@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC eFuse JTAG lifecycle *negative* test (PROD deny + identity allow).
 
 Drives product ports only:
@@ -20,7 +21,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
-from ocah_axi_vip import OcahAxiLiteMaster
+from ocah_axi_vip import OcahAxiLiteMasterAgent
 
 try:
     from cocotb.result import SimTimeoutError
@@ -64,14 +65,14 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         packed = pack_lc_state(LC_PROD)
         dut.tb_lc_state.value = packed
 
-        self.ejm = OcahAxiLiteMaster.from_prefix(
+        self.ejm = OcahAxiLiteMasterAgent.from_prefix(
             dut,
             "ej_axi",
             dut.clk_smc_i,
             dut.rst_primary_smc_clk_no,
             name="smc_ej_axil_neg",
             reset_active_level=False,
-        )
+        ).sequence
         await ClockCycles(dut.clk_smc_i, 20)
 
         # Negative: non-identity blocked; identity exception still allowed.

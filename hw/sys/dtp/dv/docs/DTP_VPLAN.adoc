@@ -14,22 +14,14 @@
 |Project |OCAH
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
-|Reference SPEC |`DTP_SPEC.md`
-|Reference CSR |`DTP_CSR.md`
-|Internal reference plan |`dv/dtp/doc/DTP_VPLAN.md` (internal full plan; not shipped in the public OCAH package)
-|Reference logical tests |72
-|Open-source scenario-expanded test cases |147
+|Reference SPEC |`DTP_SPEC.adoc`
+|Reference CSR |`DTP_CSR.adoc`
+|Open-source scenario-expanded test cases |149
 |===
 
-This OCAH open-source VPLAN is the public, standalone DTP verification plan. It is
-derived from the internal full DTP reference plan and includes all of its tests,
-expanding multi-scenario CocoTB modules into separate, named test cases. The
-open-source implementation uses unified OCAH BFM wrappers for standard protocols and
+This standalone VPLAN defines 149 public scenario-level test cases. The
+implementation uses unified OCAH BFM wrappers for standard protocols and
 OCAH-local DTP BFMs for DTP-specific protocols.
-
-This plan is synced to the verified closed-source DTP reference VPLAN as of
-2026-06-15. The closed-source plan remains the 72 logical-test source of truth;
-this OSS document expands those logical tests into 147 public scenario-level entries.
 
 === Verification Strategy
 
@@ -39,15 +31,19 @@ resets the primary TAP, and drives stimulus through the OCAH BFMs:
 
 [arabic]
 . *Stimulus*: standard protocols use the unified OCAH VIP wrappers — `ocah_jtag_vip`
-(`OcahJtagMasterDriver`) for the JTAG TAP, and `ocah_axi_vip` (`OcahAxiRam`, AXI-Lite wrappers,
-`OcahAxiLiteMaster`) for the SMC fabric / OTP debug and XTRIG CSR buses. DTP-specific
+(`OcahJtagMasterDriver`) for the JTAG TAP, and `ocah_axi_vip` (`OcahAxiSlaveAgent`, AXI-Lite wrappers,
+`OcahAxiLiteMasterAgent`) for the SMC fabric / OTP debug and XTRIG CSR buses. DTP-specific
 protocols (boundary-scan / STAP loopbacks, IEEE 1687 iJTAG SIB networks, OCH CTP/CTM)
 use OCAH-local models in `env/` (see Open-Source BFM Policy).
 . *Checking*: a scoreboard / reference model compares observed TAP scan data, AXI
 transactions, and cross-trigger routing against expected behavior. Unless a procedure
 states otherwise, each test ends by requiring zero scoreboard/reference-model errors.
-. *Lifecycle*: lifecycle controls are held in the full-debug-enabled state by default;
-security-gating scenarios drive `feat_ctrl_i` explicitly.
+. *Debug disables*: DTP takes eleven pre-resolved active-high disables
+(`sep_lifecycle_ctrl_pkg::dbg_disable_t`, `dbg_disable_i`); deriving them from
+lifecycle policy is SEP-level verification. The testbench bring-up clears all
+disables (full debug access) by default; gating scenarios assert exactly the
+target's disable field and settle four toggling TCK cycles (the TB margin over
+the DUT's 2-stage TCK-domain synchronizers).
 . *Coverage*: SystemVerilog covergroups are not supported by Verilator, so functional
 coverage is collected Python-side (see `DTP_FCOV.adoc`) or on a commercial simulator.
 . *Scenario expansion*: multi-scenario reference modules are expanded into separate,
@@ -72,9 +68,9 @@ selectable in the public testlists.
 |===
 |Interface / Protocol |Open-Source Replacement
 |Primary JTAG TAP |`ocah_jtag_vip` `OcahJtagMasterDriver`
-|AXI4 SMC fabric debug |`ocah_axi_vip` `OcahAxiRam`
+|AXI4 SMC fabric debug |`ocah_axi_vip` `OcahAxiSlaveAgent`
 |AXI4-Lite SMC/SEP OTP debug |`ocah_axi_vip` AXI-Lite wrappers
-|AXI4-Lite XTRIG CSR |`ocah_axi_vip` `OcahAxiLiteMaster`
+|AXI4-Lite XTRIG CSR |`ocah_axi_vip` `OcahAxiLiteMasterAgent`
 |Boundary scan / STAP loopbacks |OCAH-local scan responder in `env/`
 |IEEE 1687 iJTAG SIB networks |OCAH-local iJTAG SIB model in `env/`
 |OCH CTP protocol |OCAH-local CTP BFM in `env/`
@@ -223,6 +219,7 @@ selectable in the public testlists.
 |`dtp_jtag2axi_decode_error_decerr_read_test` |`dtp_jtag2axi_decode_err_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |CTN default-slave read DECERR
 |`dtp_jtag2axi_decode_error_mixed_test` |`dtp_jtag2axi_decode_err_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |Mixed mapped/unmapped accesses
 |`dtp_jtag2axi_series_corner_all_bridges_test` |`dtp_jtag2axi_series_corner_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Series corner cases across all bridges
+|`dtp_jtag2axi_dbg_disable_matrix_test` |`dtp_jtag2axi_dbg_disable_matrix_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Debug-disable matrix over the three JTAG2AXI bridge gate fields
 |===
 
 ==== STAP, 3DCR, and iJTAG Scenarios
@@ -242,6 +239,7 @@ selectable in the public testlists.
 |`dtp_ext_stap_scan_test` |`dtp_ext_stap_scan_test` |`ocah_jtag_vip`, OCAH-local STAP model |Extended STAP scan
 |`dtp_3dcr_config_hold_test` |`dtp_3dcr_config_hold_test` |`ocah_jtag_vip`, OCAH-local STAP model |3DCR config hold
 |`dtp_3dcr_tms_hold_test` |`dtp_3dcr_tms_hold_test` |`ocah_jtag_vip`, OCAH-local STAP model |3DCR TMS hold
+|`dtp_scan_dbg_disable_matrix_test` |`dtp_scan_dbg_disable_matrix_test` |`ocah_jtag_vip`, OCAH-local scan models |Debug-disable matrix over the eight scan-side gate fields
 |===
 
 ==== XTRIG, CTP, and CTM Scenarios
@@ -284,7 +282,7 @@ selectable in the public testlists.
 Unless a test procedure states otherwise, each test starts from the common DTP
 bring-up sequence: build `dtp_uvm_top`, start `clk_i`, assert and release
 `pwr_on_rst_ni`/`rst_n_i`, reset the primary TAP, use the configured OCAH
-BFMs, and keep lifecycle controls in the full-debug enabled state. Each
+BFMs, and keep all `dbg_disable_i` fields cleared (full debug access). Each
 procedure ends by checking scoreboard/reference-model errors are zero.
 
 [[sec-0-smoke-and-basic-jtag]]
@@ -462,10 +460,10 @@ b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI del
 *Test Coverage*:
 
 * RUNBIST (IR=0x02) accepted by the TAP and not redirected to BYPASS, with BIST executing during Run-Test/Idle and a result captured via DR
-* RUNBIST drives the non-secure DFT iJTAG instrument, gated by `feat_ctrl_i` via `dft_nonsecure_security_disable`
-* `feat_ctrl_i.soc_debug` does NOT suppress the RUNBIST instruction itself; it only gates the non-secure DFT SIB
-* With `dft_nonsecure_security_disable = !soc_debug || !ap_debug` asserted, the DFT SIB ignores open requests and the DFT instrument register cannot be updated
-* After restoring required enables, `dft_nonsecure_security_disable` deasserts, the DFT SIB is reachable again, and writes succeed
+* RUNBIST drives the non-secure DFT iJTAG instrument, gated by `dbg_disable_i.dft_nonsecure`
+* `dbg_disable_i.dft_nonsecure` does NOT suppress the RUNBIST instruction itself; it only gates the non-secure DFT SIB
+* With `dbg_disable_i.dft_nonsecure = 1`, the DFT SIB ignores open requests and the DFT instrument register cannot be updated
+* After clearing `dbg_disable_i.dft_nonsecure`, the DFT SIB is reachable again and writes succeed
 * `runbist_cg` (RUNBIST executed) and `runbist_security_cg` (ungated / DFT SIB gated / DFT SIB restored)
 
 *Test Procedure*:
@@ -474,10 +472,10 @@ b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI del
 . Load RUNBIST (IR=0x02) through `OcahJtagMasterDriver` and enter Run-Test/Idle to execute BIST.
 . Hold RTI for the required cycles, then Capture-DR/Shift-DR to read the BIST pass/fail result.
 . Security-gating scenario:
-a. Drive required enable `feat_ctrl_i.soc_debug = 0` (asserts `dft_nonsecure_security_disable`).
-b. Load RUNBIST and enter RTI; confirm the TAP accepts the instruction regardless of `feat_ctrl_i`.
+a. Assert `dbg_disable_i.dft_nonsecure = 1`.
+b. Load RUNBIST and enter RTI; confirm the TAP accepts the instruction regardless of the disable.
 c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the DFT instrument register through the iJTAG path, and confirm the model register is unchanged (SIB forced closed).
-. Restore `feat_ctrl_i.soc_debug = 1`; repeat the iJTAG DFT write and confirm the model register now updates (SIB accessible again).
+. Clear `dbg_disable_i.dft_nonsecure`; repeat the iJTAG DFT write and confirm the model register now updates (SIB accessible again).
 
 *Checkers*:
 
@@ -485,12 +483,12 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |===
 |Checker Type |Description
 |`runbist_accept_chk` |RUNBIST is accepted by the TAP (not redirected to BYPASS) and BIST runs during RTI
-|`runbist_instr_ungated_chk` |`feat_ctrl_i.soc_debug` does not suppress the RUNBIST instruction itself
-|`dft_sib_gated_chk` |With `dft_nonsecure_security_disable` asserted, the DFT instrument register cannot be written
-|`dft_sib_restored_chk` |After restoring required enables, the DFT SIB is reachable and the write succeeds
+|`runbist_instr_ungated_chk` |`dbg_disable_i.dft_nonsecure` does not suppress the RUNBIST instruction itself
+|`dft_sib_gated_chk` |With `dbg_disable_i.dft_nonsecure` asserted, the DFT instrument register cannot be written
+|`dft_sib_restored_chk` |After the disable clears, the DFT SIB is reachable and the write succeeds
 |===
 
-*Pass Criteria*: RUNBIST is always accepted and executes BIST while the non-secure DFT SIB is open only when `dft_nonsecure_security_disable` is deasserted, with zero scoreboard/reference-model errors.
+*Pass Criteria*: RUNBIST is always accepted and executes BIST while the non-secure DFT SIB is open only when `dbg_disable_i.dft_nonsecure` is clear, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1590,7 +1588,7 @@ b. RD_PL_DEPTH and WR_PL_DEPTH == their `+SMC_OTP_*+` pipeline-depth parameters.
 
 * JTAG2AXI single-op AXI4 write through the SMC fabric debug bridge (SMC_AXI_SINGLE_OP, IR=0x28)
 * 56-bit address / 64-bit data field formatting consistent with the SMC fabric CAPS TDR (IR=0x27, ADDR_SIZE=56, DATA_SIZE=64)
-* Address/data/wstrb delivery to the `OcahAxiRam` subordinate on `axi_smc_dbg_req_o` / `axi_smc_dbg_resp_i`
+* Address/data/wstrb delivery to the `OcahAxiSlaveAgent` subordinate on `axi_smc_dbg_req_o` / `axi_smc_dbg_resp_i`
 * Op-status transitions through Busy (0b11) and settles at OKAY (0b00) after the write completes
 
 *Test Procedure*:
@@ -1607,7 +1605,7 @@ a. Re-enter Capture-DR/Shift-DR and read the op-status field.
 b. Repeat until status is no longer Busy (0b11).
 c. Verify op = 0b00 (OKAY).
 . Verify the side effect:
-a. Confirm the `OcahAxiRam` subordinate received exactly one AW/W beat at the target address with the expected data and wstrb.
+a. Confirm the `OcahAxiSlaveAgent` subordinate received exactly one AW/W beat at the target address with the expected data and wstrb.
 b. Confirm the captured B-response is OKAY.
 
 *Checkers*:
@@ -1617,10 +1615,10 @@ b. Confirm the captured B-response is OKAY.
 |Checker Type |Description
 |`smc_axi_wr_caps_chk` |CAPS TDR reports bus_type=AXI4, ADDR_SIZE=56, DATA_SIZE=64
 |`smc_axi_wr_status_chk` |Op-status passes through Busy then returns OKAY (0b00)
-|`smc_axi_wr_data_chk` |`OcahAxiRam` subordinate holds the written address/data/wstrb
+|`smc_axi_wr_data_chk` |`OcahAxiSlaveAgent` subordinate holds the written address/data/wstrb
 |===
 
-*Pass Criteria*: The AXI4 single write completes with OKAY status and the `OcahAxiRam` subordinate captures the correct address, data, and wstrb, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The AXI4 single write completes with OKAY status and the `OcahAxiSlaveAgent` subordinate captures the correct address, data, and wstrb, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1673,7 +1671,7 @@ b. Confirm the captured B-response is OKAY.
 
 * A series of JTAG2AXI AXI4 writes through the SMC fabric bridge with monotonically incrementing addresses (base, base{plus}stride, ...)
 * Per-beat op-status reaching OKAY (0b00) before the next address is issued
-* Distinct data pattern per address landing at the correct `OcahAxiRam` location (no address aliasing)
+* Distinct data pattern per address landing at the correct `OcahAxiSlaveAgent` location (no address aliasing)
 * Address advance consistent with the 56-bit address / 64-bit data geometry
 
 *Test Procedure*:
@@ -1687,7 +1685,7 @@ a. Load SMC_AXI_SINGLE_OP (IR=0x28).
 b. For each beat i in 0..N-1: shift in address = base {plus} i*stride, the i-th data word, wstrb = all-ones, op = 0b10 (Write); Update-DR.
 c. After each Update-DR, poll Capture-DR/Shift-DR until not Busy (0b11) and verify op = 0b00 (OKAY).
 . Verify the resulting memory image:
-a. For each address in the series, confirm the `OcahAxiRam` subordinate holds the expected data and wstrb.
+a. For each address in the series, confirm the `OcahAxiSlaveAgent` subordinate holds the expected data and wstrb.
 b. Confirm no writes landed outside the addressed range.
 
 *Checkers*:
@@ -1716,7 +1714,7 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A series of JTAG2AXI AXI4 writes through the SMC fabric bridge all targeting one fixed address (no-incr mode)
-* Each beat re-uses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiRam` location
+* Each beat re-uses the same address while supplying fresh data, exercising write-over-write at a single `OcahAxiSlaveAgent` location
 * Per-beat op-status reaching OKAY (0b00) for every repeated write
 * Final memory content equals the last data beat written
 
@@ -1732,7 +1730,7 @@ b. For each beat i in 0..N-1: shift in the same target address, the i-th data wo
 c. After each Update-DR, poll Capture-DR/Shift-DR until not Busy (0b11) and verify op = 0b00 (OKAY).
 . Verify the single location:
 a. Confirm all N writes targeted exactly the one fixed address on `axi_smc_dbg_req_o`.
-b. Confirm the `OcahAxiRam` subordinate holds the last beat's data at that address.
+b. Confirm the `OcahAxiSlaveAgent` subordinate holds the last beat's data at that address.
 
 *Checkers*:
 
@@ -1759,7 +1757,7 @@ b. Confirm the `OcahAxiRam` subordinate holds the last beat's data at that addre
 
 *Test Coverage*:
 
-* An incrementing write series in which selected beats target an error-generating region of the `OcahAxiRam` subordinate
+* An incrementing write series in which selected beats target an error-generating region of the `OcahAxiSlaveAgent` subordinate
 * The non-OKAY op-status path (0b01 SLVERR / 0b10 DECERR) surfacing in the op-status TDR for the erroring beats
 * OKAY beats and erroring beats interleaved, confirming the bridge does not hang or corrupt state after an error
 * Recovery: a subsequent legal write completes with OKAY after an erroring beat
@@ -1768,7 +1766,7 @@ b. Confirm the `OcahAxiRam` subordinate holds the last beat's data at that addre
 
 [arabic]
 . Configure the error stimulus:
-a. Program the `OcahAxiRam` subordinate (or its AXI wrapper) to return a non-OKAY response for a designated error region.
+a. Program the `OcahAxiSlaveAgent` subordinate (or its AXI wrapper) to return a non-OKAY response for a designated error region.
 b. Choose an incrementing series in which some beats fall inside the error region and some are legal.
 . Issue the series and capture per-beat status:
 a. Load SMC_AXI_SINGLE_OP (IR=0x28).
@@ -1806,7 +1804,7 @@ b. Verify legal-beat data landed correctly and no spurious writes resulted from 
 
 * Constrained-random JTAG2AXI AXI4 writes through the SMC fabric bridge over randomized address, data, wstrb, and size
 * Stress of the 56-bit address / 64-bit data field packing across the SINGLE_OP TDR
-* A reference memory mirroring every issued write, compared against the `OcahAxiRam` subordinate at the end
+* A reference memory mirroring every issued write, compared against the `OcahAxiSlaveAgent` subordinate at the end
 * Op-status consistency (OKAY for in-range writes) across a long randomized sequence
 
 *Test Procedure*:
@@ -1820,7 +1818,7 @@ a. Load SMC_AXI_SINGLE_OP (IR=0x28).
 b. For each randomized op: shift in address, data, wstrb, size, op = 0b10 (Write); Update-DR.
 c. Poll Capture-DR/Shift-DR until not Busy (0b11) and verify op = 0b00 (OKAY).
 . Compare end state:
-a. Read back / inspect the `OcahAxiRam` subordinate and compare every written location against the reference memory.
+a. Read back / inspect the `OcahAxiSlaveAgent` subordinate and compare every written location against the reference memory.
 
 *Checkers*:
 
@@ -1846,36 +1844,33 @@ a. Read back / inspect the `OcahAxiRam` subordinate and compare every written lo
 
 *Test Coverage*:
 
-* `smc_jtag2axi_security_disable = !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug` — either required enable low disables the SMC fabric bridge
-* When gated, SMC_AXI_SINGLE_OP (IR=0x28) falls back to BYPASS (1-bit DR) and no AXI traffic appears on `axi_smc_dbg_req_o`
-* Independent gating by driving each of `ap_debug` and `soc_debug` low, then full restoration after restoring enables high
-* A legal write succeeds before gating and again after restoration (clean re-enable)
+* `dbg_disable_i.smc_jtag2axi = 1` disables the SMC fabric bridge; deriving the bit from lifecycle policy is SEP-level verification
+* When gated, the SMC_AXI_SINGLE_OP TDR (IR=0x28) remains selected while Update-DR requests are suppressed: no AXI traffic appears on `axi_smc_dbg_req_o` and a preloaded RAM sentinel at the gated address stays unchanged, both while gated and after the disable is released (no delayed replay)
+* Two assert/release passes of the same disable prove the gate is repeatable, not a one-shot power-on effect
+* A legal write succeeds before gating and again after each release (clean re-enable)
 
 *Test Procedure*:
 
 [arabic]
 . Baseline write (un-gated):
-a. With both required enables high, issue one SMC_AXI_SINGLE_OP write (IR=0x28, op=0b10) and verify op = 0b00 (OKAY) and the `OcahAxiRam` subordinate captured it.
-. Gate via `ap_debug`:
-a. Drive required enable `feat_ctrl_i.ap_debug` = 0.
-b. Load SMC_AXI_SINGLE_OP (IR=0x28) and attempt a write; verify the instruction selects BYPASS (1-bit DR).
-c. Verify no AW/W transaction is issued on `axi_smc_dbg_req_o`.
-d. Restore `feat_ctrl_i.ap_debug` = 1 and verify a legal write again completes with OKAY.
-. Gate via `soc_debug`:
-a. Drive required enable `feat_ctrl_i.soc_debug` = 0 and repeat the BYPASS / no-AXI-traffic check.
-b. Restore `feat_ctrl_i.soc_debug` = 1 and verify normal operation restored.
+a. With all disables clear, issue one SMC_AXI_SINGLE_OP write (IR=0x28, op=0b10) and verify op = 0b00 (OKAY) and the `OcahAxiSlaveAgent` subordinate captured it.
+. Gate (per pass, twice):
+a. Assert `dbg_disable_i.smc_jtag2axi = 1` and settle four toggling TCK cycles.
+b. Preload a RAM sentinel at the gated address, load SMC_AXI_SINGLE_OP (IR=0x28), and shift a write request.
+c. Verify no AW/W transaction is issued on `axi_smc_dbg_req_o` and the sentinel is unchanged.
+d. Clear the disable without reset; verify the sentinel is still unchanged (no delayed replay), then verify a legal write again completes with OKAY.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`smc_axi_gate_bypass_chk` |With either required enable low, IR=0x28 selects BYPASS (1-bit DR)
 |`smc_axi_gate_no_traffic_chk` |No AXI write appears on `axi_smc_dbg_req_o` while gated
-|`smc_axi_gate_restore_chk` |A legal write completes with OKAY after each required enable is restored
+|`smc_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay)
+|`smc_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
 
-*Pass Criteria*: With `soc_debug` or `ap_debug` driven low the write is gated to BYPASS with no AXI traffic, and restoring each enable high restores a passing OKAY write, with zero scoreboard/reference-model errors.
+*Pass Criteria*: With `dbg_disable_i.smc_jtag2axi` asserted the write is suppressed with no AXI traffic and no memory mutation, and each release restores a passing OKAY write, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -2147,20 +2142,19 @@ a. Inspect the AXI-Lite subordinate and compare every written location against t
 
 *Test Coverage*:
 
-* `smc_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug` — any required enable low disables the SMC OTP bridge
-* When gated, SMC_OTP_AXI_SINGLE_OP (IR=0x1C) falls back to BYPASS (1-bit DR) and no AXI-Lite traffic appears on `axil_smc_otp_jtag_req_o`
-* Independent gating by driving each of `fuse_test`, `soc_debug`, and `ap_debug` low, then full restoration after restoring enables high
-* A legal write succeeds before gating and again after restoration (clean re-enable)
+* `dbg_disable_i.smc_otp_jtag2axi = 1` disables the SMC OTP bridge; deriving the bit from lifecycle policy is SEP-level verification
+* When gated, the SMC_OTP_AXI_SINGLE_OP TDR (IR=0x1C) remains selected while Update-DR requests are suppressed: no AXI-Lite traffic appears on `axil_smc_otp_jtag_req_o` and a preloaded RAM sentinel at the gated address stays unchanged, both while gated and after the disable is released (no delayed replay)
+* Two assert/release passes of the same disable prove the gate is repeatable
+* A legal write succeeds before gating and again after each release (clean re-enable)
 
 *Test Procedure*:
 
 [arabic]
 . Baseline write (un-gated):
-a. With all three required enables high, issue one SMC_OTP_AXI_SINGLE_OP write (IR=0x1C, op=0b10) and verify op = 0b00 (OKAY) and the AXI-Lite subordinate captured it.
-. Gate via each control, one at a time:
-a. Drive required enable `feat_ctrl_i.ap_debug` = 0; load IR=0x1C and attempt a write; verify the instruction selects BYPASS (1-bit DR) and no transaction on `axil_smc_otp_jtag_req_o`; restore and verify normal operation.
-b. Repeat for `feat_ctrl_i.soc_debug` = 0.
-c. Repeat for `feat_ctrl_i.fuse_test` = 0.
+a. With all disables clear, issue one SMC_OTP_AXI_SINGLE_OP write (IR=0x1C, op=0b10) and verify op = 0b00 (OKAY) and the AXI-Lite subordinate captured it.
+. Gate (per pass, twice):
+a. Assert `dbg_disable_i.smc_otp_jtag2axi = 1`, settle four toggling TCK cycles, preload a RAM sentinel, load IR=0x1C, and shift a write request; verify no transaction on `axil_smc_otp_jtag_req_o` and the sentinel unchanged.
+b. Clear the disable without reset; verify the sentinel is still unchanged (no delayed replay), then verify normal operation resumes.
 . Final restore check:
 a. With all required enables high, verify a legal write again completes with OKAY.
 
@@ -2169,12 +2163,12 @@ a. With all required enables high, verify a legal write again completes with OKA
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`smc_otp_axi_gate_bypass_chk` |With any required enable low, IR=0x1C selects BYPASS (1-bit DR)
 |`smc_otp_axi_gate_no_traffic_chk` |No AXI-Lite write appears on `axil_smc_otp_jtag_req_o` while gated
-|`smc_otp_axi_gate_restore_chk` |A legal write completes with OKAY after each required enable is restored
+|`smc_otp_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay)
+|`smc_otp_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
 
-*Pass Criteria*: With `fuse_test`, `soc_debug`, or `ap_debug` driven low the write is gated to BYPASS with no AXI-Lite traffic, and restoring each enable high restores a passing OKAY write, with zero scoreboard/reference-model errors.
+*Pass Criteria*: With `dbg_disable_i.smc_otp_jtag2axi` asserted the write is suppressed with no AXI-Lite traffic and no memory mutation, and each release restores a passing OKAY write, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -2446,21 +2440,19 @@ a. Inspect the AXI-Lite subordinate and compare every written location against t
 
 *Test Coverage*:
 
-* `sep_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug` — any required enable low disables the SEP OTP bridge
-* When gated, SEP_OTP_AXI_SINGLE_OP (IR=0x22) falls back to BYPASS (1-bit DR) and no AXI-Lite traffic appears on `axil_sep_otp_jtag_req_o`
-* Independent gating by driving each of `fuse_test`, `sep_debug`, `soc_debug`, and `ap_debug` low, then full restoration after restoring enables high
-* A legal write succeeds before gating and again after restoration (clean re-enable)
+* `dbg_disable_i.sep_otp_jtag2axi = 1` disables the SEP OTP bridge; deriving the bit from lifecycle policy is SEP-level verification
+* When gated, the SEP_OTP_AXI_SINGLE_OP TDR (IR=0x22) remains selected while Update-DR requests are suppressed: no AXI-Lite traffic appears on `axil_sep_otp_jtag_req_o` and a preloaded RAM sentinel at the gated address stays unchanged, both while gated and after the disable is released (no delayed replay)
+* Two assert/release passes of the same disable prove the gate is repeatable
+* A legal write succeeds before gating and again after each release (clean re-enable)
 
 *Test Procedure*:
 
 [arabic]
 . Baseline write (un-gated):
-a. With all four required enables high, issue one SEP_OTP_AXI_SINGLE_OP write (IR=0x22, op=0b10) and verify op = 0b00 (OKAY) and the AXI-Lite subordinate captured it.
-. Gate via each control, one at a time:
-a. Drive required enable `feat_ctrl_i.ap_debug` = 0; load IR=0x22 and attempt a write; verify the instruction selects BYPASS (1-bit DR) and no transaction on `axil_sep_otp_jtag_req_o`; restore and verify normal operation.
-b. Repeat for `feat_ctrl_i.soc_debug` = 0.
-c. Repeat for `feat_ctrl_i.sep_debug` = 0.
-d. Repeat for `feat_ctrl_i.fuse_test` = 0.
+a. With all disables clear, issue one SEP_OTP_AXI_SINGLE_OP write (IR=0x22, op=0b10) and verify op = 0b00 (OKAY) and the AXI-Lite subordinate captured it.
+. Gate (per pass, twice):
+a. Assert `dbg_disable_i.sep_otp_jtag2axi = 1`, settle four toggling TCK cycles, preload a RAM sentinel, load IR=0x22, and shift a write request; verify no transaction on `axil_sep_otp_jtag_req_o` and the sentinel unchanged.
+b. Clear the disable without reset; verify the sentinel is still unchanged (no delayed replay), then verify normal operation resumes.
 . Final restore check:
 a. With all required enables high, verify a legal write again completes with OKAY.
 
@@ -2469,12 +2461,12 @@ a. With all required enables high, verify a legal write again completes with OKA
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`sep_otp_axi_gate_bypass_chk` |With any required enable low, IR=0x22 selects BYPASS (1-bit DR)
 |`sep_otp_axi_gate_no_traffic_chk` |No AXI-Lite write appears on `axil_sep_otp_jtag_req_o` while gated
-|`sep_otp_axi_gate_restore_chk` |A legal write completes with OKAY after each required enable is restored
+|`sep_otp_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay)
+|`sep_otp_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
 
-*Pass Criteria*: With `fuse_test`, `sep_debug`, `soc_debug`, or `ap_debug` driven low the write is gated to BYPASS with no AXI-Lite traffic, and restoring each enable high restores a passing OKAY write, with zero scoreboard/reference-model errors.
+*Pass Criteria*: With `dbg_disable_i.sep_otp_jtag2axi` asserted the write is suppressed with no AXI-Lite traffic and no memory mutation, and each release restores a passing OKAY write, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -2495,7 +2487,7 @@ a. With all required enables high, verify a legal write again completes with OKA
 * SMC fabric AXI4 single-operation write followed by a read-back of the same address
 * SMC_AXI_SINGLE_OP (IR=0x28) DR field packing: address (56-bit), data, wstrb, size, op
 * Read op encoding `op=0b01` with data=0 and wstrb=0, and busy/terminal status polling
-* Data integrity between the written word and the value returned by `OcahAxiRam`
+* Data integrity between the written word and the value returned by `OcahAxiSlaveAgent`
 
 *Test Procedure*:
 
@@ -2510,7 +2502,7 @@ c. Poll via Capture-DR/Shift-DR until op status leaves Busy (0b11); verify op=0b
 a. Reload SMC_AXI_SINGLE_OP (IR=0x28).
 b. Shift in target address, data=0, wstrb=0, size, op=0b01 (Read); Update-DR.
 c. Poll op status until not Busy (0b11), then read returned data and status from the DR.
-. Compare the returned read word against the previously written value and the `OcahAxiRam` reference.
+. Compare the returned read word against the previously written value and the `OcahAxiSlaveAgent` reference.
 . Verify the terminal op status is 0b00 (OKAY) on both the write and the read.
 
 *Checkers*:
@@ -2519,8 +2511,8 @@ c. Poll op status until not Busy (0b11), then read returned data and status from
 |===
 |Checker Type |Description
 |`smc_axi_single_wr_rd_status_chk` |Write and read both reach op=0b00 (OKAY) after leaving Busy
-|`smc_axi_single_wr_rd_rdata_chk` |Returned read word equals the written value and the `OcahAxiRam` model
-|`smc_axi_single_wr_rd_mem_chk` |`OcahAxiRam` content at the target address matches the issued write
+|`smc_axi_single_wr_rd_rdata_chk` |Returned read word equals the written value and the `OcahAxiSlaveAgent` model
+|`smc_axi_single_wr_rd_mem_chk` |`OcahAxiSlaveAgent` content at the target address matches the issued write
 |===
 
 *Pass Criteria*: The write completes OKAY, the read-back returns the same word with OKAY status, and the memory side effect matches, with zero scoreboard/reference-model errors.
@@ -2540,20 +2532,20 @@ c. Poll op status until not Busy (0b11), then read returned data and status from
 
 * Sequential SMC fabric AXI4 accesses across a block of incrementing addresses
 * SMC_AXI_SINGLE_OP (IR=0x28) reuse across a series with per-op address advance
-* Per-beat read data integrity against an incrementing pattern in `OcahAxiRam`
+* Per-beat read data integrity against an incrementing pattern in `OcahAxiSlaveAgent`
 * Stable OKAY terminal status across the full series with no stuck-Busy condition
 
 *Test Procedure*:
 
 [arabic]
-. Build an incrementing reference pattern in `OcahAxiRam` over a contiguous SMC fabric address block.
+. Build an incrementing reference pattern in `OcahAxiSlaveAgent` over a contiguous SMC fabric address block.
 . Write the series through the SMC fabric AXI4 bridge.
 a. For each address, load SMC_AXI_SINGLE_OP (IR=0x28); shift in address{plus}i*stride, unique data, wstrb=all-ones, op=0b10 (Write); Update-DR.
 b. Poll each op until not Busy; verify op=0b00 (OKAY).
 . Read the series back in the same incrementing order.
 a. For each address, load SMC_AXI_SINGLE_OP (IR=0x28); shift in address{plus}i*stride, data=0, wstrb=0, op=0b01 (Read); Update-DR.
 b. Poll until not Busy; capture returned data and status.
-. Compare every returned beat with the `OcahAxiRam` reference and the written pattern.
+. Compare every returned beat with the `OcahAxiSlaveAgent` reference and the written pattern.
 
 *Checkers*:
 
@@ -2562,7 +2554,7 @@ b. Poll until not Busy; capture returned data and status.
 |Checker Type |Description
 |`smc_axi_series_incr_status_chk` |Every op in the series reaches op=0b00 (OKAY) after Busy clears
 |`smc_axi_series_incr_rdata_chk` |Each returned beat matches the incrementing-address reference value
-|`smc_axi_series_incr_mem_chk` |`OcahAxiRam` content over the block matches the issued write series
+|`smc_axi_series_incr_mem_chk` |`OcahAxiSlaveAgent` content over the block matches the issued write series
 |===
 
 *Pass Criteria*: Every incrementing-address write and read completes OKAY and all per-beat comparisons match the reference memory, with zero scoreboard/reference-model errors.
@@ -2588,7 +2580,7 @@ b. Poll until not Busy; capture returned data and status.
 *Test Procedure*:
 
 [arabic]
-. Choose a single fixed SMC fabric target address and seed it in `OcahAxiRam`.
+. Choose a single fixed SMC fabric target address and seed it in `OcahAxiSlaveAgent`.
 . Write the chosen value once through the SMC fabric AXI4 bridge.
 a. Load SMC_AXI_SINGLE_OP (IR=0x28); shift in the fixed address, write data, wstrb=all-ones, op=0b10 (Write); Update-DR.
 b. Poll until not Busy; verify op=0b00 (OKAY).
@@ -2604,7 +2596,7 @@ b. Poll until not Busy; capture returned data and status.
 |Checker Type |Description
 |`smc_axi_series_no_incr_status_chk` |Every fixed-address op reaches op=0b00 (OKAY) after Busy clears
 |`smc_axi_series_no_incr_rdata_chk` |Every returned beat equals the single repeated expected value
-|`smc_axi_series_no_incr_mem_chk` |`OcahAxiRam` at the fixed address remains the written value across the series
+|`smc_axi_series_no_incr_mem_chk` |`OcahAxiSlaveAgent` at the fixed address remains the written value across the series
 |===
 
 *Pass Criteria*: All fixed-address ops complete OKAY and every returned beat equals the repeated expected value, with zero scoreboard/reference-model errors.
@@ -2630,7 +2622,7 @@ b. Poll until not Busy; capture returned data and status.
 *Test Procedure*:
 
 [arabic]
-. Configure `OcahAxiRam` (or its error wrapper) so a subset of the incrementing block returns SLVERR/DECERR.
+. Configure `OcahAxiSlaveAgent` (or its error wrapper) so a subset of the incrementing block returns SLVERR/DECERR.
 . Issue the incrementing read series through the SMC fabric AXI4 bridge.
 a. For each address, load SMC_AXI_SINGLE_OP (IR=0x28); shift in address{plus}i*stride, data=0, wstrb=0, op=0b01 (Read); Update-DR.
 b. Poll until not Busy; capture returned data and status per op.
@@ -2645,7 +2637,7 @@ b. Poll until not Busy; capture returned data and status per op.
 |Checker Type |Description
 |`smc_axi_incr_error_status_chk` |Error-region ops report the expected SLVERR/DECERR op code
 |`smc_axi_incr_error_rdata_chk` |Good-region beats match the reference; error beats are not mistaken for valid data
-|`smc_axi_incr_error_mem_chk` |`OcahAxiRam` good-region content matches expectations
+|`smc_axi_incr_error_mem_chk` |`OcahAxiSlaveAgent` good-region content matches expectations
 |`smc_axi_incr_error_robustness_chk` |Bridge recovers and a post-error legal read completes OKAY
 |===
 
@@ -2672,12 +2664,12 @@ b. Poll until not Busy; capture returned data and status per op.
 *Test Procedure*:
 
 [arabic]
-. Preload `OcahAxiRam` with a randomized reference image over the SMC fabric read window.
+. Preload `OcahAxiSlaveAgent` with a randomized reference image over the SMC fabric read window.
 . Generate a constrained-random sequence of in-range read addresses (and legal sizes).
 . Issue each randomized read through the SMC fabric AXI4 bridge.
 a. Load SMC_AXI_SINGLE_OP (IR=0x28); shift in the random address, data=0, wstrb=0, size, op=0b01 (Read); Update-DR.
 b. Poll op status until not Busy (0b11); capture returned data and status.
-. Compare each returned word with the `OcahAxiRam` reference model at that address.
+. Compare each returned word with the `OcahAxiSlaveAgent` reference model at that address.
 
 *Checkers*:
 
@@ -2685,7 +2677,7 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 |===
 |Checker Type |Description
 |`smc_axi_random_status_chk` |Every randomized read reaches op=0b00 (OKAY) after Busy clears
-|`smc_axi_random_rdata_chk` |Each returned word matches the randomized `OcahAxiRam` reference
+|`smc_axi_random_rdata_chk` |Each returned word matches the randomized `OcahAxiSlaveAgent` reference
 |===
 
 *Pass Criteria*: All randomized reads complete OKAY and every returned word matches the reference model, with zero scoreboard/reference-model errors.
@@ -2703,30 +2695,29 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 
 *Test Coverage*:
 
-* `smc_jtag2axi_security_disable = !soc_debug || !ap_debug` independently gates the SMC fabric read bridge when a required enable is low
-* Gated JTAG2AXI instructions fall back to BYPASS (1-bit DR); no AXI traffic on `axi_smc_dbg_req_o`
-* Normal read operation restored after the required enable is restored
+* `dbg_disable_i.smc_jtag2axi = 1` gates the SMC fabric read bridge
+* Gated read requests are suppressed: the TDR remains selected while no AXI traffic appears on `axi_smc_dbg_req_o`, and the request-activity counters hold flat across a blocked window that stays open through the disable's release (no delayed replay)
+* Normal read operation restored after the disable clears, without any reset
 
 *Test Procedure*:
 
 [arabic]
-. Establish a baseline SMC fabric read returning OKAY with expected data from `OcahAxiRam`.
-. Drive required enable `feat_ctrl_i.ap_debug=0`; load SMC_AXI_SINGLE_OP (IR=0x28) and attempt a read.
-a. Verify the instruction selects BYPASS (DR length 1 bit) and no AXI transaction issues on `axi_smc_dbg_req_o`.
-. Restore `ap_debug=1`; verify normal read restored.
-. Repeat steps 2-3 for `feat_ctrl_i.soc_debug=0`.
+. Establish a baseline SMC fabric read returning OKAY with expected data from `OcahAxiSlaveAgent`.
+. Gate (per pass, twice): assert `dbg_disable_i.smc_jtag2axi = 1`, settle four toggling TCK cycles, load SMC_AXI_SINGLE_OP (IR=0x28), and shift a read request.
+a. Snapshot the AW/W/AR activity counters before the attempt and verify no AXI transaction issues on `axi_smc_dbg_req_o` across the gated window.
+. Clear the disable without reset; hold the blocked window across the release and verify no queued request replays, then verify a normal read is restored with an exact activity delta (only the sanctioned restore read).
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`smc_rd_gate_bypass_chk` |DR is 1-bit BYPASS while `ap_debug` or `soc_debug` is low
 |`smc_rd_gate_noaxi_chk` |No AXI transaction on `axi_smc_dbg_req_o` while gated
+|`smc_rd_gate_noreplay_chk` |The blocked window stays clean across the disable's release
 |`smc_rd_gate_restore_chk` |Normal read with OKAY status resumes after the bit clears
 |===
 
-*Pass Criteria*: Each required enable independently forces BYPASS with no AXI traffic when low, and reads resume correctly once restored high, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The asserted disable suppresses all AXI activity with no delayed replay after release, and reads resume correctly once the disable clears, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -2988,31 +2979,29 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 
 *Test Coverage*:
 
-* `smc_otp_jtag2axi_security_disable = !fuse_test || !soc_debug || !ap_debug` independently gates the SMC OTP read bridge
-* Gated JTAG2AXI instructions fall back to BYPASS (1-bit DR); no AXI-Lite traffic on `axil_smc_otp_jtag_req_o`
-* Normal read operation restored after each required enable is restored
+* `dbg_disable_i.smc_otp_jtag2axi = 1` gates the SMC OTP read bridge
+* Gated read requests are suppressed: the TDR remains selected while no AXI-Lite traffic appears on `axil_smc_otp_jtag_req_o`, with no delayed replay after the disable is released
+* Normal read operation restored after the disable clears, without any reset
 
 *Test Procedure*:
 
 [arabic]
 . Establish a baseline SMC OTP read returning OKAY with expected data from the AXI-Lite subordinate.
-. Drive required enable `feat_ctrl_i.ap_debug=0`; load SMC_OTP_AXI_SINGLE_OP (IR=0x1C) and attempt a read.
-a. Verify the instruction selects BYPASS (DR length 1 bit) and no AXI-Lite transaction issues on `axil_smc_otp_jtag_req_o`.
-. Restore `ap_debug=1`; verify normal read restored.
-. Repeat steps 2-3 for `feat_ctrl_i.soc_debug=0`.
-. Repeat steps 2-3 for `feat_ctrl_i.fuse_test=0`.
+. Gate (per pass, twice): assert `dbg_disable_i.smc_otp_jtag2axi = 1`, settle four toggling TCK cycles, load SMC_OTP_AXI_SINGLE_OP (IR=0x1C), and shift a read request.
+a. Verify no AXI-Lite transaction issues on `axil_smc_otp_jtag_req_o` across the gated window.
+. Clear the disable without reset; verify no queued request replays, then verify normal reads resume.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`smc_otp_rd_gate_bypass_chk` |DR is 1-bit BYPASS while `ap_debug`, `soc_debug`, or `fuse_test` is low
 |`smc_otp_rd_gate_noaxi_chk` |No AXI-Lite transaction on `axil_smc_otp_jtag_req_o` while gated
-|`smc_otp_rd_gate_restore_chk` |Normal read with OKAY status resumes after each bit clears
+|`smc_otp_rd_gate_noreplay_chk` |No queued request replays after the disable's release
+|`smc_otp_rd_gate_restore_chk` |Normal read with OKAY status resumes after the disable clears
 |===
 
-*Pass Criteria*: Each of `fuse_test`, `soc_debug`, and `ap_debug` independently forces BYPASS with no AXI-Lite traffic when low, and reads resume correctly once restored high, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The asserted `dbg_disable_i.smc_otp_jtag2axi` suppresses all AXI-Lite activity with no delayed replay after release, and reads resume correctly once the disable clears, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -3238,32 +3227,29 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 
 *Test Coverage*:
 
-* `sep_otp_jtag2axi_security_disable = !fuse_test || !sep_debug || !soc_debug || !ap_debug` independently gates the SEP OTP read bridge
-* Gated JTAG2AXI instructions fall back to BYPASS (1-bit DR); no AXI-Lite traffic on `axil_sep_otp_jtag_req_o`
-* Normal read operation restored after each required enable is restored
+* `dbg_disable_i.sep_otp_jtag2axi = 1` gates the SEP OTP read bridge
+* Gated read requests are suppressed: the TDR remains selected while no AXI-Lite traffic appears on `axil_sep_otp_jtag_req_o`, with no delayed replay after the disable is released
+* Normal read operation restored after the disable clears, without any reset
 
 *Test Procedure*:
 
 [arabic]
 . Establish a baseline SEP OTP read returning OKAY with expected data from the AXI-Lite subordinate.
-. Drive required enable `feat_ctrl_i.ap_debug=0`; load SEP_OTP_AXI_SINGLE_OP (IR=0x22) and attempt a read.
-a. Verify the instruction selects BYPASS (DR length 1 bit) and no AXI-Lite transaction issues on `axil_sep_otp_jtag_req_o`.
-. Restore `ap_debug=1`; verify normal read restored.
-. Repeat steps 2-3 for `feat_ctrl_i.soc_debug=0`.
-. Repeat steps 2-3 for `feat_ctrl_i.sep_debug=0`.
-. Repeat steps 2-3 for `feat_ctrl_i.fuse_test=0`.
+. Gate (per pass, twice): assert `dbg_disable_i.sep_otp_jtag2axi = 1`, settle four toggling TCK cycles, load SEP_OTP_AXI_SINGLE_OP (IR=0x22), and shift a read request.
+a. Verify no AXI-Lite transaction issues on `axil_sep_otp_jtag_req_o` across the gated window.
+. Clear the disable without reset; verify no queued request replays, then verify normal reads resume.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`sep_otp_rd_gate_bypass_chk` |DR is 1-bit BYPASS while `ap_debug`, `soc_debug`, `sep_debug`, or `fuse_test` is low
 |`sep_otp_rd_gate_noaxi_chk` |No AXI-Lite transaction on `axil_sep_otp_jtag_req_o` while gated
-|`sep_otp_rd_gate_restore_chk` |Normal read with OKAY status resumes after each bit clears
+|`sep_otp_rd_gate_noreplay_chk` |No queued request replays after the disable's release
+|`sep_otp_rd_gate_restore_chk` |Normal read with OKAY status resumes after the disable clears
 |===
 
-*Pass Criteria*: Each of `fuse_test`, `sep_debug`, `soc_debug`, and `ap_debug` independently forces BYPASS with no AXI-Lite traffic when low, and reads resume correctly once restored high, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The asserted `dbg_disable_i.sep_otp_jtag2axi` suppresses all AXI-Lite activity with no delayed replay after release, and reads resume correctly once the disable clears, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -3289,7 +3275,7 @@ a. Verify the instruction selects BYPASS (DR length 1 bit) and no AXI-Lite trans
 *Test Procedure*:
 
 [arabic]
-. Configure the `ocah_axi_vip` AXI4 subordinate (OcahAxiRam) to return SLVERR or DECERR on writes to the chosen error region.
+. Configure the `ocah_axi_vip` AXI4 subordinate (OcahAxiSlaveAgent) to return SLVERR or DECERR on writes to the chosen error region.
 . Load SMC_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x28):
 a. Shift in the error-region target address, write data, wstrb = all-ones, size, op = 0b10 (Write).
 b. Update-DR to launch the AXI4 transaction on `axi_smc_dbg_req_o`.
@@ -3603,33 +3589,30 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 
 *Test Coverage*:
 
-* SMC fabric bridge gating: `smc_jtag2axi_security_disable = !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug`
-* When gated, SMC_AXI_SINGLE_OP (IR=0x28) falls back to BYPASS (1-bit DR) and issues no AXI traffic on `axi_smc_dbg_req_o`, even on error-path attempts
-* Each required enable low (`soc_debug`, `ap_debug`) disables the bridge; restoring it high restores operation
-* Error-path read/write attempts while gated produce no subordinate access and no error-status update
+* SMC fabric bridge gating: `dbg_disable_i.smc_jtag2axi = 1`
+* When gated, SMC_AXI_SINGLE_OP (IR=0x28) requests are suppressed: no AXI traffic on `axi_smc_dbg_req_o`, even on error-path attempts, and no error-status update
+* Two assert/release passes prove the gate is repeatable; each release restores normal and error-path operation
 
 *Test Procedure*:
 
 [arabic]
-. With the subordinate configured to return errors on the target region, drive required enable `feat_ctrl_i.ap_debug` = 0 to gate the bridge.
-. Load SMC_AXI_SINGLE_OP (IR=0x28) and attempt an error-region read and write:
-a. Verify the instruction selects BYPASS (1-bit DR).
-b. Verify no AXI transaction is issued on `axi_smc_dbg_req_o` and no error-status latches.
-. Restore `feat_ctrl_i.ap_debug` = 1; verify a normal (and error-path) JTAG2AXI access resumes and the error is reported as expected.
-. Repeat steps 1–3 with `feat_ctrl_i.soc_debug` = 0 to confirm it independently gates the bridge.
-. Confirm that with all required enables high, ungated error-path accesses complete and report SLVERR/DECERR normally.
+. With the subordinate configured to return errors on the target region, assert `dbg_disable_i.smc_jtag2axi = 1` to gate the bridge.
+. Load SMC_AXI_SINGLE_OP (IR=0x28) and attempt an error-region write:
+a. Verify no AXI transaction is issued on `axi_smc_dbg_req_o` and no error-status latches.
+. Clear the disable without reset; verify a normal (and error-path) JTAG2AXI access resumes and the error is reported as expected.
+. Repeat steps 1–3 as a second pass of the same disable.
+. Confirm that with all disables clear, ungated error-path accesses complete and report SLVERR/DECERR normally.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`smc_axi_err_gating_bypass_chk` |Gated instruction selects BYPASS (1-bit DR) with `soc_debug` or `ap_debug` set
 |`smc_axi_err_gating_no_traffic_chk` |No AXI traffic on `axi_smc_dbg_req_o` while gated
-|`smc_axi_err_gating_restore_chk` |Restoring each required enable restores normal/error-path operation
+|`smc_axi_err_gating_restore_chk` |Each release restores normal/error-path operation
 |===
 
-*Pass Criteria*: Either required enable low forces BYPASS with no AXI traffic on the error path, and operation is fully restored after each enable is restored, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The asserted disable suppresses all AXI traffic on the error path, and operation is fully restored after each release, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -3965,33 +3948,30 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 
 *Test Coverage*:
 
-* SMC OTP bridge gating: `smc_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug`
-* When gated, SMC_OTP_AXI_SINGLE_OP (IR=0x1C) falls back to BYPASS (1-bit DR) and issues no AXI-Lite traffic on `axil_smc_otp_jtag_req_o`, even on error-path attempts
-* Each required enable low (`fuse_test`, `soc_debug`, `ap_debug`) disables the bridge; restoring it high restores operation
-* Error-path read/write attempts while gated produce no subordinate access and no error-status update
+* SMC OTP bridge gating: `dbg_disable_i.smc_otp_jtag2axi = 1`
+* When gated, SMC_OTP_AXI_SINGLE_OP (IR=0x1C) requests are suppressed: no AXI-Lite traffic on `axil_smc_otp_jtag_req_o`, even on error-path attempts, and no error-status update
+* Two assert/release passes prove the gate is repeatable; each release restores normal and error-path operation
 
 *Test Procedure*:
 
 [arabic]
-. With the AXI-Lite subordinate configured to return errors on the target region, drive required enable `feat_ctrl_i.ap_debug` = 0 to gate the bridge.
-. Load SMC_OTP_AXI_SINGLE_OP (IR=0x1C) and attempt an error-region read and write:
-a. Verify the instruction selects BYPASS (1-bit DR).
-b. Verify no AXI-Lite transaction is issued on `axil_smc_otp_jtag_req_o` and no error-status latches.
-. Restore `feat_ctrl_i.ap_debug` = 1; verify normal/error-path operation resumes and the error is reported as expected.
-. Repeat steps 1–3 for `feat_ctrl_i.soc_debug` = 0 and `feat_ctrl_i.fuse_test` = 0, confirming each independently gates the bridge.
-. Confirm that with all required enables high, ungated error-path accesses complete and report SLVERR/DECERR normally.
+. With the AXI-Lite subordinate configured to return errors on the target region, assert `dbg_disable_i.smc_otp_jtag2axi = 1` to gate the bridge.
+. Load SMC_OTP_AXI_SINGLE_OP (IR=0x1C) and attempt an error-region write:
+a. Verify no AXI-Lite transaction is issued on `axil_smc_otp_jtag_req_o` and no error-status latches.
+. Clear the disable without reset; verify normal/error-path operation resumes and the error is reported as expected.
+. Repeat steps 1–3 as a second pass of the same disable.
+. Confirm that with all disables clear, ungated error-path accesses complete and report SLVERR/DECERR normally.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`smc_otp_axi_err_gating_bypass_chk` |Gated instruction selects BYPASS (1-bit DR) for each of `fuse_test`/`soc_debug`/`ap_debug`
 |`smc_otp_axi_err_gating_no_traffic_chk` |No AXI-Lite traffic on `axil_smc_otp_jtag_req_o` while gated
-|`smc_otp_axi_err_gating_restore_chk` |Restoring each required enable restores normal/error-path operation
+|`smc_otp_axi_err_gating_restore_chk` |Each release restores normal/error-path operation
 |===
 
-*Pass Criteria*: Any required enable low forces BYPASS with no AXI-Lite traffic on the error path, and operation is fully restored after each enable is restored, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The asserted disable suppresses all AXI-Lite traffic on the error path, and operation is fully restored after each release, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4327,30 +4307,27 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 
 *Test Coverage*:
 
-* SEP OTP bridge gating: `sep_otp_jtag2axi_security_disable = !feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug`
-* When gated, SEP_OTP_AXI_SINGLE_OP (IR=0x22) falls back to BYPASS (1-bit DR) and issues no AXI-Lite traffic on `axil_sep_otp_jtag_req_o`, even on error-path attempts
-* Each required enable low (`fuse_test`, `sep_debug`, `soc_debug`, `ap_debug`) disables the bridge; restoring it high restores operation
-* Error-path read/write attempts while gated produce no subordinate access and no error-status update
+* SEP OTP bridge gating: `dbg_disable_i.sep_otp_jtag2axi = 1`
+* When gated, SEP_OTP_AXI_SINGLE_OP (IR=0x22) requests are suppressed: no AXI-Lite traffic on `axil_sep_otp_jtag_req_o`, even on error-path attempts, and no error-status update
+* Two assert/release passes prove the gate is repeatable; each release restores normal and error-path operation
 
 *Test Procedure*:
 
 [arabic]
-. With the AXI-Lite subordinate configured to return errors on the target region, drive required enable `feat_ctrl_i.ap_debug` = 0 to gate the bridge.
-. Load SEP_OTP_AXI_SINGLE_OP (IR=0x22) and attempt an error-region read and write:
-a. Verify the instruction selects BYPASS (1-bit DR).
-b. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no error-status latches.
-. Restore `feat_ctrl_i.ap_debug` = 1; verify normal/error-path operation resumes and the error is reported as expected.
-. Repeat steps 1–3 for `feat_ctrl_i.soc_debug` = 0, `feat_ctrl_i.sep_debug` = 0, and `feat_ctrl_i.fuse_test` = 0, confirming each independently gates the bridge.
-. Confirm that with all required enables high, ungated error-path accesses complete and report SLVERR/DECERR normally.
+. With the AXI-Lite subordinate configured to return errors on the target region, assert `dbg_disable_i.sep_otp_jtag2axi = 1` to gate the bridge.
+. Load SEP_OTP_AXI_SINGLE_OP (IR=0x22) and attempt an error-region write:
+a. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no error-status latches.
+. Clear the disable without reset; verify normal/error-path operation resumes and the error is reported as expected.
+. Repeat steps 1–3 as a second pass of the same disable.
+. Confirm that with all disables clear, ungated error-path accesses complete and report SLVERR/DECERR normally.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`sep_otp_axi_err_gating_bypass_chk` |Gated instruction selects BYPASS (1-bit DR) for each of `fuse_test`/`sep_debug`/`soc_debug`/`ap_debug`
 |`sep_otp_axi_err_gating_no_traffic_chk` |No AXI-Lite traffic on `axil_sep_otp_jtag_req_o` while gated
-|`sep_otp_axi_err_gating_restore_chk` |Restoring each required enable restores normal/error-path operation
+|`sep_otp_axi_err_gating_restore_chk` |Each release restores normal/error-path operation
 |===
 
 *Pass Criteria*: Any required enable low forces BYPASS with no AXI-Lite traffic on the error path, and operation is fully restored after each enable is restored, with zero scoreboard/reference-model errors.
@@ -4739,6 +4716,46 @@ d. For the pipelined reads, confirm the first `pl_depth{plus}1` reads return the
 
 '''''
 
+[[sec-428-dtp_jtag2axi_dbg_disable_matrix_test]]
+===== 4.28 `dtp_jtag2axi_dbg_disable_matrix_test`
+
+*Source Module*: `dtp_jtag2axi_dbg_disable_matrix_test`
+
+*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
+
+*Objective*: Debug-disable matrix over the three JTAG2AXI bridge gate fields
+
+*Test Coverage*:
+
+* Deterministic one-hot rows for `smc_jtag2axi`, `smc_otp_jtag2axi`, and `sep_otp_jtag2axi`, plus the all-clear and all-disabled boundary masks and seeded multi-hot masks
+* Per row and target: an allowed bridge completes a write+readback with real request activity; a blocked bridge shows zero request activity and an intact RAM sentinel, both while gated and after the disable is released (no delayed replay), then recovers with a sanctioned operation
+* Mixed rows prove unrelated-target isolation (an enabled bridge keeps working while another is gated)
+* Every checker-verified outcome samples its `dbg_disable_cg` cell; the test requires all six bridge cells and emits the JSON coverage artifact
+
+*Test Procedure*:
+
+[arabic]
+. For each row mask (one-hot per field, all-clear, all-disabled, seeded multi-hot): drive the full disable vector and settle four toggling TCK cycles.
+. For each bridge target under the row mask: if enabled, complete a write+readback with activity-counter evidence; if gated, preload a RAM sentinel, shift a write request, and verify zero request activity and the sentinel intact.
+. After each row with gated targets: clear all disables without reset, verify every sentinel is still intact (no delayed replay), then complete a sanctioned recovery write+readback per previously-gated target.
+. Emit the `dbg_disable_cg` JSON artifact and require all six bridge cells.
+
+*Checkers*:
+
+[cols=",",options="header",]
+|===
+|Checker Type |Description
+|`j2a_matrix_allow_chk` |An enabled bridge completes write+readback with real request activity
+|`j2a_matrix_block_chk` |A gated bridge produces zero request activity and leaves the RAM sentinel intact
+|`j2a_matrix_noreplay_chk` |Sentinels stay intact after the disables release (no delayed replay)
+|`j2a_matrix_recovery_chk` |A sanctioned operation succeeds on every previously-gated bridge
+|`j2a_matrix_isolation_chk` |Enabled bridges keep working while others are gated
+|===
+
+*Pass Criteria*: Every row mask produces the per-field allowed/blocked outcomes with no delayed replay and full recovery, closing all six bridge `dbg_disable_cg` cells, with zero scoreboard/reference-model errors.
+
+'''''
+
 [[sec-5-stap-3dcr-and-ijtag-scenarios]]
 ==== 5. STAP, 3DCR, and iJTAG Scenarios
 
@@ -4797,8 +4814,8 @@ b. Verify the length equals the 3 SIB-control bits only (no instrument register 
 * SELECT_IJTAG (IR=0x1A) with all SIB bits = 1 produces the full-length iJTAG scan chain
 * DR chain length equals sum of SIB bits plus all three instrument register widths (3 SIBs {plus} 3 instruments)
 * All three scan controls (`jtag_dfd_host_scan_ctrl_o`, `jtag_dft_host_scan_ctrl_o`, `jtag_dft_secure_host_scan_ctrl_o`) assert during Shift-DR
-* `feat_ctrl_i.ap_debug=0` forces all three SIBs closed even when the scan pattern requests all-ON, collapsing the chain
-* Access is restored when `ap_debug` returns to `1`
+* Asserting all three SIB disables (`dbg_disable_i.dft_secure`, `dbg_disable_i.dft_nonsecure`, `dbg_disable_i.dfd`) forces the SIBs closed even when the scan pattern requests all-ON, collapsing the chain
+* Access is restored when the disables clear
 
 *Test Procedure*:
 
@@ -4809,10 +4826,10 @@ b. Verify the length equals the 3 SIB-control bits only (no instrument register 
 a. Verify length equals the sum of SIB bits plus all three instrument register widths.
 . Verify all three host scan-control outputs assert during Shift-DR and instrument data is captured correctly per the SIB model.
 . Security gating:
-a. Drive required enable `feat_ctrl_i.ap_debug=0` (disables DFD, secure DFT, non-secure DFT).
+a. Assert `dbg_disable_i.{dft_secure,dft_nonsecure,dfd} = 1`.
 b. Re-shift the all-ON pattern; Update-DR.
-c. Verify chain length collapses to SIB bits only and no instrument scan control asserts.
-. Clear `ap_debug=0`; re-shift all-ON and confirm full chain and all scan controls restored.
+c. Verify chain length collapses to SIB bits only and no instrument scan control pulses across the whole gated window.
+. Clear the disables; re-shift all-ON and confirm full chain and all scan controls restored.
 
 *Checkers*:
 
@@ -4821,11 +4838,11 @@ c. Verify chain length collapses to SIB bits only and no instrument scan control
 |Checker Type |Description
 |`sib_all_on_len_chk` |Full chain length matches sum of SIB bits plus all three instrument widths
 |`sib_all_on_ctrl_chk` |All three host scan-control outputs assert during Shift-DR
-|`sib_all_on_gate_chk` |`ap_debug`=1 forces every SIB closed; chain collapses despite all-ON request
-|`sib_all_on_restore_chk` |Full chain and scan controls restored after `ap_debug` clears
+|`sib_all_on_gate_chk` |Asserted SIB disables force every SIB closed; chain collapses despite all-ON request
+|`sib_all_on_restore_chk` |Full chain and scan controls restored after the disables clear
 |===
 
-*Pass Criteria*: The all-ON chain reaches full length with every scan control active, collapses to SIB bits when `ap_debug=0`, and recovers when restored, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The all-ON chain reaches full length with every scan control active, collapses to SIB bits when the SIB disables are asserted, and recovers when they clear, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4843,7 +4860,7 @@ c. Verify chain length collapses to SIB bits only and no instrument scan control
 * All 8 SIB on/off patterns (sec_dft x dft x dfd) walked exhaustively to close `ijtag_sib_pattern` coverage
 * Predicted chain length matches sum of (SIB bit {plus} instrument width when SIB ON and ungated, else SIB bit only)
 * Only enabled, ungated instruments receive their host scan-control assertions
-* Randomized `feat_ctrl_i` (`soc_debug`, `ap_debug`, `sep_debug`, `fuse_test`) forces gated SIBs closed regardless of scan pattern
+* Randomized per-SIB disables (`dft_secure`, `dft_nonsecure`, `dfd`) force gated SIBs closed regardless of scan pattern
 * Capture/update data tracks the SIB reference model across mixed configurations
 
 *Test Procedure*:
@@ -4855,8 +4872,8 @@ a. Shift each (sec_dft, dft, dfd) pattern; Update-DR.
 b. Measure chain length and verify it equals SIB bits plus the widths of enabled instruments.
 c. Verify scan-control outputs assert only for the enabled instruments.
 . For N additional randomized iterations (e.g., 20):
-a. Drive random `feat_ctrl_i` fields and a random SIB pattern; Update-DR.
-b. Verify gated SIBs (those with `security_disable_i` asserted) stay closed despite the requested pattern.
+a. Drive a random per-SIB disable mask and a random SIB pattern; Update-DR.
+b. Verify gated SIBs (those with their `dbg_disable_i` field asserted) stay closed despite the requested pattern.
 c. Verify chain length accounts for forced-closed SIBs and only non-gated enabled instruments receive scan control.
 . Compare all captured/update data against the OCAH-local SIB model for each configuration.
 
@@ -4867,7 +4884,7 @@ c. Verify chain length accounts for forced-closed SIBs and only non-gated enable
 |Checker Type |Description
 |`sib_random_len_chk` |Chain length matches predicted SIB-bit {plus} ungated-instrument-width sum
 |`sib_random_ctrl_chk` |Scan control asserts only for enabled, ungated instruments
-|`sib_random_gate_chk` |Security-gated SIBs forced closed under random `feat_ctrl_i`
+|`sib_random_gate_chk` |Security-gated SIBs forced closed under random disable masks
 |`sib_random_data_chk` |Captured/update data matches SIB reference model across all patterns
 |===
 
@@ -4888,9 +4905,8 @@ c. Verify chain length accounts for forced-closed SIBs and only non-gated enable
 
 * Independent access to the secure and non-secure DFT instruments via their SIBs (SELECT_IJTAG, IR=0x1A)
 * Both DFT SIBs may be open simultaneously (no hardware mutual exclusion); chain length sums both instruments
-* `dft_nonsecure_security_disable = !soc_debug || !ap_debug` gates the non-secure DFT SIB
-* `dft_secure_security_disable = !fuse_test || !sep_debug || !soc_debug || !ap_debug` gates the secure DFT SIB
-* Driving `soc_debug` low gates both SIBs; driving `sep_debug` or `fuse_test` low gates only the secure DFT SIB
+* `dbg_disable_i.dft_nonsecure = 1` gates the non-secure DFT SIB; `dbg_disable_i.dft_secure = 1` gates the secure DFT SIB
+* Gating one DFT SIB leaves the other accessible (cross-resource isolation), a gated Update-DR does not modify stored SIB state, and access resumes without TAP reset once the disable clears
 
 *Test Procedure*:
 
@@ -4900,9 +4916,9 @@ a. Verify `jtag_dft_host_scan_ctrl_o` asserts and shift a test pattern through t
 . Disable non-secure, enable secure DFT SIB; Update-DR.
 a. Verify `jtag_dft_secure_host_scan_ctrl_o` asserts and shift a test pattern through the secure chain.
 . Enable both DFT SIBs; Update-DR; verify both scan controls assert and chain length equals the sum of both instruments.
-. Non-secure gating: drive `feat_ctrl_i.soc_debug=0`; verify both SIBs forced closed (soc_debug appears in both formulas); restore.
-. Secure-only gating via `sep_debug=0`: verify secure DFT SIB forced closed while non-secure remains openable; restore.
-. Secure-only gating via `fuse_test=0`: verify secure DFT SIB forced closed while non-secure remains openable; restore and confirm both SIBs restored.
+. Secure gating: assert `dbg_disable_i.dft_secure=1`; verify the secure DFT SIB forced closed (its scan controls never pulse across the gated window) while the non-secure SIB remains openable; clear.
+. Non-secure gating: assert `dbg_disable_i.dft_nonsecure=1`; verify the non-secure DFT SIB forced closed while the secure SIB remains openable; clear.
+. Stored-state evidence: attempt to open a gated SIB, release the disable without reset, verify the gated open attempt did not stick, then confirm a sanctioned open succeeds.
 
 *Checkers*:
 
@@ -4911,12 +4927,13 @@ a. Verify `jtag_dft_secure_host_scan_ctrl_o` asserts and shift a test pattern th
 |Checker Type |Description
 |`dft_access_chk` |Secure and non-secure DFT chains each accessible via their SIB with correct scan controls
 |`dft_parallel_chk` |Both DFT SIBs open simultaneously; chain length sums both instruments
-|`dft_nonsecure_gate_chk` |Non-secure DFT SIB forced closed under `soc_debug {vbar}{vbar} ap_debug`
-|`dft_secure_gate_chk` |Secure DFT SIB forced closed when any required enable is low
-|`dft_gate_restore_chk` |Both DFT SIBs restored after required `feat_ctrl_i` enables are high
+|`dft_nonsecure_gate_chk` |Non-secure DFT SIB forced closed under `dbg_disable_i.dft_nonsecure`
+|`dft_secure_gate_chk` |Secure DFT SIB forced closed under `dbg_disable_i.dft_secure`
+|`dft_isolation_chk` |Gating one DFT SIB leaves the other accessible
+|`dft_gate_restore_chk` |Both DFT SIBs restored, without TAP reset, after their disables clear
 |===
 
-*Pass Criteria*: Secure and non-secure DFT instruments are independently reachable in the same scan flow, each gated by its own security formula and restored when required enables are high, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Secure and non-secure DFT instruments are independently reachable in the same scan flow, each gated by exactly its own disable field and restored when it clears, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4933,16 +4950,16 @@ a. Verify `jtag_dft_secure_host_scan_ctrl_o` asserts and shift a test pattern th
 
 * DFD instrument reachable through the iJTAG network when its SIB is open (SELECT_IJTAG, IR=0x1A)
 * `jtag_dfd_host_scan_ctrl_o` asserts shift control and data shifts correctly through `jtag_dfd_host_scan_out_o` / `jtag_dfd_host_scan_in_i`
-* `feat_ctrl_i.ap_debug=0` forces the DFD SIB closed (gated), restored when `ap_debug=1`
+* `dbg_disable_i.dfd = 1` forces the DFD SIB closed (gated), restored when the disable clears
 
 *Test Procedure*:
 
 [arabic]
 . Load SELECT_IJTAG (IR=0x1A) via `OcahJtagMasterDriver`; open only the DFD SIB; Update-DR.
 . Verify `jtag_dfd_host_scan_ctrl_o` asserts; shift a known pattern out on `jtag_dfd_host_scan_out_o` and read it back through `jtag_dfd_host_scan_in_i` via the OCAH-local SIB model.
-. Drive `feat_ctrl_i.ap_debug=0`; attempt to open the DFD SIB.
-a. Verify the SIB stays closed (`security_disable_i` prevents it latching ON) and `jtag_dfd_host_scan_ctrl_o` does not assert.
-. Restore `ap_debug=1`; re-open the DFD SIB and verify DFD access is restored.
+. Assert `dbg_disable_i.dfd = 1`; attempt to open the DFD SIB.
+a. Verify the SIB stays closed and none of the DFD scan controls pulse across the whole gated window.
+. Clear the disable without reset; verify the gated open attempt did not stick, then re-open the DFD SIB and verify DFD access is restored.
 
 *Checkers*:
 
@@ -4950,11 +4967,12 @@ a. Verify the SIB stays closed (`security_disable_i` prevents it latching ON) an
 |===
 |Checker Type |Description
 |`dfd_access_chk` |DFD scan data shifts correctly when the SIB is open and ungated
-|`dfd_gate_chk` |DFD SIB forced closed and scan-ctrl inactive while `ap_debug`=1
-|`dfd_restore_chk` |DFD access resumes after `ap_debug` clears
+|`dfd_gate_chk` |DFD SIB forced closed and its scan controls never pulse while `dbg_disable_i.dfd` is asserted
+|`dfd_stored_chk` |A gated Update-DR does not modify stored SIB state (no delayed open after release)
+|`dfd_restore_chk` |DFD access resumes, without TAP reset, after the disable clears
 |===
 
-*Pass Criteria*: DFD is reachable when ungated and forced closed when `ap_debug=0`, recovering when restored, with zero scoreboard/reference-model errors.
+*Pass Criteria*: DFD is reachable when ungated and forced closed when `dbg_disable_i.dfd` is asserted, recovering without reset when the disable clears, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4971,34 +4989,36 @@ a. Verify the SIB stays closed (`security_disable_i` prevents it latching ON) an
 
 * TAP_3DCR (IR=0x0E) selects the downstream (I/O) STAP by writing 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1`
 * Configuration opens the DS SIB, writes the 3DCR, and closes the SIB in one DR scan so subsequent scans carry only a 1-bit SIB per STAP
-* Six data patterns (all-zeros, all-ones, alt-10, alt-01, walking-ones, walking-zeros) transfer correctly to the DS PTAP slave model
-* `feat_ctrl_i.sip_debug=0` gates the DS STAP; while gated the DS PTAP model is not updated
-* Recovery requires restoring `sip_debug=1`, JTAG reset (TRST) to clear the stale `stap_sel`, and reconfiguration
+* The `TAP_3DCR` data register is the 2-bit PTAP 3DCR followed serially by the STAP SIB chain, so configuration uses composed full-chain scans; a selected I/O STAP additionally splices one extra flop into the chain through its TDI lockup latch
+* While selected, the I/O STAP forwards: its host `tdo_oen` pulses during shifts and its host `tms` follows the live TMS (temporal-window evidence); composed maintain scans read the chain state back against the reference model
+* `dbg_disable_i.stap_io = 1` stops forwarding (its `tdo_oen` never pulses and `tms` parks at the stored `tms_hold`), and a 3DCR update attempted while gated is ignored
+* The stored selection resumes, without any reset, once the disable clears; an unrelated STAP configured while the target stays gated keeps working
 
 *Test Procedure*:
 
 [arabic]
-. Load TAP_3DCR (IR=0x0E) into the PTAP via `OcahJtagMasterDriver`.
-. Configure the DS STAP: open the DS SIB, write DS 3DCR `stap_sel=1, tms_hold=1, config_hold=1`, then close the DS SIB in the same DR scan; SEP and extra STAPs stay bypassed.
-. Scan the extended IR: PTAP loaded with BYPASS, each STAP's SIB bit kept closed, DS downstream TAP IR included for the selected STAP.
-. For each of the 6 data patterns, scan the extended DR (PTAP BYPASS 1 bit {plus} STAP SIB bits {plus} DS downstream TAP DR), read the DS PTAP model, and verify the readback matches.
-. Security gating:
-a. Drive `feat_ctrl_i.sip_debug=0`, reconfigure the DS STAP, and verify the DS PTAP model is unchanged (gated).
-b. Restore required enables, assert JTAG reset (TRST) to clear the stale gated `stap_sel=1` condition.
-c. Reconfigure the DS STAP, re-scan extended IR/DR with new data, and verify the DS PTAP model updates (access restored).
+. Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the I/O STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
+. Run a state-maintaining chain scan inside a temporal window; verify the I/O host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
+. Assert `dbg_disable_i.stap_io = 1` and attempt a randomized deselecting 3DCR write:
+a. Verify `tdo_oen` never pulses and `tms` parks at the stored `tms_hold=1` across the whole gated window.
+b. Verify the chain readback shows the update was ignored (the STAP captures its masked `stap_sel` as 0 while the stored payload survives).
+. Clear the disable without reset; verify forwarding resumes from the stored selection (the gated write never landed).
+. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet (isolation).
+. Clear all disables, flush, and configure fresh; verify full recovery.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`stap_ds_select_chk` |DS STAP TAP control active and DS SIB closed after 3DCR configuration
-|`stap_ds_data_chk` |All 6 data patterns match the DS PTAP slave model readback
-|`stap_ds_gate_chk` |DS PTAP model unchanged while `sip_debug`=0
-|`stap_ds_recover_chk` |DS access restored after restoring `sip_debug` {plus} TRST {plus} reconfiguration
+|`stap_ds_select_chk` |Selected I/O STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS
+|`stap_ds_readback_chk` |Composed chain readback matches the reference model in every state
+|`stap_ds_gate_chk` |With `dbg_disable_i.stap_io` asserted, forwarding stops and a gated 3DCR update is ignored
+|`stap_ds_isolation_chk` |An unrelated STAP stays usable while the I/O STAP is gated
+|`stap_ds_recover_chk` |Selection resumes without reset after release, and a fresh configuration fully recovers
 |===
 
-*Pass Criteria*: The downstream STAP is selected and reachable with the SIB closed for minimal chain length, all six patterns verify, and gating plus recovery behave per `sip_debug`, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The I/O STAP forwards only while selected and enabled, `dbg_disable_i.stap_io` alone gates it with stored state preserved and no delayed effect, and recovery needs no reset, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5015,34 +5035,34 @@ c. Reconfigure the DS STAP, re-scan extended IR/DR with new data, and verify the
 
 * TAP_3DCR (IR=0x0E) selects the SMC debug STAP via 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1`
 * Configuration opens the SMC SIB, writes the 3DCR, and closes the SIB in one DR scan to minimize subsequent chain length
-* Six data patterns transfer correctly to the SMC PTAP slave model
-* SMC STAP gated by `!soc_debug || !ap_debug`; while gated the SMC PTAP model is not updated
-* Recovery requires restoring required enables, JTAG reset (TRST), and reconfiguration
+* Composed full-chain TAP_3DCR scans select the SMC debug STAP (`stap_sel=1`, `tms_hold=1`, `config_hold=1`)
+* While selected, the SMC host port forwards (`tdo_oen` pulses, `tms` follows the live TMS); maintain-scan readbacks match the reference model
+* `dbg_disable_i.stap_smc = 1` stops forwarding, parks `tms` at the stored `tms_hold`, and a gated 3DCR update is ignored
+* The stored selection resumes without any reset once the disable clears; a neighbor STAP configured while gated keeps working
 
 *Test Procedure*:
 
 [arabic]
-. Load TAP_3DCR (IR=0x0E) via `OcahJtagMasterDriver`.
-. Configure the SMC STAP: open the SMC SIB, write SMC 3DCR `stap_sel=1, tms_hold=1, config_hold=1`, then close the SMC SIB in the same DR scan; DS, SEP, and extra STAPs stay bypassed.
-. Scan the extended IR: PTAP BYPASS, STAP SIB bits kept closed, SMC downstream TAP IR included.
-. For each of the 6 data patterns, scan the extended DR through PTAP BYPASS {plus} STAP SIB bits {plus} SMC downstream TAP DR; read and verify the SMC PTAP model.
-. Security gating:
-a. Drive `feat_ctrl_i.soc_debug=0`, reconfigure, and verify the SMC PTAP model is unchanged (gated by `!soc_debug || !ap_debug`).
-b. Restore required enables, assert JTAG reset (TRST) to clear the stale `stap_sel`.
-c. Reconfigure, re-scan extended IR/DR, and verify the SMC PTAP model updates (access restored).
+. Flush the TAP_3DCR configuration chain, then configure the SMC STAP with composed scans (open its SIB, write its 3DCR).
+. Windowed maintain scan: verify SMC host `tdo_oen` pulses, `tms` follows the live TMS, and the chain readback matches the model.
+. Assert `dbg_disable_i.stap_smc = 1` and attempt a randomized deselecting 3DCR write; verify `tdo_oen` never pulses, `tms` parks at the stored `tms_hold=1`, and the readback shows the update was ignored.
+. Clear the disable without reset; verify forwarding resumes from the stored selection.
+. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet.
+. Clear all disables, flush, and configure fresh; verify full recovery.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`stap_smc_select_chk` |SMC STAP TAP control active and SMC SIB closed after configuration
-|`stap_smc_data_chk` |All 6 data patterns match the SMC PTAP slave model readback
-|`stap_smc_gate_chk` |SMC PTAP model unchanged while `soc_debug`=1
-|`stap_smc_recover_chk` |SMC access restored after restoring enables {plus} TRST {plus} reconfiguration
+|`stap_smc_select_chk` |Selected SMC STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS
+|`stap_smc_readback_chk` |Composed chain readback matches the reference model in every state
+|`stap_smc_gate_chk` |With `dbg_disable_i.stap_smc` asserted, forwarding stops and a gated 3DCR update is ignored
+|`stap_smc_isolation_chk` |An unrelated STAP stays usable while the SMC STAP is gated
+|`stap_smc_recover_chk` |Selection resumes without reset after release, and a fresh configuration fully recovers
 |===
 
-*Pass Criteria*: The SMC STAP is selected with the SIB closed, all six patterns verify, and `!soc_debug || !ap_debug` gating plus TRST-based recovery behave correctly, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The SMC STAP forwards only while selected and enabled, `dbg_disable_i.stap_smc` alone gates it with stored state preserved, and recovery needs no reset, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5059,34 +5079,33 @@ c. Reconfigure, re-scan extended IR/DR, and verify the SMC PTAP model updates (a
 
 * TAP_3DCR (IR=0x0E) independently selects each extra STAP (e.g. Yayoi TAP) via 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1`
 * Configuration opens the extra STAP SIB, writes the 3DCR, and closes the SIB so the 3DCR is removed and only a 1-bit SIB remains in subsequent scans
-* `jtag_stap_extra_host_tap_ctrl_o[0]` forwards TAP control and the extra STAP TDO inserts into the scan chain
-* `stap_extra_security_disable = !ap_debug` gates the extra STAPs; while gated the extra STAP model is not updated
-* Recovery requires restoring `ap_debug=1`, JTAG reset (TRST), and reconfiguration
+* While selected, `jtag_stap_extra_host_tap_ctrl_o[0]` forwards TAP control (`tdo_oen` pulses, `tms` follows the live TMS)
+* `dbg_disable_i.stap_extra = 1` gates the extra STAPs: forwarding stops, `tms` parks at the stored `tms_hold`, and a gated 3DCR update is ignored
+* The stored selection resumes without any reset once the disable clears; a neighbor STAP configured while gated keeps working
 
 *Test Procedure*:
 
 [arabic]
-. Load TAP_3DCR (IR=0x0E) via `OcahJtagMasterDriver`.
-. Configure extra STAP[0]: open its SIB, write extra STAP 3DCR `stap_sel=1, tms_hold=1, config_hold=1`, then close the SIB in the same DR scan.
-. Scan the extended IR (PTAP BYPASS, all STAP SIB bits kept closed) and verify `jtag_stap_extra_host_tap_ctrl_o[0]` forwards TAP control.
-. Scan the extended DR (PTAP BYPASS 1 bit {plus} STAP SIB bits {plus} downstream TAP DR) and verify the extra STAP[0] TDO is inserted; repeat for any additional configured extra STAPs.
-. Security gating:
-a. Drive `feat_ctrl_i.ap_debug=0`, reconfigure extra STAP[0], and verify the extra STAP model is unchanged (gated).
-b. Restore required enables, assert JTAG reset (TRST) to clear stale 3DCR state.
-c. Reconfigure extra STAP[0], re-scan extended IR/DR with new data, and verify the extra STAP model updates (access restored).
+. Flush the TAP_3DCR configuration chain, then configure extra STAP[0] with composed scans (open its SIB, write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1`).
+. Windowed maintain scan: verify `jtag_stap_extra_host_tap_ctrl_o[0]` forwards (host `tdo_oen` pulses, `tms` follows) and the chain readback matches the model.
+. Assert `dbg_disable_i.stap_extra = 1` and attempt a randomized deselecting 3DCR write; verify forwarding stops, `tms` parks at the stored `tms_hold=1`, and the readback shows the update was ignored.
+. Clear the disable without reset; verify forwarding resumes from the stored selection.
+. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet.
+. Clear all disables, flush, and configure fresh; verify full recovery.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`stap_extra_select_chk` |Each extra STAP independently selectable; SIB closed and 3DCR removed after configuration
-|`stap_extra_ctrl_chk` |`jtag_stap_extra_host_tap_ctrl_o[0]` forwards TAP control and TDO inserts into the chain
-|`stap_extra_gate_chk` |Extra STAP model unchanged while `ap_debug`=0 (`stap_extra_security_disable = !ap_debug`)
-|`stap_extra_recover_chk` |Extra STAP access restored after restoring `ap_debug` {plus} TRST {plus} reconfiguration
+|`stap_extra_select_chk` |Selected extra STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS
+|`stap_extra_readback_chk` |Composed chain readback matches the reference model in every state
+|`stap_extra_gate_chk` |With `dbg_disable_i.stap_extra` asserted, forwarding stops and a gated 3DCR update is ignored
+|`stap_extra_isolation_chk` |An unrelated STAP stays usable while the extra STAP is gated
+|`stap_extra_recover_chk` |Selection resumes without reset after release, and a fresh configuration fully recovers
 |===
 
-*Pass Criteria*: Each extra STAP is independently selectable with its SIB closed, TAP control and TDO route correctly, and `ap_debug` gating plus TRST-based recovery behave correctly, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The extra STAP forwards only while selected and enabled, `dbg_disable_i.stap_extra` alone gates it with stored state preserved, and recovery needs no reset, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5103,34 +5122,33 @@ c. Reconfigure extra STAP[0], re-scan extended IR/DR with new data, and verify t
 
 * TAP_3DCR (IR=0x0E) selects the SEP debug STAP via 3DCR `stap_sel=1`, `tms_hold=1`, `config_hold=1`
 * Configuration opens the SEP SIB, writes the 3DCR, and closes the SIB in one DR scan to minimize subsequent chain length
-* Extended IR carries the SEP PTAP instruction (opcode 0x3A) and six data patterns transfer correctly to the SEP PTAP slave model
-* SEP STAP gated by `!sep_debug || !soc_debug || !ap_debug`; while gated the SEP PTAP model is not updated
-* Recovery requires restoring required enables, JTAG reset (TRST), and reconfiguration
+* While selected, the SEP host port forwards (`tdo_oen` pulses, `tms` follows the live TMS); maintain-scan readbacks match the reference model
+* `dbg_disable_i.stap_sep = 1` stops forwarding, parks `tms` at the stored `tms_hold`, and a gated 3DCR update is ignored
+* The stored selection resumes without any reset once the disable clears; a neighbor STAP configured while gated keeps working
 
 *Test Procedure*:
 
 [arabic]
-. Load TAP_3DCR (IR=0x0E) via `OcahJtagMasterDriver`.
-. Configure the SEP STAP: open the SEP SIB, write SEP 3DCR `stap_sel=1, tms_hold=1, config_hold=1`, then close the SEP SIB in the same DR scan; DS and extra STAPs stay bypassed.
-. Scan the extended IR: PTAP BYPASS, STAP SIB bits kept closed, SEP PTAP instruction `opcode=0x3A` through the chain.
-. For each of the 6 data patterns, scan the extended DR through PTAP BYPASS {plus} STAP SIB bits {plus} SEP downstream TAP DR; read and verify the SEP PTAP model.
-. Security gating:
-a. Drive `feat_ctrl_i.sep_debug=0`, reconfigure, and verify the SEP PTAP model is unchanged (gated by `!sep_debug || !soc_debug || !ap_debug`).
-b. Restore required enables, assert JTAG reset (TRST) to clear the stale `stap_sel`.
-c. Reconfigure, re-scan extended IR/DR, and verify the SEP PTAP model updates (access restored).
+. Flush the TAP_3DCR configuration chain, then configure the SEP STAP with composed scans (open its SIB, write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1`).
+. Windowed maintain scan: verify SEP host `tdo_oen` pulses, `tms` follows the live TMS, and the chain readback matches the model.
+. Assert `dbg_disable_i.stap_sep = 1` and attempt a randomized deselecting 3DCR write; verify forwarding stops, `tms` parks at the stored `tms_hold=1`, and the readback shows the update was ignored.
+. Clear the disable without reset; verify forwarding resumes from the stored selection.
+. Re-assert the disable and configure a neighbor STAP; verify the neighbor forwards while the gated port stays quiet.
+. Clear all disables, flush, and configure fresh; verify full recovery.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker Type |Description
-|`stap_sep_select_chk` |SEP STAP TAP control active and SEP SIB closed after configuration
-|`stap_sep_data_chk` |All 6 data patterns match the SEP PTAP slave model readback
-|`stap_sep_gate_chk` |SEP PTAP model unchanged while `sep_debug`=1
-|`stap_sep_recover_chk` |SEP access restored after restoring enables {plus} TRST {plus} reconfiguration
+|`stap_sep_select_chk` |Selected SEP STAP forwards: `tdo_oen` pulses and `tms` follows the live TMS
+|`stap_sep_readback_chk` |Composed chain readback matches the reference model in every state
+|`stap_sep_gate_chk` |With `dbg_disable_i.stap_sep` asserted, forwarding stops and a gated 3DCR update is ignored
+|`stap_sep_isolation_chk` |An unrelated STAP stays usable while the SEP STAP is gated
+|`stap_sep_recover_chk` |Selection resumes without reset after release, and a fresh configuration fully recovers
 |===
 
-*Pass Criteria*: The SEP STAP is selected with the SIB closed, the opcode-0x3A IR and all six patterns verify, and `!sep_debug || !soc_debug || !ap_debug` gating plus TRST-based recovery behave correctly, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The SEP STAP forwards only while selected and enabled, `dbg_disable_i.stap_sep` alone gates it with stored state preserved, and recovery needs no reset, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5148,20 +5166,20 @@ c. Reconfigure, re-scan extended IR/DR, and verify the SEP PTAP model updates (a
 * Extended STAP scan interface (`+jtag_stap_host_scan_*+`) enabled via PTAP_3DCR.SELECT=1
 * `jtag_stap_host_scan_ctrl_o` asserts scan control during DR operations and data routes through `jtag_stap_host_scan_out_o` / `jtag_stap_host_scan_in_i`
 * Clearing PTAP_3DCR.SELECT=0 deasserts the scan interface
-* `stap_host_security_disable = !ap_debug` forces `jtag_stap_host_scan_ctrl_o` to 0 and bypasses scan-in (PTAP receives the `stap_host_scan_out` loopback instead of external scan-in)
-* Normal scan operation resumes after `ap_debug=1`
+* `dbg_disable_i.stap_host = 1` forces all four `jtag_stap_host_scan_ctrl_o` signals quiet across the whole gated window (temporal-window evidence) and bypasses scan-in (PTAP receives the `stap_host_scan_out` loopback instead of external scan-in)
+* Normal scan operation resumes, without any reset, after the disable clears
 
 *Test Procedure*:
 
 [arabic]
 . Enable the extended STAP scan interface by writing PTAP_3DCR.SELECT=1 via `OcahJtagMasterDriver`.
-. Verify `jtag_stap_host_scan_ctrl_o` asserts during DR operations; shift a known pattern out on `jtag_stap_host_scan_out_o`.
+. Inside a temporal window, verify `jtag_stap_host_scan_ctrl_o` select and shift-enable pulse during DR operations; shift a known pattern out on `jtag_stap_host_scan_out_o`.
 . Verify the data returned on `jtag_stap_host_scan_in_i` matches the expected loopback/known response.
 . Clear PTAP_3DCR.SELECT=0 and verify scan control deasserts.
 . Security gating:
-a. Re-enable scan (PTAP_3DCR.SELECT=1), then drive `feat_ctrl_i.ap_debug=0`.
-b. Verify `jtag_stap_host_scan_ctrl_o` is forced to 0 and scan-in is disconnected (PTAP sees the `stap_host_scan_out` loopback rather than external scan-in).
-c. Restore `ap_debug=1` and verify scan control and the data path are restored.
+a. Re-enable scan (PTAP_3DCR.SELECT=1), then assert `dbg_disable_i.stap_host = 1`.
+b. Inside a temporal window covering the whole gated DR operation, verify none of the four host scan-control signals pulses and scan-in is disconnected (PTAP sees the `stap_host_scan_out` loopback rather than external scan-in).
+c. Clear the disable without reset and verify scan control and the data path are restored.
 
 *Checkers*:
 
@@ -5170,11 +5188,11 @@ c. Restore `ap_debug=1` and verify scan control and the data path are restored.
 |Checker Type |Description
 |`ext_stap_enable_chk` |Scan control and data signals function when PTAP_3DCR.SELECT=1
 |`ext_stap_disable_chk` |Scan interface deactivates when PTAP_3DCR.SELECT=0
-|`ext_stap_gate_chk` |`ap_debug`=1 forces `stap_host_scan_ctrl_o` to 0 and bypasses scan-in
-|`ext_stap_restore_chk` |Normal STAP host scan resumes after `ap_debug` clears
+|`ext_stap_gate_chk` |With `dbg_disable_i.stap_host` asserted, all four host scan controls stay quiet across the gated window and scan-in is bypassed
+|`ext_stap_restore_chk` |Normal STAP host scan resumes, without reset, after the disable clears
 |===
 
-*Pass Criteria*: The extended STAP scan interface operates when selected, deactivates when deselected, is suppressed and loopback-bypassed when `ap_debug=0`, and recovers when restored, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The extended STAP scan interface operates when selected, deactivates when deselected, is suppressed and loopback-bypassed while `dbg_disable_i.stap_host` is asserted, and recovers without reset when it clears, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5260,6 +5278,48 @@ b. Verify the STAP TAP control output drives TMS=0 (parked low toward RTI).
 
 '''''
 
+[[sec-513-dtp_scan_dbg_disable_matrix_test]]
+===== 5.13 `dtp_scan_dbg_disable_matrix_test`
+
+*Source Module*: `dtp_scan_dbg_disable_matrix_test`
+
+*BFM / Model*: `ocah_jtag_vip`, OCAH-local iJTAG SIB and STAP chain models
+
+*Objective*: Debug-disable matrix over the eight scan-side gate fields
+
+*Test Coverage*:
+
+* Deterministic one-hot rows for `stap_io`, `stap_smc`, `stap_sep`, `stap_extra`, `stap_host`, `dft_secure`, `dft_nonsecure`, and `dfd`, plus the all-clear and all-disabled boundary masks and seeded multi-hot masks
+* Per row: each iJTAG SIB requested open follows its disable (temporal window: a gated SIB's four scan controls never pulse, an effective SIB's select is seen high); each STAP configured through composed TAP_3DCR scans follows its disable (a gated port never forwards and its gated 3DCR write is ignored, verified by chain readback); the extended host scan interface follows `stap_host`
+* After the all-disabled row: releasing every disable without reset shows no gated open attempt stuck (release without replay), and a full all-clear row recovers
+* Mixed rows prove unrelated-resource isolation; every checker-verified outcome samples its `dbg_disable_cg` cell; the test requires all sixteen scan-side cells and emits the JSON coverage artifact
+
+*Test Procedure*:
+
+[arabic]
+. For each row mask (all-clear, one-hot per field, seeded multi-hot, all-disabled last): drive the full disable vector and settle four toggling TCK cycles.
+. iJTAG evidence: request all three SIBs open inside a temporal window and check each SIB's allowed/blocked outcome against the reference model.
+. STAP evidence: flush the TAP_3DCR chain, open all four SIBs and write all four 3DCR payloads in composed scans under the row mask, then run a windowed maintain scan; check per-port forwarding vs quiet+parked outcomes, the host scan-control window, and the chain readback (gated payload writes ignored).
+. After the final all-disabled row: clear all disables, observe without reprogramming, and verify no SIB select pulses (no delayed open); then rerun the all-clear row as recovery.
+. Emit the `dbg_disable_cg` JSON artifact and require all sixteen scan-side cells.
+
+*Checkers*:
+
+[cols=",",options="header",]
+|===
+|Checker Type |Description
+|`scan_matrix_ijtag_chk` |Each SIB's select/window outcome follows exactly its disable field
+|`scan_matrix_stap_chk` |Each STAP's forwarding outcome follows exactly its disable field; gated 3DCR writes are ignored
+|`scan_matrix_host_chk` |The extended host scan controls follow `stap_host`
+|`scan_matrix_readback_chk` |Composed chain readbacks match the reference model under every mask
+|`scan_matrix_noreplay_chk` |No gated open attempt sticks after the disables release
+|`scan_matrix_recovery_chk` |The all-clear row fully recovers after the all-disabled row
+|===
+
+*Pass Criteria*: Every row mask produces the per-field allowed/blocked outcomes with temporal-window evidence, no delayed effects, and full recovery, closing all sixteen scan-side `dbg_disable_cg` cells, with zero scoreboard/reference-model errors.
+
+'''''
+
 [[sec-6-xtrig-ctp-and-ctm-scenarios]]
 ==== 6. XTRIG, CTP, and CTM Scenarios
 
@@ -5283,7 +5343,7 @@ b. Verify the STAP TAP control output drives TMS=0 (parked low toward RTI).
 *Test Procedure*:
 
 [arabic]
-. Configure CTP[0] via `OcahAxiLiteMaster`: CONFIG.MODE=0 (Wire-OR), CONFIG.INVERT=0, STRETCH_MULT=0x000F (16 clocks).
+. Configure CTP[0] via `OcahAxiLiteMasterAgent`: CONFIG.MODE=0 (Wire-OR), CONFIG.INVERT=0, STRETCH_MULT=0x000F (16 clocks).
 . Drive a single-cycle internal cross-trigger request to CTP[0] (via CTM routing).
 a. Observe CT_Req_out on the CTP BFM; verify it asserts and remains asserted for exactly (STRETCH_MULT{plus}1) clock cycles.
 b. Read CTP[0] STATUS; verify BUSY=1 while the stretched pulse is active and BUSY=0 after it completes.
@@ -5325,7 +5385,7 @@ a. Verify the input is synchronized to `clk_i` and the resulting internal cross-
 *Test Procedure*:
 
 [arabic]
-. Configure CTP[0] via `OcahAxiLiteMaster`: CONFIG.MODE=1 (Point-to-Point), CONFIG.INVERT=0.
+. Configure CTP[0] via `OcahAxiLiteMasterAgent`: CONFIG.MODE=1 (Point-to-Point), CONFIG.INVERT=0.
 . Drive an internal cross-trigger request to CTP[0] (via CTM routing).
 a. Verify CT_Req_out asserts on the CTP BFM.
 b. Drive CT_Ack_in from the CTP BFM (simulate the external responder).
@@ -5373,7 +5433,7 @@ b. Verify the internal cross-trigger is delivered to the programmed CTM destinat
 a. Stall the external CT_Ack_in on the CTP BFM to simulate a deadlock.
 b. Read STATUS; verify BUSY=1 (handshake stuck).
 . Recover via CONFIG.RESET.
-a. Write CONFIG.RESET=1 via `OcahAxiLiteMaster`.
+a. Write CONFIG.RESET=1 via `OcahAxiLiteMasterAgent`.
 b. Verify the handshake is force-cleared: STATUS.BUSY=0 and CT_Req_out deasserts.
 c. Write CONFIG.RESET=0 to release; verify CTP returns to normal operation and a new handshake can proceed to completion.
 . Assert system reset (`rst_n_i`).
@@ -5418,7 +5478,7 @@ b. Verify no spurious GPIO toggles occur during the reset window.
 . For N iterations (e.g., 20):
 a. Randomly select a CTP index.
 b. Randomly choose a legal configuration: MODE (0/1), INVERT (0/1), STRETCH_MULT (random 16-bit).
-c. Write CONFIG and STRETCH_MULT via `OcahAxiLiteMaster`.
+c. Write CONFIG and STRETCH_MULT via `OcahAxiLiteMasterAgent`.
 d. Drive a cross-trigger event (internal via CTM routing or external via the CTP BFM).
 e. Verify behavior matches the reference model for the configured mode and settings.
 f. Verify INVERT correctly inverts the GPIO signal polarity.
@@ -5460,7 +5520,7 @@ f. Verify INVERT correctly inverts the GPIO signal polarity.
 [arabic]
 . Bring the XTRIG CSR path to idle after reset and disable all CTP routing.
 . Walk every CTP CSR field with deterministic values.
-a. Drive full-word and per-byte byte-enable writes through `OcahAxiLiteMaster` to exercise the regblock byte-enable / masked-write conditions.
+a. Drive full-word and per-byte byte-enable writes through `OcahAxiLiteMasterAgent` to exercise the regblock byte-enable / masked-write conditions.
 b. Cover single-bit, all-ones, and reserved-bit patterns per field.
 . Read back each write and verify the defined field reflects the programmed value and that reserved bits behave as specified.
 . Verify no CTP CSR aliases another (each offset is independent) and that the resulting routing state matches the reference model.
@@ -5502,7 +5562,7 @@ b. Cover single-bit, all-ones, and reserved-bit patterns per field.
 [arabic]
 . Disable all CTM/CTP routing and idle the CSR path after reset.
 . Sweep each destination port selection deterministically.
-a. Program one destination-port mask at a time via `OcahAxiLiteMaster`.
+a. Program one destination-port mask at a time via `OcahAxiLiteMasterAgent`.
 b. Drive a single source trigger via CTM routing.
 c. Observe the CTP/CTM BFM outputs and verify exactly the programmed destination toggles while all others remain idle.
 d. Exercise the internal CT ack toggle for that destination.
@@ -5544,7 +5604,7 @@ d. Exercise the internal CT ack toggle for that destination.
 
 [arabic]
 . Record, in the test header, the integration rationale that the XTRIG generated-regblock local stall (back-pressure) paths are expected to be structurally unreachable in this DTP integration because the upstream AXI-Lite path always presents the regblock with a ready interface; if confirmed, they are resolved by a documented waiver rather than additional stimulus.
-. Exercise representative XTRIG CSR writes and reads through `OcahAxiLiteMaster` to confirm the reachable accepted-access path.
+. Exercise representative XTRIG CSR writes and reads through `OcahAxiLiteMasterAgent` to confirm the reachable accepted-access path.
 a. Verify each write/read completes without corruption.
 b. Verify no trigger state changes until the access is accepted by the regblock.
 . Capture the XTRIG monitor trace as supporting evidence that the local stall condition is not asserted under the exercised stimulus, to back the waiver entry.
@@ -5709,7 +5769,7 @@ a. Verify ARVALID remains asserted and ARADDR remains stable while ARREADY is lo
 *Test Procedure*:
 
 [arabic]
-. Program the multicast route via `OcahAxiLiteMaster`:
+. Program the multicast route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with multiple CTP destination bits set (e.g. bits 0, 5, 16).
 b. Read the register back and confirm the multicast mask matches the written value.
 . Drive a cross-trigger request on the CLA source via the OCAH-local CTM BFM.
@@ -5755,7 +5815,7 @@ b. Pulse both sources and verify the overlapped destination ORs the contribution
 *Test Procedure*:
 
 [arabic]
-. Program the multicast route via `OcahAxiLiteMaster`:
+. Program the multicast route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with multiple CLA destination bits set.
 b. Read the register back and confirm the multicast mask matches.
 . Drive a cross-trigger request on the external CTP source via the OCAH-local CTP BFM.
@@ -5799,7 +5859,7 @@ b. Verify non-selected CLA destinations remain quiet.
 *Test Procedure*:
 
 [arabic]
-. Program the intra-CLA multicast route via `OcahAxiLiteMaster`:
+. Program the intra-CLA multicast route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with several CLA destination bits set.
 b. Read the register back and confirm the mask matches.
 . Pulse the source CLA via the OCAH-local CTM BFM.
@@ -5843,7 +5903,7 @@ b. Verify the routing mask behavior: non-selected CLA channels stay idle and the
 *Test Procedure*:
 
 [arabic]
-. Program the inter-CTP multicast route via `OcahAxiLiteMaster`:
+. Program the inter-CTP multicast route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with several CTP destination bits set.
 b. Read the register back and confirm the mask matches.
 . Pulse the source CTP via the OCAH-local CTP BFM.
@@ -5887,7 +5947,7 @@ c. Verify no feedback loop re-triggers the source.
 *Test Procedure*:
 
 [arabic]
-. Program the point-to-point route via `OcahAxiLiteMaster`:
+. Program the point-to-point route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << ctp_dst)+` so a single CTP destination bit is set.
 b. Read the register back and confirm only the one destination bit is set.
 . Drive a cross-trigger request on the CLA source via the OCAH-local CTM BFM.
@@ -5929,7 +5989,7 @@ b. Verify no other destination port observes the request.
 *Test Procedure*:
 
 [arabic]
-. Program the point-to-point route via `OcahAxiLiteMaster`:
+. Program the point-to-point route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << cla_dst)+` so a single CLA destination bit is set.
 b. Read the register back and confirm only the one destination bit is set.
 . Drive a cross-trigger request on the CTP source via the OCAH-local CTP BFM.
@@ -5971,7 +6031,7 @@ b. Verify no other destination observes the request.
 *Test Procedure*:
 
 [arabic]
-. Program the intra-CLA point-to-point route via `OcahAxiLiteMaster`:
+. Program the intra-CLA point-to-point route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << cla_dst)+` so a single CLA destination bit is set.
 b. Read the register back and confirm only the one destination bit is set.
 . Drive the source CLA request via the OCAH-local CTM BFM.
@@ -6013,7 +6073,7 @@ b. Verify no other CLA channel observes the request and the source is not fed ba
 *Test Procedure*:
 
 [arabic]
-. Program the inter-CTP point-to-point route via `OcahAxiLiteMaster`:
+. Program the inter-CTP point-to-point route via `OcahAxiLiteMasterAgent`:
 a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << ctp_dst)+` so a single CTP destination bit is set.
 b. Read the register back and confirm only the one destination bit is set.
 . Drive the source CTP request via the OCAH-local CTP BFM.
@@ -6056,7 +6116,7 @@ b. Verify no other CTP port observes the request and no feedback loop re-trigger
 
 [arabic]
 . Establish pre-reset wire-OR state:
-a. Program one or more `+CT_SRC[N]_CONFIG_0+` with multi-bit `CT_DST_SELECT` masks via `OcahAxiLiteMaster`.
+a. Program one or more `+CT_SRC[N]_CONFIG_0+` with multi-bit `CT_DST_SELECT` masks via `OcahAxiLiteMasterAgent`.
 b. Drive source pulses and confirm the multicast destinations respond.
 . Assert system reset (`rst_n_i`) while wire-OR routes are active, then wait for reset deassertion.
 . Verify clearing and quiescence:
@@ -6098,7 +6158,7 @@ b. Confirm the OCAH-local CTM/CTP monitors observe no spurious trigger on any de
 
 [arabic]
 . Establish pre-reset P2P state:
-a. Program one or more `+CT_SRC[N]_CONFIG_0+` with single-bit `CT_DST_SELECT` masks via `OcahAxiLiteMaster`.
+a. Program one or more `+CT_SRC[N]_CONFIG_0+` with single-bit `CT_DST_SELECT` masks via `OcahAxiLiteMasterAgent`.
 b. Start a point-to-point handshake on a configured source.
 . Assert system reset (`rst_n_i`) mid-handshake, then wait for deassertion.
 . Verify clearing and quiescence:
@@ -6140,7 +6200,7 @@ b. Confirm the in-flight handshake state is cleared and the monitors observe no 
 
 [arabic]
 . Establish a mixed pre-reset configuration:
-a. Program some sources with multi-bit (wire-OR) `CT_DST_SELECT` masks and others with single-bit (P2P) masks via `OcahAxiLiteMaster`.
+a. Program some sources with multi-bit (wire-OR) `CT_DST_SELECT` masks and others with single-bit (P2P) masks via `OcahAxiLiteMasterAgent`.
 b. Drive source pulses across both modes and confirm correct routing before reset.
 . Assert system reset (`rst_n_i`) while both route classes are active, then wait for deassertion.
 . Verify clearing and quiescence:
@@ -6184,7 +6244,7 @@ b. Confirm the monitors observe no spurious trigger on any destination during or
 [arabic]
 . For N iterations (e.g. 20):
 a. Generate random `CT_DST_SELECT` values for all CTM sources, mixing single-bit and multi-bit masks across CLA and CTP destinations.
-b. Write all `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back to confirm the programmed mask.
+b. Write all `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back to confirm the programmed mask.
 c. Drive random cross-trigger requests on random source ports via the OCAH-local CTM/CTP BFMs with randomized timing.
 d. Verify each request appears at exactly its configured destinations and that overlapping destinations OR correctly.
 e. Confirm no residual routing carries over from the previous iteration's configuration.
@@ -6225,7 +6285,7 @@ e. Confirm no residual routing carries over from the previous iteration's config
 [arabic]
 . For N iterations:
 a. Generate random `CT_DST_SELECT` values constrained to two or more set bits per active source (wire-OR-only).
-b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back.
+b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
 c. Drive random source pulses via the OCAH-local CTM/CTP BFMs.
 d. Verify each pulse asserts every selected destination simultaneously and the routing mask is honored.
 e. Where random masks overlap, verify the shared destination ORs the contributing sources; verify non-selected destinations stay idle.
@@ -6266,7 +6326,7 @@ e. Where random masks overlap, verify the shared destination ORs the contributin
 [arabic]
 . For N iterations:
 a. Generate random `CT_DST_SELECT` values constrained to exactly one set bit per active source (P2P-only).
-b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back to confirm a single destination bit is set.
+b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back to confirm a single destination bit is set.
 c. Drive randomized handshakes on random source ports via the OCAH-local CTM/CTP BFMs.
 d. Verify each request/ack completes only at its configured single destination.
 e. Verify no other route observes the request (no cross-route leakage).
@@ -6306,7 +6366,7 @@ e. Verify no other route observes the request (no cross-route leakage).
 [arabic]
 . For N iterations:
 a. Randomize `CT_DST_SELECT` masks for CLA sources, with destination bits restricted to CTP ports.
-b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back.
+b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
 c. Drive CLA triggers via the OCAH-local CTM BFM with randomized timing.
 d. Observe CTP destinations via the OCAH-local CTP monitor and verify the selected CTP ports respond.
 e. Sample the source x destination coverage of the exercised CLA-to-CTP combinations.
@@ -6346,7 +6406,7 @@ e. Sample the source x destination coverage of the exercised CLA-to-CTP combinat
 [arabic]
 . For N iterations:
 a. Randomize `CT_DST_SELECT` masks for CTP sources, with destination bits restricted to CLA channels.
-b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMaster` and read each back.
+b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
 c. Drive CTP triggers via the OCAH-local CTP BFM with randomized timing.
 d. Observe CLA destinations via the OCAH-local CTM monitor and verify the selected CLA channels respond.
 e. Sample the source x destination coverage of the exercised CTP-to-CLA combinations.
@@ -6385,7 +6445,7 @@ e. Sample the source x destination coverage of the exercised CTP-to-CLA combinat
 
 [arabic]
 . Bring the XTRIG CSR path to idle and disable all CTM source routing.
-. Sweep the CTM routing CSR fields deterministically via `OcahAxiLiteMaster`:
+. Sweep the CTM routing CSR fields deterministically via `OcahAxiLiteMasterAgent`:
 a. Apply full-word writes, then per-byte-enable writes, then masked writes to `+CT_SRC[N]_CONFIG_0.CT_DST_SELECT+` to exercise each generated byte-enable and masked-write condition.
 b. Read back after each write and compare the defined destination-select field against the expected value.
 c. Confirm reserved bits remain zero and are not disturbed by adjacent writes.
@@ -6426,7 +6486,7 @@ c. Confirm reserved bits remain zero and are not disturbed by adjacent writes.
 
 [arabic]
 . Assert power-on reset, bring the XTRIG CSR path to idle, and disable all CTM source routing.
-. For every defined CTM source index, via `OcahAxiLiteMaster`:
+. For every defined CTM source index, via `OcahAxiLiteMasterAgent`:
 a. Write a single-destination `CT_DST_SELECT` mask, read back, and compare the defined destination-select field.
 b. Write a paired-destination mask, read back, and compare.
 c. Write an inverted-destination mask, read back, and compare.
@@ -6453,8 +6513,7 @@ d. Confirm the written value affects only this source register and no neighborin
 [cols=",",options="header",]
 |===
 |Metric |Count
-|Reference logical tests |72
-|Scenario-expanded open-source test cases |147
+|Scenario-expanded open-source test cases |149
 |===
 
 SMC fabric write/read scenarios map to the source modules recorded in the
@@ -6473,8 +6532,9 @@ temporary testlist aliases.
 |`all` |Smoke, Basic JTAG, JTAG2AXI single-op, and debug TDR tests |Aggregate public DTP regression
 |`jtag2axi` |All JTAG2AXI write/read/error/robustness scenarios |AXI/AXI-Lite bridge coverage
 |`scan` |STAP, 3DCR, and iJTAG scenarios |IEEE 1838 and IEEE 1687 coverage
+|`dbg_disable` |The two debug-disable matrix tests plus every resource-specific directed gating test |Per-field `dbg_disable_t` closure (22-cell coverage contract)
 |`xtrig` |XTRIG, CTP, and CTM scenarios |Cross-trigger and CSR coverage
-|`nightly` |All 147 scenario-expanded tests |Full OCAH DTP regression
+|`nightly` |All 149 scenario-expanded tests |Full OCAH DTP regression
 |===
 
 === Known Limitations
@@ -6484,18 +6544,6 @@ temporary testlist aliases.
 |Limitation |Impact |Resolution Path
 |CTP/CTM generated CSR blocks are stubbed for Verilator |XTRIG CSR scenarios require non-stub CSR behavior |Replace stubs with Verilator-compatible CSR RTL or run these tests on a commercial simulator
 |iJTAG and OCH cross-trigger protocols do not have established public cocotb VIP |No public protocol VIP identified |Implement OCAH-local DTP BFMs in `env/`
-|Lifecycle is commonly held in all-one/full-debug mode for base bring-up |Security-gating scenarios require explicit lifecycle stimulus |Add directed lifecycle scenarios for security-gating coverage
+|The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus |The `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
 |SV covergroups are not supported by Verilator |Functional coverage must be Python-side or commercial-sim |See `DTP_FCOV.adoc`
-|===
-
-=== Revision History
-
-[cols=",,,",options="header",]
-|===
-|Version |Date |Author |Description
-|0.0 |2026-06-09 |DV Team |Initial pre-release open-source DTP VPLAN derived from the full reference plan, including public VIP strategy and scenario-expanded test inventory
-|0.1 |2026-06-14 |DV Team |Add verification strategy and scenario inventory reconciliation
-|0.2 |2026-06-15 |DV Team |Sync with verified closed-source DTP VPLAN: keep 72 logical reference tests, expand OSS scenario inventory from 142 to 147, and add POR independence, write-data read-back, and no-AXI-activity security scenarios
-|0.3 |2026-06-15 |DV Team |Add Smoke and Basic JTAG procedures with generic IR/DR scan helpers, DTP-local scan model, and `basic_jtag` regression group
-|0.4 |2026-06-22 |DV Team |Add debug TDR procedures for TMP_STATUS, IC_RESET, DEBUG_CONTROL, CAPS quality scenarios, and `debug_tdr`/`all` regression groups
 |===

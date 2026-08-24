@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test."""
 
 from __future__ import annotations

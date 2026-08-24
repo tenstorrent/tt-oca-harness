@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP real-entropy bring-up (ESRC -> DRBG -> CSRNG -> EDN) firmware driver.
 // Header-only. Programs the OpenTitan-style entropy stack over the EL2 LSU bus so
 // the Key Manager (and crypto engines) receive real EDN genbits -- the
-// firmware-replicable equivalent of the OCAH UVM bring-up
+// firmware-replicable equivalent of the reference UVM bring-up
 // (sep_drbg_uvm_base_test_seq.sv configure_drbg_chain_from_cfg / enable_edn_mode),
-// NOT a force. Order matters (mirrors the OCAH guard "configure EDN commands
+// NOT a force. Order matters (mirrors the reference suite guard "configure EDN commands
 // ONLY, do NOT enable EDN yet"):
 //   1. sep_entropy_configure()       -- PHASE-A: mux, ESRC config (gens OFF),
 //                                        CSRNG enable, stage EDN commands.

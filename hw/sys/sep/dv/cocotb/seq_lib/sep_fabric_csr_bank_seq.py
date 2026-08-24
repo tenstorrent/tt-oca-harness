@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric remap + filter CSR-bank driver.
 
 Combined-per-group CSR R/W sweep over the SEP "System block" fabric banks, driven
@@ -6,14 +7,12 @@ over the CPU-LSU AXI master (no_cpu). Proves field R/W + 64-bit upper-word acces
 the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_width
 field. RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
 NOT write-once-set -- only the filter locked bit is woset. CSR layer only --
-functional remap translation and outbound-filter enforcement are infra-gated
-(ledger GAP-deferred), not claimed here.
+live remap translation and outbound-filter drop are not claimed here.
 
 All banks need the fabric clocks ungated first (CLOCK_GATE_CTRL); the existing
 sep_address_map_seq already does this with the same value.
 
-Bank map (hw/sys/sep/regs/gen/svh/sep_reg.svh; dv/sep .../sep_fabric_64bit_
-regwidth_sequence.sv + sep_outbound_filter_cfg_sequence.sv):
+Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
   Local-master alias-remap : base 0x10A1_0000, stride 0x20, 16 regions
       REGION_START +0x00 (64b), REGION_END +0x08 (64b, 4KB-aligned),
       REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[62], valid[63]=R/W)
@@ -31,6 +30,7 @@ bit [63] is bit 31 of the hi word).
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from sep_reg_meta import SEP_CPU_CTRL, sym
@@ -38,9 +38,8 @@ from sep_reg_meta import SEP_CPU_CTRL, sym
 # --- fabric clock ungate ------------------------------------------------------
 # Derived from the generated SystemRDL export, never hardcoded.
 # sep_cpu_ctrl.rdl declares CLOCK_GATE_CTRL as a placeholder with ONE implemented
-# bit (pka_cg_enable[0:0], reset 0); the per-block gates an earlier revision
-# assumed (dma[1], mailbox[2], alias_remap[7], entropy_fifo[10]) do not exist, so
-# every bank below is unconditionally clocked and there is nothing to ungate.
+# bit (pka_cg_enable[0:0], reset 0). There are no per-block gates, so every bank
+# below is unconditionally clocked and there is nothing to ungate.
 # Writing the full implemented mask keeps this step's CSR write-path coverage.
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
@@ -111,9 +110,8 @@ class SepFabricCsrCfg:
     """
 
     def __init__(self, seed: int) -> None:
-        import random
         self.seed = seed
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         self.alias_rw_region = rng.randrange(ALIAS_REGIONS)
         self.alias_valid_region = rng.choice(
             [i for i in range(ALIAS_REGIONS) if i != self.alias_rw_region])
@@ -138,7 +136,7 @@ class SepFabricCsrCfg:
         # Random legal FILTER_CONFIG RW fields (never the RO data_bus_width [14:12]).
         p = 0
         for b in (F_READ_ALLOWED, F_WRITE_ALLOWED, F_ENTRY_ENABLED, F_ALLOW_NS, F_ALLOW_BURST):
-            if rng.random() < 0.5:
+            if rng.getrandbits(1):
                 p |= b
         p |= (rng.randrange(16) << F_SRC_ID_LSB) | (rng.randrange(16) << F_GROUP_ID_LSB)
         self.filter_pattern = p & FILTER_RW_MASK

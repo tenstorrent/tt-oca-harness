@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """TOML config loading and validation for the native DV runner."""
 
 from __future__ import annotations
@@ -39,6 +42,12 @@ PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 IMPLEMENTED_STAGE_KINDS = {
     "noop",
     "clean",
+    # Generic kinds dispatched per (tool, framework) at run time: `filelist` resolves to the
+    # Bender filelist generator, `hdl_compile` to the framework's build adapter (cocotb model
+    # build, or the folded VCS analyze+elaborate for SV-UVM), `sim` to the framework's launcher.
+    "filelist",
+    "hdl_compile",
+    "sim",
     "bender_filelist",
     "verilator_filelist",
     "verilator_compile",
@@ -62,8 +71,9 @@ IMPLEMENTED_STAGE_KINDS = {
 }
 
 STAGE_KIND_COMPATIBILITY = {
-    "flist": {"bender_filelist", "verilator_filelist", "vcs_filelist", "xrun_filelist", "noop"},
+    "flist": {"filelist", "bender_filelist", "verilator_filelist", "vcs_filelist", "xrun_filelist", "noop"},
     "hdl_compile": {
+        "hdl_compile",
         "cocotb_build",
         "verilator_compile",
         "vcs_analyze",
@@ -74,8 +84,8 @@ STAGE_KIND_COMPATIBILITY = {
     },
     "c_compile": {"c_compile", "noop"},
     "elaborate": {"vcs_elaborate", "xrun_elaborate", "cocotb_build", "noop"},
-    "sim": {"cocotb_sim", "cocotb_verilator", "vcs_sim", "xrun_sim", "noop"},
-    "regress": {"cocotb_sim", "cocotb_verilator", "vcs_sim", "xrun_sim", "noop"},
+    "sim": {"sim", "cocotb_sim", "cocotb_verilator", "vcs_sim", "xrun_sim", "noop"},
+    "regress": {"sim", "cocotb_sim", "cocotb_verilator", "vcs_sim", "xrun_sim", "noop"},
     "cov_merge": {"coverage_merge", "noop"},
     "cov_report": {"coverage_report", "noop"},
     "formal": {"formal_run", "noop"},
@@ -179,6 +189,36 @@ COCOTB_KEYS = {
     "cocotb_log",
 }
 
+FRAMEWORK_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+# Keys a `[frameworks.<fw>]` section may overlay onto the merged config when that framework is
+# selected. Any other key in the section is the framework's own runtime config (e.g. the cocotb
+# path keys), projected into the merged config under the framework's name.
+FRAMEWORK_OVERLAY_KEYS = {
+    "description",
+    "default_tool",
+    "tools",
+    "visibility",
+    "runnability",
+    "license",
+    "defaults",
+    "target_defaults",
+    "native",
+    "testlist",
+    "build",
+    "c_build",
+    "run_modes",
+    "targets",
+    "coverage",
+    "pass_fail",
+    "sim",
+    "formal",
+    "scheduler",
+}
+
+# Per-framework runtime keys allowed directly in that framework's section.
+FRAMEWORK_RUNTIME_KEYS: dict[str, set[str]] = {"cocotb": COCOTB_KEYS}
+
 TARGET_KEYS = {
     "description",
     "build_dir",
@@ -208,7 +248,11 @@ TEST_KEYS = {
     "run_modes",
     "firmware",
     "args",
+    "overrides",
 }
+
+# Runtime knobs a `[tests.overrides.<fw>]` subtable may set for one framework.
+TEST_OVERRIDE_KEYS = {"seed", "timeout_sec", "args"}
 GROUP_KEYS = {"name", "tests"}
 
 COVERAGE_TOOL_KEYS = {
@@ -665,6 +709,152 @@ def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     return merged
 
 
+def framework_sections(data: dict[str, Any], where: str) -> dict[str, dict[str, Any]]:
+    """The validated ``[frameworks.<name>]`` sections of a profile or DUT sim config.
+
+    A profile supports the frameworks it declares this way; a DUT implements exactly the
+    frameworks it declares this way. Section content splits into overlay tables
+    (:data:`FRAMEWORK_OVERLAY_KEYS`) and the framework's own runtime keys
+    (:data:`FRAMEWORK_RUNTIME_KEYS`).
+    """
+    sections = data.get("frameworks")
+    if sections in (None, {}):
+        return {}
+    if not isinstance(sections, dict):
+        raise ConfigError(f"{where}: [frameworks] must hold [frameworks.<name>] tables")
+    out: dict[str, dict[str, Any]] = {}
+    for fw, section in sections.items():
+        if not isinstance(fw, str) or not FRAMEWORK_NAME_RE.match(fw):
+            raise ConfigError(f"{where}: invalid framework name `{fw}`")
+        if not isinstance(section, dict):
+            raise ConfigError(f"{where}: [frameworks.{fw}] must be a table")
+        runtime_allowed = FRAMEWORK_RUNTIME_KEYS.get(fw, set())
+        unknown = sorted(set(section) - FRAMEWORK_OVERLAY_KEYS - runtime_allowed)
+        if unknown:
+            raise ConfigError(f"{where}: [frameworks.{fw}] unsupported key(s): {', '.join(unknown)}")
+        out[fw] = section
+    return out
+
+
+def _framework_split(section: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Split one ``[frameworks.<fw>]`` section into (overlay tables, runtime keys)."""
+    overlay = {key: value for key, value in section.items() if key in FRAMEWORK_OVERLAY_KEYS}
+    runtime = {key: value for key, value in section.items() if key not in FRAMEWORK_OVERLAY_KEYS}
+    return overlay, runtime
+
+
+def _merge_framework_config(
+    profile_cfg: dict[str, Any],
+    data: dict[str, Any],
+    path: Path,
+    profile_name: str,
+    requested: str | None = None,
+) -> tuple[dict[str, Any], str, list[str], str]:
+    """Merge a frameworks-aware profile with a DUT sim config for the selected framework.
+
+    ``requested`` is the CLI ``--framework`` value; selection order is CLI request >
+    DUT ``default_framework`` > profile ``default_framework`` (when implemented) > the single
+    implemented framework. Validation order: the profile supports the framework -> the DUT
+    implements it (tool capability and bindings are checked later, downstream).
+
+    Merge order (later wins): profile shared keys -> profile ``[frameworks.<selected>]`` ->
+    DUT shared keys -> DUT ``[frameworks.<selected>]``. ``[sim].args`` append across all four
+    layers. The selected section's runtime keys (e.g. the cocotb paths) are projected to the
+    merged ``[<framework>]`` table, and the selection is recorded under ``framework``.
+
+    Returns ``(merged, selected framework, implemented frameworks, default framework)``.
+    """
+    profile_where = f"profile `{profile_name}`"
+    profile_sections = framework_sections(profile_cfg, profile_where)
+    dut_sections = framework_sections(data, str(path))
+
+    supported = list(profile_sections)
+    implemented = list(dut_sections)
+    unsupported = sorted(set(implemented) - set(supported))
+    if unsupported:
+        raise ConfigError(
+            f"{path}: framework(s) not supported by profile `{profile_name}`: "
+            f"{', '.join(unsupported)} (profile supports: {', '.join(supported)})"
+        )
+    if not implemented:
+        raise ConfigError(
+            f"{path}: a DUT implements a framework by declaring a [frameworks.<name>] table; "
+            f"declare at least one (profile `{profile_name}` supports: {', '.join(supported)})"
+        )
+    for key, hint in (
+        ("framework", "top-level `framework` is derived from the selected [frameworks.<fw>] section"),
+        ("cocotb", "[cocotb] moved to [frameworks.cocotb]"),
+    ):
+        if key in data:
+            raise ConfigError(f"{path}: {hint}")
+
+    dut_default = data.get("default_framework")
+    profile_default = profile_cfg.get("default_framework")
+    for value, where in ((dut_default, str(path)), (profile_default, profile_where)):
+        if value is not None and (not isinstance(value, str) or not value):
+            raise ConfigError(f"{where}: `default_framework` must be a non-empty string")
+
+    dut_name = str(data.get("name", path.stem))
+    if dut_default and dut_default not in implemented:
+        raise ConfigError(
+            f"{path}: dut `{dut_name}` does not implement its `default_framework` "
+            f"`{dut_default}` (implemented: {', '.join(implemented)})"
+        )
+    if dut_default:
+        default_fw = str(dut_default)
+    elif profile_default and profile_default in implemented:
+        default_fw = str(profile_default)
+    elif len(implemented) == 1:
+        default_fw = implemented[0]
+    else:
+        default_fw = ""
+
+    if requested:
+        if requested not in supported:
+            raise ConfigError(
+                f"profile `{profile_name}` does not support framework `{requested}` "
+                f"(supported: {', '.join(supported)})"
+            )
+        if requested not in implemented:
+            raise ConfigError(
+                f"dut `{dut_name}` does not implement framework `{requested}`\n"
+                f"  implemented frameworks: {', '.join(implemented)}\n"
+                "  (a DUT implements a framework by declaring a [frameworks.<name>] table "
+                "in its sim config)"
+            )
+        selected = requested
+    elif default_fw:
+        selected = default_fw
+    else:
+        raise ConfigError(
+            f"{path}: cannot determine the framework (implemented: {', '.join(implemented)}); "
+            "set `default_framework` or pass --framework"
+        )
+
+    profile_overlay, profile_runtime = _framework_split(profile_sections.get(selected, {}))
+    dut_overlay, dut_runtime = _framework_split(dut_sections.get(selected, {}))
+    resolution_keys = {"frameworks", "default_framework"}
+    profile_base = {key: value for key, value in profile_cfg.items() if key not in resolution_keys}
+    dut_base = {key: value for key, value in data.items() if key not in resolution_keys}
+
+    layers = [profile_base, profile_overlay, dut_base, dut_overlay]
+    # `[sim].args` appends across every layer (all other inherited arrays replace).
+    sim_args: list[str] = []
+    for layer in layers:
+        sim_args.extend(as_str_list(config_section(layer, "sim").get("args"), "sim.args"))
+    merged: dict[str, Any] = {}
+    for layer in layers:
+        merged = deep_merge(merged, layer)
+    if sim_args:
+        merged["sim"] = {**config_section(merged, "sim"), "args": sim_args}
+
+    runtime = deep_merge(profile_runtime, dut_runtime)
+    if runtime:
+        merged[selected] = runtime
+    merged["framework"] = selected
+    return merged, selected, implemented, default_fw
+
+
 def merge_simulator_defaults(
     sim_cfg: dict[str, Any],
     simulators: dict[str, Any],
@@ -724,7 +914,7 @@ def load_profile(cfg_dir: Path, profile: str, flow_path: Path) -> dict[str, Any]
     return data
 
 
-def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str) -> Dut:
+def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str, framework: str | None = None) -> Dut:
     """Load a merged per-DUT ``<dut>_sim_cfg.toml`` (selected by the duts resolver).
 
     The file carries the DUT's own keys (``name``/``kind``/``description``/``[testlist]``/stage
@@ -734,19 +924,36 @@ def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str) -> Dut:
     """
     data = load_toml(path)
 
+    implemented_frameworks: list[str] = []
+    default_framework = ""
+    frameworks_aware = False
     profile = data.get("profile")
     if profile is not None:
         if not isinstance(profile, str) or not profile:
             raise ConfigError(f"{path}: `profile` must be a non-empty string")
         profile_cfg = load_profile(cfg_dir, profile, path)
-        # `[sim].args` appends across profile->DUT inheritance (every other inherited array
-        # replaces). Capture both lists before deep_merge clobbers the DUT's, then re-join.
-        dut_sim_args = as_str_list(config_section(data, "sim").get("args"), "sim.args")
-        profile_sim_args = as_str_list(config_section(profile_cfg, "sim").get("args"), "sim.args")
-        data = deep_merge(profile_cfg, data)
-        combined_sim_args = profile_sim_args + dut_sim_args
-        if combined_sim_args:
-            data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
+        if framework_sections(profile_cfg, f"profile `{profile}`"):
+            # Frameworks-aware profile: the DUT declares what it implements as
+            # `[frameworks.<fw>]` tables and the loader merges the selected framework's layers.
+            frameworks_aware = True
+            data, _selected, implemented_frameworks, default_framework = _merge_framework_config(
+                profile_cfg, data, path, profile, requested=framework
+            )
+        else:
+            if "frameworks" in data or "default_framework" in data:
+                raise ConfigError(
+                    f"{path}: profile `{profile}` declares no [frameworks.<name>] sections, so "
+                    "this DUT cannot declare frameworks"
+                )
+            # Legacy single-framework profile: `[sim].args` appends across profile->DUT
+            # inheritance (every other inherited array replaces). Capture both lists before
+            # deep_merge clobbers the DUT's, then re-join.
+            dut_sim_args = as_str_list(config_section(data, "sim").get("args"), "sim.args")
+            profile_sim_args = as_str_list(config_section(profile_cfg, "sim").get("args"), "sim.args")
+            data = deep_merge(profile_cfg, data)
+            combined_sim_args = profile_sim_args + dut_sim_args
+            if combined_sim_args:
+                data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
 
     file_name = data.get("name")
     kind = data.get("kind")
@@ -765,11 +972,17 @@ def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str) -> Dut:
     if default_tool and default_tool not in tools:
         raise ConfigError(f"{path}: `default_tool` must be listed in `tools`")
 
+    selected_framework = str(data.get("framework", ""))
+    if framework and not frameworks_aware:
+        raise ConfigError(
+            f"dut `{name}` does not support framework selection "
+            "(its profile declares no [frameworks.<name>] sections)"
+        )
     return Dut(
         name=name,
         kind=str(kind),
         description=str(data.get("description", "")),
-        framework=str(data.get("framework", "")),
+        framework=selected_framework,
         visibility=str(data.get("visibility", "public")),
         runnability=str(data.get("runnability", "contributor")),
         license=str(data.get("license", "none")),
@@ -778,6 +991,8 @@ def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str) -> Dut:
         tools=tools,
         path=path,
         raw=data,
+        frameworks=implemented_frameworks or ([selected_framework] if selected_framework else []),
+        default_framework=default_framework or selected_framework,
     )
 
 
@@ -790,6 +1005,11 @@ def load_simulators(root: Path) -> dict[str, Any]:
     for tool, table in simulators.items():
         if not isinstance(table, dict):
             raise ConfigError(f"{path}: [{tool}] must be a table")
+        frameworks = as_str_list(table.get("frameworks"), f"{path} [{tool}].frameworks")
+        if not frameworks:
+            raise ConfigError(
+                f"{path}: [{tool}] must declare `frameworks` (the frameworks this tool can run)"
+            )
         coverage_defaults = table.get("coverage_defaults")
         if coverage_defaults is None:
             continue
@@ -1072,9 +1292,48 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
     if target is not None and (not isinstance(target, str) or not target):
         where = f"{source}: " if source else ""
         raise ConfigError(f"{where}{name}.target must be a non-empty string")
+    where = f"{source}: " if source else ""
+
+    # `module` is either a bare string (bound to the DUT's default framework) or a per-framework
+    # binding map `{ cocotb = "...", uvm = "..." }`. Resolution against the selected framework
+    # happens at catalog load, where the flow is known.
+    raw_module = entry.get("module", name)
+    bindings: dict[str, str] = {}
+    if isinstance(raw_module, dict):
+        for fw, value in raw_module.items():
+            if not isinstance(fw, str) or not FRAMEWORK_NAME_RE.match(fw):
+                raise ConfigError(f"{where}{name}.module has an invalid framework key `{fw}`")
+            if not isinstance(value, str) or not value:
+                raise ConfigError(f"{where}{name}.module.{fw} must be a non-empty string")
+            bindings[fw] = value
+        if not bindings:
+            raise ConfigError(f"{where}{name}.module must declare at least one framework binding")
+        module = ""
+    elif isinstance(raw_module, str) and raw_module:
+        module = raw_module
+    else:
+        raise ConfigError(f"{where}{name}.module must be a non-empty string or a binding table")
+
+    overrides_raw = entry.get("overrides", {})
+    overrides: dict[str, dict[str, Any]] = {}
+    if not isinstance(overrides_raw, dict):
+        raise ConfigError(f"{where}{name}.overrides must be a table of [tests.overrides.<framework>]")
+    for fw, table in overrides_raw.items():
+        if not isinstance(fw, str) or not FRAMEWORK_NAME_RE.match(fw):
+            raise ConfigError(f"{where}{name}.overrides has an invalid framework key `{fw}`")
+        if not isinstance(table, dict):
+            raise ConfigError(f"{where}{name}.overrides.{fw} must be a table")
+        validate_allowed_keys(table, TEST_OVERRIDE_KEYS, f"{where}{name}.overrides.{fw}")
+        as_int(table.get("seed"), f"{name}.overrides.{fw}.seed")
+        as_int(table.get("timeout_sec"), f"{name}.overrides.{fw}.timeout_sec")
+        as_str_list(table.get("args"), f"{name}.overrides.{fw}.args")
+        overrides[fw] = table
+
     return TestEntry(
         name=name,
-        module=str(entry.get("module", name)),
+        module=module,
+        bindings=bindings,
+        overrides=overrides,
         target=target,
         seed=as_int(entry.get("seed"), f"{name}.seed"),
         reseed=as_int(entry.get("reseed"), f"{name}.reseed"),
@@ -1084,6 +1343,49 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
     )
+
+
+def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source: Path) -> None:
+    """Resolve each scenario's `module` binding and apply per-framework overrides.
+
+    A bare-string `module` is normalized to a binding for the DUT's default framework; a binding
+    map is looked up by the selected framework. A scenario with no binding for the selected
+    framework keeps `module = ""` — the catalog legitimately holds it, and selection fails
+    loudly (or skips under --skip-unimplemented) before it can run.
+    """
+    if not flow.framework:
+        for test in tests.values():
+            if test.bindings:
+                raise ConfigError(
+                    f"{source}: test `{test.name}` uses a per-framework module binding map, "
+                    "but this DUT has no framework"
+                )
+        return
+    implemented = set(flow.frameworks)
+    for test in tests.values():
+        for label, keys in (("module binding(s)", test.bindings), ("override(s)", test.overrides)):
+            unknown = sorted(set(keys) - implemented)
+            if unknown:
+                raise ConfigError(
+                    f"{source}: test `{test.name}` declares {label} for framework(s) this DUT "
+                    f"does not implement: {', '.join(unknown)} "
+                    f"(implemented: {', '.join(flow.frameworks)})"
+                )
+        if test.bindings:
+            test.module = test.bindings.get(flow.framework, "")
+        else:
+            default = flow.default_framework or flow.framework
+            test.bindings = {default: test.module}
+            if flow.framework != default:
+                test.module = ""
+        override = test.overrides.get(flow.framework, {})
+        if "seed" in override:
+            test.seed = as_int(override.get("seed"), f"{test.name}.overrides.seed")
+        if "timeout_sec" in override:
+            test.timeout_sec = as_int(override.get("timeout_sec"), f"{test.name}.overrides.timeout_sec")
+        if "args" in override:
+            # Override args append after the scenario's own args (run-stage layering).
+            test.args = [*(test.args or []), *as_str_list(override.get("args"), f"{test.name}.overrides.args")]
 
 
 def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
@@ -1096,6 +1398,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
             # repo-relative paths, so accept both while preferring the existing repo-relative form.
             path = flow.path.parent / raw_path
         tests, groups = _merge_testlist_data(load_toml(path), path, path.parent, root, [path])
+        _resolve_catalog_frameworks(flow, tests, path)
         return TestCatalog(path=path, tests=tests, groups=groups)
     # No separate testlist file: read inline [[tests]]/[[groups]] from the flow TOML.
     tests, groups = _merge_testlist_data(
@@ -1106,6 +1409,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
         [flow.path],
         validate_testlist_keys=False,
     )
+    _resolve_catalog_frameworks(flow, tests, flow.path)
     return TestCatalog(path=None, tests=tests, groups=groups)
 
 

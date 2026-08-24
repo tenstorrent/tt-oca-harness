@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * sep_smu_modules - SMU-level SEP module matrix smoke test.
  *
@@ -6,7 +9,7 @@
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
- *   - spi(cadence + ot path) and spi-phy gpio registers
+ *   - OpenTitan SPI host. The open DUT has no pad mux.
  *
  * Completion is signaled by pass/fail loops for cocotb PC classification.
  */
@@ -313,50 +316,6 @@ static int stage_efuse(void) {
     return 0;
 }
 
-#define SPI_MUX_CTRL_ADDR OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_SPI_MUX_CTRL_SPI_MUX_CTRL_BASE_ADDR
-#define SPI_CTRL_ADDR OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_CDNS_SPI_CTRL_SPI_CTRL_BASE_ADDR
-#define SPI_CLK_DIV_CTRL_ADDR \
-    OCH_SEP_TOP_SEP_EXTERNAL_OCH_SEP_CDNS_SPI_CTRL_SPI_CLK_DIV_CTRL_BASE_ADDR
-/*
- * SPI_PROBE_MODE:
- *   0: write-only (regression-safe, avoids known readback side effects)
- *   1: check CLK_DIV readback only
- *   2: check MUX readback only
- *   3: check both MUX + CLK_DIV readback
- */
-#ifndef SPI_PROBE_MODE
-#define SPI_PROBE_MODE 0
-#endif
-
-static int stage_spi_regs(void) {
-    och_sep_spi_mux_ctrl__SPI_MUX_CTRL_t mux = {.w = OCH_SEP_SPI_MUX_CTRL__SPI_MUX_CTRL_reset};
-    och_sep_cdns_spi_ctrl__SPI_CLK_DIV_CTRL_t clkdiv = {
-        .w = OCH_SEP_CDNS_SPI_CTRL__SPI_CLK_DIV_CTRL_reset};
-
-    mux.f.spi_sel = 0;
-    mux.f.cs_force_high = 1;
-    WRITE_REG(SPI_MUX_CTRL_ADDR, mux.w);
-    g_sink ^= mux.w;
-
-    clkdiv.f.clock_divider_value = 32;
-    clkdiv.f.clock_div_set = 1;
-    clkdiv.f.clock_dutycycle = 128;
-    clkdiv.f.clock_div_enable = 1;
-    WRITE_REG(SPI_CLK_DIV_CTRL_ADDR, clkdiv.w);
-    g_sink ^= clkdiv.w;
-
-#if (SPI_PROBE_MODE == 1)
-    if (READ_REG(SPI_CLK_DIV_CTRL_ADDR) != clkdiv.w) return -1;
-#elif (SPI_PROBE_MODE == 2)
-    if (READ_REG(SPI_MUX_CTRL_ADDR) != mux.w) return -1;
-#elif (SPI_PROBE_MODE == 3)
-    if (READ_REG(SPI_MUX_CTRL_ADDR) != mux.w) return -1;
-    if (READ_REG(SPI_CLK_DIV_CTRL_ADDR) != clkdiv.w) return -1;
-#endif
-
-    return 0;
-}
-
 __attribute__((used, noinline, noreturn)) void smu_sep_modules_pass_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
@@ -414,8 +373,7 @@ __attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_spi_loop(voi
 int main(void) {
     const uint32_t stage_mask = (1u << 2) | /* AES  */
                                 (1u << 3) | /* HMAC */
-                                (1u << 4) | /* KMAC */
-                                (1u << 6);  /* SPI */
+                                (1u << 4);  /* KMAC */
 
     sep_outbound_filter_init();
 
@@ -425,7 +383,6 @@ int main(void) {
     if ((stage_mask & (1u << 3)) && stage_hmac() != 0) smu_sep_modules_fail_hmac_loop();
     if ((stage_mask & (1u << 4)) && stage_kmac() != 0) smu_sep_modules_fail_kmac_loop();
     if ((stage_mask & (1u << 5)) && stage_efuse() != 0) smu_sep_modules_fail_efuse_loop();
-    if ((stage_mask & (1u << 6)) && stage_spi_regs() != 0) smu_sep_modules_fail_spi_loop();
 
     smu_sep_modules_pass_loop();
     smu_sep_modules_fail_loop();

@@ -12,11 +12,14 @@
 //   NOT the AXI resp encoding), rdata at the DATA offset.
 // Wide (>64-bit) TDR scans use the ocah_jtag_item wbits/rbits extension.
 //
-// Error arming discipline: arm_target_error() drives the tb_if responder
-// error ports AND cfg.arm_expected_resp() in one place, so the injected
+// Error arming discipline: arm_target_error() programs the responder error
+// injection AND cfg.arm_expected_resp() in one place, so the injected
 // non-OKAY is EXPECTED for the shared AXI scoreboard; clear_target_error()
-// reverses both. Lifecycle enables must be raised before any JTAG2AXI op
-// (they reset to the gated-off tie-off value).
+// reverses both. The smc_otp responder is the shared ocah_axi_vip UVM slave
+// agent (one-shot injection via its ocah_axi_slave_sequence); the smc_axi
+// responder remains the plain-SV RAM module driven through tb_if error
+// ports. The lifecycle debug disables reset to the fail-closed '1 tie-off,
+// so the target's disable must be cleared before any JTAG2AXI op.
 
 class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
     `uvm_object_utils(dtp_jtag2axi_base_seq)
@@ -43,14 +46,20 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
         int unsigned size_bits;
         int unsigned wstrb_bits;
         int unsigned default_size;
+        // The one dbg_disable_t field that gates this bridge (one-hot mask).
+        sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_mask;
     } j2a_target_t;
 
     localparam int unsigned MaxStatusPolls = 16;
 
     // Plumbed by the test: the shared AXI VIP cfg for the target under test
     // (owns expected-response arming) and its scoreboard evidence recorder.
-    ocah_axi_cfg     axi_cfg;
+    ocah_axi_config     axi_cfg;
     ocah_axi_checker axi_evidence;
+
+    // Plumbed by the test for smc_otp targets: the slave agent's test-facing
+    // API (error injection / backdoor memory on the responder).
+    ocah_axi_slave_sequence otp_slave_seq;
 
     function new(string name = "dtp_jtag2axi_base_seq");
         super.new(name);
@@ -66,6 +75,8 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
         t.size_bits       = 2;
         t.wstrb_bits      = 4;
         t.default_size    = 2;
+        t.dbg_disable_mask = '0;
+        t.dbg_disable_mask.smc_otp_jtag2axi = 1'b1;
         return t;
     endfunction
 
@@ -78,6 +89,8 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
         t.size_bits       = 2;
         t.wstrb_bits      = 8;
         t.default_size    = 3;
+        t.dbg_disable_mask = '0;
+        t.dbg_disable_mask.smc_jtag2axi = 1'b1;
         return t;
     endfunction
 
@@ -159,10 +172,10 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
                 addr & ((t.addr_width >= 64) ? '1 : ((64'd1 << t.addr_width) - 1)),
                 data & ((t.data_width >= 64) ? '1 : ((64'd1 << t.data_width) - 1)),
                 wstrb);
-        // Gated ops never reach the bus: do not arm read intents while a
-        // required lifecycle enable is low (the no-activity evidence owns
-        // that case; a dangling intent would false-fail at check_phase).
-        if (op == J2A_OP_READ && axi_cfg != null && lifecycle_all_enabled())
+        // Gated ops never reach the bus: do not arm read intents while the
+        // target's disable is asserted (the no-activity evidence owns that
+        // case; a dangling intent would false-fail at check_phase).
+        if (op == J2A_OP_READ && axi_cfg != null && target_enabled(t))
             axi_cfg.arm_expected_read(
                 addr & ((t.addr_width >= 64) ? '1 : ((64'd1 << t.addr_width) - 1)));
         pack_single_op(t, op, addr, data, wstrb, eff_size, dr);
@@ -229,27 +242,27 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
                 UVM_MEDIUM)
     endfunction
 
-    // --- lifecycle enables (must precede any JTAG2AXI op) ------------------
-    task set_lifecycle(bit sip, bit soc, bit ap, bit sep, bit fuse);
-        tb_vif.feat_ctrl_sip_debug <= sip;
-        tb_vif.feat_ctrl_soc_debug <= soc;
-        tb_vif.feat_ctrl_ap_debug  <= ap;
-        tb_vif.feat_ctrl_sep_debug <= sep;
-        tb_vif.feat_ctrl_fuse_test <= fuse;
-        #100ns;  // settle in the system-clock domain (10ns period)
-        `uvm_info(get_type_name(), $sformatf(
-            "lifecycle sip=%0d soc=%0d ap=%0d sep=%0d fuse=%0d",
-            sip, soc, ap, sep, fuse), UVM_MEDIUM)
+    // --- lifecycle debug disables (must be cleared before JTAG2AXI ops) ----
+    task set_dbg_disable(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+        tb_vif.dbg_disable <= d;
+        // The DUT synchronizes dbg_disable through 2-stage TCK-domain flops;
+        // four toggling idle TCK cycles are the TB settle margin.
+        for (int unsigned i = 0; i < 4; i++)
+            step(1'b0);
+        `uvm_info(get_type_name(), $sformatf("dbg_disable=0x%03h", d), UVM_MEDIUM)
     endtask
 
-    task enable_all_lifecycle();
-        set_lifecycle(1'b1, 1'b1, 1'b1, 1'b1, 1'b1);
+    task enable_all_debug();
+        set_dbg_disable('0);
     endtask
 
-    function bit lifecycle_all_enabled();
-        return tb_vif.feat_ctrl_sip_debug && tb_vif.feat_ctrl_soc_debug
-            && tb_vif.feat_ctrl_ap_debug && tb_vif.feat_ctrl_sep_debug
-            && tb_vif.feat_ctrl_fuse_test;
+    // Assert exactly the disable that gates this target (all others clear).
+    task gate_target(j2a_target_t t);
+        set_dbg_disable(t.dbg_disable_mask);
+    endtask
+
+    function bit target_enabled(j2a_target_t t);
+        return (tb_vif.dbg_disable & t.dbg_disable_mask) == '0;
     endfunction
 
     // --- error arming (responder ports + shared checker, one place) --------
@@ -261,11 +274,10 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
         bit             for_write
     );
         if (t.name == "smc_otp") begin
-            tb_vif.smc_otp_err_addr     <= addr[31:0];
-            tb_vif.smc_otp_err_resp     <= resp[1:0];
-            tb_vif.smc_otp_err_on_read  <= for_read;
-            tb_vif.smc_otp_err_on_write <= for_write;
-            tb_vif.smc_otp_err_arm      <= 1'b1;
+            if (otp_slave_seq == null)
+                `uvm_fatal(get_type_name(),
+                    "smc_otp error arming needs otp_slave_seq (slave agent API) plumbed")
+            otp_slave_seq.inject_error(addr, resp, for_read, for_write);
         end else begin
             tb_vif.smc_axi_err_addr     <= addr[55:0];
             tb_vif.smc_axi_err_resp     <= resp[1:0];
@@ -282,10 +294,12 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
     endtask
 
     task clear_target_error(j2a_target_t t);
-        if (t.name == "smc_otp")
-            tb_vif.smc_otp_err_arm <= 1'b0;
-        else
+        if (t.name == "smc_otp") begin
+            if (otp_slave_seq != null)
+                otp_slave_seq.clear_errors();
+        end else begin
             tb_vif.smc_axi_err_arm <= 1'b0;
+        end
         #20ns;
     endtask
 

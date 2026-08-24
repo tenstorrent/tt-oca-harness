@@ -5,10 +5,7 @@
 
 module smu #(
   parameter int unsigned MAX_TRANS = 2,
-    // Vendor eFuse shim CSR blocks carved off the base of each external window.
-    // Both are literals here: the register headers carrying the real sizes are
-    // nonfree, so the nonfree smu_wrapper overrides these from the *_top_reg_pkg
-    // packages (0x44 each with the Samsung shims overlaid).
+    // Vendor eFuse shim address sizes
     parameter int unsigned SEP_EFUSE_SHIM_SIZE = 'h4,
     parameter int unsigned SMC_EFUSE_SHIM_SIZE = 'h44,
     parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,
@@ -324,9 +321,6 @@ module smu #(
     // Ring-oscillator sample clock for SEP entropy_source (async to clk_i)
     input  logic                               entropy_rosc_sample_clk_i,
 
-    // JTAG-generated SEP reset/override control
-    output sep_pkg::jtag_sep_reset_ctrl_t      jtag_sep_reset_ctrl_o,
-
     // SEP OpenTitan SPI request
     output sep_io_pkg::sep_io_spi_req_t        sep_io_spi_req_o,
 
@@ -335,17 +329,11 @@ module smu #(
     output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,
     input  km_intf_pkg::km_sram_mem_rsp_t  sep_km_sram_mem_rsp_i,
 
-    // SPI IRQ output from OT SPI to be muxed together with external SPI controller
-    output logic                        ot_spi_irq_o,
-
-    // Muxed SPI IRQ from sep_ip_integration (Cadence or OT)
+    // External SPI interrupt
     input  logic                        spi_irq_i,
 
     output sep_pkg::sep_32_64_6_12_axi_req_t   sep_external_req_o,
     input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_external_resp_i,
-
-    output logic  sep_reset_n_o,      // plain SEP reset -> Cadence xSPI wrap in sep_ip_integration
-    output logic  sep_cpu_reset_n_o,  // sep_reset_n & WDT reset -> sep_ip_integration memories
 
     output sep_pkg::sep_cpu_trace_t  sep_cpu_trace_o,
 
@@ -441,9 +429,8 @@ module smu #(
     logic  dtp_sep_stap_tdo_oen;
     logic  sep_stap_tdo_to_dtp;
 
-    // JTAG SEP Reset Control Overrides (driven by DTP's SEP slice of the IC_RESET TDR)
+    // JTAG SEP Reset Control Overrides (driven by DTP's SEP slice of the IC_RESET TDR).
     sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl;
-    assign jtag_sep_reset_ctrl_o = jtag_sep_reset_ctrl;
 
     // CLA custom actions map to SEP CPU debug controls
     // cla_ext_action_custom[0] - mpc_debug_halt_req
@@ -455,7 +442,7 @@ module smu #(
 
     // SEP lifecycle and mailbox signals
     logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  sep_lc_state;
-    sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t sep_feat_ctrl;
+    sep_lifecycle_ctrl_pkg::dbg_disable_t  sep_dbg_disable;
     logic  sep_lc_sigint_err;
     logic [sep_pkg::NUM_MAILBOXES-1:0]  sep_mailbox_interrupts;
 
@@ -587,7 +574,7 @@ module smu #(
         .clk_i                           (clk_smu_i),
         .rst_n_i                         (rst_primary_smc_clk_no),
         .pwr_on_rst_ni                   (powergood_stable),
-        .feat_ctrl_i                     (sep_feat_ctrl),
+        .dbg_disable_i                   (sep_dbg_disable),
         .jtag_ptap_client_tap_ctrl_i     (jtag_ptap_client_tap_ctrl_i),
         .jtag_ptap_client_tdi_i          (jtag_ptap_client_tdi_i),
         .jtag_ptap_client_tdo_o          (jtag_ptap_client_tdo_o),
@@ -866,8 +853,6 @@ module smu #(
             .dbg_rstb_i                    (powergood_stable),
             .wdt_rst_ni                    (rst_wdt_n),
 
-            .sep_reset_n_o                 (sep_reset_n_o),
-            .sep_cpu_reset_n_o             (sep_cpu_reset_n_o),
             .wdt_timer_rst_req_o           (sep_wdt_timer_rst_req),
 
             .jtag_tck                      (dtp_sep_stap_tap_ctrl.tck),
@@ -968,7 +953,7 @@ module smu #(
             .spi_irq_i                     (spi_irq_i),
 
             .lc_state_o                    (sep_lc_state),
-            .feat_ctrl_o                   (sep_feat_ctrl),
+            .dbg_disable_o                 (sep_dbg_disable),
             .lc_sigint_err_o               (sep_lc_sigint_err),
             .security_disable_o            (sep_security_disable),
             .secure_tm_o                   (secure_tm_o),
@@ -1112,11 +1097,6 @@ module smu #(
         assign lc_state_o      = sep_lc_state;
         assign lc_sigint_err_o = sep_lc_sigint_err;
 
-        // ==================================================================
-        // SPI IRQ output assignment
-        // ==================================================================
-        assign ot_spi_irq_o = sep_io_spi_req.irq;
-
         // Export the OT SPI request to the wrapper-level SPI mux (u_sep_ip_integration).
         assign sep_io_spi_req_o = sep_io_spi_req;
 
@@ -1178,7 +1158,7 @@ module smu #(
         // Lifecycle state -- original standalone behavior
         // ==================================================================
         assign sep_lc_state      = 8'hf0;
-        assign sep_feat_ctrl     = '1;
+        assign sep_dbg_disable   = '0;
         assign sep_lc_sigint_err = 1'b0;
         assign lc_state_o        = sep_lc_state;
         assign lc_sigint_err_o   = efuse_lc_sigint_err;
@@ -1272,15 +1252,12 @@ module smu #(
         assign sep_km_sram_mem_req_o            = '0;
         assign sep_io_spi_req                   = '0;
         assign sep_external_req_o          = '0;
-        assign sep_reset_n_o                    = 1'b1;
-        assign sep_cpu_reset_n_o                = 1'b1;
         assign sep_cpu_trace_o                  = '0;
         assign lcc_demote_state_1_o             = '0;
         assign lcc_demote_state_2_o             = '0;
         assign sep_fuse_sense_done_o            = 1'b0;
 
         // SEP SPI intermediate signal tie-offs (no SEP to drive them)
-        assign ot_spi_irq_o         = 1'b0;
         assign sep_spi_enable       = 1'b0;
         assign sep_spi_clk          = 1'b0;
         assign sep_spi_txd          = 8'b0;

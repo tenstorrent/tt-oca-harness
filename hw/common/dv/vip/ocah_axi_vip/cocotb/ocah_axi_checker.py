@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Protocol sanity checker for OCAH AXI transaction items.
 
 Item-level protocol legality rules are retained in ``errors``; named exact-value
@@ -22,7 +22,7 @@ from typing import Any
 from ocah_checker import OcahChecker
 
 from .ocah_axi_item import OcahAxiItem
-from .results import RESP_DECERR, RESP_EXOKAY, RESP_OKAY, RESP_SLVERR, RESP_TIMEOUT
+from .ocah_axi_results import RESP_DECERR, RESP_EXOKAY, RESP_OKAY, RESP_SLVERR, RESP_TIMEOUT
 
 LEGAL_RESPONSES = {RESP_OKAY, RESP_EXOKAY, RESP_SLVERR, RESP_DECERR, RESP_TIMEOUT}
 

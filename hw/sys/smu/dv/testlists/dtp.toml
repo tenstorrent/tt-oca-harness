@@ -1,7 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # SMU Phase-1 (SEP=0) — DTP / JTAG stream.
-# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
+# Executable contract: enrolled groups in this file / testlists/all.toml
 
 [[tests]]
 name = "smu_dtp_jtag_smoke_test"

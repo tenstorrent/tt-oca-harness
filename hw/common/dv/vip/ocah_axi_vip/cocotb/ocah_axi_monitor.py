@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Passive OCAH AXI4 and AXI4-Lite monitors."""
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from cocotb.utils import get_sim_time
 from cocotbext.axi import AxiBus, AxiLiteBus
 
 from .ocah_axi_item import OcahAxiItem
-from .results import RESP_OKAY
+from .ocah_axi_results import RESP_OKAY
 
 __all__ = ["OcahAxiMonitor", "OcahAxiLiteMonitor"]
 

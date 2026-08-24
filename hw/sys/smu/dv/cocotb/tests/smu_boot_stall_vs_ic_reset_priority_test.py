@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_boot_stall_vs_ic_reset_priority_test - P3-H5b stall vs IC_RESET priority.
 
 Boot-stall (DEBUG_CONTROL) and IC_RESET are independent TDRs. After stall is

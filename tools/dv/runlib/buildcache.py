@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Build acceleration knobs, object cache, and a fingerprinted build cache.
 
 All behavior here is opt-in via the DUT `[build.options]` and `[build.cache]` config tables so a

@@ -33,7 +33,20 @@ init:
   stage: init
   <<: *ci_rules
   script:
-    - make ocah-nonfree-init
+    - |
+      set -e
+      # `trigger:` must include a child YAML. Job `rules` are fixed when the
+      # parent is created, so they cannot read this classification, and an
+      # env var cannot skip the trigger without a companion change. Schedule
+      # and web always clone. A documentation-only push or PR writes a
+      # one-job child so the required GitHub check still goes green.
+      if [ "$CI_PIPELINE_SOURCE" = "schedule" ] || [ "$CI_PIPELINE_SOURCE" = "web" ]; then
+        make ocah-nonfree-init
+      elif python3 scripts/ci/diff_class.py --write-documentation-only-child nonfree/ci.yml; then
+        echo "Documentation-only diff; companion child is a one-job report."
+      else
+        make ocah-nonfree-init
+      fi
   artifacts:
     paths:
       - nonfree/ci.yml

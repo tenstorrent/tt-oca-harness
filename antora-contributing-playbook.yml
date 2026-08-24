@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 site:
-  title: Open Chiplet Atlas Harness (OCAH) Contributing Guide
+  title: Open Chiplet Atlas Harness (OCAH) Getting Started Guide
   url: /
   start_page: ocah-contributing::index.adoc
 content:

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U7-1 / P2-7 ECC SBE/DBE inject on scratch bank0."""
 
 from __future__ import annotations

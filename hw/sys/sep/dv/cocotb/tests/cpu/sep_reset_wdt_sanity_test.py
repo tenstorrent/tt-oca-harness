@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP reset-controller + WDT sanity test (PyUVM).
 
-OSS port combining the OCAH ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
+OSS port combining the reference suite ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
 Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
   * verifies SW_RESET_N default 0x1E and that pulsing each crypto IP's reset bit
     clears that IP's probe CSR (the reset wire reached the IP);

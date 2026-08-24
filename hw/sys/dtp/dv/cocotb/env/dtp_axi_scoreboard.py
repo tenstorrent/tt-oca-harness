@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP AXI scoreboard lifecycle owner.
 
 Thin DUT-local wrapper that builds the shared ``ocah_axi_vip`` reference models

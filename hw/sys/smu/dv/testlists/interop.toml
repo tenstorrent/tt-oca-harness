@@ -1,8 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # SMC↔SEP / SMC↔DTP interop catalog — NOT included by testlists/all.toml.
 # Commercial anchors: oca_smu SMU_INTEROP_VPLAN.md + Blocked_SEP_Exec list.
-# Name registry: deferred.toml. See docs/SMU_VPLAN.md Appendix A.2.
+# Name registry: deferred.toml.
 #
 # Real dual-firmware interop stays behind #3582 IFU + mailbox blockers.
 # `modeled` names are SEP-facing BFM protocol shapers only (§13 config class).

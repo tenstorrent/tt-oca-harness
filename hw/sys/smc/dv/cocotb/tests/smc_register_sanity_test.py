@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM register sanity test (Batch B).
 
 After base bring-up, drives real SYS AXI read/write/readback traffic to SMC

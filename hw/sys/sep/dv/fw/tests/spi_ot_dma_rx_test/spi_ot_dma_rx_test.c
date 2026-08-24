@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware test (OSS port of the OCAH
-// sep_spi_ot_dma_rx_test, ). The EL2 CPU configures the OpenTitan
+// SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware test (OSS port of the
+// reference suite sep_spi_ot_dma_rx_test). The EL2 CPU configures the OpenTitan
 // SPI host, arms the Secure DMA in hardware-handshake mode (SRC = SPI RXDATA,
 // fixed/WRAP; DST = SRAM, incrementing), then issues a SPI read. As the SPI RX
 // FIFO crosses its watermark, the controller raises lsio_trigger, which drains a
@@ -9,17 +10,17 @@
 //
 //   spi_host.lsio_trigger_o -> sep.lsio_trigger[0] -> secure_dma.lsio_trigger_i[0]
 //
-// This whole datapath is internal to bare `sep` (hw/sep/sep.sv:899). Exercises
-// edge E7 (SPI-FIFO -> DMA) on the OpenTitan SPI line; the Cadence xSPI path is
-// out of the OSS DUT.
+// This whole datapath is internal to bare `sep`
+// (`hw/sys/sep/rtl/sep.sv`: `lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger`).
+// Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
-// PARITY-PLUS over OCAH: the OCAH test only checks "DMA done + no SPI error"
+// PARITY-PLUS over reference suite: the reference test only checks "DMA done + no SPI error"
 // because it clocks idle MISO (no flash model) and leaves the received data
 // unchecked. Here the OSS flash BFM is preloaded with a known constant (0xA5),
 // the firmware issues a real flash READ (0x03), and then VALUE-CHECKS that every
 // DMA-written SRAM word == 0xA5A5A5A5 -- so the checker actually proves the
 // SPI->DMA->SRAM data path, not just completion. It also proves the DMA STATUS
-// RW1C clear contract (write-1-clear -> reads back 0), per AGENTS.md §7.
+// RW1C clear contract (write-1-clear -> reads back 0).
 //
 // main() returns the error count; start.S turns 0 -> PASS magic, non-zero ->
 // FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard gates on.
@@ -58,11 +59,9 @@ int main(void) {
 
     sep_outbound_filter_init(); // open mailbox window (STDOUT via generated filter map)
     sep_mbx_puts("SEP SPI OT DMA RX test\n");
+    sep_mbx_puts("STEP filter init done; flash model preloaded by the host\n");
 
     // --- OpenTitan SPI host init ---------------------------------------------
-    // Nonfree: route pads to OT and release cs_force_high (needs NONFREE_ROOT
-    // overlay so spi_mux_select_ot is not a no-op). Open SEP has no mux.
-    sep_spi_mux_release_cs();
     // RX watermark = 4 words (asserts lsio_trigger), TX watermark = 0, enable the
     // controller + output.
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
@@ -70,6 +69,7 @@ int main(void) {
                SPI_CONTROLLER__CTRL__OUTPUT_EN_bm | SPI_CONTROLLER__CTRL__SPIEN_bm);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    sep_mbx_puts("STEP SPI host configured: RX watermark, clock divider, enable\n");
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
            SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
@@ -92,6 +92,7 @@ int main(void) {
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    sep_mbx_puts("STEP DMA armed: RXDATA(WRAP) -> SRAM(INCR), hardware handshake\n");
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
                OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
@@ -128,6 +129,7 @@ int main(void) {
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
            (SPI_CMD_DIR_RX << SPI_CONTROLLER__CMD__DIRECTION_bp) |
                ((RX_SIZE - 1u) << SPI_CONTROLLER__CMD__LEN_bp));
+    sep_mbx_puts("STEP flash READ issued: opcode 0x03 + 24-bit address\n");
 
     // --- Wait for the DMA to drain all chunks --------------------------------
     uint32_t status_before_clear = 0;
@@ -151,12 +153,13 @@ int main(void) {
         errors++;
     }
 
-    // --- RW1C status-clear proof (AGENTS.md §7) ------------------------------
+    // --- RW1C status-clear proof ---------------------------------------------
     // Prove the full status-clear contract, not just that DONE was observed:
     // write 1 to the asserted RW1C status bits and confirm they read back 0.
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_RW1C_MASK);
     __asm__ volatile("fence" ::: "memory");
     uint32_t status_after_clear = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    sep_mbx_puts("STEP DMA polled to completion; status write-one-to-clear applied\n");
     if (status_after_clear & DMA_STATUS_RW1C_MASK) {
         sep_mbx_puts("FAIL: DMA STATUS RW1C bits did not clear\n");
         errors++;
@@ -172,16 +175,26 @@ int main(void) {
         errors++;
     }
 
-    // --- Value-check the received data (parity-plus) -------------------------
-    // OSS OcahSpiFlash preloads 0xA5; nonfree Winbond erased NOR reads 0xFF.
-    // Either proves SPI->DMA->SRAM moved device data (not FILL_WORD / not 0x00).
-    // Idle/floating MISO (mux not selected) yields 0x00 and must still FAIL.
+    // --- Value-check the received data ---------------------------------------
+    // The OSS OcahSpiFlash BFM preloads RX_PATTERN across the read window, so
+    // EXPECT_WORD is the only acceptable result and the compare is exclusive.
+    //
+    // All-ones must NOT be accepted here. The TB idles spi_miso_i high, the
+    // BFM's backing store is 0xFF everywhere outside the 64 preloaded bytes,
+    // and an unrecognised opcode drains to CS# high without ever driving MISO.
+    // So 0xFFFFFFFF is exactly the signature of a broken RX path -- mis-wired
+    // MISO, a garbled address phase, a misinterpreted opcode -- and accepting
+    // it would let all three of those pass while the log claimed 0xA5.
     {
         uint32_t w0 = dst[0];
-        int ok_pattern = (w0 == EXPECT_WORD) || (w0 == 0xFFFFFFFFu);
+        int ok_pattern = (w0 == EXPECT_WORD);
         for (uint32_t i = 0; i < RX_WORDS; i++) {
             if (!ok_pattern || dst[i] != w0) {
-                sep_mbx_puts("FAIL: SRAM data mismatch (expect 0xA5A5A5A5 or erased 0xFFFFFFFF)\n");
+                if (!ok_pattern) {
+                    sep_mbx_puts("FAIL: SRAM pattern wrong (expect 0xA5A5A5A5)\n");
+                } else {
+                    sep_mbx_puts("FAIL: SRAM window not uniform (partial transfer)\n");
+                }
                 errors++;
                 break;
             }

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OSS hello-world boot firmware: open the outbound filter, print a banner
 // over the testbench mailbox, and return PASS. Fully self-contained — uses only

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 `verilator_config
 // Scope cocotb public access to the TB top only. Global --public-flat-rw
 // explodes gpio hierarchy under Verilator 5.046.

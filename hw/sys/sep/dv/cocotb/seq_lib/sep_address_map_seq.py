@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for sep_address_map_test.
 
 Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bus:
@@ -12,12 +13,10 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
   * WRITE_ONLY  — write a benign value to write-only (sw=w) regs (decode + write
                   path); they cannot be read back.
 
-followed by a SEP-local fabric walk that ports the OCAH sep_address_map_test
-(which runs sep_reg_walk_seq) to the LSU-reachable, OSS-clean subset: one defined,
-readable CSR per block — Secure DMA, WDT, cold/warm scratch, reset_ctrl, OTBN, AES,
-HMAC, KMAC, CSRNG, EDN, entropy source, lifecycle ctrl, KM mailbox, eFuse shadow,
-AXI-lite mailbox, alias-remap, output-remap, and the OpenTitan SPI host —
-confirming every block decodes on the LSU bus.
+followed by a walk of one readable CSR per LSU-reachable block — Secure DMA,
+WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
+source, lifecycle ctrl, KM mailbox, eFuse shadow, AXI-lite mailbox, alias-remap,
+output-remap, and the OpenTitan SPI host — confirming every block decodes.
 
 Expected values are SOURCE-DERIVED, never hardcoded. Offsets,
 reset values, and implemented-field masks all come from `env/sep_reg_meta.py`,
@@ -28,16 +27,10 @@ addresses encode a per-block editorial choice of "one safe, readable CSR" that n
 generated symbol expresses. Blocks whose reset value IS exported
 (reset_ctrl/OTBN/HMAC/KMAC) take it from the header.
 
-Accepted scope delta — CLOCK_GATE_CTRL ungating:
-    An earlier revision of this sequence ungated per-block CSR clocks
-    (dma[1], mailbox[2], alias_remap[7], entropy_fifo[10]) before the fabric
-    walk. Those fields do not exist in this repository's RDL: sep_cpu_ctrl.rdl
-    declares CLOCK_GATE_CTRL as a placeholder with a single implemented bit
-    (`pka_cg_enable[0:0]`, reset 0) and documents it as "not yet implemented".
-    There is therefore nothing to ungate — every walked block is unconditionally
-    clocked in this build, which the walk itself proves by responding. The
-    write-path coverage that step provided is preserved: CLOCK_GATE_CTRL is still
-    written with its full implemented mask, read back, and restored.
+CLOCK_GATE_CTRL has one implemented bit (`pka_cg_enable[0:0]`, reset 0).
+This sequence writes that implemented mask, reads it back, and restores
+reset. Per-block CSR clocks are not gated in this RDL, so every walked
+block is unconditionally clocked.
 
 Most side-effecting registers are deliberately NOT written. The only address-aperture
 exception is the SEP local/global base/size triplet: it is write/read/restored
@@ -46,9 +39,7 @@ runs. SMU base/size remain reset-checked only. woset LOCK regs are never written
 because they would latch permanently. The scoreboard checks the AXI response on
 every access and the value on every checked read.
 
-This goes beyond OCAH's reg-walk: it runs on the external AXI master, which cannot
-reach SW_RESET_N (so OCAH delegates the reset controller to a directed test). The
-CPU LSU master reaches it, so we value-verify SW_RESET_N's reset value directly.
+SW_RESET_N is reachable on the CPU LSU; this sequence value-checks its reset.
 """
 
 from __future__ import annotations
@@ -80,9 +71,7 @@ READ_CHECK = [
     "SMU_REGION_SIZE",
     "SMC_FUSE_SENSE_STATUS",
     "SEP_STRAPS",
-    # Field-packed reset (0xC000_0100) — value-checked here rather than
-    # resp-only, now that the reset comes from the generated header instead of a
-    # hand-copied literal. Stronger than the previous resp-only check.
+    # Field-packed reset (0xC000_0100) — value-checked against the generated header.
     "SEP_NMI_VEC",
     "SEP_NMI_VEC_LOCK",
     "EXT_TRNG_SRC_SEL",
@@ -133,13 +122,12 @@ WRITE_ONLY = [
     ("TIMEOUT_MODE", 0x0000_0000),
 ]
 
-# SEP-local fabric walk (OCAH sep_reg_walk_seq parity): one defined, readable CSR
+# SEP-local fabric walk (reference sep_reg_walk_seq parity): one defined, readable CSR
 # per block. expected=None => accessibility only (response must be OKAY, value is
-# hw-driven/state-dependent). The chosen offsets match the registers OCAH's
+# hw-driven/state-dependent). The chosen offsets match the registers the reference suite's
 # reg-walk reads. Memory-backed ranges (SRAM/ROM/TCM, OTBN/KMAC mem, KM mem) and
 # the OTP-triggering eFuse interface regs (0x1093_04xx+) are NOT probed — they
-# would hang. Excluded for OSS hygiene: Cadence xSPI (0x2000_xxxx), the external
-# SPI-mux port, and the TRNG wrapper (DWC core is externalized in bare sep).
+# would hang. Excluded for OSS hygiene: proprietary IPs in nonfree.
 #
 # Blocks whose address AND reset value are exported by the generated header take
 # both from it; the rest keep an explicit address because no generated symbol
@@ -150,8 +138,6 @@ FABRIC_BLOCKS = [
     ("SEP_SCRATCH_COLD", 0x1080_2000, None),        # SCRATCH[0] (RW)
     ("SEP_SCRATCH_WARM", 0x1080_2080, None),        # SCRATCH[0] (RW)
     # SW_RESET_N reset: KM[0]=0 held in reset, OTBN/AES/HMAC/KMAC[4:1]=1 released.
-    # OCAH's ext_axi reg-walk delegates this register (can't reach it); the CPU LSU
-    # path reads it safely (a read has no side effect — only a write clears reset).
     (
         "SEP_RESET_CTRL",
         SEP_RESET_CTRL.addr("SW_RESET_N"),
@@ -168,7 +154,7 @@ FABRIC_BLOCKS = [
     ("ENTROPY_SRC", 0x1091_6000, None),             # INTR_STATE hw-driven
     ("SEP_LIFECYCLE", 0x1091_8000, None),           # FEAT_CTRL (RO, hw-driven)
     ("KM_MAILBOX", 0x1092_000C, None),              # SEP_STATUS (offset 0 is write-only)
-    ("SEP_EFUSE_SHADOW", 0x1093_0008, None),        # LC_STATE shadow (not the OTP path)
+    ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),  # LC_STATE shadow
     ("AXIL_MAILBOX", 0x10A0_0000, None),
     ("ALIAS_REMAP", 0x10A1_0000, None),             # region_start
     ("AP_OUTPUT_REMAP", 0x10A1_0200, None),         # output-remap region
@@ -219,15 +205,27 @@ class sep_address_map_seq(uvm_sequence):
         for name, _why in READ_ONLY:
             await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=None, name=name)
 
-        # OCAH proves the 64-bit REFERENCE_COUNTER is frontdoor readable. It is a
-        # free-running counter on clk_ref_i, CDC-synchronized into clk_i, so the
-        # exact count is timing-dependent -- read it without a value check.
+        # The 64-bit REFERENCE_COUNTER is frontdoor readable. It counts on
+        # clk_ref_i, which this testbench does not drive, so it cannot advance
+        # here and both halves must read their reset value. Compare against that
+        # rather than reading with expected=None: an unchecked read would report
+        # whatever came back -- including a neighbouring register's storage or a
+        # stuck all-ones -- and still print a PASS token.
+        #
+        # If clk_ref_i is ever connected, this becomes a real counter and the
+        # expectation has to change with it: read twice and require the second
+        # read to be greater, rather than pinning the reset value.
         ref_off = SEP_CPU_CTRL.offset("REFERENCE_COUNTER")
+        # Split the 64-bit reset value per half. reset32() truncates to bits [31:0],
+        # so using it for both reads would check the high word against the low
+        # word's expectation -- correct only while the default is zero.
+        ref_reset = SEP_CPU_CTRL.reset("REFERENCE_COUNTER")
         self.ref_counter_low = await self._read(
-            BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo"
+            BASE + ref_off, expected=ref_reset & 0xFFFF_FFFF, name="REFERENCE_COUNTER_lo"
         )
         self.ref_counter_high = await self._read(
-            BASE + ref_off + 4, expected=None, name="REFERENCE_COUNTER_hi"
+            BASE + ref_off + 4, expected=(ref_reset >> 32) & 0xFFFF_FFFF,
+            name="REFERENCE_COUNTER_hi"
         )
 
         for name, pattern in BASE_ADDR_RW:
@@ -277,8 +275,8 @@ class sep_address_map_seq(uvm_sequence):
             await self._write(BASE + SEP_CPU_CTRL.offset(name), value, name=name)
 
         # CLOCK_GATE_CTRL write path: drive every implemented bit, read it back,
-        # restore the reset value. See the module docstring for why this no longer
-        # ungates per-block clocks (those fields do not exist in this RDL).
+        # restore the reset value. See the module docstring for why this does not
+        # ungate per-block clocks (those fields do not exist in this RDL).
         cg_addr = BASE + SEP_CPU_CTRL.offset("CLOCK_GATE_CTRL")
         cg_mask = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
         cg_reset = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")

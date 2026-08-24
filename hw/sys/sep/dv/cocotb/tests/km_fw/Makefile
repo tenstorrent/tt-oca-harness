@@ -6,7 +6,7 @@ RISCV_OBJCOPY ?= $(GCC_PREFIX)-objcopy
 PYTHON ?= python3
 
 OUT_DIR := ..
-ROMS := km_rom_entropy km_rom_coexist
+ROMS := km_rom km_rom_entropy km_rom_coexist
 PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
 .PHONY: all clean rom_main
@@ -22,9 +22,6 @@ all: $(PARHEX)
 # The firmware is in-tree at hw/ip/key_manager/dv/fw and builds through the shared
 # DV firmware engine, the same one SEP's own firmware uses; the entry point is
 # production/rom_main and the engine's parity step emits rom_main.rom.parhex.
-# (This target previously drove a `hw/ip/key_manager/tb/firmware` tree from a
-# `hw/comp/key_manager/...` source path -- both leftovers from the old repository
-# layout that never existed here.)
 OCH_ROOT ?= $(abspath $(CURDIR)/../../../../../../..)
 KM_FW_DIR := $(OCH_ROOT)/hw/ip/key_manager/dv/fw
 KM_ROM_BUILT := $(KM_FW_DIR)/build/tests/rom_main/rom_main.rom.parhex
@@ -45,8 +42,7 @@ ROM_MAIN_WIPE_DEFINES := -DROM_KM_BOOT_WIPE_DEFAULT=0 -DROM_KM_UNREC_WIPE_DEFAUL
 # The defines above are COMPILE flags, and compile.mk's dependency tracking
 # (-MMD -MP) records HEADER dependencies only -- it cannot see a CFLAGS change.
 # So an object left over from a build that did not pass them would be silently
-# reused, re-enabling the boot wipe and reproducing the exact dead-KM symptom
-# these tests were once parked for.
+# reused, re-enabling the boot wipe and leaving the KM CPU dead.
 #
 # The object that carries these defines is NOT under build/tests/. rom_boot.c is
 # a DRIVER, and compile.mk:118 places driver objects FLAT in $(FW_BUILD_DIR)

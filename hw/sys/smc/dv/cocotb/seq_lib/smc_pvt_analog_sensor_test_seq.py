@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: PVT analog + GPIO POC/PBIAS (TC_SMC_P1CG_13/14/15).
 
 * SMC_PVT_WRAP_COMBINED_PVT / TEMP — ``pvt_wrap`` OKAY + 0.

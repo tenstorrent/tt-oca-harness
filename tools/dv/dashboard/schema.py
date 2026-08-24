@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Normalized DV/FV result schemas.
 
 The dashboard intentionally consumes plain JSON records so it can be generated
@@ -158,6 +161,9 @@ def _dut_status(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rows.append({
             "flow": result.get("flow", ""),
             "kind": result.get("kind", ""),
+            # One DUT can report several framework views (e.g. dtp cocotb + dtp uvm);
+            # the framework disambiguates rows that share a flow name.
+            "framework": result.get("framework", ""),
             "tool": result.get("tool", ""),
             "status": result.get("status", STATUS_UNKNOWN),
             "tests_total": int(tests.get("total") or 0),
@@ -213,6 +219,7 @@ def _coverage_closure_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
         by_dut.append(
             {
                 "dut": result.get("flow", ""),
+                "framework": result.get("framework", ""),
                 "tool": result.get("tool", ""),
                 "details_available": available,
                 "open": holes.get("open"),
@@ -255,6 +262,7 @@ def make_trend_point(summary: dict[str, Any]) -> dict[str, Any]:
         per_dut.append(
             {
                 "flow": result.get("flow"),
+                "framework": result.get("framework"),
                 "tool": result.get("tool"),
                 "target": coverage.get("target"),
                 "comparison_key": coverage.get("comparison_key"),

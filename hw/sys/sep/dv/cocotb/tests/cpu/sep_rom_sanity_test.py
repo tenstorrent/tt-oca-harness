@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP boot-ROM IFU sanity test (PyUVM).
 
-OSS port of the OCAH ``sep_rom_sanity_test`` (edge: CPU IFU -> boot-ROM). Boots
+OSS port of the reference suite ``sep_rom_sanity_test`` (edge: CPU IFU -> boot-ROM). Boots
 the VeeR EL2 core from ICCM and runs the rom_sanity firmware, which calls seven
 hand-assembled functions resident in the boot-ROM (0x1004_0000) via function
 pointers, forcing the IFU to fetch and execute their bodies from ROM. Each call's
@@ -36,6 +37,8 @@ _DTCM_HEX = os.path.join(_FW_DIR, "rom_sanity_test.dtcm.hex")
 _ICCM_BASE = 0xC000_0000
 # Seven short ROM calls + return-value checks; the run loop early-exits on
 # fw_done, so this is an upper bound.
+# Seven ROM-resident functions are called; the firmware prints one line each.
+_EXPECTED_IFU_CHECKS = 7
 _MAX_RUN_CYCLES = 1_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -62,4 +65,20 @@ class sep_rom_sanity_test(sep_base_test):
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+        )
+
+        # The PASS/FAIL magic only tells us the firmware finished with errors==0. It
+        # cannot tell us how many checks ran, so a firmware that silently stopped
+        # calling into the ROM after two functions would still pass. Count the
+        # per-function lines the firmware emits and require all seven.
+        console = self.sb.console_text()
+        seen = console.count("[PASS] IFU")
+        assert seen == _EXPECTED_IFU_CHECKS, (
+            f"expected {_EXPECTED_IFU_CHECKS} ROM IFU function checks in the console, "
+            f"saw {seen}"
+        )
+        assert "PASS: 7/7" in console, "firmware did not report the 7/7 summary"
+        self.logger.info(
+            "CHK-ALL confirmed host-side: %d/%d ROM IFU function checks present in the "
+            "console", seen, _EXPECTED_IFU_CHECKS,
         )

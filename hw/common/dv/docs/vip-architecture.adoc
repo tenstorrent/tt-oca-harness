@@ -97,7 +97,7 @@ Tests import from the package root:
 
 [source,python]
 ----
-from ocah_axi_vip import OcahAxiMaster, OcahAxiReadResult
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiReadResult
 from ocah_jtag_vip import OcahJtagMasterDriver, OcahJtagChecker
 from ocah_checker import OcahChecker
 ----
@@ -121,13 +121,13 @@ the DUT exports a standard flattened protocol:
 
 [source,python]
 ----
-master = OcahAxiMaster.from_prefix(
+master = OcahAxiMasterAgent.from_prefix(
     dut,
     "s_axi",
     clock=dut.clk_i,
     reset=dut.rst_ni,
     reset_active_level=False,
-)
+).sequence
 ----
 
 DUT-local adapters remain appropriate when:
@@ -155,7 +155,7 @@ handshake stability, and protocol coverage.
 |Reusable signal-level properties whose meaning is protocol-neutral and whose
 binding does not depend on DUT hierarchy. Protocol-specific SVA lives with its
 protocol VIP instead: the first VIP-embedded assertion package is
-`ocah_axi_vip/sva/ocah_axi_protocol_checker.sv` (clean-room AXI4/AXI4-Lite
+`ocah_axi_vip/sva/ocah_axi_sva.sv` (clean-room AXI4/AXI4-Lite
 rules).
 
 |DUT `cocotb/assertions/` or local SVA

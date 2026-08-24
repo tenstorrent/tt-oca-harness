@@ -20,6 +20,12 @@ OCAH_DOC_PDF_THEME ?= $(OCAH_DOC_DIR)/theme.yml
 OCAH_DOC_PDF_THEMESDIR ?= $(OCAH_DOC_DIR)
 OCAH_CSV_TO_ADOC := python3 $(OCAH_ROOT)/tools/doc/csvadoc.py
 OCAH_DOC_REGEN_REGS ?= 1
+# Partner-facing output is a release build by default. AsciiDoc sources can use
+# the generic `release` attribute to exclude internal-only material.
+OCAH_DOC_RELEASE ?= 1
+OCAH_DOC_RELEASE_ENABLED := $(filter 1 yes true,$(strip $(OCAH_DOC_RELEASE)))
+OCAH_DOC_ANTORA_RELEASE_ARG := $(if $(OCAH_DOC_RELEASE_ENABLED),--attribute release)
+OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG := $(if $(OCAH_DOC_RELEASE_ENABLED),-a release)
 # Optional Antora --url override (nested publish paths, e.g. /trm).
 OCAH_DOC_SITE_URL ?=
 
@@ -52,6 +58,8 @@ endif
 -include $(OCAH_DOC_DIR)/programmer/doc.mk
 -include $(OCAH_DOC_DIR)/appnotes/doc.mk
 -include $(OCAH_DOC_DIR)/contributing/doc.mk
+-include $(OCAH_DOC_DIR)/home/doc.mk
+
 # GitHub Pages publish.
 -include $(OCAH_DOC_DIR)/gh-pages.mk
 
@@ -61,7 +69,7 @@ ocah-doc-setup: ocah-doc-trm-setup
 ocah-doc-html: ocah-doc-trm-html
 ocah-doc-pdf: ocah-doc-trm-pdf
 ocah-doc-serve: ocah-doc-trm-serve
-ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer-clean ocah-doc-appnotes-clean ocah-doc-contributing-clean
+ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer-clean ocah-doc-appnotes-clean ocah-doc-contributing-clean ocah-doc-home-clean
 
 OCAH_PHONY += \
   ocah-doc-reg-setup \

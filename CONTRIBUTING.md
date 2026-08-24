@@ -24,10 +24,10 @@ See the [README](README.md) for vendor import conventions, register-generation f
 
 1. Create a topic branch off `main` for your change.
 2. Make focused commits that compile and pass relevant checks where possible.
-3. Open a pull request against `main` with a clear description of the change and its motivation.
+3. Open a pull request against `main`. The template is guidance only; CI does not require Summary or Test plan. Add `Fixes #N` when the PR closes an issue.
 4. Be responsive to review feedback.
 
-Pull requests are reviewed on a weekly basis.
+Pull requests are reviewed on a weekly basis. The full how-to is in [`doc/contributing/`](doc/contributing/).
 
 ## Coding Conventions
 
@@ -65,7 +65,9 @@ For AsciiDoc (`.adoc`), use line comments:
 
 For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
 
-Generated register collateral under `hw/**/regs/gen/` is produced by the repository generation flows and may use a different header format.
+Generated register collateral under `hw/**/regs/gen/` is produced by the
+repository generation flows and carries the same SPDX Apache-2.0 header as
+hand-authored files (emitted by the generators / `tools/regs/stamp_spdx.py`).
 
 ### Vendored code
 
@@ -78,9 +80,16 @@ When adding a new vendored dependency, confirm its license is Apache-2.0 compati
 Naming: `<action>-<lang>[-<tool>]` for jobs/Make, with reviewdog checks matching the job
 (plus `/<scope>` when one job covers multiple tops, e.g. `lint-sv-slang/smu`).
 
-`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, and `lint-tcl` on every push/PR
-(`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
+`.github/workflows/lint.yml` runs `lint-sv-slang`, `format-c`, `lint-tcl`, and
+`regen-regs` on pull
+requests and on pushes to `main` (`lint-sv-verible` is temporarily disabled). A `setup-tools` job shares `bender` and `reviewdog`
 artifacts; jobs report through `.github/actions/reviewdog-report`.
+
+Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
+or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
+child. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still
+report success. `scripts/ci/diff_class.py --self-test` checks the classifier.
+Scheduled and manually dispatched pipelines always run in full.
 
 | CI job | Reviewdog check(s) | Local command |
 |---|---|---|
@@ -88,6 +97,19 @@ artifacts; jobs report through `.github/actions/reviewdog-report`.
 | `lint-sv-verible` (disabled in CI) | `lint-sv-verible` | `make lint-sv-verible` |
 | `format-c` | `format-c` | `make format-c-check` |
 | `lint-tcl` | `lint-tcl` | `make lint-tcl` and `make format-tcl-check` |
+| `regen-regs` | — (job fails on a dirty tree) | `make regen-regs regen-regs-adoc regen-regs-html` |
+
+The `regen-regs` gate regenerates every register block's collateral from the RDLs
+and fails if the working tree changes, so the committed `**/regs/gen/` outputs
+(SystemVerilog, C headers, Python, RAL, IP-XACT, AsciiDoc, HTML) always match a
+fresh run. It is peakrdl-only (no bender or `nonfree/`), so a plain checkout
+reproduces it. To fix a failure, run the local command above and commit the
+result:
+
+```
+make regen-regs regen-regs-adoc regen-regs-html
+git status --porcelain   # expect no output
+```
 
 Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the tools on
 `PATH` (same as CI). If a tool is missing, Make prints an install hint and the matching
@@ -102,7 +124,7 @@ Local `make lint-slang` / `make lint-sv-verible` / `make format-sv` require the 
 
 ## Reporting Issues
 
-For functional bugs and feature requests, open a [GitHub issue](https://github.com/tenstorrent/tt-oca-harness/issues) with enough detail to reproduce or understand the request.
+Open a [new issue](https://github.com/tenstorrent/tt-oca-harness/issues/new/choose) and pick Bug, Task, or Feature. Choose Workstream, Subsystem, and Component from the lists. Priority and Target release are optional.
 
 For security vulnerabilities, do not open a public issue. Follow the process in [SECURITY.md](SECURITY.md).
 

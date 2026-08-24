@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM powergood-glitch test.
 
 After base bring-up: sample baseline, glitch powergood low, hold for a few

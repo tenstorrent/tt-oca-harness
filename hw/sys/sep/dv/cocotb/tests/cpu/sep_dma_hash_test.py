@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA inline SHA-256 firmware-boot test (PyUVM).
 
-OSS port of the OCAH ``sep_dma_hash_test``. Boots the VeeR EL2 core and runs the
+OSS port of the reference suite ``sep_dma_hash_test``. Boots the VeeR EL2 core and runs the
 dma_hash firmware, which programs the Secure DMA to copy a buffer with the
 inline SHA-256 engine, waits for the DMA-done interrupt through the VeeR PIC
 (WFI + ISR), and self-checks the hardware digest against a software SHA-256, the
-copied data, and the DMA error code. Interconnect edges E7 (DMA + inline SHA)
-and E10 (DMA-done IRQ -> PIC -> CPU -> ISR).
+copied data, and the DMA error code. Proves DMA plus inline SHA-256, and
+DMA-done IRQ through the PIC to a CPU ISR.
 
-Like the OCAH test this is firmware-self-checking: the firmware returns its
+Like the reference test this is firmware-self-checking: the firmware returns its
 error count and start.S emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on
 the 0x8000_0000 mailbox, which the boot scoreboard gates on (so a digest/data
 mismatch inside the firmware surfaces as fw_pass=False). The scoreboard also
@@ -36,8 +37,7 @@ _ICCM_BASE = 0xC000_0000
 _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
-# Must match the banner dma_hash_test.c actually prints; the firmware was
-# retitled without updating this string.
+# Must match the banner dma_hash_test.c actually prints.
 _BANNER = "Secure DMA SHA-256 Hash Test"
 
 

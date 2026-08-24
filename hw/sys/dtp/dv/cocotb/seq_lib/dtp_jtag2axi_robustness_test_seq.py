@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cross-bridge JTAG2AXI robustness scenarios for GH issue #3212."""
 
 from __future__ import annotations
@@ -344,7 +345,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             self.operation_count += 1
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "backpressure_aw_before_w": self.run_backpressure_aw_before_w,
             "backpressure_long_stall": self.run_backpressure_long_stall,
@@ -362,7 +363,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         for target in ROBUST_TARGETS:
             self.clear_target_errors(target)
             self.clear_target_backpressure(target)
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "JTAG2AXI robustness scenario complete",
             scenario=self.scenario,

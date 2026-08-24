@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_i2c_master_target_test / smc_i2c_p1_rdwr_protocol_test.
 
 U4-2: DUT OpenTitan I2C0 host writes a byte into a cocotb EEPROM slave on

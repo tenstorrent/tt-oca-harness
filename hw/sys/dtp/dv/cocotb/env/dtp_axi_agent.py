@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP SMC fabric debug AXI UVM agent.
 
 Wraps the unified OCAH AXI RAM BFM as the memory responder on the JTAG2AXI
@@ -14,24 +15,24 @@ from pyuvm import ConfigDB, uvm_agent
 from ocah_axi_vip import (
     OcahAxiLiteMonitor,
     OcahAxiLiteProtocolWatcher,
+    OcahAxiLiteSlaveAgent,
     OcahAxiMonitor,
     OcahAxiProtocolWatcher,
-    OcahAxiRam,
+    OcahAxiSlaveAgent,
+    OcahAxiSlaveSequence,
 )
-
-from .dtp_fault_axi import DtpFaultAxiLiteRam, DtpFaultOcahAxiRam
 
 
 class DtpAxiAgent(uvm_agent):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
-        self.axi_ram: OcahAxiRam | None = None
+        self.axi_ram: OcahAxiSlaveSequence | None = None
         self.smc_otp_axil_ram = None
         self.sep_otp_axil_ram = None
 
     async def run_phase(self) -> None:
         dut = cocotb.top
-        self.axi_ram = OcahAxiRam.from_prefix(
+        self.axi_ram = OcahAxiSlaveAgent.from_prefix(
             dut,
             "m_axi",
             dut.clk_i,
@@ -42,25 +43,25 @@ class DtpAxiAgent(uvm_agent):
             addr_width=56,
             data_width=64,
             strb_width=8,
-        )
+        ).sequence
         # Publish for backdoor checks once the memory model exists.
-        self.cfg.axi_ram = DtpFaultOcahAxiRam(self.axi_ram)
-        self.smc_otp_axil_ram = DtpFaultAxiLiteRam.from_prefix(
+        self.cfg.axi_ram = self.axi_ram
+        self.smc_otp_axil_ram = OcahAxiLiteSlaveAgent.from_prefix(
             dut,
             "smc_otp_axil",
             dut.clk_i,
             dut.rst_n_i,
             reset_active_level=False,
             size=self.cfg.otp_axil_mem_size,
-        )
-        self.sep_otp_axil_ram = DtpFaultAxiLiteRam.from_prefix(
+        ).sequence
+        self.sep_otp_axil_ram = OcahAxiLiteSlaveAgent.from_prefix(
             dut,
             "sep_otp_axil",
             dut.clk_i,
             dut.rst_n_i,
             reset_active_level=False,
             size=self.cfg.otp_axil_mem_size,
-        )
+        ).sequence
         self.cfg.smc_otp_axil_ram = self.smc_otp_axil_ram
         self.cfg.sep_otp_axil_ram = self.sep_otp_axil_ram
         self.cfg.jtag2axi_responders = {

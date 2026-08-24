@@ -1,0 +1,234 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-interrupts]]
+=== Interrupts
+
+The SEP integrates a VeeR EL2 core with a built-in
+**Programmable Interrupt Controller (PIC)**. All maskable external interrupt
+sources feed a single `extintsrc_req` bus; the core's `meipl`, `meie`, and
+`meigwctrl` CSRs configure priority, enable, and gateway polarity per source.
+
+The PIC base address is `0xC008_0000`; its register layout is described in the
+<<sep-pic-registers,Register Interfaces>> section below.
+
+Interrupt source IDs are **1-based** inside the PIC. Source 0 is permanently
+tied to zero inside the core. Firmware programs source `N` by writing the
+`meipl[N]` and `meie[N]` CSR entries and reading/clearing `meip[N]`.
+
+// Canonical SEP interrupt documentation: maintain this section with RTL changes.
+// Other guides should xref <<sep-cpu-interrupt-vector-map>>.
+[[sep-cpu-interrupt-vector-map]]
+==== SEP CPU Interrupt Vector Map
+
+The PIC supports 255 external sources. Slots 1–39 are individually assigned to
+specific peripherals and subsystems connected to the SEP, including both
+SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
+(SMC mailboxes, SPI). Slots 40–255 are reserved for chip-level external inputs
+passed in at the SEP block boundary.
+
+[width="100%",cols="10%,35%,55%",options="header",]
+|=======================================================================
+|PIC source |Source |Description
+
+|`1`
+|Mailbox interrupt 0
+|SMC-to-SEP mailbox channel 0 interrupt
+
+|`2`
+|Mailbox interrupt 1
+|SMC-to-SEP mailbox channel 1 interrupt
+
+|`3`
+|Mailbox interrupt 2
+|SMC-to-SEP mailbox channel 2 interrupt
+
+|`4`
+|Mailbox interrupt 3
+|SMC-to-SEP mailbox channel 3 interrupt
+
+|`5`
+|Mailbox interrupt 4
+|SMC-to-SEP mailbox channel 4 interrupt
+
+|`6`
+|Mailbox interrupt 5
+|SMC-to-SEP mailbox channel 5 interrupt
+
+|`7`
+|Mailbox interrupt 6
+|SMC-to-SEP mailbox channel 6 interrupt
+
+|`8`
+|Mailbox interrupt 7
+|SMC-to-SEP mailbox channel 7 interrupt
+
+|`9`
+|DMA transfer done
+|Secure DMA full-transfer-complete interrupt
+
+|`10`
+|DMA chunk done
+|Secure DMA chunk-transfer-complete interrupt
+
+|`11`
+|DMA error
+|Secure DMA error interrupt
+
+|`12`
+|DMA alert
+|Secure DMA aggregated alert (fault)
+
+|`13`
+|WDT alert
+|Watchdog timer aggregated alert. Note: the WDT *bark* goes to the NMI pin,
+not here; see <<sep-non-pic-paths>>.
+
+|`14`
+|SPI IRQ
+|SPI host controller interrupt
+
+|`15`
+|KM mailbox IRQ
+|Key Manager-to-SEP mailbox interrupt
+
+|`16`
+|Entropy source IRQ
+|OpenTitan entropy source interrupt
+
+|`17`
+|External TRNG IRQ
+|External TRNG interrupt; driven to zero in the current OSS integration
+
+|`18`
+|HMAC done
+|HMAC operation complete interrupt
+
+|`19`
+|HMAC FIFO empty
+|HMAC message FIFO empty interrupt
+
+|`20`
+|HMAC error
+|HMAC error interrupt
+
+|`21`
+|KMAC done
+|KMAC operation complete interrupt
+
+|`22`
+|KMAC FIFO empty
+|KMAC message FIFO empty interrupt
+
+|`23`
+|KMAC error
+|KMAC error interrupt
+
+|`24`
+|CSRNG command request done
+|CSRNG command request complete interrupt
+
+|`25`
+|CSRNG entropy request
+|CSRNG entropy request interrupt
+
+|`26`
+|CSRNG HW instance exception
+|CSRNG hardware instance exception interrupt
+
+|`27`
+|CSRNG fatal error
+|CSRNG fatal error interrupt
+
+|`28`
+|EDN command request done
+|Entropy Distribution Network command request complete interrupt
+
+|`29`
+|EDN fatal error
+|Entropy Distribution Network fatal error interrupt
+
+|`30`
+|OTBN done
+|OpenTitan Big Number Accelerator operation complete interrupt
+
+|`31`
+|KM unrecoverable error
+|Key Manager unrecoverable error interrupt; also exported as a SEP output port
+
+|`32`
+|KM recoverable error
+|Key Manager recoverable error interrupt; also exported as a SEP output port
+
+|`33`
+|Crypto alert
+|Aggregated crypto subsystem alert (fault)
+
+|`34`
+|Locked field access
+|eFuse locked-field access violation interrupt
+
+|`35`
+|Adams Bridge error
+|Adams Bridge (post-quantum accelerator) error interrupt
+
+|`36`
+|Adams Bridge notification
+|Adams Bridge (post-quantum accelerator) operation notification interrupt
+
+|`37`
+|Entropy pool low
+|Entropy pool FIFO low-water condition (informational: pool draining faster than filling)
+
+|`38`
+|Entropy pool fill stall
+|Entropy pool FIFO fill-path stall (fault: EDN not making progress)
+
+|`39`
+|Token match fault
+|eFuse token comparator redundancy fault (fault). The OR of the three sticky
+`TOKEN_MATCH_FAULT` bits. Those bits are software-read-only and clear only on
+reset, so this source stays asserted. Firmware must mask PIC source 39 after
+it has observed the fault; there is no write-one-to-clear, and an unmasked
+handler re-enters.
+
+|`[40–255]`
+|Reserved (external band)
+|Chip-level external interrupt inputs
+|=======================================================================
+
+[[sep-non-pic-paths]]
+==== Non-PIC Interrupt Paths
+
+Three CPU interrupt pins bypass the EL2 PIC entirely.
+
+===== NMI — Watchdog Timer Bark
+
+The VeeR EL2 `nmi_int` pin is wired to the watchdog timer bark signal from
+`sep_wdt_wrap`. When the bark fires, the CPU jumps to the NMI vector address
+held in the `SEP_NMI_VEC` register. The `SEP_NMI_VEC_LOCK` register prevents
+runtime modification of the vector once locked.
+
+The NMI is non-maskable: it cannot be suppressed by `mstatus.MIE` or any PIC
+configuration register.
+
+===== Timer and Software Interrupts (TBD)
+
+The `timer_int` and `soft_int` pins of the VeeR EL2 core are both tied to zero
+at the SMU integration boundary; external CLINT-style delivery is not yet
+routed. The VeeR core contains independent internal timers that generate
+standard RISC-V `mip.MTIP` and `mip.MSIP` interrupts without requiring an
+external signal; those remain functional.
+
+
+[[sep-pic-registers]]
+==== Register Interfaces
+
+The EL2 PIC register block (`meipl`, `meie`, `meigwctrl`, `meigwclr`, and
+related registers) is documented with the full SEP address map in
+ifdef::backend-html5[]
+xref:sep:memory_map.adoc#sep-detailed-register-map[Memory Map — Detailed Register Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-detailed-register-map>>.
+endif::backend-pdf[]

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP JTAG UVM agent.
 
 The UVM driver translates ``DtpJtagItem`` transactions into the unified OCAH
@@ -223,11 +224,17 @@ class DtpJtagDriver(uvm_driver):
             "jtag_ic_reset_ext_ovrd",
             "jtag_ic_reset_ext_ctrl_n",
             "xtrig_clk_stop_req",
-            "feat_ctrl_sip_debug",
-            "feat_ctrl_soc_debug",
-            "feat_ctrl_ap_debug",
-            "feat_ctrl_sep_debug",
-            "feat_ctrl_fuse_test",
+            "dbg_disable_stap_io",
+            "dbg_disable_stap_smc",
+            "dbg_disable_stap_sep",
+            "dbg_disable_stap_extra",
+            "dbg_disable_stap_host",
+            "dbg_disable_dft_secure",
+            "dbg_disable_dft_nonsecure",
+            "dbg_disable_dfd",
+            "dbg_disable_smc_jtag2axi",
+            "dbg_disable_smc_otp_jtag2axi",
+            "dbg_disable_sep_otp_jtag2axi",
             "smc_axi_awvalid_count",
             "smc_axi_wvalid_count",
             "smc_axi_arvalid_count",

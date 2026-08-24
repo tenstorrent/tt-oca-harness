@@ -14,7 +14,7 @@ name = "sep_boot_rom_smoke_test"
 module = "cpu.sep_boot_rom_smoke_test"
 seed = 1
 timeout_sec = 3600
-tags = ["smoke", "boot", "cpu", "boot_rom", "memory", "ci"]
+tags = ["smoke", "boot", "cpu", "rom", "memory", "ci"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -29,7 +29,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# SRAM datapath breadth (OCAH sram byte_strobe/byte_pattern/data_pattern/
+# SRAM datapath breadth (the reference suite sram byte_strobe/byte_pattern/data_pattern/
 # addr_boundary/write_read/sequential_access). Per-byte WSTRB lanes (neighbor-
 # preserved), data patterns, base + top-valid boundary words, and single-beat
 # sequential 64-bit words over the CPU-LSU AXI splice, each value-checked. The
@@ -54,7 +54,7 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+sep_boot_rom_hex=rom_sanity_rom.hex"]
 
 [[tests]]
-# Boot ROM LSU data-read + write-ignored (OCAH rom basic_read/sequential_read/
+# Boot ROM LSU data-read + write-ignored (the reference suite rom basic_read/sequential_read/
 # content_verify/addr_boundary/write_ignore). EL2 firmware does CPU LSU loads from
 # the boot ROM (0x1004_0000, on the dedicated lsu_rom_axi CPU port) value-checked
 # against a known preloaded image (+sep_boot_rom_hex=mem_rom_test_rom.hex), then

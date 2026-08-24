@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared PyUVM base test for SMC OSS (`--dut smc`).
 
 Builds `SmcEnv`, runs power-good + cold-reset bring-up, and delegates scenario

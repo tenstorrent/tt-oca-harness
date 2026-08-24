@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: SMC_EFUSE_MAP direct read (TC_SMC_P1CG_04).
 
 Existing tests only touch `CHIP_CONFIG_*` (mirrored eFuse fields).

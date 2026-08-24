@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC fabric JTAG2AXI read-side scenarios for GH issue #3210."""
 
 from __future__ import annotations
@@ -234,9 +235,12 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         await self.expect_smc_axi_activity(before=before, read=True, context="read_gate.baseline")
         self.status = item.status
 
-        for idx, bit_name in enumerate(("ap_debug", "soc_debug"), start=1):
-            self.log_step(idx + 1, "Gate SMC fabric read with %s", bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
+        # Two assert/release passes of the one direct disable prove the gate
+        # is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"smc_jtag2axi_pass{idx}"
+            self.log_step(idx + 1, "Gate SMC fabric read with smc_jtag2axi (pass %d)", idx)
+            await self.disable_debug_bits("smc_jtag2axi")
             # Snapshot BEFORE the gated attempt so a request pulse leaked at
             # shift time is caught, then hold a blocked window across it: any
             # monitored m_axi transaction inside the window fails.
@@ -256,10 +260,10 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                         f"source=tb_pulse_counters window=gated_attempt+8cyc"
                     ),
                 )
-            # Hold the blocked window ACROSS lifecycle re-enable: a bridge
-            # that queued the gated request and replays it once the gate
-            # re-opens is the exact leak this scenario must catch.
-            await self.clear_lifecycle()
+            # Hold the blocked window ACROSS disable release: a bridge that
+            # queued the gated request and replays it once the gate re-opens
+            # is the exact leak this scenario must catch.
+            await self.enable_all_debug()
             await self.wait_sys_cycles(8)
             self.scoreboard_end_blocked("smc_axi", context=f"read_gate.{bit_name}")
             before = await self.axi_activity_counts()
@@ -314,7 +318,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         return unpack_series_data(raw, size)
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "single_write_read": self.run_single_write_read,
             "series_write_read_incr": self.run_series_write_read_incr,
@@ -329,7 +333,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         if self.scenario not in scenarios:
             raise ValueError(f"unknown read-side JTAG2AXI scenario {self.scenario!r}")
         await scenarios[self.scenario]()
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "SMC fabric read-side scenario complete",
             scenario=self.scenario,

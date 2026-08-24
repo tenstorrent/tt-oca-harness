@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -38,35 +40,35 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW</td><td>-</td><td>Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.</td></tr>
-<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW</td><td>-</td><td>Asserted when a hardware-attached CSRNG instance encounters a command exception</td></tr>
-<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>-</td><td>Asserted when a request for entropy has been made.</td></tr>
-<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>-</td><td>Asserted when a command request is completed.</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW</td><td>0x0</td><td>Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW</td><td>0x0</td><td>Asserted when a hardware-attached CSRNG instance encounters a command exception</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>0x0</td><td>Asserted when a request for entropy has been made.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>0x0</td><td>Asserted when a command request is completed.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW</td><td>-</td><td>Enable interrupt when cs_fatal_err is set.</td></tr>
-<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW</td><td>-</td><td>Enable interrupt when cs_hw_inst_exc is set.</td></tr>
-<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>-</td><td>Enable interrupt when cs_entropy_req is set.</td></tr>
-<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>-</td><td>Enable interrupt when cs_cmd_req_done is set.</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW</td><td>0x0</td><td>Enable interrupt when cs_fatal_err is set.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW</td><td>0x0</td><td>Enable interrupt when cs_hw_inst_exc is set.</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>0x0</td><td>Enable interrupt when cs_entropy_req is set.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>0x0</td><td>Enable interrupt when cs_cmd_req_done is set.</td></tr>
 </table>
 <h3 id="INTR_TEST">INTR_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>CS_FATAL_ERR</td><td>W</td><td>-</td><td>Write 1 to force cs_fatal_err to 1.</td></tr>
-<tr><td>2</td><td>CS_HW_INST_EXC</td><td>W</td><td>-</td><td>Write 1 to force cs_hw_inst_exc to 1.</td></tr>
-<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>W</td><td>-</td><td>Write 1 to force cs_entropy_req to 1.</td></tr>
-<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>W</td><td>-</td><td>Write 1 to force cs_cmd_req_done to 1.</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>W</td><td>0x0</td><td>Write 1 to force cs_fatal_err to 1.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>W</td><td>0x0</td><td>Write 1 to force cs_hw_inst_exc to 1.</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>W</td><td>0x0</td><td>Write 1 to force cs_entropy_req to 1.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>W</td><td>0x0</td><td>Write 1 to force cs_cmd_req_done to 1.</td></tr>
 </table>
 <h3 id="ALERT_TEST">ALERT_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>FATAL_ALERT</td><td>W</td><td>-</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
-<tr><td>0</td><td>RECOV_ALERT</td><td>W</td><td>-</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>1</td><td>FATAL_ALERT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>RECOV_ALERT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
 </table>
 <h3 id="REGWEN">REGWEN</h3>
 <table>
@@ -87,10 +89,10 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>24:12</td><td>glen</td><td>W</td><td>-</td><td>Generate Length: Only defined for the generate command, this field<br>is the total number of cryptographic entropy blocks requested. Each<br>unit represents 128 bits of entropy returned. The NIST reference name<br>is max_number_of_bit_per_request, and this field size supports the<br>maximum size of 219 bits. For the maximum size, this field should be<br>set to 4096, resulting in a max_number_of_bit_per_request value of<br>4096 x 128 bits. For a smaller example, a value of 8 would return<br>a total of 1024 bits.</td></tr>
-<tr><td>11:8</td><td>flag0</td><td>W</td><td>-</td><td>Command Flag0: flag0 is associated with current command. Setting this<br>field to kMultiBitBool4True will enable flag0 to be enabled. Note that<br>flag0 is used for the instantiate and reseed commands only, for all other commands its value is ignored.</td></tr>
-<tr><td>7:4</td><td>clen</td><td>W</td><td>-</td><td>Command Length: Number of 32-bit words that can optionally be appended<br>to the command. A value of zero will only transfer the command header.<br>A value of 4&#x27;hc will transfer the header plus an additional twelve<br>32-bit words of data.</td></tr>
-<tr><td>3:0</td><td>acmd</td><td>W</td><td>-</td><td>Application Command: Selects one of five operations to perform.<br>The commands supported are instantiate, reseed, generate, update,<br>and uninstantiate. Each application interface port used by peripheral<br>hardware commands a unique instance number in CSRNG.</td></tr>
+<tr><td>24:12</td><td>glen</td><td>W</td><td>0x0</td><td>Generate Length: Only defined for the generate command, this field<br>is the total number of cryptographic entropy blocks requested. Each<br>unit represents 128 bits of entropy returned. The NIST reference name<br>is max_number_of_bit_per_request, and this field size supports the<br>maximum size of 219 bits. For the maximum size, this field should be<br>set to 4096, resulting in a max_number_of_bit_per_request value of<br>4096 x 128 bits. For a smaller example, a value of 8 would return<br>a total of 1024 bits.</td></tr>
+<tr><td>11:8</td><td>flag0</td><td>W</td><td>0x0</td><td>Command Flag0: flag0 is associated with current command. Setting this<br>field to kMultiBitBool4True will enable flag0 to be enabled. Note that<br>flag0 is used for the instantiate and reseed commands only, for all other commands its value is ignored.</td></tr>
+<tr><td>7:4</td><td>clen</td><td>W</td><td>0x0</td><td>Command Length: Number of 32-bit words that can optionally be appended<br>to the command. A value of zero will only transfer the command header.<br>A value of 4&#x27;hc will transfer the header plus an additional twelve<br>32-bit words of data.</td></tr>
+<tr><td>3:0</td><td>acmd</td><td>W</td><td>0x0</td><td>Application Command: Selects one of five operations to perform.<br>The commands supported are instantiate, reseed, generate, update,<br>and uninstantiate. Each application interface port used by peripheral<br>hardware commands a unique instance number in CSRNG.</td></tr>
 </table>
 <h3 id="RESEED_INTERVAL">RESEED_INTERVAL</h3>
 <table>
@@ -125,13 +127,13 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>GENBITS_FIPS</td><td>R</td><td>-</td><td>This bit is set when genbits are FIPS/CC compliant.</td></tr>
-<tr><td>0</td><td>GENBITS_VLD</td><td>R</td><td>-</td><td>This bit is set when genbits are available on this application interface.</td></tr>
+<tr><td>1</td><td>GENBITS_FIPS</td><td>R</td><td>0x0</td><td>This bit is set when genbits are FIPS/CC compliant.</td></tr>
+<tr><td>0</td><td>GENBITS_VLD</td><td>R</td><td>0x0</td><td>This bit is set when genbits are available on this application interface.</td></tr>
 </table>
 <h3 id="GENBITS">GENBITS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>GENBITS</td><td>R</td><td>-</td><td>Reading this register will get the generated bits that were requested with<br>the generate request. This register must be read four times for each request<br>made. For example, an application command generate request with<br>a `clen` value of 4 requires this register to be read 16 times to get all<br>of the data out of the FIFO path.<br>Note that for !!GENBITS to be able to deliver random numbers, also !!CTRL.SW_APP_ENABLE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Otherwise, the register reads as 0.</td></tr>
+<tr><td>31:0</td><td>GENBITS</td><td>R</td><td>0x0</td><td>Reading this register will get the generated bits that were requested with<br>the generate request. This register must be read four times for each request<br>made. For example, an application command generate request with<br>a `clen` value of 4 requires this register to be read 16 times to get all<br>of the data out of the FIFO path.<br>Note that for !!GENBITS to be able to deliver random numbers, also !!CTRL.SW_APP_ENABLE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Otherwise, the register reads as 0.</td></tr>
 </table>
 <h3 id="INT_STATE_READ_ENABLE">INT_STATE_READ_ENABLE</h3>
 <table>
@@ -149,83 +151,68 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:0</td><td>INT_STATE_NUM</td><td>RW</td><td>-</td><td>Setting this field will set the number for which internal state can be<br>selected for a read access. Up to 16 internal state values can be chosen<br>from this register. The actual number of valid internal state fields<br>is set by parameter NHwApps plus 1 software app. For those selections that point<br>to reserved locations (greater than NHwApps plus 1), the returned value<br>will be zero. Writing this register will also reset the internal read<br>pointer for the !!INT_STATE_VAL register.<br>Note: This register should be read back after being written to ensure<br>that the !!INT_STATE_VAL read back is accurate.</td></tr>
+<tr><td>3:0</td><td>INT_STATE_NUM</td><td>RW</td><td>0x0</td><td>Setting this field will set the number for which internal state can be<br>selected for a read access. Up to 16 internal state values can be chosen<br>from this register. The actual number of valid internal state fields<br>is set by parameter NHwApps plus 1 software app. For those selections that point<br>to reserved locations (greater than NHwApps plus 1), the returned value<br>will be zero. Writing this register will also reset the internal read<br>pointer for the !!INT_STATE_VAL register.<br>Note: This register should be read back after being written to ensure<br>that the !!INT_STATE_VAL read back is accurate.</td></tr>
 </table>
 <h3 id="INT_STATE_VAL">INT_STATE_VAL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>INT_STATE_VAL</td><td>R</td><td>-</td><td>Reading this register will dump out the contents of the selected internal state field.<br>Since the internal state field is 448 bits wide, it will require 14 reads from this<br>register to gather the entire field. Once 14 reads have been done, the internal read<br>pointer (selects 32 bits of the 448 bit field) will reset to zero. The !!INT_STATE_NUM<br>can be re-written at this time (internal read pointer is also reset), and then<br>another internal state field can be read.<br>Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.<br>Otherwise, the register reads as 0.</td></tr>
+<tr><td>31:0</td><td>INT_STATE_VAL</td><td>R</td><td>0x0</td><td>Reading this register will dump out the contents of the selected internal state field.<br>Since the internal state field is 448 bits wide, it will require 14 reads from this<br>register to gather the entire field. Once 14 reads have been done, the internal read<br>pointer (selects 32 bits of the 448 bit field) will reset to zero. The !!INT_STATE_NUM<br>can be re-written at this time (internal read pointer is also reset), and then<br>another internal state field can be read.<br>Note that for !!INT_STATE_VAL to provide read access to the internal state, also !!CTRL.READ_INT_STATE needs to be set to `kMultiBitBool4True`.<br>In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.<br>Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set to true for this to work.<br>Otherwise, the register reads as 0.</td></tr>
 </table>
 <h3 id="FIPS_FORCE">FIPS_FORCE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>FIPS_FORCE</td><td>RW</td><td>-</td><td>Force the FIPS/CC compliance flag of individual instances to true.<br>This allows CSRNG to set the output FIPS/CC compliance flag to true despite running in fully deterministic mode (flag0 being true).<br>This can be useful e.g. for known-answer testing through entropy consumers accepting FIPS/CC compliant entropy only, or when firmware is used to derive FIPS/CC compliant entropy seeds.<br>After setting a particular bit to 1, the FIPS/CC compliance flag of the corresponding instance will be forced to true upon the next Instantiate or Reseed command.<br><br>Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBitBool4True.</td></tr>
+<tr><td>2:0</td><td>FIPS_FORCE</td><td>RW</td><td>0x0</td><td>Force the FIPS/CC compliance flag of individual instances to true.<br>This allows CSRNG to set the output FIPS/CC compliance flag to true despite running in fully deterministic mode (flag0 being true).<br>This can be useful e.g. for known-answer testing through entropy consumers accepting FIPS/CC compliant entropy only, or when firmware is used to derive FIPS/CC compliant entropy seeds.<br>After setting a particular bit to 1, the FIPS/CC compliance flag of the corresponding instance will be forced to true upon the next Instantiate or Reseed command.<br><br>Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBitBool4True.</td></tr>
 </table>
 <h3 id="HW_EXC_STS">HW_EXC_STS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>HW_EXC_STS</td><td>RW</td><td>-</td><td>Reading this register indicates whether one of the CSRNG HW instances has<br>encountered an exception.  Each bit corresponds to a particular hardware<br>instance, with bit 0 corresponding to instance HW0, bit 1 corresponding<br>to instance HW1, and so forth. (To monitor the status of requests made<br>to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this register<br>resets the status bits.</td></tr>
+<tr><td>15:0</td><td>HW_EXC_STS</td><td>RW</td><td>0x0</td><td>Reading this register indicates whether one of the CSRNG HW instances has<br>encountered an exception.  Each bit corresponds to a particular hardware<br>instance, with bit 0 corresponding to instance HW0, bit 1 corresponding<br>to instance HW1, and so forth. (To monitor the status of requests made<br>to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this register<br>resets the status bits.</td></tr>
 </table>
 <h3 id="RECOV_ALERT_STS">RECOV_ALERT_STS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15</td><td>CMD_STAGE_RESEED_CNT_ALERT</td><td>RW</td><td>-</td><td>This bit is set when the maximum number of generate requests between reseeds is<br>exceeded.<br>The invalid generate command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>14</td><td>CMD_STAGE_INVALID_CMD_SEQ_ALERT</td><td>RW</td><td>-</td><td>This bit is set when an out of order command is received by the main state machine.<br>This happens when an instantiate command is sent for a state that was already<br>instantiated or when any command other than instantiate is sent for a state that<br>wasn&#x27;t instantiated yet.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>13</td><td>CMD_STAGE_INVALID_ACMD_ALERT</td><td>RW</td><td>-</td><td>This bit is set when an unsupported/illegal CSRNG command is received by the<br>main state machine.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>12</td><td>CS_BUS_CMP_ALERT</td><td>RW</td><td>-</td><td>This bit is set when the software application port genbits bus value is equal<br>to the prior valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>15</td><td>CMD_STAGE_RESEED_CNT_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the maximum number of generate requests between reseeds is<br>exceeded.<br>The invalid generate command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>14</td><td>CMD_STAGE_INVALID_CMD_SEQ_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when an out of order command is received by the main state machine.<br>This happens when an instantiate command is sent for a state that was already<br>instantiated or when any command other than instantiate is sent for a state that<br>wasn&#x27;t instantiated yet.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>13</td><td>CMD_STAGE_INVALID_ACMD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when an unsupported/illegal CSRNG command is received by the<br>main state machine.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>12</td><td>CS_BUS_CMP_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the software application port genbits bus value is equal<br>to the prior valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
 <tr><td>11:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>ACMD_FLAG0_FIELD_ALERT</td><td>RW</td><td>-</td><td>This bit is set when the FLAG0 field in the Application Command is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>3</td><td>FIPS_FORCE_ENABLE_FIELD_ALERT</td><td>RW</td><td>-</td><td>This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>2</td><td>READ_INT_STATE_FIELD_ALERT</td><td>RW</td><td>-</td><td>This bit is set when the READ_INT_STATE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>1</td><td>SW_APP_ENABLE_FIELD_ALERT</td><td>RW</td><td>-</td><td>This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>0</td><td>ENABLE_FIELD_ALERT</td><td>RW</td><td>-</td><td>This bit is set when the ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>4</td><td>ACMD_FLAG0_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the FLAG0 field in the Application Command is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>3</td><td>FIPS_FORCE_ENABLE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>2</td><td>READ_INT_STATE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the READ_INT_STATE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>1</td><td>SW_APP_ENABLE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>0</td><td>ENABLE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
 </table>
 <h3 id="ERR_CODE">ERR_CODE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>30</td><td>FIFO_STATE_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any FIFO where both the empty and full status bits are set.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>29</td><td>FIFO_READ_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any empty FIFO that has recieved a read pulse.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>28</td><td>FIFO_WRITE_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any full FIFO that has been recieved a write pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>30</td><td>FIFO_STATE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any FIFO where both the empty and full status bits are set.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>29</td><td>FIFO_READ_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any empty FIFO that has recieved a read pulse.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>28</td><td>FIFO_WRITE_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when any of the source bits (bits 0 through 15 of this<br>this register) are asserted as a result of an error pulse generated from<br>any full FIFO that has been recieved a write pulse.<br>This bit will stay set until the next reset.</td></tr>
 <tr><td>27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>CMD_GEN_CNT_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when a mismatch in any of the hardened counters<br>has been detected.<br>This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>25</td><td>AES_CIPHER_SM_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an AES fatal error has been detected.<br>This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>24</td><td>DRBG_UPDOB_SM_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an illegal state has been detected for the<br>ctr_drbg update out block state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>23</td><td>DRBG_UPDBE_SM_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an illegal state has been detected for the<br>ctr_drbg update block encode state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>22</td><td>DRBG_GEN_SM_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an illegal state has been detected for the<br>ctr_drbg gen state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>21</td><td>MAIN_SM_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an illegal state has been detected for the<br>main state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>20</td><td>CMD_STAGE_SM_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an illegal state has been detected for the<br>command stage state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>19:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15</td><td>SFIFO_BLKENC_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>blkenc FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>14</td><td>SFIFO_GGENBITS_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>ggenbits FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>13</td><td>SFIFO_GADSTAGE_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>gadstage FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>12</td><td>SFIFO_GGENREQ_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>ggenreq FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>11</td><td>SFIFO_GRCSTAGE_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>grcstage FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>10</td><td>SFIFO_GBENCACK_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>gbencack FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>9</td><td>SFIFO_FINAL_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>final FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>8</td><td>SFIFO_PDATA_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>pdata FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>7</td><td>SFIFO_BENCACK_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>bencack FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>6</td><td>SFIFO_BENCREQ_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>bencreq FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>5</td><td>SFIFO_UPDREQ_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>updreq FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>4</td><td>SFIFO_KEYVRC_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>keyvrc FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>3</td><td>SFIFO_RCSTAGE_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>rcstage FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>2</td><td>SFIFO_CMDREQ_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>cmdreq FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>1</td><td>SFIFO_GENBITS_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>command stage genbits FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
-<tr><td>0</td><td>SFIFO_CMD_ERR</td><td>R</td><td>-</td><td>This bit will be set to one when an error has been detected for the<br>command stage command FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>26</td><td>CTR_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when a mismatch in any of the hardened counters<br>has been detected.<br>This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>25</td><td>AES_CIPHER_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an AES fatal error has been detected.<br>This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>24:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>22</td><td>CTR_DRBG_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>ctr_drbg gen state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>21</td><td>MAIN_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>main state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>20</td><td>CMD_STAGE_SM_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an illegal state has been detected for the<br>command stage state machine. This error will signal a fatal alert, and also<br>an interrupt if enabled.<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>19:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>SFIFO_GENBITS_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an error has been detected for the<br>command stage genbits FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
+<tr><td>0</td><td>SFIFO_CMD_ERR</td><td>R</td><td>0x0</td><td>This bit will be set to one when an error has been detected for the<br>command stage command FIFO. The type of error is reflected in the type status<br>bits (bits 28 through 30 of this register).<br>This bit will stay set until the next reset.</td></tr>
 </table>
 <h3 id="ERR_CODE_TEST">ERR_CODE_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4:0</td><td>ERR_CODE_TEST</td><td>RW</td><td>-</td><td>Setting this field will set the bit number for which an error<br>will be forced in the hardware. This bit number is that same one<br>found in the !!ERR_CODE register. The action of writing this<br>register will force an error pulse. The sole purpose of this<br>register is to test that any error properly propagates to either<br>an interrupt or an alert.</td></tr>
+<tr><td>4:0</td><td>ERR_CODE_TEST</td><td>RW</td><td>0x0</td><td>Setting this field will set the bit number for which an error<br>will be forced in the hardware. This bit number is that same one<br>found in the !!ERR_CODE register. The action of writing this<br>register will force an error pulse. The sole purpose of this<br>register is to test that any error properly propagates to either<br>an interrupt or an alert.</td></tr>
 </table>
 <h3 id="MAIN_SM_STATE">MAIN_SM_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>MAIN_SM_STATE</td><td>R</td><td>0x4E</td><td>This is the state of the CSRNG main state machine.<br>See the RTL file `csrng_main_sm` for the meaning of the values.</td></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:0</td><td>MAIN_SM_STATE</td><td>R</td><td>0x37</td><td>This is the state of the CSRNG main state machine.<br>See the RTL file `csrng_main_sm` for the meaning of the values.</td></tr>
 </table>
 </div>

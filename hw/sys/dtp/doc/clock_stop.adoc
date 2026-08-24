@@ -4,10 +4,11 @@
 [[dtp-clock-stop]]
 === Clock Stop
 
-This section describes DTP-level clock stop integration. For the clock stop controller implementation details, see <<cross-trigger-network>>.
+This section describes DTP-level clock stop integration. For the clock stop
+controller implementation details, see <<cross-trigger-network>>.
 
-From the DTP perspective, clock-stop handling combines JTAG DEBUG_CONTROL and CLA
-request sources into one functional halt path, while keeping CLA-only status
+From the DTP perspective, clock-stop handling combines JTAG DEBUG_CONTROL and
+CLA request sources into one functional halt path, while keeping CLA-only status
 separate for DEBUG_CONTROL readback.
 
 * *JTAG `jtag_clock_stop`*: The JTAG Interface Unit captures the DEBUG_CONTROL
@@ -36,5 +37,5 @@ At a high level, the architecture is:
    so software or a debugger can observe whether any CLA clock-stop source is
    active.
 
-This keeps CLA clock-stop observability distinct from the JTAG direct-stop
-path, while both can assert the functional chiplet halt through `stop_clks_o`.
+This keeps CLA clock-stop observability distinct from the JTAG direct-stop path,
+while both can assert the functional chiplet halt through `stop_clks_o`.

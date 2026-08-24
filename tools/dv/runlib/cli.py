@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Command-line orchestration for the native DV runner."""
 
 from __future__ import annotations
@@ -8,12 +11,14 @@ import importlib.metadata
 import json
 import os
 import secrets
+import signal
 import shutil
 import subprocess
 import sys
 import textwrap
+import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -45,12 +50,21 @@ from .results import (
     aggregate_status,
     exit_code_for_status,
     fragment_payload,
+    git_info,
     regression_payload,
     result_payload,
     rollup_payload,
+    tool_versions,
     write_result,
 )
-from .stages import cocotb_python_paths, item_artifact_dir, run_stage, seed_for_item
+from .stages import (
+    cocotb_python_paths,
+    item_artifact_dir,
+    request_stage_cancellation,
+    reset_stage_cancellation,
+    run_stage,
+    seed_for_item,
+)
 from .ui import Console
 from .waves import (
     WAVE_DEFAULT,
@@ -68,25 +82,58 @@ SUPPORTED_PYTHON_MAX_EXCLUSIVE = (3, 14)
 _COVERAGE_STAGES = {"cov_merge", "cov_report"}
 
 
+class RunInterrupted(BaseException):
+    """Raised by the main-thread signal handler after recording the signal."""
+
+    def __init__(self, signum: int):
+        self.signum = signum
+        super().__init__(signal.Signals(signum).name)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        usage="%(prog)s [options]",
-        description=(
-            "Native OSS DV/FV launcher for listing DUTs, validating configs, "
-            "and running simulation or formal flows."
+        usage=(
+            "%(prog)s --dut NAME [--framework NAME] [--items ITEM ...] [options]\n"
+            "       %(prog)s --list | --validate-configs | --doctor [options]"
+        ),
+        description=textwrap.dedent(
+            """\
+            Native OSS DV/FV launcher.
+
+            Select a DUT (--dut) and, when it implements more than one test framework,
+            a framework (--framework); pick tests or groups from its testlist
+            (--items/--tag); run them on a simulator (--tool). Start with --list to see
+            what exists and --doctor to check this machine can run it.
+            """
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
             """\
             Examples:
-              python3 tools/dv/run_dv.py --list
-              python3 tools/dv/run_dv.py --validate-configs
-              python3 tools/dv/run_dv.py --doctor --dut dtp
-              python3 tools/dv/run_dv.py --dut smc --list
-              python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator --dry-run
-              python3 tools/dv/run_dv.py --dut smc --build-only --dry-run
-              python3 tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
-              python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
+
+              Discover what exists:
+                python3 tools/dv/run_dv.py --list                    # DUTs, frameworks, tools
+                python3 tools/dv/run_dv.py --dut dtp --list          # one DUT's tests and groups
+                python3 tools/dv/run_dv.py --doctor --dut dtp        # can this machine run it?
+                python3 tools/dv/run_dv.py --validate-configs        # are all configs consistent?
+
+              Run tests (the DUT's default framework and tool):
+                python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
+                python3 tools/dv/run_dv.py --dut smc --items smoke --tool vcs
+                python3 tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
+                python3 tools/dv/run_dv.py --dut smc --build-only --dry-run
+
+              Pick a framework (same scenario names, different implementation):
+                python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test
+                python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
+
+              Debug a failure:
+                python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
+                python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --stage sim --seed 7
+
+              Feed CI or the dashboard:
+                python3 tools/dv/run_dv.py --list --json             # (DUT, framework) matrix
+                python3 tools/dv/run_dv.py --dut dtp --list --json   # scenario binding matrix
             """
         ),
     )
@@ -104,10 +151,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Verification mode: simulation (default) or formal",
     )
     common.add_argument(
+        "--framework",
+        metavar="NAME",
+        help="Test framework (e.g. cocotb, uvm); defaults to the DUT's default_framework",
+    )
+    common.add_argument(
         "--items",
         nargs="+",
         metavar="ITEM",
-        help="Test/check names or groups",
+        help="Test or group names from the DUT's testlist (default: the `smoke` group)",
     )
     common.add_argument(
         "--tag",
@@ -120,14 +172,38 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Keep duplicate items when selected groups overlap",
     )
-    common.add_argument("--tool", metavar="TOOL", help="Backend tool override")
-    common.add_argument("--run-mode", metavar="NAME", help="Named run mode from sim cfg")
+    common.add_argument(
+        "--skip-unimplemented",
+        action="store_true",
+        help=(
+            "Skip group/tag-selected scenarios not implemented in the selected framework "
+            "(default: error); explicitly named --items tests still error"
+        ),
+    )
+    common.add_argument(
+        "--tool",
+        metavar="TOOL",
+        help="Simulator from simulators.toml (verilator, vcs, xcelium); defaults to the framework's default tool",
+    )
+    common.add_argument(
+        "--run-mode",
+        metavar="NAME",
+        help="Run mode from the DUT sim config [run_modes.<name>] (default: the test's first run mode)",
+    )
 
     actions = parser.add_argument_group("Actions And Introspection")
     actions.add_argument(
         "--list",
         action="store_true",
         help="List configured DUTs or selected DUT details",
+    )
+    actions.add_argument(
+        "--json",
+        action="store_true",
+        help=(
+            "With --list: emit machine-readable JSON — one entry per (DUT, framework) view "
+            "globally, or the full scenario binding matrix with --dut"
+        ),
     )
     actions.add_argument(
         "--validate-configs",
@@ -146,7 +222,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     stages = parser.add_argument_group("Stage And Build Control")
-    stages.add_argument("--stage", action="append", metavar="NAME", help="Native stage to run")
+    stages.add_argument(
+        "--stage",
+        action="append",
+        metavar="NAME",
+        help="Run one named stage (repeatable), e.g. --stage flist --stage hdl_compile; `--dut X --list` shows a DUT's stages",
+    )
     stages.add_argument("--build-only", action="store_true", help="Run build stages only")
     stages.add_argument("--run-only", action="store_true", help="Run sim/regress stages only")
     stages.add_argument(
@@ -162,8 +243,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     output = parser.add_argument_group("Output And UI")
-    output.add_argument("--run-dir", metavar="DIR", help="Run output directory")
-    output.add_argument("--result", metavar="PATH", help="Result JSON output path")
+    output.add_argument(
+        "--run-dir",
+        metavar="DIR",
+        help="Run output directory (default: <dut-dv-root>/build/runs/<stamp>__<tool>__<label>)",
+    )
+    output.add_argument(
+        "--result",
+        metavar="PATH",
+        help="Write an extra copy of the run-level result JSON here (primary stays <run-dir>/result.json)",
+    )
     output.add_argument(
         "--quiet",
         action="store_true",
@@ -196,7 +285,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="N",
         help="Backend compile/build job count; uses --sim-jobs when omitted",
     )
-    parallel.add_argument("--executor", default=None, metavar="NAME", help="Executor backend")
+    parallel.add_argument(
+        "--executor",
+        default=None,
+        metavar="NAME",
+        help="Executor from executors.toml (`local` is the implemented dispatch)",
+    )
     parallel.add_argument("--queue", metavar="NAME", help="Executor queue/partition metadata")
     parallel.add_argument("--cores", type=int, metavar="N", help="Executor CPU-core request")
     parallel.add_argument("--mem-mb", type=int, metavar="MB", help="Executor memory request")
@@ -208,7 +302,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Run selected items through the local regression scheduler",
     )
-    regression.add_argument("--seed", type=int, metavar="N", help="Seed override")
+    regression.add_argument(
+        "--seed",
+        type=int,
+        metavar="N",
+        help="Single-simulation seed override (integer; rejected in regression mode — use --reseed there)",
+    )
     regression.add_argument(
         "--reseed",
         type=int,
@@ -235,7 +334,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         nargs="?",
         const=WAVE_DEFAULT,
         metavar="FMT",
-        help="Enable waves, optionally naming a format",
+        help="Enable waves; FMT defaults to the tool's native format (fst/vpd/shm)",
     )
     waves.add_argument(
         "--waves-on-fail",
@@ -271,7 +370,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     coverage = parser.add_argument_group("Coverage")
-    coverage.add_argument("--cov", action="store_true", help="Enable coverage where supported")
+    coverage.add_argument(
+        "--cov",
+        action="store_true",
+        help="Enable simulator-native coverage and append the cov_merge/cov_report stages",
+    )
     coverage.add_argument(
         "--fail-under",
         type=float,
@@ -283,8 +386,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     backend.add_argument(
         "--define",
         action="append",
-        metavar="VALUE",
-        help="Extra +define+ value",
+        metavar="NAME[=VALUE]",
+        help="Extra Verilog define for compile/elaboration",
     )
     backend.add_argument(
         "--comp-arg",
@@ -496,6 +599,12 @@ def validate_flow(
     for tool in flow.tools:
         if tool not in simulators:
             raise ConfigError(f"{flow.path}: tool `{tool}` missing from simulators.toml")
+        capable = _tool_frameworks(simulators, tool)
+        if flow.framework and capable and flow.framework not in capable:
+            raise ConfigError(
+                f"{flow.path}: tool `{tool}` does not support framework `{flow.framework}` "
+                f"(supports: {', '.join(capable)})"
+            )
     stages = flow_stages(flow)
     for stage_name, stage in stages.items():
         if stage_name not in CANONICAL_STAGES:
@@ -589,16 +698,25 @@ def cmd_validate_configs(root: Path) -> int:
         return 2
 
     failures = 0
+    rows = 0
     for name in sorted(duts):
-        try:
-            validate_flow(duts[name], root, simulators, policies, executors)
-            print(f"  {name:<16} OK")
-        except ConfigError as exc:
-            failures += 1
-            print(f"  {name:<16} FAIL: {exc}")
+        flow = duts[name]
+        # Validate every framework view a DUT implements, not only its default: the default row
+        # keeps the bare DUT name; additional frameworks get their own `name (fw)` row.
+        views: list[tuple[str, str | None]] = [(name, None)]
+        views += [(f"{name} ({fw})", fw) for fw in flow.frameworks if fw != flow.framework]
+        for label, fw in views:
+            rows += 1
+            try:
+                view = flow if fw is None else resolve_dut(root, name, framework=fw)
+                validate_flow(view, root, simulators, policies, executors)
+                print(f"  {label:<16} OK")
+            except ConfigError as exc:
+                failures += 1
+                print(f"  {label:<16} FAIL: {exc}")
 
     total = len(duts)
-    print(f"\nResult: {total} DUT(s): {total - failures} OK, {failures} FAILED")
+    print(f"\nResult: {total} DUT(s), {rows} framework view(s): {rows - failures} OK, {failures} FAILED")
     return 0 if failures == 0 else 2
 
 
@@ -731,7 +849,6 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         ("pyuvm", "pyuvm"),
         ("cocotbext-axi", "cocotbext-axi"),
         ("cocotbext-jtag", "cocotbext-jtag"),
-        ("cocotbext-i2c", "cocotbext-i2c"),
     ]
     for label, dist_name in distributions:
         version = _dist_version(dist_name)
@@ -848,7 +965,7 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     flow: Flow | None = None
     if args.dut:
         try:
-            flow = resolve_dut(root, args.dut, mode=args.mode)
+            flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
             validate_flow(flow, root, simulators, policies, executors)
         except ConfigError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
@@ -857,7 +974,7 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     required: str | None = None
     if flow is not None:
         tools = list(flow.tools)
-        required = selected_tool(flow, args)
+        required = selected_tool(flow, args, simulators)
         scope = f"DUT `{flow.name}` (would run with: {required})"
     elif args.tool:
         tools = [args.tool]
@@ -919,14 +1036,29 @@ def list_flows(flows: dict[str, Flow]) -> None:
         tool = flow.default_tool or (flow.tools[0] if flow.tools else "-")
         if flow.license == "required-commercial":
             tool += " (licensed)"
-        print(f"{flow.name:<16} {flow.kind:<3} {flow.framework:<8} {tool:<20} {flow.description}")
+        frameworks = ",".join(flow.frameworks) or flow.framework or "-"
+        print(f"{flow.name:<16} {flow.kind:<3} {frameworks:<12} {tool:<20} {flow.description}")
+
+
+def _implemented_counts(flow: Flow, catalog: TestCatalog) -> dict[str, int]:
+    """Scenario count per implemented framework — the binding-matrix summary."""
+    frameworks = flow.frameworks or ([flow.framework] if flow.framework else [])
+    return {
+        fw: sum(1 for test in catalog.tests.values() if fw in test.bindings)
+        for fw in frameworks
+    }
 
 
 def list_flow_detail(flow: Flow, root: Path) -> None:
     catalog = load_test_catalog(flow, root)
+    multi_framework = bool(flow.frameworks) and flow.frameworks != [flow.framework]
     print(f"name       : {flow.name}")
     print(f"kind       : {flow.kind}")
     print(f"framework  : {flow.framework}")
+    if multi_framework:
+        print(f"frameworks : {', '.join(flow.frameworks)} (default: {flow.default_framework})")
+        counts = _implemented_counts(flow, catalog)
+        print("implemented: " + ", ".join(f"{fw} {n}/{len(catalog.tests)}" for fw, n in counts.items()))
     print(f"root       : {flow.root}")
     print(f"tools      : {', '.join(flow.tools)}")
     print(f"default    : {flow.default_tool}")
@@ -934,13 +1066,91 @@ def list_flow_detail(flow: Flow, root: Path) -> None:
     print(f"runnability: {flow.runnability}")
     print(f"stages     : {', '.join(flow_stages(flow))}")
     if catalog.tests:
-        print("tests      : " + ", ".join(sorted(catalog.tests)))
+        # Scenarios implemented beyond the default framework are marked (+fw): the compact
+        # human view of the binding matrix (--json carries the full per-scenario map).
+        default = flow.default_framework or flow.framework
+        names = []
+        for name in sorted(catalog.tests):
+            extras = sorted(set(catalog.tests[name].bindings) - {default})
+            names.append(name + (f" (+{','.join(extras)})" if extras else ""))
+        print("tests      : " + ", ".join(names))
     if catalog.groups:
         print("groups     : " + ", ".join(f"{name}={','.join(items)}" for name, items in sorted(catalog.groups.items())))
 
 
-def selected_tool(flow: Flow, args: argparse.Namespace) -> str:
+def _flow_view_dict(flow: Flow) -> dict[str, Any]:
+    return {
+        "name": flow.name,
+        "kind": flow.kind,
+        "framework": flow.framework,
+        "default": flow.framework == flow.default_framework,
+        "frameworks": list(flow.frameworks),
+        "default_framework": flow.default_framework,
+        "tools": list(flow.tools),
+        "default_tool": flow.default_tool,
+        "visibility": flow.visibility,
+        "runnability": flow.runnability,
+        "license": flow.license,
+        "root": flow.root,
+        "description": flow.description,
+    }
+
+
+def list_flows_json(root: Path, flows: dict[str, Flow]) -> None:
+    """Machine-readable enumeration: one entry per (DUT, framework) view.
+
+    CI matrices consume this instead of hardcoding DUT names — e.g. a licensed UVM job selects
+    `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need.
+    """
+    views: list[dict[str, Any]] = []
+    for name in sorted(flows):
+        flow = flows[name]
+        views.append(_flow_view_dict(flow))
+        for fw in flow.frameworks:
+            if fw != flow.framework:
+                views.append(_flow_view_dict(resolve_dut(root, name, framework=fw)))
+    print(json.dumps({"schema_version": 1, "duts": views}, indent=2))
+
+
+def list_flow_detail_json(flow: Flow, root: Path) -> None:
+    """Machine-readable DUT detail: the selected view plus the full scenario binding matrix."""
+    catalog = load_test_catalog(flow, root)
+    payload = {"schema_version": 1, **_flow_view_dict(flow)}
+    payload["stages"] = list(flow_stages(flow))
+    payload["total_scenarios"] = len(catalog.tests)
+    payload["implemented"] = _implemented_counts(flow, catalog)
+    payload["tests"] = {
+        name: {"bindings": dict(test.bindings), "tags": list(test.tags or [])}
+        for name, test in sorted(catalog.tests.items())
+    }
+    payload["groups"] = {name: list(members) for name, members in sorted(catalog.groups.items())}
+    print(json.dumps(payload, indent=2))
+
+
+def _tool_frameworks(simulators: dict[str, Any], tool: str) -> list[str]:
+    cfg = simulators.get(tool)
+    if not isinstance(cfg, dict):
+        return []
+    return as_str_list(cfg.get("frameworks"), f"{tool}.frameworks")
+
+
+def selected_tool(flow: Flow, args: argparse.Namespace, simulators: dict[str, Any] | None = None) -> str:
     tool = args.tool or flow.default_tool
+    if simulators is not None and flow.framework:
+        capable = _tool_frameworks(simulators, tool)
+        if capable and flow.framework not in capable:
+            others = sorted(
+                name for name in flow.tools if flow.framework in _tool_frameworks(simulators, name)
+            )
+            hint = (
+                f"; `{flow.framework}`-capable tools for dut `{flow.name}`: {', '.join(others)}"
+                if others
+                else ""
+            )
+            raise ConfigError(
+                f"tool `{tool}` does not support framework `{flow.framework}` "
+                f"(`{tool}` supports: {', '.join(capable)}){hint}"
+            )
     if tool not in flow.tools:
         raise ConfigError(f"tool `{tool}` is not allowed for flow `{flow.name}`")
     return tool
@@ -1020,9 +1230,14 @@ def _merge_coverage_replay_result(
         stage for stage in current.get("stages", []) if isinstance(stage, dict)
     ]
     stages = [*old_stages, *new_stages]
-    status = _status_from_values(
-        [str(stage.get("status", "UNKNOWN")) for stage in stages]
-    )
+    status_values = [str(stage.get("status", "UNKNOWN")) for stage in stages]
+    progress = existing.get("progress")
+    if (
+        isinstance(progress, dict)
+        and progress.get("state") != "final"
+    ) or existing.get("interruption"):
+        status_values.append(str(existing.get("status", "UNKNOWN")))
+    status = _status_from_values(status_values)
     payload.update(
         {
             "status": status,
@@ -1221,6 +1436,46 @@ def expand_items(
     return expanded
 
 
+def validate_item_bindings(
+    flow: Flow, catalog: TestCatalog, items: list[str], args: argparse.Namespace
+) -> list[str]:
+    """Enforce that every selected scenario is implemented in the selected framework.
+
+    A selected scenario with no `module` entry for the selected framework is a config error.
+    `--skip-unimplemented` skips group/tag-derived unimplemented scenarios instead — loudly, and
+    recorded in run metadata — while an explicitly named `--items` test always errors.
+    """
+    if not flow.framework:
+        return items
+    unimplemented = [name for name in items if name in catalog.tests and not catalog.tests[name].module]
+    if not unimplemented:
+        return items
+    explicit = [name for name in unimplemented if name in set(args.items or [])]
+    if explicit or not args.skip_unimplemented:
+        width = max(len(name) for name in unimplemented)
+        lines = "\n".join(
+            f"  {name:<{width}}  (implemented: {', '.join(sorted(catalog.tests[name].bindings)) or 'none'})"
+            for name in unimplemented
+        )
+        fix = (
+            f"  fix: add a `{flow.framework}` module entry or narrow the selection"
+            if explicit
+            else f"  fix: add a `{flow.framework}` module entry, narrow the selection, or pass --skip-unimplemented"
+        )
+        raise ConfigError(
+            f"{len(unimplemented)} selected scenario(s) are not implemented for framework "
+            f"`{flow.framework}`:\n{lines}\n{fix}"
+        )
+    kept = [name for name in items if name not in set(unimplemented)]
+    if not kept:
+        raise ConfigError(
+            "--skip-unimplemented left no runnable scenarios: none of the selected tests are "
+            f"implemented for framework `{flow.framework}`"
+        )
+    setattr(args, "_skipped_unimplemented", unimplemented)
+    return kept
+
+
 def select_by_tags(catalog: TestCatalog, candidates: list[str], tags: list[str]) -> list[str]:
     """Keep candidate test names whose tags intersect any of `tags`, preserving order."""
     wanted = set(tags)
@@ -1372,6 +1627,12 @@ def write_regression_summary(
     args: argparse.Namespace,
     items: list[str],
     elapsed_sec: float,
+    *,
+    status_override: str | None = None,
+    progress: dict[str, Any] | None = None,
+    interruption: dict[str, Any] | None = None,
+    versions: dict[str, str] | None = None,
+    git_metadata: dict[str, str] | None = None,
 ) -> None:
     path = run_dir / "stages" / "regress" / "regression.json"
     write_result(
@@ -1386,6 +1647,11 @@ def write_regression_summary(
             args=args,
             items=items,
             elapsed_sec=elapsed_sec,
+            status_override=status_override,
+            progress=progress,
+            interruption=interruption,
+            versions=versions,
+            git_metadata=git_metadata,
         ),
     )
 
@@ -1433,8 +1699,9 @@ def run_flow(
     policies: dict[str, Any],
     args: argparse.Namespace,
 ) -> int:
+    reset_stage_cancellation()
     replay_run_dir, existing_result = _existing_run_result(root, flow, args)
-    tool = selected_tool(flow, args)
+    tool = selected_tool(flow, args, simulators)
     executor = selected_executor(flow, args)
     validate_selected_tool_available(tool, simulators, args, flow)
     if args.waves:
@@ -1465,6 +1732,7 @@ def run_flow(
             items = select_by_tags(catalog, items, args.tag)
             if not items:
                 raise ConfigError(f"no tests match tag(s): {', '.join(args.tag)}")
+        items = validate_item_bindings(flow, catalog, items, args)
 
     if need_items and not args.stage and "c_compile" in flow_stages(flow):
         if any(catalog.tests[item].firmware is not None for item in items):
@@ -1516,14 +1784,163 @@ def run_flow(
         run_dir = reserve_run_dir(run_dir, args.dry_run)
         update_latest_symlink(run_dir, args.dry_run)
 
+    result_path = run_dir / "result.json"
+    export_path: Path | None = None
+    if args.result:
+        export_path = Path(args.result).expanduser()
+        if not export_path.is_absolute():
+            export_path = root / export_path
+        if export_path == result_path:
+            export_path = None
+
+    leaf_plans_by_stage: dict[int, list[dict[str, Any]]] = {}
+    expected_leaves: list[dict[str, Any]] = []
+    next_leaf_id = 0
+    for stage_index, stage in enumerate(stages):
+        if stage not in {"sim", "regress", "formal"}:
+            continue
+        seen_regression_seeds: set[int] = set()
+        stage_plans: list[dict[str, Any]] = []
+        for item in items:
+            for seed in seed_plan(
+                catalog,
+                sim_cfg,
+                args,
+                item,
+                scheduler and stage in {"sim", "regress"},
+                seen_regression_seeds,
+            ):
+                identity = {
+                    "id": next_leaf_id,
+                    "stage": stage,
+                    "item": item,
+                    "target": target_by_item.get(item),
+                    "seed": seed,
+                }
+                stage_plans.append(identity)
+                expected_leaves.append(identity)
+                next_leaf_id += 1
+        leaf_plans_by_stage[stage_index] = stage_plans
+
+    replaying_coverage = existing_result is not None and replay_run_dir == run_dir
+    checkpoint_enabled = bool(expected_leaves) and not args.dry_run and not replaying_coverage
+    run_versions = tool_versions(root)
+    run_git = git_info(root)
+
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console
     args._ui_leaf_mode = "compact" if scheduler else "full"
+    skipped_unimplemented = list(getattr(args, "_skipped_unimplemented", []) or [])
+    if skipped_unimplemented:
+        console.event(
+            "selection",
+            f"skipped_unimplemented={len(skipped_unimplemented)} framework={flow.framework} "
+            f"tests={','.join(skipped_unimplemented)}",
+        )
     run_started = time.monotonic()
     results: list[StageResult] = []
     runs_by_item: dict[str, list[tuple[int, StageResult]]] = {}
     regression_jobs: list[dict[str, Any]] = []
     final_failures = 0
+    progress_lock = threading.Lock()
+    interruption_requested = threading.Event()
+    args._cancellation_event = interruption_requested
+    active_leaf_ids: set[int] = set()
+    completed_leaves_by_id: dict[int, dict[str, Any]] = {}
+    checkpoint_sequence = 0
+
+    def checkpoint_progress(state: str) -> dict[str, Any]:
+        nonlocal checkpoint_sequence
+        with progress_lock:
+            checkpoint_sequence += 1
+            completed_ids = set(completed_leaves_by_id)
+            active_ids = set(active_leaf_ids) - completed_ids
+            completed = [
+                completed_leaves_by_id[int(leaf["id"])]
+                for leaf in expected_leaves
+                if int(leaf["id"]) in completed_ids
+            ]
+            active = [
+                dict(leaf)
+                for leaf in expected_leaves
+                if int(leaf["id"]) in active_ids
+            ]
+            missing = [
+                dict(leaf)
+                for leaf in expected_leaves
+                if int(leaf["id"]) not in completed_ids | active_ids
+            ]
+        interrupted = active if state == "interrupted" else []
+        visible_active = [] if state == "interrupted" else active
+        return {
+            "state": state,
+            "sequence": checkpoint_sequence,
+            "updated_at": datetime.now(UTC).isoformat(),
+            "expected_count": len(expected_leaves),
+            "completed_count": len(completed),
+            "active_count": len(visible_active),
+            "missing_count": len(missing),
+            "interrupted_count": len(interrupted),
+            "expected": [dict(leaf) for leaf in expected_leaves],
+            "completed": completed,
+            "active": visible_active,
+            "missing": missing,
+            "interrupted": interrupted,
+        }
+
+    def mark_leaf_active(leaf: dict[str, Any]) -> bool:
+        with progress_lock:
+            if interruption_requested.is_set():
+                return False
+            active_leaf_ids.add(int(leaf["id"]))
+            return True
+
+    def mark_leaf_completed(leaf: dict[str, Any], result: StageResult) -> None:
+        leaf_id = int(leaf["id"])
+        completed = {
+            **leaf,
+            "status": result.status,
+            "return_code": result.return_code,
+        }
+        with progress_lock:
+            active_leaf_ids.discard(leaf_id)
+            completed_leaves_by_id[leaf_id] = completed
+
+    def leaf_is_completed(leaf: dict[str, Any]) -> bool:
+        with progress_lock:
+            return int(leaf["id"]) in completed_leaves_by_id
+
+    def write_checkpoint(
+        *,
+        state: str = "running",
+        status: str = "UNKNOWN",
+        progress: dict[str, Any] | None = None,
+        interruption: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        if not checkpoint_enabled:
+            return None
+        progress = progress or checkpoint_progress(state)
+        payload = result_payload(
+            flow=flow,
+            root=root,
+            tool=tool,
+            run_dir=run_dir,
+            stages=list(results),
+            dry_run=False,
+            items=items,
+            label=label,
+            args=args,
+            executor=executor,
+            status_override=status,
+            progress=progress,
+            interruption=interruption,
+            versions=run_versions,
+            git_metadata=run_git,
+        )
+        write_result(result_path, payload)
+        if export_path is not None:
+            write_result(export_path, payload)
+        return payload
 
     def regression_job(
         stage: str,
@@ -1607,7 +2024,14 @@ def run_flow(
             )
         return debug_result, result_json
 
-    def run_leaf(stage: str, item: str, seed: int) -> tuple[str, int, StageResult, list[dict[str, Any]]]:
+    def run_leaf(
+        leaf: dict[str, Any],
+    ) -> tuple[dict[str, Any], StageResult, list[dict[str, Any]]]:
+        if not mark_leaf_active(leaf):
+            raise RuntimeError("run interrupted before leaf execution")
+        stage = str(leaf["stage"])
+        item = str(leaf["item"])
+        seed = int(leaf["seed"])
         attempt_results: list[StageResult] = []
         jobs: list[dict[str, Any]] = []
         for attempt in range((args.retry or 0) + 1):
@@ -1671,12 +2095,23 @@ def run_flow(
                 jobs[-1]["artifacts"]["debug_result_json"] = debug_json
                 final.artifacts = dict(final.artifacts or {})
                 final.artifacts["debug_result_json"] = debug_json
-        return item, seed, attempt_results[-1], jobs
+        return leaf, attempt_results[-1], jobs
 
-    def record_leaf(item: str, seed: int, result: StageResult, jobs: list[dict[str, Any]]) -> bool:
+    def record_leaf(
+        leaf: dict[str, Any],
+        result: StageResult,
+        jobs: list[dict[str, Any]],
+        *,
+        refresh_checkpoint: bool = True,
+    ) -> bool:
+        item = str(leaf["item"])
+        seed = int(leaf["seed"])
         results.append(result)
         runs_by_item.setdefault(item, []).append((seed, result))
         regression_jobs.extend(jobs)
+        mark_leaf_completed(leaf, result)
+        if refresh_checkpoint:
+            write_checkpoint()
         return scheduler and result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
 
     def needs_parallel_cocotb_prebuild(stage: str, target: str) -> bool:
@@ -1696,7 +2131,18 @@ def run_flow(
             and target not in getattr(args, "_cocotb_prebuilt_targets", set())
         )
 
+    previous_signal_handlers: dict[int, Any] = {}
+
+    def interrupt_handler(signum: int, _frame: Any) -> None:
+        interruption_requested.set()
+        raise RunInterrupted(signum)
+
     try:
+        if checkpoint_enabled:
+            for signum in (signal.SIGINT, signal.SIGTERM):
+                previous_signal_handlers[signum] = signal.getsignal(signum)
+                signal.signal(signum, interrupt_handler)
+            write_checkpoint()
         console.run_header(
             flow=flow.name,
             tool=tool,
@@ -1709,7 +2155,7 @@ def run_flow(
             mode="regression" if scheduler else None,
         )
         emit_dry_run_config_summary(console, flow, root, sim_cfg, simulators, tool, args)
-        for stage in stages:
+        for stage_index, stage in enumerate(stages):
             if stage in {"flist", "hdl_compile", "elaborate"}:
                 for target in build_targets:
                     result = run_stage(
@@ -1732,21 +2178,15 @@ def run_flow(
                 if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
                     break
             elif stage in {"sim", "regress", "formal"}:
-                seen_regression_seeds: set[int] = set()
-                leaves = [
-                    (item, seed)
-                    for item in items
-                    for seed in seed_plan(
-                        catalog,
-                        sim_cfg,
-                        args,
-                        item,
-                        scheduler and stage in {"sim", "regress"},
-                        seen_regression_seeds,
-                    )
-                ]
-                leaf_item_width = max((len(item) for item, _ in leaves), default=44)
-                leaf_seed_width = max((len(str(seed)) for _, seed in leaves), default=8)
+                leaves = leaf_plans_by_stage.get(stage_index, [])
+                leaf_item_width = max(
+                    (len(str(leaf["item"])) for leaf in leaves),
+                    default=44,
+                )
+                leaf_seed_width = max(
+                    (len(str(leaf["seed"])) for leaf in leaves),
+                    default=8,
+                )
                 completed_leaves = 0
                 parallel = (
                     scheduler
@@ -1786,16 +2226,26 @@ def run_flow(
                         total=len(leaves),
                         jobs=args.sim_jobs,
                         executor=executor,
-                        seeds=regression_seed_label(leaves),
+                        seeds=regression_seed_label([
+                            (str(leaf["item"]), int(leaf["seed"]))
+                            for leaf in leaves
+                        ]),
                         retry=args.retry or 0,
                         item_width=leaf_item_width,
                         seed_width=leaf_seed_width,
                     )
-                    with ThreadPoolExecutor(max_workers=args.sim_jobs) as pool:
-                        futures = {pool.submit(run_leaf, stage, item, seed): (item, seed) for item, seed in leaves}
+                    pool = ThreadPoolExecutor(max_workers=args.sim_jobs)
+                    futures: dict[Any, dict[str, Any]] = {}
+                    try:
+                        futures = {
+                            pool.submit(run_leaf, leaf): leaf
+                            for leaf in leaves
+                        }
                         for future in as_completed(futures):
-                            item, seed, result, jobs = future.result()
-                            failed = record_leaf(item, seed, result, jobs)
+                            leaf, result, jobs = future.result()
+                            item = str(leaf["item"])
+                            seed = int(leaf["seed"])
+                            failed = record_leaf(leaf, result, jobs)
                             completed_leaves += 1
                             console.regression_leaf_done(
                                 index=completed_leaves,
@@ -1811,18 +2261,49 @@ def run_flow(
                             )
                             if failed:
                                 final_failures += 1
+                    except BaseException:
+                        completed_before_interrupt = [
+                            future
+                            for future in futures
+                            if future.done() and not future.cancelled()
+                        ]
+                        for future in futures:
+                            future.cancel()
+                        request_stage_cancellation()
+                        wait(futures, timeout=3)
+                        for future in completed_before_interrupt:
+                            try:
+                                leaf, result, jobs = future.result()
+                            except BaseException:
+                                continue
+                            if not leaf_is_completed(leaf):
+                                record_leaf(
+                                    leaf,
+                                    result,
+                                    jobs,
+                                    refresh_checkpoint=False,
+                                )
+                        pool.shutdown(wait=False, cancel_futures=True)
+                        raise
+                    else:
+                        pool.shutdown()
                 else:
                     if scheduler:
                         console.regression_start(
                             total=len(leaves),
                             jobs=args.sim_jobs,
                             executor=executor,
-                            seeds=regression_seed_label(leaves),
+                            seeds=regression_seed_label([
+                                (str(leaf["item"]), int(leaf["seed"]))
+                                for leaf in leaves
+                            ]),
                             retry=args.retry or 0,
                             item_width=leaf_item_width,
                             seed_width=leaf_seed_width,
                         )
-                    for item, seed in leaves:
+                    for leaf in leaves:
+                        item = str(leaf["item"])
+                        seed = int(leaf["seed"])
                         if scheduler and args.max_failures is not None and final_failures >= args.max_failures:
                             skipped = StageResult(
                                 stage=stage,
@@ -1834,9 +2315,11 @@ def run_flow(
                                 ended_at=datetime.now(UTC).isoformat(),
                                 reason="skipped after --max-failures threshold",
                             )
-                            results.append(skipped)
-                            runs_by_item.setdefault(item, []).append((seed, skipped))
-                            regression_jobs.append(regression_job(stage, item, seed, 0, skipped))
+                            record_leaf(
+                                leaf,
+                                skipped,
+                                [regression_job(stage, item, seed, 0, skipped)],
+                            )
                             completed_leaves += 1
                             console.regression_leaf_done(
                                 index=completed_leaves,
@@ -1852,8 +2335,8 @@ def run_flow(
                             )
                             continue
 
-                        item, seed, result, jobs = run_leaf(stage, item, seed)
-                        failed = record_leaf(item, seed, result, jobs)
+                        leaf, result, jobs = run_leaf(leaf)
+                        failed = record_leaf(leaf, result, jobs)
                         if scheduler:
                             completed_leaves += 1
                             console.regression_leaf_done(
@@ -1901,6 +2384,8 @@ def run_flow(
                 args,
                 items,
                 time.monotonic() - run_started,
+                versions=run_versions,
+                git_metadata=run_git,
             )
         if scheduler:
             console.regression_summary(
@@ -1909,7 +2394,6 @@ def run_flow(
                 elapsed_sec=time.monotonic() - run_started,
             )
 
-        replaying_coverage = existing_result is not None and replay_run_dir == run_dir
         # Structured-result guarantee, leafless case: a non-passing run in which no sim
         # leaf executed (compile/elaboration/filelist failure) gets one run-level stage
         # XML so the failure is visible to JUnit consumers. Runs before result_payload
@@ -1937,18 +2421,15 @@ def run_flow(
             label=label,
             args=args,
             executor=executor,
+            versions=run_versions,
+            git_metadata=run_git,
         )
         if replaying_coverage:
             payload = _merge_coverage_replay_result(existing_result, payload)
-        result_path = run_dir / "result.json"
         if not args.dry_run:
             write_result(result_path, payload)
-            if args.result:
-                export_path = Path(args.result).expanduser()
-                if not export_path.is_absolute():
-                    export_path = root / export_path
-                if export_path != result_path:
-                    write_result(export_path, payload)
+            if export_path is not None:
+                write_result(export_path, payload)
             if replaying_coverage:
                 _update_regression_coverage(
                     run_dir,
@@ -1964,14 +2445,67 @@ def run_flow(
             result_json=repo_rel(root, result_path),
         )
         return exit_code_for_status(status)
+    except RunInterrupted as exc:
+        request_stage_cancellation()
+        signal_name = signal.Signals(exc.signum).name
+        interruption = {
+            "kind": "signal",
+            "signal": signal_name,
+            "signal_number": exc.signum,
+            "reason": f"run interrupted by {signal_name}",
+            "recorded_at": datetime.now(UTC).isoformat(),
+        }
+        progress = checkpoint_progress("interrupted")
+        elapsed_sec = time.monotonic() - run_started
+        if nest and checkpoint_enabled:
+            write_regression_summary(
+                root,
+                run_dir,
+                flow,
+                tool,
+                regression_jobs,
+                results,
+                args,
+                items,
+                elapsed_sec,
+                status_override="ERROR",
+                progress=progress,
+                interruption=interruption,
+                versions=run_versions,
+                git_metadata=run_git,
+            )
+        write_checkpoint(
+            state="interrupted",
+            status="ERROR",
+            progress=progress,
+            interruption=interruption,
+        )
+        console.event("error", interruption["reason"], force=True)
+        console.result(
+            status="ERROR",
+            elapsed_sec=elapsed_sec,
+            tests=len(items) if need_items else 0,
+            run_dir=repo_rel(root, run_dir),
+            result_json=repo_rel(root, result_path),
+        )
+        return 128 + exc.signum
     finally:
+        for signum, previous_handler in previous_signal_handlers.items():
+            signal.signal(signum, previous_handler)
         console.close()
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    if not raw_argv:
+        # A bare invocation is a person exploring, not a run: show the full help page
+        # (with the examples) instead of the --dut-required error.
+        parse_args(["--help"])
+    args = parse_args(raw_argv)
     try:
         validate_mode_options(args)
+        if args.json and not args.list:
+            raise ConfigError("--json applies to --list only")
         root = repo_root(Path(__file__))
 
         # Diagnostics report their own findings (and must not be pre-empted by the fail-fast
@@ -1985,18 +2519,26 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.list:
             if args.dut:
-                flow = resolve_dut(root, args.dut, mode=args.mode)
+                flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
                 validate_flow(flow, root, simulators, policies, executors)
-                list_flow_detail(flow, root)
+                if args.json:
+                    list_flow_detail_json(flow, root)
+                else:
+                    list_flow_detail(flow, root)
+            elif args.json:
+                list_flows_json(root, duts)
             else:
                 list_flows(duts)
             return 0
 
         if not args.dut:
-            raise ConfigError("--dut is required unless --list, --validate-configs, or --doctor is used")
+            raise ConfigError(
+                "--dut is required unless --list, --validate-configs, or --doctor is used "
+                "(start with --list to see the selectable DUTs)"
+            )
         if args.dut not in duts:
             raise ConfigError(f"unknown DUT `{args.dut}`")
-        flow = resolve_dut(root, args.dut, mode=args.mode)
+        flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
         validate_flow(flow, root, simulators, policies, executors)
         return run_flow(root=root, flow=flow, simulators=simulators, policies=policies, args=args)
     except ConfigError as exc:

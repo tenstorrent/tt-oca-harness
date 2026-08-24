@@ -1,10 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Phase-1 track is SEP=0 only (SMC + DTP + external SMN path; no real SEP RTL).
-# Executable plan: docs/SMU_OSS_VPLAN_PHASE1.md
+# Executable plan: enrolled groups in testlists/all.toml
 # DUT parameter SEP=0 is hardcoded in tb/tb_top.sv (smu #(.SEP(0))).
 name = "smu"
-profile = "native-cocotb"
+profile = "native"
 description = "SMU OSS Phase-1 SEP=0 (SMC + DTP + external fabric) — VCS first"
 
 [testlist]
@@ -86,13 +89,21 @@ ccache = true
 # Parallelize Verilator codegen + cocotb make C++ compile.
 build_jobs = 8
 
+[coverage.verilator]
+# Instrument line/branch (--coverage-line), expression, and SVL user coverage;
+# toggle instrumentation stays off for this DUT. SMU compiles the SMC cluster
+# and SEP-adjacent fabric, so with toggle on a single test leaf's coverage
+# database is ~0.5 GB (tens of GB across a reseeded regression before merge),
+# which does not fit standard CI runner disk; toggle is also the costliest
+# instrumentation at sim time. Replaces the simulator-default `--coverage`
+# (which enables all forms including toggle).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
-[cocotb]
+[frameworks.cocotb]
 python_root = "hw/sys/smu/dv/cocotb"
 test_dir = "hw/sys/smu/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
-  "dv/vip/cocotb",
   # Reuse DTP JTAG helpers (types / tap device / IDCODE decode) without copying.
   "hw/sys/dtp/dv/cocotb",
   # Raise-stub deferred bodies (importable if someone runs deferred items).
@@ -141,8 +152,6 @@ build_dir = "hw/sys/smu/dv/build/cocotb"
 defines = [
   # Match SMC OSS: no-op assertion/cover blocks that confuse commercial sims.
   "SYNTHESIS",
-  # Enable efuse_shadow_regs +skip_fuse_sense path (SIM-gated).
-  "SIM",
 ]
 
 [targets.default.tools.vcs]

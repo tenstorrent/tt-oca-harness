@@ -42,7 +42,7 @@ addrmap och_sep_top #(
     longint unsigned BASE_ADDR = 0x0000_0000
 ) {
     name = "OCH SEP Top-Level Address Map";
-    desc = "Complete address map for OCH Secure Enclave Processor subsystem";
+    desc = "Complete address map for OCH Security Processor subsystem";
 
     // =========================================================================
     // System Resources (0x1010_0000 - 0x1090_0000)

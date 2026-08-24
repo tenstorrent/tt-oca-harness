@@ -1,21 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse image + shadow-readout + W1S-persistence test (OSS).
 
 Senses one generated fuse image, checks the software-visible shadow registers
 field-by-field against the golden, then programs ten random fuse bits through the
 frontdoor and resenses to prove the shadow tracks the PERSISTENT OTP image plus
-those newly write-one-to-set bits. This obeys real OTP semantics -- programmed bits
-persist across reset/resense and are never un-set -- instead of a non-physical
-mid-run image replacement (the generic efuse model loads its bank once at time 0).
+those newly write-one-to-set bits. Programmed bits persist in the model bank
+across reset; resense must match the initial image plus the burned bits.
 
 Exercises the eFuse goals: sense + resense, specific-or-random init, field
-constraints, OCAH-aligned fuse map, shadow-vs-loaded-mem comparison, and multi-bit
-W1S program persistence across a resense.
+constraints, the generated sep_efuse_map, shadow-vs-loaded-mem comparison, and
+multi-bit W1S program persistence across a resense.
 """
 
 from __future__ import annotations
-
-import random
 
 import pyuvm
 
@@ -23,14 +21,16 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
+from sep_reg_meta import sym
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_seeded_rng import SepSeededRng
 
 _MAX_SENSE_CYCLES = 20_000
 
 # CHIPLET_UID is a benign, shadow-visible data field (8 words = 256 bits) pinned to
 # zero in the initial image, so every burn target is a known 0->1 bit. Global fuse
 # bit index = word*32 + bit.
-_UID_WORD0 = 0x0C8 // 4          # 50 (CHIPLET_UID first word)
+_UID_WORD0 = sym("SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET") // 4
 _UID_NBITS = 8 * 32             # 256 bits across the 8 CHIPLET_UID words
 _NUM_BURN = 10
 
@@ -52,8 +52,8 @@ class sep_efuse_image_test(sep_base_test):
         # Burn 10 distinct random known-zero fuse bits (real W1S through the
         # frontdoor), seeded by the run seed for reproducibility. The generic efuse
         # model's field_storage is persistent, so the resense must show the initial
-        # image PLUS exactly these bits -- no mid-run image swap.
-        rng = random.Random(self.random_seed())
+        # image plus exactly these bits.
+        rng = SepSeededRng(self.random_seed())
         burn_offsets = sorted(rng.sample(range(_UID_NBITS), _NUM_BURN))
         golden = SepEfuseImage()
         golden.words = list(img.words)
@@ -96,9 +96,8 @@ class sep_efuse_image_test(sep_base_test):
         await self.start_seq(rd)
         got = rd.rdata & 0xFFFF_FFFF
         assert ((got >> (nc_a % 32)) & 1) and ((got >> (nc_b % 32)) & 1), (
-            f"CHK-W1S-NOCLOBBER: after programming bit {nc_b}, earlier bit {nc_a} is not "
+            f"after programming bit {nc_b}, earlier bit {nc_a} is not "
             f"set (direct OTP word {nc_word} = 0x{got:08x}); bank must be OR, not overwrite")
-        self.logger.info("CHK-W1S-NOCLOBBER PASS: sequential same-word programs both persist")
 
         # Advance the base post-sense golden to the post-program OTP state (the DUT
         # already holds the W1S bits from the programs above; this only updates the

@@ -36,15 +36,15 @@ tags = ["lcc", "subsystem", "efuse"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # Program-failure injection = deterministic floor + seed-driven extras:
-#   count=1   -> fail the first program attempt of every OTP bit (re-arms on each
-#               resense/reset), so the retry path runs on EVERY leaf regardless of
-#               seed -- the floor that the test's non-vacuity assert relies on.
-#   percent=30 -> after the floor, inject extra failures probabilistically; the
-#               generic efuse model's LFSR is seeded from the regression RANDOM_SEED
-#               via `+sep_efuse_prog_fail_seed={seed}` (the runlib renders {seed} into
-#               run_mode/test args), so `--regress` sweeps the injection pattern per
-#               leaf. Each retry is an independent draw, so exhausting the firmware's
-#               10-attempt budget is negligibly unlikely (0.3^10).
+# count=1 fails the first program attempt after each reset (one failure per
+# reset, not per bit), so the retry path runs once per sense regardless of
+# seed -- the floor that the test's non-vacuity assert relies on.
+# percent=30 -> after the floor, inject extra failures probabilistically; the
+# generic efuse model's LFSR is seeded from the regression RANDOM_SEED
+# via `+sep_efuse_prog_fail_seed={seed}` (the runlib renders {seed} into
+# run_mode/test args), so `--regress` sweeps the injection pattern per
+# leaf. Each retry is an independent draw, so exhausting the firmware's
+# 10-attempt budget is negligibly unlikely (0.3^10).
 # The count=1 floor keeps it from ever going vacuous even on a zero-extra seed.
 args = [
     "+sep_efuse_prog_fail_count=1",
@@ -53,13 +53,15 @@ args = [
 ]
 
 [[tests]]
-# eFuse JTAG-AXIL + EL2-CPU mux arbitration (OCAH sep_efuse_jtag_axil_el2_cpu_mux_test,
-# TEST 9.5). EL2 firmware loops eFuse-MMR traffic while cocotb drives the real
+# eFuse JTAG-AXIL + EL2-CPU mux arbitration (the reference suite's
+# sep_efuse_jtag_axil_el2_cpu_mux_test). EL2 firmware loops eFuse-MMR traffic while cocotb drives the real
 # axil_sep_otp_jtag port (j_axi_* AxiLiteMaster) concurrently; both arbitrate at the
 # eFuse AXI-Lite mux. Real-sensed PROD image makes the JTAG path LC-restricted, so a
 # single image proves allowed-MMR coexistence AND the LC-gated shadow deny
 # (0xbadcab1e) with no backdoor force. cpu run mode + REAL fuse sense (NO
 # +skip_fuse_sense -- the JTAG LC gate depends on the sensed lc_state).
+# CHK-JTAG-MMR-DENY currently FAILS (RTL OKAY vs hw/sys/sep/doc/periphs.adoc DECERR on a
+# non-token MMR in PROD). Expected red, not an XFAIL.
 name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"
@@ -67,3 +69,40 @@ seed = 1
 timeout_sec = 3600
 tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
+
+[[tests]]
+# eFuse program x write-lock on a legal spare field (never LC_STATE). RAND-REP:
+# unlocked program + write-lock reject every seed; spare index and bit offsets
+# from the run seed. Real fuse sense. Clear-after-program.
+name = "sep_efuse_program_lock_matrix_test"
+module = "efuse.sep_efuse_program_lock_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset. RAND-REP.
+# feat_ctrl vs spec golden and one live inbound-filter gate per cell. Real fuse
+# sense. The stitch test stays the LC->feat_ctrl e2e.
+name = "sep_lcc_demote_feat_ctrl_matrix_test"
+module = "lcc.sep_lcc_demote_feat_ctrl_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["lcc", "demote", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# RMA token match vs mismatch -> LC update, then the comparator redundancy
+# fault path (collapse / disagree / common-mode / sticky IRQ). RANDCFG: token
+# values from the run seed; SIP and CHIPLET both walk match and mismatch.
+# Real fuse sense. Does not stretch the stitch e2e.
+name = "sep_efuse_rma_token_rand_test"
+module = "efuse.sep_efuse_rma_token_rand_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"

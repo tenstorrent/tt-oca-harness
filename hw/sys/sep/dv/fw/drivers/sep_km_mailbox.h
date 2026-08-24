@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP-side (EL2) driver for the KM <-> SEP mailbox, used to coordinate the EL2
 // host CPU with the Key Manager's PicoRV32 second core. Header-only,

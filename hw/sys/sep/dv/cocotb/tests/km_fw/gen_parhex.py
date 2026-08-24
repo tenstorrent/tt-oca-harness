@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Convert a raw little-endian RV32 binary into the KM ROM .parhex format.
 
 Each output line is 9 hex digits: {word_parity[3:0]}{instr[31:0]}. word_parity

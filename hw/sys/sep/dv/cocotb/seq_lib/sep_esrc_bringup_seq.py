@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences + reusable helpers.
 
-Replicates the OCAH real-entropy bring-up order (sep_drbg_uvm_base_test_seq.sv):
+Replicates the reference suite real-entropy bring-up order (sep_drbg_uvm_base_test_seq.sv):
 PHASE-A configures ESRC with the generators off, resets/pulses ESRC, enables
 CSRNG, and stages the EDN commands but does NOT enable EDN; the caller then
 enables the generators and waits for a seed; PHASE-B enables EDN last. CSRNG/EDN
@@ -61,6 +62,10 @@ ESRC_FIFO_RDATA = 0x1091_6028    # read pops one word, decrements LEVEL (frontdo
 ESRC_HEALTH_TEST_CTRL = 0x1091_6030
 ESRC_HEALTH_TEST_WINDOW_SIZE = 0x1091_6034
 ESRC_HEALTH_TEST_STATUS = 0x1091_6040   # per-test pass/fail, read on a stall
+# Shared (not per-mode) health-test watermark. Offsets from
+# hw/ip/entropy_source/regs/gen/c/entropy_source_addr.h.
+ESRC_HT_WATERMARK_NUM = 0x1091_6130
+ESRC_HT_WATERMARK = 0x1091_6134
 # entropy_src_main_sm state: the OpenTitan boot/startup gate. entropy_source.sv
 # gates the whole stream on boot_phase_done, so this register says whether the
 # boot phase completed. {STATE[8:0], IDLE[9], ALERT[10], ERR[11]}
@@ -73,6 +78,7 @@ CSRNG_ERR_CODE = 0x1091_5054
 CSRNG_RECOV_ALERT = 0x1091_5050
 EDN_CTRL = 0x1091_5814
 EDN_BOOT_INS_CMD = 0x1091_5818
+EDN_BOOT_GEN_CMD = 0x1091_581C
 EDN_RESEED_CMD = 0x1091_582C
 EDN_GENERATE_CMD = 0x1091_5830
 EDN_MAX_REQS = 0x1091_5834
@@ -140,6 +146,11 @@ class SepEntropyCfg:
     bypass: bool = False               # decorrelator feedback bypass
     sha_whitening: bool = True         # ESRC_CTRL.SHA256_WHITENING_ENABLE
     glen: int = 32                     # EDN/CSRNG Generate length (128b genbits blocks)
+    # EDN_CTRL_AUTO also sets BOOT_REQ. The boot Generate uses BOOT_GEN_CMD, which
+    # resets to glen=4095 (0xfff003), not GENERATE_CMD. Leave False so existing
+    # tests keep one open command for the whole run; set True when the test needs
+    # completed Generates (the segmentation contract).
+    program_boot_generate: bool = False
     reseed_interval: int = 8           # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
     # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
     # before the CSRNG seed packer starts. ZERO for this DRBG -- drbg.sv wires the
@@ -266,6 +277,8 @@ class SepEsrcConfigSeq(uvm_sequence):
         await _wr(self, ESRC_CTRL, cfg.esrc_ctrl_whiten)        # RESET=0
         await _wr(self, CSRNG_CTRL, CSRNG_CTRL_ENABLE)
         await _wr(self, EDN_BOOT_INS_CMD, CMD_INSTANTIATE)
+        if cfg.program_boot_generate:
+            await _wr(self, EDN_BOOT_GEN_CMD, cfg.edn_generate_cmd)
         await _wr(self, EDN_RESEED_CMD, CMD_RESEED)
         await _wr(self, EDN_GENERATE_CMD, cfg.edn_generate_cmd)
         await _wr(self, EDN_MAX_REQS, cfg.reseed_interval)
@@ -296,7 +309,7 @@ class SepEsrcFifoDrainSeq(uvm_sequence):
     """Drain the entropy FIFO via the AXI frontdoor (FIFO_RDATA), collecting every
     word into ``self.words`` in pop (= push) order for the CHK2 compare.
 
-    This is the OCAH-faithful CHK2 observation point: FIFO_RDATA is the ONLY thing
+    This is the reference suite-faithful CHK2 observation point: FIFO_RDATA is the ONLY thing
     that pops the FIFO, and the DRBG seed taps the pre-FIFO whitener output, so the
     frontdoor read is non-invasive to the CHK3..CHK5 chain AND reflects any FIFO
     churn the backdoor wire-tap would miss. Reads exactly FIFO_STATUS.LEVEL words so

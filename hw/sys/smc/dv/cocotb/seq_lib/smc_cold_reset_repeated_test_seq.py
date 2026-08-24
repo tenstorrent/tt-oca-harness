@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_cold_reset_repeated_test (3 re-asserts)."""
 
 from __future__ import annotations

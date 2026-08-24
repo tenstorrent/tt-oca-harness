@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap Round 4: SMC_XVISOR_REMAP full sweep (TC_SMC_P1CG_20).
 
 RTL exposes an 8-entry hypervisor remap table (PeakRDL map

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS I2C UVM agent.
 
 Observation-style UVM agent: the driver consumes ``SmcI2cItem`` transactions

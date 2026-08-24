@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Plain AXI transaction items for monitors, checkers, and scoreboards."""
 
 from __future__ import annotations
@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from .results import RESP_EXOKAY, RESP_OKAY, RESP_TIMEOUT, axi_resp_ok, worst_resp
+from .ocah_axi_results import RESP_EXOKAY, RESP_OKAY, RESP_TIMEOUT, axi_resp_ok, worst_resp
 
 OcahAxiProtocol = Literal["axi4", "axi4-lite"]
 OcahAxiDirection = Literal["read", "write"]

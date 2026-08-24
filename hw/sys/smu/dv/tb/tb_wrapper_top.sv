@@ -199,6 +199,11 @@ module smu_wrapper_uvm_top (
     assign powergood_o   = powergood_i;
     assign rst_cold_n_o  = rst_cold_stable_ref_clk_n;
     assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
+`ifndef SMU_NO_SEP
+    assign sep_reset_n = u_dut.u_smu.gen_sep.u_sep.sep_reset_n;
+`else
+    assign sep_reset_n = 1'b1;
+`endif
     assign sep_reset_n_o = sep_reset_n;
     assign ext_mailbox_interrupts_o = ext_mailbox_interrupts;
     assign lc_state_o = lc_state;
@@ -696,9 +701,7 @@ module smu_wrapper_uvm_top (
         .mbist_pass_i (1'b1),
         .mbist_abort_i (1'b0),
 
-        .ot_spi_irq_o (),
         .spi_irq_i (1'b0),
-        .sep_reset_n_o (sep_reset_n),
         .sep_cpu_trace_o (sep_cpu_trace),
         .sep_extintsrc_req_i ('0),
         .lcc_demote_state_1_o (),

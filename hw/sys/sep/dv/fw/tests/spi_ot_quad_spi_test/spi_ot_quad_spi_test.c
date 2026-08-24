@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Quad SPI Test - TC_SPIOT_016 (P1)
+ * SPI OT Quad SPI Test
  *
  * Verifies Quad SPI (x4) mode transmit, dummy cycles, and receive using
  * CMD.SPEED=2. Also verifies that DIRECTION=3 (bidirectional) at Quad speed
@@ -12,14 +12,14 @@
  * All 4 data lines (SD[3:0]) are active in Quad mode.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
- *   2. Quad TX: SPEED=2, DIRECTION=2, LEN=3 (4 bytes), CSAAT=1
- *   3. Quad Dummy: SPEED=2, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
- *   4. Quad RX: SPEED=2, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
- *   5. CMDINVAL test: SPEED=2 + DIRECTION=3 (bidirectional) must fail
+ * 1. Enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
+ * 2. Quad TX: SPEED=2, DIRECTION=2, LEN=3 (4 bytes), CSAAT=1
+ * 3. Quad Dummy: SPEED=2, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
+ * 4. Quad RX: SPEED=2, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
+ * 5. CMDINVAL test: SPEED=2 + DIRECTION=3 (bidirectional) must fail
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_quad_spi_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_quad_spi_test STACK=sim
  *
  */
 
@@ -30,7 +30,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -66,7 +65,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Quad SPI Test (TC_SPIOT_016)\n");
+    printf("SPI OT Quad SPI Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -75,8 +74,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

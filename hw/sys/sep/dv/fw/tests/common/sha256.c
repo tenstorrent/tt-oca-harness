@@ -5,8 +5,8 @@
 // SHA-256 software reference. Public-domain implementation by Brad Conte
 // (brad AT bradconte.com), "presented as is without any guarantees".
 // Spec: FIPS 180-2. This implementation uses little-endian internal byte order
-// and emits a big-endian digest. Unmodified algorithm; only the <memory.h>
-// include was changed to the standard <string.h> for the freestanding build.
+// and emits a big-endian digest. Unmodified algorithm. Freestanding build uses
+// the standard <string.h>.
 
 #include <string.h>
 #include "sha256.h"

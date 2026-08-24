@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // (c) 2026 Tenstorrent USA Inc
 //
 // _exit stub for ROM-mode DV tests.

@@ -1,18 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI DMA-TX test (PyUVM, cpu-firmware, randomized).
 
-SPI-subsystem Phase-2 rep SPI DMA-TX breadth: the TX complement of Phase-1 #3
-sep_spi_ot_dma_rx (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
+SPI-subsystem Phase-2 rep SPI DMA-TX breadth: the TX complement of
+`sep_spi_ot_dma_rx_test` (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
 handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
 lsio_trigger, which refills the TX FIFO from SRAM a 16-byte chunk at a time. RX is
 held quiescent so the single lsio_trigger (= tx_wm | rx_wm) is TX-watermark-driven.
 
-COVERED_STRONGER vs the OCAH spi_ot_dma_tx_test (raw-byte stream, done+no-error
+COVERED_STRONGER vs the reference spi_ot_dma_tx_test (raw-byte stream, done+no-error
 only): the DMA feeds a REAL flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr +
 data) from SRAM; the firmware then reads the flash back over SPI and value-checks
 it; and an independent cocotb BFM golden confirms the flash memory == the SRAM
-source. DISTINCT from #3 (RX direction) -- reuses the #3 lsio_trigger / DMA
-hardware-handshake bring-up.
+source. DISTINCT from `sep_spi_ot_dma_rx_test` (RX direction) -- reuses that
+test's lsio_trigger / DMA hardware-handshake bring-up.
 
 Randomization ([RAND-REP], SINGLE source of truth): SepSpiDmaTxCfg walks all
 required discrete DMA length / trigger cells in one run (nwords={7,11,15}, all
@@ -24,10 +25,11 @@ Checks:
   firmware self-check (each logs a PASS line):
     CHK-TRIGGER   : the TX-watermark source of lsio_trigger (STATUS.TXWM) tracks
                     TXQD across TX_WATERMARK (empty->1, fill->0, SW_RST drain->1,
-                    values logged); EVENT_ENABLE.TXWM + DMA HANDSHAKE_INTR_ENABLE
-                    are live (port of OCAH spi_ot_dma_trigger_test). The transfer
+                    values logged). EVENT_ENABLE.TXWM is programmed. The transfer
                     spans >=2 chunks so the refill loop iterates dynamically.
     CHK-DMA-DONE  : DMA STATUS.done, error==0, ERROR_CODE==0, STATUS RW1C clears.
+                    Handshake mode does not raise STATUS.chunk_done (RTL: only when
+                    hardware handshake is off); that status is `dma_basic_test`.
     CHK-SPI-IDLE  : OT SPI reaches idle, ERROR_STATUS==0.
     CHK-DMA-TX    : flash read-back == the DMA-fed data (SRAM->DMA->TXFIFO->flash).
     CHK-NONVAC    : the programmed data differs from the erased 0xFF (data landed).
@@ -45,7 +47,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import os
-import random
 from pathlib import Path
 
 import cocotb
@@ -54,6 +55,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
@@ -106,7 +108,7 @@ class SepSpiDmaTxCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepSpiDmaTxCfg":
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         page_indices = rng.sample(range(_FLASH_PAGES), len(_LEGAL_NWORDS))
         cases = []
         for idx, (nwords, page_idx) in enumerate(zip(_LEGAL_NWORDS, page_indices)):

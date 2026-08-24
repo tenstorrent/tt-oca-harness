@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-IP SW-reset control (sep_crypto_per_ip_reset_isolation_test).
 
 Drives the SEP reset_ctrl SW_RESET_N register over the CPU-LSU master (no_cpu) to
@@ -42,6 +43,8 @@ class CryptoEngine:
 # hold a live golden-checked result (HMAC DIGEST, AES DATA_OUT).
 ENG_HMAC = CryptoEngine("hmac", RST_HMAC)
 ENG_AES = CryptoEngine("aes", RST_AES)
+ENG_KMAC = CryptoEngine("kmac", RST_KMAC)
+ENG_OTBN = CryptoEngine("otbn", RST_OTBN)
 
 
 class SepCryptoResetIso(SepAxiRegDriver):

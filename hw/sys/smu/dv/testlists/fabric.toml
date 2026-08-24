@@ -1,9 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # SMU Phase-1 (SEP=0) — fabric / external SMN path.
 # With SEP=0 there is no 3x3 smu_axi_xbar; coverage is SMC<->ext ID path,
 # unmapped/DECERR, SEP-OTP err-slv, ATOP reject, and global-base remap.
-# Executable contract: docs/SMU_OSS_VPLAN_PHASE1.md
+# Executable contract: enrolled groups in this file / testlists/all.toml
 
 # smc_cpu_traffic_ext_axi_test is defined in smc.toml (also in fabric group).
 

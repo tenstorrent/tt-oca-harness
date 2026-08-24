@@ -6,7 +6,9 @@
 
 ==== Overview
 
-The Primary TAP (PTAP) provides the main JTAG access point for the chiplet, implementing IEEE 1149.1-2013 compliance with extensions for IEEE 1687-2014 (iJTAG) and IEEE 1838-2019 (3DIC).
+The Primary TAP (PTAP) provides the main JTAG access point for the chiplet,
+implementing IEEE 1149.1-2013 compliance with extensions for IEEE 1687-2014
+(iJTAG) and IEEE 1838-2019 (3DIC).
 
 The PTAP design includes:
 
@@ -21,7 +23,8 @@ The PTAP design includes:
 
 ==== Configuration Parameters
 
-The PTAP is highly parameterizable to support different feature sets and integration requirements.
+The PTAP is highly parameterizable to support different feature sets and
+integration requirements.
 
 [width="100%",cols="<28%,<12%,<12%,<48%",options="header"]
 |===

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_ZEROER_AXICLK_CG_TEST ANCHOR: smc_zeroer_axiclk_cg_test
 DV-CARD-REVISION: 1 RECORD-SHA256: 67c81eca9fc764cc694026df6a7da34a406f4c5528305cc17e43d9d6b9a045db
@@ -19,7 +20,7 @@ outcome. That carve-out applies ONLY to CHK-ZEROER-AXICLK-COMPLETION's
 protocol-outcome verdict.
 
 AMENDMENT (revision 2, supersedes revision 1, owner decision minshaoho
-standing order "都簽署繼續" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
+standing order "approve-and-continue" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
 revision 1's CHK-ZEROER-AXICLK-NOGLITCH required zero axi_clk_enable deassert
 across the WHOLE busy-to-idle boundary, including the real ~26-28 clk_smc_i
 cycle turnaround of the documented 3-write DEST_ADDR->SIZE->CTRL_STATUS

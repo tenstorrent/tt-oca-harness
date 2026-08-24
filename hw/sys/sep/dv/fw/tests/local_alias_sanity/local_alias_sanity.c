@@ -23,9 +23,9 @@
 // Local Alias Configuration
 //-----------------------------------------------------------------------------
 
-// The local alias base address (#3711 reset default 0xD000_0000)
+// The local alias base address (reset default 0xD000_0000)
 // When CPU accesses address X in range [local_alias_base, local_alias_base + region_size),
-// it gets remapped to X - local_alias_base + target_base (target_base = 0x1000_0000 post-#3711)
+// it gets remapped to X - local_alias_base + target_base (target_base = 0x1000_0000 )
 #define LOCAL_ALIAS_BASE 0xD0000000UL
 #define LOCAL_ALIAS_OFFSET \
     0xC0000000UL // = LOCAL_ALIAS_BASE - target_base (0xD000_0000 - 0x1000_0000)
@@ -376,7 +376,7 @@ static int test_dma_alias(void) {
         (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) |
             (SECURE_DMA__ADDR_SPACE_ID__DST_ASID_reset << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp));
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
-              SECURE_DMA__TRANSFER_WIDTH__WIDTH_reset << SECURE_DMA__TRANSFER_WIDTH__WIDTH_bp);
+              SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_reset << SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bp);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, transfer_size);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, transfer_size);
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);

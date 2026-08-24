@@ -124,10 +124,11 @@ class dtp_uvm_jtag2axi_smc_otp_test extends dtp_uvm_base_test;
         dtp_jtag2axi_single_op_seq seq;
         phase.raise_objection(this, "dtp_uvm_jtag2axi_smc_otp_test running");
         seq = dtp_jtag2axi_single_op_seq::type_id::create("seq");
-        seq.tb_vif       = m_env.tb_vif;
-        seq.target_name  = "smc_otp";
-        seq.axi_cfg      = m_env.m_smc_otp_axi_cfg;
-        seq.axi_evidence = m_env.m_smc_otp_axi_env.m_scoreboard.m_checker;
+        seq.tb_vif        = m_env.tb_vif;
+        seq.target_name   = "smc_otp";
+        seq.axi_cfg       = m_env.m_smc_otp_axi_cfg;
+        seq.axi_evidence  = m_env.m_smc_otp_axi_env.m_scoreboard.m_checker;
+        seq.otp_slave_seq = m_env.m_smc_otp_slave_agent.seq;
         seq.start(m_env.m_jtag_env.m_sequencer);
         phase.drop_objection(this, "dtp_uvm_jtag2axi_smc_otp_test done");
     endtask

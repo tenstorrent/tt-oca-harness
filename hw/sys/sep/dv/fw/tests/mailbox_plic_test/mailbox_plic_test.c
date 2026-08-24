@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP outbound-mailbox -> PIC -> CPU interrupt-delivery firmware test (OSS port
-// of the OCAH sep_mailbox_plic_test). The EL2 CPU arms outbound mailbox 0 to
+// of the reference sep_mailbox_plic_test). The EL2 CPU arms outbound mailbox 0 to
 // raise its threshold interrupt, self-triggers it by pushing a word into the
 // FIFO, and proves the interrupt traverses
 //
@@ -24,12 +25,12 @@
 //     1-to-clear IRQS, both IRQS and IRQP read back 0 (W1C proven, §7); and
 //   * no interrupt storm -- the ISR count stays put once the line is deasserted.
 //
-// Deliberate strengthening vs the OCAH original (documented, not a silent skip):
-// OCAH sprays a candidate PIC-source set {1,2,3} and passes if ANY fires; this
+// Deliberate strengthening vs the reference suite original (documented, not a silent skip):
+// the reference suite sprays a candidate PIC-source set {1,2,3} and passes if ANY fires; this
 // port registers ONLY source 1 and asserts the claim id == 1, so a regression of
-// the mailbox->PIC wiring fails the test. OCAH deasserts by masking IRQEN and
+// the mailbox->PIC wiring fails the test. the reference suite deasserts by masking IRQEN and
 // only checks for no re-fire; this port additionally proves the IRQS/IRQP W1C
-// readback is 0 (the AGENTS.md §7 RW1C contract, which applies to polled and ISR
+// readback is 0 (the RW1C contract, which applies to polled and ISR
 // status paths alike).
 
 #include <stdint.h>
@@ -81,7 +82,7 @@ void __attribute__((interrupt("machine"))) mailbox_isr(void) {
     g_irqs_after = sep_axil_mbox_rd(SEP_AXIL_MBOX0_IRQS);
     g_irqp_after = sep_axil_mbox_rd(SEP_AXIL_MBOX0_IRQP);
 
-    // Now also mask IRQEN (OCAH-parity deassert belt; harmless once IRQS is 0).
+    // Now also mask IRQEN (reference suite-parity deassert belt; harmless once IRQS is 0).
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, 0u);
 
     g_isr_count++;
@@ -94,8 +95,10 @@ int main(void) {
 
     sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP mailbox PLIC test\n");
+    sep_mbx_puts("STEP filter init done; mailbox CSR clock ungate written\n");
 
-    // Ungate the mailbox CSR clock (off at reset).
+    // CLOCK_GATE_CTRL bit 2 is not a defined field (map has only pka_cg_enable).
+    // Written for sequence parity; not on the proof path.
     sep_axil_mbox_clock_enable();
 
     // Route outbound mailbox 0 -> PIC source 1 -> ISR. The block is built
@@ -105,12 +108,14 @@ int main(void) {
     pic_set_priority(SEP_AXIL_MBOX0_PIC_SRC, 1);
     pic_enable_source(SEP_AXIL_MBOX0_PIC_SRC);
     pic_enable_interrupts();
+    sep_mbx_puts("STEP ISR registered on the mailbox PIC source and enabled\n");
 
     // Arm mailbox 0: clear any stale status, set WIRQT=0 so the first pushed
     // word (usage 1 > 0) raises the write IRQ, enable all IRQ sources.
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQS, SEP_AXIL_MBOX_IRQ_ALL);
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0u);
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQEN, SEP_AXIL_MBOX_IRQ_ALL);
+    sep_mbx_puts("STEP mailbox armed: status cleared, watermark 0, IRQs enabled\n");
 
     g_isr_fired = 0;
     g_isr_count = 0;
@@ -118,9 +123,10 @@ int main(void) {
 
     // Trigger: push a word -> FIFO usage 1 > WIRQT 0 -> outbound_interrupt_o[0].
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_WRITE_DATA, MBOX_TRIGGER_WORD);
+    sep_mbx_puts("STEP one word pushed into the mailbox queue\n");
 
     // Wait for the ISR. A wedged delivery path must surface as FAIL, not a
-    // silent pass: there is no poll fallback (AGENTS.md §7).
+    // silent pass: there is no poll fallback.
     int timeout = ISR_WAIT_ITERS;
     while (timeout-- > 0) {
         __asm__ volatile("wfi");
@@ -160,6 +166,17 @@ int main(void) {
         sep_mbx_puts("FAIL: IRQP still pending after clear ");
         sep_mbx_puthex(g_irqp_after);
         sep_mbx_putc('\n');
+        errors++;
+    }
+
+    // The handler must have run exactly once. The count is printed in the pass
+    // line, so compare it here rather than leaving the printed value unchecked:
+    // a DUT that re-entered the ISR between the IRQP read and the storm window
+    // below would otherwise print count=2 and still pass.
+    if (g_isr_count != 1u) {
+        sep_mbx_puts("FAIL: ISR ran ");
+        sep_mbx_puthex(g_isr_count);
+        sep_mbx_puts(" times, expected exactly 1\n");
         errors++;
     }
 

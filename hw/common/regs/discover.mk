@@ -65,11 +65,11 @@ ocah_reg_key = $(subst /,_,$(1))
 # their upstream name but renamed in tt-oca (dma -> secure_dma, spi_host ->
 # spi_controller); reggen reproduces the same registers, only the top name differs.
 OCAH_VENDOR_HJSON_RDLS ?= \
-  hw/sys/sep/regs/blocks/aes/aes.rdl:opentitan:upstream/hw/ip/aes/data/aes.hjson \
-  hw/sys/sep/regs/blocks/hmac/hmac.rdl:opentitan:upstream/hw/ip/hmac/data/hmac.hjson \
-  hw/sys/sep/regs/blocks/kmac/kmac.rdl:opentitan:upstream/hw/ip/kmac/data/kmac.hjson \
-  hw/sys/sep/regs/blocks/otbn/otbn.rdl:opentitan:upstream/hw/ip/otbn/data/otbn.hjson \
-  hw/sys/sep/regs/blocks/aon_timer/aon_timer.rdl:opentitan:upstream/hw/ip/aon_timer/data/aon_timer.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl:opentitan:upstream/hw/ip/aes/data/aes.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:opentitan:upstream/hw/ip/hmac/data/hmac.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:opentitan:upstream/hw/ip/kmac/data/kmac.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:opentitan:upstream/hw/ip/otbn/data/otbn.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl:opentitan:upstream/hw/ip/aon_timer/data/aon_timer.hjson \
   vendor/lowRISC/opentitan/overlay/regs/csrng/regs/csrng.rdl:opentitan:upstream/hw/ip/csrng/data/csrng.hjson \
   vendor/lowRISC/opentitan/overlay/regs/edn/regs/edn.rdl:opentitan:upstream/hw/ip/edn/data/edn.hjson \
   vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:opentitan:upstream/hw/ip/dma/data/dma.hjson:secure_dma \

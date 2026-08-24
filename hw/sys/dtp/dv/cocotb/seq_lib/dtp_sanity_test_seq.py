@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_sanity_test.
 
 Implements the DTP VPLAN sanity scenario: exercise the IEEE 1149.1 TAP finite

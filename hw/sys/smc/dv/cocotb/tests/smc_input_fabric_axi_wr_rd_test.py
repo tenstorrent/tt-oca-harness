@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GitHub Project P0 alias for input/output fabric CSR precheck.
 
 DV-CARD:          SMC_004   ANCHOR: smc_input_fabric_axi_wr_rd_test
