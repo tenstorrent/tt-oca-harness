@@ -239,6 +239,11 @@ class SepDrbgScoreboard:
         # Granted/accepted beat whose packed data probe is X/Z. That is a
         # malformed routed beat, not "didn't happen" -- report() fails on it.
         self._xz_routed_beats = 0
+        # Adapter-protocol violation on the crypto-EDN leg: a same-cycle dual
+        # grant, or an ack with an empty AXIS1 queue. The offending client may be
+        # one this test does not score, so the per-sink results cannot carry it --
+        # report() fails on this counter instead.
+        self._routing_protocol_fails = 0
         # Contention evidence: the sim-time (ns) of every post-adapter crypto-EDN beat
         # per sink, index-aligned with _sink_words. Two sinks whose beat time-spans
         # OVERLAP were being granted EDN words during an overlapping window -- i.e. the
@@ -457,6 +462,7 @@ class SepDrbgScoreboard:
         self._axis2_member_hits = 0
         self._axis2_member_misses = 0
         self._xz_routed_beats = 0
+        self._routing_protocol_fails = 0
         # Pre-reset genbits are X/garbage, so any Generate they opened is not a
         # real unterminated command -- drop the segmentation state with them.
         self._genbits_in_gen = 0
@@ -551,6 +557,8 @@ class SepDrbgScoreboard:
                 if v is None:
                     self._note_xz_routed(key)
                     continue
+                if key == "CHK5_km":
+                    self._km_words.append(v & 0xFFFFFFFF)
                 self._record(key, v & mask)
 
     async def _mon_handshake_observed(self, key, vld, rdy, sig, *, mask,
@@ -568,6 +576,8 @@ class SepDrbgScoreboard:
                 if v is None:
                     self._note_xz_routed(key)
                     continue
+                if key == "CHK5_km":
+                    self._km_words.append(v & 0xFFFFFFFF)
                 self._record_observed(key, v & mask)
 
     def _note_pool_fips(self) -> None:
@@ -742,6 +752,7 @@ class SepDrbgScoreboard:
                 continue
             if len(granted) > 1:
                 names = [idx_name[idx] for idx in granted]
+                self._routing_protocol_fails += 1
                 self.log.error(
                     "CHK5 ROUTING FAIL: same-cycle dual crypto-EDN grant %s "
                     "(adapter must grant one client per AXIS1 beat)", names)
@@ -762,6 +773,7 @@ class SepDrbgScoreboard:
                 self._stash_sink_beat(name, v)
                 self._record_pair(key, exp, v)
             elif exp is None:
+                self._routing_protocol_fails += 1
                 self.log.error(
                     "CHK5 ROUTING FAIL: %s acked with empty AXIS1 "
                     "(unscored client consumed a word the tap never saw)",
@@ -876,6 +888,15 @@ class SepDrbgScoreboard:
         Callable mid-run to snapshot the KM leg before and after a window.
         """
         return len(self._km_words)
+
+    def km_words(self):
+        """The Key-Manager AXIS entropy words tapped so far, in beat order.
+
+        Populated in every CHK5_km mode (golden, observe, membership), so a caller
+        can compare a word the KM firmware later stored to KM SRAM against the
+        word the DUT actually delivered on the AXIS endpoint. Returns a copy.
+        """
+        return list(self._km_words)
 
     def completed_generate_lengths(self):
         """Observed blocks-per-Generate histogram: {blocks_in_command: how_many_commands}.
@@ -1096,6 +1117,12 @@ class SepDrbgScoreboard:
             self.log.error(
                 "CHK5 ROUTING FAIL: %d accepted beat(s) had X/Z packed data",
                 self._xz_routed_beats)
+            any_fail = True
+        if self._routing_protocol_fails:
+            self.log.error(
+                "CHK5 ROUTING FAIL: %d crypto-EDN adapter-protocol violation(s) "
+                "(dual grant, or ack with empty AXIS1)",
+                self._routing_protocol_fails)
             any_fail = True
         # Protocol checks (CHK3/CHK4 semantics, independent of value match).
         if self._fips_violations:

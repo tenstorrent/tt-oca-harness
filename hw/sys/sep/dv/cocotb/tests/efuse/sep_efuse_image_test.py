@@ -15,8 +15,6 @@ multi-bit W1S program persistence across a resense.
 
 from __future__ import annotations
 
-import random
-
 import pyuvm
 
 from sep_base_test import sep_base_test
@@ -25,6 +23,7 @@ from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from sep_reg_meta import sym
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_seeded_rng import SepSeededRng
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -54,7 +53,7 @@ class sep_efuse_image_test(sep_base_test):
         # frontdoor), seeded by the run seed for reproducibility. The generic efuse
         # model's field_storage is persistent, so the resense must show the initial
         # image plus exactly these bits.
-        rng = random.Random(self.random_seed())
+        rng = SepSeededRng(self.random_seed())
         burn_offsets = sorted(rng.sample(range(_UID_NBITS), _NUM_BURN))
         golden = SepEfuseImage()
         golden.words = list(img.words)

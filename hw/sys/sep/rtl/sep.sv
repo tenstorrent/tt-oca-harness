@@ -321,6 +321,7 @@ module sep
     logic entropy_source_irq;
     logic ext_trng_irq;
     logic locked_field_access_interrupt;
+    logic token_match_fault;
 
     // DMA interrupt signals
     logic intr_dma_done;
@@ -556,6 +557,7 @@ module sep
         // it fills) from a sustained EDN stall (fault, fill path not making progress).
         sep_internal_interrupts[36]     = entropy_pool_low;
         sep_internal_interrupts[37]     = entropy_pool_fill_stall;
+        sep_internal_interrupts[38]     = token_match_fault;
     end
 
     assign sep_interrupts = {extintsrc_req, sep_internal_interrupts};
@@ -888,7 +890,9 @@ module sep
         .sep_efuse_token_match_sip_debug_o      (sep_efuse_token_match_sip_debug),
         .sep_efuse_token_match_chiplet_debug_o  (sep_efuse_token_match_chiplet_debug),
 
-        .locked_field_access_interrupt_o        (locked_field_access_interrupt)
+        .locked_field_access_interrupt_o        (locked_field_access_interrupt),
+
+        .token_match_fault_o                    (token_match_fault)
     );
 
     ///////////////

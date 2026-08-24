@@ -69,8 +69,7 @@ policy, and scoreboarding.
 
 === BYPASS Reference-Model Contract
 
-The DTP BYPASS scenario is the concrete reference-model/scoreboard example for
-https://github.com/tenstorrent/tt-oca-hw/issues/3294[tt-oca-hw#3294]:
+The DTP BYPASS scenario is the concrete reference-model/scoreboard example:
 
 [source,text]
 ----

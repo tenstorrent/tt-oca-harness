@@ -276,7 +276,7 @@ int main(void) {
 
     uint32_t expected_hash[8];
     for (int i = 0; i < 8; i++) {
-        expected_hash[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR + i * 4);
+        expected_hash[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
     }
 
     // Cast the 32-bit array to an 8-bit pointer for memcmp

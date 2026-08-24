@@ -7,10 +7,6 @@ This package provides a single, versioned Python API surface for driving and
 responding to AXI4 and AXI4-Lite traffic in OCAH cocotb tests.  All classes
 accept and return plain Python ints; no internal VIP types leak out.
 
-APB lives in its own package (``ocah_apb_vip``) because it is a distinct
-protocol (one package per protocol); it also targets ``cocotbext-axi``, which
-provides ``ApbMaster``/``ApbBus``.
-
 The VIP is implemented per side with side-token naming
 (``ocah_axi[_lite]_master_*`` / ``ocah_axi[_lite]_slave_*``); tests consume
 each side through its ``*Sequence`` class (the mandated test-facing surface),

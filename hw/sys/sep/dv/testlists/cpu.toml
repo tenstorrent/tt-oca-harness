@@ -68,12 +68,14 @@ args = ["+skip_fuse_sense"]
 # (id == sep_internal_interrupts idx + 1) + real ISR claim + IP RW1C-clear
 # + one-hot isolation + no re-fire storm. mailbox via a real FIFO push;
 # others via INTR_TEST. cpu run mode; +skip_fuse_sense (no OTP read).
+# timeout_sec is 300 s because a passing seed finishes in ~80 s; an ISR that
+# never returns would otherwise sit until the 3600 s default.
 name = "sep_pic_irq_source_map_delivery_test"
 module = "cpu.sep_pic_irq_source_map_delivery_test"
 firmware = "pic_irq_source_map_test"
 seed = 1
 reseed = 3
-timeout_sec = 3600
+timeout_sec = 300
 tags = ["boot", "cpu", "interrupt", "pic", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]

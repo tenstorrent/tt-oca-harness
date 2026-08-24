@@ -88,3 +88,32 @@ class SepSeededRng:
         if not seq:
             raise IndexError("choice: empty sequence")
         return seq[self._below(len(seq))]
+
+    def shuffle(self, seq) -> None:
+        """Shuffle ``seq`` in place, uniform over permutations.
+
+        Deterministic from the seed and not cryptographic: the permutation is
+        predictable to anyone holding the seed.
+        """
+        for i in range(len(seq) - 1, 0, -1):
+            j = self._below(i + 1)
+            seq[i], seq[j] = seq[j], seq[i]
+
+    def sample(self, population, k: int) -> list:
+        """``k`` distinct elements of ``population``, uniform over k-subsets.
+
+        Result order is unspecified but deterministic from the seed. Not
+        cryptographic: the selection is predictable to anyone holding the seed.
+        """
+        pool = list(population)
+        n = len(pool)
+        if k < 0:
+            raise ValueError("sample: k must be non-negative")
+        if k > n:
+            raise ValueError(f"sample: k ({k}) larger than population ({n})")
+        # Partial Fisher-Yates: one bounded draw per selected element, so the
+        # stream consumed depends only on k, never on collisions.
+        for i in range(k):
+            j = i + self._below(n - i)
+            pool[i], pool[j] = pool[j], pool[i]
+        return pool[:k]

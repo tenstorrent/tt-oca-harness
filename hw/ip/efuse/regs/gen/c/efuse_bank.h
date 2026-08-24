@@ -17,7 +17,6 @@ extern "C" {
 #define EFUSE_BANK__EFUSE_BANK_REG__DOUT_bm 0xffffffff
 #define EFUSE_BANK__EFUSE_BANK_REG__DOUT_bp 0
 #define EFUSE_BANK__EFUSE_BANK_REG__DOUT_bw 32
-#define EFUSE_BANK__EFUSE_BANK_REG__DOUT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t dout :32;

@@ -30,6 +30,7 @@ from __future__ import annotations
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import SEP_CPU_CTRL
 
 # sep_cpu_ctrl SEP_NMI_VEC on the CPU-local map: a known-good decode target with
@@ -72,12 +73,11 @@ class SepFabricDecErrCfg:
     """
 
     def __init__(self, seed: int, *, n_random: int = 2) -> None:
-        import random
         self.seed = seed
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         rand: list[int] = []
         while len(rand) < n_random:
-            a = rng.randint(RESERVED_GAP_LO, RESERVED_GAP_HI) & ~0x3
+            a = rng.randrange(RESERVED_GAP_LO, RESERVED_GAP_HI + 1) & ~0x3
             if a not in rand:
                 rand.append(a)
         # reference suite-proven invalid targets + randomized reserved-gap addresses.

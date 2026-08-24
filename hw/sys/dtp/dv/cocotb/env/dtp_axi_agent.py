@@ -15,13 +15,12 @@ from pyuvm import ConfigDB, uvm_agent
 from ocah_axi_vip import (
     OcahAxiLiteMonitor,
     OcahAxiLiteProtocolWatcher,
+    OcahAxiLiteSlaveAgent,
     OcahAxiMonitor,
     OcahAxiProtocolWatcher,
     OcahAxiSlaveAgent,
     OcahAxiSlaveSequence,
 )
-
-from .dtp_fault_axi import DtpFaultAxiLiteRam, DtpFaultOcahAxiRam
 
 
 class DtpAxiAgent(uvm_agent):
@@ -46,23 +45,23 @@ class DtpAxiAgent(uvm_agent):
             strb_width=8,
         ).sequence
         # Publish for backdoor checks once the memory model exists.
-        self.cfg.axi_ram = DtpFaultOcahAxiRam(self.axi_ram)
-        self.smc_otp_axil_ram = DtpFaultAxiLiteRam.from_prefix(
+        self.cfg.axi_ram = self.axi_ram
+        self.smc_otp_axil_ram = OcahAxiLiteSlaveAgent.from_prefix(
             dut,
             "smc_otp_axil",
             dut.clk_i,
             dut.rst_n_i,
             reset_active_level=False,
             size=self.cfg.otp_axil_mem_size,
-        )
-        self.sep_otp_axil_ram = DtpFaultAxiLiteRam.from_prefix(
+        ).sequence
+        self.sep_otp_axil_ram = OcahAxiLiteSlaveAgent.from_prefix(
             dut,
             "sep_otp_axil",
             dut.clk_i,
             dut.rst_n_i,
             reset_active_level=False,
             size=self.cfg.otp_axil_mem_size,
-        )
+        ).sequence
         self.cfg.smc_otp_axil_ram = self.smc_otp_axil_ram
         self.cfg.sep_otp_axil_ram = self.sep_otp_axil_ram
         self.cfg.jtag2axi_responders = {

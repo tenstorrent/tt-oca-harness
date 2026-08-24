@@ -218,4 +218,17 @@ $(foreach block,$(filter $(OCAH_REG_JSON_BLOCKS),$(OCAH_REG_BLOCKS)),$(eval $(ca
 # an include-only change rebuilds the top collateral. Silent `-` so a missing
 # depfile on a clean tree is not an error — make builds it, re-reads it, and the
 # include prerequisites take effect. Depfiles live in the gitignored build dir.
+#
+# The depfiles only matter to the regen flow. Because make brings `-include`d
+# files up to date before any goal, an unconditional include makes every build
+# that reads this fragment — RTL and FW smokes, docs — rescan every block (one
+# dep_scanner run each) even though those builds only consume the committed
+# collateral. The regen-diff CI job already guards collateral staleness, so pull
+# the depfiles in only for the goals that regenerate.
+OCAH_REGEN_DEP_GOALS := \
+  ocah-regen-regs ocah-regen-regs-sv ocah-regen-regs-h ocah-regen-regs-addrpkg \
+  ocah-regen-regs-svh ocah-regen-regs-py ocah-regen-regs-ral ocah-regen-regs-json \
+  ocah-regen-regs-ipxact ocah-regen-regs-adoc ocah-regen-regs-html
+ifneq ($(filter $(OCAH_REGEN_DEP_GOALS),$(MAKECMDGOALS)),)
 -include $(OCAH_REGEN_REG_DEPS)
+endif
