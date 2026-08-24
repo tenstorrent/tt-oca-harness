@@ -253,7 +253,9 @@ module smc_efuse_wrapper
 
         .sec_disable_token_o              (),
 
-        .locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
+        .locked_field_access_interrupt_o  (locked_field_access_interrupt_o),
+
+        .token_match_fault_o              () // SEP only
     );
 
     assign lc_sigint_err_o = lc_sigint_err;
