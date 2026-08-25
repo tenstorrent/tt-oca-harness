@@ -120,7 +120,12 @@ def resolve_dut(root: Path, name: str, mode: str = "sim", framework: str | None 
     if not cfg.is_file():
         raise ConfigError(f"DUT `{name}`: {mode} config not found: {cfg}")
     return load_dut(
-        cfg, configs_root(root), name=name, root_rel=str(repo_rel(root, dv_root)), framework=framework
+        cfg,
+        configs_root(root),
+        root=root,
+        name=name,
+        root_rel=str(repo_rel(root, dv_root)),
+        framework=framework,
     )
 
 

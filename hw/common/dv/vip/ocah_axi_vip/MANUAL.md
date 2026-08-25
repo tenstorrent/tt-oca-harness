@@ -339,9 +339,12 @@ zero findings.
 
 ## SystemVerilog Layer (interface / sva / sv / uvm)
 
-The SV side of this package (compiled via `[frameworks.uvm.build].sources`-style
-explicit source lists in the consuming DUT's sim config, never Bender or
-Verilator filelists):
+The SV side of this package compiles through the VIP-owned ordered manifest
+`uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
+its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
+the DUT's own sources — never hand-copy these paths into a DUT sim config, and
+never add them to Bender or Verilator filelists. The manifest is the complete
+VIP layer; unused modules simply do not elaborate. Its contents:
 
 - `interface/ocah_axi_if.sv` — flat AXI4/AXI4-Lite monitor interface
   (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
