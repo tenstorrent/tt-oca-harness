@@ -14,10 +14,92 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import cocotb
+from cocotb.triggers import RisingEdge
 from cocotbext.axi import AxiBus, AxiMaster
 from cocotbext.axi.constants import AxiBurstType, AxiLockType, AxiProt
 
-__all__ = ["OcahAxiMasterDriver"]
+__all__ = ["OcahAxiMasterDriver", "OcahAxiIdCapture"]
+
+
+class OcahAxiIdCapture:
+    """Live response-ID watcher for one blocking transaction.
+
+    Samples the ID signal of a response channel (B or R) on its live
+    valid/ready handshake, independently of anything the backend reports —
+    never a copy of the issued ID, so a responder that echoes the wrong ID
+    is distinguishable.  For reads the ID is taken on the completing (RLAST)
+    beat; for writes on the single B beat.
+
+    The watcher never raises into the test: an unresolvable (X/Z) ID on a
+    completing beat, a missing ID signal, or no completing beat all yield a
+    capture miss (``finish()`` returns ``None``) with a warning logged.
+
+    Capture is scoped to one blocking transaction: it samples the first
+    completing beat between ``start_response_id_capture()`` and
+    ``finish()``, which is this transaction's beat whenever the caller
+    serializes transactions (the normal use of the blocking result API).
+    """
+
+    def __init__(self, *, clock, valid, ready, id_signal, last, log, label: str) -> None:
+        self._clock = clock
+        self._log = log
+        self._label = label
+        self._captured: int | None = None
+        self._task = None
+        if clock is None or valid is None or ready is None or id_signal is None:
+            return
+        self._task = cocotb.start_soon(self._watch(valid, ready, id_signal, last))
+
+    async def _watch(self, valid, ready, id_signal, last) -> None:
+        while True:
+            await RisingEdge(self._clock)
+            try:
+                if int(valid.value) == 0 or int(ready.value) == 0:
+                    continue
+            except ValueError:
+                continue
+            try:
+                self._captured = int(id_signal.value)
+            except ValueError:
+                self._log.warning(
+                    "%s capture: unresolvable ID on completing beat: %s",
+                    self._label,
+                    id_signal.value,
+                )
+                return
+            if last is None:
+                return
+            try:
+                if int(last.value) == 1:
+                    return
+            except ValueError:
+                return
+
+    def cancel(self) -> None:
+        """Stop watching without waiting (timeout/error paths)."""
+        if self._task is not None and not self._task.done():
+            self._task.cancel()
+        self._task = None
+
+    async def finish(self, *, grace_cycles: int = 8) -> int | None:
+        """Return the sampled ID, allowing a short grace window to land.
+
+        The backend completes a transaction in the same simulation step as
+        the final handshake, so the watcher normally finishes first; the
+        grace window covers scheduling-order skew only.
+        """
+        if self._task is None:
+            return None
+        for _ in range(grace_cycles):
+            if self._task.done():
+                break
+            await RisingEdge(self._clock)
+        if not self._task.done():
+            self._task.cancel()
+            self._log.warning("%s capture: no completing beat observed", self._label)
+        self._task = None
+        return self._captured
 
 
 class OcahAxiMasterDriver:
@@ -96,6 +178,39 @@ class OcahAxiMasterDriver:
     def backend(self):
         """Return the underlying cocotbext ``AxiMaster`` for debug only."""
         return self._master
+
+    def start_response_id_capture(self, channel: str) -> OcahAxiIdCapture:
+        """Start a live BID/RID watcher for the next blocking transaction.
+
+        ``channel`` is ``"b"`` (write response) or ``"r"`` (read data).  On a
+        bus without ID signals (AXI4-Lite-shaped connections) the capture is
+        inert and ``finish()`` returns ``None``.
+        """
+        if channel == "b":
+            bus = self._bus.write.b
+            valid = getattr(bus, "bvalid", None)
+            ready = getattr(bus, "bready", None)
+            id_signal = getattr(bus, "bid", None)
+            last = None
+            label = f"{self.name}: BID"
+        elif channel == "r":
+            bus = self._bus.read.r
+            valid = getattr(bus, "rvalid", None)
+            ready = getattr(bus, "rready", None)
+            id_signal = getattr(bus, "rid", None)
+            last = getattr(bus, "rlast", None)
+            label = f"{self.name}: RID"
+        else:
+            raise ValueError(f"{self.name}: unknown response channel {channel!r}")
+        return OcahAxiIdCapture(
+            clock=self._clock,
+            valid=valid,
+            ready=ready,
+            id_signal=id_signal,
+            last=last,
+            log=self.log,
+            label=label,
+        )
 
     def init_write(
         self,

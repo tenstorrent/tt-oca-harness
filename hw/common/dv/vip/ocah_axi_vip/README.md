@@ -93,6 +93,10 @@ ocah_axi_vip/
   examples/
     example_register_access.py            — annotated usage snippets
     example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
+  dv/                            — simulated VIP selftests on a passive wire
+                                   harness (master <-> fault slave; response-ID
+                                   observation and corruption proofs):
+                                   python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
 ```
 
 ### Side-token naming
@@ -143,8 +147,8 @@ master = OcahAxiMasterAgent(
 | `await master.wait_for_reset()` | `None` | Block until `aresetn` deasserts |
 | `await master.write(addr, data, *, strb, size, burst, id, prot)` | `int` (resp code) | Single-beat write |
 | `await master.read(addr, *, size, burst, id, prot)` | `int` (data) | Single-beat read |
-| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Response, `ok`, timeout, raw debug object |
-| `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Data bytes/words plus response inspection |
+| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Response, `ok`, timeout, issued/observed AWID-BID, raw debug object |
+| `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Data bytes/words, response inspection, issued/observed ARID-RID |
 | `master.init_write(...)` / `master.init_read(...)` | cocotb event | Event-style access for explicit timeout flows |
 | `await master.burst_write(addr, data_list, *, strb_list, size, burst, id, prot)` | `int` (resp code) | Multi-beat write; `len(data_list)` determines AWLEN |
 | `await master.burst_read(addr, length, *, size, burst, id, prot)` | `list[int]` | Multi-beat read; `length` = number of beats |

@@ -143,6 +143,8 @@ is a 4-byte beat and `size=3` is an 8-byte beat. The compatibility API accepts
 | `resp_list` | One response code per backend response element |
 | `ok` | True only for OKAY/EXOKAY |
 | `timed_out` | True only when `allow_timeout=True` absorbed a timeout |
+| `issued_id` | The AWID/ARID the master drove (`0` when the caller used the default) |
+| `observed_id` | BID/RID sampled from the live response handshake, or `None` (see below) |
 | `raw` | Backend object for debug only |
 
 `OcahAxiReadResult` adds:
@@ -152,6 +154,33 @@ is a 4-byte beat and `size=3` is an 8-byte beat. The compatibility API accepts
 | `data` | First data beat as an integer |
 | `data_bytes` | Raw read payload as bytes |
 | `data_words` | One integer per beat |
+
+### Response-ID observation
+
+Every blocking AXI4 result carries the issued request ID and a response ID
+sampled independently from the live B/R handshake (`OcahAxiIdCapture` inside
+the master driver) — never a copy of the issued ID, so an `observed_id ==
+issued_id` check is non-tautological. Reads sample on the completing (RLAST)
+beat. The `id_match` property returns `True`/`False` when both IDs are known
+and `None` otherwise.
+
+`observed_id` is `None` on AXI4-Lite results (the protocol has no ID
+signals), on absorbed timeouts, and on a capture miss (an unresolvable ID on
+a completing beat — logged as a warning, never raised). Tests that gate on
+IDs must assert `observed_id is not None` explicitly.
+
+Capture is scoped to one blocking transaction: it samples the first
+completing response beat between issue and completion, which is that
+transaction's beat whenever the caller serializes transactions (the normal
+use of the blocking result API). Event-style `init_read`/`init_write` flows
+that overlap transactions should use
+`driver.start_response_id_capture("b"|"r")` around the window they own.
+
+The cocotbext backend itself polices response-ID pairing and fails on an ID
+it never issued, so a responder that returns a wrong ID is fatal to the
+transaction either way; `observed_id` supplies the wire-truth evidence for
+the passing case and for wire-level scenarios (see the
+`--dut ocah_axi_vip` selftests under `dv/`).
 
 Use `check_response=False` and `raise_on_error=False` when a negative test
 expects a non-OKAY response:
@@ -196,7 +225,8 @@ Responder methods:
 | `read(addr, length)` / `write(addr, data)` | Backdoor byte access |
 | `read32/read64` / `write32/write64` | Little-endian integer helpers |
 | `inject_error(addr, resp, read=True, write=True)` | Program one-shot non-OKAY response |
-| `clear_errors()` | Clear all programmed errors |
+| `inject_id_corruption(mask=0x1, read=True, write=True)` | Arm one-shot response-ID corruption: the next selected transaction answers with `request_id ^ mask` (ID-width truncated); data path and response code stay untouched (AXI4 responder only) |
+| `clear_errors()` | Clear all programmed errors and armed ID corruption |
 | `enable_backpressure(channels, stall_cycles)` | Repeating bounded READY stalls |
 | `disable_backpressure()` | Clear READY stalls |
 
