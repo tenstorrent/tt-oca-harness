@@ -366,8 +366,9 @@ RTL close.
   test reads a shadow word while `sep_fuse_sense_done_o` is still low —
   every reference waits for it to assert — so the guard is only ever
   observed open. Deleting the `fuse_sense_done_i` term would not fail
-  any test. The `sec_dis` half of that same term is separately
-  unreachable; see the SEC_DIS row.
+  any test. The `final_sec_disable` half of that same term (expose
+  shadow before sense-done) is not claimed; the SEC_DIS row proves
+  override after sense completes.
 
 | eFuse program × lock
 | PROVEN

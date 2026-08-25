@@ -688,6 +688,24 @@ the shadow registers matches the programmed image word for word. This is the
 precondition for every lifecycle and key-management test that relies on real sensed
 fuse values rather than a skip plusarg.
 
+Pending upgrade — pre-sense fail-closed. `hw/ip/efuse/rtl/efuse_token_processing.sv`
+exposes the shadow bank downstream only on `fuse_sense_done_i || final_sec_disable`.
+This test proves the open side: after sense completes, the shadow matches the image.
+Nothing proves the closed side. No test reads a shadow word while
+`sep_fuse_sense_done_o` is still low — every reference to it is a wait — so removing
+the `fuse_sense_done_i` term would leave the whole suite green.
+
+The upgrade is one read before the existing wait: require LC_STATE to read the
+invalid encoding (or a shadow word not to match the image) while sense is still
+running, then let the existing post-sense compare stand as the control that proves
+the guard does open. Without that control the early read is vacuous.
+
+Two caveats for whoever picks it up. First, confirm the pre-sense window is long
+enough to land an AXI read; if it is not, say so here rather than weakening the
+check. Second, the `final_sec_disable` half of the same term is a different
+question (boot with sense incomplete) and is not claimed on the SEC_DIS row —
+see `oss_dv_plan.adoc`.
+
 ==== Steps
 
 [cols="1,4,4,1",options="header"]
