@@ -78,6 +78,18 @@ def _rma_token_fixed(seed: int) -> dict[str, int]:
     return module.SepRmaTokenCfg(seed).image_fixed()
 
 
+def _locked_field_irq_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_locked_field_access_irq_path_test``'s ``cfg.image_fixed()``."""
+    env_dir = _DV_ROOT / "cocotb" / "env"
+    if str(env_dir) not in sys.path:
+        sys.path.insert(0, str(env_dir))
+    path = env_dir / "sep_locked_field_irq.py"
+    spec = importlib.util.spec_from_file_location("sep_locked_field_irq", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.SepLockedFieldIrqCfg(seed).image_fixed()
+
+
 def _set_only_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
     env_dir = _DV_ROOT / "cocotb" / "env"
@@ -161,6 +173,13 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x0,
         "fixed_from": "set_only",
     },
+    # Locked-field shadow IRQ. SPARE lock bits and patterns come from
+    # SepLockedFieldIrqCfg(seed); see _locked_field_irq_fixed().
+    "sep_locked_field_access_irq_path_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "locked_field_irq",
+    },
 }
 
 
@@ -237,6 +256,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _rma_token_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "set_only":
             fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "locked_field_irq":
+            fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
         image.randomize(
             seed + int(spec.get("seed_offset", 0)),
             lc_raw=spec.get("lc_raw"),
