@@ -200,7 +200,8 @@ when the tool is Verilator.</p>
 </li>
 <li>
 <p>The SV-UVM overlay (<code>[frameworks.uvm.targets.default].defines</code>) —
-<code>DTP_UVM_TB</code>, only when the run is <code>--dut dtp --framework uvm</code>.</p>
+the bare <code>UVM</code> framework gate, only when the run is
+<code>--dut dtp --framework uvm</code>.</p>
 </li>
 </ol>
 </div>
@@ -243,16 +244,19 @@ simulation-only paths on this name.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Those prim paths are omitted.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DTP_UVM_TB</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UVM</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP SV-UVM overlay (<code>dtp_sim_cfg.toml</code>)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Selects the SV-UVM shape of the shared testbench top <code>dtp_uvm_top</code> in
-<code>hw/sys/dtp/dv/tb/tb_top.sv</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The first-party SV-UVM framework gate (the same bare-name wording rule as
+<code>SIMULATION</code>): it selects the SV-UVM shape of the shared testbench top
+<code>dtp_uvm_top</code> in <code>hw/sys/dtp/dv/tb/tb_top.sv</code>, and the shared assertion
+headers report through <code>uvm_report_error</code> instead of <code>$error</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The module has no pin-level port list. An in-module harness owns the clock,
 <code>ocah_jtag_if</code> / <code>dtp_tb_if</code> instances, quiescent tie-offs, and <code>run_test()</code>.
 Required for <code>--framework uvm</code> (VCS). The testbench architecture document
 (<code>hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc</code>) describes that shape.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The module exposes the cocotb pin-level port list. Required for the default
-cocotb/PyUVM flow. Defining it on a cocotb compile removes those ports and the
+cocotb/PyUVM flow (cocotb is the default framework, so no define means the
+cocotb shape). Defining it on a cocotb compile removes those ports and the
 Python tests cannot bind.</p></td>
 </tr>
 <tr>
@@ -308,9 +312,13 @@ test configuration.</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>UVM</code> is not a DTP config define. The SV-UVM flow gets it from the simulator
-(<code>-ntb_opts uvm</code>). Assertion error macros then report through <code>uvm_report_error</code>
-instead of <code>$error</code>.</p>
+<p>The overlay&#8217;s explicit define is the only source of <code>UVM</code>: the simulator&#8217;s
+<code>-ntb_opts</code> option selects which UVM library is compiled but does not set
+this preprocessor name. The runner defaults that library to <code>uvm-1.2</code>; a DUT
+or profile selects another one with <code>[build.vcs]</code> <code>uvm_lib</code> in its sim config
+(for example <code>uvm_lib = "uvm-ieee"</code>). <code>uvm-1.2</code> is the floor — the vendored
+OpenTitan assertion macros do not compile against older libraries. There are
+no DUT-specific framework defines.</p>
 </div>
 </div>
 <div class="sect3">
