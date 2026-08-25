@@ -40,6 +40,7 @@ from .config import (
     targeted_sim_cfg,
     target_names,
     validate_native_config_shape,
+    validate_run_mode_request,
 )
 from .duts import load_duts, resolve_dut
 from .junit import materialize_stage_junit
@@ -1714,6 +1715,8 @@ def run_flow(
             require_verdi_home(tool, wave_format)
     sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
     catalog = load_test_catalog(flow, root)
+    if args.run_mode:
+        validate_run_mode_request(sim_cfg, str(args.run_mode), "--run-mode")
     stages = selected_stages(flow, args)
     need_items = any(stage_needs_item(stage) for stage in stages)
     requested: list[str] = []

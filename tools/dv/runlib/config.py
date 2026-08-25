@@ -1154,6 +1154,11 @@ def defaults_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return config_section(sim_cfg, "defaults") if "defaults" in sim_cfg else {}
 
 
+def run_modes_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    """The effective ``[run_modes]`` table (profile entries deep-merged under the DUT's)."""
+    return config_section(sim_cfg, "run_modes") if "run_modes" in sim_cfg else {}
+
+
 def coverage_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return config_section(sim_cfg, "coverage") if "coverage" in sim_cfg else {}
 
@@ -1340,15 +1345,35 @@ def selected_run_target(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return selected_target(sim_cfg)
 
 
+def validate_run_mode_request(sim_cfg: dict[str, Any], requested: str, where: str) -> None:
+    """Reject a run-mode name that is not an effective ``[run_modes]`` entry.
+
+    ``where`` names the reference's source (``--run-mode``, a testlist entry, or
+    ``[defaults].run_mode``) so the error points at the thing to fix.
+    """
+    modes = run_modes_cfg(sim_cfg)
+    if str(requested) not in modes:
+        allowed = ", ".join(sorted(modes)) if modes else "none defined"
+        raise ConfigError(f"{where}: unknown run mode `{requested}` (allowed: {allowed})")
+
+
 def selected_run_mode(sim_cfg: dict[str, Any], test: TestEntry | None, args: Any) -> dict[str, Any]:
     requested = args.run_mode
+    where = "--run-mode"
     if not requested and test and test.run_modes:
         requested = test.run_modes[0]
+        where = f"test `{test.name}` run_modes"
     if not requested:
+        # The implicit fallback is optional by design: a DUT whose tests all carry run_modes
+        # never consults it, and a DUT without a `smoke` mode must still resolve (to no mode).
         requested = defaults_cfg(sim_cfg).get("run_mode", "smoke")
-    modes = config_section(sim_cfg, "run_modes") if "run_modes" in sim_cfg else {}
-    mode = modes.get(str(requested), {}) if isinstance(modes, dict) else {}
-    return mode if isinstance(mode, dict) else {}
+        mode = run_modes_cfg(sim_cfg).get(str(requested), {})
+        return mode if isinstance(mode, dict) else {}
+    # Explicit references were already validated before stage execution (catalog load checks
+    # testlist and [defaults] names, the CLI entry checks --run-mode); this re-check keeps
+    # direct API callers on the same contract.
+    validate_run_mode_request(sim_cfg, str(requested), where)
+    return run_modes_cfg(sim_cfg)[str(requested)]
 
 
 def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
@@ -1414,6 +1439,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         run_modes=as_str_list(entry.get("run_modes"), f"{name}.run_modes"),
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
+        source=source,
     )
 
 
@@ -1460,6 +1486,25 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
             test.args = [*(test.args or []), *as_str_list(override.get("args"), f"{test.name}.overrides.args")]
 
 
+def _validate_run_mode_references(flow: Flow, tests: dict[str, TestEntry]) -> None:
+    """Every explicit run-mode reference must name an effective ``[run_modes]`` entry.
+
+    Runs after include expansion, so a reference is checked no matter which included file
+    declares it. Covers per-test ``run_modes`` lists and an explicit ``[defaults].run_mode``;
+    an unknown name would otherwise resolve to an empty mode and silently drop the mode's
+    args and timeout.
+    """
+    known = set(run_modes_cfg(flow.raw))
+    for test in tests.values():
+        for mode in test.run_modes or []:
+            if mode not in known:
+                where = f"{test.source or flow.path}: test `{test.name}`"
+                validate_run_mode_request(flow.raw, mode, where)
+    default = defaults_cfg(flow.raw).get("run_mode")
+    if default is not None:
+        validate_run_mode_request(flow.raw, str(default), f"{flow.path}: [defaults].run_mode")
+
+
 def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
     testlist = flow.raw.get("testlist", {})
     if isinstance(testlist, dict) and testlist.get("path"):
@@ -1471,6 +1516,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
             path = flow.path.parent / raw_path
         tests, groups = _merge_testlist_data(load_toml(path), path, path.parent, root, [path])
         _resolve_catalog_frameworks(flow, tests, path)
+        _validate_run_mode_references(flow, tests)
         return TestCatalog(path=path, tests=tests, groups=groups)
     # No separate testlist file: read inline [[tests]]/[[groups]] from the flow TOML.
     tests, groups = _merge_testlist_data(
@@ -1482,6 +1528,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
         validate_testlist_keys=False,
     )
     _resolve_catalog_frameworks(flow, tests, flow.path)
+    _validate_run_mode_references(flow, tests)
     return TestCatalog(path=None, tests=tests, groups=groups)
 
 
