@@ -2145,13 +2145,26 @@ def _vcs_defines(compile_target: dict[str, Any], args: argparse.Namespace) -> li
     return defines
 
 
+# VCS's bare "-ntb_opts uvm" resolves to uvm-1.1, whose global
+# uvm_report_error lacks the context_name/report_enabled_checked parameters
+# that the vendored OpenTitan prim_assert macros pass; default to the 1.2
+# library. [build.vcs].uvm_lib overrides the selection (uvm-1.2 is the floor
+# the vendored OpenTitan asserts compile against).
+_VCS_UVM_LIB = "uvm-1.2"
+
+
+def _vcs_uvm_lib(vcs_cfg: dict[str, Any]) -> str:
+    lib = str(vcs_cfg.get("uvm_lib", "")).strip()
+    return lib or _VCS_UVM_LIB
+
+
 def _vcs_preamble(vcs_cfg: dict[str, Any], framework: str) -> list[str]:
     pre: list[str] = []
     if bool(vcs_cfg.get("sverilog", True)):
         pre.append("-sverilog")
     pre.append("-full64")
     if bool(vcs_cfg.get("uvm", framework == "uvm")):
-        pre += ["-ntb_opts", "uvm"]
+        pre += ["-ntb_opts", _vcs_uvm_lib(vcs_cfg)]
     timescale = str(vcs_cfg.get("timescale", "")).strip()
     if timescale:
         pre.append(f"-timescale={timescale}")
@@ -2167,7 +2180,7 @@ def _vcs_uum_elab_args(
     """Return UUM elaboration options after vlogan has already parsed all sources."""
     elab = ["-full64"]
     if bool(vcs_cfg.get("uvm", framework == "uvm")):
-        elab += ["-ntb_opts", "uvm"]
+        elab += ["-ntb_opts", _vcs_uvm_lib(vcs_cfg)]
     elab += vcs_build_args(options, vcs_cfg, _build_jobs_arg(args))
     if _wave_format(args, "vcs"):
         elab.append("-debug_access+all")
@@ -2251,7 +2264,7 @@ def vcs_analyze(flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.
         argv = [
             "bash",
             "-c",
-            "set -euo pipefail\nvlogan -full64 -ntb_opts uvm\nexec \"$@\"",
+            f'set -euo pipefail\nvlogan -full64 -ntb_opts {_vcs_uvm_lib(vcs_cfg)}\nexec "$@"',
             "vcs-analyze",
             *analyze_argv,
         ]
