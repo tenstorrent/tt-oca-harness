@@ -43,7 +43,7 @@ module dfd_frame_filler
 	logic reset_bytes_in_current_frame_counter;
 	logic [BANK_DATA_WIDTH_IN_BYTES*8-1:0] next_frame_fill_packet_bit_enable;
 	logic [BANK_DATA_WIDTH_IN_BYTES*8-1:0] next_ovrflw_adjust_packet_bit_enable;
-	logic [BANK_DATA_WIDTH_IN_BYTES  -1:0] frame_data_byte_be_in,next_frame_fill_packet_be,next_ovrflw_adjust_packet_be;
+	logic [BANK_DATA_WIDTH_IN_BYTES  -1:0] next_frame_fill_packet_be,next_ovrflw_adjust_packet_be;
 
 	logic [$clog2(PACKET_WIDTH_IN_BYTES):0] request_packet_space_in_bytes_to_frame_filler;
 	logic [$clog2(PACKET_WIDTH_IN_BYTES):0] frame_closure_threshold;

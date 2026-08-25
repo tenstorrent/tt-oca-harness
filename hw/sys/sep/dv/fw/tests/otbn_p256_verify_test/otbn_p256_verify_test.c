@@ -504,24 +504,12 @@ static int check_verification_results(void) {
     }
     printf("\n");
 
-    // printf("Recovered x_r (big-endian display): ");
-    // for (int i = P256_SCALAR_WORDS - 1; i >= 0; i--) {
-    //     printf("%08x", x_r_result[i]);
-    // }
-    // printf("\n");
-
     // Use original R for comparison
     printf("Expected R (OTBN format): ");
     for (int i = 0; i < P256_SCALAR_WORDS; i++) {
         printf("%08x ", test_signature_r_otbn[i]);
     }
     printf("\n");
-
-    // printf("Expected R (big-endian display): ");
-    // for (int i = P256_SCALAR_WORDS - 1; i >= 0; i--) {
-    //     printf("%08x", test_signature_r_otbn[i]);
-    // }
-    // printf("\n");
 
     // Check if ok_status indicates success (should be hardened boolean for valid signature)
     // Expected: 0x739 = HARDENED_BOOL_TRUE_XOR_COUNTER (0x639) XOR 256 (loop counter)

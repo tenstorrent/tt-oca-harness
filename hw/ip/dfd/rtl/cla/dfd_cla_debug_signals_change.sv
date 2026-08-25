@@ -13,7 +13,6 @@ module dfd_cla_debug_signals_change
 	);
 
 
-	logic debug_signals_change_match_next;
 	logic [DEBUG_SIGNALS_WIDTH-1:0] debug_signals_with_change_mask_dly;
 	logic [DEBUG_SIGNALS_WIDTH-1:0] debug_signals_with_change_mask;
 
