@@ -309,8 +309,9 @@ in their testlist `module` binding map; those without a `uvm` entry error at
 selection unless `--skip-unimplemented` is passed.
 
 There is exactly ONE testbench top module: `dtp_uvm_top` in `tb/tb_top.sv`,
-shared between both frameworks. The bare `+define+UVM` (set by the
-`[frameworks.uvm]` overlay; cocotb is the default framework, so no define
+shared between both frameworks. The bare `+define+UVM` (set by the native
+profile's `[frameworks.uvm]` overlay for every UVM DUT; cocotb is the
+default framework, so no define
 means the cocotb shape) switches its shape — without it the module exposes the cocotb pin
 port list; with it the ports become internal TB signals and an in-module
 harness adds the clock, interface instances, quiescent tie-offs, and

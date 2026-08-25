@@ -838,7 +838,8 @@ def _merge_framework_config(
     dut_base = {key: value for key, value in data.items() if key not in resolution_keys}
 
     layers = [profile_base, profile_overlay, dut_base, dut_overlay]
-    # `[sim].args` appends across every layer (all other inherited arrays replace).
+    # `[sim].args` appends across every layer (all other inherited arrays replace,
+    # except the target-table `defines` handled below).
     sim_args: list[str] = []
     for layer in layers:
         sim_args.extend(as_str_list(config_section(layer, "sim").get("args"), "sim.args"))
@@ -847,6 +848,35 @@ def _merge_framework_config(
         merged = deep_merge(merged, layer)
     if sim_args:
         merged["sim"] = {**config_section(merged, "sim"), "args": sim_args}
+
+    # `defines` inside `[target_defaults.<t>]`/`[targets.<t>]` dedup-append across the four
+    # layers, matching the `target_defaults` -> `targets` append in selected_target(): a
+    # framework overlay contributes its gate define (e.g. the profile's `UVM`) on top of the
+    # shared simulation set instead of replacing the list. Tool `flags` keep the plain
+    # overlay-wins semantics — an overlay may deliberately zero a tool's flag list (the uvm
+    # overlay relies on the vcs stage preamble for its flags).
+    for section_name in ("target_defaults", "targets"):
+        section = merged.get(section_name)
+        if not isinstance(section, dict):
+            continue
+        rebuilt = dict(section)
+        for target_name, target in section.items():
+            if not isinstance(target, dict):
+                continue
+            combined: list[Any] = []
+            seen = False
+            for layer in layers:
+                layer_section = layer.get(section_name)
+                layer_target = layer_section.get(target_name) if isinstance(layer_section, dict) else None
+                values = layer_target.get("defines") if isinstance(layer_target, dict) else None
+                if isinstance(values, list):
+                    seen = True
+                    for value in values:
+                        if value not in combined:
+                            combined.append(value)
+            if seen:
+                rebuilt[target_name] = {**target, "defines": combined}
+        merged[section_name] = rebuilt
 
     runtime = deep_merge(profile_runtime, dut_runtime)
     if runtime:

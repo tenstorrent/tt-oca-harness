@@ -130,6 +130,5 @@ args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
 [frameworks.uvm.targets.default]
 description = "DTP SV-UVM default target"
 build_dir = "hw/sys/dtp/dv/build/uvm"
-# Appends to the native profile's [target_defaults.default] defines (dedup-merge):
-# selects the SV-UVM shape of the shared tb_top.sv.
-defines = ["UVM"]
+# The bare `UVM` define (selects the SV-UVM shape of the shared tb_top.sv) comes from the
+# native profile's [frameworks.uvm] overlay — no per-DUT copy.
