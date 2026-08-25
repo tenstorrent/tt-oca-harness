@@ -30,7 +30,6 @@ module prim_pulse_signal #(
 	logic                               pulse_commit;
 	logic             [COUNT_WIDTH-1:0] pulse_count;             // Current counter state
 	logic             [COUNT_WIDTH-1:0] pulse_cnt_after_commit;  // Next counter state if committed
-	logic                               pulse_done;
 
 	typedef enum logic [1:0] {
 		IDLE        = 2'b00,

@@ -152,3 +152,18 @@ timeout_sec = 3600
 tags = ["fabric", "alias", "remap", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# PIC source 39 claim + mask for the token-comparator redundancy fault.
+# Firmware arms the source and presents a SEC_DISABLE token; the host injects
+# a collapse on that comparator (tb port). Proves claim id 39, the
+# SEC_DISABLE sticky bit, and that masking meie[39] stops re-entry.
+# +skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
+name = "sep_efuse_token_match_fault_pic_test"
+module = "efuse.sep_efuse_token_match_fault_pic_test"
+firmware = "token_match_fault_pic_test"
+seed = 1
+timeout_sec = 1800
+tags = ["boot", "cpu", "interrupt", "pic", "efuse", "subsystem"]
+run_modes = ["cpu"]
+args = ["+skip_fuse_sense"]

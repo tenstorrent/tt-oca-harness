@@ -338,7 +338,6 @@ debug-disable configuration change.
 |===
 |Item |Reason
 |SV covergroups in Verilator |Unsupported by the tool
-|CTP/CTM CSR functional bins in Verilator flows that use CSR stubs |Generated CSR behavior is unavailable
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage
 |Protocol-specific behavior without shared VIP support |Covered by OCAH-local DTP BFMs
 |===

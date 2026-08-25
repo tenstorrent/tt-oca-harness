@@ -73,6 +73,18 @@ module sep_uvm_top
     // pair onto the LCC decoder input (signed off -- no legal OTP image can present
     // one). See the force block below.
     input  wire logic lc_sigint_inject_i,
+    // Token-comparator redundancy fault inject. Default 0. Encoding:
+    //   3'b000 off
+    //   3'b001 collapse instance 0 of the RMA_SIP comparator (both rails 0)
+    //   3'b010 disagree: instance 0 drives a legal mismatch pair while 1/2 match
+    //   3'b011 common-mode mismatch: all three legal mismatch (invert of a match)
+    //   3'b100 common-mode match: all three legal match (invert of a mismatch)
+    // Signed off -- no legal token/OTP image can break the three identical
+    // compare cones. See the force block below.
+    input  wire logic [2:0] token_cmp_fault_inject_i,
+    // Which token comparator the inject hits. Default 0.
+    //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
+    input  wire logic [1:0] token_cmp_fault_sel_i,
 
     // ------------------------------------------------------------------
     // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -332,6 +344,19 @@ module sep_uvm_top
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
+    // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
+    // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
+    // SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to
+    // single" is this bridge. The external master still sees AxLEN=1;
+    // Lite has no AxLEN, so the split is not a frontdoor CSR. Addr is the
+    // local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
+    // m_axi ready/valid cones.
+    output logic        sys_csr_axil_arvalid_o,
+    output logic        sys_csr_axil_arready_o,
+    output logic [31:0] sys_csr_axil_araddr_o,
+    output logic        sys_csr_axil_awvalid_o,
+    output logic        sys_csr_axil_awready_o,
+    output logic [31:0] sys_csr_axil_awaddr_o,
     // Lifecycle status observability. security_disable and lc_sigint_err are DUT
     // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
     // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -506,7 +531,18 @@ module sep_uvm_top
     // genbits_gen_last()): a fixed glen-blocks-per-seed model desynchronises at
     // the first extra Generate. Truncating to 2 to dodge that is not an option
     // either -- it left the dropped leg's inputs X-driven.
-    sep_wrapper #(.EXT_TRNG_NUM_AXIS(3)) u_dut (
+    //
+    // SEP_SEC_DISABLE_TOKEN is the metal expected digest, not an AXI register.
+    // Product RTL defaults it to 0, which no SHA-256 output matches. Bind the
+    // SHA-256 of the all-zero 32-byte token so a frontdoor write of zeros can
+    // take the match. This is the TB stand-in for the metal ECO; it does not
+    // force security_disable.
+    localparam bit [255:0] SEC_DIS_TB_DIGEST =
+        256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+    sep_wrapper #(
+        .EXT_TRNG_NUM_AXIS     (3),
+        .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
+    ) u_dut (
         // Clocks / resets
         .clk_i                        (clk_i),
         .clk_wdt_i                    (clk_wdt_i),
@@ -1063,6 +1099,20 @@ module sep_uvm_top
     `SCRATCH_COLD(4); `SCRATCH_COLD(5); `SCRATCH_COLD(6); `SCRATCH_COLD(7);
 `undef SCRATCH_COLD
 
+    // System-CSR AXI-Lite after u_system_csr_a2l_1. See port comment.
+    assign sys_csr_axil_arvalid_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar_valid;
+    assign sys_csr_axil_arready_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.ar_ready;
+    assign sys_csr_axil_araddr_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar.addr[31:0];
+    assign sys_csr_axil_awvalid_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw_valid;
+    assign sys_csr_axil_awready_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.aw_ready;
+    assign sys_csr_axil_awaddr_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
+
     // ------------------------------------------------------------------
     // LC differential-integrity error inject.
     // SIGNED OFF 2026-08-20 by yenhenglai, SEP TB owner.
@@ -1086,6 +1136,85 @@ module sep_uvm_top
         end
     end
 `undef LCC_DEC_DATA
+
+    // ------------------------------------------------------------------
+    // Token-comparator redundancy fault inject.
+    // SIGNED OFF 2026-08-24 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // The three digest comparators see the same inputs. A legal token write
+    // can only produce a unanimous legal pair (match or mismatch). Collapse
+    // and two-instance disagreement have no frontdoor. Common-mode invert
+    // of every instance is the documented coverage hole: the detector does
+    // not fire when all three flip the same way. Force the gated instance
+    // rails of the selected token wrapper; TOKEN_MATCH_FAULT and the
+    // match-status CSR stay frontdoor-read. Default 0; released after the
+    // check; outside the AXI ready/valid cones. Re-issue every clock
+    // (Verilator snapshots a force RHS).
+`define TOKEN_PROC \
+    `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
+        .gen_mmr_reg.u_efuse_token_processing
+`define CMP_SIP  `TOKEN_PROC.u_triple_redundant_comparator_rma_sip_token
+`define CMP_CHIP `TOKEN_PROC.u_triple_redundant_comparator_rma_chiplet_token
+`define CMP_SEC  `TOKEN_PROC.u_triple_redundant_comparator_sec_disable_token
+    logic [2:0] token_cmp_force_p, token_cmp_force_n;
+    logic       token_cmp_do_force;
+    always_comb begin
+        token_cmp_force_p = 3'b000;
+        token_cmp_force_n = 3'b000;
+        token_cmp_do_force = 1'b0;
+        if (token_cmp_fault_inject_i === 3'b001) begin
+            token_cmp_force_p = 3'b110;
+            token_cmp_force_n = 3'b000;
+            token_cmp_do_force = 1'b1;
+        end else if (token_cmp_fault_inject_i === 3'b010) begin
+            token_cmp_force_p = 3'b110;
+            token_cmp_force_n = 3'b001;
+            token_cmp_do_force = 1'b1;
+        end else if (token_cmp_fault_inject_i === 3'b011) begin
+            token_cmp_force_p = 3'b000;
+            token_cmp_force_n = 3'b111;
+            token_cmp_do_force = 1'b1;
+        end else if (token_cmp_fault_inject_i === 3'b100) begin
+            token_cmp_force_p = 3'b111;
+            token_cmp_force_n = 3'b000;
+            token_cmp_do_force = 1'b1;
+        end
+    end
+    always @(posedge clk_i) begin
+        if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b00) begin
+            force `CMP_SIP.match_p = token_cmp_force_p;
+            force `CMP_SIP.match_n = token_cmp_force_n;
+            release `CMP_CHIP.match_p;
+            release `CMP_CHIP.match_n;
+            release `CMP_SEC.match_p;
+            release `CMP_SEC.match_n;
+        end else if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b01) begin
+            release `CMP_SIP.match_p;
+            release `CMP_SIP.match_n;
+            force `CMP_CHIP.match_p = token_cmp_force_p;
+            force `CMP_CHIP.match_n = token_cmp_force_n;
+            release `CMP_SEC.match_p;
+            release `CMP_SEC.match_n;
+        end else if (token_cmp_do_force && token_cmp_fault_sel_i === 2'b10) begin
+            release `CMP_SIP.match_p;
+            release `CMP_SIP.match_n;
+            release `CMP_CHIP.match_p;
+            release `CMP_CHIP.match_n;
+            force `CMP_SEC.match_p = token_cmp_force_p;
+            force `CMP_SEC.match_n = token_cmp_force_n;
+        end else begin
+            release `CMP_SIP.match_p;
+            release `CMP_SIP.match_n;
+            release `CMP_CHIP.match_p;
+            release `CMP_CHIP.match_n;
+            release `CMP_SEC.match_p;
+            release `CMP_SEC.match_n;
+        end
+    end
+`undef CMP_SIP
+`undef CMP_CHIP
+`undef CMP_SEC
+`undef TOKEN_PROC
 
     // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.

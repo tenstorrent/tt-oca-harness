@@ -12,9 +12,12 @@
 `define OCAH_STRINGIFY(__x) `"__x`"
 
 // OCAH_ASSERT_ERROR logs an error message with either `uvm_error or with $error.
+// The UVM call uses the five-argument form: portable across UVM versions
+// (uvm-1.1's global uvm_report_error has no context_name /
+// report_enabled_checked parameters, and later versions default them).
 `define OCAH_ASSERT_ERROR(__name)                                                                                      \
 `ifdef UVM                                                                                                           \
-  uvm_pkg::uvm_report_error("ASSERT FAILED", `OCAH_STRINGIFY(__name), uvm_pkg::UVM_NONE, `__FILE__, `__LINE__, "", 1); \
+  uvm_pkg::uvm_report_error("ASSERT FAILED", `OCAH_STRINGIFY(__name), uvm_pkg::UVM_NONE, `__FILE__, `__LINE__);        \
 `else                                                                                                                \
   $error("%0t: (%0s:%0d) [%m] [ASSERT FAILED] %0s", $time, `__FILE__, `__LINE__, `OCAH_STRINGIFY(__name));             \
 `endif

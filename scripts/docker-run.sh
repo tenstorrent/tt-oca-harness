@@ -80,7 +80,7 @@ elif command -v docker >/dev/null 2>&1; then
     ENGINE=docker
     VOL=""
     PODMAN_STORAGE_FLAGS=""
-    PODMAN_RUN_FLAGS = ""
+    PODMAN_RUN_FLAGS=""
 elif [[ "$NEEDS_ENGINE" == 0 ]]; then ENGINE=none VOL=""
 else echo "error: podman or docker is required" >&2; exit 1; fi
 

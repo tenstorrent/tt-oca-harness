@@ -148,8 +148,8 @@ module sep_efuse_wrapper
         .AxiDataWidth   (SEP_EFUSE_AXI32_DATA_WIDTH),
         .AxiIdWidth     (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
         .AxiUserWidth   (sep_pkg::SEP_CRYPTO_AXI_USER_WIDTH),
-        .AxiMaxWriteTxns(16), // TODO
-        .AxiMaxReadTxns (16), // TODO
+        .AxiMaxWriteTxns(16),
+        .AxiMaxReadTxns (16),
         .FullBW         (1'b0), // ID Queue in Full BW mode in axi_burst_splitter
         .FallThrough    (1'b0), // FIFOs in Fall through mode in ID reflect
         .SpillAw        (1'b0), // Spill register control

@@ -75,6 +75,10 @@ class SepAxiItem(uvm_sequence_item):
         # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4). Default 0 keeps
         # every existing caller bit-identical.
         self.user: int = 0
+        # AXI AxBURST. None lets the VIP default (INCR). Leave None everywhere
+        # except the inbound-filter burst checkers, which opt in with INCR and
+        # a multi-beat length so AxLEN != 0.
+        self.burst: int | None = None
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
         # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
         # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
@@ -141,7 +145,7 @@ class SepAxiDriver(uvm_driver):
         # this 64-bit bus. SepAxiItem.length is the transfer size.
         common = {
             "size": item.size,
-            "burst": None,
+            "burst": item.burst,
             "id": 0,
             "prot": None,
             "check_response": False,
