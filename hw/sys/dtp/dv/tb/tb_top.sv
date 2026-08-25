@@ -5,7 +5,7 @@
 //
 //   * default (cocotb, `--dut dtp`): the module exposes the full pin-level
 //     port list below and cocotb drives/samples the toplevel ports.
-//   * `DTP_UVM_TB` (SV-UVM, `--dut dtp --framework uvm`): the port list is replaced by
+//   * `UVM` (SV-UVM, `--dut dtp --framework uvm`): the port list is replaced by
 //     internal TB signals, and the harness block at the end of the module
 //     adds the clock, ocah_jtag_if/dtp_tb_if instances, quiescent tie-offs,
 //     and run_test(). Test classes are compiled via `include "dtp_tests.sv".
@@ -28,7 +28,7 @@ module dtp_uvm_top
     import jtag_tap_pkg::*;
     import jtag_inst_reg_pkg::*;
     import dtp_pkg::*;
-`ifndef DTP_UVM_TB
+`ifndef UVM
 (
     // System clock and reset (driven by cocotb)
     input  wire logic clk_i,
@@ -431,7 +431,7 @@ module dtp_uvm_top
     assign jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext.ovrd;
     assign jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext.val;
 
-`ifndef DTP_UVM_TB
+`ifndef UVM
     // Pack the cocotb-driven per-field scalars unchanged into dbg_disable_i.
     always_comb begin
         dbg_disable.stap_io          = dbg_disable_stap_io;
@@ -809,11 +809,11 @@ module dtp_uvm_top
         .xtrig_ctp_ack_out_din_en_o       (xtrig_ctp_ack_out_din_en)
     );
 
-`ifdef DTP_UVM_TB
+`ifdef UVM
     // ------------------------------------------------------------------
     // SV-UVM harness (`--dut dtp --framework uvm`): clock, interface instances,
     // quiescent tie-offs, config_db publication, and run_test(). Compiled
-    // only when the native-uvm flow defines DTP_UVM_TB; the cocotb flow
+    // only when the native-uvm flow defines UVM; the cocotb flow
     // sees only the ported module above.
     // ------------------------------------------------------------------
     import uvm_pkg::*;

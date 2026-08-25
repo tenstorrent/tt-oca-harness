@@ -142,7 +142,7 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
 ```
 
 Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
-with `+define+DTP_UVM_TB` (set by the `[frameworks.uvm]` overlay) switching it from the
+with the bare `+define+UVM` (set by the `[frameworks.uvm]` overlay) switching it from the
 cocotb ported shape to the self-contained SV-UVM shape. The class library
 mirrors the cocotb layout: `uvm/env/dtp_env_pkg.sv` (reusable environment:
 shared `ocah_jtag_vip` SV-UVM agent + `dtp_tap_fsm_checker` subscriber),
