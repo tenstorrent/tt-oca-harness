@@ -346,8 +346,12 @@ tests in `_test`):
   starts its sequence on the agent sequencer and then invokes
   `check_fsm_closure()`
 
-Compile order is explicit and load-bearing: interfaces first, then
-`ocah_jtag_uvm_pkg`, `dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
+Compile order is explicit and load-bearing: the shared VIP layers come from
+the VIP-owned manifests (`ocah_jtag_vip/uvm/sources.toml`,
+`ocah_axi_vip/uvm/sources.toml`, listed in
+`[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
+sources — interface and collateral first, each VIP's UVM package last), then
+`dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
 
 ==== JTAG2AXI Checker Layer
 

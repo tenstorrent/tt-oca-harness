@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
-from .paths import configs_root
+from .paths import configs_root, repo_path
 
 try:
     import tomllib as _tomllib
@@ -166,12 +166,16 @@ BUILD_KEYS = {
     "incdirs",
     "stubs",
     "sources",
+    "source_lists",
     "exclude_files",
     "options",
     "verilator",
     "xcelium",
     "vcs",
 }
+
+# Keys a `[build].source_lists` fragment file may carry (see _expand_source_lists).
+SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
 
 BUILD_OPTIONS_KEYS = {
     "build_jobs",
@@ -944,7 +948,42 @@ def load_profile(cfg_dir: Path, profile: str, flow_path: Path) -> dict[str, Any]
     return data
 
 
-def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str, framework: str | None = None) -> Dut:
+def _expand_source_lists(data: dict[str, Any], root: Path, where: str) -> None:
+    """Expand ``[build].source_lists`` fragments into ``[build].incdirs``/``[build].sources``.
+
+    Each entry is a repo-relative TOML fragment owned by the component it compiles (e.g. a
+    shared VIP's ``uvm/sources.toml``): an ordered ``sources`` list plus the ``incdirs`` they
+    need. Fragments expand in listed order AHEAD of the DUT's own incdirs/sources (dedup-merge),
+    so the component layer compiles before the DUT layer that imports it; the consuming config
+    keeps only its own files in ``[build].sources``. Fragment paths and every path a fragment
+    lists must exist, so ``--validate-configs`` catches a stale manifest.
+    """
+    build = data.get("build")
+    if not isinstance(build, dict) or "source_lists" not in build:
+        return
+    fragment_incdirs: list[str] = []
+    fragment_sources: list[str] = []
+    for text in as_str_list(build.get("source_lists"), "build.source_lists"):
+        fragment_path = repo_path(root, text)
+        if not fragment_path.is_file():
+            raise ConfigError(f"{where}: [build].source_lists entry not found: {text}")
+        fragment = load_toml(fragment_path)
+        validate_allowed_keys(fragment, SOURCE_LIST_KEYS, str(fragment_path))
+        for key, bucket in (("incdirs", fragment_incdirs), ("sources", fragment_sources)):
+            for value in as_str_list(fragment.get(key), f"{fragment_path} `{key}`"):
+                if not repo_path(root, value).exists():
+                    raise ConfigError(f"{fragment_path}: `{key}` entry not found: {value}")
+                if value not in bucket:
+                    bucket.append(value)
+    for key, expanded in (("incdirs", fragment_incdirs), ("sources", fragment_sources)):
+        combined = _merge_unique_strings(expanded, as_str_list(build.get(key), f"build.{key}"))
+        if combined:
+            build[key] = combined
+
+
+def load_dut(
+    path: Path, cfg_dir: Path, *, root: Path, name: str, root_rel: str, framework: str | None = None
+) -> Dut:
     """Load a merged per-DUT ``<dut>_sim_cfg.toml`` (selected by the duts resolver).
 
     The file carries the DUT's own keys (``name``/``kind``/``description``/``[testlist]``/stage
@@ -984,6 +1023,9 @@ def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str, framework: 
             combined_sim_args = profile_sim_args + dut_sim_args
             if combined_sim_args:
                 data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
+
+    # Post-merge, so a framework overlay's [frameworks.<fw>.build].source_lists is visible.
+    _expand_source_lists(data, root, str(path))
 
     file_name = data.get("name")
     kind = data.get("kind")

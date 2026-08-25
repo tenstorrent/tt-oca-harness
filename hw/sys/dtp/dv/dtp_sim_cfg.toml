@@ -91,35 +91,28 @@ flags = [
 description = "DTP SV-UVM smoke flow (VCS)"
 
 [frameworks.uvm.build]
-# Compile order is load-bearing and explicit — the generated filelist emits `sources` in listed
-# order AFTER the bender filelist (DUT packages visible), then `top_file` last:
-#   ocah_jtag_if (shared VIP) -> ocah_axi_if -> dtp_tb_if
-#   -> AXI protocol SVA + behavioral responders (module collateral)
-#   -> ocah_jtag_uvm_pkg -> ocah_axi_uvm_pkg (shared VIP agents/passive env)
-#   -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
+# The shared VIP SV-UVM layers come from VIP-owned ordered manifests, expanded in listed order
+# AHEAD of this table's own incdirs/sources (dedup-merge) — never hand-copy VIP paths here.
+# Compile order stays load-bearing and explicit: the generated filelist emits the expanded
+# `sources` AFTER the bender filelist (DUT packages visible), then `top_file` last:
+#   ocah_jtag_vip manifest -> ocah_axi_vip manifest (each: interface -> collateral -> UVM pkg)
+#   -> dtp_tb_if -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
+source_lists = [
+  "hw/common/dv/vip/ocah_jtag_vip/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
 filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_compile.f"
 bender_filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_bender.f"
 work_dir = "hw/sys/dtp/dv/build/uvm"
 incdirs = [
   "hw/sys/dtp/dv/tb",
   "hw/common/assert",
-  "hw/common/dv/vip/ocah_jtag_vip/uvm",
-  "hw/common/dv/vip/ocah_axi_vip/uvm",
   "hw/sys/dtp/dv/uvm/env",
   "hw/sys/dtp/dv/uvm/seq_lib",
   "hw/sys/dtp/dv/uvm/tests",
 ]
 sources = [
-  "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
-  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
-  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
-  "hw/common/dv/vip/ocah_axi_vip/sv/ocah_axi_ram_responder.sv",
-  "hw/common/dv/vip/ocah_axi_vip/cov/ocah_axi_cov.sv",
-  "hw/common/dv/vip/ocah_jtag_vip/cov/ocah_jtag_cov.sv",
-  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
-  "hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_uvm_pkg.sv",
-  "hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv",
   "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
 ]
