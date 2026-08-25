@@ -15,10 +15,10 @@ OCAH_VP_DIR ?= $(OCAH_ROOT)/virtual_platform
 
 ## @section SEP Virtual Platform
 
-## Initialize the tt-oca-sim submodule (recursive; required before ocah-vp-build).
+## Initialize the tt-oca-harness-model submodule (recursive; required before ocah-vp-build).
 .PHONY: ocah-vp-init
 ocah-vp-init:
-	git -C "$(OCAH_ROOT)" submodule update --init --recursive virtual_platform/tt-oca-sim
+	git -C "$(OCAH_ROOT)" submodule update --init --recursive virtual_platform/tt-oca-harness-model
 
 ## Build the SystemC/Boost/OpenSSL/CCI dependencies into virtual_platform/local/.
 .PHONY: ocah-vp-deps
@@ -40,7 +40,7 @@ ocah-vp-test:
 ocah-vp-boot-run:
 	$(MAKE) -C "$(OCAH_VP_DIR)" boot-run
 
-## Remove VP build artifacts (downloads/, local/, tt-oca-sim/vp/build).
+## Remove VP build artifacts (downloads/, local/, tt-oca-harness-model/vp/build).
 .PHONY: ocah-vp-clean
 ocah-vp-clean:
 	$(MAKE) -C "$(OCAH_VP_DIR)" clean

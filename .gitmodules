@@ -1,7 +1,7 @@
 [submodule "hw/sys/sep/bootrom/prod/tools/tt-boot-manifest"]
 	path = hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
 	url = git@github.com:tenstorrent/tt-boot-manifest.git
-[submodule "virtual_platform/tt-oca-sim"]
-	path = virtual_platform/tt-oca-sim
-	url = git@github.com:tenstorrent/tt-oca-sim.git
-	branch = cmccoy/harness_repo_port_fixups
+[submodule "virtual_platform/tt-oca-harness-model"]
+	path = virtual_platform/tt-oca-harness-model
+	url = git@github.com:tenstorrent/tt-oca-harness-model.git
+	branch = main

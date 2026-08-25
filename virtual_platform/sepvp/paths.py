@@ -16,7 +16,7 @@ _THIS = Path(__file__).resolve()
 SEPVP_DIR = _THIS.parent                       # .../sepvp
 VP_DIR = SEPVP_DIR.parent                      # .../virtual_platform
 OCAH_ROOT = VP_DIR.parent                      # repo root (tt-oca-harness)
-SIM_DIR = VP_DIR / "tt-oca-sim"                # the SystemC platform source (submodule)
+SIM_DIR = VP_DIR / "tt-oca-harness-model"                # the SystemC platform source (submodule)
 
 # --- sep-vp platform -------------------------------------------------------
 VP_BUILD_DIR = SIM_DIR / "vp" / "build"

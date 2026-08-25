@@ -18,7 +18,7 @@ import pexpect
 
 log = logging.getLogger("sepvp")
 
-# Decoded status/console lines lost their CSML prefixes in tt-oca-sim 0ec43f9cc, which folded
+# Decoded status/console lines lost their CSML prefixes in tt-oca-harness-model 0ec43f9cc, which folded
 # sep_status_report + sep_virt_console into sep_scratch_cold and emits straight to std::cout:
 #
 #   old:  [174010 ns] [INFO 2] [SEP_STATUS] - BL0 ERROR    0x0213 SEP_MSG_MANIFEST_LOAD_FAILED
