@@ -309,8 +309,9 @@ in their testlist `module` binding map; those without a `uvm` entry error at
 selection unless `--skip-unimplemented` is passed.
 
 There is exactly ONE testbench top module: `dtp_uvm_top` in `tb/tb_top.sv`,
-shared between both frameworks. The bare `+define+UVM` (set by the
-`[frameworks.uvm]` overlay; cocotb is the default framework, so no define
+shared between both frameworks. The bare `+define+UVM` (set by the native
+profile's `[frameworks.uvm]` overlay for every UVM DUT; cocotb is the
+default framework, so no define
 means the cocotb shape) switches its shape — without it the module exposes the cocotb pin
 port list; with it the ports become internal TB signals and an in-module
 harness adds the clock, interface instances, quiescent tie-offs, and
@@ -345,8 +346,12 @@ tests in `_test`):
   starts its sequence on the agent sequencer and then invokes
   `check_fsm_closure()`
 
-Compile order is explicit and load-bearing: interfaces first, then
-`ocah_jtag_uvm_pkg`, `dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
+Compile order is explicit and load-bearing: the shared VIP layers come from
+the VIP-owned manifests (`ocah_jtag_vip/uvm/sources.toml`,
+`ocah_axi_vip/uvm/sources.toml`, listed in
+`[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
+sources — interface and collateral first, each VIP's UVM package last), then
+`dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
 
 ==== JTAG2AXI Checker Layer
 

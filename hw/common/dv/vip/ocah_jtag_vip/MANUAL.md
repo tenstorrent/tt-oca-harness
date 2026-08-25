@@ -264,6 +264,24 @@ into TAP navigation automatically; `DTP_JTAG_TAP_CHECKER_NEGATIVE=1` runs the
 documented negative validation (a deliberately desynced model must FAIL the
 `dtp_jtag_tlr_reset_test` run).
 
+## SystemVerilog Layer (interface / sva / cov / uvm)
+
+The SV side of this package compiles through the VIP-owned ordered manifest
+`uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
+its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
+the DUT's own sources — never hand-copy these paths into a DUT sim config, and
+never add them to Bender or Verilator filelists. Its contents:
+
+- `interface/ocah_jtag_if.sv` — shared pin-level IEEE 1149.1 interface
+  (JTAG pins only; reused by any DUT).
+- `cov/ocah_jtag_cov.sv` — commercial-simulator-only functional-coverage
+  collateral.
+- `sva/ocah_jtag_sva.sv` — clean-room SVA protocol rules for the TAP pins.
+- `uvm/ocah_jtag_uvm_pkg.sv` — the SV-UVM VIP: item/config/driver/monitor/
+  sequencer/agent plus the encoding-agnostic TAP reference model;
+  `ocah_jtag_master_env` is the commercial-overridable unit that DUT envs
+  instantiate (see the DTP SV-UVM flow for the first consumer).
+
 ## Backend And License Status
 
 The package depends on `cocotbext-jtag>=0.4.0,<0.5`. The installed 0.4.0 package
