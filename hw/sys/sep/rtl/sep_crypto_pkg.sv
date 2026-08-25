@@ -76,7 +76,7 @@ package sep_crypto_pkg;
         end_addr:   och_sep_top_addrmap_pkg::OCH_SEP_TOP_ENTROPY_SOURCE_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_ENTROPY_SOURCE_SIZE
     };
 
-    // TRNG: OCH spec 0x1091_7000–0x1091_7FFF (4 kB) — passthrough to sep_ip_integration
+    // TRNG: OCH spec 0x1091_7000–0x1091_7FFF (4 kB) — passthrough to an external TRNG
     localparam logic [31:0] TRNG_BASE_ADDR = 32'h1091_7000;
     localparam logic [31:0] TRNG_END_ADDR  = 32'h1091_8000;
 
@@ -178,17 +178,17 @@ package sep_crypto_pkg;
     // Adams Bridge (ABR) memory interface definitions
     //
     // These packed req/rsp structs mirror the `abr_mem_if` signal set (13 channels)
-    // so the ABR SRAM can be threaded up to sep_ip_integration as structs (OTBN
-    // convention above), instead of a virtual interface crossing the
-    // sep <-> sep_ip_integration sibling boundary under smu_wrapper.
+    // so the ABR SRAM can be threaded up out of sep as structs (OTBN convention
+    // above), instead of a virtual interface crossing the sibling-module boundary
+    // that the SRAM macros live behind.
     //
     // Widths are HARDCODED here (mirroring the OTBN geometry above) because this
     // package is compiled BEFORE the vendored abr_params_pkg / abr_ctrl_pkg in the
     // Bender source order, so it cannot import them. They are not optional at
     // elaboration though, so the mirror is pinned to the vendor source from both
     // ends: the g_abr_mem_* checks in sep_crypto_abr_wrapper.sv compare it against
-    // the vendor parameters, and g_abr_mem_depth_check in sep_ip_integration.sv compares
-    // it against the depths the SRAMs are built with. A vendor bump that changes any
+    // the vendor parameters, and g_abr_mem_depth_check compares it against the
+    // depths the SRAMs are actually built with. A vendor bump that changes any
     // depth/width fails the build instead of silently truncating. Update together.
     // Values derived from vendor/adams_bridge/src/abr_top/rtl/abr_params_pkg.sv and
     // abr_ctrl_pkg.sv:
@@ -204,7 +204,7 @@ package sep_crypto_pkg;
 
     // Adams Bridge build configuration. Single source for BOTH the abr_top instance
     // (sep_crypto.sv -> sep_crypto_abr_wrapper) and the per-channel SRAM instances
-    // (sep_ip_integration). The engine and its memories must agree: MASKING_EN
+    // outside sep. The engine and its memories must agree: MASKING_EN
     // decides whether the four masked coefficient banks physically exist, and
     // SRAM_LATENCY is the read latency abr_top's controller schedules against.
     parameter bit          SEP_CRYPTO_ABR_MASKING_EN    = 1'b1;  // 2-share DOM masking
@@ -251,9 +251,9 @@ package sep_crypto_pkg;
 
     // ABR memory request struct -- one field per `abr_mem_if` channel, req direction.
     typedef struct packed {
-        // Clock carried alongside the request (OTBN convention) so the SRAM macros
-        // in sep_ip_integration are clocked identically to abr_top regardless of
-        // any crypto-clock gating between here and the wrapper.
+        // Clock carried alongside the request (OTBN convention) so the external
+        // SRAM macros are clocked identically to abr_top regardless of any
+        // crypto-clock gating between here and the wrapper.
         logic                                   clk;
         // w1_mem uses its own narrow addr/data; kept in dedicated fields.
         logic                                   w1_we;
@@ -312,7 +312,7 @@ package sep_crypto_pkg;
     typedef logic sep_crypto_fuse_rsp_t;
 
     //////////
-    // External TRNG AXI-Stream interface (from sep_ip_integration → sep_crypto)
+    // External TRNG AXI-Stream interface (from outside sep → sep_crypto)
     //////////
 
     localparam int unsigned EXT_TRNG_AXIS_DATA_WIDTH = 32;
