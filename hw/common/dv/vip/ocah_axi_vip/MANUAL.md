@@ -368,7 +368,8 @@ VIP layer; unused modules simply do not elaborate. Its contents:
   items), `ocah_axi_scoreboard` (in-order pairing; `CHK-AXI-RESP/RDATA/
   BEATS/ADDR-ALIGN/ERR-INJ`; finalizes in `check_phase`), `ocah_axi_cov`
   (optional `ocah_axi_cov_if` sampler), and `ocah_axi_env` (cfg-gated
-  passive bundle). Slave side: `ocah_axi_slave_config` (memory geometry +
+  passive bundle; frozen surface `cfg`, `item_ap`, `m_checker`). Slave
+  side: `ocah_axi_slave_config` (memory geometry +
   one-shot error injection tables), `ocah_axi_slave_driver` (reactive
   memory-backed responder — the class analogue of the RAM responder
   modules; samples via `mon_cb`, drives the responder-side vif signals
@@ -383,6 +384,33 @@ module on the `m_axi` fabric port, instantiates the SVA checkers on both, and
 `dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
 JTAG VIP path, programming responder error injection via the slave agent's
 `ocah_axi_slave_sequence`.
+
+## UVM Env Surface Convention
+
+Both shipped OCAH VIPs (`ocah_jtag_vip`, `ocah_axi_vip`) follow one surface
+convention, with the JTAG master env as the reference template:
+
+- **Side tokens.** Side-specific components — config, driver, sequencer,
+  sequence, agent, env, and agent-attached monitors — carry the side token
+  (`_master_*` / `_slave_*`). Wire-level observation classes — items, bus
+  monitors, reference models, scoreboards, checkers, coverage subscribers,
+  and the passive observation env — are side-neutral: they observe
+  DUT-generated traffic regardless of which VIP side, if any, is active.
+- **config_db fields.** An env-wrapped unit resolves its config from field
+  `cfg` and republishes the same object to its children as `cfg`. A
+  standalone reactive agent (the slave stacks) resolves the side-tokened
+  field `slave_cfg` instead.
+- **Payload-named analysis ports.** An observation port is named
+  `<kind>_ap` after the class it streams, mirroring the cocotb monitor
+  callback names: `event_ap` (`ocah_jtag_event`), `scan_ap`
+  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names are
+  deliberately not unified across VIPs — the payloads genuinely differ,
+  and the name tells a DUT env what it is subscribing to.
+- **Frozen surface is env-top-level handles only.** Everything a DUT env,
+  test, or sequence may depend on is a direct member of the VIP env — the
+  env promotes child handles (`m_sequencer` on `ocah_jtag_master_env`,
+  `m_checker` on `ocah_axi_env`) rather than letting consumers reach
+  through its children.
 
 ## Functional Coverage Hook
 
