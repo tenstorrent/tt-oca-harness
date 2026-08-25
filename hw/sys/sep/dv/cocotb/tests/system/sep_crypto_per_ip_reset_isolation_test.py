@@ -80,6 +80,7 @@ from sep_reg_meta import KMAC
 from seq_lib.sep_crypto_reset_iso_seq import (
     SepCryptoResetIso, ENG_HMAC, ENG_AES, ENG_KMAC, ENG_OTBN,
     RESP_OKAY, RESP_DECERR, HMAC_DIGEST_RESET, RST_HMAC,
+    SW_RESET_N_DEFAULT,
 )
 
 # Directed known vectors (RAND-NONE).
@@ -388,16 +389,14 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "(held 0x%08x -> 0x%08x); DMEM 0x%08x held across AES neighbour reset",
             mark, otbn_after, dmem_mark)
 
-        self.logger.info(
-            "CHK-SW-RESET-BITS PASS: AES/HMAC/KMAC/OTBN domains walked; KM held")
+        sw_final = await self.rst.read_back()
+        assert sw_final == SW_RESET_N_DEFAULT, (
+            f"SW_RESET_N=0x{sw_final:08x} after domain walk, expected default "
+            f"0x{SW_RESET_N_DEFAULT:08x} (bit0 held, otbn/aes/hmac/kmac released)"
+        )
 
-        # Close out the entropy evidence this test asked for. bring_up_entropy was
-        # called with score_sinks={"aes": "observe"}, which forks the crypto-EDN sink
-        # monitor and sets a >=1-beat floor for CHK5_aes -- but nothing evaluated it:
-        # report() was never called, so no CHK5_aes line reached the log and the
-        # "entropy-backed" claim in the line below had no enforced evidence behind it.
-        # A requested check that is never reported is indistinguishable from one that
-        # was never requested.
+        # score_sinks={"aes": "observe", "kmac": "observe"} sets a >=1-beat
+        # floor for those sinks; report() is what evaluates it.
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report(), (
@@ -406,4 +405,5 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         self.logger.info(
             "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
-            "(HMAC<->AES, KMAC, OTBN; KM held; entropy-backed: CHK5_aes/kmac beats reported)")
+            "(HMAC<->AES, KMAC, OTBN; SW_RESET_N=0x%08x; entropy-backed: "
+            "CHK5_aes/kmac beats reported)", sw_final)

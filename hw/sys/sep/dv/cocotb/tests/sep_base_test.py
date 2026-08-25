@@ -686,6 +686,10 @@ class sep_base_test(uvm_test):
         assert seq.csrng_alert == 0, f"CSRNG RECOV_ALERT=0x{seq.csrng_alert:08x}"
         assert seq.edn_err == 0, f"EDN ERR_CODE=0x{seq.edn_err:08x}"
         assert seq.edn_alert == 0, f"EDN RECOV_ALERT=0x{seq.edn_alert:08x}"
+        self.logger.info(
+            "CHK-ALERTS-ZERO PASS: CSRNG/EDN ERR_CODE=0 RECOV_ALERT=0 "
+            "(0x%x 0x%x 0x%x 0x%x)",
+            seq.csrng_err, seq.csrng_alert, seq.edn_err, seq.edn_alert)
         return seq
 
     async def assert_noise_force_active(self, cycles: int = 16) -> None:

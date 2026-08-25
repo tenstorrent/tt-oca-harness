@@ -5,9 +5,10 @@
 no_cpu host-AXI. Software-written seed path only (the key-CSR stub zeros
 shares, so the key-vault seed path is not honest here). Public key is
 compared word-for-word against the vendored NIST ACVP vector. Sensitivity:
-flip one seed bit and the key must differ. PIC [34] stays low; [35] rises
-on completion. ML-KEM, sign/verify, and the key-vault seed path are not
-claimed.
+flip one seed bit and the key must differ. PIC [34] is proven live via
+error_intr_trig (0->1, W1C -> 0) before the KAT, then stays low at
+completion; [35] rises on completion. ML-KEM, sign/verify, and the
+key-vault seed path are not claimed.
 
 RANDCFG: masking entropy and the flipped seed bit come from the run seed.
 no_cpu / +skip_fuse_sense.
@@ -107,6 +108,27 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         await abr.enable_notif()
         assert await self._irq(IRQ_ABR_ERROR) == 0
         assert await self._irq(IRQ_ABR_NOTIF) == 0
+
+        # Positive control for [34]: a stuck-low probe would pass the post-KAT
+        # "[34]=0" check. error_intr_trig is the IP INTR_TEST equivalent.
+        await abr.trigger_error()
+        saw_err = False
+        for _ in range(64):
+            if await self._irq(IRQ_ABR_ERROR) == 1:
+                saw_err = True
+                break
+        assert saw_err, (
+            "[34] stayed low after error_intr_trig (probe stuck-low / enable missed)"
+        )
+        err_st = await abr.error_state()
+        assert err_st & 1, f"error_internal_sts=0x{err_st:x} after trigger"
+        err_st = await abr.w1c_error()
+        assert (err_st & 1) == 0, f"error_internal_sts=0x{err_st:x} after W1C"
+        assert await self._irq(IRQ_ABR_ERROR) == 0, (
+            "[34] still high after error_internal_sts W1C"
+        )
+        self.logger.info(
+            "CHK-PIC-ERROR PASS: [34] 0->1 via error_intr_trig, W1C readback 0")
 
         pk = await self._keygen(abr, list(NIST_KG_SEED), cfg.entropy, what="nist-keygen")
         mismatch = next((i for i, (g, e) in enumerate(zip(pk, NIST_KG_PK)) if g != e), None)

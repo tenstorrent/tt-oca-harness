@@ -147,7 +147,12 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self.logger.info(
             "CHK-IRQ-CAUSE-LOW PASS: 0x08=0x1 at empty, not status 0x%x", st0)
 
-        await self.bring_up_entropy(strict=False, score_km=False)
+        # Observe-mode CHK5_pool: this test owns the 0x1095 aperture, not
+        # bit-exact EDN routing (that is sep_esrc_e2e_smoke_test). report()
+        # still gates the >=1-beat floor; a started scoreboard that is never
+        # asked cannot fail.
+        await self.bring_up_entropy(
+            strict=False, score_km=False, score_sinks={"pool": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
 
@@ -301,4 +306,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        assert self.drbg_sb.report(), (
+            "sep_drbg_scoreboard report failed (CHK5_pool beat floor or CHK1..CHK4)"
+        )
         self.logger.info("entropy-pool aperture ALL CHECKS PASS")

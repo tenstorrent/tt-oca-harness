@@ -7,9 +7,9 @@ order come from the run seed. Every reset-eligible register and every
 write-safe register is walked in one invocation.
 
 Write-lands is the anti-vacuity control: a complement write must move
-exactly the software-usable mask bits. Remap and outbound-filter banks
-are reset-checked only; an unprogrammed alias region still rewrites a
-live beat, so a write bash there can steal its own restore.
+exactly the software-usable mask bits. Remap and inbound/outbound-filter
+banks are reset-checked only: filter START/END are granule-aligned, and
+an unprogrammed alias region still rewrites a live beat.
 """
 
 from __future__ import annotations

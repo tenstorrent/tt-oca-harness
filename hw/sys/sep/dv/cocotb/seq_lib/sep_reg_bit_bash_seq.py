@@ -7,6 +7,8 @@ SepRegBitBashCfg is the single source of truth for which registers are reset-
 checked, which take a write bash, and the seed-selected walk order.
 
 Exclusions are data: one reason string per entry. A silent skip is a bug.
+Inbound-filter START/END are write-excluded: the export mask is 32 bits
+and the hardware forces [2:0] (END_ADDR reset 0x7).
 """
 
 from __future__ import annotations
@@ -86,17 +88,17 @@ WRITE_SAFE_PREFIXES = (
     "SEP_SCRATCH_COLD",
     "SEP_SCRATCH_WARM",
     "SEP_CPU_CTRL",
-    "INBOUND_FILTER_CTRL_",
 )
 
-# Remap / outbound-filter writes are reset-checked only: an unprogrammed
-# alias region still rewrites a live beat, so a complement write can steal
-# the restore.
+# Remap / filter writes are reset-checked only: an unprogrammed alias
+# region still rewrites a live beat, and inbound START/END are granule-
+# aligned so a full-mask complement cannot land (END_ADDR[2:0] stays 1).
 WRITE_EXCLUDE_PREFIXES: dict[str, str] = {
     "LOCAL_MASTER_ALIAS_REMAP_CTRL_": "side-effect: alias remap rewrites LSU",
     "AP_OUTPUT_REMAP_CTRL_": "side-effect: outbound remap",
     "STEE_OUTPUT_REMAP_CTRL_": "side-effect: outbound remap",
     "OUTBOUND_FILTER_CTRL_": "side-effect: outbound filter drop",
+    "INBOUND_FILTER_CTRL_": "granule-aligned addr; live filter side-effect",
     "AXIL_MAILBOX_": "FIFO",
 }
 

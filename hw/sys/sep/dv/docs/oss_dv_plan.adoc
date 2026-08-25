@@ -444,7 +444,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 | Per-IP `SW_RESET_N` isolation
 | PROVEN
 | AES, HMAC, KMAC, OTBN walked; KM held by reset default.
-  Phase 2++ in-window slice on the same test (Verilator `20260825_132658`):
+  Phase 2++ in-window slice on the same test (Verilator `20260825_141838`):
   HMAC DIGEST/CFG DECERR while held, AES sibling OKAY, reopen to reset
   default. Drain-before-reset stays unobservable here (Phase 3).
 
@@ -501,22 +501,23 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 
 | CSR reset / RW / RO / reserved behaviour
 | PROVEN
-| `sep_reg_bit_bash_rand_test` (Verilator `20260825_043118`) walks the
-  generated export: 417 reset matches, then 51 complementary writes that
-  move exactly the software-usable mask and no other bits. Exclusions are
-  a reason table (FIFO, trigger, key, hw-driven, side-effect, OTP). Remap
-  and outbound-filter banks are reset-only. Per-register decode is out of
-  this row.
+| `sep_reg_bit_bash_rand_test` walks the generated export: every
+  reset-eligible register matches, then every write-safe register takes a
+  complementary write that moves exactly the software-usable mask and no
+  other bits. Exclusions are a reason table (FIFO, trigger, key, hw-driven,
+  side-effect, OTP, granule-aligned filter addresses). Remap and
+  inbound/outbound-filter banks are reset-only. Per-register decode is out
+  of this row.
 
 | Dead-space decode (unmapped addresses must not alias live registers)
 | PARTIAL
-| Vehicle exists. `sep_fabric_deadspace_decode_test` (Verilator
-  `20260825_071309`) walks 12 known-bad offsets from the filed RTL defect plus seed
-  dead offsets. CHK-DEADSPACE-REFUSE is `FAILED`: 42 fail lines on 30
-  probes (22 accepted OKAY, 11 aliased a live register), including every
-  issue-228 anchor (KM `SEP_CTRL` at `0x10920ff8`, DMA `0x108008a8`, …).
-  AES / lifecycle / some SPI probes already refuse. Not a feature credit.
-  Do not XFAIL and do not shrink the probe set.
+| Vehicle exists.   `sep_fabric_deadspace_decode_test` walks 12 known-bad offsets from
+  the filed RTL defect plus seed-selected dead offsets.
+  CHK-DEADSPACE-REFUSE is `FAILED` (accepted-OKAY count depends on the
+  seed-selected probes), including every issue-228 anchor (KM `SEP_CTRL`
+  at `0x10920ff8`, DMA `0x108008a8`, …). AES / lifecycle / some SPI
+  probes already refuse. Not a feature credit. Do not XFAIL and do not
+  shrink the probe set.
 
 | Adams Bridge post-quantum engine (ML-DSA-87 keyGen)
 | PROVEN
@@ -524,12 +525,13 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   (`SEP_ABR_EN` is set for the whole `sep` target and `CALIPTRA` is not, so
   the real wrapper is bound, not the error slave). Aperture is the
   `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR` in `sep_crypto_pkg.sv`.
-  `sep_abr_mldsa_keygen_kat_test` (Verilator `20260825_134812`): NAME
+  `sep_abr_mldsa_keygen_kat_test` (Verilator `20260825_142020`): NAME
   `MLDSA-87`, reset READY, 648-word pk matches the vendored ACVP keyGen
-  vector, `[35]` high / `[34]` low, one-bit seed flip yields a different
-  key. Software-written seed only (key-CSR stub zeros shares). Named
-  unproven slices a green keyGen does not close, waiting for the Phase 3
-  UVM bench: ML-KEM-1024, key-vault seed, sign / verify.
+  vector, `[34]` 0->1 via `error_intr_trig` then W1C, `[35]` high / `[34]`
+  low at completion, one-bit seed flip yields a different key. Software-written
+  seed only (key-CSR stub zeros shares). Named unproven slices a green keyGen
+  does not close, waiting for the Phase 3 UVM bench: ML-KEM-1024, key-vault
+  seed, sign / verify.
 
 | Entropy pool aperture and its two PIC sources
 | PROVEN
@@ -538,7 +540,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   empty pool. It drives `pool_low` and `fill_stall` to the PIC. Distinct
   from the ESRC consume row above, which scores the EDN fill *into* the
   pool, not the block's own software interface.
-  `sep_entropy_pool_aperture_test` (Verilator `20260825_134622`): fill to
+  `sep_entropy_pool_aperture_test` (Verilator `20260825_141933`): fill to
   watermark, irq-cause `{fill_stall,pool_low}` only (live `0x1`/`0x0`/`0x2`),
   write and unmapped SLVERR, accepted pop then empty-pop SLVERR, `[36]`
   high-low-high, `[37]` first stall after EDN_ENABLE=False plus StallThresh

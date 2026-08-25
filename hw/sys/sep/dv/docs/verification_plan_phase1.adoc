@@ -791,7 +791,7 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
 | Wait for sense-done; AXI-read `FEAT_CTRL` equals the image golden and
   is not 0.
 | `SEP fuse sense done at cycle` then
-  `CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0xffff0000ffffffff after sense-done`
+  `CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=` `after sense-done`
 | LOGGED
 
 | 3
@@ -834,7 +834,7 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
 | CHK-PRE-SENSE-OPEN
 | After sense-done the same `FEAT_CTRL` equals the image golden and is
   not 0, so the guard actually opened.
-| `CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0xffff0000ffffffff after sense-done`
+| `CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=` `after sense-done`
 | PROVEN
 
 | CHK-OTP-DIRECT

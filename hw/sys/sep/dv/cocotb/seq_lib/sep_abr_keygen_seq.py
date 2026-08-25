@@ -93,6 +93,8 @@ ABR_INTR = ABR_BASE + _uvm_submap_off("intr_block_rf")
 ABR_GLOBAL_INTR_EN = ABR_INTR + 0x0
 ABR_ERROR_INTR_EN = ABR_INTR + 0x4
 ABR_NOTIF_INTR_EN = ABR_INTR + 0x8
+ABR_ERROR_INTR = ABR_INTR + _uvm_reg_off("error_internal_intr_r")
+ABR_ERROR_TRIG = ABR_INTR + _uvm_reg_off("error_intr_trig_r")
 
 NAME0_EXP, NAME1_EXP = _mldsa_core_name()
 
@@ -161,6 +163,18 @@ class SepAbr(SepAxiRegDriver):
         await self.wr32(ABR_ERROR_INTR_EN, INTR_EVENT_EN)
         await self.wr32(ABR_NOTIF_INTR_EN, INTR_EVENT_EN)
 
+    async def trigger_error(self) -> None:
+        """Pulse error_intr_trig (single-cycle W1S) to set error_internal_sts."""
+        await self.wr32(ABR_ERROR_TRIG, INTR_EVENT_EN)
+
+    async def error_state(self) -> int:
+        return await self.rd32(ABR_ERROR_INTR)
+
+    async def w1c_error(self) -> int:
+        """W1C error_internal_sts; return the post-clear readback."""
+        await self.wr32(ABR_ERROR_INTR, INTR_EVENT_EN)
+        return await self.rd32(ABR_ERROR_INTR)
+
 
 def _selftest() -> None:
     assert ABR_BASE == 0x1094_0000
@@ -169,6 +183,8 @@ def _selftest() -> None:
     assert ABR_ENTROPY - ABR_BASE == 0x18
     assert ABR_SEED - ABR_BASE == 0x58
     assert ABR_PUBKEY - ABR_BASE == 0x1000
+    assert ABR_ERROR_INTR - ABR_INTR == 0x14
+    assert ABR_ERROR_TRIG - ABR_INTR == 0x1c
     assert NAME0_EXP == 0x44534D4C
     assert NAME1_EXP == 0x3837412D
     cfg = SepAbrKeygenCfg(1)
