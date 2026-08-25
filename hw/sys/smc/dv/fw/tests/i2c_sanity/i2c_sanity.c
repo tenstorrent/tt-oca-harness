@@ -1,615 +1,436 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
+/*
+ * DV-TESTCASE-CONTRACT: SMC_I2C_001 ANCHOR: smc_i2c_sanity_test
+ * DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256:
+ * 05c04850274c21a60b62a72bc8b9b5d445197c42b5c2fe015289401ed4828e27 DV-TESTCASE-CONTRACT-SOURCE:
+ * hw/sys/smc/dv/tb/doc/testplan/i2c/dv_vplan_gen/SMC_I2C_VPLAN_DETAIL.md @ artifact_revision 1 ENV:
+ * c-fw
+ */
+
 /**
- * @file main.c
- * @brief I2C P0 Read-Write Test - Internal I2C Communication
+ * @file i2c_sanity.c
+ * @brief SMC_I2C_001 — controller bring-up, FMT write+STOP, CMD_COMPLETE lifecycle
  *
- * =============================================================================
- * Test Configuration: I2C_0 Controller <-> I2C_1 Target
- * =============================================================================
- *
- * Approach: Configure I2C_0 as Controller (Master) and I2C_1 as Target (Slave)
- *           Use i2c_opentitan functions for write/read transactions
- *
- * Steps:
- *   1. Configure I2C_0 Controller settings (speed, address mode)
- *   2. Configure I2C_1 Target settings (address, FIFO thresholds)
- *   3. Write known data pattern from Controller to Target
- *   4. Read back data from Target to Controller
- *   5. Compare written and read data
- *
- * =============================================================================
- * Test Architecture: Two-Level I2C Control
- * =============================================================================
- *
- * LEVEL 1: Wrapper Control (0xC0009E00)
- *   - Controls GPIO pad multiplexing
- *   - Selects I2C mode (Controller/Target)
- *
- * LEVEL 2: IP Control (0xC0009000 + 0x200*idx)
- *   - OpenTitan I2C IP protocol layer
- *   - Handles timing, FIFO, interrupts, transactions
- *
- * =============================================================================
+ * I2C_0 = Controller, I2C_1 = Target (ACK peer). Evidence is AXI CSR frontdoor only.
  */
 
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "metal/atomic.h"
+#include "metal/cpu.h"
+#include "metal/lock.h"
 #include "smc_io.h"
 #include "smc_test.h"
 #include "i2c_opentitan.h"
 
-//=============================================================================
-// Helper Functions
-//=============================================================================
+#define CONTROLLER_IDX 0u
+#define TARGET_IDX 1u
+#define TARGET_ADDR 0x10u
+#define REG_ADDR 0x5Au
+#define TEST_DATA_LO 0x5Au
+#define TEST_DATA_HI 0x5Au
+#define N_WRITE_BYTES 3u
 
-/**
- * @brief Enable I2C Wrapper Control
- */
-static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
-    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
+/* Finite CMD_COMPLETE poll bound (loop iterations); fail-on-expiry mandatory. */
+#define CMD_COMPLETE_BOUND 200000u
 
-    i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
-    ctrl.f.I2C_EN = 1;
-    ctrl.f.I2C_CONTROLLER_MODE_EN = controller_mode ? 1 : 0;
+/* Ordered fence stamps for CHK-NONVAC (monotonic phase counter). */
+static uint32_t g_phase;
+static uint32_t g_ts_timing_program;
+static uint32_t g_ts_fifo_reset_enable;
+static uint32_t g_ts_write_stop;
+static uint32_t g_ts_cmd_complete_clear;
 
-    write_reg(wrapper_addr, ctrl.w);
-
-    simputshex32("  Wrapper[", idx);
-    simputshex32("] enabled: addr=", wrapper_addr);
-    simputs(", mode=");
-    simputs(controller_mode ? "Controller" : "Target");
-    simputs("\n");
+static uint32_t stamp(void) {
+    g_phase++;
+    return g_phase;
 }
 
-//=============================================================================
-// Main Test
-//=============================================================================
+static uint32_t ctrl_off(uint32_t abs_base_for_idx0) {
+    return abs_base_for_idx0 - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0);
+}
 
-int main(void) {
-    const uint32_t CONTROLLER_IDX = 0; // I2C_0 as Controller
-    const uint32_t TARGET_IDX = 1;     // I2C_1 as Target
-    const uint8_t TARGET_ADDR = 0x10;  // Target address (7-bit)
-    const uint8_t REG_ADDR = 0x5A;     // Register address for write/read
-    const uint16_t TEST_DATA = 0x5A5A; // Known data pattern to write (2 bytes)
-    uint16_t read_value = 0;           // Data read back from register
+static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
+    uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
+    i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
+
+    ctrl.f.I2C_EN = 1;
+    ctrl.f.I2C_CONTROLLER_MODE_EN = controller_mode ? 1 : 0;
+    write_reg(wrapper_addr, ctrl.w);
+}
+
+static void fail_with(uint32_t code, const char *msg) {
+    simputs("  ERROR: ");
+    simputs(msg);
+    simputs("\n");
+    write_scratch(0, code);
+    test_fail(0);
+}
+
+/**
+ * STEP S1 — program TIMING0-4 before ENABLEHOST; emit CHK-TIMING-BEFORE-ENABLE.
+ */
+static void step_s1_timing_before_enable(uint32_t idx, const i2c_timing_config_t *timing) {
+    uint32_t base = i2c_get_base(idx);
+    i2c__CTRL_t ctrl;
+    i2c__TIMING0_t t0;
+    i2c__TIMING1_t t1;
+    i2c__TIMING2_t t2;
+    i2c__TIMING3_t t3;
+    i2c__TIMING4_t t4;
+
+    simputs("STEP S1: program TIMING0-4 before ENABLEHOST\n");
+
+    ctrl.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)));
+    ctrl.f.ENABLEHOST = 0;
+    ctrl.f.ENABLETARGET = 0;
+    write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)), ctrl.w);
+
+    ctrl.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)));
+    if (ctrl.f.ENABLEHOST != 0) {
+        fail_with(0xBAD00011, "ENABLEHOST high before timing program");
+    }
+
+    i2c_config_timing(idx, timing);
+
+    t0.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR(0)));
+    t1.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR(0)));
+    t2.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR(0)));
+    t3.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR(0)));
+    t4.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR(0)));
+
+    if (t0.w == 0 || t1.w == 0 || t2.w == 0 || t3.w == 0 || t4.w == 0) {
+        fail_with(0xBAD00012, "TIMING0-4 still zero after program");
+    }
+
+    ctrl.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)));
+    if (ctrl.f.ENABLEHOST != 0) {
+        fail_with(0xBAD00013, "ENABLEHOST rose before timing sample");
+    }
+
+    g_ts_timing_program = stamp();
+    simputs("  CHK-TIMING-BEFORE-ENABLE: TIMING0-4 nonzero legal before ENABLEHOST=0\n");
+}
+
+/**
+ * STEP S2 — FIFO reset-all, thresholds, clear INTR, ENABLEHOST=1.
+ */
+static void step_s2_fifo_reset_enable(uint32_t idx) {
+    uint32_t base = i2c_get_base(idx);
+    i2c__HOST_FIFO_CONFIG_t fifo_cfg = {.w = 0};
+    i2c__HOST_FIFO_STATUS_t host_st;
+    i2c__CTRL_t ctrl;
+    i2c__INTR_ENABLE_t intr_en = {.w = 0};
+
+    simputs("STEP S2: FIFO reset-all, HOST_FIFO_CONFIG, clear INTR, ENABLEHOST=1\n");
+
+    i2c_reset_fifos(idx, true, true, true, true);
+
+    host_st.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0)));
+    if (host_st.f.FMTLVL != 0 || host_st.f.RXLVL != 0) {
+        fail_with(0xBAD00021, "HOST_FIFO_STATUS levels nonzero after reset-all");
+    }
+
+    fifo_cfg.f.RX_THRESH = I2C_DEFAULT_RX_THRESH;
+    fifo_cfg.f.FMT_THRESH = I2C_DEFAULT_FMT_THRESH;
+    write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_CONFIG_BASE_ADDR(0)), fifo_cfg.w);
+
+    i2c_clear_interrupts(idx, 0xFFFFFFFFu);
+
+    intr_en.f.CMD_COMPLETE = 1;
+    write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0)), intr_en.w);
+
+    ctrl.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)));
+    ctrl.f.ENABLEHOST = 1;
+    ctrl.f.ENABLETARGET = 0;
+    ctrl.f.TX_STRETCH_CTRL_EN = 1;
+    write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)), ctrl.w);
+
+    ctrl.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)));
+    if (ctrl.f.ENABLEHOST != 1) {
+        fail_with(0xBAD00022, "ENABLEHOST not set after enable");
+    }
+
+    host_st.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_HOST_FIFO_STATUS_BASE_ADDR(0)));
+    if (host_st.f.FMTLVL != 0 || host_st.f.RXLVL != 0) {
+        fail_with(0xBAD00023, "HOST_FIFO_STATUS levels nonzero at ENABLEHOST");
+    }
+
+    g_ts_fifo_reset_enable = stamp();
+    simputs("  CHK-FIFO-RESET-ENABLE: HOST_FIFO_STATUS levels=0 then ENABLEHOST=1\n");
+}
+
+/**
+ * Prepare I2C_1 as ACK peer (not part of controller proof order).
+ */
+static void init_target_peer(const i2c_timing_config_t *timing) {
     int ret;
-
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
-    simputs("\n");
-    simputs("################################################\n");
-    simputs("##   I2C P0 Read-Write Test - Internal I2C    ##\n");
-    simputs("################################################\n");
-    simputs("\n");
-
-    //=========================================================================
-    // Step 1: System Initialization
-    //=========================================================================
-    write_scratch(1, 0x00000010);
-    simputs("Step 1: System Initialization\n");
-    simputs("  System ready\n");
-    write_scratch(1, 0x00000011);
-
-    //=========================================================================
-    // Step 2: LEVEL 1 - Wrapper Control Enable
-    //         Enable GPIO pad mux for both Controller and Target
-    //=========================================================================
-    write_scratch(1, 0x00000020);
-    simputs("\nStep 2: LEVEL 1 - Wrapper Control Enable\n");
-    simputs("  Enabling I2C_0 Controller (Master mode)...\n");
-    i2c_wrapper_enable(CONTROLLER_IDX, true);
-
-    simputs("  Enabling I2C_1 Target (Slave mode)...\n");
-    i2c_wrapper_enable(TARGET_IDX, false);
-
-    write_scratch(1, 0x00000021);
-
-    //=========================================================================
-    // Step 3: LEVEL 2 - I2C IP Initialization
-    //=========================================================================
-    write_scratch(1, 0x00000030);
-    simputs("\nStep 3: LEVEL 2 - I2C IP Initialization\n");
-
-    // Configure Controller timing
-    i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
-                                             .sda_rise_nanos = 300,
-                                             .sda_fall_nanos = 100,
-                                             .scl_period_nanos = 0};
-
-    i2c_timing_config_t computed_timing;
-    ret = i2c_compute_timing_from_physical(&physical_params, &computed_timing);
-    if (ret != I2C_OK) {
-        simputs("  WARNING: Physical timing computation failed, using defaults\n");
-        i2c_get_default_timing(I2C_SPEED_STANDARD, 100, &computed_timing);
-    }
-
-    // Initialize Controller
-    simputs("  Initializing I2C_0 Controller...\n");
-    i2c_controller_config_t ctrlr_cfg = {.timing = computed_timing,
-                                         .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
-                                                  .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
-                                                  .tx_thresh = 0,
-                                                  .acq_thresh = 0},
-                                         .enable_interrupts = false,
-                                         .timeout_cycles = 0};
-
-    ret = i2c_controller_init(CONTROLLER_IDX, &ctrlr_cfg);
-    if (ret != I2C_OK) {
-        simputs("  ERROR: Controller init failed\n");
-        write_scratch(0, 0xBAD00031);
-        test_fail(0);
-    }
-    simputs("  Controller initialized successfully\n");
-
-    // Initialize Target
-    simputs("  Initializing I2C_1 Target...\n");
-    i2c_target_config_t tgt_cfg = {
-        .address0 = TARGET_ADDR,
-        .mask0 = 0x7F, // Exact match
-        .address1 = 0,
-        .mask1 = 0,
-        .timing = computed_timing,
-        .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
-                 .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
-                 .rx_thresh = 0,
-                 .fmt_thresh = 0},
-        .enable_interrupts = false,
-        .ack_ctrl_mode = false,
-        .tx_stretch_ctrl =
-            false, // Automatic TX Stretch mode (hardware auto-manages, no SW intervention needed)
-        .timeout_cycles = 0};
+    uint32_t base = i2c_get_base(TARGET_IDX);
+    i2c__CTRL_t ctrl;
+    i2c_target_config_t tgt_cfg = {.address0 = TARGET_ADDR,
+                                   .mask0 = 0x7F,
+                                   .address1 = 0,
+                                   .mask1 = 0,
+                                   .timing = *timing,
+                                   .fifo = {.tx_thresh = I2C_DEFAULT_TX_THRESH,
+                                            .acq_thresh = I2C_DEFAULT_ACQ_THRESH,
+                                            .rx_thresh = 0,
+                                            .fmt_thresh = 0},
+                                   .enable_interrupts = false,
+                                   .ack_ctrl_mode = false,
+                                   .tx_stretch_ctrl = false,
+                                   .timeout_cycles = 0};
 
     ret = i2c_target_init(TARGET_IDX, &tgt_cfg);
     if (ret != I2C_OK) {
-        simputs("  ERROR: Target init failed\n");
-        write_scratch(0, 0xBAD00032);
-        test_fail(0);
+        fail_with(0xBAD00032, "Target init failed");
     }
-    simputs("  Target initialized successfully\n");
 
-    write_scratch(1, 0x00000031);
-
-    // Explicitly set ACQ_START_STOP_EN bit to 1
-    uint32_t base = i2c_get_base(TARGET_IDX);
-    i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
-                                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+    ctrl.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)));
     ctrl.f.ACQ_START_STOP_EN = 1;
-    write_reg(
-        base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) - SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
-        ctrl.w);
-    simputs("  Speed: Standard mode (100 kHz)\n");
-    simputs("  Address mode: 7-bit addressing\n");
+    write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0)), ctrl.w);
+}
 
-    //=========================================================================
-    // Step 4: Write preset data from Controller to Target
-    //         Data: 0x5A5A, Register: 0x5A
-    //=========================================================================
-    write_scratch(1, 0x00000040);
-    simputs("\nStep 4: Write Preset Data from Controller to Target\n");
-    simputs("  Register address: 0x");
-    simputshex32("", REG_ADDR);
-    simputs("\n");
-    simputs("  Data to write: 0x");
-    simputshex32("", TEST_DATA);
-    simputs("\n");
-    simputs("  Target address: 0x");
-    simputshex32("", TARGET_ADDR);
-    simputs("\n");
-
-    // Prepare write buffer: register address + data (2 bytes)
+/**
+ * STEP S3 — n-byte write+STOP; prove FMTEMPTY and no CONTROLLER_HALT.
+ * STEP S5 wait is embedded for transfer end (also used before CMD_COMPLETE).
+ */
+static void step_s3_write_stop(void) {
+    uint32_t base = i2c_get_base(CONTROLLER_IDX);
     uint8_t write_buffer[3];
-    write_buffer[0] = REG_ADDR;                // Register address
-    write_buffer[1] = TEST_DATA & 0xFF;        // Data low byte
-    write_buffer[2] = (TEST_DATA >> 8) & 0xFF; // Data high byte
-
-    // Controller write transaction (non-blocking to prevent ACQ FIFO overflow)
-    // For internal I2C communication, Target must receive immediately after Controller write
-    // to prevent ACQ FIFO overflow and SCL stretching
-    simputs("  Controller sending write transaction (non-blocking)...\n");
-    ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR, write_buffer, 3);
-    if (ret != I2C_OK) {
-        simputs("  ERROR: Controller write failed with error code ");
-        simputshex32("", ret);
-        simputs("\n");
-        write_scratch(0, 0xBAD00040);
-        test_fail(0);
-    }
-
-    simputs("  Write command sent to FIFO\n");
-
-    // Target receive transaction immediately (without waiting for Controller idle)
-    // This prevents ACQ FIFO overflow which would cause SCL stretching and deadlock
-    simputs("  Target receiving transaction (immediate read)...\n");
     uint8_t recv_buffer[256];
     uint32_t received_len = 0;
-    ret = i2c_target_receive_transaction(TARGET_IDX, recv_buffer, sizeof(recv_buffer),
-                                         &received_len, I2C_TIMEOUT_DEFAULT);
-    if (ret != I2C_OK) {
-        simputs("  ERROR: Target receive failed\n");
-        write_scratch(0, 0xBAD00042);
-        test_fail(0);
+    int ret;
+    i2c__STATUS_t status;
+    i2c__INTR_STATE_t intr;
+
+    simputs("STEP S3: push START+addr+W, data bytes, STOP; wait transfer end\n");
+
+    write_buffer[0] = REG_ADDR;
+    write_buffer[1] = TEST_DATA_LO;
+    write_buffer[2] = TEST_DATA_HI;
+
+    /* Clear CMD_COMPLETE so S4 can observe 0->1. */
+    {
+        i2c__INTR_STATE_t clr = {.w = 0};
+        clr.f.CMD_COMPLETE = 1;
+        write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0)), clr.w);
     }
 
-    // Wait for controller to become idle after target receive completes
-    ret = i2c_controller_wait_idle(CONTROLLER_IDX, I2C_TIMEOUT_DEFAULT);
+    ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR, write_buffer,
+                                                    N_WRITE_BYTES);
     if (ret != I2C_OK) {
-        simputs("  ERROR: Wait for controller idle failed with error code ");
-        simputshex32("", ret);
+        fail_with(0xBAD00040, "Controller write enqueue failed");
+    }
+
+    ret = i2c_target_receive_transaction(TARGET_IDX, recv_buffer, sizeof(recv_buffer),
+                                         &received_len, CMD_COMPLETE_BOUND);
+    if (ret != I2C_OK) {
+        fail_with(0xBAD00042, "Target receive failed");
+    }
+
+    ret = i2c_controller_wait_idle(CONTROLLER_IDX, CMD_COMPLETE_BOUND);
+    if (ret != I2C_OK) {
+        status.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0)));
+        intr.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0)));
+        simputs("  ERROR: wait idle expired last INTR_STATE=");
+        simputshex32("", intr.w);
+        simputs(" STATUS=");
+        simputshex32("", status.w);
         simputs("\n");
         write_scratch(0, 0xBAD00041);
         test_fail(0);
     }
 
-    simputshex32("  Target received ", received_len);
-    simputs(" bytes\n");
-
-    // Verify received data
-    simputs("  [VERIFY] Verifying received data:\n");
-    simputs("    Expected length: 3 bytes\n");
-    simputshex32("    Received length: ", received_len);
-    simputs(" bytes\n");
-    simputs("    Expected register address: 0x");
-    simputshex32("", REG_ADDR);
-    simputs("\n");
-    simputs("    Received register address: 0x");
-    simputshex32("", recv_buffer[0]);
-    simputs("\n");
-    simputs("    Expected data low byte: 0x");
-    simputshex32("", TEST_DATA & 0xFF);
-    simputs("\n");
-    simputs("    Received data low byte: 0x");
-    simputshex32("", recv_buffer[1]);
-    simputs("\n");
-    simputs("    Expected data high byte: 0x");
-    simputshex32("", (TEST_DATA >> 8) & 0xFF);
-    simputs("\n");
-    simputs("    Received data high byte: 0x");
-    simputshex32("", recv_buffer[2]);
-    simputs("\n");
-
-    if (received_len != 3) {
-        simputs("  ERROR: Target received incorrect length!\n");
-        simputshex32("    Expected: 3, Got: ", received_len);
-        simputs("\n");
-        write_scratch(0, 0xBAD00043);
-        test_fail(0);
+    if (received_len != N_WRITE_BYTES) {
+        fail_with(0xBAD00043, "wrong byte count on target ACQ vs programmed n");
+    }
+    if (recv_buffer[0] != REG_ADDR || recv_buffer[1] != TEST_DATA_LO ||
+        recv_buffer[2] != TEST_DATA_HI) {
+        fail_with(0xBAD00044, "target ACQ data mismatch vs programmed write");
     }
 
-    if (recv_buffer[0] != REG_ADDR) {
-        simputs("  ERROR: Target received incorrect register address!\n");
-        simputs("    Expected: 0x");
-        simputshex32("", REG_ADDR);
-        simputs(", Got: 0x");
-        simputshex32("", recv_buffer[0]);
-        simputs("\n");
-        write_scratch(0, 0xBAD00043);
-        test_fail(0);
+    status.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0)));
+    intr.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0)));
+
+    if (status.f.FMTEMPTY != 1) {
+        fail_with(0xBAD00045, "STATUS.FMTEMPTY != 1 after write+STOP");
+    }
+    if (intr.f.CONTROLLER_HALT != 0) {
+        fail_with(0xBAD00046, "INTR_STATE.CONTROLLER_HALT set after write+STOP");
     }
 
-    uint16_t received_data = recv_buffer[1] | (recv_buffer[2] << 8);
-    if (received_data != TEST_DATA) {
-        simputs("  ERROR: Target received incorrect data!\n");
-        simputs("    Expected: 0x");
-        simputshex32("", TEST_DATA);
-        simputs(", Got: 0x");
-        simputshex32("", received_data);
-        simputs("\n");
-        write_scratch(0, 0xBAD00043);
-        test_fail(0);
-    }
+    g_ts_write_stop = stamp();
+    simputs("  CHK-CTRL-WRITE-COMPLETE: STATUS.FMTEMPTY=1 INTR_STATE.CONTROLLER_HALT=0 "
+            "n=3\n");
+}
 
-    simputs("  [VERIFY] Write verification PASSED!\n");
-    simputs("    Register address: 0x");
-    simputshex32("", REG_ADDR);
-    simputs(" (correct)\n");
-    simputs("    Written data: 0x");
-    simputshex32("", TEST_DATA);
-    simputs(" (correct)\n");
-    simputs("  Write transaction completed successfully\n");
-    write_scratch(1, 0x00000041); // Signal to TB: Write complete
+/**
+ * STEP S4 + S5 — bounded CMD_COMPLETE wait, lifecycle, W1C clear.
+ */
+static void step_s4_s5_cmd_complete_life(void) {
+    uint32_t base = i2c_get_base(CONTROLLER_IDX);
+    uint32_t i;
+    i2c__INTR_STATE_t intr;
+    i2c__INTR_ENABLE_t en;
+    i2c__STATUS_t status;
+    i2c__INTR_STATE_t clr = {.w = 0};
+    uint32_t irq_cond;
 
-    //=========================================================================
-    // Step 5: Prepare Target for read operation
-    //         Pre-load TX FIFO with data to be read
-    //=========================================================================
-    write_scratch(1, 0x00000050);
-    simputs("\nStep 5: Prepare Target for Read Operation\n");
+    simputs("STEP S5: bounded wait for CMD_COMPLETE\n");
 
-    // CRITICAL: Follow i2c_target_test.c correct sequence to prevent unhandled_tx_stretch_event
-    // Reference: i2c_target_test/src/main.c:418-459, RTL i2c_target_fsm.sv:666-667
-    // Correct order per OpenTitan RTL (to avoid unhandled_tx_stretch_event_i = 1):
-    // 1. Pre-load TX FIFO FIRST
-    // 2. Clear TARGET_EVENTS (clears events from TX FIFO pre-load)
-    // 3. Reset ACQ FIFO
-    // 4. Verify ACQ FIFO is empty
-    // 5. Wait for Target to be idle
-    // This sequence ensures unhandled_tx_stretch_event_i = 0 before read request
-    simputs(
-        "  Preparing Target for read transaction (correct sequence to clear stretch events)...\n");
-
-    // Step 1: Pre-load TX FIFO FIRST
-    // CRITICAL: Pre-load TX FIFO BEFORE read request arrives
-    // When Controller sends read request, Target FSM immediately reads from TX FIFO
-    // If TX FIFO is empty, Target sends 0xFF (default value)
-    simputshex32("", TEST_DATA);
-    simputs("\n");
-
-    uint8_t tx_data[2];
-    tx_data[0] = TEST_DATA & 0xFF;        // Data low byte
-    tx_data[1] = (TEST_DATA >> 8) & 0xFF; // Data high byte
-
-    uint32_t tx_bytes = i2c_target_transmit(TARGET_IDX, tx_data, 2);
-    if (tx_bytes != 2) {
-        simputs("  ERROR: Failed to pre-load Target TX FIFO\n");
-        write_scratch(0, 0xBAD00050);
-        test_fail(0);
-    }
-
-    simputs("  Target TX FIFO pre-loaded with 2 bytes\n");
-
-    // Step 2: Clear TARGET_EVENTS AFTER TX FIFO pre-load
-    // CRITICAL: Pre-loading TX FIFO may generate TARGET_EVENTS
-    // These must be cleared to prevent unhandled_tx_stretch_event_i = 1
-    // Reference: i2c_target_test/src/main.c:434-442
-    uint32_t target_events = i2c_get_target_events(TARGET_IDX);
-    if (target_events != 0) {
-        simputs("  Clearing unhandled TARGET_EVENTS: 0x");
-        simputshex32("", target_events);
-        simputs("\n");
-        i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF); // Clear all events
-    }
-    simputs("  TARGET_EVENTS cleared (unhandled_tx_stretch_event_i = 0)\n");
-
-    // Step 3: Reset ACQ FIFO to ensure it's empty before read request
-    // According to OpenTitan RTL, ACQ FIFO depth > 1 will trigger stretch_tx
-    // Reference: i2c_target_fsm.sv:666-667
-    i2c_reset_fifos(TARGET_IDX, false, false, false, true); // Reset ACQ FIFO only
-    simputs("  ACQ FIFO reset using ACQRST\n");
-
-    // Step 4: Verify ACQ FIFO is empty after reset
-    if (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
-        simputs("  WARNING: ACQ FIFO not empty after reset, draining...\n");
-        uint32_t base = i2c_get_base(TARGET_IDX);
-        while (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
-            (void)read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
-                                   SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-        }
-    }
-    simputs("  ACQ FIFO confirmed empty\n");
-
-    write_scratch(1, 0x00000051);
-
-    // Step 5: Wait for Target to be idle before read request
-    // This ensures Target FSM is ready to handle the read transaction
-    // CRITICAL: Target must be in Idle state with SCL released (high) before read request
-    uint32_t target_base = i2c_get_base(TARGET_IDX);
-    uint32_t idle_wait_count = 0;
-    const uint32_t IDLE_WAIT_TIMEOUT = 10000;
-    while (idle_wait_count < IDLE_WAIT_TIMEOUT) {
-        i2c__STATUS_t status = {
-            .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                         SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-        if (status.f.TARGETIDLE) {
-            // Additional delay to ensure SCL is fully released
-            for (volatile int i = 0; i < 500; i++)
-                ;
+    for (i = 0; i < CMD_COMPLETE_BOUND; i++) {
+        intr.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0)));
+        if (intr.f.CMD_COMPLETE != 0) {
             break;
         }
-        idle_wait_count++;
-        if (idle_wait_count % 1000 == 0) {
-            for (volatile int i = 0; i < 100; i++)
-                ; // Small delay
-        }
     }
-    if (idle_wait_count >= IDLE_WAIT_TIMEOUT) {
-        simputs("  ERROR: Target did not become idle before read request\n");
-        write_scratch(0, 0xBAD00060);
+
+    status.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0)));
+    intr.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0)));
+
+    if (i >= CMD_COMPLETE_BOUND) {
+        simputs("  ERROR: CMD_COMPLETE wait expired bound=");
+        simputshex32("", CMD_COMPLETE_BOUND);
+        simputs(" last INTR_STATE=");
+        simputshex32("", intr.w);
+        simputs(" STATUS=");
+        simputshex32("", status.w);
+        simputs("\n");
+        write_scratch(0, 0xBAD00051);
         test_fail(0);
     }
-    simputs("  Target confirmed idle (SCL should be released)\n");
 
-    // Final check: Verify no unhandled TARGET_EVENTS before read request
-    target_events = i2c_get_target_events(TARGET_IDX);
-    if (target_events != 0) {
-        simputs("  WARNING: TARGET_EVENTS not zero before read: 0x");
-        simputshex32("", target_events);
-        simputs("\n");
-        i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF);
-    }
-    simputs("  Target ready for read request (all conditions satisfied)\n");
-
-    //=========================================================================
-    // Step 6: Read data from Target to Controller
-    //=========================================================================
-    write_scratch(1, 0x00000060);
-    simputs("\nStep 6: Read Data from Target to Controller\n");
-    simputs("  Reading from register address: 0x");
-    simputshex32("", REG_ADDR);
+    simputs("  CHK-TIMEOUT-PATHS: CMD_COMPLETE bound=");
+    simputshex32("", CMD_COMPLETE_BOUND);
+    simputs(" fail_on_expiry last INTR_STATE=");
+    simputshex32("", intr.w);
+    simputs(" STATUS=");
+    simputshex32("", status.w);
     simputs("\n");
 
-    // CRITICAL: For write-then-read sequence with OpenTitan I2C
-    // 1. Write phase: Controller sends register address -> Target ACQ FIFO
-    // 2. Target must process ACQ FIFO (drain register address entry)
-    // 3. Read phase: Controller reads data <- Target TX FIFO
-    //
-    // Use separate i2c_controller_write and i2c_controller_read calls !!!!
-    // to allow manual ACQ FIFO processing between phases
-    uint8_t reg_addr_byte = REG_ADDR;
-    uint8_t read_buffer[2];
+    simputs("STEP S4: CMD_COMPLETE lifecycle set/observed/cleared/checked_cleared\n");
 
-    // Start write phase (non-blocking): send register address
-    ret = i2c_controller_write(CONTROLLER_IDX, TARGET_ADDR, &reg_addr_byte, 1,
-                               false); // Write: register address (no STOP)
+    /* set */
+    if (intr.f.CMD_COMPLETE != 1) {
+        fail_with(0xBAD00052, "lifecycle set: CMD_COMPLETE not 1 at STOP");
+    }
+    simputs("  lifecycle set: INTR_STATE.CMD_COMPLETE=1 at STOP\n");
+
+    /* observed — irq_o via CSR condition (INTR_STATE & INTR_ENABLE); no bus force */
+    en.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0)));
+    irq_cond = (en.f.CMD_COMPLETE != 0 && intr.f.CMD_COMPLETE != 0) ? 1u : 0u;
+    if (irq_cond != 1u) {
+        fail_with(0xBAD00053, "lifecycle observed: irq_cond!=1 with enable+state");
+    }
+    simputs("  lifecycle observed: irq_cond=1 INTR_ENABLE.CMD_COMPLETE=1 "
+            "INTR_STATE.CMD_COMPLETE=1\n");
+
+    /* cleared */
+    clr.f.CMD_COMPLETE = 1;
+    write_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0)), clr.w);
+    simputs("  lifecycle cleared: W1C INTR_STATE.CMD_COMPLETE\n");
+
+    /* checked_cleared */
+    intr.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0)));
+    en.w = read_reg(base + ctrl_off(SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0)));
+    irq_cond = (en.f.CMD_COMPLETE != 0 && intr.f.CMD_COMPLETE != 0) ? 1u : 0u;
+    if (intr.f.CMD_COMPLETE != 0) {
+        fail_with(0xBAD00054, "lifecycle checked_cleared: CMD_COMPLETE still set after W1C");
+    }
+    if (irq_cond != 0u) {
+        fail_with(0xBAD00055, "lifecycle checked_cleared: irq_cond still 1 after clear");
+    }
+    simputs("  lifecycle checked_cleared: INTR_STATE.CMD_COMPLETE=0 irq_cond=0\n");
+
+    g_ts_cmd_complete_clear = stamp();
+    simputs("  CHK-CMD-COMPLETE-LIFE: CMD_COMPLETE 0->1 at STOP then W1C ->0 "
+            "lifecycle=set/observed/cleared/checked_cleared\n");
+}
+
+static void check_nonvac_order(void) {
+    if (g_ts_timing_program == 0 || g_ts_fifo_reset_enable == 0 || g_ts_write_stop == 0 ||
+        g_ts_cmd_complete_clear == 0) {
+        fail_with(0xBAD00060, "CHK-NONVAC missing ordered term");
+    }
+    if (!(g_ts_timing_program < g_ts_fifo_reset_enable &&
+          g_ts_fifo_reset_enable < g_ts_write_stop && g_ts_write_stop < g_ts_cmd_complete_clear)) {
+        fail_with(0xBAD00061, "CHK-NONVAC out of order");
+    }
+    simputs("  CHK-NONVAC: TIMING_PROGRAM < FIFO_RESET_ENABLE < WRITE_STOP < "
+            "CMD_COMPLETE_CLEAR\n");
+}
+
+int main(void) {
+    i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
+                                             .clock_period_nanos = 10,
+                                             .sda_rise_nanos = 300,
+                                             .sda_fall_nanos = 100,
+                                             .scl_period_nanos = 0};
+    i2c_timing_config_t computed_timing;
+    int ret;
+
+    g_phase = 0;
+    g_ts_timing_program = 0;
+    g_ts_fifo_reset_enable = 0;
+    g_ts_write_stop = 0;
+    g_ts_cmd_complete_clear = 0;
+
+    simputs("\n## SMC_I2C_001 smc_i2c_sanity_test (c-fw) ##\n");
+
+    write_scratch(1, 0x00000010);
+    i2c_wrapper_enable(CONTROLLER_IDX, true);
+    i2c_wrapper_enable(TARGET_IDX, false);
+    write_scratch(1, 0x00000021);
+
+    ret = i2c_compute_timing_from_physical(&physical_params, &computed_timing);
     if (ret != I2C_OK) {
-        simputs("  ERROR: Controller write (register address) failed\n");
-        write_scratch(0, 0xBAD00061);
-        test_fail(0);
+        i2c_get_default_timing(I2C_SPEED_STANDARD, 100, &computed_timing);
     }
 
-    // CRITICAL: Process ACQ FIFO entry (register address) from Target
-    // This ensures Target FSM properly handles the write phase before read phase
-    simputs("  Processing register address from Target ACQ FIFO...\n");
-    uint32_t acq_wait_count = 0;
-    const uint32_t ACQ_WAIT_TIMEOUT = 10000;
-    bool found_reg_addr = false;
+    write_scratch(1, 0x00000030);
+    step_s1_timing_before_enable(CONTROLLER_IDX, &computed_timing);
+    step_s2_fifo_reset_enable(CONTROLLER_IDX);
+    init_target_peer(&computed_timing);
+    write_scratch(1, 0x00000031);
 
-    // Wait for register address to appear in ACQ FIFO
-    // Need to skip START/RESTART signals and only read DATA signals
-    while (acq_wait_count < ACQ_WAIT_TIMEOUT && !found_reg_addr) {
-        i2c__STATUS_t status = {
-            .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                         SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-        if (!status.f.ACQEMPTY) {
-            // Read ACQ FIFO entry
-            i2c__ACQDATA_t acqdata = {
-                .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
-                                             SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-            uint32_t signal = acqdata.f.SIGNAL;
-            uint8_t abyte = (uint8_t)acqdata.f.ABYTE;
+    write_scratch(1, 0x00000040);
+    step_s3_write_stop();
+    write_scratch(1, 0x00000041);
 
-            // Skip START/RESTART signals, only process DATA signals
-            if (signal == 0) { // I2C_ACQ_SIGNAL_DATA
-                simputs("    Received register address from ACQ FIFO: 0x");
-                simputshex32("", abyte);
-                simputs("\n");
-                if (abyte != (uint8_t)REG_ADDR) {
-                    simputs("    ERROR: ACQ DATA abyte mismatch vs REG_ADDR 0x");
-                    simputshex32("", REG_ADDR);
-                    simputs("\n");
-                    write_scratch(0, 0xBAD00064);
-                    test_fail(0);
-                }
-                found_reg_addr = true;
-            } else {
-                simputs("    Skipped ACQ signal ");
-                simputshex32("", signal);
-                simputs(", abyte=0x");
-                simputshex32("", abyte);
-                simputs("\n");
-                // Continue to next ACQ entry
-            }
-        } else {
-            acq_wait_count++;
-            if (acq_wait_count % 1000 == 0) {
-                for (volatile int i = 0; i < 100; i++)
-                    ; // Small delay
-            }
-        }
-    }
-    if (!found_reg_addr) {
-        simputs("    ERROR: Register address not received in ACQ FIFO\n");
-        write_scratch(0, 0xBAD00063);
-        test_fail(0);
-    }
+    write_scratch(1, 0x00000050);
+    step_s4_s5_cmd_complete_life();
+    write_scratch(1, 0x00000051);
 
-    // Now perform read phase
-    simputs("  Starting read phase...\n");
-    ret = i2c_controller_read(CONTROLLER_IDX, TARGET_ADDR, read_buffer, 2,
-                              true); // Read: 2 bytes data (with STOP)
-    if (ret != I2C_OK) {
-        simputs("  ERROR: Controller read failed\n");
-        write_scratch(0, 0xBAD00062);
-        test_fail(0);
-    }
+    check_nonvac_order();
 
-    read_value = read_buffer[0] | (read_buffer[1] << 8);
-
-    simputs("  Read completed successfully\n");
-    simputs("  [VERIFY] Read data verification:\n");
-    simputs("    Read data byte[0] (low): 0x");
-    simputshex32("", read_buffer[0]);
-    simputs("\n");
-    simputs("    Read data byte[1] (high): 0x");
-    simputshex32("", read_buffer[1]);
-    simputs("\n");
-    simputs("    Read data (combined): 0x");
-    simputshex32("", read_value);
-    simputs("\n");
-    write_scratch(1, 0x00000061);
-
-    //=========================================================================
-    // Step 7: Compare written and read data
-    //=========================================================================
-    write_scratch(1, 0x00000070);
-    simputs("\nStep 7: Compare Written and Read Data\n");
-    simputs("  ========================================\n");
-    simputs("  [VERIFY] Final Data Comparison:\n");
-    simputs("  ========================================\n");
-    simputs("    Written data: 0x");
-    simputshex32("", TEST_DATA);
-    simputs(" (expected)\n");
-    simputs("    Read data:   0x");
-    simputshex32("", read_value);
-    simputs(" (actual)\n");
-    simputs("  ========================================\n");
-
-    if (read_value != TEST_DATA) {
-        simputs("  [ERROR] Data mismatch detected!\n");
-        simputs("    Expected: 0x");
-        simputshex32("", TEST_DATA);
-        simputs("\n");
-        simputs("    Got:      0x");
-        simputshex32("", read_value);
-        simputs("\n");
-        simputs("    Difference: 0x");
-        simputshex32("", TEST_DATA ^ read_value);
-        simputs("\n");
-        write_scratch(0, 0xBAD00070);
-        test_fail(0);
-    }
-
-    simputs("  [SUCCESS] Data verification PASSED!\n");
-    simputs("    Written and read data match perfectly: 0x");
-    simputshex32("", TEST_DATA);
-    simputs("\n");
-    simputs("  ========================================\n");
-    write_scratch(1, 0x00000071);
-
-    //=========================================================================
-    // Test Complete - Signal to testbench
-    //=========================================================================
     write_scratch(1, 0x00000090);
-
     write_scratch(1, 0xEBEDEBE4);
-    simputs("\n");
-    simputs("################################################\n");
-    simputs("##           ALL TESTS PASSED                ##\n");
-    simputs("################################################\n");
-    simputs("\n");
-    simputs("Summary:\n");
-    simputs("  - I2C_0 (Controller): @ 0xC0009000\n");
-    simputs("  - I2C_1 (Target):    @ 0xC0009200, Addr 0x");
-    simputshex32("", TARGET_ADDR);
-    simputs("\n");
-    simputs("  - Register Address:   0x");
-    simputshex32("", REG_ADDR);
-    simputs("\n");
-    simputs("  - Written Data:       0x");
-    simputshex32("", TEST_DATA);
-    simputs("\n");
-    simputs("  - Read Data:          0x");
-    simputshex32("", read_value);
-    simputs("\n");
-    simputs("  - Verification:       PASS\n");
-    simputs("\n################################################\n");
-
-    // Set scratch[0] to TEST_PASS before test_pass() to ensure monitor_task can detect it
+    simputs("\n## SMC_I2C_001 evidence tokens emitted ##\n");
     write_scratch(0, TEST_PASS);
-
     test_pass(0);
 
-    simputs("\n=== Test Complete ===\n");
-
-    // Infinite loop to keep CPU in WFI state after test completion
     while (true) {
         __asm__("wfi");
     }
-
     return 0;
+}
+
+int other_main(int hartid) {
+    (void)hartid;
+    while (true) {
+        __asm__("wfi");
+    }
+}
+
+int secondary_main(void) {
+    int hartid = metal_cpu_get_current_hartid();
+
+    if (hartid == 0) {
+        return main();
+    }
+    return other_main(hartid);
 }
