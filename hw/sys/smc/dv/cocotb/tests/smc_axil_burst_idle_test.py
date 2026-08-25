@@ -3,8 +3,6 @@
 """SMC OSS PyUVM 8-sample AXI-Lite burst idle test.
 
 DV-CARD:          SMC_003   ANCHOR: smc_axil_burst_idle_test
-DV-CARD-REVISION: 2   RECORD-SHA256: 27a5dda0740ab48308968e611beda7d4822543e5e07b36d940a7253cb0796bad
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
 
 After base bring-up, dispatches an eight-sample burst on the AXI-Lite
 agent. Instrumentation-only CHK-NONVAC (no allocated FL scenarios).
