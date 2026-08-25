@@ -11,6 +11,14 @@ tags = ["ci", "vplan_gap", "local_axi_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_deadspace_decode_test"
+module = "smc_deadspace_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["vplan_gap", "local_axi_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_output_fabric_wr_rd_responder_test"
 module = "smc_output_fabric_wr_rd_responder_test"
 seed = 1
@@ -242,6 +250,8 @@ args = [
 
 # smc_dfd_dbs_fault_inject_test moved to deferred.toml (tb_glue / not_dut_rtl).
 # Kept out of vplan_gaps CI — TB latches 0xDB5C_AFE1, does not exercise smc_dfd_wrap.
+# smc_deadspace_decode_test stays in [[tests]] (no ci tag) but is kept out of
+# this group until a kept log shows I2C refused and wrap_to_live=0.
 
 [[groups]]
 name = "vplan_gaps"
