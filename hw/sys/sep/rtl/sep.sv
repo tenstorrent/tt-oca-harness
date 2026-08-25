@@ -52,7 +52,6 @@ module sep
 
         input  logic ext_boot_seq_done_i,
 
-        // TODO: Do we need this?
         // DMI port for uncore
         input  logic        dmi_core_enable,
         input  logic        dmi_uncore_enable,
@@ -71,11 +70,6 @@ module sep
         input logic                      timer_int,
         input logic                      soft_int,
         input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
-
-        // TODO: Are these supposed to go into sep_safety?
-        // input logic wipe_i,
-        // output logic [7:0] error_o,
-        // output logic irq_o,
 
         // Memory macro interfaces
         output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
@@ -256,7 +250,7 @@ module sep
     logic cpu_lockstep_err_injection_en;
     logic cpu_corruption_detected;
 
-    // FIXME: We dont need these for now
+    // Not currently used; tie off.
     assign cpu_disable_corruption_detection = '0;
     assign cpu_lockstep_err_injection_en = '0;
   `endif
@@ -626,19 +620,16 @@ module sep
 
         .sep_cpu_trace                  (sep_cpu_trace),
 
-        // FIXME: Forward this to safety island somehow or SEP-level CSRs
         .iccm_ecc_single_error          (cpu_iccm_ecc_single_error),
         .iccm_ecc_double_error          (cpu_iccm_ecc_double_error),
         .dccm_ecc_single_error          (cpu_dccm_ecc_single_error),
         .dccm_ecc_double_error          (cpu_dccm_ecc_double_error),
 
-        // FIXME: Forward this to safety island somehow or SEP-level CSRs
         .dec_tlu_perfcnt0               (cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
         .dec_tlu_perfcnt1               (cpu_dec_tlu_perfcnt1),
         .dec_tlu_perfcnt2               (cpu_dec_tlu_perfcnt2),
         .dec_tlu_perfcnt3               (cpu_dec_tlu_perfcnt3),
 
-      // FIXME: Forward this to safety island somehow or SEP-level CSRs
       `ifdef RV_LOCKSTEP_ENABLE
         .disable_corruption_detection_i (cpu_disable_corruption_detection),
         .lockstep_err_injection_en_i    (cpu_lockstep_err_injection_en),
@@ -1041,53 +1032,9 @@ module sep
         .sep_sw_rst_no              (sep_sw_rst_no)
     );
 
-    // TODO: AXI slave in + AXI master out (to CPU subsystem, indirectly connected to everything) + local CSRs
-    // TODO: Does this need to be wrapped in a ifdef or parameter?
-    // if (EN_SEP_SAFETY) begin: GEN_SEP_SAFETY
-
-    //     sep_safety safety (
-
-    //         .clk_i,
-    //         .rst_ni,
-
-    //         // TODO: AXI master in
-    //         // TODO: AXI master out
-
-    //         // TODO: external safety/error interface
-    //         // input logic wipe_i,
-    //         // output logic [7:0] error_o,
-    //         // output logic irq_o,
-
-    //         .cpu_iccm_ecc_single_error_i(cpu_iccm_ecc_single_error),
-    //         .cpu_iccm_ecc_double_error_i(cpu_iccm_ecc_double_error),
-    //         .cpu_dccm_ecc_single_error_i(cpu_dccm_ecc_single_error),
-    //         .cpu_dccm_ecc_double_error_i(cpu_dccm_ecc_double_error),
-    //         // TODO: Similar signals for the scratchpad RAM?
-
-    //         `ifdef RV_LOCKSTEP_ENABLE
-    //         .cpu_disable_corruption_detection_o(cpu_disable_corruption_detection),
-    //         .cpu_lockstep_err_injection_en_o(cpu_lockstep_err_injection_en),
-    //         .cpu_corruption_detected_i(corruption_detected),
-    //         `endif
-
-    //         // TODO: Do we need more of these?
-    //         .cpu_dec_tlu_perfcnt0(cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
-    //         .cpu_dec_tlu_perfcnt1(cpu_dec_tlu_perfcnt1),
-    //         .cpu_dec_tlu_perfcnt2(cpu_dec_tlu_perfcnt2),
-    //         .cpu_dec_tlu_perfcnt3(cpu_dec_tlu_perfcnt3)
-
-    //     );
-
-    // end else begin: NO_GEN_EN_SEP_SAFETY
-    //     ;
-    // end
-
     ////////////////
     // Secure DMA //
     ////////////////
-
-    // TODO: Tie in unused signals or remove from wrapper
-    // TODO: Check over these parameters
 
     secure_dma_pkg::lsio_trigger_t lsio_trigger;
     assign lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger;

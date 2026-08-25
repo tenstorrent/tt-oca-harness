@@ -21,14 +21,14 @@
 //     expected IDCODE so the run must FAIL, proving the named-evidence path
 //     rejects a bad expectation end to end.
 
-class dtp_sanity_seq extends dtp_jtag_base_seq;
-    `uvm_object_utils(dtp_sanity_seq)
+class dtp_sanity_test_seq extends dtp_jtag_base_test_seq;
+    `uvm_object_utils(dtp_sanity_test_seq)
 
     localparam int unsigned RandWalks = 2;
     localparam int unsigned RandWalkSteps = 64;
     localparam int unsigned GotoHops = 8;
 
-    function new(string name = "dtp_sanity_seq");
+    function new(string name = "dtp_sanity_test_seq");
         super.new(name);
     endfunction
 
@@ -211,4 +211,4 @@ class dtp_sanity_seq extends dtp_jtag_base_seq;
                           bypass_patterns.size(), delayed_observations)));
     endtask
 
-endclass : dtp_sanity_seq
+endclass : dtp_sanity_test_seq

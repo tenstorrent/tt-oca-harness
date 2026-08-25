@@ -256,7 +256,7 @@ module log_engine
         .Depth             (FIFO_DEPTH),
         .OutputZeroIfEmpty (1'b1),
         .NeverClears       (1'b0),
-        .Secure            (1'b0) // TODO: Make FIFO secure
+        .Secure            (1'b0)
     ) rdata_fifo (
         .clk_i,
         .rst_ni,

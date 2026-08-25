@@ -85,7 +85,7 @@ flags = [
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
-# for both frameworks: +define+DTP_UVM_TB (below) switches tb/tb_top.sv from the ported cocotb
+# for both frameworks: +define+UVM (below) switches tb/tb_top.sv from the ported cocotb
 # shape to the self-contained SV-UVM shape, which `include`s uvm/tests/dtp_tests.sv.
 [frameworks.uvm]
 description = "DTP SV-UVM smoke flow (VCS)"
@@ -132,4 +132,4 @@ description = "DTP SV-UVM default target"
 build_dir = "hw/sys/dtp/dv/build/uvm"
 # Appends to the native profile's [target_defaults.default] defines (dedup-merge):
 # selects the SV-UVM shape of the shared tb_top.sv.
-defines = ["DTP_UVM_TB"]
+defines = ["UVM"]

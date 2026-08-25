@@ -130,18 +130,9 @@ int main(void) {
     avsbus_controller__AVS_INTERRUPT_t avs_interrupts = {.w = 0u};
     avs_interrupts.w = read_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR);
 
-    // if ((avs_interrupts.f.READBACK_FIFO_FULL_INT != 1) || (avs_interrupts.f.READBACK_HAS_DATA_INT
-    // != 1)) {
-    //   test_fail(hartid);
-    // }
-
     // readback the data from avs
     avsbus_controller__AVS_FIFOS_STATUS_t avs_fifo_status = {.w = 0u};
     avs_fifo_status.w = read_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_FIFOS_STATUS_BASE_ADDR);
-
-    // if (avs_fifo_status.f.READBACK_FIFO_OCCUPIED_SLOTS == 0) {
-    //   test_fail(hartid);
-    // }
 
     avsbus_controller__AVS_READBACK_t avs_readback = {.w = 0u};
     avs_readback.w = read_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_READBACK_BASE_ADDR);
@@ -157,10 +148,6 @@ int main(void) {
     // since we only read one item, only the readback fifo full int should have been cleared
     // but the has data interrupt should still be high
     avs_interrupts.w = read_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_INTERRUPT_BASE_ADDR);
-    // if ((avs_interrupts.f.READBACK_FIFO_FULL_INT != 0) || (avs_interrupts.f.READBACK_HAS_DATA_INT
-    // != 1)) {
-    //   test_fail(hartid);
-    // }
 
     test_pass(hartid);
 
