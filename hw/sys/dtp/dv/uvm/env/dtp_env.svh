@@ -7,8 +7,8 @@
 // event stream, and owns the DTP-local dtp_tb_if for sequences (reset
 // sequencing) and the checker (TAP-state observable).
 
-class dtp_uvm_env extends uvm_env;
-    `uvm_component_utils(dtp_uvm_env)
+class dtp_env extends uvm_env;
+    `uvm_component_utils(dtp_env)
 
     ocah_jtag_master_config          m_jtag_cfg;
     ocah_jtag_master_env          m_jtag_env;
@@ -39,7 +39,7 @@ class dtp_uvm_env extends uvm_env;
 
     virtual dtp_tb_if tb_vif;
 
-    function new(string name = "dtp_uvm_env", uvm_component parent = null);
+    function new(string name = "dtp_env", uvm_component parent = null);
         super.new(name, parent);
     endfunction
 
@@ -121,4 +121,4 @@ class dtp_uvm_env extends uvm_env;
         m_jtag_checker.finalize(jtag_require_checks);
     endfunction
 
-endclass : dtp_uvm_env
+endclass : dtp_env

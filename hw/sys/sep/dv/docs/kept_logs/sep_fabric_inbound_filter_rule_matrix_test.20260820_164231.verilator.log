@@ -1,0 +1,468 @@
+# cmd: /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/bin/python3 /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/build/runs/20260820_164231__verilator__sep_fabric_inbound_filter_rule_matrix_test/sep_fabric_inbound_filter_rule_matrix_test/scripts/sim.sep_fabric_inbound_filter_rule_matrix_test.py
+# cocotb verilator runner
+# cocotb verilator build skipped: pre-built during elaborate
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:93   in _embed_init_python              Using Python 3.11.9 interpreter at /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/bin/python3
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.046 2026-02-28
+     0.00ns INFO     cocotb                             Seeding Python random module with supplied seed 1
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotb
+     0.00ns INFO     cocotb.regression                  pytest not found, install it to enable better AssertionError messages
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/tests/sep_base_test.py:27: DeprecationWarning: SimTimeoutError was moved from `cocotb.result` to `cocotb.triggers`.
+                                                          from cocotb.result import SimTimeoutError
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/env/sep_axi_agent.py:38: DeprecationWarning: SimTimeoutError was moved from `cocotb.result` to `cocotb.triggers`.
+                                                          from cocotb.result import SimTimeoutError
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running system.sep_fabric_inbound_filter_rule_matrix_test.sep_fabric_inbound_filter_rule_matrix_test (1/1)
+                                                            Per-entry inbound-filter allow-rule vs block-by-default, via the external master.
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/env/sep_env_cfg.py:25: DeprecationWarning: The 'name' argument will be removed in a future release.
+                                                          self.reset_done = Event("sep_reset_done")
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotb/_base_triggers.py:153: DeprecationWarning: The 'name' field will be removed in a future release.
+                                                          self.name = name
+     0.00ns INFO     ..ocotb/tests/sep_base_test.py(88) [uvm_test_top]: SEP timing: sys_clk_period=8ns (seed=1)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           AXI master (write)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           cocotbext-axi version 0.1.28
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Copyright (c) 2020-2025 Alex Forencich
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           https://github.com/alexforencich/cocotbext-axi
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/stream.py:120: DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value = Immediate(...)` instead.
+                                                          self.valid.setimmediatevalue(self._valid_init)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Reset de-asserted
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/stream.py:115: DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value = Immediate(...)` instead.
+                                                          self.ready.setimmediatevalue(self._ready_init)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           AXI master configuration:
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Address width: 32 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             ID width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Byte size: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Data width: 64 bits (8 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Max burst size: 3 (8 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Max burst length: 256 cycles (2048 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           AXI master signals:
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awaddr width: 32 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awburst width: 2 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awcache width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awid width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awlen width: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awlock width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awprot width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awqos width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awregion width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awsize width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awuser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             awvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             wdata width: 64 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             wlast width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             wready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             wstrb width: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             wuser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             wvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             bid width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             bready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             bresp width: 2 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             buser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             bvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           AXI master (read)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           cocotbext-axi version 0.1.28
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Copyright (c) 2020-2025 Alex Forencich
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           https://github.com/alexforencich/cocotbext-axi
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           AXI master configuration:
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Address width: 32 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             ID width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Byte size: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Data width: 64 bits (8 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Max burst size: 3 (8 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             Max burst length: 256 cycles (2048 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           AXI master signals:
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             araddr width: 32 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arburst width: 2 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arcache width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arid width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arlen width: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arlock width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arprot width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arqos width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arregion width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arsize width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             aruser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             arvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             rdata width: 64 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             rid width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             rlast width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             rready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             rresp width: 2 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             ruser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi             rvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.s_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           AXI master (write)
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           cocotbext-axi version 0.1.28
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Copyright (c) 2020-2025 Alex Forencich
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           https://github.com/alexforencich/cocotbext-axi
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           AXI master configuration:
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Address width: 56 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             ID width: 6 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Byte size: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Data width: 64 bits (8 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Max burst size: 3 (8 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Max burst length: 256 cycles (2048 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           AXI master signals:
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awaddr width: 56 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awburst width: 2 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awcache width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awid width: 6 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awlen width: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awlock width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awprot width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awqos width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awregion width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awsize width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awuser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             awvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             wdata width: 64 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             wlast width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             wready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             wstrb width: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             wuser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             wvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             bid width: 6 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             bready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             bresp width: 2 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             buser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             bvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           AXI master (read)
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           cocotbext-axi version 0.1.28
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Copyright (c) 2020-2025 Alex Forencich
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           https://github.com/alexforencich/cocotbext-axi
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Reset de-asserted
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           AXI master configuration:
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Address width: 56 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             ID width: 6 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Byte size: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Data width: 64 bits (8 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Max burst size: 3 (8 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             Max burst length: 256 cycles (2048 bytes)
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           AXI master signals:
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             araddr width: 56 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arburst width: 2 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arcache width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arid width: 6 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arlen width: 8 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arlock width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arprot width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arqos width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arregion width: 4 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arsize width: 3 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             aruser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             arvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             rdata width: 64 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             rid width: 6 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             rlast width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             rready width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             rresp width: 2 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             ruser width: 12 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi             rvalid width: 1 bits
+     0.00ns INFO     cocotb.sep_uvm_top.m_axi           Reset de-asserted
+     0.00ns INFO     ..d_filter_rule_matrix_test.py(89) [uvm_test_top]: inbound-filter config: entry=0 allow=0x10a30178 val=0xc0def00d blocked=0x10a30008 src_id=0
+     0.00ns INFO     ..cotb/tests/sep_base_test.py(377) [uvm_test_top]: [efuse] selected random image (seed=1, LC raw=0x1)
+     0.00ns INFO     ..cotb/tests/sep_base_test.py(407) [uvm_test_top]: wrote eFuse image -> /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/build/runs/20260820_164231__verilator__sep_fabric_inbound_filter_rule_matrix_test/sep_fabric_inbound_filter_rule_matrix_test/out/sep_efuse.hex (run copy: /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/build/runs/20260820_164231__verilator__sep_fabric_inbound_filter_rule_matrix_test/sep_fabric_inbound_filter_rule_matrix_test/results/sep_efuse.hex) (LC raw=0x1)
+     0.00ns INFO     ..cotb/tests/sep_base_test.py(164) [uvm_test_top]: Bringing up clocks and reset (CPU held off)
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/tests/sep_base_test.py:101: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.clk_i, self.cfg.sys_clk_period_ns, units="ns").start())
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/tests/sep_base_test.py:102: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.clk_wdt_i, self.cfg.wdt_clk_period_ns, units="ns").start())
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/tests/sep_base_test.py:104: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
+     0.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/reset.py:59: DeprecationWarning: Use `signal.value_change` instead.
+                                                          await Edge(reset_signal)
+   152.00ns INFO     ..cotb/tests/sep_base_test.py(169) [uvm_test_top]: Releasing rst_ni
+  6592.00ns INFO     ..cotb/tests/sep_base_test.py(154) [uvm_test_top]: SEP fuse sense done at cycle 804
+  6752.00ns INFO     ../sep_efuse_backdoor_check.py(71) [uvm_test_top]: eFuse backdoor check: 256 words, 0 error(s)
+  6752.00ns INFO     ..cocotb/env/sep_axi_agent.py(127) [uvm_test_top.env.axi_agent.driver]: OcahAxiMasterSequence ready on s_axi bus
+  6752.00ns INFO     ..cocotb/env/sep_axi_agent.py(127) [uvm_test_top.env.ext_axi_agent.driver]: OcahAxiMasterSequence ready on m_axi bus
+  6752.00ns INFO     ..cotb/env/sep_axi_monitor.py(123) [uvm_test_top.env.axi_monitor]: SEP AXI monitor active on s_axi bus (fail_decerr=True)
+  6752.00ns INFO     ..cotb/env/sep_axi_monitor.py(123) [uvm_test_top.env.ext_axi_monitor]: SEP AXI monitor active on m_axi bus (fail_decerr=False)
+  6752.00ns INFO     cocotb.sep_uvm_top.s_axi           Read start addr: 0x10918000 arid: 0x0 prot: 2
+  6752.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst start arid: 0x0 araddr: 0x10918000 arlen: 0 arsize: 3 arprot: 2
+  6848.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst complete rid: 0x0 rresp: 0
+  6848.00ns INFO     cocotb.sep_uvm_top.s_axi           Read complete addr: 0x10918000 prot: 2 resp: 0 data: 00 00 00 00
+  6848.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/axi_master.py:1030: DeprecationWarning: The data field will be removed in a future release.
+                                                          cmd.event.set(read_resp)
+  6848.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/axi_master.py:834: DeprecationWarning: The data field will be removed in a future release.
+                                                          return event.data
+  6848.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/axi_master.py:838: DeprecationWarning: The data field will be removed in a future release.
+                                                          event.set(await self.read(address, length, arid, burst, size,
+  6848.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/env/sep_axi_agent.py:175: DeprecationWarning: The data field will be removed in a future release.
+                                                          return event.data
+  6848.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.axi_agent.driver]: AXI read  0x10918000 -> 0x0 (ok=True resp=0)
+  6848.00ns INFO     ..cocotb/env/sep_scoreboard.py(87) [uvm_test_top.env.scoreboard]: read check OK @ 0x10918000 = 0x00000000
+  6848.00ns INFO     cocotb.sep_uvm_top.s_axi           Read start addr: 0x10918004 arid: 0x1 prot: 2
+  6848.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst start arid: 0x1 araddr: 0x10918004 arlen: 0 arsize: 3 arprot: 2
+  6944.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst complete rid: 0x1 rresp: 0
+  6944.00ns INFO     cocotb.sep_uvm_top.s_axi           Read complete addr: 0x10918004 prot: 2 resp: 0 data: 00 00 00 f0
+  6944.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.axi_agent.driver]: AXI read  0x10918004 -> 0xf0000000 (ok=True resp=0)
+  6944.00ns INFO     ..cocotb/env/sep_scoreboard.py(87) [uvm_test_top.env.scoreboard]: read check OK @ 0x10918004 = 0xf0000000
+  6944.00ns INFO     ..d_filter_rule_matrix_test.py(85) [uvm_test_top]: inbound filter ACTIVE: PROD sep_debug=0
+  6944.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a30178 awid: 0x0 prot: 2 data: 0d f0 de c0
+  6944.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x0 awaddr: 0x10a30178 awlen: 0 awsize: 2 awprot: 2
+  7096.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x0 bresp: 0
+  7096.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a30178 prot: 2 resp: 0 length: 4
+  7096.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/axi_master.py:630: DeprecationWarning: The data field will be removed in a future release.
+                                                          cmd.event.set(write_resp)
+  7096.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/axi_master.py:423: DeprecationWarning: The data field will be removed in a future release.
+                                                          return event.data
+  7096.00ns WARNING  py.warnings                        /proj_soc/user_dev/yenhenglai/tt-oca-harness/.venv/lib64/python3.11/site-packages/cocotbext/axi/axi_master.py:427: DeprecationWarning: The data field will be removed in a future release.
+                                                          event.set(await self.write(address, data, awid, burst, size,
+  7096.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a30178 <- 0xc0def00d (ok=True resp=0)
+  7096.00ns INFO     cocotb.sep_uvm_top.s_axi           Read start addr: 0x10a30178 arid: 0x2 prot: 2
+  7096.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst start arid: 0x2 araddr: 0x10a30178 arlen: 0 arsize: 2 arprot: 2
+  7240.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst complete rid: 0x2 rresp: 0
+  7240.00ns INFO     cocotb.sep_uvm_top.s_axi           Read complete addr: 0x10a30178 prot: 2 resp: 0 data: 0d f0 de c0
+  7240.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.axi_agent.driver]: AXI read  0x10a30178 -> 0xc0def00d (ok=True resp=0)
+  7240.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21008 awid: 0x1 prot: 2 data: 78 01 a3 10
+  7240.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x1 awaddr: 0x10a21008 awlen: 0 awsize: 2 awprot: 2
+  7408.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x1 bresp: 0
+  7408.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21008 prot: 2 resp: 0 length: 4
+  7408.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21008 <- 0x10a30178 (ok=True resp=0)
+  7408.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a2100c awid: 0x2 prot: 2 data: 00 00 00 00
+  7408.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x2 awaddr: 0x10a2100c awlen: 0 awsize: 2 awprot: 2
+  7576.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x2 bresp: 0
+  7576.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a2100c prot: 2 resp: 0 length: 4
+  7576.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a2100c <- 0x0 (ok=True resp=0)
+  7576.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21010 awid: 0x3 prot: 2 data: 78 01 a3 10
+  7576.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x3 awaddr: 0x10a21010 awlen: 0 awsize: 2 awprot: 2
+  7744.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x3 bresp: 0
+  7744.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21010 prot: 2 resp: 0 length: 4
+  7744.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21010 <- 0x10a30178 (ok=True resp=0)
+  7744.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21014 awid: 0x4 prot: 2 data: 00 00 00 00
+  7744.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x4 awaddr: 0x10a21014 awlen: 0 awsize: 2 awprot: 2
+  7912.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x4 bresp: 0
+  7912.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21014 prot: 2 resp: 0 length: 4
+  7912.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21014 <- 0x0 (ok=True resp=0)
+  7912.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21000 awid: 0x5 prot: 2 data: 13 01 00 00
+  7912.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x5 awaddr: 0x10a21000 awlen: 0 awsize: 2 awprot: 2
+  8080.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x5 bresp: 0
+  8080.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21000 prot: 2 resp: 0 length: 4
+  8080.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21000 <- 0x113 (ok=True resp=0)
+  8080.00ns INFO     cocotb.sep_uvm_top.m_axi           Read start addr: 0x10a30178 arid: 0x0 prot: 2
+  8080.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst start arid: 0x0 araddr: 0x10a30178 arlen: 0 arsize: 2 arprot: 2
+  8176.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst complete rid: 0x0 rresp: 0
+  8176.00ns INFO     cocotb.sep_uvm_top.m_axi           Read complete addr: 0x10a30178 prot: 2 resp: 0 data: 0d f0 de c0
+  8176.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.ext_axi_agent.driver]: AXI read  0x10a30178 -> 0xc0def00d (ok=True resp=0)
+  8176.00ns INFO     .._filter_rule_matrix_test.py(112) [uvm_test_top]: CHK-ALLOW-RULE PASS: ext read 0x10a30178 -> OKAY, rdata=0xc0def00d
+  8176.00ns INFO     cocotb.sep_uvm_top.m_axi           Read start addr: 0x10a30008 arid: 0x1 prot: 2
+  8176.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst start arid: 0x1 araddr: 0x10a30008 arlen: 0 arsize: 2 arprot: 2
+  8216.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst complete rid: 0x1 rresp: 3
+  8216.00ns INFO     cocotb.sep_uvm_top.m_axi           Read complete addr: 0x10a30008 prot: 2 resp: 3 data: 1e ab dc ba
+  8216.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.ext_axi_agent.driver]: AXI read  0x10a30008 -> 0xbadcab1e (ok=False resp=3)
+  8216.00ns INFO     .._filter_rule_matrix_test.py(120) [uvm_test_top]: CHK-BLOCK-DEFAULT PASS: ext read 0x10a30008 -> DECERR (block-by-default)
+  8216.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21008 awid: 0x6 prot: 2 data: 78 01 a3 10
+  8216.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x6 awaddr: 0x10a21008 awlen: 0 awsize: 2 awprot: 2
+  8384.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x6 bresp: 0
+  8384.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21008 prot: 2 resp: 0 length: 4
+  8384.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21008 <- 0x10a30178 (ok=True resp=0)
+  8384.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a2100c awid: 0x7 prot: 2 data: 00 00 00 00
+  8384.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x7 awaddr: 0x10a2100c awlen: 0 awsize: 2 awprot: 2
+  8552.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x7 bresp: 0
+  8552.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a2100c prot: 2 resp: 0 length: 4
+  8552.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a2100c <- 0x0 (ok=True resp=0)
+  8552.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21010 awid: 0x0 prot: 2 data: 78 01 a3 10
+  8552.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x0 awaddr: 0x10a21010 awlen: 0 awsize: 2 awprot: 2
+  8720.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x0 bresp: 0
+  8720.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21010 prot: 2 resp: 0 length: 4
+  8720.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21010 <- 0x10a30178 (ok=True resp=0)
+  8720.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21014 awid: 0x1 prot: 2 data: 00 00 00 00
+  8720.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x1 awaddr: 0x10a21014 awlen: 0 awsize: 2 awprot: 2
+  8888.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x1 bresp: 0
+  8888.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21014 prot: 2 resp: 0 length: 4
+  8888.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21014 <- 0x0 (ok=True resp=0)
+  8888.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21000 awid: 0x2 prot: 2 data: 12 01 00 00
+  8888.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x2 awaddr: 0x10a21000 awlen: 0 awsize: 2 awprot: 2
+  9056.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x2 bresp: 0
+  9056.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21000 prot: 2 resp: 0 length: 4
+  9056.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21000 <- 0x112 (ok=True resp=0)
+  9056.00ns INFO     cocotb.sep_uvm_top.m_axi           Read start addr: 0x10a30178 arid: 0x2 prot: 2
+  9056.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst start arid: 0x2 araddr: 0x10a30178 arlen: 0 arsize: 2 arprot: 2
+  9096.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst complete rid: 0x2 rresp: 3
+  9096.00ns INFO     cocotb.sep_uvm_top.m_axi           Read complete addr: 0x10a30178 prot: 2 resp: 3 data: 1e ab dc ba
+  9096.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.ext_axi_agent.driver]: AXI read  0x10a30178 -> 0xbadcab1e (ok=False resp=3)
+  9096.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21008 awid: 0x3 prot: 2 data: 78 01 a3 10
+  9096.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x3 awaddr: 0x10a21008 awlen: 0 awsize: 2 awprot: 2
+  9264.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x3 bresp: 0
+  9264.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21008 prot: 2 resp: 0 length: 4
+  9264.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21008 <- 0x10a30178 (ok=True resp=0)
+  9264.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a2100c awid: 0x4 prot: 2 data: 00 00 00 00
+  9264.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x4 awaddr: 0x10a2100c awlen: 0 awsize: 2 awprot: 2
+  9432.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x4 bresp: 0
+  9432.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a2100c prot: 2 resp: 0 length: 4
+  9432.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a2100c <- 0x0 (ok=True resp=0)
+  9432.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21010 awid: 0x5 prot: 2 data: 78 01 a3 10
+  9432.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x5 awaddr: 0x10a21010 awlen: 0 awsize: 2 awprot: 2
+  9600.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x5 bresp: 0
+  9600.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21010 prot: 2 resp: 0 length: 4
+  9600.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21010 <- 0x10a30178 (ok=True resp=0)
+  9600.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21014 awid: 0x6 prot: 2 data: 00 00 00 00
+  9600.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x6 awaddr: 0x10a21014 awlen: 0 awsize: 2 awprot: 2
+  9768.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x6 bresp: 0
+  9768.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21014 prot: 2 resp: 0 length: 4
+  9768.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21014 <- 0x0 (ok=True resp=0)
+  9768.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21000 awid: 0x7 prot: 2 data: 13 01 00 00
+  9768.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x7 awaddr: 0x10a21000 awlen: 0 awsize: 2 awprot: 2
+  9936.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x7 bresp: 0
+  9936.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21000 prot: 2 resp: 0 length: 4
+  9936.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21000 <- 0x113 (ok=True resp=0)
+  9936.00ns INFO     cocotb.sep_uvm_top.m_axi           Read start addr: 0x10a30178 arid: 0x3 prot: 2
+  9936.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst start arid: 0x3 araddr: 0x10a30178 arlen: 0 arsize: 2 arprot: 2
+ 10032.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst complete rid: 0x3 rresp: 0
+ 10032.00ns INFO     cocotb.sep_uvm_top.m_axi           Read complete addr: 0x10a30178 prot: 2 resp: 0 data: 0d f0 de c0
+ 10032.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.ext_axi_agent.driver]: AXI read  0x10a30178 -> 0xc0def00d (ok=True resp=0)
+ 10032.00ns INFO     .._filter_rule_matrix_test.py(135) [uvm_test_top]: CHK-READ-ALLOWED PASS: read_allowed gates the matched ext read (DECERR<->OKAY)
+ 10032.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21008 awid: 0x0 prot: 2 data: 78 01 a3 10
+ 10032.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x0 awaddr: 0x10a21008 awlen: 0 awsize: 2 awprot: 2
+ 10200.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x0 bresp: 0
+ 10200.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21008 prot: 2 resp: 0 length: 4
+ 10200.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21008 <- 0x10a30178 (ok=True resp=0)
+ 10200.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a2100c awid: 0x1 prot: 2 data: 00 00 00 00
+ 10200.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x1 awaddr: 0x10a2100c awlen: 0 awsize: 2 awprot: 2
+ 10368.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x1 bresp: 0
+ 10368.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a2100c prot: 2 resp: 0 length: 4
+ 10368.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a2100c <- 0x0 (ok=True resp=0)
+ 10368.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21010 awid: 0x2 prot: 2 data: 78 01 a3 10
+ 10368.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x2 awaddr: 0x10a21010 awlen: 0 awsize: 2 awprot: 2
+ 10536.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x2 bresp: 0
+ 10536.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21010 prot: 2 resp: 0 length: 4
+ 10536.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21010 <- 0x10a30178 (ok=True resp=0)
+ 10536.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21014 awid: 0x3 prot: 2 data: 00 00 00 00
+ 10536.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x3 awaddr: 0x10a21014 awlen: 0 awsize: 2 awprot: 2
+ 10704.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x3 bresp: 0
+ 10704.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21014 prot: 2 resp: 0 length: 4
+ 10704.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21014 <- 0x0 (ok=True resp=0)
+ 10704.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21000 awid: 0x4 prot: 2 data: 11 01 00 00
+ 10704.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x4 awaddr: 0x10a21000 awlen: 0 awsize: 2 awprot: 2
+ 10872.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x4 bresp: 0
+ 10872.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21000 prot: 2 resp: 0 length: 4
+ 10872.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21000 <- 0x111 (ok=True resp=0)
+ 10872.00ns INFO     cocotb.sep_uvm_top.m_axi           Write start addr: 0x10a30178 awid: 0x0 prot: 2 data: aa aa 55 55
+ 10872.00ns INFO     cocotb.sep_uvm_top.m_axi           Write burst start awid: 0x0 awaddr: 0x10a30178 awlen: 0 awsize: 2 awprot: 2
+ 10904.00ns INFO     cocotb.sep_uvm_top.m_axi           Write burst complete bid: 0x0 bresp: 3
+ 10904.00ns INFO     cocotb.sep_uvm_top.m_axi           Write complete addr: 0x10a30178 prot: 2 resp: 3 length: 4
+ 10904.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.ext_axi_agent.driver]: AXI write 0x10a30178 <- 0x5555aaaa (ok=False resp=3)
+ 10904.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21008 awid: 0x5 prot: 2 data: 78 01 a3 10
+ 10904.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x5 awaddr: 0x10a21008 awlen: 0 awsize: 2 awprot: 2
+ 11072.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x5 bresp: 0
+ 11072.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21008 prot: 2 resp: 0 length: 4
+ 11072.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21008 <- 0x10a30178 (ok=True resp=0)
+ 11072.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a2100c awid: 0x6 prot: 2 data: 00 00 00 00
+ 11072.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x6 awaddr: 0x10a2100c awlen: 0 awsize: 2 awprot: 2
+ 11240.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x6 bresp: 0
+ 11240.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a2100c prot: 2 resp: 0 length: 4
+ 11240.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a2100c <- 0x0 (ok=True resp=0)
+ 11240.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21010 awid: 0x7 prot: 2 data: 78 01 a3 10
+ 11240.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x7 awaddr: 0x10a21010 awlen: 0 awsize: 2 awprot: 2
+ 11408.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x7 bresp: 0
+ 11408.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21010 prot: 2 resp: 0 length: 4
+ 11408.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21010 <- 0x10a30178 (ok=True resp=0)
+ 11408.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21014 awid: 0x0 prot: 2 data: 00 00 00 00
+ 11408.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x0 awaddr: 0x10a21014 awlen: 0 awsize: 2 awprot: 2
+ 11576.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x0 bresp: 0
+ 11576.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21014 prot: 2 resp: 0 length: 4
+ 11576.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21014 <- 0x0 (ok=True resp=0)
+ 11576.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21000 awid: 0x1 prot: 2 data: 13 01 00 00
+ 11576.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x1 awaddr: 0x10a21000 awlen: 0 awsize: 2 awprot: 2
+ 11744.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x1 bresp: 0
+ 11744.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21000 prot: 2 resp: 0 length: 4
+ 11744.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21000 <- 0x113 (ok=True resp=0)
+ 11744.00ns INFO     cocotb.sep_uvm_top.m_axi           Write start addr: 0x10a30178 awid: 0x1 prot: 2 data: aa aa 55 55
+ 11744.00ns INFO     cocotb.sep_uvm_top.m_axi           Write burst start awid: 0x1 awaddr: 0x10a30178 awlen: 0 awsize: 2 awprot: 2
+ 11848.00ns INFO     cocotb.sep_uvm_top.m_axi           Write burst complete bid: 0x1 bresp: 0
+ 11848.00ns INFO     cocotb.sep_uvm_top.m_axi           Write complete addr: 0x10a30178 prot: 2 resp: 0 length: 4
+ 11848.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.ext_axi_agent.driver]: AXI write 0x10a30178 <- 0x5555aaaa (ok=True resp=0)
+ 11848.00ns INFO     cocotb.sep_uvm_top.s_axi           Read start addr: 0x10a30178 arid: 0x3 prot: 2
+ 11848.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst start arid: 0x3 araddr: 0x10a30178 arlen: 0 arsize: 2 arprot: 2
+ 11992.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst complete rid: 0x3 rresp: 0
+ 11992.00ns INFO     cocotb.sep_uvm_top.s_axi           Read complete addr: 0x10a30178 prot: 2 resp: 0 data: aa aa 55 55
+ 11992.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.axi_agent.driver]: AXI read  0x10a30178 -> 0x5555aaaa (ok=True resp=0)
+ 11992.00ns INFO     .._filter_rule_matrix_test.py(147) [uvm_test_top]: CHK-WRITE-ALLOWED PASS: write_allowed gates the matched ext write (DECERR<->OKAY, landed)
+ 11992.00ns INFO     cocotb.sep_uvm_top.s_axi           Read start addr: 0x10a21000 arid: 0x4 prot: 2
+ 11992.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst start arid: 0x4 araddr: 0x10a21000 arlen: 0 arsize: 2 arprot: 2
+ 12152.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst complete rid: 0x4 rresp: 0
+ 12152.00ns INFO     cocotb.sep_uvm_top.s_axi           Read complete addr: 0x10a21000 prot: 2 resp: 0 data: 13 31 00 00
+ 12152.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.axi_agent.driver]: AXI read  0x10a21000 -> 0x3113 (ok=True resp=0)
+ 12152.00ns INFO     cocotb.sep_uvm_top.m_axi           Read start addr: 0x10a21000 arid: 0x4 prot: 2
+ 12152.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst start arid: 0x4 araddr: 0x10a21000 arlen: 0 arsize: 2 arprot: 2
+ 12192.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst complete rid: 0x4 rresp: 3
+ 12192.00ns INFO     cocotb.sep_uvm_top.m_axi           Read complete addr: 0x10a21000 prot: 2 resp: 3 data: 1e ab dc ba
+ 12192.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.ext_axi_agent.driver]: AXI read  0x10a21000 -> 0xbadcab1e (ok=False resp=3)
+ 12192.00ns INFO     cocotb.sep_uvm_top.m_axi           Write start addr: 0x10a21000 awid: 0x2 prot: 2 data: ff ff ff ff
+ 12192.00ns INFO     cocotb.sep_uvm_top.m_axi           Write burst start awid: 0x2 awaddr: 0x10a21000 awlen: 0 awsize: 2 awprot: 2
+ 12224.00ns INFO     cocotb.sep_uvm_top.m_axi           Write burst complete bid: 0x2 bresp: 3
+ 12224.00ns INFO     cocotb.sep_uvm_top.m_axi           Write complete addr: 0x10a21000 prot: 2 resp: 3 length: 4
+ 12224.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.ext_axi_agent.driver]: AXI write 0x10a21000 <- 0xffffffff (ok=False resp=3)
+ 12224.00ns INFO     cocotb.sep_uvm_top.s_axi           Read start addr: 0x10a21000 arid: 0x5 prot: 2
+ 12224.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst start arid: 0x5 araddr: 0x10a21000 arlen: 0 arsize: 2 arprot: 2
+ 12384.00ns INFO     cocotb.sep_uvm_top.s_axi           Read burst complete rid: 0x5 rresp: 0
+ 12384.00ns INFO     cocotb.sep_uvm_top.s_axi           Read complete addr: 0x10a21000 prot: 2 resp: 0 data: 13 31 00 00
+ 12384.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.axi_agent.driver]: AXI read  0x10a21000 -> 0x3113 (ok=True resp=0)
+ 12384.00ns INFO     .._filter_rule_matrix_test.py(175) [uvm_test_top]: CHK-OWNERSHIP PASS: filter cfg 0x10a21000 -- CPU-LSU reads rule (rw 0x00000113), external R+W DECERR, rule intact
+ 12384.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21028 awid: 0x2 prot: 2 data: 00 10 a2 10
+ 12384.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x2 awaddr: 0x10a21028 awlen: 0 awsize: 2 awprot: 2
+ 12552.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x2 bresp: 0
+ 12552.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21028 prot: 2 resp: 0 length: 4
+ 12552.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21028 <- 0x10a21000 (ok=True resp=0)
+ 12552.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a2102c awid: 0x3 prot: 2 data: 00 00 00 00
+ 12552.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x3 awaddr: 0x10a2102c awlen: 0 awsize: 2 awprot: 2
+ 12720.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x3 bresp: 0
+ 12720.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a2102c prot: 2 resp: 0 length: 4
+ 12720.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a2102c <- 0x0 (ok=True resp=0)
+ 12720.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21030 awid: 0x4 prot: 2 data: 00 10 a2 10
+ 12720.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x4 awaddr: 0x10a21030 awlen: 0 awsize: 2 awprot: 2
+ 12888.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x4 bresp: 0
+ 12888.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21030 prot: 2 resp: 0 length: 4
+ 12888.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21030 <- 0x10a21000 (ok=True resp=0)
+ 12888.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21034 awid: 0x5 prot: 2 data: 00 00 00 00
+ 12888.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x5 awaddr: 0x10a21034 awlen: 0 awsize: 2 awprot: 2
+ 13056.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x5 bresp: 0
+ 13056.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21034 prot: 2 resp: 0 length: 4
+ 13056.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21034 <- 0x0 (ok=True resp=0)
+ 13056.00ns INFO     cocotb.sep_uvm_top.s_axi           Write start addr: 0x10a21020 awid: 0x6 prot: 2 data: 13 01 00 00
+ 13056.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst start awid: 0x6 awaddr: 0x10a21020 awlen: 0 awsize: 2 awprot: 2
+ 13224.00ns INFO     cocotb.sep_uvm_top.s_axi           Write burst complete bid: 0x6 bresp: 0
+ 13224.00ns INFO     cocotb.sep_uvm_top.s_axi           Write complete addr: 0x10a21020 prot: 2 resp: 0 length: 4
+ 13224.00ns INFO     ..cocotb/env/sep_axi_agent.py(159) [uvm_test_top.env.axi_agent.driver]: AXI write 0x10a21020 <- 0x113 (ok=True resp=0)
+ 13224.00ns INFO     cocotb.sep_uvm_top.m_axi           Read start addr: 0x10a21000 arid: 0x5 prot: 2
+ 13224.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst start arid: 0x5 araddr: 0x10a21000 arlen: 0 arsize: 2 arprot: 2
+ 13336.00ns INFO     cocotb.sep_uvm_top.m_axi           Read burst complete rid: 0x5 rresp: 0
+ 13336.00ns INFO     cocotb.sep_uvm_top.m_axi           Read complete addr: 0x10a21000 prot: 2 resp: 0 data: 13 31 00 00
+ 13336.00ns INFO     ..cocotb/env/sep_axi_agent.py(144) [uvm_test_top.env.ext_axi_agent.driver]: AXI read  0x10a21000 -> 0x3113 (ok=True resp=0)
+ 13336.00ns WARNING  ...Task 19.sep_base_test.run_phase after allow-listing filter cfg 0x10a21000 on entry 1, external read resp=0, expected DECERR (spec: only the SEP CPU programs the filter)
+                                                        Traceback (most recent call last):
+                                                          File "/proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/tests/sep_base_test.py", line 725, in run_phase
+                                                            await self.run_scenario()
+                                                          File "/proj_soc/user_dev/yenhenglai/tt-oca-harness/hw/sys/sep/dv/cocotb/tests/system/sep_fabric_inbound_filter_rule_matrix_test.py", line 188, in run_scenario
+                                                            assert resp == RESP_DECERR, (
+                                                                   ^^^^^^^^^^^^^^^^^^^
+                                                        AssertionError: after allow-listing filter cfg 0x10a21000 on entry 1, external read resp=0, expected DECERR (spec: only the SEP CPU programs the filter)
+ 13336.00ns WARNING  cocotb.regression                  system.sep_fabric_inbound_filter_rule_matrix_test.sep_fabric_inbound_filter_rule_matrix_test failed
+ 13336.00ns INFO     cocotb.regression                  ******************************************************************************************************************************************************
+                                                        ** TEST                                                                                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        ******************************************************************************************************************************************************
+                                                        ** system.sep_fabric_inbound_filter_rule_matrix_test.sep_fabric_inbound_filter_rule_matrix_test   FAIL       13336.00           1.44       9244.33  **
+                                                        ******************************************************************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                                                                              13336.00           1.46       9156.66  **
+                                                        ******************************************************************************************************************************************************
+[INFO] Not skipping fuse sense - cannot find +skip_fuse_sense plusarg
+[INFO] Initialize the tokens and token digest valid bits for simulation. They don't have a reset value.
+[efuse_bank_model:SEP] loaded out/sep_efuse.hex
+[tb_backdoor_mem] boot ROM image loaded (sep_boot_rom.hex)
+[INFO] Fuse sense done
+- :0: Verilog $finish

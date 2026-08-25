@@ -303,7 +303,7 @@ module efuse_token_processing
     assign rma_sip_token_match_q_o = rma_sip_token_match_q_n0_scan;
     assign rma_chiplet_token_match_q_o = rma_chiplet_token_match_q_n0_scan;
 
-    // TODO: Probably remove? Expose sec_disable_token for test access
+    // Expose sec_disable_token for test access
     assign sec_disable_token_o = sec_disable_token;
 
 

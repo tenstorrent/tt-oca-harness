@@ -21,8 +21,8 @@
 // ports. The lifecycle debug disables reset to the fail-closed '1 tie-off,
 // so the target's disable must be cleared before any JTAG2AXI op.
 
-class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
-    `uvm_object_utils(dtp_jtag2axi_base_seq)
+class dtp_jtag2axi_base_test_seq extends dtp_jtag_base_test_seq;
+    `uvm_object_utils(dtp_jtag2axi_base_test_seq)
 
     // JTAG2AXI single-op request/status encodings (dtp_types.py).
     typedef enum int unsigned {
@@ -61,7 +61,7 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
     // API (error injection / backdoor memory on the responder).
     ocah_axi_slave_sequence otp_slave_seq;
 
-    function new(string name = "dtp_jtag2axi_base_seq");
+    function new(string name = "dtp_jtag2axi_base_test_seq");
         super.new(name);
     endfunction
 
@@ -338,4 +338,4 @@ class dtp_jtag2axi_base_seq extends dtp_jtag_base_seq;
             $sformatf("%s target=%s source=tb_pulse_counters", context_s, t.name)));
     endfunction
 
-endclass : dtp_jtag2axi_base_seq
+endclass : dtp_jtag2axi_base_test_seq

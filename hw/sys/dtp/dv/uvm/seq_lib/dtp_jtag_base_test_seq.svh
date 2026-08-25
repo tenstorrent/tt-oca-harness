@@ -12,14 +12,14 @@
 //   * the BYPASS 1-TCK latency check (sanity_bypass_latency_chk), which
 //     compares spec-derived expected TDO with the DR_SCAN item response.
 
-class dtp_jtag_base_seq extends ocah_jtag_master_sequence;
-    `uvm_object_utils(dtp_jtag_base_seq)
+class dtp_jtag_base_test_seq extends ocah_jtag_master_sequence;
+    `uvm_object_utils(dtp_jtag_base_test_seq)
 
     localparam int unsigned IrWidth = 6;
     // DTP primary TAP default device-identification value (bit 0 = marker).
     localparam bit [31:0] DtpDefaultIdcode = 32'h0000_0001;
 
-    // Plumbed by the test from dtp_uvm_env before start(sequencer).
+    // Plumbed by the test from dtp_env before start(sequencer).
     virtual dtp_tb_if tb_vif;
 
     // Optional shared-VIP evidence handles (issue #3296): when plumbed, TAP
@@ -28,7 +28,7 @@ class dtp_jtag_base_seq extends ocah_jtag_master_sequence;
     ocah_jtag_checker      evidence;
     ocah_jtag_scan_builder scan_builder;
 
-    function new(string name = "dtp_jtag_base_seq");
+    function new(string name = "dtp_jtag_base_test_seq");
         super.new(name);
     endfunction
 
@@ -136,4 +136,4 @@ class dtp_jtag_base_seq extends ocah_jtag_master_sequence;
                 pattern, width, observed), UVM_MEDIUM)
     endtask
 
-endclass : dtp_jtag_base_seq
+endclass : dtp_jtag_base_test_seq
