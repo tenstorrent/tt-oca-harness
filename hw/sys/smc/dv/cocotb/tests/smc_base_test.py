@@ -205,6 +205,35 @@ class smc_base_test(uvm_test):
         if hasattr(dut, "tb_gpio_ext_drive_en"):
             dut.tb_gpio_ext_drive_en.value = 0
             dut.tb_gpio_ext_drive_value.value = 0
+        if hasattr(dut, "tb_boot_stall_jtag_ovrd_i"):
+            dut.tb_boot_stall_jtag_ovrd_i.value = 0
+            dut.tb_boot_stall_jtag_val_i.value = 0
+        if hasattr(dut, "tb_sep_wdt_reset_n"):
+            dut.tb_sep_wdt_reset_n.value = 1
+        if hasattr(dut, "tb_ndmreset_request"):
+            dut.tb_ndmreset_request.value = 0
+        if hasattr(dut, "tb_cfg_flr_pf_active"):
+            dut.tb_cfg_flr_pf_active.value = 0
+        if hasattr(dut, "tb_temp_interrupt_i"):
+            dut.tb_temp_interrupt_i.value = 0
+        if hasattr(dut, "tb_ext_interrupt_0_i"):
+            dut.tb_ext_interrupt_0_i.value = 0
+        if hasattr(dut, "tb_captured_straps"):
+            dut.tb_captured_straps.value = 0
+        if hasattr(dut, "tb_ss_reset_complete"):
+            dut.tb_ss_reset_complete.value = 0xFFFFFFFF
+        if hasattr(dut, "tb_jtag_reset_ctrl"):
+            dut.tb_jtag_reset_ctrl.value = 0
+        if hasattr(dut, "tb_sep_axi_r_hold"):
+            dut.tb_sep_axi_r_hold.value = 0
+        if hasattr(dut, "tb_sys_axi_r_hold"):
+            dut.tb_sys_axi_r_hold.value = 0
+        if hasattr(dut, "tb_output_axi_resp_hold"):
+            dut.tb_output_axi_resp_hold.value = 0
+        if hasattr(dut, "tb_mem_repair_abort"):
+            dut.tb_mem_repair_abort.value = 0
+        if hasattr(dut, "tb_mbist_abort"):
+            dut.tb_mbist_abort.value = 0
         if hasattr(dut, "tb_uart0_rx_ext_drive"):
             dut.tb_uart0_rx_ext_drive.value = 1  # UART idle-high
         # Product lc_state_i idle = complementary TEST_DEV ({~0, 0} = 0xF0).

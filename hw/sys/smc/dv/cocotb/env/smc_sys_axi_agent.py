@@ -67,6 +67,9 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.update_golden: bool = False
         self.check_golden: bool = False
         self.memory_region: str | None = None
+        # AXI AxPROT. Default 0 (unprivileged) matches historical SEP_IN CSR
+        # traffic. GPIO ACCESS_FILTER tests program this to 1 (privileged).
+        self.prot: int = 0
 
     def __str__(self) -> str:
         exp = "None" if self.expected is None else f"0x{self.expected:x}"
@@ -113,7 +116,7 @@ class SmcSysAxiDriver(uvm_driver):
                 address=item.addr,
                 length=item.length,
                 size=self._axi_size(item.length),
-                prot=0,
+                prot=int(item.prot),
             )
             resp = await self._timed_event(event, item, "read")
             if resp is None:
@@ -129,7 +132,7 @@ class SmcSysAxiDriver(uvm_driver):
                 address=item.addr,
                 data=item.wdata.to_bytes(item.length, "little"),
                 size=self._axi_size(item.length),
-                prot=0,
+                prot=int(item.prot),
             )
             resp = await self._timed_event(event, item, "write")
             if resp is None:

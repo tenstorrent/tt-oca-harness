@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SMU OSS cocotb top — Phase-1 SEP=0.
 // Instantiates bare `smu` with SEP=0, flattens JTAG + external SMN AXI for
@@ -90,6 +91,21 @@ module smu_uvm_top
 
     // OCTS timer count pin observe
     output logic [63:0] tb_timer_count /*verilator public_flat_rw*/,
+    // IO STAP host TCK observe (DTP-IO-STAP; chiplet-to-chiplet TAP fanout)
+    output logic tb_stap_io_tck /*verilator public_flat_rw*/,
+    // SMC STAP host observe (internal DTP→SMC CPU JTAG; not a top-level SMU port)
+    output logic tb_stap_smc_tck /*verilator public_flat_rw*/,
+    output logic tb_stap_smc_trst_n /*verilator public_flat_rw*/,
+    output logic tb_stap_smc_tdi /*verilator public_flat_rw*/,
+    output logic tb_stap_smc_tms /*verilator public_flat_rw*/,
+    // Select-gated: host_tdo_oen = stap_sel && shift_en (observe DTP port; SMU wire is unused)
+    output logic tb_stap_smc_tdo_oen /*verilator public_flat_rw*/,
+    // BSR scan_ctrl.select (instruction-gated; TCK fans out on any DR)
+    output logic tb_bsr_select /*verilator public_flat_rw*/,
+    // SMC OTP JTAG2AXI gate (feat_ctrl fuse_test && soc && ap; SEP=0 ties open)
+    output logic tb_otp_jtag2axi_security_disable /*verilator public_flat_rw*/,
+    // SMC fabric JTAG2AXI gate (feat_ctrl soc && ap; SEP=0 ties open)
+    output logic tb_smc_jtag2axi_security_disable /*verilator public_flat_rw*/,
 
     // Telemetry ATB channel-0 drive / observe (receivers 1..N stay idle)
     input  wire logic [7:0] tb_tel_atdata /*verilator public_flat_rw*/,
@@ -300,6 +316,19 @@ module smu_uvm_top
     logic stap_extra_tdo_oen [0:0];
 
     assign stap_extra_tdi[0] = stap_extra_tdo[0];
+    assign tb_stap_io_tck = stap_io_ctrl.tck;
+    assign tb_stap_smc_tck = u_dut.dtp_smc_stap_tap_ctrl.tck;
+    assign tb_stap_smc_trst_n = u_dut.dtp_smc_stap_tap_ctrl.trst_n;
+    // jtag_tap_ctrl_t has no .tdi; DTP host_tdo_o (dtp_smc_stap_tdo) is the
+    // sole driver of SMC CPU TDI — probe the CPU pin, not the return TDO path.
+    assign tb_stap_smc_tdi = u_dut.u_smc.smc_cpu_jtag_TDI_i;
+    assign tb_stap_smc_tms = u_dut.dtp_smc_stap_tap_ctrl.tms;
+    assign tb_stap_smc_tdo_oen = u_dut.u_dtp.jtag_stap_smc_host_tdo_oen_o;
+    assign tb_bsr_select = bsr_ctrl.select;
+    assign tb_otp_jtag2axi_security_disable =
+        u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_otp_jtag2axi_security_disable;
+    assign tb_smc_jtag2axi_security_disable =
+        u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable;
 
     // XTRIG: expose CTM req/ack for cocotb (was hard-tied idle)
     logic [7:0] xtrig_src_req_w, xtrig_dst_ack_w;
