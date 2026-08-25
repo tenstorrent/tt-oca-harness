@@ -2825,7 +2825,7 @@ checker. Do not force `sec_dis`.
 | SEC_DIS security-disable override
 | PROVEN
 | `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero
-  token. Zero matches (`6'b010101`), `sec_dis=1`, and `FEAT_CTRL`
+  token. Zero matches (`SEC_DISABLE_TOKEN_MATCH=0x15`), `sec_dis=1`, and `FEAT_CTRL`
   equals the override golden (`0xffff0000ffffffff` with `SECURE_TM=0`).
   Token `1` mismatches and restores fail-closed PROD. No `force` of
   `sec_dis`. Boot-with-sense-incomplete is not claimed.

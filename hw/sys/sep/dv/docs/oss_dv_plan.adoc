@@ -456,7 +456,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 | PROVEN
 | `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero
   32-byte token (the TB stand-in for the metal ECO). AXI write of
-  zeros returns `SEC_DISABLE_TOKEN_MATCH=6'b010101`, `sec_dis=1`, and
+  zeros returns `SEC_DISABLE_TOKEN_MATCH=0x15`, `sec_dis=1`, and
   `FEAT_CTRL=0xffff0000ffffffff` (override golden, `SECURE_TM=0`).
   Token `1` mismatches and restores fail-closed PROD
   (`sec_dis=0`, `FEAT_CTRL=0xf000000000000000`). No `force` of
