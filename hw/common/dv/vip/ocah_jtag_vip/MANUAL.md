@@ -305,9 +305,9 @@ convention, with the JTAG master env as the reference template:
   and the name tells a DUT env what it is subscribing to.
 - **Frozen surface is env-top-level handles only.** Everything a DUT env,
   test, or sequence may depend on is a direct member of the VIP env — the
-  env promotes child handles (`m_sequencer` on `ocah_jtag_master_env`,
-  `m_checker` on `ocah_axi_env`) rather than letting consumers reach
-  through its children.
+  env promotes child handles (`m_sequencer` on `ocah_jtag_master_env` and
+  `ocah_axi_master_env`, `m_checker` on `ocah_axi_env`) rather than
+  letting consumers reach through its children.
 
 ## Backend And License Status
 

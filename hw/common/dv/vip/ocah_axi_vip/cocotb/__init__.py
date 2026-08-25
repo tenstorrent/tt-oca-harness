@@ -91,7 +91,7 @@ def _unavailable_class(class_name: str, backend: str):
 try:
     from .ocah_axi_master_agent import OcahAxiMasterAgent
     from .ocah_axi_master_config import OcahAxiMasterConfig
-    from .ocah_axi_master_driver import OcahAxiMasterDriver
+    from .ocah_axi_master_driver import OcahAxiIdCapture, OcahAxiMasterDriver
     from .ocah_axi_master_sequence import OcahAxiMasterError, OcahAxiMasterSequence
     from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
     from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
@@ -111,6 +111,7 @@ except ModuleNotFoundError as exc:
     OcahAxiMasterAgent = _unavailable_class("OcahAxiMasterAgent", "cocotbext-axi")
     OcahAxiMasterConfig = _unavailable_class("OcahAxiMasterConfig", "cocotbext-axi")
     OcahAxiMasterDriver = _unavailable_class("OcahAxiMasterDriver", "cocotbext-axi")
+    OcahAxiIdCapture = _unavailable_class("OcahAxiIdCapture", "cocotbext-axi")
     OcahAxiMasterSequence = _unavailable_class("OcahAxiMasterSequence", "cocotbext-axi")
     OcahAxiMasterError = OcahAxiVipBackendError
     OcahAxiLiteMasterAgent = _unavailable_class("OcahAxiLiteMasterAgent", "cocotbext-axi")
@@ -154,6 +155,7 @@ __all__ = [
     "OcahAxiMasterConfig",
     "OcahAxiMasterDriver",
     "OcahAxiMasterSequence",
+    "OcahAxiIdCapture",
     "OcahAxiLiteMasterAgent",
     "OcahAxiLiteMasterConfig",
     "OcahAxiLiteMasterDriver",
