@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
-from .paths import configs_root, repo_path
+from .paths import configs_root, repo_path, repo_rel
 
 try:
     import tomllib as _tomllib
@@ -153,6 +153,9 @@ TOP_LEVEL_KEYS = {
     "formal",
     "dut",
     "tb",
+    # Injected by load_dut when --overlay/OCAH_DV_OVERLAY is active; a sim config or profile
+    # may never set it (overlays are explicit-activation only — see apply_adopter_overlay).
+    "adopter_overlay",
 }
 
 BUILD_KEYS = {
@@ -176,6 +179,16 @@ BUILD_KEYS = {
 
 # Keys a `[build].source_lists` fragment file may carry (see _expand_source_lists).
 SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
+
+# Keys an adopter overlay file (--overlay / OCAH_DV_OVERLAY) may carry (see
+# apply_adopter_overlay). The layer is append-only by design: every allowed key ADDS to the
+# merged DUT view (build inputs, target defines/flags, run args) and none can replace or
+# remove what the checked-in configs declare — so a run with an overlay differs from the
+# baseline only by the overlay's own additions.
+ADOPTER_OVERLAY_KEYS = {"description", "frameworks", "build", "sim", "target_defaults", "targets"}
+ADOPTER_OVERLAY_BUILD_KEYS = {"incdirs", "sources", "source_lists"}
+ADOPTER_OVERLAY_SIM_KEYS = {"args"}
+ADOPTER_OVERLAY_TARGET_KEYS = {"defines", "flags", "tools"}
 
 BUILD_OPTIONS_KEYS = {
     "build_jobs",
@@ -981,8 +994,129 @@ def _expand_source_lists(data: dict[str, Any], root: Path, where: str) -> None:
             build[key] = combined
 
 
+class OverlayFrameworkMismatch(ConfigError):
+    """The adopter overlay's `frameworks` guard excludes the selected framework.
+
+    A run treats this as a hard error (the user explicitly combined the overlay with a
+    framework the overlay does not target); --validate-configs catches it to validate the
+    non-targeted views without the overlay instead of failing them.
+    """
+
+
+def _append_unique(target: dict[str, Any], key: str, extra: list[str], where: str) -> None:
+    combined = _merge_unique_strings(as_str_list(target.get(key), f"{where} `{key}`"), extra)
+    if combined:
+        target[key] = combined
+
+
+def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) -> None:
+    """Apply one adopter overlay file on top of the merged DUT view (append-only).
+
+    The overlay is the runner-side equivalent of ocah.mk's adopter include hooks: it lets an
+    adopter extend a build without editing checked-in configs (extra VIP packages, gate
+    defines such as `OCAH_<PROTO>_VENDOR_IF`, factory-override run args). It is applied ONLY
+    when `--overlay <path>` or `OCAH_DV_OVERLAY` names it — never auto-activated by the
+    presence of an adopter checkout.
+
+    Merge rules (all append-only, applied after the profile/DUT `[frameworks.<fw>]` merge and
+    before `[build].source_lists` expansion, so an overlay-supplied manifest expands like a
+    DUT-owned one):
+
+    - `[build]` `incdirs`/`sources`/`source_lists`: dedup-append AFTER the DUT's own entries.
+    - `[sim].args`: append after the merged `[sim].args` (still before run-mode/test/CLI args).
+    - `[target_defaults.<t>]`/`[targets.<t>]` `defines`/`flags` and `[...tools.<tool>].flags`:
+      dedup-append into the matching table (created when absent).
+    - `frameworks = ["uvm", ...]` (optional): compatibility guard — applying the overlay to a
+      view whose selected framework is not listed raises :class:`OverlayFrameworkMismatch`.
+
+    Applying the same overlay to the same view is deterministic and repeatable: list order is
+    preserved and the dedup rules make a re-application a no-op. The applied path is recorded
+    under the reserved `adopter_overlay` key (surfaced in result.json).
+    """
+    where = f"adopter overlay {overlay_path}"
+    if not overlay_path.is_file():
+        raise ConfigError(f"adopter overlay not found: {overlay_path}")
+    overlay = load_toml(overlay_path)
+    validate_allowed_keys(overlay, ADOPTER_OVERLAY_KEYS, where)
+
+    guard = overlay.get("frameworks")
+    if guard is not None:
+        guard_list = as_str_list(guard, f"{where} `frameworks`")
+        if not guard_list:
+            raise ConfigError(f"{where}: `frameworks` must be a non-empty list of framework names")
+        selected = str(data.get("framework", ""))
+        if selected not in guard_list:
+            raise OverlayFrameworkMismatch(
+                f"{where}: targets framework(s) {', '.join(guard_list)} but the selected view "
+                f"is `{selected or '<none>'}`"
+            )
+
+    build_overlay = config_section(overlay, "build")
+    if build_overlay:
+        validate_allowed_keys(build_overlay, ADOPTER_OVERLAY_BUILD_KEYS, f"{where} [build]")
+        build = data.setdefault("build", {})
+        if not isinstance(build, dict):
+            raise ConfigError(f"{where}: merged [build] is not a table")
+        for key in ("incdirs", "sources", "source_lists"):
+            extra = as_str_list(build_overlay.get(key), f"{where} build.{key}")
+            if extra:
+                _append_unique(build, key, extra, f"{where} merged build")
+
+    sim_overlay = config_section(overlay, "sim")
+    if sim_overlay:
+        validate_allowed_keys(sim_overlay, ADOPTER_OVERLAY_SIM_KEYS, f"{where} [sim]")
+        extra_args = as_str_list(sim_overlay.get("args"), f"{where} sim.args")
+        if extra_args:
+            sim = config_section(data, "sim")
+            data["sim"] = {
+                **sim,
+                "args": [*as_str_list(sim.get("args"), "sim.args"), *extra_args],
+            }
+
+    for section_name in ("target_defaults", "targets"):
+        section_overlay = overlay.get(section_name)
+        if section_overlay is None:
+            continue
+        if not isinstance(section_overlay, dict):
+            raise ConfigError(f"{where}: [{section_name}] must hold per-target tables")
+        section = data.setdefault(section_name, {})
+        for target_name, target_overlay in section_overlay.items():
+            target_where = f"{where} [{section_name}.{target_name}]"
+            if not isinstance(target_overlay, dict):
+                raise ConfigError(f"{target_where}: must be a table")
+            validate_allowed_keys(target_overlay, ADOPTER_OVERLAY_TARGET_KEYS, target_where)
+            target = section.setdefault(target_name, {})
+            for key in ("defines", "flags"):
+                extra = as_str_list(target_overlay.get(key), f"{target_where} `{key}`")
+                if extra:
+                    _append_unique(target, key, extra, target_where)
+            tools_overlay = target_overlay.get("tools")
+            if tools_overlay is None:
+                continue
+            if not isinstance(tools_overlay, dict):
+                raise ConfigError(f"{target_where}: `tools` must hold per-tool tables")
+            tools = target.setdefault("tools", {})
+            for tool_name, tool_overlay in tools_overlay.items():
+                tool_where = f"{target_where} tools.{tool_name}"
+                if not isinstance(tool_overlay, dict):
+                    raise ConfigError(f"{tool_where}: must be a table")
+                validate_allowed_keys(tool_overlay, TARGET_TOOL_KEYS, tool_where)
+                extra = as_str_list(tool_overlay.get("flags"), f"{tool_where} `flags`")
+                if extra:
+                    _append_unique(tools.setdefault(tool_name, {}), "flags", extra, tool_where)
+
+    data["adopter_overlay"] = repo_rel(root, overlay_path)
+
+
 def load_dut(
-    path: Path, cfg_dir: Path, *, root: Path, name: str, root_rel: str, framework: str | None = None
+    path: Path,
+    cfg_dir: Path,
+    *,
+    root: Path,
+    name: str,
+    root_rel: str,
+    framework: str | None = None,
+    adopter_overlay: Path | None = None,
 ) -> Dut:
     """Load a merged per-DUT ``<dut>_sim_cfg.toml`` (selected by the duts resolver).
 
@@ -1023,6 +1157,16 @@ def load_dut(
             combined_sim_args = profile_sim_args + dut_sim_args
             if combined_sim_args:
                 data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
+
+    if "adopter_overlay" in data:
+        raise ConfigError(
+            f"{path}: `adopter_overlay` may not be set in a sim config or profile — the adopter "
+            "overlay layer activates only via --overlay or OCAH_DV_OVERLAY"
+        )
+    if adopter_overlay is not None:
+        # After the framework merge (the overlay extends the selected view) and before
+        # source-list expansion (an overlay-supplied manifest expands like a DUT-owned one).
+        apply_adopter_overlay(data, root, adopter_overlay)
 
     # Post-merge, so a framework overlay's [frameworks.<fw>.build].source_lists is visible.
     _expand_source_lists(data, root, str(path))
