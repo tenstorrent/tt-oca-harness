@@ -12,7 +12,7 @@ JTAG deny is a different path). RAND-REP both flavours every seed.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import Event, RisingEdge
+from cocotb.triggers import Event, ReadOnly, RisingEdge
 import pyuvm
 
 from sep_base_test import sep_base_test
@@ -33,9 +33,12 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
     """Write-lock and read-lock shadow accesses pulse aggregator bit [33]."""
 
     async def _irq(self) -> int:
-        # Combinational pulse: a concurrent watcher samples during the AXI beat,
-        # so this path cannot take ReadOnly (that window cannot drive the bus).
+        # Combinational 1-cycle pulse. Sample every posedge in ReadOnly.
+        # This helper only observes; a second edge to leave ReadOnly would
+        # skip a cycle and miss the pulse. Callers that drive AXI wait
+        # their own edge after this returns.
         await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
         raw = cocotb.top.sep_internal_interrupts_probe_o.value
         if not raw.is_resolvable:
             raise AssertionError(

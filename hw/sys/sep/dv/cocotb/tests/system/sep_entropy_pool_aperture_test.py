@@ -61,23 +61,6 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             f"in {cycles} cycles"
         )
 
-    async def _wait_stable_level(self, pool: SepEntropyPool, *, polls: int = 16) -> int:
-        """Wait until fifo_level stops rising after ESRC disable (in-flight EDN)."""
-        prev = None
-        stable = 0
-        last = 0
-        for _ in range(8000):
-            last = (await pool.status()) & 0x3F
-            if last == prev:
-                stable += 1
-                if stable >= polls:
-                    return last
-            else:
-                stable = 0
-                prev = last
-            await ClockCycles(cocotb.top.clk_i, 8)
-        raise AssertionError(f"pool level never stable (last={last})")
-
     async def _arm_not_full_no_ack(self, pool: SepEntropyPool) -> int:
         """Pop leftover until the pool has room and EDN acks have stopped.
 
@@ -184,20 +167,6 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             st_fill)
 
         await pool.disable_esrc()
-        level_dis = await self._wait_stable_level(pool)
-        wr = await pool.access(POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True)
-        assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (
-            f"status write resp={wr.resp_code} timed_out={wr.timed_out}, "
-            f"expected SLVERR"
-        )
-        st_after_wr = await pool.status()
-        assert (st_after_wr & 0x3F) == level_dis, (
-            f"write changed fifo_level {level_dis} -> {st_after_wr & 0x3F}"
-        )
-        self.logger.info(
-            "CHK-WRITE-SLVERR PASS: write BRESP=SLVERR, level unchanged (%d)",
-            level_dis)
-
         unmapped = POOL_STATUS + cfg.unmapped_off
         um = await pool.access(unmapped, expect_error=True)
         assert um.resp_code == RESP_SLVERR and um.rdata == 0 and not um.timed_out, (
@@ -210,9 +179,27 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # ESRC MODULE_ENABLE=0 does not drop AUTO-mode EDN acks. EDN_ENABLE=False
         # is what leaves the pool request outstanding without ack. Pop after
         # that so req_pending stays high (a full pool holds it low and clears
-        # the stall counter).
+        # the stall counter). Status write is here, with room in the FIFO: a
+        # full pool cannot show a refused fill.
         await pool.disable_edn()
         level_room = await self._arm_not_full_no_ack(pool)
+        assert level_room < FIFO_DEPTH, (
+            f"write-SLVERR armed on a full pool (level={level_room})"
+        )
+        wr = await pool.access(POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True)
+        assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (
+            f"status write resp={wr.resp_code} timed_out={wr.timed_out}, "
+            f"expected SLVERR"
+        )
+        st_after_wr = await pool.status()
+        assert (st_after_wr & 0x3F) == level_room, (
+            f"write changed fifo_level {level_room} -> {st_after_wr & 0x3F}"
+        )
+        self.logger.info(
+            "CHK-WRITE-SLVERR PASS: write BRESP=SLVERR, level unchanged "
+            "(%d < depth %d)",
+            level_room, FIFO_DEPTH)
+
         await ClockCycles(cocotb.top.clk_i, STALL_THRESH + 64)
         st_stall = await pool.status()
         fill_stall = (st_stall >> 7) & 1

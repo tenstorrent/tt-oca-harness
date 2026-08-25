@@ -540,7 +540,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   empty pool. It drives `pool_low` and `fill_stall` to the PIC. Distinct
   from the ESRC consume row above, which scores the EDN fill *into* the
   pool, not the block's own software interface.
-  `sep_entropy_pool_aperture_test` (Verilator `20260825_141933`): fill to
+  `sep_entropy_pool_aperture_test` (Verilator `20260825_155908`): fill to
   watermark, irq-cause `{fill_stall,pool_low}` only (live `0x1`/`0x0`/`0x2`),
   write and unmapped SLVERR, accepted pop then empty-pop SLVERR, `[36]`
   high-low-high, `[37]` first stall after EDN_ENABLE=False plus StallThresh

@@ -945,7 +945,7 @@ The block is a 64 KB crossbar target at `entropy_fifo.main`
 (`0x1095_0000`). It fills from the native EDN endpoint after the shared
 entropy bring-up.
 
-Kept Verilator evidence: run `20260825_141933`.
+Kept Verilator evidence: run `20260825_155908`.
 
 Checkers::
 
@@ -979,8 +979,9 @@ Checkers::
 | PROVEN
 
 | CHK-WRITE-SLVERR
-| Status write returns SLVERR and does not change `fifo_level`.
-| `CHK-WRITE-SLVERR PASS: write BRESP=SLVERR, level unchanged`
+| Status write returns SLVERR and does not change `fifo_level` while the
+  pool is not full (a full FIFO cannot show a refused fill).
+| `CHK-WRITE-SLVERR PASS: write BRESP=SLVERR, level unchanged` `< depth 32`
 | PROVEN
 
 | CHK-UNMAPPED
@@ -990,7 +991,7 @@ Checkers::
 
 | CHK-STALL-ASSERT
 | `[37]` high after `StallThresh` with the pool not full.
-| `CHK-STALL-ASSERT PASS: [37]=1 after StallThresh=4096` level 31
+| `CHK-STALL-ASSERT PASS: [37]=1 after StallThresh=4096` `not full`
 | PROVEN
 
 | CHK-IRQ-CAUSE-STALL
@@ -2447,7 +2448,7 @@ Randomization:: RAND-REP — both lock flavours (write-lock and read-lock)
 every seed. RANDCFG — which spare field (`SPARE0`..`SPARE7`) carries the
 lock, from the run seed (`SepLockedFieldIrqCfg`)
 
-Kept Verilator evidence: run `20260825_134739`.
+Kept Verilator evidence: run `20260825_155956`.
 Real fuse sense at cycle 802; 256-word shadow compare 0 errors.
 
 ==== Description
@@ -4069,8 +4070,8 @@ This PR closed, cheapest first:
 
 . Isolate in-window DECERR plus sibling-OKAY on the existing test
   (Verilator `20260825_141838`).
-. Entropy-pool aperture (Verilator `20260825_141933`).
-. Locked-field interrupt delivery (Verilator `20260825_134739`).
+. Entropy-pool aperture (Verilator `20260825_155908`).
+. Locked-field interrupt delivery (Verilator `20260825_155956`).
 . Adams Bridge ML-DSA-87 keyGen last (Verilator `20260825_142020`);
   both keyGens fit, so the sensitivity leg is kept. Aperture anchored on
   `sep_crypto_pkg`.
