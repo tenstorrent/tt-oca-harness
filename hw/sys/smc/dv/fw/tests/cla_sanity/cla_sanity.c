@@ -12,21 +12,6 @@
 
 int main(void) {
 
-    // Read from cla functional register
-    // uint32_t read_cla_cdgnode0ap0;
-    // read_cla_cdgnode0ap0 = read_reg(SMC_WRAP_CLA_SMC_CLA_CDBGNODE0EAP0_REG_ADDR);
-    // write_scratch(2, read_cla_cdgnode0ap0);
-
-    // // Read from ctrl status cla functional register
-    // uint32_t read_cla_ctrl_status;
-    // read_cla_ctrl_status = read_reg(SMC_WRAP_CLA_SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR);
-    // write_scratch(2, read_cla_ctrl_status);
-
-    // // Read from cla status functional register
-    // uint32_t read_cla_scratch;
-    // read_cla_scratch = read_reg(SMC_WRAP_CLA_SMC_CLA_SCRATCH_REG_ADDR);
-    // write_scratch(2, read_cla_scratch);
-
     /* dsingh - this reg has been removed
     // Read from cla cg enable register
     uint32_t read_cla_cg_enable;

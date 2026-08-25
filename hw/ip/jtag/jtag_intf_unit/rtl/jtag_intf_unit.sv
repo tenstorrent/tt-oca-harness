@@ -335,7 +335,7 @@ module jtag_intf_unit
     // STAP I/O Port Instantiation (Chiplet-to-Chiplet Connectivity)
     //--------------------------------------------------------------------------
 
-    // TODO: Local wire names preserved so downstream instances and DV probe paths are unchanged for now.
+    // Local wire names are preserved so downstream instances and DV probe paths stay unchanged.
     assign stap_io_security_disable       = dbg_disable_q.stap_io;
     assign stap_smc_security_disable      = dbg_disable_q.stap_smc;
     assign stap_sep_security_disable      = dbg_disable_q.stap_sep;
