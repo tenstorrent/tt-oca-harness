@@ -5718,9 +5718,12 @@ DUT, including both the cocotb and SV-UVM frameworks. That set includes
 when the tool is Verilator.</p>
 </li>
 <li>
-<p>The SV-UVM overlay (<code>[frameworks.uvm.targets.default].defines</code>) —
+<p>The shared native profile&#8217;s SV-UVM overlay
+(<code>[frameworks.uvm.target_defaults.default].defines</code> in <code>native.toml</code>) —
 the bare <code>UVM</code> framework gate, only when the run is
-<code>--dut dtp --framework uvm</code>.</p>
+<code>--dut dtp --framework uvm</code>. Target-table <code>defines</code> dedup-append across
+the profile/DUT/framework merge layers, so the overlay adds <code>UVM</code> to the
+shared set instead of replacing it.</p>
 </li>
 </ol>
 </div>
@@ -5764,7 +5767,8 @@ simulation-only paths on this name.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>UVM</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DTP SV-UVM overlay (<code>dtp_sim_cfg.toml</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Native profile SV-UVM overlay (<code>[frameworks.uvm]</code> in <code>native.toml</code>; every
+<code>--framework uvm</code> DUT)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The first-party SV-UVM framework gate (the same bare-name wording rule as
 <code>SIMULATION</code>): it selects the SV-UVM shape of the shared testbench top
 <code>dtp_uvm_top</code> in <code>hw/sys/dtp/dv/tb/tb_top.sv</code>, and the shared assertion
@@ -5831,7 +5835,7 @@ test configuration.</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The overlay&#8217;s explicit define is the only source of <code>UVM</code>: the simulator&#8217;s
+<p>The profile overlay&#8217;s explicit define is the only source of <code>UVM</code>: the simulator&#8217;s
 <code>-ntb_opts</code> option selects which UVM library is compiled but does not set
 this preprocessor name. The runner defaults that library to <code>uvm-1.2</code>; a DUT
 or profile selects another one with <code>[build.vcs]</code> <code>uvm_lib</code> in its sim config
