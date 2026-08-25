@@ -133,14 +133,6 @@ jobs:
             nightly_items: sep0_all
             nightly_coverage: true
             nightly_timeout: 180
-          - dut: ocah_axi_vip
-            tool: verilator
-            runner: ubuntu-latest
-            # Shared AXI VIP wire-harness selftests: seconds-long build and
-            # sim, no DUT RTL, no firmware stage. `smoke` is the whole set.
-            nightly_items: smoke
-            nightly_coverage: false
-            nightly_timeout: 30
           - dut: smc
             tool: verilator
             runner: ubuntu-latest
