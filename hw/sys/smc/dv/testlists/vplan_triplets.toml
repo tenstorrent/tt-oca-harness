@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
 [[tests]]
@@ -7,6 +8,14 @@ module = "smc_axi_error_response_depth_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "vplan_gap", "local_axi_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_deadspace_decode_test"
+module = "smc_deadspace_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["vplan_gap", "local_axi_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -71,6 +80,34 @@ module = "smc_efuse_permission_boundary_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "pyuvm"]
+run_modes = ["smoke"]
+
+# BFM: CHIPLET_ID lock IRQ on tb_efuse_locked_access_irq (bit 28).
+[[tests]]
+name = "smc_efuse_locked_access_interrupt_test"
+module = "smc_efuse_locked_access_interrupt_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "depth_efuse", "tier_c", "pyuvm"]
+run_modes = ["smoke"]
+
+# BFM: ext_boot_seq_done hold keeps fuse_reset_n low after sense (G6).
+[[tests]]
+name = "smc_efuse_boundary_signals_test"
+module = "smc_efuse_boundary_signals_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "depth_efuse", "tier_c", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_hold_ext_boot"]
+
+# BFM: PROGRAM/READ timeout CSR (enable|0) vs recovery burn.
+[[tests]]
+name = "smc_efuse_read_program_timeout_test"
+module = "smc_efuse_read_program_timeout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "depth_efuse", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
 
 # smc_pll_dvfs_depth_test / smc_static_cg_sanity_test → deferred.toml (rtl_placeholder)
@@ -213,6 +250,8 @@ args = [
 
 # smc_dfd_dbs_fault_inject_test moved to deferred.toml (tb_glue / not_dut_rtl).
 # Kept out of vplan_gaps CI — TB latches 0xDB5C_AFE1, does not exercise smc_dfd_wrap.
+# smc_deadspace_decode_test stays in [[tests]] (no ci tag) but is kept out of
+# this group until a kept log shows I2C refused and wrap_to_live=0.
 
 [[groups]]
 name = "vplan_gaps"
@@ -225,6 +264,9 @@ tests = [
     "smc_i2c_error_fifo_depth_test",
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_permission_boundary_test",
+    "smc_efuse_locked_access_interrupt_test",
+    "smc_efuse_boundary_signals_test",
+    "smc_efuse_read_program_timeout_test",
     "smc_gpio_strap_sanity_test",
     "smc_external_interrupts_test",
     "smc_uart_log_engine_error_boundary_test",
@@ -267,6 +309,9 @@ tests = [
     "smc_efuse_otp_clock_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_permission_boundary_test",
+    "smc_efuse_locked_access_interrupt_test",
+    "smc_efuse_boundary_signals_test",
+    "smc_efuse_read_program_timeout_test",
     "smc_gpio_irq_active_test",
     "smc_gpio_strap_sanity_test",
     "smc_external_interrupts_test",

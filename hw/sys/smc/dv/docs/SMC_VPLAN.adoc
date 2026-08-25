@@ -180,7 +180,7 @@ miss open-drain transitions under Verilator
 |`SmcJtagTap` (`SmcCpuTapDevice`) |`cocotbext-jtag` |CPU JTAG TAP driver
 — IDCODE=0x10CA_0555, IR=5, IDCODE@0x01, DTMCS@0x10, DMI@0x11
 
-|`SmcUartVip` |`cocotbext-uart` |UART0 pad-level UartSource + UartSink
+|`SmcUartVip` |`ocah_uart_vip` (native) |UART0 pad-level line driver + sampler
 
 |`OcahSpiFlash` (library import) |`ocah_spi_vip` |SPI flash BFM class
 (memory + JEDEC/preload/status APIs)
@@ -1478,9 +1478,9 @@ map hole / unit OOS) |B
 |P2-12 |`i3c_ccc_ibi_full` |I3C DAA/SETDASA + IBI initiation |*Skipped*
 (`i3ccore_stub`; IP DV owns CCC/IBI) |A
 
-|P2-13 |`uart_spi_loopback` |cocotbext-uart / cocotbext-spi + tb_top
+|P2-13 |`uart_spi_loopback` |`ocah_uart_vip` (native) / cocotbext-spi + tb_top
 signal lift |Real UART echo + SPI flash CS sequence — pin env:
-uv-managed runner env (cocotbext-uart) |A
+uv-managed runner env |A
 
 |P2-14 |`fusa_random_error` |FuSa error-injection framework |Random
 fault → error report → recovery — *Deferred* (Should wave) |C
@@ -1658,7 +1658,7 @@ listener slave at 0x08 captures payload at `mem[0xA0..0xA1]`
 with DAT/DCT support |No I3C VIP ships; the test raises until a
 reproducible pad-level backend exists
 
-|`smc_uart_loopback_test` |new `SmcUartVip` — cocotbext-uart 0.1.4
+|`smc_uart_loopback_test` |new `SmcUartVip` — `ocah_uart_vip` native line engines
 |8-N-1 UART frame (0x55 @ 115200 baud) drives `tb_uart0_rx_ext_drive`;
 `tb_uart0_tx_from_dut` resolvable check after frame
 
