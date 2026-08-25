@@ -95,6 +95,7 @@ ABR_ERROR_INTR_EN = ABR_INTR + 0x4
 ABR_NOTIF_INTR_EN = ABR_INTR + 0x8
 ABR_ERROR_INTR = ABR_INTR + _uvm_reg_off("error_internal_intr_r")
 ABR_ERROR_TRIG = ABR_INTR + _uvm_reg_off("error_intr_trig_r")
+ABR_NOTIF_INTR = ABR_INTR + _uvm_reg_off("notif_internal_intr_r")
 
 NAME0_EXP, NAME1_EXP = _mldsa_core_name()
 
@@ -175,6 +176,14 @@ class SepAbr(SepAxiRegDriver):
         await self.wr32(ABR_ERROR_INTR, INTR_EVENT_EN)
         return await self.rd32(ABR_ERROR_INTR)
 
+    async def notif_state(self) -> int:
+        return await self.rd32(ABR_NOTIF_INTR)
+
+    async def w1c_notif(self) -> int:
+        """W1C notif_cmd_done_sts; return the post-clear readback."""
+        await self.wr32(ABR_NOTIF_INTR, INTR_EVENT_EN)
+        return await self.rd32(ABR_NOTIF_INTR)
+
 
 def _selftest() -> None:
     assert ABR_BASE == 0x1094_0000
@@ -185,6 +194,7 @@ def _selftest() -> None:
     assert ABR_PUBKEY - ABR_BASE == 0x1000
     assert ABR_ERROR_INTR - ABR_INTR == 0x14
     assert ABR_ERROR_TRIG - ABR_INTR == 0x1c
+    assert ABR_NOTIF_INTR - ABR_INTR == 0x18
     assert NAME0_EXP == 0x44534D4C
     assert NAME1_EXP == 0x3837412D
     cfg = SepAbrKeygenCfg(1)

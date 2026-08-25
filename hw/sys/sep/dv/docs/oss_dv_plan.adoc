@@ -64,8 +64,8 @@ repeat each other.
   never reaches, so that every block in the DUT is exercised by at least
   one registered test. Same quality bar; no new environment.
 | Goal 38 of 40 `PROVEN` in-scope rows when the parked KM-firmware
-  vehicles land. This PR closes ABR and the entropy-pool aperture, extends
-  isolate, and takes the locked-field IRQ ride-along. CRC and KPV
+  vehicles land. ABR and the entropy-pool aperture are closed, isolate
+  is extended, and the locked-field IRQ ride-along is taken. CRC and KPV
   scrambler stay parked. Detail:
   link:verification_plan_phase2.adoc#phase2-plus-plus[Phase 2++].
 
@@ -196,7 +196,7 @@ instantiates and the suite never reaches at all. A block with no row
 cannot appear as a `GAP`, so these were invisible rather than deferred,
 which is why they are called out as their own phase.
 
-This PR closed the non-KM subset: Adams Bridge ML-DSA-87 keyGen, the
+The non-KM subset is closed: Adams Bridge ML-DSA-87 keyGen, the
 entropy-pool aperture, an in-window DECERR extend of
 `sep_crypto_per_ip_reset_isolation_test`, and the ride-along
 `sep_locked_field_access_irq_path_test` (orphan
@@ -204,7 +204,7 @@ entropy-pool aperture, an in-window DECERR extend of
 tables and kept-run IDs live in
 link:verification_plan_phase2.adoc#phase2-plus-plus[Phase 2++].
 
-Parked, not this PR, not Phase 3:: `sep_km_crc_pcpi_kat_test` and
+Parked, not Phase 3:: `sep_km_crc_pcpi_kat_test` and
 `sep_km_kpv_scrambler_test`. Both need dedicated KM ROM images (custom-0
 PCPI; KPV CSRs on the KM port), same class as the parked KM command-set
 vehicle. 38 of 40 waits on them. A SEP-side poke at KM-private state
@@ -501,13 +501,14 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 
 | CSR reset / RW / RO / reserved behaviour
 | PROVEN
-| `sep_reg_bit_bash_rand_test` walks the generated export: every
-  reset-eligible register matches, then every write-safe register takes a
-  complementary write that moves exactly the software-usable mask and no
-  other bits. Exclusions are a reason table (FIFO, trigger, key, hw-driven,
-  side-effect, OTP, granule-aligned filter addresses). Remap and
-  inbound/outbound-filter banks are reset-only. Per-register decode is out
-  of this row.
+| `sep_reg_bit_bash_rand_test` walks the generated export: 417
+  reset-eligible registers match, then 51 write-safe registers take a
+  complementary write that moves exactly the software-usable mask
+  (inbound START/END use `[31:3]`; 16 scratch + 3 `SEP_CPU_CTRL` + 32
+  inbound address regs). Those counts do not vary with seed. Exclusions
+  are a reason table (FIFO, trigger, key, hw-driven, side-effect, OTP).
+  Remap and outbound-filter banks are reset-only. Per-register decode is
+  out of this row.
 
 | Dead-space decode (unmapped addresses must not alias live registers)
 | PARTIAL
@@ -553,7 +554,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   custom-0 instruction from KM firmware — it has no register interface at
   all. The open suite computes CRCs host-side in Python and never invokes
   the hardware. Phase 2++ `sep_km_crc_pcpi_kat_test`, parked (dedicated
-  KM ROM). Not this PR. Not Phase 3.
+  KM ROM). Not Phase 3.
 
 | Key Manager key/policy vault scrambler
 | GAP, parked
@@ -561,7 +562,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   tweak. Nothing exercises it. Distinct from the KPV slot/lock row above,
   which proves extent and write-lock rather than storage confidentiality.
   Phase 2++ `sep_km_kpv_scrambler_test`, parked (dedicated KM ROM). Not
-  this PR. Not Phase 3.
+  Phase 3.
 
 | Secure boot negative (bad sig / revoke / rollback)
 | out

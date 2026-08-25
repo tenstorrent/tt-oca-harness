@@ -147,7 +147,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # accepted pop; status fifo_level / pool_err; irq-cause is {fill_stall,pool_low}
 # only; writes SLVERR; unmapped in-window SLVERR+RDATA=0; aggregator [36]
 # high-low-high and [37] first stall after ESRC disable for StallThresh.
-# RANDCFG: extra pops and unmapped offset from the run seed. Drain-under-fill
+# RANDCFG: extra pops and one unique-dead offset from the run seed; every
+# seed walks the high-bit mirrors of the live registers. Drain-under-fill
 # and stall-duration are not claimed. no_cpu; +skip_fuse_sense +esrc_noise_force.
 name = "sep_entropy_pool_aperture_test"
 module = "system.sep_entropy_pool_aperture_test"

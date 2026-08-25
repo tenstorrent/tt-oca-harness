@@ -48,7 +48,7 @@ Do not stretch the Phase 1 e2e / smoke entry. New tests are created
 from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
 is the completeness extension: same cocotb environment, goal 34 of 40
 `PROVEN` scorecard rows. <<phase2-plus-plus>> is block activation (38 of
-40). This PR implements the non-KM subset. The two KM-firmware vehicles
+40). The non-KM subset is implemented. The two KM-firmware vehicles
 stay parked, same class as the KM command-set row, until the ROM
 dependence is settled. Phase 3 starts a UVM bench after that.
 Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
@@ -89,7 +89,7 @@ eFuse, and Key Manager. See <<attention>>.
 | <<phase2-plus>> — 34 of 40 before UVM
 
 | Phase 2++ — block activation
-| 0 GAP rows this PR: ABR keyGen PROVEN, entropy-pool aperture PROVEN,
+| 0 GAP rows in the non-KM activation: ABR keyGen PROVEN, entropy-pool aperture PROVEN,
   isolate-window slice PROVEN, locked-field IRQ path PROVEN (promoted
   delivery row, outside the activation count). Two KM-firmware vehicles
   (`sep_km_crc_pcpi_kat_test`, `sep_km_kpv_scrambler_test`) are parked.
@@ -912,6 +912,17 @@ Checkers::
 | `CHK-PIC-NOTIF PASS: [35]=1 [34]=0`
 | PROVEN
 
+| CHK-PIC-NOTIF-W1C
+| `notif_internal_sts` W1C clears `[35]`.
+| `CHK-PIC-NOTIF-W1C PASS: [35] 1->0 via notif_internal_sts W1C`
+| PROVEN
+
+| CHK-ZEROIZE
+| `ZEROIZE` drops VALID and clears the pubkey window. READY stays high
+  through the wipe, so a READY wait is not this check.
+| `CHK-ZEROIZE PASS: VALID=0, first 4 pubkey words read 0`
+| PROVEN
+
 | CHK-SENSITIVITY
 | Flipping one seed bit yields a different public key.
 | `CHK-SENSITIVITY PASS: flipped seed word` `produced a different public key`
@@ -937,9 +948,10 @@ stay unregistered.
 Tier:: Tier 2
 Run mode:: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
 Testlist:: `system.toml`
-Randomization:: RANDCFG — extra pops past the watermark, and which
-unmapped in-aperture offset is probed, from the run seed
-(`SepEntropyPoolCfg`)
+Randomization:: RANDCFG — extra pops past the watermark, and one
+unique-dead offset, from the run seed (`SepEntropyPoolCfg`). Every seed
+walks the high-bit mirrors of the three live registers (the offsets that
+catch a truncated decode).
 
 The block is a 64 KB crossbar target at `entropy_fifo.main`
 (`0x1095_0000`). It fills from the native EDN endpoint after the shared
@@ -985,8 +997,9 @@ Checkers::
 | PROVEN
 
 | CHK-UNMAPPED
-| Unmapped in-window read returns SLVERR with RDATA=0.
-| `CHK-UNMAPPED PASS:` `SLVERR rdata=0`
+| Every high-bit mirror of a live register, plus one unique-dead
+  offset, returns SLVERR with RDATA=0.
+| `CHK-UNMAPPED PASS:` `alias` `SLVERR rdata=0`
 | PROVEN
 
 | CHK-STALL-ASSERT
@@ -3069,7 +3082,8 @@ closes (inbound ownership; dead-space refuse).
 
 | CSR reset / RW / RO / reserved behaviour
 | `PROVEN`. `sep_reg_bit_bash_rand_test` (Verilator `20260825_150036`)
-  walks the generated reset set and the write-safe complementary writes.
+  walks 417 reset values and 51 write-safe complementary writes
+  (inbound START/END use the granule mask `[31:3]`).
 | `sep_reg_bit_bash_rand_test`
 
 | Dead-space decode
@@ -3354,12 +3368,13 @@ included) from the generated SystemRDL. `SepRegBitBashCfg` is the
 single source of truth for both the walk and the skip reasons.
 
 Write-lands is the anti-vacuity control: a complement write must move
-exactly the software-usable mask. Remap and inbound/outbound-filter
-banks are reset-checked only: filter START/END are granule-aligned
-(hardware forces `[2:0]`; `END_ADDR` resets to `0x7`), and an
-unprogrammed alias region still rewrites a live beat. Write-safe blocks
-are scratch and `SEP_CPU_CTRL` minus side-effect / lock / trigger
-fields. The inbound-filter rule-matrix test owns programming START/END.
+exactly the software-usable mask. Inbound-filter START/END stay in the
+write sweep with the granule mask `[31:3]` (hardware forces `[2:0]`;
+`END_ADDR` resets to `0x7`). The inventory is seed-stable: 417 reset,
+51 write (16 scratch + 3 `SEP_CPU_CTRL` + 32 inbound address regs).
+Remap and outbound-filter banks are reset-checked only: an unprogrammed
+alias region still rewrites a live beat. The inbound-filter rule-matrix
+test owns programming the live filter, not these storage bits.
 
 Exclusions are a reason table: FIFO, trigger, key, hw-driven, OTP,
 side-effect, needs-init, no software-usable field (`TIMEOUT_*`
@@ -3375,17 +3390,17 @@ this row.
 
 | CHK-RESET
 | Every reset-eligible register reads its exported reset value.
-| `CHK-RESET PASS:` `matched the exported reset`
+| `CHK-RESET PASS: 417 register(s) matched the exported reset`
 | PROVEN
 
 | CHK-WRITE-LANDS
 | A complement write moves exactly the software-usable mask bits.
-| `CHK-WRITE-LANDS PASS:` `moved exactly`
+| `CHK-WRITE-LANDS PASS: 51 complementary write(s) moved exactly`
 | PROVEN
 
 | CHK-RO
 | Bits outside the mask stay unchanged across the write bash.
-| `CHK-RO PASS:` `left bits outside mask`
+| `CHK-RO PASS: 51 write-bash register(s) left bits outside mask`
 | PROVEN
 
 | CHK-RESERVED
@@ -3397,7 +3412,7 @@ this row.
 | CHK-RANDCFG
 | The full reset set and the full write-safe set ran in one
   invocation; block order and ones-first come from the seed.
-| `CHK-RANDCFG PASS: reset=`
+| `CHK-RANDCFG PASS: reset=417 write=51`
 | PROVEN
 |===
 
@@ -4066,7 +4081,7 @@ scorecard-row count, not a percentage of anything, and the two numbers
 must not be quoted together. What Phase 2++ closes is block activation:
 every instantiated block has a registered test that can fail.
 
-This PR closed, cheapest first:
+Closed, cheapest first:
 
 . Isolate in-window DECERR plus sibling-OKAY on the existing test
   (Verilator `20260825_141838`).
@@ -4076,7 +4091,7 @@ This PR closed, cheapest first:
   both keyGens fit, so the sensitivity leg is kept. Aperture anchored on
   `sep_crypto_pkg`.
 
-Parked, not this PR, not Phase 3:: `sep_km_crc_pcpi_kat_test` and
+Parked, not Phase 3:: `sep_km_crc_pcpi_kat_test` and
 `sep_km_kpv_scrambler_test`. Both are reachable only from Key Manager
 firmware (custom-0 PCPI; KPV CSRs on the KM port) and need dedicated KM
 ROM images. They stay named Phase 2++ activation rows, same class as
@@ -4124,14 +4139,14 @@ any of them.
 | GAP, parked
 | Known-answer test of the custom-0 PCPI instruction from KM firmware, in
   all three modes. Parked: dedicated KM ROM, same class as the KM
-  command-set vehicle. Not this PR. Not Phase 3.
+  command-set vehicle. Not Phase 3.
 | `sep_km_crc_pcpi_kat_test`
 
 | Key Manager key/policy vault scrambler
 | GAP, parked
 | Stored key material is keyed-scrambled and address-tweaked, round-trips
   exactly, and survives the key lock. Parked: dedicated KM ROM, KM-port
-  CSRs. Not this PR. Not Phase 3.
+  CSRs. Not Phase 3.
 | `sep_km_kpv_scrambler_test`
 
 | Per-IP `SW_RESET_N` isolation (`sep_crypto_axi_isolate` slice)
@@ -4153,8 +4168,8 @@ Verilator evidence: run `20260825_141838`. Drain-before-reset stays in
 === Parked: sep_km_crc_pcpi_kat_test
 
 Parked. Dedicated KM ROM; custom-0 PCPI has no SEP-side register
-interface. Same class as `sep_km_command_set_rand_test`. Not this PR.
-Not Phase 3. The card below is the contract when it is unparked.
+interface. Same class as `sep_km_command_set_rand_test`. Not Phase 3.
+The card below is the contract when it is unparked.
 
 [horizontal]
 Tier:: Tier 2
@@ -4196,7 +4211,7 @@ byte, CRC-8/ROHC) walk in this vehicle; do not split them into siblings.
 === Parked: sep_km_kpv_scrambler_test
 
 Parked. Dedicated KM ROM; the vault is reachable only from the KM port.
-Same class as `sep_km_command_set_rand_test`. Not this PR. Not Phase 3.
+Same class as `sep_km_command_set_rand_test`. Not Phase 3.
 The card below is the contract when it is unparked.
 
 [horizontal]

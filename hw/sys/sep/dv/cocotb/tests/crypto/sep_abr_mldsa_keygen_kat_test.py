@@ -7,8 +7,9 @@ shares, so the key-vault seed path is not honest here). Public key is
 compared word-for-word against the vendored NIST ACVP vector. Sensitivity:
 flip one seed bit and the key must differ. PIC [34] is proven live via
 error_intr_trig (0->1, W1C -> 0) before the KAT, then stays low at
-completion; [35] rises on completion. ML-KEM, sign/verify, and the
-key-vault seed path are not claimed.
+completion; [35] rises on completion and is W1C-cleared. ZEROIZE must
+drop VALID and clear the pubkey window (READY stays high through the
+wipe). ML-KEM, sign/verify, and the key-vault seed path are not claimed.
 
 RANDCFG: masking entropy and the flipped seed bit come from the run seed.
 no_cpu / +skip_fuse_sense.
@@ -144,8 +145,31 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         self.logger.info("CHK-STATUS-VALID PASS: VALID, ERROR=0")
         self.logger.info("CHK-PIC-NOTIF PASS: [35]=1 [34]=0")
 
+        notif_st = await abr.notif_state()
+        assert notif_st & 1, f"notif_internal_sts=0x{notif_st:x} after keyGen"
+        notif_st = await abr.w1c_notif()
+        assert (notif_st & 1) == 0, f"notif_internal_sts=0x{notif_st:x} after W1C"
+        assert await self._irq(IRQ_ABR_NOTIF) == 0, (
+            "[35] still high after notif_internal_sts W1C"
+        )
+        self.logger.info(
+            "CHK-PIC-NOTIF-W1C PASS: [35] 1->0 via notif_internal_sts W1C")
+
+        # READY stays high through ZEROIZE (abr_idle includes that state),
+        # so a READY wait is vacuous. VALID must fall, and the pubkey
+        # window must read as cleared.
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
-        await self._wait_status(abr, ST_READY, ST_READY, what="post-zeroize READY")
+        st_z = await self._wait_status(
+            abr, ST_VALID, 0, what="post-zeroize VALID clear")
+        assert (st_z & ST_ERROR) == 0, (
+            f"post-zeroize STATUS=0x{st_z:08x}, expected VALID=0 ERROR=0"
+        )
+        pk_z = await abr.read_words(ABR_PUBKEY, 4)
+        assert all(w == 0 for w in pk_z), (
+            f"post-zeroize pubkey still live: {[hex(w) for w in pk_z]}"
+        )
+        self.logger.info(
+            "CHK-ZEROIZE PASS: VALID=0, first 4 pubkey words read 0")
 
         flipped = cfg.flipped_seed(list(NIST_KG_SEED))
         pk2 = await self._keygen(abr, flipped, cfg.entropy, what="sensitivity-keygen")

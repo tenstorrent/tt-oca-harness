@@ -55,8 +55,19 @@ RESP_SLVERR = 2
 IRQ_POOL_LOW = 36
 IRQ_FILL_STALL = 37
 
-# 8-byte-aligned in-window offsets that are not the three live registers.
-_UNMAPPED = (0x18, 0x20, 0x28, 0x40, 0x80, 0x100, 0x1000, 0x8000)
+# Offsets that alias a live register if the decode drops high address bits
+# (the defect the 16-bit unique-case exists to catch). A seed that only
+# probes 0x18 never sees that class: 0x18 is the unused [4:3]=11 code.
+_ALIAS_UNMAPPED = (
+    0x20,    # -> status  0x00 if [4:0] only
+    0x28,    # -> irq     0x08 if [4:0] only
+    0x30,    # -> pop     0x10 if [4:0] only
+    0x100,   # -> status  0x00 if [7:0] only
+    0x1000,  # -> status  0x00 if [11:0] only
+    0x8000,  # -> status  0x00 if [14:0] only
+)
+# Unique-dead extra: SLVERR even under a 2-bit [4:3] decode.
+_UNIQUE_DEAD = (0x18, 0x40, 0x80)
 
 # Legal disable: MODULE_ENABLE=0, every other CTRL field at its reset (including
 # SHA256_WHITENING_ENABLE=1). A hand-cleared multi-bit field is an alert.
@@ -69,18 +80,24 @@ EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~0xF) | 0x9
 
 
 class SepEntropyPoolCfg:
-    """RANDCFG: extra accepted pops past the watermark, and the unmapped offset."""
+    """RANDCFG: extra accepted pops, plus one unique-dead offset.
+
+    Every seed walks ``alias_offs`` (high-bit mirrors of the live
+    registers). The seed only picks the extra unique-dead offset.
+    """
 
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
         self.extra_pops = rng.randrange(1, 5)
-        self.unmapped_off = rng.choice(_UNMAPPED)
+        self.alias_offs = _ALIAS_UNMAPPED
+        self.unmapped_off = rng.choice(_UNIQUE_DEAD)
 
     def summary(self) -> str:
+        aliases = ",".join(f"0x{o:x}" for o in self.alias_offs)
         return (
             f"seed={self.seed} extra_pops={self.extra_pops} "
-            f"unmapped=0x{self.unmapped_off:x}"
+            f"alias=[{aliases}] extra_dead=0x{self.unmapped_off:x}"
         )
 
 
@@ -140,8 +157,13 @@ def _selftest() -> None:
     assert LOW_WATERMARK == 8
     assert STALL_THRESH == 4096
     cfg = SepEntropyPoolCfg(1)
-    assert cfg.unmapped_off in _UNMAPPED
+    assert cfg.alias_offs == _ALIAS_UNMAPPED
+    assert cfg.unmapped_off in _UNIQUE_DEAD
     assert 1 <= cfg.extra_pops <= 4
+    # The three pinned testlist seeds must all still walk the alias set.
+    for pinned in (1, 2, 3):
+        pinned_cfg = SepEntropyPoolCfg(pinned)
+        assert pinned_cfg.alias_offs == _ALIAS_UNMAPPED
     # Disable keeps whitening at reset-1 and only clears MODULE_ENABLE.
     assert ENTROPY_SOURCE.value("CTRL") & ~0x2 == ESRC_CTRL_DISABLE
     assert EDN_CTRL_DISABLE == 0x9669

@@ -9,8 +9,10 @@ the first fill-stall after ESRC disable plus EDN_ENABLE=False for
 StallThresh cycles with the pool not full. Drain-under-fill and stall-duration
 stress are not claimed.
 
-RANDCFG: extra accepted pops and the unmapped in-window offset come from
-the run seed. no_cpu / +skip_fuse_sense / +esrc_noise_force.
+RANDCFG: extra accepted pops and one unique-dead offset come from the
+run seed. Every seed walks the high-bit mirrors of the live registers
+(the offsets that catch a truncated decode). no_cpu / +skip_fuse_sense /
++esrc_noise_force.
 """
 
 from __future__ import annotations
@@ -170,14 +172,16 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             st_fill)
 
         await pool.disable_esrc()
-        unmapped = POOL_STATUS + cfg.unmapped_off
-        um = await pool.access(unmapped, expect_error=True)
-        assert um.resp_code == RESP_SLVERR and um.rdata == 0 and not um.timed_out, (
-            f"unmapped 0x{unmapped:08x} resp={um.resp_code} rdata=0x{um.rdata:x}, "
-            f"expected SLVERR + RDATA=0"
-        )
+        for off in (*cfg.alias_offs, cfg.unmapped_off):
+            unmapped = POOL_STATUS + off
+            um = await pool.access(unmapped, expect_error=True)
+            assert um.resp_code == RESP_SLVERR and um.rdata == 0 and not um.timed_out, (
+                f"unmapped 0x{unmapped:08x} resp={um.resp_code} rdata=0x{um.rdata:x}, "
+                f"expected SLVERR + RDATA=0"
+            )
         self.logger.info(
-            "CHK-UNMAPPED PASS: offset 0x%x -> SLVERR rdata=0", cfg.unmapped_off)
+            "CHK-UNMAPPED PASS: %d alias + extra 0x%x -> SLVERR rdata=0",
+            len(cfg.alias_offs), cfg.unmapped_off)
 
         # ESRC MODULE_ENABLE=0 does not drop AUTO-mode EDN acks. EDN_ENABLE=False
         # is what leaves the pool request outstanding without ack. Pop after

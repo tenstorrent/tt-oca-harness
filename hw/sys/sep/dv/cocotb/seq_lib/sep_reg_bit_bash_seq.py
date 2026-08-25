@@ -7,8 +7,10 @@ SepRegBitBashCfg is the single source of truth for which registers are reset-
 checked, which take a write bash, and the seed-selected walk order.
 
 Exclusions are data: one reason string per entry. A silent skip is a bug.
-Inbound-filter START/END are write-excluded: the export mask is 32 bits
-and the hardware forces [2:0] (END_ADDR reset 0x7).
+Inbound-filter START/END stay in the write sweep. The export mask is 32
+bits; hardware forces ``[2:0]`` (END_ADDR reset ``0x7``), so the bash
+uses the granule mask ``[31:3]``. Skipping those 32 registers because
+the full-mask complement cannot land is a coverage hole, not a fix.
 """
 
 from __future__ import annotations
@@ -84,23 +86,36 @@ WRITE_EXCLUDE: dict[tuple[str, str | None], str] = {
 }
 
 # Write bash stays on blocks whose restore cannot redirect the LSU.
+# Inbound START/END are granule-aligned; the bash uses write_mask(),
+# it does not drop the registers.
 WRITE_SAFE_PREFIXES = (
     "SEP_SCRATCH_COLD",
     "SEP_SCRATCH_WARM",
     "SEP_CPU_CTRL",
+    "INBOUND_FILTER_CTRL_",
 )
 
-# Remap / filter writes are reset-checked only: an unprogrammed alias
-# region still rewrites a live beat, and inbound START/END are granule-
-# aligned so a full-mask complement cannot land (END_ADDR[2:0] stays 1).
+# Remap / outbound-filter writes are reset-checked only: an unprogrammed
+# alias region still rewrites a live beat.
 WRITE_EXCLUDE_PREFIXES: dict[str, str] = {
     "LOCAL_MASTER_ALIAS_REMAP_CTRL_": "side-effect: alias remap rewrites LSU",
     "AP_OUTPUT_REMAP_CTRL_": "side-effect: outbound remap",
     "STEE_OUTPUT_REMAP_CTRL_": "side-effect: outbound remap",
     "OUTBOUND_FILTER_CTRL_": "side-effect: outbound filter drop",
-    "INBOUND_FILTER_CTRL_": "granule-aligned addr; live filter side-effect",
     "AXIL_MAILBOX_": "FIFO",
 }
+
+# Hardware forces START/END [2:0]; END_ADDR reset is 0x7.
+_GRANULE = 0x7
+_INBOUND_ADDR = frozenset({"START_ADDR", "END_ADDR"})
+
+
+def write_mask(info: RegInfo) -> int:
+    """Software-usable bits a complement write must move."""
+    mask = info.mask
+    if info.block.startswith("INBOUND_FILTER_CTRL_") and info.name in _INBOUND_ADDR:
+        return mask & ~_GRANULE
+    return mask
 
 
 def _lookup(
@@ -189,6 +204,16 @@ class SepRegBitBashCfg:
             raise RuntimeError("reset sweep is empty after exclusions")
         if not self.write_regs:
             raise RuntimeError("write sweep is empty after exclusions")
+        inbound_addr = [
+            info for info in self.write_regs
+            if info.block.startswith("INBOUND_FILTER_CTRL_")
+            and info.name in _INBOUND_ADDR
+        ]
+        if len(inbound_addr) != 32:
+            raise RuntimeError(
+                f"inbound START/END write sweep is {len(inbound_addr)}, "
+                "expected 32 (16 entries x START/END)"
+            )
 
     def summary(self) -> str:
         skip_r = " ".join(f"{k}={v}" for k, v in sorted(self.reset_skipped.items()))
@@ -249,6 +274,7 @@ class SepRegBitBash:
         )
 
         async def do_complement(entry: int) -> int:
+            mask = write_mask(info)
             pat = (~entry) & 0xFFFF_FFFF
             wr = await self._wr(info.addr, pat, name=f"{tag}_comp")
             assert wr == 0, (
@@ -259,31 +285,33 @@ class SepRegBitBash:
                 f"{info.block}.{info.name} complement read resp={rd}"
             )
             moved = (entry ^ after) & 0xFFFF_FFFF
-            leaked = moved & ~info.mask
+            leaked = moved & ~mask
             assert leaked == 0, (
                 f"CHK-RO FAIL: {info.block}.{info.name} bits outside mask "
-                f"0x{info.mask:08x} moved 0x{leaked:08x} "
+                f"0x{mask:08x} moved 0x{leaked:08x} "
                 f"(before 0x{entry:08x} after 0x{after:08x})"
             )
-            reserved = after & info.reserved
             # TIMEOUT_* placeholders: mask=0 and mask_all=1, so the lone
-            # reserved bit is real storage. Skip the reserved-must-be-0
-            # check when there is no software-usable field.
-            if info.mask != 0:
+            # reserved bit is real storage. Granule [2:0] on inbound
+            # START/END are HW-forced (END reset 0x7), not reserved-0.
+            if mask != 0 and mask == info.mask:
+                reserved = after & info.reserved
                 assert reserved == 0, (
                     f"CHK-RESERVED FAIL: {info.block}.{info.name} reserved "
                     f"0x{info.reserved:08x} read 0x{reserved:08x}"
                 )
-                landed = moved & info.mask
-                assert landed == info.mask, (
+            if mask != 0:
+                landed = moved & mask
+                assert landed == mask, (
                     f"CHK-WRITE-LANDS FAIL: {info.block}.{info.name} mask "
-                    f"0x{info.mask:08x} moved 0x{landed:08x} "
+                    f"0x{mask:08x} moved 0x{landed:08x} "
                     f"(before 0x{entry:08x} after 0x{after:08x})"
                 )
                 self.lands_ok += 1
             return after
 
         async def do_ones(entry: int) -> int:
+            mask = write_mask(info)
             wr = await self._wr(info.addr, 0xFFFF_FFFF, name=f"{tag}_ones")
             assert wr == 0, (
                 f"{info.block}.{info.name} all-ones write resp={wr}"
@@ -292,12 +320,12 @@ class SepRegBitBash:
             assert rd == 0, (
                 f"{info.block}.{info.name} all-ones read resp={rd}"
             )
-            leaked = (entry ^ after) & ~info.mask & 0xFFFF_FFFF
+            leaked = (entry ^ after) & ~mask & 0xFFFF_FFFF
             assert leaked == 0, (
                 f"CHK-RO FAIL: {info.block}.{info.name} all-ones moved "
                 f"outside mask 0x{leaked:08x}"
             )
-            if info.mask != 0:
+            if mask != 0 and mask == info.mask:
                 reserved = after & info.reserved
                 assert reserved == 0, (
                     f"CHK-RESERVED FAIL: {info.block}.{info.name} reserved "
@@ -322,3 +350,27 @@ class SepRegBitBash:
             f"resp={rd} != reset 0x{info.reset:08x}"
         )
         self.write_ok += 1
+
+
+def _selftest() -> None:
+    end = RegInfo(
+        block="INBOUND_FILTER_CTRL_0_",
+        name="END_ADDR",
+        addr=0,
+        reset=7,
+        mask=0xFFFF_FFFF,
+        mask_all=0xFFFF_FFFF,
+    )
+    scratch = RegInfo(
+        block="SEP_SCRATCH_COLD",
+        name="SCRATCH_0_",
+        addr=0,
+        reset=0,
+        mask=0xFFFF_FFFF,
+        mask_all=0xFFFF_FFFF,
+    )
+    assert write_mask(end) == 0xFFFF_FFF8
+    assert write_mask(scratch) == 0xFFFF_FFFF
+
+
+_selftest()
