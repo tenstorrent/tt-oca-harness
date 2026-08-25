@@ -43,6 +43,20 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
 
 [[tests]]
+# Shared HT_WATERMARK arming (not the ESRC->DRBG datapath). RANDCFG walks every
+# supported selector on MODULE_ENABLE and CTRL.RESET; seed picks the illegal
+# selector and the low-mode fall. HEALTH_TEST_CTRL.ENABLE stays 0 on arming
+# legs. +skip_fuse_sense; +esrc_noise_force only for the fall window.
+name = "sep_esrc_ht_watermark_arming_test"
+module = "crypto.sep_esrc_ht_watermark_arming_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 # CHK4 Generate segmentation at glen=4. BOOT_GEN_CMD resets to glen=4095 and is
 # what BOOT_REQ issues; GENERATE_CMD alone never completes a command. This entry
 # programs both from SepEntropyCfg(glen=4, program_boot_generate=True). Leave
