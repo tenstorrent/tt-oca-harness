@@ -405,7 +405,46 @@ VIP layer; unused modules simply do not elaborate. Its contents:
   modules; samples via `mon_cb`, drives the responder-side vif signals
   procedurally), `ocah_axi_slave_sequence` (test-facing backdoor/inject
   API), and `ocah_axi_slave_agent` (reactive bundle: no sequencer, by
-  design). The master side (active SV-UVM initiator) is not shipped yet.
+  design). Master side: `ocah_axi_master_config` (vif, geometry, handshake
+  watchdog), `ocah_axi_master_driver` (active initiator: sequential AW/W/B
+  and AR/R engines, single transaction outstanding; samples via `mon_cb`,
+  drives the initiator-side vif signals procedurally), the standard
+  `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
+  stimulus API — see below), `ocah_axi_master_agent` (driver + sequencer;
+  deliberately no agent monitor — observation stays with the side-neutral
+  passive env), and `ocah_axi_master_env` (frozen surface: `m_sequencer`,
+  `cfg`; the commercial-override unit, same template contract as
+  `ocah_jtag_master_env`).
+
+### SV-UVM master sequence API
+
+`ocah_axi_master_sequence` is the SV twin of the cocotb
+`OcahAxiMasterSequence` surface: tests and DUT sequence libraries extend it
+and drive the master only through its blocking operations — `write` /
+`read` / `write_result` / `read_result` / `burst_write[_result]` /
+`burst_read[_result]` — never through raw `ocah_axi_item` handshakes.
+Missing operations get added there first. Every `*_result` operation
+returns the completed `ocah_axi_item` as the result object, the SV analogue
+of `OcahAxiWriteResult`/`OcahAxiReadResult`:
+
+| Item field | Result meaning |
+|---|---|
+| `transaction_id` | The issued AWID/ARID (as passed to the operation) |
+| `observed_id` / `observed_id_valid` | BID/RID sampled live from the response handshake on the completing beat (RLAST for reads); invalid on ID-less buses and timeouts |
+| `id_match()` | Both IDs known and equal (gate on `observed_id_valid` to separate mismatch from capture miss) |
+| `resp_list` / `worst_resp()` / `is_ok()` | Per-beat response evidence |
+| `data_words` | Read data, one raw bus word per beat |
+| `timed_out` | A handshake wait exceeded `ocah_axi_master_config.timeout_cycles` |
+
+The response-ID contract is cross-flow parity with "Response-ID
+observation" above: `observed_id` is wire truth, never an issued-ID echo.
+On the responder side, `ocah_axi_slave_sequence.inject_id_corruption(mask,
+for_read, for_write)` mirrors the cocotb fault slave: the next selected
+transaction answers `request_id ^ mask` (ID-width truncated; data path and
+response code untouched), one-shot per direction, disarmed by
+`clear_errors()`. `check_response=1` (default) escalates a non-OKAY
+response to `uvm_error`; `allow_timeout=1` downgrades a watchdog expiry to
+a returned result with `timed_out` set.
 
 The DTP SV-UVM flow (`--dut dtp --framework uvm`) is the first consumer:
 tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
@@ -413,7 +452,12 @@ tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
 module on the `m_axi` fabric port, instantiates the SVA checkers on both, and
 `dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
 JTAG VIP path, programming responder error injection via the slave agent's
-`ocah_axi_slave_sequence`.
+`ocah_axi_slave_sequence`. The master side's consumers are the SV-UVM
+selftests (`--dut ocah_axi_vip --framework uvm`): the same
+`ocah_axi_id_match_test` / `ocah_axi_id_mismatch_test` scenarios as the
+cocotb selftests, driven full-stack through the master sequence API against
+the fault slave, with the passive env scoring the same wires in the match
+scenario.
 
 ## UVM Env Surface Convention
 
@@ -438,9 +482,9 @@ convention, with the JTAG master env as the reference template:
   and the name tells a DUT env what it is subscribing to.
 - **Frozen surface is env-top-level handles only.** Everything a DUT env,
   test, or sequence may depend on is a direct member of the VIP env — the
-  env promotes child handles (`m_sequencer` on `ocah_jtag_master_env`,
-  `m_checker` on `ocah_axi_env`) rather than letting consumers reach
-  through its children.
+  env promotes child handles (`m_sequencer` on `ocah_jtag_master_env` and
+  `ocah_axi_master_env`, `m_checker` on `ocah_axi_env`) rather than
+  letting consumers reach through its children.
 
 ## Functional Coverage Hook
 

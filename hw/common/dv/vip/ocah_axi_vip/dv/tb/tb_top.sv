@@ -130,4 +130,39 @@ module ocah_axi_vip_tb_top;
     /* verilator lint_on UNUSEDSIGNAL */
     /* verilator lint_on UNDRIVEN */
 
+`ifdef UVM
+    // ------------------------------------------------------------------
+    // SV-UVM harness (`--dut ocah_axi_vip --framework uvm`): clock/reset,
+    // the one ocah_axi_if the VIP master, fault slave, and passive monitor
+    // all attach to, config_db publication, and run_test(). Compiled only
+    // when the native-uvm flow defines UVM; the cocotb flow sees only the
+    // passive nets above.
+    // ------------------------------------------------------------------
+    import uvm_pkg::*;
+
+    // 100 MHz bus clock; reset released after 10 cycles.
+    initial clk = 1'b0;
+    always #5ns clk = ~clk;
+
+    initial begin
+        rst_n = 1'b0;
+        repeat (10) @(posedge clk);
+        rst_n = 1'b1;
+    end
+
+    // One interface instance carries the whole selftest bus: the master
+    // driver procedurally drives the initiator-side signals, the slave
+    // driver the responder-side signals, and the passive monitor samples
+    // both through mon_cb (no DUT in the loop by design; the s_axi/t_axi
+    // flat nets above belong to the cocotb shape and stay idle here).
+    ocah_axi_if u_axi_if (.aclk(clk), .aresetn(rst_n));
+
+    `include "ocah_axi_vip_tests.sv"
+
+    initial begin
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "axi_vif", u_axi_if);
+        run_test();
+    end
+`endif
+
 endmodule
