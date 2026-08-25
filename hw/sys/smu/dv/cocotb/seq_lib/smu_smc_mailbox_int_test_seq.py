@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_smc_mailbox_int_test (SMU_ALL_004 rev 8).
+"""Sequence for smu_smc_mailbox_int_test (SMU_ALL_004).
 
 DV-CARD:          SMU_ALL_004   ANCHOR: smu_smc_mailbox_int_test
-DV-CARD-REVISION: 8   RECORD-SHA256: f670f76181726330279f56dc04dc653ae5a882cc3531164ebf572168d950d862
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 8   ENV: cocotb
 
 Approved OWNS (card r8 / plan r3):
   SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary
@@ -23,7 +21,7 @@ from cocotb.triggers import RisingEdge
 
 
 class smu_smc_mailbox_int_test_seq:
-    """SMU_ALL_004 r8: passive DECODE of ext_mailbox_interrupts width=32."""
+    """SMU_ALL_004: passive DECODE of ext_mailbox_interrupts width=32."""
 
     NUM_MAILBOXES = 32
     BOUND_CYCLES = 2000

@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_smc_mailbox_int_test — SMU_ALL_004 rev 8.
+"""smu_smc_mailbox_int_test — SMU_ALL_004.
 
 DV-CARD:          SMU_ALL_004   ANCHOR: smu_smc_mailbox_int_test
-DV-CARD-REVISION: 8   RECORD-SHA256: f670f76181726330279f56dc04dc653ae5a882cc3531164ebf572168d950d862
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 8   ENV: cocotb
 
 Bare ``tb_top`` / ``smu_uvm_top`` SEP=0 — passive DECODE of
 ``ext_mailbox_interrupts`` width == NUM_MAILBOXES (32).
@@ -20,7 +18,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_smc_mailbox_int_test(smu_base_test):
-    """SMU_ALL_004 r8: SMC external mailbox IRQ width DECODE (SEP=0)."""
+    """SMU_ALL_004: SMC external mailbox IRQ width DECODE (SEP=0)."""
 
     async def run_scenario(self) -> None:
         self.logger.info(

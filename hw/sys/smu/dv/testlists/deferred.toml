@@ -20,7 +20,7 @@ schema_version = 1
 # their blocker details next to the test names.
 
 # ----- SEP=1 real SEP under SMU -----
-# BLOCKER (#3582 residual, OSS wrapper 2026-07-23): at SEP CPU reset release
+# BLOCKER (SEP IFU / boot-ROM fetch, OSS wrapper 2026-07-23): at SEP CPU reset release
 # mpc_reset_run_req=1 / cla=0 / clocks run, but IFU never asserts
 # sep_boot_rom_req (boot_rom_reqs=0, o_cpu_halt_status=X, traces=0). Same
 # class as commercial cleanup disposition (SMU_DV_CLEANUP_PLAN.md §27).
@@ -239,7 +239,7 @@ tags = ["deferred", "sep", "sep_probe", "interop"]
 
 # ----- Real SMC/SEP interop -----
 # BLOCKER (commercial Manual_SMU_Blocked_SEP_Exec + OSS):
-#   1. #3582 SEP IFU / boot-ROM fetch (no retire) — gates all real dual-fw tests.
+#   1. SEP IFU / boot-ROM fetch (no retire) — gates all real dual-fw tests.
 #   2. SEP mailbox demux/select-to-port mapping — SMC-to-SEP mailbox AW/W can
 #      reach `sep_system_peripherals.mailbox_axil_req` but returns SLVERR /
 #      no FIFO push (sep_mailbox_b_err=1).
@@ -712,7 +712,7 @@ tags = ["deferred", "dtp", "sep1"]
 
 # ----- Policy 2026-07-29: no Force / no TB placeholder -----
 # BLOCKER: needs_real_lcc + sep1 — SEP=0 ties sep_feat_ctrl='0' (gen_no_sep);
-# J2A cannot ungate without SEP=1 eFuse→LCC→feat_ctrl (#3538). No Force.
+# J2A cannot ungate without SEP=1 eFuse→LCC→feat_ctrl. No Force.
 # Do not enroll in sep0_all / phase1.
 
 
