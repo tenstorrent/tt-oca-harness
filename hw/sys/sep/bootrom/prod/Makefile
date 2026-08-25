@@ -75,6 +75,11 @@ SRC_DIR   := src
 TOOLS_DIR := tools
 INCLUDE_DIR := include
 
+# The packer is the tt-boot-manifest repo, checked out as a submodule here rather
+# than copied in, so it tracks the upstream repo as that grows. Defined this early
+# because the OCA validation library it also ships feeds CFLAGS and OBJS below.
+TT_BOOT_MANIFEST_DIR := $(TOOLS_DIR)/tt-boot-manifest
+
 ELF      := $(BUILD_DIR)/boot_rom.elf
 VMEM     := $(BUILD_DIR)/boot_rom.vmem
 ITCM_HEX := $(BUILD_DIR)/boot_rom.itcm.hex
@@ -106,6 +111,31 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/aes_driver.o $(BUILD_DIR)/kdf.o $(BUILD_DIR)/key_digests.o \
 	$(BUILD_DIR)/rsa_3072_app_otbn.o
 
+# --- OCA boot-manifest validation library (tt-boot-manifest submodule) --------
+# The ROM does not hand-parse the OCA manifest; it links the vendor library and
+# supplies platform callbacks (src/oca_platform.c). Sources are globbed rather
+# than listed so a library that grows a translation unit does not silently drop
+# it -- the library is the format's source of truth, not this list.
+#
+# Objects land in a subdirectory, NOT flat in $(BUILD_DIR): the library ships its
+# own lifecycle.c, which would otherwise overwrite this ROM's src/lifecycle.o.
+# That is also why NONFREE_BOOTCODE_SOURCES is the wrong hook for it -- that one
+# $(notdir)s every source into one flat namespace.
+OCA_LIB_DIR  := $(TT_BOOT_MANIFEST_DIR)/validators/oca/lib
+OCA_LIB_SRCS := $(wildcard $(OCA_LIB_DIR)/*.c)
+OCA_OBJ_DIR  := $(BUILD_DIR)/oca
+OCA_LIB_OBJS := $(patsubst $(OCA_LIB_DIR)/%.c,$(OCA_OBJ_DIR)/%.o,$(OCA_LIB_SRCS))
+
+# Feature gates. PQC stays on so the ROM understands OCAP geometry; the library
+# implements no PQC signature verification either way, so a native PQC signature
+# reports OCA_FAIL_UNSUPPORTED_VARIANT rather than a false pass. Turning PQC off
+# is the largest ROM-size lever available if the 64 KiB budget gets tight.
+OCA_SUPPORT_CLASSIC ?= 1
+OCA_SUPPORT_PQC     ?= 1
+OCA_TOC_MAX_IMAGES  ?= 32
+
+OBJS += $(OCA_LIB_OBJS)
+
 # The secure-boot path verifies the manifest signature on OTBN, so the ROM links
 # the same generated RSA-3072 OTBN application the fw test engine builds. The
 # app (IMEM/DMEM images + DMEM symbol offsets) is emitted by the shared engine
@@ -131,7 +161,9 @@ CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
 CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
 	-MMD -MP \
 	--specs=picolibc.specs \
-	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) $(REG_INCLUDE_DIRS) \
+	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) -I$(OCA_LIB_DIR) $(REG_INCLUDE_DIRS) \
+	-DOCA_SUPPORT_CLASSIC=$(OCA_SUPPORT_CLASSIC) -DOCA_SUPPORT_PQC=$(OCA_SUPPORT_PQC) \
+	-DOCA_TOC_MAX_IMAGES=$(OCA_TOC_MAX_IMAGES) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
 	-DBOOT_SPI_CONTROLLER_OT=$(BOOT_SPI_CONTROLLER_OT) \
@@ -184,6 +216,9 @@ pack-images: $(SMC_MEM_HEX)
 $(BUILD_DIR):
 	mkdir -p "$(BUILD_DIR)"
 
+$(OCA_OBJ_DIR):
+	mkdir -p "$(OCA_OBJ_DIR)"
+
 # --- Rebuild on build-flag changes ---
 # Objects are keyed on source mtime only, but their content also depends on the
 # -D flags injected into CFLAGS/ASFLAGS. Without this, `make BOOT_OT_SPI_USE_PIO=1`
@@ -196,7 +231,9 @@ BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) 
 	PROFILE=$(BOOT_OT_SPI_PROFILE) BUILD_TYPE=$(BUILD_TYPE) \
 	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
-	NONFREE=$(if $(NONFREE_ROOT),1,0)
+	NONFREE=$(if $(NONFREE_ROOT),1,0) \
+	OCA_CLASSIC=$(OCA_SUPPORT_CLASSIC) OCA_PQC=$(OCA_SUPPORT_PQC) \
+	OCA_TOC_MAX=$(OCA_TOC_MAX_IMAGES)
 FLAGS_STAMP := $(BUILD_DIR)/.build_flags
 
 .PHONY: FORCE
@@ -234,6 +271,20 @@ $(BUILD_DIR)/rom_metadata.o: $(SRC_DIR)/rom_metadata.c $(BUILD_DIR)/bl0_version.
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$<" -o "$@"
+
+# OCA validation library, compiled from the submodule into its own object dir.
+# -Wno-pedantic is deliberately NOT set: the library builds clean under its own
+# -Wall -Wextra -Werror -pedantic, so a warning here means a real toolchain or
+# flag mismatch worth seeing rather than silencing.
+$(OCA_LIB_OBJS): $(OCA_OBJ_DIR)/%.o: $(OCA_LIB_DIR)/%.c | $(OCA_OBJ_DIR)
+	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$<" -o "$@"
+
+# A submodule nobody init'd yields an empty wildcard and a ROM that links without
+# a manifest parser at all. Fail loudly instead.
+ifeq ($(strip $(OCA_LIB_SRCS)),)
+$(error the tt-boot-manifest submodule is not checked out: no sources under $(OCA_LIB_DIR). \
+Run: git -C $(OCAH_ROOT) submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest)
+endif
 
 # Generated OTBN application image, built out of tree by the shared fw engine.
 $(BUILD_DIR)/rsa_3072_app_otbn.o: $(OTBN_APP_C) | $(BUILD_DIR)
@@ -285,10 +336,6 @@ $(DTCM_HEX): $(ELF)
 # owns its own up-to-date check and we always re-pack against the latest BL1.
 bl1_test:
 	$(MAKE) -C "$(BL1_TEST_DIR)" GCC_PREFIX=$(GCC_PREFIX)
-
-# The packer is the tt-boot-manifest repo, checked out as a submodule here rather
-# than copied in, so it tracks the upstream repo as that grows.
-TT_BOOT_MANIFEST_DIR := $(TOOLS_DIR)/tt-boot-manifest
 
 # uv installs the packer editable straight from the submodule, which means its
 # Python dependencies come from the submodule's own pyproject.toml -- no
@@ -372,6 +419,43 @@ $(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 	OCH_ROOT="$(DV_ROOT)" ROOT="$(abspath $(dir $(SEP_SIGNING_KEY))/../..)" \
 		$(PACK_RUN) --config "$(SECURE_PACK_CONFIG)" --out "$(SECURE_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(SECURE_BOOT_BIN)" "$@"
+
+# --- OCA boot-manifest images (the format the ROM parses) ---------------------
+# Two images: an unsigned one and an RSA-3072 signed one. Both emit BOTH forms,
+# because the two test environments consume different ones -- the VP stages the
+# raw .bin through SimConfig(flash_image=...), DV hands the same .bin to
+# OcahSpiFlash.preload(), and the .spi_preload ($readmemh) is what a VP run using
+# spiPreload= or an SMC-SRAM preload needs. Cheap to emit, and having only one of
+# them is a confusing failure much later.
+#
+# No OCH_ROOT/ROOT env prefix here, unlike the Grendel recipes above: the OCA
+# producer does not expand variables in config paths, so the configs carry paths
+# relative to this directory instead.
+OCA_NS_CONFIG     := $(CURDIR)/configs/oca_non_secure_boot_test.yaml
+OCA_NS_BIN        := $(BUILD_DIR)/oca_non_secure_boot.bin
+OCA_NS_SPI_HEX    := $(BUILD_DIR)/oca_non_secure_boot.spi_preload
+OCA_SEC_CONFIG    := $(CURDIR)/configs/oca_secure_boot_test.yaml
+OCA_SEC_BIN       := $(BUILD_DIR)/oca_secure_boot.bin
+OCA_SEC_SPI_HEX   := $(BUILD_DIR)/oca_secure_boot.spi_preload
+
+.PHONY: oca-images oca_non_secure_spi oca_secure_boot_spi
+oca-images: $(OCA_NS_SPI_HEX) $(OCA_SEC_SPI_HEX)
+oca_non_secure_spi: $(OCA_NS_SPI_HEX)
+oca_secure_boot_spi: $(OCA_SEC_SPI_HEX)
+
+$(OCA_NS_SPI_HEX): $(OCA_NS_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
+	$(PACK_RUN) --config "$(OCA_NS_CONFIG)" --out "$(OCA_NS_BIN)" -v
+	python3 "$(BIN_TO_SPI)" "$(OCA_NS_BIN)" "$@"
+
+$(OCA_SEC_SPI_HEX): $(OCA_SEC_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
+	@test -f "$(SEP_SIGNING_KEY)" || { \
+	  echo "ERROR: OCA secure boot image needs the dev0 signing key."; \
+	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
+	  echo "       It ships in the tt-boot-manifest submodule, so this normally means"; \
+	  echo "       the submodule is stale; re-run git submodule update."; \
+	  exit 1; }
+	$(PACK_RUN) --config "$(OCA_SEC_CONFIG)" --out "$(OCA_SEC_BIN)" -v
+	python3 "$(BIN_TO_SPI)" "$(OCA_SEC_BIN)" "$@"
 
 # Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
 # behind would let a stale OT image survive into the next run and boot silently.
