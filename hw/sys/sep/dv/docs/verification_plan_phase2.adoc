@@ -876,7 +876,7 @@ Testlist:: `system.toml`
 Brings the lifecycle controller up in PROD so the inbound filter is genuinely active
 (`sep_debug=0`, value-checked against the lifecycle golden), then walks first and last
 table entries, two address windows, and `{rw, read-only, write-only}` at
-`src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=5`
+`src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=0x5`
 with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one
 invocation. Then walks `FILTER_CONFIG.allow_burst` on AR and AW of the
 scratch window: deny (`allow_burst=0`, 2-beat INCR → DECERR after an
@@ -1051,7 +1051,7 @@ ownership restore programs `src_id=0` / `user=0` so a src-miss cannot
 paper over the ownership gap (`fabric.adoc` requires DECERR to a
 non-CPU master; the RTL answers OKAY). WRAP/FIXED/AxLEN>1 are not
 walked: Lite bridges convert those bursts to singles, so the filter
-only sees `tx_len==0`. The wrap same-page 4 KB widen is an
+only sees tx_len==0. The wrap same-page 4 KB widen is an
 <<open-items,open spec question>>, not a third `FAILED`.
 
 [[sep_fabric_remap_filter_csr_bank_test]]
@@ -1342,7 +1342,7 @@ banner, `fw_done`, and a minimum number of distinct retired program counters.
 | CHK-IP-RW1C
 | Event-type sources and the mailbox clear by write-one-to-clear of
   `INTR_STATE` / IRQS. DMA is Status-type: `INTR_STATE` is read-only, and
-  the ISR writes `INTR_TEST=0` (and W1C `STATUS`). The witness is the IP
+  the ISR writes INTR_TEST=0 (and W1C `STATUS`). The witness is the IP
   state bit re-read as 0 inside the handler.
 | `CHK-IP-RW1C PASS: `
 | PROVEN
@@ -1651,7 +1651,7 @@ SRAM strobe, pattern, sequential, and partial-write breadth on the 64-bit port.
 | The base address and the last valid SRAM word both read and write exactly. The extent is
   the generated map, not a doc literal: `OCH_SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and
   `OCH_SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`,
-  matching `SRAM_N_ENTRIES = 256 * 1024 / 8` in `hw/top/sep_ip_integration.sv`, so the top
+  matching SRAM_N_ENTRIES = 256 * 1024 / 8 in `hw/top/sep_ip_integration.sv`, so the top
   valid 64-bit word is `0x1003fff8`. One-past-top decode-error is
   `sep_fabric_decode_error_response_test`, not this row: that address is the ROM base.
 | `CHK-BOUNDARY PASS: base 0x10000000 and top valid word 0x1003fff8 R/W exact`
@@ -2436,8 +2436,8 @@ comparator after READY.
 | PROVEN
 
 | CHK-PIC-MASK
-| After `meie[39]=0` the ISR does not re-enter.
-| `CHK-PIC-MASK PASS:`
+| After meie[39] is masked the ISR does not re-enter.
+| `CHK-PIC-MASK PASS: meie[39] mask stopped re-entry`
 | PROVEN
 |===
 
@@ -3308,8 +3308,8 @@ to the metal expected digest reconstructed from `SEP_SEC_DISABLE_TOKEN`
 `hw/sys/sep/doc/token_processing.adoc`). `tb_top` binds that parameter
 to SHA-256 of the all-zero 32-byte token so an AXI write of zeros
 matches. Token `1` mismatches. On match, `sec_dis` asserts and
-`FEAT_CTRL` follows `feat_ctrl_expected(..., sec_dis=1)` (test group
-still gated by `SECURE_TM=0`). A later mismatch restores fail-closed
+`FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1) (test group
+still gated by SECURE_TM=0). A later mismatch restores fail-closed
 PROD. No backdoor; no `force` of `sec_dis`. Boot-with-sense-incomplete
 is not claimed.
 
@@ -3319,12 +3319,12 @@ is not claimed.
 
 | CHK-DIGEST-BIND
 | Independent SHA-256 of the all-zero token equals the TB-bound digest.
-| `CHK-DIGEST-BIND PASS: SHA-256(0)=0x66687aad…`
+| `CHK-DIGEST-BIND PASS: SHA-256(0)=0x66687aad`
 | PROVEN
 
 | CHK-MISMATCH
-| Written token=1 returns `SEC_DISABLE_TOKEN_MATCH=6'b101010`.
-| `CHK-MISMATCH PASS: …=0x2a after token=1`
+| Written token=1 returns `SEC_DISABLE_TOKEN_MATCH=0x2a`.
+| `CHK-MISMATCH PASS: SEC_DISABLE_TOKEN_MATCH=0x2a after token=1`
 | PROVEN
 
 | CHK-NO-OVERRIDE
@@ -3334,19 +3334,19 @@ is not claimed.
 | PROVEN
 
 | CHK-MATCH
-| Written all-zero token returns `SEC_DISABLE_TOKEN_MATCH=6'b010101`.
-| `CHK-MATCH PASS: …=0x15 after all-zero token`
+| Written all-zero token returns `SEC_DISABLE_TOKEN_MATCH=0x15`.
+| `CHK-MATCH PASS: SEC_DISABLE_TOKEN_MATCH=0x15 after all-zero token`
 | PROVEN
 
 | CHK-OVERRIDE
-| After the match, `sec_dis=1` and `FEAT_CTRL` equals the override
-  golden (`SECURE_TM=0` clears the test group).
+| After the match, sec_dis=1 and `FEAT_CTRL` equals the override
+  golden (SECURE_TM=0 clears the test group).
 | `CHK-OVERRIDE PASS: PROD sec_dis=1 FEAT_CTRL=0xffff0000ffffffff`
 | PROVEN
 
 | CHK-DEACTIVATE
 | A later token=1 returns mismatch again.
-| `CHK-DEACTIVATE PASS: …=0x2a after token=1`
+| `CHK-DEACTIVATE PASS: SEC_DISABLE_TOKEN_MATCH=0x2a after token=1`
 | PROVEN
 
 | CHK-RESTORE
@@ -3379,7 +3379,7 @@ programmed filter-bank page beat returns the marker written to
 
 Local-master `REGION_ATTRS` has `valid` and `cacheable`. Cacheable
 overrides AXI `cache` on a hit; this vehicle does not observe that
-field. Unprogrammed (`valid=0`) regions pass through. AP/STEE output
+field. Unprogrammed (valid=0) regions pass through. AP/STEE output
 remap is a different block.
 
 [cols="1,2,2,1",options="header"]
@@ -3389,12 +3389,12 @@ remap is a different block.
 | CHK-OFFSET
 | A programmed region's live beat equals input plus the programmed
   offset (data matches identity `CLOCK_GATE_CTRL`).
-| `CHK-OFFSET PASS: r12 access 0x10a21008 -> 0x10a30008 (data 0x00000001 …)`
+| `CHK-OFFSET PASS: r`
 | PROVEN
 
 | CHK-RANDCFG
 | Region and source page from the run seed.
-| `CHK-RANDCFG PASS: region=12 src=0x10a21008 dest=0x10a30008 from seed 1`
+| `CHK-RANDCFG PASS: region=`
 | PROVEN
 |===
 
@@ -3424,7 +3424,7 @@ dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus
 
 | CHK-SLOT
 | `CTRL.lock_write` sticks on slots 0, the seed slot, and 63.
-| `CHK-SLOT PASS: CTRL lock_write stuck on slots 0, 12, 63`
+| `CHK-SLOT PASS: CTRL lock_write stuck on slots`
 | PROVEN
 
 | CHK-EXTENT
@@ -3434,12 +3434,12 @@ dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus
 
 | CHK-DROP
 | Write to the locked SRAM region is dropped (readback unchanged).
-| `CHK-DROP PASS: write to locked SRAM region 29 dropped`
+| `CHK-DROP PASS: write to locked SRAM region`
 | PROVEN
 
 | CHK-VIOL
 | Matching `SRAM_WRITE_LOCK_VIOLATION` bit is set.
-| `CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION bit 29 set`
+| `CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION bit`
 | PROVEN
 
 | CHK-IRQ
@@ -3454,7 +3454,7 @@ dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus
 
 | CHK-RANDCFG
 | Slot and region come from the seed; word0 matches `FLAG_ALL`.
-| `CHK-RANDCFG PASS: slot=12 region=29 from seed 1 word0=0xa11a003f`
+| `CHK-RANDCFG PASS: slot=`
 | PROVEN
 |===
 

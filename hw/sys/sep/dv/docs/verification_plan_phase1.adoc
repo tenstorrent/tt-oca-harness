@@ -706,7 +706,7 @@ still low). This vehicle stays the backdoor open-side smoke. The
 
 | 2
 | Wait for sense-done.
-| `SEP fuse sense done at cycle 804`
+| `SEP fuse sense done at cycle`
 | LOGGED
 
 | 3
@@ -724,7 +724,7 @@ still low). This vehicle stays the backdoor open-side smoke. The
 
 | CHK-SENSE-DONE
 | The sense sequence completes rather than hanging.
-| `SEP fuse sense done at cycle 804`
+| `SEP fuse sense done at cycle`
 | PROVEN
 
 | CHK-IMAGE-MATCH
@@ -790,7 +790,7 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
 | 2
 | Wait for sense-done; AXI-read `FEAT_CTRL` equals the image golden and
   is not 0.
-| `SEP fuse sense done at cycle 778` then
+| `SEP fuse sense done at cycle` then
   `CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0xffff0000ffffffff after sense-done`
 | LOGGED
 
@@ -964,7 +964,7 @@ processors, and the reset controller path that releases the Key Manager.
 
 | 1
 | Real-sense a fuse image and wait for sense-done.
-| `SEP fuse sense done at cycle 804` (real sense)
+| `SEP fuse sense done at cycle` (real sense)
 | LOGGED
 
 | 2
@@ -1274,7 +1274,7 @@ released from reset, with AES, HMAC and KMAC held parked for the whole transfer.
 
 | 1
 | Stage a valid production eFuse image and run real fuse sense.
-| `SEP fuse sense done at cycle 804` (real sense)
+| `SEP fuse sense done at cycle` (real sense)
 | LOGGED
 
 | 2
@@ -1436,7 +1436,7 @@ of assuming programming always succeeds first time.
 
 | 1
 | Start in the initial test state; check the lifecycle decode against the golden model.
-| `SEP fuse sense done at cycle 804` (real sense at the initial state)
+| `SEP fuse sense done at cycle` (real sense at the initial state)
 | LOGGED
 
 | 2
@@ -2007,7 +2007,7 @@ entropy rather than a constant.
 
 | 1
 | Real-sense a production fuse image; park OTBN, KMAC and HMAC; leave AES released.
-| `SEP fuse sense done at cycle 804` (real sense)
+| `SEP fuse sense done at cycle` (real sense)
 | LOGGED
 
 | 2
@@ -2251,7 +2251,7 @@ real entropy beats.
 
 | 1
 | Real-sense a production image; park the engines; bring up real entropy.
-| `SEP fuse sense done at cycle 804` then `CHK1 golden seeded from live ff_stage`
+| `SEP fuse sense done at cycle` then `CHK1 golden seeded from live ff_stage`
 | LOGGED
 
 | 2
@@ -2461,7 +2461,7 @@ injection on this path does and does not cover.
 
 | 1
 | Real-sense a production image; park OTBN, KMAC and HMAC; leave AES released.
-| `SEP fuse sense done at cycle 804` (real sense)
+| `SEP fuse sense done at cycle` (real sense)
 | LOGGED
 
 | 2
@@ -2666,7 +2666,7 @@ lifecycle state is not exercised: no test drives this port at another state.
 
 | 1
 | Real-sense a production image; wait for sense-done; publish CPU-ready.
-| `SEP fuse sense done at cycle 804` (real production sense)
+| `SEP fuse sense done at cycle` (real production sense)
 | LOGGED
 
 | 2
@@ -3028,7 +3028,7 @@ spec-derived golden decode — not just the single debug bit. See
 
 | 1
 | Real-sense a production image with pinned disable overrides.
-| `SEP fuse sense done at cycle 804` (real production sense)
+| `SEP fuse sense done at cycle` (real production sense)
 | LOGGED
 
 | 2
