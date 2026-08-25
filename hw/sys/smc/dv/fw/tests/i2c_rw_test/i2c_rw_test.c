@@ -180,19 +180,19 @@ int main(void) {
     simputs("    - STOP condition\n");
     simputs("  Testbench should verify GPIO toggle and decode transaction\n");
 
-    // Read 1 byte from target address 0x5a
-    // Note: This will generate START + address + read + STOP on GPIO
-    // Since no Target is configured, NACK is expected (but GPIO toggle still occurs)
+    /*
+     * GPIO-toggle leaf: only I2C_0 is armed; no Target peer. NACK is the
+     * expected completion — the TB checks SCL/SDA START/addr/STOP, not data.
+     * Do not fail-closed on NACK here; that needs an ACK peer (see i2c_sanity).
+     */
     unsigned char read_buffer[1];
     ret = i2c_controller_read(CONTROLLER_IDX, TARGET_ADDR, read_buffer, sizeof(read_buffer), true);
     if (ret != I2C_OK) {
-        // NACK is expected when no Target responds - GPIO toggle still occurred
         if (ret == I2C_ERROR_NACK) {
             simputs("  NOTE: NACK received (expected - no Target configured)\n");
             simputs("  GPIO toggle verification: START + address 0x");
             simputshex32("", TARGET_ADDR);
             simputs(" + read bit was transmitted\n");
-            simputs("  Testbench should verify GPIO signals (SCL/SDA toggle)\n");
         } else {
             simputs("  ERROR: Controller read failed with error code: 0x");
             simputshex32("", ret);
@@ -205,7 +205,6 @@ int main(void) {
         simputs("  Received data byte: 0x");
         simputshex32("", read_buffer[0]);
         simputs("\n");
-        simputs("  Note: Data value depends on external target response\n");
     }
 
     write_scratch(1, 0x00000041);

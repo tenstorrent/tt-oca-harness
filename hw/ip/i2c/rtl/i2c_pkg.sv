@@ -35,7 +35,8 @@ package i2c_pkg;
 
 	parameter int unsigned I2C_ACQ_BYTE_ID_WIDTH = 3;
 
-	// TODO(#22028) encode this more efficiently in the ACQ FIFO. Each entry in the
+	// Possible future optimization (OpenTitan #22028): encode this more
+	// efficiently in the ACQ FIFO. Each entry in the
 	// ACQ FIFO does not need to contain both an 8 bit data field and a 3 bit
 	// identifier. We should have the ACQ FIFO be 9 bits wide where the MSB
 	// indicates whether it is a data byte or a control byte. This way we can

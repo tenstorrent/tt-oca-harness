@@ -180,7 +180,7 @@ module sep_system_csr
         .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
         .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
         .NoMstPorts  (sep_pkg::SYSTEM_CSR_DEMUX_PORTS),
-        .MaxTrans    (16), // TODO: Add max trans parameter to sep_pkg
+        .MaxTrans    (16),
 		.FallThrough (1'b0),
         .SpillAw     (1'b1),
         .SpillW      (1'b0),
@@ -418,7 +418,7 @@ module sep_system_csr
 		.axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
 		.axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
 		.NoMstPorts  (sep_pkg::OUTBOUND_FILTER_NUM_FILTERS),
-		.MaxTrans    (16), // TODO: Add max trans parameter to sep_pkg
+		.MaxTrans    (16),
 		.SpillAw     (1'b1),
 		.SpillW      (1'b0),
 		.SpillB      (1'b0),
@@ -690,7 +690,7 @@ module sep_system_csr
 	assign smu_global_base_addr_o   = sep_cpu_ctrl_hwif_out.SMU_GLOBAL_BASE_ADDR.addr.value;
 	assign smu_region_size_o        = 56'(sep_cpu_ctrl_hwif_out.SMU_REGION_SIZE.size.value);
 
-	// RAS_BANK_INFO - TODO: to be implemented in the future
+	// RAS_BANK_INFO
 	assign ras_bank_chip     = sep_cpu_ctrl_hwif_out.RAS_BANK_INFO.bank_chip.value;
 	assign ras_bank_instance = sep_cpu_ctrl_hwif_out.RAS_BANK_INFO.bank_instance.value;
 

@@ -54,30 +54,14 @@ int main(void) {
     for (; i < 10; i++) {
         addr = SMC_TOP_SPM_MEMORY_BASE_ADDR + (i * 8);
         data = ((uint64_t)get_random_int() << 32) | get_random_int(); // Generate random 64-bit data
-        //      info_msg_hex32_s(hartid, "write: addr[31:0]=", (addr & 0xffffffff));
-        //      info_msg_hex32_s(hartid, "write: addr[63:32]=", ((addr >> 32) & 0xffffffff));
-        //      info_msg_hex32_s(hartid, "write: data[31:0]=", (data & 0xffffffff));
-        //      info_msg_hex32_s(hartid, "write: data[63:32]=", ((data >> 32) & 0xffffffff));
         write64_reg(addr, data);
-        // info_msg_s(hartid, "completed write");
         accessed_mem[i] = (MemLocation_t){addr, data};
-        // info_msg_hex32_s(hartid, "i=", i);
-        //      info_msg_hex32_s(hartid, "accessed_mem[i].addr=", accessed_mem[i].addr);
-        //      info_msg_hex32_s(hartid, "accessed_mem[i].data=", accessed_mem[i].data);
     }
     for (; i < 20; i++) {
         addr = SMC_TOP_SPM_MEMORY_BASE_ADDR + SPM_TEST_WINDOW_SIZE - (((i - 10) + 1) * 8);
         data = ((uint64_t)get_random_int() << 32) | get_random_int(); // Generate random 64-bit data
-        //      info_msg_hex32_s(hartid, "write: addr[31:0]=", (addr & 0xffffffff));
-        //      info_msg_hex32_s(hartid, "write: addr[63:32]=", ((addr >> 32) & 0xffffffff));
-        //      info_msg_hex32_s(hartid, "write: data[31:0]=", (data & 0xffffffff));
-        //      info_msg_hex32_s(hartid, "write: data[63:32]=", ((data >> 32) & 0xffffffff));
         write64_reg(addr, data);
-        // info_msg_s(hartid, "completed write");
         accessed_mem[i] = (MemLocation_t){addr, data};
-        // info_msg_hex32_s(hartid, "i=", i);
-        //      info_msg_hex32_s(hartid, "accessed_mem[i].addr=", accessed_mem[i].addr);
-        //      info_msg_hex32_s(hartid, "accessed_mem[i].data=", accessed_mem[i].data);
     }
     // some random traffic
     while (i < NUM_WRITES) {
@@ -87,32 +71,15 @@ int main(void) {
             addr = generate_random_address(hartid);
             data = ((uint64_t)get_random_int() << 32) |
                    get_random_int(); // Generate random 64-bit data
-            //        info_msg_hex32_s(hartid, "write: addr[31:0]=", (addr & 0xffffffff));
-            //        info_msg_hex32_s(hartid, "write: addr[63:32]=", ((addr >> 32) & 0xffffffff));
-            //        info_msg_hex32_s(hartid, "write: data[31:0]=", (data & 0xffffffff));
-            //        info_msg_hex32_s(hartid, "write: data[63:32]=", ((data >> 32) & 0xffffffff));
             write64_reg(addr, data);
-            // info_msg_s(hartid, "completed write");
             accessed_mem[i] = (MemLocation_t){addr, data};
-            // info_msg_hex32_s(hartid, "i=", i);
-            //        info_msg_hex32_s(hartid, "accessed_mem[i].addr=", accessed_mem[i].addr);
-            //        info_msg_hex32_s(hartid, "accessed_mem[i].data=", accessed_mem[i].data);
             i++;
         } else {
             // Read operation (only from addresses that have been written to)
             int index = (get_random_int() % i);
             addr = accessed_mem[index].addr;
             exp_data = accessed_mem[index].data;
-            // info_msg_hex32_s(hartid, "index=", (index));
-            //        info_msg_hex32_s(hartid, "read: addr[31:0]=", (addr & 0xffffffff));
-            //        info_msg_hex32_s(hartid, "read: addr[63:32]=", ((addr >> 32) & 0xffffffff));
-            //        info_msg_hex32_s(hartid, "read: exp_data[31:0]=", (exp_data & 0xffffffff));
-            //        info_msg_hex32_s(hartid, "read: exp_data[63:32]=", ((exp_data >> 32) &
-            //        0xffffffff));
-
             data = read_reg_64(addr);
-            //        info_msg_hex32_s(hartid, "read: data[31:0]=", (data & 0xffffffff));
-            //        info_msg_hex32_s(hartid, "read: data[63:32]=", ((data >> 32) & 0xffffffff));
             if (exp_data != data) test_fail(hartid);
         }
     }
@@ -121,16 +88,7 @@ int main(void) {
     for (int i = 0; i < NUM_WRITES; i++) {
         addr = accessed_mem[i].addr;
         exp_data = accessed_mem[i].data;
-        //    info_msg_hex32_s(hartid, "read: addr[31:0]=", (addr & 0xffffffff));
-        //    info_msg_hex32_s(hartid, "read: addr[63:32]=", ((addr >> 32) & 0xffffffff));
-        //    info_msg_hex32_s(hartid, "read: exp_data[31:0]=", (exp_data & 0xffffffff));
-        //    info_msg_hex32_s(hartid, "read: exp_data[63:32]=", ((exp_data >> 32) & 0xffffffff));
-
         data = read_reg_64(addr);
-        //    info_msg_hex32_s(hartid, "read: data[31:0]=", (data & 0xffffffff));
-        //    info_msg_hex32_s(hartid, "read: data[63:32]=", ((data >> 32) & 0xffffffff));
-
-        // info_msg_hex32_s(hartid, "ri=", i);
         if (exp_data != data) test_fail(hartid);
     }
 

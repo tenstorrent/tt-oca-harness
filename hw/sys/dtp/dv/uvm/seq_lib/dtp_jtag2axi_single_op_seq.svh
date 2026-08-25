@@ -16,7 +16,7 @@
 //
 // Every random choice is logged with the loop index for replay.
 
-class dtp_jtag2axi_single_op_seq extends dtp_jtag2axi_base_seq;
+class dtp_jtag2axi_single_op_seq extends dtp_jtag2axi_base_test_seq;
     `uvm_object_utils(dtp_jtag2axi_single_op_seq)
 
     // "smc_otp" (default) or "smc_axi"; set by the test before start().

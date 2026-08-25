@@ -8,19 +8,6 @@
 //   Compares DUT compressor output against reference model output.
 //   Reports mismatches using $error and tracks statistics.
 //
-// Usage:
-//   Compressor_Checker u_compressor_checker (
-//       .clk_i(clk),
-//       .rstn_i(rst),
-//       .enable_i(1'b1),
-//       .dut_word_i(entropy_stream_data),
-//       .dut_vld_i(entropy_stream_vld),
-//       .ref_word_i(compressed_word),
-//       .ref_vld_i(compressed_vld),
-//       .check_count_o(check_count),
-//       .mismatch_count_o(mismatch_count)
-//   );
-//
 // Author: Reference Model Generator
 // Date: 2025-11-21
 //------------------------------------------------------------------------------

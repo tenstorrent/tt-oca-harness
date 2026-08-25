@@ -8,15 +8,6 @@
 //   SystemVerilog interface for configuring the Entropy Compressor (BIW
 //   Extractor) reference model. Provides runtime control over compression
 //   behavior, bypass modes, and debug features.
-//
-// Usage:
-//   compressor_cfg_if cfg();
-//   Entropy_Compressor_RefModel model (.cfg(cfg.slave), ...);
-//
-// Configuration from Python:
-//   dut.compressor_cfg.enable.value = 1
-//   dut.compressor_cfg.bypass.value = 0
-//   dut.compressor_cfg.lane_mask.value = 0xFFF
 //------------------------------------------------------------------------------
 
 interface compressor_cfg_if;

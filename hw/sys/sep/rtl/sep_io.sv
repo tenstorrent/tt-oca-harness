@@ -151,8 +151,6 @@ module sep_io
     // SPI Subsystem  //
     ////////////////////
 
-    logic ot_spi_irq_error;
-    logic ot_spi_irq_event;
 
     sep_ot_spi_wrap #(
         .NUM_CS (1)

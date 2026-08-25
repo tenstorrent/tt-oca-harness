@@ -628,14 +628,6 @@ I2C_Status write_target(I2C_Driver *drv, uint8_t *rx_buf, size_t rx_buf_len, siz
         *bytes_received = index;
     }
 
-    // if (index < rx_buf_len)
-    // {
-    //     simputs("[I2C_TARGET][RX] I2C_ERR_INCOMPLETE\n");
-    //     simputshex16("index\n", index);
-    //     simputshex16("rx_buf_len\n", rx_buf_len);
-    //     return I2C_ERR_INCOMPLETE; // Custom error for incomplete packet
-    // }
-
     // Oversized packet: we received the expected number of bytes but did not observe STOP.
     // Received expected number of bytes without observing STOP: treat as overflow so upper layers
     // can generate Oversize_msg.
