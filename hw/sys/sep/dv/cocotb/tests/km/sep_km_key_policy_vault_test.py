@@ -68,16 +68,16 @@ class sep_km_key_policy_vault_test(sep_base_test):
 
         _bit(FLAG_SLOT, "CHK-SLOT")
         self.logger.info(
-            "CHK-SLOT PASS: CTRL lock_write stuck on slots 0, %d, 63", cfg.slot)
+            "CHK-SLOT PASS: CTRL lock_write stuck on endpoints 0 and 63 plus seed slot")
         _bit(FLAG_EXTENT, "CHK-EXTENT")
         self.logger.info(
             "CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR or AXI_DECERR")
         _bit(FLAG_DROP, "CHK-DROP")
         self.logger.info(
-            "CHK-DROP PASS: write to locked SRAM region %d dropped", cfg.region)
+            "CHK-DROP PASS: locked SRAM write dropped (readback unchanged)")
         _bit(FLAG_VIOL, "CHK-VIOL")
         self.logger.info(
-            "CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION bit %d set", cfg.region)
+            "CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION matching bit set")
         _bit(FLAG_IRQ, "CHK-IRQ")
         self.logger.info(
             "CHK-IRQ PASS: IRQ_STATUS.SRAM_WRITE_LOCK_ERR set")

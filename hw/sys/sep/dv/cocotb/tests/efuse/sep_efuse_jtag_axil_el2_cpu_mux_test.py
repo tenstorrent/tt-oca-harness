@@ -26,10 +26,11 @@ Checkers (each logged):
     data == 0xbadcab1e (the LC-gated filter).
   * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY (MMR is
     allowed even in the restricted state).
-  * CHK-JTAG-TOKEN-BLOCK: in PROD/RMA_SIP, JTAG may reach the whole MMR token
-    block — the three TOKEN_I arrays, TOKEN_EOP, and the three MATCH status
-    registers (`hw/sys/sep/doc/periphs.adoc`). A MATCH / EOP / SEC_DISABLE_TOKEN_I
-    read returns OKAY.
+  * CHK-JTAG-TOKEN-BLOCK: in PROD/RMA_SIP, JTAG may reach the MMR token
+    block. This checker samples ``SEC_DISABLE_TOKEN_I[0]``, ``TOKEN_EOP``,
+    and ``SEC_DISABLE_TOKEN_MATCH`` (reads only — a ``TOKEN_EOP`` write
+    would start a compare). ``CHK-JTAG-MMR`` already walks RMA ``TOKEN_I``.
+    It is a sample of the allow class, not every TOKEN_I word and MATCH.
   * CHK-JTAG-IFACE-DENY: a JTAG read of the program/read interface
     (`EFUSE_PROGRAM_CTRL`) DECERRs with ``0xbadcab1e`` — same class as shadow.
   * CHK-COEXIST: the CPU loop counter (scratch-cold[2], read via the read-only
@@ -208,9 +209,9 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         assert cpu_err == 0, f"CPU eFuse MMR read error count nonzero after JTAG burst: {cpu_err}"
         self.logger.info("CHK-CPU-MMR PASS: CPU eFuse MMR read error count stayed zero")
 
-        # hw/sys/sep/doc/periphs.adoc PROD/RMA_SIP: JTAG may reach the MMR token
-        # block (three TOKEN_I arrays, TOKEN_EOP, three MATCH). Reads only —
-        # a TOKEN_EOP write would start a compare.
+        # Sample of the PROD/RMA_SIP MMR token-block allow class. Reads only —
+        # a TOKEN_EOP write would start a compare. CHK-JTAG-MMR already walks
+        # RMA TOKEN_I.
         for label, addr in (
             ("SEC_DISABLE_TOKEN_I[0]", _EFUSE_MMR_SEC_DIS_I0),
             ("TOKEN_EOP", _EFUSE_MMR_TOKEN_EOP),

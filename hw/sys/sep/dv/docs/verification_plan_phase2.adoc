@@ -167,8 +167,7 @@ The same set as Phase 1, with the same meanings. A running test's checkers are
 `PROVEN` or `FAILED`. `PARTIAL`, `GUARD`, and `INSUFFICIENT-EVIDENCE` are unused
 here. Two `FAILED` checkers are RTL vs spec: CHK-OWNERSHIP-WINDOW
 (`hw/sys/sep/doc/fabric.adoc`) and CHK-DEADSPACE-REFUSE
-(`hw/sys/sep/doc/memory_map.adoc`,
-https://github.com/tenstorrent/tt-oca-harness/issues/228).
+(https://github.com/tenstorrent/tt-oca-harness/issues/228).
 
 [[entries]]
 == Entries
@@ -2533,11 +2532,13 @@ ROM-FW plan exists, those four names are graded there.
 Hard `FAILED` spec-vs-RTL (keep hard; do not XFAIL):
 
 * CHK-DEADSPACE-REFUSE — an access to the unpopulated remainder of a block's
-  address window owns no register and must be refused per
-  `hw/sys/sep/doc/memory_map.adoc`. In several blocks the RTL truncates the
-  address, wraps it inside the block, hits a live register and answers OKAY.
-  Owned by `sep_fabric_deadspace_decode_test`. Keep the full probe set; do
-  not shrink it to the addresses that already pass.
+  address window owns no register and must be refused
+  (https://github.com/tenstorrent/tt-oca-harness/issues/228).
+  `hw/sys/sep/doc/memory_map.adoc` lists inter-block `_RSV_` windows; it
+  does not write the intra-block refuse rule. In several blocks the RTL
+  truncates the address, wraps it inside the block, hits a live register
+  and answers OKAY. Owned by `sep_fabric_deadspace_decode_test`. Keep the
+  full probe set; do not shrink it to the addresses that already pass.
 
 * CHK-OWNERSHIP-WINDOW — only the SEP CPU may program the inbound filter per
   `hw/sys/sep/doc/fabric.adoc`; the RTL answers OKAY instead of DECERR to
@@ -2628,7 +2629,9 @@ already owns the claim, or add the named new Phase 2 test.
   RMA, and SEC_DIS override are `PROVEN`. `sep_sec_dis_override_test`
   (Verilator `20260825_031826`) matches the all-zero token after
   `tb_top` binds the metal digest and proves override `FEAT_CTRL`.
-  Boot-with-sense-incomplete is not claimed.
+  Token is written over the CPU-LSU AXI MMR after sense; JTAG
+  `TOKEN_EOP` activate is not claimed. Boot-with-sense-incomplete is
+  not claimed.
 | Stitch stays the LC→`feat_ctrl` e2e. Do not force `sec_dis`.
 
 | eFuse
@@ -2642,7 +2645,7 @@ already owns the claim, or add the named new Phase 2 test.
 | Key Manager
 | Sideload consume is `PROVEN`. Mailbox command set is `GAP` (parked;
   leftover after 34 of 40). Key/policy vault is `PROVEN`
-  (`sep_km_key_policy_vault_test`, Verilator `20260824_184638`).
+  (`sep_km_key_policy_vault_test`, Verilator `20260825_082129`).
   Seal stays on the parked command vehicle.
 | Sideload KATs stay consume proofs. Wipe stays Phase 3 T.B.D.
 
@@ -2689,12 +2692,14 @@ UVM is the KM command vehicle (parked last) and two RTL closes
 | `PROVEN`. `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the
   all-zero token. Zero matches and opens `FEAT_CTRL`; token `1`
   mismatches and restores fail-closed PROD. Verilator `20260825_031826`.
-  Boot-with-sense-incomplete is not claimed. Do not force `sec_dis`.
+  Token is written over the CPU-LSU AXI MMR after sense; JTAG
+  `TOKEN_EOP` activate is not claimed. Boot-with-sense-incomplete is
+  not claimed. Do not force `sec_dis`.
 | `sep_sec_dis_override_test`
 
 | Local-master alias remap datapath
 | Programmed region translates on a real beat. `sep_fabric_local_alias_datapath_test`
-  (Verilator `20260824_165419`). Spec cacheable / unprogrammed-passthrough
+  (Verilator `20260825_082114`). Spec cacheable / unprogrammed-passthrough
   bits are not claimed.
 | `sep_fabric_local_alias_datapath_test`
 
@@ -2702,7 +2707,7 @@ UVM is the KM command vehicle (parked last) and two RTL closes
 | Slot endpoints 0/63 plus a seed slot, a store past `KM_KPV_SIZE`
   raises AXI SLVERR, and a write-locked SRAM region raises
   `SRAM_WRITE_LOCK_ERR` / `SRAM_WRITE_LOCK_VIOLATION` then W1C-clears.
-  `sep_km_key_policy_vault_test` (Verilator `20260824_184638`). Seal
+  `sep_km_key_policy_vault_test` (Verilator `20260825_082129`). Seal
   stays on the command-device vehicle.
 | `sep_km_key_policy_vault_test`
 
@@ -2713,7 +2718,7 @@ UVM is the KM command vehicle (parked last) and two RTL closes
 
 | Dead-space decode
 | Landed `FAILED`. `sep_fabric_deadspace_decode_test` (Verilator
-  `20260825_042110`) keeps the full probe set. Do not XFAIL.
+  `20260825_071309`) keeps the full probe set. Do not XFAIL.
   https://github.com/tenstorrent/tt-oca-harness/issues/228
 | `sep_fabric_deadspace_decode_test`
 
@@ -2739,7 +2744,7 @@ Phase 2 keeps its floor of 18 of 40 and its goal of 25 of 40. Eleven of
 the fourteen Phase 2+ rows are `PROVEN`. The scorecard is 33 of 40.
 CSR bit-bash is `PROVEN` (`sep_reg_bit_bash_rand_test`, Verilator
 `20260825_043118`). Dead-space decode is a landed hard `FAILED`
-(`sep_fabric_deadspace_decode_test`, Verilator `20260825_042110`,
+(`sep_fabric_deadspace_decode_test`, Verilator `20260825_071309`,
 https://github.com/tenstorrent/tt-oca-harness/issues/228) and is not a
 feature credit. Remaining: KM command set (parked last) and two RTL
 closes (inbound ownership; dead-space refuse).
@@ -2828,7 +2833,9 @@ checker. Do not force `sec_dis`.
   token. Zero matches (`SEC_DISABLE_TOKEN_MATCH=0x15`), `sec_dis=1`, and `FEAT_CTRL`
   equals the override golden (`0xffff0000ffffffff` with `SECURE_TM=0`).
   Token `1` mismatches and restores fail-closed PROD. No `force` of
-  `sec_dis`. Boot-with-sense-incomplete is not claimed.
+  `sec_dis`. Token is written over the CPU-LSU AXI MMR after sense;
+  JTAG `TOKEN_EOP` activate is not claimed. Boot-with-sense-incomplete
+  is not claimed.
   `sep_sec_dis_override_test` (Verilator `20260825_031826`).
 | `sep_sec_dis_override_test`
 
@@ -2839,7 +2846,7 @@ checker. Do not force `sec_dis`.
   on `sep_fabric_remap_filter_csr_bank_test`. Spec cacheable /
   unprogrammed-passthrough bits are not claimed; a checker that named
   a missing bit would be a hard FAIL.
-  `sep_fabric_local_alias_datapath_test` (Verilator `20260824_165419`).
+  `sep_fabric_local_alias_datapath_test` (Verilator `20260825_082114`).
 | `sep_fabric_local_alias_datapath_test`
 
 | KM key/policy vault
@@ -2849,7 +2856,7 @@ checker. Do not force `sec_dis`.
   SRAM region is dropped, sets `SRAM_WRITE_LOCK_VIOLATION` and
   `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then W1C-clears both. Dedicated
   `km_rom_vault` (RV32E), not `rom_main`. Seal stays on the command
-  vehicle. `sep_km_key_policy_vault_test` (Verilator `20260824_184638`).
+  vehicle. `sep_km_key_policy_vault_test` (Verilator `20260825_082129`).
 | `sep_km_key_policy_vault_test`
 
 | CSR reset / RW / RO / reserved behaviour
@@ -2864,8 +2871,8 @@ checker. Do not force `sec_dis`.
 | FAILED
 | Negative control. An access to a block's unpopulated address space must
   be refused, not truncated onto a live register. Hard `FAILED` until the
-  RTL refuses it. Verilator `20260825_042110`: 22 of 30 probes accepted
-  OKAY, 11 aliased a live register. Do not XFAIL.
+  RTL refuses it. Verilator `20260825_071309`: 42 fail lines on 30 probes
+  (22 accepted OKAY, 11 aliased a live register). Do not XFAIL.
   https://github.com/tenstorrent/tt-oca-harness/issues/228
 | `sep_fabric_deadspace_decode_test`
 |===
@@ -3050,14 +3057,17 @@ https://github.com/tenstorrent/tt-oca-harness/issues/228 every seed,
 plus two seed-selected dead offsets per block window
 
 Negative control, and a hard `FAILED` on landing. Each block owns an
-address window and populates only part of it. Per
-`hw/sys/sep/doc/memory_map.adoc` the unpopulated remainder owns no
-register and the access must be refused. In several SEP blocks the RTL
-truncates the address instead, wraps it back inside the block, lands on a
-live register and answers OKAY, so software is never told. A one-byte
-write nearly 4 kB past the end of the Key Manager mailbox block sets both
-error bits in its `SEP_CTRL`; the mailbox keeps five address bits, the
-watchdog six, EDN and CSRNG seven, the entropy source and Secure DMA nine.
+address window and populates only part of it. An access past the
+allocated size owns no register and must be refused. Window ends come
+from `hw/sys/sep/doc/memory_map.adoc` (inter-block `_RSV_` gaps); that
+file does not write an intra-block refuse rule. The shall is the filed
+RTL defect https://github.com/tenstorrent/tt-oca-harness/issues/228.
+In several SEP blocks the RTL truncates the address instead, wraps it
+back inside the block, lands on a live register and answers OKAY, so
+software is never told. A one-byte write nearly 4 kB past the end of the
+Key Manager mailbox block sets both error bits in its `SEP_CTRL`; the
+mailbox keeps five address bits, the watchdog six, EDN and CSRNG seven,
+the entropy source and Secure DMA nine.
 
 The address windows themselves match the specification. The defect is the
 truncation before the register block, not a window that is too wide — do
@@ -3089,7 +3099,8 @@ this entry exists to prevent. Do not XFAIL it.
 | CHK-DEADSPACE-REFUSE
 | A read or write past the allocated size is refused (not OKAY).
 | `CHK-DEADSPACE-REFUSE FAIL: 22 probe(s) accepted OKAY`
-  (Verilator `20260825_042110`). Every issue-228 anchor accepted:
+  (Verilator `20260825_071309`). Same keep: 42 fail lines on 30 probes
+  (OKAY plus alias lines, not 42 probes). Every issue-228 anchor accepted:
   KM `0x10920ff8` wraps onto `SEP_CTRL`, DMA `0x108008a8` wraps onto
   `+0xa8`. AES / lifecycle / some SPI probes already refuse.
 | FAILED
@@ -3107,7 +3118,7 @@ this entry exists to prevent. Do not XFAIL it.
 | PROVEN
 |===
 
-Kept Verilator log: `20260825_042110`. The test `FAIL`s. That is the
+Kept Verilator log: `20260825_071309`. The test `FAIL`s. That is the
 grade, not a flake.
 
 === Planned: sep_km_command_set_rand_test
@@ -3143,9 +3154,12 @@ index and bit patterns come from the run seed; the OR-merge contract
 is directed
 
 Scope is the shadow-register write path that OR-merges new data with
-the stored value (`hw/sys/sep/doc/periphs.adoc`): `BL1_VERSION`,
-`BL2_VERSION`, `CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`,
-`REQUIRED_ALGS`. A write of zero cannot clear a set bit. Program ×
+the stored value. The walked fields are metal `WRITE_SET_ONLY` in
+`sep_efuse_pkg::EfuseFieldMap`: `BL1_VERSION`, `BL2_VERSION`,
+`CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`. That is
+the field map, not the `hw/sys/sep/doc/periphs.adoc` SW-writable
+column (`REQUIRED_SIGNERS` is `true` there; firmware may update the
+shadow per manifest). A write of zero cannot clear a set bit. Program ×
 lock is a different mechanism; never program `LC_STATE`.
 
 ==== Checkers
@@ -3310,8 +3324,10 @@ to SHA-256 of the all-zero 32-byte token so an AXI write of zeros
 matches. Token `1` mismatches. On match, `sec_dis` asserts and
 `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1) (test group
 still gated by SECURE_TM=0). A later mismatch restores fail-closed
-PROD. No backdoor; no `force` of `sec_dis`. Boot-with-sense-incomplete
-is not claimed.
+PROD. No backdoor; no `force` of `sec_dis`. The token is written over
+the CPU-LSU AXI MMR after sense; `hw/sys/sep/doc/security_disable.adoc`
+names the JTAG port. JTAG `TOKEN_EOP` activate is not claimed.
+Boot-with-sense-incomplete is not claimed.
 
 [cols="1,2,2,1",options="header"]
 |===
@@ -3389,16 +3405,16 @@ remap is a different block.
 | CHK-OFFSET
 | A programmed region's live beat equals input plus the programmed
   offset (data matches identity `CLOCK_GATE_CTRL`).
-| `CHK-OFFSET PASS: r`
+| `CHK-OFFSET PASS: remapped beat -> 0x10a30008 (data 0x00000001 matches identity CLOCK_GATE_CTRL)`
 | PROVEN
 
 | CHK-RANDCFG
-| Region and source page from the run seed.
-| `CHK-RANDCFG PASS: region=`
+| Region and source page from the run seed; dest is always `CLOCK_GATE_CTRL`.
+| `dest=0x10a30008`
 | PROVEN
 |===
 
-Kept Verilator log: `20260824_165419`.
+Kept Verilator log: `20260825_082114`.
 
 [[sep_km_key_policy_vault_test]]
 === sep_km_key_policy_vault_test
@@ -3424,7 +3440,7 @@ dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus
 
 | CHK-SLOT
 | `CTRL.lock_write` sticks on slots 0, the seed slot, and 63.
-| `CHK-SLOT PASS: CTRL lock_write stuck on slots`
+| `CHK-SLOT PASS: CTRL lock_write stuck on endpoints 0 and 63 plus seed slot`
 | PROVEN
 
 | CHK-EXTENT
@@ -3434,12 +3450,12 @@ dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus
 
 | CHK-DROP
 | Write to the locked SRAM region is dropped (readback unchanged).
-| `CHK-DROP PASS: write to locked SRAM region`
+| `CHK-DROP PASS: locked SRAM write dropped (readback unchanged)`
 | PROVEN
 
 | CHK-VIOL
 | Matching `SRAM_WRITE_LOCK_VIOLATION` bit is set.
-| `CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION bit`
+| `CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION matching bit set`
 | PROVEN
 
 | CHK-IRQ
@@ -3454,11 +3470,11 @@ dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus
 
 | CHK-RANDCFG
 | Slot and region come from the seed; word0 matches `FLAG_ALL`.
-| `CHK-RANDCFG PASS: slot=`
+| `word0=0xa11a003f`
 | PROVEN
 |===
 
-Kept Verilator log: `20260824_184638`.
+Kept Verilator log: `20260825_082129`.
 
 === Graded: sep_efuse_program_lock_matrix_test
 
@@ -3501,7 +3517,7 @@ See <<sep_reg_bit_bash_rand_test>>. Verilator `20260825_043118`.
 
 === Graded: sep_fabric_deadspace_decode_test
 
-See <<sep_fabric_deadspace_decode_test>>. Verilator `20260825_042110`
+See <<sep_fabric_deadspace_decode_test>>. Verilator `20260825_071309`
 (`FAILED`; https://github.com/tenstorrent/tt-oca-harness/issues/228).
 
 [[existing-upgrades]]
@@ -4082,9 +4098,9 @@ Three `FAILED` checkers, all RTL vs spec, none XFAILed:
   SEP CPU can program these filters"),
   https://github.com/tenstorrent/tt-oca-harness/issues/1050
   CHK-OWNERSHIP without that window is `PROVEN` in the same log.
-* CHK-DEADSPACE-REFUSE and CHK-DEADSPACE-NO-ALIAS: 22 of 30 dead
-  offsets accepted OKAY and 11 aliased a live register (Verilator
-  `20260825_042110`). RTL vs `hw/sys/sep/doc/memory_map.adoc`,
+* CHK-DEADSPACE-REFUSE and CHK-DEADSPACE-NO-ALIAS: 42 fail lines on 30
+  probes (22 accepted OKAY, 11 aliased a live register) (Verilator
+  `20260825_071309`). RTL wrap/alias,
   https://github.com/tenstorrent/tt-oca-harness/issues/228
   CHK-WINDOW-LIVE and CHK-RANDCFG are `PROVEN` in the same log.
 

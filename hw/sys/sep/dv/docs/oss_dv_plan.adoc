@@ -359,7 +359,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 | Slot endpoints plus a seed slot, a store past `KM_KPV_SIZE` raises
   AXI SLVERR, and a write-locked SRAM region raises
   `SRAM_WRITE_LOCK_ERR` / `SRAM_WRITE_LOCK_VIOLATION` then W1C-clears.
-  `sep_km_key_policy_vault_test` (Verilator `20260824_184638`). Dedicated
+  `sep_km_key_policy_vault_test` (Verilator `20260825_082129`). Dedicated
   `km_rom_vault`, not `rom_main`. Seal stays on the KM command-device
   vehicle.
 
@@ -448,8 +448,10 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 | JTAG vs CPU vs KM eFuse mux
 | PROVEN
 | Two mux-coexistence tests. In PROD / RMA_SIP, JTAG may reach the MMR
-  token block (three TOKEN_I arrays, TOKEN_EOP, three MATCH) and must
-  DECERR on shadow, program/read interface, and SHIM
+  token block. This vehicle samples `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`,
+  and `SEC_DISABLE_TOKEN_MATCH`; `CHK-JTAG-MMR` already walks RMA
+  `TOKEN_I`. Shadow and program/read interface DECERR. SHIM is out of
+  this port (recorded).
   (`sep_efuse_jtag_axil_el2_cpu_mux_test`, Verilator `20260824_152449`).
 
 | SEC_DIS security-disable override
@@ -460,16 +462,21 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   `FEAT_CTRL=0xffff0000ffffffff` (override golden, `SECURE_TM=0`).
   Token `1` mismatches and restores fail-closed PROD
   (`sec_dis=0`, `FEAT_CTRL=0xf000000000000000`). No `force` of
-  `sec_dis`. Boot-with-sense-incomplete is not claimed.
+  `sec_dis`. Token is written over the CPU-LSU AXI MMR after sense;
+  JTAG `TOKEN_EOP` activate is not claimed. Boot-with-sense-incomplete
+  is not claimed.
   `sep_sec_dis_override_test`, Verilator `20260825_031826`.
 
 | eFuse set-only fields (anti-rollback monotonicity)
 | PROVEN
-| Shadow-path OR-merge on `BL1_VERSION`, `BL2_VERSION`,
-  `CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`. A sensed
-  1 survives write-0; a new 1 sticks; a later write-0 cannot clear the
-  OR. `SPARE0` still overwrites, so the OR is not a global write path.
-  Never `LC_STATE`. Program × lock stays a different vehicle.
+| Shadow-path OR-merge on the metal `WRITE_SET_ONLY` map:
+  `BL1_VERSION`, `BL2_VERSION`, `CHIPLET_PUBK_REVOKE`,
+  `REQUIRED_SIGNERS`, `REQUIRED_ALGS`. That is the field map, not the
+  `periphs.adoc` SW-writable column (`REQUIRED_SIGNERS` is `true`
+  there). A sensed 1 survives write-0; a new 1 sticks; a later write-0
+  cannot clear the OR. `SPARE0` still overwrites, so the OR is not a
+  global write path. Never `LC_STATE`. Program × lock stays a different
+  vehicle.
   `sep_efuse_set_only_monotonicity_test`, Verilator `20260824_162139`.
 
 | Local-master alias remap datapath (16 regions)
@@ -477,7 +484,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 | Distinct from the CPU alias window row above. Sixteen programmable
   local-master regions with an offset, ahead of the system-peripherals
   routing demux. `sep_fabric_local_alias_datapath_test` (Verilator
-  `20260824_165419`) programs one region and proves the offset on a
+  `20260825_082114`) programs one region and proves the offset on a
   live CPU-LSU beat (`CLOCK_GATE_CTRL` marker). CSR programming stays
   on `sep_fabric_remap_filter_csr_bank_test`. Cacheable override is
   not observed here.
@@ -494,12 +501,12 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 | Dead-space decode (unmapped addresses must not alias live registers)
 | PARTIAL
 | Vehicle exists. `sep_fabric_deadspace_decode_test` (Verilator
-  `20260825_042110`) walks 12 known-bad offsets from the filed RTL defect plus seed
-  dead offsets. CHK-DEADSPACE-REFUSE is `FAILED`: 22 of 30 probes
-  accepted OKAY and 11 aliased a live register, including every issue
-  anchor (KM `SEP_CTRL` at `0x10920ff8`, DMA `0x108008a8`, …). AES /
-  lifecycle / some SPI probes already refuse. Not a feature credit. Do
-  not XFAIL and do not shrink the probe set.
+  `20260825_071309`) walks 12 known-bad offsets from the filed RTL defect plus seed
+  dead offsets. CHK-DEADSPACE-REFUSE is `FAILED`: 42 fail lines on 30
+  probes (22 accepted OKAY, 11 aliased a live register), including every
+  issue-228 anchor (KM `SEP_CTRL` at `0x10920ff8`, DMA `0x108008a8`, …).
+  AES / lifecycle / some SPI probes already refuse. Not a feature credit.
+  Do not XFAIL and do not shrink the probe set.
 
 | Adams Bridge post-quantum engine (ML-DSA-87 keyGen)
 | GAP

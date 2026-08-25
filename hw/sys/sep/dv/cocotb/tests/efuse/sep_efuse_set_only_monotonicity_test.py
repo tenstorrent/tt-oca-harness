@@ -2,13 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse set-only shadow OR-merge (anti-rollback monotonicity).
 
-RANDCFG. Every seed walks all five legal set-only fields
+RANDCFG. Every seed walks all five metal ``WRITE_SET_ONLY`` fields
 (``BL1_VERSION``, ``BL2_VERSION``, ``CHIPLET_PUBK_REVOKE``,
-``REQUIRED_SIGNERS``, ``REQUIRED_ALGS``). Word index and bit patterns
-come from the run seed. The OR-merge contract is directed: a sensed 1
-survives a write of 0; a previously-0 bit sticks; a later write of 0
-cannot clear it. Never ``LC_STATE``. Program x lock is a different
-mechanism.
+``REQUIRED_SIGNERS``, ``REQUIRED_ALGS``). That list is the field map,
+not the ``periphs.adoc`` column: ``REQUIRED_SIGNERS`` is SW-writable
+there. Word index and bit patterns come from the run seed. The OR-merge
+contract is directed: a sensed 1 survives a write of 0; a previously-0
+bit sticks; a later write of 0 cannot clear it. Never ``LC_STATE``.
+Program x lock is a different mechanism.
 
 A WRITE_UNLOCK spare is the overwrite contrast so the OR is not a
 global write path. Real fuse sense. ``SepEfuseSetOnlyCfg`` is the

@@ -6,10 +6,12 @@ no_cpu / +skip_fuse_sense. RANDCFG: known-bad offsets from the RTL
 question (tenstorrent/tt-oca-harness#228) every seed, plus seed-selected
 dead offsets inside each block window.
 
-A write or read past a block's allocated size must be DECERR, and no
-live register in that block may change. A checker that only inspects
-the response would pass the day the RTL starts answering DECERR while
-still writing the register.
+A write or read past a block's allocated size must be refused (DECERR
+or SLVERR; the specification does not mandate which), and no live
+register in that block may change. A checker that only inspects the
+response would pass the day the RTL starts answering DECERR while
+still writing the register. The intra-block refuse rule is the filed
+RTL defect, not a shall written in ``memory_map.adoc``.
 
 Keep the full probe set. Do not XFAIL. Do not drop the addresses that
 already wrap.
@@ -78,8 +80,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 len(fails), len(cfg.probes), accepted, aliased)
             raise AssertionError(
                 f"CHK-DEADSPACE-REFUSE FAIL: {accepted} probe(s) accepted "
-                f"OKAY and {aliased} aliased a live register; RTL vs "
-                f"hw/sys/sep/doc/memory_map.adoc"
+                f"OKAY and {aliased} aliased a live register"
             )
         self.logger.info(
             "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets were refused",

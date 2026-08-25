@@ -76,9 +76,9 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             f"identity 0x{dest_data:08x}"
         )
         self.logger.info(
-            "CHK-OFFSET PASS: r%d access 0x%08x -> 0x%08x "
+            "CHK-OFFSET PASS: remapped beat -> 0x%08x "
             "(data 0x%08x matches identity CLOCK_GATE_CTRL)",
-            cfg.region, cfg.access_addr, cfg.expect_addr, got)
+            cfg.expect_addr, got)
         self.logger.info(
             "CHK-RANDCFG PASS: region=%d src=0x%08x dest=0x%08x from seed %d",
             cfg.region, cfg.access_addr, cfg.expect_addr, cfg.seed)

@@ -30,7 +30,7 @@ schema_version = 1
 #   sep_fabric_inbound_filter_rule_matrix_test CHK-OWNERSHIP-WINDOW
 #     (hw/sys/sep/doc/fabric.adoc: only the SEP CPU can program the inbound filter)
 #   sep_fabric_deadspace_decode_test CHK-DEADSPACE-REFUSE
-#     (hw/sys/sep/doc/memory_map.adoc: unpopulated offsets must be refused)
+#     (intra-block unpopulated offsets must be refused; RTL wraps/aliases)
 #
 # Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They
 # run in the `all` and `rom_fw` groups, not `cpu`; this VPLAN does not grade them

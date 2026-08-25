@@ -4,10 +4,12 @@
 
 Legal set-only fields are metal-fixed ``WRITE_SET_ONLY`` in
 ``sep_efuse_pkg::EfuseFieldMap``: ``BL1_VERSION``, ``BL2_VERSION``,
-``CHIPLET_PUBK_REVOKE``, ``REQUIRED_SIGNERS``, ``REQUIRED_ALGS``. A
-shadow write OR-merges with the stored word
-(``hw/ip/efuse/rtl/efuse_shadow_regs.sv``). ``LC_STATE`` is not a
-member of this walk.
+``CHIPLET_PUBK_REVOKE``, ``REQUIRED_SIGNERS``, ``REQUIRED_ALGS``. This
+walk is that metal map, not the ``periphs.adoc`` SW-writable column:
+``REQUIRED_SIGNERS`` is ``true`` there (firmware may update the shadow
+per manifest; fuse monotonicity is the burn). A shadow write OR-merges
+with the stored word (``hw/ip/efuse/rtl/efuse_shadow_regs.sv``).
+``LC_STATE`` is not a member of this walk.
 
 ``dv_sim_prestage.py`` loads this module to stage the t=0 hex; the test
 builds the same ``SepEfuseSetOnlyCfg(seed)`` as its golden. Do not switch

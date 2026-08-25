@@ -278,11 +278,10 @@ class SepDeadspace:
         """Return failure strings. Empty means this probe matched the spec."""
         fails: list[str] = []
         mon = self.test.env.axi_monitor
-        # Arm one credit for the DECERR this probe expects, and remember the
-        # tally so an unconsumed credit can be handed back below. Without the
-        # hand-back a probe answered OKAY (the wrap this entry exists to catch)
-        # leaves a standing credit that would mask a later unexpected DECERR.
-        seen_before = mon.expected_decerr_seen
+        # Arm one credit for a DECERR refuse. Hand it back unless this beat
+        # was DECERR, so the monitor can consume it. Key off resp, not the
+        # monitor tally: expected_decerr_seen increments on the monitor's
+        # own RisingEdge, which may not have run yet when start_seq returns.
         mon.arm_expected_decerr(1)
         if item.op == "w":
             resp, _rd, timed_out = await self._access(
@@ -300,9 +299,7 @@ class SepDeadspace:
                             f"rdata=0x{rdata:08x} aliases 0x{live_addr:08x}"
                         )
                         break
-        # Hand the credit back on EVERY exit path, including the timeout
-        # return below -- a leaked credit outlives this probe.
-        if mon.expected_decerr_seen == seen_before:
+        if timed_out or resp != RESP_DECERR:
             mon.release_expected_decerr(1)
         if timed_out:
             fails.append(f"{win.name} {item.op} 0x{item.addr:08x} timed out")

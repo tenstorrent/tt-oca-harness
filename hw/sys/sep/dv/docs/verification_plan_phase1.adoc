@@ -2648,8 +2648,9 @@ The debug-port counterpart to the two-processor coexistence test. Here the CPU s
 eFuse register traffic while the host concurrently drives the real debug-port register
 bus; both meet at the same multiplexer. It proves the two coexist without corruption
 or starvation, and — in the same production-sensed state — that the debug port is
-allowed at the MMR token block (three TOKEN_I arrays, TOKEN_EOP, three
-MATCH registers) and denied at the shadow window and the program/read
+allowed at a sample of the MMR token block (`SEC_DISABLE_TOKEN_I[0]`,
+`TOKEN_EOP`, `SEC_DISABLE_TOKEN_MATCH`; `CHK-JTAG-MMR` already walks RMA
+`TOKEN_I`) and denied at the shadow window and the program/read
 interface.
 
 Using one real sensed lifecycle state to show both the allow and the deny is what
@@ -2698,8 +2699,8 @@ lifecycle state is not exercised: no test drives this port at another state.
 
 | 7
 | Host: read `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and
-  `SEC_DISABLE_TOKEN_MATCH`; expect OKAY. The token block is legal JTAG
-  space in PROD.
+  `SEC_DISABLE_TOKEN_MATCH`; expect OKAY. A sample of the token-block
+  allow class in PROD.
 | `CHK-JTAG-TOKEN-BLOCK PASS: JTAG SEC_DISABLE_TOKEN_I / TOKEN_EOP / SEC_DISABLE_TOKEN_MATCH all OKAY in PROD`
 | LOGGED
 
@@ -2761,8 +2762,10 @@ one.
 
 | CHK-JTAG-TOKEN-BLOCK
 | In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and
-  `SEC_DISABLE_TOKEN_MATCH` return OKAY. `hw/sys/sep/doc/periphs.adoc`
-  names the whole MMR token block, not only the two RMA `TOKEN_I` arrays.
+  `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the
+  `hw/sys/sep/doc/periphs.adoc` token-block allow class, not every
+  `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA
+  `TOKEN_I`.
 | `CHK-JTAG-TOKEN-BLOCK PASS: JTAG SEC_DISABLE_TOKEN_I / TOKEN_EOP / SEC_DISABLE_TOKEN_MATCH all OKAY in PROD`
 | PROVEN
 

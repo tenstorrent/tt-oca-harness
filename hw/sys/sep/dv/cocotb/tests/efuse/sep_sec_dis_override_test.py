@@ -10,7 +10,8 @@ match. A nonzero token still mismatches. On match, ``sec_dis`` asserts and
 ``FEAT_CTRL`` follows ``feat_ctrl_expected(..., sec_dis=1)`` (all features
 on, test group still gated by ``SECURE_TM=0``). A later mismatch drops
 ``sec_dis`` and restores the fail-closed PROD golden. The test does not
-force ``sec_dis``.
+force ``sec_dis``. The token is written over the CPU-LSU AXI MMR after
+sense; JTAG ``TOKEN_EOP`` activate is not claimed.
 """
 
 from __future__ import annotations
