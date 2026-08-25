@@ -15,11 +15,11 @@
 // (jtag_tap_ctrlr in jtag_intf_unit), so the client port is the decoded
 // {tms,trst_n,tck} struct plus tdi/tdo -- effectively raw JTAG pins.
 //
-// This first bring-up top is JTAG-only: the STAP/iJTAG scan chains are
-// looped back (scan_in = scan_out), the cross-trigger (CTM/CTP) and clock-stop
-// inputs are tied off, and the JTAG2AXI manager response channels are tied
-// idle. The JTAG2AXI functional path uses cocotb AXI memory BFMs on flattened
-// struct <-> signal adapters.
+// The STAP/iJTAG scan chains are looped back (scan_in = scan_out). The
+// functional ports are otherwise pin-exposed: the JTAG2AXI and SMC/SEP OTP
+// AXI-Lite managers are answered by AXI memory/RAM BFMs on flattened
+// struct <-> signal adapters, and the XTRIG CSR AXI-Lite and clock-stop
+// request inputs are driven by the env (the UVM shape ties them off below).
 
 `timescale 1ps/1fs
 

@@ -23,13 +23,12 @@ sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test ha
 its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 
 - `docs/` — public verification plan, TB architecture, register/coverage notes.
-- `tb/` — SystemVerilog testbench top (`dtp_uvm_top`) plus Verilator stubs.
+- `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, shared by the cocotb and SV-UVM flows) and `dtp_tb_if`.
 - `env/` — UVM env: config, JTAG agent, AXI memory agent, scoreboard, TDR encoders.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
 - `dtp_sim_cfg.toml` — `tt-oca`-local simulation defaults, modes, bender targets, tool knobs.
-- `dtp_sim.core` — optional FuseSoC/CAPI-2 view (not parsed by the native flow).
 
 ## BFM Policy
 
