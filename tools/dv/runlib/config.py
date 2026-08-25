@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
-from .paths import configs_root
+from .paths import configs_root, repo_path
 
 try:
     import tomllib as _tomllib
@@ -166,12 +166,16 @@ BUILD_KEYS = {
     "incdirs",
     "stubs",
     "sources",
+    "source_lists",
     "exclude_files",
     "options",
     "verilator",
     "xcelium",
     "vcs",
 }
+
+# Keys a `[build].source_lists` fragment file may carry (see _expand_source_lists).
+SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
 
 BUILD_OPTIONS_KEYS = {
     "build_jobs",
@@ -253,7 +257,7 @@ TEST_KEYS = {
 
 # Runtime knobs a `[tests.overrides.<fw>]` subtable may set for one framework.
 TEST_OVERRIDE_KEYS = {"seed", "timeout_sec", "args"}
-GROUP_KEYS = {"name", "tests"}
+GROUP_KEYS = {"name", "tests", "expected_count"}
 
 COVERAGE_TOOL_KEYS = {
     "artifact",
@@ -838,7 +842,8 @@ def _merge_framework_config(
     dut_base = {key: value for key, value in data.items() if key not in resolution_keys}
 
     layers = [profile_base, profile_overlay, dut_base, dut_overlay]
-    # `[sim].args` appends across every layer (all other inherited arrays replace).
+    # `[sim].args` appends across every layer (all other inherited arrays replace,
+    # except the target-table `defines` handled below).
     sim_args: list[str] = []
     for layer in layers:
         sim_args.extend(as_str_list(config_section(layer, "sim").get("args"), "sim.args"))
@@ -847,6 +852,35 @@ def _merge_framework_config(
         merged = deep_merge(merged, layer)
     if sim_args:
         merged["sim"] = {**config_section(merged, "sim"), "args": sim_args}
+
+    # `defines` inside `[target_defaults.<t>]`/`[targets.<t>]` dedup-append across the four
+    # layers, matching the `target_defaults` -> `targets` append in selected_target(): a
+    # framework overlay contributes its gate define (e.g. the profile's `UVM`) on top of the
+    # shared simulation set instead of replacing the list. Tool `flags` keep the plain
+    # overlay-wins semantics — an overlay may deliberately zero a tool's flag list (the uvm
+    # overlay relies on the vcs stage preamble for its flags).
+    for section_name in ("target_defaults", "targets"):
+        section = merged.get(section_name)
+        if not isinstance(section, dict):
+            continue
+        rebuilt = dict(section)
+        for target_name, target in section.items():
+            if not isinstance(target, dict):
+                continue
+            combined: list[Any] = []
+            seen = False
+            for layer in layers:
+                layer_section = layer.get(section_name)
+                layer_target = layer_section.get(target_name) if isinstance(layer_section, dict) else None
+                values = layer_target.get("defines") if isinstance(layer_target, dict) else None
+                if isinstance(values, list):
+                    seen = True
+                    for value in values:
+                        if value not in combined:
+                            combined.append(value)
+            if seen:
+                rebuilt[target_name] = {**target, "defines": combined}
+        merged[section_name] = rebuilt
 
     runtime = deep_merge(profile_runtime, dut_runtime)
     if runtime:
@@ -914,7 +948,42 @@ def load_profile(cfg_dir: Path, profile: str, flow_path: Path) -> dict[str, Any]
     return data
 
 
-def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str, framework: str | None = None) -> Dut:
+def _expand_source_lists(data: dict[str, Any], root: Path, where: str) -> None:
+    """Expand ``[build].source_lists`` fragments into ``[build].incdirs``/``[build].sources``.
+
+    Each entry is a repo-relative TOML fragment owned by the component it compiles (e.g. a
+    shared VIP's ``uvm/sources.toml``): an ordered ``sources`` list plus the ``incdirs`` they
+    need. Fragments expand in listed order AHEAD of the DUT's own incdirs/sources (dedup-merge),
+    so the component layer compiles before the DUT layer that imports it; the consuming config
+    keeps only its own files in ``[build].sources``. Fragment paths and every path a fragment
+    lists must exist, so ``--validate-configs`` catches a stale manifest.
+    """
+    build = data.get("build")
+    if not isinstance(build, dict) or "source_lists" not in build:
+        return
+    fragment_incdirs: list[str] = []
+    fragment_sources: list[str] = []
+    for text in as_str_list(build.get("source_lists"), "build.source_lists"):
+        fragment_path = repo_path(root, text)
+        if not fragment_path.is_file():
+            raise ConfigError(f"{where}: [build].source_lists entry not found: {text}")
+        fragment = load_toml(fragment_path)
+        validate_allowed_keys(fragment, SOURCE_LIST_KEYS, str(fragment_path))
+        for key, bucket in (("incdirs", fragment_incdirs), ("sources", fragment_sources)):
+            for value in as_str_list(fragment.get(key), f"{fragment_path} `{key}`"):
+                if not repo_path(root, value).exists():
+                    raise ConfigError(f"{fragment_path}: `{key}` entry not found: {value}")
+                if value not in bucket:
+                    bucket.append(value)
+    for key, expanded in (("incdirs", fragment_incdirs), ("sources", fragment_sources)):
+        combined = _merge_unique_strings(expanded, as_str_list(build.get(key), f"build.{key}"))
+        if combined:
+            build[key] = combined
+
+
+def load_dut(
+    path: Path, cfg_dir: Path, *, root: Path, name: str, root_rel: str, framework: str | None = None
+) -> Dut:
     """Load a merged per-DUT ``<dut>_sim_cfg.toml`` (selected by the duts resolver).
 
     The file carries the DUT's own keys (``name``/``kind``/``description``/``[testlist]``/stage
@@ -954,6 +1023,9 @@ def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str, framework: 
             combined_sim_args = profile_sim_args + dut_sim_args
             if combined_sim_args:
                 data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
+
+    # Post-merge, so a framework overlay's [frameworks.<fw>.build].source_lists is visible.
+    _expand_source_lists(data, root, str(path))
 
     file_name = data.get("name")
     kind = data.get("kind")
@@ -1483,7 +1555,14 @@ def _merge_testlist_data(
             raise ConfigError(f"{source}: group entry missing required string `name`")
         if name in groups:
             raise ConfigError(f"{source}: duplicate group `{name}`")
-        groups[name] = as_str_list(entry.get("tests"), f"{name}.tests")
+        members = as_str_list(entry.get("tests"), f"{name}.tests")
+        expected = as_int(entry.get("expected_count"), f"{name}.expected_count")
+        if expected is not None and expected != len(members):
+            raise ConfigError(
+                f"{source}: group `{name}` lists {len(members)} tests but "
+                f"expected_count is {expected}; update the group or the count"
+            )
+        groups[name] = members
 
     return tests, groups
 
