@@ -119,6 +119,69 @@ Verilator stub, and the entropy ring-oscillator. `tb/sep_outbound_mbx.sv` (the f
 console / PASS monitor) is also kept — it services a real wrapper output port,
 not a memory model.
 
+== Processor-state monitoring and firmware stack tracing
+
+Firmware execution visibility has three layers: the virtual console
+(`tb/sep_outbound_mbx.sv`, byte stores to `0x8000_0000` plus the PASS/FAIL
+magic), the processor-state monitor, and firmware stack tracing. The last two
+live in `cocotb/env/sep_cpu_trace_monitor.py`, a passive `uvm_component` built
+by `sep_base_test` for every test and self-idling unless the `+cpu_boot` run
+mode is active.
+
+=== Trace source
+
+`tb_top.sv` exports the complete VeeR EL2 retirement-trace struct
+(`el2_trace_pkt_t`) as ports: `cpu_trace_valid_o`, `cpu_trace_addr_o`,
+`cpu_trace_insn_o`, `dbg_cpu_trace_exc_o`, `cpu_trace_ecause_o`,
+`cpu_trace_interrupt_o`, and `cpu_trace_tval_o`. The no-CPU shim ties the
+struct to zero, so no_cpu targets elaborate unchanged. Sampling gates on
+`sep_cpu_reset_n_o`; a warm CPU reset (e.g. the WDT bite path) flushes the
+shadow call stack while history and tallies survive.
+
+=== What the monitor reconstructs
+
+PC history:: every retirement feeds a count, a distinct-PC set (the boot
+  scoreboard's PC-advance evidence), and a 512-entry ring of the most recent
+  retirements.
+Shadow call stack:: retired RV32IMC encodings are decoded for linking calls
+  (`jal`/`jalr`/`c.jal`/`c.jalr` through ra/t0), returns (`jalr`/`c.jr`
+  through ra/t0), and `mret`. Exception-flagged retirements push a synthetic
+  trap frame carrying ecause/interrupt/tval; `mret` unwinds it.
+Trap records:: every exception retirement is kept with its cycle, PC, decoded
+  mcause name, and tval.
+Hang watch:: after the first retirement, a 20k-cycle retirement-free gap out
+  of reset logs a one-shot warning with a full dump. Diagnostic only — a core
+  idling in a wait loop or halt is legitimate.
+
+Reconstruction hiccups (pop of an empty stack, depth overflow) are tallied as
+resync notes and logged, never failed; pass/fail judgement stays in
+`sep_boot_scoreboard.py`.
+
+=== Symbolization
+
+`cocotb/env/sep_fw_symbols.py` parses the `nm -B -n` listing the firmware
+build emits next to every ELF (`<test>.tcm.sym`; `boot_rom.sym` for ROM
+profiles — both staged into the run directory via the `[c_build.*].outputs`
+manifests) and resolves PCs to `name+0xoff`. `boot_firmware` attaches the
+listing automatically from the ITCM hex path; a missing listing degrades to
+numeric PCs and never fails a test. Trace PCs are link addresses — the
+`-0xC0000000` bias in `fw.mk` only rebases the TCM hex images.
+
+=== Output
+
+On any failing boot exit (no boot, hang, cycle exhaustion, firmware FAIL) the
+monitor dumps the symbolized call stack, trap records, and the tail of the
+retirement ring at error level before the scoreboard assertion ends the run; a
+passing run logs the same summary at info level in `report_phase`. Passing
+`+cpu_trace_log` additionally streams every retirement (cycle, PC, encoding,
+symbol) to `cpu_trace.log` in the run directory.
+
+`sep_cpu_trace_diag_test` (`testlists/cpu.toml`, firmware
+`fw/tests/cpu_trace_diag_test`) audits the reconstruction against
+architectural ground truth: a known noinline call chain, one breakpoint trap
+with the CSR-true `mcause`/`mepc` reported on the console, cross-checked
+against the monitor's trap record, shadow-stack depth, and symbolization.
+
 == Boot ROM firmware builds
 
 Production Boot ROM firmware tests (`sep_rom_non_secure_boot_test`,

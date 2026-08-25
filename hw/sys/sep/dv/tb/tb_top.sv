@@ -249,6 +249,10 @@ module sep_uvm_top
     output logic              o_cpu_run_ack_o,   // core run acknowledge (XMR-tapped)
     output logic              cpu_trace_valid_o, // retired-instruction valid
     output logic [31:0]       cpu_trace_addr_o,  // retired-instruction PC
+    output logic [31:0]       cpu_trace_insn_o,  // retired instruction encoding
+    output logic [4:0]        cpu_trace_ecause_o,   // exception cause (with dbg_cpu_trace_exc_o)
+    output logic              cpu_trace_interrupt_o, // exception was an interrupt
+    output logic [31:0]       cpu_trace_tval_o,  // trap value (faulting addr/insn)
     output logic              fw_done_o,         // firmware signaled completion
     output logic              fw_pass_o,         // completion was PASS
     output logic [7:0]        fw_char_o,         // firmware console byte
@@ -1064,6 +1068,13 @@ module sep_uvm_top
     // response above.
     assign cpu_trace_valid_o = cpu_trace_w.trace_rv_i_valid_ip;
     assign cpu_trace_addr_o  = cpu_trace_w.trace_rv_i_address_ip;
+    // Full retirement record for the cocotb CPU-trace monitor: the instruction
+    // encoding drives call/return decode (shadow call stack); ecause/interrupt/
+    // tval qualify the exception flag below into a diagnosable trap record.
+    assign cpu_trace_insn_o      = cpu_trace_w.trace_rv_i_insn_ip;
+    assign cpu_trace_ecause_o    = cpu_trace_w.trace_rv_i_ecause_ip;
+    assign cpu_trace_interrupt_o = cpu_trace_w.trace_rv_i_interrupt_ip;
+    assign cpu_trace_tval_o      = cpu_trace_w.trace_rv_i_tval_ip;
     assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.o_cpu_run_ack;
 
     // SEP resets (internal nets, no longer sep ports): the reset-independence and
