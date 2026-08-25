@@ -37,7 +37,7 @@ import pyuvm
 
 from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
-from cpu.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
+from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # manifest.h:294-320. An erased slot fails the identifier check in
 # validate_manifest_header (manifest_load.c:130-131), which runs before the hash

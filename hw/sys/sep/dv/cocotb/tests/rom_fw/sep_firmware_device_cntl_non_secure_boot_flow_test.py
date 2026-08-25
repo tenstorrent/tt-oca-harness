@@ -33,7 +33,7 @@ from pathlib import Path
 
 import pyuvm
 
-from cpu.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
+from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 # Emitted only when the ROM decides secure boot is OFF (rom_main.c:348).
 _SBOOT_OFF = "SBOOT_OFF"

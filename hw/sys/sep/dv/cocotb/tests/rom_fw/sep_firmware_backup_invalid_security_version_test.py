@@ -25,7 +25,7 @@ from pathlib import Path
 import pyuvm
 
 from env import sep_manifest_mutate as mm
-from cpu.sep_backup_manifest_fail_base import (
+from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_VERSION_ROLLBACK,
     sep_backup_manifest_fail_base,
 )

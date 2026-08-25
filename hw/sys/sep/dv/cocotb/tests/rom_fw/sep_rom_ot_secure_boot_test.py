@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import pyuvm
 
-from cpu.sep_rom_ot_dma_boot_test import (
+from rom_fw.sep_rom_ot_dma_boot_test import (
     SECURE_FLASH_IMAGE,
     sep_rom_ot_dma_boot_test,
 )

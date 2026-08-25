@@ -33,7 +33,7 @@
 // 0x10000100 for that PC to appear in the trace.
 //
 // Keep this in sync with _WARM_HANDLER_ADDR in
-// cocotb/tests/cpu/sep_scratch_7_test.py.
+// cocotb/tests/rom_fw/sep_scratch_7_test.py.
 0000000000000000
 0000000000000000
 0000000000000000
