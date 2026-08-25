@@ -122,6 +122,29 @@ async def axi_read32_resp_ids_bounded(
         ) from None
 
 
+async def axi_read32_resp_bounded(
+    master: AxiMaster,
+    addr: int,
+    *,
+    label: str = "axi_read",
+    timeout_ns: int = AXI_TIMEOUT_NS,
+) -> tuple[int, object]:
+    """Like axi_read32_resp but fail-closed on hang."""
+    try:
+        return await with_timeout(
+            axi_read32_resp(master, addr),
+            timeout_time=timeout_ns,
+            timeout_unit="ns",
+        )
+    except AssertionError:
+        raise
+    except Exception:
+        raise AssertionError(
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp "
+            f"addr=0x{addr:08x}"
+        ) from None
+
+
 async def axi_write32(master: AxiMaster, addr: int, value: int) -> None:
     await master.write(addr, value.to_bytes(4, byteorder="little"))
 
@@ -136,6 +159,30 @@ async def axi_write32_resp(
     """Return AxiResp from a 32-bit write."""
     beat = await master.write(addr, value.to_bytes(4, byteorder="little"), awid=awid)
     return beat.resp
+
+
+async def axi_write32_resp_bounded(
+    master: AxiMaster,
+    addr: int,
+    value: int,
+    *,
+    label: str = "axi_write",
+    timeout_ns: int = AXI_TIMEOUT_NS,
+) -> object:
+    """Like axi_write32_resp but fail-closed on hang."""
+    try:
+        return await with_timeout(
+            axi_write32_resp(master, addr, value),
+            timeout_time=timeout_ns,
+            timeout_unit="ns",
+        )
+    except AssertionError:
+        raise
+    except Exception:
+        raise AssertionError(
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp "
+            f"addr=0x{addr:08x}"
+        ) from None
 
 
 async def axi_write32_resp_ids(

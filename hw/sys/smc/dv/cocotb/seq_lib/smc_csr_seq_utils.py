@@ -27,23 +27,26 @@ class SmcCsrSeq(smc_base_test_seq):
         self.timeouts = 0
 
     async def csr_read(self, name: str, addr: int, expected: int | None = None,
-                       length: int = 4) -> int:
+                       length: int = 4, prot: int = 0) -> int:
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = length
         item.expected = expected
+        item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
         return item.rdata
 
-    async def csr_write(self, name: str, addr: int, data: int, length: int = 4) -> None:
+    async def csr_write(self, name: str, addr: int, data: int, length: int = 4,
+                        prot: int = 0) -> None:
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE
         item.addr = addr
         item.length = length
         item.wdata = data
+        item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
@@ -71,7 +74,8 @@ class SmcCsrSeq(smc_base_test_seq):
     # (i3ccore_stub, prim_axi_lite_err_slv macro terminators, efuse stub, etc.).
     ERR_SLAVE_SIGNATURE = 0xBADCAB1E
 
-    async def csr_read_err_signature(self, name: str, addr: int, length: int = 4) -> int:
+    async def csr_read_err_signature(self, name: str, addr: int, length: int = 4,
+                                     prot: int = 0) -> int:
         """Read a window intentionally terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
         complete with an error response (SLVERR/DECERR) AND return the
@@ -85,6 +89,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.length = length
         item.allow_error = True
         item.expect_error = True  # scoreboard also enforces the error response
+        item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
