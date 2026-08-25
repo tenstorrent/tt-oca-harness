@@ -5,7 +5,7 @@
 |-------|-------|
 | Owner | minshaoho |
 | Scope | Running the SMC OSS PyUVM-on-cocotb flow and the recorded sign-off evidence |
-| Related | `oss_smc_dev.md` (planning), `SMC_VPLAN.adoc` (testplan), `ref_test_dev.md` (test development) |
+| Related | `oss_smc_dev.md` (planning), `SMC_VPLAN.adoc` (testplan), `SMC_TB_ARCH.adoc` (testbench architecture) |
 
 Companion to the design / planning doc `oss_smc_dev.md`. That document says *what*
 was planned and why; this one says *how* to run it and *what has been proven*.

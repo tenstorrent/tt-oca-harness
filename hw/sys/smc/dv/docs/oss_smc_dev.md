@@ -4,7 +4,7 @@
 | Field | Value |
 |-------|-------|
 | Scope | `hw/sys/smc/dv/cocotb/` (PyUVM-on-cocotb, DTP three-layer pattern) |
-| Related | `SMC_VPLAN.adoc`, `smc_oss_execution_guide.md`, `ref_test_dev.md` |
+| Related | `SMC_VPLAN.adoc`, `SMC_TB_ARCH.adoc`, `smc_oss_execution_guide.md` |
 
 This is the planning half of the SMC OSS bring-up. It records the module-to-test
 mapping, the shared-infrastructure roadmap, and the design rules the ported tests

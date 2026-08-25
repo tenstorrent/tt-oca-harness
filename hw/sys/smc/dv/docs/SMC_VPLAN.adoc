@@ -5,12 +5,10 @@
 // Sibling design docs live in hw/sys/smc/doc/*.adoc; this file is the DV plan.
 
 [[smc-oss-verification-plan]]
-SMC OSS Verification Plan
--------------------------
+== SMC OSS Verification Plan
 
 [[overview]]
-Overview
-~~~~~~~~
+=== Overview
 
 *Design Under Test*: `smc_wrapper` (`hw/top/smc_wrapper.sv` =
 `smc` + `smc_ip_integration` + `smc_cpu_mem_integration`)
@@ -42,8 +40,7 @@ current OSS PyUVM/cocotb direct-AXI path, no private wrappers.
 on external BFM / firmware / fault-source infrastructure.
 
 [[selection-policy]]
-Selection Policy
-~~~~~~~~~~~~~~~~
+=== Selection Policy
 
 The SMC plan follows the same selection philosophy as the SEP OSS VPLAN:
 
@@ -58,8 +55,7 @@ coverage.
 stimulus.
 
 [[coverage-universe]]
-Coverage Universe
-~~~~~~~~~~~~~~~~~
+=== Coverage Universe
 
 The SMC OSS plan tracks breadth first. Depth campaigns such as
 exhaustive register walking, randomized protocol stress, multi-seed
@@ -138,8 +134,7 @@ level) |`smc_gpio_irq_type_matrix_test`
 |=======================================================================
 
 [[test-infrastructure]]
-Test Infrastructure
-~~~~~~~~~~~~~~~~~~~
+=== Test Infrastructure
 
 The tests below are driven by these PyUVM agents (defined under
 `hw/sys/smc/dv/cocotb/env/`):
@@ -187,8 +182,7 @@ miss open-drain transitions under Verilator
 |=======================================================================
 
 [[external-peripheral-macro-boundary-responders-bus-terminators]]
-External peripheral-macro boundary responders (bus terminators)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== External peripheral-macro boundary responders (bus terminators)
 
 `smc` drives four dedicated AXI-Lite master ports on the peripheral
 AXI-Lite xbar. Under `smc_wrapper`, PLL/PVT/extension are absorbed by
@@ -262,12 +256,10 @@ IP-level DV, not by these SMC unit sweeps.
 ________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 [[smc-p0-design-characteristics]]
-SMC P0 Design Characteristics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+=== SMC P0 Design Characteristics
 
 [[key-features]]
-Key Features
-^^^^^^^^^^^^
+==== Key Features
 
 * Powergood + cold/cool reset domains with public agent-driven bring-up.
 * SMC CPU_CTRL block (`hw/smc/smc_misc/`) exposing reset-vector,
@@ -297,8 +289,7 @@ DTMCS.version=0x1 → RISC-V Debug Spec 0.13.
 responders'' above). Macro-internal function is out of scope.
 
 [[smc-register-interface-sep_in-axi-base-0xc000_0000]]
-SMC Register Interface (SEP_IN AXI, base 0xC000_0000)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== SMC Register Interface (SEP_IN AXI, base 0xC000_0000)
 
 [width="100%",cols="26%,22%,20%,32%",options="header",]
 |=======================================================================
@@ -423,8 +414,7 @@ threshold
 |=======================================================================
 
 [[smc-p0-verification-test-cases]]
-SMC P0 Verification Test Cases
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+=== SMC P0 Verification Test Cases
 
 The *P0 slate* is the 14-test GitHub Project 335 alignment.
 Every P0 test runs on the current OSS
@@ -647,8 +637,7 @@ Diagnostic observability bounded[ ] No UVM_ERROR
 |=======================================================================
 
 [[smc-p0-github-project-alignment]]
-SMC P0 GitHub Project Alignment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== SMC P0 GitHub Project Alignment
 
 GitHub Project 335 tracks the SMC P0 slate with these 14 category
 buckets (mirrors the TC_SMC_P0_NNN rows above):
@@ -692,8 +681,7 @@ ________________________________________________________________________________
 ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 [[legacy-migration-selection-matrix]]
-Legacy Migration Selection Matrix
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== Legacy Migration Selection Matrix
 
 The migration rule is *at most three tests per functional module*. The
 goal is maximum block and behavior coverage, not one-to-one legacy test
@@ -812,8 +800,7 @@ They are not added to `canonical_top20` unless they replace an existing
 representative rather than increasing canonical test count.
 
 [[canonical-regression-groups-superset-of-p0]]
-Canonical Regression Groups (superset of P0)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== Canonical Regression Groups (superset of P0)
 
 The canonical `canonical_top6` / `canonical_top10` / `canonical_top20`
 regression tags are supersets that extend the 14-item SMC P0 slate with
@@ -842,8 +829,7 @@ per-test detail is captured in the SMC P0 Verification Test Cases table
 above.
 
 [[coverage-matrix]]
-Coverage Matrix
-~~~~~~~~~~~~~~~
+=== Coverage Matrix
 
 Block / edge coverage across the canonical regression groups. Test names
 are hyperlinked to their TC_SMC_P0_NNN row in the P0 verification table
@@ -903,8 +889,7 @@ VIP) |
 |=======================================================================
 
 [[p1-test-plan-16-category-3-test-depth-slate]]
-P1 Test Plan — 16 Category × 3-Test Depth Slate
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== P1 Test Plan — 16 Category × 3-Test Depth Slate
 
 P0 covers every SMC functional area with one canonical test (14 tests
 total). *P1 is the depth tier*: for each functional module the migration
@@ -1008,8 +993,7 @@ Per-test PASS/timings + run_dir evidence: see
 _______________________________________________________________
 
 [[p1-coverage-gap-depth-slate-round-1-13-new-tests]]
-P1 Coverage-Gap Depth Slate — Round 1 (13 New Tests)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== P1 Coverage-Gap Depth Slate — Round 1 (13 New Tests)
 
 A CSR-visible block sweep of `smc_top_reg.svh` identified 22 blocks with
 no dedicated test. The 13 tests below close the gap through pure SEP_IN
@@ -1108,8 +1092,7 @@ in addition to their category tag; the aggregate is runnable via
 `--items p1_coverage_gap`.
 
 [[p1-coverage-gap-depth-slate-round-2-multi-instance-depth]]
-P1 Coverage-Gap Depth Slate — Round 2 (Multi-instance depth)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== P1 Coverage-Gap Depth Slate — Round 2 (Multi-instance depth)
 
 Round 1 landed one representative test per previously-unreached block.
 Round 2 addresses the *multi-instance depth* gap: several blocks have
@@ -1145,8 +1128,7 @@ GPIO_CTRL sweep from 46 → *68* entries (RTL has GPIO_CTRL 0..67, stride
 `p1_coverage_gap_r2`.
 
 [[p1-coverage-gap-depth-slate-round-3-field-level-depth]]
-P1 Coverage-Gap Depth Slate — Round 3 (Field-level depth)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== P1 Coverage-Gap Depth Slate — Round 3 (Field-level depth)
 
 Round 1 covered previously-unreached blocks. Round 2 added
 multi-instance depth (mailbox 32-pair, filter 16-entry). Round 3 adds
@@ -1179,8 +1161,7 @@ S13a).*
 *Round 3 aggregate*: 4 new tests. Testlist tag `p1_coverage_gap_r3`.
 
 [[p1-coverage-gap-depth-slate-round-4-previously-unreached-csr-blocks]]
-P1 Coverage-Gap Depth Slate — Round 4 (Previously-unreached CSR blocks)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== P1 Coverage-Gap Depth Slate — Round 4 (Previously-unreached CSR blocks)
 
 A second RTL-vs-testplan block audit against `smc_top_reg.svh` found
 three addressable CSR surfaces that no P0/P1/round-1..3 test reached,
@@ -1204,8 +1185,7 @@ per-core Bus Error Units `SMC_CLUSTER_CORE0..3_BEU` (0xC801_0000 stride
 *Round 4 aggregate*: 2 new tests. Testlist tag `p1_coverage_gap_r4`.
 
 [[round-4-test-cases]]
-Round 4 Test Cases
-++++++++++++++++++
+===== Round 4 Test Cases
 
 [width="100%",cols="16%,13%,8%,16%,8%,18%,21%",options="header",]
 |=======================================================================
@@ -1229,8 +1209,7 @@ For core in 0..3, base = 0xC801_0000 + core * 0x1000: read `CAUSE`
 |=======================================================================
 
 [[p1-coverage-gap-depth-slate-round-5-remaining-leftover-csr-blocks]]
-P1 Coverage-Gap Depth Slate — Round 5 (Remaining leftover CSR blocks)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== P1 Coverage-Gap Depth Slate — Round 5 (Remaining leftover CSR blocks)
 
 Round 5 originally targeted two leftover CSR surfaces after Round 4.
 The empty `p1_coverage_gap_r5` testlist was removed from
@@ -1252,8 +1231,7 @@ production RTL. Not re-enrolled.
 `testlists/deferred.toml` only.
 
 [[p1-coverage-gap-test-cases-fabric_testplan-detail]]
-P1 Coverage-Gap Test Cases (fabric_testplan detail)
-+++++++++++++++++++++++++++++++++++++++++++++++++++
+===== P1 Coverage-Gap Test Cases (fabric_testplan detail)
 
 [width="100%",cols="16%,13%,8%,16%,8%,18%,21%",options="header",]
 |=======================================================================
@@ -1420,8 +1398,7 @@ OUT (never enrolled or removed): `smc_i3c_wrap_extended_test`, former
 P1-20 `smc_cdns_i3c_axil_test`, `smc_dft_ctrl_test`.
 
 [[p2-test-plan-blocker-gated-categories]]
-P2 Test Plan — Blocker-Gated Categories
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== P2 Test Plan — Blocker-Gated Categories
 
 P2 tests require external infrastructure that is not part of the current
 public sandbox. This VPLAN slate captures the target, the specific
@@ -1509,8 +1486,7 @@ master), runnable via `--items p2_phase_b`.
 P2-1, P2-2, P2-6, P2-14.
 
 [[lifecycle-gated-efuse-jtag-access-control-coverage-gap]]
-Lifecycle-Gated eFuse JTAG Access Control (Coverage Gap)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== Lifecycle-Gated eFuse JTAG Access Control (Coverage Gap)
 
 This section captures a lifecycle-gated security path that the current
 SMC OSS plan *does not verify*. It is the SMC-side analog of the DTP
@@ -1634,8 +1610,7 @@ block}, plus a `sigint × {allow, block}` bin, sampled from the spec
 matrix rather than the RTL.
 
 [[p2-phase-a-test-slate]]
-P2 Phase A Test Slate
-^^^^^^^^^^^^^^^^^^^^^
+==== P2 Phase A Test Slate
 
 Six wrapper-only tests promoted from P1 CSR proxies into
 protocol-complete stimulus + observation. All are runnable on both
@@ -1683,8 +1658,7 @@ Per-test PASS/timings + run_dir evidence: see
 ___________________________________________________________________
 
 [[p1p2-migration-blocker-roadmap]]
-P1/P2 Migration Blocker Roadmap
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==== P1/P2 Migration Blocker Roadmap
 
 Protocol-complete migration is intentionally gated by infrastructure.
 Until the required support exists, tests remain roadmap entries and
@@ -1732,8 +1706,7 @@ counter advances and firmware writes PASS magic only after self-checks;
 |=======================================================================
 
 [[existing-regression-disposition]]
-Existing Regression Disposition
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+=== Existing Regression Disposition
 
 The broad `smoke` regression should stay available for debug and
 historical coverage, but it should not keep growing as the primary
@@ -1764,8 +1737,7 @@ CSR clock-gate coverage
 |=======================================================================
 
 [[testlist-policy]]
-Testlist Policy
-~~~~~~~~~~~~~~~
+=== Testlist Policy
 
 Keep the broad `smoke` tag as the debug regression. The
 `canonical_top6`, `canonical_top10`, and `canonical_top20` tags are now
