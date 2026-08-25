@@ -453,7 +453,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   this row.
 
 | Dead-space decode (unmapped addresses must not alias live registers)
-| not PROVEN
+| PARTIAL
 | Vehicle exists. `sep_fabric_deadspace_decode_test` (Verilator
   `20260825_042110`) walks 12 known-bad offsets from
   https://github.com/tenstorrent/tt-oca-harness/issues/228 plus seed
