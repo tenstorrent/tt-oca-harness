@@ -2679,6 +2679,18 @@ lifecycle state is not exercised: no test drives this port at another state.
 
 |===
 
+`hw/sys/sep/doc/periphs.adoc` names three deny classes for JTAG in
+PROD/RMA_SIP: the shadow registers, the interface control registers, and
+the SHIM. Steps 7 and 8 cover the first two. The SHIM is deliberately not
+a step here: its CSR sits in the `sep_external` map and reaches the eFuse
+wrapper through the external-crossbar demux (`hw/sys/sep/rtl/sep.sv`,
+"eFuse SHIM Routing"), not through the `axil_sep_otp_jtag_*` port this
+test drives. A JTAG read of that address would answer with an error
+because the address is outside this port's decode, not because an
+access-control rule denied it — a pass for the wrong reason. If the SHIM
+needs a protection proof, it is an external-master question, not a JTAG
+one.
+
 ==== Checkers
 
 [cols="1,3,4,1",options="header"]
