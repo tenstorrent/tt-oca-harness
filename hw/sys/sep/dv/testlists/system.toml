@@ -148,7 +148,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # CPU-LSU programs allow-entries; the external SMN master proves allow-addr->OKAY+value,
 # non-allowed->DECERR (block-by-default), and read_en/write_en gating. Walks entry 0
 # and 7 x two windows x rw/r/w (match-all src_id=0) plus entry 0 / window 0
-# source-ID match and mismatch. Distinct from
+# source-ID match and mismatch, then allow_burst deny/allow on AR and AW
+# of the scratch window. Distinct from
 # `sep_lcc_uvm_inbound_filter_gating_test` (global sep_debug skip gate). no_cpu + ext SMN master; REAL PROD fuse sense.
 # CHK-OWNERSHIP-WINDOW is a hard assert (RTL OKAY vs hw/sys/sep/doc/fabric.adoc DECERR after
 # an allow-list on the CFG window). Expected red, not an XFAIL.

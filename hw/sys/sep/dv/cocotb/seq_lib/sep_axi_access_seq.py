@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Generic single-beat AXI access sequence on the SEP CPU-LSU bus.
+"""Generic AXI access sequence on a SEP master bus.
 
 A thin reusable wrapper so higher-level drivers (KM mailbox, OTBN exec) can issue
 one register read/write through the SEP AXI agent without re-declaring a sequence
@@ -30,6 +30,7 @@ class SepAxiAccessSeq(uvm_sequence):
         allow_unverified_write_resp: bool = False,
         expect_error: bool = False,
         user: int = 0,
+        burst: int | None = None,
     ) -> None:
         super().__init__(name)
         self._op = op
@@ -48,6 +49,8 @@ class SepAxiAccessSeq(uvm_sequence):
         self._expect_error = expect_error
         # Packed AWUSER/ARUSER (inbound FILTER_CONFIG.src_id matches user[3:0]).
         self._user = user
+        # AXI AxBURST. None = VIP default (single-beat callers stay unchanged).
+        self._burst = burst
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
@@ -63,6 +66,7 @@ class SepAxiAccessSeq(uvm_sequence):
         item.allow_unverified_write_resp = self._allow_unverified_write_resp
         item.expect_error = self._expect_error
         item.user = self._user
+        item.burst = self._burst
         await self.start_item(item)
         await self.finish_item(item)
         self.rdata = item.rdata

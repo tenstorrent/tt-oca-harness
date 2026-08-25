@@ -344,6 +344,19 @@ module sep_uvm_top
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
+    // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
+    // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
+    // SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to
+    // single" is this bridge. The external master still sees AxLEN=1;
+    // Lite has no AxLEN, so the split is not a frontdoor CSR. Addr is the
+    // local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
+    // m_axi ready/valid cones.
+    output logic        sys_csr_axil_arvalid_o,
+    output logic        sys_csr_axil_arready_o,
+    output logic [31:0] sys_csr_axil_araddr_o,
+    output logic        sys_csr_axil_awvalid_o,
+    output logic        sys_csr_axil_awready_o,
+    output logic [31:0] sys_csr_axil_awaddr_o,
     // Lifecycle status observability. security_disable and lc_sigint_err are DUT
     // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
     // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -1085,6 +1098,20 @@ module sep_uvm_top
     `SCRATCH_COLD(0); `SCRATCH_COLD(1); `SCRATCH_COLD(2); `SCRATCH_COLD(3);
     `SCRATCH_COLD(4); `SCRATCH_COLD(5); `SCRATCH_COLD(6); `SCRATCH_COLD(7);
 `undef SCRATCH_COLD
+
+    // System-CSR AXI-Lite after u_system_csr_a2l_1. See port comment.
+    assign sys_csr_axil_arvalid_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar_valid;
+    assign sys_csr_axil_arready_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.ar_ready;
+    assign sys_csr_axil_araddr_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar.addr[31:0];
+    assign sys_csr_axil_awvalid_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw_valid;
+    assign sys_csr_axil_awready_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.aw_ready;
+    assign sys_csr_axil_awaddr_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
 
     // ------------------------------------------------------------------
     // LC differential-integrity error inject.
