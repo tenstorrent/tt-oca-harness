@@ -109,6 +109,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/lifecycle.o $(BUILD_DIR)/manifest_crypto.o \
 	$(BUILD_DIR)/rsa_verify.o $(BUILD_DIR)/otbn_driver.o \
 	$(BUILD_DIR)/aes_driver.o $(BUILD_DIR)/kdf.o $(BUILD_DIR)/key_digests.o \
+	$(BUILD_DIR)/oca_platform.o \
 	$(BUILD_DIR)/rsa_3072_app_otbn.o
 
 # --- OCA boot-manifest validation library (tt-boot-manifest submodule) --------
