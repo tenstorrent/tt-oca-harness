@@ -5,8 +5,10 @@
 // SEP Reset Controller
 //
 // Provides software-controllable reset for KM and crypto accelerators.
-// Each bit in the SW_RESET register drives a prim_rst_sync synchronizer
-// whose output is able to be overridden by JTAG overrides.
+// Each bit in the SW_RESET register drives a sep_isolate_rst_seq FSM which
+// requests isolation of that domain's AXI paths, waits for them to drain,
+// and then asserts the domain's sequenced reset. The exported resets remain
+// overridable through JTAG.
 //
 // Register map defined in meta/registers/rdl/sep_reset_ctrl.rdl
 //   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
@@ -20,6 +22,8 @@
 module sep_reset_ctrl
     (
         input  logic   clk_i,
+        // Cold reset for the isolation sequencing FSMs
+        input logic    rst_ni,
 
         // Aggregated WDT Resets from SMC and SEP
         input  logic   wdt_rst_ni,
@@ -42,15 +46,19 @@ module sep_reset_ctrl
         input  logic   scan_rst_ni,
 
         // sep_reset_n AND wdt_rst_ni
-        output logic        sep_cpu_reset_no,
+        output logic   sep_cpu_reset_no,
 
-        // Reset outputs (active-low, one per IP)
+        // Isolation handshake with sep_crypto's AXI interconnect (one per IP)
+        output sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req_o,
+        input  sep_pkg::sep_crypto_isolate_t sep_crypto_isolated_i,
+
+        // Isolation-sequenced resets to sep_crypto (active-low, one per IP)
         // Potentially overridden by JTAG overrides
-        output sep_pkg::sep_sw_rst_t sep_sw_rst_no
+        output sep_pkg::sep_sw_rst_t sep_crypto_gated_rst_no
 
     );
     // Internal reset signal (after JTAG override) for efuse sensing being done
-    logic                   sep_reset_n;
+    logic                     sep_reset_n;
     // CPU reset = sep_reset_n gated with the Aggregated WDT Resets from SMC and SEP
     assign sep_cpu_reset_no = sep_reset_n & wdt_rst_ni;
 
@@ -124,8 +132,82 @@ module sep_reset_ctrl
     assign sw_reset_bits.km     = hwif_out.SW_RESET_N.km_sw_rst_n.value;
 
     // =========================================================================
-    // Apply JTAG overrides to the reset bits
+    // Isolate/reset sequencing, one FSM per SW_RESET_N domain
     // =========================================================================
+    // Each engine domain owns its host-path isolate and shares its KM-path
+    // isolate with the KM domain: the KM path must be drained before either
+    // side's reset may assert.
+
+    logic otbn_isolate_req, aes_isolate_req, hmac_isolate_req, kmac_isolate_req, km_isolate_req;
+    sep_pkg::sep_sw_rst_t gated_rst_n;
+
+    sep_isolate_rst_seq u_otbn_isolate_seq (
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .sw_rst_req_ni(sw_reset_bits.otbn),
+        .isolated_i   (sep_crypto_isolated_i.host_otbn & sep_crypto_isolated_i.km_otbn),
+        .isolate_req_o(otbn_isolate_req),
+        .gated_rst_no (gated_rst_n.otbn)
+    );
+
+    sep_isolate_rst_seq u_aes_isolate_seq (
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .sw_rst_req_ni(sw_reset_bits.aes),
+        .isolated_i   (sep_crypto_isolated_i.host_aes & sep_crypto_isolated_i.km_aes),
+        .isolate_req_o(aes_isolate_req),
+        .gated_rst_no (gated_rst_n.aes)
+    );
+
+    sep_isolate_rst_seq u_hmac_isolate_seq (
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .sw_rst_req_ni(sw_reset_bits.hmac),
+        .isolated_i   (sep_crypto_isolated_i.host_hmac & sep_crypto_isolated_i.km_hmac),
+        .isolate_req_o(hmac_isolate_req),
+        .gated_rst_no (gated_rst_n.hmac)
+    );
+
+    sep_isolate_rst_seq u_kmac_isolate_seq (
+        .clk_i        (clk_i),
+        .rst_ni       (rst_ni),
+        .sw_rst_req_ni(sw_reset_bits.kmac),
+        .isolated_i   (sep_crypto_isolated_i.host_kmac & sep_crypto_isolated_i.km_kmac),
+        .isolate_req_o(kmac_isolate_req),
+        .gated_rst_no (gated_rst_n.kmac)
+    );
+
+    // KM reset waits for all of the KM's master paths to drain.
+    sep_isolate_rst_seq u_km_isolate_seq (
+        .clk_i          (clk_i),
+        .rst_ni         (rst_ni),
+        .sw_rst_req_ni  (sw_reset_bits.km),
+        .isolated_i     (sep_crypto_isolated_i.km_otbn & sep_crypto_isolated_i.km_aes &
+                         sep_crypto_isolated_i.km_hmac & sep_crypto_isolated_i.km_kmac &
+                         sep_crypto_isolated_i.km_abr  & sep_crypto_isolated_i.km_efuse),
+        .isolate_req_o  (km_isolate_req),
+        .gated_rst_no   (gated_rst_n.km)
+    );
+
+    // Host-path isolates belong to their engine; KM-path isolates isolate when
+    // either the engine or the KM is being reset.
+    assign sep_crypto_isolate_req_o.host_otbn = otbn_isolate_req;
+    assign sep_crypto_isolate_req_o.host_aes  = aes_isolate_req;
+    assign sep_crypto_isolate_req_o.host_hmac = hmac_isolate_req;
+    assign sep_crypto_isolate_req_o.host_kmac = kmac_isolate_req;
+    assign sep_crypto_isolate_req_o.km_otbn   = otbn_isolate_req | km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_aes    = aes_isolate_req  | km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_hmac   = hmac_isolate_req | km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_kmac   = kmac_isolate_req | km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_abr    = km_isolate_req;
+    assign sep_crypto_isolate_req_o.km_efuse  = km_isolate_req;
+
+    // =========================================================================
+    // Apply JTAG overrides to the sequenced resets
+    // =========================================================================
+    // sep_reset_n is a boot-level subsystem reset, so it forces the sequenced
+    // resets unconditionally, bypassing the isolation sequencing. JTAG
+    // overrides act last so debug can force a reset regardless of isolation.
 
     // jtag_sep_reset_ctrl_i val and ovrd are on the TCK clock domain.
     // This creates a known CDC for the reset bits under normal operation.
@@ -133,15 +215,14 @@ module sep_reset_ctrl
     // If syncronized to clk_i, this would create a dependecny on clk_i being functional during TCK operations. This is not always the case.
     // If stop clock propagation is used, there might not be a clock and the jtag_sep_reset_ctrl_i value can't propagate.
 
-    assign sep_sw_rst_no.kmac = jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val : (sw_reset_bits.kmac & sep_reset_n);
-    assign sep_sw_rst_no.hmac = jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val : (sw_reset_bits.hmac & sep_reset_n);
-    assign sep_sw_rst_no.aes  = jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd  ? jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val  : (sw_reset_bits.aes  & sep_reset_n);
-    assign sep_sw_rst_no.otbn = jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val : (sw_reset_bits.otbn & sep_reset_n);
-    assign sep_sw_rst_no.km   = jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd   ? jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val   : (sw_reset_bits.km   & sep_reset_n);
+    assign sep_crypto_gated_rst_no.kmac = jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val : (gated_rst_n.kmac & sep_reset_n);
+    assign sep_crypto_gated_rst_no.hmac = jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val : (gated_rst_n.hmac & sep_reset_n);
+    assign sep_crypto_gated_rst_no.aes  = jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd  ? jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val  : (gated_rst_n.aes  & sep_reset_n);
+    assign sep_crypto_gated_rst_no.otbn = jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val : (gated_rst_n.otbn & sep_reset_n);
+    assign sep_crypto_gated_rst_no.km   = jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd   ? jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val   : (gated_rst_n.km   & sep_reset_n);
 
     // JTAG override to efuse reset
-    assign sep_reset_n        = jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd ? jtag_sep_reset_ctrl_i.val.sep_reset_n_val : sep_intermediate_reset_ni;
-    assign sep_reset_no       = sep_reset_n;
+    assign sep_reset_n  = jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd ? jtag_sep_reset_ctrl_i.val.sep_reset_n_val : sep_intermediate_reset_ni;
+    assign sep_reset_no = sep_reset_n;
 
 endmodule : sep_reset_ctrl
-

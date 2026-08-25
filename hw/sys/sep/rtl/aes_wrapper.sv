@@ -2,23 +2,19 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2025 TT
 
-// AES Wrapper - AXI to TL-UL Bridge using axi_to_tlul
+// AES Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
 // Includes AXI4-Lite key interface CSR that drives the AES sideload port.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
-module aes_wrapper
-#(
-    parameter int unsigned ADDR_WIDTH = 32,
-    parameter int unsigned DATA_WIDTH = 32
-) (
+module aes_wrapper (
     input logic clk_i,
     input logic rst_ni,
 
-    // AXI struct interface (64-bit from demux) — data/control path
-    input  sep_pkg::sep_32_64_6_12_axi_req_t  aes_axi_req_i,
-    output sep_pkg::sep_32_64_6_12_axi_resp_t aes_axi_resp_o,
+    // 32-bit AXI-Lite CSR interface (from sep_crypto interconnect, isolated)
+    input  sep_pkg::sep_32_32_axil_req_t  aes_axil_req_i,
+    output sep_pkg::sep_32_32_axil_resp_t aes_axil_resp_o,
 
     // AXI4-Lite key interface (32-bit from Key Manager private bus)
     input  sep_pkg::sep_32_32_axil_req_t  aes_key_axil_req_i,
@@ -37,94 +33,12 @@ module aes_wrapper
 );
 
     // ============================================================================
-    // 32-bit AXI type definitions for axi_to_tlul bridge
-    // (Following WDT/efuse pattern - axi_to_tlul requires 32-bit data width)
-    // ============================================================================
-
-    localparam int unsigned AES_AXI32_DATA_WIDTH = 32;
-    localparam int unsigned AES_AXI32_STRB_WIDTH = AES_AXI32_DATA_WIDTH / 8;
-
-    typedef logic [AES_AXI32_DATA_WIDTH-1:0] aes_axi32_data_t;
-    typedef logic [AES_AXI32_STRB_WIDTH-1:0] aes_axi32_strb_t;
-
-    // Generate all 32-bit AXI channel types using the macro
-    `AXI_TYPEDEF_ALL(aes_axi32,
-                     sep_pkg::sep_32_64_6_12_axi_addr_t,
-                     sep_pkg::sep_32_64_6_12_axi_id_t,
-                     aes_axi32_data_t,
-                     aes_axi32_strb_t,
-                     sep_pkg::sep_32_64_6_12_axi_user_t)
-
-    // 32-bit AXI signals (after width conversion)
-    aes_axi32_req_t  aes_axi32_req;
-    aes_axi32_resp_t aes_axi32_resp;
-
-    // ============================================================================
-    // AXI Data Width Converter: 64-bit -> 32-bit (struct-based)
-    // ============================================================================
-
-    axi_dw_converter #(
-        .AxiMaxReads         (8),
-        .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),  // 64-bit input
-        .AxiMstPortDataWidth (AES_AXI32_DATA_WIDTH),               // 32-bit output
-        .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
-        .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
-        .mst_w_chan_t        (aes_axi32_w_chan_t),
-        .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
-        .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
-        .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
-        .mst_r_chan_t        (aes_axi32_r_chan_t),
-        .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
-        .axi_mst_req_t       (aes_axi32_req_t),
-        .axi_mst_resp_t      (aes_axi32_resp_t),
-        .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
-    ) u_aes_axi_dw_converter (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .slv_req_i (aes_axi_req_i),
-        .slv_resp_o(aes_axi_resp_o),
-        .mst_req_o (aes_axi32_req),
-        .mst_resp_i(aes_axi32_resp)
-    );
-
-    // ============================================================================
-    // AXI to TileLink Converter (two-stage: AXI -> AXI-Lite -> TL-UL)
-    // Stage 1: axi_to_axi_lite - Converts full AXI4 to AXI4-Lite
-    // Stage 2: axi_lite_to_tlul - Converts AXI4-Lite to TileLink UL
+    // AXI-Lite to TL-UL conversion
     // ============================================================================
 
     tlul_pkg::tl_h2d_t tl_req;
     tlul_pkg::tl_d2h_t tl_resp;
 
-    // AXI-Lite intermediate signals
-    sep_pkg::sep_32_32_axil_req_t  axi_lite_req;
-    sep_pkg::sep_32_32_axil_resp_t axi_lite_resp;
-
-    // Stage 1: AXI to AXI-Lite conversion
-    axi_to_axi_lite #(
-        .AxiAddrWidth    (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
-        .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
-        .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
-        .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-        .AxiMaxWriteTxns (4),
-        .AxiMaxReadTxns  (4),
-        .full_req_t      (aes_axi32_req_t),
-        .full_resp_t     (aes_axi32_resp_t),
-        .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
-        .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
-    ) u_aes_axi_to_axi_lite (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .test_i      (1'b0),
-        .slv_req_i   (aes_axi32_req),
-        .slv_resp_o  (aes_axi32_resp),
-        .mst_req_o   (axi_lite_req),
-        .mst_resp_i  (axi_lite_resp)
-    );
-
-    // Stage 2: AXI-Lite to TL-UL conversion
     axi_lite_to_tlul #(
         .AXI_ADDR_WIDTH   (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
         .AXI_DATA_WIDTH   (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -135,8 +49,8 @@ module aes_wrapper
     ) u_aes_axi_lite_to_tlul (
         .clk_i           (clk_i),
         .rst_ni          (rst_ni),
-        .axi_lite_req_i  (axi_lite_req),
-        .axi_lite_rsp_o  (axi_lite_resp),
+        .axi_lite_req_i  (aes_axil_req_i),
+        .axi_lite_rsp_o  (aes_axil_resp_o),
         .tl_o            (tl_req),
         .tl_i            (tl_resp),
         .err_o           (/* UNUSED */)

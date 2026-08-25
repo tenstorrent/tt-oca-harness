@@ -992,6 +992,7 @@ sources:
       - hw/sys/sep/rtl/sep.sv
       - hw/sys/sep/rtl/sep_cpu.sv
       - hw/sys/sep/rtl/axi_lite_isolate.sv
+      - hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv
       - hw/sys/sep/rtl/sep_crypto.sv
       - hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv
       - hw/sys/sep/rtl/sep_dma_wrap.sv
@@ -1000,6 +1001,7 @@ sources:
       - hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
       - hw/sys/sep/rtl/sep_local_axi_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_ot_spi_wrap.sv
+      - hw/sys/sep/rtl/sep_isolate_rst_seq.sv
       - hw/sys/sep/rtl/sep_reset_ctrl.sv
       - hw/sys/sep/rtl/sep_rom_interface_shim.sv
       - hw/sys/sep/rtl/sep_sram.sv
@@ -1009,8 +1011,6 @@ sources:
       - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_tcm_wrapper.sv
       - hw/sys/sep/rtl/sep_wdt_wrap.sv
-      - hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv
-      - hw/sys/sep/rtl/sep_crypto_axi_isolate.sv
       # =====================================================================
       # Adams Bridge PQC (ML-DSA-87 / ML-KEM-1024) + Caliptra KV client helpers
       #   vendor/chipsalliance/adams-bridge : chipsalliance/adams-bridge @ e59eba9
