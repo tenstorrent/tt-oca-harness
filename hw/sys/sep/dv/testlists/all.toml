@@ -27,10 +27,10 @@ schema_version = 1
 # Two tests currently FAIL as RTL-vs-spec reveals, not regressions. Do not
 # XFAIL them. CI `--items smoke` does not include them. A class regression
 # is expected two-red until RTL:
-#   sep_efuse_jtag_axil_el2_cpu_mux_test       CHK-JTAG-MMR-DENY
-#     (hw/sys/sep/doc/periphs.adoc: JTAG in PROD may only touch the two RMA token CSRs)
 #   sep_fabric_inbound_filter_rule_matrix_test CHK-OWNERSHIP-WINDOW
 #     (hw/sys/sep/doc/fabric.adoc: only the SEP CPU can program the inbound filter)
+#   sep_fabric_deadspace_decode_test CHK-DEADSPACE-REFUSE
+#     (intra-block unpopulated offsets must be refused; RTL wraps/aliases)
 #
 # Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They
 # run in the `all` and `rom_fw` groups, not `cpu`; this VPLAN does not grade them
@@ -77,6 +77,8 @@ tests = [
     "sep_spi_ot_dma_rx_test",
     "sep_esrc_e2e_smoke_test",
     "sep_esrc_ht_watermark_arming_test",
+    "sep_esrc_fips_lock_test",
+    "sep_esrc_alert_delivery_test",
     "sep_drbg_gen_segmentation_test",
     "sep_hmac_kmac_cpu_crypto_smoke_test",
     "sep_efuse_km_axil_cpu_mux_coexist_test",
@@ -117,9 +119,15 @@ tests = [
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
     "sep_efuse_program_lock_matrix_test",
+    "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",
+    "sep_sec_dis_override_test",
     "sep_fabric_output_remap_datapath_proxy_test",
+    "sep_fabric_local_alias_datapath_test",
+    "sep_km_key_policy_vault_test",
+    "sep_reg_bit_bash_rand_test",
+    "sep_fabric_deadspace_decode_test",
 ]
 
 [[groups]]
@@ -163,6 +171,8 @@ tests = [
     "sep_clock_uvm_wdt_rst_input_reset_path_test",
     "sep_esrc_e2e_smoke_test",
     "sep_esrc_ht_watermark_arming_test",
+    "sep_esrc_fips_lock_test",
+    "sep_esrc_alert_delivery_test",
     "sep_drbg_gen_segmentation_test",
     "sep_irq_ip_to_aggregator_test",
     "sep_drbg_real_sink_multi_km_aes_test",
@@ -191,9 +201,15 @@ tests = [
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
     "sep_efuse_program_lock_matrix_test",
+    "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",
+    "sep_sec_dis_override_test",
     "sep_fabric_output_remap_datapath_proxy_test",
+    "sep_fabric_local_alias_datapath_test",
+    "sep_km_key_policy_vault_test",
+    "sep_reg_bit_bash_rand_test",
+    "sep_fabric_deadspace_decode_test",
 ]
 
 [[groups]]

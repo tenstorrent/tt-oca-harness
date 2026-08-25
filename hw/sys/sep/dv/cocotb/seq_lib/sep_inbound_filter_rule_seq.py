@@ -19,6 +19,13 @@ SepInboundFilterMatrixCfg is the single source of truth for the walked cells
 FILTER_CONFIG.src_id=0 is match-all (traffic_filter.sv). A non-zero src_id
 matches only the external master's ar/awuser[3:0]. allow_ns=1 matches the
 master's NONSECURE prot.
+
+FILTER_CONFIG.allow_burst (bit 24) is walked only by the matrix burst
+checkers, on both filter instances (AR and AW). A 2-beat INCR (AxLEN=1)
+makes traffic_filter.sv pass_burst depend on the bit. The allow window
+spans two 4 KB pages so the wrap same-page widen does not fire.
+The 4 KB over-grant has no fabric.adoc sentence and is a plan open
+item, not a claimed checker.
 """
 
 from __future__ import annotations
@@ -32,6 +39,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
     INFILT_BASE, FILTER_STRIDE, FILTER_CONFIG,
     F_READ_ALLOWED, F_WRITE_ALLOWED, F_ENTRY_ENABLED, F_ALLOW_NS, F_SRC_ID_LSB,
+    F_ALLOW_BURST,
 )
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0
 
@@ -63,6 +71,14 @@ ALLOW_MODES = (("rw", True, True), ("r", True, False), ("w", False, True))
 SRC_ID_MATCH = 0x5
 SRC_ID_MISMATCH_USER = 0xA
 SRC_ID_USER_MASK = 0xF
+# AXI AxBURST INCR. A 2-beat 4-byte transfer (length=8, size=2) makes
+# AxLEN=1 so traffic_filter.sv pass_burst is not vacuously true.
+AXI_BURST_INCR = 1
+BURST_BYTES = 8
+# allow_burst=1 same-page window would widen to 4 KB in axi_filter_wrap.sv.
+# The allow checker programs a window that already spans two pages so that
+# rewrite does not fire. The 4 KB over-grant is a plan open item.
+BURST_ALLOW_SPAN = 0x2000
 
 
 class SepInboundFilterCfg:
@@ -88,7 +104,8 @@ class SepInboundFilterCfg:
     def end_addr_reg(self) -> int:
         return INFILT_BASE + self.entry * FILTER_STRIDE + FILTER_END_ADDR
 
-    def config_word(self, *, read_allowed: bool, write_allowed: bool) -> int:
+    def config_word(self, *, read_allowed: bool, write_allowed: bool,
+                    allow_burst: bool = False) -> int:
         """FILTER_CONFIG lo: entry_enabled + allow_ns + src_id + per-dir enables.
         Never sets the locked (woset) bit, so the entry stays reprogrammable."""
         v = F_ENTRY_ENABLED | F_ALLOW_NS | (self.src_id << F_SRC_ID_LSB)
@@ -96,6 +113,8 @@ class SepInboundFilterCfg:
             v |= F_READ_ALLOWED
         if write_allowed:
             v |= F_WRITE_ALLOWED
+        if allow_burst:
+            v |= F_ALLOW_BURST
         return v
 
     def summary(self) -> str:
@@ -153,6 +172,21 @@ class SepInboundFilterMatrixCfg:
         return (len(self.entries) * len(self.windows) * len(self.modes)
                 + len(self.modes) + 1)
 
+    def burst_window(self) -> tuple[int, int, int]:
+        """Scratch window used by the burst checkers: (addr, value, end_addr).
+
+        ``end_addr`` is two 4 KB pages past ``addr`` so allow_burst=1 does not
+        trigger the same-page widen in axi_filter_wrap.sv.
+        """
+        addr, val = self.windows[1]
+        end = addr + BURST_ALLOW_SPAN
+        if (addr >> 12) == (end >> 12):
+            raise RuntimeError(
+                f"burst allow window 0x{addr:08x}..0x{end:08x} shares a 4 KB "
+                f"page; the page-widen would fire"
+            )
+        return addr, val, end
+
     def summary(self) -> str:
         wins = " ".join(f"w{i}=0x{a:08x}/0x{v:08x}" for i, (a, v) in enumerate(self.windows))
         return (f"seed={self.seed} entries={self.entries} {wins} "
@@ -181,14 +215,28 @@ class SepInboundFilter(SepAxiRegDriver):
         for entry in range(INFILT_N_ENTRIES):
             await self.disable_entry(entry)
 
-    async def program_rule(self, cfg: SepInboundFilterCfg, *, read_allowed: bool, write_allowed: bool) -> None:
-        """Program the inbound filter entry to cover [allow_addr, allow_addr] (one
-        8-byte block) with the given read/write enables."""
+    async def program_rule(
+        self, cfg: SepInboundFilterCfg, *, read_allowed: bool, write_allowed: bool,
+        allow_burst: bool = False, end_addr: int | None = None,
+    ) -> None:
+        """Program the inbound filter entry.
+
+        Default window is one 8-byte granule at ``allow_addr``. ``end_addr``
+        widens the programmed range (used by the burst-allow checker so the
+        window already spans two 4 KB pages and the wrap page-widen does not
+        fire).
+        """
+        end = cfg.allow_addr if end_addr is None else end_addr
         await self._wr(cfg.start_addr_reg, cfg.allow_addr)
         await self._wr(cfg.start_addr_reg + 4, 0)
-        await self._wr(cfg.end_addr_reg, cfg.allow_addr)
+        await self._wr(cfg.end_addr_reg, end)
         await self._wr(cfg.end_addr_reg + 4, 0)
-        await self._wr(cfg.cfg_addr, cfg.config_word(read_allowed=read_allowed, write_allowed=write_allowed))
+        await self._wr(
+            cfg.cfg_addr,
+            cfg.config_word(
+                read_allowed=read_allowed, write_allowed=write_allowed,
+                allow_burst=allow_burst),
+        )
 
 
 def ext_read_seq(addr: int, *, user: int = 0) -> SepAxiAccessSeq:
@@ -196,6 +244,25 @@ def ext_read_seq(addr: int, *, user: int = 0) -> SepAxiAccessSeq:
     False: a blocked access must return DECERR from the filter err-slave, not wedge."""
     return SepAxiAccessSeq("infilt_ext_rd", op=SepAxiOp.READ, addr=addr, length=4, size=2,
                            expect_error=False, user=user)
+
+
+def ext_burst_read_seq(addr: int, *, user: int = 0,
+                       expect_error: bool = False) -> SepAxiAccessSeq:
+    """Two-beat INCR read (AxLEN=1) on the external master."""
+    return SepAxiAccessSeq(
+        "infilt_ext_burst_rd", op=SepAxiOp.READ, addr=addr,
+        length=BURST_BYTES, size=2, burst=AXI_BURST_INCR,
+        expect_error=expect_error, user=user)
+
+
+def ext_burst_write_seq(addr: int, data: int, *, user: int = 0,
+                        expect_error: bool = False) -> SepAxiAccessSeq:
+    """Two-beat INCR write (AxLEN=1) on the external master."""
+    return SepAxiAccessSeq(
+        "infilt_ext_burst_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data,
+        length=BURST_BYTES, size=2, burst=AXI_BURST_INCR,
+        expect_error=expect_error,
+        allow_unverified_write_resp=expect_error, user=user)
 
 
 def ext_write_seq(addr: int, data: int, *, user: int = 0) -> SepAxiAccessSeq:
