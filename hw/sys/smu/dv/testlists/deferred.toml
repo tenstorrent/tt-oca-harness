@@ -443,7 +443,7 @@ tags = [
 # tags = ["deferred", "fabric", "depth", "planned", "no_force"]
 
 # smu_axi_filter_out_instance_matrix_test → fabric.toml (S1 DECODE; S2/S3 deferred)
-# local_fabric_reg_bar_wr_test → fabric.toml (FAB_SMC_032 J2A delivery)
+# smu_fabric_reg_bar_wr_test → fabric.toml (FAB_SMC_032 J2A delivery)
 
 # smu_axi_alias_remap_manager_scope_test → fabric.toml (FAB_SMC_018 S3; S1/S2/S4/S5 deferred)
 
@@ -453,8 +453,8 @@ tags = [
 # tags = ["deferred", "fabric", "depth", "planned", "no_force"]
 
 # [[tests]]
-# name = "local_fabric_reg_bar_wr_test"
-# module = "local_fabric_reg_bar_wr_test"
+# name = "smu_fabric_reg_bar_wr_test"
+# module = "smu_fabric_reg_bar_wr_test"
 # tags = ["deferred", "fabric", "depth", "planned", "no_force"]
 
 [[tests]]
@@ -510,10 +510,10 @@ name = "smc_cpu_multicore_sanity_test"
 module = "smc_cpu_multicore_sanity_test"
 tags = ["deferred", "smc", "depth"]
 
-# smc_mailbox_sanity_test → smc.toml (outbound-0 STATUS/IRQEN J2A)
+# smu_smc_mailbox_sanity_test → smc.toml (outbound-0 STATUS/IRQEN J2A)
 # [[tests]]
-# name = "smc_mailbox_sanity_test"
-# module = "smc_mailbox_sanity_test"
+# name = "smu_smc_mailbox_sanity_test"
+# module = "smu_smc_mailbox_sanity_test"
 # tags = ["deferred", "smc", "depth"]
 
 [[tests]]
@@ -731,23 +731,23 @@ name = "smc_efuse_secure_tm_force_test"
 module = "smc_efuse_secure_tm_force_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
+# smu_smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
 # [[tests]]
-# name = "smc_gpio_strap_sanity_test"
-# module = "smc_gpio_strap_sanity_test"
+# name = "smu_smc_gpio_strap_sanity_test"
+# module = "smu_smc_gpio_strap_sanity_test"
 # tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smc_mailbox_int_test → promoted to testlists/smc.toml (SMU_ALL_004 r8 EXT.S2)
+# smu_smc_mailbox_int_test → promoted to testlists/smc.toml (SMU_ALL_004 r8 EXT.S2)
 
 [[tests]]
 name = "smc_reset_unit_wdt_scratch_test"
 module = "smc_reset_unit_wdt_scratch_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
+# smu_smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
 # [[tests]]
-# name = "smc_wdt_sanity_test"
-# module = "smc_wdt_sanity_test"
+# name = "smu_smc_wdt_sanity_test"
+# module = "smu_smc_wdt_sanity_test"
 # tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
 [[tests]]
@@ -755,10 +755,10 @@ name = "smc_wdt_scratch_double_pulse_test"
 module = "smc_wdt_scratch_double_pulse_test"
 tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
-# smc_wdt_timeout_irq_test → smc.toml (sticky WDOGIP0)
+# smu_smc_wdt_timeout_irq_test → smc.toml (sticky WDOGIP0)
 # [[tests]]
-# name = "smc_wdt_timeout_irq_test"
-# module = "smc_wdt_timeout_irq_test"
+# name = "smu_smc_wdt_timeout_irq_test"
+# module = "smu_smc_wdt_timeout_irq_test"
 # tags = ["deferred", "needs_real_lcc", "sep1", "no_force"]
 
 [[tests]]

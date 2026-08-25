@@ -82,8 +82,8 @@ run_modes = ["fabric"]
 
 # Tier A: local fabric config CSR delivery (FAB_SMC_032) via J2A.
 [[tests]]
-name = "local_fabric_reg_bar_wr_test"
-module = "local_fabric_reg_bar_wr_test"
+name = "smu_fabric_reg_bar_wr_test"
+module = "smu_fabric_reg_bar_wr_test"
 seed = 1
 timeout_sec = 1800
 tags = ["fabric", "phase1", "tier_a_pilot", "depth"]

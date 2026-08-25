@@ -32,7 +32,7 @@ STRAP_LO = STRAP_PATTERN & 0xFFFF_FFFF
 STRAP_HI = (STRAP_PATTERN >> 32) & STRAPS_HI_MASK
 
 
-class smc_gpio_strap_sanity_test_seq:
+class smu_smc_gpio_strap_sanity_test_seq:
     """Reset-unit STRAPS_* track captured_straps_i."""
 
     def __init__(self, test) -> None:
