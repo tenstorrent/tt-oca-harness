@@ -36,7 +36,7 @@ class dtp_jtag2axi_smc_otp_axi_single_write_read_test extends dtp_base_test;
         seq.tb_vif        = m_env.tb_vif;
         seq.target_name   = "smc_otp";
         seq.axi_cfg       = m_env.m_smc_otp_axi_cfg;
-        seq.axi_evidence  = m_env.m_smc_otp_axi_env.m_scoreboard.m_checker;
+        seq.axi_evidence  = m_env.m_smc_otp_axi_env.m_checker;
         seq.otp_slave_seq = m_env.m_smc_otp_slave_agent.seq;
         seq.start(m_env.m_jtag_env.m_sequencer);
         phase.drop_objection(this, "dtp_jtag2axi_smc_otp_axi_single_write_read_test done");

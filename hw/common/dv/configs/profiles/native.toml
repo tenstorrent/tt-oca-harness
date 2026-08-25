@@ -114,6 +114,13 @@ visibility = "maintainer"
 runnability = "maintainer"
 license = "required-commercial"
 
+# The bare `UVM` framework gate (same bare-name wording rule as SIMULATION): every DUT's
+# `--framework uvm` view selects the SV-UVM shape of its shared testbench top with it. Target-table
+# `defines` dedup-append across the framework merge layers, so this ADDS to the shared
+# [target_defaults.default] set above — SIMULATION stays on UVM builds.
+[frameworks.uvm.target_defaults.default]
+defines = ["UVM"]
+
 # -sverilog/-full64/-ntb_opts uvm/-timescale come from the vcs_* stage preamble; the analyze stage
 # also precompiles the simulator-owned UVM package before this source set.
 [frameworks.uvm.target_defaults.default.tools.vcs]

@@ -110,7 +110,9 @@ reruns.
 
 Group::
 A named list of tests defined in the testlist. Groups expand in definition
-order.
+order. An optional `expected_count` pins the exact number of listed tests;
+catalog loading fails when the list and the count diverge, which keeps a
+documented inventory (for example a VPLAN test-case count) honest.
 
 Tag::
 A label carried by tests, used by `--tag` as an OR filter.
