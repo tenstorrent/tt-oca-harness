@@ -121,7 +121,14 @@ class OcahAxiLiteMasterSequence:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
             if allow_timeout:
-                return OcahAxiWriteResult(addr, self.driver.bytes_per_beat, -1, (), False, True, None)
+                return OcahAxiWriteResult(
+                    address=addr,
+                    length=self.driver.bytes_per_beat,
+                    resp=-1,
+                    resp_list=(),
+                    ok=False,
+                    timed_out=True,
+                )
             raise AssertionError(f"{self.name}: write to 0x{addr:08X} timed out") from exc
 
         result = OcahAxiWriteResult(
@@ -155,7 +162,16 @@ class OcahAxiLiteMasterSequence:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
             if allow_timeout:
-                return OcahAxiReadResult(addr, 0, b"", (), -1, (), False, True, None)
+                return OcahAxiReadResult(
+                    address=addr,
+                    data=0,
+                    data_bytes=b"",
+                    data_words=(),
+                    resp=-1,
+                    resp_list=(),
+                    ok=False,
+                    timed_out=True,
+                )
             raise AssertionError(f"{self.name}: read from 0x{addr:08X} timed out") from exc
 
         data_bytes = bytes(getattr(raw, "data", b""))

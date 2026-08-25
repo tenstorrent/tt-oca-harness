@@ -148,7 +148,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # CPU-LSU programs allow-entries; the external SMN master proves allow-addr->OKAY+value,
 # non-allowed->DECERR (block-by-default), and read_en/write_en gating. Walks entry 0
 # and 7 x two windows x rw/r/w (match-all src_id=0) plus entry 0 / window 0
-# source-ID match and mismatch. Distinct from
+# source-ID match and mismatch, then allow_burst deny/allow on AR and AW
+# of the scratch window. Distinct from
 # `sep_lcc_uvm_inbound_filter_gating_test` (global sep_debug skip gate). no_cpu + ext SMN master; REAL PROD fuse sense.
 # CHK-OWNERSHIP-WINDOW is a hard assert (RTL OKAY vs hw/sys/sep/doc/fabric.adoc DECERR after
 # an allow-list on the CFG window). Expected red, not an XFAIL.
@@ -235,6 +236,61 @@ module = "system.sep_clock_gate_control_test"
 seed = 1
 timeout_sec = 1800
 tags = ["clock", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Live AP/STEE output-remap + outbound-filter drop. RANDCFG: bank/region/entry
+# and one forbidden beat from the run seed. A programmed window translates to
+# the outbound responder; a second region is DECERR. CSR-bank R/W stays on
+# sep_fabric_remap_filter_csr_bank_test. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_output_remap_datapath_proxy_test"
+module = "system.sep_fabric_output_remap_datapath_proxy_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "remap", "filter", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Live local-master alias-remap offset. RANDCFG: region and source page from
+# the run seed. A programmed region rewrites a CPU-LSU filter-page beat to
+# CLOCK_GATE_CTRL; CSR-bank R/W stays on sep_fabric_remap_filter_csr_bank_test.
+# Distinct from the CPU high-alias window. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_local_alias_datapath_test"
+module = "system.sep_fabric_local_alias_datapath_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "remap", "alias", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# CSR reset / RW / RO / reserved sweep over the generated SystemRDL export.
+# RANDCFG: block order and complement-vs-ones order from the run seed.
+# Every reset-eligible register and every write-safe register is walked
+# in one invocation. no_cpu; +skip_fuse_sense (CSR storage, no OTP dep).
+name = "sep_reg_bit_bash_rand_test"
+module = "system.sep_reg_bit_bash_rand_test"
+seed = 1
+timeout_sec = 3600
+tags = ["csr", "register", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Intra-block dead-space decode. An access past a block's allocated size
+# must be DECERR and must not change a live register. Hard FAILED until
+# RTL refuses the wrap; do not XFAIL. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_deadspace_decode_test"
+module = "system.sep_fabric_deadspace_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "decode", "negative", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

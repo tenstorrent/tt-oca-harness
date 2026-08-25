@@ -264,7 +264,7 @@ module entropy_source
 
     entropy_generator_complex #(
         .NRINGS       (NRINGS),
-        .CLKDIV_WIDTH (20)  // TODO: update to 24 as future feature
+        .CLKDIV_WIDTH (20)
     ) u_generator_complex (
         .clk_i,
         .rst_ni                                 (rst_n),

@@ -328,6 +328,4 @@ package sep_crypto_pkg;
         logic tready;
     } ext_trng_axis_rsp_t;
 
-    // TODO: Config struct enabling/disabling the instantiation of specific sub-modules
-
 endpackage

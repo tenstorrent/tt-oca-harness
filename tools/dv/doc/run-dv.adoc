@@ -110,7 +110,9 @@ reruns.
 
 Group::
 A named list of tests defined in the testlist. Groups expand in definition
-order.
+order. An optional `expected_count` pins the exact number of listed tests;
+catalog loading fails when the list and the count diverge, which keeps a
+documented inventory (for example a VPLAN test-case count) honest.
 
 Tag::
 A label carried by tests, used by `--tag` as an OR filter.
@@ -346,12 +348,14 @@ Run-mode selection uses:
 Run-mode arguments and test arguments change runtime behavior without changing
 the selected test name.
 
-[CAUTION]
-====
-The current runner does not reject an unknown `--run-mode` name. An unknown
-name contributes no run-mode arguments or timeout, so verify the name in the
-DUT configuration before using it.
-====
+Every explicit run-mode reference must name an effective `[run_modes.<name>]`
+entry (profile entries deep-merge under the DUT's). An unknown `--run-mode`
+fails before stage execution, and catalog loading — on every run and under
+`--validate-configs` — rejects an unknown name in a test's `run_modes` list or
+in `[defaults].run_mode`, reporting the declaring file and the allowed names.
+Only the built-in `smoke` fallback (used when no CLI, test, or default names a
+mode) is optional: a DUT that defines no `smoke` mode then runs with no
+run-mode arguments or timeout.
 
 == Configuration and precedence
 

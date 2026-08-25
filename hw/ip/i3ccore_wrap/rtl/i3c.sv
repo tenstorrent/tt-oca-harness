@@ -276,7 +276,6 @@ module i3c
   logic                               tti_ibi_rready;
   logic [        TtiIbiDataWidth-1:0] tti_ibi_rdata;
 
-  // TODO: Fix these signals
   logic i3c_fsm_en_i;
   assign i3c_fsm_en_i = 1'b0;
   logic i3c_fsm_idle_o;
@@ -857,7 +856,7 @@ module i3c
       .tx_desc_queue_reg_rst_we_i      (csr_tti_tx_desc_reg_rst_we),
       .tx_desc_queue_reg_rst_data_i    (csr_tti_tx_desc_reg_rst_data),
       .tx_desc_queue_full_i            (csr_tti_tx_desc_full),
-      .tx_desc_queue_write_i           ('0), // TODO: tied off - tx_*_queue_write_r is currently unused in tti.sv; wire to TX write strobe if a TX write interrupt is added
+      .tx_desc_queue_write_i           ('0),
       .tx_desc_queue_ready_thld_trig_i (tti_tx_desc_ready_thld_trig),
 
       // TTI RX queue
@@ -887,7 +886,7 @@ module i3c
       .tx_data_queue_reg_rst_we_i      (csr_tti_tx_data_reg_rst_we),
       .tx_data_queue_reg_rst_data_i    (csr_tti_tx_data_reg_rst_data),
       .tx_data_queue_full_i            (csr_tti_tx_data_full),
-      .tx_data_queue_write_i           ('0), // TODO: tied off - tx_*_queue_write_r is currently unused in tti.sv; wire to TX write strobe if a TX write interrupt is added
+      .tx_data_queue_write_i           ('0),
       .tx_data_queue_ready_thld_trig_i (tti_tx_ready_thld_trig),
 
       // TTI In-band Interrupt (IBI) queue

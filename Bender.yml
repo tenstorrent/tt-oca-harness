@@ -315,10 +315,7 @@ sources:
       - hw/ip/efuse/rtl/svh
     files:
       - hw/common/och_prim/rtl/prim_jtag_pkg.sv
-      - hw/common/och_prim/rtl/prim_otp_cfg_pkg.sv
-      - hw/common/och_prim/rtl/prim_otp_pkg.sv
       - hw/common/och_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
-      - hw/common/och_prim/rtl/prim_sparse_fsm_pkg.sv
   - target: smc
     include_dirs:
       - hw/ip/dfd/rtl/misc
@@ -562,18 +559,15 @@ sources:
   - target: any(sep, smc)
     files:
       - hw/common/axi/axi4lite_intf.sv
-      - hw/common/axi/axi4lite_to_pulp_axi_lite.sv
       - hw/common/axi/axi_cg_snoop.sv
   - target: sep
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
-      - hw/common/tlul/rtl/tlul_to_reg_async.sv
   - target: any(dtp, sep, smc, key_manager)
     files:
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
       - hw/common/och_prim/rtl/prim_apb_arb.sv
-      - hw/common/och_prim/rtl/prim_apb_mux.sv
       # prim_apb_mux_struct.sv is deliberately not listed. It sizes its localparams
       # with $bits(req_t'(0).paddr); VCS rejects that cast-then-member-select in a
       # parameter port list, in both V-2023.12-SP2-9 and X-2025.06, though slang and
@@ -646,7 +640,6 @@ sources:
       - hw/common/och_prim_generic/rtl/prim_flop_4sync_r.sv
       - hw/common/och_prim_generic/rtl/prim_flop_4sync_s.sv
       - hw/common/och_prim_generic/rtl/prim_inv.sv
-      - hw/common/och_prim_generic/rtl/prim_inverter.sv
       - hw/common/och_prim_generic/rtl/prim_latch_n.sv
       - hw/common/och_prim_generic/rtl/prim_metastab_hardened_dffr.sv
       - hw/common/och_prim_generic/rtl/prim_nand4.sv
@@ -940,7 +933,6 @@ sources:
   - target: sep
     files:
       - hw/common/axi/local_alias_remap/rtl/axi_local_alias_remap.sv
-      - hw/common/axi/local_alias_remap/rtl/local_alias_remap.sv
   - target: smc
     files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
@@ -1536,7 +1528,6 @@ sources:
       - hw/sys/smc/rtl/smc_dfd/rtl/smc_dfd_wrap.sv
       - hw/sys/smc/rtl/smc_fabric/smc_fabric.sv
       - hw/sys/smc/rtl/smc_fabric/smc_fabric_misc/rtl/smc_alias_remap_wrap.sv
-      - hw/sys/smc/rtl/smc_fabric/smc_fabric_misc/rtl/smc_sys_input_filter_id_squisher.sv
       - hw/sys/smc/rtl/smc_fabric/smc_input_fabric/rtl/smc_input_fabric.sv
       - hw/sys/smc/rtl/smc_fabric/smc_local_fabric/rtl/smc_local_fabric.sv
       - hw/sys/smc/rtl/smc_fabric/smc_output_fabric/rtl/smc_output_fabric.sv

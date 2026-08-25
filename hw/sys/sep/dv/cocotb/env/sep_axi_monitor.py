@@ -96,6 +96,16 @@ class SepAxiMonitor(uvm_component):
         (that bus never fails on DECERR anyway)."""
         self._armed_decerr += n
 
+    def release_expected_decerr(self, n: int = 1) -> None:
+        """Return ``n`` armed credits that no DECERR beat consumed.
+
+        Arming is per-probe and speculative: a negative-path probe expects
+        DECERR, but a DUT that answers OKAY or SLVERR produces no DECERR beat
+        and leaves the credit standing. A standing credit would silently
+        absorb the next UNEXPECTED DECERR anywhere on this bus, so a probe
+        that did not see one must hand the credit back."""
+        self._armed_decerr = max(0, self._armed_decerr - n)
+
     def _decerr(self, chan: str) -> None:
         """Handle a DECERR beat: consume an armed credit or fail."""
         if self._armed_decerr > 0:

@@ -77,12 +77,13 @@ checker is.
 
 What each test proves, and the exact log evidence that proves it:
 
-* [`docs/oss_dv_plan.adoc`](docs/oss_dv_plan.adoc) — the high-level plan: three
-  phases, coverage accounting, quality bar.
+* [`docs/oss_dv_plan.adoc`](docs/oss_dv_plan.adoc) — the high-level plan: phases,
+  coverage accounting, quality bar.
 * [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) —
   Phase 1 baseline, closed. States the shared contract above.
 * [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) —
-  Phase 2 iconic-feature contract, active.
+  Phase 2 iconic-feature contract (baseline closed) plus Phase 2+
+  (`#phase2-plus`), the active cocotb close-out.
 * [`docs/verification_plan_phase3.adoc`](docs/verification_plan_phase3.adoc) —
   Phase 3 candidates, unscheduled and moving to a new UVM environment.
 

@@ -233,15 +233,6 @@ static bool smbus_irq_alert_stat(uint32_t idx) {
     // Also check if SMBus status indicates alert (as backup verification)
     bool smbus_alert_active = smbus_get_alert_status(idx);
 
-    // Debug output for new model troubleshooting - Only enabled on error
-    // if (intr1 != intr2) {
-    // 	simputs("  [DEBUG] Interrupt state inconsistent: read1=");
-    // 	simputs(intr1 ? "1" : "0");
-    // 	simputs(", read2=");
-    // 	simputs(intr2 ? "1" : "0");
-    // 	simputs("\n");
-    // }
-
     // Return true if either interrupt read shows alert OR if SMBus status shows alert
     // This provides redundancy for new model's potential interrupt logic issues
     return intr1 || intr2 || smbus_alert_active;
@@ -329,9 +320,6 @@ int main(void) {
     simputs("\n");
     simputs("[MAIN] Firmware main() started\n");
     // Note: peripherals_out_of_reset() is no longer available
-    // simputs("[MAIN] Calling peripherals_out_of_reset()...\n");
-    // peripherals_out_of_reset();
-    // simputs("[MAIN] peripherals_out_of_reset() completed\n");
     simputs("[MAIN] Test initialization complete\n");
 
     //=========================================================================

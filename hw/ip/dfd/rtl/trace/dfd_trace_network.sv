@@ -55,10 +55,6 @@ module dfd_trace_network
   logic [NUM_CORES_IN_PATH:0] core_rep_tr_ntrace_flush_north, core_rep_tr_dst_flush_north;
   logic [NUM_CORES_IN_PATH:0] [NUM_CORES_IN_PATH-1:0]  core_rep_tr_enabled_srcs_north;
 
-  logic [NUM_CORES_IN_PATH-1:0] [NUM_CORES_IN_PATH-1:0] core_rep_tr_vld_north;
-  logic [NUM_CORES_IN_PATH-1:0]                         core_rep_tr_src_north;
-  logic [NUM_CORES_IN_PATH-1:0] [DATA_WIDTH-1:0]        core_rep_tr_data_north;
-
   // South Branch Signals
   logic [NUM_CORES_IN_PATH:0] [NUM_CORES_IN_PATH-1:0] rep_core_tr_vld_south;
   logic [NUM_CORES_IN_PATH:0]                         rep_core_tr_src_south;
@@ -68,9 +64,6 @@ module dfd_trace_network
   logic [NUM_CORES_IN_PATH:0] core_rep_tr_ntrace_flush_south, core_rep_tr_dst_flush_south;
   logic [NUM_CORES_IN_PATH:0] [NUM_CORES_IN_PATH-1:0]  core_rep_tr_enabled_srcs_south;
 
-  logic [NUM_CORES_IN_PATH-1:0] rep_core_tr_ntrace_bp_south, rep_core_tr_dst_bp_south;
-  logic [NUM_CORES_IN_PATH-1:0] rep_core_tr_ntrace_flush_south, rep_core_tr_dst_flush_south;
-  logic [NUM_CORES_IN_PATH-1:0] [NUM_CORES_IN_PATH-1:0]  rep_core_tr_enabled_srcs_south;
   // -----------------------------------------------
   // Tail ports connections 
   // ----------------------------------------------- 

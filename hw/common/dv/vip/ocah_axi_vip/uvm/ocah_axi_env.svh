@@ -8,9 +8,9 @@
 //
 // Frozen surface for adopters and commercial-VIP overrides (same contract as
 // ocah_jtag_master_env): `cfg`, `item_ap` (pass-through of the monitor's stream),
-// and `m_scoreboard.m_checker` (scenario-level named evidence). A commercial
-// integration may subclass this env, replace the monitor, and keep the
-// model/scoreboard/evidence surface intact.
+// and `m_checker` (scenario-level named evidence; valid once the scoreboard is
+// built). A commercial integration may subclass this env, replace the monitor,
+// and keep the model/scoreboard/evidence surface intact.
 
 class ocah_axi_env extends uvm_env;
     `uvm_component_utils(ocah_axi_env)
@@ -19,9 +19,11 @@ class ocah_axi_env extends uvm_env;
     ocah_axi_monitor    m_monitor;
     ocah_axi_ref_model  m_ref_model;
     ocah_axi_scoreboard m_scoreboard;
-    ocah_axi_cov    m_cov_sub;
+    ocah_axi_cov    m_cov;
 
+    // Frozen surface.
     uvm_analysis_port #(ocah_axi_item) item_ap;
+    ocah_axi_checker m_checker;
 
     function new(string name = "ocah_axi_env", uvm_component parent = null);
         super.new(name, parent);
@@ -44,7 +46,7 @@ class ocah_axi_env extends uvm_env;
             m_scoreboard = ocah_axi_scoreboard::type_id::create("m_scoreboard", this);
         end
         if (cfg.en_cov)
-            m_cov_sub = ocah_axi_cov::type_id::create("m_cov_sub", this);
+            m_cov = ocah_axi_cov::type_id::create("m_cov", this);
     endfunction
 
     function void connect_phase(uvm_phase phase);
@@ -55,11 +57,13 @@ class ocah_axi_env extends uvm_env;
                 m_monitor.item_ap.connect(m_ref_model.analysis_export);
             if (m_scoreboard != null)
                 m_monitor.item_ap.connect(m_scoreboard.observed_export);
-            if (m_cov_sub != null)
-                m_monitor.item_ap.connect(m_cov_sub.analysis_export);
+            if (m_cov != null)
+                m_monitor.item_ap.connect(m_cov.analysis_export);
         end
         if (m_ref_model != null && m_scoreboard != null)
             m_ref_model.expected_ap.connect(m_scoreboard.expected_export);
+        if (m_scoreboard != null)
+            m_checker = m_scoreboard.m_checker;
     endfunction
 
 endclass : ocah_axi_env

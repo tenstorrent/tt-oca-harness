@@ -12,11 +12,6 @@
 //   - gf256_mult(a, b)     : Multiply two GF(2^8) elements
 //   - gf256_muladd(a, b, c): Compute (a * b) + c in GF(2^8)
 //
-// Usage:
-//   `include "gf256_functions.svh"
-//   logic [7:0] result;
-//   result = gf256_muladd(8'h53, 8'hCA, 8'h00);  // Should return 8'h01
-//
 // Reference:
 //   FIPS 197 (AES Specification) - Finite Field Arithmetic
 //   https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import ConfigError, Dut, Flow, TestCatalog, TestEntry
-from .paths import configs_root
+from .paths import configs_root, repo_path
 
 try:
     import tomllib as _tomllib
@@ -166,12 +166,16 @@ BUILD_KEYS = {
     "incdirs",
     "stubs",
     "sources",
+    "source_lists",
     "exclude_files",
     "options",
     "verilator",
     "xcelium",
     "vcs",
 }
+
+# Keys a `[build].source_lists` fragment file may carry (see _expand_source_lists).
+SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
 
 BUILD_OPTIONS_KEYS = {
     "build_jobs",
@@ -253,7 +257,7 @@ TEST_KEYS = {
 
 # Runtime knobs a `[tests.overrides.<fw>]` subtable may set for one framework.
 TEST_OVERRIDE_KEYS = {"seed", "timeout_sec", "args"}
-GROUP_KEYS = {"name", "tests"}
+GROUP_KEYS = {"name", "tests", "expected_count"}
 
 COVERAGE_TOOL_KEYS = {
     "artifact",
@@ -838,7 +842,8 @@ def _merge_framework_config(
     dut_base = {key: value for key, value in data.items() if key not in resolution_keys}
 
     layers = [profile_base, profile_overlay, dut_base, dut_overlay]
-    # `[sim].args` appends across every layer (all other inherited arrays replace).
+    # `[sim].args` appends across every layer (all other inherited arrays replace,
+    # except the target-table `defines` handled below).
     sim_args: list[str] = []
     for layer in layers:
         sim_args.extend(as_str_list(config_section(layer, "sim").get("args"), "sim.args"))
@@ -847,6 +852,35 @@ def _merge_framework_config(
         merged = deep_merge(merged, layer)
     if sim_args:
         merged["sim"] = {**config_section(merged, "sim"), "args": sim_args}
+
+    # `defines` inside `[target_defaults.<t>]`/`[targets.<t>]` dedup-append across the four
+    # layers, matching the `target_defaults` -> `targets` append in selected_target(): a
+    # framework overlay contributes its gate define (e.g. the profile's `UVM`) on top of the
+    # shared simulation set instead of replacing the list. Tool `flags` keep the plain
+    # overlay-wins semantics — an overlay may deliberately zero a tool's flag list (the uvm
+    # overlay relies on the vcs stage preamble for its flags).
+    for section_name in ("target_defaults", "targets"):
+        section = merged.get(section_name)
+        if not isinstance(section, dict):
+            continue
+        rebuilt = dict(section)
+        for target_name, target in section.items():
+            if not isinstance(target, dict):
+                continue
+            combined: list[Any] = []
+            seen = False
+            for layer in layers:
+                layer_section = layer.get(section_name)
+                layer_target = layer_section.get(target_name) if isinstance(layer_section, dict) else None
+                values = layer_target.get("defines") if isinstance(layer_target, dict) else None
+                if isinstance(values, list):
+                    seen = True
+                    for value in values:
+                        if value not in combined:
+                            combined.append(value)
+            if seen:
+                rebuilt[target_name] = {**target, "defines": combined}
+        merged[section_name] = rebuilt
 
     runtime = deep_merge(profile_runtime, dut_runtime)
     if runtime:
@@ -914,7 +948,42 @@ def load_profile(cfg_dir: Path, profile: str, flow_path: Path) -> dict[str, Any]
     return data
 
 
-def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str, framework: str | None = None) -> Dut:
+def _expand_source_lists(data: dict[str, Any], root: Path, where: str) -> None:
+    """Expand ``[build].source_lists`` fragments into ``[build].incdirs``/``[build].sources``.
+
+    Each entry is a repo-relative TOML fragment owned by the component it compiles (e.g. a
+    shared VIP's ``uvm/sources.toml``): an ordered ``sources`` list plus the ``incdirs`` they
+    need. Fragments expand in listed order AHEAD of the DUT's own incdirs/sources (dedup-merge),
+    so the component layer compiles before the DUT layer that imports it; the consuming config
+    keeps only its own files in ``[build].sources``. Fragment paths and every path a fragment
+    lists must exist, so ``--validate-configs`` catches a stale manifest.
+    """
+    build = data.get("build")
+    if not isinstance(build, dict) or "source_lists" not in build:
+        return
+    fragment_incdirs: list[str] = []
+    fragment_sources: list[str] = []
+    for text in as_str_list(build.get("source_lists"), "build.source_lists"):
+        fragment_path = repo_path(root, text)
+        if not fragment_path.is_file():
+            raise ConfigError(f"{where}: [build].source_lists entry not found: {text}")
+        fragment = load_toml(fragment_path)
+        validate_allowed_keys(fragment, SOURCE_LIST_KEYS, str(fragment_path))
+        for key, bucket in (("incdirs", fragment_incdirs), ("sources", fragment_sources)):
+            for value in as_str_list(fragment.get(key), f"{fragment_path} `{key}`"):
+                if not repo_path(root, value).exists():
+                    raise ConfigError(f"{fragment_path}: `{key}` entry not found: {value}")
+                if value not in bucket:
+                    bucket.append(value)
+    for key, expanded in (("incdirs", fragment_incdirs), ("sources", fragment_sources)):
+        combined = _merge_unique_strings(expanded, as_str_list(build.get(key), f"build.{key}"))
+        if combined:
+            build[key] = combined
+
+
+def load_dut(
+    path: Path, cfg_dir: Path, *, root: Path, name: str, root_rel: str, framework: str | None = None
+) -> Dut:
     """Load a merged per-DUT ``<dut>_sim_cfg.toml`` (selected by the duts resolver).
 
     The file carries the DUT's own keys (``name``/``kind``/``description``/``[testlist]``/stage
@@ -954,6 +1023,9 @@ def load_dut(path: Path, cfg_dir: Path, *, name: str, root_rel: str, framework: 
             combined_sim_args = profile_sim_args + dut_sim_args
             if combined_sim_args:
                 data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
+
+    # Post-merge, so a framework overlay's [frameworks.<fw>.build].source_lists is visible.
+    _expand_source_lists(data, root, str(path))
 
     file_name = data.get("name")
     kind = data.get("kind")
@@ -1080,6 +1152,11 @@ def cocotb_cfg(flow: Flow, sim_cfg: dict[str, Any]) -> dict[str, Any]:
 
 def defaults_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return config_section(sim_cfg, "defaults") if "defaults" in sim_cfg else {}
+
+
+def run_modes_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
+    """The effective ``[run_modes]`` table (profile entries deep-merged under the DUT's)."""
+    return config_section(sim_cfg, "run_modes") if "run_modes" in sim_cfg else {}
 
 
 def coverage_cfg(sim_cfg: dict[str, Any]) -> dict[str, Any]:
@@ -1268,15 +1345,35 @@ def selected_run_target(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return selected_target(sim_cfg)
 
 
+def validate_run_mode_request(sim_cfg: dict[str, Any], requested: str, where: str) -> None:
+    """Reject a run-mode name that is not an effective ``[run_modes]`` entry.
+
+    ``where`` names the reference's source (``--run-mode``, a testlist entry, or
+    ``[defaults].run_mode``) so the error points at the thing to fix.
+    """
+    modes = run_modes_cfg(sim_cfg)
+    if str(requested) not in modes:
+        allowed = ", ".join(sorted(modes)) if modes else "none defined"
+        raise ConfigError(f"{where}: unknown run mode `{requested}` (allowed: {allowed})")
+
+
 def selected_run_mode(sim_cfg: dict[str, Any], test: TestEntry | None, args: Any) -> dict[str, Any]:
     requested = args.run_mode
+    where = "--run-mode"
     if not requested and test and test.run_modes:
         requested = test.run_modes[0]
+        where = f"test `{test.name}` run_modes"
     if not requested:
+        # The implicit fallback is optional by design: a DUT whose tests all carry run_modes
+        # never consults it, and a DUT without a `smoke` mode must still resolve (to no mode).
         requested = defaults_cfg(sim_cfg).get("run_mode", "smoke")
-    modes = config_section(sim_cfg, "run_modes") if "run_modes" in sim_cfg else {}
-    mode = modes.get(str(requested), {}) if isinstance(modes, dict) else {}
-    return mode if isinstance(mode, dict) else {}
+        mode = run_modes_cfg(sim_cfg).get(str(requested), {})
+        return mode if isinstance(mode, dict) else {}
+    # Explicit references were already validated before stage execution (catalog load checks
+    # testlist and [defaults] names, the CLI entry checks --run-mode); this re-check keeps
+    # direct API callers on the same contract.
+    validate_run_mode_request(sim_cfg, str(requested), where)
+    return run_modes_cfg(sim_cfg)[str(requested)]
 
 
 def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
@@ -1342,6 +1439,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         run_modes=as_str_list(entry.get("run_modes"), f"{name}.run_modes"),
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
+        source=source,
     )
 
 
@@ -1388,6 +1486,25 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
             test.args = [*(test.args or []), *as_str_list(override.get("args"), f"{test.name}.overrides.args")]
 
 
+def _validate_run_mode_references(flow: Flow, tests: dict[str, TestEntry]) -> None:
+    """Every explicit run-mode reference must name an effective ``[run_modes]`` entry.
+
+    Runs after include expansion, so a reference is checked no matter which included file
+    declares it. Covers per-test ``run_modes`` lists and an explicit ``[defaults].run_mode``;
+    an unknown name would otherwise resolve to an empty mode and silently drop the mode's
+    args and timeout.
+    """
+    known = set(run_modes_cfg(flow.raw))
+    for test in tests.values():
+        for mode in test.run_modes or []:
+            if mode not in known:
+                where = f"{test.source or flow.path}: test `{test.name}`"
+                validate_run_mode_request(flow.raw, mode, where)
+    default = defaults_cfg(flow.raw).get("run_mode")
+    if default is not None:
+        validate_run_mode_request(flow.raw, str(default), f"{flow.path}: [defaults].run_mode")
+
+
 def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
     testlist = flow.raw.get("testlist", {})
     if isinstance(testlist, dict) and testlist.get("path"):
@@ -1399,6 +1516,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
             path = flow.path.parent / raw_path
         tests, groups = _merge_testlist_data(load_toml(path), path, path.parent, root, [path])
         _resolve_catalog_frameworks(flow, tests, path)
+        _validate_run_mode_references(flow, tests)
         return TestCatalog(path=path, tests=tests, groups=groups)
     # No separate testlist file: read inline [[tests]]/[[groups]] from the flow TOML.
     tests, groups = _merge_testlist_data(
@@ -1410,6 +1528,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
         validate_testlist_keys=False,
     )
     _resolve_catalog_frameworks(flow, tests, flow.path)
+    _validate_run_mode_references(flow, tests)
     return TestCatalog(path=None, tests=tests, groups=groups)
 
 
@@ -1483,7 +1602,14 @@ def _merge_testlist_data(
             raise ConfigError(f"{source}: group entry missing required string `name`")
         if name in groups:
             raise ConfigError(f"{source}: duplicate group `{name}`")
-        groups[name] = as_str_list(entry.get("tests"), f"{name}.tests")
+        members = as_str_list(entry.get("tests"), f"{name}.tests")
+        expected = as_int(entry.get("expected_count"), f"{name}.expected_count")
+        if expected is not None and expected != len(members):
+            raise ConfigError(
+                f"{source}: group `{name}` lists {len(members)} tests but "
+                f"expected_count is {expected}; update the group or the count"
+            )
+        groups[name] = members
 
     return tests, groups
 
