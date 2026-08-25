@@ -225,12 +225,14 @@ static uint32_t load_payload(const manifest_t *m, uint32_t src_addr) {
 //   - sboot_dis fuse → always disable (chicken bit)
 //   - PROD/PROD_END → always enforce, regardless of manifest flag
 //   - TEST_DEV/RMA → secure boot is enabled only if the manifest flag requests it
-static bool secure_boot_enabled(const manifest_t *m) {
-    bool sboot_dis = get_bl0_state()->sboot_dis;
+// lc_state and sboot_dis are ARGUMENTS, never re-read from bl0_state: that
+// struct is zeroed wholesale by init_bl0_state(), so a decision that reads it
+// back is only as correct as the call ordering. Taking them by value makes this
+// verdict independent of any later reordering.
+static bool secure_boot_enabled(const manifest_t *m, uint32_t lc_state, bool sboot_dis) {
     if (sboot_dis) return false;
 
     bool mfst_flag = (m->boot_arguments.flag_args & (1u << FLAG_ARGS_BIT_SECURE_BOOT)) != 0;
-    uint32_t lc_state = get_bl0_state()->lc_state;
 
     // In TEST_DEV or RMA states, the manifest flag decides whether secure boot is enabled.
     // In PROD/PROD_END, secure boot is always enforced.
@@ -295,7 +297,8 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
 }
 
 // Attempt one manifest slot: load -> validate -> integrity -> payload.
-static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from_spi) {
+static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from_spi,
+                                 uint32_t lc_state, bool sboot_dis) {
     uint32_t err;
 
 #if BOOT_SPI_CONTROLLER_OT
@@ -341,7 +344,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
 
     // C13.5: Determine secure boot state.
     {
-        bool sb = secure_boot_enabled(dest);
+        bool sb = secure_boot_enabled(dest, lc_state, sboot_dis);
         get_bl0_state()->secure_boot = sb;
     }
 
@@ -369,7 +372,6 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         // C13.7a: Life cycle state check.
         if (sel & (1ull << SELECTOR_BIT_LIFE_CYCLE_STATES)) {
             report_status(STATUS_TYPE_INFO, SEP_MSG_CHECK_USAGE_CONSTRAINTS);
-            uint32_t lc_state = get_bl0_state()->lc_state;
             int bit = lc_state_to_manifest_bit(lc_state);
             uint32_t allowed = dest->usage_constraints.life_cycle_states;
             if (bit < 0 || !(allowed & (1u << (uint32_t)bit))) {
@@ -510,7 +512,8 @@ static void clear_sram_region(uint32_t addr, uint32_t size) {
 // Public API
 // ---------------------------------------------------------------------------
 
-uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status) {
+uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status,
+                          uint32_t lc_state, bool sboot_dis) {
     manifest_t *p_manifest = (manifest_t *)(uintptr_t)SRAM_BASE;
     const bool from_spi = boot_from_spi(straps);
 
@@ -568,7 +571,8 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         simputshex32("MANIFEST_SRC=", manifest_src);
 
         // Attempt load + validate.
-        uint32_t err = try_manifest_slot(p_manifest, manifest_src, from_spi);
+        uint32_t err = try_manifest_slot(p_manifest, manifest_src, from_spi,
+                                        lc_state, sboot_dis);
         if (err != 0u) {
             simputshex32("MANIFEST_ERR=", err);
             last_err = err;

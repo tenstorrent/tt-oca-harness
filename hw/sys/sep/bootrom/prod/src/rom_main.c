@@ -21,14 +21,14 @@
 //   [C3]    status reporting init (strap-controlled)
 //   [C1]    ROM version + hash print (hash filled at build time)
 //   [C5]    PLL/clock init (strap-controlled)
+//   [C9c]   init_bl0_state()   (must precede every bl0_state writer)
 //   [C6]    lifecycle policy
 //   [C7]    chip ID identification (reads SMC CHIP_CONFIG_CHIP_ID)
 //   [V3]    DFT / MEM_REPAIR gate (reads DFX_CTRL_STATUS_SMU)
-//    —      peripheral/bus reset (reference suite-specific)
+//    —      peripheral/bus reset
 //   [C8]    crypto/security init
 //   [C9a]   EXT SRAM clear
 //   [C9b]   ICCM clear
-//   [C9c]   init_bl0_state()
 //   [C10b]  read sboot_dis fuse
 //   [C16]   stack canary write
 //   [C10c]  DMA init
@@ -321,10 +321,11 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // Loads manifest via DMA from SPI/SMC SRAM, validates structure,
 // locks fuse secrets, and hands off to BL1.
 // spi_status: result of spi_init(); non-zero skips the primary manifest retry.
-static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status) {
+static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
+                                         uint32_t lc_state, bool sboot_dis) {
     // ── [C12–C14] manifest load ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_LOAD_START);
-    uint32_t mfst_err = rom_manifest_boot(straps, spi_status);
+    uint32_t mfst_err = rom_manifest_boot(straps, spi_status, lc_state, sboot_dis);
     if (mfst_err != 0u) {
         simputshex32("MANIFEST_BOOT_FAIL=", mfst_err);
         rom_err_fail(mfst_err);
@@ -339,7 +340,7 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         // payload decryption (if encrypted).
         if (get_bl0_state()->secure_boot) {
             report_status(STATUS_TYPE_INFO, SEP_MSG_VALIDATE_CHECK);
-            uint32_t crypto_err = manifest_crypto_validate(m_crypto, get_bl0_state()->lc_state);
+            uint32_t crypto_err = manifest_crypto_validate(m_crypto, lc_state);
             if (crypto_err != 0u) {
                 simputshex32("CRYPTO_FAIL=", crypto_err);
                 rom_err_fail(crypto_err);
@@ -372,9 +373,8 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     {
         const manifest_t *m =
             (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
-        uint32_t lc_st = get_bl0_state()->lc_state;
 
-        if (lc_st == LC_STATE_PROD_END) {
+        if (lc_state == LC_STATE_PROD_END) {
             // PROD_END: never demote, always lock both registers.
             lc_write_demotion(false, true);
             lc_write_demotion_2(false, true);
@@ -546,6 +546,17 @@ void rom_main(void) {
     report_status(STATUS_TYPE_INFO_EXT, smu_freq_mhz);
     simputshex32("SYS_CLK_MHZ=", (uint32_t)smu_freq_mhz);
 
+    // ── [C9c] BL0 state init ──
+    // MUST precede every bl0_state writer. init_bl0_state() zeroes the whole
+    // struct, so any field recorded before it is destroyed; it used to run after
+    // [C6] and silently wiped lc_state and feat_ctrl_lo/hi. The zeroing cannot be
+    // dropped in favour of relying on a DCCM scrub: bl0_state sits at the top of
+    // DCCM and vector.S clamps its scrub to __stack_top, which link/rom.ld:97
+    // places below the bl0_state reserve, so the scrub can never reach it.
+    report_status(STATUS_TYPE_DEBUG, SEP_MSG_BL0_STATE_INIT);
+    init_bl0_state();
+    simputs("BL0_STATE_OK\n");
+
     // ── [C6] Lifecycle policy ──
     // rom_lifecycle_policy() reads efuse, validates, and records in bl0_state.
     // Returns the decoded LC state (does not return on invalid).
@@ -564,7 +575,7 @@ void rom_main(void) {
     // ── [V3] DFT / MBIST / MEM_REPAIR boot-gating (reads DFX_CTRL_STATUS register) ──
     dft_mem_repair_gate();
 
-    // ── Peripheral/Bus reset sequencing (reference suite-specific) ──
+    // ── Peripheral/Bus reset sequencing ──
     rom_peripheral_reset();
 
     // ── [C8] Crypto/security init ──
@@ -580,17 +591,16 @@ void rom_main(void) {
     rom_iccm_clear();
     simputs("<<C9b_ICCM_CLR\n");
 
-    // ── [C9c] BL0 state init ──
-    report_status(STATUS_TYPE_DEBUG, SEP_MSG_BL0_STATE_INIT);
-    init_bl0_state();
-    simputs("BL0_STATE_OK\n");
-
     // ── [C10b] Read sboot_dis fuse ──
     // Read the SBOOT_DIS efuse shadow register.
     // Chicken bit to disable secure boot (bit 0 of SEP_EFUSE_MAP_SBOOT_DIS).
+    // Kept in a function-level local, not only in bl0_state: the secure-boot
+    // decision takes it as an argument so the verdict cannot depend on mutable
+    // shared state.
+    bool sboot_dis;
     {
         uint32_t sboot_dis_reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
-        bool sboot_dis = (sboot_dis_reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
+        sboot_dis = (sboot_dis_reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
         get_bl0_state()->sboot_dis = sboot_dis;
         simputsdec24("FUSE: SBOOT_DIS: ", sboot_dis);
         report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);
@@ -644,7 +654,7 @@ void rom_main(void) {
     rom_smc_coordination_probe();
 
     // ── [C12–C14] Manifest load / validate + [C15/C17] fuse lock + [C18] handoff ──
-    rom_manifest_validate_handoff(&straps, spi_status);
+    rom_manifest_validate_handoff(&straps, spi_status, lc_state, sboot_dis);
 
     // ── [C16] Stack canary check ──
     // Verify the canary placed at __stack_bottom is still intact.
