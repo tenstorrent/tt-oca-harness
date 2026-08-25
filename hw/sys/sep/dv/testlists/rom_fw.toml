@@ -21,7 +21,7 @@ schema_version = 1
 # one RTL target (`default`), and these need `rom_boot`.
 
 [[tests]]
-# ROM non-secure boot (the reference suite's sep_rom_non_secure_boot_test): the CPU boots the REAL
+# ROM non-secure boot: the CPU boots the REAL
 # production Boot ROM (hw/sys/sep/bootrom/prod) from ROM_BASE and runs the full non-secure
 # manifest flow -- read manifest from SMC SRAM, validate its SHA256, DMA-copy BL1
 # into SEP SRAM, jump, and observe BL1 PASS magic on the outbound mailbox. It is
@@ -103,8 +103,7 @@ args = [
 #
 # It is a separate entry because it is a separate binary exercising separate
 # hardware: build_ot_pio/boot_rom.elf does not even link ot_spi_flash_read_dma
-# (the linker drops it), so a green DMA test says nothing about this path. Both
-# halves of the reference pair are now ported.
+# (the linker drops it), so a green DMA test says nothing about this path.
 #
 # Same timeout as the DMA sibling. That is a starting budget, not a measurement:
 # a CPU-polled drain could well be slower than the DMA handshake, and if it turns
@@ -158,4 +157,262 @@ args = [
   # the RSA assertions are untouched, so a pass still means the signature really
   # verified.
   "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# MEM_REPAIR (MBIST) boot gate, failure arm.
+#
+# Reuses build_ot/ rather than adding a fourth firmware profile: the DFT gate runs
+# in rom_main long before any manifest transport is selected, so which SPI variant
+# the ROM was built with cannot affect this arm, and sharing the profile means
+# sharing the already-built ROM and Verilator model with the OT boot tests.
+#
+# +sep_boot_from_spi is deliberately NOT passed. The gate is upstream of the
+# boot-path split, so the ROM stops before either transport is reached; adding the
+# strap would imply this test says something about SPI, which it does not.
+#
+# The 0xFFFFFFFD injection is every bit set EXCEPT mem_repair_success (bit 1). A
+# 0x0 injection would pass against a ROM that gated on the wrong bit, so this
+# shape is load-bearing, not arbitrary -- see the test docstring.
+#
+# No +skip_fuse_sense, for the same reason as the boot tests above: the core is
+# not released until sense completes, so bypassing it would change the sequencing
+# the ROM actually sees.
+#
+# Timeout is well under the boot tests': this run ends at the gate (early in
+# rom_main) with a mailbox FAIL, so it never reaches the serial flash fetch or any
+# crypto. Raise it with an observed sim time if that ever stops being true.
+name = "sep_firmware_mbist_fail_test"
+module = "cpu.sep_firmware_mbist_fail_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "mbist", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_dft_status=FFFFFFFD",
+]
+
+[[tests]]
+# Boot ROM warm-reset handler dispatch, accept-and-jump arm.
+#
+# NOTE ON THE NAME: this design's ROM reads WARM scratch 0 (vector.S), not scratch
+# 7. The name refers to the feature -- the scratch-held warm handler -- not the
+# register index. See the test docstring.
+#
+# Reuses build_ot/ for the same reason as the entry above: the warm branch is the
+# first decision in _start, upstream of everything transport-related.
+#
+# Two plusargs carry the whole stimulus and both are load-bearing:
+#   +sep_warm_scratch0  seeds the handler address the ROM must dispatch to. The tb
+#                       deposits it after rst_ni release (the warm block's reset is
+#                       rst_ni && rst_warm_ni, so earlier would be wiped) and well
+#                       before the core is let go.
+#   +sep_sram_hex       puts one `j .` instruction at that address. Without it the
+#                       target is zero-filled, which is an illegal instruction, and
+#                       the ROM's trap_vector needs an sp the warm path never sets
+#                       up -- so the observation would be destroyed rather than made.
+# The two must agree on the address; the test asserts that they do.
+#
+# This entry covers the ACCEPT arm only. The reject arm (out-of-range ->
+# warm_reset_hang) is a separate procedure item and has no entry here yet, so
+# treat that leg as unverified rather than covered.
+#
+# Short timeout: the ROM branches within the first ~15 instructions after the core
+# is released, and the run stops as soon as the jump is observed.
+name = "sep_scratch_7_test"
+module = "cpu.sep_scratch_7_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "warm_reset", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_sram_hex={repo_root}/hw/sys/sep/dv/tb/sram_preloads/sep_warm_handler.hex",
+  "+sep_warm_scratch0=10000100",
+]
+
+[[tests]]
+# Device-controlled non-secure boot (SBOOT_DIS overrides PROD).
+#
+# Reuses the signed image and the boot_rom_ot profile, so no new firmware build.
+# The mutation-free member of this group: the stimulus is entirely in the OTP
+# image, which is what makes it the one to validate the pattern with first.
+#
+# +sep_efuse_preload carries an EXPLICIT path on purpose. A bare +sep_efuse_preload
+# resolves to the committed default image in BOTH dv_sim_prestage.stage() and
+# select_efuse_image(), i.e. TEST_DEV with sboot_dis=0 -- which boots non-secure
+# for the ordinary reason and would make this testcase vacuous. The explicit path
+# is also what keeps the t=0 sensed image and the run-time shadow-compare golden
+# the same file.
+#
+# No +sep_crypto_edn_force here, unlike the secure-boot entry: SBOOT_DIS means the
+# ROM never drives OTBN, so there is no EDN handshake to grant. If this test ever
+# needs that plusarg, the fuse override has stopped working.
+name = "sep_firmware_device_cntl_non_secure_boot_flow_test"
+module = "cpu.sep_firmware_device_cntl_non_secure_boot_flow_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod_sboot_dis.hex",
+]
+
+[[tests]]
+# Enforced secure boot under PROD.
+# +sep_crypto_edn_force is required: the full RSA-3072 chain runs on OTBN, which
+# parks in UrndRefresh until EDN grants entropy, and the ROM brings up no entropy
+# chain. Same DV shortcut as sep_rom_ot_secure_boot_test, and it grants OTBN's EDN
+# handshakes only -- the RSA assertions are untouched, so a pass still means the
+# signature really verified.
+name = "sep_firmware_enforced_secure_boot_flow_test"
+module = "cpu.sep_firmware_enforced_secure_boot_flow_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod.hex",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Lifecycle overrides a manifest asking for non-secure boot.
+# Same OTP image and same shortcut as the entry above; the difference is entirely
+# in the test, which clears the manifest's secure_boot flag before load.
+name = "sep_firmware_cntl_secure_boot_flow_test"
+module = "cpu.sep_firmware_cntl_secure_boot_flow_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod.hex",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary rejected, failover, backup signature fails RSA.
+# Needs +sep_crypto_edn_force: this is the one of the three failover ports whose
+# defect is only detectable by actually running the modexp on OTBN.
+name = "sep_firmware_backup_invalid_signature_test"
+module = "cpu.sep_firmware_backup_invalid_signature_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod.hex",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary rejected, failover, backup version below the fuse.
+# No +sep_crypto_edn_force: the rollback check precedes the signature check, so
+# OTBN is never driven. The test forbids RSA_VERIFY_START, so if that ordering ever
+# changed this entry would fail rather than silently start needing the shortcut.
+name = "sep_firmware_backup_invalid_security_version_test"
+module = "cpu.sep_firmware_backup_invalid_security_version_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod_secver8.hex",
+]
+
+[[tests]]
+# Primary rejected, failover, backup names an unassigned public-key source.
+# No +sep_crypto_edn_force for the same reason as the entry
+# above: the selection is rejected before any key is loaded.
+name = "sep_firmware_backup_invalid_public_key_selection_test"
+module = "cpu.sep_firmware_backup_invalid_public_key_selection_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod.hex",
+]
+
+[[tests]]
+# Single SPI detected at the primary address.
+# Non-secure image and no +sep_efuse_preload: this is a transport test, so the
+# default TEST_DEV OTP keeps the run free of secure-boot failure modes that would
+# say nothing about flash addressing. No +sep_crypto_edn_force for the same reason
+# -- no RSA runs on this path, so if this entry ever needs it, the image is wrong.
+name = "sep_spi_detect_success_test"
+module = "cpu.sep_spi_detect_success_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "detect", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
+# Primary address blank, backup address serves the boot. Same configuration as the
+# primary-detect entry; the difference is entirely in the test, which erases the
+# primary slot span before preload.
+name = "sep_spi_primary_fail_backup_test"
+module = "cpu.sep_spi_primary_fail_backup_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "detect", "failover", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
+# Both slot addresses blank, terminal error and hang. Expected outcome is fw_done
+# with fw_pass=0, so this test drives its own poll loop rather than
+# SepBootScoreboard. No manifest ever validates, so no crypto and no entropy run.
+name = "sep_spi_not_detected_terminal_test"
+module = "cpu.sep_spi_not_detected_terminal_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "detect", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
 ]

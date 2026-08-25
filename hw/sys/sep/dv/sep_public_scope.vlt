@@ -39,6 +39,16 @@ public_flat_rw -module "prim_ram_1p"  -var "mem"
 public_flat_rw -module "prim_rom"     -var "mem"
 public_flat_rw -module "ram_16384x39" -var "ram_core"
 
+// sep_scratch_reg.field_storage: the warm-dispatch test seeds the ROM's
+// warm-reset handler slot by depositing into warm_scratch[0] from the tb
+// (+sep_warm_scratch0). That is an XMR *write* into DUT state, so the same rule
+// as the memory arrays above applies -- it silently no-ops unless the target is
+// public. Reading it (the scratch_cold_probe_o / scratch_warm_probe_o assigns)
+// needs nothing; only the write does. This is a leaf AXI-lite register file, well
+// outside the fabric ready/valid cones that caused the ICO blow-up, so exposing
+// it does not re-arm that problem.
+public_flat_rw -module "sep_scratch_reg" -var "field_storage"
+
 // NOTE (main #3417, ABR CSR block): do NOT add an abr_wrapper_key_reg public line here
 // -- it does NOT help (it only trades one tool-v5.046 codegen bug for another). Also,
 // no comment line here may START with the word "verilator" -- the .vlt lexer treats

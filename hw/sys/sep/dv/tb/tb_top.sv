@@ -18,14 +18,12 @@
 // filter is NOT in the path. Every other DUT port is tied to a benign idle
 // value so nothing X-props.
 //
-// This mirrors the reference SEP UVM env, which force-splices a flat cocotb AXI
-// interface onto these same CPU master ports (sep_wrap_uvm_top.sv via the
-// SEP_FORCE_W_AXI_MST_VIP macro). The CPU LSU splice is the primary stimulus
+// A flat cocotb AXI interface is spliced onto these same CPU master ports.
+// The CPU LSU splice is the primary stimulus
 // path. `smn_inbound` is additionally brought out as the flat `m_axi_*` master
 // (the DUT's real external inbound port, which traverses the inbound filter);
 // it idles unless a test drives it, and is used by the inbound-filter-gating
-// test to prove external AXI is blocked/allowed by feat_ctrl.sep_debug. This is
-// the OSS analog of the reference suite's ext_axi_sqr (axi_system[0].master[0]).
+// test to prove external AXI is blocked/allowed by feat_ctrl.sep_debug.
 //
 // Two run modes, selected by the `+cpu_boot` plusarg:
 //   * no-CPU (default): runs on the stub build; the core is held off
@@ -259,8 +257,23 @@ module sep_uvm_top
     // the dual-CPU eFuse-mux coexistence test can read the EL2 firmware's measured
     // summary (host loop count + KM-contention error counters) with no AXI master
     // -- the EL2 owns the LSU bus under +cpu_boot. The cold block survives the KM
-    // warm reset. Mirrors the reference UVM observer's uvm_hdl_read of the same registers.
+    // warm reset. Read-only observation of the same registers.
     output logic [255:0]      scratch_cold_probe_o,
+    // SEP scratch-WARM CSR array (8 words x 32b). Same access pattern as the cold
+    // probe, but a different reset domain: the warm block is reset by
+    // (rst_ni && rst_warm_ni), which is what makes warm_scratch[0] the ROM's
+    // warm-reset handler slot (vector.S). Surfaced so the warm-dispatch test can
+    // prove BOTH halves of that protocol without an AXI master (the EL2 owns the
+    // LSU bus under +cpu_boot): that the seeded handler address was actually
+    // visible to the ROM, and that the ROM poisoned it back to 0 before jumping.
+    // Without this probe a failed seed and a correct boot look identical.
+    output logic [255:0]      scratch_warm_probe_o,
+    // SMC scratch[10] (smc_base+0x10150), the slot the ROM publishes the raw
+    // DFX/MEM_REPAIR status into when it blocks the boot -- the documented
+    // JTAG-readable evidence that the ROM saw the failure. Sampled rather than
+    // continuously assigned: axi_sim_mem backs the SMC with an ASSOCIATIVE array,
+    // which cannot appear in a continuous assign. Reads 0 until the ROM writes it.
+    output logic [31:0]       smc_scratch10_probe_o,
     output logic [31:0]       km_rom_req_count_o,
     output logic [31:0]       km_sram_req_count_o,
     output logic [31:0]       km_sram_write_count_o,
@@ -309,8 +322,8 @@ module sep_uvm_top
     // (sep_crypto.entropy_muxed_req[1]). This is the authoritative ordered word
     // sequence the adapter hands to the crypto endpoints; with a single active
     // crypto sink the adapter is in-order so AES's post-adapter beats equal this
-    // stream 1:1, and each word is also chained to the CHK4 genbits golden. Mirrors
-    // the reference suite's hw_axis1_* tap (sep_entropy_noise_if.sv). Read-only XMR, no force.
+    // stream 1:1, and each word is also chained to the CHK4 genbits golden.
+    // Read-only XMR, no force.
     output logic              axis1_tvalid_o,        // entropy_muxed_req[1].tvalid
     output logic              axis1_tready_o,        // entropy_muxed_rsp[1].tready
     output logic [31:0]       axis1_tdata_o,         // entropy_muxed_req[1].tdata (32b word)
@@ -329,8 +342,7 @@ module sep_uvm_top
     // IP-interrupt aggregator: observation-only mirror of the 34-bit
     // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
     // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
-    // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
-    // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
+    // mapped bit here. Read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
     // Lifecycle status observability. security_disable and lc_sigint_err are DUT
     // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
@@ -686,6 +698,7 @@ module sep_uvm_top
     //   ROM's manifest-ready poll breaks; scratch[8] (0x4001_0140) = manifest
     //   offset 0. The manifest+BL1 image is loaded from +sep_smc_mem_hex if given.
     string smc_mem_image;
+    logic [31:0] dft_status_ovr;
     initial begin
         #1;
         // scratch[9] status: SRAM_INIT|MANIFEST_READY|BUFFER_READY|SRAM_PROTECTED
@@ -712,10 +725,44 @@ module sep_uvm_top
             $readmemh(smc_mem_image, u_smc_mem.mem);
             $display("[tb] SMC mem preloaded from %s", smc_mem_image);
         end
+        // MEM_REPAIR / MBIST gate injection, applied LAST so it also wins over a
+        // +sep_smc_mem_hex image that happens to cover 0xF800.
+        //
+        // Writes the whole 32-bit word rather than just clearing bit 1, because
+        // the point of the failure case is to prove the ROM gates on
+        // mem_repair_success specifically: a test that injects 0x0 cannot tell
+        // "checks bit 1" from "checks any bit" from "checks a non-zero word". The
+        // useful stimulus is every bit set EXCEPT bit 1 (0xFFFFFFFD).
+        // Little-endian byte order: byte 0 holds bits [7:0].
+        if ($value$plusargs("sep_dft_status=%h", dft_status_ovr)) begin
+            u_smc_mem.mem[56'h4000_F800] = dft_status_ovr[7:0];
+            u_smc_mem.mem[56'h4000_F801] = dft_status_ovr[15:8];
+            u_smc_mem.mem[56'h4000_F802] = dft_status_ovr[23:16];
+            u_smc_mem.mem[56'h4000_F803] = dft_status_ovr[31:24];
+            $display("[tb] DFX_CTRL_STATUS_SMU overridden to 0x%08x (+sep_dft_status)",
+                     dft_status_ovr);
+        end
     end
+
+    // SMC scratch[10] mirror for the MEM_REPAIR-gate test. exists() guards keep an
+    // unwritten slot reading 0 instead of relying on assoc-array default-read
+    // behaviour, so "ROM never published it" and "ROM published 0" stay distinct
+    // only because the injected status is non-zero -- which is why the test
+    // injects 0xFFFFFFFD and not 0.
+    logic [31:0] smc_scratch10_q;
+    always @(posedge clk_i) begin
+        smc_scratch10_q <= {
+            u_smc_mem.mem.exists(56'h4001_0153) ? u_smc_mem.mem[56'h4001_0153] : 8'h00,
+            u_smc_mem.mem.exists(56'h4001_0152) ? u_smc_mem.mem[56'h4001_0152] : 8'h00,
+            u_smc_mem.mem.exists(56'h4001_0151) ? u_smc_mem.mem[56'h4001_0151] : 8'h00,
+            u_smc_mem.mem.exists(56'h4001_0150) ? u_smc_mem.mem[56'h4001_0150] : 8'h00
+        };
+    end
+    assign smc_scratch10_probe_o = smc_scratch10_q;
 
 `else
     assign ext_to_smc_resp_w = ext_to_smc_resp_idle;
+    assign smc_scratch10_probe_o = '0;
 `endif
 
     // ------------------------------------------------------------------
@@ -859,15 +906,14 @@ module sep_uvm_top
 `undef BD_DCCM
 
     // ------------------------------------------------------------------
-    // CPU-LSU AXI splice (the OSS analog of SEP_FORCE_W_AXI_MST_VIP in the reference suite).
+    // CPU-LSU AXI splice.
     //
     // Inject: assemble the LSU req struct from the flat cocotb master inputs into
     // `lsu_req_drive` (always_comb). The sep_cpu stub reads this by upward
     // reference and drives its lsu_axi_req from it (single driver, plain assign,
     // no force — see shims/cpu/sep_cpu_stub.sv). Whole-signal only; no per-field
-    // drive. (the reference suite force-splices the equivalent CPU master ports; the OSS no_cpu
-    // build replaces the core with a stub, so the bus is single-driven and driven
-    // rather than forced.)
+    // drive. The no_cpu build replaces the core with a stub, so the bus is
+    // single-driven and driven rather than forced.
     // ------------------------------------------------------------------
     sep_32_64_3_12_axi_req_t lsu_req_drive;
 
@@ -1063,6 +1109,43 @@ module sep_uvm_top
     `SCRATCH_COLD(4); `SCRATCH_COLD(5); `SCRATCH_COLD(6); `SCRATCH_COLD(7);
 `undef SCRATCH_COLD
 
+    // Same for the warm block (reset by rst_ni && rst_warm_ni). word 0 is the
+    // ROM's warm-reset handler slot; the rest are unused by the ROM and are
+    // probed only so the port shape matches the cold probe.
+`define SCRATCH_WARM(i) \
+    assign scratch_warm_probe_o[32*(i) +: 32] = \
+        `SEP_CORE.sep_system_peripherals.u_sep_system_csr.u_sep_scratch_reg_warm.field_storage.SCRATCH[i].data.value
+    `SCRATCH_WARM(0); `SCRATCH_WARM(1); `SCRATCH_WARM(2); `SCRATCH_WARM(3);
+    `SCRATCH_WARM(4); `SCRATCH_WARM(5); `SCRATCH_WARM(6); `SCRATCH_WARM(7);
+`undef SCRATCH_WARM
+
+    // ------------------------------------------------------------------
+    // Warm-reset handler seed: +sep_warm_scratch0=<hex32>
+    // ------------------------------------------------------------------
+    // The ROM reads warm_scratch[0] in the first handful of instructions out of
+    // reset (vector.S), so the value has to be in place before the core fetches.
+    // It cannot be staged earlier than reset release: the warm block's async
+    // reset is (rst_ni && rst_warm_ni), so anything written while rst_ni is low
+    // is wiped. bring_up_cpu_boot releases rst_ni, waits for fuse sense, then
+    // waits another 30 cycles before pulsing i_cpu_run_req_i -- so a deposit a
+    // few cycles after rst_ni rises sits comfortably inside that window.
+    //
+    // A one-shot DEPOSIT, deliberately not a `force`. The ROM must be able to
+    // poison the register on its way out (sw zero, vector.S), and a force would
+    // silently defeat that -- which is precisely how a missing-poison
+    // (warm-reset re-entry) bug would hide from this test.
+    logic [31:0] warm_scratch0_seed;
+    initial begin : warm_scratch0_seed_deposit
+        if ($value$plusargs("sep_warm_scratch0=%h", warm_scratch0_seed)) begin
+            wait (rst_ni === 1'b1);
+            repeat (4) @(posedge clk_i);
+            `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+                .u_sep_scratch_reg_warm.field_storage.SCRATCH[0].data.value = warm_scratch0_seed;
+            $display("[tb] warm_scratch[0] seeded 0x%08x (+sep_warm_scratch0)",
+                     warm_scratch0_seed);
+        end
+    end
+
     // ------------------------------------------------------------------
     // LC differential-integrity error inject.
     // SIGNED OFF 2026-08-20 by yenhenglai, SEP TB owner.
@@ -1108,8 +1191,7 @@ module sep_uvm_top
         `SEP_CORE.sep_crypto.u_entropy_source_s3c_scan.u_generator_complex.g_ecmplx[0].u_generator.u_decorrelator.noise_i;
 
     // Force the per-lane DECORRELATOR INPUT PORT (dcor.noise_i) directly -- the
-    // exact node the SR flop samples -- matching the reference UVM noise injection
-    // (sep_entropy_noise_if::force_noise forces dcor.noise_i). Forcing the upstream
+    // exact node the SR flop samples. Forcing the upstream
     // `noise_bit` wire instead lets the SR flop sample a different scheduling point
     // under Verilator, so the decorrelator golden cannot reproduce the RTL output.
     // RE-ISSUE the force every clock: a `force` in an `initial` block snapshots the

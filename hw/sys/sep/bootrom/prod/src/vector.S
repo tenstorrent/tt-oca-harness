@@ -100,7 +100,18 @@ _start:
     li      t2, WARM_HANDLER_RANGE_END
     bgeu    t1, t2, warm_reset_hang /* handler >= range end → invalid → hang */
 
-    /* Valid warm handler found.  Poison scratch to prevent re-entry. */
+    /* Valid warm handler found.  Announce the decision BEFORE transferring
+     * control: once we jr, the ROM never runs again, so this store is the only
+     * record that the ROM took the warm path rather than falling into cold_boot.
+     * STATUS_ENCODE(STATUS_TYPE_INFO, SEP_MSG_WARM_RESET_JUMP)
+     * = (0x01 << 24) | (0x01 << 16) | 0x68 = 0x01010068
+     * Written with t3/t4 so t0 (warm scratch base) and t1 (handler address)
+     * stay live for the poison and the jump below. */
+    li      t3, SEP_COLD_SCRATCH_1
+    li      t4, 0x01010068
+    sw      t4, 0(t3)
+
+    /* Poison scratch to prevent re-entry. */
     sw      zero, 0(t0)
 
     /* Jump to warm reset handler.  BL1 is already in SRAM and will
@@ -109,10 +120,18 @@ _start:
 
     /* Invalid warm handler address — hang.
      * Do not fall through to cold boot; an invalid handler pointer
-     * may indicate corruption or attack. */
+     * may indicate corruption or attack.
+     * STATUS_ENCODE(STATUS_TYPE_ERROR, SEP_MSG_WARM_RESET_HANG)
+     * = (0x0f << 24) | (0x01 << 16) | 0x69 = 0x0f010069
+     * Stored once, outside the spin loop: a hang with no status left the
+     * two arms indistinguishable from the outside (both are just a stopped
+     * core), so this is what makes the reject observable. */
 warm_reset_hang:
-    wfi
-    j       warm_reset_hang
+    li      t0, SEP_COLD_SCRATCH_1
+    li      t1, 0x0f010069
+    sw      t1, 0(t0)
+3:  wfi
+    j       3b
     /* ── end warm reset ─────────────────────────────────────────── */
 
 cold_boot:

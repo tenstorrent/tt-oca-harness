@@ -14,9 +14,7 @@ or CPU programmed I/O (``=1``, ``build_ot_pio/``). They are different datapaths
 reading the same bytes, so a passing DMA boot says nothing about the PIO one.
 The PIO variant has no test here yet -- the Makefile can build it
 (``ot-pio-toolchain-images``) but nothing exercises it, so treat that path as
-unverified rather than covered. The reference flow keeps them as a named pair
-(``sep_rom_ot_dma_boot_test`` / ``sep_rom_ot_pio_boot_test``); this test is the
-first half of that pair.
+unverified rather than covered. This test is the DMA half of the pair.
 
 What differs from the SMC-SRAM sibling:
 
@@ -123,6 +121,56 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         super().build_phase()
         self.sb = SepBootScoreboard("sb", self)
 
+    def build_efuse_image(self):
+        """OTP image for this run. Override to boot under a different lifecycle.
+
+        Default: a zero image stamped TEST_DEV. Subclasses that need a specific
+        lifecycle (e.g. PROD, to make secure boot enforced rather than
+        manifest-selected) return ``self.select_efuse_image()`` instead, so the
+        image comes from the ``+sep_efuse_preload`` the testlist names -- which is
+        the only route that also gets it into the DUT at t=0, via the prestage
+        hook. Building one here alone would be too late to change LC_STATE.
+        """
+        image = SepEfuseImage()
+        image.set_lc_state(LC_TEST_DEV)
+        return image
+
+    def mutate_flash_image(self, buf: bytearray) -> bytearray:
+        """Hook for negative testcases: mutate the packed image before load.
+
+        Default is identity, so the positive boot tests are unaffected. Returning
+        the buffer (rather than mutating in place only) keeps a wholesale
+        replacement possible.
+        """
+        return buf
+
+    def log_transport(self, flash) -> None:
+        """Hook to dump the flash BFM's transaction history. Default is a no-op.
+
+        Called from the ``finally`` below, so it runs BEFORE any marker assertion
+        can abort the test. That ordering is the point: the SPI address sequence is
+        the most useful artifact for diagnosing a failure in these testcases, and
+        logging it from :meth:`check_transport` -- which runs after the marker
+        loop -- meant a missing console marker suppressed the very evidence needed
+        to explain it. Logging only, never asserting: a raise here would mask the
+        real exception.
+        """
+
+    def check_transport(self, console: list[str], flash) -> None:
+        """Hook for the SPI address-detect testcases.
+
+        Runs after the marker checks below, with the console lines and the flash
+        BFM still holding its transaction history. It exists because the
+        ``required_markers`` mechanism can only ask "does this string appear
+        anywhere", which cannot express either of the two things an
+        address-detection testcase must establish: the ORDER of the slot reads,
+        and what the DEVICE actually returned at each address. Default is a no-op,
+        so no existing test changes behaviour.
+        """
+
+
+
+
     async def run_scenario(self) -> None:
         dut = cocotb.top
         # BL1 (bl1_pass_test) prints on the SCRATCH2 virt console, not the mailbox
@@ -132,8 +180,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         # rom_lifecycle_policy validates the eFuse LC_STATE, so real fuse sense
         # runs (no +skip_fuse_sense). TEST_DEV is in the manifest's allowed
         # life_cycle_states (0x7).
-        efuse_img = SepEfuseImage()
-        efuse_img.set_lc_state(LC_TEST_DEV)
+        efuse_img = self.build_efuse_image()
         self.write_efuse_image(efuse_img)
 
         console: list[str] = []
@@ -148,7 +195,17 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         )
         # Image at flash address 0: the packer's primary manifest lands at 0x1000
         # and the payload at 0x2000, matching the ROM's compiled-in offsets.
-        flash.preload(self.flash_image)
+        # Loaded as bytes so mutate_flash_image() can inject a defect; preload()
+        # accepts a buffer as readily as a path, so a negative testcase needs no
+        # build step and no new firmware profile.
+        with open(self.flash_image, "rb") as fh:
+            image = bytearray(fh.read())
+        loaded = bytes(self.mutate_flash_image(image))
+        # Length of what was actually preloaded, for check_transport(): the backup
+        # slot's span runs to the end of the image, so the slot-address checks need
+        # the post-mutation size rather than the on-disk one.
+        self._image_len = len(loaded)
+        flash.preload(loaded)
         await flash.start()
         try:
             await self.boot_firmware(
@@ -162,6 +219,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
             )
         finally:
             await flash.stop()
+            self.log_transport(flash)
             log_scratch_cold(self.logger)
 
         # Positive evidence about WHICH path served this boot. The scoreboard's
@@ -189,4 +247,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
                 f"ROM printed {marker}, which means it did not take the intended "
                 f"path. Console: {console}"
             )
+
+        # Device-side evidence, for the testcases that need it. No-op by default.
+        self.check_transport(console, flash)
 
