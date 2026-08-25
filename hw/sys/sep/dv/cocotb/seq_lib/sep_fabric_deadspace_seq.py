@@ -4,8 +4,9 @@
 
 Each block owns a memory-map window and populates only ``REG_MAP_SIZE``
 of it. An access past that allocated size owns no register and must be
-refused (DECERR). Several SEP blocks truncate the address, wrap it onto
-a live register, and answer OKAY.
+refused -- DECERR or SLVERR, the specification does not mandate which.
+Several SEP blocks truncate the address, wrap it onto a live register,
+and answer OKAY, which is the defect this entry exists to catch.
 
 Allocated size comes from the generated export (or the OT/IP header for
 CSRNG / EDN / entropy_source). Window end comes from
@@ -276,7 +277,13 @@ class SepDeadspace:
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
         """Return failure strings. Empty means this probe matched the spec."""
         fails: list[str] = []
-        self.test.env.axi_monitor.arm_expected_decerr(1)
+        mon = self.test.env.axi_monitor
+        # Arm one credit for the DECERR this probe expects, and remember the
+        # tally so an unconsumed credit can be handed back below. Without the
+        # hand-back a probe answered OKAY (the wrap this entry exists to catch)
+        # leaves a standing credit that would mask a later unexpected DECERR.
+        seen_before = mon.expected_decerr_seen
+        mon.arm_expected_decerr(1)
         if item.op == "w":
             resp, _rd, timed_out = await self._access(
                 SepAxiOp.WRITE, item.addr, wdata=0xFFFF_FFFF, expect_error=True,
@@ -293,6 +300,10 @@ class SepDeadspace:
                             f"rdata=0x{rdata:08x} aliases 0x{live_addr:08x}"
                         )
                         break
+        # Hand the credit back on EVERY exit path, including the timeout
+        # return below -- a leaked credit outlives this probe.
+        if mon.expected_decerr_seen == seen_before:
+            mon.release_expected_decerr(1)
         if timed_out:
             fails.append(f"{win.name} {item.op} 0x{item.addr:08x} timed out")
             return fails
@@ -300,6 +311,17 @@ class SepDeadspace:
             fails.append(
                 f"{win.name} {item.op} 0x{item.addr:08x} resp=OKAY, "
                 f"expected refuse (allocated ends at +0x{win.alloc:x})"
+            )
+        elif resp != RESP_DECERR:
+            # A refusal, but not DECERR. The specification requires the access
+            # to be REFUSED; it does not mandate which error response, and
+            # `hw/sys/sep/doc/fabric.adoc` uses SLVERR for a refusal elsewhere.
+            # The defect this entry exists to catch is OKAY plus aliasing, so a
+            # clean SLVERR is not a failure -- but it is logged, because a
+            # block that changes its refusal flavour is worth noticing.
+            self.test.logger.info(
+                "%s %s 0x%08x refused with resp=%d (not DECERR); allocated "
+                "ends at +0x%x", win.name, item.op, item.addr, resp, win.alloc,
             )
         # A read of a dead offset must not return a live register's value.
         # Write probes also require the allocated image to stay put: a
