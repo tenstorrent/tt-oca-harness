@@ -128,6 +128,8 @@ class sep_base_test(uvm_test):
         # polarity raise the port themselves after bring-up (or before sense).
         self._set_if_exists(dut, "test_en_strap_i", 0)
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
+        self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
+        self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""

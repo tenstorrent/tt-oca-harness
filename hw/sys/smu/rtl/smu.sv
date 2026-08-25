@@ -880,21 +880,21 @@ module smu #(
 
             .ext_boot_seq_done_i           (ext_boot_seq_done_i),
 
-            .dmi_core_enable               (1'b0),   // TODO: DMI routing TBD
-            .dmi_uncore_enable             (1'b0),   // TODO: DMI routing TBD
+            .dmi_core_enable               (1'b0),
+            .dmi_uncore_enable             (1'b0),
             .dmi_uncore_en                 (/* unused */),
             .dmi_uncore_wr_en              (/* unused */),
             .dmi_uncore_addr               (/* unused */),
             .dmi_uncore_wdata              (/* unused */),
-            .dmi_uncore_rdata              (32'h0),  // TODO: DMI routing TBD
+            .dmi_uncore_rdata              (32'h0),
             .dmi_active                    (/* unused */),
 
             .sep_cpu_trace                 (sep_cpu_trace_o),
 
             .jtag_id                       ({Cfg.JTAG_IDCODE_SI_REV, Cfg.JTAG_IDCODE_PART_NUM, Cfg.JTAG_IDCODE_MFR_ID}),
 
-            .timer_int                     (1'b0),   // TODO: interrupt routing TBD
-            .soft_int                      (1'b0),   // TODO: interrupt routing TBD
+            .timer_int                     (1'b0),
+            .soft_int                      (1'b0),
             .extintsrc_req                 (sep_extintsrc_req_i),
 
             .sep_cpu_tcm_req_o             (sep_cpu_tcm_req_o),

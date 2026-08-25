@@ -36,7 +36,7 @@ module prim_refclk_count_w_cdc #(
 	chunk_count_t [NUM_CHUNKS-1:0] bin_count_chunk;
 	logic [NUM_CHUNKS-1:0] chunk_overflow;
 
-	ref_count_t ref_count_sync_gray, ref_count_sync;
+	ref_count_t ref_count_sync_gray;
 	logic ref_cnt_en;
 
 	prim_sync3 #(

@@ -1718,28 +1718,11 @@ async def test_large_private_read(dut):
     if not response_ready:
         tb.log.error(f"  Timeout after {max_iterations} iterations waiting for response")
 
-    # =========================================================================
-    # Drain any remaining RX data
-    # =========================================================================
-    # tb.log.info("-" * 40)
-    # tb.log.info("Draining any remaining RX data")
-    # tb.log.info("-" * 40)
-
     # Read response descriptor
     resp_lo = await tb.read_register(CTRL_BASE + RESPONSE_QUEUE_PORT)
     rx_byte_count = (resp_lo >> 11) & 0xFFFF
     rx_err_status = (resp_lo >> 28) & 0xF
     tb.log.info(f"  Response: byte_count={rx_byte_count}, err_status={rx_err_status}")
-
-    # # Read any remaining data
-    # remaining_reads = (rx_byte_count - len(received_bytes) + 3) // 4
-    # if remaining_reads > 0:
-    #     tb.log.info(f"  Reading {remaining_reads} remaining entries from RX FIFO")
-    #     for _ in range(remaining_reads):
-    #         rx_word = await tb.read_register(CTRL_BASE + RX_DATA_PORT)
-    #         for j in range(4):
-    #             if len(received_bytes) < rx_byte_count:
-    #                 received_bytes.append((rx_word >> (j * 8)) & 0xFF)
 
     tb.log.info(f"  Total bytes received: {len(received_bytes)}")
 
