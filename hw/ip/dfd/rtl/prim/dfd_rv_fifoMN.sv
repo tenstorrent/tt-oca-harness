@@ -35,7 +35,6 @@ module dfd_rv_fifoMN
 	logic [ENTRIES-1:0] [DATA_WIDTH-1:0]  mem;
 	logic [ENTRIES-1:0]                   wr_clk_en;
 	logic [ENTRIES-1:0] [DATA_WIDTH-1:0]  wr_data;
-	logic [DATA_WIDTH-1:0]                rd_mx_dat;
 	logic [ADDR_SIZE:0]                   nxt_cnt;
 	logic [ADDR_SIZE:0]                   psh_cnt,pop_cnt,clear_cnt;
 	logic [ADDR_SIZE:0]                   nxt_wr_ptr_wrap,nxt_rd_ptr_wrap;
@@ -103,14 +102,6 @@ module dfd_rv_fifoMN
 	dfd_rv_rotate #(.ROT_LEFT(1),.NUM_IN(NUM_WR),  .NUM_OUT(ENTRIES),.DATA_SIZE(1))          RotWrEn  (.DataIn(i_psh ),.DataOut(wr_clk_en),.PtrOut(wr_ptr[ADDR_SIZE-1:0]));
 	dfd_rv_rotate #(.ROT_LEFT(1),.NUM_IN(NUM_WR),  .NUM_OUT(ENTRIES),.DATA_SIZE(DATA_WIDTH)) RotWrDat (.DataIn(i_data),.DataOut(wr_data)  ,.PtrOut(wr_ptr[ADDR_SIZE-1:0]));
 
-	//always_comb begin
-	//   wr_clk_en         = '0;
-	//   wr_data           = 'x;
-	//   for(int i=0;i<NUM_WR;i++) begin
-	//    wr_clk_en[ADDR_SIZE'(wr_ptr+i)] = i_psh[i];
-	//    wr_data  [ADDR_SIZE'(wr_ptr+i)] = i_data[i];
-	//   end
-	//end
 	logic [ADDR_SIZE:0] rd_ptr_wrap;
 	// spyglass disable_block W415a
 	always_comb

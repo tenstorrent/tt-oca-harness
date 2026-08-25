@@ -187,7 +187,10 @@ not here; see <<sep-non-pic-paths>>.
 |`39`
 |Token match fault
 |eFuse token comparator redundancy fault (fault). The OR of the three sticky
-`TOKEN_MATCH_FAULT` bits, so it stays asserted until reset.
+`TOKEN_MATCH_FAULT` bits. Those bits are software-read-only and clear only on
+reset, so this source stays asserted. Firmware must mask PIC source 39 after
+it has observed the fault; there is no write-one-to-clear, and an unmasked
+handler re-enters.
 
 |`[40–255]`
 |Reserved (external band)

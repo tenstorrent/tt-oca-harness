@@ -144,13 +144,6 @@ int reset_ctrl_sequence(int hartid) {
         raise_error_hex32_s(hartid, "Actual: ", read_back_reset_unit_ss_config_lock.w);
     }
 
-    // read_back_reset_unit_ndm_reset.w = read_reg(RESET_UNIT_NDM_RESET_REG_ADDR) & 0xF;
-    // if (read_back_reset_unit_ndm_reset.w != (exp_reset_unit_ndm_reset.w & 0xF)) {
-    //   raise_error_s(hartid, "Mismatch in RESET_UNIT_NDM_RESET_REG_ADDR");
-    //   raise_error_hex32_s(hartid, "Expected: ", (exp_reset_unit_ndm_reset.w & 0xF));
-    //   raise_error_hex32_s(hartid, "Actual: ", read_back_reset_unit_ndm_reset.w);
-    // }
-
     read_back_reset_unit_ss_cold_reset_n.w =
         read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR);
     if (read_back_reset_unit_ss_cold_reset_n.w != exp_reset_unit_ss_cold_reset_n.w) {
@@ -212,13 +205,6 @@ int reset_ctrl_sequence(int hartid) {
         raise_error_hex32_s(hartid, "Expected: ", exp_reset_unit_ss_cold_reset_lock.w);
         raise_error_hex32_s(hartid, "Actual: ", read_back_reset_unit_ss_cold_reset_lock.w);
     }
-
-    // read_back_reset_unit_d2d_force_stall.w = read_reg(RESET_UNIT_D2D_FORCE_STALL_REG_ADDR);
-    // if (read_back_reset_unit_d2d_force_stall.w != exp_reset_unit_d2d_force_stall.w) {
-    //   raise_error_s(hartid, "Mismatch in RESET_UNIT_D2D_FORCE_STALL_REG_ADDR");
-    //   raise_error_hex32_s(hartid, "Expected: ", exp_reset_unit_d2d_force_stall.w);
-    //   raise_error_hex32_s(hartid, "Actual: ", read_back_reset_unit_d2d_force_stall.w);
-    // }
 
     info_msg_s(hartid, "reset_ctrl_sequence Ending");
 
