@@ -253,7 +253,7 @@ TEST_KEYS = {
 
 # Runtime knobs a `[tests.overrides.<fw>]` subtable may set for one framework.
 TEST_OVERRIDE_KEYS = {"seed", "timeout_sec", "args"}
-GROUP_KEYS = {"name", "tests"}
+GROUP_KEYS = {"name", "tests", "expected_count"}
 
 COVERAGE_TOOL_KEYS = {
     "artifact",
@@ -1483,7 +1483,14 @@ def _merge_testlist_data(
             raise ConfigError(f"{source}: group entry missing required string `name`")
         if name in groups:
             raise ConfigError(f"{source}: duplicate group `{name}`")
-        groups[name] = as_str_list(entry.get("tests"), f"{name}.tests")
+        members = as_str_list(entry.get("tests"), f"{name}.tests")
+        expected = as_int(entry.get("expected_count"), f"{name}.expected_count")
+        if expected is not None and expected != len(members):
+            raise ConfigError(
+                f"{source}: group `{name}` lists {len(members)} tests but "
+                f"expected_count is {expected}; update the group or the count"
+            )
+        groups[name] = members
 
     return tests, groups
 
