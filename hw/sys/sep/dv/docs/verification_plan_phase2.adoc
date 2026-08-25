@@ -2538,13 +2538,12 @@ already owns the claim, or add the named new Phase 2 test.
 | Health-test *quality* and the ring oscillator stay Phase 3 T.B.D.
 
 | Lifecycle
-| `feat_ctrl` vs `LC_STATE`, demote product including lock, and
-  standalone RMA are `PROVEN`. SEC_DIS override is a Phase 2+
-  `PARTIAL`: the metal-fixed expected digest is 0, SHA-256 of a
-  written token is not 0, so a match is unreachable without a
-  backdoor. `sep_sec_dis_override_test` (Verilator `20260824_164456`)
-  records that and proves fail-closed `FEAT_CTRL`.
-| Stitch stays the LC→`feat_ctrl` e2e. Do not fake `sec_dis`.
+| `feat_ctrl` vs `LC_STATE`, demote product including lock, standalone
+  RMA, and SEC_DIS override are `PROVEN`. `sep_sec_dis_override_test`
+  (Verilator `20260825_031826`) matches the all-zero token after
+  `tb_top` binds the metal digest and proves override `FEAT_CTRL`.
+  Boot-with-sense-incomplete is not claimed.
+| Stitch stays the LC→`feat_ctrl` e2e. Do not force `sec_dis`.
 
 | eFuse
 | Sense / shadow / persist, program × lock, and set-only monotonicity
@@ -2586,7 +2585,7 @@ below are feature `GAP`s (no test yet for that iconic claim). Checker
 tables stay binary; `PARTIAL` is a feature grade there, not a checker
 grade here. Program × lock, demote including lock, standalone RMA, live
 outbound remap, and watermark arming are graded in <<entries>>. The five
-Phase 2+ close-out vehicles are graded there too (SEC_DIS is `PARTIAL`).
+Phase 2+ close-out vehicles are graded there too (SEC_DIS is `PROVEN`).
 Remaining before UVM is the KM command vehicle (parked last) and inbound
 ownership (an RTL close, not a new test).
 
@@ -2595,11 +2594,10 @@ ownership (an RTL close, not a new test).
 | Remaining work | How | Former names that map here
 
 | SEC_DIS security-disable override
-| Reachability settled: SHA-256 of the written token is compared to a
-  metal-fixed all-zero expected digest, so a match is unreachable.
-  `sep_sec_dis_override_test` (Verilator `20260824_164456`) proves
-  mismatch and fail-closed `FEAT_CTRL`. Do not fake `sec_dis`.
-  Override / boot-with-sense-incomplete stay unproven.
+| `PROVEN`. `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the
+  all-zero token. Zero matches and opens `FEAT_CTRL`; token `1`
+  mismatches and restores fail-closed PROD. Verilator `20260825_031826`.
+  Boot-with-sense-incomplete is not claimed. Do not force `sec_dis`.
 | `sep_sec_dis_override_test`
 
 | Local-master alias remap datapath
@@ -2634,15 +2632,13 @@ in-scope rows that this phase chose to finish before UVM (32 of 34).
 KM command set stays parked. Inbound ownership stays an RTL close.
 Do not leave these remaining `GAP`s as Phase 3 pretend-UVM items.
 
-Phase 2 keeps its floor of 18 of 34 and its goal of 25 of 34. Nine of
-the twelve Phase 2+ rows are `PROVEN`. The scorecard is 31 of 34.
-SEC_DIS reachability is settled (`PARTIAL`; match unreachable).
-A reachable SEC_DIS override would be 32; the override cannot be taken
-in this tree, so the close-out floor without a metal digest is 31 of 34
-plus the `PARTIAL`. Remaining after that: KM command set (parked last)
-and inbound ownership (RTL).
+Phase 2 keeps its floor of 18 of 34 and its goal of 25 of 34. Ten of
+the twelve Phase 2+ rows are `PROVEN`. The scorecard is 32 of 34.
+SEC_DIS override is taken frontdoor after `tb_top` binds
+`SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. Remaining:
+KM command set (parked last) and inbound ownership (RTL).
 Do not stretch a Phase 1 e2e / smoke entry. Do not XFAIL a spec-vs-RTL
-checker. Do not fake `sec_dis`.
+checker. Do not force `sec_dis`.
 
 [cols="2,1,3,3",options="header"]
 |===
@@ -2718,14 +2714,13 @@ checker. Do not fake `sec_dis`.
   `sep_esrc_alert_delivery_test` (Verilator `20260824_162936`)
 
 | SEC_DIS security-disable override
-| PARTIAL
-| Reachability settled. The comparator hashes the written token and
-  compares it to metal-fixed `SEP_SEC_DISABLE_TOKEN=0`. SHA-256 of
-  the all-zero token is not 0; no written token matches. Zero and
-  nonzero tokens return `6'b101010`; `FEAT_CTRL` stays the fail-closed
-  PROD golden (`sec_dis=0`, not all-ones). Override and
-  boot-with-sense-incomplete are unreachable without a backdoor.
-  `sep_sec_dis_override_test` (Verilator `20260824_164456`).
+| PROVEN
+| `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero
+  token. Zero matches (`6'b010101`), `sec_dis=1`, and `FEAT_CTRL`
+  equals the override golden (`0xffff0000ffffffff` with `SECURE_TM=0`).
+  Token `1` mismatches and restores fail-closed PROD. No `force` of
+  `sec_dis`. Boot-with-sense-incomplete is not claimed.
+  `sep_sec_dis_override_test` (Verilator `20260825_031826`).
 | `sep_sec_dis_override_test`
 
 | Local-master alias remap datapath
@@ -2750,9 +2745,9 @@ checker. Do not fake `sec_dis`.
 |===
 
 The five close-out vehicles are graded in <<entries>>. Set-only,
-`FIPS_LOCK`, alert, SEC_DIS reachability, local-master alias, and the
+`FIPS_LOCK`, alert, SEC_DIS override, local-master alias, and the
 KM vault are graded there too (lock and alert share a scorecard row;
-SEC_DIS is `PARTIAL`). KM command set stays parked. Inbound ownership
+SEC_DIS is `PROVEN`). KM command set stays parked. Inbound ownership
 is an existing-test RTL close, not a new test.
 
 [[sep_esrc_ht_watermark_arming_test]]
@@ -3040,48 +3035,65 @@ Kept Verilator log: `20260824_162936`.
 Tier:: Tier 2
 Run mode:: `no_cpu`; omit `+skip_fuse_sense`
 Testlist:: `efuse_lcc.toml`
-Randomization:: RAND-NONE — a match is unreachable, so token
-randomization would not take the override branch
+Randomization:: RAND-NONE — directed match / mismatch / restore.
+A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN`
+to SHA-256 of the all-zero token.
 
 The comparator hashes the written `SEC_DISABLE_TOKEN_I` and compares it
-to a metal-fixed expected digest reconstructed from
-`SEP_SEC_DISABLE_TOKEN` (`hw/ip/efuse/rtl/efuse_token_processing.sv`,
-`hw/sys/sep/doc/token_processing.adoc`). That parameter is all-zero in
-this tree, so the expected digest is 0. SHA-256 of the all-zero 32-byte
-token is not 0. The unreferenced firmware
-`fw/tests/sep_efuse_fw_token_match_test` asserts a zero-token match and
-is in no testlist — it disagrees with this RTL. No backdoor; no
-`force` of `sec_dis`. Override / boot-with-sense-incomplete stay
-unproven.
+to the metal expected digest reconstructed from `SEP_SEC_DISABLE_TOKEN`
+(`hw/ip/efuse/rtl/efuse_token_processing.sv`,
+`hw/sys/sep/doc/token_processing.adoc`). `tb_top` binds that parameter
+to SHA-256 of the all-zero 32-byte token so an AXI write of zeros
+matches. Token `1` mismatches. On match, `sec_dis` asserts and
+`FEAT_CTRL` follows `feat_ctrl_expected(..., sec_dis=1)` (test group
+still gated by `SECURE_TM=0`). A later mismatch restores fail-closed
+PROD. No backdoor; no `force` of `sec_dis`. Boot-with-sense-incomplete
+is not claimed.
 
 [cols="1,2,2,1",options="header"]
 |===
 | Checker | Contract | Evidence | Status
 
-| CHK-REACHABILITY
-| Independent SHA-256 of the all-zero token is not the metal-zero
-  expected digest.
-| `CHK-REACHABILITY PASS: metal expected=0 SHA-256(0)=0x66687aad…`
+| CHK-DIGEST-BIND
+| Independent SHA-256 of the all-zero token equals the TB-bound digest.
+| `CHK-DIGEST-BIND PASS: SHA-256(0)=0x66687aad…`
 | PROVEN
 
-| CHK-ZERO-MISMATCH
-| Written all-zero token returns `SEC_DISABLE_TOKEN_MATCH=6'b101010`.
-| `CHK-ZERO-MISMATCH PASS: …=0x2a after all-zero token`
-| PROVEN
-
-| CHK-NONZERO-MISMATCH
-| Written token=1 also returns mismatch.
-| `CHK-NONZERO-MISMATCH PASS: …=0x2a after token=1`
+| CHK-MISMATCH
+| Written token=1 returns `SEC_DISABLE_TOKEN_MATCH=6'b101010`.
+| `CHK-MISMATCH PASS: …=0x2a after token=1`
 | PROVEN
 
 | CHK-NO-OVERRIDE
-| `sec_dis` stays 0; `FEAT_CTRL` equals the fail-closed PROD golden
-  (DIS pins keep it off all-ones).
+| After the mismatch, `sec_dis` stays 0; `FEAT_CTRL` equals the
+  fail-closed PROD golden.
 | `CHK-NO-OVERRIDE PASS: PROD sec_dis=0 FEAT_CTRL=0xf000000000000000`
+| PROVEN
+
+| CHK-MATCH
+| Written all-zero token returns `SEC_DISABLE_TOKEN_MATCH=6'b010101`.
+| `CHK-MATCH PASS: …=0x15 after all-zero token`
+| PROVEN
+
+| CHK-OVERRIDE
+| After the match, `sec_dis=1` and `FEAT_CTRL` equals the override
+  golden (`SECURE_TM=0` clears the test group).
+| `CHK-OVERRIDE PASS: PROD sec_dis=1 FEAT_CTRL=0xffff0000ffffffff`
+| PROVEN
+
+| CHK-DEACTIVATE
+| A later token=1 returns mismatch again.
+| `CHK-DEACTIVATE PASS: …=0x2a after token=1`
+| PROVEN
+
+| CHK-RESTORE
+| After that mismatch, `sec_dis=0` and `FEAT_CTRL` is fail-closed PROD
+  again.
+| `CHK-RESTORE PASS: PROD sec_dis=0 FEAT_CTRL=0xf000000000000000`
 | PROVEN
 |===
 
-Kept Verilator log: `20260824_164456`.
+Kept Verilator log: `20260825_031826`.
 
 [[sep_fabric_local_alias_datapath_test]]
 === sep_fabric_local_alias_datapath_test
@@ -3479,13 +3491,13 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 
 == Audit summary
 
-30 testcases, 71 steps, 163 checkers.
+30 testcases, 71 steps, 166 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 162
+| `PROVEN` | 165
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0

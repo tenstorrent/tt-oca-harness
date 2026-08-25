@@ -159,17 +159,18 @@ Detail: `verification_plan_phase2.adoc`.
 
 === Phase 2+ — 32 of 34 before UVM
 
-Same cocotb environment. Nine close-out rows are already `PROVEN`
+Same cocotb environment. Ten close-out rows are `PROVEN`
 (program × lock, demote including lock, standalone RMA, live outbound
 remap, ESRC watermark arming, eFuse set-only, ESRC lock and alert,
-local-master alias, KM key/policy vault). The scorecard is 31 of 34.
-SEC_DIS override is `PARTIAL` (match unreachable against the
-metal-zero expected digest; `sep_sec_dis_override_test`, Verilator
-`20260824_164456`). Remaining after that: KM command set (parked) and
-inbound ownership (RTL; the existing matrix keeps
-CHK-OWNERSHIP-WINDOW hard). Phase 3 does not start until this
-close-out finishes, and its first deliverable is UVM bring-up plus
-smoke, not these rows.
+local-master alias, KM key/policy vault, SEC_DIS override). The
+scorecard is 32 of 34. `sep_sec_dis_override_test` (Verilator
+`20260825_031826`) takes the match after `tb_top` binds
+`SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token, then proves
+`sec_dis=1` and the override `FEAT_CTRL`. Boot-with-sense-incomplete
+is not claimed. Remaining: KM command set (parked) and inbound
+ownership (RTL; the existing matrix keeps CHK-OWNERSHIP-WINDOW hard).
+Phase 3 does not start until this close-out finishes, and its first
+deliverable is UVM bring-up plus smoke, not these rows.
 
 Implementation order and the reachability / spec-vs-RTL traps live in
 link:verification_plan_phase2.adoc#phase2-plus[Phase 2+]. Do not XFAIL
@@ -236,10 +237,9 @@ and
 link:verification_plan_phase2.adoc#pending-upgrades[pending upgrades].
 Do not treat a `PARTIAL` as done by pointing at a graded entry.
 
-Thirty-one of thirty-four in-scope rows are `PROVEN`, which clears the
-floor of 18 and the Phase 2 goal of 25 of 34. The close-out floor
-without a metal digest is 31 of 34 plus SEC_DIS `PARTIAL` (match
-unreachable). KM command stays parked and inbound ownership stays an
+Thirty-two of thirty-four in-scope rows are `PROVEN`, which clears the
+floor of 18, the Phase 2 goal of 25 of 34, and the Phase 2+ close-out
+of 32 of 34. KM command stays parked and inbound ownership stays an
 RTL close.
 
 [cols="2,2,3",options="header"]
@@ -360,7 +360,14 @@ RTL close.
 
 | eFuse sense + shadow + persist
 | PROVEN
-| Sense, image, program-then-resense.
+| Sense, image, program-then-resense. Named untested slice: the
+  pre-sense fail-closed guard. `efuse_token_processing.sv` exposes the
+  shadow bank only on `fuse_sense_done_i || final_sec_disable`, but no
+  test reads a shadow word while `sep_fuse_sense_done_o` is still low —
+  every reference waits for it to assert — so the guard is only ever
+  observed open. Deleting the `fuse_sense_done_i` term would not fail
+  any test. The `sec_dis` half of that same term is separately
+  unreachable; see the SEC_DIS row.
 
 | eFuse program × lock
 | PROVEN
@@ -411,18 +418,15 @@ RTL close.
   (`sep_efuse_jtag_axil_el2_cpu_mux_test`, Verilator `20260824_152449`).
 
 | SEC_DIS security-disable override
-| PARTIAL
-| `hw/sys/sep/doc/security_disable.adoc` makes SEC_DIS force every
-  feature-control bit on regardless of LC state and the DIS vectors, and
-  lets the SEP boot with fuse sense incomplete. The RTL implements both
-  (`sep_lifecycle_ctrl.sv` forces all-ones; `efuse_token_processing.sv`
-  compares SHA-256 of the written token to metal-fixed
-  `SEP_SEC_DISABLE_TOKEN=0`). A match is unreachable: SHA-256 of the
-  all-zero token is not 0. `sep_sec_dis_override_test` (Verilator
-  `20260824_164456`) proves mismatch and fail-closed `FEAT_CTRL`. Do
-  not fake `sec_dis`. The unreferenced firmware
-  `fw/tests/sep_efuse_fw_token_match_test` asserts a zero-token match
-  and disagrees with this RTL.
+| PROVEN
+| `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero
+  32-byte token (the TB stand-in for the metal ECO). AXI write of
+  zeros returns `SEC_DISABLE_TOKEN_MATCH=6'b010101`, `sec_dis=1`, and
+  `FEAT_CTRL=0xffff0000ffffffff` (override golden, `SECURE_TM=0`).
+  Token `1` mismatches and restores fail-closed PROD
+  (`sec_dis=0`, `FEAT_CTRL=0xf000000000000000`). No `force` of
+  `sec_dis`. Boot-with-sense-incomplete is not claimed.
+  `sep_sec_dis_override_test`, Verilator `20260825_031826`.
 
 | eFuse set-only fields (anti-rollback monotonicity)
 | PROVEN

@@ -518,7 +518,18 @@ module sep_uvm_top
     // genbits_gen_last()): a fixed glen-blocks-per-seed model desynchronises at
     // the first extra Generate. Truncating to 2 to dodge that is not an option
     // either -- it left the dropped leg's inputs X-driven.
-    sep_wrapper #(.EXT_TRNG_NUM_AXIS(3)) u_dut (
+    //
+    // SEP_SEC_DISABLE_TOKEN is the metal expected digest, not an AXI register.
+    // Product RTL defaults it to 0, which no SHA-256 output matches. Bind the
+    // SHA-256 of the all-zero 32-byte token so a frontdoor write of zeros can
+    // take the match. This is the TB stand-in for the metal ECO; it does not
+    // force security_disable.
+    localparam bit [255:0] SEC_DIS_TB_DIGEST =
+        256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+    sep_wrapper #(
+        .EXT_TRNG_NUM_AXIS     (3),
+        .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
+    ) u_dut (
         // Clocks / resets
         .clk_i                        (clk_i),
         .clk_wdt_i                    (clk_wdt_i),

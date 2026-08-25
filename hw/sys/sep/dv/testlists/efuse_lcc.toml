@@ -108,9 +108,10 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# SEC_DIS token-match reachability against the metal-fixed all-zero expected
-# digest. RAND-NONE. Real fuse sense. Zero and nonzero tokens mismatch;
-# FEAT_CTRL stays fail-closed. Does not fake sec_dis.
+# SEC_DIS token-match override. RAND-NONE. Real fuse sense. tb_top binds
+# SEP_SEC_DISABLE_TOKEN to SHA-256 of the all-zero token. Zero matches and
+# opens FEAT_CTRL; token=1 mismatches and restores fail-closed PROD.
+# Does not force sec_dis.
 name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"
 seed = 1
