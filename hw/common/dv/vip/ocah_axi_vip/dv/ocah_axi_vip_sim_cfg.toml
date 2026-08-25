@@ -12,6 +12,7 @@ schema_version = 1
 # injection), independent of any block DUT.
 name = "ocah_axi_vip"
 profile = "native"
+default_framework = "cocotb"
 description = "Shared AXI VIP wire-harness selftests (master <-> fault slave)"
 default_tool = "verilator"
 tools = ["verilator", "vcs", "xcelium"]
@@ -53,3 +54,48 @@ args = []
 [targets.default]
 description = "AXI VIP wire harness (no DUT RTL)"
 build_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build/cocotb"
+
+# --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
+# profile). Same scenarios as the cocotb selftests, driven full-stack through the VIP's own
+# SV-UVM master against the fault slave. ONE tb_top module for both frameworks: +define+UVM
+# (from the native profile's [frameworks.uvm] overlay) switches dv/tb/tb_top.sv from the
+# passive cocotb wire harness to the self-contained SV-UVM shape, which `include`s
+# uvm/tests/ocah_axi_vip_tests.sv.
+[frameworks.uvm]
+description = "Shared AXI VIP SV-UVM selftest flow (VCS)"
+# The DUT-level default_tool/tools above serve the cocotb view; this view is
+# VCS-only (the profile's [frameworks.uvm] contract).
+default_tool = "vcs"
+tools = ["vcs"]
+
+[frameworks.uvm.build]
+# The VIP SV-UVM layer comes from its VIP-owned ordered manifest, expanded AHEAD of this
+# table's own incdirs/sources (dedup-merge) — never hand-copy VIP paths here. The generated
+# filelist emits the expanded `sources` AFTER the bender filelist, then `top_file` last:
+#   ocah_axi_vip manifest (interface -> collateral -> UVM pkg)
+#   -> ocah_axi_vip_seq_lib_pkg -> ocah_axi_vip_env_pkg -> tb_top.sv
+source_lists = [
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/common/dv/vip/ocah_axi_vip/dv/build/uvm/ocah_axi_vip_uvm_compile.f"
+bender_filelist = "hw/common/dv/vip/ocah_axi_vip/dv/build/uvm/ocah_axi_vip_uvm_bender.f"
+work_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build/uvm"
+incdirs = [
+  "hw/common/assert",
+  "hw/common/dv/vip/ocah_axi_vip/dv/uvm/env",
+  "hw/common/dv/vip/ocah_axi_vip/dv/uvm/seq_lib",
+  "hw/common/dv/vip/ocah_axi_vip/dv/uvm/tests",
+]
+sources = [
+  "hw/common/dv/vip/ocah_axi_vip/dv/uvm/seq_lib/ocah_axi_vip_seq_lib_pkg.sv",
+  "hw/common/dv/vip/ocah_axi_vip/dv/uvm/env/ocah_axi_vip_env_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+[frameworks.uvm.targets.default]
+description = "Shared AXI VIP SV-UVM default target"
+build_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build/uvm"
+# The bare `UVM` define (selects the SV-UVM shape of the shared tb_top.sv) comes from the
+# native profile's [frameworks.uvm] overlay — no per-DUT copy.

@@ -89,14 +89,19 @@ ocah_axi_vip/
   uvm/ocah_axi_uvm_pkg.sv        — SV-UVM layer: side-neutral passive stack
                                    (monitor/ref-model/scoreboard/env) + slave
                                    agent (reactive memory-backed responder)
+                                   + master agent/env (active initiator driven
+                                   through ocah_axi_master_sequence)
   cov/ocah_axi_cov.sv            — commercial-simulator functional coverage
   examples/
     example_register_access.py            — annotated usage snippets
     example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
   dv/                            — simulated VIP selftests on a passive wire
                                    harness (master <-> fault slave; response-ID
-                                   observation and corruption proofs):
+                                   observation and corruption proofs), one
+                                   scenario set for both frameworks:
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
+                                   python3 tools/dv/run_dv.py --dut ocah_axi_vip \
+                                       --framework uvm --tool vcs --items smoke
 ```
 
 ### Side-token naming

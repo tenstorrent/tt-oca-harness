@@ -5,6 +5,13 @@
 // maximum storage widths (actual bus geometry lives in ocah_axi_config). One
 // object represents one completed transaction: a write published at its B
 // handshake, or a read published at its RLAST beat.
+//
+// The item doubles as the master sequence item and result object (the SV
+// analogue of OcahAxiWriteResult/OcahAxiReadResult): transaction_id carries
+// the issued AWID/ARID and the master driver fills the master-result extras
+// (observed_id/observed_id_valid/timed_out) at completion. The passive
+// monitor leaves those extras at defaults — its transaction_id is already
+// wire truth.
 
 class ocah_axi_item extends uvm_sequence_item;
     `uvm_object_utils(ocah_axi_item)
@@ -24,6 +31,16 @@ class ocah_axi_item extends uvm_sequence_item;
     time                start_time;
     time                end_time;
     string              source = "";
+
+    // Master-result extras (cross-flow parity with the cocotb result
+    // contract): observed_id is the BID/RID sampled live from the completing
+    // response handshake (RLAST beat for reads) — never a copy of the issued
+    // transaction_id. observed_id_valid stays 0 on ID-less buses
+    // (cfg.id_width == 0) and on timeouts; timed_out reports a handshake
+    // watchdog expiry (see ocah_axi_master_config.timeout_cycles).
+    bit [15:0]          observed_id;
+    bit                 observed_id_valid;
+    bit                 timed_out;
 
     function new(string name = "ocah_axi_item");
         super.new(name);
@@ -47,6 +64,13 @@ class ocah_axi_item extends uvm_sequence_item;
 
     function bit [63:0] first_data();
         return (data_words.size() > 0) ? data_words[0] : '0;
+    endfunction
+
+    // True when a live response ID was captured and it echoes the issued ID.
+    // Gate on observed_id_valid to distinguish "mismatch" from "no ID
+    // captured" (the cocotb id_match None state).
+    function bit id_match();
+        return observed_id_valid && (observed_id === transaction_id);
     endfunction
 
     function string convert2string();
@@ -76,6 +100,9 @@ class ocah_axi_item extends uvm_sequence_item;
         start_time     = rhs_item.start_time;
         end_time       = rhs_item.end_time;
         source         = rhs_item.source;
+        observed_id       = rhs_item.observed_id;
+        observed_id_valid = rhs_item.observed_id_valid;
+        timed_out         = rhs_item.timed_out;
     endfunction
 
 endclass : ocah_axi_item

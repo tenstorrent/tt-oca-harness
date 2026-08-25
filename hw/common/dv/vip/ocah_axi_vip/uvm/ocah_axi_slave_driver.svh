@@ -120,7 +120,7 @@ class ocah_axi_slave_driver extends uvm_component;
 
     protected task write_pump();
         bit [63:0]      addr, start_addr;
-        bit [15:0]      id;
+        bit [15:0]      id, bid_out, corrupt_mask;
         bit [7:0]       len;
         bit [2:0]       size;
         bit [1:0]       burst;
@@ -180,8 +180,16 @@ class ocah_axi_slave_driver extends uvm_component;
             end
             cfg.vif.wready <= 1'b0;
             if (!cfg.vif.aresetn) continue;
-            // Response phase.
-            cfg.vif.bid    <= id;
+            // Response phase. One-shot armed BID corruption answers a wrong
+            // response ID (data path and BRESP stay untouched).
+            bid_out = id;
+            if (cfg.consume_id_corruption(OCAH_AXI_DIR_WRITE, corrupt_mask)) begin
+                bid_out = cfg.mask_id(id ^ corrupt_mask);
+                `uvm_info(get_type_name(), $sformatf(
+                    "%s: corrupting BID awid=0x%0h -> bid=0x%0h (mask=0x%0h)",
+                    cfg.name_tag, id, bid_out, corrupt_mask), UVM_LOW)
+            end
+            cfg.vif.bid    <= bid_out;
             cfg.vif.bresp  <= resp;
             cfg.vif.bvalid <= 1'b1;
             do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
@@ -194,7 +202,7 @@ class ocah_axi_slave_driver extends uvm_component;
 
     protected task read_pump();
         bit [63:0]      addr, start_addr;
-        bit [15:0]      id;
+        bit [15:0]      id, rid_out, corrupt_mask;
         bit [7:0]       len;
         bit [2:0]       size;
         bit [1:0]       burst;
@@ -223,9 +231,18 @@ class ocah_axi_slave_driver extends uvm_component;
             start_addr = cfg.vif.mon_cb.araddr;
             addr  = (start_addr >> size) << size;
             beats = int'(len) + 1;
+            // One-shot armed RID corruption applies to every beat of this one
+            // transaction (data path and RRESP stay untouched).
+            rid_out = id;
+            if (cfg.consume_id_corruption(OCAH_AXI_DIR_READ, corrupt_mask)) begin
+                rid_out = cfg.mask_id(id ^ corrupt_mask);
+                `uvm_info(get_type_name(), $sformatf(
+                    "%s: corrupting RID arid=0x%0h -> rid=0x%0h (mask=0x%0h)",
+                    cfg.name_tag, id, rid_out, corrupt_mask), UVM_LOW)
+            end
             // Data phase: one beat per accepted cycle.
             for (int unsigned beat = 0; beat < beats; beat++) begin
-                load_read_beat(addr, id, beat == beats - 1);
+                load_read_beat(addr, rid_out, beat == beats - 1);
                 cfg.vif.rvalid <= 1'b1;
                 do @(cfg.vif.mon_cb); while (cfg.vif.aresetn &&
                     !(cfg.vif.mon_cb.rvalid && cfg.vif.mon_cb.rready));

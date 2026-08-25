@@ -5,7 +5,8 @@ schema_version = 1
 
 [[tests]]
 name = "ocah_axi_id_match_test"
-module = "ocah_axi_id_match_test"
+# One scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "ocah_axi_id_match_test", uvm = "ocah_axi_id_match_test" }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_id"]
@@ -13,7 +14,7 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_id_mismatch_test"
-module = "ocah_axi_id_mismatch_test"
+module = { cocotb = "ocah_axi_id_mismatch_test", uvm = "ocah_axi_id_mismatch_test" }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_id"]
