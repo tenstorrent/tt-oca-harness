@@ -51,6 +51,7 @@ class SepAxiAccessSeq(uvm_sequence):
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
+        self.timed_out: bool = False
 
     async def body(self) -> None:
         item = SepAxiItem(self.get_name())
@@ -67,3 +68,4 @@ class SepAxiAccessSeq(uvm_sequence):
         self.rdata = item.rdata
         self.resp_ok = item.resp_ok
         self.resp_code = item.resp_code
+        self.timed_out = item.timed_out

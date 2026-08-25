@@ -688,23 +688,10 @@ the shadow registers matches the programmed image word for word. This is the
 precondition for every lifecycle and key-management test that relies on real sensed
 fuse values rather than a skip plusarg.
 
-Pending upgrade — pre-sense fail-closed. `hw/ip/efuse/rtl/efuse_token_processing.sv`
-exposes the shadow bank downstream only on `fuse_sense_done_i || final_sec_disable`.
-This test proves the open side: after sense completes, the shadow matches the image.
-Nothing proves the closed side. No test reads a shadow word while
-`sep_fuse_sense_done_o` is still low — every reference to it is a wait — so removing
-the `fuse_sense_done_i` term would leave the whole suite green.
-
-The upgrade is one read before the existing wait: require LC_STATE to read the
-invalid encoding (or a shadow word not to match the image) while sense is still
-running, then let the existing post-sense compare stand as the control that proves
-the guard does open. Without that control the early read is vacuous.
-
-Two caveats for whoever picks it up. First, confirm the pre-sense window is long
-enough to land an AXI read; if it is not, say so here rather than weakening the
-check. Second, the `final_sec_disable` half of the same term is a different
-question (boot with sense incomplete) and is not claimed on the SEC_DIS row —
-see `oss_dv_plan.adoc`.
+The closed side of `fuse_sense_done_i || final_sec_disable` is on
+`sep_efuse_image_test` (AXI `FEAT_CTRL` while `sep_fuse_sense_done_o` is
+still low). This vehicle stays the backdoor open-side smoke. The
+`final_sec_disable` half is not claimed.
 
 ==== Steps
 
@@ -770,6 +757,12 @@ after a cold re-sense the shadow equals the original image plus exactly the bits
 were burned. Together these establish that programming reached the array through the
 real command path and that the sense FSM re-reads it.
 
+Also proves the pre-sense fail-closed guard. Downstream `shadow_regs_o` stays
+at `LC_STATE_INVALID` until `fuse_sense_done_i || final_sec_disable`. An AXI
+`FEAT_CTRL` read while `sep_fuse_sense_done_o` is still low must be 0; after
+sense-done the same register follows the image golden and must not be 0.
+The `final_sec_disable` half of the term is not claimed.
+
 [NOTE]
 ====
 The OTP array behind the fuse-command interface is a simulation-only behavioural bank,
@@ -789,21 +782,29 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
 | # | Step | Proof | Status
 
 | 1
-| Stage an image and bring up with real fuse sense.
-| `SEP fuse sense done at cycle 804` (real sense)
+| Stage an image, release reset, and AXI-read `FEAT_CTRL` while
+  `sep_fuse_sense_done_o` is still low.
+| `CHK-PRE-SENSE-FAIL-CLOSED PASS: FEAT_CTRL=0x0000000000000000 while sep_fuse_sense_done_o=0`
 | LOGGED
 
 | 2
+| Wait for sense-done; AXI-read `FEAT_CTRL` equals the image golden and
+  is not 0.
+| `SEP fuse sense done at cycle 778` then
+  `CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0xffff0000ffffffff after sense-done`
+| LOGGED
+
+| 3
 | Burn a set of bits through the write-one-to-set path.
 | Program writes to the burn register, e.g. `[efuse] burned 10 random CHIPLET_UID bits:` followed by one program write per bit (the write data is seed-dependent)
 | LOGGED
 
-| 3
+| 4
 | Read the burned bits directly out of the array before re-sensing.
 | `CHK-OTP-DIRECT PASS: burned bits read 1 directly from OTP pre-resense`
 | LOGGED
 
-| 4
+| 5
 | Program a second bit into an already-programmed word.
 | Two `AXI write 0x10930404 <- 0x807` program-control writes into an already-programmed
   word. Only the control prefix is quoted: the low bits encode the target bit address,
@@ -811,9 +812,9 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
   with how much traffic happened to flow.
 | LOGGED
 
-| 5
+| 6
 | Cold reset, re-sense, and compare the shadow against image-plus-burned-bits.
-| `CHK-W1S-PERSIST PASS: resense shadow == initial image + 10 W1S bits` — the line reports the random-burn count; the compare also covers the two bits programmed in step 4, so twelve in total
+| `CHK-W1S-PERSIST PASS: resense shadow == initial image + 10 W1S bits` — the line reports the random-burn count; the compare also covers the two bits programmed in step 5, so twelve in total
 | LOGGED
 
 |===
@@ -824,6 +825,18 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
 |===
 | ID | Check | Proof | Status
 
+| CHK-PRE-SENSE-FAIL-CLOSED
+| AXI `FEAT_CTRL` is 0 while `sep_fuse_sense_done_o` is still low. The
+  read must complete before sense-done, or the closed side was not seen.
+| `CHK-PRE-SENSE-FAIL-CLOSED PASS: FEAT_CTRL=0x0000000000000000 while sep_fuse_sense_done_o=0`
+| PROVEN
+
+| CHK-PRE-SENSE-OPEN
+| After sense-done the same `FEAT_CTRL` equals the image golden and is
+  not 0, so the guard actually opened.
+| `CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0xffff0000ffffffff after sense-done`
+| PROVEN
+
 | CHK-OTP-DIRECT
 | The first and last burned bits read back as one directly from the array, before any
   re-sense, and their whole words match the golden. The remaining burned bits are covered
@@ -832,13 +845,13 @@ and that the sense FSM re-reads the array after reset and the shadow tracks it.
 | PROVEN
 
 | CHK-W1S-PERSIST
-| After cold re-sense the shadow equals the original image plus exactly the burned bits — all twelve, the ten random ones and the two from step 4.
+| After cold re-sense the shadow equals the original image plus exactly the burned bits — all twelve, the ten random ones and the two from step 5.
 | `CHK-W1S-PERSIST PASS: resense shadow == initial image + 10 W1S bits` (the line names only the random-burn count)
 | PROVEN
 
 | CHK-NONVAC
 | The comparison covered the whole image, not a sample.
-| `SEP scoreboard: 577 checks (514 value-verified, 0 expected-error), 0 errors`
+| `SEP scoreboard: 581 checks (518 value-verified, 0 expected-error), 0 errors`
 | PROVEN
 |===
 
@@ -3242,13 +3255,13 @@ not here. Every stage after the injection point is real logic and is golden-chec
 
 == Evidence inventory
 
-31 testcases, 153 steps, 151 checkers.
+31 testcases, 154 steps, 153 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Step proof | Count
 
-| `LOGGED` | 155
+| `LOGGED` | 156
 | `NOT-LOGGED` | 0
 |===
 
@@ -3256,7 +3269,7 @@ not here. Every stage after the injection point is real logic and is golden-chec
 |===
 | Grade | Count
 
-| `PROVEN` | 152
+| `PROVEN` | 154
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `STALE` | 0

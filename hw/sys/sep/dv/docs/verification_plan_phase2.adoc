@@ -11,8 +11,8 @@
 The record of what Phase 2 verifies and what evidence backs each claim. It follows
 `oss_dv_plan.adoc`: one *iconic* feature per in-scope IP, randomized when the feature
 has a legal matrix or knob space, plus the cross-IP edges a per-IP bench cannot
-see. Phase 1 + Phase 2 together are the cocotb baseline: floor 18 of 34,
-goal 25 of 34 in-scope rows, counted as `PROVEN` *feature* rows on
+see. Phase 1 + Phase 2 together are the cocotb baseline: floor 18 of 36,
+goal 25 of 36 in-scope rows, counted as `PROVEN` *feature* rows on
 link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard],
 not as a count of `PROVEN` checkers and not as line coverage. Those are
 scorecard goals, not coverage measurements. The architecture spec is the
@@ -46,7 +46,7 @@ here: extend a Phase 2 test that already owns that claim, or add the
 named new test.
 Do not stretch the Phase 1 e2e / smoke entry. New tests are created
 from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
-is the completeness extension: same cocotb environment, goal 32 of 34
+is the completeness extension: same cocotb environment, goal 34 of 36
 `PROVEN` scorecard rows, finished before Phase 3 starts a UVM bench.
 Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
 directed name is not coverage. There is no separate improvement
@@ -65,7 +65,7 @@ eFuse, and Key Manager. See <<attention>>.
   31 Phase 1 entries in total)
 
 | Graded Phase 2 entries
-| 31
+| 33
 | <<entries>> below
 
 | Phase 1 handoff leftovers
@@ -82,8 +82,8 @@ eFuse, and Key Manager. See <<attention>>.
 | Phase 2 names; <<phase2-plus>> executes them
 
 | Phase 2+ close-out
-| 12 scorecard rows
-| <<phase2-plus>> — 32 of 34 before UVM
+| 14 scorecard rows
+| <<phase2-plus>> — 34 of 36 before UVM
 
 | Landed existing-test upgrades
 | see <<existing-upgrades>>
@@ -159,7 +159,10 @@ assert forbidden markers do not appear; a dual-print still fails the test.
 
 The same set as Phase 1, with the same meanings. A running test's checkers are
 `PROVEN` or `FAILED`. `PARTIAL`, `GUARD`, and `INSUFFICIENT-EVIDENCE` are unused
-here. The one `FAILED` row is CHK-OWNERSHIP-WINDOW (RTL vs `hw/sys/sep/doc/fabric.adoc`).
+here. Two `FAILED` checkers are RTL vs spec: CHK-OWNERSHIP-WINDOW
+(`hw/sys/sep/doc/fabric.adoc`) and CHK-DEADSPACE-REFUSE
+(`hw/sys/sep/doc/memory_map.adoc`,
+https://github.com/tenstorrent/tt-oca-harness/issues/228).
 
 [[entries]]
 == Entries
@@ -2460,6 +2463,13 @@ ROM-FW plan exists, those four names are graded there.
 
 Hard `FAILED` spec-vs-RTL (keep hard; do not XFAIL):
 
+* CHK-DEADSPACE-REFUSE — an access to the unpopulated remainder of a block's
+  address window owns no register and must be refused per
+  `hw/sys/sep/doc/memory_map.adoc`. In several blocks the RTL truncates the
+  address, wraps it inside the block, hits a live register and answers OKAY.
+  Owned by `sep_fabric_deadspace_decode_test`. Keep the full probe set; do
+  not shrink it to the addresses that already pass.
+
 * CHK-OWNERSHIP-WINDOW — only the SEP CPU may program the inbound filter per
   `hw/sys/sep/doc/fabric.adoc`; the RTL answers OKAY instead of DECERR to
   another master. Owned by `sep_fabric_inbound_filter_rule_matrix_test`.
@@ -2524,7 +2534,7 @@ ring oscillator, KM wipe, and inbound negative product are Phase 3 T.B.D.
 
 These IPs still have an iconic hole or a leftover *claim* listed on the
 signed-off Phase 1 handoff table. Closing that claim is Phase 2
-scorecard work (toward 25 of 34) and <<phase2-plus>> (32 of 34 before UVM).
+scorecard work (toward 25 of 36) and <<phase2-plus>> (34 of 36 before UVM).
 Do not stretch the Phase 1 e2e / smoke entry. Extend a Phase 2 test that
 already owns the claim, or add the named new Phase 2 test.
 
@@ -2555,16 +2565,18 @@ already owns the claim, or add the named new Phase 2 test.
 
 | Key Manager
 | Sideload consume is `PROVEN`. Mailbox command set is `GAP` (parked;
-  leftover after 32 of 34). Key/policy vault is `PROVEN`
+  leftover after 34 of 36). Key/policy vault is `PROVEN`
   (`sep_km_key_policy_vault_test`, Verilator `20260824_184638`).
   Seal stays on the parked command vehicle.
 | Sideload KATs stay consume proofs. Wipe stays Phase 3 T.B.D.
 
 | Fabric
 | Live outbound remap is `PROVEN`. Inbound ownership stays `PARTIAL`
-  (RTL). Local-master alias datapath is `PROVEN`.
-| CHK-OWNERSHIP-WINDOW stays hard. Alias offset is a real-beat proof;
-  missing valid/cacheable bits stay a hard FAIL.
+  (RTL). Local-master alias datapath is `PROVEN`. Dead-space decode
+  is a landed `FAILED` (RTL).
+| CHK-OWNERSHIP-WINDOW and CHK-DEADSPACE-REFUSE stay hard. Alias
+  offset is a real-beat proof; missing valid/cacheable bits stay a
+  hard FAIL.
 |===
 
 [[pending-upgrades]]
@@ -2584,10 +2596,11 @@ link:oss_dv_plan.adoc#iconic-scorecard[the iconic scorecard]. The rows
 below are feature `GAP`s (no test yet for that iconic claim). Checker
 tables stay binary; `PARTIAL` is a feature grade there, not a checker
 grade here. Program × lock, demote including lock, standalone RMA, live
-outbound remap, and watermark arming are graded in <<entries>>. The five
-Phase 2+ close-out vehicles are graded there too (SEC_DIS is `PROVEN`).
-Remaining before UVM is the KM command vehicle (parked last) and inbound
-ownership (an RTL close, not a new test).
+outbound remap, and watermark arming are graded in <<entries>>. The
+Phase 2+ close-out vehicles are graded there too (CSR bit-bash is
+`PROVEN`; dead-space refuse is a landed `FAILED`). Remaining before
+UVM is the KM command vehicle (parked last) and two RTL closes
+(inbound ownership; dead-space refuse).
 
 [cols="2,2,3",options="header"]
 |===
@@ -2614,29 +2627,43 @@ ownership (an RTL close, not a new test).
   stays on the command-device vehicle.
 | `sep_km_key_policy_vault_test`
 
+| CSR reset / RW / RO / reserved behaviour
+| `PROVEN`. `sep_reg_bit_bash_rand_test` (Verilator `20260825_043118`)
+  walks 417 reset values and 51 write-safe complementary writes.
+| `sep_reg_bit_bash_rand_test`
+
+| Dead-space decode
+| Landed `FAILED`. `sep_fabric_deadspace_decode_test` (Verilator
+  `20260825_042110`) keeps the full probe set. Do not XFAIL.
+  https://github.com/tenstorrent/tt-oca-harness/issues/228
+| `sep_fabric_deadspace_decode_test`
+
 | Key Manager as a command device
 | One RAND-REP (generate / transfer / revoke-or-shred / illegal→error)
   plus mailbox protocol RANDCFG if it does not fit the same test.
-  Parked last (leftover after 32 of 34).
+  Parked last (leftover after 34 of 36).
 | `sep_km_command_set_rand_test`, `sep_km_mailbox_protocol_rand_test`;
   `MERGED_INTO`: `sep_km_uvm_cmd_hw_ver_test`, `sep_km_uvm_mailbox_cmd_test`
 |===
 
 [[phase2-plus]]
-== Phase 2+ — 32 of 34 before UVM
+== Phase 2+ — 34 of 36 before UVM
 
 Same cocotb / PyUVM + Verilator environment as Phase 2. Same DUT
 (`sep_wrapper`), same quality bar, same fuse/run-mode rules. Phase 2+
 does not start a UVM bench — that is Phase 3. It closes the remaining
-in-scope rows that this phase chose to finish before UVM (32 of 34).
+in-scope rows that this phase chose to finish before UVM (34 of 36).
 KM command set stays parked. Inbound ownership stays an RTL close.
 Do not leave these remaining `GAP`s as Phase 3 pretend-UVM items.
 
-Phase 2 keeps its floor of 18 of 34 and its goal of 25 of 34. Ten of
-the twelve Phase 2+ rows are `PROVEN`. The scorecard is 32 of 34.
-SEC_DIS override is taken frontdoor after `tb_top` binds
-`SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. Remaining:
-KM command set (parked last) and inbound ownership (RTL).
+Phase 2 keeps its floor of 18 of 36 and its goal of 25 of 36. Eleven of
+the fourteen Phase 2+ rows are `PROVEN`. The scorecard is 33 of 36.
+CSR bit-bash is `PROVEN` (`sep_reg_bit_bash_rand_test`, Verilator
+`20260825_043118`). Dead-space decode is a landed hard `FAILED`
+(`sep_fabric_deadspace_decode_test`, Verilator `20260825_042110`,
+https://github.com/tenstorrent/tt-oca-harness/issues/228) and is not a
+feature credit. Remaining: KM command set (parked last) and two RTL
+closes (inbound ownership; dead-space refuse).
 Do not stretch a Phase 1 e2e / smoke entry. Do not XFAIL a spec-vs-RTL
 checker. Do not force `sec_dis`.
 
@@ -2651,7 +2678,7 @@ checker. Do not force `sec_dis`.
   DRBG fault during a command must report `IRQ_STATUS.DRBG_ERR` rather
   than an AXI error response.
   Mailbox protocol RANDCFG in the same test unless it does not fit.
-  Parked last (leftover after 32 of 34).
+  Parked last (leftover after 34 of 36).
 | `sep_km_command_set_rand_test`
   (`sep_km_mailbox_protocol_rand_test` only if the protocol does not fit)
 
@@ -2742,13 +2769,31 @@ checker. Do not force `sec_dis`.
   `km_rom_vault` (RV32E), not `rom_main`. Seal stays on the command
   vehicle. `sep_km_key_policy_vault_test` (Verilator `20260824_184638`).
 | `sep_km_key_policy_vault_test`
+
+| CSR reset / RW / RO / reserved behaviour
+| PROVEN
+| Sweep over the generated register export: reset value, writable bits
+  toggle, read-only and reserved bits do not. Not a RAL model — the
+  metadata already exists in `env/sep_reg_meta.py`.
+  `sep_reg_bit_bash_rand_test` (Verilator `20260825_043118`).
+| `sep_reg_bit_bash_rand_test`
+
+| Dead-space decode
+| FAILED
+| Negative control. An access to a block's unpopulated address space must
+  be refused, not truncated onto a live register. Hard `FAILED` until the
+  RTL refuses it. Verilator `20260825_042110`: 22 of 30 probes accepted
+  OKAY, 11 aliased a live register. Do not XFAIL.
+  https://github.com/tenstorrent/tt-oca-harness/issues/228
+| `sep_fabric_deadspace_decode_test`
 |===
 
-The five close-out vehicles are graded in <<entries>>. Set-only,
-`FIPS_LOCK`, alert, SEC_DIS override, local-master alias, and the
-KM vault are graded there too (lock and alert share a scorecard row;
-SEC_DIS is `PROVEN`). KM command set stays parked. Inbound ownership
-is an existing-test RTL close, not a new test.
+The close-out vehicles are graded in <<entries>>. Set-only,
+`FIPS_LOCK`, alert, SEC_DIS override, local-master alias, the
+KM vault, and CSR bit-bash are `PROVEN` there (lock and alert share a
+scorecard row). Dead-space refuse is a landed `FAILED`. KM command set
+stays parked. Inbound ownership is an existing-test RTL close, not a
+new test.
 
 [[sep_esrc_ht_watermark_arming_test]]
 === sep_esrc_ht_watermark_arming_test
@@ -2846,6 +2891,142 @@ from the opposite polarity's arm value so the expected value can fail.
 |===
 
 Kept Verilator log: `20260824_143944`.
+
+[[sep_reg_bit_bash_rand_test]]
+=== sep_reg_bit_bash_rand_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`
+Testlist:: `system.toml`
+Randomization:: RANDCFG — every reset-eligible register and every
+write-safe register every seed; block order and complement-vs-ones
+order come from the run seed
+
+Not a UVM RAL model. `env/sep_reg_meta.py` exports `addr`, `reset`,
+`mask` (software-usable field bits) and `mask_all` (storage, reserved
+included) from the generated SystemRDL. `SepRegBitBashCfg` is the
+single source of truth for both the walk and the skip reasons.
+
+Write-lands is the anti-vacuity control: a complement write must move
+exactly the software-usable mask. Remap and outbound-filter banks are
+reset-checked only; an unprogrammed alias region still rewrites a live
+beat. Write-safe blocks are scratch, `SEP_CPU_CTRL` minus side-effect
+/ lock / trigger fields, and inbound-filter START/END.
+
+Exclusions are a reason table: FIFO, trigger, key, hw-driven, OTP,
+side-effect, needs-init, no software-usable field (`TIMEOUT_*`
+placeholders whose only bit is reserved-named storage). A silent skip
+is a bug. Per-register decode (two registers, one address) is out of
+this row.
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-RESET
+| Every reset-eligible register reads its exported reset value.
+| `CHK-RESET PASS: 417 register(s) matched the exported reset`
+| PROVEN
+
+| CHK-WRITE-LANDS
+| A complement write moves exactly the software-usable mask bits.
+| `CHK-WRITE-LANDS PASS: 51 complementary write(s) moved exactly`
+| PROVEN
+
+| CHK-RO
+| Bits outside the mask stay unchanged across the write bash.
+| `CHK-RO PASS: 51 write-bash register(s) left bits outside mask`
+| PROVEN
+
+| CHK-RESERVED
+| Reserved bits (`mask_all` minus `mask`) read back 0 on every
+  write-bash register that has a software-usable field.
+| `CHK-RESERVED PASS: reserved bits read back 0`
+| PROVEN
+
+| CHK-RANDCFG
+| The full reset set and the full write-safe set ran in one
+  invocation; block order and ones-first come from the seed.
+| `CHK-RANDCFG PASS: reset=417 write=51`
+| PROVEN
+|===
+
+Kept Verilator log: `20260825_043118`.
+
+[[sep_fabric_deadspace_decode_test]]
+=== sep_fabric_deadspace_decode_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`
+Testlist:: `system.toml`
+Randomization:: RANDCFG — the twelve known-bad offsets from
+https://github.com/tenstorrent/tt-oca-harness/issues/228 every seed,
+plus two seed-selected dead offsets per block window
+
+Negative control, and a hard `FAILED` on landing. Each block owns an
+address window and populates only part of it. Per
+`hw/sys/sep/doc/memory_map.adoc` the unpopulated remainder owns no
+register and the access must be refused. In several SEP blocks the RTL
+truncates the address instead, wraps it back inside the block, lands on a
+live register and answers OKAY, so software is never told. A one-byte
+write nearly 4 kB past the end of the Key Manager mailbox block sets both
+error bits in its `SEP_CTRL`; the mailbox keeps five address bits, the
+watchdog six, EDN and CSRNG seven, the entropy source and Secure DMA nine.
+
+The address windows themselves match the specification. The defect is the
+truncation before the register block, not a window that is too wide — do
+not "fix" this by narrowing a window in the plan. Allocated size comes
+from the generated export; window end comes from `memory_map.adoc`. RTL
+decode width is never the legality judge.
+
+Refuse means not-OKAY (DECERR or SLVERR). A write probe must also leave
+every allocated register unchanged. A checker that only inspects the
+response would pass the day the RTL starts answering DECERR while still
+writing the register.
+
+Keep the probe set whole. Shrinking it to the offsets that already pass
+turns a hard red green without changing any RTL, which is the one outcome
+this entry exists to prevent. Do not XFAIL it.
+
+==== Checkers
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-WINDOW-LIVE
+| Each of the nine watched windows has a non-empty allocated-register
+  snapshot, so the no-alias compare can fail.
+| `CHK-WINDOW-LIVE PASS:`
+| PROVEN
+
+| CHK-DEADSPACE-REFUSE
+| A read or write past the allocated size is refused (not OKAY).
+| `CHK-DEADSPACE-REFUSE FAIL: 22 probe(s) accepted OKAY`
+  (Verilator `20260825_042110`). Every issue-228 anchor accepted:
+  KM `0x10920ff8` wraps onto `SEP_CTRL`, DMA `0x108008a8` wraps onto
+  `+0xa8`. AES / lifecycle / some SPI probes already refuse.
+| FAILED
+
+| CHK-DEADSPACE-NO-ALIAS
+| No allocated register in that window changes across a probe.
+| Same keep: 11 probes changed a live register, including
+  `km_mailbox w 0x10920ff8` `+0x18 0→3` and
+  `secure_dma w 0x108008a8` `+0xa8 0→ffffffff`.
+| FAILED
+
+| CHK-RANDCFG
+| Twelve anchors plus seed-selected dead offsets ran in one invocation.
+| `CHK-RANDCFG PASS: walked 30 probes (12 anchors)`
+| PROVEN
+|===
+
+Kept Verilator log: `20260825_042110`. The test `FAIL`s. That is the
+grade, not a flake.
 
 === Planned: sep_km_command_set_rand_test
 
@@ -3229,6 +3410,15 @@ to `PROVEN` when the checker is green. A JTAG-style “`PROVEN` plus named
 `FAILED` slice” is a scorecard-owner call, not a default here — inbound
 ownership is part of the iconic claim.
 
+=== Graded: sep_reg_bit_bash_rand_test
+
+See <<sep_reg_bit_bash_rand_test>>. Verilator `20260825_043118`.
+
+=== Graded: sep_fabric_deadspace_decode_test
+
+See <<sep_fabric_deadspace_decode_test>>. Verilator `20260825_042110`
+(`FAILED`; https://github.com/tenstorrent/tt-oca-harness/issues/228).
+
 [[existing-upgrades]]
 == Landed existing-test upgrades
 
@@ -3491,27 +3681,34 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 
 == Audit summary
 
-30 testcases, 71 steps, 166 checkers.
+32 testcases, 71 steps, 175 checkers.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 165
+| `PROVEN` | 172
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
 | `NOT-RUN` | 0
 | `STALE` | 0
-| `FAILED` | 1
+| `FAILED` | 3
 |===
 
-The one `FAILED` row is CHK-OWNERSHIP-WINDOW: after entry 1 allow-lists the filter
-CFG address, the external master returns OKAY (Verilator run `20260820_164231`).
-That is RTL vs `hw/sys/sep/doc/fabric.adoc` ("Only the SEP CPU can program these filters"),
-filed as a question:
-https://github.com/tenstorrent/tt-oca-harness/issues/1050
-CHK-OWNERSHIP without that window is `PROVEN` in the same log.
+Three `FAILED` checkers, all RTL vs spec, none XFAILed:
+
+* CHK-OWNERSHIP-WINDOW: after entry 1 allow-lists the filter CFG
+  address, the external master returns OKAY (Verilator
+  `20260820_164231`). RTL vs `hw/sys/sep/doc/fabric.adoc` ("Only the
+  SEP CPU can program these filters"),
+  https://github.com/tenstorrent/tt-oca-harness/issues/1050
+  CHK-OWNERSHIP without that window is `PROVEN` in the same log.
+* CHK-DEADSPACE-REFUSE and CHK-DEADSPACE-NO-ALIAS: 22 of 30 dead
+  offsets accepted OKAY and 11 aliased a live register (Verilator
+  `20260825_042110`). RTL vs `hw/sys/sep/doc/memory_map.adoc`,
+  https://github.com/tenstorrent/tt-oca-harness/issues/228
+  CHK-WINDOW-LIVE and CHK-RANDCFG are `PROVEN` in the same log.
 
 A keyword match against a kept log is not the proof. An independent audit still has
 to read the checker and confirm a broken DUT would fail it — a printed check tag with

@@ -266,3 +266,30 @@ tags = ["fabric", "remap", "alias", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# CSR reset / RW / RO / reserved sweep over the generated SystemRDL export.
+# RANDCFG: block order and complement-vs-ones order from the run seed.
+# Every reset-eligible register and every write-safe register is walked
+# in one invocation. no_cpu; +skip_fuse_sense (CSR storage, no OTP dep).
+name = "sep_reg_bit_bash_rand_test"
+module = "system.sep_reg_bit_bash_rand_test"
+seed = 1
+timeout_sec = 3600
+tags = ["csr", "register", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Intra-block dead-space decode. An access past a block's allocated size
+# must be DECERR and must not change a live register. Hard FAILED until
+# RTL refuses the wrap; do not XFAIL. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_deadspace_decode_test"
+module = "system.sep_fabric_deadspace_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "decode", "negative", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]

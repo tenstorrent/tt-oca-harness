@@ -172,9 +172,13 @@ class sep_base_test(uvm_test):
                 return
         raise AssertionError("sep_fuse_sense_done_o never asserted (fabric not released)")
 
-    async def bring_up_no_cpu(self, *, max_cycles: int = 20_000) -> None:
-        """Bring up the DUT (CPU held off; the stub drives the LSU AXI from the
-        cocotb master), gating on fuse-sense-done before releasing stimulus."""
+    async def release_no_cpu_reset(self) -> None:
+        """Clocks + ``rst_ni`` release, CPU held off. Does not wait for sense.
+
+        The local AXI xbar and LCC sit on ``rst_ni``, so a test can issue a
+        CPU-LSU beat before ``sep_fuse_sense_done_o``. Sets ``reset_done`` so
+        the AXI agent will start. Call ``wait_fuse_sense`` afterwards.
+        """
         dut = cocotb.top
         self.logger.info("Bringing up clocks and reset (CPU held off)")
         dut.rst_ni.value = 0
@@ -183,8 +187,53 @@ class sep_base_test(uvm_test):
         await ClockCycles(dut.clk_i, 20)
         self.logger.info("Releasing rst_ni")
         dut.rst_ni.value = 1
-        await self._wait_fuse_sense(max_cycles)
+        await ClockCycles(dut.clk_i, 2)
         self.cfg.reset_done.set()
+
+    async def wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
+        """Poll ``sep_fuse_sense_done_o`` and run the post-sense shadow compare."""
+        await self._wait_fuse_sense(max_cycles)
+
+    async def check_pre_sense_fail_closed(self) -> None:
+        """AXI-read ``FEAT_CTRL`` while sense is still running; expect fail-closed.
+
+        Downstream ``shadow_regs_o`` stays at ``LC_STATE_INVALID`` until
+        ``fuse_sense_done_i || final_sec_disable``
+        (``hw/ip/efuse/rtl/efuse_token_processing.sv``). LCC decodes that as
+        no live chip, so ``FEAT_CTRL`` is 0. The read must land before
+        ``sep_fuse_sense_done_o``. The ``final_sec_disable`` half of the term
+        is not claimed.
+        """
+        from env.sep_lcc_golden import feat_ctrl_expected
+        from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
+
+        dut = cocotb.top
+        assert not self.rd(dut.sep_fuse_sense_done_o), (
+            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sep_fuse_sense_done_o already 1; "
+            "no pre-sense window"
+        )
+        # LC_STATE_INVALID low nibble is 4'hF — not a legal raw state.
+        closed = feat_ctrl_expected(0xF, 0, 0)
+        assert closed == 0, (
+            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: invalid-LC golden is not 0"
+        )
+        seq = SepLccFeatCtrlCheckSeq(closed)
+        await self.start_seq(seq)
+        assert not self.rd(dut.sep_fuse_sense_done_o), (
+            "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sense completed during the FEAT_CTRL "
+            "read; the closed side was not observed"
+        )
+        self.logger.info(
+            "CHK-PRE-SENSE-FAIL-CLOSED PASS: FEAT_CTRL=0x%016x while "
+            "sep_fuse_sense_done_o=0",
+            seq.feat_ctrl,
+        )
+
+    async def bring_up_no_cpu(self, *, max_cycles: int = 20_000) -> None:
+        """Bring up the DUT (CPU held off; the stub drives the LSU AXI from the
+        cocotb master), gating on fuse-sense-done before returning."""
+        await self.release_no_cpu_reset()
+        await self.wait_fuse_sense(max_cycles=max_cycles)
 
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
         """Alias for bring_up_no_cpu, kept for eFuse-test intent. Both gate on

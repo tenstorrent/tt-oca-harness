@@ -2,11 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse image + shadow-readout + W1S-persistence test (OSS).
 
-Senses one generated fuse image, checks the software-visible shadow registers
-field-by-field against the golden, then programs ten random fuse bits through the
-frontdoor and resenses to prove the shadow tracks the PERSISTENT OTP image plus
-those newly write-one-to-set bits. Programmed bits persist in the model bank
-across reset; resense must match the initial image plus the burned bits.
+Before sense-done, AXI-reads ``FEAT_CTRL`` and requires the fail-closed
+zero vector (downstream shadow stays ``LC_STATE_INVALID``). After sense,
+the same register must follow the image golden and the software-visible
+shadow must match field-by-field. Then programs ten random fuse bits
+through the frontdoor and resenses to prove the shadow tracks the
+PERSISTENT OTP image plus those newly write-one-to-set bits.
 
 Exercises the eFuse goals: sense + resense, specific-or-random init, field
 constraints, the generated sep_efuse_map, shadow-vs-loaded-mem comparison, and
@@ -21,8 +22,10 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
+from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 from sep_reg_meta import sym
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_lcc_golden import feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 
 _MAX_SENSE_CYCLES = 20_000
@@ -46,8 +49,23 @@ class sep_efuse_image_test(sep_base_test):
         # the base post-sense backdoor compare.
         img = self.select_efuse_image(fixed={"CHIPLET_UID": 0})
         self.write_efuse_image(img)
-        await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        await self.release_no_cpu_reset()
+        await self.check_pre_sense_fail_closed()
+        await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         await self.start_seq(sep_efuse_shadow_check_seq(img))
+        opened = feat_ctrl_expected(
+            img.lc_raw(), img.field_int("SIP_DIS"), img.field_int("SYS_DIS"))
+        assert opened != 0, (
+            "CHK-PRE-SENSE-OPEN FAIL: post-sense FEAT_CTRL golden is 0; "
+            "the fail-closed contrast would be vacuous"
+        )
+        opened_seq = SepLccFeatCtrlCheckSeq(opened)
+        await self.start_seq(opened_seq)
+        self.logger.info(
+            "CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0x%016x after sense-done "
+            "(guard opened)",
+            opened_seq.feat_ctrl,
+        )
 
         # Burn 10 distinct random known-zero fuse bits (real W1S through the
         # frontdoor), seeded by the run seed for reproducibility. The generic efuse

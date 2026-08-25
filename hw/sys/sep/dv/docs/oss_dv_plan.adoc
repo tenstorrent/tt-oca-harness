@@ -12,7 +12,7 @@
 This is the high-level plan for verifying the SEP subsystem in the open-source
 tree. It says *what each phase is for*, *how coverage is counted*, and *what
 every test must satisfy*. Phase 1 is signed off. Phase 2 baseline (25 of
-34) is closed. Phase 2+ is the active cocotb close-out (32 of 34 iconic
+36) is closed. Phase 2+ is the active cocotb close-out (34 of 36 iconic
 rows before UVM). Phase 3 is a future UVM environment, not an execute
 list.
 
@@ -45,7 +45,7 @@ repeat each other.
 | Per-IP iconic feature tests, randomized where the feature has a legal
   matrix or knob space. Plus the cross-IP edges a per-IP bench cannot see.
   Extend an existing test before adding a sibling.
-| Phase 1 + Phase 2 together: floor 18 of 34, goal 25 of 34 in-scope
+| Phase 1 + Phase 2 together: floor 18 of 36, goal 25 of 36 in-scope
   iconic-feature rows `PROVEN`. Scorecard goals, not coverage numbers.
 
 | *Phase 2+*
@@ -53,7 +53,7 @@ repeat each other.
 | Completeness extension of Phase 2. Closes the remaining in-scope
   scorecard rows before a UVM bench starts. Same quality bar; no new
   environment.
-| Goal 32 of 34 `PROVEN` in-scope rows. KM command stays parked;
+| Goal 34 of 36 `PROVEN` in-scope rows. KM command stays parked;
   inbound ownership stays an RTL close. Detail:
   link:verification_plan_phase2.adoc#phase2-plus[Phase 2+].
 
@@ -137,7 +137,7 @@ Generate at that length, so `gen_last` fires and the trailing CTR_DRBG
 Update is actually scored.
 
 Phase 1 + Phase 2 is the cocotb baseline. Together they must reach at
-least 18 of 34 in-scope iconic-feature rows, and they aim at 25 of 34
+least 18 of 36 in-scope iconic-feature rows, and they aim at 25 of 36
 (`PROVEN` rows on <<iconic-scorecard>>). Completeness of that baseline
 beats compression: merge, extend, and randomize to *reach* the target,
 do not drop a real gap to keep the test count pretty.
@@ -157,20 +157,18 @@ lifecycle, eFuse, Key Manager, and fabric.
 
 Detail: `verification_plan_phase2.adoc`.
 
-=== Phase 2+ — 32 of 34 before UVM
+=== Phase 2+ — 34 of 36 before UVM
 
-Same cocotb environment. Ten close-out rows are `PROVEN`
+Same cocotb environment. Eleven close-out rows are `PROVEN`
 (program × lock, demote including lock, standalone RMA, live outbound
 remap, ESRC watermark arming, eFuse set-only, ESRC lock and alert,
-local-master alias, KM key/policy vault, SEC_DIS override). The
-scorecard is 32 of 34. `sep_sec_dis_override_test` (Verilator
-`20260825_031826`) takes the match after `tb_top` binds
-`SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token, then proves
-`sec_dis=1` and the override `FEAT_CTRL`. Boot-with-sense-incomplete
-is not claimed. Remaining: KM command set (parked) and inbound
-ownership (RTL; the existing matrix keeps CHK-OWNERSHIP-WINDOW hard).
-Phase 3 does not start until this close-out finishes, and its first
-deliverable is UVM bring-up plus smoke, not these rows.
+local-master alias, KM key/policy vault, SEC_DIS override, CSR bit-bash).
+The scorecard is 33 of 36. Dead-space decode is a landed hard `FAILED`
+(https://github.com/tenstorrent/tt-oca-harness/issues/228), not a
+feature credit. Remaining: KM command set (parked) and two RTL closes
+(inbound ownership; dead-space refuse). Phase 3 does not start until
+this close-out finishes, and its first deliverable is UVM bring-up
+plus smoke, not these rows.
 
 Implementation order and the reachability / spec-vs-RTL traps live in
 link:verification_plan_phase2.adoc#phase2-plus[Phase 2+]. Do not XFAIL
@@ -198,8 +196,8 @@ Two different numbers. Do not mix them.
 
 Feature coverage (the cocotb phases)::
 The iconic claim for each in-scope IP, graded on <<iconic-scorecard>>.
-These are scorecard goals, not measurements: floor 18 of 34 in-scope
-rows `PROVEN`, Phase 2 goal 25 of 34, Phase 2+ goal 32 of 34 before UVM.
+These are scorecard goals, not measurements: floor 18 of 36 in-scope
+rows `PROVEN`, Phase 2 goal 25 of 36, Phase 2+ goal 34 of 36 before UVM.
 There is no SystemVerilog covergroup number for this — the directed
 environment has none, and RTL SVA is compiled out under the Verilator
 acceptance flow. A `PARTIAL` feature (a test exists, the iconic claim is
@@ -237,10 +235,10 @@ and
 link:verification_plan_phase2.adoc#pending-upgrades[pending upgrades].
 Do not treat a `PARTIAL` as done by pointing at a graded entry.
 
-Thirty-two of thirty-four in-scope rows are `PROVEN`, which clears the
-floor of 18, the Phase 2 goal of 25 of 34, and the Phase 2+ close-out
-of 32 of 34. KM command stays parked and inbound ownership stays an
-RTL close.
+Thirty-three of thirty-six in-scope rows are `PROVEN`, which clears the
+floor of 18 and the Phase 2 goal of 25 of 36. Remaining before the
+Phase 2+ close-out of 34 of 36: inbound ownership (RTL) and dead-space
+decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 
 [cols="2,2,3",options="header"]
 |===
@@ -360,15 +358,12 @@ RTL close.
 
 | eFuse sense + shadow + persist
 | PROVEN
-| Sense, image, program-then-resense. Named untested slice: the
-  pre-sense fail-closed guard. `efuse_token_processing.sv` exposes the
-  shadow bank only on `fuse_sense_done_i || final_sec_disable`, but no
-  test reads a shadow word while `sep_fuse_sense_done_o` is still low —
-  every reference waits for it to assert — so the guard is only ever
-  observed open. Deleting the `fuse_sense_done_i` term would not fail
-  any test. The `final_sec_disable` half of that same term (expose
-  shadow before sense-done) is not claimed; the SEC_DIS row proves
-  override after sense completes.
+| Sense, image, program-then-resense. Pre-sense fail-closed is on
+  `sep_efuse_image_test` (Verilator `20260825_034132`): AXI `FEAT_CTRL=0`
+  while `sep_fuse_sense_done_o` is still low, then the same register
+  follows the image golden after sense-done. The `final_sec_disable`
+  half of `fuse_sense_done_i || final_sec_disable` (expose shadow
+  before sense-done) is not claimed.
 
 | eFuse program × lock
 | PROVEN
@@ -448,14 +443,35 @@ RTL close.
   on `sep_fabric_remap_filter_csr_bank_test`. Cacheable override is
   not observed here.
 
+| CSR reset / RW / RO / reserved behaviour
+| PROVEN
+| `sep_reg_bit_bash_rand_test` (Verilator `20260825_043118`) walks the
+  generated export: 417 reset matches, then 51 complementary writes that
+  move exactly the software-usable mask and no other bits. Exclusions are
+  a reason table (FIFO, trigger, key, hw-driven, side-effect, OTP). Remap
+  and outbound-filter banks are reset-only. Per-register decode is out of
+  this row.
+
+| Dead-space decode (unmapped addresses must not alias live registers)
+| not PROVEN
+| Vehicle exists. `sep_fabric_deadspace_decode_test` (Verilator
+  `20260825_042110`) walks 12 known-bad offsets from
+  https://github.com/tenstorrent/tt-oca-harness/issues/228 plus seed
+  dead offsets. CHK-DEADSPACE-REFUSE is `FAILED`: 22 of 30 probes
+  accepted OKAY and 11 aliased a live register, including every issue
+  anchor (KM `SEP_CTRL` at `0x10920ff8`, DMA `0x108008a8`, …). AES /
+  lifecycle / some SPI probes already refuse. Not a feature credit. Do
+  not XFAIL and do not shrink the probe set.
+
 | Secure boot negative (bad sig / revoke / rollback)
 | out
 | ROM-FW owner. Not a Phase 2 GAP this suite executes.
 |===
 
-`PROVEN` feature rows in the count; `PARTIAL`, `GAP`, and `out` are not.
-A `FAILED` checker on an otherwise-proven feature (inbound ownership)
-is named on the row and is not a feature credit for that slice.
+`PROVEN` feature rows in the count; `PARTIAL`, `GAP`, `out`, and a
+landed `FAILED` spec-gap (dead-space decode) are not. A `FAILED`
+checker on an otherwise-proven feature (inbound ownership) is named
+on the row and is not a feature credit for that slice.
 
 == Quality bar
 
@@ -572,7 +588,7 @@ engine. It does not exist in this tree.
 | `verification_plan_phase2.adoc`
 | Phase 2 contract plus the Phase 2+ extension (`#phase2-plus`).
   Graded iconic entries, pending in-place upgrades, named remaining
-  `GAP`s, and the 32-of-34 close-out before UVM. Former leftover names
+  `GAP`s, and the 33-of-36 close-out before UVM. Former leftover names
   are mapped, not listed as a worklist.
 
 | `verification_plan_phase3.adoc`
