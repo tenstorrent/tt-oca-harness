@@ -8,8 +8,7 @@ Each test lists (CHK_ID, TOKEN, EXPECT) triples. Scoreboard logs
 
 Force-era / deferred names may still appear below for catalog continuity;
 they are **OUT** under the 2026-07-29 no-Force policy and must not be
-reported as green. Bodies: ``cocotb/tests_deferred/``. Checklist:
-``hw/sys/smc/doc/dv_hack_cleanup_checklist.md``.
+reported as green. Bodies: ``cocotb/tests_deferred/``.
 """
 
 from __future__ import annotations
