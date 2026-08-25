@@ -1,6 +1,6 @@
 # OCAH Virtual Platform
 
-The integrated SEP virtual platform: the [`tt-oca-sim`](https://github.com/tenstorrent/tt-oca-sim)
+The integrated SEP virtual platform: the [`tt-oca-harness-model`](https://github.com/tenstorrent/tt-oca-harness-model)
 SystemC simulator as a submodule, a Makefile that builds its `sep-vp` executable (and the
 SystemC/Boost/OpenSSL/CCI dependencies it needs), and the `sepvp` Python runner + pytest
 harness for running SEP firmware — including the production boot ROM from
@@ -12,13 +12,14 @@ harness for running SEP firmware — including the production boot ROM from
 virtual_platform/
   Makefile          VP + dependency build, firmware-harness targets (make help)
   vp.mk             ocah.mk fragment: repo-root ocah-vp-* targets
-  tt-oca-sim/       the simulator (git submodule)
+  tt-oca-harness-model/
+                    the simulator (git submodule)
   sepvp/            importable runner library (see sepvp/README.md)
   tests/            pytest suites
     test_fuses.py   sepvp.fuses unit tests (no VP build needed)
     fuse_maps/      YAML fuse-map fixtures
     bootcode/       SEP boot ROM tests (positive + OT-SPI negative)
-    sim/            OT SPI mux/DMA tests (firmware from tt-oca-sim/sw/sep-vp-tests)
+    sim/            OT SPI mux/DMA tests (firmware from tt-oca-harness-model/sw/sep-vp-tests)
     fw/             DV-engine firmware tests run on the VP
 ```
 
@@ -27,7 +28,7 @@ virtual_platform/
 From the repo root (targets provided by `vp.mk` via `ocah.mk`):
 
 ```bash
-make ocah-vp-init      # init the tt-oca-sim submodule (recursive)
+make ocah-vp-init      # init the tt-oca-harness-model submodule (recursive)
 make ocah-vp-deps      # one-time: build SystemC/Boost/OpenSSL/CCI into local/ (~1-2 h)
 make ocah-vp-build     # build sep-vp (incremental)
 make ocah-vp-test      # run the pytest suites
@@ -85,7 +86,7 @@ make -C virtual_platform boot-run VP_CONTAINER=1 BOOT_ARGS="--boot primary"
 
 A container-built `sep-vp` links the container's glibc and cannot run on older
 hosts, so `VP_CONTAINER=1` routes the run/test targets into the container too.
-Artifacts are partitioned per environment (`local-ctr/`, `tt-oca-sim/vp/build-ctr`)
+Artifacts are partitioned per environment (`local-ctr/`, `tt-oca-harness-model/vp/build-ctr`)
 and never mix with a native build. Where rootless podman's `--userns=keep-id`
 fails, extract the VP image rootfs and set `OCAH_VP_TOOLCHAIN_ROOTFS=<dir>` for the
 engine-less bubblewrap backend (same pattern as `OCAH_TOOLCHAIN_ROOTFS`).

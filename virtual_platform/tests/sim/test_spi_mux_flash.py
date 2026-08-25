@@ -28,7 +28,6 @@ TIMEOUT = 180
 
 PASS_MARK = "All tests PASSED!"
 LOADED_MARK = "Backdoor: loaded"           # staged: "[spi_flash] Backdoor: loaded N bytes ..."
-NOT_FOUND_MARK = "not found"               # unstaged: "... data/flash_memory.bin not found ..."
 
 
 def _env(request):
@@ -51,7 +50,7 @@ def _require_prereqs(request):
         pytest.skip(f"test firmware dir missing ({FW_DIR})")
 
 
-# Number of seconds the VP is allowed to run. sep-vp never self-terminates: tt-oca-sim 0ec43f9cc
+# Number of seconds the VP is allowed to run. sep-vp never self-terminates: tt-oca-harness-model 0ec43f9cc
 # replaced the self-timing sim-unstaged/sim-staged targets with a plain `sim` that runs the
 # VP directly, so the timeout has to come from here. Mirrors the upstream default this test
 # used to get for free.
@@ -82,11 +81,17 @@ def _cleanup(request):
 
 
 def test_mux_rw_and_flash_noop_unstaged(request):
-    """Mux store/load + reset default pass; flash is erased 0xFF; loader no-ops when unstaged."""
+    """Mux store/load + reset default pass; flash is erased 0xFF; loader no-ops when unstaged.
+
+    The backdoor loader is opt-in (`spiBackdoorFile`), so an unstaged run must not log a
+    load at all -- the firmware's own erased-0xFF check is what proves the flash is blank.
+    The model used to attempt an implicit data/flash_memory.bin and log a "not found"
+    no-op line; asserting its *absence* is the same assertion against current behaviour.
+    """
     _require_prereqs(request)
     out = _run_make(request, "sim")
     assert PASS_MARK in out, f"firmware self-check failed:\n{out[-3000:]}"
-    assert NOT_FOUND_MARK in out, f"expected the loader no-op line:\n{out[-2000:]}"
+    assert LOADED_MARK not in out, f"loader ran with no image staged:\n{out[-2000:]}"
 
 
 def test_flash_loaded_staged(request):

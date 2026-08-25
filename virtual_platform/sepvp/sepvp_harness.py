@@ -2,8 +2,8 @@
 
 Per run it:
   1. makes a clean working dir under ``logs/sepvp/<name>/`` (so logs/artifacts don't collide),
-  2. stages the SPI flash image to ``<run_dir>/data/flash_memory.bin`` (the hardcoded path
-     the SPI flash model reads, relative to CWD),
+  2. stages the SPI flash image to ``<run_dir>/data/flash_memory.bin`` and names it to the
+     platform via ``spiBackdoorFile``,
   3. writes an overlay ini (``@include base`` + straps + fuses + absolute targets/
      configFile),
   4. ``pexpect.spawn``s ``sep-vp overlay.ini <abs elf>`` from ``<run_dir>`` so main.cpp
@@ -24,7 +24,8 @@ from sepvp import paths
 from sepvp.harness import Harness, HarnessError
 from sepvp.inifile import render_overlay, stage_base_config
 
-# Hardcoded path the SPI flash model reads (spi_flash_model.h), relative to CWD.
+# Where the staged raw-binary flash image lands, relative to the run dir. Any path works
+# now that `spiBackdoorFile` names it explicitly; kept for continuity with the model's tests.
 _FLASH_REL = Path("data") / "flash_memory.bin"
 
 
@@ -76,7 +77,7 @@ class SepVpHarness(Harness):
         main.cpp chdir()s to the overlay's dir, so the base's relative ``targets`` /
         ``configFile`` would otherwise resolve against the run dir.
 
-        The SEP_MSG_* name table is deliberately absent here: since tt-oca-sim 4c44a0dd it is
+        The SEP_MSG_* name table is deliberately absent here: since tt-oca-harness-model 4c44a0dd it is
         a *build-time* choice baked into sep_scratch_cold
         (``-DSEP_SCRATCH_COLD_STATUS_VALUES_PATH``, set by this repo's virtual_platform
         Makefile via ``STATUS_VALUES_TSV``). There is no runtime key for it, and an unknown
@@ -86,8 +87,8 @@ class SepVpHarness(Harness):
 
         # `spiPreload` is handled by commenting it out of the staged base config (see
         # _prepare_run_dir) rather than overridden here: the ini parser cannot represent an
-        # empty string value, and only an *absent* key selects the raw-binary backdoor path.
-        # A run that opts in gets an absolute path instead.
+        # empty string value, and only an *absent* key leaves the `spiBackdoorFile` branch
+        # reachable. A run that opts in gets an absolute path instead.
         overrides = [
             ("string", "och_sep_ss1.targets", str(elf)),
             ("string", "och_sep_ss1.configFile", str(paths.VEERISS_CONFIG.resolve())),
@@ -96,6 +97,14 @@ class SepVpHarness(Harness):
             overrides.append(
                 ("string", "och_sep_ss1.spiPreload",
                  str(Path(self.config.spi_preload).resolve())))
+        if self.config.flash_image:
+            # The raw-binary backdoor is opt-in via `spiBackdoorFile`; the platform no
+            # longer falls back to an implicit data/flash_memory.bin when spiPreload is
+            # absent, so the staged image has to be named explicitly or the manifest
+            # reads hit erased 0xFF flash.
+            overrides.append(
+                ("string", "och_sep_ss1.spiBackdoorFile",
+                 str((self.run_dir / _FLASH_REL).resolve())))
         return overrides
 
     def render_ini(self) -> str:
@@ -127,18 +136,22 @@ class SepVpHarness(Harness):
     def _disable_base_spi_preload(self):
         """Comment out the base config's `spiPreload` in the staged copy.
 
-        tt-oca-sim ships the base config with a relative `och_sep_ss1.spiPreload`.
+        tt-oca-harness-model ships the base config with a relative `och_sep_ss1.spiPreload`.
         The platform treats *any* non-empty value as "the preload owns the flash":
 
-            if (not spiPreloadPath.empty()) { ...preload; no fallback... }
-            else                            { load_memory_from_file(); }  // data/flash_memory.bin
+            if (not spiPreloadPath.empty())        { ...$readmemh preload... }
+            else if (not spiBackdoorPath.empty())  { load_memory_from_file(spiBackdoorPath); }
 
         So leaving it set — even pointing at a path that fails to open, as the base config's
-        relative one does from a run dir, silently disables the raw-binary backdoor, and any
+        relative one does from a run dir — silently disables the raw-binary backdoor, and any
         staged ``flash_image`` is ignored (manifest reads then hit erased flash and fail
         ``BAD_MAGIC``). Overriding it to an empty string is not an option: the ini parser
-        throws on a valueless key. Commenting the line out is what tt-oca-sim's own tests do
+        throws on a valueless key. Commenting the line out is what tt-oca-harness-model's own tests do
         (``NO_SPIPRELOAD_INI`` in ``sw/sep-vp-tests/Makefile.common``).
+
+        The backdoor half is opt-in: ``spiBackdoorFile`` names the staged image explicitly
+        (see :meth:`_abs_path_overrides`). Commenting out ``spiPreload`` is what makes that
+        branch reachable, so both halves are still required.
 
         A run that genuinely wants a $readmemh preload sets ``SimConfig.spi_preload``, which
         re-adds the key with an absolute path in :meth:`_abs_path_overrides`.

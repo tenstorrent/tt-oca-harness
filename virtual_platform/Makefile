@@ -1,17 +1,17 @@
 # =============================================================================
 # SEP Virtual Platform build (CI-aligned)
 #
-# Mirrors tt-oca-sim/.github/workflows/ci-rhel8.yml: resolves or builds the
+# Mirrors tt-oca-harness-model/.github/workflows/ci-rhel8.yml: resolves or builds the
 # SystemC, Boost, OpenSSL, and CCI dependencies (system installs are used when
 # adequate; otherwise they are built from source into ./local), then
-# configures the VP via tt-oca-sim/vp/configure_vp.sh and builds the sep-vp
+# configures the VP via tt-oca-harness-model/vp/configure_vp.sh and builds the sep-vp
 # executable.
 #
 # Quick start:
 #   make scratch-build   # clean rebuild of everything (deps + sep-vp)
 #   make vp              # rebuild just sep-vp (deps assumed built; incremental)
 #   make deps-info       # show where each dependency resolves and why
-#   make clean           # wipe downloads/, local/, and tt-oca-sim/vp/build
+#   make clean           # wipe downloads/, local/, and tt-oca-harness-model/vp/build
 #
 # A C++20-capable compiler (g++ >= 10) must be on PATH (or set CXX=...);
 # `make check-cxx` verifies it. Run "make help" for the full target/variable
@@ -80,7 +80,7 @@ else  # ---- native / in-container execution ----------------------------------
 # Compiler: whatever $(CXX) resolves to on PATH (make's default is g++).
 # C++20 needs g++ >= 10; 11 through 14 are verified (a historic VeeR-ISS
 # header-ordering failure under g++ 13/14 was fixed at the source in
-# tt-oca-sim — Memory.hpp now includes <string>).
+# tt-oca-harness-model — Memory.hpp now includes <string>).
 CXX_STD         ?= 20
 SYSTEMC_VERSION ?= 3.0.2
 BOOST_VERSION   ?= 1.84.0
@@ -102,7 +102,7 @@ SMOKE_TIMEOUT   ?= 20
 # a container); DOWNLOAD_DIR is shared — tarballs are host-independent.
 LOCAL_DIR    := $(VP_DIR)/local$(VP_TAG_SUFFIX)
 DOWNLOAD_DIR := $(VP_DIR)/downloads
-SIM_DIR      := $(VP_DIR)/tt-oca-sim
+SIM_DIR      := $(VP_DIR)/tt-oca-harness-model
 VP_SRC_DIR   := $(SIM_DIR)/vp
 VP_BUILD_DIR := $(VP_SRC_DIR)/build$(VP_TAG_SUFFIX)
 SEP_VP_BIN   := $(VP_BUILD_DIR)/bin/sep-vp
@@ -113,7 +113,7 @@ SEP_VP_BIN   := $(VP_BUILD_DIR)/bin/sep-vp
 UV            ?= uv
 PYTHON        ?= $(OCAH_ROOT)/.venv/bin/python
 BOOTCODE_DIR  := $(OCAH_ROOT)/hw/sys/sep/bootrom/prod
-# SEP_MSG_* status-name table baked into sep-vp's sep_scratch_cold decoder. tt-oca-sim
+# SEP_MSG_* status-name table baked into sep-vp's sep_scratch_cold decoder. tt-oca-harness-model
 # exposes this as a CMake cache variable (accepts TSV rows or a C header of #defines);
 # without it the VP falls back to its vendored snapshot, which lags this repo's table
 # and decodes newer codes as SEP_MSG_UNKNOWN. The checked-in bootrom header is the
@@ -285,20 +285,20 @@ VP_CONFIG_SIG := $(SYSTEMC_HOME)|$(CCI_HOME)|$(BOOST_ROOT)|$(OPENSSL_ROOT)|c++$(
 DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 
 .PHONY: help scratch-build download deps deps-info vp vp-clean clean env enable_vp \
-        systemc boost openssl cci submodule-init check-tt-oca-sim check-cxx smoke \
+        systemc boost openssl cci submodule-init check-tt-oca-harness-model check-cxx smoke \
         boot-build boot-secure-image boot-run fw-run vp-test vp-py-deps FORCE
 
 # =============================================================================
 # Help
 # =============================================================================
 help:
-	@echo "SEP Virtual Platform build (mirrors tt-oca-sim CI)"
+	@echo "SEP Virtual Platform build (mirrors tt-oca-harness-model CI)"
 	@echo ""
 	@echo "Primary targets:"
 	@echo "  scratch-build  - clean, then build all deps and sep-vp from scratch"
 	@echo "  vp             - build/rebuild sep-vp (incremental; deps assumed built)"
 	@echo "  vp-clean       - wipe vp/build and reconfigure + rebuild sep-vp"
-	@echo "  clean          - remove downloads/, local/, and tt-oca-sim/vp/build"
+	@echo "  clean          - remove downloads/, local/, and tt-oca-harness-model/vp/build"
 	@echo "  deps-info      - show where each dependency resolves and why"
 	@echo "  check-cxx      - verify the compiler on PATH can build C++$(CXX_STD)"
 	@echo "  env/enable_vp  - write setup_environment.sh to source for running sep-vp standalone"
@@ -307,7 +307,7 @@ help:
 	@echo "  download       - fetch the dependency source tarballs into downloads/"
 	@echo "  deps           - resolve or build SystemC, Boost, OpenSSL, CCI"
 	@echo "  systemc boost openssl cci - resolve/build a single dependency"
-	@echo "  submodule-init - init the tt-oca-sim submodule (recursive)"
+	@echo "  submodule-init - init the tt-oca-harness-model submodule (recursive)"
 	@echo "  smoke          - (optional) build+run a sw/sep-vp-tests test in sep-vp"
 	@echo ""
 	@echo "Firmware test harness (sepvp/ + tests/):"
@@ -473,8 +473,8 @@ $(CCI_SENTINEL): | $(CCI_TARBALL) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(LOCAL_
 # are now merged into the CSML submodule upstream, so no source patch is applied.
 # =============================================================================
 submodule-init:
-	@echo "[VP] Initializing the tt-oca-sim submodule (recursive)..."
-	git -C $(OCAH_ROOT) submodule update --init --recursive virtual_platform/tt-oca-sim
+	@echo "[VP] Initializing the tt-oca-harness-model submodule (recursive)..."
+	git -C $(OCAH_ROOT) submodule update --init --recursive virtual_platform/tt-oca-harness-model
 
 # =============================================================================
 # VP configure + build (delegates to configure_vp.sh, deps passed via env)
@@ -497,7 +497,7 @@ $(DEP_STAMP): FORCE
 # sentinel, and the config stamp forces a CLEAN reconfigure when the dep
 # prefixes / compiler / status table change (a stale CMakeCache pinning old
 # paths is worse than a rebuild).
-$(VP_BUILD_DIR)/Makefile: $(DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(OPENSSL_SENTINEL) $(CCI_SENTINEL) | check-tt-oca-sim check-cxx
+$(VP_BUILD_DIR)/Makefile: $(DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(OPENSSL_SENTINEL) $(CCI_SENTINEL) | check-tt-oca-harness-model check-cxx
 	@echo "[VP] Preparing source (submodules)..."
 	if [ -f "$(VP_BUILD_DIR)/CMakeCache.txt" ]; then
 	  echo "[VP] Build configuration changed — wiping $(VP_BUILD_DIR) for a clean reconfigure."
@@ -517,7 +517,7 @@ $(VP_BUILD_DIR)/Makefile: $(DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(O
 # Always delegate to the CMake-generated build (the authority on source/header
 # dependencies). This is intentionally PHONY and NOT a file target keyed on the
 # binary: if it were, an unchanged sep-vp binary would shadow CMake's finer-grained
-# tracking, so a pulled tt-oca-sim source/header change (e.g. the boot-ROM LMA fix)
+# tracking, so a pulled tt-oca-harness-model source/header change (e.g. the boot-ROM LMA fix)
 # would be silently skipped. The configure sentinel is an order-only prereq so
 # configure still runs exactly once.
 vp-build: | $(VP_BUILD_DIR)/Makefile check-cxx
@@ -535,12 +535,12 @@ vp-clean:
 	$(MAKE) vp
 
 # =============================================================================
-# Clean (build artifacts only; tt-oca-sim source is left intact)
+# Clean (build artifacts only; tt-oca-harness-model source is left intact)
 # =============================================================================
 clean:
-	@echo "[VP] Removing downloads/, local/, and tt-oca-sim/vp/build..."
+	@echo "[VP] Removing downloads/, local/, and tt-oca-harness-model/vp/build..."
 	rm -rf $(DOWNLOAD_DIR) $(LOCAL_DIR) $(VP_BUILD_DIR) $(DEP_STAMP)
-	echo "[VP] Clean complete (tt-oca-sim source untouched)."
+	echo "[VP] Clean complete (tt-oca-harness-model source untouched)."
 
 # =============================================================================
 # Environment script (run sep-vp outside the Make environment)
@@ -600,11 +600,11 @@ env enable_vp:
 # =============================================================================
 # A registered-but-uninitialized submodule dir exists but is empty, so test for
 # a file inside it rather than the directory itself.
-check-tt-oca-sim:
+check-tt-oca-harness-model:
 	@if [ ! -f "$(SIM_DIR)/vp/configure_vp.sh" ]; then
-	  echo "[VP] ERROR: the tt-oca-sim submodule is not checked out at $(SIM_DIR)" >&2
+	  echo "[VP] ERROR: the tt-oca-harness-model submodule is not checked out at $(SIM_DIR)" >&2
 	  echo "[VP] Initialize it with:  make ocah-vp-init   (from the repo root)" >&2
-	  echo "[VP]   or:  git -C $(OCAH_ROOT) submodule update --init --recursive virtual_platform/tt-oca-sim" >&2
+	  echo "[VP]   or:  git -C $(OCAH_ROOT) submodule update --init --recursive virtual_platform/tt-oca-harness-model" >&2
 	  exit 1
 	fi
 

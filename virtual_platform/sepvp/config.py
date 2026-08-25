@@ -60,7 +60,7 @@ class SimConfig:
             ("bool", "och_sep_ss1.smc.rotate_update", self.rotate_update),
             ("bool", "och_sep_ss1.smc.bl0_pll_clk", self.bl0_pll_clk),
             ("bool", "och_sep_ss1.smc.status_report_disable", self.status_report_disable),
-            # tt-oca-sim folded the SIM_OUT / SEP_STATUS decoders into the
+            # tt-oca-harness-model folded the SIM_OUT / SEP_STATUS decoders into the
             # sep_scratch_cold peripheral, moving both keys under scratch_cold.*. The old
             # names are still *accepted* by CCI as unconsumed presets -- they simply do
             # nothing -- so a stale name here fails silently rather than loudly.
