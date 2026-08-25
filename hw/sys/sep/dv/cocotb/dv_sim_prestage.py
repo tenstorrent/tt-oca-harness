@@ -45,61 +45,49 @@ _DV_ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_EFUSE_PRELOAD = _DV_ROOT / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
 
 
-def _load_sep_efuse_image():
-    """Import SepEfuseImage by file path. The `env` package __init__ pulls in
-    cocotb/pyuvm (sim-only), so a plain package import would fail in the pre-sim
-    runlib process; sep_efuse_image.py imports nothing beyond the stdlib and its
-    own env siblings, so load it directly.
+def _load_env_module(modname: str, filename: str):
+    """Import a cocotb/env module by file path.
 
-    The env directory has to go on sys.path first: the sim gets it from
-    `[cocotb] python_paths` in sep_sim_cfg.toml, but this hook runs in run_dv.py's
-    interpreter, where a bare sibling import (`from sep_reg_meta import sym`) would
-    otherwise raise ModuleNotFoundError.
+    The ``env`` package ``__init__`` pulls in cocotb/pyuvm (sim-only), so a
+    plain package import would fail in the pre-sim runlib process. The env
+    directory has to go on ``sys.path`` first: the sim gets it from
+    ``[cocotb] python_paths`` in ``sep_sim_cfg.toml``, but this hook runs in
+    ``run_dv.py``'s interpreter, where a bare sibling import would raise
+    ``ModuleNotFoundError``.
     """
     env_dir = _DV_ROOT / "cocotb" / "env"
     if str(env_dir) not in sys.path:
         sys.path.insert(0, str(env_dir))
-    path = env_dir / "sep_efuse_image.py"
-    spec = importlib.util.spec_from_file_location("sep_efuse_image", path)
+    path = env_dir / filename
+    spec = importlib.util.spec_from_file_location(modname, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {modname} from {path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.SepEfuseImage
+    return module
+
+
+def _load_sep_efuse_image():
+    """Import SepEfuseImage without going through env/__init__.py."""
+    return _load_env_module("sep_efuse_image", "sep_efuse_image.py").SepEfuseImage
 
 
 def _rma_token_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_rma_token_rand_test``'s ``cfg.image_fixed()``."""
-    env_dir = _DV_ROOT / "cocotb" / "env"
-    if str(env_dir) not in sys.path:
-        sys.path.insert(0, str(env_dir))
-    path = env_dir / "sep_rma_token.py"
-    spec = importlib.util.spec_from_file_location("sep_rma_token", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.SepRmaTokenCfg(seed).image_fixed()
+    mod = _load_env_module("sep_rma_token", "sep_rma_token.py")
+    return mod.SepRmaTokenCfg(seed).image_fixed()
 
 
 def _locked_field_irq_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_locked_field_access_irq_path_test``'s ``cfg.image_fixed()``."""
-    env_dir = _DV_ROOT / "cocotb" / "env"
-    if str(env_dir) not in sys.path:
-        sys.path.insert(0, str(env_dir))
-    path = env_dir / "sep_locked_field_irq.py"
-    spec = importlib.util.spec_from_file_location("sep_locked_field_irq", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.SepLockedFieldIrqCfg(seed).image_fixed()
+    mod = _load_env_module("sep_locked_field_irq", "sep_locked_field_irq.py")
+    return mod.SepLockedFieldIrqCfg(seed).image_fixed()
 
 
 def _set_only_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
-    env_dir = _DV_ROOT / "cocotb" / "env"
-    if str(env_dir) not in sys.path:
-        sys.path.insert(0, str(env_dir))
-    path = env_dir / "sep_efuse_set_only.py"
-    spec = importlib.util.spec_from_file_location("sep_efuse_set_only", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.SepEfuseSetOnlyCfg(seed).image_fixed()
+    mod = _load_env_module("sep_efuse_set_only", "sep_efuse_set_only.py")
+    return mod.SepEfuseSetOnlyCfg(seed).image_fixed()
 
 
 # Common LC-gated field pins shared by several PROD-lifecycle tests.

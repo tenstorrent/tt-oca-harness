@@ -40,6 +40,11 @@ class sep_entropy_pool_aperture_test(sep_base_test):
     """64-bit entropy-pool aperture: pop, refuse, and aggregator bits [36]/[37]."""
 
     async def _irq(self, idx: int) -> int:
+        # Sample in ReadOnly so NBA has settled. Do not await a second
+        # posedge here: that makes ``_wait_irq`` count two clocks per poll.
+        # Do not await ReadWrite either: cocotb forbids ReadOnly -> ReadWrite.
+        # Callers that drive AXI wait their own posedge (the master driver
+        # already does).
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
         raw = cocotb.top.sep_internal_interrupts_probe_o.value
@@ -47,10 +52,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             raise AssertionError(
                 f"sep_internal_interrupts X/Z while sampling bit [{idx}]"
             )
-        bit = (int(raw) >> idx) & 1
-        # Leave the ReadOnly window before the caller drives AXI or DUT inputs.
-        await RisingEdge(cocotb.top.clk_i)
-        return bit
+        return (int(raw) >> idx) & 1
 
     async def _wait_irq(self, idx: int, expect: int, *, cycles: int) -> None:
         for _ in range(cycles):
@@ -66,7 +68,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         A full pool holds ``req_pending`` low and clears the stall counter.
         One pop is not enough: an in-flight EDN word can refill to full
-        during the next status read. Bound is adapter leftover, not glen.
+        during the next status read. Cap the pops at leftover EDN-adapter
+        beats, not the CSRNG generate length (``glen``).
         """
         for _ in range(FIFO_DEPTH * 8):
             last = (await pool.status()) & 0x3F
