@@ -152,7 +152,9 @@ hw/sys/sep/dv/
 │                        #   open stand-in that satisfies sep.rdl's sep_external
 │                        #   include -- eFuse SHIM control plus the execute-in-place
 │                        #   window. Excluded for OSS hygiene: proprietary IPs in
-│                        #   nonfree. Only models/regs/gen/sv/*_addrmap_pkg.sv builds
+│                        #   nonfree. Firmware includes the open C headers
+│                        #   (models/regs/gen/c/sep_external.h) via sep.h; the
+│                        #   SV addrmap package is the RTL build input.
 ├── shims/               # SEP-local behavioral sim-models (kept, accepted shims)
 │   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
 │   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)
