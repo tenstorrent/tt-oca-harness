@@ -78,6 +78,18 @@ def _rma_token_fixed(seed: int) -> dict[str, int]:
     return module.SepRmaTokenCfg(seed).image_fixed()
 
 
+def _set_only_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
+    env_dir = _DV_ROOT / "cocotb" / "env"
+    if str(env_dir) not in sys.path:
+        sys.path.insert(0, str(env_dir))
+    path = env_dir / "sep_efuse_set_only.py"
+    spec = importlib.util.spec_from_file_location("sep_efuse_set_only", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.SepEfuseSetOnlyCfg(seed).image_fixed()
+
+
 # Common LC-gated field pins shared by several PROD-lifecycle tests.
 _SIP_SYS_DIS_PINS = {
     "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0F,
@@ -110,6 +122,8 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_efuse_jtag_axil_el2_cpu_mux_test": {"mode": "random", "lc_raw": 0x1},
     "sep_fabric_inbound_filter_rule_matrix_test": {
         "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
+    "sep_sec_dis_override_test": {
+        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
     "sep_lcc_uvm_inbound_filter_gating_test": {
         "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS_DBG_OPEN)},
     "sep_efuse_km_axil_cpu_mux_coexist_test": {
@@ -139,6 +153,13 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "mode": "random",
         "lc_raw": 0x1,
         "fixed_from": "rma_token",
+    },
+    # Set-only shadow OR-merge. Sensed ones come from SepEfuseSetOnlyCfg(seed);
+    # see _set_only_fixed() so the t=0 hex matches the test golden.
+    "sep_efuse_set_only_monotonicity_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed_from": "set_only",
     },
 }
 
@@ -214,6 +235,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
         fixed = spec.get("fixed")
         if spec.get("fixed_from") == "rma_token":
             fixed = _rma_token_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "set_only":
+            fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
         image.randomize(
             seed + int(spec.get("seed_offset", 0)),
             lc_raw=spec.get("lc_raw"),

@@ -12,8 +12,9 @@
 This is the high-level plan for verifying the SEP subsystem in the open-source
 tree. It says *what each phase is for*, *how coverage is counted*, and *what
 every test must satisfy*. Phase 1 is signed off. Phase 2 baseline (25 of
-34) is closed. Phase 2+ is the active cocotb close-out (32 of 34 iconic
-rows before UVM). Phase 3 is a future UVM environment, not an execute
+40) is closed. Phase 2+ is the active cocotb close-out (34 of 40 iconic
+rows). Phase 2++ then activates the last unactivated blocks (38 of 40)
+before UVM. Phase 3 is a future UVM environment, not an execute
 list.
 
 It is not a test-by-test contract. Those live in the per-phase verification
@@ -45,7 +46,7 @@ repeat each other.
 | Per-IP iconic feature tests, randomized where the feature has a legal
   matrix or knob space. Plus the cross-IP edges a per-IP bench cannot see.
   Extend an existing test before adding a sibling.
-| Phase 1 + Phase 2 together: floor 18 of 34, goal 25 of 34 in-scope
+| Phase 1 + Phase 2 together: floor 18 of 40, goal 25 of 40 in-scope
   iconic-feature rows `PROVEN`. Scorecard goals, not coverage numbers.
 
 | *Phase 2+*
@@ -53,9 +54,17 @@ repeat each other.
 | Completeness extension of Phase 2. Closes the remaining in-scope
   scorecard rows before a UVM bench starts. Same quality bar; no new
   environment.
-| Goal 32 of 34 `PROVEN` in-scope rows. KM command stays parked;
-  inbound ownership stays an RTL close. Detail:
+| Goal 34 of 40 `PROVEN` in-scope rows. KM command stays parked;
+  inbound ownership and dead-space refuse stay RTL closes. Detail:
   link:verification_plan_phase2.adoc#phase2-plus[Phase 2+].
+
+| *Phase 2++*
+| same cocotb environment
+| Block activation. Closes the rows for blocks the suite instantiates but
+  never reaches, so that every block in the DUT is exercised by at least
+  one registered test. Same quality bar; no new environment.
+| Goal 38 of 40 `PROVEN` in-scope rows. Detail:
+  link:verification_plan_phase2.adoc#phase2-plus-plus[Phase 2++].
 
 | *Phase 3*
 | *new* UVM testbench
@@ -137,7 +146,7 @@ Generate at that length, so `gen_last` fires and the trailing CTR_DRBG
 Update is actually scored.
 
 Phase 1 + Phase 2 is the cocotb baseline. Together they must reach at
-least 18 of 34 in-scope iconic-feature rows, and they aim at 25 of 34
+least 18 of 40 in-scope iconic-feature rows, and they aim at 25 of 40
 (`PROVEN` rows on <<iconic-scorecard>>). Completeness of that baseline
 beats compression: merge, extend, and randomize to *reach* the target,
 do not drop a real gap to keep the test count pretty.
@@ -157,16 +166,16 @@ lifecycle, eFuse, Key Manager, and fabric.
 
 Detail: `verification_plan_phase2.adoc`.
 
-=== Phase 2+ — 32 of 34 before UVM
+=== Phase 2+ — 34 of 40
 
-Same cocotb environment. Five close-out rows are already `PROVEN`
+Same cocotb environment. Eleven close-out rows are `PROVEN`
 (program × lock, demote including lock, standalone RMA, live outbound
-remap, ESRC watermark arming). The scorecard is 27 of 34. Five iconic
-`GAP`s complete the 32-of-34 close-out: SEC_DIS override, eFuse
-set-only monotonicity, local-master alias datapath, ESRC `FIPS_LOCK`
-plus alert delivery, and the KM key/policy vault. Remaining after
-that: KM command set (parked) and inbound ownership (RTL; the existing
-matrix keeps CHK-OWNERSHIP-WINDOW hard). Phase 3 does not start until
+remap, ESRC watermark arming, eFuse set-only, ESRC lock and alert,
+local-master alias, KM key/policy vault, SEC_DIS override, CSR bit-bash).
+The scorecard is 33 of 40. Dead-space decode is a landed hard `FAILED`
+( the filed RTL defect), not a
+feature credit. Remaining: KM command set (parked) and two RTL closes
+(inbound ownership; dead-space refuse). Phase 3 does not start until
 this close-out finishes, and its first deliverable is UVM bring-up
 plus smoke, not these rows.
 
@@ -175,6 +184,26 @@ link:verification_plan_phase2.adoc#phase2-plus[Phase 2+]. Do not XFAIL
 a spec-vs-RTL checker.
 
 Detail: link:verification_plan_phase2.adoc#phase2-plus[Phase 2+].
+
+=== Phase 2++ — block activation, 38 of 40
+
+Same cocotb environment again. Phase 2+ closes the feature rows the plan
+scoped; Phase 2++ closes a different kind of hole — blocks the DUT
+instantiates and the suite never reaches at all. A block with no row
+cannot appear as a `GAP`, so these were invisible rather than deferred,
+which is why they are called out as their own phase.
+
+Four blocks, four vehicles: the Adams Bridge post-quantum engine, the
+entropy-pool aperture, the Key Manager CRC engine, and the KPV
+scrambler. A fifth item, `sep_crypto_axi_isolate`, is an extension of the
+existing per-IP reset test rather than a new vehicle.
+
+Two of the four are reachable only from Key Manager firmware, so they
+need dedicated KM ROM images in the pattern `km_rom_vault` already
+established. That is the cost of activating them honestly; a SEP-side
+poke at KM-private state would not be a proof.
+
+Detail: link:verification_plan_phase2.adoc#phase2-plus-plus[Phase 2++].
 
 === Phase 3 — a new UVM environment
 
@@ -196,8 +225,9 @@ Two different numbers. Do not mix them.
 
 Feature coverage (the cocotb phases)::
 The iconic claim for each in-scope IP, graded on <<iconic-scorecard>>.
-These are scorecard goals, not measurements: floor 18 of 34 in-scope
-rows `PROVEN`, Phase 2 goal 25 of 34, Phase 2+ goal 32 of 34 before UVM.
+These are scorecard goals, not measurements: floor 18 of 40 in-scope
+rows `PROVEN`, Phase 2 goal 25 of 40, Phase 2+ goal 34 of 40, Phase 2++
+goal 38 of 40 before UVM.
 There is no SystemVerilog covergroup number for this — the directed
 environment has none, and RTL SVA is compiled out under the Verilator
 acceptance flow. A `PARTIAL` feature (a test exists, the iconic claim is
@@ -235,13 +265,10 @@ and
 link:verification_plan_phase2.adoc#pending-upgrades[pending upgrades].
 Do not treat a `PARTIAL` as done by pointing at a graded entry.
 
-Twenty-seven of thirty-four in-scope rows are `PROVEN`, which clears the
-floor of 18 and the Phase 2 goal of 25 of 34. Phase 2+ remaining before
-32 of 34: the five iconic `GAP`s named in
-link:verification_plan_phase2.adoc#phase2-plus[Phase 2+] (SEC_DIS,
-eFuse set-only, local-master alias, ESRC `FIPS_LOCK` plus alert, KM
-vault). After those, KM command stays parked and inbound ownership
-stays an RTL close.
+Thirty-three of forty in-scope rows are `PROVEN`, which clears the
+floor of 18 and the Phase 2 goal of 25 of 40. Remaining before the
+Phase 2+ close-out of 34 of 40: inbound ownership (RTL) and dead-space
+decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 
 [cols="2,2,3",options="header"]
 |===
@@ -253,11 +280,15 @@ stays an RTL close.
 
 | Inbound filter: POR block-all, CPU-programmed allow, `SEP_DBG` bypass
 | PARTIAL
-| Block-by-default, 16-cell allow/block + source-ID walk, and `SEP_DBG`
-  gating are proven. CHK-OWNERSHIP-WINDOW is `FAILED`: only the SEP CPU
-  may program the inbound filter per `hw/sys/sep/doc/fabric.adoc`, and the
-  RTL answers OKAY instead of DECERR to another master. Phase 2+ keeps
-  that assert hard; the row is `PROVEN` when the checker matches the spec.
+| Block-by-default, 16-cell allow/block + source-ID walk, `allow_burst`
+  deny/allow on AR and AW, and post-filter burst-to-single on the
+  system-CSR Lite path (Verilator `20260825_071626`) are proven, as is
+  `SEP_DBG` gating. CHK-OWNERSHIP-WINDOW is `FAILED`: only the SEP CPU
+  may program the inbound filter per `hw/sys/sep/doc/fabric.adoc`, and
+  the RTL answers OKAY instead of DECERR to another master. Phase 2+
+  keeps that assert hard; the row is `PROVEN` when the checker matches
+  the spec. The wrap same-page 4 KB widen is an open spec question
+  (see `verification_plan_phase2.adoc` open items).
 
 | Outbound filter / AP-STEE live remap
 | PROVEN
@@ -324,13 +355,13 @@ stays an RTL close.
   `sep_km_command_set_rand_test`.
 
 | KM key/policy vault: slot extent, seal, and SRAM write-lock
-| GAP
-| No test drives the KPV slot lifecycle. Phase 2+
-  `sep_km_key_policy_vault_test` owns slot extent and
-  `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`. Seal stays on the KM command-device
-  vehicle. Same firmware-contract caution as that vehicle: do not write
-  the card against `firmware.adoc` if shipped `rom_main` disagrees.
-  Implement last among the five.
+| PROVEN
+| Slot endpoints plus a seed slot, a store past `KM_KPV_SIZE` raises
+  AXI SLVERR, and a write-locked SRAM region raises
+  `SRAM_WRITE_LOCK_ERR` / `SRAM_WRITE_LOCK_VIOLATION` then W1C-clears.
+  `sep_km_key_policy_vault_test` (Verilator `20260825_082129`). Dedicated
+  `km_rom_vault`, not `rom_main`. Seal stays on the KM command-device
+  vehicle.
 
 | Entropy ESRC → DRBG → EDN consume
 | PROVEN
@@ -338,18 +369,14 @@ stays an RTL close.
   test; consume is live including the entropy-pool sink.
 
 | ESRC configuration lock and alert delivery
-| GAP
-| Two live mechanisms with no test. `FIPS_LOCK` write-protects the
-  certified-configuration fields — the CTRL functional bits, the
-  health-test thresholds and window, the ring-oscillator and
-  sample-clock configuration, and the decorrelator setup — with
-  intentionally no debug-unlock path, and nothing proves a post-lock write is rejected or
-  that the lock clears only on a hard reset. Separately the health
-  monitor's alert path — the enable-gated sticky causes that reach the
-  PIC — is only ever asserted to stay zero, so the alert is never proven
-  to propagate. Health-test quality itself stays Phase 3. Phase 2+ owns
-  the lock and the alert as two vehicles on this row:
-  `sep_esrc_fips_lock_test` and `sep_esrc_alert_delivery_test`.
+| PROVEN
+| Two vehicles. Lock: post-lock writes to the certified-configuration
+  classes are rejected; write-0 leaves `LOCK=1`; `CTRL.RESET` does not
+  clear; `rst_ni` does. Alert: a failing window trips
+  `MAIN_SM_STATUS.ALERT` / `INTR_STATUS.PERSISTENT_FAILURE` to PIC
+  source 16, then W1C-clears. Health-test quality stays Phase 3.
+  `sep_esrc_fips_lock_test` (Verilator `20260824_163512`) and
+  `sep_esrc_alert_delivery_test` (Verilator `20260824_162936`).
 
 | ESRC health-test watermark arming
 | PROVEN
@@ -365,7 +392,12 @@ stays an RTL close.
 
 | eFuse sense + shadow + persist
 | PROVEN
-| Sense, image, program-then-resense.
+| Sense, image, program-then-resense. Pre-sense fail-closed is on
+  `sep_efuse_image_test` (Verilator `20260825_034132`): AXI `FEAT_CTRL=0`
+  while `sep_fuse_sense_done_o` is still low, then the same register
+  follows the image golden after sense-done. The `final_sec_disable`
+  half of `fuse_sense_done_i || final_sec_disable` (expose shadow
+  before sense-done) is not claimed.
 
 | eFuse program × lock
 | PROVEN
@@ -400,6 +432,11 @@ stays an RTL close.
 | Per-IP `SW_RESET_N` isolation
 | PROVEN
 | AES, HMAC, KMAC, OTBN walked; KM held by reset default.
+  Named unproven slice: `sep_crypto_axi_isolate`. The existing test
+  already drives its FSM on every reset pulse, but nothing is checked
+  during the isolation window. Phase 2++ extends that test rather than
+  adding a sibling; the drain-before-reset ordering stays unobservable
+  here and is recorded as such.
 
 | Clock-gate per IP
 | PROVEN
@@ -410,62 +447,116 @@ stays an RTL close.
 
 | JTAG vs CPU vs KM eFuse mux
 | PROVEN
-| Two mux-coexistence tests. Extra-MMR deny is `FAILED`: JTAG in PROD may
-  touch only the two RMA-token CSRs per `hw/sys/sep/doc/periphs.adoc`, and
-  the RTL returns OKAY on a non-token MMR. That is RTL vs spec, not a
-  missing test, and not a feature credit for that slice.
+| Two mux-coexistence tests. In PROD / RMA_SIP, JTAG may reach the MMR
+  token block. This vehicle samples `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`,
+  and `SEC_DISABLE_TOKEN_MATCH`; `CHK-JTAG-MMR` already walks RMA
+  `TOKEN_I`. Shadow and program/read interface DECERR. SHIM is out of
+  this port (recorded).
+  (`sep_efuse_jtag_axil_el2_cpu_mux_test`, Verilator `20260824_152449`).
 
 | SEC_DIS security-disable override
-| GAP
-| `hw/sys/sep/doc/security_disable.adoc` makes SEC_DIS force every
-  feature-control bit on regardless of LC state and the DIS vectors, and
-  lets the SEP boot with fuse sense incomplete. The RTL implements both
-  (`sep_lifecycle_ctrl.sv` forces all-ones; `efuse_token_processing.sv`
-  exposes the shadow bank without `fuse_sense_done`). No test drives the
-  token, so `sec_dis` is 0 in every run and the golden's override branch
-  is never taken against the DUT. Phase 2+ `sep_sec_dis_override_test`.
-  First job: the comparator matches a SHA-256 digest of the written token
-  against a metal-fixed expected constant that is all-zero in this tree,
-  so settle whether a match is reachable in simulation before scoping the
-  rest. Do not add a backdoor. An unreferenced firmware test
-  (`fw/tests/sep_efuse_fw_token_match_test`) already asserts a match on a
-  zero token; it is in no testlist.
+| PROVEN
+| `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero
+  32-byte token (the TB stand-in for the metal ECO). AXI write of
+  zeros returns `SEC_DISABLE_TOKEN_MATCH=0x15`, `sec_dis=1`, and
+  `FEAT_CTRL=0xffff0000ffffffff` (override golden, `SECURE_TM=0`).
+  Token `1` mismatches and restores fail-closed PROD
+  (`sec_dis=0`, `FEAT_CTRL=0xf000000000000000`). No `force` of
+  `sec_dis`. Token is written over the CPU-LSU AXI MMR after sense;
+  JTAG `TOKEN_EOP` activate is not claimed. Boot-with-sense-incomplete
+  is not claimed.
+  `sep_sec_dis_override_test`, Verilator `20260825_031826`.
 
 | eFuse set-only fields (anti-rollback monotonicity)
-| GAP
-| `hw/sys/sep/doc/periphs.adoc` makes the version counters and revocation
-  fields set-only so an older image cannot be reinstated. The RTL enforces
-  it by OR-ing the write data with the stored value on the shadow-register
-  write path, for `BL1_VERSION`, `BL2_VERSION`, `CHIPLET_PUBK_REVOKE`,
-  `REQUIRED_SIGNERS` and `REQUIRED_ALGS` among others. No test writes an
-  eFuse shadow register at all, so that OR-merge never runs: fuse values
-  reach the DUT through the staged OTP image and the program path, which
-  is a different mechanism. The out-of-scope secure-boot row below is
-  firmware signature checking, not this fuse-side enforcement. Phase 2+
-  `sep_efuse_set_only_monotonicity_test`.
+| PROVEN
+| Shadow-path OR-merge on the metal `WRITE_SET_ONLY` map:
+  `BL1_VERSION`, `BL2_VERSION`, `CHIPLET_PUBK_REVOKE`,
+  `REQUIRED_SIGNERS`, `REQUIRED_ALGS`. That is the field map, not the
+  `periphs.adoc` SW-writable column (`REQUIRED_SIGNERS` is `true`
+  there). A sensed 1 survives write-0; a new 1 sticks; a later write-0
+  cannot clear the OR. `SPARE0` still overwrites, so the OR is not a
+  global write path. Never `LC_STATE`. Program × lock stays a different
+  vehicle.
+  `sep_efuse_set_only_monotonicity_test`, Verilator `20260824_162139`.
 
 | Local-master alias remap datapath (16 regions)
+| PROVEN
+| Distinct from the CPU alias window row above. Sixteen programmable
+  local-master regions with an offset, ahead of the system-peripherals
+  routing demux. `sep_fabric_local_alias_datapath_test` (Verilator
+  `20260825_082114`) programs one region and proves the offset on a
+  live CPU-LSU beat (`CLOCK_GATE_CTRL` marker). CSR programming stays
+  on `sep_fabric_remap_filter_csr_bank_test`. Cacheable override is
+  not observed here.
+
+| CSR reset / RW / RO / reserved behaviour
+| PROVEN
+| `sep_reg_bit_bash_rand_test` (Verilator `20260825_043118`) walks the
+  generated export: 417 reset matches, then 51 complementary writes that
+  move exactly the software-usable mask and no other bits. Exclusions are
+  a reason table (FIFO, trigger, key, hw-driven, side-effect, OTP). Remap
+  and outbound-filter banks are reset-only. Per-register decode is out of
+  this row.
+
+| Dead-space decode (unmapped addresses must not alias live registers)
+| PARTIAL
+| Vehicle exists. `sep_fabric_deadspace_decode_test` (Verilator
+  `20260825_071309`) walks 12 known-bad offsets from the filed RTL defect plus seed
+  dead offsets. CHK-DEADSPACE-REFUSE is `FAILED`: 42 fail lines on 30
+  probes (22 accepted OKAY, 11 aliased a live register), including every
+  issue-228 anchor (KM `SEP_CTRL` at `0x10920ff8`, DMA `0x108008a8`, …).
+  AES / lifecycle / some SPI probes already refuse. Not a feature credit.
+  Do not XFAIL and do not shrink the probe set.
+
+| Adams Bridge post-quantum engine (ML-DSA-87 keyGen)
 | GAP
-| Distinct from the CPU alias window row above. `hw/sys/sep/doc/fabric.adoc`
-  gives sixteen programmable regions with an offset and a cacheable
-  attribute, ahead of the routing demux on all local-master traffic.
-  Coverage is CSR-only (`sep_fabric_remap_filter_csr_bank_test`); no test
-  drives a beat through a programmed region, so a wrong offset, an
-  inverted valid bit, or a stuck cacheable override would pass.
-  Phase 2+ `sep_fabric_local_alias_datapath_test`. Spec wants valid and
-  cacheable bits; RTL has neither and rewrites unprogrammed regions.
-  Prove offset on a real beat. Keep any missing-bit check a hard FAIL.
-  Do not XFAIL.
+| Vendored open from `chipsalliance/adams-bridge`, compiled into this build
+  (`SEP_ABR_EN` is set for the whole `sep` target and `CALIPTRA` is not, so
+  the real wrapper is bound, not the error slave). Its aperture is a
+  `sep_crypto` demux rule at `0x1094_0000`, it has its own SRAMs, two PIC
+  sources, and a Class 2 scan root. No registered test reaches it. Note the
+  aperture is a SystemVerilog localparam in `sep_crypto_pkg.sv`, not a
+  generated address-map symbol, so nothing catches it moving. Phase 2++
+  `sep_abr_mldsa_keygen_kat_test` activates the block with an ML-DSA-87
+  keyGen known-answer test on the software-written seed, plus the two PIC
+  sources. Named unproven slices that a green keyGen does NOT close:
+  ML-KEM-1024, which `sep_crypto_abr_wrapper.sv` records as having no
+  engine driver yet so its lanes are stimulus-only; the key-vault seed
+  path, whose key CSR block is a DV stub tying every share to zero; and
+  sign / verify, whose vectors exist but are a separate vehicle.
+
+| Entropy pool aperture and its two PIC sources
+| GAP
+| `sep_entropy_fifo` is a 64 KB xbar target at `0x1095_0000` with a status
+  word, an IRQ-cause word, and a destructive pop that answers SLVERR on an
+  empty pool. It drives `pool_low` and `fill_stall` to the PIC. Distinct
+  from the ESRC consume row above, which scores the EDN fill *into* the
+  pool, not the block's own software interface. Phase 2++
+  `sep_entropy_pool_aperture_test`.
+
+| Key Manager CRC engine
+| GAP
+| `km_crc_engine` is reached only as a PicoRV32 PCPI co-processor by a
+  custom-0 instruction from KM firmware — it has no register interface at
+  all. The open suite computes CRCs host-side in Python and never invokes
+  the hardware. Phase 2++ `sep_km_crc_pcpi_kat_test`.
+
+| Key Manager key/policy vault scrambler
+| GAP
+| The KPV stores key material through a keyed scrambler with an address
+  tweak. Nothing exercises it. Distinct from the KPV slot/lock row above,
+  which proves extent and write-lock rather than storage confidentiality.
+  Phase 2++ `sep_km_kpv_scrambler_test`.
 
 | Secure boot negative (bad sig / revoke / rollback)
 | out
 | ROM-FW owner. Not a Phase 2 GAP this suite executes.
 |===
 
-`PROVEN` feature rows in the count; `PARTIAL`, `GAP`, and `out` are not.
-A `FAILED` checker on an otherwise-proven feature (inbound ownership,
-JTAG extra-MMR) is named on the row and is not a feature credit for that
-slice.
+`PROVEN` feature rows in the count; `PARTIAL`, `GAP`, `out`, and a
+landed `FAILED` spec-gap (dead-space decode) are not. A `FAILED`
+checker on an otherwise-proven feature (inbound ownership) is named
+on the row and is not a feature credit for that slice.
 
 == Quality bar
 
@@ -580,10 +671,12 @@ engine. It does not exist in this tree.
   not open Phase 1 work.
 
 | `verification_plan_phase2.adoc`
-| Phase 2 contract plus the Phase 2+ extension (`#phase2-plus`).
-  Graded iconic entries, pending in-place upgrades, named remaining
-  `GAP`s, and the 32-of-34 close-out before UVM. Former leftover names
-  are mapped, not listed as a worklist.
+| Phase 2 contract, the Phase 2+ extension (`#phase2-plus`), and the
+  Phase 2++ block-activation plan (`#phase2-plus-plus`). Graded iconic
+  entries, pending in-place upgrades, named remaining `GAP`s, the
+  33-of-40 close-out, and the 38-of-40 activation plan (implementation
+  is a follow-on PR). Former leftover names are mapped, not listed as a
+  worklist.
 
 | `verification_plan_phase3.adoc`
 | Phase 3 holding note only. Not committed scope and not an execute
