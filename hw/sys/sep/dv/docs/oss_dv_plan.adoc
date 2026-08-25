@@ -664,10 +664,12 @@ engine. It does not exist in this tree.
   not open Phase 1 work.
 
 | `verification_plan_phase2.adoc`
-| Phase 2 contract plus the Phase 2+ extension (`#phase2-plus`).
-  Graded iconic entries, pending in-place upgrades, named remaining
-  `GAP`s, and the 33-of-40 close-out before UVM. Former leftover names
-  are mapped, not listed as a worklist.
+| Phase 2 contract, the Phase 2+ extension (`#phase2-plus`), and the
+  Phase 2++ block-activation plan (`#phase2-plus-plus`). Graded iconic
+  entries, pending in-place upgrades, named remaining `GAP`s, the
+  33-of-40 close-out, and the 38-of-40 activation plan (implementation
+  is a follow-on PR). Former leftover names are mapped, not listed as a
+  worklist.
 
 | `verification_plan_phase3.adoc`
 | Phase 3 holding note only. Not committed scope and not an execute

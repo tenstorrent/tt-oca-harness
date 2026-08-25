@@ -47,7 +47,9 @@ named new test.
 Do not stretch the Phase 1 e2e / smoke entry. New tests are created
 from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
 is the completeness extension: same cocotb environment, goal 34 of 40
-`PROVEN` scorecard rows, finished before Phase 3 starts a UVM bench.
+`PROVEN` scorecard rows. <<phase2-plus-plus>> is block activation (38 of
+40); it is planned here and implemented in a follow-on PR, before Phase 3
+starts a UVM bench.
 Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
 directed name is not coverage. There is no separate improvement
 worklist.

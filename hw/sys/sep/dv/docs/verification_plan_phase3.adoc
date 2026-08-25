@@ -15,7 +15,8 @@ link:verification_plan_phase1.adoc[Phase 1] — where a row
 exists only if a run can prove it — every entry here is unimplemented by
 definition, so nothing is graded and no proof is cited. Read the rest as
 a holding note: direction plus names parked so they are not implemented
-as a second Phase 2 spine. Iconic scorecard `GAP`s belong in Phase 2+;
+as a second Phase 2 spine. Iconic scorecard `GAP`s belong in Phase 2+
+or Phase 2++ (`verification_plan_phase2.adoc`);
 this dump is corners, error permutations, and coverage-bin work.
 ====
 
