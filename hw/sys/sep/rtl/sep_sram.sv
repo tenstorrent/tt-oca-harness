@@ -20,7 +20,6 @@ module sep_sram #(
 
     // AXI4-lite slave interface for data and CSR access
 
-    ///TODO
 
     // external memory macro function interface
     output logic                     sram_ck,     // all operations synchronous

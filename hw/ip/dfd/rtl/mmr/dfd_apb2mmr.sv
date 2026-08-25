@@ -40,10 +40,6 @@ module dfd_apb2mmr
 		input   logic                   CsrError
 	);
 
-	logic                                     CsrError_d1;
-
-	logic                                     trRamDataRdEn_ANY;
-	logic                                     trdstRamDataRdEn_ANY;
 	logic                                     apb_delay, apb_delay_d1;
 
 	// Read data takes 3 cycles to be reflected on the `trramdata` register
@@ -62,7 +58,7 @@ module dfd_apb2mmr
 	);
 
 	//APB <<--> CSR interface
-	logic reg_xfer, reg_xfer_d1, reg_xfer_mux;
+	logic reg_xfer, reg_xfer_d1;
 	assign CsrWrInstrType = {INST_WIDTH{1'b0}};
 	assign reg_xfer = (psel && ~penable && ~apb_delay) || apb_delay_d1; // End of Setup Phase
 	assign CsrAddr = paddr[MMR_ADDR_WIDTH-1:0];
@@ -72,7 +68,7 @@ module dfd_apb2mmr
 	assign CsrWrData = pwdata;
 	assign prdata = CsrRdData;
 
-	assign pslverr = (pready && ~CsrHit) || CsrError; // FIXME: Check with PD if this will make timing
+	assign pslverr = (pready && ~CsrHit) || CsrError;
 
 	always_comb begin
 		CsrWrStrb = '0;
@@ -95,13 +91,6 @@ module dfd_apb2mmr
 		.o_q(pready)
 	);
 
-	// dfd_rv_dff #(.WIDTH(1), .RESET_VALUE(1'b0), .BYP(0)) u_dff_pslverr (
-	//     .i_clk(clk),
-	//     .i_reset_n(reset_n),
-	//     .i_en(1'b1),
-	//     .i_d(),
-	//     .o_q(pslverr)
-	// );
 
 	dfd_rv_dff #(.WIDTH(1), .RESET_VALUE(1'b0), .BYP(0)) u_dff_reg_xfer_d1 (
 		.i_clk(clk),
