@@ -778,7 +778,7 @@ register-level log-engine depth; loopback/error/backpressure waits for
 BFM or responder support
 
 |AVSBus / OCTS / telemetry / sideband
-|`smc_sideband_protocol_smoke_test`; `octs_sanity_test`;
+|`smc_sideband_protocol_smoke_test`; `smc_octs_sanity_test`;
 `smc_avsbus_sanity_test` |P0/P1 |Keep blocked-window expected-error
 precheck; choose one real OCTS/AVSBus sideband test when BFM exists
 
@@ -979,7 +979,7 @@ boundary |`smc_uart_spi_log_engine_test`,
 |P1-13 |`sideband_bounded` |AVSBus sanity/status/clock, sideband smoke,
 OCTS |`smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`,
 `smc_avsbus_clock_config_proxy_test`,
-`smc_sideband_protocol_smoke_test`, `octs_sanity_test`
+`smc_sideband_protocol_smoke_test`, `smc_octs_sanity_test`
 
 |P1-14 |`diagnostic_bounded` |ECC/DFD/DBS sanity, DFD sanity, CPU ECC
 LinT PInt, DBS idle |`smc_ecc_dfd_dbs_sanity_test`,
@@ -1716,7 +1716,7 @@ access through JTAG (former `smc_chiplet_reg_jtag_test` name retired)
 with `SmcProtocolVipItem(proxy=False)`
 
 |Sideband / telemetry |AVSBus, OCTS, or telemetry BFM with observable
-response path |`octs_sanity_test` or `smc_avsbus_sanity_test` |One real
+response path |`smc_octs_sanity_test` or `smc_avsbus_sanity_test` |One real
 protocol transaction replaces blocked-window precheck
 
 |GPIO / external IRQ |Safe external interrupt or GPIO injection source
