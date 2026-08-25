@@ -257,8 +257,9 @@ error status is sticky until cleared via `*_AXI_SERIES_CTRL.reset`.
 === Part B: Cross Trigger Port CSRs
 
 Each CTP instance has a 32-bit AXI-Lite register bank. These registers are
-defined by SystemRDL. In the OCAH open-source Verilator flow, functional CSR
-scenarios require the generated CSR blocks rather than stubs.
+defined by SystemRDL; the generated blocks
+(`hw/ip/cross_trigger/*/regs/gen/sv`) elaborate in every supported
+simulator, Verilator included.
 
 [cols="1,1,1,1,3"]
 |===
@@ -332,7 +333,6 @@ CTPs + 10 internal CTs). Each output port `i` is driven by a
 |Debug-disable gating |Verify a gated bridge's TDR stays selected while its requests are suppressed: no AXI traffic, no memory mutation, and no delayed replay after the disable is released
 |CTP setup |Program mode and stretch before injecting trigger events
 |CTM setup |Program routing masks before enabling source stimulus
-|CSR stubs |Drop Verilator stubs or use a Verilator-safe CSR implementation before sampling XTRIG CSR functional coverage
 |===
 
 === Access Type Legend
