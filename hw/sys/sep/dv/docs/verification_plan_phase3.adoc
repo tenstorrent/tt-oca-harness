@@ -10,7 +10,7 @@
 ====
 *Phase 3 is T.B.D.* Nothing in this document is committed scope, scheduled
 work, or an execute list. Finish Phase 1 (closed), Phase 2 baseline
-(closed), and Phase 2+ (32 of 34 on the cocotb bench) first. Unlike
+(closed), and Phase 2+ (34 of 40 on the cocotb bench) first. Unlike
 link:verification_plan_phase1.adoc[Phase 1] — where a row
 exists only if a run can prove it — every entry here is unimplemented by
 definition, so nothing is graded and no proof is cited. Read the rest as
@@ -24,7 +24,7 @@ this dump is corners, error permutations, and coverage-bin work.
 Phase 1 (smoke plus subsystem representatives) is signed off, and its record is
 `verification_plan_phase1.adoc`. Phase 2 baseline (iconic features, by IP) is
 closed in `verification_plan_phase2.adoc`. Phase 2+ is the active close-out
-to 32 of 34 on the same cocotb environment. Phase 3 starts after that
+to 34 of 40 on the same cocotb environment (scorecard 33 of 40). Phase 3 starts after that
 close-out. Its first deliverable is UVM bring-up plus smoke, not the
 iconic scorecard rows Phase 2+ owns. Phase 3 will collect what the earlier
 phases explicitly *defer*: advanced corner cases, error and security
@@ -217,7 +217,10 @@ coverage hole list.
 | Corner of the Phase 2 9-cell AES row
 
 | Entropy pool FIFO drain / watermark / stall
-| Corner of the proven mux-leg [2] consume path (`0x1095_0000`)
+| Corner of the consume path (`0x1095_0000`). The block's software
+  aperture and its two PIC sources are NOT here — they are Phase 2++
+  `sep_entropy_pool_aperture_test`. Only drain, watermark and stall
+  corners remain in this phase.
 
 | Health tests / ring oscillator
 | Entropy-quality / real-noise HT; entropy IP testbench, not SEP iconic consume
@@ -232,11 +235,6 @@ coverage hole list.
 | Inbound global-to-local remap with a non-zero aperture, and inbound
   filter windows programmed in global addresses ahead of it. Production
   uses a non-zero base; DV only ever runs the identity case.
-
-| `sep_entropy_pool_aperture_test`
-| The pool's software aperture: status word, IRQ-cause word, and the pop
-  that answers SLVERR on an empty pool, plus the two pool PIC sources.
-  Distinct from the pool drain / watermark / stall row above.
 
 | `sep_lcc_dbg_disable_gate_test`
 | The eleven debug gate outputs and their distinct gating formulas,
