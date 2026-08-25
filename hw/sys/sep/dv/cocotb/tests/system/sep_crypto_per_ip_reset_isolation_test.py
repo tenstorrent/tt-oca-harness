@@ -320,7 +320,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"expected reset 0x{HMAC_DIGEST_RESET:08x}"
         )
         self.logger.info(
-            "CHK-ISOLATE-REOPEN PASS: HMAC DIGEST_0 OKAY after release; "
+            "CHK-ISOLATE-REOPEN PASS: HMAC DIGEST_0 OKAY after release")
+        self.logger.info(
             "CHK-ISOLATE-RESET-DEFAULT PASS: rdata=0x%08x", post.rdata)
 
         # Remaining SW_RESET_N bits that this DUT isolates: KMAC and OTBN.

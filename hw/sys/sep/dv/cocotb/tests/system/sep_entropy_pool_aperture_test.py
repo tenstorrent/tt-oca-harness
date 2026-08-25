@@ -159,18 +159,24 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
         self.logger.info(
             "CHK-POOL-FILL PASS: fifo_level=%d (>= watermark %d, < depth %d) "
-            "pool_err=0; CHK-POOL-LOW-LOW PASS: [36]=0",
+            "pool_err=0",
             level_fill, LOW_WATERMARK, FIFO_DEPTH)
+        self.logger.info("CHK-POOL-LOW-LOW PASS: [36]=0 at level=%d", level_fill)
 
         cause = await pool.irq_cause()
         expect_cause = ((st_fill >> 7) & 1) << 1 | ((st_fill >> 6) & 1)
-        assert cause == expect_cause, (
-            f"irq-cause 0x{cause:x} != {{fill_stall,pool_low}}=0x{expect_cause:x} "
-            f"(must not copy the whole status word 0x{st_fill:x})"
+        # Traversal of 0x08, not a 0==0 snapshot: empty was 0x1, fill must be 0x0.
+        # Hardwired-0 fails CHK-IRQ-CAUSE-LOW; sticky-1 fails here.
+        assert cause0 == 0x1 and cause == 0x0 and cause == expect_cause, (
+            f"irq-cause empty=0x{cause0:x} fill=0x{cause:x}, expected 0x1 -> 0x0 "
+            f"(status 0x{st_fill:x} must not be copied)"
+        )
+        assert cause != (st_fill & 0xFF), (
+            f"irq-cause 0x{cause:x} equals status low byte 0x{st_fill & 0xFF:x}"
         )
         self.logger.info(
-            "CHK-IRQ-CAUSE-IDLE PASS: 0x08=0x%x matches {{fill_stall,pool_low}}, "
-            "not status 0x%x", cause, st_fill)
+            "CHK-IRQ-CAUSE-IDLE PASS: 0x08 0x1 -> 0x0 after fill, not status 0x%x",
+            st_fill)
 
         await pool.disable_esrc()
         level_dis = await self._wait_stable_level(pool)

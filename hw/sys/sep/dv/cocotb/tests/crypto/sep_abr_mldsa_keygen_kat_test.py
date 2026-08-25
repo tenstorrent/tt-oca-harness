@@ -117,9 +117,10 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         assert await self._irq(IRQ_ABR_ERROR) == 0, "[34] (abr error) high after keyGen"
         assert await self._irq(IRQ_ABR_NOTIF) == 1, "[35] (abr notif) low after keyGen"
         self.logger.info(
-            "CHK-NIST-PK PASS: %d-word public key matches ACVP keyGen vector; "
-            "CHK-STATUS-VALID PASS: VALID, ERROR=0; "
-            "CHK-PIC-NOTIF PASS: [35]=1 [34]=0", PK_WORDS)
+            "CHK-NIST-PK PASS: %d-word public key matches ACVP keyGen vector",
+            PK_WORDS)
+        self.logger.info("CHK-STATUS-VALID PASS: VALID, ERROR=0")
+        self.logger.info("CHK-PIC-NOTIF PASS: [35]=1 [34]=0")
 
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         await self._wait_status(abr, ST_READY, ST_READY, what="post-zeroize READY")

@@ -444,7 +444,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
 | Per-IP `SW_RESET_N` isolation
 | PROVEN
 | AES, HMAC, KMAC, OTBN walked; KM held by reset default.
-  Phase 2++ in-window slice on the same test (Verilator `20260825_110048`):
+  Phase 2++ in-window slice on the same test (Verilator `20260825_132658`):
   HMAC DIGEST/CFG DECERR while held, AES sibling OKAY, reopen to reset
   default. Drain-before-reset stays unobservable here (Phase 3).
 
@@ -524,7 +524,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   (`SEP_ABR_EN` is set for the whole `sep` target and `CALIPTRA` is not, so
   the real wrapper is bound, not the error slave). Aperture is the
   `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR` in `sep_crypto_pkg.sv`.
-  `sep_abr_mldsa_keygen_kat_test` (Verilator `20260825_124720`): NAME
+  `sep_abr_mldsa_keygen_kat_test` (Verilator `20260825_134812`): NAME
   `MLDSA-87`, reset READY, 648-word pk matches the vendored ACVP keyGen
   vector, `[35]` high / `[34]` low, one-bit seed flip yields a different
   key. Software-written seed only (key-CSR stub zeros shares). Named
@@ -538,7 +538,7 @@ decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
   empty pool. It drives `pool_low` and `fill_stall` to the PIC. Distinct
   from the ESRC consume row above, which scores the EDN fill *into* the
   pool, not the block's own software interface.
-  `sep_entropy_pool_aperture_test` (Verilator `20260825_123438`): fill to
+  `sep_entropy_pool_aperture_test` (Verilator `20260825_134622`): fill to
   watermark, irq-cause `{fill_stall,pool_low}` only (live `0x1`/`0x0`/`0x2`),
   write and unmapped SLVERR, accepted pop then empty-pop SLVERR, `[36]`
   high-low-high, `[37]` first stall after EDN_ENABLE=False plus StallThresh

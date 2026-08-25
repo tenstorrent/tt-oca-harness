@@ -3759,10 +3759,10 @@ every instantiated block has a registered test that can fail.
 This PR closed, cheapest first:
 
 . Isolate in-window DECERR plus sibling-OKAY on the existing test
-  (Verilator `20260825_110048`).
-. Entropy-pool aperture (Verilator `20260825_123438`).
-. Locked-field interrupt delivery (Verilator `20260825_124139`).
-. Adams Bridge ML-DSA-87 keyGen last (Verilator `20260825_124720`);
+  (Verilator `20260825_132658`).
+. Entropy-pool aperture (Verilator `20260825_134622`).
+. Locked-field interrupt delivery (Verilator `20260825_134739`).
+. Adams Bridge ML-DSA-87 keyGen last (Verilator `20260825_134812`);
   both keyGens fit, so the sensitivity leg is kept. Aperture anchored on
   `sep_crypto_pkg`.
 
@@ -3853,8 +3853,8 @@ Key-Manager-side key CSR block only; the ABR register block behind this
 aperture is real RTL. The stub ties every key share and `key_valid` to
 zero, so only the software-written seed path is honest here.
 
-Kept Verilator evidence: run `20260825_124720`. Independent audit green.
-Two ML-DSA-87 keyGens in ~49 s real / 858 us sim, so the sensitivity leg
+Kept Verilator evidence: run `20260825_134812`.
+Two ML-DSA-87 keyGens in ~51 s real / 858 us sim, so the sensitivity leg
 is kept.
 
 Checkers::
@@ -3918,7 +3918,7 @@ The block is a 64 KB crossbar target at `entropy_fifo.main`
 (`0x1095_0000`). It fills from the native EDN endpoint after the shared
 entropy bring-up.
 
-Kept Verilator evidence: run `20260825_123438`. Independent audit green.
+Kept Verilator evidence: run `20260825_134622`.
 
 Checkers::
 
@@ -3937,13 +3937,18 @@ Checkers::
 | PROVEN
 
 | CHK-POOL-FILL
-| `fifo_level` at or above the watermark, `pool_err=0`, `[36]` low.
-| `CHK-POOL-FILL PASS: fifo_level=8` and `CHK-POOL-LOW-LOW PASS: [36]=0`
+| `fifo_level` at or above the watermark, `pool_err=0`.
+| `CHK-POOL-FILL PASS: fifo_level=8 (>= watermark 8, < depth 32) pool_err=0`
+| PROVEN
+
+| CHK-POOL-LOW-LOW
+| Aggregate `[36]` low after fill.
+| `CHK-POOL-LOW-LOW PASS: [36]=0 at level=8`
 | PROVEN
 
 | CHK-IRQ-CAUSE-IDLE
-| `0x08=0x0` after fill, not a copy of status.
-| `CHK-IRQ-CAUSE-IDLE PASS: 0x08=0x0` not status `0x8`
+| `0x08` traverses `0x1 -> 0x0` after fill, not a copy of status.
+| `CHK-IRQ-CAUSE-IDLE PASS: 0x08 0x1 -> 0x0 after fill, not status 0x8`
 | PROVEN
 
 | CHK-WRITE-SLVERR
@@ -4107,7 +4112,7 @@ wrappers. The existing test already drove the FSM on every reset pulse; this
 slice checks the window itself. HMAC is the representative port; AES is the
 sibling. Drain-before-reset stays in <<phase3-dump>>.
 
-Kept Verilator evidence: run `20260825_110048`. Independent audit green.
+Kept Verilator evidence: run `20260825_132658`.
 
 Checkers::
 
@@ -4141,8 +4146,13 @@ Checkers::
 | PROVEN
 
 | CHK-ISOLATE-REOPEN
-| Same `DIGEST_0` OKAY after release, at reset default 0.
+| Same `DIGEST_0` OKAY after release.
 | `CHK-ISOLATE-REOPEN PASS: HMAC DIGEST_0 OKAY after release`
+| PROVEN
+
+| CHK-ISOLATE-RESET-DEFAULT
+| After release `DIGEST_0` reads its reset value 0.
+| `CHK-ISOLATE-RESET-DEFAULT PASS: rdata=0x00000000`
 | PROVEN
 |===
 
@@ -4172,7 +4182,7 @@ Randomization:: RAND-REP — both lock flavours (write-lock and read-lock)
 every seed. RANDCFG — which spare field (`SPARE0`..`SPARE7`) carries the
 lock, from the run seed (`SepLockedFieldIrqCfg`)
 
-Kept Verilator evidence: run `20260825_124139`. Independent audit green.
+Kept Verilator evidence: run `20260825_134739`.
 Real fuse sense at cycle 802; 256-word shadow compare 0 errors.
 
 ==== Description
