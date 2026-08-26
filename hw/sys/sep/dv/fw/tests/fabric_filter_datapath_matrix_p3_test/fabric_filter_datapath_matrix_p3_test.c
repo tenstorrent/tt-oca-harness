@@ -235,7 +235,6 @@ int main(void) {
     }
 
     printf("\n=== FILTER DATAPATH MATRIX TEST PASSED ===\n");
-           "90%%+\n");
 
     test_pass("fabric_filter_datapath_matrix_p3_test");
     return TEST_PASS;

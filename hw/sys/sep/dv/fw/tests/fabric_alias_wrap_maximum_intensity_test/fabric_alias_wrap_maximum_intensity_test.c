@@ -637,7 +637,6 @@ int main(void) {
     }
 
     printf("\n=== ALIAS WRAP MAXIMUM INTENSITY TEST PASSED ===\n");
-           "improvement!)\n");
     printf("This test provides the most critical coverage improvement for the entire fabric "
            "system.\n");
 
