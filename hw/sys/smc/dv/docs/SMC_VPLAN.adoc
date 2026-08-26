@@ -2032,7 +2032,7 @@ testlists/
 |P4 |Shared infra I8–I14 + Batch C: 8 tests |14 |38
 |P5 |Shared infra I15–I16 + Batch D: 6 tests |17 |55
 |P6 |testlist reorg + commercial sim full run |3 |58
-|P7 |docs (`SMC_TB_ARCH.md`, `SMC_VPLAN.adoc`) |2 |60
+|P7 |docs (`SMC_TB_ARCH.adoc`, `SMC_VPLAN.adoc`) |2 |60
 |====================================================
 
 Total: ~60 person-days, single mid-level engineer.

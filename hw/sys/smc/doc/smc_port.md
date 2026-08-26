@@ -23,9 +23,10 @@
 
 **Related local docs (do not replace):**
 
-- `hw/sys/smc/dv/docs/oss_smc_dev.md` — older module→representative port map
-- `hw/sys/smc/dv/docs/ref_test_dev.md` — how to rebuild a test (env / seq / checkers)
-- `hw/sys/smc/dv/docs/smc_oss_execution_guide.md` — run recipes + sign-off evidence
+- `hw/sys/smc/dv/docs/index.adoc` — chapter set
+- `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` — how to rebuild a test (env / seq / checkers)
+- `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` — verification plan, porting plan, sign-off records
+- `hw/sys/smc/dv/docs/SMC_FCOV.adoc` — coverage pipeline
 - `hw/sys/smc/dv/README.md` — green policy (real DUT RTL only)
 
 **Local OSS policy (binding):** claim only real DUT RTL paths; no Cadence-only
@@ -270,7 +271,7 @@ sources are read-only under `/proj_soc/user_dev/minshaoho/tryrun/nonfree2`.
 1. Diff commercial intent vs local TB (`tb_top.sv`, VIP bindings, wrapper idle ports).
 2. Choose vehicle: **cocotb BFM** (default) vs **local fw** (only if CPU/ROM is the DUT path under test).
 3. Strip Force / Cadence / fake BFM; product-pin / OCAH VIP only.
-4. Implement `tests/` + `seq_lib/`; SPDX headers; follow `ref_test_dev.md`.
+4. Implement `tests/` + `seq_lib/`; SPDX headers; follow `SMC_TB_ARCH.adoc`.
 5. Add to `deferred.toml` first if any blocker tag applies; else enroll leaf toml.
 6. Keep commercial re-sim log under `$TMPDIR` for A/B; do not commit logs.
 7. Confirm `results.xml` positive evidence (clean sim exit alone is not PASS).
