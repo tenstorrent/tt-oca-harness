@@ -10,6 +10,7 @@ shadow array against that image after sense-done.
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import sys
@@ -39,6 +40,7 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
     if _path_str not in sys.path:
         sys.path.insert(0, _path_str)
 
+from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
 from env.sep_efuse_image import SepEfuseImage
@@ -92,6 +94,12 @@ class sep_base_test(uvm_test):
             self.random_seed(),
         )
         ConfigDB().set(None, "*", "cfg", self.cfg)
+        # Processor-state monitor on the EL2 retirement trace. Built for every
+        # test (concrete tests build their scoreboards after super().build_phase(),
+        # so the ConfigDB entry is in place); it self-idles unless the +cpu_boot
+        # run mode is active.
+        self.cpu_trace_mon = SepCpuTraceMonitor("cpu_trace_mon", self)
+        ConfigDB().set(None, "*", "cpu_trace_mon", self.cpu_trace_mon)
         if self.build_env:
             self.env = SepEnv("env", self)
 
@@ -337,6 +345,24 @@ class sep_base_test(uvm_test):
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
         self.logger.info("staged firmware TCM images into %s", os.getcwd())
 
+        # Feed the firmware's nm listing (built next to the hex images by
+        # compile.mk) to the trace monitor so backtraces symbolize. Best-effort:
+        # a missing listing degrades to numeric PCs, never fails the test.
+        fw_dir = Path(itcm_hex).parent
+        fw_name = Path(itcm_hex).name.split(".", 1)[0]
+        # <name>.<mode>.sym for TCM firmware (compile.mk), <name>.sym for the
+        # Boot ROM (bootrom/prod/Makefile) -- the ROM boot tests come through
+        # here too, with itcm_hex pointing into the ROM build dir.
+        sym_files = sorted(
+            set(fw_dir.glob(f"{fw_name}.sym")) | set(fw_dir.glob(f"{fw_name}.*.sym"))
+        )
+        if sym_files:
+            for sym in sym_files:
+                self.cpu_trace_mon.add_symbols(sym)
+        else:
+            self.logger.info("no %s.*.sym next to %s; trace PCs stay numeric",
+                             fw_name, itcm_hex)
+
         async def _load_tcm() -> None:
             self.logger.info("CPU boot: pulsing tcm_load_i")
             dut.tcm_load_i.value = 1
@@ -373,6 +399,7 @@ class sep_base_test(uvm_test):
         and run its own stimulus alongside.
         """
         dut = cocotb.top
+        mon = self.cpu_trace_mon
         last_log = 0
         self.logger.info(
             "boot poll start run_ack=%d cpu_rst_n=%d trace_valid=%d iccm_act=%d iccm_addr=0x%x",
@@ -384,7 +411,8 @@ class sep_base_test(uvm_test):
         )
         for cycle in range(max_run_cycles):
             await RisingEdge(dut.clk_i)
-            sb.note_trace(self.rd(dut.cpu_trace_valid_o), self.rd(dut.cpu_trace_addr_o))
+            # Trace sampling lives in the CPU trace monitor; this loop owns
+            # only the console/verdict observables.
             sb.note_run_ack(self.rd(dut.o_cpu_run_ack_o))
             if self.rd(dut.fw_char_valid_o):
                 sb.note_char(self.rd(dut.fw_char_o))
@@ -397,17 +425,22 @@ class sep_base_test(uvm_test):
                 self.logger.info(
                     "boot progress cyc=%d retired=%d pcs=%d last_pc=0x%08x con=%dB rst_n=%s "
                     "iccm_act=%s exc=%s",
-                    cycle, sb.trace_count, len(sb.pcs), sb.last_pc, len(sb.console),
+                    cycle, mon.trace_count, len(mon.pcs), mon.last_pc, len(sb.console),
                     self.rd(dut.dbg_sep_reset_n_o), self.rd(dut.dbg_iccm_active_o),
                     self.rd(dut.dbg_cpu_trace_exc_o),
                 )
-            if cycle >= no_boot_cycles and sb.trace_count == 0:
+            if cycle >= no_boot_cycles and mon.trace_count == 0:
                 self.logger.error(
                     "core retired no instructions in %d cycles; aborting", no_boot_cycles
                 )
                 break
         if sb.console:
             self.logger.info("firmware console: %r", sb.console_text())
+        if not (sb.fw_done and sb.fw_pass):
+            # Hang, no-boot, run-cycle exhaustion, or firmware FAIL: put the
+            # symbolized backtrace in the log before the scoreboard's
+            # check_phase assertion ends the run.
+            mon.dump_diagnostics(logging.ERROR)
 
     def select_efuse_image(
         self,

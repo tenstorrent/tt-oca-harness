@@ -27,6 +27,7 @@ from re import compile
 from .compat import UTC
 from .config import (
     CANONICAL_STAGES,
+    OverlayFrameworkMismatch,
     as_str_list,
     cocotb_cfg,
     default_target_name,
@@ -191,6 +192,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--run-mode",
         metavar="NAME",
         help="Run mode from the DUT sim config [run_modes.<name>] (default: the test's first run mode)",
+    )
+    common.add_argument(
+        "--overlay",
+        metavar="PATH",
+        help=(
+            "Adopter overlay config applied append-only on top of the merged DUT view "
+            "(extra build sources/incdirs/source_lists, target defines/flags, [sim].args); "
+            "also read from OCAH_DV_OVERLAY, never auto-activated"
+        ),
     )
 
     actions = parser.add_argument_group("Actions And Introspection")
@@ -670,13 +680,30 @@ def validate_all(root: Path) -> tuple[dict[str, Flow], dict[str, Any], dict[str,
     return duts, simulators, policies, executors
 
 
-def cmd_validate_configs(root: Path) -> int:
+def adopter_overlay_path(args: Any) -> Path | None:
+    """The adopter overlay selected by ``--overlay`` (wins) or ``OCAH_DV_OVERLAY``; else None.
+
+    A relative path resolves against the invocation directory, like any other CLI path. The
+    overlay is never inferred from the tree — only these two explicit channels activate it.
+    """
+    text = getattr(args, "overlay", None) or os.environ.get("OCAH_DV_OVERLAY", "").strip()
+    if not text:
+        return None
+    return Path(text).expanduser().resolve()
+
+
+def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
     """Validate every config and print a per-DUT summary.
 
     Unlike the run path (which fails fast), this reports every DUT's status in one pass so a user
-    sees all config problems at once instead of fixing them one re-run at a time.
+    sees all config problems at once instead of fixing them one re-run at a time. With an adopter
+    overlay active, every framework view is validated WITH the overlay applied; views excluded by
+    the overlay's `frameworks` guard fall back to their base validation and say so.
     """
-    print(f"Validating configs in {repo_rel(root, configs_root(root))}\n")
+    print(f"Validating configs in {repo_rel(root, configs_root(root))}")
+    if overlay is not None:
+        print(f"Adopter overlay: {repo_rel(root, overlay)}")
+    print()
 
     # The registries are structural: per-flow validation cannot run without them, so a failure here
     # is reported on its own and stops the report.
@@ -710,9 +737,18 @@ def cmd_validate_configs(root: Path) -> int:
         for label, fw in views:
             rows += 1
             try:
-                view = flow if fw is None else resolve_dut(root, name, framework=fw)
+                suffix = ""
+                if overlay is not None:
+                    try:
+                        view = resolve_dut(root, name, framework=fw, adopter_overlay=overlay)
+                        suffix = " [+overlay]"
+                    except OverlayFrameworkMismatch:
+                        view = flow if fw is None else resolve_dut(root, name, framework=fw)
+                        suffix = " [overlay skipped: frameworks guard]"
+                else:
+                    view = flow if fw is None else resolve_dut(root, name, framework=fw)
                 validate_flow(view, root, simulators, policies, executors)
-                print(f"  {label:<16} OK")
+                print(f"  {label:<16} OK{suffix}")
             except ConfigError as exc:
                 failures += 1
                 print(f"  {label:<16} FAIL: {exc}")
@@ -967,7 +1003,10 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     flow: Flow | None = None
     if args.dut:
         try:
-            flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
+            flow = resolve_dut(
+                root, args.dut, mode=args.mode, framework=args.framework,
+                adopter_overlay=adopter_overlay_path(args),
+            )
             validate_flow(flow, root, simulators, policies, executors)
         except ConfigError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
@@ -2554,7 +2593,7 @@ def main(argv: list[str] | None = None) -> int:
         # Diagnostics report their own findings (and must not be pre-empted by the fail-fast
         # validate_all below), so dispatch them first.
         if args.validate_configs:
-            return cmd_validate_configs(root)
+            return cmd_validate_configs(root, adopter_overlay_path(args))
         if args.doctor:
             return cmd_doctor(root, args)
 
@@ -2562,7 +2601,10 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.list:
             if args.dut:
-                flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
+                flow = resolve_dut(
+                    root, args.dut, mode=args.mode, framework=args.framework,
+                    adopter_overlay=adopter_overlay_path(args),
+                )
                 validate_flow(flow, root, simulators, policies, executors)
                 if args.json:
                     list_flow_detail_json(flow, root)
@@ -2581,7 +2623,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.dut not in duts:
             raise ConfigError(f"unknown DUT `{args.dut}`")
-        flow = resolve_dut(root, args.dut, mode=args.mode, framework=args.framework)
+        flow = resolve_dut(
+            root, args.dut, mode=args.mode, framework=args.framework,
+            adopter_overlay=adopter_overlay_path(args),
+        )
         validate_flow(flow, root, simulators, policies, executors)
         return run_flow(root=root, flow=flow, simulators=simulators, policies=policies, args=args)
     except ConfigError as exc:

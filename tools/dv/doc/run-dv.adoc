@@ -420,6 +420,88 @@ CLI overrides are curated rather than arbitrary TOML replacement. Stable
 settings belong in checked-in configuration; pass-through flags are intended
 for one-off debugging.
 
+=== Adopter overlay layer
+
+`--overlay <path>` (or the `OCAH_DV_OVERLAY` environment variable; the flag
+wins) applies one adopter-owned TOML file on top of the merged DUT view. It
+is the runner-side equivalent of `ocah.mk`'s adopter include hooks
+(`-include nonfree/nonfree.mk`, `OCAH_ADOPTER_OVERLAY_MK`): an adopter — for
+example a commercial-VIP integration living outside this tree — extends a
+build without editing checked-in configs. The layer is *never*
+auto-activated: the presence of an adopter checkout changes nothing until a
+run names the overlay explicitly.
+
+The overlay grammar is a restricted subset of the sim-config grammar, and
+every allowed key is *append-only* — an overlay can add to the merged view
+but can never replace or remove what the checked-in configs declare, so a
+run with an overlay differs from the baseline only by the overlay's own
+additions:
+
+[cols="<2,<1,<3",options="header"]
+|===
+|Key |Merge |Purpose
+
+|`description`
+|—
+|Free-form; what this overlay integrates.
+
+|`frameworks = ["uvm", ...]`
+|guard
+|Optional compatibility guard. Selecting a framework outside the list is a
+hard error on the run path; `--validate-configs` validates non-listed views
+without the overlay and labels them `[overlay skipped: frameworks guard]`.
+
+|`[build]` `incdirs` / `sources` / `source_lists`
+|dedup-append after the DUT's own entries
+|Extra compile inputs. An overlay-supplied `source_lists` manifest expands
+exactly like a DUT-owned one (component entries ahead of DUT sources), so a
+vendor package can own its manifest the way the shipped VIPs do.
+
+|`[target_defaults.<t>]` / `[targets.<t>]` `defines` / `flags`,
+`[...tools.<tool>].flags`
+|dedup-append (tables created when absent)
+|Gate defines (e.g. `OCAH_AXI_VENDOR_IF`) and extra tool flags (e.g.
+`-ntb_opts svt`).
+
+|`[sim].args`
+|append after the merged `[sim].args`
+|Runtime args, e.g. the commercial-VIP factory override
+`+uvm_set_type_override=ocah_axi_master_env,<vendor>_axi_env` — run-mode,
+test, and CLI args still append after it.
+|===
+
+Merge position: after the profile/DUT `[frameworks.<fw>]` merge (the overlay
+extends the selected view) and before `[build].source_lists` expansion. Any
+other key is rejected, as is `adopter_overlay` appearing in a sim config or
+profile (the recorded key is reserved for the runner). Application is
+deterministic and repeatable: list order is preserved, the dedup rules make
+re-application a no-op, and the applied path is recorded as `overlay` in
+`result.json` so a result is attributable to its exact config layers.
+
+A typical commercial-VIP overlay:
+
+[source,toml]
+----
+description = "SVT AXI integration for ocah_axi_vip consumers"
+frameworks = ["uvm"]
+
+[build]
+incdirs = ["hw/common/dv/vip/axi/uvm"]          # supplies ocah_axi_vendor_if.svh
+source_lists = ["hw/common/dv/vip/axi/uvm/sources.toml"]
+
+[target_defaults.default]
+defines = ["OCAH_AXI_VENDOR_IF"]
+
+[sim]
+args = ["+uvm_set_type_override=ocah_axi_master_env,svt_ocah_axi_env"]
+----
+
+(paths resolve repo-relative inside the checkout the overlay extends, or
+absolute). The `OCAH_<PROTO>_VENDOR_IF` defines activate the guarded
+`+"`include`"+` hooks inside the shipped `ocah_<proto>_if` interfaces, which
+pull `ocah_<proto>_vendor_if.svh` from an overlay incdir — the OSS tree
+ships no copy of those files.
+
 == Stage planning
 
 The canonical logical stage names are:
@@ -685,6 +767,10 @@ warning and records it in the run's wave metadata.
 |`--run-mode NAME`
 |Override the test/default run mode.
 
+|`--overlay PATH`
+|Apply one adopter overlay config (append-only) on top of the merged DUT
+view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
+
 |`--list`
 |List selectable DUTs, or details for `--dut`. Each row shows the DUT's
 default tool; flows that cannot run on open-source tools are marked
@@ -692,7 +778,9 @@ default tool; flows that cannot run on open-source tools are marked
 fields from the merged config.
 
 |`--validate-configs`
-|Validate registries and every selectable simulation DUT. Exit `2` if any fail.
+|Validate registries and every selectable simulation DUT. Exit `2` if any
+fail. With `--overlay`, every framework view is additionally validated with
+the overlay applied (guard-excluded views fall back to base validation).
 
 |`--doctor`
 |Report configuration and tool availability. With no selected DUT/tool it is
@@ -893,6 +981,9 @@ keys, or authentication data.
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
+When an adopter overlay was applied, its path is recorded under `overlay`
+(repo-relative when inside the checkout, absolute otherwise) in both the
+run-level `result.json` and `regression.json`.
 
 === Interrupted-run checkpoints
 

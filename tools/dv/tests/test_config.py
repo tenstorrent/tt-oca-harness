@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unit tests for runlib.config run-mode reference validation.
+"""Unit tests for runlib.config run-mode reference validation and the adopter overlay layer.
 
 Run from the repository root:
 
@@ -17,7 +17,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from runlib.cli import expand_items, target_plan  # noqa: E402
 from runlib.config import (  # noqa: E402
+    OverlayFrameworkMismatch,
     _merge_framework_config,
+    apply_adopter_overlay,
+    load_dut,
     load_test_catalog,
     selected_run_mode,
     validate_run_mode_request,
@@ -155,6 +158,137 @@ class InheritedProfileRunModes(unittest.TestCase):
             profile, dut, Path("unit_sim_cfg.toml"), "unit_profile"
         )
         self.assertEqual(merged["run_modes"]["shared"]["timeout_sec"], 30)
+
+
+class AdopterOverlayLayer(unittest.TestCase):
+    """The --overlay/OCAH_DV_OVERLAY layer: append-only merge, guard, and activation rules."""
+
+    def apply(self, data: dict, overlay_toml: str) -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            overlay = root / "adopter_overlay.toml"
+            overlay.write_text(overlay_toml)
+            apply_adopter_overlay(data, root, overlay)
+        return data
+
+    def test_build_and_sim_lists_append_after_dut_entries(self):
+        data = {
+            "framework": "uvm",
+            "build": {"incdirs": ["dut/inc"], "sources": ["dut/tb.sv"]},
+            "sim": {"args": ["+dut_arg"]},
+        }
+        self.apply(
+            data,
+            '[build]\nincdirs = ["vendor/inc", "dut/inc"]\nsources = ["vendor/pkg.sv"]\n'
+            '[sim]\nargs = ["+uvm_set_type_override=ocah_axi_master_env,vendor_axi_env"]\n',
+        )
+        self.assertEqual(data["build"]["incdirs"], ["dut/inc", "vendor/inc"])  # dedup keeps DUT order
+        self.assertEqual(data["build"]["sources"], ["dut/tb.sv", "vendor/pkg.sv"])
+        self.assertEqual(
+            data["sim"]["args"],
+            ["+dut_arg", "+uvm_set_type_override=ocah_axi_master_env,vendor_axi_env"],
+        )
+
+    def test_target_defines_and_tool_flags_dedup_append(self):
+        data = {
+            "framework": "uvm",
+            "target_defaults": {"default": {"defines": ["UVM"], "tools": {"vcs": {"flags": ["-x"]}}}},
+        }
+        self.apply(
+            data,
+            '[target_defaults.default]\ndefines = ["OCAH_JTAG_VENDOR_IF", "UVM"]\n'
+            '[target_defaults.default.tools.vcs]\nflags = ["-ntb_opts", "svt"]\n',
+        )
+        target = data["target_defaults"]["default"]
+        self.assertEqual(target["defines"], ["UVM", "OCAH_JTAG_VENDOR_IF"])
+        self.assertEqual(target["tools"]["vcs"]["flags"], ["-x", "-ntb_opts", "svt"])
+
+    def test_missing_target_table_is_created(self):
+        data = {"framework": "uvm"}
+        self.apply(data, '[targets.default]\ndefines = ["OCAH_AXI_VENDOR_IF"]\n')
+        self.assertEqual(data["targets"]["default"]["defines"], ["OCAH_AXI_VENDOR_IF"])
+
+    def test_reapplication_is_idempotent_for_dedup_keys(self):
+        data = {"framework": "uvm", "build": {"incdirs": ["dut/inc"]}}
+        toml = '[build]\nincdirs = ["vendor/inc"]\n'
+        self.apply(data, toml)
+        self.apply(data, toml)
+        self.assertEqual(data["build"]["incdirs"], ["dut/inc", "vendor/inc"])
+
+    def test_frameworks_guard_mismatch_raises_distinct_error(self):
+        data = {"framework": "cocotb"}
+        with self.assertRaises(OverlayFrameworkMismatch) as ctx:
+            self.apply(data, 'frameworks = ["uvm"]\n[sim]\nargs = ["+x"]\n')
+        self.assertIn("cocotb", str(ctx.exception))
+
+    def test_frameworks_guard_match_applies(self):
+        data = {"framework": "uvm", "sim": {"args": []}}
+        self.apply(data, 'frameworks = ["uvm"]\n[sim]\nargs = ["+x"]\n')
+        self.assertEqual(data["sim"]["args"], ["+x"])
+
+    def test_unsupported_keys_rejected(self):
+        for toml, named in (
+            ('default_tool = "vcs"\n', "default_tool"),  # replacement keys are not appendable
+            ('[build]\nfilelist = "x.f"\n', "filelist"),
+            ('[target_defaults.default]\nbuild_dir = "x"\n', "build_dir"),
+        ):
+            with self.assertRaises(ConfigError) as ctx:
+                self.apply({"framework": "uvm"}, toml)
+            self.assertNotIsInstance(ctx.exception, OverlayFrameworkMismatch)
+            self.assertIn(named, str(ctx.exception))
+
+    def test_missing_overlay_file_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            apply_adopter_overlay({"framework": "uvm"}, Path("."), Path("no_such_overlay.toml"))
+        self.assertIn("not found", str(ctx.exception))
+
+    def test_applied_path_is_recorded(self):
+        data = {"framework": "uvm"}
+        self.apply(data, '[sim]\nargs = ["+x"]\n')
+        self.assertEqual(data["adopter_overlay"], "adopter_overlay.toml")
+
+
+class AdopterOverlayLoadDut(unittest.TestCase):
+    """load_dut integration: explicit activation only, and source_lists expansion ordering."""
+
+    def load(self, root: Path, extra_cfg: str = "", overlay: Path | None = None) -> Dut:
+        cfg = root / "unit_sim_cfg.toml"
+        cfg.write_text(
+            'schema_version = 1\nname = "unit"\nkind = "dv"\n'
+            'default_tool = "verilator"\ntools = ["verilator"]\n' + extra_cfg
+        )
+        return load_dut(
+            cfg, root, root=root, name="unit", root_rel=".", adopter_overlay=overlay
+        )
+
+    def test_config_set_reserved_key_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ConfigError) as ctx:
+                self.load(Path(tmp), 'adopter_overlay = "sneaky.toml"\n')
+            self.assertIn("--overlay", str(ctx.exception))
+
+    def test_overlay_source_lists_expand_after_dut_own_entries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "vendor_inc").mkdir()
+            (root / "vendor_pkg.sv").write_text("// vendor\n")
+            (root / "vendor_sources.toml").write_text(
+                'incdirs = ["vendor_inc"]\nsources = ["vendor_pkg.sv"]\n'
+            )
+            (root / "dut_tb.sv").write_text("// dut\n")
+            overlay = root / "adopter_overlay.toml"
+            overlay.write_text('[build]\nsource_lists = ["vendor_sources.toml"]\n')
+            flow = self.load(root, '[build]\nsources = ["dut_tb.sv"]\n', overlay=overlay)
+            # The overlay manifest expands like a DUT-owned one: fragment entries land AHEAD
+            # of the DUT's direct sources (component layer compiles first).
+            self.assertEqual(flow.raw["build"]["sources"], ["vendor_pkg.sv", "dut_tb.sv"])
+            self.assertEqual(flow.raw["build"]["incdirs"], ["vendor_inc"])
+            self.assertEqual(flow.raw["adopter_overlay"], "adopter_overlay.toml")
+
+    def test_no_overlay_means_no_layer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            flow = self.load(Path(tmp))
+            self.assertNotIn("adopter_overlay", flow.raw)
 
 
 class GroupMemberValidation(unittest.TestCase):

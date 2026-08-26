@@ -2,11 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP firmware-boot scoreboard.
 
-Accumulates the boot observables the boot test samples each cycle and, at
+Accumulates the console observables the boot test samples each cycle and, at
 check_phase, asserts the positive evidence that the core booted and the firmware
 ran:
   * the EL2 retired-instruction trace advanced across many distinct PCs (the core
-    actually fetched and executed out of ICCM);
+    actually fetched and executed out of ICCM) -- sourced from the CPU trace
+    monitor (env/sep_cpu_trace_monitor.py), which owns trace sampling;
   * the firmware console produced the expected banner; and
   * the firmware signaled PASS (not FAIL, and not "never finished").
 
@@ -25,9 +26,14 @@ _MIN_DISTINCT_PCS = 16
 class SepBootScoreboard(uvm_component):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
-        self.trace_count = 0
-        self.pcs: set[int] = set()
-        self.last_pc = 0
+        # Trace evidence lives in the CPU trace monitor (built by sep_base_test
+        # before any scoreboard, so the entry exists by the time this runs).
+        # Fail loudly at check_phase if it is somehow absent: silently skipping
+        # the PC-advance check would vacuously pass a core that never booted.
+        try:
+            self.trace_mon = ConfigDB().get(self, "", "cpu_trace_mon")
+        except Exception:
+            self.trace_mon = None
         self.run_ack_seen = False
         self.fw_done = False
         self.fw_pass = False
@@ -36,12 +42,6 @@ class SepBootScoreboard(uvm_component):
         # booted). A test that boots a different firmware sets this to its own
         # banner; "" skips the banner check (relying on PC-advance + fw_pass).
         self.expected_line = _EXPECTED_LINE
-
-    def note_trace(self, valid: int, addr: int) -> None:
-        if valid:
-            self.last_pc = addr & 0xFFFF_FFFF
-            self.trace_count += 1
-            self.pcs.add(self.last_pc)
 
     def note_run_ack(self, val: int) -> None:
         if val:
@@ -60,10 +60,13 @@ class SepBootScoreboard(uvm_component):
 
     def check_phase(self) -> None:
         console = self.console_text()
+        mon = self.trace_mon
+        retired = mon.trace_count if mon is not None else 0
+        distinct = len(mon.pcs) if mon is not None else 0
         self.logger.info(
             "boot: %d retired (%d distinct PCs), run_ack_seen=%s, fw_done=%s fw_pass=%s",
-            self.trace_count,
-            len(self.pcs),
+            retired,
+            distinct,
             self.run_ack_seen,
             self.fw_done,
             self.fw_pass,
@@ -71,9 +74,14 @@ class SepBootScoreboard(uvm_component):
         self.logger.info("firmware console: %r", console)
 
         errors: list[str] = []
-        if len(self.pcs) < _MIN_DISTINCT_PCS:
+        if mon is None:
             errors.append(
-                f"PC did not advance (only {len(self.pcs)} distinct fetch PCs; "
+                "no CPU trace monitor attached (cpu_trace_mon missing from "
+                "ConfigDB); PC-advance evidence unavailable"
+            )
+        elif distinct < _MIN_DISTINCT_PCS:
+            errors.append(
+                f"PC did not advance (only {distinct} distinct fetch PCs; "
                 f"core likely never booted out of ICCM)"
             )
         if not self.fw_done:
