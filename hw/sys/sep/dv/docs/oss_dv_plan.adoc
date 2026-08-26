@@ -291,15 +291,15 @@ decode (landed `FAILED`, not a credit). KM command stays parked.
 | Smoke + address-map walk.
 
 | Inbound filter: POR block-all, CPU-programmed allow, `SEP_DBG` bypass
-| PARTIAL
+| PROVEN
 | Block-by-default, 16-cell allow/block + source-ID walk, `allow_burst`
   deny/allow on AR and AW, and post-filter burst-to-single on the
   system-CSR Lite path (Verilator `20260825_071626`) are proven, as is
-  `SEP_DBG` gating. CHK-OWNERSHIP-WINDOW is `FAILED`: only the SEP CPU
-  may program the inbound filter per `hw/sys/sep/doc/fabric.adoc`, and
-  the RTL answers OKAY instead of DECERR to another master. Phase 2+
-  keeps that assert hard; the row is `PROVEN` when the checker matches
-  the spec. The wrap same-page 4 KB widen is an open spec question
+  `SEP_DBG` gating. CHK-OWNERSHIP proves CFG stays DECERR from SMN when
+  firmware keeps it outside every allow window. Allow-listing CFG is a
+  SW hole HW does not hard-block
+  (https://github.com/tenstorrent/tt-oca-harness/issues/1050). The wrap
+  same-page 4 KB widen is an open spec question
   (see `verification_plan_phase2.adoc` open items).
 
 | Outbound filter / AP-STEE live remap
@@ -504,8 +504,12 @@ decode (landed `FAILED`, not a credit). KM command stays parked.
 | `sep_reg_bit_bash_rand_test` walks the generated export: 417
   reset-eligible registers match, then 51 write-safe registers take a
   complementary write that moves exactly the software-usable mask
-  (inbound START/END use `[31:3]`; 16 scratch + 3 `SEP_CPU_CTRL` + 32
-  inbound address regs). Those counts do not vary with seed. Exclusions
+  (inbound START/END full mask + same-beat wrap model; 16 scratch + 3
+  `SEP_CPU_CTRL` + 32
+  inbound address regs), plus `TOUCH_BLOCKS` one seed-selected storage
+  RW per other major IP (write ``x``, compare with mask;
+  AES/HMAC/KMAC/OTBN/DMA/SPI/WDT/mailbox). Those counts do
+  not vary with seed. Exclusions
   are a reason table (FIFO, trigger, key, hw-driven, side-effect, OTP).
   Remap and outbound-filter banks are reset-only. Per-register decode is
   out of this row.

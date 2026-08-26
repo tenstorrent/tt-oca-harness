@@ -170,8 +170,7 @@ assert forbidden markers do not appear; a dual-print still fails the test.
 
 The same set as Phase 1, with the same meanings. A running test's checkers are
 `PROVEN` or `FAILED`. `PARTIAL`, `GUARD`, and `INSUFFICIENT-EVIDENCE` are unused
-here. Three `FAILED` checkers are RTL vs spec: CHK-OWNERSHIP-WINDOW
-(`hw/sys/sep/doc/fabric.adoc`), CHK-DEADSPACE-REFUSE, and
+here. Two `FAILED` checkers are RTL vs spec: CHK-DEADSPACE-REFUSE and
 CHK-DEADSPACE-NO-ALIAS
 (https://github.com/tenstorrent/tt-oca-harness/issues/228).
 
@@ -1157,7 +1156,8 @@ programmed range so the wrap same-page 4 KB widen does not fire.
 CHK-BURST-TO-SINGLE proves `fabric.adoc` convert-burst-to-single on the
 system-CSR Lite path (denied AxLEN=1 → 0 Lite; allowed AxLEN=1 → two
 singles). The 4 KB over-grant is an <<open-items,open spec question>>,
-not a claimed checker. CHK-OWNERSHIP-WINDOW stays a hard assert.
+not a claimed checker. CHK-OWNERSHIP keeps CFG outside every allow
+window (firmware must not allow-list CFG; HW does not hard-block that).
 
 IMPORTANT: this entry establishes the filter is active by value-checking `FEAT_CTRL`
 against the *Phase 1* lifecycle golden, so it inherits that golden and is not
@@ -1192,11 +1192,6 @@ and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
   `CHK-BURST-ALLOW PASS: allow_burst=1 START=` /
   `CHK-BURST-WRITE-DENY PASS:` / `CHK-BURST-WRITE-ALLOW PASS:` /
   `CHK-BURST-TO-SINGLE PASS: AxLEN=1 read -> 2 Lite AR`
-| LOGGED
-
-| 4
-| Keep CHK-OWNERSHIP-WINDOW a hard assert (expected red until RTL).
-| `CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg 0x10a21000 on entry 1, external read resp=0, expected DECERR`
 | LOGGED
 |===
 
@@ -1233,25 +1228,9 @@ and the `lc_sigint_err` fail-closed path are CHK-SECURE-TM / CHK-SIGINT on
 | CHK-OWNERSHIP
 | The CPU-LSU reads the programmed rule at the filter CFG CSR. The external master
   completes DECERR on read and write of that address, and the denied write does not
-  land. CFG is outside entry 0's window in this step.
+  land. CFG stays outside every allow window (firmware must not allow-list CFG).
 | `CHK-OWNERSHIP PASS: filter cfg 0x10a21000 -- CPU-LSU reads rule`
 | PROVEN
-
-| CHK-FILTER-PROGRAMMED
-| Entry 1's allow-window is programmed as a closed interval: CPU-LSU readback of
-  `FILTER_CONFIG` and `START_ADDR` match the CFG address, and `END_ADDR` is the
-  HW-expanded last byte of that 8-byte beat (`filter_ctrl.rdl` `END_ADDR` reset
-  `0x7`; `axi_filter_wrap` same-beat expansion).
-| `CHK-FILTER-PROGRAMMED PASS: entry 1 FILTER_CONFIG` with `END_ADDR=`
-| PROVEN
-
-| CHK-OWNERSHIP-WINDOW
-| After a second filter entry allow-lists the CFG address with read and write, the
-  external master still DECERRs. `hw/sys/sep/doc/fabric.adoc`: only the SEP CPU
-  can program these filters.
-| `CHK-OWNERSHIP-WINDOW FAIL: after allow-listing filter cfg 0x10a21000 on entry 1, external read resp=0, expected DECERR`
-| FAILED — RTL returned OKAY (Verilator run `20260820_164231`). Question:
-  https://github.com/tenstorrent/tt-oca-harness/issues/1050
 
 | CHK-NONVAC
 | Allow and block were both observed under one lifecycle state.
@@ -1317,13 +1296,11 @@ NOTE: the walk is first and last inbound-filter entries, two address windows
 (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
 `src_id=0`, plus the source-ID product on entry 0 / window 0, then the
 `allow_burst` deny/allow pair on AR and AW of scratch and the
-burst-to-single Lite split. CHK-OWNERSHIP-WINDOW stays hard. The
-ownership restore programs `src_id=0` / `user=0` so a src-miss cannot
-paper over the ownership gap (`fabric.adoc` requires DECERR to a
-non-CPU master; the RTL answers OKAY). WRAP/FIXED/AxLEN>1 are not
+burst-to-single Lite split. CHK-OWNERSHIP keeps CFG outside every
+allow window. WRAP/FIXED/AxLEN>1 are not
 walked: Lite bridges convert those bursts to singles, so the filter
 only sees tx_len==0. The wrap same-page 4 KB widen is an
-<<open-items,open spec question>>, not a third `FAILED`.
+<<open-items,open spec question>>, not a `FAILED`.
 
 [[sep_fabric_remap_filter_csr_bank_test]]
 === sep_fabric_remap_filter_csr_bank_test
@@ -2909,10 +2886,6 @@ Hard `FAILED` spec-vs-RTL (keep hard; do not XFAIL):
   and answers OKAY. Owned by `sep_fabric_deadspace_decode_test`. Keep the
   full probe set; do not shrink it to the addresses that already pass.
 
-* CHK-OWNERSHIP-WINDOW — only the SEP CPU may program the inbound filter per
-  `hw/sys/sep/doc/fabric.adoc`; the RTL answers OKAY instead of DECERR to
-  another master. Owned by `sep_fabric_inbound_filter_rule_matrix_test`.
-
 Spec-vs-RTL divergences found by review, not yet owned by a checker. Each is a
 document or manifest defect rather than a failing test; none is XFAILed, because
 no test asserts them today:
@@ -3019,10 +2992,11 @@ already owns the claim, or add the named new Phase 2 test.
 | Sideload KATs stay consume proofs. Wipe stays Phase 3 T.B.D.
 
 | Fabric
-| Live outbound remap is `PROVEN`. Inbound ownership stays `PARTIAL`
-  (RTL). Local-master alias datapath is `PROVEN`. Dead-space decode
+| Live outbound remap is `PROVEN`. Inbound ownership is `PROVEN`
+  (CHK-OWNERSHIP under correct programming; CFG never allow-listed).
+  Local-master alias datapath is `PROVEN`. Dead-space decode
   is a landed `FAILED` (RTL).
-| CHK-OWNERSHIP-WINDOW and CHK-DEADSPACE-REFUSE stay hard. Alias
+| CHK-DEADSPACE-REFUSE stays hard. Alias
   offset is a real-beat proof; missing valid/cacheable bits stay a
   hard FAIL.
 |===
@@ -3082,9 +3056,11 @@ closes (inbound ownership; dead-space refuse).
 | `sep_km_key_policy_vault_test`
 
 | CSR reset / RW / RO / reserved behaviour
-| `PROVEN`. `sep_reg_bit_bash_rand_test` (Verilator `20260825_150036`)
+| `PROVEN`. `sep_reg_bit_bash_rand_test` (Verilator `20260826_050021`)
   walks 417 reset values and 51 write-safe complementary writes
-  (inbound START/END use the granule mask `[31:3]`).
+  (inbound START/END full mask + same-beat wrap model), plus
+  `TOUCH_BLOCKS` one seed-selected storage RW per other major IP
+  (write ``x``, compare with mask).
 | `sep_reg_bit_bash_rand_test`
 
 | Dead-space decode
@@ -3114,7 +3090,7 @@ Do not leave these remaining `GAP`s as Phase 3 pretend-UVM items.
 Phase 2 keeps its floor of 18 of 40 and its goal of 25 of 40. Eleven of
 the fourteen Phase 2+ rows are `PROVEN`. The scorecard is 35 of 40.
 CSR bit-bash is `PROVEN` (`sep_reg_bit_bash_rand_test`, Verilator
-`20260825_043118`). Dead-space decode is a landed hard `FAILED`
+`20260826_050021`, reset=417 write=51 touch=9). Dead-space decode is a landed hard `FAILED`
 (`sep_fabric_deadspace_decode_test`, Verilator `20260825_071309`,
 https://github.com/tenstorrent/tt-oca-harness/issues/228) and is not a
 feature credit. Remaining: KM command set (parked last) and two RTL
@@ -3164,14 +3140,15 @@ checker. Do not force `sec_dis`.
 | `sep_fabric_output_remap_datapath_proxy_test`
 
 | Inbound filter (ownership slice)
-| PARTIAL
+| PROVEN
 | No new test. The matrix walks allow/block, source-ID, `allow_burst`
   deny/allow on AR and AW, burst-to-single on the system-CSR Lite
-  path, and `SEP_DBG`. CHK-OWNERSHIP-WINDOW stays a hard assert:
-  `fabric.adoc` requires DECERR to a non-CPU master programming the
-  filter and the RTL answers OKAY. The row becomes `PROVEN` when that
-  checker matches the spec. Do not XFAIL. Do not invent a sibling.
-  The 4 KB over-grant is an <<open-items,open spec question>>.
+  path, and `SEP_DBG`. CHK-OWNERSHIP proves CFG stays unreachable from
+  SMN when firmware does not allow-list it. Allow-listing CFG is a SW
+  hole HW does not hard-block
+  (https://github.com/tenstorrent/tt-oca-harness/issues/1050); the test
+  never opens that window. The 4 KB over-grant is an
+  <<open-items,open spec question>>.
 | `sep_fabric_inbound_filter_rule_matrix_test`
 
 | ESRC health-test watermark arming
@@ -3235,7 +3212,7 @@ checker. Do not force `sec_dis`.
 | Sweep over the generated register export: reset value, writable bits
   toggle, read-only and reserved bits do not. Not a RAL model — the
   metadata already exists in `env/sep_reg_meta.py`.
-  `sep_reg_bit_bash_rand_test` (Verilator `20260825_043118`).
+  `sep_reg_bit_bash_rand_test` (Verilator `20260826_050021`).
 | `sep_reg_bit_bash_rand_test`
 
 | Dead-space decode
@@ -3370,9 +3347,12 @@ single source of truth for both the walk and the skip reasons.
 
 Write-lands is the anti-vacuity control: a complement write must move
 exactly the software-usable mask. Inbound-filter START/END stay in the
-write sweep with the granule mask `[31:3]` (hardware forces `[2:0]`;
-`END_ADDR` resets to `0x7`). The inventory is seed-stable: 417 reset,
-51 write (16 scratch + 3 `SEP_CPU_CTRL` + 32 inbound address regs).
+write sweep under the full export mask; readback is checked against the
+same-beat wrap model with the peer at reset (`END_ADDR` reset `0x7`).
+The inventory is seed-stable: 417 reset, 51 write (16 scratch + 3
+`SEP_CPU_CTRL` + 32 inbound address regs), plus 9 `TOUCH_BLOCKS` IP
+storage proofs (seed-selected RW per AES/HMAC/KMAC/OTBN/DMA/SPI/WDT/
+mailbox; write ``x``, ``(read & mask) == (x & mask)``).
 Remap and outbound-filter banks are reset-checked only: an unprogrammed
 alias region still rewrites a live beat. The inbound-filter rule-matrix
 test owns programming the live filter, not these storage bits.
@@ -3410,14 +3390,23 @@ this row.
 | `CHK-RESERVED PASS: reserved bits read back 0`
 | PROVEN
 
+| CHK-BLOCK-TOUCH
+| One seed-selected export RW storage register per other major IP
+  (`TOUCH_BLOCKS`): write seed-derived ``x``, assert
+  ``(readback & mask) == (x & mask)``, restore reset. Shadowed names
+  take a dual write. Candidates exclude W1C/status/enable/key/GO.
+| `CHK-BLOCK-TOUCH PASS: 9 IP storage touch(es)`
+| PROVEN — Verilator `20260826_050021`
+
 | CHK-RANDCFG
-| The full reset set and the full write-safe set ran in one
-  invocation; block order and ones-first come from the seed.
-| `CHK-RANDCFG PASS: reset=417 write=51`
-| PROVEN
+| The full reset set, write-safe set, and TOUCH_BLOCKS set ran in one
+  invocation; block order, ones-first, and per-IP touch pick/value come
+  from the seed.
+| `CHK-RANDCFG PASS: reset=417 write=51 touch=9`
+| PROVEN — Verilator `20260826_050021`
 |===
 
-Kept Verilator log: `20260825_150036`.
+Kept Verilator log: `20260826_050021`.
 
 [[sep_fabric_deadspace_decode_test]]
 === sep_fabric_deadspace_decode_test
@@ -3876,18 +3865,16 @@ See <<sep_fabric_output_remap_datapath_proxy_test>>. Verilator
 `sep_fabric_inbound_filter_rule_matrix_test` already owns the iconic
 inbound walk, including the `allow_burst` deny/allow pair on AR and AW
 and burst-to-single on the system-CSR Lite path (Verilator
-`20260825_071626`). CHK-OWNERSHIP-WINDOW is the remaining slice: after
-allow-listing the CFG window the external master must DECERR
-(`fabric.adoc`: only the SEP CPU programs the filter). RTL returns OKAY.
-Phase 2+ keeps that assert hard. The scorecard row moves
-to `PROVEN` when the checker is green. A JTAG-style “`PROVEN` plus named
-`FAILED` slice” is a scorecard-owner call, not a default here — inbound
-ownership is part of the iconic claim. The 4 KB over-grant is an
-<<open-items,open spec question>>, not that remaining slice.
+`20260825_071626`). CHK-OWNERSHIP proves CFG stays DECERR from SMN when
+firmware keeps it outside every allow window. Allow-listing CFG is a SW
+policy hole, not an RTL defect
+(https://github.com/tenstorrent/tt-oca-harness/issues/1050); the test
+does not open that window. The 4 KB over-grant is an
+<<open-items,open spec question>>.
 
 === Graded: sep_reg_bit_bash_rand_test
 
-See <<sep_reg_bit_bash_rand_test>>. Verilator `20260825_043118`.
+See <<sep_reg_bit_bash_rand_test>>. Verilator `20260826_050021`.
 
 === Graded: sep_fabric_deadspace_decode_test
 
@@ -3915,7 +3902,7 @@ tree; the wrap-up Verilator log is the grade. Do not add a sibling test.
   windows × rw/r/w at match-all plus the source-ID match / mismatch
   product, the `allow_burst` deny/allow pair on AR and AW of scratch,
   and burst-to-single on the system-CSR Lite path (Verilator
-  `20260825_071626`). CHK-OWNERSHIP-WINDOW stays hard
+  `20260825_071626`). CHK-OWNERSHIP keeps CFG outside every allow window
 | `sep_inbound_id_remap_test`
 
 | PIC source map
@@ -4388,23 +4375,17 @@ Both plans (`python3 docs/tools/verify_plan_proofs.py`): 72 graded names,
 |===
 | Grade | Count
 
-| `PROVEN` | 224
+| `PROVEN` | 223
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
 | `NOT-RUN` | 0
 | `STALE` | 0
-| `FAILED` | 3
+| `FAILED` | 2
 |===
 
-Three `FAILED` checkers, none XFAILed:
+Two `FAILED` checkers, none XFAILed:
 
-* CHK-OWNERSHIP-WINDOW: after entry 1 allow-lists the filter CFG
-  address, the external master returns OKAY (Verilator
-  `20260820_164231`). RTL vs `hw/sys/sep/doc/fabric.adoc` ("Only the
-  SEP CPU can program these filters"),
-  https://github.com/tenstorrent/tt-oca-harness/issues/1050
-  CHK-OWNERSHIP without that window is `PROVEN` in the same log.
 * CHK-DEADSPACE-REFUSE and CHK-DEADSPACE-NO-ALIAS: issue-228 anchors
   still wrap onto live registers (`km_mailbox w 0x10920ff8`,
   `secure_dma w 0x108008a8`). The accepted-OKAY and alias counts move

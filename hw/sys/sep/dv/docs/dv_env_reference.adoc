@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= SEP OSS DV Environment Reference
-:toc: left
-:toclevels: 3
-:icons: font
-:source-highlighter: rouge
+[[sep-dv-env-reference]]
+== SEP OSS DV Environment Reference
 
-Deep-dive reference for the SEP OSS DV environment: how eFuse contents are
-selected, and what backs the memory, eFuse, and SPI ports of the DUT.
+Deep-dive companion to link:SEP_TB_ARCH.adoc[SEP_TB_ARCH]: how eFuse contents
+are selected, what backs the memory / eFuse / SPI ports, how CPU trace is
+reconstructed, and how Boot ROM images are built.
 
-For getting a run going, see the
+For the testbench hierarchy, VIP policy, and bring-up flow, start with
+link:SEP_TB_ARCH.adoc[SEP_TB_ARCH]. For getting a run going, see the
 link:../README.md[README]. For what each test proves, see
-link:oss_dv_plan.adoc[the plan] and the per-phase verification plans.
+link:SEP_VPLAN.adoc[SEP_VPLAN]. This chapter is collected into
+link:index.adoc[index.adoc] after the TB architecture and VPLAN.
 
-== eFuse content selection
+=== eFuse content selection
 
 All eFuse tests select their contents through
 `sep_base_test.select_efuse_image()`. The shared helper uses
@@ -48,7 +48,7 @@ End to end, one eFuse test runs:
 . The test reads the actual shadow data and compares it against the expected
   data computed from the same `SepEfuseImage`. Mismatch fails the test.
 
-=== Readout method vs image source
+==== Readout method vs image source
 
 The generic eFuse model sense flow (OTP image → sense FSM → shadow) is used
 by more than the two shadow-compare tests. *Readout method and image source
@@ -68,13 +68,13 @@ do not replace the shadow-compare pair: `sep_efuse_lcc_lc_state_stitch_test`,
 `sep_lcc_uvm_inbound_filter_gating_test`,
 `sep_fabric_inbound_filter_rule_matrix_test`.
 
-== Memory / eFuse / SPI models
+=== Memory / eFuse / SPI models
 
 The memory and eFuse integration is RTL inside `sep_wrapper`
 (`hw/top/sep_ip_integration.sv`). The OpenTitan SPI host is RTL inside the
 `sep` core. The TB does not back those ports with responders.
 
-=== Memory macros
+==== Memory macros
 
 Real `prim_ram_1p` / `prim_rom` / EL2 TCM (`ram_16384x39`) macros. They have no
 runtime init, so `tb_backdoor_mem` (in `tb/tb_top.sv`) pre-fills correct
@@ -90,7 +90,7 @@ These backdoor writes require the target arrays to be public under Verilator
 (`sep_public_scope.vlt`: `prim_ram_1p.mem`, `prim_rom.mem`,
 `ram_16384x39.ram_core`).
 
-=== Generic eFuse model
+==== Generic eFuse model
 
 `hw/ip/efuse/dv/models/efuse_bank_model.sv`, shared with SMC via a plusarg
 prefix. It backs the eFuse bank-control and fuse-command datapath so fuse sense
@@ -100,7 +100,7 @@ persists W1S programs across reset. It can inject opt-in OTP program failures
 with `+sep_efuse_prog_fail_count`, `+sep_efuse_prog_fail_percent`, and
 `+sep_efuse_prog_fail_seed`.
 
-=== OpenTitan SPI host
+==== OpenTitan SPI host
 
 Internal to the wrapper; its pads come out as scalar cocotb ports in `tb_top.sv`
 so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM.
@@ -112,14 +112,14 @@ only in a companion wrapper, the driver for it lives in that repo and that
 repo's `fw.mk` compiles and links against it. Open firmware does not program
 it.
 
-=== Kept TB shims
+==== Kept TB shims
 
 `shims/` holds the `sep_cpu` stub (no_cpu build), `prim_sync2`, the ABR key-CSR
 Verilator stub, and the entropy ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
 console / PASS monitor) is also kept — it services a real wrapper output port,
 not a memory model.
 
-== Processor-state monitoring and firmware stack tracing
+=== Processor-state monitoring and firmware stack tracing
 
 Firmware execution visibility has three layers: the virtual console
 (`tb/sep_outbound_mbx.sv`, byte stores to `0x8000_0000` plus the PASS/FAIL
@@ -128,7 +128,7 @@ live in `cocotb/env/sep_cpu_trace_monitor.py`, a passive `uvm_component` built
 by `sep_base_test` for every test and self-idling unless the `+cpu_boot` run
 mode is active.
 
-=== Trace source
+==== Trace source
 
 `tb_top.sv` exports the complete VeeR EL2 retirement-trace struct
 (`el2_trace_pkt_t`) as ports: `cpu_trace_valid_o`, `cpu_trace_addr_o`,
@@ -138,7 +138,7 @@ struct to zero, so no_cpu targets elaborate unchanged. Sampling gates on
 `sep_cpu_reset_n_o`; a warm CPU reset (e.g. the WDT bite path) flushes the
 shadow call stack while history and tallies survive.
 
-=== What the monitor reconstructs
+==== What the monitor reconstructs
 
 PC history:: every retirement feeds a count, a distinct-PC set (the boot
   scoreboard's PC-advance evidence), and a 512-entry ring of the most recent
@@ -157,7 +157,7 @@ Reconstruction hiccups (pop of an empty stack, depth overflow) are tallied as
 resync notes and logged, never failed; pass/fail judgement stays in
 `sep_boot_scoreboard.py`.
 
-=== Symbolization
+==== Symbolization
 
 `cocotb/env/sep_fw_symbols.py` parses the `nm -B -n` listing the firmware
 build emits next to every ELF (`<test>.tcm.sym`; `boot_rom.sym` for ROM
@@ -167,7 +167,7 @@ listing automatically from the ITCM hex path; a missing listing degrades to
 numeric PCs and never fails a test. Trace PCs are link addresses — the
 `-0xC0000000` bias in `fw.mk` only rebases the TCM hex images.
 
-=== Output
+==== Output
 
 On any failing boot exit (no boot, hang, cycle exhaustion, firmware FAIL) the
 monitor dumps the symbolized call stack, trap records, and the tail of the
@@ -182,7 +182,7 @@ architectural ground truth: a known noinline call chain, one breakpoint trap
 with the CSR-true `mcause`/`mepc` reported on the console, cross-checked
 against the monitor's trap record, shadow-stack depth, and symbolization.
 
-== Boot ROM firmware builds
+=== Boot ROM firmware builds
 
 Production Boot ROM firmware tests (`sep_rom_non_secure_boot_test`,
 `sep_rom_ot_{dma,pio,secure}_boot_test`) live in `testlists/rom_fw.toml` and run

@@ -3342,7 +3342,8 @@ document specifies them.
 None in Phase 1. The retired CHK-JTAG-MMR-DENY expected DECERR on the
 MMR token block; current `hw/sys/sep/doc/periphs.adoc` allows that block
 and denies shadow, program/read interface, and SHIM. Inbound ownership
-(CHK-OWNERSHIP-WINDOW) is a Phase 2 open item.
+under correct programming (CFG outside every allow window) is owned by
+Phase 2 `sep_fabric_inbound_filter_rule_matrix_test` CHK-OWNERSHIP.
 
 CHK4 generate-command segmentation on the Phase 1 `glen=32` rows names
 only that generated bits match the golden; Phase 2
