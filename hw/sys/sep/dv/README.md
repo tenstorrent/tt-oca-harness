@@ -69,11 +69,15 @@ exit alone is not enough.** A test passing is the entry condition for reading
 its checkers, never a substitute for them, and a checker row exists only if a run
 can prove it. A log tag is not the proof.
 
-What each test proves (technical contracts):
+The contracts themselves:
 
 * [`docs/index.adoc`](docs/index.adoc) — SEP DV documentation book (entry point)
-* [`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc) — testbench architecture
-  (VIP policy, env hierarchy, HDL top, stimulus / checking)
+* [`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc) — testbench architecture: VIP
+  policy, env hierarchy, HDL top, stimulus and checking. Also the detail the
+  README leaves out — eFuse content selection (the `+sep_efuse_preload` selector,
+  the `SepEfuseImage` golden, the sense-and-compare flow), what backs the memory
+  / eFuse / SPI ports inside `sep_wrapper` and their backdoor plusargs, CPU-trace
+  reconstruction and symbolization, and the Boot ROM image builds.
 * [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) — verification plan: per-test
   contracts and checkers, naming rules, VIP policy, iconic feature scorecard.
 
@@ -133,7 +137,7 @@ hw/sys/sep/dv/
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
 │                        #   and cov/sv/. Verilator coverage flags live in
 │                        #   sep_sim_cfg.toml ([coverage.verilator]).
-├── docs/                # verification plans + env reference (AsciiDoc)
+├── docs/                # testbench architecture + verification plan (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
 ├── models/              # SEP-local SystemRDL: models/regs/sep_external.rdl is the
@@ -161,18 +165,6 @@ hw/sys/sep/dv/
 ├── build/               # generated: per-tool models + build/runs/<run-id>/ logs (gitignored)
 └── README.md
 ```
-
-## Going deeper
-
-[`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc) covers what the README
-deliberately leaves out:
-
-* **eFuse content selection** — the `+sep_efuse_preload` selector, the
-  `SepEfuseImage` golden object, and the full sense-and-compare flow.
-* **Memory / eFuse / SPI models** — what backs those ports inside `sep_wrapper`,
-  the backdoor plusargs, and why the SPI pad mux is absent from a pure-open build.
-* **Boot ROM firmware builds** — the submodule prerequisite and the
-  picolibc-dependent two-step ROM build.
 
 ## OSS hygiene
 
