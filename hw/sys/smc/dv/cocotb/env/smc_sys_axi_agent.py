@@ -57,7 +57,6 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.expect_error: bool = False
         # Soft-complete on AXI timeout. Default False. Setting True requires a
         # comment at the call site explaining why incomplete traffic is OK and
-        # a second positive evidence path (see dv_hack_cleanup_checklist.md §2.3).
         self.allow_timeout: bool = False
         self.timed_out: bool = False
         self.timeout_ns: int | None = None

@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_CG_TEST_MODE_BYPASS_TEST ANCHOR: smc_cg_test_mode_bypass_test
-DV-CARD-REVISION: 1 RECORD-SHA256: c4d8b90225e96f8c7796fabb3370409dc3db39898ca34e52d486363aef52ff49
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """
 
 from __future__ import annotations
