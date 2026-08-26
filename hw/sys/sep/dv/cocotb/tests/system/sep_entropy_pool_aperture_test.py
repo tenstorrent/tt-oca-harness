@@ -221,15 +221,24 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             "not full (level=%d)",
             STALL_THRESH, level_room)
         cause_stall = await pool.irq_cause()
-        expect_stall = ((st_stall >> 7) & 1) << 1 | ((st_stall >> 6) & 1)
-        assert cause_stall == expect_stall and cause_stall & 0x2, (
-            f"irq-cause 0x{cause_stall:x} at stall, expected "
-            f"{{fill_stall,pool_low}}=0x{expect_stall:x} with fill_stall; "
-            f"must not copy status 0x{st_stall:x} or hardwire 0"
+        level_stall = st_stall & 0x3F
+        # Independent of status[7:6]: fill_stall is already proven on [37],
+        # pool_low from occupancy vs LowWatermark. The stall setup does not
+        # drain, so this is 0x2.
+        expect_stall = 0x2 | (1 if level_stall < LOW_WATERMARK else 0)
+        assert cause_stall == expect_stall, (
+            f"irq-cause 0x{cause_stall:x} at stall, expected 0x{expect_stall:x} "
+            f"from level {level_stall} vs watermark {LOW_WATERMARK}; "
+            f"must not copy status 0x{st_stall:x}"
+        )
+        assert cause_stall != (st_stall & 0xFF), (
+            f"irq-cause 0x{cause_stall:x} equals status low byte "
+            f"0x{st_stall & 0xFF:x}"
         )
         self.logger.info(
-            "CHK-IRQ-CAUSE-STALL PASS: 0x08=0x%x matches {{fill_stall,pool_low}}, "
-            "not status 0x%x", cause_stall, st_stall)
+            "CHK-IRQ-CAUSE-STALL PASS: 0x08=0x%x from level %d vs watermark %d, "
+            "not status 0x%x",
+            cause_stall, level_stall, LOW_WATERMARK, st_stall)
 
         await pool.enable_edn()
         await pool.enable_esrc()

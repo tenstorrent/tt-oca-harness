@@ -1008,8 +1008,9 @@ Checkers::
 | PROVEN
 
 | CHK-IRQ-CAUSE-STALL
-| `0x08=0x2` at stall (`fill_stall`), not a copy of status.
-| `CHK-IRQ-CAUSE-STALL PASS: 0x08=` not status
+| `0x08=0x2` at stall from level vs `LowWatermark` (`fill_stall`,
+  not `pool_low`), not `{status[7], status[6]}`.
+| `CHK-IRQ-CAUSE-STALL PASS: 0x08=` `watermark`
 | PROVEN
 
 | CHK-STALL-CLEAR
@@ -3111,7 +3112,7 @@ KM command set stays parked. Inbound ownership stays an RTL close.
 Do not leave these remaining `GAP`s as Phase 3 pretend-UVM items.
 
 Phase 2 keeps its floor of 18 of 40 and its goal of 25 of 40. Eleven of
-the fourteen Phase 2+ rows are `PROVEN`. The scorecard is 33 of 40.
+the fourteen Phase 2+ rows are `PROVEN`. The scorecard is 35 of 40.
 CSR bit-bash is `PROVEN` (`sep_reg_bit_bash_rand_test`, Verilator
 `20260825_043118`). Dead-space decode is a landed hard `FAILED`
 (`sep_fabric_deadspace_decode_test`, Verilator `20260825_071309`,

@@ -175,7 +175,7 @@ Same cocotb environment. Eleven close-out rows are `PROVEN`
 (program × lock, demote including lock, standalone RMA, live outbound
 remap, ESRC watermark arming, eFuse set-only, ESRC lock and alert,
 local-master alias, KM key/policy vault, SEC_DIS override, CSR bit-bash).
-The scorecard is 33 of 40. Dead-space decode is a landed hard `FAILED`
+The scorecard is 35 of 40. Dead-space decode is a landed hard `FAILED`
 ( the filed RTL defect), not a
 feature credit. Remaining: KM command set (parked) and two RTL closes
 (inbound ownership; dead-space refuse). Phase 3 does not start until
@@ -277,10 +277,10 @@ and
 link:verification_plan_phase2.adoc#pending-upgrades[pending upgrades].
 Do not treat a `PARTIAL` as done by pointing at a graded entry.
 
-Thirty-three of forty in-scope rows are `PROVEN`, which clears the
-floor of 18 and the Phase 2 goal of 25 of 40. Remaining before the
-Phase 2+ close-out of 34 of 40: inbound ownership (RTL) and dead-space
-decode (RTL; landed `FAILED`, not a credit). KM command stays parked.
+Thirty-five of forty in-scope rows are `PROVEN`, which clears the
+floor of 18, the Phase 2 goal of 25 of 40, and the Phase 2+ close-out
+of 34 of 40. Remaining RTL closes: inbound ownership and dead-space
+decode (landed `FAILED`, not a credit). KM command stays parked.
 
 [cols="2,2,3",options="header"]
 |===

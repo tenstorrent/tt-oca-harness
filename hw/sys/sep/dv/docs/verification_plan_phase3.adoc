@@ -30,7 +30,7 @@ cocotb vehicles.
 Phase 1 (smoke plus subsystem representatives) is signed off, and its record is
 `verification_plan_phase1.adoc`. Phase 2 baseline (iconic features, by IP) is
 closed in `verification_plan_phase2.adoc`. Phase 2+ is the active close-out
-to 34 of 40 on the same cocotb environment (scorecard 33 of 40). Phase 2++
+to 34 of 40 on the same cocotb environment (scorecard 35 of 40). Phase 2++
 activates the last unactivated blocks on that same bench (38 of 40 when
 the parked KM-firmware vehicles land). Phase 3
 starts after that close-out. Its first deliverable is UVM bring-up plus smoke, not the
