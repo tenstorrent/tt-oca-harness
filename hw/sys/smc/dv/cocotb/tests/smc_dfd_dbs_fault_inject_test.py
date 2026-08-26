@@ -4,7 +4,6 @@
 
 DEFERRED from green (2026-07-29): tb_dfd_fault_inject only latches a
 hardcoded token 0xDB5C_AFE1. Real DFD lives under smc_dfd_wrap / hw/ip/dfd.
-See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
 """
 
 from __future__ import annotations
