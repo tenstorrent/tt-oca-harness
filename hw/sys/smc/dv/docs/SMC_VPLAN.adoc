@@ -25,7 +25,8 @@
 * PLL / PVT — `pll_wrap` / `pvt_wrap` inside `smc_ip_integration` (OKAY + 0)
 * GPIO_CTRL / AXIL extension — integration `prim_axi_lite_err_slv` (DECERR + 0)
 * DTP CSR — TB `u_dtp_csr_err_slv` (DECERR + default `0xBADCAB1E`)
-* I3C CSR windows — in-RTL `i3ccore_stub` (SLVERR + `0xBADCAB1E`)
+* I3C CSR windows — real OCA I3C core (`i3ccore_wrapper`), OKAY +
+`HCI_VERSION` = `0x120`
 
 This plan describes *what* the SMC OSS DV suite verifies, at what
 granularity, and against which RTL. Older rows that still say "bare-smc
@@ -107,9 +108,9 @@ sideband, zeroer/DMA-like utility blocks, ECC/RAS, DFD/DBS.
 |S12 |eFuse/OTP/config straps -> observable control/status
 |`smc_efuse_otp_clock_test`
 
-|S13 |PLL window reachability (DECERR boundary responder) + internal
-clock-gate CSR read — *no PLL/PVT clock or status content is observed*
-(window is a DECERR bus terminator, see S13a)
+|S13 |PLL window reachability (`pll_wrap` placeholder responder,
+OKAY + 0) + internal clock-gate CSR read — *no PLL/PVT clock or status
+content is observed* (see S13a)
 |`smc_pll_pvt_clock_config_test`
 
 |S13a |Local+periph xbar decode/route to each SEP_IN-reachable external
@@ -273,10 +274,10 @@ RIRQT / IRQEN / IRQS registers.
 * I2C peripherals (`hw/comp/i2c/` × 4) — clock-gate observable on
 `tb_i2c_cg_en` / `tb_i2c_debug_lo`; I2C0 SDA/SCL lifted to tb_top
 split-port pads (`tb_i2c0_scl/sda` + `tb_i2c0_*_ext_low`).
-* I3C CSR windows — product instantiates `i3ccore_stub` (SLVERR +
-`0xBADCAB1E`); *not* OpenTitan HCI_VERSION=0x120. Green
-`smc_i3c_to_fabric_test` proves fabric decode + stub err-slv signature
-only. CCC/IBI / real core → deferred until core swap.
+* I3C CSR windows — `smc_peripherals` instantiates `i3ccore_wrapper`, the
+real OCA core, and the DV filelist compiles it. Green
+`smc_i3c_to_fabric_test` proves fabric decode plus `HCI_VERSION` = `0x120`
+returned OKAY. CCC/IBI remain deferred to the IP-level DV.
 * CPU JTAG pins (`tb_cpu_jtag_tck/tms/tdi/tdo/reset`) lifted to tb_top;
 IDCODE = 0x10CA0555 (JEP106 straps mfr=0x2AA, part=0x0CA0, ver=0x1);
 DTMCS.version=0x1 → RISC-V Debug Spec 0.13.
@@ -322,8 +323,8 @@ cool reset, cleared on cold)
 |`NDMRESET_CLUSTER_COUNT` |0xC000_2A08 |RO |Cluster count for NDM reset
 broadcast
 
-|`I3C0_HCI_VERSION` |0xC000_5000 |RO |I3C CSR window (stub); *expect
-SLVERR + `0xBADCAB1E`* until real I3C core lands
+|`I3C0_HCI_VERSION` |0xC000_5000 |RO |I3C CSR window on the real OCA
+core; *expect OKAY + `0x120`*
 
 |`AVS_READBACK` |0xC000_8004 |RO |AVSBus master readback
 
@@ -582,10 +583,10 @@ protocol). Optional pin VIP bind is non-gating. |1. Read
 `CLOCK_GATE_CONTROL` (0xC001_0018) — snapshot `V0`2. Write
 `CLOCK_GATE_CONTROL = V0 \| (1<<9)` (enable I3C clock)3. Readback verify
 I3C bit set4. Restore `CLOCK_GATE_CONTROL = V0`5. Read `I3C0_HCI_VERSION`
-(0xC000_5000) with `allow_error`, expect **SLVERR + `0xBADCAB1E`**
-(`i3ccore_stub`) |[ ] `CLOCK_GATE_CONTROL` snapshot readable[ ] I3C
-clock-gate bit toggle + readback OK[ ] `CLOCK_GATE_CONTROL` restored to
-`V0`[ ] Window read completes with SLVERR + `0xBADCAB1E`[ ] `reads == 4`
+(0xC000_5000), expect **OKAY + `0x120`** (real OCA core) |[ ]
+`CLOCK_GATE_CONTROL` snapshot readable[ ] I3C clock-gate bit toggle +
+readback OK[ ] `CLOCK_GATE_CONTROL` restored to `V0`[ ] Window read
+completes with OKAY + `0x120`[ ] `reads == 4`
 [ ] No UVM_ERROR |`CLOCK_GATE_CONTROL` (0xC001_0018)`I3C0_HCI_VERSION`
 (0xC000_5000)`tb_i3c0_scl` / `tb_i3c0_sda` (tb pads)
 
@@ -730,9 +731,9 @@ exists
 |Merge legacy RD/WR, NACK, FIFO, timeout/stretch into two dense protocol
 tests after I2C BFM/VIP
 
-|I3C |`smc_i3c_to_fabric_test` (stub SLVERR signature);
-CCC/IBI/sanity → deferred |P0/P1 |Green proves fabric→`i3ccore_stub`
-only; reopen HCI_VERSION=0x120 / CCC/IBI after real core swap
+|I3C |`smc_i3c_to_fabric_test` (`HCI_VERSION` decode);
+CCC/IBI/sanity → deferred |P0/P1 |Green proves fabric→real OCA core
+decode; CCC/IBI stay with the IP-level DV
 
 |iJTAG / JTAG / DFT |`smc_ijtag_basic_test`;
 `smc_jtag_dmi_smoke_test`; `smc_efuse_jtag_lc_negative_test` |P0/P1
@@ -1019,7 +1020,7 @@ to prove decode + reset defaults; 3-way ID isolation vs I2C0.
 (`smc_i3c_wrap_extended_test` — never shipped) |Planned OCA_I3C_WRAP
 3/4/5 sweep never shipped a `.py` / testlist entry. Green I3C window
 coverage remains `smc_i3c_to_fabric_test` (instances 0–2). Do not invent
-a wrap-3/4/5 PASS against `i3ccore_stub`.
+a wrap-3/4/5 PASS.
 
 |P1-9+ |`efuse_otp` |`smc_efuse_map_read_test` |Read SMC_EFUSE_MAP
 fields (0xC000_B000) — direct eFuse content readback rather than
@@ -1031,9 +1032,9 @@ Samsung eFuse shim decode.
 
 |P1-10+ |`pll_clock` |`smc_pll_cgm_awm_config_test` |Read PLL_WRAP CGM_0
 / CGM_1 (0xC000_3100/3200) + AWM_0 / AWM_1 global regs
-(0xC000_3400/3A00). *DECERR-terminated PLL macro window — reachability
-only, all reads DECERR, no register content (see boundary-responder
-scope caveat / S13a).*
+(0xC000_3400/3A00). *Placeholder PLL macro window — reachability only,
+all reads OKAY + 0, no register content (see boundary-responder scope
+caveat / S13a).*
 
 |P1-11+ |`gpio_ext_irq` |`smc_gpio_ctrl_full_sweep_test` |Sweep all 46
 GPIO_CTRL entries (0xC000_4440..0xC000_49E0 stride 0x20). Existing tests
@@ -1453,7 +1454,7 @@ map hole / unit OOS) |B
 (`smc_smbus_*` + Linear16 helpers) |A
 
 |P2-12 |`i3c_ccc_ibi_full` |I3C DAA/SETDASA + IBI initiation |*Skipped*
-(`i3ccore_stub`; IP DV owns CCC/IBI) |A
+(IP DV owns CCC/IBI) |A
 
 |P2-13 |`uart_spi_loopback` |`ocah_uart_vip` (native) / cocotbext-spi + tb_top
 signal lift |Real UART echo + SPI flash CS sequence — pin env:

@@ -1404,7 +1404,6 @@ module smc_uvm_top
 
     // TB-GLUE only (deferred test): pulse tb_dfd_fault_inject to latch a
     // deterministic token. This is NOT smc_dfd_wrap / hw/ip/dfd coverage.
-    // See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
     // into the public capture port (cocotb cannot int() X).
     always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin

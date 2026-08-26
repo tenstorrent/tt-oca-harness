@@ -633,8 +633,6 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     //   3. This ensures when FSM processes Entry1, depth is still >= 1
     //
     // Reference:
-    //   - Bug Report: cursor_md/i2c_fmt_fifo_depth1_bug.md
-    //   - OpenTitan Compliance: cursor_md/opentitan_i2c_compliance_check.md
     //   - Note: This bug exists in OpenTitan official code (upstream issue)
     // =========================================================================
 
