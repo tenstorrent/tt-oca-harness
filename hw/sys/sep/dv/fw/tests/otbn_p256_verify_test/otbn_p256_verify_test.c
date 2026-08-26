@@ -556,9 +556,9 @@ int main(void) {
 
     int rc = 0;
 
-    // Manually initialize OTBN DMEM with zeros
-    // FIXME: This is a hack because a 32-bit transaction on the 64-bit bus is not correctly
-    // mapped to a single 32-bit transaction by axi_lite_dw_converter.
+    // Zero OTBN DMEM before load. A 32-bit beat on the 64-bit bus does not map
+    // to a single 32-bit write through axi_lite_dw_converter, so init uses the
+    // path that fills the array correctly.
     if (otbn_dmem_zero_init() != 0) {
         printf("FAILED: OTBN DMEM zero initialization failed\n");
         rc = -1;
