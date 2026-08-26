@@ -500,7 +500,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Inbound filter (block-by-default, allow, `SEP_DBG`)
 |PROVEN
-|`sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`. CFG must stay outside allow windows (software policy; HW does not hard-block allow-listing CFG).
+|`sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`. Firmware must keep CFG outside allow windows; the hardware applies the rules it is given and is correct as built.
 
 |Outbound filter / live remap
 |PROVEN
@@ -3982,6 +3982,12 @@ a checker; the owning test already fails if a forbidden marker appears.
 [[known-limitations]]
 === Known Limitations
 
+This table holds two different kinds of item, and the distinction matters when
+reading a row: a *hardware* gap or spec-vs-RTL divergence, where the RTL or the
+specification is expected to change; and a *firmware* constraint, where the
+hardware is correct as built and software must program it correctly. A firmware
+constraint is not an open defect.
+
 [cols="2,4",options="header"]
 |===
 |Topic |Contract
@@ -3989,8 +3995,8 @@ a checker; the owning test already fails if a forbidden marker appears.
 |Dead-space decode (RTL)
 |`sep_fabric_deadspace_decode_test` must keep failing refuse/no-alias on the known wrap defect until RTL refuses those offsets. Do not XFAIL and do not shrink the probe set to look green.
 
-|Inbound CFG allow-list
-|Hardware does not hard-block allow-listing the inbound-filter CFG window. Firmware must keep CFG outside allow windows. The suite proves ownership under correct programming (`CHK-OWNERSHIP`); it does not treat allow-listing CFG as an expected-pass RTL path.
+|Inbound CFG allow-list (firmware constraint)
+|Hardware does not hard-block allow-listing the inbound-filter CFG window, and is correct as built: the filter applies the rules it is given. Firmware must keep CFG outside every allow window — allow-listing it is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
 
 |Wrap same-page 4 KB widen
 |Open architecture question on inbound `allow_burst` windows. Not a claimed checker.
