@@ -9,6 +9,9 @@
 This document is currently under development.
 
 - Can we add an installation script to the repo?
+- Need to check the correct RISCV Toolchain is listed here?
+  - May need 32b toolchain
+  - Makefile references `riscv64-unknown-elf-*`, but it's a 32b Simulator?
 ====
 
 === Python
