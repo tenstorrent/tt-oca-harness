@@ -3,8 +3,6 @@
 """smu_sep_smoke_test — SMU_ALL_007 RST-PRIMARY + CTM.S2/S3 (SEP=0 bare).
 
 DV-CARD:          SMU_ALL_007   ANCHOR: smu_sep_smoke_test
-DV-CARD-REVISION: 11   RECORD-SHA256: 01ce931b85a69a79d77782cf37f77dbe6361b59123bff20c856825e861ab6b71
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 11   ENV: cocotb
 
 Card OWNS (narrowed Option B):
   SMC-RST-PRIMARY-EXPORT.S1/S2, DTP-XTRIG-CTM.S2/S3
