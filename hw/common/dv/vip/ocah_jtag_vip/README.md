@@ -208,8 +208,16 @@ unit, matching the delivery granularity of commercial VIPs (e.g. Synopsys
 Everything above that surface (DUT sequences, tests, checkers, testlists)
 depends only on the item and event types, never on driver/monitor internals.
 
-**Using a commercial VIP is a user-implemented integration** — the template
-does not hide that work, it gives it exactly one home per protocol:
+**Using a commercial VIP is a companion-implemented integration.** The open
+tree carries only the hooks — the opaque `vendor_cfg` extension, the
+`cfg.en_monitor` knob, the guarded vendor-interface nest, and the
+factory-overridable env — and every implementation built on them lives in
+the proprietary `nonfree/` companion repository (see the top-level
+AGENTS.md), never here. The dependency is strictly one-way: the companion
+subclasses these types and overlays this flow, while the open tree never
+references companion paths and builds, runs, and passes without it. The
+template does not hide the integration work; it gives it exactly one home
+per protocol:
 
 1. **Inherit the env (and agent if needed).** Subclass `ocah_<proto>_env`;
    build the vendor system env (e.g. `svt_axi_system_env` +
@@ -245,10 +253,13 @@ does not hide that work, it gives it exactly one home per protocol:
    `[sim].args` — no checked-in config changes; license-env gating is
    already part of the commercial profile contract.
 
-No commercial-VIP integration exists in-tree, so this contract is
-architecture-verified (env-level override point, monitor-disable knob,
-vendor-cfg hook, and interface-nesting hook all exist) but not
-integration-tested against a real VC VIP installation.
+No commercial-VIP integration exists in-tree — that is the placement
+policy above, not a gap. The contract itself is integration-proven: the
+companion carries a reference integration that ran a commercial AXI VIP
+behind exactly these hooks — the env-level factory override, the vendor-cfg
+hook, and the interface-nesting hook on the initiator side, plus a factory
+override of the reactive slave agent on the responder side — and reproduced
+an unmodified open-tree DUT scenario's CHK evidence identically.
 
 ## Quick Start
 
