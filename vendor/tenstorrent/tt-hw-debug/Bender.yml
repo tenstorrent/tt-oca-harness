@@ -1,40 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# Slim local manifest for the vendored Tenstorrent DFD (debug-for-design) IP used
-# by OCAH. This tree carries only the subset of tt_hw_debug reachable from
-# dfd_top_cla_dst_apb - the CLA + DST + trace-sink build with an APB MMR port,
-# instantiated by smc_dfd_wrap. The other seven generated tops, the N-Trace
-# encoder path and the DV tree are not vendored.
+# Slim local manifest for the vendored Tenstorrent DFD IP. Carries only the subset
+# of tt_hw_debug reachable from dfd_top_cla_dst_apb (CLA + DST + trace sink, APB
+# MMRs) that smc_dfd_wrap instantiates; the other generated tops, N-Trace and DV
+# are not vendored. Source order follows upstream tt_dfd.f. axi/ and common_cells/
+# are deliberately absent - OCAH vendors them under vendor/pulp-platform/ and
+# Bender.local forces both there.
 #
-# Source order mirrors upstream tt_dfd.f (bender-generated from the upstream
-# Bender.yml), filtered to that subset. Upstream gates rtl/top/ behind the
-# `dfd_generated_tops` target; the single top we use is listed unconditionally
-# here so OCAH needs no extra bender target.
+# Never edit upstream/ directly: it must stay reproducible from the upstream rev
+# plus patches/ applied in order. Re-check that round-trip before committing a new
+# patch. Whole-file replacements go in overlay/ rather than patches/, because
+# `bender vendor init` only recreates upstream/ and so leaves overlay/ alone on a
+# version bump.
 #
-# axi/ and common_cells/ are NOT vendored under upstream/: upstream checks them
-# out into dependencies/ via bender, and OCAH already vendors them at
-# vendor/pulp-platform/. Bender.local forces both to those path packages.
+# Two upstream file groups are shadowed or dropped in `sources` below:
+#   - overlay/prim_shim/ replaces upstream's behavioural generic_clkgate and
+#     generic_clkmux2, keeping the module names but calling the OCH prims, so the
+#     DFD inherits the och_prim_generic `not(synth)` tech swap instead of
+#     synthesising a behavioural clock gate.
+#   - trace_mem, trace_mem_sink and generic_mem_model are not compiled:
+#     EXTERNAL_SINK_MEM = 1 never takes that branch and they duplicate the OCH SRAM.
 #
-# upstream/ is pristine tt_hw_debug except for the patches/ deltas, which are the
-# authoritative record of every local change and reproduce upstream/ exactly when
-# applied in order to a clean checkout:
-#   0001-expose-trace-sink-ram-ports          EXTERNAL_SINK_MEM + trace_mem_pkg,
-#                                             so the sink RAMs stay outside the block
-#   0002-generic_ffs_fast-width1-size-guard   $clog2(1) == 0 breaks NUM_DST_INST = 1
-# Do not edit upstream/ files directly; add a numbered patch under patches/ instead,
-# and re-run the round-trip check before committing.
-#
-# overlay/prim_shim/ holds OCAH-authored replacements for upstream's behavioural
-# standard cells. They keep the upstream module names, so nothing in upstream/
-# changes, but they instantiate the OCH prim cells - meaning one clock gate in the
-# design and the DFD inherits the och_prim_generic `not(synth)` tech swap. The
-# upstream generic_clkgate.sv/generic_clkmux2.sv are therefore left uncompiled.
-# overlay/ survives `bender vendor init` (it only recreates upstream/), so unlike a
-# patch there is nothing to re-apply on a version bump.
-#
-# The internal trace sink RAM path (trace_mem, trace_mem_sink, generic_mem_model)
-# is not compiled either: EXTERNAL_SINK_MEM = 1 never takes that branch, and
-# leaving it out keeps a second behavioural SRAM model out of the build.
 # TODO: add the matching `vendor_package` entry to the root Bender.yml once the
 # tt_hw_debug GitLab remote is reachable from CI, then re-run `bender vendor init`.
 
@@ -54,12 +40,12 @@ export_include_dirs:
   - upstream/rtl/trace
 
 sources:
-  # All gated on smc, matching the pre-vendoring hw/ip/dfd/rtl blocks. SMU builds
-  # reference tn_pkg/trace_mem_pkg/cla_pkg types but always enable smc too; SEP
-  # enables neither and must not pull this IP in.
+  # Gated on smc like the pre-vendoring hw/ip/dfd/rtl blocks. SMU references
+  # tn_pkg/trace_mem_pkg/cla_pkg types but always enables smc too; SEP enables
+  # neither and must not pull this IP in.
   - target: smc
     files:
-    # Std cells come from overlay/prim_shim, not upstream: see the header note.
+    # Std cells: overlay shims, not upstream. See header.
     - overlay/prim_shim/generic_clkgate.sv
     - overlay/prim_shim/generic_clkmux2.sv
     - upstream/dependencies/common/generic_ipx_clk_rst_ctrl.sv
