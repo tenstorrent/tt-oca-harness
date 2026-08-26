@@ -7,6 +7,8 @@
 [WARNING]
 ====
 This section is currently under development.
+
+- Need to finalise flow for verilator lint?
 ====
 
 This document specifies the development methodology for this project.
@@ -177,6 +179,10 @@ make format-sv
 ```
 
 The need for the above may be checked with `make format-sv-check`.
+
+==== Verilog Linting with Verilator
+
+TODO
 
 ==== Verilog Style and Lint checking with Slang
 
