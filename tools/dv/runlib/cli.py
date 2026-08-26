@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from re import compile
 
 from .compat import UTC
 from .config import (
@@ -1032,14 +1033,44 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
-def list_flows(flows: dict[str, Flow]) -> None:
-    for flow in sorted(flows.values(), key=lambda item: item.name):
-        tool = flow.default_tool or (flow.tools[0] if flow.tools else "-")
-        if flow.license == "required-commercial":
-            tool += " (licensed)"
-        frameworks = ",".join(flow.frameworks) or flow.framework or "-"
-        print(f"{flow.name:<16} {flow.kind:<3} {frameworks:<12} {tool:<20} {flow.description}")
 
+def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
+    BOLD = "\033[1m"
+    NORMAL = "\033[0m"
+    SELECT_BEGIN = BOLD
+    SELECT_END = NORMAL
+
+    # If using ANSI codes, these confuse fstring alignment, so must align manually
+    ANSI_RE = compile(r'\033\[[0-9;]*m')
+    def align(txt: str, width: int) -> str:
+        return txt + ' ' * max(0, width-len(ANSI_RE.sub('', txt)))
+
+    def format_selected_licensed(value:str, selected:bool, unlicensed:bool):
+        return ((f"{SELECT_BEGIN}{value}{SELECT_END}" if selected else value) if unlicensed else (f"{SELECT_BEGIN}{value} (licensed){SELECT_END}" if selected else value+" (licensed)"))
+
+    print(f"{BOLD}{'NAME':<12} {'KIND':<4} {'FRAMEWORKS':<14} {'TOOLS':<46} {'DESCRIPTION'}{NORMAL}")
+    freesims = {name: not bool(attrs["license_env"]) for name, attrs in simulators.items()}
+    freeframeworks:dict[str,bool] = {}
+    frameworkTools:dict[str,list[str]] = {"":[]}
+    for sim, free in freesims.items():
+        for framework in simulators[sim]['frameworks']:
+            freeframeworks[framework] = free or freeframeworks.get(framework, False)
+            frameworkTools[framework] = frameworkTools.get(framework, []) + [sim]
+    for flow in sorted(flows.values(), key=lambda item: item.name):
+        spill = False
+        frameworks = { framework: format_selected_licensed(framework, (flow.framework and framework==flow.framework) or (not flow.framework and framework==flow.default_framework), freeframeworks[framework]) for framework in sorted(flow.frameworks, key=lambda x : (0,0) if x==flow.default_framework else (1,str.lower(x)))
+        } or {"":"-"}
+        for framework, label in frameworks.items():
+            toolArr = list(set(flow.tools) & set(frameworkTools[framework]))
+            defaultTool = flow.default_tool if flow.default_tool in toolArr else toolArr[0] if len(toolArr) else ""
+            toolsArr = [
+                format_selected_licensed(tool, tool==defaultTool, freesims[tool])
+                for tool in sorted(toolArr, key=lambda x : (0,0) if x==flow.default_tool else (1,str.lower(x)))
+            ] or ["-"]
+            tools = ("/".join(toolsArr))
+
+            print(f"{(flow.name if not spill else ''):<12} {flow.kind if not spill else ' '+chr(8627):<4} {align(label,14)} {align(tools,46)} {flow.description if not spill else ''}")
+            spill = True
 
 def _implemented_counts(flow: Flow, catalog: TestCatalog) -> dict[str, int]:
     """Scenario count per implemented framework — the binding-matrix summary."""
@@ -2540,7 +2571,7 @@ def main(argv: list[str] | None = None) -> int:
             elif args.json:
                 list_flows_json(root, duts)
             else:
-                list_flows(duts)
+                list_flows(duts, simulators)
             return 0
 
         if not args.dut:
