@@ -120,9 +120,9 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
 
     protected function void flag_timeout(ocah_axi_item it, string phase_s);
         it.timed_out = 1'b1;
-        `uvm_warning(cfg.name_tag, $sformatf(
+        `uvm_info(cfg.name_tag, $sformatf(
             "%s handshake timeout after %0d cycles: %s",
-            phase_s, cfg.timeout_cycles, it.convert2string()))
+            phase_s, cfg.timeout_cycles, it.convert2string()), UVM_MEDIUM)
     endfunction
 
     // ------------------------------------------------------------------

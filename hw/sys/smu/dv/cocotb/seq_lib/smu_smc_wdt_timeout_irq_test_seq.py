@@ -31,7 +31,7 @@ CMP_SMALL = 0x10
 CMP_MASK = wdt_bm("WDT__CMP__WDOGCMP0_bm")
 
 
-class smc_wdt_timeout_irq_test_seq:
+class smu_smc_wdt_timeout_irq_test_seq:
     """CORE0 WDT first timeout sets sticky WDOGIP0."""
 
     def __init__(self, test) -> None:

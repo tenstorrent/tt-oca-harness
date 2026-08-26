@@ -85,7 +85,7 @@ def _j2a_size_wstrb(width: int) -> tuple[int, int]:
     return SMC_DBG_AXSIZE_8B, 0xFF
 
 
-class local_fabric_reg_bar_wr_test_seq:
+class smu_fabric_reg_bar_wr_test_seq:
     """Prove J2A delivery to fabric config CSR destinations."""
 
     def __init__(self, test) -> None:

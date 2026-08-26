@@ -12,13 +12,13 @@ from seq_lib.smc_sideband_vip_utils import check_sideband_observability
 
 
 @pyuvm.test()
-class octs_sanity_test(smc_base_test):
+class smc_octs_sanity_test(smc_base_test):
     """Run sideband status decode as the public OCTS bounded checker."""
 
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
-        seq = smc_avsbus_status_depth_test_seq("octs_sanity_seq")
+        seq = smc_avsbus_status_depth_test_seq("smc_octs_sanity_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         await check_sideband_observability()
         await self.record_protocol_vip(

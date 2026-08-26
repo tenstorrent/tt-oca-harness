@@ -17,7 +17,12 @@ definition, so nothing is graded and no proof is cited. Read the rest as
 a holding note: direction plus names parked so they are not implemented
 as a second Phase 2 spine. Iconic scorecard `GAP`s belong in Phase 2+
 or Phase 2++ (`verification_plan_phase2.adoc`);
-this dump is corners, error permutations, and coverage-bin work.
+parked KM-firmware vehicles (command set, CRC PCPI, KPV scrambler) stay
+there and are not this dump. This dump is corners, error permutations, and coverage-bin work, including
+slices of Phase 2++ blocks that are not activation (ABR ML-KEM / sign /
+verify / key-vault seed, pool drain-under-fill, isolate drain-before-reset,
+locked-field CPU PIC). Those wait for the UVM bench; they are not extra
+cocotb vehicles.
 ====
 
 == Where Phase 3 sits
@@ -25,9 +30,11 @@ this dump is corners, error permutations, and coverage-bin work.
 Phase 1 (smoke plus subsystem representatives) is signed off, and its record is
 `verification_plan_phase1.adoc`. Phase 2 baseline (iconic features, by IP) is
 closed in `verification_plan_phase2.adoc`. Phase 2+ is the active close-out
-to 34 of 40 on the same cocotb environment (scorecard 33 of 40). Phase 3 starts after that
-close-out. Its first deliverable is UVM bring-up plus smoke, not the
-iconic scorecard rows Phase 2+ owns. Phase 3 will collect what the earlier
+to 34 of 40 on the same cocotb environment (scorecard 35 of 40). Phase 2++
+activates the last unactivated blocks on that same bench (38 of 40 when
+the parked KM-firmware vehicles land). Phase 3
+starts after that close-out. Its first deliverable is UVM bring-up plus smoke, not the
+iconic scorecard rows Phase 2+ / Phase 2++ own. Phase 3 will collect what the earlier
 phases explicitly *defer*: advanced corner cases, error and security
 permutations, deeper cross-IP edges that are not the iconic feature, and
 code-coverage close-out. Code coverage is already *collected*: `[coverage.verilator]`
@@ -39,7 +46,7 @@ nothing gates on a number today.
 [[direction]]
 == Direction: Phase 3 moves to a new UVM testbench
 
-Phase 1, Phase 2, and Phase 2+ stay on the existing cocotb/PyUVM
+Phase 1, Phase 2, Phase 2+, and Phase 2++ stay on the existing cocotb/PyUVM
 environment and finish there. Phase 3 will not extend it. When it starts, it will be a new UVM
 environment, and the first deliverable is a *UVM environment bring-up plus
 smoke test*, not any candidate below.
@@ -178,7 +185,10 @@ coverage hole list.
 | Latch-timing corner of a proven stitch strap
 
 | `sep_efuse_uvm_permission_matrix_test`
-| Permission-neg × `secure_tm`
+| Permission-neg × `secure_tm`. The locked-field interrupt *delivery*
+  path on both lock flavours of one spare is NOT here — it is Phase 2++
+  `sep_locked_field_access_irq_path_test`. Only the per-field
+  permission matrix remains in this phase.
 
 | `sep_efuse_uvm_shadow_permission_neg_test`
 | Shadow permission negative
@@ -199,9 +209,6 @@ coverage hole list.
 | `sep_lcc_uvm_screening_vs_diagnostic_test`
 | Lifecycle flavour permutation
 
-| `sep_locked_field_access_irq_path_test`
-| Locked-field IRQ path
-
 | `sep_outbound_source_id_policy_test`
 | Outbound source-ID policy matrix (not the iconic live remap)
 
@@ -217,11 +224,30 @@ coverage hole list.
 | AES CTR DECRYPT opcode
 | Corner of the Phase 2 9-cell AES row
 
-| Entropy pool FIFO drain / watermark / stall
-| Corner of the consume path (`0x1095_0000`). The block's software
-  aperture and its two PIC sources are NOT here — they are Phase 2++
-  `sep_entropy_pool_aperture_test`. Only drain, watermark and stall
-  corners remain in this phase.
+| ABR ML-DSA sign / verify
+| Slice of Phase 2++ `sep_abr_mldsa_keygen_kat_test`. A green keyGen
+  does not close it.
+
+| ABR ML-KEM-1024
+| No engine driver in this build; stimulus-only lanes.
+
+| ABR key-vault seed path
+| Key CSR block is a DV stub tying every share to zero.
+
+| Entropy pool drain-under-fill / stall-duration
+| Races and duration/recovery of `0x1095_0000`. The aperture, empty-pop
+  SLVERR, write/unmapped SLVERR, and first assert/clear of aggregate
+  bits `[36]` / `[37]` are Phase 2++ `sep_entropy_pool_aperture_test`.
+
+| Isolate drain-before-reset
+| Outstanding-transaction drain inside `sep_crypto_axi_isolate`. The
+  in-window DECERR check is a Phase 2++ extend of
+  `sep_crypto_per_ip_reset_isolation_test`.
+
+| Locked-field CPU PIC / ISR
+| PIC claim, masking, and ISR entry of `sep_internal_interrupts[33]`.
+  Aggregator generate-and-deassert is Phase 2++
+  `sep_locked_field_access_irq_path_test`.
 
 | Health tests / ring oscillator
 | Entropy-quality / real-noise HT; entropy IP testbench, not SEP iconic consume

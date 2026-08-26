@@ -57,6 +57,7 @@ tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
     "sep_hello_world_test",
+    "sep_cpu_trace_diag_test",
     "sep_rom_non_secure_boot_test",
     "sep_rom_ot_dma_boot_test",
     "sep_rom_ot_pio_boot_test",
@@ -128,6 +129,9 @@ tests = [
     "sep_km_key_policy_vault_test",
     "sep_reg_bit_bash_rand_test",
     "sep_fabric_deadspace_decode_test",
+    "sep_entropy_pool_aperture_test",
+    "sep_locked_field_access_irq_path_test",
+    "sep_abr_mldsa_keygen_kat_test",
 ]
 
 [[groups]]
@@ -135,6 +139,7 @@ tests = [
 name = "cpu"
 tests = [
     "sep_hello_world_test",
+    "sep_cpu_trace_diag_test",
     "sep_boot_rom_smoke_test",
     "sep_dma_hash_test",
     "sep_mailbox_plic_test",
@@ -210,6 +215,9 @@ tests = [
     "sep_km_key_policy_vault_test",
     "sep_reg_bit_bash_rand_test",
     "sep_fabric_deadspace_decode_test",
+    "sep_entropy_pool_aperture_test",
+    "sep_locked_field_access_irq_path_test",
+    "sep_abr_mldsa_keygen_kat_test",
 ]
 
 [[groups]]
