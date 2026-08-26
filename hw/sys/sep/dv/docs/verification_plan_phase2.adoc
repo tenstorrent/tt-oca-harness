@@ -957,7 +957,7 @@ The block is a 64 KB crossbar target at `entropy_fifo.main`
 (`0x1095_0000`). It fills from the native EDN endpoint after the shared
 entropy bring-up.
 
-Kept Verilator evidence: run `20260825_155908`.
+Kept Verilator evidence: run `20260826_005354`.
 
 Checkers::
 
@@ -4086,7 +4086,7 @@ Closed, cheapest first:
 
 . Isolate in-window DECERR plus sibling-OKAY on the existing test
   (Verilator `20260825_141838`).
-. Entropy-pool aperture (Verilator `20260825_155908`).
+. Entropy-pool aperture (Verilator `20260826_005354`).
 . Locked-field interrupt delivery (Verilator `20260825_155956`).
 . Adams Bridge ML-DSA-87 keyGen last (Verilator `20260825_142020`);
   both keyGens fit, so the sensitivity leg is kept. Aperture anchored on
