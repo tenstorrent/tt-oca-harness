@@ -243,15 +243,25 @@ Because the fuse is one-way and the owner codes are one-hot, a slot's owner code
 must be burned and read back before its mask bit is burned. See Secure-Boot Signing
 Model in the Life Cycle Controller section.
 
-|REQUIRED_ALGS |23 |32 (use only 12 bits) |set-only |true |Per-owner required
-signature algorithms, applied only when that owner is required. Each owner has a
-4-bit nibble; bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum
-(ML-DSA), bits 3:2 reserved. The specific classical scheme and ML-DSA parameter
-set (e.g., ML-DSA-44/65/87) are set by the owner's provisioned keys, not mandated
-here. [3:0] chiplet, [7:4] SiP owner, [11:8] system owner, [31:12] reserved. For
-each required (owner, algorithm) the manifest must carry a signature verified
-against that owner's burned, non-revoked key of that type; all required pairs
-must verify, and any signature from a non-required owner is ignored.
+|REQUIRED_ALGS |23 |64 (40 used) |true |true |Per-entity required signature
+algorithms, so each verification entity can carry its own classical, PQC, or hybrid
+policy. Each entity has a 4-bit nibble: bit 0 = classical (RSA, ECDSA, or EdDSA),
+bit 1 = post-quantum (ML-DSA), bits 3:2 reserved. Nibble 0 (bits [3:0]) is the
+chiplet creator, which the OCA Payload Manifest calls the manifest ROOT; nibble 1
+(bits [7:4]) is the verifier key entry; and nibbles 2 through 9 (bits [39:8]) are
+co-signers 1 through 8, so co-signer N sits at the same nibble index here as it
+does in REQUIRED_SIGNERS. Bits [63:40] reserved. The chiplet-creator nibble is
+always enforced and governs the chiplet creator's signature, which covers the main
+manifest when use_verifier_key is clear and the appended verifier key entry when it
+is set. The verifier nibble governs the verifier key's signature over the main
+manifest and applies only when use_verifier_key is set; a co-signer nibble applies
+only when REQUIRED_SIGNERS requires that slot. The specific scheme and parameter
+set (e.g., ML-DSA-44/65/87) follow from that entity's provisioned keys and the
+manifest's signature_type_classic / signature_type_pqc values, not from this field.
+Setting both bits of a nibble requires a genuine hybrid signature from that entity:
+both must be present and both must verify. Because a single entity requiring PQC
+forces the manifest into the PQC variant, the union of these nibbles effectively
+selects the manifest format.
 
 |CHIPLET_PUBK_PQC_HASH0 |24 |256 |true |true |Chiplet owner ML-DSA (PQC)
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.
