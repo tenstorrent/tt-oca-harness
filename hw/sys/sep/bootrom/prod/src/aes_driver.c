@@ -22,6 +22,8 @@
 
 #include "rom_mmio.h"
 #include "sep.h"
+#include <stddef.h>
+
 #include "errors.h"
 
 // AES operation modes.
@@ -29,7 +31,12 @@
 #define AES_OP_DECRYPT 0x2u
 #define AES_MODE_ECB 0x01u
 #define AES_MODE_CBC 0x02u
+// KEY_LEN is a 3-bit ONE-HOT field, not an encoded width (aes.rdl:127). Invalid
+// values -- multiple bits, zero, or 192 on a build without it -- are mapped to
+// AES_256 by the hardware, so these are the only three legal writes.
 #define AES_KEYLEN_128 0x1u
+#define AES_KEYLEN_192 0x2u
+#define AES_KEYLEN_256 0x4u
 
 // Timeout for AES status polling.
 #define AES_TIMEOUT 1000000
@@ -85,20 +92,24 @@ static void write_ctrl(uint32_t val) {
     mmio_write32(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, val);
 }
 
-static void write_key_128(const uint8_t *key) {
-    // KEY_SHARE0: actual key in first 4 words, zero-fill rest.
-    for (int i = 0; i < 4; ++i) {
+// Load a key of key_bytes (16 or 32) into KEY_SHARE0, zero-filling the rest of
+// the 8-word register file. The register file is 8 words per share (aes.rdl:36),
+// i.e. it always holds a full 256-bit key; a shorter key occupies the low words
+// and KEY_LEN tells the engine how much of it to use.
+static void write_key(const uint8_t *key, uint32_t key_bytes) {
+    const uint32_t words = key_bytes / 4u;
+    for (uint32_t i = 0; i < words; ++i) {
         uint32_t w = (uint32_t)key[i * 4] | ((uint32_t)key[i * 4 + 1] << 8) |
                      ((uint32_t)key[i * 4 + 2] << 16) | ((uint32_t)key[i * 4 + 3] << 24);
-        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + (uint32_t)(i * 4), w);
+        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + (i * 4u), w);
     }
-    for (int i = 4; i < 8; ++i) {
-        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + (uint32_t)(i * 4), 0u);
+    for (uint32_t i = words; i < 8u; ++i) {
+        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + (i * 4u), 0u);
     }
 
     // KEY_SHARE1: all zeros (no masking).
-    for (int i = 0; i < 8; ++i) {
-        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + (uint32_t)(i * 4), 0u);
+    for (uint32_t i = 0; i < 8u; ++i) {
+        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + (i * 4u), 0u);
     }
 }
 
@@ -171,16 +182,29 @@ int aes_init(void) {
     return 0;
 }
 
-int aes128cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, const uint8_t *iv) {
+int aes_cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, uint32_t key_bytes,
+                    const uint8_t *iv) {
     if (len == 0u || (len & 0xFu) != 0u) {
         return -1; // Must be non-zero and multiple of 16.
     }
 
-    // Configure: DEC, CBC, AES-128, automatic.
+    uint32_t key_len_field;
+    switch (key_bytes) {
+    case 16u: key_len_field = AES_KEYLEN_128; break;
+    case 32u: key_len_field = AES_KEYLEN_256; break;
+    default:
+        // Not defaulted to AES-256 the way the hardware would: a caller passing
+        // a width this driver does not know is a bug, and silently using a
+        // different key length would decrypt to garbage rather than fail.
+        simputs("AES_BAD_KEYLEN\n");
+        return -1;
+    }
+
+    // Configure: DEC, CBC, automatic.
     aes__CTRL_SHADOWED_t ctrl = {.w = 0};
     ctrl.f.OPERATION = AES_OP_DECRYPT;
     ctrl.f.MODE = AES_MODE_CBC;
-    ctrl.f.KEY_LEN = AES_KEYLEN_128;
+    ctrl.f.KEY_LEN = key_len_field;
     ctrl.f.SIDELOAD = 0;
     ctrl.f.MANUAL_OPERATION = 0;
 
@@ -197,7 +221,7 @@ int aes128cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, const uin
 
     if (wait_idle() != 0) goto fail;
 
-    write_key_128(key);
+    write_key(key, key_bytes);
 
     // A KEY write starts a PRNG reseed, and a KEY or IV write while busy is
     // ignored like a CTRL write, so the IV write is separated by an idle wait.
@@ -233,4 +257,48 @@ fail:
     simputs("AES_DEC_FAIL\n");
     aes_cleanup();
     return -1;
+}
+
+// Strip PKCS#7 padding from a decrypted CBC buffer, returning the recovered
+// length via out_len.
+//
+// Constant time in the padding VALUE, which is the part an attacker controls by
+// tampering with the last ciphertext block: the length check and every pad byte
+// are folded into one accumulator rather than exiting on the first bad byte. It
+// is not constant time in the buffer length, which is public.
+//
+// This is deliberately not a padding-oracle-free construction on its own -- the
+// only defence against that is what the caller already did: the OCA library
+// verifies payload_hash over the ciphertext BEFORE decrypting, so an attacker
+// cannot submit chosen ciphertexts to probe this at all.
+int aes_pkcs7_strip(const uint8_t *data, uint32_t len, uint32_t *out_len)
+{
+    if (data == NULL || out_len == NULL || len == 0u || (len & 0xFu) != 0u) {
+        return -1;
+    }
+
+    const uint32_t pad = (uint32_t)data[len - 1u];
+
+    // 1..16 and no larger than the buffer. Folded, not branched.
+    uint32_t bad = 0u;
+    bad |= (pad == 0u) ? 1u : 0u;
+    bad |= (pad > 16u) ? 1u : 0u;
+    bad |= (pad > len) ? 1u : 0u;
+
+    // Every padding byte must equal the count. Walk a fixed 16 bytes so the
+    // number of iterations does not reveal the claimed pad length.
+    for (uint32_t i = 0; i < 16u; ++i) {
+        // Bytes beyond the claimed padding are not checked, but the mask is
+        // computed rather than branched on.
+        const uint32_t in_pad = (i < pad) ? 1u : 0u;
+        const uint8_t  b      = data[len - 1u - i];
+        bad |= in_pad & ((b ^ (uint8_t)pad) != 0u ? 1u : 0u);
+    }
+
+    if (bad != 0u) {
+        simputs("AES_PAD_BAD\n");
+        return -1;
+    }
+    *out_len = len - pad;
+    return 0;
 }

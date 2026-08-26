@@ -25,9 +25,14 @@
 #include <stdint.h>
 
 #include "bl0_state.h"
+#include "aes_driver.h"
 #include "hmac_sha256.h"
+#include "kdf.h"
 #include "lifecycle.h"
 #include "rom_mmio.h"
+#include "errors.h"
+#include "sep_helpers.h"
+#include "status_values.h"
 #include "key_digests.h"
 #include "rom_virt_console.h"
 #include "rsa_verify.h"
@@ -138,6 +143,112 @@ static oca_result_t plat_verify_signature(const oca_crypto_blob_t *signature,
     if (rsa_3072_verify(digest, signature->bytes, public_key->bytes) != 0) {
         return OCA_FAIL_SIGNATURE;
     }
+    return OCA_OK;
+}
+
+// -- payload decryption -----------------------------------------------------
+//
+// The library supplies no cipher and no key material. It has already verified
+// payload_hash over the CIPHERTEXT before calling this, and will verify
+// payload_hash_chain and every TOC entry hash over the plaintext afterwards, so
+// this callback owns exactly three things: resolve the secret, derive the key,
+// and run the cipher.
+//
+// Decrypting IN PLACE is deliberate and explicitly supported: `iv` and
+// `kdf_input` point into the manifest body rather than the payload, so
+// overwriting the payload cannot disturb the derivation inputs. On a part whose
+// staging area is a 256 KiB SRAM, a second payload-sized buffer is not free.
+//
+// The ciphertext hash being checked first is also what keeps aes_pkcs7_strip()
+// off the end of a padding oracle: an attacker cannot submit chosen ciphertexts
+// here, because anything they alter fails payload_hash before this runs.
+
+// The provisioned class secret lives in the CLASS_KEY fuse bank (32 bytes).
+// encryption_shared_secret_select is a 1-based INDEX naming which provisioned
+// secret to use, never key material itself; this part provisions exactly one.
+#define OCA_CLASS_KEY_BYTES 32u
+#define OCA_SECRET_SLOT_CLASS_KEY 1u
+
+static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
+                                         const uint8_t **out_plaintext,
+                                         size_t *out_plaintext_len)
+{
+    if (in == NULL || out_plaintext == NULL || out_plaintext_len == NULL
+        || in->ciphertext == NULL || in->iv == NULL || in->kdf_input == NULL) {
+        return OCA_FAIL_INVALID_ARG;
+    }
+
+    uint32_t key_bits;
+    switch (in->cipher) {
+    case OCA_ENCRYPTION_TYPE_AES_128_CBC: key_bits = 128u; break;
+    case OCA_ENCRYPTION_TYPE_AES_256_CBC: key_bits = 256u; break;
+    default:
+        // The library already rejects anything else, so this is belt-and-braces
+        // rather than the primary gate.
+        return OCA_FAIL_DECRYPT;
+    }
+
+    if (in->secret_select != OCA_SECRET_SLOT_CLASS_KEY) {
+        // A slot this part does not provision. Distinct from a decrypt failure:
+        // the image may be perfectly good and simply built for another device.
+        simputs("DECRYPT_NO_SECRET\n");
+        return OCA_FAIL_NO_PROVISIONED_SECRET;
+    }
+    if (in->ciphertext_len > (size_t)UINT32_MAX) {
+        return OCA_FAIL_INVALID_ARG;
+    }
+
+    uint8_t secret[OCA_CLASS_KEY_BYTES];
+    fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, secret,
+                    OCA_CLASS_KEY_BYTES);
+
+    // An erased CLASS_KEY bank is all zeroes. Deriving from it would produce a
+    // deterministic key and "successfully" decrypt to garbage, which then fails
+    // the plaintext hash with a misleading verdict. Refusing here names the real
+    // problem: this part was never provisioned with the secret.
+    uint32_t any = 0u;
+    for (uint32_t i = 0; i < OCA_CLASS_KEY_BYTES; ++i) {
+        any |= secret[i];
+    }
+    if (any == 0u) {
+        simputs("DECRYPT_CLASS_KEY_EMPTY\n");
+        explicit_memzero(secret, sizeof secret);
+        return OCA_FAIL_NO_PROVISIONED_SECRET;
+    }
+
+    report_status(STATUS_TYPE_INFO, SEP_MSG_DECRYPTION_START);
+
+    uint8_t key[32];
+    int rc = oca_derive_payload_key(secret, OCA_CLASS_KEY_BYTES, in->kdf_input,
+                                    key_bits, key);
+    explicit_memzero(secret, sizeof secret);
+    if (rc != 0) {
+        simputs("KDF_FAIL\n");
+        explicit_memzero(key, sizeof key);
+        return OCA_FAIL_DECRYPT;
+    }
+
+    // Cast away const to decrypt in place. The library documents this aliasing
+    // as supported and hands us a buffer the ROM itself staged, so the const is
+    // about the library's own discipline rather than the memory being read-only.
+    uint8_t *buf = (uint8_t *)(uintptr_t)in->ciphertext;
+    rc = aes_cbc_decrypt(buf, (uint32_t)in->ciphertext_len, key, key_bits / 8u, in->iv);
+    explicit_memzero(key, sizeof key);
+    if (rc != 0) {
+        simputs("AES_DEC_FAIL\n");
+        return OCA_FAIL_DECRYPT;
+    }
+
+    uint32_t plain_len = 0u;
+    if (aes_pkcs7_strip(buf, (uint32_t)in->ciphertext_len, &plain_len) != 0) {
+        return OCA_FAIL_DECRYPT;
+    }
+
+    report_status(STATUS_TYPE_INFO, SEP_MSG_DECRYPTION_END);
+    simputs("DECRYPT_OK\n");
+
+    *out_plaintext     = buf;
+    *out_plaintext_len = (size_t)plain_len;
     return OCA_OK;
 }
 
@@ -429,7 +540,7 @@ static oca_result_t plat_get_security_version(uint8_t out[16])
 static const oca_callbacks_t sep_callbacks = {
     .sha256                 = plat_sha256,
     .verify_signature       = plat_verify_signature,
-    .decrypt_payload        = NULL,  // Phase 4: AES-256-CBC + PKCS#7 + OCA KDF
+    .decrypt_payload        = plat_decrypt_payload,
     .get_identity_bytes     = plat_get_identity_bytes,
     .get_lifecycle_state    = plat_get_lifecycle_state,
     .get_version            = plat_get_version,

@@ -29,6 +29,7 @@
 // for an unset key_length while hmac_en=1 -- so leaving either at 0 makes the
 // operation silently never run.
 #define HMAC_DIGEST_SIZE_SHA2_256 0x1u
+#define HMAC_KEY_LENGTH_128 0x1u
 #define HMAC_KEY_LENGTH_256 0x2u
 
 // ---------------------------------------------------------------------------
@@ -211,13 +212,28 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
     }
 
     // 3. Configure: HMAC + SHA-256 mode.
+    //
+    // key_length is REQUIRED in HMAC mode and is a 6-bit one-hot field, not a
+    // byte count (hmac.rdl:138-153). Its reset value is Key_None (0x20), and the
+    // IP blocks the start and raises hmac_err when HMAC is triggered with
+    // Key_None -- so leaving it at zero, as this driver previously did, makes
+    // every HMAC operation fail and read back 0xFFFFFFFF digests. Only the
+    // keyed path is affected, which is why sha256() worked and this did not:
+    // nothing exercised hmac_sha256() until the OCA payload KDF.
+    uint32_t key_length_field;
+    if (key_len <= 16u) {
+        key_length_field = HMAC_KEY_LENGTH_128;
+    } else {
+        key_length_field = HMAC_KEY_LENGTH_256;
+    }
+
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 1;     // HMAC mode (uses KEY registers)
     cfg.f.sha_en = 1;      // Enable SHA engine
     cfg.f.endian_swap = 0; // Little-endian input
     cfg.f.digest_swap = 0; // No digest byte swap
     cfg.f.digest_size = HMAC_DIGEST_SIZE_SHA2_256;
-    cfg.f.key_length = HMAC_KEY_LENGTH_256; // 8 KEY words; 0 would decode to Key_None
+    cfg.f.key_length = key_length_field;
     mmio_write32(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // 4. Start HMAC operation.
