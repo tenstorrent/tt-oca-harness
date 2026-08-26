@@ -47,8 +47,7 @@
 
 #include "bl0_state.h"
 #include "boot_straps.h"
-#include "manifest.h"
-#include "manifest_crypto.h"
+#include "oca_boot.h"
 #include "pll_init.h"
 #include "errors.h"
 #include "rom_mbx.h"
@@ -331,31 +330,13 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     }
 
     // ── [C13.10] crypto validation ──
-    {
-        const manifest_t *m_crypto =
-            (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
-
-        // Secure boot path: version check, key revocation, RSA-3072,
-        // payload decryption (if encrypted).
-        if (get_bl0_state()->secure_boot) {
-            report_status(STATUS_TYPE_INFO, SEP_MSG_VALIDATE_CHECK);
-            uint32_t crypto_err = manifest_crypto_validate(m_crypto, get_bl0_state()->lc_state);
-            if (crypto_err != 0u) {
-                simputshex32("CRYPTO_FAIL=", crypto_err);
-                rom_err_fail(crypto_err);
-            }
-        } else {
-            simputs("SBOOT_OFF\n");
-        }
-
-        // Payload hash verification — always checked regardless of
-        // secure_boot state. Detects payload
-        // corruption even when signature verification is disabled.
-        uint32_t hash_err = verify_payload_hash(m_crypto);
-        if (hash_err != 0u) {
-            simputshex32("PLD_HASH_FAIL=", hash_err);
-            rom_err_fail(hash_err);
-        }
+    // No separate step under OCA: signature verification, key revocation,
+    // anti-rollback, payload decryption and the payload hash chain are all part
+    // of the staged sequence rom_manifest_boot() just completed, and a failure
+    // in any of them has already been reported and returned above. Keeping the
+    // SBOOT_OFF marker because DV asserts its absence on the secure-boot test.
+    if (!get_bl0_state()->secure_boot) {
+        simputs("SBOOT_OFF\n");
     }
 
     // ── [C15] Demotion decisions ──
@@ -370,8 +351,6 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     //     or lock DEMOTE_1 in the deferred BL2 case.
     //   DEMOTE_2 is never written by BL0 (except PROD_END lock).
     {
-        const manifest_t *m =
-            (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
         uint32_t lc_st = get_bl0_state()->lc_state;
 
         if (lc_st == LC_STATE_PROD_END) {
@@ -380,19 +359,21 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
             lc_write_demotion_2(false, true);
             simputs("DEMOTE: PROD_END lock\n");
         } else {
-            uint64_t sel = m->usage_constraints.selector_bits;
-            bool bl2_demote =
-                (m->boot_arguments.flag_args & (1u << FLAG_ARGS_BIT_BL2_DEMOTION)) != 0;
+            // OCA folds both halves of this decision into one 16-bit
+            // demotion_control field, where the old format split them across
+            // usage_constraints.selector_bits (is it specified) and
+            // boot_arguments.flag_args (what is the value). The VALID bit is
+            // the "specified" half; the ENABLE bit is the value.
+            uint32_t dc = rom_oca_demotion_control();
+            bool bl2_demote = (dc & OCA_DEMOTE_BL2_ENABLE) != 0u;
 
-            if (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION)) {
+            if (dc & OCA_DEMOTE_BL1_VALID) {
                 // BL1 manifest decides demotion: write DEMOTE_1 + lock.
-                bool bl1_demote = (m->usage_constraints.flags &
-                                   (1u << USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION)) != 0;
+                bool bl1_demote = (dc & OCA_DEMOTE_BL1_ENABLE) != 0u;
                 lc_write_demotion(bl1_demote, true);
                 simputsdec24("BL1_DEMOTE=", bl1_demote);
             } else {
                 // BL2 deferred: do NOT write or lock DEMOTE_1.
-                // Leave DEMOTE_1 untouched in the deferred BL2 case.
                 simputs("DEMOTE: BL2 deferred\n");
             }
 
@@ -418,10 +399,9 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     // ── [C18] BL1 handoff ──
     {
         report_status(STATUS_TYPE_DEBUG, SEP_MSG_HANDOFF_CHECK);
-        // Manifest is at the start of SEP EXT SRAM (loaded by rom_manifest_boot).
-        const manifest_t *m =
-            (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
-        uint32_t ho_err = rom_handoff_bl1(m);
+        // Body and payload are staged in SEP EXT SRAM by rom_manifest_boot();
+        // the handoff reaches them through the rom_oca_* accessors.
+        uint32_t ho_err = rom_handoff_bl1();
         // rom_handoff_bl1 does not return on success; if we get here, it failed.
         rom_err_fail(ho_err);
     }

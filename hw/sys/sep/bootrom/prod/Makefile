@@ -103,10 +103,10 @@ BIN_TO_SPI    := $(TOOLS_DIR)/bin_to_spi_preload.py
 OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.o \
 	$(BUILD_DIR)/boot_straps.o $(BUILD_DIR)/pll_init.o \
 	$(BUILD_DIR)/sep_spi.o $(BUILD_DIR)/sep_ot_spi.o $(BUILD_DIR)/sep_dma.o \
-	$(BUILD_DIR)/manifest_load.o $(BUILD_DIR)/rom_handoff.o \
+	$(BUILD_DIR)/oca_boot.o $(BUILD_DIR)/rom_handoff.o \
 	$(BUILD_DIR)/rom_mem_clear.o $(BUILD_DIR)/status_ring.o \
 	$(BUILD_DIR)/hmac_sha256.o $(BUILD_DIR)/fuse_lock.o \
-	$(BUILD_DIR)/lifecycle.o $(BUILD_DIR)/manifest_crypto.o \
+	$(BUILD_DIR)/lifecycle.o \
 	$(BUILD_DIR)/rsa_verify.o $(BUILD_DIR)/otbn_driver.o \
 	$(BUILD_DIR)/aes_driver.o $(BUILD_DIR)/kdf.o $(BUILD_DIR)/key_digests.o \
 	$(BUILD_DIR)/oca_platform.o \
@@ -432,10 +432,15 @@ $(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 # No OCH_ROOT/ROOT env prefix here, unlike the Grendel recipes above: the OCA
 # producer does not expand variables in config paths, so the configs carry paths
 # relative to this directory instead.
-OCA_NS_CONFIG     := $(CURDIR)/configs/oca_non_secure_boot_test.yaml
+# The *_image.yaml configs are oca-combined: they place the bundle at the two
+# slot offsets the ROM actually reads. The bare bundle configs they reference are
+# not bootable on their own.
+OCA_NS_CONFIG     := $(CURDIR)/configs/oca_non_secure_boot_image.yaml
+OCA_NS_BUNDLE_CFG := $(CURDIR)/configs/oca_non_secure_boot_test.yaml
 OCA_NS_BIN        := $(BUILD_DIR)/oca_non_secure_boot.bin
 OCA_NS_SPI_HEX    := $(BUILD_DIR)/oca_non_secure_boot.spi_preload
-OCA_SEC_CONFIG    := $(CURDIR)/configs/oca_secure_boot_test.yaml
+OCA_SEC_CONFIG    := $(CURDIR)/configs/oca_secure_boot_image.yaml
+OCA_SEC_BUNDLE_CFG := $(CURDIR)/configs/oca_secure_boot_test.yaml
 OCA_SEC_BIN       := $(BUILD_DIR)/oca_secure_boot.bin
 OCA_SEC_SPI_HEX   := $(BUILD_DIR)/oca_secure_boot.spi_preload
 
@@ -444,11 +449,11 @@ oca-images: $(OCA_NS_SPI_HEX) $(OCA_SEC_SPI_HEX)
 oca_non_secure_spi: $(OCA_NS_SPI_HEX)
 oca_secure_boot_spi: $(OCA_SEC_SPI_HEX)
 
-$(OCA_NS_SPI_HEX): $(OCA_NS_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
+$(OCA_NS_SPI_HEX): $(OCA_NS_CONFIG) $(OCA_NS_BUNDLE_CFG) bl1_test ensure-pack-deps | $(BUILD_DIR)
 	$(PACK_RUN) --config "$(OCA_NS_CONFIG)" --out "$(OCA_NS_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(OCA_NS_BIN)" "$@"
 
-$(OCA_SEC_SPI_HEX): $(OCA_SEC_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
+$(OCA_SEC_SPI_HEX): $(OCA_SEC_CONFIG) $(OCA_SEC_BUNDLE_CFG) bl1_test ensure-pack-deps | $(BUILD_DIR)
 	@test -f "$(SEP_SIGNING_KEY)" || { \
 	  echo "ERROR: OCA secure boot image needs the dev0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \

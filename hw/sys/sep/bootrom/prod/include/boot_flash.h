@@ -22,9 +22,18 @@
 #include <stdint.h>
 
 #include "boot_straps.h"
-#include "manifest.h" /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
 #include "sep.h"      /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
 #include "harden.h"   /* fault-injection value launder (harden_u32)  */
+
+/* Where the SPI image places its two manifest slots. A property of the flash
+ * layout, not of the manifest format -- they outlived the Grendel-to-OCA change
+ * and moved here from the deleted manifest.h. */
+#ifndef PRIMARY_MANIFEST_OFFSET
+#define PRIMARY_MANIFEST_OFFSET 0x1000u
+#endif
+#ifndef BACKUP_MANIFEST_OFFSET
+#define BACKUP_MANIFEST_OFFSET 0x41000u
+#endif
 
 #if BOOT_SPI_CONTROLLER_OT
 #include "sep_ot_spi.h"
