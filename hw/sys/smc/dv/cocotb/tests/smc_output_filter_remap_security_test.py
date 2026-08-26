@@ -3,8 +3,6 @@
 """SMC OSS output filter/remap security CSR smoke.
 
 DV-CARD:          SMC_005   ANCHOR: smc_output_filter_remap_security_test
-DV-CARD-REVISION: 2   RECORD-SHA256: 742cda4faa03574c91d3166fdb9ce3c9b231242b544d248b14cbc297d56b1745
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
 """
 
 from __future__ import annotations

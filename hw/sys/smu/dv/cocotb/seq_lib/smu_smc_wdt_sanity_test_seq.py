@@ -30,7 +30,7 @@ SCALE_MASK = wdt_bm("WDT__CTRL__WDOGSCALE_bm")
 SCALE_PROGRAM = 0x1
 
 
-class smc_wdt_sanity_test_seq:
+class smu_smc_wdt_sanity_test_seq:
     """CORE0 WDT magic unlock and CMP program evidence."""
 
     def __init__(self, test) -> None:

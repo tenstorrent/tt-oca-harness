@@ -13,8 +13,7 @@ pipeline.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
 demos (e.g. hardcoded DFD capture token) belong in `testlists/deferred.toml`
 — not reportable as feature PASS. Green `smc_i3c_to_fabric_test` is
-**stub-signature only** (fabric → `i3ccore_stub` SLVERR). Checklist:
-[`../doc/dv_hack_cleanup_checklist.md`](../doc/dv_hack_cleanup_checklist.md).
+**decode only** (fabric → real OCA core `HCI_VERSION`). Checklist:
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
 call sites need a one-line rationale comment at the call (what hangs without

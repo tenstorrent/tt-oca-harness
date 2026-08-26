@@ -33,7 +33,8 @@ class OcahAxiIdCapture:
 
     The watcher never raises into the test: an unresolvable (X/Z) ID on a
     completing beat, a missing ID signal, or no completing beat all yield a
-    capture miss (``finish()`` returns ``None``) with a warning logged.
+    capture miss (``finish()`` returns ``None``). A miss is ``None``, not a
+    warning — the test owns the verdict.
 
     Capture is scoped to one blocking transaction: it samples the first
     completing beat between ``start_response_id_capture()`` and
@@ -60,18 +61,22 @@ class OcahAxiIdCapture:
             except ValueError:
                 continue
             try:
-                self._captured = int(id_signal.value)
+                sampled = int(id_signal.value)
             except ValueError:
-                self._log.warning(
-                    "%s capture: unresolvable ID on completing beat: %s",
-                    self._label,
-                    id_signal.value,
-                )
-                return
+                if last is None:
+                    return
+                try:
+                    if int(last.value) == 1:
+                        return
+                except ValueError:
+                    return
+                continue
             if last is None:
+                self._captured = sampled
                 return
             try:
                 if int(last.value) == 1:
+                    self._captured = sampled
                     return
             except ValueError:
                 return
@@ -97,7 +102,8 @@ class OcahAxiIdCapture:
             await RisingEdge(self._clock)
         if not self._task.done():
             self._task.cancel()
-            self._log.warning("%s capture: no completing beat observed", self._label)
+            self._task = None
+            return None
         self._task = None
         return self._captured
 

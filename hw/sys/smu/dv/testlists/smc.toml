@@ -32,31 +32,31 @@ tags = ["smc", "boot_gate", "phase1"]
 run_modes = ["smc", "smoke"]
 
 [[tests]]
-name = "smc_reset_ctrl_test"
-module = "smc_reset_ctrl_test"
+name = "smu_smc_reset_ctrl_test"
+module = "smu_smc_reset_ctrl_test"
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "reset", "phase1"]
 run_modes = ["smc"]
 
 [[tests]]
-name = "smc_mailbox_int_test"
-module = "smc_mailbox_int_test"
+name = "smu_smc_mailbox_int_test"
+module = "smu_smc_mailbox_int_test"
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "mailbox", "phase1", "smu_all_004"]
 run_modes = ["smc"]
 
-# smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
+# smu_smc_gpio_strap_sanity_test → smc.toml (STRAPS_* track captured_straps_i)
 
 # smc_efuse_reg_sanity_test → testlists/deferred.toml
 
-# smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
-# smc_wdt_timeout_irq_test → smc.toml (sticky WDOGIP0)
+# smu_smc_wdt_sanity_test → smc.toml (CORE0 unlock + CMP)
+# smu_smc_wdt_timeout_irq_test → smc.toml (sticky WDOGIP0)
 
 [[tests]]
-name = "smc_security_demote_pm_test"
-module = "smc_security_demote_pm_test"
+name = "smu_smc_security_demote_pm_test"
+module = "smu_smc_security_demote_pm_test"
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "security", "phase1"]
@@ -90,8 +90,8 @@ run_modes = ["smc"]
 
 # Depth: CORE0 WDT unlock + CMP via J2A (SEP=0; no Force).
 [[tests]]
-name = "smc_wdt_sanity_test"
-module = "smc_wdt_sanity_test"
+name = "smu_smc_wdt_sanity_test"
+module = "smu_smc_wdt_sanity_test"
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "wdt", "tier_c", "depth"]
@@ -99,8 +99,8 @@ run_modes = ["smc"]
 
 # Depth: CORE0 WDT sticky WDOGIP0 after small CMP (SEP=0; no Force).
 [[tests]]
-name = "smc_wdt_timeout_irq_test"
-module = "smc_wdt_timeout_irq_test"
+name = "smu_smc_wdt_timeout_irq_test"
+module = "smu_smc_wdt_timeout_irq_test"
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "wdt", "tier_c", "depth"]
@@ -108,8 +108,8 @@ run_modes = ["smc"]
 
 # Depth: reset-unit STRAPS_* track captured_straps_i (SEP=0; no Force).
 [[tests]]
-name = "smc_gpio_strap_sanity_test"
-module = "smc_gpio_strap_sanity_test"
+name = "smu_smc_gpio_strap_sanity_test"
+module = "smu_smc_gpio_strap_sanity_test"
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "gpio", "tier_c", "depth"]
@@ -117,8 +117,8 @@ run_modes = ["smc"]
 
 # Depth: mailbox outbound-0 STATUS/IRQEN via fabric J2A (SEP=0; no Force).
 [[tests]]
-name = "smc_mailbox_sanity_test"
-module = "smc_mailbox_sanity_test"
+name = "smu_smc_mailbox_sanity_test"
+module = "smu_smc_mailbox_sanity_test"
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "mailbox", "tier_c", "depth"]
