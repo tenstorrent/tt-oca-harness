@@ -23,6 +23,18 @@
 #   0002-generic_ffs_fast-width1-size-guard   $clog2(1) == 0 breaks NUM_DST_INST = 1
 # Do not edit upstream/ files directly; add a numbered patch under patches/ instead,
 # and re-run the round-trip check before committing.
+#
+# overlay/prim_shim/ holds OCAH-authored replacements for upstream's behavioural
+# standard cells. They keep the upstream module names, so nothing in upstream/
+# changes, but they instantiate the OCH prim cells - meaning one clock gate in the
+# design and the DFD inherits the och_prim_generic `not(synth)` tech swap. The
+# upstream generic_clkgate.sv/generic_clkmux2.sv are therefore left uncompiled.
+# overlay/ survives `bender vendor init` (it only recreates upstream/), so unlike a
+# patch there is nothing to re-apply on a version bump.
+#
+# The internal trace sink RAM path (trace_mem, trace_mem_sink, generic_mem_model)
+# is not compiled either: EXTERNAL_SINK_MEM = 1 never takes that branch, and
+# leaving it out keeps a second behavioural SRAM model out of the build.
 # TODO: add the matching `vendor_package` entry to the root Bender.yml once the
 # tt_hw_debug GitLab remote is reachable from CI, then re-run `bender vendor init`.
 
@@ -47,8 +59,9 @@ sources:
   # enables neither and must not pull this IP in.
   - target: smc
     files:
-    - upstream/dependencies/common/generic_clkgate.sv
-    - upstream/dependencies/common/generic_clkmux2.sv
+    # Std cells come from overlay/prim_shim, not upstream: see the header note.
+    - overlay/prim_shim/generic_clkgate.sv
+    - overlay/prim_shim/generic_clkmux2.sv
     - upstream/dependencies/common/generic_ipx_clk_rst_ctrl.sv
     - upstream/dependencies/common/generic_ccg.sv
     - upstream/dependencies/common/generic_dff.sv
@@ -58,7 +71,6 @@ sources:
     - upstream/dependencies/common/generic_ffs_fast.sv
     - upstream/dependencies/common/generic_ffs_N.sv
     - upstream/dependencies/common/generic_fifoMN.sv
-    - upstream/dependencies/common/generic_mem_model.sv
     - upstream/dependencies/common/generic_decoded_mux.sv
     - upstream/dependencies/common/generic_vidtopid.sv
     - upstream/rtl/mmr/cla_mmr_pkg.svh
@@ -111,8 +123,6 @@ sources:
     - upstream/rtl/trace/trace_axi_master.sv
     - upstream/rtl/trace/trace_network.sv
     - upstream/rtl/trace/trace_sink.sv
-    - upstream/rtl/trace/trace_mem_sink.sv
-    - upstream/rtl/trace/trace_mem.sv
     - upstream/rtl/trace/trace_funnel.sv
     - upstream/rtl/trace/trace_top.sv
     - upstream/rtl/trace/trace_wrapper.sv
