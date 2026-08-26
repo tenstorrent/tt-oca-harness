@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smc_reset_ctrl_test - primary/cold/periph reset release under SMU SEP=0."""
+"""smu_smc_reset_ctrl_test - primary/cold/periph reset release under SMU SEP=0."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def _sample1(signal, name: str) -> int:
 
 
 @pyuvm.test()
-class smc_reset_ctrl_test(smu_base_test):
+class smu_smc_reset_ctrl_test(smu_base_test):
     """Assert cold/primary/periph resets released and stay high after settle."""
 
     async def run_scenario(self) -> None:
@@ -101,6 +101,6 @@ class smc_reset_ctrl_test(smu_base_test):
         )
 
         self.logger.info(
-            "smc_reset_ctrl_test: cold/primary/periph resets OK (hold=%d)",
+            "smu_smc_reset_ctrl_test: cold/primary/periph resets OK (hold=%d)",
             HOLD_CYCLES,
         )

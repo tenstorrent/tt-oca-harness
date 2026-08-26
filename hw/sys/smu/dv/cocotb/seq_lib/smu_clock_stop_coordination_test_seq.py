@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_clock_stop_coordination_test (SMU_ALL_006 rev 10).
+"""Sequence for smu_clock_stop_coordination_test (SMU_ALL_006).
 
 DV-CARD:          SMU_ALL_006   ANCHOR: smu_clock_stop_coordination_test
-DV-CARD-REVISION: 10   RECORD-SHA256: d4e8d5273983c0aa6cead03bdea268dedea1dae02876d88e207b74fcdc090c51
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 10   ENV: cocotb
 
 Allocated (narrowed Option B; SEP=0 bare tb_top):
   DTP-BOOT-STALL.S1 / S2
@@ -32,7 +30,7 @@ from seq_lib.smu_jtag_helpers import (
 
 
 class smu_clock_stop_coordination_test_seq:
-    """SMU_ALL_006 r10: boot-stall / IC-RESET / clkstop aggregation."""
+    """SMU_ALL_006: boot-stall / IC-RESET / clkstop aggregation."""
 
     BOUND_CYCLES = 2000
     BOUND_REF = 2000
