@@ -13,6 +13,12 @@ CSRNG / EDN / entropy_source). Window end comes from
 ``hw/sys/sep/doc/memory_map.adoc``. RTL decode width is never the judge
 of legality.
 
+Windows cover CSR apertures whose memory-map window is larger than
+``REG_MAP_SIZE`` (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox,
+lifecycle, SPI). HMAC/KMAC fill their map window so they have no
+intra-window dead span here. Remap / filter arrays and scratch are
+owned elsewhere for live programming.
+
 Known-bad offsets from the RTL question
 https://github.com/tenstorrent/tt-oca-harness/issues/228 stay in the
 probe set every seed. The seed adds further dead offsets. Do not shrink
@@ -110,6 +116,13 @@ def dead_windows() -> tuple[DeadWindow, ...]:
             0x1091_1000,
             block_size("AES"),
             _sep_watch(sym("AES_REG_MAP_BASE_ADDR"), block_size("AES")),
+        ),
+        DeadWindow(
+            "otbn",
+            sym("OTBN_REG_MAP_BASE_ADDR"),
+            0x1091_0000,
+            block_size("OTBN"),
+            _sep_watch(sym("OTBN_REG_MAP_BASE_ADDR"), block_size("OTBN")),
         ),
         DeadWindow(
             "csrng",

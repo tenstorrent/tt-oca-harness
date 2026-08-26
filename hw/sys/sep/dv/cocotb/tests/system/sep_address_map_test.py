@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP address-map register sweep test (PyUVM).
 
-Builds the SEP env, brings up clocks/reset with the CPU held off, and runs a
-field-aware register sweep of sep_cpu_ctrl over the CPU LSU bus: reset-value
-read-checks across the map, plus write->readback of the pure-RW registers. The
-scoreboard checks the AXI response on every access and the value on every read.
+Intention: prove the CPU-LSU can decode sep_cpu_ctrl and one safe CSR in every
+LSU-reachable CSR block (including ABR and the entropy pool), without owning
+full CSR bit-bash or dead-space refuse.
 
-Every expected value (offset, reset, implemented-field mask) is derived from the
-generated SystemRDL export via env/sep_reg_meta.py — see sep_address_map_seq.
+Bring-up holds the CPU off. Expected offsets/resets/masks come from
+env/sep_reg_meta.py and the ABR / pool seq constants — see sep_address_map_seq.
 """
 
 from __future__ import annotations
@@ -44,4 +43,8 @@ class sep_address_map_test(sep_base_test):
              f"`reserved` placeholders with no software-usable fields: "
              f"{', '.join(seq.write_readback_storage_only)})")
             if seq.write_readback_storage_only else "",
+        )
+        self.logger.info(
+            "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",
+            seq.fabric_walk_checks,
         )

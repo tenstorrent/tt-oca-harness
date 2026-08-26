@@ -7,10 +7,17 @@ SepRegBitBashCfg is the single source of truth for which registers are reset-
 checked, which take a write bash, and the seed-selected walk order.
 
 Exclusions are data: one reason string per entry. A silent skip is a bug.
-Inbound-filter START/END stay in the write sweep. The export mask is 32
-bits; hardware forces ``[2:0]`` (END_ADDR reset ``0x7``), so the bash
-uses the granule mask ``[31:3]``. Skipping those 32 registers because
-the full-mask complement cannot land is a coverage hole, not a fix.
+Inbound-filter START/END stay in the write sweep under the full export
+mask. ``axi_filter_wrap`` rewrites a same-beat window only
+(``START[2:0]->0``, ``END[2:0]->1``; END reset ``0x7``). Solo bash keeps
+the peer at reset, so the checker compares readback to that wrap model
+rather than stripping ``[2:0]`` from the mask. Skipping those 32
+registers is a coverage hole, not a fix.
+
+Full complement bash stays on no-side-effect blocks. ``TOUCH_BLOCKS``
+picks one seed-selected RW register per other major IP from the export
+candidate list, writes a seed-derived ``x``, and checks
+``(readback & mask) == (x & mask)`` before restoring reset.
 """
 
 from __future__ import annotations
@@ -86,14 +93,76 @@ WRITE_EXCLUDE: dict[tuple[str, str | None], str] = {
 }
 
 # Write bash stays on blocks whose restore cannot redirect the LSU.
-# Inbound START/END are granule-aligned; the bash uses write_mask(),
-# it does not drop the registers.
+# Inbound START/END stay in the sweep; inbound_addr_expected() models the wrap.
 WRITE_SAFE_PREFIXES = (
     "SEP_SCRATCH_COLD",
     "SEP_SCRATCH_WARM",
     "SEP_CPU_CTRL",
     "INBOUND_FILTER_CTRL_",
 )
+
+# One seed-selected RW storage touch per IP outside WRITE_SAFE_PREFIXES.
+# Candidates and addr/reset/mask come from the export; names here are only
+# which blocks must be visited. No GO / key / lock / fabric remap / SW reset.
+TOUCH_BLOCKS: tuple[str, ...] = (
+    "AES",
+    "HMAC",
+    "KMAC",
+    "OTBN",
+    "SECURE_DMA",
+    "SPI_CONTROLLER",
+    "WDT_TIMER",
+    "AXIL_MAILBOX_INBOUND_MAILBOX_0",
+    "AXIL_MAILBOX_OUTBOUND_MAILBOX_0",
+)
+
+# Not usable as a plain storage RW touch (WO, sticky, trigger, W1C status,
+# or multi-field encodings that reject a random mask-legal value).
+_TOUCH_DENY_SUBSTR: tuple[str, ...] = (
+    "KEY",
+    "IV_",
+    "DATA_IN",
+    "DATA_OUT",
+    "DIGEST",
+    "WIPE",
+    "MSG_LENGTH",
+    "PREFIX_",
+    "ENTROPY_SEED",
+    "LOAD_CHECKSUM",
+    "INSN_CNT",
+    "ERR_BITS",
+    "FATAL_ALERT",
+    "CTRL_SHADOWED",
+    "CFG_SHADOWED",
+    "CTRL_GCM",
+    "REGWEN",
+    "CONTROL",
+    "WDOG_CTRL",
+    "WKUP_CTRL",
+    "SW_RESET",
+    "CLEAR_INTR",
+)
+
+# Exact names: W1C / status / enable-ish multi-field CSRs that are still
+# export-rw but do not behave as plain storage under a random ``x``.
+_TOUCH_DENY_NAME: frozenset[str] = frozenset({
+    "CTRL",
+    "CFG",
+    "INTR_STATE",
+    "IRQS",
+    "IRQP",
+    "ERR_CODE",
+    "ERROR_CODE",
+    "WKUP_CAUSE",
+    "RANGE_VALID",
+    # Thresholds clamp to FIFO depth; export mask is wider than storage.
+    "RIRQT",
+    "WIRQT",
+    # Entropy CSRs need KMAC CFG / runtime; not plain POR storage.
+    "ENTROPY_PERIOD",
+    "ENTROPY_REFRESH_HASH_CNT",
+    "ENTROPY_REFRESH_THRESHOLD_SHADOWED",
+})
 
 # Remap / outbound-filter writes are reset-checked only: an unprogrammed
 # alias region still rewrites a live beat.
@@ -105,17 +174,60 @@ WRITE_EXCLUDE_PREFIXES: dict[str, str] = {
     "AXIL_MAILBOX_": "FIFO",
 }
 
-# Hardware forces START/END [2:0]; END_ADDR reset is 0x7.
+# Beat granule (DataBusWidthLog2=3). END_ADDR reset is 0x7.
 _GRANULE = 0x7
 _INBOUND_ADDR = frozenset({"START_ADDR", "END_ADDR"})
+# Peer at reset during solo bash (each bash restores before the next reg).
+_INBOUND_PEER_RESET = {"START_ADDR": 0x7, "END_ADDR": 0x0}
 
 
 def write_mask(info: RegInfo) -> int:
     """Software-usable bits a complement write must move."""
-    mask = info.mask
-    if info.block.startswith("INBOUND_FILTER_CTRL_") and info.name in _INBOUND_ADDR:
-        return mask & ~_GRANULE
-    return mask
+    return info.mask
+
+
+def inbound_addr_expected(name: str, written: int) -> int:
+    """Readback after a solo START/END write with the peer at reset.
+
+    Matches ``axi_filter_wrap`` allow_burst=0: when START and END share a
+    beat, START[2:0] clears and END[2:0] sets; otherwise the write lands.
+    """
+    written &= 0xFFFF_FFFF
+    peer = _INBOUND_PEER_RESET[name]
+    if (written >> 3) != (peer >> 3):
+        return written
+    if name == "START_ADDR":
+        return written & ~_GRANULE
+    return (written & ~_GRANULE) | _GRANULE
+
+
+def _is_inbound_addr(info: RegInfo) -> bool:
+    return (
+        info.block.startswith("INBOUND_FILTER_CTRL_")
+        and info.name in _INBOUND_ADDR
+    )
+
+
+def touch_candidate(info: RegInfo) -> bool:
+    """Export RW storage that can take a mask-legal write + readback."""
+    if reset_reason(info) is not None:
+        return False
+    if info.mask == 0:
+        return False
+    if _suffix_reason(info.name) is not None:
+        return False
+    if info.name in _TOUCH_DENY_NAME:
+        return False
+    return not any(s in info.name for s in _TOUCH_DENY_SUBSTR)
+
+
+def touch_write_value(before: int, mask: int, rng: SepSeededRng) -> int:
+    """Seed-derived ``x`` in the software field; differs from ``before & mask``."""
+    field = rng.getrandbits(32) & mask
+    cur = before & mask
+    if mask != 0 and field == cur:
+        field ^= mask & -mask
+    return (before & ~mask & 0xFFFF_FFFF) | field
 
 
 def _lookup(
@@ -215,13 +327,35 @@ class SepRegBitBashCfg:
                 "expected 32 (16 entries x START/END)"
             )
 
+        by_block: dict[str, list[RegInfo]] = defaultdict(list)
+        for info in inventory:
+            if touch_candidate(info):
+                by_block[info.block].append(info)
+        rng_touch = SepSeededRng(seed ^ 0xC0FFEE)
+        touch: list[tuple[RegInfo, int]] = []
+        for block in TOUCH_BLOCKS:
+            cands = by_block.get(block)
+            if not cands:
+                raise RuntimeError(
+                    f"TOUCH_BLOCKS {block}: no RW storage candidate in export"
+                )
+            info = cands[rng_touch.randrange(0, len(cands))]
+            # Value uses reset as the pre-touch image (bring-up leaves POR).
+            x = touch_write_value(info.reset, info.mask, rng_touch)
+            touch.append((info, x))
+        self.touch_regs = tuple(touch)
+
     def summary(self) -> str:
         skip_r = " ".join(f"{k}={v}" for k, v in sorted(self.reset_skipped.items()))
         skip_w = " ".join(f"{k}={v}" for k, v in sorted(self.write_skipped.items()))
+        touches = ",".join(
+            f"{i.block}.{i.name}=0x{x:x}/m0x{i.mask:x}" for i, x in self.touch_regs
+        )
         return (
             f"seed={self.seed} ones_first={int(self.ones_first)} "
             f"reset={len(self.reset_regs)}/{len(self.reset_blocks)}blocks "
             f"write={len(self.write_regs)}/{len(self.write_blocks)}blocks "
+            f"touch={len(self.touch_regs)}[{touches}] "
             f"reset_skip=[{skip_r}] write_skip=[{skip_w}]"
         )
 
@@ -235,6 +369,7 @@ class SepRegBitBash:
         self.reset_ok = 0
         self.write_ok = 0
         self.lands_ok = 0
+        self.touch_ok = 0
 
     async def _rd(self, addr: int, *, name: str) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
@@ -272,6 +407,7 @@ class SepRegBitBash:
         assert resp == 0, (
             f"{info.block}.{info.name} @0x{info.addr:08x} resp={resp} before write"
         )
+        inbound = _is_inbound_addr(info)
 
         async def do_complement(entry: int) -> int:
             mask = write_mask(info)
@@ -284,6 +420,22 @@ class SepRegBitBash:
             assert rd == 0, (
                 f"{info.block}.{info.name} complement read resp={rd}"
             )
+            if inbound:
+                expected = inbound_addr_expected(info.name, pat)
+                assert after == expected, (
+                    f"CHK-WRITE FAIL: {info.block}.{info.name} wrote "
+                    f"0x{pat:08x} read 0x{after:08x}, expected 0x{expected:08x} "
+                    f"(same-beat wrap vs peer reset)"
+                )
+                upper = mask & ~_GRANULE
+                moved_upper = (entry ^ after) & upper
+                assert moved_upper == upper, (
+                    f"CHK-WRITE-LANDS FAIL: {info.block}.{info.name} upper "
+                    f"mask 0x{upper:08x} moved 0x{moved_upper:08x} "
+                    f"(before 0x{entry:08x} after 0x{after:08x})"
+                )
+                self.lands_ok += 1
+                return after
             moved = (entry ^ after) & 0xFFFF_FFFF
             leaked = moved & ~mask
             assert leaked == 0, (
@@ -292,8 +444,7 @@ class SepRegBitBash:
                 f"(before 0x{entry:08x} after 0x{after:08x})"
             )
             # TIMEOUT_* placeholders: mask=0 and mask_all=1, so the lone
-            # reserved bit is real storage. Granule [2:0] on inbound
-            # START/END are HW-forced (END reset 0x7), not reserved-0.
+            # reserved bit is real storage.
             if mask != 0 and mask == info.mask:
                 reserved = after & info.reserved
                 assert reserved == 0, (
@@ -312,7 +463,8 @@ class SepRegBitBash:
 
         async def do_ones(entry: int) -> int:
             mask = write_mask(info)
-            wr = await self._wr(info.addr, 0xFFFF_FFFF, name=f"{tag}_ones")
+            pat = 0xFFFF_FFFF
+            wr = await self._wr(info.addr, pat, name=f"{tag}_ones")
             assert wr == 0, (
                 f"{info.block}.{info.name} all-ones write resp={wr}"
             )
@@ -320,6 +472,13 @@ class SepRegBitBash:
             assert rd == 0, (
                 f"{info.block}.{info.name} all-ones read resp={rd}"
             )
+            if inbound:
+                expected = inbound_addr_expected(info.name, pat)
+                assert after == expected, (
+                    f"CHK-WRITE FAIL: {info.block}.{info.name} all-ones read "
+                    f"0x{after:08x}, expected 0x{expected:08x}"
+                )
+                return after
             leaked = (entry ^ after) & ~mask & 0xFFFF_FFFF
             assert leaked == 0, (
                 f"CHK-RO FAIL: {info.block}.{info.name} all-ones moved "
@@ -351,8 +510,68 @@ class SepRegBitBash:
         )
         self.write_ok += 1
 
+    async def touch_write(self, info: RegInfo, x: int) -> None:
+        """RW storage proof: write ``x``, check ``(read & mask) == (x & mask)``."""
+        tag = f"touch_{info.block}_{info.name}"
+        mask = write_mask(info)
+        shadowed = "SHADOWED" in info.name
+        x &= 0xFFFF_FFFF
+        resp, before = await self._rd(info.addr, name=tag)
+        assert resp == 0, (
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} @0x{info.addr:08x} "
+            f"resp={resp} before write"
+        )
+        wr = await self._wr(info.addr, x, name=f"{tag}_wr")
+        assert wr == 0, (
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} write resp={wr}"
+        )
+        if shadowed:
+            wr = await self._wr(info.addr, x, name=f"{tag}_wr2")
+            assert wr == 0, (
+                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow "
+                f"commit resp={wr}"
+            )
+        rd, after = await self._rd(info.addr, name=f"{tag}_rd")
+        assert rd == 0, (
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} read resp={rd}"
+        )
+        assert (after & mask) == (x & mask), (
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} "
+            f"(read 0x{after:08x} & mask 0x{mask:08x})=0x{after & mask:08x} "
+            f"!= (x 0x{x:08x} & mask)=0x{x & mask:08x}"
+        )
+        leaked = (before ^ after) & ~mask & 0xFFFF_FFFF
+        assert leaked == 0, (
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} bits outside mask "
+            f"moved 0x{leaked:08x}"
+        )
+        wr = await self._wr(info.addr, info.reset, name=f"{tag}_restore")
+        assert wr == 0, (
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} restore resp={wr}"
+        )
+        if shadowed:
+            wr = await self._wr(info.addr, info.reset, name=f"{tag}_restore2")
+            assert wr == 0, (
+                f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} shadow "
+                f"restore resp={wr}"
+            )
+        rd, got = await self._rd(info.addr, name=f"{tag}_restore")
+        assert rd == 0 and got == info.reset, (
+            f"CHK-BLOCK-TOUCH FAIL: {info.block}.{info.name} restore read "
+            f"0x{got:08x} != reset 0x{info.reset:08x}"
+        )
+        self.touch_ok += 1
+
 
 def _selftest() -> None:
+    start = RegInfo(
+        block="INBOUND_FILTER_CTRL_0_",
+        name="START_ADDR",
+        addr=0,
+        reset=0,
+        mask=0xFFFF_FFFF,
+        mask_all=0xFFFF_FFFF,
+    )
     end = RegInfo(
         block="INBOUND_FILTER_CTRL_0_",
         name="END_ADDR",
@@ -369,8 +588,17 @@ def _selftest() -> None:
         mask=0xFFFF_FFFF,
         mask_all=0xFFFF_FFFF,
     )
-    assert write_mask(end) == 0xFFFF_FFF8
+    assert write_mask(start) == 0xFFFF_FFFF
+    assert write_mask(end) == 0xFFFF_FFFF
     assert write_mask(scratch) == 0xFFFF_FFFF
+    assert inbound_addr_expected("START_ADDR", 0xFFFF_FFFF) == 0xFFFF_FFFF
+    assert inbound_addr_expected("START_ADDR", 0x5) == 0x0
+    assert inbound_addr_expected("END_ADDR", 0xFFFF_FFF8) == 0xFFFF_FFF8
+    assert inbound_addr_expected("END_ADDR", 0x0) == 0x7
+    rng = SepSeededRng(1)
+    v = touch_write_value(0x11, 0xF, rng)
+    assert (v & ~0xF) == (0x11 & ~0xF)
+    assert (v & 0xF) != (0x11 & 0xF)
 
 
 _selftest()
