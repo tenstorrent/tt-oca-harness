@@ -115,11 +115,7 @@ common_bender_targets = [
 # `sep_wrapper` adds hw/top/sep_{wrapper,ip_integration}.sv plus the vendored
 # prim_ram_1p/prim_ram_1p_adv/prim_rom memory models the IP integration needs.
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
-# shims/prim is listed first so its prim_assert.sv shadows the vendored upstream OpenTitan
-# copy (the runlib prepends these incdirs ahead of the bender filelist): it restores the
-# `ifndef SYNTHESIS gating of ASSUME/COVER that the vendoring reorg dropped, so +define+SYNTHESIS
-# neutralizes the unsupported `##[1:$]` concurrent assumptions Verilator cannot parse.
-incdirs = ["hw/sys/sep/dv/shims/prim", "hw/sys/sep/dv/tb"]
+incdirs = ["hw/sys/sep/dv/tb"]
 
 [build.options]
 # SEP is a large cold build (VeeR EL2 + OTBN + full crypto). Parallelize the
