@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 
-#include "manifest.h"
+#include "oca_boot.h"
 #include "errors.h"
 #include "rom_mmio.h"
 

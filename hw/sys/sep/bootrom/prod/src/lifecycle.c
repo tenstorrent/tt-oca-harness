@@ -16,7 +16,6 @@
 
 #include "bl0_state.h"
 #include "errors.h"
-#include "manifest.h"
 #include "rom_mmio.h"
 #include "rom_virt_console.h"
 #include "sep.h"
@@ -74,29 +73,6 @@ bool lc_state_enforces_secure_boot(uint32_t lc_state) {
 
 bool lc_state_is_rma(uint32_t lc_state) {
     return (lc_state >= LC_STATE_RMA_SIP_LO && lc_state <= LC_STATE_RMA_CHIPLET_HI);
-}
-
-int lc_state_to_manifest_bit(uint32_t lc_state) {
-    // Map decoded LC state to manifest usage_constraints.life_cycle_states bit.
-    // These bit positions are defined in manifest.h (LC_STATES_BIT_*).
-    switch (lc_state) {
-    case LC_STATE_TEST_DEV:
-        return LC_STATES_BIT_TEST_DEV; // bit 0
-    case LC_STATE_PROD:
-        return LC_STATES_BIT_PROD; // bit 1
-    case LC_STATE_PROD_END:
-        return LC_STATES_BIT_PROD_END; // bit 2
-    case LC_STATE_RMA_SIP_LO:
-    case LC_STATE_RMA_SIP_HI:
-        return LC_STATES_BIT_RMA_SOP; // bit 3
-    case LC_STATE_RMA_CHIPLET_LO:
-    case 0x5u:
-    case 0x6u:
-    case LC_STATE_RMA_CHIPLET_HI:
-        return LC_STATES_BIT_RMA_CHIPLET; // bit 4
-    default:
-        return -1;
-    }
 }
 
 // ---------------------------------------------------------------------------

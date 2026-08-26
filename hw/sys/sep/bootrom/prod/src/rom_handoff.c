@@ -8,7 +8,11 @@
 //   2. sep_dma_copy()          — DMA BL1 from SRAM to its ICCM load address
 //   3. jump_to_bl1()           — transfer control to BL1 entry point
 //
-// Manifest format: manifest_t + toc_header + toc_entry[].
+// OROM BL1 handoff: find image, copy to SRAM, jump.
+//
+//   1. locate BL1 in the payload TOC via oca_toc_image_at()
+//   2. sep_dma_copy() BL1 to the TOC entry's load address
+//   3. jump_to_bl1()  -- transfer control
 //
 // BL1 executes from ICCM: the IFU fetches it there, and vector.S's warm-reset
 // handler check only accepts an ICCM address.  Nothing BL1 loads or stores can
@@ -17,31 +21,62 @@
 // reading it from SRAM via bl0_state.bl1_image_src_addr, since the ICCM copy is
 // not readable to it either.
 //
-// The manifest payload (including BL1) is already in SRAM after the
-// SPI DMA load.  We copy it to BL1's link address so the PC-relative
-// and absolute addresses in the binary are correct.
+// BL1 is a single flat binary linked to its load address. The payload is already
+// staged and verified in SEP SRAM; this copies BL1 out of it so PC-relative and
+// absolute references inside the binary resolve.
 
 #include <stdint.h>
 
 #include "bl0_state.h"
-#include "manifest.h"
 #include "errors.h"
+#include "oca_boot.h"
+#include "oca_validator.h"
+#include "rom_virt_console.h"
+#include "sep.h"
 #include "sep_dma.h"
+#include "sep_helpers.h"
+#include "status_values.h"
+
+// The image type BL1 is published under. 16 ASCII bytes: bytes[15:8] are a
+// vendor string, bytes[7:0] the spec's recommended label (boot-manifest.adoc,
+// "Payload TOC entry"). Matched in full rather than on the label alone so an
+// image another vendor published as BLSTAGE1 cannot be booted here.
+#define SEP_BL1_IMAGE_TYPE "TT_SEP  BLSTAGE1"
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-// Scan the TOC for the first entry matching the given image type.
-static const struct toc_entry *find_toc_entry(const manifest_t *m, uint64_t image_type) {
-    const struct toc_header *toc = (const struct toc_header *)manifest_payload_address(m);
-    uint32_t n = (uint32_t)toc->image_count;
-    for (uint32_t i = 0; i < n; ++i) {
-        if (toc->images[i].type == image_type) {
-            return &toc->images[i];
+// oca_image_info_t::type is a NUL-terminated 17-byte buffer holding the 16
+// on-disk bytes, so a plain fixed-length compare is enough; no libc.
+static bool type_matches(const char *type, const char *want)
+{
+    for (uint32_t i = 0; i < 16u; ++i) {
+        if (type[i] != want[i]) return false;
+        if (want[i] == '\0') break;
+    }
+    return true;
+}
+
+// Scan the TOC for the first image of the wanted type.
+static bool find_bl1(oca_image_info_t *out)
+{
+    const uint8_t *payload = rom_oca_payload();
+    size_t payload_len = rom_oca_payload_len();
+    oca_toc_info_t toc;
+
+    if (payload == NULL || oca_toc_info(payload, payload_len, &toc) != OCA_OK) {
+        return false;
+    }
+    for (uint64_t i = 0; i < toc.image_count; ++i) {
+        if (oca_toc_image_at(payload, payload_len, i, out) != OCA_OK) {
+            return false;
+        }
+        if (type_matches(out->type, SEP_BL1_IMAGE_TYPE)) {
+            return true;
         }
     }
-    return (const struct toc_entry *)0;
+    return false;
 }
 
 // The copy must go through the DMA, not a CPU memcpy. ICCM and DCCM share VeeR
@@ -69,60 +104,70 @@ __attribute__((noreturn)) static void jump_to_bl1(uint32_t entry_addr) {
 // Public API
 // ---------------------------------------------------------------------------
 
-uint32_t rom_handoff_bl1(const manifest_t *m) {
+uint32_t rom_handoff_bl1(void)
+{
+    oca_image_info_t bl1;
+
     report_status(STATUS_TYPE_INFO, SEP_MSG_COPY_AND_EXEC_IMAGE);
 
-    const struct toc_header *toc = (const struct toc_header *)manifest_payload_address(m);
-
-    // ── Step 1: Find BL1 in the TOC ──
-    const struct toc_entry *bl1 = find_toc_entry(m, IMAGE_TYPE_SEP_BL1);
-    if (!bl1) {
+    // -- Step 1: find BL1 --
+    if (!find_bl1(&bl1)) {
         simputs("NO_BL1_IMAGE\n");
-        return MANIFEST_ERR_NO_BL1_IMAGE;
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_SEP_BL1_MISSING);
+        return OCA_BOOT_ERR_NO_BL1;
     }
 
-    uint32_t load_addr = (uint32_t)bl1->load_addr;
-    uint32_t img_length = (uint32_t)bl1->length;
-    uint32_t entry_off = (uint32_t)bl1->entry_point;
-    uint32_t img_offset = (uint32_t)bl1->offset;
+    uint32_t load_addr  = (uint32_t)bl1.load_addr;
+    uint32_t img_length = (uint32_t)bl1.length;
+    uint32_t entry_off  = (uint32_t)bl1.entry_point;
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_FOUND);
-    simputshex32("BL1_TYPE=", (uint32_t)bl1->type);
     simputshex32("LOAD=", load_addr);
     simputshex32("LEN=", img_length);
     simputshex32("ENTRY=", entry_off);
 
-    uint32_t chk = check_bl1_image(bl1);
-    if (chk) {
-        simputs(chk == 1 ? "BL1_ADDR_RANGE\n" : "BL1_ENTRY_RANGE\n");
-        return MANIFEST_ERR_BL1_BAD_ADDR;
+    // The TOC entry's load_addr/entry_point are authenticated but arbitrary:
+    // the library checks them for internal consistency, never against this
+    // device's memory map. Confining the copy to ICCM is the ROM's job. Bounds
+    // come from the generated register map rather than hand-written constants,
+    // so an RDL change moves them here too.
+    if (bl1.length > (uint64_t)OCH_SEP_TOP_SEP_ICCM_SIZE
+        || !contains_range(OCH_SEP_TOP_SEP_ICCM_BASE_ADDR, OCH_SEP_TOP_SEP_ICCM_SIZE,
+                           (size_t)bl1.load_addr, (size_t)bl1.length)) {
+        simputs("BL1_ADDR_RANGE\n");
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_BAD_ADDR);
+        return OCA_BOOT_ERR_BL1_BAD_ADDR;
     }
-
-    if (img_length == 0u || img_length > SEP_IRAM_SIZE) {
+    if (bl1.entry_point >= bl1.length) {
+        simputs("BL1_ENTRY_RANGE\n");
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_ENTRY_INVALID);
+        return OCA_BOOT_ERR_BL1_BAD_ADDR;
+    }
+    if (img_length == 0u) {
         simputs("BL1_SIZE\n");
-        return MANIFEST_ERR_BL1_TOO_LARGE;
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_SIZE_INVALID);
+        return OCA_BOOT_ERR_BL1_TOO_LARGE;
     }
 
     img_length = (img_length + 3u) & ~3u;
 
-    const uint8_t *bl1_data = (const uint8_t *)toc + img_offset;
-
     // ── Step 2: Copy BL1 to its ICCM load address ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_COPY);
-    simputshex32("COPY_SRC=", (uint32_t)(uintptr_t)bl1_data);
+    simputshex32("COPY_SRC=", (uint32_t)(uintptr_t)bl1.bytes);
     simputshex32("COPY_DST=", load_addr);
     simputshex32("COPY_LEN=", img_length);
 
-    uint32_t dma_err = sep_dma_copy(load_addr, (uint32_t)(uintptr_t)bl1_data, img_length);
+    uint32_t dma_err = sep_dma_copy(load_addr, (uint32_t)(uintptr_t)bl1.bytes, img_length);
     if (dma_err) {
         simputs("BL1_COPY_FAIL\n");
-        return MANIFEST_ERR_BL1_BAD_ADDR;
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_BAD_ADDR);
+        return OCA_BOOT_ERR_BL1_BAD_ADDR;
     }
     simputs("BL1_COPIED\n");
 
     // BL1 needs the SRAM source, not the ICCM copy, to reach the load image of
     // its own .rodata/.data: it executes from ICCM but cannot read ICCM.
-    get_bl0_state()->bl1_image_src_addr = (uint32_t)(uintptr_t)bl1_data;
+    get_bl0_state()->bl1_image_src_addr = (uint32_t)(uintptr_t)bl1.bytes;
 
     // ── Step 3: Jump to BL1 ──
     uint32_t entry_addr = load_addr + entry_off;
@@ -135,6 +180,5 @@ uint32_t rom_handoff_bl1(const manifest_t *m) {
 
     jump_to_bl1(entry_addr);
 
-    // Should never reach here.
-    return MANIFEST_ERR_NO_BL1_IMAGE;
+    return OCA_BOOT_ERR_NO_BL1; // unreachable
 }

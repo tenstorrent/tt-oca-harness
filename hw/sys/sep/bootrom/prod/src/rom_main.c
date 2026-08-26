@@ -53,9 +53,7 @@
 
 #include "bl0_state.h"
 #include "boot_straps.h"
-#include "manifest.h"
-#include "manifest_crypto.h"
-#include "measurement.h"
+#include "oca_boot.h"
 #include "pll_init.h"
 #include "errors.h"
 #include "rom_smc.h"
@@ -364,18 +362,24 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // locks fuse secrets, and hands off to BL1.
 // spi_status: result of spi_init(); non-zero skips the primary manifest retry.
 static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
-                                          uint32_t lc_state, bool sboot_dis) {
+                                          uint32_t lc_state) {
     // ── [C12–C14] manifest load ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_LOAD_START);
-    uint32_t mfst_err = rom_manifest_boot(straps, spi_status, lc_state, sboot_dis);
+    uint32_t mfst_err = rom_manifest_boot(straps, spi_status);
     if (mfst_err != 0u) {
         simputshex32("MANIFEST_BOOT_FAIL=", mfst_err);
         rom_err_fail(mfst_err);
     }
 
-    // [C13.10] crypto validation and [C13.11] payload structure run inside
-    // rom_manifest_boot()'s per-slot attempt (manifest_load.c), so a crypto
-    // failure falls over to the other slot. Anything reaching here has passed.
+    // ── [C13.10] crypto validation ──
+    // No separate step under OCA: signature verification, key revocation,
+    // anti-rollback, payload decryption and the payload hash chain are all part
+    // of the staged sequence rom_manifest_boot() just completed, and a failure
+    // in any of them has already been reported and returned above. Keeping the
+    // SBOOT_OFF marker because DV asserts its absence on the secure-boot test.
+    if (!get_bl0_state()->secure_boot) {
+        simputs("SBOOT_OFF\n");
+    }
 
     // ── [C15] Demotion decisions ──
     // Demotion decision flow:
@@ -384,51 +388,38 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     //
     // Logic:
     //   PROD_END: never demote, lock both registers.
-    //   BL1 selector set: demotion_reg = usage_constraints flag, lock DEMOTE_1.
+    //   BL1 pair valid: DEMOTE_1 takes the manifest's value and is locked.
     //   BL2 deferred: store the decision in bl0_state for BL1/KDF. DEMOTE_1 is
     //     still written and locked in the non-demoted state UNLESS BL2 actually
     //     requested demotion -- that request is the only case in which the
-    //     register is left unlocked. Skipping the write whenever the BL1
-    //     selector bit was clear left DEMOTE_1 unwritten and unlocked for later
-    //     software to set at will.
+    //     register is left unlocked. Skipping the write whenever the BL1 valid
+    //     bit was clear left DEMOTE_1 unwritten and unlocked for later software
+    //     to set at will.
     //   DEMOTE_2 is never written by BL0 (except PROD_END lock).
     //
     // The register write itself is deferred until after the fuse secrets are
     // locked; only the decision is taken here. See the [C15] block below.
     bool demotion_reg = false;
     bool lock_demotion = true;
-    // Two more values the boot measurement needs, kept at this scope so they
-    // outlive the decision block below. demotion_decision is NOT demotion_reg:
-    // it is whichever flag actually made the decision -- the BL1 one when the
-    // selector bit is set, the BL2 one otherwise -- and it is what the reference
-    // mixes into both the measurement and the UID key derivation.
-    bool demotion_decision = false;
-    bool bl2_demote_m = false;
     {
-        const manifest_t *m =
-            (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
-
         if (lc_state == LC_STATE_PROD_END) {
-            // PROD_END: never demote, always lock. DEMOTE_2 is locked here too,
-            // which is the one case where BL0 touches it at all.
+            // PROD_END: never demote. DEMOTE_2 is locked here, the one case where
+            // BL0 touches it at all; DEMOTE_1 takes the defaults above and is
+            // written and locked by the deferred write.
             lc_write_demotion_2(false, true);
             simputs("DEMOTE: PROD_END lock\n");
         } else {
-            uint64_t sel = m->usage_constraints.selector_bits;
-            bool bl2_demote =
-                (m->boot_arguments.flag_args & (1u << FLAG_ARGS_BIT_BL2_DEMOTION)) != 0;
+            // OCA folds both halves of this decision into one 16-bit
+            // demotion_control field, where the old format split them across
+            // usage_constraints.selector_bits (is it specified) and
+            // boot_arguments.flag_args (what is the value). The VALID bit is
+            // the "specified" half; the ENABLE bit is the value.
+            uint32_t dc = rom_oca_demotion_control();
+            bool bl2_demote = (dc & OCA_DEMOTE_BL2_ENABLE) != 0u;
 
-            bl2_demote_m = bl2_demote;
-            // Whichever flag decides is what the measurement records.
-            demotion_decision = (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION))
-                                    ? ((m->usage_constraints.flags &
-                                        (1u << USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION)) != 0)
-                                    : bl2_demote;
-
-            if (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION)) {
+            if (dc & OCA_DEMOTE_BL1_VALID) {
                 // BL1 manifest decides demotion, and the register is always locked.
-                demotion_reg = (m->usage_constraints.flags &
-                                (1u << USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION)) != 0;
+                demotion_reg = (dc & OCA_DEMOTE_BL1_ENABLE) != 0u;
                 simputsdec24("BL1_DEMOTE=", demotion_reg);
             } else if (bl2_demote) {
                 // The only case that leaves the register unlocked, so that BL2
@@ -470,29 +461,19 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         simputs("DEMOTE_NOT_LOCKED\n");
     }
 
-    // ── [C15] Boot measurement ──
-    // Records the boot state so a later stage can tell a trusted boot from a
-    // downgraded one. Placed here, after the demotion register write, because
-    // that is the last input to settle -- and because none of the inputs is a
-    // secret, so it does not need to precede the fuse lock.
-    {
-        const manifest_t *m =
-            (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
-        uint32_t demotion_bits = (demotion_decision ? 1u : 0u) | (lock_demotion ? (1u << 1) : 0u) |
-                                 (bl2_demote_m ? (1u << 2) : 0u);
-        if (rom_record_measurement(m->manifest_hash, demotion_bits, get_bl0_state()->secure_boot,
-                                   lc_state, sboot_dis) != 0u) {
-            rom_err_fail(ROM_ERR_MEASUREMENT_FAILED);
-        }
-    }
+    // NOTE: [C15] boot measurement is deliberately absent here. #1581 records a
+    // SHA-256 over the manifest hash, LC state, demotion decision, secure_boot
+    // and sboot_dis, reading the digest from manifest_t.manifest_hash -- a field
+    // of the format this commit removes. oca_boot.h exposes no digest accessor
+    // yet, and what the measurement commits to is a verifier-facing contract, so
+    // it is restored in its own commit rather than wired to an inline offset here.
 
     // ── [C18] BL1 handoff ──
     {
         report_status(STATUS_TYPE_DEBUG, SEP_MSG_HANDOFF_CHECK);
-        // Manifest is at the start of SEP EXT SRAM (loaded by rom_manifest_boot).
-        const manifest_t *m =
-            (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
-        uint32_t ho_err = rom_handoff_bl1(m);
+        // Body and payload are staged in SEP EXT SRAM by rom_manifest_boot();
+        // the handoff reaches them through the rom_oca_* accessors.
+        uint32_t ho_err = rom_handoff_bl1();
         // rom_handoff_bl1 does not return on success; if we get here, it failed.
         rom_err_fail(ho_err);
     }
@@ -723,7 +704,7 @@ void rom_main(void) {
     }
 
     // ── [C12–C14] Manifest load / validate + [C15/C17] fuse lock + [C18] handoff ──
-    rom_manifest_validate_handoff(&straps, spi_status, lc_state, sboot_dis);
+    rom_manifest_validate_handoff(&straps, spi_status, lc_state);
 
     // ── Done ──
     // Unreachable: rom_manifest_validate_handoff() above never returns. The ROM

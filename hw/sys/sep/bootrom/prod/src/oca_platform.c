@@ -28,6 +28,8 @@
 #include "hmac_sha256.h"
 #include "lifecycle.h"
 #include "rom_mmio.h"
+#include "key_digests.h"
+#include "rom_virt_console.h"
 #include "rsa_verify.h"
 #include "sep_addr.h"
 
@@ -136,6 +138,130 @@ static oca_result_t plat_verify_signature(const oca_crypto_blob_t *signature,
     if (rsa_3072_verify(digest, signature->bytes, public_key->bytes) != 0) {
         return OCA_FAIL_SIGNATURE;
     }
+    return OCA_OK;
+}
+
+// -- root-key authorization (the trust anchor) ------------------------------
+//
+// The library authenticates a manifest against the key the manifest carries, so
+// it can only establish that SOME private key signed it. This is the callback
+// that says whose, and it is the reason secure boot decides anything at all.
+//
+// Two anchor kinds, matching what the part provisions:
+//
+//   slots 0..PUBK_SEL_NUM_ROM_KEYS-1   digests embedded in ROM (key_digests.c)
+//   slots above that                   digests burned into OTP
+//
+// This is the same split the previous ROM's validate_signature() had
+// (PUBK_SEL_ROM_KEY vs PUBK_SEL_FUSE_KEY_0/1), carried across to the new format.
+//
+// NOTE: the OTP addresses here are NOT the ones that code used. It computed
+// CHIPLET_PUBK_REVOKE_BASE + 0x100 / + 0x120, which land on SPI_PHY_DLL_SLAVE
+// and the middle of CHIPLET_PUBK_HASH0. The real banks are +0x110 and +0x130.
+// That path was never exercised -- only ROM slot 0 is used by any test -- so the
+// bug sat latent. The generated symbols are used directly here so it cannot
+// recur.
+#define OCA_OTP_KEY_SLOT_FIRST PUBK_SEL_NUM_ROM_KEYS
+#define OCA_OTP_KEY_SLOT_COUNT 4u
+
+static bool otp_key_digest_addr(uint32_t slot, uint32_t *out_addr)
+{
+    switch (slot - OCA_OTP_KEY_SLOT_FIRST) {
+    case 0: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR; return true;
+    case 1: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR; return true;
+    case 2: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR;     return true;
+    case 3: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR;      return true;
+    default: return false;
+    }
+}
+
+static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
+                                           const uint8_t select[16])
+{
+    if (public_key == NULL || select == NULL || public_key->bytes == NULL) {
+        return OCA_FAIL_INVALID_ARG;
+    }
+    // Only RSA-3072 raw keys can be anchored: the digests are over a 384-byte
+    // modulus. Refusing anything else here keeps this from silently hashing a
+    // differently shaped field and comparing it to an unrelated digest.
+    if (public_key->primitive_type != OCA_PRIMITIVE_RSA_3072_PKCS1V15_SHA256
+        || public_key->encoding != OCA_ENCODING_RAW
+        || public_key->field_length < OCA_RSA3072_PUBKEY_BYTES) {
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+    }
+
+    // public_key_select is a 128-bit bitmap, not the old small index. Resolve it
+    // to the one slot it names; more than one set bit is ambiguous about which
+    // anchor applies, so refuse rather than pick.
+    int slot = -1;
+    for (uint32_t bit = 0; bit < 128u; ++bit) {
+        if ((select[bit / 8u] >> (bit % 8u)) & 1u) {
+            if (slot >= 0) {
+                simputs("PUBK_SEL_AMBIGUOUS\n");
+                return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+            }
+            slot = (int)bit;
+        }
+    }
+    if (slot < 0) {
+        simputs("PUBK_SEL_EMPTY\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+    }
+
+    uint8_t anchor[32];
+    if (slot < (int)PUBK_SEL_NUM_ROM_KEYS) {
+        const uint8_t *rom_digest = public_key_digests[slot].digest;
+        if (rom_digest == NULL) {
+            // An unprovisioned ROM slot authorizes nothing. This is the one
+            // place the behaviour deliberately differs from the old ROM, which
+            // treated a NULL digest as "skip the hash check" and so accepted any
+            // key naming an empty slot.
+            simputs("PUBK_SLOT_UNPROVISIONED\n");
+            return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+        }
+        for (uint32_t i = 0; i < 32u; ++i) {
+            anchor[i] = rom_digest[i];
+        }
+    } else {
+        uint32_t addr;
+        if (!otp_key_digest_addr((uint32_t)slot, &addr)) {
+            simputs("PUBK_SLOT_UNKNOWN\n");
+            return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+        }
+        fuse_read_bytes(addr, anchor, 32u);
+        // An erased OTP bank is all zeroes and must not be an anchor anything
+        // can match; a key whose SHA-256 is zero is not a realistic forgery, but
+        // an unburned part accepting a zero digest would be.
+        uint32_t any = 0u;
+        for (uint32_t i = 0; i < 32u; ++i) {
+            any |= anchor[i];
+        }
+        if (any == 0u) {
+            simputs("PUBK_OTP_EMPTY\n");
+            return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+        }
+    }
+
+    // Digest the modulus only (384 B), not the 388-byte RAW blob, so the digests
+    // key_digests.c already ships stay valid across the format change and
+    // tools/generate_key_digests.py needs no rework.
+    uint8_t digest[32];
+    if (sha256(public_key->bytes, 384u, digest) != 0) {
+        simputs("PUBK_HASH_TIMEOUT\n");
+        return OCA_FAIL_CALLBACK_UNAVAILABLE;
+    }
+
+    // Constant time: the anchor is not secret, but the comparison is
+    // attacker-driven and an early exit leaks how much of a forged key matched.
+    uint32_t diff = 0u;
+    for (uint32_t i = 0; i < 32u; ++i) {
+        diff |= (uint32_t)(digest[i] ^ anchor[i]);
+    }
+    if (diff != 0u) {
+        simputs("PUBK_UNAUTHORIZED\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+    }
+    simputs("PUBK_AUTHORIZED\n");
     return OCA_OK;
 }
 
@@ -309,6 +435,7 @@ static const oca_callbacks_t sep_callbacks = {
     .get_version            = plat_get_version,
     .is_secure_boot_active  = plat_is_secure_boot_active,
     .is_secure_boot_disabled = plat_is_secure_boot_disabled,
+    .is_key_authorized      = plat_is_key_authorized,
     .get_root_key_revocation = plat_get_root_key_revocation,
     .get_security_version   = plat_get_security_version,
 };
