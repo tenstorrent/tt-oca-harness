@@ -22,7 +22,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from env.sep_axi_decode_map import may_complete, region_of, spec_regions
+from env.sep_axi_decode_map import (
+    may_complete, region_of, rtl_ranges, spec_regions,
+)
 from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -54,6 +56,22 @@ class MapProbe:
     op: str          # "r" | "w"
     unit: str        # spec Unit column, for the failure message
     anchor: bool     # True = walked every seed
+    routed: bool     # True = an xbar rule covers this address
+
+    @property
+    def klass(self) -> str:
+        """Which contract this probe belongs to.
+
+        "unrouted"  no decode rule covers the address, so the fabric has
+                    nothing to send it to and must refuse. A hard contract.
+        "routed"    an xbar rule covers it but the map calls the span
+                    reserved. Whether the fabric should refuse is an open
+                    specification question, not a proven defect, so these are
+                    reported as findings and do not fail the test. Deciding it
+                    from the RTL would be letting the decoder write its own
+                    contract.
+        """
+        return "routed" if self.routed else "unrouted"
 
 
 # Reserved gaps that stay in the probe set on every seed: one address just past
@@ -81,6 +99,10 @@ class SepAxiMapRefuseCfg:
         probes: list[MapProbe] = []
         self.skipped: dict[str, int] = {}
         seen: set[tuple[int, str]] = set()
+        rtl = rtl_ranges()
+
+        def _routed(addr: int) -> bool:
+            return any(r.contains(addr) for r in rtl)
 
         for addr, op in _ANCHORS:
             why = _excluded(addr)
@@ -88,8 +110,19 @@ class SepAxiMapRefuseCfg:
                 self.skipped[why] = self.skipped.get(why, 0) + 1
                 continue
             if not may_complete(addr, regions):
+                if _routed(addr):
+                    # Routed-but-reserved: whether the fabric must refuse is an
+                    # open specification question, so there is no contract to
+                    # assert. The scoreboard has no "outcome unknown" mode --
+                    # expect_error demands a refusal -- so driving it would
+                    # assert the open question by the back door. Report these
+                    # from the static cross-check instead; see audit_rtl_vs_spec.
+                    self.skipped["routed span, open spec question"] = (
+                        self.skipped.get("routed span, open spec question", 0) + 1)
+                    continue
                 reg = region_of(addr, regions)
-                probes.append(MapProbe(addr, op, reg.unit if reg else "?", True))
+                probes.append(MapProbe(
+                    addr, op, reg.unit if reg else "?", True, False))
                 seen.add((addr, op))
 
         # Reserved rows, coarse ones last so the fine gaps are probed first.
@@ -109,8 +142,12 @@ class SepAxiMapRefuseCfg:
                 op = "r" if rng.getrandbits(1) else "w"
                 if (addr, op) in seen:
                     continue
+                if _routed(addr):
+                    self.skipped["routed span, open spec question"] = (
+                        self.skipped.get("routed span, open spec question", 0) + 1)
+                    continue
                 seen.add((addr, op))
-                probes.append(MapProbe(addr, op, reg.unit, False))
+                probes.append(MapProbe(addr, op, reg.unit, False, False))
                 added += 1
             if added < per_region:
                 # Probe count is the coverage claim; record the shortfall.
@@ -126,6 +163,7 @@ class SepAxiMapRefuseCfg:
 
     def summary(self) -> str:
         n_anchor = sum(1 for p in self.probes if p.anchor)
+        n_routed = sum(1 for p in self.probes if p.routed)
         skips = " ".join(f"{k}={v}" for k, v in sorted(self.skipped.items()))
         short = " ".join(
             f"{k}={g}/{w}" for k, (g, w) in sorted(self.short_regions.items())
@@ -133,6 +171,7 @@ class SepAxiMapRefuseCfg:
         return (
             f"seed={self.seed} probes={len(self.probes)} anchors={n_anchor} "
             f"random={len(self.probes) - n_anchor} "
+            f"unrouted={len(self.probes) - n_routed} routed_reserved={n_routed} "
             f"skip=[{skips}] short=[{short}]"
         )
 
