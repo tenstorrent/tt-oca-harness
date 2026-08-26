@@ -15,7 +15,6 @@
 //
 // Manifest hash verification (C13.6) uses the HMAC SHA-256 hardware driver.
 // Secure boot (C13.5) follows the ROM policy: PROD/PROD_END always enforce.
-// Signature verification (C13.10) is stubbed pending RSA integration.
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -31,6 +30,7 @@
 #include "errors.h"
 #include "rom_smc.h"
 #include "bl0_state.h"
+#include "manifest_crypto.h"
 
 // Generated register map for OCH SEP.
 #include "sep.h"
@@ -343,10 +343,8 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
     if (err) return err;
 
     // C13.5: Determine secure boot state.
-    {
-        bool sb = secure_boot_enabled(dest, lc_state, sboot_dis);
-        get_bl0_state()->secure_boot = sb;
-    }
+    const bool sb = secure_boot_enabled(dest, lc_state, sboot_dis);
+    get_bl0_state()->secure_boot = sb;
 
     // C13.7: Validate usage constraints.
     // Checks selector_bits to decide which constraints to enforce.
@@ -489,12 +487,35 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         }
     }
 
+    // C13.10: Crypto chain, then C13.11 the payload structure.
+    //
+    // ORDER IS LOAD-BEARING: security version -> signature -> payload hash (over
+    // ciphertext) -> decrypt -> TOC.
+    //   * The TOC is read LAST because an encrypted payload's TOC is itself
+    //     ciphertext; reading it earlier rejects every encrypted image as
+    //     MANIFEST_ERR_BAD_TOC_ID.
+    //   * The chain runs INSIDE the slot attempt so a crypto failure returns an
+    //     error and lets rom_manifest_boot() fall over to the backup slot.
+    if (sb) {
+        err = manifest_crypto_validate(dest, lc_state);
+        if (err) {
+            simputshex32("CRYPTO_FAIL=", err);
+            return err;
+        }
+    } else {
+        simputs("SBOOT_OFF\n");
+        // Payload hash is checked even with secure boot off: it still detects
+        // payload corruption, it just is not authenticated by a signature.
+        err = verify_payload_hash(dest);
+        if (err) {
+            simputshex32("PLD_HASH_FAIL=", err);
+            return err;
+        }
+    }
+
     // C13.11: Validate payload structure (TOC header + entries).
     err = validate_manifest_payload(dest);
     if (err) return err;
-
-    // C13.10 crypto validation is performed after manifest_boot() returns,
-    // in rom_manifest_validate_handoff() → manifest_crypto_validate().
 
     return MANIFEST_OK;
 }

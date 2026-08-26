@@ -259,6 +259,21 @@ module sep_uvm_top
     // -- the EL2 owns the LSU bus under +cpu_boot. The cold block survives the KM
     // warm reset. Read-only observation of the same registers.
     output logic [255:0]      scratch_cold_probe_o,
+    // SEP SRAM read-back, read-only XMR, no force. DECRYPT_OK only reports that
+    // the AES engine returned, not that the plaintext is correct, and a TOC
+    // rejection alone cannot separate a wrong key from a wrong driver -- so a
+    // test needs the bytes themselves.
+    //   sram_word0_probe_o  : SRAM word 0 = start of the loaded manifest. Its
+    //                         low half must read as the "TBL1" magic; that is
+    //                         what proves this probe addresses what it claims
+    //                         to, so the payload bytes below can be trusted.
+    //   sram_payload_probe_o: 48 bytes at payload offset 0x1000 = three AES
+    //                         blocks. Three, not one, because a CBC run with a
+    //                         bad IV corrupts only block 0 -- one block cannot
+    //                         tell that apart from a bad key, which corrupts
+    //                         every block.
+    output logic [63:0]       sram_word0_probe_o,
+    output logic [383:0]      sram_payload_probe_o,
     // SEP scratch-WARM CSR array (8 words x 32b). Same access pattern as the cold
     // probe, but a different reset domain: the warm block is reset by
     // (rst_ni && rst_warm_ni), which is what makes warm_scratch[0] the ROM's
@@ -1109,6 +1124,17 @@ module sep_uvm_top
     `SCRATCH_COLD(4); `SCRATCH_COLD(5); `SCRATCH_COLD(6); `SCRATCH_COLD(7);
 `undef SCRATCH_COLD
 
+    // The manifest is loaded at SEP SRAM base and the payload sits at
+    // manifest + payload_offset (0x1000); SEP SRAM is 64 bits wide, so that is
+    // word index 0x200.
+    assign sram_word0_probe_o = `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem['h000];
+`define SRAM_PL(i) \
+    assign sram_payload_probe_o[64*(i) +: 64] = \
+        `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem['h200 + (i)]
+    `SRAM_PL(0); `SRAM_PL(1); `SRAM_PL(2);
+    `SRAM_PL(3); `SRAM_PL(4); `SRAM_PL(5);
+`undef SRAM_PL
+
     // Same for the warm block (reset by rst_ni && rst_warm_ni). word 0 is the
     // ROM's warm-reset handler slot; the rest are unused by the ROM and are
     // probed only so the port shape matches the cold probe.
@@ -1215,42 +1241,51 @@ module sep_uvm_top
     end
 `undef ESRC_NOISE_FORCE
 
-    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
-    // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
-    // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
-    // The test that opts in is sep_rom_ot_secure_boot_test
-    // (testlists/rom_fw.toml).
+    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants the crypto
+    // blocks' EDN handshakes directly so they can leave their reseed states and
+    // run; the real entropy_source -> CSRNG -> EDN path is bypassed and NOT
+    // exercised. Covers OTBN (RND/URND) and AES; AES is a separate EDN client
+    // and stalls in its masking-PRNG reseed without a client-0 grant.
     logic edn_force_on;
-    logic otbn_rnd_ack_q, otbn_urnd_ack_q;
+    logic otbn_rnd_ack_q, otbn_urnd_ack_q, aes_ack_q;
     initial begin
         edn_force_on = $test$plusargs("sep_crypto_edn_force");
         if (edn_force_on) begin
-            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN EDN grants are");
-            $display("[tb] *** forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
+            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN and AES EDN grants");
+            $display("[tb] *** are forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
         end
     end
 
 // Target the driver-side net inside sep_crypto rather than the wrapper's input
 // port -- a `force` on a module instance input is rejected (ASSIGNIN).
-// Index 2 = OTBN RND client, 3 = OTBN URND (see sep_crypto.sv:502-512).
+// Client indices from sep_crypto.sv: 0 = AES, 1 = KMAC, 2 = OTBN RND,
+// 3 = OTBN URND. KMAC is not forced -- the ROM's SHA-256 goes through HMAC.
 `define OTBN_RND_RSP  `SEP_CORE.sep_crypto.crypto_edn_rsp[2]
 `define OTBN_URND_RSP `SEP_CORE.sep_crypto.crypto_edn_rsp[3]
 `define OTBN_RND_REQ  `SEP_CORE.sep_crypto.crypto_edn_req[2]
 `define OTBN_URND_REQ `SEP_CORE.sep_crypto.crypto_edn_req[3]
+`define AES_RSP       `SEP_CORE.sep_crypto.crypto_edn_rsp[0]
+`define AES_REQ       `SEP_CORE.sep_crypto.crypto_edn_req[0]
     // ack pulses for one cycle per request rather than sitting high, so a
     // multi-word reseed is delivered as a sequence of beats like the real EDN.
     always @(posedge clk_i) begin
         if (edn_force_on) begin
             otbn_rnd_ack_q  <= `OTBN_RND_REQ.edn_req  & ~otbn_rnd_ack_q;
             otbn_urnd_ack_q <= `OTBN_URND_REQ.edn_req & ~otbn_urnd_ack_q;
+            aes_ack_q       <= `AES_REQ.edn_req       & ~aes_ack_q;
             force `OTBN_RND_RSP.edn_ack   = otbn_rnd_ack_q;
             force `OTBN_RND_RSP.edn_fips  = 1'b1;
             force `OTBN_RND_RSP.edn_bus   = $urandom();
             force `OTBN_URND_RSP.edn_ack  = otbn_urnd_ack_q;
             force `OTBN_URND_RSP.edn_fips = 1'b1;
             force `OTBN_URND_RSP.edn_bus  = $urandom();
+            force `AES_RSP.edn_ack        = aes_ack_q;
+            force `AES_RSP.edn_fips       = 1'b1;
+            force `AES_RSP.edn_bus        = $urandom();
         end
     end
+`undef AES_RSP
+`undef AES_REQ
 `undef OTBN_RND_RSP
 `undef OTBN_URND_RSP
 `undef OTBN_RND_REQ

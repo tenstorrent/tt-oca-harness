@@ -350,6 +350,28 @@ $(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 		$(PACK_RUN) --config "$(SECURE_PACK_CONFIG)" --out "$(SECURE_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(SECURE_BOOT_BIN)" "$@"
 
+# Encrypted variant of secure_boot_spi: same signing key and same BL1 payload, but
+# the payload is AES-128-CBC encrypted. The ROM derives its AES key from the
+# CLASS_KEY fuse, so booting this image also requires an OTP carrying
+# configs/encrypted_boot_test.yaml's encryption_key_input.
+ENCRYPTED_PACK_CONFIG := $(CURDIR)/configs/encrypted_boot_test.yaml
+ENCRYPTED_BOOT_BIN    := $(BUILD_DIR)/encrypted_boot.bin
+ENCRYPTED_SPI_HEX     := $(BUILD_DIR)/encrypted_boot.spi_preload
+
+.PHONY: encrypted_boot_spi
+encrypted_boot_spi: $(ENCRYPTED_SPI_HEX)
+
+$(ENCRYPTED_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
+	@test -f "$(SEP_SIGNING_KEY)" || { \
+	  echo "ERROR: encrypted boot image needs the dev0 signing key."; \
+	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
+	  echo "       The packer rejects encrypted_payload=1 with secure_boot=0, so an"; \
+	  echo "       encrypted image is always a signed image."; \
+	  exit 1; }
+	OCH_ROOT="$(DV_ROOT)" ROOT="$(abspath $(dir $(SEP_SIGNING_KEY))/../..)" \
+		$(PACK_RUN) --config "$(ENCRYPTED_PACK_CONFIG)" --out "$(ENCRYPTED_BOOT_BIN)" -v
+	python3 "$(BIN_TO_SPI)" "$(ENCRYPTED_BOOT_BIN)" "$@"
+
 # Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
 # behind would let a stale OT image survive into the next run and boot silently.
 clean:

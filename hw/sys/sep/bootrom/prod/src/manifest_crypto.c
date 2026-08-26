@@ -339,6 +339,14 @@ uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state) {
     err = validate_signature(m, lc_state);
     if (err) return err;
 
+    // ── (d) Payload hash — verified BEFORE decryption ──
+    // The packer hashes the ALREADY-ENCRYPTED payload (pack_images.py), so
+    // payload_hash covers ciphertext: this is the only order in which the hash
+    // means anything for an encrypted image, and it is authenticate-before-
+    // process -- nothing reaches the decryption engine unverified.
+    err = verify_payload_hash(m);
+    if (err) return err;
+
     // ── (e) Payload decryption (if encrypted) ──
     {
         bool encrypted = (m->usage_constraints.flags &
@@ -348,9 +356,6 @@ uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state) {
             if (err) return err;
         }
     }
-
-    // (d) Payload hash verification is called separately in rom_main.c
-    // (always checked, even when secure_boot=false).
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_VALIDATED);
     simputs("CRYPTO_VALIDATE_OK\n");

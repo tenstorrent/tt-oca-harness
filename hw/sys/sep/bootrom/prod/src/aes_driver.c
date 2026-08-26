@@ -145,6 +145,15 @@ int aes_init(void) {
         return -1;
     }
 
+    // Coming out of reset the AES seeds its masking PRNG from EDN and reports
+    // BUSY until that completes, and while busy it ignores CTRL_SHADOWED writes
+    // (aes_ctrl_reg_shadowed.sv). Waiting here is required by that contract.
+    // Defensive only: no observed failure here was caused by its absence.
+    if (wait_idle() != 0) {
+        simputs("AES_INIT_BUSY\n");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -160,15 +169,22 @@ int aes128cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, const uin
     ctrl.f.KEY_LEN = AES_KEYLEN_128;
     ctrl.f.SIDELOAD = 0;
     ctrl.f.MANUAL_OPERATION = 0;
+
+    // CTRL_SHADOWED only takes effect while the unit is idle; see aes_init().
+    if (wait_idle() != 0) goto fail;
     write_ctrl(ctrl.w);
 
     if (wait_idle() != 0) goto fail;
 
     write_key_128(key);
 
+    // A KEY write starts a PRNG reseed, and a KEY or IV write while busy is
+    // ignored like a CTRL write, so the IV write is separated by an idle wait.
     if (wait_idle() != 0) goto fail;
 
     write_iv(iv);
+
+    if (wait_idle() != 0) goto fail;
 
     // Process each 16-byte block.
     uint32_t blocks = len >> 4;

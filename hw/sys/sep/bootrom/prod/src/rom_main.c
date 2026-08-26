@@ -331,33 +331,9 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         rom_err_fail(mfst_err);
     }
 
-    // ── [C13.10] crypto validation ──
-    {
-        const manifest_t *m_crypto =
-            (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
-
-        // Secure boot path: version check, key revocation, RSA-3072,
-        // payload decryption (if encrypted).
-        if (get_bl0_state()->secure_boot) {
-            report_status(STATUS_TYPE_INFO, SEP_MSG_VALIDATE_CHECK);
-            uint32_t crypto_err = manifest_crypto_validate(m_crypto, lc_state);
-            if (crypto_err != 0u) {
-                simputshex32("CRYPTO_FAIL=", crypto_err);
-                rom_err_fail(crypto_err);
-            }
-        } else {
-            simputs("SBOOT_OFF\n");
-        }
-
-        // Payload hash verification — always checked regardless of
-        // secure_boot state. Detects payload
-        // corruption even when signature verification is disabled.
-        uint32_t hash_err = verify_payload_hash(m_crypto);
-        if (hash_err != 0u) {
-            simputshex32("PLD_HASH_FAIL=", hash_err);
-            rom_err_fail(hash_err);
-        }
-    }
+    // [C13.10] crypto validation and [C13.11] payload structure run inside
+    // rom_manifest_boot()'s per-slot attempt (manifest_load.c), so a crypto
+    // failure falls over to the other slot. Anything reaching here has passed.
 
     // ── [C15] Demotion decisions ──
     // Demotion decision flow:

@@ -72,6 +72,7 @@ tests = [
     "sep_spi_detect_success_test",
     "sep_spi_primary_fail_backup_test",
     "sep_spi_not_detected_terminal_test",
+    "sep_firmware_encrypted_boot_test",
     "sep_boot_rom_smoke_test",
     "sep_sram_smoke_test",
     "sep_km_mem_smoke_test",
@@ -221,4 +222,5 @@ tests = [
     "sep_spi_detect_success_test",
     "sep_spi_primary_fail_backup_test",
     "sep_spi_not_detected_terminal_test",
+    "sep_firmware_encrypted_boot_test",
 ]

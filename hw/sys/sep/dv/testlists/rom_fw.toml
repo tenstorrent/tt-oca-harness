@@ -416,3 +416,23 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
+
+[[tests]]
+# Signed AND encrypted payload. Needs its own OTP: the ROM derives the AES key
+# from the CLASS_KEY fuse, which must carry configs/encrypted_boot_test.yaml's
+# encryption_key_input. +sep_crypto_edn_force covers OTBN (RSA) and AES
+# (decrypt). The image is built by `make encrypted_boot_spi`.
+name = "sep_firmware_encrypted_boot_test"
+module = "rom_fw.sep_firmware_encrypted_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_class_key.hex",
+  "+sep_crypto_edn_force",
+]
