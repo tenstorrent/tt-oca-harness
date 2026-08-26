@@ -143,10 +143,21 @@ WRITE_ONLY = [
 # row proves decode and plumbing rather than a specified value.
 _INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 _INFILT0_CFG_RESET = next(
-    info.reset
-    for info in iter_registers()
-    if info.block == "INBOUND_FILTER_CTRL_0_" and info.name == "FILTER_CONFIG"
+    (
+        info.reset
+        for info in iter_registers()
+        if info.block == "INBOUND_FILTER_CTRL_0_" and info.name == "FILTER_CONFIG"
+    ),
+    None,
 )
+if _INFILT0_CFG_RESET is None:
+    # Fail at import rather than build a row with no expected value. A bare
+    # next() raises StopIteration with no message; name what is missing.
+    raise RuntimeError(
+        "INBOUND_FILTER_CTRL_0_.FILTER_CONFIG is not in the generated register "
+        "export, so the inbound-filter address-map row has no reset value to "
+        "check; update FABRIC_BLOCKS if the block was renamed"
+    )
 FABRIC_BLOCKS = [
     ("SECURE_DMA", 0x1080_0000, None),
     ("WDT_TIMER", 0x1080_1000, None),

@@ -12,7 +12,7 @@ full export mask and compare readback to the same-beat wrap model
 (peer at reset). Remap and outbound-filter banks are reset-checked
 only: an unprogrammed alias region still rewrites a live beat.
 
-BLOCK_TOUCH adds one frontdoor RW storage proof per other major IP from
+``TOUCH_BLOCKS`` adds one frontdoor RW storage proof per other major IP from
 the export candidate list: write seed-derived ``x``, check
 ``(readback & mask) == (x & mask)``, restore reset. No GO/key/remap.
 Which register is picked varies with the seed only where the block has
