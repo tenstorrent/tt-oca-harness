@@ -356,13 +356,12 @@ args = []
 
 [run_modes.cpu]
 description = "CPU firmware boot: VeeR EL2 owns its master buses and fetches firmware from TCM"
-# Doubled from 1800 -> 3600: cpu firmware tests run heavier sims; the low-fanout/high-thread
-# cpu regression policy should keep them under this, but the extra headroom guards the heaviest
-# (crypto/dma). Per-test timeout_sec (also doubled to 3600 for cpu tests) overrides this fallback.
+# CPU firmware sims need a longer wall-clock budget than no_cpu smoke.
+# Per-test timeout_sec overrides this fallback where set.
 timeout_sec = 3600
 args = ["+cpu_boot"]
 
-# OD-19: one [targets.<name>] merges the former [compile_targets]/[run_targets] split.
+# One [targets.<name>] owns both compile and run knobs.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 # cocotb's runner forces a global --public-flat-rw. The runlib cocotb_public_scope() integration
 # drops it and substitutes the scoped public config in `public_scope` above, because cocotb only
