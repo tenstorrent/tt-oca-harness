@@ -838,17 +838,9 @@ endfunction
 localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_NUM = 64'h20;
 
 
-typedef enum logic [0:0] {
-    TRUE = 1'd6,
-    FALSE = 1'd9
+typedef enum logic [3:0] {
+    TRUE = 4'd6,
+    FALSE = 4'd9
 } MultiBitBool4_e;
 
-typedef enum logic [2:0] {
-    REPCNT_HI = 3'd0,
-    APT_HI = 3'd1,
-    APT_LO = 3'd2,
-    MARKOV_HI = 3'd3,
-    MARKOV_LO = 3'd4
-} WATERMARK_TEST_e;
-
-endpackage;
+endpackage
