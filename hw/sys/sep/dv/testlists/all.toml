@@ -129,6 +129,9 @@ tests = [
     "sep_km_key_policy_vault_test",
     "sep_reg_bit_bash_rand_test",
     "sep_fabric_deadspace_decode_test",
+    "sep_entropy_pool_aperture_test",
+    "sep_locked_field_access_irq_path_test",
+    "sep_abr_mldsa_keygen_kat_test",
 ]
 
 [[groups]]
@@ -212,6 +215,9 @@ tests = [
     "sep_km_key_policy_vault_test",
     "sep_reg_bit_bash_rand_test",
     "sep_fabric_deadspace_decode_test",
+    "sep_entropy_pool_aperture_test",
+    "sep_locked_field_access_irq_path_test",
+    "sep_abr_mldsa_keygen_kat_test",
 ]
 
 [[groups]]

@@ -39,6 +39,9 @@ class ocah_axi_id_match_test_seq extends ocah_axi_master_sequence;
 
         if (evidence == null || axi_cfg == null || slave_seq == null)
             `uvm_fatal(get_type_name(), "evidence/axi_cfg/slave_seq handles not bound")
+        if (n_ops < 2)
+            `uvm_fatal(get_type_name(),
+                $sformatf("n_ops must be >= 2 (ID-space corners); got %0d", n_ops))
         full_strb = 8'((64'd1 << axi_cfg.beat_bytes()) - 1);
 
         // Randomized write/read pairs; iterations 0/1 pin the ID corners.

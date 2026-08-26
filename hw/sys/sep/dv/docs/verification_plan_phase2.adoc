@@ -48,8 +48,9 @@ Do not stretch the Phase 1 e2e / smoke entry. New tests are created
 from <<iconic-remaining>> when no Phase 2 vehicle exists. <<phase2-plus>>
 is the completeness extension: same cocotb environment, goal 34 of 40
 `PROVEN` scorecard rows. <<phase2-plus-plus>> is block activation (38 of
-40); it is planned here and implemented in a follow-on PR, before Phase 3
-starts a UVM bench.
+40). The non-KM subset is implemented. The two KM-firmware vehicles
+stay parked, same class as the KM command-set row, until the ROM
+dependence is settled. Phase 3 starts a UVM bench after that.
 Phase 3 corners stay T.B.D. in `verification_plan_phase3.adoc`. A leftover
 directed name is not coverage. There is no separate improvement
 worklist.
@@ -88,8 +89,12 @@ eFuse, and Key Manager. See <<attention>>.
 | <<phase2-plus>> — 34 of 40 before UVM
 
 | Phase 2++ — block activation
-| 4 GAP rows + 1 isolate slice
-| <<phase2-plus-plus>> — 38 of 40; plan only, implementation is a follow-on PR
+| 0 GAP rows in the non-KM activation: ABR keyGen PROVEN, entropy-pool aperture PROVEN,
+  isolate-window slice PROVEN, locked-field IRQ path PROVEN (promoted
+  delivery row, outside the activation count). Two KM-firmware vehicles
+  (`sep_km_crc_pcpi_kat_test`, `sep_km_kpv_scrambler_test`) are parked.
+  Leftover slices of the activated blocks are <<phase3-dump>>.
+| <<phase2-plus-plus>> — 38 of 40 when the parked KM vehicles land
 
 | Landed existing-test upgrades
 | see <<existing-upgrades>>
@@ -165,8 +170,9 @@ assert forbidden markers do not appear; a dual-print still fails the test.
 
 The same set as Phase 1, with the same meanings. A running test's checkers are
 `PROVEN` or `FAILED`. `PARTIAL`, `GUARD`, and `INSUFFICIENT-EVIDENCE` are unused
-here. Two `FAILED` checkers are RTL vs spec: CHK-OWNERSHIP-WINDOW
-(`hw/sys/sep/doc/fabric.adoc`) and CHK-DEADSPACE-REFUSE
+here. Three `FAILED` checkers are RTL vs spec: CHK-OWNERSHIP-WINDOW
+(`hw/sys/sep/doc/fabric.adoc`), CHK-DEADSPACE-REFUSE, and
+CHK-DEADSPACE-NO-ALIAS
 (https://github.com/tenstorrent/tt-oca-harness/issues/228).
 
 [[entries]]
@@ -176,6 +182,14 @@ Each entry names its run mode, states what it proves, and lists its checkers wit
 evidence that backs them. Proof strings are quoted to their seed-stable prefix: several of
 these entries randomise addresses, region indices and message lengths per seed, and the
 contract forbids quoting a value that varies with the run.
+
+Graded rows are every `=== sep_*` heading in this document and in
+link:verification_plan_phase1.adoc[Phase 1]. Phase 2+ cards in this file are
+part of that ledger. Phase 2++ vehicles that closed in this pass are
+<<sep_abr_mldsa_keygen_kat_test>>, <<sep_entropy_pool_aperture_test>>,
+the isolate-window slice of <<sep_crypto_per_ip_reset_isolation_test>>,
+and <<sep_locked_field_access_irq_path_test>>. Production Boot ROM firmware
+names in `rom_fw.toml` are <<rom-fw-out-of-scope>> and are not graded here.
 
 == Crypto and entropy breadth
 
@@ -712,6 +726,9 @@ Testlist:: `system.toml`
 Proves the per-IP software reset domains are isolated, using live crypto results rather
 than a poked status bit: each engine computes a golden-checked value, then one engine is
 reset and the other's held result must survive bit-exact. Both directions are covered.
+While HMAC `SW_RESET_N` is held, `sep_crypto_axi_isolate` answers DECERR on that
+port (read of `DIGEST_0`, write of `CFG`) and the AES sibling stays OKAY.
+Drain-before-reset is not claimed.
 
 ==== Steps
 
@@ -786,10 +803,265 @@ reset and the other's held result must survive bit-exact. Both directions are co
   bit-exact per-sink compare is not this row.
 | `CHK5_aes` row of the scoreboard report
 | PROVEN
+
+| CHK-ISOLATE-PRE
+| HMAC `DIGEST_0` answers OKAY with the live golden digest before the isolate
+  request, so the later DECERR is at a live mapped address.
+| `CHK-ISOLATE-PRE PASS: HMAC DIGEST_0 OKAY with live golden`
+| PROVEN
+
+| CHK-ISOLATE-LANDED
+| `SW_RESET_N` readback shows the HMAC bit held, so a refusal cannot be a
+  missed write.
+| `CHK-ISOLATE-LANDED PASS: SW_RESET_N=` with `HMAC bit held`
+| PROVEN
+
+| CHK-ISOLATE-DECERR
+| During the window a read of the same `DIGEST_0` completes DECERR, not
+  OKAY, SLVERR, or hang.
+| `CHK-ISOLATE-DECERR PASS: HMAC DIGEST_0 read -> DECERR`
+| PROVEN
+
+| CHK-ISOLATE-WR
+| During the window a write to HMAC `CFG` completes DECERR. The write
+  target is the RW `CFG` register, not the RO digest.
+| `CHK-ISOLATE-WR PASS: HMAC CFG write -> DECERR`
+| PROVEN
+
+| CHK-ISOLATE-SIBLING
+| AES `DATA_OUT_0` answers OKAY with the held ciphertext in the same
+  HMAC window (port-scoped, not a global bus kill).
+| `CHK-ISOLATE-SIBLING PASS: AES DATA_OUT_0 OKAY`
+| PROVEN
+
+| CHK-ISOLATE-REOPEN
+| After release the same `DIGEST_0` answers OKAY again.
+| `CHK-ISOLATE-REOPEN PASS: HMAC DIGEST_0 OKAY after release`
+| PROVEN
+
+| CHK-ISOLATE-RESET-DEFAULT
+| After release `DIGEST_0` reads its reset value 0.
+| `CHK-ISOLATE-RESET-DEFAULT PASS: rdata=0x00000000`
+| PROVEN
 |===
 
 NOTE: scope walks AES, HMAC, KMAC and OTBN. The Key Manager bit stays held at
 the reset default (a different mechanism) and is not claimed.
+
+[[sep_abr_mldsa_keygen_kat_test]]
+=== sep_abr_mldsa_keygen_kat_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`
+Testlist:: `crypto.toml`
+Randomization:: RANDCFG — masking entropy words, and the seed word and
+bit flipped in the sensitivity leg, from the run seed
+(`SepAbrKeygenCfg`)
+
+The aperture is a `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR`
+(`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the
+way the OTBN tests already reach their block. It is *not* behind
+`sep_crypto_axi_isolate`. Accesses are 32-bit beats (`AxSIZE=2`) because
+this path has no width converter.
+
+`hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv` replaces the
+Key-Manager-side key CSR block only; the ABR register block behind this
+aperture is real RTL. The stub ties every key share and `key_valid` to
+zero, so only the software-written seed path is honest here.
+
+Kept Verilator evidence: run `20260825_142020`.
+Two ML-DSA-87 keyGens in ~51 s real / 858 us sim, so the sensitivity leg
+is kept.
+
+Checkers::
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-NAME
+| Identity registers read `MLDSA-87`.
+| `CHK-NAME PASS: NAME0=0x44534d4c NAME1=0x3837412d (MLDSA-87)`
+| PROVEN
+
+| CHK-RESET-STATUS
+| Reset STATUS is READY, not VALID, not ERROR.
+| `CHK-RESET-STATUS PASS: STATUS=0x00000001 READY`
+| PROVEN
+
+| CHK-NIST-PK
+| 648-word public key matches the vendored ACVP keyGen vector.
+| `CHK-NIST-PK PASS: 648-word public key matches ACVP keyGen vector`
+| PROVEN
+
+| CHK-STATUS-VALID
+| Completion STATUS is VALID with ERROR=0.
+| `CHK-STATUS-VALID PASS: VALID, ERROR=0`
+| PROVEN
+
+| CHK-PIC-ERROR
+| Aggregate `[34]` traverses `0 -> 1` via `error_intr_trig`, then `W1C`
+  readback 0, before the KAT. A stuck-low probe fails this row; the later
+  `[34]=0` at completion is then a live observation.
+| `CHK-PIC-ERROR PASS: [34] 0->1 via error_intr_trig, W1C readback 0`
+| PROVEN
+
+| CHK-PIC-NOTIF
+| Aggregate `[35]` high and `[34]` low at completion.
+| `CHK-PIC-NOTIF PASS: [35]=1 [34]=0`
+| PROVEN
+
+| CHK-PIC-NOTIF-W1C
+| `notif_internal_sts` W1C clears `[35]`.
+| `CHK-PIC-NOTIF-W1C PASS: [35] 1->0 via notif_internal_sts W1C`
+| PROVEN
+
+| CHK-ZEROIZE
+| `ZEROIZE` drops VALID and clears the pubkey window. READY stays high
+  through the wipe, so a READY wait is not this check.
+| `CHK-ZEROIZE PASS: VALID=0, first 4 pubkey words read 0`
+| PROVEN
+
+| CHK-SENSITIVITY
+| Flipping one seed bit yields a different public key.
+| `CHK-SENSITIVITY PASS: flipped seed word` `produced a different public key`
+| PROVEN
+|===
+
+Anti-vacuity:: the public key is a cryptographic function of the seed
+words written over the bus. The sensitivity leg flips one seed bit after
+the NIST match; a cached or constant engine passes the first leg and fails
+the second. `[34]` is driven high through `error_intr_trig` and cleared
+before the KAT, so a stuck-low aggregator cannot satisfy both
+`CHK-PIC-ERROR` and `CHK-PIC-NOTIF`.
+
+Not claimed here:: ML-KEM-1024, ML-DSA sign/verify, and the key-vault seed
+path. A green keyGen closes none of them. They sit in <<phase3-dump>>.
+Unlisted firmware tests that only check a nonzero version or a nonzero key
+stay unregistered.
+
+[[sep_entropy_pool_aperture_test]]
+=== sep_entropy_pool_aperture_test
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
+Testlist:: `system.toml`
+Randomization:: RANDCFG — extra pops past the watermark, and one
+unique-dead offset, from the run seed (`SepEntropyPoolCfg`). Every seed
+walks the high-bit mirrors of the three live registers (the offsets that
+catch a truncated decode).
+
+The block is a 64 KB crossbar target at `entropy_fifo.main`
+(`0x1095_0000`). It fills from the native EDN endpoint after the shared
+entropy bring-up.
+
+Kept Verilator evidence: run `20260826_005354`.
+
+Checkers::
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-POOL-LOW-HIGH
+| Aggregate `[36]` high on empty (level 0).
+| `CHK-POOL-LOW-HIGH PASS: [36]=1 at empty`
+| PROVEN
+
+| CHK-IRQ-CAUSE-LOW
+| `0x08=0x1` at empty (`pool_low`), not a copy of status `0x40`.
+| `CHK-IRQ-CAUSE-LOW PASS: 0x08=0x1 at empty, not status 0x40`
+| PROVEN
+
+| CHK-POOL-FILL
+| `fifo_level` at or above the watermark, `pool_err=0`.
+| `CHK-POOL-FILL PASS:` `pool_err=0`
+| PROVEN
+
+| CHK-POOL-LOW-LOW
+| Aggregate `[36]` low after fill.
+| `CHK-POOL-LOW-LOW PASS: [36]=0`
+| PROVEN
+
+| CHK-IRQ-CAUSE-IDLE
+| `0x08` traverses `0x1 -> 0x0` after fill, not a copy of status.
+| `CHK-IRQ-CAUSE-IDLE PASS: 0x08 0x1 -> 0x0 after fill`
+| PROVEN
+
+| CHK-WRITE-SLVERR
+| Status write returns SLVERR and does not change `fifo_level` while the
+  pool is not full (a full FIFO cannot show a refused fill).
+| `CHK-WRITE-SLVERR PASS: write BRESP=SLVERR, level unchanged` `< depth 32`
+| PROVEN
+
+| CHK-UNMAPPED
+| Every high-bit mirror of a live register, plus one unique-dead
+  offset, returns SLVERR with RDATA=0.
+| `CHK-UNMAPPED PASS:` `alias` `SLVERR rdata=0`
+| PROVEN
+
+| CHK-STALL-ASSERT
+| `[37]` high after `StallThresh` with the pool not full.
+| `CHK-STALL-ASSERT PASS: [37]=1 after StallThresh=4096` `not full`
+| PROVEN
+
+| CHK-IRQ-CAUSE-STALL
+| `0x08=0x2` at stall from level vs `LowWatermark` (`fill_stall`,
+  not `pool_low`), not `{status[7], status[6]}`.
+| `CHK-IRQ-CAUSE-STALL PASS: 0x08=` `watermark`
+| PROVEN
+
+| CHK-STALL-CLEAR
+| `[37]` low after EDN and ESRC re-enable.
+| `CHK-STALL-CLEAR PASS: [37]=0 after EDN/ESRC re-enable`
+| PROVEN
+
+| CHK-POP-DATA
+| Accepted pops OKAY, level minus one, nonzero distinct words.
+| `CHK-POP-DATA PASS:` `accepted pop`
+| PROVEN
+
+| CHK-POOL-LOW-REHIGH
+| `[36]` high again after drain (high-low-high).
+| `CHK-POOL-LOW-REHIGH PASS: [36]=1 after drain (high-low-high)`
+| PROVEN
+
+| CHK-EMPTY-SLVERR
+| Pop at `0x10` on empty returns SLVERR, after an accepted pop.
+| `CHK-EMPTY-SLVERR PASS: pop @0x10 -> SLVERR on empty pool`
+| PROVEN
+
+| CHK5_pool
+| Native EDN beats reached the pool adapter (observe-mode floor). Bit-exact
+  routing stays the e2e smoke.
+| `CHK5_pool` `observed_beats=`
+| PROVEN
+
+| CHK-ALERTS-ZERO
+| CSRNG/EDN error and recoverable-alert status are clear after the aperture
+  walk.
+| `CHK-ALERTS-ZERO PASS: CSRNG/EDN ERR_CODE=0 RECOV_ALERT=0`
+| PROVEN
+|===
+
+Anti-vacuity:: fill is observed at or above the watermark before any
+refusal is scored. Accepted pop happens before empty-pop SLVERR. `[36]`
+is seen high, then low, then high. `[37]` is the first fill-stall after
+the fill path is starved for `StallThresh` with the pool not full. At
+least one popped word is nonzero and two popped words differ.
+
+RTL fact that arms `[37]`:: ESRC CTRL MODULE_ENABLE=0 does not drop
+AUTO-mode EDN acks while CSRNG still has a seed; after that disable the
+pool ran to full (level 32). `fill_stall` needs `req_pending && !edn_ack`
+for `StallThresh`, and a full pool holds `req_pending` low. The stall wait
+therefore also writes EDN_CTRL EDN_ENABLE=False (legal mubi4, other
+fields unchanged) and pops leftover until the pool has room and acks have
+stopped.
+
+Not claimed here:: full PIC delivery (claim / mask / ISR). Drain-under-fill
+and stall-duration / recovery stress sit in <<phase3-dump>>.
 
 == Fabric, mailbox and interrupt breadth
 
@@ -2167,6 +2439,103 @@ cleared before the next read.
 
 Kept Verilator log: `20260824_122050`.
 
+[[sep_locked_field_access_irq_path_test]]
+=== sep_locked_field_access_irq_path_test
+
+This entry is *not* a block-activation item and is not counted toward the
+Phase 2++ scorecard-row count. The block it targets — the eFuse shadow-register
+access control — is already activated by <<sep_efuse_program_lock_matrix_test>>.
+It is listed with the eFuse entries because what it closes is an
+unproven *delivery path* rather than a corner of a proven one:
+`sep_internal_interrupts[33]` (`locked_field_access`, `hw/sys/sep/rtl/sep.sv`)
+is an orphan interrupt source with no delivery test in any phase, and the
+graded eFuse permission and lock entries prove only that a locked-field
+access is *denied*. Denial and delivery are two different contracts, and
+only one of them has a test. A corner of a proven row belongs in Phase 3;
+an interrupt source nothing observes does not.
+
+[horizontal]
+Tier:: Tier 2
+Run mode:: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`
+Testlist:: `efuse_lcc.toml`
+Randomization:: RAND-REP — both lock flavours (write-lock and read-lock)
+every seed. RANDCFG — which spare field (`SPARE0`..`SPARE7`) carries the
+lock, from the run seed (`SepLockedFieldIrqCfg`)
+
+Kept Verilator evidence: run `20260825_155956`.
+Real fuse sense at cycle 802; 256-word shadow compare 0 errors.
+
+==== Description
+
+Stage the spare field's lock bits in the OTP image (same spare-slot
+geometry as <<sep_efuse_program_lock_matrix_test>>), sense at `LC_PROD`,
+then access the *shadow* aperture. This is not an OTP program: the
+program-lock vehicle already owns `PROGRAM_ERR`. An unlocked spare in the
+same image is the negative control. Walk write-lock then read-lock every
+seed — they are two different branches in
+`efuse_shadow_reg_access_control`.
+
+==== Datapath, and the facts pinned before coding
+
+The lock decision is made in `efuse_shadow_reg_access_control` inside
+`hw/ip/efuse/rtl/`, from the sensed `LOCKS` / `LOCKS_SPARE` vector: a
+write to a write-locked field or a read of a read-locked field is answered
+with pslverr low, prdata matching the sentinel, and
+`locked_field_access_interrupt_o` high. That output aggregates into
+`sep_internal_interrupts[33]`. Consequences that decide the checkers:
+
+*The AXI write has no sentinel on BRESP.* APB `prdata` is not a write-response
+field. For write-lock, the denial proof is: `[33]` high during the write,
+BRESP OKAY, then a *read* of the same field (write-lock does not block
+reads) returns the pre-write value. Do not expect SLVERR; JTAG deny is a
+different path (DECERR + the same sentinel).
+
+*A read-lock has no following legal read.* LOCKS are OTP W1S, so the field
+stays read-locked. For read-lock, the denial proof is that read itself:
+RDATA=`0xbadcab1e`, OKAY, `[33]` high during the beat.
+
+*The interrupt is combinational and pulse-only.* There is no sticky status
+bit and no `W1C` on this path — the aggregate is a wire — so the clear
+contract is deassertion after the access retires. Watch
+`sep_internal_interrupts_probe_o` continuously across the beat; a sample
+taken after the access completes is always 0.
+
+Checkers::
+
+[cols="1,4,4,1",options="header"]
+|===
+| ID | Check | Proof | Status
+
+| CHK-UNLOCKED
+| Unlocked spare write/read never raises `[33]`; readback matches the write.
+| `CHK-UNLOCKED PASS:` `write/read no [33]`
+| PROVEN
+
+| CHK-WRITE-LOCK
+| Bit [33] during the write, BRESP OKAY, following read equals pre-write,
+  bit [33] low after retire.
+| `CHK-WRITE-LOCK PASS: [33] during write, BRESP OKAY, following read=` unchanged
+| PROVEN
+
+| CHK-READ-LOCK
+| Bit [33] during the read, RDATA sentinel, OKAY, bit [33] low after retire.
+| `CHK-READ-LOCK PASS: [33] during read, RDATA=0xbadcab1e OKAY`
+| PROVEN
+|===
+
+Anti-vacuity:: the locked and unlocked accesses are the same driver, the
+same aperture and the same run, differing only in the lock bits of the
+field, so a probe stuck low fails the assert leg and a probe stuck high
+fails the unlocked leg. The deassert leg is only credited after the assert
+leg has been observed high. The denial conjunct (unchanged write-lock
+readback / sentinel on read-lock) attributes `[33]` to the locked path.
+
+Not claimed here:: end-to-end delivery to the CPU — the PIC claim, masking
+and ISR entry — which needs `cpu` mode and a firmware image, and sits in
+<<phase3-dump>>. The full per-locked-field × `secure_tm` matrix stays
+there under the permission-negative names. This entry is generate-and-
+deassert on both lock flavours of one seed-selected spare.
+
 [[sep_lcc_demote_feat_ctrl_matrix_test]]
 === sep_lcc_demote_feat_ctrl_matrix_test
 
@@ -2680,9 +3049,10 @@ tables stay binary; `PARTIAL` is a feature grade there, not a checker
 grade here. Program × lock, demote including lock, standalone RMA, live
 outbound remap, and watermark arming are graded in <<entries>>. The
 Phase 2+ close-out vehicles are graded there too (CSR bit-bash is
-`PROVEN`; dead-space refuse is a landed `FAILED`). Remaining before
-UVM is the KM command vehicle (parked last) and two RTL closes
-(inbound ownership; dead-space refuse).
+`PROVEN`; dead-space refuse is a landed `FAILED`). Phase 2++ ABR, pool,
+isolate-window, and locked-field IRQ vehicles are also graded there.
+Remaining before UVM is the KM command vehicle (parked last) and two RTL
+closes (inbound ownership; dead-space refuse).
 
 [cols="2,2,3",options="header"]
 |===
@@ -2712,8 +3082,9 @@ UVM is the KM command vehicle (parked last) and two RTL closes
 | `sep_km_key_policy_vault_test`
 
 | CSR reset / RW / RO / reserved behaviour
-| `PROVEN`. `sep_reg_bit_bash_rand_test` (Verilator `20260825_043118`)
-  walks 417 reset values and 51 write-safe complementary writes.
+| `PROVEN`. `sep_reg_bit_bash_rand_test` (Verilator `20260825_150036`)
+  walks 417 reset values and 51 write-safe complementary writes
+  (inbound START/END use the granule mask `[31:3]`).
 | `sep_reg_bit_bash_rand_test`
 
 | Dead-space decode
@@ -2741,7 +3112,7 @@ KM command set stays parked. Inbound ownership stays an RTL close.
 Do not leave these remaining `GAP`s as Phase 3 pretend-UVM items.
 
 Phase 2 keeps its floor of 18 of 40 and its goal of 25 of 40. Eleven of
-the fourteen Phase 2+ rows are `PROVEN`. The scorecard is 33 of 40.
+the fourteen Phase 2+ rows are `PROVEN`. The scorecard is 35 of 40.
 CSR bit-bash is `PROVEN` (`sep_reg_bit_bash_rand_test`, Verilator
 `20260825_043118`). Dead-space decode is a landed hard `FAILED`
 (`sep_fabric_deadspace_decode_test`, Verilator `20260825_071309`,
@@ -2871,8 +3242,8 @@ checker. Do not force `sec_dis`.
 | FAILED
 | Negative control. An access to a block's unpopulated address space must
   be refused, not truncated onto a live register. Hard `FAILED` until the
-  RTL refuses it. Verilator `20260825_071309`: 42 fail lines on 30 probes
-  (22 accepted OKAY, 11 aliased a live register). Do not XFAIL.
+  RTL refuses it. Directed issue-228 anchors still wrap; the accepted-OKAY
+  count moves with the seed-selected probes. Do not XFAIL.
   https://github.com/tenstorrent/tt-oca-harness/issues/228
 | `sep_fabric_deadspace_decode_test`
 |===
@@ -2998,10 +3369,13 @@ included) from the generated SystemRDL. `SepRegBitBashCfg` is the
 single source of truth for both the walk and the skip reasons.
 
 Write-lands is the anti-vacuity control: a complement write must move
-exactly the software-usable mask. Remap and outbound-filter banks are
-reset-checked only; an unprogrammed alias region still rewrites a live
-beat. Write-safe blocks are scratch, `SEP_CPU_CTRL` minus side-effect
-/ lock / trigger fields, and inbound-filter START/END.
+exactly the software-usable mask. Inbound-filter START/END stay in the
+write sweep with the granule mask `[31:3]` (hardware forces `[2:0]`;
+`END_ADDR` resets to `0x7`). The inventory is seed-stable: 417 reset,
+51 write (16 scratch + 3 `SEP_CPU_CTRL` + 32 inbound address regs).
+Remap and outbound-filter banks are reset-checked only: an unprogrammed
+alias region still rewrites a live beat. The inbound-filter rule-matrix
+test owns programming the live filter, not these storage bits.
 
 Exclusions are a reason table: FIFO, trigger, key, hw-driven, OTP,
 side-effect, needs-init, no software-usable field (`TIMEOUT_*`
@@ -3043,7 +3417,7 @@ this row.
 | PROVEN
 |===
 
-Kept Verilator log: `20260825_043118`.
+Kept Verilator log: `20260825_150036`.
 
 [[sep_fabric_deadspace_decode_test]]
 === sep_fabric_deadspace_decode_test
@@ -3098,23 +3472,23 @@ this entry exists to prevent. Do not XFAIL it.
 
 | CHK-DEADSPACE-REFUSE
 | A read or write past the allocated size is refused (not OKAY).
-| `CHK-DEADSPACE-REFUSE FAIL: 22 probe(s) accepted OKAY`
-  (Verilator `20260825_071309`). Same keep: 42 fail lines on 30 probes
-  (OKAY plus alias lines, not 42 probes). Every issue-228 anchor accepted:
-  KM `0x10920ff8` wraps onto `SEP_CTRL`, DMA `0x108008a8` wraps onto
-  `+0xa8`. AES / lifecycle / some SPI probes already refuse.
+  Every issue-228 anchor still wraps (KM `0x10920ff8` onto `SEP_CTRL`,
+  DMA `0x108008a8` onto `+0xa8`). AES / lifecycle / some SPI probes
+  already refuse. The accepted-OKAY count depends on the seed-selected
+  probes; do not freeze it in the Proof cell.
+| `CHK-DEADSPACE-REFUSE FAIL:` `resp=OKAY, expected refuse`
 | FAILED
 
 | CHK-DEADSPACE-NO-ALIAS
-| No allocated register in that window changes across a probe.
-| Same keep: 11 probes changed a live register, including
-  `km_mailbox w 0x10920ff8` `+0x18 0→3` and
-  `secure_dma w 0x108008a8` `+0xa8 0→ffffffff`.
+| No allocated register in that window changes across a probe. Directed
+  issue-228 anchors still alias; the aliased-probe count is seed-varying.
+| `changed live register(s)` `km_mailbox w 0x10920ff8`
+  `secure_dma w 0x108008a8`
 | FAILED
 
 | CHK-RANDCFG
 | Twelve anchors plus seed-selected dead offsets ran in one invocation.
-| `CHK-RANDCFG PASS: walked 30 probes (12 anchors)`
+| `CHK-RANDCFG PASS: walked`
 | PROVEN
 |===
 
@@ -3708,170 +4082,95 @@ scorecard-row count, not a percentage of anything, and the two numbers
 must not be quoted together. What Phase 2++ closes is block activation:
 every instantiated block has a registered test that can fail.
 
-Implementation order, cheapest and most certain first. Do not start with
-Adams Bridge:
+Closed, cheapest first:
 
-. The isolate extension — no new vehicle, no firmware, and the in-window
-  refuse plus sibling-OKAY pair is a real new check.
-. The entropy pool aperture — reuses the existing entropy bring-up.
-. The KM CRC known-answer test — dedicated ROM, independent golden.
-. The KPV scrambler — dedicated ROM. Settle first whether the scrambler
-  enable is a firmware-legal CSR toggle, and confirm it is *not* the KM
-  SRAM scrambler that `rom_main` already locks; those are different
-  claims and conflating them would invalidate the vehicle.
-. Adams Bridge keyGen last — time one masked ML-DSA-87 before writing any
-  checker. If wall-clock demands it, drop the sensitivity leg; never drop
-  the NIST compare. Anchor the aperture on `sep_crypto_pkg`, not the
-  firmware header.
+. Isolate in-window DECERR plus sibling-OKAY on the existing test
+  (Verilator `20260825_141838`).
+. Entropy-pool aperture (Verilator `20260826_005354`).
+. Locked-field interrupt delivery (Verilator `20260825_155956`).
+. Adams Bridge ML-DSA-87 keyGen last (Verilator `20260825_142020`);
+  both keyGens fit, so the sensitivity leg is kept. Aperture anchored on
+  `sep_crypto_pkg`.
 
-Outside Phase 2++, and still open after 38 of 40 — these are not blocks,
-so closing this phase must not be read as closing them: the LCC debug-gate
-outputs (unobserved ports, Phase 3); a non-zero inbound global aperture,
-where DV only ever runs the identity case that production does not use;
-the 4 KB filter over-grant, an open specification question; and the Key
-Manager command set, which stays parked.
+Parked, not Phase 3:: `sep_km_crc_pcpi_kat_test` and
+`sep_km_kpv_scrambler_test`. Both are reachable only from Key Manager
+firmware (custom-0 PCPI; KPV CSRs on the KM port) and need dedicated KM
+ROM images. They stay named Phase 2++ activation rows, same class as
+`sep_km_command_set_rand_test`. 38 of 40 waits on them.
+
+One further entry rides along on the same implementation pass without
+being part of block activation: <<sep_locked_field_access_irq_path_test>>.
+It closes an orphan interrupt source, not an unactivated block, so it
+does not move the scorecard-row count in either direction. The graded
+cards for ABR, pool, isolate-window, and locked-field IRQ live in
+<<entries>>, not in this scorecard section.
+
+Outside Phase 2++, and still open after the non-KM close — these are not
+blocks, so closing this pass must not be read as closing them: the LCC
+debug-gate outputs (unobserved ports, Phase 3); a non-zero inbound global
+aperture, where DV only ever runs the identity case that production does
+not use; the 4 KB filter over-grant, an open specification question; and
+the Key Manager command set, CRC engine, and KPV scrambler, which stay
+parked. Slices of the Phase 2++ blocks that are not activation — ABR
+ML-KEM / sign / verify / key-vault seed, pool drain-under-fill and
+stall-duration, isolate drain-before-reset, locked-field CPU PIC/ISR —
+sit in <<phase3-dump>> for the UVM bench. Do not add a cocotb sibling for
+any of them.
 
 [cols="2,1,3,3",options="header"]
 |===
 | Scorecard row | Today | Phase 2++ close | Vehicle
 
 | Adams Bridge post-quantum engine
-| GAP
+| PROVEN
 | ML-DSA-87 keyGen known-answer test against the vendored NIST vectors,
   plus the two ABR PIC sources. ML-KEM, the key-vault seed path and
   sign/verify stay unproven slices — a green keyGen closes none of them.
 | `sep_abr_mldsa_keygen_kat_test`
 
 | Entropy pool aperture and its two PIC sources
-| GAP
-| Status / IRQ-cause / destructive pop, SLVERR on empty versus OKAY with
-  data, writes refused, and both PIC sources observed asserting and
-  clearing.
+| PROVEN
+| Status, IRQ-cause (`pool_low` / `fill_stall` only), destructive pop
+  (SLVERR empty vs OKAY with data), write SLVERR, unmapped-offset SLVERR,
+  and first assert/clear of aggregate bits `[36]` and `[37]`.
+  Drain-under-fill and stall-duration stay Phase 3.
 | `sep_entropy_pool_aperture_test`
 
 | Key Manager CRC engine
-| GAP
+| GAP, parked
 | Known-answer test of the custom-0 PCPI instruction from KM firmware, in
-  all three modes.
+  all three modes. Parked: dedicated KM ROM, same class as the KM
+  command-set vehicle. Not Phase 3.
 | `sep_km_crc_pcpi_kat_test`
 
 | Key Manager key/policy vault scrambler
-| GAP
+| GAP, parked
 | Stored key material is keyed-scrambled and address-tweaked, round-trips
-  exactly, and survives the key lock.
+  exactly, and survives the key lock. Parked: dedicated KM ROM, KM-port
+  CSRs. Not Phase 3.
 | `sep_km_kpv_scrambler_test`
 
 | Per-IP `SW_RESET_N` isolation (`sep_crypto_axi_isolate` slice)
-| PROVEN row, unproven slice
-| Extend the existing test. Do not add a sibling.
+| PROVEN
+| In-window DECERR + sibling OKAY on the existing test. Drain-before-reset
+  stays Phase 3.
 | `sep_crypto_per_ip_reset_isolation_test`
 |===
 
-None of these is graded until a kept Verilator log proves every checker.
+==== Isolate-window slice
 
-=== Planned: sep_abr_mldsa_keygen_kat_test
+The in-window DECERR and sibling-OKAY checkers are on
+<<sep_crypto_per_ip_reset_isolation_test>> (`CHK-ISOLATE-*`). Kept
+Verilator evidence: run `20260825_141838`. Drain-before-reset stays in
+<<phase3-dump>>.
 
-[horizontal]
-Tier:: Tier 2
-Run mode:: `no_cpu`, `+skip_fuse_sense`
-Testlist:: `crypto.toml`
-Randomization:: RANDCFG — the masking entropy words, and the seed word and
-bit flipped in the sensitivity leg, from the run seed
+== Parked Phase 2++ vehicles
 
-The aperture is a `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR`
-(`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the
-way the OTBN tests already reach their block. It is *not* behind
-`sep_crypto_axi_isolate`.
+=== Parked: sep_km_crc_pcpi_kat_test
 
-Two facts the implementer must not rediscover. First, the aperture is a
-SystemVerilog localparam, not a generated address-map symbol — the
-firmware header's hardcoded base is correct but unanchored, and nothing
-fails if the localparam moves. Anchor on the package, and say so.
-Second, `hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv` replaces
-the *Key-Manager-side* key CSR block only; the ABR register block behind
-this aperture is real RTL. But that stub ties every key share and
-`key_valid` to zero, so the key-vault seed path cannot produce a real key
-in this build. Only the software-written seed path is honest here.
-
-Checkers (planned):: the identity registers read the documented block
-name; the block leaves reset ready, not valid, not errored; the public key
-read back after keyGen equals the vendored NIST vector word for word; the
-completion status asserts within budget with no error; the notification
-PIC source rises on completion and the error source stays low.
-
-Anti-vacuity control:: the proof artefact is a public key that is a
-cryptographic function of the seed words written over the bus, so a write
-path that does not land yields a different key, not a passing one. There
-is no "did not change" check anywhere on the proof path. The sensitivity
-leg makes it explicit: flip one seed bit, and the key must differ from the
-vector the previous leg just matched. An engine returning a cached or
-constant result passes the first leg and fails the second.
-
-Settle before coding, in this order. Time one keyGen before writing any
-checker — ML-DSA-87 with masking on is Keccak- and NTT-heavy, and if it is
-too slow for a daily regression the fallback is to drop the sensitivity
-leg's second keyGen, never the known-answer check. Then confirm the
-sequence places 32-bit beats correctly on the 64-bit port at an odd word
-offset, because this path has no width converter and a lane-placement bug
-would look exactly like a functional failure. Then read the vendored
-register description for the real offsets rather than trusting the
-firmware header, which nothing has ever run.
-
-Two existing firmware tests target this block and are in no testlist. The
-CSR one checks a version register against "nonzero", which is a guess
-rather than a contract and can fail a correct DUT. The keyGen one seeds
-arbitrarily and checks only that the key is not all zero, which any engine
-emitting anything at all would pass. Fix them to use the NIST vectors and
-keep them as a firmware-path companion, or delete them — but do not
-register them as they stand.
-
-=== Planned: sep_entropy_pool_aperture_test
-
-[horizontal]
-Tier:: Tier 2
-Run mode:: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
-Testlist:: `system.toml`
-Randomization:: RANDCFG — the number of extra pops taken past the
-watermark, and which unmapped in-aperture offset is probed, from the run
-seed
-
-The block is a 64 KB crossbar target reachable from the same master the
-other no_cpu tests use. It fills autonomously from the EDN leg once the
-standard entropy bring-up has run, so the prerequisite is the existing
-bring-up helper, not new plumbing.
-
-Checkers (planned):: a pop on an empty pool is refused and a pop with data
-is not; a pop decrements the level by exactly one; the status fields agree
-with the observed level and the pool never reports an internal error; the
-IRQ-cause word mirrors the status flags; writes to the read-only aperture
-are refused and do not disturb the FIFO; a read at an unmapped offset in
-the window is refused rather than aliasing a live register; and both PIC
-sources track their status bits.
-
-Anti-vacuity control:: four ordered facts, all required. The pool must be
-observed at or above the watermark at least once — if it never filled,
-every refusal in the test is meaningless and the test fails rather than
-skips. Both an accepted pop and a refused pop must occur, accepted first.
-The low-water flag must be seen high, then low, then high again, proving
-traversal rather than a stuck signal. And at least one popped word must be
-non-zero with two popped words differing, because the FIFO returns zero
-when empty by construction and a dead datapath would otherwise produce a
-refusal-shaped pass.
-
-Known design hazard:: while the entropy source is still streaming, the
-pool can refill between the drain burst and the status read, so the
-watermark crossing may not be observed. Take that observation after
-disabling the entropy source, not before. The disable value must keep every
-multi-bit field at a legal encoding so the write does not provoke a
-recoverable alert.
-
-Not claimed here:: full PIC delivery — claiming the interrupt, masking, and
-ISR re-entry — needs CPU mode and a firmware image. This test observes the
-aggregator bits only, the same evidence class as the existing aggregator
-test. Pool drain, watermark and stall corners stay deferred in
-`verification_plan_phase3.adoc`.
-
-=== Planned: sep_km_crc_pcpi_kat_test
+Parked. Dedicated KM ROM; custom-0 PCPI has no SEP-side register
+interface. Same class as `sep_km_command_set_rand_test`. Not Phase 3.
+The card below is the contract when it is unparked.
 
 [horizontal]
 Tier:: Tier 2
@@ -3902,13 +4201,19 @@ stubbed to return a plausible constant passes a known-answer test but
 fails a required difference.
 
 Warning for the implementer:: the engine applies no initial value and no
-final inversion. Reusing the wrapped CRC helper already in the sequence
-library gives a wrong golden — and the dangerous outcome is not the false
-failure, it is someone then "fixing" the golden to match the DUT. Write
-the bare stepping function independently and check it against the register
-description.
+final inversion. Reusing `crc32c()` in `seq_lib/sep_km_mailbox_seq.py`
+gives a wrong golden — that helper is Castagnoli with `init=0xFFFFFFFF`
+and `xorout=0xFFFFFFFF`, which is the mailbox frame CRC, not this engine.
+The dangerous outcome is not the false failure, it is someone then matching
+the golden to the DUT. Write the bare stepping function independently and
+check it against the register description. All three modes (32C word, 32C
+byte, CRC-8/ROHC) walk in this vehicle; do not split them into siblings.
 
-=== Planned: sep_km_kpv_scrambler_test
+=== Parked: sep_km_kpv_scrambler_test
+
+Parked. Dedicated KM ROM; the vault is reachable only from the KM port.
+Same class as `sep_km_command_set_rand_test`. Not Phase 3.
+The card below is the contract when it is unparked.
 
 [horizontal]
 Tier:: Tier 2
@@ -3918,69 +4223,44 @@ Randomization:: RANDCFG — the scrambler key, the target slot and word, and
 the plaintext, from the run seed
 
 The vault is reachable only from the KM side, so this needs its own ROM
-image. The design avoids a hierarchical peek entirely: with the scrambler
-disabled the vault addresses its register file with the logical index and
-passes data through unmodified, so firmware can write plaintext with
-scrambling on, disable it, and read the raw stored words back through a
-legitimate frontdoor. Do not set the key lock until the final checker —
-locking is sticky.
+image, not `rom_main`. `KPV_SCRAMBLER_CTRL.enable` is a firmware-legal CSR
+toggle until lock; it is not the KM SRAM `SCRAMBLER_CTRL` that `rom_main`
+locks. The design avoids a hierarchical peek: with the scrambler disabled
+the vault addresses its register file with the logical index and passes
+data through unmodified, so firmware can write plaintext with scrambling
+on, disable it, and read the raw stored words back through a legitimate
+frontdoor. Do not set the key lock until the final checker — locking is
+sticky.
+
+The register file has no reset (`km_kpv_regfile`); power-up is undefined.
+A whole-vault "exactly one non-zero" scan is therefore not a contract
+until the file is known-zero. Wipe the file as *setup* before the write —
+that is not the wipe security checker, which stays Phase 3
+`sep_km_sw_emergency_wipe_test`. Alternatively snapshot every logical word
+with the scrambler off and diff the raw scan against that snapshot.
 
 Checkers (planned):: the written word round-trips exactly with scrambling
-enabled; exactly one word in the raw scan is non-zero and it differs from
-the plaintext; that word sits at a different index than the logical one,
+enabled; after disable, exactly one word in the raw scan differs from the
+post-wipe (or pre-write) snapshot and that word differs from the
+plaintext; that word sits at a different index than the logical one,
 proving the address tweak; the same plaintext under a different key stores
 a different word, proving the scrambler is actually keyed; and after the
 key lock the key register reads back zero while the round-trip still
 recovers the plaintext, which is the security contract of the lock.
 
-Anti-vacuity control:: requiring *exactly one* non-zero word in the raw
-scan is what makes the confidentiality claim real. A write that never
-landed gives zero non-zero words and fails; a read path stuck at zero
-gives zero and fails. A bare "stored differs from plaintext" check would
-pass in both cases. Round-trip is a required conjunct, so a scrambler that
+Anti-vacuity control:: requiring exactly one *new* differing word versus
+the snapshot is what makes the confidentiality claim real. A write that
+never landed gives zero diffs and fails; a read path stuck at zero gives
+zero and fails. A bare "stored differs from plaintext" check would pass in
+both cases, and a Verilator X-to-zero default would pass a dirty file that
+was never written. Round-trip is a required conjunct, so a scrambler that
 destroys data cannot pass by looking scrambled. The plaintext is chosen
 with mixed nibbles because the substitution is nibble-wise and a uniform
 value would weaken the difference signal.
 
 Not claimed here:: the eraser's use of the shared scrambler, the seal and
-retire contracts already owned by the vault test, and key wipe.
-
-=== Extension: sep_crypto_per_ip_reset_isolation_test
-
-`sep_crypto_axi_isolate` sits between the crypto demux and the four engine
-wrappers, and each wrapper's reset is the isolate's gated output — so the
-existing test already drives its state machine on every reset pulse. The
-block is unproven, not unactivated: nothing is checked during the window.
-The pulse already holds reset for a fixed span with no bus traffic, and
-that dead time is the isolation window.
-
-Checkers (planned):: during the window a read and a write to the resetting
-engine are refused rather than served or hung; the reset request is
-confirmed to have landed in the register, so a refusal cannot be blamed on
-a write that never took; a sibling engine answers normally in the same
-window, proving isolation is port-scoped; the port reopens after release;
-and the engine's registers read their reset defaults afterwards.
-
-Anti-vacuity control:: the same address, from the same driver, in the same
-run, must answer OKAY before the request, refused during it, and OKAY
-again after release. An unmapped or permanently dead address cannot
-produce that sequence. The pre-window read also returns the engine's live
-result, which is already value-checked against an independent golden, so
-"the engine was alive at that address" is established rather than assumed.
-
-Not claimed, and recorded as such:: the drain-before-reset ordering. The
-AXI agent issues one blocking single-beat transaction at a time, so no
-transaction can be left outstanding when the request is asserted; a
-long-running crypto operation does not help, because the isolate counts
-outstanding bus transactions rather than engine busyness, and there is no
-second master on the crypto demux. The properties inside the unit that
-would show the ordering are compiled out under the acceptance simulator.
-Closing this needs a non-blocking mode in the AXI agent or a simulator
-where those properties are live — both separate work. Do not reach for a
-`force` to manufacture the observation.
-
-If an in-window access hangs instead of being refused, that is the fabric
-stall this block exists to prevent. File it; do not relax the checker.
+retire contracts already owned by the vault test, and the wipe security
+contract.
 
 [[phase3-dump]]
 == Names deferred to Phase 3
@@ -4018,7 +4298,9 @@ worklist and not committed Phase 3 scope. Do not grade them here.
 | Latch-timing corner of a proven stitch strap
 
 | `sep_efuse_uvm_permission_matrix_test`
-| Permission-neg × `secure_tm` product
+| Permission-neg × `secure_tm` product. Locked-field IRQ delivery on both
+  flavours of one spare is Phase 2++
+  `sep_locked_field_access_irq_path_test`, not this matrix.
 
 | `sep_efuse_uvm_shadow_permission_neg_test`
 | Shadow permission negative
@@ -4038,9 +4320,6 @@ worklist and not committed Phase 3 scope. Do not grade them here.
 | `sep_lcc_uvm_screening_vs_diagnostic_test`
 | Lifecycle flavour permutation
 
-| `sep_locked_field_access_irq_path_test`
-| Locked-field IRQ path
-
 | `sep_outbound_source_id_policy_test`
 | Outbound source-ID policy matrix
 
@@ -4056,8 +4335,32 @@ worklist and not committed Phase 3 scope. Do not grade them here.
 | AES CTR DECRYPT opcode
 | Corner of the 9-cell AES row (CTR today re-runs ENCRYPT)
 
-| Entropy pool FIFO drain / watermark / stall
-| Corner of the proven mux-leg [2] consume path (`0x1095_0000`)
+| ABR ML-DSA sign / verify
+| Slice of the Phase 2++ keyGen activation; a green keyGen does not close
+  it. UVM bench.
+
+| ABR ML-KEM-1024
+| No engine driver in `sep_crypto_abr_wrapper.sv`; lanes are stimulus-only
+  today. UVM bench.
+
+| ABR key-vault seed path
+| Key CSR block is a DV stub tying every share to zero. UVM bench, and
+  only after that stub is no longer the build.
+
+| Entropy pool drain-under-fill / stall-duration
+| Races and duration/recovery of the Phase 2++ aperture. First SLVERR
+  empty-pop, first `[36]` / `[37]` assert/clear, and write/unmapped SLVERR
+  are `sep_entropy_pool_aperture_test`, not this row.
+
+| Isolate drain-before-reset
+| Outstanding-transaction drain inside `sep_crypto_axi_isolate`. The
+  in-window DECERR extend is Phase 2++; this slice needs a non-blocking
+  AXI agent or live unit properties. UVM bench.
+
+| Locked-field CPU PIC / ISR
+| PIC claim, masking, and ISR entry of `sep_internal_interrupts[33]`.
+  Generate-and-deassert on the aggregator is Phase 2++
+  `sep_locked_field_access_irq_path_test`.
 
 | Health tests / ring oscillator
 | Entropy-quality / real-noise HT; entropy IP testbench, not SEP iconic consume
@@ -4069,19 +4372,23 @@ worklist and not committed Phase 3 scope. Do not grade them here.
 | Negative-path matrix; iconic inbound is allow vs block-by-default
 |===
 
-A name that is implemented must be promoted to a graded <<entries>> row.
-Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
+A name implemented in a SEP-owned testlist must have a `=== sep_*` heading in
+this plan or in Phase 1. Leaving it only in <<compress>> or
+<<phase3-dump>> is ledger drift. Production Boot ROM firmware names in
+`rom_fw.toml` are <<rom-fw-out-of-scope>>.
 
 
 == Audit summary
 
-32 testcases, 72 steps, 179 checkers.
+This document: 41 testcases, 73 steps, 227 checkers.
+Both plans (`python3 docs/tools/verify_plan_proofs.py`): 72 graded names,
+72 implemented in testlists, 0 implemented but ungraded.
 
 [cols="2,1",options="header"]
 |===
 | Grade | Count
 
-| `PROVEN` | 176
+| `PROVEN` | 224
 | `PARTIAL` | 0
 | `GUARD` | 0
 | `INSUFFICIENT-EVIDENCE` | 0
@@ -4090,7 +4397,7 @@ Leaving it only in <<compress>> or <<phase3-dump>> is ledger drift.
 | `FAILED` | 3
 |===
 
-Three `FAILED` checkers, all RTL vs spec, none XFAILed:
+Three `FAILED` checkers, none XFAILed:
 
 * CHK-OWNERSHIP-WINDOW: after entry 1 allow-lists the filter CFG
   address, the external master returns OKAY (Verilator
@@ -4098,11 +4405,13 @@ Three `FAILED` checkers, all RTL vs spec, none XFAILed:
   SEP CPU can program these filters"),
   https://github.com/tenstorrent/tt-oca-harness/issues/1050
   CHK-OWNERSHIP without that window is `PROVEN` in the same log.
-* CHK-DEADSPACE-REFUSE and CHK-DEADSPACE-NO-ALIAS: 42 fail lines on 30
-  probes (22 accepted OKAY, 11 aliased a live register) (Verilator
-  `20260825_071309`). RTL wrap/alias,
+* CHK-DEADSPACE-REFUSE and CHK-DEADSPACE-NO-ALIAS: issue-228 anchors
+  still wrap onto live registers (`km_mailbox w 0x10920ff8`,
+  `secure_dma w 0x108008a8`). The accepted-OKAY and alias counts move
+  with the seed-selected probes; they are not frozen here. Newest fail
+  log is 19 accepted OKAY, not 22. RTL wrap/alias,
   https://github.com/tenstorrent/tt-oca-harness/issues/228
-  CHK-WINDOW-LIVE and CHK-RANDCFG are `PROVEN` in the same log.
+  CHK-WINDOW-LIVE and CHK-RANDCFG are `PROVEN` in the same logs.
 
 A keyword match against a kept log is not the proof. An independent audit still has
 to read the checker and confirm a broken DUT would fail it — a printed check tag with

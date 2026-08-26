@@ -132,3 +132,17 @@ timeout_sec = 1800
 tags = ["efuse", "lcc", "rma", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+[[tests]]
+# Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP:
+# write-lock and read-lock every seed. RANDCFG: which SPARE0..7 fields carry
+# write-lock, read-lock, and the unlocked contrast. Real fuse sense, LC_PROD.
+# Shadow aperture, not OTP program. Pulse-only combinational IRQ. no_cpu.
+name = "sep_locked_field_access_irq_path_test"
+module = "efuse.sep_locked_field_access_irq_path_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "interrupt", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"

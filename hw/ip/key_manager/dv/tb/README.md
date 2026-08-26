@@ -579,7 +579,7 @@ Tests under `dv/fw/tests/` are auto-discovered by the KM regression and must fol
 run inside the KM block-level cocotb testbench (`tb_key_manager.sv`).
 
 Files under `dv/fw/sep_images/` are KM ROM images intended for the **SEP UVM testbench**
-(`nonfree/hw/sys/sep/dv/tb/`), which loads them with `+KM_ROM_HEX_FILE`. They report to the
+(in the `nonfree/` companion), which loads them with `+KM_ROM_HEX_FILE`. They report to the
 SEP host over the hardware mailbox rather than through KMCSR registers, and they need a live
 SEP host (a UVM sequence driving the EL2 CPU) to drive or drain them — each one free-runs or
 parks in an infinite loop rather than ending on its own. That is why they sit outside

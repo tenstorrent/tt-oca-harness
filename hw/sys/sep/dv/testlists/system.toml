@@ -129,13 +129,33 @@ args = ["+skip_fuse_sense"]
 # HMAC SHA-256 DIGEST and AES ECB-256 DATA_OUT (the AES masking-PRNG reseed consumes the
 # entropy) -- then pulse one engine's SW_RESET_N (0x1080_3000, active-low) and prove the
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
-# clears; reverse the roles. Stateful crypto-result neighbor-survival a single-IP tb can't
-# see; complements `sep_reset_wdt_sanity_test`. no_cpu; +skip_fuse_sense (entropy/crypto independent of OTP lifecycle).
+# clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
+# address returns DECERR on read (HMAC CFG write also DECERR) while AES DATA_OUT_0 stays OKAY; after release
+# DIGEST_0 is OKAY at reset. Drain-before-reset is not claimed. no_cpu; +skip_fuse_sense
+# (entropy/crypto independent of OTP lifecycle).
 name = "sep_crypto_per_ip_reset_isolation_test"
 module = "system.sep_crypto_per_ip_reset_isolation_test"
 seed = 1
 timeout_sec = 3600
 tags = ["reset", "crypto", "isolation", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Entropy-pool 64-bit aperture at entropy_fifo.main. Empty pop SLVERR after an
+# accepted pop; status fifo_level / pool_err; irq-cause is {fill_stall,pool_low}
+# only; writes SLVERR; unmapped in-window SLVERR+RDATA=0; aggregator [36]
+# high-low-high and [37] first stall after ESRC disable for StallThresh.
+# RANDCFG: extra pops and one unique-dead offset from the run seed; every
+# seed walks the high-bit mirrors of the live registers. Drain-under-fill
+# and stall-duration are not claimed. no_cpu; +skip_fuse_sense +esrc_noise_force.
+name = "sep_entropy_pool_aperture_test"
+module = "system.sep_entropy_pool_aperture_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["entropy", "pool", "interrupt", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]

@@ -31,6 +31,10 @@ async def ocah_axi_id_match_test(dut) -> None:
     seq = master.sequence
 
     n_ops = int(os.environ.get("OCAH_AXI_ID_MATCH_OPS", "12"))
+    if n_ops < 2:
+        raise ValueError(
+            f"OCAH_AXI_ID_MATCH_OPS must be >= 2 (ID-space corners); got {n_ops}"
+        )
     checked = 0
     log.info("start: %d randomized ops plus directed ID corners and a burst", n_ops)
 

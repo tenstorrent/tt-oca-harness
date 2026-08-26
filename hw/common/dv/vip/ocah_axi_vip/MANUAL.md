@@ -416,6 +416,15 @@ VIP layer; unused modules simply do not elaborate. Its contents:
   `cfg`; the commercial-override unit, same template contract as
   `ocah_jtag_master_env`).
 
+Commercial-VIP integration follows the Template Contract in the
+ocah_jtag_vip README: the open tree carries only the hooks (the opaque
+`vendor_cfg` extension, the `en_monitor` knob, the guarded
+`OCAH_AXI_VENDOR_IF` nest inside `ocah_axi_if`, and the factory-overridable
+env/agent classes above); the implementations live in the proprietary
+`nonfree/` companion repository, and the dependency is strictly one-way —
+the open tree never references companion paths and is complete without
+them.
+
 ### SV-UVM master sequence API
 
 `ocah_axi_master_sequence` is the SV twin of the cocotb

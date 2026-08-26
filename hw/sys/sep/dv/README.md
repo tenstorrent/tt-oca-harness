@@ -148,8 +148,13 @@ hw/sys/sep/dv/
 ├── docs/                # verification plans + env reference (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
-├── models/              # SEP-local SystemRDL: models/regs/sep_external.rdl
-│                        #   plus generated output under models/regs/gen/
+├── models/              # SEP-local SystemRDL: models/regs/sep_external.rdl is the
+│                        #   open stand-in that satisfies sep.rdl's sep_external
+│                        #   include -- eFuse SHIM control plus the execute-in-place
+│                        #   window. Excluded for OSS hygiene: proprietary IPs in
+│                        #   nonfree. Firmware includes the open C headers
+│                        #   (models/regs/gen/c/sep_external.h) via sep.h; the
+│                        #   SV addrmap package is the RTL build input.
 ├── shims/               # SEP-local behavioral sim-models (kept, accepted shims)
 │   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
 │   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)
