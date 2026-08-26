@@ -19,10 +19,9 @@ lifecycle, SPI). HMAC/KMAC fill their map window so they have no
 intra-window dead span here. Remap / filter arrays and scratch are
 owned elsewhere for live programming.
 
-Known-bad offsets from the RTL question
-https://github.com/tenstorrent/tt-oca-harness/issues/228 stay in the
-probe set every seed. The seed adds further dead offsets. Do not shrink
-the set to the addresses that already pass.
+Known wrap offsets that alias onto live registers stay in the probe set
+every seed. The seed adds further dead offsets. Do not shrink the set to
+the addresses that already pass.
 """
 
 from __future__ import annotations
@@ -179,7 +178,7 @@ def dead_windows() -> tuple[DeadWindow, ...]:
     )
 
 
-# (window name, addr, "r"|"w") — the #228 wrap set. Every seed probes all of them.
+# (window name, addr, "r"|"w") — known wrap anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("km_mailbox", 0x1092_0414, "w"),
     ("km_mailbox", 0x1092_0C04, "w"),

@@ -4,9 +4,7 @@
 /*
  * fabric_alias_wrap_maximum_intensity_test
  *
- * Goal: axi_alias_remap_wrap 39.13% -> 90%+ (needs 50.87% improvement) [critical]
  * Strategy: Maximum-intensity alias-wrap test; full module activation
- * Priority: third pass (critical - needs >50% improvement)
  *
  * Focus on max-intensity axi_alias_remap_wrap; activate all signals and paths
  */
@@ -599,7 +597,6 @@ static int test_wrap_edge_case_boundary_exhaustive(void) {
 
 int main(void) {
     printf("Alias Wrap Maximum Intensity Test\n");
-    printf("Goals: axi_alias_remap_wrap 39.13%% -> 90%%+ (needs 50.87%% improvement) [critical]\n");
     printf("Strategy: Maximum-intensity alias-wrap test; full module activation\n\n");
 
     // Initialize fabric system
@@ -640,7 +637,6 @@ int main(void) {
     }
 
     printf("\n=== ALIAS WRAP MAXIMUM INTENSITY TEST PASSED ===\n");
-    printf("Expected improvement: axi_alias_remap_wrap 39.13%% -> 90%%+ (50.87%% MASSIVE "
            "improvement!)\n");
     printf("This test provides the most critical coverage improvement for the entire fabric "
            "system.\n");
