@@ -140,18 +140,6 @@ module jtag_ptap
     output sep_otp_axil_req_t       axil_sep_otp_jtag_req_o,
     input  sep_otp_axil_resp_t      axil_sep_otp_jtag_resp_i
 );
-    // Tie off unused fields to satisfy lint
-    logic unused_feat_ctrl;
-    assign unused_feat_ctrl = ^{feat_ctrl_i.ap_trace,
-                                feat_ctrl_i.sip_debug,
-                                feat_ctrl_i.debug_reserved,
-                                feat_ctrl_i.sep_stest,
-                                feat_ctrl_i.sep_dtest,
-                                feat_ctrl_i.ap_stest,
-                                feat_ctrl_i.ap_dtest,
-                                feat_ctrl_i.test_reserved,
-                                feat_ctrl_i.func_reserved};
-
     //--------------------------------------------------------------------------
     // Internal Signals
     //--------------------------------------------------------------------------
