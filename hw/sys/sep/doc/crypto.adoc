@@ -277,9 +277,9 @@ one per sink domain:
   fan-out;
 * endpoint `[2]` feeds the fabric-level entropy-pool FIFO (`u_entropy_fifo` in
   `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates two
-  dedicated interrupts: SEP IRQ 36 (`entropy_pool_low`, pool level below
-  watermark) and IRQ 37 (`entropy_pool_fill_stall`, fill path not making
-  progress).
+  dedicated interrupts: PIC source 37 (`entropy_pool_low`, pool level below
+  watermark) and source 38 (`entropy_pool_fill_stall`, fill path not making
+  progress). See <<sep-cpu-interrupt-vector-map>>.
 
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so
