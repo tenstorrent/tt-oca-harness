@@ -24,4 +24,4 @@ localparam longint unsigned AON_TIMER_INTR_TEST_BASE_ADDR = 64'h30;
 localparam longint unsigned AON_TIMER_WKUP_CAUSE_BASE_ADDR = 64'h34;
 
 
-endpackage;
+endpackage

@@ -14,4 +14,4 @@ endfunction
 localparam longint unsigned I2C_CTRL_I2C_CTRL_NUM = 64'h3;
 
 
-endpackage;
+endpackage

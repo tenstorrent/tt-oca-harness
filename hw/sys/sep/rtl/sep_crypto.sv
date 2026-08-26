@@ -610,6 +610,31 @@ module sep_crypto #(
     end
 `endif
 
+    // Break the B-channel combinational loop between the sep_crypto demux's
+    // round-robin B arbiter and the VeeR axi4_to_ahb bridge inside the ABR wrapper.
+    
+    sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_cut;
+    sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_resp_cut;
+
+    axi_cut #(
+        .Bypass     (1'b1),   // AW/W/AR/R: combinational passthrough
+        .BypassB    (1'b0),   // B: registered - this is what cuts the loop
+        .aw_chan_t  (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+        .w_chan_t   (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+        .b_chan_t   (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+        .ar_chan_t  (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+        .r_chan_t   (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+        .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+        .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t)
+    ) u_abr_b_cut (
+        .clk_i,
+        .rst_ni     (sep_reset_ni),
+        .slv_req_i  (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiAbr]),
+        .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
+        .mst_req_o  (abr_axi_req_cut),
+        .mst_resp_i (abr_axi_resp_cut)
+    );
+
     // Same package parameters feed the ABR SRAM instances in sep_ip_integration;
     // abr_top and its memories must be configured identically.
     sep_crypto_abr_wrapper #(
@@ -618,9 +643,10 @@ module sep_crypto #(
     ) u_sep_crypto_abr_wrapper_s3c_scan (
         .clk_i,
         .rst_ni                (sep_reset_ni),
-        // Control/status path: ABR AXI aperture off the sep_crypto demux
-        .abr_axi_req_i         (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiAbr]),
-        .abr_axi_resp_o        (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
+        // Control/status path: ABR AXI aperture off the sep_crypto demux, via the
+        // B-channel cut above.
+        .abr_axi_req_i         (abr_axi_req_cut),
+        .abr_axi_resp_o        (abr_axi_resp_cut),
         // Key path: KM private AXI4-Lite key bus (CSR block lives in the wrapper)
         .abr_key_axil_req_i    (abr_key_axil_req),
         .abr_key_axil_resp_o   (abr_key_axil_resp),
@@ -1363,7 +1389,7 @@ module sep_crypto #(
         .SRAM_SIZE_BYTES      (32768),
         .MAILBOX_DEPTH        (16),
         .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
-        .OTP_EFUSE_REMAP_BASE (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)
+        .OTP_EFUSE_REMAP_BASE (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
     ) u_key_manager_s3c_scan (
         .clk_i              (clk_i),
         // Cold reset: SEP system cold reset (AASD) resets the entire KM.
