@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Canonical reset recovery matrix sequence.
 
 This sequence compresses the reset-depth variants into one coverage-oriented

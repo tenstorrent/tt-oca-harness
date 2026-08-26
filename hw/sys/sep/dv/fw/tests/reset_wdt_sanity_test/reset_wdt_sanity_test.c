@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP reset-controller + WDT sanity firmware test (OSS port combining the OCAH
+// SEP reset-controller + WDT sanity firmware test (OSS port combining the reference suite
 // sep_reset_ctrl_csr_test and wdt_sanity_test). Two phases, one EL2 boot:
 //
 // PHASE A -- reset controller (sep_reset_ctrl):
@@ -23,8 +24,8 @@
 // All paths are internal to bare `sep`. A unified NMI handler serves both NMI
 // sources, distinguished by the WDT bark status bit (Phase A has the WDT
 // disabled, Phase B sets the bark bit). Checks accumulate into `errors`; main()
-// returns it (start.S emits PASS/FAIL magic). Mirrors the OCAH checking; PASS is
-// signalled by returning from main (OCAH calls test_pass()).
+// returns it (start.S emits PASS/FAIL magic). Mirrors the reference suite checking; PASS is
+// signalled by returning from main (reference suite calls test_pass()).
 
 #include <stdint.h>
 #include <stddef.h>
@@ -162,6 +163,7 @@ int main(void) {
     wdt_set_bark(WDT_BARK_SIM);
     wdt_set_bite(WDT_BITE_SIM);
     wdt_enable();
+    sep_mbx_puts("STEP watchdog configured (small bark/bite thresholds) and enabled\n");
 
     // Wait for the 1st bark NMI (handler disables the WDT).
     int timeout = NMI_WAIT_ITERS;

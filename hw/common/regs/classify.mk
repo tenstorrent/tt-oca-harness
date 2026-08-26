@@ -27,12 +27,21 @@ OCAH_REG_PLACEHOLDER_BLOCKS ?= oca_i3c_wrap
 # Register RTL authored outside regblock: excluded from SV only, still docs + C header.
 # The vendored OpenTitan blocks (aes/hmac/kmac/otbn/csrng/edn/secure_dma/
 # spi_controller/aon_timer) get their reg RTL from upstream reggen, not peakrdl.
+# efuse_bank is simulation-only and its committed RTL carries a hand edit the
+# generator cannot express; the file itself documents it.
+# pll_wrap/pvt_wrap are free-tree DV register models (hw/sys/smc/dv/models/regs)
+# whose real RTL is the vendor PLL/PVT IP, not regblock: only their addrmap_pkg is
+# committed. The nonfree overlay also lists them (EXTRA below), but they must be in
+# the free base too so the peakrdl-only regen-diff gate -- which never reads nonfree
+# -- is self-consistent and does not emit uncommitted <blk>_reg[_pkg].sv.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
-  el2_pic aon_timer dfd smc_cla dma_ctrl
+  el2_pic aon_timer dfd smc_cla dma_ctrl \
+  efuse_bank \
+  pll_wrap pvt_wrap
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
@@ -45,9 +54,18 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 # are listed by block id, because a name is not unique -- efuse_shim_ctrl is both
 # the open DV placeholder and the Samsung shim that shadows it, and only the
 # latter gets a RAL.
+#
+# aes/hmac/kmac/otbn/aon_timer/secure_dma and efuse_mmr are RAL leaves, not
+# sub-blocks: they are homed at the vendored overlay (or hw/ip/efuse), not in the
+# SEP blocks/ tree, so the composite glob does not see them. As leaves they emit
+# their RAL at that home -- as csrng/edn do -- and the SEP DV testbench includes
+# each by bare name via a +incdir on it. Sub-blocks below have no other home.
+#
+# spi_controller is a composite sub-block homed in blocks/: its vendored overlay
+# RDL describes a different, newer spi_host layout than the spi_controller_reg_pkg.sv
+# the SEP DUT instantiates, so the DUT-matching blocks/ copy is the generated one.
 OCAH_REG_RAL_SUB_BLOCKS ?= \
-  aes hmac kmac otbn aon_timer secure_dma spi_controller \
-  sep_efuse_map efuse_mmr \
+  sep_efuse_map spi_controller \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
 OCAH_REG_RAL_LEAF_BLOCKS ?= \
   hw/common/axi/axi_alias_remap/regs/alias_remap \
@@ -55,10 +73,17 @@ OCAH_REG_RAL_LEAF_BLOCKS ?= \
   hw/common/axi/output_remap \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap \
   hw/ip/efuse/regs/efuse_interface_ctrl \
+  hw/ip/efuse/regs/efuse_mmr \
   hw/ip/entropy_source \
   hw/ip/key_manager/regs/km_mailbox_sep \
+  vendor/lowRISC/opentitan/overlay/regs/aes \
+  vendor/lowRISC/opentitan/overlay/regs/aon_timer \
   vendor/lowRISC/opentitan/overlay/regs/csrng \
-  vendor/lowRISC/opentitan/overlay/regs/edn
+  vendor/lowRISC/opentitan/overlay/regs/edn \
+  vendor/lowRISC/opentitan/overlay/regs/hmac \
+  vendor/lowRISC/opentitan/overlay/regs/kmac \
+  vendor/lowRISC/opentitan/overlay/regs/otbn \
+  vendor/lowRISC/opentitan/overlay/regs/secure_dma
 # Overlay append hooks (the nonfree vendor shim blocks the SEP TB drives).
 OCAH_REG_RAL_SUB_BLOCKS += $(OCAH_REG_RAL_SUB_BLOCKS_EXTRA)
 OCAH_REG_RAL_LEAF_BLOCKS += $(OCAH_REG_RAL_LEAF_BLOCKS_EXTRA)
@@ -108,12 +133,17 @@ OCAH_REG_COMPOSITE_BLOCK_IDS := $(foreach block,$(OCAH_REG_BLOCKS),$(if $(call o
 OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(OCAH_REG_BLOCKS))
 
 # Tops that get the shared catalog on their -I path: composite tops, plus plain
-# wrapper/top RDLs that include sibling blocks by bare filename.
+# wrapper/top RDLs that include sibling blocks by bare filename. The relocated
+# OpenTitan overlay blocks hmac/kmac/otbn (like edn) pull the shared
+# opentitan_udps.rdl fragment by bare include, so they need the catalog too.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   edn \
+  hmac \
   i2c_wrap \
   key_manager \
+  kmac \
   oca_i3c_wrap \
+  otbn \
   sep_external \
   smc \
   telemetry_receiver_wrap \

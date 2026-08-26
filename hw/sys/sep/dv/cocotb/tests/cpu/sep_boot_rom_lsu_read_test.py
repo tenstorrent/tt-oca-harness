@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP boot-ROM LSU data-read + write-ignored test (PyUVM).
 
-Memory-subsystem Phase-2 rep boot-ROM LSU read. OCAH provenance: uvm_tests/rom
+Memory-subsystem Phase-2 rep boot-ROM LSU read. reference provenance: uvm_tests/rom
 sep_rom_uvm_basic_read / sequential_read / content_verify / addr_boundary /
 write_ignore. Boots the VeeR EL2 core and runs the rom_lsu_read firmware, which
 does CPU LSU data loads from the boot ROM (0x1004_0000, on the dedicated

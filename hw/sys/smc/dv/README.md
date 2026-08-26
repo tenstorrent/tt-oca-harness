@@ -3,17 +3,17 @@
 
 Open-source DV environment for the SMC (System Management Controller) subsystem.
 Flow = cocotb/PyUVM on Verilator (functional backend) and VCS/Xcelium (coverage),
-driven by `tools/dv/run_dv.py`. See `docs/ref_test_dev.md` for test development,
-`docs/SMC_VPLAN.adoc` for the verification plan, `docs/oss_smc_dev.md` for the
-porting plan, and `docs/smc_oss_execution_guide.md` for run recipes and recorded
-sign-off evidence.
+driven by `tools/dv/run_dv.py`. See `docs/index.adoc` for the chapter set:
+`docs/SMC_TB_ARCH.adoc` for test development, environment setup and run
+recipes, `docs/SMC_VPLAN.adoc` for the verification plan, the porting plan and
+the recorded sign-off evidence, and `docs/SMC_FCOV.adoc` for the coverage
+pipeline.
 
 **Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
 demos (e.g. hardcoded DFD capture token) belong in `testlists/deferred.toml`
 — not reportable as feature PASS. Green `smc_i3c_to_fabric_test` is
-**stub-signature only** (fabric → `i3ccore_stub` SLVERR). Checklist:
-[`../doc/dv_hack_cleanup_checklist.md`](../doc/dv_hack_cleanup_checklist.md).
+**decode only** (fabric → real OCA core `HCI_VERSION`). Checklist:
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
 call sites need a one-line rationale comment at the call (what hangs without
@@ -22,15 +22,15 @@ cluster helpers — do not add silently in PRs.
 
 ## Single DUT
 
-**Launch entry: `--dut smc_wrapper`** (registered in
-`hw/common/dv/configs/duts.toml`). `tb/tb_top.sv` (`smc_uvm_top`) instantiates
-`hw/top/smc_wrapper.sv` (`smc` + `smc_ip_integration` + `smc_cpu_mem_integration`).
-Bare `--dut smc` is not supported.
+**Launch entry: `--dut smc`** (discovered by the runner's directory
+convention from `smc_sim_cfg.toml`). `tb/tb_top.sv` (`smc_uvm_top`) instantiates
+`hw/top/smc_wrapper.sv` (`smc` + `smc_ip_integration` + `smc_cpu_mem_integration`),
+so the bare DUT name selects the wrapper-based TB.
 
 | | |
 |---|---|
-| select | `--dut smc_wrapper` |
-| config | `smc_wrapper_sim_cfg.toml` |
+| select | `--dut smc` |
+| config | `smc_sim_cfg.toml` |
 | TB top | `smc_uvm_top` (`tb/tb_top.sv`) |
 | DUT | `smc_wrapper` |
 | cocotb | `cocotb/` (`SmcEnv`) |
@@ -60,7 +60,7 @@ hw/sys/smc/dv/
 ├── testlists/
 ├── assets/
 ├── docs/                   # VPLAN, test-development, porting, execution guides
-└── smc_wrapper_sim_cfg.toml
+└── smc_sim_cfg.toml
 ```
 
 ## Run
@@ -68,9 +68,9 @@ hw/sys/smc/dv/
 ```bash
 module load verilator/5.050 gcc/13.2.1   # C++20 for cocotb -fcoroutines; 5.050 fixes bad C++ init of nested unpacked structs seen with 5.046
 PY=tools/dv/run_dv.py
-python3 $PY --dut smc_wrapper --items smoke --tool verilator
-python3 $PY --dut smc_wrapper --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim
-python3 $PY --dut smc_wrapper --items all --stage sim --regress
+python3 $PY --dut smc --items smoke --tool verilator
+python3 $PY --dut smc --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim
+python3 $PY --dut smc --items all --stage sim --regress
 ```
 
 PASS/FAIL is classified by the global parser registry

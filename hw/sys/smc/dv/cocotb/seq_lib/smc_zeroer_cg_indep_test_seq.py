@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_ZEROER_CG_INDEP_TEST ANCHOR: smc_zeroer_cg_indep_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 46ad998bc85c45be9ff0180d25267976c65047f0d983dec945caf0e9eebee833
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 3 ENV: cocotb
 """
 
 from __future__ import annotations
+
+import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
@@ -17,7 +18,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 # hyst=0 so register-idle gate-off can open while axi busy is still high.
 HYST = 0

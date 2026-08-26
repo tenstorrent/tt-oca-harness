@@ -16,7 +16,9 @@ distinct buses:
 The subsystem’s hardware components are modified versions of the
 OpenTitan components and the firmware is also based on the
 https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan
-cryptographic library].
+cryptographic library]. Generated PeakRDL maps for the Key Manager,
+entropy source, and the other crypto CSRs are included in
+<<sep-detailed-register-map>>.
 
 The primary modifications to the hardware is the separation of the key
 and data bus interfaces and the switch from TL-UL interface protocol to
@@ -75,8 +77,10 @@ key through the `hmac_wrapper_key_reg` block, which maps directly to the
 `err`), and an `idle_o` status output. Unlike the other crypto wrappers, HMAC
 has no EDN connection.
 
-For the full HMAC theory of operation and register map, refer to the
-https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC documentation].
+Consult the
+https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC
+documentation] for the authoritative core functionality of the IP. The
+register map is reported in <<sep-detailed-register-map>>.
 
 [[otbn-pka-public-key-accelerator]]
 ==== OTBN PKA Public Key Accelerator
@@ -139,10 +143,10 @@ handshake is tied to fixed values. Life-cycle escalation and RMA request
 signals are tied to their inactive state. OTBN occupies alert indices [2:1] in
 the crypto aggregation and exports a single `intr_done_o` interrupt.
 
-For the full OTBN theory of operation, instruction set, and register map, refer
-to the
+Consult the
 https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN
-documentation].
+documentation] for the authoritative core functionality of the IP. The
+register map is reported in <<sep-detailed-register-map>>.
 
 [[aes-cipher]]
 ==== AES Cipher
@@ -180,8 +184,10 @@ both the main and shadow reset domains. Life-cycle escalation is tied to its
 inactive state. AES occupies alert indices [4:3] in the crypto aggregation and
 exports an `idle_o` status output but no interrupt.
 
-For the full AES theory of operation, modes, and register map, refer to the
-https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES documentation].
+Consult the
+https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES
+documentation] for the authoritative core functionality of the IP. The
+register map is reported in <<sep-detailed-register-map>>.
 
 [[kmac-sha3]]
 ==== KMAC-SHA3
@@ -207,8 +213,10 @@ KMAC hardware application path. Life-cycle escalation is inactive. KMAC
 occupies alert indices [6:5] in the crypto aggregation and exports three
 interrupts: `done`, `fifo_empty`, and `err`.
 
-For the full KMAC theory of operation and register map, refer to the
-https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC documentation].
+Consult the
+https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC
+documentation] for the authoritative core functionality of the IP. The
+register map is reported in <<sep-detailed-register-map>>.
 
 [[true-random-number-generator-trng-true-random-number-generator-trng]]
 ==== True Random Number Generator (TRNG)
@@ -257,8 +265,8 @@ In OCAH the whitened entropy stream from the noise source is not routed
 directly to the cryptographic accelerators. Instead it seeds the DRBG,
 and the post-CSRNG output of the DRBG (NIST SP 800-90A; HMAC-SHA2 or
 AES-CTR construction) is what fans out to the rest of the crypto
-subsystem. The DRBG exposes two AXI-Stream EDN endpoints
-(`u_drbg_s3c_scan.edn_axis_o[1:0]`) that carry conditioned, DRBG-generated bits,
+subsystem. The DRBG exposes three AXI-Stream EDN endpoints
+(`u_drbg_s3c_scan.edn_axis_o[2:0]`) that carry conditioned, DRBG-generated bits,
 one per sink domain:
 
 * endpoint `[0]` feeds the Key Manager sink domain;
@@ -266,7 +274,12 @@ one per sink domain:
   (AES, KMAC, OTBN edn_rnd, OTBN edn_urnd) through
   `u_axis_edn_crypto_s3c_scan` — the `drbg_axis_edn_adapter` that converts the
   32-bit AXI-Stream feed into a small round-robin native-protocol EDN
-  fan-out.
+  fan-out;
+* endpoint `[2]` feeds the fabric-level entropy-pool FIFO (`u_entropy_fifo` in
+  `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates two
+  dedicated interrupts: SEP IRQ 36 (`entropy_pool_low`, pool level below
+  watermark) and IRQ 37 (`entropy_pool_fill_stall`, fill path not making
+  progress).
 
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so

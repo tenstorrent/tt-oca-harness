@@ -16,8 +16,6 @@
  * - Multiple message sequence
  * - IRQ enable gating
  *
- * Requirements: FR-0000-042 through FR-0000-058, User Story 1
- *
  * Run with:
  *   make run_fw FW_TEST=test_mailbox_sep_to_km
  */

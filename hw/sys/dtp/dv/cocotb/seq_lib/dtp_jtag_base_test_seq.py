@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG-focused base sequence helpers for DTP tests."""
 
 from __future__ import annotations
@@ -8,12 +9,21 @@ import random
 from env.dtp_scan_model import DtpScanModel
 from env.dtp_tap_device import DTP_BSR_MODEL_LEN
 from env.dtp_types import DtpJtagInstr, DtpTapFsm, DtpTapState
+from ocah_jtag_vip import OcahJtagChecker
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
 
 class dtp_jtag_base_test_seq(dtp_base_test_seq):
     """Helpers for TAP FSM navigation, scan loopback, and BYPASS checks."""
+
+    # Optional shared-VIP checker; when attached, TAP resets and every raw TMS
+    # step also emit reference-model named evidence (issue tt-oca-hw#3296).
+    tap_checker: OcahJtagChecker | None = None
+
+    def attach_tap_checker(self, checker: OcahJtagChecker) -> None:
+        """Route TAP reset/state navigation through VIP reference-model evidence."""
+        self.tap_checker = checker
 
     def record_tap_state(self, observed: int, expected: DtpTapState) -> None:
         """Check the observed DUT TAP state and record the visit."""
@@ -28,6 +38,8 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
     async def reset_to_tlr(self) -> None:
         """Drive the TAP to Test-Logic-Reset and check the observed state."""
         item = await self.reset_tap()
+        if self.tap_checker is not None:
+            self.tap_checker.check_reset_to_tlr(item.result)
         self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
 
     async def tms_expect(self, tms: int, expected: DtpTapState | None = None) -> None:
@@ -37,7 +49,23 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
                 raise RuntimeError("current TAP state is unknown; call reset_to_tlr() first")
             expected = DtpTapFsm.get_next_state(self.current_tap_state, tms)
         item = await self.tms_step(tms)
+        if self.tap_checker is not None:
+            self.tap_checker.check_state_step(tms, item.result)
         self.record_tap_state(item.result, expected)
+
+    async def load_ir(self, instr: DtpJtagInstr | int, *, back_to_rti: bool = True):
+        """Load a raw IR opcode, keeping the attached TAP checker in sync."""
+        item = await super().load_ir(instr, back_to_rti=back_to_rti)
+        if back_to_rti and self.tap_checker is not None:
+            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        return item
+
+    async def shift_dr(self, value: int, width: int, *, back_to_rti: bool = True):
+        """Shift raw DR data, keeping the attached TAP checker in sync."""
+        item = await super().shift_dr(value, width, back_to_rti=back_to_rti)
+        if back_to_rti and self.tap_checker is not None:
+            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        return item
 
     async def goto_run_test_idle(self) -> None:
         """Enter Run-Test/Idle from the current tracked TAP state."""

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP JTAG UVM agent.
 
 The UVM driver translates ``DtpJtagItem`` transactions into the unified OCAH
@@ -18,7 +19,7 @@ from pyuvm import (
     uvm_sequencer,
 )
 
-from ocah_jtag_vip import OcahJtagTap
+from ocah_jtag_vip import OcahJtagMasterDriver
 
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from .dtp_tap_device import DtpTapDevice
@@ -40,13 +41,13 @@ class DtpJtagDriver(uvm_driver):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
-        self.jtag: OcahJtagTap | None = None
+        self.jtag: OcahJtagMasterDriver | None = None
         self.tap_device = DtpTapDevice(idle_delay=self.cfg.idle_tck)
         self.dut = None
 
     async def run_phase(self) -> None:
         self.dut = cocotb.top
-        self.jtag = OcahJtagTap(
+        self.jtag = OcahJtagMasterDriver(
             self.dut,
             name="dtp_ptap",
             tck_period_ns=self.cfg.jtag_period_ns,
@@ -223,11 +224,17 @@ class DtpJtagDriver(uvm_driver):
             "jtag_ic_reset_ext_ovrd",
             "jtag_ic_reset_ext_ctrl_n",
             "xtrig_clk_stop_req",
-            "feat_ctrl_sip_debug",
-            "feat_ctrl_soc_debug",
-            "feat_ctrl_ap_debug",
-            "feat_ctrl_sep_debug",
-            "feat_ctrl_fuse_test",
+            "dbg_disable_stap_io",
+            "dbg_disable_stap_smc",
+            "dbg_disable_stap_sep",
+            "dbg_disable_stap_extra",
+            "dbg_disable_stap_host",
+            "dbg_disable_dft_secure",
+            "dbg_disable_dft_nonsecure",
+            "dbg_disable_dfd",
+            "dbg_disable_smc_jtag2axi",
+            "dbg_disable_smc_otp_jtag2axi",
+            "dbg_disable_sep_otp_jtag2axi",
             "smc_axi_awvalid_count",
             "smc_axi_wvalid_count",
             "smc_axi_arvalid_count",

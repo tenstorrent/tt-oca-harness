@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Lightweight Python-side FCOV counters for OSS SMU (SEP=0 P1/P2/P3).
 
 Verilator cannot compile SV covergroups; VCS can still use this as a
@@ -64,7 +65,8 @@ FCOV_BINS: dict[str, dict[str, set[str]]] = {
             "error_b2b",
             "abort_mid",
         },
-        "otp": {"map_complete", "sep0_err_slv", "partial_feat_deny"},
+        "otp": {"map_complete", "sep0_err_slv", "partial_feat_deny", "instr_scan"},
+        "jtag": {"chain_freq"},
         "csr": {"abs_hole", "hier_ctn", "cross_domain"},
     },
     "xtrig_cg": {
@@ -97,7 +99,7 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_smoke_test": [
         ("smc_boot_cg", "bringup", "cold_primary_release"),
     ],
-    "smc_reset_ctrl_test": [
+    "smu_smc_reset_ctrl_test": [
         ("smc_boot_cg", "bringup", "cold_primary_release"),
     ],
     "smu_sys_in_filter_program_jtag_test": [
@@ -152,9 +154,24 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("reg_access_cg", "outcome", "decerr_poison"),
         ("dtp_debug_cg", "jtag2axi", "error_path"),
     ],
+    "smu_dtp_jtag_smc_cpu_register_test": [
+        ("reg_access_cg", "path", "jtag2axi_fabric"),
+        ("reg_access_cg", "outcome", "success"),
+    ],
     "smu_dtp_otp_smc_complete_rw_test": [
         ("reg_access_cg", "path", "jtag2axi_otp"),
         ("dtp_debug_cg", "otp", "map_complete"),
+    ],
+    "smu_dtp_ptap_otp_instr_scan_test": [
+        ("reg_access_cg", "path", "jtag2axi_otp"),
+        ("dtp_debug_cg", "otp", "instr_scan"),
+    ],
+    "smu_jtag_chain_enhanced_test": [
+        ("dtp_debug_cg", "jtag", "chain_freq"),
+    ],
+    "smu_smc_mailbox_sanity_test": [
+        ("reg_access_cg", "path", "jtag2axi_fabric"),
+        ("reg_access_cg", "outcome", "success"),
     ],
     "smu_dtp_otp_sep0_err_slv_test": [
         ("dtp_debug_cg", "otp", "sep0_err_slv"),
@@ -251,7 +268,7 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("dtp_debug_cg", "jtag2axi", "security_gate"),
         ("reg_access_cg", "outcome", "gated_deny"),
     ],
-    "smc_wdt_timeout_irq_test": [
+    "smu_smc_wdt_timeout_irq_test": [
         ("wdt_cg", "timeout", "wdogip0"),
     ],
     "smc_reset_unit_wdt_scratch_test": [

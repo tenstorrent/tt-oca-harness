@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Sequence for smu_dtp_jtag_smoke_test (SMU_ALL_005 rev 9).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Sequence for smu_dtp_jtag_smoke_test (SMU_ALL_005).
 
 DV-CARD:          SMU_ALL_005   ANCHOR: smu_dtp_jtag_smoke_test
-DV-CARD-REVISION: 9   RECORD-SHA256: d1b60225e167bf1eae0232095647a37e7077704f340f2a4b37ad864fbc56f57d
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 9   ENV: cocotb
 
 Allocated (PTAP only):
   DTP-JTAG-PTAP.S1 — IDCODE instruction returns configured IDCODE fields
@@ -30,7 +29,7 @@ from seq_lib.smu_jtag_helpers import (
 
 
 class smu_dtp_jtag_smoke_test_seq:
-    """SMU_ALL_005 r9: PTAP IDCODE / BYPASS / TRST+POR → TLR."""
+    """SMU_ALL_005: PTAP IDCODE / BYPASS / TRST+POR → TLR."""
 
     BYPASS_PATTERN = 0xA5A5_A5A5
     BYPASS_WIDTH = 32

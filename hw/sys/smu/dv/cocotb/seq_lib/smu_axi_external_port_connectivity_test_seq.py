@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002 rev 4).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002).
 
 DV-CARD:          SMU_ALL_002   ANCHOR: smu_axi_external_port_connectivity_test
-DV-CARD-REVISION: 4   RECORD-SHA256: 61e6a1d6e4b3a7f36b116cea03e3071127257a88b50b87161c3dd4b5bc62cca6
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 4   ENV: cocotb
 
 Approved OWNS (card r4 / plan r3):
   SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via
@@ -18,6 +17,8 @@ SMU_ALL_008 — out of scope for this card.
 
 from __future__ import annotations
 
+import os
+import random
 import time
 
 import cocotb
@@ -37,12 +38,10 @@ SMC_FILTER_POISON_LO = 0xBADCAB1E
 
 
 class smu_axi_external_port_connectivity_test_seq:
-    """SMU_ALL_002 r4: SEP=0 inbound→SMC + direct IW converter elaboration."""
+    """SMU_ALL_002: SEP=0 inbound→SMC + direct IW converter elaboration."""
 
     # Authoritative map: smc_addr.h VERSION_LO (SMC local-alias aperture).
     IN_PROBE = SMC_CHIP_CONFIG_VERSION_LO
-    WRITE_ID = 0x42
-    READ_ID = 0x43
     # Finite bound enforced by with_timeout — must match logged TIMEOUT bound.
     AXI_TIMEOUT_NS = 200_000
     # Bounded waits: inbound write + inbound read (S2).
@@ -54,6 +53,15 @@ class smu_axi_external_port_connectivity_test_seq:
         self.cfg = test.cfg
         self._step_ts: dict[str, float] = {}
         self._timeout_paths: list[str] = []
+        seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(seed ^ 0xFAB_E001)
+        # 8-bit SMN IDs; keep write/read distinct for BID/RID match checkers.
+        self.WRITE_ID = rng.randint(1, 0xFE)
+        self.READ_ID = (self.WRITE_ID + 1 + rng.randint(0, 0x7F)) & 0xFF
+        if self.READ_ID == 0 or self.READ_ID == self.WRITE_ID:
+            self.READ_ID = (self.WRITE_ID ^ 0x55) or 0x43
+        self.wdata = rng.getrandbits(32)
+        self._seed = seed
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -195,7 +203,11 @@ class smu_axi_external_port_connectivity_test_seq:
             "COVERAGE SMU-PORT-SMN-AXI.S1 cells: dir=in dest=smc_aperture"
         )
 
-        wdata = 0xA5A5_5A5A
+        self._log(
+            f"SEED: {self._seed} WRITE_ID=0x{self.WRITE_ID:x} "
+            f"READ_ID=0x{self.READ_ID:x} wdata=0x{self.wdata:08x}"
+        )
+        wdata = self.wdata
         wresp, w_awid, w_bid = await self._axi_write_bounded(
             master, self.IN_PROBE, wdata, self.WRITE_ID
         )

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register metadata accessor over the generated SystemRDL Python header.
 
 Tests and sequences must NOT keep their own copies of register offsets, reset
@@ -36,8 +37,10 @@ Usage:
 
 from __future__ import annotations
 
+import importlib.util
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 # The generated header is not a package and is not on `python_paths`, so resolve it
@@ -71,22 +74,77 @@ _TYPE_ALIAS = {
 }
 
 
+def _default_type_keys() -> list[str]:
+    """Type prefixes that have a generated ``_REG_DEFAULT`` (cached)."""
+    keys = getattr(_default_type_keys, "_cache", None)
+    if keys is None:
+        keys = [
+            n[: -len("_REG_DEFAULT")]
+            for n in vars(sep_reg)
+            if n.endswith("_REG_DEFAULT")
+        ]
+        _default_type_keys._cache = keys
+    return keys
+
+
+def _normalize_inst_name(name: str) -> str:
+    """Drop trailing instance indices: ``SCRATCH_0_`` → ``SCRATCH``."""
+    body = name.rstrip("_")
+    body = re.sub(r"(?:_\d+)+$", "", body)
+    return body
+
+
 class RegBlock:
     """Metadata view of one generated register block (e.g. ``SEP_CPU_CTRL``)."""
 
     def __init__(self, block: str) -> None:
         self.block = block
 
+    def _type_key(self, name: str) -> str | None:
+        """Prefix for DEFAULT / field-struct when the instance reuses a type.
+
+        PeakRDL emits OFFSET/ADDR per instance and DEFAULT/struct once per
+        RDL type. ``WDT_TIMER.WKUP_CTRL`` therefore lives at
+        ``AON_TIMER_WKUP_CTRL_*``, and ``SEP_SCRATCH_COLD.SCRATCH_0_`` at
+        ``SEP_SCRATCH_SCRATCH_*``.
+        """
+        exact = f"{self.block}_{name}"
+        if hasattr(sep_reg, f"{exact}_REG_DEFAULT"):
+            return exact
+        if name in _TYPE_ALIAS:
+            alias = f"{self.block}_{_TYPE_ALIAS[name]}"
+            if hasattr(sep_reg, f"{alias}_REG_DEFAULT"):
+                return alias
+        norm = _normalize_inst_name(name)
+        hits = [
+            key for key in _default_type_keys()
+            if key.endswith("_" + norm) or key == norm
+        ]
+        if len(hits) == 1:
+            return hits[0]
+        if len(hits) > 1:
+            tokens = [t for t in self.block.split("_") if t and not t.isdigit()]
+            scored = [h for h in hits if any(tok in h for tok in tokens)]
+            if len(scored) == 1:
+                return scored[0]
+        return None
+
     def _sym(self, name: str, suffix: str, *, alias_ok: bool):
         key = f"{self.block}_{name}_{suffix}"
         value = getattr(sep_reg, key, None)
         if value is not None:
             return value
-        if alias_ok and name in _TYPE_ALIAS:
-            alias = _TYPE_ALIAS[name]
-            value = getattr(sep_reg, f"{self.block}_{alias}_{suffix}", None)
-            if value is not None:
-                return value
+        if alias_ok:
+            type_key = self._type_key(name)
+            if type_key is not None:
+                value = getattr(sep_reg, f"{type_key}_{suffix}", None)
+                if value is not None:
+                    return value
+            if name in _TYPE_ALIAS:
+                alias = _TYPE_ALIAS[name]
+                value = getattr(sep_reg, f"{self.block}_{alias}_{suffix}", None)
+                if value is not None:
+                    return value
         raise KeyError(
             f"{key} not found in the generated register header; regenerate "
             f"hw/sys/sep/regs/gen/py/sep_reg.py or add a _TYPE_ALIAS entry"
@@ -274,6 +332,164 @@ def ip_c_header(ip: str) -> Path:
 
 
 _HW_ROOT = Path(__file__).resolve().parents[5]
+_REPO_ROOT = Path(__file__).resolve().parents[6]
+
+
+@dataclass(frozen=True)
+class RegInfo:
+    """One generated register: address plus the two masks and the reset value."""
+
+    block: str
+    name: str
+    addr: int
+    reset: int
+    mask: int
+    mask_all: int
+
+    @property
+    def reserved(self) -> int:
+        """Bits inside storage but outside the software-usable field mask."""
+        return (self.mask_all & ~self.mask) & 0xFFFF_FFFF
+
+
+def block_names() -> list[str]:
+    """Every ``<BLOCK>_REG_MAP_BASE_ADDR`` in the generated SEP header.
+
+    Longest name first so a later prefix match cannot steal a nested block
+    (``AXIL_MAILBOX`` vs ``AXIL_MAILBOX_OUTBOUND_MAILBOX_0``).
+    """
+    names = [
+        n[: -len("_REG_MAP_BASE_ADDR")]
+        for n in vars(sep_reg)
+        if n.endswith("_REG_MAP_BASE_ADDR")
+    ]
+    names.sort(key=len, reverse=True)
+    return names
+
+
+def block_size(block: str) -> int:
+    """Allocated byte size of ``block`` from ``<BLOCK>_REG_MAP_SIZE``."""
+    key = f"{block}_REG_MAP_SIZE"
+    try:
+        return int(getattr(sep_reg, key))
+    except AttributeError as exc:
+        raise KeyError(
+            f"{key} not found in the generated register header "
+            f"({_GEN_PY}/sep_reg.py); regenerate it or check the block name"
+        ) from exc
+
+
+def _load_py_module(path: Path, name: str):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise FileNotFoundError(path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def ot_reg_map_size(ip: str) -> int:
+    """Allocated byte size of an OpenTitan / IP block not in the SEP header."""
+    if ip == "entropy_source":
+        path = _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py" / "entropy_source_reg.py"
+    else:
+        path = (
+            _REPO_ROOT / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs"
+            / ip / "regs" / "gen" / "py" / f"{ip}_reg.py"
+        )
+    module = _load_py_module(path, f"{ip}_reg")
+    key = f"{ip.upper()}_REG_MAP_SIZE"
+    try:
+        return int(getattr(module, key))
+    except AttributeError as exc:
+        raise KeyError(f"{key} not found in {path}") from exc
+
+
+def ot_reg_offsets(ip: str) -> list[tuple[str, int]]:
+    """``(name, offset)`` for every ``_REG_OFFSET`` in an OT / IP header."""
+    if ip == "entropy_source":
+        path = _HW_ROOT / "ip" / "entropy_source" / "regs" / "gen" / "py" / "entropy_source_reg.py"
+    else:
+        path = (
+            _REPO_ROOT / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs"
+            / ip / "regs" / "gen" / "py" / f"{ip}_reg.py"
+        )
+    module = _load_py_module(path, f"{ip}_reg_off")
+    out: list[tuple[str, int]] = []
+    for name, val in vars(module).items():
+        if name.endswith("_REG_OFFSET"):
+            out.append((name[: -len("_REG_OFFSET")], int(val)))
+    out.sort(key=lambda item: item[1])
+    return out
+
+
+def iter_registers() -> list[RegInfo]:
+    """Every generated SEP register that has an offset, address, and reset.
+
+    A register without ``_REG_DEFAULT`` (after ``_TYPE_ALIAS``) is skipped:
+    there is no source-derived reset to check. The sweep uses this list as
+    the single inventory — tests do not keep their own copies.
+    """
+    names = block_names()
+    found: list[RegInfo] = []
+    seen: set[tuple[str, str]] = set()
+    for sym_name, val in vars(sep_reg).items():
+        if not sym_name.endswith("_REG_OFFSET"):
+            continue
+        stem = sym_name[: -len("_REG_OFFSET")]
+        block = None
+        reg = None
+        for candidate in names:
+            prefix = candidate + "_"
+            if stem.startswith(prefix):
+                block = candidate
+                reg = stem[len(prefix):]
+                break
+        if block is None or (block, reg) in seen:
+            continue
+        seen.add((block, reg))
+        view = RegBlock(block)
+        try:
+            addr = view.addr(reg)
+            reset = view.reset32(reg)
+            mask = view.mask32(reg)
+            mask_all = view.mask32_all(reg)
+        except KeyError:
+            continue
+        found.append(RegInfo(block, reg, addr, reset, mask, mask_all))
+    found.sort(key=lambda info: (info.addr, info.block, info.name))
+    return found
+
+
+def iter_addrs() -> list[tuple[str, str, int]]:
+    """Every generated ``(block, name, addr)`` — DEFAULT is not required.
+
+    Used when a watch list needs the allocated addresses (dead-space
+    no-alias) even if the type default/struct is missing.
+    """
+    names = block_names()
+    found: list[tuple[str, str, int]] = []
+    seen: set[tuple[str, str]] = set()
+    for sym_name in vars(sep_reg):
+        if not sym_name.endswith("_REG_ADDR"):
+            continue
+        if sym_name.endswith("_REG_MAP_BASE_ADDR"):
+            continue
+        stem = sym_name[: -len("_REG_ADDR")]
+        block = None
+        reg = None
+        for candidate in names:
+            prefix = candidate + "_"
+            if stem.startswith(prefix):
+                block = candidate
+                reg = stem[len(prefix):]
+                break
+        if block is None or (block, reg) in seen:
+            continue
+        seen.add((block, reg))
+        found.append((block, reg, int(getattr(sep_reg, sym_name))))
+    found.sort(key=lambda item: (item[2], item[0], item[1]))
+    return found
 
 SEP_CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 ENTROPY_SOURCE = CHeaderRegBlock("ENTROPY_SOURCE", ip_c_header("entropy_source"))
@@ -364,6 +580,32 @@ def _selftest() -> int:
         pass
     else:
         failures.append("unknown register did not raise KeyError")
+
+    regs = iter_registers()
+    # Only registers with OFFSET+ADDR+DEFAULT (and a field struct) are
+    # sweepable. Array instances without a per-index DEFAULT are skipped
+    # on purpose rather than guessed.
+    if len(regs) < 100:
+        failures.append(f"iter_registers returned {len(regs)} entries; expected 100+")
+    by_key = {(info.block, info.name): info for info in regs}
+    nmi = by_key.get(("SEP_CPU_CTRL", "SEP_NMI_VEC"))
+    if nmi is None or nmi.addr != 0x10A3_0180 or nmi.reset != 0xC000_0100:
+        failures.append(f"iter_registers missed SEP_NMI_VEC: {nmi}")
+    scratch = by_key.get(("SEP_SCRATCH_COLD", "SCRATCH_0_"))
+    if scratch is None or scratch.addr != 0x1080_2000 or scratch.reset != 0:
+        failures.append(f"iter_registers missed scratch[0]: {scratch}")
+    filt = by_key.get(("INBOUND_FILTER_CTRL_0_", "FILTER_CONFIG"))
+    if filt is None or (filt.reset & 0xFFFF) != 0x3000:
+        failures.append(f"iter_registers missed inbound filter config: {filt}")
+    if block_size("KM_MAILBOX_SEP") != 0x1C:
+        failures.append(f"KM_MAILBOX_SEP size {hex(block_size('KM_MAILBOX_SEP'))} != 0x1c")
+    if ot_reg_map_size("csrng") != 0x60:
+        failures.append(f"csrng size {hex(ot_reg_map_size('csrng'))} != 0x60")
+    if ot_reg_map_size("edn") != 0x48:
+        failures.append(f"edn size {hex(ot_reg_map_size('edn'))} != 0x48")
+    if ot_reg_map_size("entropy_source") != 0x17C:
+        failures.append(
+            f"entropy_source size {hex(ot_reg_map_size('entropy_source'))} != 0x17c")
 
     if failures:
         for line in failures:

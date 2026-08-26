@@ -356,6 +356,10 @@
     color: #747467;
 }
 
+.hljs-built_in {
+    color: #006f93;
+}
+
 /* Stock sidebar nav-tree expand/collapse toggle: rendered at 20.9x20.9px,
    below the 24px WCAG 2.5.8 minimum target size. min-width/min-height
    (rather than a fixed size) only enlarges the box where it currently
@@ -418,12 +422,12 @@
 .footer .oca-footer-text a {
     color: #ffffff !important;
     font-family: var(--oca-font-body);
+    align-items: center;
     font-size: 0.95rem;
 }
 
 .footer .footer-tt-link {
     display: inline-flex;
-    align-items: center;
     text-decoration: none;
 }
 

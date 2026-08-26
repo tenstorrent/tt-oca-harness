@@ -4,9 +4,9 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file rom_persist.h
- * @brief ROM warm-persistent SRAM region (region 31, 0x7E00-0x7FFF).
+ * @brief ROM warm-persistent SRAM region (region 31, 0xFC00-0xFFFF).
  *
- * The highest 512 bytes of KM SRAM are reserved as a ROM-managed data structure
+ * The highest 1 KB of KM SRAM is reserved as a ROM-managed data structure
  * that survives warm reset. SRAM storage is cold-domain hardware, so contents
  * are physically preserved across any warm or soft reset; only a cold reset
  * (power-on) erases them. ROM cold-initializes this region exactly once per
@@ -16,11 +16,11 @@
  * state that must survive warm reset; it is NOT general-purpose scratch for
  * mutable (SRAM-loaded) firmware. Mutable firmware must not place its own data
  * here, and once ROM write-locks the region (see below) mutable firmware cannot
- * write it at all. The rest of SRAM (below 0x7E00) is the mutable-firmware load
+ * write it at all. The rest of SRAM (below 0xFC00) is the mutable-firmware load
  * area, stack, and BSS/data.
  *
  * The region is placed in the `.rom_persist` linker section, which is mapped
- * to `0x0000_7E00` (top of SRAM) as a NOLOAD section so it never appears in the
+ * to `0x0000_FC00` (top of SRAM) as a NOLOAD section so it never appears in the
  * ROM/VROM hex images.
  *
  * Before handing control to mutable (SRAM-loaded) firmware, the caller must
@@ -39,7 +39,7 @@ extern "C" {
 /**
  * @brief ROM warm-persistent data structure.
  *
- * Placed at the top of SRAM (0x0000_7E00) in the `.rom_persist` section.
+ * Placed at the top of SRAM (0x0000_FC00) in the `.rom_persist` section.
  * Cold-initialized to zero by rom_persist_cold_init(); preserved across
  * warm resets. Read and written only by ROM firmware.
  *
@@ -88,7 +88,7 @@ void rom_persist_set_sram_fw_size(uint32_t size);
  * @brief Write-lock SRAM region 31, protecting the warm-persist region.
  *
  * Sets SRAM_LOCK bit 31 (ROM_KM_PERSIST_LOCK_MASK) via a triple write for
- * glitch resistance. Once set, writes to 0x7E00-0x7FFF are silently dropped
+ * glitch resistance. Once set, writes to 0xFC00-0xFFFF are silently dropped
  * and trigger a SRAM_WRITE_LOCK_VIOLATION IRQ. The lock is cleared on the
  * next warm or cold reset, and ROM re-establishes it on every boot before
  * handing control to mutable firmware.

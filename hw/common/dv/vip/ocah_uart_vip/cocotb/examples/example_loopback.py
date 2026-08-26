@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 example_loopback.py — OcahUartConsole usage examples.
 
@@ -18,7 +18,8 @@ Assumptions
 - The DUT internally loops TXD back to RXD (loopback DUT or SMC console in
   echo mode).
 - Clock is started externally before these functions are called.
-- ``cocotbext-uart == 0.1.1`` is installed in the simulation Python environment.
+- No external UART library is needed; the package's native line engines
+  provide the backend.
 """
 
 import cocotb

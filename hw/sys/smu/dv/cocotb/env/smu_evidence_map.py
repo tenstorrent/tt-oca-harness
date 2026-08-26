@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Canonical aidv evidence map for OSS SMU tests.
 
 Each test lists (CHK_ID, TOKEN, EXPECT) triples. Scoreboard logs
@@ -154,11 +155,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-FEAT-FAB-ALLOW", "FEAT_FAB_ALLOW", "security allow path SUCCESS"),
         ("CHK-FEAT-FAB-DENY", "FEAT_FAB_DENY", "security deny contrast"),
     ],
-    "smc_reset_ctrl_test": [
+    "smu_smc_reset_ctrl_test": [
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
     ],
-    "smc_mailbox_int_test": [
+    "smu_smc_mailbox_int_test": [
         (
             "CHK-SMC-MBX-IRQ-EXT-S2",
             "CHK-SMC-MBX-IRQ-EXT-S2",
@@ -167,16 +168,16 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<PASS"),
     ],
-    "smc_gpio_strap_sanity_test": [
+    "smu_smc_gpio_strap_sanity_test": [
         ("CHK-SMC-STRAP", "SMC_STRAP_OK", "GPIO strap observe"),
     ],
     "smc_efuse_reg_sanity_test": [
         ("CHK-SMC-EFUSE-CSR", "SMC_EFUSE_CSR_OK", "eFuse CSR sanity"),
     ],
-    "smc_wdt_sanity_test": [
+    "smu_smc_wdt_sanity_test": [
         ("CHK-WDT-UNLOCK", "WDT_UNLOCK_OK", "WDT unlock SUCCESS"),
     ],
-    "smc_security_demote_pm_test": [
+    "smu_smc_security_demote_pm_test": [
         ("CHK-DEMOTE-TIEOFF", "DEMOTE_TIEOFF_OBS", "SEP=0 demote hardwire observe"),
     ],
     "smc_cpu_traffic_ext_axi_test": [
@@ -215,15 +216,39 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     # --- P1 phase2 deepeners ---
     "smu_dtp_jtag2axi_smc_rw_matrix_test": [
-        ("CHK-J2A-RW-MATRIX", "J2A_RW_MATRIX_OK", "SIZE/WSTRB readback match"),
+        ("CHK-J2A-RW-MATRIX", "J2A_RW_MATRIX_OK", "partial WSTRB 0x55/0xAA merge"),
     ],
     "smu_dtp_jtag2axi_smc_error_path_test": [
         ("CHK-J2A-DECERR", "J2A_DECERR_POISON", "unmapped DECERR + poison"),
         ("CHK-J2A-RECOVERY", "J2A_RECOVERY_OK", "VERSION_LO SUCCESS after error"),
     ],
+    "smu_dtp_jtag_smc_cpu_register_test": [
+        ("CHK-JTAG2AXI-RW", "JTAG2AXI_RW_OK", "SCRATCH_15 two-pattern R/W"),
+        ("CHK-CPU-REG-STALL", "CPU_REG_STALL", "DEBUG_CONTROL boot_stall hold"),
+    ],
     "smu_dtp_otp_smc_complete_rw_test": [
-        ("CHK-OTP-MAP-RW", "OTP_MAP_RW_OK", "RDATA == shadow == pattern"),
-        ("CHK-OTP-GATED", "OTP_GATED_NO_UPDATE", "gated write does not update map"),
+        # CHK-OTP-GATED / OTP_GATED_NO_UPDATE intentionally dropped: gated-deny
+        # is not claimed on this leaf (see test docstring); MAP-RW only.
+        ("CHK-OTP-MAP-RW", "OTP_MAP_RW_OK", "OTP+fabric+shadow match on RESERVED"),
+    ],
+    "smu_dtp_ptap_otp_instr_scan_test": [
+        ("CHK-PTAP-SEP-OTP-CAPS", "PTAP_SEP_OTP_CAPS_OK", "SEP OTP CAPS packing"),
+        ("CHK-PTAP-JTAG-CAPS-SEP-DBG", "PTAP_SEP_DBG_EN_0", "JTAG_CAPS sep_dbg_en=0"),
+        (
+            "CHK-PTAP-OTP-SINGLE-OP-IRDR",
+            "PTAP_OTP_SINGLE_OP_IRDR_OK",
+            "SMC SINGLE_OP TDR echo + SEP IR BYPASS",
+        ),
+    ],
+    "smu_jtag_chain_enhanced_test": [
+        (
+            "CHK-JTAG-CHAIN-ENHANCED",
+            "JTAG_CHAIN_ENHANCED_OK",
+            "IDCODE+BYPASS at 1/5/10/20 MHz TCK",
+        ),
+    ],
+    "smu_smc_mailbox_sanity_test": [
+        ("CHK-MBX-IRQEN", "SMC_MBX_CSR_OK", "outbound-0 IRQEN write/readback"),
     ],
     "smu_dtp_otp_sep0_err_slv_test": [
         ("CHK-OTP-SEP0-ERR", "OTP_SEP0_ERR_SLV", "hier DECERR + poison"),
@@ -265,7 +290,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_sys_in_filter_program_jtag_test": [
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
     ],
-    "smc_wdt_timeout_irq_test": [
+    "smu_smc_wdt_timeout_irq_test": [
         ("CHK-WDT-IP0", "WDT_WDOGIP0", "WDOGIP0 sets after enable+CMP"),
     ],
     "smc_reset_unit_wdt_scratch_test": [

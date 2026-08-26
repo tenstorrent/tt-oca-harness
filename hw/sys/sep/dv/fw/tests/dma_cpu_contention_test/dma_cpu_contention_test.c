@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP Secure-DMA vs CPU-LSU SRAM contention firmware test (OSS port of the OCAH
-// dma_cpu_contention_test). Interconnect edge E8: the Secure-DMA master and the
+// SEP Secure-DMA vs CPU-LSU SRAM contention firmware test (OSS port of the reference suite
+// dma_cpu_contention_test). The Secure-DMA master and the
 // CPU-LSU master concurrently drive the SEP-local AXI xbar to the shared SRAM
 // slave (0x1000_0000). The EL2 CPU kicks off a long SRAM->SRAM DMA copy, then
 // immediately runs its own store loop into a DISJOINT SRAM region while the DMA
@@ -12,16 +13,15 @@
 // The DMA copy is intentionally much larger than the CPU loop (2 KiB vs 256 B,
 // 8:1) so the DMA is provably still busy when the CPU loop finishes -- that
 // mid-flight STATUS read is the non-vacuity proof that the two streams really
-// overlapped. (Sizes are kept small enough that the Verilator sim finishes well
-// inside the regression timeout; the E8 contention proof needs the imbalance and
-// the overlap, not a large transfer -- OCAH's 16 KiB/1 KiB is overkill here.)
+// overlapped. Sizes stay small enough for the Verilator timeout; the 8:1
+// imbalance is what makes the mid-flight BUSY && !DONE sample a real overlap.
 //
 // Checks (every failure increments errors; main() returns it and start.S turns
 // 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
 //   * overlap (non-vacuity): mid-flight STATUS shows BUSY==1 && DONE==0;
 //   * the DMA reaches DONE with ERROR==0 and ERROR_CODE==0;
 //   * STATUS RW1C clear: W1C the DONE/CHUNK_DONE bits and read back 0 (AGENTS.md
-//     §7 -- the contract holds for polled status, not just ISR paths; OCAH does
+//     §7 -- the contract holds for polled status, not just ISR paths; reference suite does
 //     not clear, so this is a strengthening);
 //   * DMA data integrity: every copied dst word == the source pattern;
 //   * CPU data integrity: every CPU-written word == the CPU pattern (proves the
@@ -30,10 +30,9 @@
 //     reaches DONE (timeout FAIL) and a starved/corrupted CPU stream fails the
 //     CPU-integrity check.
 //
-// Polled, interrupt-free (mirrors OCAH): no PIC/ISR. The DMA clock is left as
-// dma_hash_test leaves it (dynamic gating clocks the CSRs on access); the global
-// MRAC from start.S makes the SRAM stores real fabric traffic, so the OCAH
-// per-test `csrw 0x7c0` region write is subsumed (same as the SPI/DMA ports).
+// Polled, interrupt-free: no PIC/ISR. DMA CSRs are dynamically clocked on
+// access; this test does not write CLOCK_GATE_CTRL. Side-effect region marking
+// is inherited from startup; this test does not write MRAC.
 
 #include <stdint.h>
 
@@ -59,6 +58,7 @@ int main(void) {
 
     sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
     sep_mbx_puts("SEP DMA/CPU contention test\n");
+    sep_mbx_puts("STEP side-effect region marking inherited from startup\n");
 
     volatile uint32_t *src = (volatile uint32_t *)DMA_SRC_ADDR;
     volatile uint32_t *dst = (volatile uint32_t *)DMA_DST_ADDR;
@@ -73,18 +73,21 @@ int main(void) {
         cont[i] = 0u;
     }
     __asm__ volatile("fence" ::: "memory");
+    sep_mbx_puts("STEP source seeded; DMA destination and CPU region cleared\n");
 
     // Kick off the long SRAM->SRAM copy (non-blocking), then immediately run the
     // CPU store loop into the disjoint region -- both masters now hit the SRAM.
     sep_dma_copy_start(DMA_SRC_ADDR, DMA_DST_ADDR, DMA_BYTES);
+    sep_mbx_puts("STEP DMA copy started (non-blocking)\n");
+    sep_mbx_puts("STEP CPU store loop entered\n");
     for (uint32_t i = 0; i < CONT_WORDS; i++) {
         cont[i] = CPU_SEED + i;
     }
     __asm__ volatile("fence" ::: "memory");
 
     // Non-vacuity: the DMA must still be in flight now (BUSY && !DONE).
-    uint32_t st_mid = sep_dma_rd(SEP_DMA_STATUS);
-    if (!((st_mid & SEP_DMA_STATUS_BUSY) && !(st_mid & SEP_DMA_STATUS_DONE))) {
+    uint32_t st_mid = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    if (!((st_mid & SECURE_DMA__STATUS__BUSY_bm) && !(st_mid & SECURE_DMA__STATUS__DONE_bm))) {
         sep_mbx_puts("FAIL: no overlap (DMA not busy mid-CPU-loop) STATUS=");
         sep_mbx_puthex(st_mid);
         sep_mbx_putc('\n');
@@ -95,18 +98,18 @@ int main(void) {
     uint32_t st = 0;
     int timeout = DMA_WAIT_ITERS;
     while (timeout-- > 0) {
-        st = sep_dma_rd(SEP_DMA_STATUS);
-        if (st & (SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_ERROR)) {
+        st = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        if (st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) {
             break;
         }
     }
-    uint32_t err_code = sep_dma_rd(SEP_DMA_ERROR_CODE);
-    if (st & SEP_DMA_STATUS_ERROR) {
+    uint32_t err_code = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (st & SECURE_DMA__STATUS__ERROR_bm) {
         sep_mbx_puts("FAIL: DMA error, ERROR_CODE=");
         sep_mbx_puthex(err_code);
         sep_mbx_putc('\n');
         errors++;
-    } else if (!(st & SEP_DMA_STATUS_DONE)) {
+    } else if (!(st & SECURE_DMA__STATUS__DONE_bm)) {
         sep_mbx_puts("FAIL: DMA never reached DONE (timeout)\n");
         errors++;
     } else if (err_code != 0u) {
@@ -116,10 +119,10 @@ int main(void) {
         errors++;
     } else {
         // STATUS RW1C clear contract (polled path still must prove it, §7).
-        uint32_t rw1c = SEP_DMA_STATUS_DONE | SEP_DMA_STATUS_CHUNK_DONE;
-        sep_dma_wr(SEP_DMA_STATUS, rw1c);
+        uint32_t rw1c = SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm;
+        sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, rw1c);
         __asm__ volatile("fence" ::: "memory");
-        uint32_t st_after = sep_dma_rd(SEP_DMA_STATUS);
+        uint32_t st_after = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (st_after & rw1c) {
             sep_mbx_puts("FAIL: DMA STATUS RW1C did not clear, STATUS=");
             sep_mbx_puthex(st_after);

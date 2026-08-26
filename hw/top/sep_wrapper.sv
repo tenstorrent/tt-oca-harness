@@ -29,7 +29,6 @@ module sep_wrapper
         input  logic dbg_rstb_i,
         input  logic wdt_rst_ni,
 
-        output logic sep_reset_n_o,
         output logic wdt_timer_rst_req_o,
 
         input  logic jtag_tck,
@@ -94,7 +93,7 @@ module sep_wrapper
         input  logic spi_irq_i,
 
         output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
-        output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
+        output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
         output logic lc_sigint_err_o,
         output logic security_disable_o,
 
@@ -139,9 +138,7 @@ module sep_wrapper
     sep_cpu_tcm_req_t sep_cpu_tcm_req;
     sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp;
 
-    logic sep_reset_n;
     logic wdt_timer_rst_req;
-    logic sep_cpu_reset_n; // sep_reset_n gated by WDT reset; drives sep_ip_integration's memories
 
     sep_crypto_pkg::abr_mem_req_t abr_mem_req;
     sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp;
@@ -171,7 +168,6 @@ module sep_wrapper
     sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req;
     sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp;
 
-    assign sep_reset_n_o        = sep_reset_n;
     assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
 
     /////////////////////
@@ -185,9 +181,9 @@ module sep_wrapper
     ) u_sep (
         .*,
 
-        .sep_reset_n_o       (sep_reset_n),
+
         .wdt_timer_rst_req_o (wdt_timer_rst_req),
-        .sep_cpu_reset_n_o   (sep_cpu_reset_n),
+
 
         .sep_cpu_tcm_req_o (sep_cpu_tcm_req),
         .sep_cpu_tcm_rsp_i (sep_cpu_tcm_rsp),
@@ -239,8 +235,6 @@ module sep_wrapper
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
 
-        .sep_cpu_reset_n_i (sep_cpu_reset_n),
-        .sep_reset_n_i     (sep_reset_n),
 
         .test_en_i (test_en_i),
 

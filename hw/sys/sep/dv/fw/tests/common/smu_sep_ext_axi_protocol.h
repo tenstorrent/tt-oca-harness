@@ -1,15 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_016  smu_sep_ext_axi_combined_probe_test  --  shared protocol contract.
+ * smu_sep_ext_axi_combined_probe_test  --  shared protocol contract.
  *
- * SINGLE SOURCE OF TRUTH, included by BOTH firmwares (the SEP outbound producer +
- * the SMC outbound producer) and parsed by the cocotb checker
- * (dv/smu/tb/tb_uvm/cocotb_tests/smu_sep_ext_axi_combined_probe_test.py) so DUT
- * stimulus and DV expectations can never drift.  Mirrors how
- * fw/smc/tests/smc_sep_xbar/src/smc_sep_xbar_protocol.h is shared + parsed
- * (smc_sep_xbar_test.py:_parse_protocol_header).  Every value is a plain
- * integer/hex #define so the Python parser can read it with a simple regex.
+ * Included by both firmwares (the SEP and SMC outbound producers) and parsed by
+ * the cocotb checker so DUT stimulus and DV expectations share one contract.
+ * Every value is a plain integer/hex #define for the Python parser.
  *
  * Test shape (four legal external legs + one blocked route + recovery):
  *   ext_in -> SMC aperture (route data 0x11223344 @ SMC scratch8)
@@ -106,7 +102,9 @@
 #define EXTAXI_SEP_GLOBAL_BASE 0x04000000 /* SEP_CPU_CTRL.SEP_GLOBAL_BASE_ADDR */
 /* Keep value on the same line as #define: cocotb parses this header with a
  * single-line regex (see smu_sep_ext_axi_combined_probe_test._parse_protocol_header). */
+// clang-format off
 #define EXTAXI_SEP_REGION_SIZE 0x11000000 /* SEP_CPU_CTRL.SEP_REGION_SIZE (covers local 0x10802040) */
+// clang-format on
 #define EXTAXI_SMC_GLOBAL_BASE 0x02000000 /* SMC_BASE_CONFIG.GLOBAL_BASE */
 #define EXTAXI_SMC_REGION_SIZE 0x01000000 /* SMC_BASE_CONFIG.REGION_SIZE */
 

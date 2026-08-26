@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Self-contained AES-256-ECB encryption golden for the KM->AES sideload KAT.
 
-Pure-Python (no third-party crypto dependency, per AGENTS.md §2 "self-contained")
+Pure-Python, with no third-party crypto dependency so the environment stays
+self-contained. A
 reference implementation of AES-256 block encryption, used to value-check the
 ciphertext the OpenTitan AES core produces. Derived independently from FIPS-197
-(the algorithm), NOT fitted to observed DUT output (AGENTS.md §7 value-agnostic
-trap): the module self-tests against the FIPS-197 Appendix C.3 AES-256 known
+(the algorithm), NOT fitted to observed DUT output — fitting a golden to what the
+DUT already produces is the value-agnostic trap: the module self-tests against the FIPS-197 Appendix C.3 AES-256 known
 vector at import, so a transcription error in the S-box / key schedule / round
 math fails loudly here rather than silently agreeing with a broken DUT.
 
-Register byte/word convention (OpenTitan AES, hw/sys/sep/regs/gen/adoc/blocks/aes.adoc
+Register byte/word convention (OpenTitan AES, vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc
 "all registers are little-endian", programmers_guide.md):
   * The 256-bit key is KEY_SHARE0_0..7 (8 words); KEY_SHARE0_0 holds key bytes
     [3:0] little-endian (byte 0 = LSB), KEY_SHARE0_1 holds bytes [7:4], etc.
@@ -138,7 +140,7 @@ def aes_encrypt_block(key: bytes, block: bytes) -> bytes:
 
 
 def aes256_encrypt_block(key: bytes, block: bytes) -> bytes:
-    """AES-256 encrypt one block (kept for the ECB-256 KM sideload KAT, #11)."""
+    """AES-256 encrypt one block (kept for the ECB-256 KM AES sideload KAT)."""
     assert len(key) == 32, "AES-256 key must be 32 bytes"
     return aes_encrypt_block(key, block)
 

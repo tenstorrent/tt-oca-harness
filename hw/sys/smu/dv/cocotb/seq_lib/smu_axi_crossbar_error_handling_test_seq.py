@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Sequence for smu_axi_crossbar_error_handling_test (SMU_ALL_008 rev 18).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Sequence for smu_axi_crossbar_error_handling_test (SMU_ALL_008).
 
 DV-CARD:          SMU_ALL_008   ANCHOR: smu_axi_crossbar_error_handling_test
-DV-CARD-REVISION: 18   RECORD-SHA256: 3be11166c37e13bc35de8dddbea105adf69f1f819525f7bb5bdcd292ffdf521d
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 18   ENV: cocotb
 
 Option-B honesty amend (plan/cards r18): OWNS only SMC-PWRGOOD-DTP-POR.S2.
 FAB-IN / DECODE removed from the runnable path (OOM / dishonest DECERR poison).
@@ -13,6 +12,8 @@ No Force/deposit. Reuses SMU_ALL_005 PTAP leave-TLR helper pattern.
 
 from __future__ import annotations
 
+import os
+import random
 import time
 
 import cocotb
@@ -23,7 +24,7 @@ from seq_lib.smu_jtag_helpers import make_smu_jtag_tap
 
 
 class smu_axi_crossbar_error_handling_test_seq:
-    """SMU_ALL_008 r18: bare tb_top SEP=0 PTAP leave-TLR under power-good."""
+    """SMU_ALL_008: bare tb_top SEP=0 PTAP leave-TLR under power-good."""
 
     BOUND_TCK = 2000
 
@@ -34,6 +35,11 @@ class smu_axi_crossbar_error_handling_test_seq:
         self._step_ts: dict[str, float] = {}
         self._timeout_paths: list[str] = []
         self._chk_pass: dict[str, bool] = {}
+        seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(seed ^ 0xFAB_C808)
+        self._seed = seed
+        self._post_reset_cycles = rng.randint(24, 64)
+        self._post_trst_cycles = rng.randint(2, 8)
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -108,7 +114,7 @@ class smu_axi_crossbar_error_handling_test_seq:
 
         # TRST released (active-low deasserted).
         dut.jtag_trst.value = 1
-        await ClockCycles(dut.clk_ref_i, 4)
+        await ClockCycles(dut.clk_ref_i, self._post_trst_cycles)
         trst = self._sample(dut.jtag_trst, "jtag_trst")
         if trst != 1:
             raise AssertionError(
@@ -151,12 +157,17 @@ class smu_axi_crossbar_error_handling_test_seq:
         sb = self.test.env.scoreboard
 
         await self.cfg.reset_done.wait()
-        await ClockCycles(dut.clk_smu_i, 32)
+        self._log(
+            f"SEED: {self._seed} post_reset_cycles={self._post_reset_cycles} "
+            f"post_trst_cycles={self._post_trst_cycles} "
+            f"jtag_period_ns={self.cfg.jtag_period_ns}"
+        )
+        await ClockCycles(dut.clk_smu_i, self._post_reset_cycles)
 
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         jtag.init_signals()
 
-        # FAB-IN / DECODE intentionally absent from runnable path (r18).
+        # FAB-IN / DECODE intentionally absent from runnable path.
         await self._step_s1_leave_tlr(jtag)
 
         # Bounded-wait inventory (fail_on timeout); not a card checker in r18.

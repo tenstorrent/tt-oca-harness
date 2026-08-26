@@ -1,21 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse image + shadow-readout + W1S-persistence test (OSS).
 
-Senses one generated fuse image, checks the software-visible shadow registers
-field-by-field against the golden, then programs ten random fuse bits through the
-frontdoor and resenses to prove the shadow tracks the PERSISTENT OTP image plus
-those newly write-one-to-set bits. This obeys real OTP semantics -- programmed bits
-persist across reset/resense and are never un-set -- instead of a non-physical
-mid-run image replacement (the generic efuse model loads its bank once at time 0).
+Before sense-done, AXI-reads ``FEAT_CTRL`` and requires the fail-closed
+zero vector (downstream shadow stays ``LC_STATE_INVALID``). After sense,
+the same register must follow the image golden and the software-visible
+shadow must match field-by-field. Then programs ten random fuse bits
+through the frontdoor and resenses to prove the shadow tracks the
+PERSISTENT OTP image plus those newly write-one-to-set bits.
 
 Exercises the eFuse goals: sense + resense, specific-or-random init, field
-constraints, OCAH-aligned fuse map, shadow-vs-loaded-mem comparison, and multi-bit
-W1S program persistence across a resense.
+constraints, the generated sep_efuse_map, shadow-vs-loaded-mem comparison, and
+multi-bit W1S program persistence across a resense.
 """
 
 from __future__ import annotations
-
-import random
 
 import pyuvm
 
@@ -23,14 +22,18 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
+from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
+from sep_reg_meta import sym
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_lcc_golden import feat_ctrl_expected
+from env.sep_seeded_rng import SepSeededRng
 
 _MAX_SENSE_CYCLES = 20_000
 
 # CHIPLET_UID is a benign, shadow-visible data field (8 words = 256 bits) pinned to
 # zero in the initial image, so every burn target is a known 0->1 bit. Global fuse
 # bit index = word*32 + bit.
-_UID_WORD0 = 0x0C8 // 4          # 50 (CHIPLET_UID first word)
+_UID_WORD0 = sym("SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET") // 4
 _UID_NBITS = 8 * 32             # 256 bits across the 8 CHIPLET_UID words
 _NUM_BURN = 10
 
@@ -46,14 +49,29 @@ class sep_efuse_image_test(sep_base_test):
         # the base post-sense backdoor compare.
         img = self.select_efuse_image(fixed={"CHIPLET_UID": 0})
         self.write_efuse_image(img)
-        await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        await self.release_no_cpu_reset()
+        await self.check_pre_sense_fail_closed()
+        await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         await self.start_seq(sep_efuse_shadow_check_seq(img))
+        opened = feat_ctrl_expected(
+            img.lc_raw(), img.field_int("SIP_DIS"), img.field_int("SYS_DIS"))
+        assert opened != 0, (
+            "CHK-PRE-SENSE-OPEN FAIL: post-sense FEAT_CTRL golden is 0; "
+            "the fail-closed contrast would be vacuous"
+        )
+        opened_seq = SepLccFeatCtrlCheckSeq(opened)
+        await self.start_seq(opened_seq)
+        self.logger.info(
+            "CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0x%016x after sense-done "
+            "(guard opened)",
+            opened_seq.feat_ctrl,
+        )
 
         # Burn 10 distinct random known-zero fuse bits (real W1S through the
         # frontdoor), seeded by the run seed for reproducibility. The generic efuse
         # model's field_storage is persistent, so the resense must show the initial
-        # image PLUS exactly these bits -- no mid-run image swap.
-        rng = random.Random(self.random_seed())
+        # image plus exactly these bits.
+        rng = SepSeededRng(self.random_seed())
         burn_offsets = sorted(rng.sample(range(_UID_NBITS), _NUM_BURN))
         golden = SepEfuseImage()
         golden.words = list(img.words)
@@ -96,9 +114,8 @@ class sep_efuse_image_test(sep_base_test):
         await self.start_seq(rd)
         got = rd.rdata & 0xFFFF_FFFF
         assert ((got >> (nc_a % 32)) & 1) and ((got >> (nc_b % 32)) & 1), (
-            f"CHK-W1S-NOCLOBBER: after programming bit {nc_b}, earlier bit {nc_a} is not "
+            f"after programming bit {nc_b}, earlier bit {nc_a} is not "
             f"set (direct OTP word {nc_word} = 0x{got:08x}); bank must be OR, not overwrite")
-        self.logger.info("CHK-W1S-NOCLOBBER PASS: sequential same-word programs both persist")
 
         # Advance the base post-sense golden to the post-program OTP state (the DUT
         # already holds the W1S bits from the programs above; this only updates the

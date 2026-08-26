@@ -2,6 +2,9 @@
 # VCS classic cocotb 1.9.x stack provisioned by hw/sys/sep/dv/sim/run.sh --tool vcs
 /venv/
 .bender/
+# Bender knowledge-graph cache emitted next to .bender/ by the flist/graph flows
+# (e.g. `make -C hw/sys/smu -f flow.mk ocah-lint-slang-flist`).
+.bender-kg/
 __pycache__/
 *.pyc
 
@@ -9,7 +12,7 @@ __pycache__/
 nonfree/
 
 # Transient per-block build outputs. The build_ot* variants come from the SEP
-# bootcode BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images).
+# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images).
 **/build/
 **/build_ot/
 **/build_ot_pio/

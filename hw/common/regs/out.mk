@@ -47,6 +47,8 @@ ocah_reg_svh_output = $(call ocah_reg_gen,$(1))/svh/$(call ocah_reg_name,$(1))_r
 ocah_reg_raw_c_output = $(call ocah_reg_gen,$(1))/c/$(call ocah_reg_name,$(1))_addr.h
 ocah_reg_py_output = $(call ocah_reg_gen,$(1))/py/$(call ocah_reg_name,$(1))_reg.py
 ocah_reg_json_output = $(call ocah_reg_gen,$(1))/json/$(call ocah_reg_name,$(1)).json
+# IP-XACT component XML, one per block top (composite or leaf), like svh/py.
+ocah_reg_ipxact_output = $(call ocah_reg_gen,$(1))/ipxact/$(call ocah_reg_name,$(1)).xml
 # RAL model name and top-instance rename. Both default to the block name; see
 # classify.mk for why a block would override either.
 ocah_reg_ral_model = $(or $(OCAH_REG_RAL_MODEL_$(call ocah_reg_key,$(1))),$(call ocah_reg_name,$(1)))
@@ -86,6 +88,7 @@ ocah_reg_file_clean_outputs = \
   $(call ocah_reg_py_output,$(1)) \
   $(call ocah_reg_ral_output,$(1)) \
   $(call ocah_reg_json_output,$(1)) \
+  $(call ocah_reg_ipxact_output,$(1)) \
   $(call ocah_reg_md_output,$(1)) \
   $(call ocah_reg_adoc_output,$(1)) \
   $(call ocah_reg_html_dir,$(1))
@@ -96,6 +99,24 @@ ocah_reg_collect = $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call $(1),$(blo
 ocah_reg_h_full  = $(call ocah_reg_h_target,$(1)) $(call ocah_reg_raw_c_output,$(1))
 ocah_reg_stamp   = $(call ocah_reg_build,$(1))/.generated
 
+# Depfile (gcc -MMD style): the block's `include`d RDLs, listed as prerequisites
+# of every output that flattens the block's `include` closure, so an include-only
+# change (top RDL mtime unchanged) still rebuilds the top collateral. Written into
+# the gitignored build dir; never committed, so it does not affect the regen-diff
+# gate. The target set reuses the existing per-class selectors.
+ocah_reg_dep_output = $(call ocah_reg_build,$(1))/deps.d
+ocah_reg_dep_targets = \
+  $(call ocah_reg_sv_target,$(1)) \
+  $(call ocah_reg_h_full,$(1)) \
+  $(call ocah_reg_svpkg_output,$(1)) \
+  $(call ocah_reg_svh_output,$(1)) \
+  $(call ocah_reg_py_output,$(1)) \
+  $(call ocah_reg_ral_target,$(1)) \
+  $(call ocah_reg_ipxact_output,$(1)) \
+  $(call ocah_reg_adoc_target,$(1)) \
+  $(call ocah_reg_html_target,$(1)) \
+  $(call ocah_reg_json_target,$(1))
+
 OCAH_REGEN_REG_SV     := $(call ocah_reg_collect,ocah_reg_sv_target)
 OCAH_REGEN_REG_H      := $(call ocah_reg_collect,ocah_reg_h_full)
 OCAH_REGEN_REG_ADDRPKG := $(call ocah_reg_collect,ocah_reg_svpkg_output)
@@ -103,9 +124,13 @@ OCAH_REGEN_REG_SVH     := $(call ocah_reg_collect,ocah_reg_svh_output)
 OCAH_REGEN_REG_PY     := $(call ocah_reg_collect,ocah_reg_py_output)
 OCAH_REGEN_REG_RAL    := $(call ocah_reg_collect,ocah_reg_ral_target)
 OCAH_REGEN_REG_JSON   := $(call ocah_reg_collect,ocah_reg_json_target)
+OCAH_REGEN_REG_IPXACT := $(call ocah_reg_collect,ocah_reg_ipxact_output)
 OCAH_REGEN_REG_ADOC   := $(call ocah_reg_collect,ocah_reg_adoc_target)
 OCAH_REGEN_REG_HTML   := $(call ocah_reg_collect,ocah_reg_html_target)
 OCAH_REGEN_REG_STAMPS := $(call ocah_reg_collect,ocah_reg_stamp)
+# Per-block depfiles, pulled in via -include at the tail of rules.mk. Not part of
+# OCAH_REGEN_ALL: they are build byproducts, not committed collateral.
+OCAH_REGEN_REG_DEPS   := $(call ocah_reg_collect,ocah_reg_dep_output)
 # regen-regs skips docs; generate them via regen-regs-adoc/-html.
 OCAH_REGEN_ALL := \
   $(OCAH_REGEN_REG_SV) \
@@ -114,4 +139,5 @@ OCAH_REGEN_ALL := \
   $(OCAH_REGEN_REG_SVH) \
   $(OCAH_REGEN_REG_PY) \
   $(OCAH_REGEN_REG_RAL) \
-  $(OCAH_REGEN_REG_JSON)
+  $(OCAH_REGEN_REG_JSON) \
+  $(OCAH_REGEN_REG_IPXACT)

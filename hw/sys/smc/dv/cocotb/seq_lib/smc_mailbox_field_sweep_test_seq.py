@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap round 3: per-mailbox field sweep.
 
 Round 1/2 only touched STATUS. Each outbound mailbox exposes 6+ CSR

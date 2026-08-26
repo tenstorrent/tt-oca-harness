@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_004 ANCHOR: smc_cg_zeroer_activity_bringup_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 91aeaf4f6e050ebe2fa76dca6013bcfd5a9acee9661d87794a275ceb61954acd
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P0_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 """
 
 from __future__ import annotations
+
+import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
@@ -17,7 +18,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 HYST = 0
 IDLE_OBSERVE = 16

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS CPU ECC LINT/PINT depth bounded diagnostic test."""
 
 from __future__ import annotations

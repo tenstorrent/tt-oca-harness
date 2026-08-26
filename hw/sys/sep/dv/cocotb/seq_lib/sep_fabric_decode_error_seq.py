@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric decode-error stimulus for sep_fabric_decode_error_response_test.
 
 Drives the CPU-LSU AXI master (no_cpu splice, no inbound filter) at:
@@ -13,9 +14,9 @@ intentional non-OKAY; the test asserts the exact ``resp_code == DECERR`` and the
 s_axi monitor is armed (``arm_expected_decerr``) to tally rather than fail on the
 intentional DECERR (a DECERR on the CPU-LSU bus is otherwise a real decode bug).
 
-OCAH provenance: sep_cpu_lsu_negative_matrix_test,
+reference provenance: sep_cpu_lsu_negative_matrix_test,
 sep_cpu_ifu_invalid_target_test, and
-sep_fabric_xbar_error_closure_test. OCAH accepts any non-OKAY
+sep_fabric_xbar_error_closure_test. the reference suite accepts any non-OKAY
 (including a tolerated timeout); the OSS port is COVERED_STRONGER -- it asserts
 the EXACT spec response (DECERR, per fabric/port_table.adoc "Tie to DECERR if
 unused") with allow_timeout=False so a wedge FAILs.
@@ -29,14 +30,15 @@ from __future__ import annotations
 from pyuvm import uvm_sequence
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import SEP_CPU_CTRL
 
-# sep_cpu_ctrl CLOCK_GATE_CTRL on the CPU-local map: a known-good decode target
-# with a deterministic reset value and no read side effects -- the same anchor the
-# smoke/address-map tests use. Address and expected value are derived from the
-# generated SystemRDL export, never hardcoded.
-MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
-MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
+# sep_cpu_ctrl SEP_NMI_VEC on the CPU-local map: a known-good decode target with
+# a non-zero generated reset (0xC000_0100) and no read side effects. CLOCK_GATE_CTRL
+# resets to 0, so a value-check there is zero-vs-zero and would also pass a tied-off
+# decode. Address and expected value are derived from the generated SystemRDL export.
+MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
+MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
 
 # The addresses below stay LITERAL by definition and must NOT be converted to sym()
 # lookups: having no decode target is the whole point of the test, so no generated
@@ -44,13 +46,13 @@ MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("CLOCK_GATE_CTRL")
 #
 # Unmapped LOCAL addresses (high nibble 0x10xx => SEP-local space, not routed out
 # to SMN/SMC alias) that the SEP local xbar decodes to its error slave:
-#   * 0x10FF_0000 -- OCAH INVALID_TARGET_ADDR (reserved invalid target).
-#   * 0x10FF_1000 -- OCAH bad_addr (reserved region).
+#   * 0x10FF_0000 -- reference suite INVALID_TARGET_ADDR (reserved invalid target).
+#   * 0x10FF_1000 -- reference suite bad_addr (reserved region).
 #   * reserved gap 0x1080_3008..0x108F_FFFF (memory_map.adoc) -- e.g. 0x1087_0000.
 # The reserved gap is the randomization window (see SepFabricDecErrCfg).
 RESERVED_GAP_LO = 0x1080_300C       # 4-aligned start of the reserved local gap
 RESERVED_GAP_HI = 0x108F_FFFC       # 4-aligned end
-OCAH_INVALID_TARGETS = (0x10FF_0000, 0x10FF_1000)
+REFERENCE_INVALID_TARGETS = (0x10FF_0000, 0x10FF_1000)
 
 # axi_pkg response codes.
 RESP_OKAY = 0
@@ -61,7 +63,7 @@ class SepFabricDecErrCfg:
     """Seeded selection of unmapped local addresses for the decode-error probes.
 
     Single source of truth for which addresses the test probes. Anchors on the two
-    OCAH-proven invalid targets (0x10FF_0000/0x10FF_1000) and adds N randomized
+    reference suite-proven invalid targets (0x10FF_0000/0x10FF_1000) and adds N randomized
     4-aligned addresses from the reserved local gap (0x1080_3008..0x108F_FFFF), which
     all decode to the SEP local xbar error slave (DECERR). One is chosen for the WRITE
     (B-channel) probe. The mapped-CSR anchor stays fixed (known reset value). The
@@ -71,16 +73,15 @@ class SepFabricDecErrCfg:
     """
 
     def __init__(self, seed: int, *, n_random: int = 2) -> None:
-        import random
         self.seed = seed
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         rand: list[int] = []
         while len(rand) < n_random:
-            a = rng.randint(RESERVED_GAP_LO, RESERVED_GAP_HI) & ~0x3
+            a = rng.randrange(RESERVED_GAP_LO, RESERVED_GAP_HI + 1) & ~0x3
             if a not in rand:
                 rand.append(a)
-        # OCAH-proven invalid targets + randomized reserved-gap addresses.
-        self.unmapped_reads = list(OCAH_INVALID_TARGETS) + rand
+        # reference suite-proven invalid targets + randomized reserved-gap addresses.
+        self.unmapped_reads = list(REFERENCE_INVALID_TARGETS) + rand
         self.unmapped_write = rng.choice(self.unmapped_reads)
 
     def summary(self) -> str:

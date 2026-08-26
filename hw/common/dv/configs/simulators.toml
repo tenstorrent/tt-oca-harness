@@ -1,8 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 [verilator]
 kind = "simulation"
 binary = "verilator"
+# The only simulator without SV-UVM support; every commercial simulator runs both frameworks.
+frameworks = ["cocotb"]
 license_env = []
 supports_waves = ["fst", "vcd"]
 supports_cov = ["line", "toggle", "branch"]
@@ -47,6 +52,7 @@ extra_hard_fail_patterns = [
 [vcs]
 kind = "simulation"
 binary = "vcs"
+frameworks = ["cocotb", "uvm"]
 license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
 supports_waves = ["vpd", "fsdb"]
 supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional"]
@@ -96,6 +102,8 @@ extra_fail_patterns = [
 [xcelium]
 kind = "simulation"
 binary = "xrun"
+# Xcelium supports SV-UVM; add "uvm" here once the xrun UVM stage adapter has a real-run sign-off.
+frameworks = ["cocotb"]
 license_env = ["CDS_LIC_FILE", "LM_LICENSE_FILE"]
 supports_waves = ["shm", "fsdb", "vcd"]
 supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional"]
@@ -142,6 +150,7 @@ extra_fail_patterns = [
 [jasper]
 kind = "formal"
 binary = "jg"
+frameworks = ["formal"]
 license_env = ["CDS_LIC_FILE", "LM_LICENSE_FILE"]
 supports_waves = []
 supports_cov = ["formal"]
@@ -150,6 +159,7 @@ default_waves = ""
 [vcf]
 kind = "formal"
 binary = "vcf"
+frameworks = ["formal"]
 license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
 supports_waves = []
 supports_cov = ["formal"]

@@ -1,5 +1,8 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
- * SEP_SMU_001  sep_smu_boot_health  --  minimal SEP boot-health firmware.
+ * sep_smu_boot_health  --  minimal SEP boot-health firmware.
  *
  * Pure SEP default-run boot gate (no SMC, no mailbox, no xbar, no filter/aperture). The SEP EL2
  * default-runs after its reset chain releases (cla_ext_action_custom[2]=0 -> mpc_reset_run_req=1,

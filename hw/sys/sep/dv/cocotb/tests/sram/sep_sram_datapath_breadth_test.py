@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP external-SRAM datapath-breadth test (PyUVM).
 
-Memory-subsystem Phase-2 rep SRAM datapath breadth. OCAH provenance: uvm_tests/sram
+Memory-subsystem Phase-2 rep SRAM datapath breadth. reference provenance: uvm_tests/sram
 sep_sram_uvm_byte_strobe / byte_pattern / data_pattern / addr_boundary /
 write_read / sequential_access. Exercises the external scratch SRAM
 (0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the Phase-1
@@ -18,11 +19,11 @@ seed-randomized:
     init/new/pattern data values, the sequential-window length, plus a few extra
     random data patterns -- all masked so they read back exactly.
 
-The SRAM port is 64-bit SINGLE-BEAT (no multi-beat burst feature; OCAH's burst
+The SRAM port is 64-bit SINGLE-BEAT (no multi-beat burst feature; the reference suite's burst
 tests are audit-only AWLEN=0/ARLEN=0). WSTRB=0x00 is excluded (undefined). NON-
 contiguous WSTRB masks (e.g. 0x05) are infra-gated: cocotbext-axi derives the
 strobe from addr+length (contiguous only), so they need a lower-level explicit-
-strobe write -- deferred (documented delta vs OCAH's full byte-strobe matrix).
+strobe write -- deferred (documented delta vs the reference suite's full byte-strobe matrix).
 
 Checks (each value-compares an exact read-back against the cfg golden + logs a
 positive PASS line):
@@ -125,11 +126,26 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         cfg = self.scfg
         wr_addr = cfg.base_addr + cfg.nonvac_wr_offset
         rd_addr = cfg.base_addr + cfg.nonvac_rd_offset
+        # Both addresses are written, with complementary patterns, and both are read
+        # back and value-checked. The previous form wrote only wr_addr and required the
+        # UNWRITTEN rd_addr to differ from the written pattern -- but rd_addr holds
+        # zero-initialised memory, and nonvac_pattern is built as `getrandbits(64) | 1`,
+        # so the check reduced to `0 != nonzero`, true by construction every run. It
+        # could not detect the stuck read path it names: a datapath returning all-zeros
+        # passed it, and so did one returning all-ones.
+        other_pattern = (~cfg.nonvac_pattern) & ((1 << 64) - 1)
         await self.sram.write(wr_addr, cfg.nonvac_pattern, length=8)
-        other = await self.sram.read(rd_addr, length=8)
-        assert other != cfg.nonvac_pattern, (
-            f"CHK-NONVAC unwritten word @0x{rd_addr:08x} == written pattern "
-            f"0x{cfg.nonvac_pattern:016x} -- read may be returning a stuck constant")
+        await self.sram.write(rd_addr, other_pattern, length=8)
+        got_wr = await self.sram.read(wr_addr, length=8)
+        got_rd = await self.sram.read(rd_addr, length=8)
+        assert got_wr == cfg.nonvac_pattern, (
+            f"CHK-NONVAC @0x{wr_addr:08x} read 0x{got_wr:016x} != written "
+            f"0x{cfg.nonvac_pattern:016x}")
+        assert got_rd == other_pattern, (
+            f"CHK-NONVAC @0x{rd_addr:08x} read 0x{got_rd:016x} != written "
+            f"0x{other_pattern:016x} -- a stuck read path returns the same value for "
+            f"both addresses")
         self.logger.info(
-            "CHK-NONVAC PASS: distinct unwritten word 0x%016x != written 0x%016x",
-            other, cfg.nonvac_pattern)
+            "CHK-NONVAC PASS: two addresses hold complementary values "
+            "(0x%016x / 0x%016x), so the read path is not a stuck constant",
+            got_wr, got_rd)

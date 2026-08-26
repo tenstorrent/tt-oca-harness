@@ -1,12 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_DMA_CG_ACTIVITY_TEST ANCHOR: smc_dma_cg_activity_test
-DV-CARD-REVISION: 2 RECORD-SHA256: b1f928140c5123ae1298877e726f91b309ba15c3b287fb236f723b3582d51653
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 
 DV-CARD: SMC_CG_P2_001 ANCHOR: smc_dma_cg_activity_test
-DV-CARD-REVISION: 1 RECORD-SHA256: f30a819ece07cac193724665274c74e6512a18c0771b7fde11375464acf5489a
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P2_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 The P2 card extends this same anchor (additive): the P1 steps/checkers above are
 UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1
@@ -20,13 +17,16 @@ from __future__ import annotations
 
 import json
 import os
+import random
 from pathlib import Path
+
+import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
@@ -74,7 +74,7 @@ def _emit_p2_hyst_sweep_coverage_report(cells_hit: list[str]) -> Path:
         "artifact_type": "functional-coverage-report",
         "feature_key": "SMC-CG-DMA-HYST.S1",
         "method": "RANDOMIZED",
-        "seed": int(os.environ.get("SEED", "1") or "1"),
+        "seed": int(os.environ.get("RANDOM_SEED", os.environ.get("SEED", "1")), 0),
         "required_cells": required,
         "cells_hit": cells_hit,
         "satisfied": set(cells_hit) >= set(required),
@@ -149,16 +149,38 @@ S3_MEASURE_WINDOW = 8
 # P2 (SMC_CG_P2_001) additions: hysteresis full-range sweep + reassert race.
 # Required cells per SMC-CG-DMA-HYST.S1 (hyst-gap sweep): 0, 1, 32-mid, 63-max,
 # 64-just-over-max (exercises the 6-bit CG_HYSTERESIS_W field's own truncation).
-P2_SWEEP_GAPS = (0, 1, 32, 63, 64)
+# Seed-driven extras (inventory random_knobs: hysteresis_value) are appended
+# on top of these anchors so required_cells stay closed every seed.
+P2_REQUIRED_SWEEP_GAPS = (0, 1, 32, 63, 64)
+P2_NUM_RANDOM_GAPS = 3
 P2_SWEEP_MAX_CYCLES = 130
 P2_SWEEP_TRAIL_MARGIN = 90
 P2_SETTLE_TIMEOUT_SMC = 200
-P2_RACE_HYST = 40
-P2_RACE_EARLY_OFFSET = 4
-P2_RACE_B2B_OFFSET = 1
-P2_RACE_LATE_MARGIN = 5
+P2_RACE_HYST_DEFAULT = 40
+P2_RACE_EARLY_OFFSET_DEFAULT = 4
+P2_RACE_B2B_OFFSET_DEFAULT = 1
+P2_RACE_LATE_MARGIN_DEFAULT = 5
 P2_RACE_FINAL_MARGIN = 20
 P2_RACE_PULSE_BOUND = 200
+
+
+def _p2_seeded_knobs(seed: int) -> tuple[tuple[int, ...], int, int, int, int]:
+    """Return (sweep_gaps, race_hyst, early_off, b2b_off, late_margin)."""
+    rng = random.Random(seed ^ 0x0DAC_C6A7)
+    extras: list[int] = []
+    while len(extras) < P2_NUM_RANDOM_GAPS:
+        gap = rng.randint(2, 62)
+        if gap not in P2_REQUIRED_SWEEP_GAPS and gap not in extras:
+            extras.append(gap)
+    sweep = tuple(list(P2_REQUIRED_SWEEP_GAPS) + extras)
+    race_hyst = rng.randint(24, 55)
+    early = rng.randint(2, 8)
+    b2b = rng.randint(1, 3)
+    late_margin = rng.randint(4, 8)
+    # late_wait needs hyst - late_margin - already_elapsed >= 1
+    if race_hyst - late_margin < 12:
+        late_margin = max(4, race_hyst - 12)
+    return sweep, race_hyst, early, b2b, late_margin
 
 
 class smc_dma_cg_activity_test_seq(SmcCsrSeq):
@@ -576,7 +598,14 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
                     f"(busy={busy}) -- clock-enable glitched during the race window"
                 )
 
-    async def _race_trial(self, hyst_value: int) -> dict:
+    async def _race_trial(
+        self,
+        hyst_value: int,
+        *,
+        early_offset: int = P2_RACE_EARLY_OFFSET_DEFAULT,
+        b2b_offset: int = P2_RACE_B2B_OFFSET_DEFAULT,
+        late_margin: int = P2_RACE_LATE_MARGIN_DEFAULT,
+    ) -> dict:
         """Activity-reassert race (SMC-CG-DMA-HYST.S2): reassert early in the
         countdown, back-to-back with that reassertion's own clear, then again
         just before expiry -- proving zero glitch throughout, and that the
@@ -605,7 +634,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         await _run_pulse("P2_RACE_TRIGGER_1_INIT")
         t1 = self._find_last_deassert(timeline, 0, "race-init")
 
-        for _ in range(P2_RACE_EARLY_OFFSET):
+        for _ in range(early_offset):
             await _cycle()
         self._assert_no_glitch(timeline, t1, len(timeline), "race-pre-early-reassert")
         early_offset_actual = len(timeline) - t1
@@ -613,7 +642,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         await _run_pulse("P2_RACE_TRIGGER_2_EARLY")
         t2 = self._find_last_deassert(timeline, t1, "race-early-reassert-clear")
 
-        for _ in range(P2_RACE_B2B_OFFSET):
+        for _ in range(b2b_offset):
             await _cycle()
         self._assert_no_glitch(timeline, t2, len(timeline), "race-pre-back-to-back")
         b2b_gap_actual = len(timeline) - t2
@@ -626,10 +655,10 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         # so the total wait from t3 lands at (hyst_value - LATE_MARGIN), not
         # (already_elapsed + LATE_MARGIN) cycles past it.
         already_elapsed = len(timeline) - t3
-        late_wait = hyst_value - P2_RACE_LATE_MARGIN - already_elapsed
+        late_wait = hyst_value - late_margin - already_elapsed
         assert late_wait >= 1, (
             f"race hyst {hyst_value} too small for late margin "
-            f"{P2_RACE_LATE_MARGIN} + already-elapsed {already_elapsed}"
+            f"{late_margin} + already-elapsed {already_elapsed}"
         )
         for _ in range(late_wait):
             await _cycle()
@@ -659,7 +688,21 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
 
     async def _p2_extension(self) -> None:
         """P2 extension (SMC_CG_P2_001), additive after the P1 flow in body():
-        full-range hysteresis sweep {0,1,32,63,64} + activity-reassert race."""
+        required-cell hysteresis sweep + seed-driven extras + reassert race."""
+        seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        sweep_gaps, race_hyst_val, early_off, b2b_off, late_margin = _p2_seeded_knobs(
+            seed
+        )
+        _LOG.info(
+            "SEED: %d P2 knobs sweep=%s race_hyst=%d early=%d b2b=%d late_margin=%d",
+            seed,
+            sweep_gaps,
+            race_hyst_val,
+            early_off,
+            b2b_off,
+            late_margin,
+        )
+
         self._log_step(
             "P2-S1",
             "SETUP: re-enable DMA clock gating and confirm idle baseline (no "
@@ -677,10 +720,11 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         self._log_step(
             "P2-S2",
             "ACTION/RESPONSE/EFFECT for SMC-CG-DMA-HYST.S1: sweep the "
-            f"programmed hysteresis over {P2_SWEEP_GAPS} clk_smc_i cycles",
+            f"programmed hysteresis over {sweep_gaps} clk_smc_i cycles "
+            f"(required={P2_REQUIRED_SWEEP_GAPS} + seed extras)",
         )
         sweep_results: dict[int, tuple[int, int]] = {}
-        for gap in P2_SWEEP_GAPS:
+        for gap in sweep_gaps:
             actual_hyst = await self._program_cg_field(enable=True, hyst_value=gap)
             timeline = await self._scan_activity_and_gate(
                 self.csr_read(f"P2_HYST_SWEEP_GAP_{gap}", DMA_CTRL_STATUS_0),
@@ -702,18 +746,24 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
                     f"observed {observed}"
                 )
             sweep_results[gap] = (actual_hyst, observed)
-        missing_cells = [g for g in P2_SWEEP_GAPS if g not in sweep_results]
-        assert not missing_cells, f"sweep required cells not observed: {missing_cells}"
-        cells_hit = [f"hyst-gap={g}" for g in P2_SWEEP_GAPS]
+        missing_required = [
+            g for g in P2_REQUIRED_SWEEP_GAPS if g not in sweep_results
+        ]
+        assert not missing_required, (
+            f"sweep required cells not observed: {missing_required}"
+        )
+        # Coverage artifact still grades the FL required_cells only.
+        cells_hit = [f"hyst-gap={g}" for g in P2_REQUIRED_SWEEP_GAPS]
         cov_path = _emit_p2_hyst_sweep_coverage_report(cells_hit)
         self._emit_chk(
             "CHK-DMA-HYST-SWEEP",
             "CHK-DMA-HYST-SWEEP: " + " ".join(
                 f"gap{g}(hyst_field={sweep_results[g][0]},"
                 f"deassert_cyc={sweep_results[g][1]})"
-                for g in P2_SWEEP_GAPS
+                for g in sweep_gaps
             )
-            + f" coverage_artifact={cov_path.name} cells={','.join(cells_hit)}",
+            + f" coverage_artifact={cov_path.name} cells={','.join(cells_hit)}"
+            + f" seed={seed}",
         )
         self._mark_fence("SWEEP-COMPLETE(5-cells)")
 
@@ -722,9 +772,16 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
             "ACTION/RESPONSE/EFFECT for SMC-CG-DMA-HYST.S2: activity-reassert "
             "race (early-in-countdown, back-to-back, last-cycle-before-expiry)",
         )
-        race_hyst = await self._program_cg_field(enable=True, hyst_value=P2_RACE_HYST)
+        race_hyst = await self._program_cg_field(
+            enable=True, hyst_value=race_hyst_val
+        )
         await self._p2_settle_idle(P2_SETTLE_TIMEOUT_SMC)
-        race = await self._race_trial(race_hyst)
+        race = await self._race_trial(
+            race_hyst,
+            early_offset=early_off,
+            b2b_offset=b2b_off,
+            late_margin=late_margin,
+        )
         assert race["final_countdown"] == race_hyst, (
             "post-clear countdown did not restart from the full window: "
             f"expected {race_hyst}, observed {race['final_countdown']}"

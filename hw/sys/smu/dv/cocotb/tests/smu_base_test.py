@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMU OSS PyUVM base test: clocks, reset, scenario hook, no vacuous PASS."""
 
 from __future__ import annotations
@@ -32,7 +33,19 @@ class smu_base_test(uvm_test):
 
     def build_phase(self) -> None:
         self.cfg = SmuEnvCfg("cfg")
-        self.cfg.randomize_timing(self.random_seed())
+        seed = self.random_seed()
+        self.cfg.randomize_timing(seed)
+        self.logger.info(
+            "SMU timing: ref=%dns smu=%dns periph=%dns jtag=%dns "
+            "idle_tck=%d settle=%d (seed=%d)",
+            self.cfg.ref_clk_period_ns,
+            self.cfg.smu_clk_period_ns,
+            self.cfg.periph_clk_period_ns,
+            self.cfg.jtag_period_ns,
+            self.cfg.idle_tck,
+            self.cfg.post_reset_settle_cycles,
+            seed,
+        )
         ConfigDB().set(None, "*", "cfg", self.cfg)
         self.env = SmuEnv("env", self)
         self._scenario_ran = False

@@ -2,33 +2,31 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Flash JEDEC ID Test - TC_SPIOT_019 (P1)
+ * SPI OT Flash JEDEC ID Test
  *
  * Issues a standard JEDEC Read ID command (0x9F) to the SPI flash device
  * using a two-segment transaction on the OpenTitan SPI controller.
  *
- * Signal path: OT SPI Controller -> SPI Mux -> GPIO pads -> Flash model
+ * Signal path: OT SPI Controller -> GPIO pads -> Flash model
  *
  * TX byte packing (LITTLE_ENDIAN=1): TXDATA[7:0] is transmitted first.
- *   WRITE_REG(TXDATA, 0x0000009F) -> sends 0x9F on the bus
+ * WRITE_REG(TXDATA, 0x0000009F) -> sends 0x9F on the bus
  * RX byte ordering: RXDATA[7:0] = first byte received from device.
- *   byte[0] = manufacturer ID, byte[1] = memory type, byte[2] = capacity
+ * byte[0] = manufacturer ID, byte[1] = memory type, byte[2] = capacity
  *
  * Test Flow:
- *   1. Configure SPI mux for OpenTitan, enable controller
- *   2. Segment 1: TX 0x9F (JEDEC ID cmd), CSAAT=1
- *   3. Segment 2: RX 3 bytes (MFR + type + capacity), CSAAT=0
- *   4. Read and log JEDEC response from RXDATA
- *   5. Verify no SPI controller errors (CMDINVAL, CSIDINVAL)
+ * 1. Enable controller
+ * 2. Segment 1: TX 0x9F (JEDEC ID cmd), CSAAT=1
+ * 3. Segment 2: RX 3 bytes (MFR + type + capacity), CSAAT=0
+ * 4. Read and log JEDEC response from RXDATA
+ * 5. Verify no SPI controller errors (CMDINVAL, CSIDINVAL)
  *
- * Note: Passes with or without a flash model.
- *   With flash model (+spi_device_sel=winbond): verifies manufacturer ID is 0xEF (Winbond W25Q)
- *   Without flash model: MISO=0xFF, JEDEC reads 0xFFFFFF (logged as warning only)
+ * Note: Requires SPI flash model (+spi_device_sel=winbond) for PASS.
+ * Without flash model the test fails closed on empty/all-0xFF JEDEC response.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim
- *   make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim
- * EXTRA_SIM_ARGS=+spi_device_sel=winbond
+ * make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim \
+ *     EXTRA_SIM_ARGS=+spi_device_sel=winbond
  *
  */
 
@@ -39,7 +37,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define SPI_CLKDIV spi_clkdiv()
 #define TIMEOUT_LIMIT 200000
@@ -47,8 +44,12 @@
 /* Flash commands */
 #define FLASH_CMD_JEDEC_ID 0x9F
 
-/* Expected JEDEC manufacturer IDs */
+/* Expected JEDEC IDs for enrolled +spi_device_sel=4 (Winbond W25Q512JV).
+ * Documented by sibling flash tests (spi_ot_flash_write_read_test) and matches
+ * kept-log decode 0x002040ef. */
 #define JEDEC_MFR_WINBOND 0xEF
+#define JEDEC_TYPE_W25Q512JV 0x40
+#define JEDEC_CAP_W25Q512JV 0x20
 #define JEDEC_MFR_MICRON 0x20
 #define JEDEC_MFR_MACRONIX 0xC2
 
@@ -97,13 +98,11 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Flash JEDEC ID Test (TC_SPIOT_019)\n");
+    printf("SPI OT Flash JEDEC ID Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d, CPOL=0, CPHA=0\n\n", SPI_CLKDIV);
@@ -120,7 +119,7 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x0000009F);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, (uint32_t)FLASH_CMD_JEDEC_ID);
 
     cmd.w = 0;
     cmd.f.LEN = 0;       /* 1 byte */
@@ -148,7 +147,9 @@ int main(void) {
     printf("  CMD: DIR=RX, SPEED=Std, LEN=2(3B), CSAAT=0\n");
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
-        printf("  WARN: transaction did not complete (no SPI device?)\n");
+        printf("  FAIL: transaction did not complete (ACTIVE stuck / no SPI device)\n");
+        pass = 0;
+        goto done;
     }
 
     /* ----------------------------------------------------------------
@@ -161,7 +162,12 @@ int main(void) {
     printf("  RXQD=%u, RXEMPTY=%u\n", status.f.RXQD, status.f.RXEMPTY);
 
     uint8_t mfr_id = 0xFF, mem_type = 0xFF, capacity = 0xFF;
-    if (status.f.RXQD >= 1) {
+    if (status.f.RXQD < 1) {
+        printf("  FAIL: RX FIFO empty after JEDEC transaction (RXQD=%u)\n", status.f.RXQD);
+        pass = 0;
+        goto done;
+    }
+    {
         uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
         mfr_id = (uint8_t)(rxdata & 0xFF);
         mem_type = (uint8_t)((rxdata >> 8) & 0xFF);
@@ -174,17 +180,22 @@ int main(void) {
             printf(" (Micron)");
         else if (mfr_id == JEDEC_MFR_MACRONIX)
             printf(" (Macronix)");
-        else if (mfr_id == 0xFF)
-            printf(" (no response / MISO idle)");
         printf("\n");
         printf("  Memory Type     : 0x%02x\n", mem_type);
         printf("  Capacity        : 0x%02x\n", capacity);
 
         if (mfr_id == 0xFF && mem_type == 0xFF && capacity == 0xFF) {
-            printf("  NOTE: All 0xFF - no flash model connected (controller-only test)\n");
+            printf("  FAIL: All 0xFF JEDEC response (no flash model / incomplete SPI path)\n");
+            pass = 0;
+        } else if (mfr_id != JEDEC_MFR_WINBOND || mem_type != JEDEC_TYPE_W25Q512JV ||
+                   capacity != JEDEC_CAP_W25Q512JV) {
+            printf("  FAIL: JEDEC expected Winbond W25Q512JV EF/40/20 "
+                   "(+spi_device_sel=4), got %02x/%02x/%02x\n",
+                   mfr_id, mem_type, capacity);
+            pass = 0;
+        } else {
+            printf("  PASS: JEDEC matches Winbond W25Q512JV (EF 40 20)\n");
         }
-    } else {
-        printf("  WARN: RX FIFO empty after transaction\n");
     }
 
     /* ----------------------------------------------------------------

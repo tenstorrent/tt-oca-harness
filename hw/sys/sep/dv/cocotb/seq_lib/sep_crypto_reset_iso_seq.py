@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Per-IP SW-reset control (sep_crypto_per_ip_reset_isolation_test).
 
 Drives the SEP reset_ctrl SW_RESET_N register over the CPU-LSU master (no_cpu) to
@@ -23,12 +24,18 @@ from sep_reg_meta import sym
 
 from dataclasses import dataclass
 
+from env.sep_axi_agent import SepAxiOp
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # sep_reset_ctrl SW_RESET_N (active-low per-IP resets).
 SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 SW_RESET_N_DEFAULT = 0x1E            # km[0] held, otbn/aes/hmac/kmac released
 RST_KM, RST_OTBN, RST_AES, RST_HMAC, RST_KMAC = 0, 1, 2, 3, 4
+RESP_OKAY = 0
+RESP_DECERR = 3
+# DIGEST_0 has no generated REG_DEFAULT; OpenTitan HMAC clears it to 0 on rst_ni.
+HMAC_DIGEST_RESET = 0
 
 
 @dataclass(frozen=True)
@@ -42,6 +49,8 @@ class CryptoEngine:
 # hold a live golden-checked result (HMAC DIGEST, AES DATA_OUT).
 ENG_HMAC = CryptoEngine("hmac", RST_HMAC)
 ENG_AES = CryptoEngine("aes", RST_AES)
+ENG_KMAC = CryptoEngine("kmac", RST_KMAC)
+ENG_OTBN = CryptoEngine("otbn", RST_OTBN)
 
 
 class SepCryptoResetIso(SepAxiRegDriver):
@@ -60,3 +69,23 @@ class SepCryptoResetIso(SepAxiRegDriver):
     async def read_back(self) -> int:
         """Read the live SW_RESET_N value (non-vacuity / evidence)."""
         return await self._rd(SW_RESET_N)
+
+    async def probe(
+        self,
+        addr: int,
+        *,
+        write: bool = False,
+        wdata: int = 0,
+        expect_error: bool = False,
+    ) -> SepAxiAccessSeq:
+        """One 32-bit beat to a crypto CSR; caller asserts the exact resp_code."""
+        seq = SepAxiAccessSeq(
+            f"rstiso_{'wr' if write else 'rd'}_0x{addr:08x}",
+            op=SepAxiOp.WRITE if write else SepAxiOp.READ,
+            addr=addr,
+            wdata=wdata,
+            size=2,
+            expect_error=expect_error,
+        )
+        await self.test.start_seq(seq)
+        return seq

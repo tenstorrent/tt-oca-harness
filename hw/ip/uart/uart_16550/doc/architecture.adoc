@@ -29,7 +29,12 @@ high-throughput. Baud rate generation uses 16x oversampling with a
 programmable divisor for timing precision.
 
 The interrupt controller handles six prioritized interrupt sources, and
-modem control supports all standard modem signals. DMA is supported in
+modem control supports all standard modem signals. The modem interface is
+status and control only - the inputs are synchronized and reported in the
+`MSR` register with change detection and an interrupt, and the outputs are
+driven directly from the `MCR` register. No modem signal gates the
+transmit or receive datapath, so hardware flow control, if needed, is
+implemented by software on top of these registers. DMA is supported in
 both immediate and hysteresis modes for efficient data transfers. Both
 internal and external loopback modes are supported for testing and
 diagnostics.
@@ -45,9 +50,9 @@ The `uart_tx` module serializes parallel data for transmission,
 maintaining timing accuracy and signal integrity. It generates frames
 with selectable start, parity, and stop bits to match protocol
 requirements and legacy compatibility. Baud rate alignment uses 16x
-oversampling for precise timing. Flow control honors CTS signals to
-avoid overrunning the receiver. It also supports break signal generation
-for protocol control or device reset.
+oversampling for precise timing. It also supports break signal generation
+for protocol control or device reset. The engine has no modem inputs and
+transmits whenever the TX FIFO is non-empty; it does not stall on CTS.
 
 *Receive Engine* (uart_rx)
 

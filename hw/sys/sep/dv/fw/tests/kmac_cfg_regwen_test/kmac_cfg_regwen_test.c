@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_011 - CFG_REGWEN Protection Test (P1)
+ * CFG_REGWEN Protection Test
  *
  * Verifies that CFG_REGWEN locks CFG_SHADOWED when KMAC is active
  * and unlocks after operation completes.
@@ -14,6 +14,8 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
+
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
@@ -27,8 +29,8 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
+        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -56,9 +58,9 @@ static int test_cfg_regwen(void) {
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x0;
-    cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.mode = SEP_KMAC_MODE_SHA3;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
@@ -70,13 +72,13 @@ static int test_cfg_regwen(void) {
     }
 
     printf("=== Step 3: Configure and START (SHA3-256) ===\n");
-    setup_entropy();
     cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    setup_entropy();
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29;
+    cmd.f.cmd = SEP_KMAC_CMD_START;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     printf("=== Step 4: Check CFG_REGWEN after START (expect 0) ===\n");
@@ -92,9 +94,9 @@ static int test_cfg_regwen(void) {
 
     kmac__CFG_SHADOWED_t alt_cfg = {.w = 0};
     alt_cfg.f.kmac_en = 0;
-    alt_cfg.f.mode = 0x1;
-    alt_cfg.f.kstrength = 0x2;
-    alt_cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (0=None, 1=EDN, 2=SW per hjson) */
+    alt_cfg.f.mode = SEP_KMAC_MODE_RESERVED;
+    alt_cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
+    alt_cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     alt_cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, alt_cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, alt_cfg.w);
@@ -112,12 +114,12 @@ static int test_cfg_regwen(void) {
     printf("=== Step 6: Complete operation (PROCESS, wait done, DONE) ===\n");
     WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
 
-    cmd.f.cmd = 46;
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
-    cmd.f.cmd = 22;
+    cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     printf("=== Step 7: Check CFG_REGWEN after DONE (expect 1) ===\n");
@@ -138,7 +140,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_011: CFG_REGWEN Test\n");
+    printf("  CFG_REGWEN Test\n");
     printf("========================================\n\n");
 
     int result = test_cfg_regwen();

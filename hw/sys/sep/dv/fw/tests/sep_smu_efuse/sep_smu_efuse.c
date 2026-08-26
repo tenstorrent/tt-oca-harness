@@ -1,7 +1,9 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * sep_smu_efuse - SMU-level SEP eFuse CSR sanity test.
  *
- * Goal:
  *   Verify SEP-side eFuse control/shim register access path in SMU wrapper by
  *   programming benign control values and checking readback.
  */

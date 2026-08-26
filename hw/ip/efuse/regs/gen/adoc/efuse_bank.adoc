@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 [NOTE]
 ======
 *Register Arrays:* This register map contains the following register arrays:
@@ -19,5 +22,5 @@
 .EFUSE_BANK_REG[1024] Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `dout` | RW | 0x0 a| Read Data from eFuse
+| 31:0 | `dout` | RW | - a| Read Data from eFuse
 |===

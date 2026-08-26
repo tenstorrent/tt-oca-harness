@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_009 - Key Length Test (P1)
+ * Key Length Test
  *
  * Runs KMAC-128 with Key128 (4-word key), saves digest.
  * Runs KMAC-128 with Key256 (8-word key), saves digest.
@@ -15,6 +15,8 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
+
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
@@ -28,8 +30,8 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
+        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -47,51 +49,65 @@ static int run_kmac128(const uint32_t *key, int key_words, uint32_t key_len_val,
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 1;
-    cfg.f.mode = 0x2;
-    cfg.f.kstrength = 0x0;
-    cfg.f.entropy_mode = 0x1; /* EDN mode = 0x1 (same as kmac_test which passes) */
+    cfg.f.mode = SEP_KMAC_MODE_CSHAKE; /* kmac_en=1 requires cSHAKE */
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-
-    setup_entropy();
 
     cfg.f.entropy_ready = 1;
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    setup_entropy();
 
     kmac__KEY_LEN_t kl = {.w = 0};
     kl.f.len = key_len_val;
     WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
 
+    /* Clear full key window so unused KEY_LEN lanes cannot leak prior runs. */
+    for (int i = 0; i < 16; i++) {
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), 0);
+        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0);
+    }
     for (int i = 0; i < key_words; i++) {
         WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), key[i]);
         WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001);
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0) + 4, 0x00004341);
+    /* encode_string("KMAC") || encode_string("") — PREFIX_1 must include left_encode(0)=0x01||0x00
+     */
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001u);
+    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00014341u);
     for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29;
+    cmd.f.cmd = SEP_KMAC_CMD_START;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001);
+    /* right_encode(256) is exactly 3 bytes: 0x01 0x00 0x02 */
+    {
+        volatile uint8_t *fifo8 =
+            (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR;
+        *fifo8 = 0x01u;
+        *fifo8 = 0x00u;
+        *fifo8 = 0x02u;
+    }
 
-    cmd.f.cmd = 46;
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
         uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
-        uint32_t s1 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (0x100 + (i * 4))));
+        uint32_t s1 =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
         digest_out[i] = s0 ^ s1;
     }
 
-    cmd.f.cmd = 22;
+    cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
@@ -125,7 +141,26 @@ static int test_key_length(void) {
     for (int i = 0; i < 8; i++) printf("%08x ", digest_256[i]);
     printf("\n");
 
-    printf("=== Comparing digests ===\n");
+    /* Independent KMAC-128 KATs (Crypto.Hash.KMAC128, LE key words, msg="test"). */
+    static const uint32_t expected_128[8] = {0xaba341deu, 0x9753953fu, 0x926f1148u, 0x60be11a5u,
+                                             0x8193af83u, 0xd8d90ea8u, 0x1aa1a0aau, 0xcd5d087du};
+    static const uint32_t expected_256[8] = {0xcceed92cu, 0xf9a19c94u, 0x1d659f0fu, 0x70608141u,
+                                             0x0beb45b8u, 0xb1e224e9u, 0x26791f52u, 0x209b1d2fu};
+
+    printf("=== Comparing digests to independent KMAC-128 vectors ===\n");
+    for (int i = 0; i < 8; i++) {
+        if (digest_128[i] != expected_128[i]) {
+            printf("FAIL: Key128 DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_128[i],
+                   expected_128[i]);
+            errors++;
+        }
+        if (digest_256[i] != expected_256[i]) {
+            printf("FAIL: Key256 DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_256[i],
+                   expected_256[i]);
+            errors++;
+        }
+    }
+
     int same = 1;
     for (int i = 0; i < 8; i++) {
         if (digest_128[i] != digest_256[i]) {
@@ -140,20 +175,6 @@ static int test_key_length(void) {
         printf("PASS: digests differ as expected\n");
     }
 
-    int nz_128 = 0, nz_256 = 0;
-    for (int i = 0; i < 8; i++) {
-        if (digest_128[i] != 0) nz_128 = 1;
-        if (digest_256[i] != 0) nz_256 = 1;
-    }
-    if (!nz_128) {
-        printf("FAIL: Key128 digest all zeros\n");
-        errors++;
-    }
-    if (!nz_256) {
-        printf("FAIL: Key256 digest all zeros\n");
-        errors++;
-    }
-
     return errors;
 }
 
@@ -162,7 +183,7 @@ int main(void) {
 
     printf("\n");
     printf("========================================\n");
-    printf("  TC_KMAC_009: Key Length Test\n");
+    printf("  Key Length Test\n");
     printf("========================================\n\n");
 
     int result = test_key_length();

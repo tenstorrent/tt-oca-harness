@@ -2,27 +2,25 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_061: fabric_filter_datapath_matrix_p3_test
+ * fabric_filter_datapath_matrix_p3_test
  *
- * 目標: traffic_filter 88.11% → 90%+, axi_filter_wrap 64.11% → 90%+
- * 策略: 針對性的 pass/block 流量測試，覆蓋所有datapath組合
- * 優先級: 第一輪 (中等難度)
+ * Strategy: Targeted pass/block traffic tests covering all datapath combinations
  *
- * 專注於filter模組的完整datapath矩陣測試
+ * Focus on full datapath-matrix testing of the filter module
  */
 
 #include "sep_test_common.h"
 #include "sep_fabric.h"
 
-// Filter datapath 場景數量
+// Filter datapath scenario count
 #define FILTER_DATAPATH_SCENARIOS 8
 
-// Filter 測試定義
+// Filter test definitions
 #define FILTER_TEST_BASE_ADDR 0x30000000
 #define FILTER_REGION_SIZE 0x100000
 #define MAX_FILTER_ENTRIES 16
 
-// AXI屬性定義
+// AXI attribute definitions
 #define AXI_PROT_SECURE 0x0
 #define AXI_PROT_NON_SECURE 0x1
 #define AXI_PROT_PRIVILEGED 0x0
@@ -31,16 +29,16 @@
 static int test_no_match_default_block_scenarios(void) {
     printf("Starting no-match default block scenarios...\n");
 
-    // 場景1: No-match 預設阻擋測試
+    // Scenario 1: No-match default-deny test
     for (int test_case = 0; test_case < 16; test_case++) {
         uint32_t test_addr = FILTER_TEST_BASE_ADDR + test_case * 0x10000;
 
-        // 設置filter規則，但故意不匹配測試位址
+        // Program filter rules that intentionally miss the test address
         for (int filter_entry = 0; filter_entry < 8; filter_entry++) {
-            uint32_t filter_start = 0x50000000 + filter_entry * 0x100000; // 不同範圍
+            uint32_t filter_start = 0x50000000 + filter_entry * 0x100000; // different range
             uint32_t filter_end = filter_start + 0x80000;
 
-            // 設置filter條目但不覆蓋test_addr
+            // Program filter entries that do not cover test_addr
             if (setup_output_remap_region_extended(filter_entry, filter_start, filter_end,
                                                    1,          // enable
                                                    0,          // allow
@@ -50,12 +48,12 @@ static int test_no_match_default_block_scenarios(void) {
             }
         }
 
-        // 測試no-match位址應該被default block
+        // No-match addresses should be default-blocked
         if (test_axi_transaction(test_addr, 4, AXI_READ) != 0) {
-            // 預期失敗 - 應該被block
+            // Expect fail - should be blocked
         }
         if (test_axi_transaction(test_addr + 0x100, 8, AXI_WRITE) != 0) {
-            // 預期失敗 - 應該被block
+            // Expect fail - should be blocked
         }
     }
 
@@ -66,7 +64,7 @@ static int test_no_match_default_block_scenarios(void) {
 static int test_read_only_pass_write_block_combinations(void) {
     printf("Starting read-only pass/write block combinations...\n");
 
-    // 場景2: Read-only pass, write block 組合
+    // Scenario 2: Read-only pass / write-block combination
     for (int combo = 0; combo < 16; combo++) {
         uint32_t region_base = FILTER_TEST_BASE_ADDR + combo * 0x100000;
 
@@ -74,7 +72,7 @@ static int test_read_only_pass_write_block_combinations(void) {
             uint32_t entry_start = region_base + entry * 0x20000;
             uint32_t entry_end = entry_start + 0x10000;
 
-            // 設置read-only filter
+            // Configure read-only filter
             if (setup_output_remap_region_extended(entry, entry_start, entry_end,
                                                    1,                         // enable
                                                    1,                         // read allowed
@@ -84,19 +82,19 @@ static int test_read_only_pass_write_block_combinations(void) {
             }
         }
 
-        // 測試read-only訪問模式
+        // Test read-only access mode
         for (int entry = 0; entry < 8; entry++) {
             uint32_t test_addr = region_base + entry * 0x20000 + 0x1000;
 
-            // Read應該pass
+            // Read should pass
             if (test_axi_transaction(test_addr, 4, AXI_READ) != 0) {
                 printf("ERROR: Read should pass for combo %d entry %d\n", combo, entry);
                 return -1;
             }
 
-            // Write應該block
+            // Write should block
             if (test_axi_transaction(test_addr + 4, 4, AXI_WRITE) != 0) {
-                // 預期失敗 - write should be blocked
+                // Expect fail - write should be blocked
             }
         }
     }
@@ -108,7 +106,7 @@ static int test_read_only_pass_write_block_combinations(void) {
 static int test_ns_secure_allow_deny_patterns(void) {
     printf("Starting NS/secure allow/deny patterns...\n");
 
-    // 場景3: NS allow/deny 和 secure 模式
+    // Scenario 3: NS allow/deny and secure modes
     uint32_t security_patterns[] = {AXI_PROT_SECURE, AXI_PROT_NON_SECURE,
                                     AXI_PROT_SECURE | AXI_PROT_PRIVILEGED,
                                     AXI_PROT_NON_SECURE | AXI_PROT_USER};
@@ -123,7 +121,7 @@ static int test_ns_secure_allow_deny_patterns(void) {
             int allow_ns = (security_attr & AXI_PROT_NON_SECURE) ? 1 : 0;
             int allow_secure = (security_attr & AXI_PROT_NON_SECURE) ? 0 : 1;
 
-            // 設置security-aware filter
+            // Configure security-aware filter
             if (setup_output_remap_region_extended(region, region_start, region_end,
                                                    1,            // enable
                                                    allow_secure, // channel for secure
@@ -133,10 +131,10 @@ static int test_ns_secure_allow_deny_patterns(void) {
                 return -1;
             }
 
-            // 測試不同security模式的訪問
+            // Test accesses under different security modes
             uint32_t test_addr = region_start + 0x10000;
 
-            // Secure 訪問
+            // Secure access
             if (test_axi_transaction(test_addr, 4, AXI_READ) != 0) {
                 if (allow_secure) {
                     printf("ERROR: Secure access should be allowed\n");
@@ -144,7 +142,7 @@ static int test_ns_secure_allow_deny_patterns(void) {
                 }
             }
 
-            // Non-secure 訪問 (模擬)
+            // Non-secure access (simulated)
             if (test_axi_transaction(test_addr + 0x1000, 4, AXI_WRITE) != 0) {
                 if (allow_ns) {
                     printf("ERROR: NS access should be allowed\n");
@@ -161,7 +159,7 @@ static int test_ns_secure_allow_deny_patterns(void) {
 static int test_burst_allowed_blocked_scenarios(void) {
     printf("Starting burst allowed/blocked scenarios...\n");
 
-    // 場景4: Burst allowed/blocked 組合
+    // Scenario 4: Burst allowed/blocked combinations
     uint32_t burst_sizes[] = {1, 2, 4, 8, 16, 32, 64, 128};
 
     for (int burst_idx = 0; burst_idx < 8; burst_idx++) {
@@ -172,7 +170,7 @@ static int test_burst_allowed_blocked_scenarios(void) {
             uint32_t entry_start = region_base + filter_entry * 0x40000;
             uint32_t entry_end = entry_start + 0x20000;
 
-            // 設置burst-aware filter
+            // Configure burst-aware filter
             int burst_allowed = (burst_size <= (1 << filter_entry)) ? 1 : 0;
 
             if (setup_output_remap_region_extended(filter_entry, entry_start, entry_end,
@@ -185,12 +183,12 @@ static int test_burst_allowed_blocked_scenarios(void) {
             }
         }
 
-        // 測試burst訪問模式
+        // Test burst access modes
         for (int entry = 0; entry < 8; entry++) {
             uint32_t test_addr = region_base + entry * 0x40000 + 0x8000;
             int burst_allowed = (burst_size <= (1 << entry)) ? 1 : 0;
 
-            // 測試不同大小的burst
+            // Test different burst sizes
             if (test_axi_transaction(test_addr, burst_size * 4, AXI_READ) != 0) {
                 if (burst_allowed) {
                     printf("ERROR: Burst size %d should be allowed for entry %d\n", burst_size,
@@ -206,41 +204,38 @@ static int test_burst_allowed_blocked_scenarios(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_061: Filter Datapath Matrix P3 Test\n");
-    printf("Goals: traffic_filter 88.11%% -> 90%%+, axi_filter_wrap 64.11%% -> 90%%+\n");
-    printf("Strategy: 針對性的 pass/block 流量測試，覆蓋所有datapath組合\n\n");
+    printf("Filter Datapath Matrix Test\n");
+    printf("Strategy: Targeted pass/block traffic tests covering all datapath combinations\n\n");
 
-    // 初始化fabric系統
+    // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_061");
+        test_fail("fabric_filter_datapath_matrix_p3_test");
         return TEST_FAIL;
     }
 
-    // 執行所有filter datapath場景
+    // Run all filter datapath scenarios
     if (test_no_match_default_block_scenarios() != 0) {
-        test_fail("TC_FABRIC_061 - No Match Default Block");
+        test_fail("No Match Default Block");
         return TEST_FAIL;
     }
 
     if (test_read_only_pass_write_block_combinations() != 0) {
-        test_fail("TC_FABRIC_061 - Read Only Pass Write Block");
+        test_fail("Read Only Pass Write Block");
         return TEST_FAIL;
     }
 
     if (test_ns_secure_allow_deny_patterns() != 0) {
-        test_fail("TC_FABRIC_061 - NS Secure Allow Deny");
+        test_fail("NS Secure Allow Deny");
         return TEST_FAIL;
     }
 
     if (test_burst_allowed_blocked_scenarios() != 0) {
-        test_fail("TC_FABRIC_061 - Burst Allowed Blocked");
+        test_fail("Burst Allowed Blocked");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_061: FILTER DATAPATH MATRIX P3 TEST PASSED ===\n");
-    printf("Expected improvement: traffic_filter 88.11%% -> 90%%+, axi_filter_wrap 64.11%% -> "
-           "90%%+\n");
+    printf("\n=== FILTER DATAPATH MATRIX TEST PASSED ===\n");
 
-    test_pass("TC_FABRIC_061");
+    test_pass("fabric_filter_datapath_matrix_p3_test");
     return TEST_PASS;
 }

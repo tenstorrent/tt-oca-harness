@@ -9,9 +9,9 @@
  * Exercises the per-slot CTRL.erase control and rom_kpv_erase_slot():
  * - Erase overwrites all key words of a slot even when the slot is
  *   write-locked and read-locked (erase is not blocked by the locks).
- * - Erase clears the slot CTRL register (lock_write, lock_use, erase, extend,
- *   last_dword), so the slot becomes reusable.
- * - A multi-slot (extended) key is erased across all its slots.
+ * - Erase clears the slot CTRL register (lock_write, lock_use, erase), so the
+ *   slot becomes reusable.
+ * - A key spanning two slots is erased by erasing each of its slots.
  *
  * Requires the DRBG to be initialized first (for the scrambler key).
  *
@@ -75,8 +75,8 @@ int main(void) {
         uint32_t key_in[16];
         for (uint32_t i = 0; i < 16; i++) key_in[i] = 0x11223300u + i;
 
-        if (rom_kpv_write_key(slot, key_in, 16) != 0) {
-            TEST_FAIL("write_key slot %u failed", (unsigned)slot);
+        if (rom_kpv_write_slot(slot, key_in, 16) != 0) {
+            TEST_FAIL("write_slot slot %u failed", (unsigned)slot);
         }
 
         /* Lock the slot for read and write; erase must bypass both. */
@@ -97,16 +97,14 @@ int main(void) {
         /* Slot must be reusable now that locks are cleared. */
         uint32_t key2[16];
         for (uint32_t i = 0; i < 16; i++) key2[i] = 0x44556600u + i;
-        if (rom_kpv_write_key(slot, key2, 16) != 0) {
-            TEST_FAIL("write_key to erased slot %u failed (not reusable)", (unsigned)slot);
+        if (rom_kpv_write_slot(slot, key2, 16) != 0) {
+            TEST_FAIL("write_slot to erased slot %u failed (not reusable)", (unsigned)slot);
         }
 
         uint32_t key_out[16];
-        uint8_t key_len = 0;
-        if (rom_kpv_read_key(slot, key_out, &key_len) != 0) {
-            TEST_FAIL("read_key from reused slot %u failed", (unsigned)slot);
+        if (rom_kpv_read_slot(slot, key_out, 16) != 0) {
+            TEST_FAIL("read_slot from reused slot %u failed", (unsigned)slot);
         }
-        TEST_ASSERT_EQ(key_len, 16u, "reused key_len");
         for (uint32_t i = 0; i < 16; i++)
             TEST_ASSERT_EQ(key_out[i], 0x44556600u + i, "reused key word");
 
@@ -114,24 +112,28 @@ int main(void) {
     }
     TEST_SUBTEST_PASS();
 
-    /* 2. Erase a multi-slot (extended) key across all of its slots. */
+    /* 2. Erase a two-slot key by erasing each of its slots. */
     TEST_SUBTEST_START("Erase multi-slot key");
     {
         const uint8_t base = 10;
-        const uint8_t klen = 20; /* 2 slots: EXTEND=1 */
+        /* A 20-word key: 16 words in the base slot, 4 in the next. */
         uint32_t key_in[20];
-        for (uint32_t i = 0; i < klen; i++) key_in[i] = 0x77000000u + i;
+        for (uint32_t i = 0; i < 20; i++) key_in[i] = 0x77000000u + i;
 
-        if (rom_kpv_write_key(base, key_in, klen) != 0) {
-            TEST_FAIL("write_key multi-slot base %u failed", (unsigned)base);
+        if (rom_kpv_write_slot(base, key_in, 16) != 0 ||
+            rom_kpv_write_slot((uint8_t)(base + 1), &key_in[16], 4) != 0) {
+            TEST_FAIL("write_slot multi-slot base %u failed", (unsigned)base);
         }
         rom_kpv_write_lock(base);
         rom_kpv_read_lock(base);
+        rom_kpv_write_lock((uint8_t)(base + 1));
+        rom_kpv_read_lock((uint8_t)(base + 1));
 
         write_pattern_slot(base);
         write_pattern_slot((uint8_t)(base + 1));
 
         rom_kpv_erase_slot(base);
+        rom_kpv_erase_slot((uint8_t)(base + 1));
 
         verify_ctrl_cleared(base);
         verify_ctrl_cleared((uint8_t)(base + 1));

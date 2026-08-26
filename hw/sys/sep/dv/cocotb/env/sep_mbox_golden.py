@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """axil_mailbox config + golden depth model (outbound aperture, TX path).
 
 The SEP axil_mailbox (vendor/pulp-platform/axi/.../axi_lite_mailbox.sv, wrapped by
@@ -7,7 +8,7 @@ side over the CPU-LSU master (NO inbound filter): the OUTBOUND aperture
 (outbound_mailbox_0 @ 0x10A0_0000). WRITE_DATA(+0x00) pushes the TX FIFO (SEP->peer);
 READ_DATA(+0x08) pops the RX FIFO (peer->SEP), which stays EMPTY here because the
 peer (SMC) side is not driven -> read returns the 0xFEEDDEAD sentinel + SLVERR. So
-this is the TX-path test, exactly like OCAH ("CPU not running -> RX always empty;
+this is the TX-path test, exactly like the reference suite ("CPU not running -> RX always empty;
 verify the TX path").
 
 STATUS has no exact-depth field (only empty/full/write_level_above/read_level_above),
@@ -23,14 +24,16 @@ Accepted deltas:
     occupancy because the permanent testcase is the TX-path randomized rep; a permanent
     peer-path closure should use the external master and its own checker contract.
 
-Geometry note: post-#3548 MAILBOX_SIZE=0x800, so inbound_mailbox_0 is at 0x10A0_0800
-(the pre-#3548 0x1000 stride put it at 0x10A0_1000 and mis-decoded 0x10A0_0800 onto
+Geometry note: MAILBOX_SIZE=0x800, so inbound_mailbox_0 is at 0x10A0_0800
+(the earlier 0x1000 stride put it at 0x10A0_1000 and mis-decoded 0x10A0_0800 onto
 the outbound port -- fixed).
 """
 
 from __future__ import annotations
 
 from sep_reg_meta import SEP_CPU_CTRL, sym
+
+from env.sep_seeded_rng import SepSeededRng
 
 # --- outbound_mailbox_0 register map (single source of truth) -------------------
 OUTBOUND_BASE = sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")      # SEP/CPU aperture (CPU-LSU reachable, no filter)
@@ -79,16 +82,15 @@ class SepMboxCfg:
     TOML ``reseed = N``."""
 
     def __init__(self, seed: int = 1, *, depth: int = MAILBOX_DEPTH) -> None:
-        import random
         self.seed = seed
         self.depth = depth
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         # RANDOM write threshold in [1, depth-1]: "exceeds threshold" is reachable and
         # a full FIFO always trips it.
-        self.wirqt = rng.randint(1, depth - 1)
+        self.wirqt = rng.randrange(1, depth)
         # RANDOM "message length" for the first fill batch: enough to cross WIRQT but
         # not necessarily fill (the test then tops up to full for the overflow check).
-        self.first_batch = rng.randint(self.wirqt + 1, depth)
+        self.first_batch = rng.randrange(self.wirqt + 1, depth + 1)
         # RANDOM distinct nonzero 64-bit payloads (data actually varies per seed), one
         # more than depth so the write-to-full overflow has its own value.
         self.payloads: list[int] = []

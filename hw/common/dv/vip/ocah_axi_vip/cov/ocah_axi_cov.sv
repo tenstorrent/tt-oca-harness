@@ -84,7 +84,9 @@ interface ocah_axi_cov_if #(
     axi_write_cg write_cg = new();
     axi_read_cg read_cg = new();
 
-    task automatic sample_write(
+    // Functions (no timing controls) so both procedural blocks and UVM
+    // subscriber write() functions can sample coverage.
+    function automatic void sample_write(
         input bit is_lite,
         input logic [ADDR_WIDTH-1:0] addr,
         input logic [ID_WIDTH-1:0] id,
@@ -100,9 +102,9 @@ interface ocah_axi_cov_if #(
         end
         errored = resp inside {2'd2, 2'd3};
         write_cg.sample(is_lite, resp, size, burst_len, errored);
-    endtask
+    endfunction
 
-    task automatic sample_read(
+    function automatic void sample_read(
         input bit is_lite,
         input logic [ADDR_WIDTH-1:0] addr,
         input logic [ID_WIDTH-1:0] id,
@@ -118,7 +120,7 @@ interface ocah_axi_cov_if #(
         end
         errored = resp inside {2'd2, 2'd3};
         read_cg.sample(is_lite, resp, size, burst_len, errored);
-    endtask
+    endfunction
 
 endinterface
 

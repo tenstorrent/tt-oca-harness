@@ -1,12 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_ZEROER_REGCLK_CG_TEST ANCHOR: smc_zeroer_regclk_cg_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 47e3381f135bfb76907ef06f89d4eb70bb30c6c7bb0232bb56dee36072ecbd1b
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 DV-CARD: SMC_CG_P2_003 ANCHOR: smc_zeroer_regclk_cg_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 93666c6c76e78b0f181dba725025d1652ff5407526e20c4421403218b24e290e
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P2_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 The P2 card extends this same anchor (additive): the P1 steps/checkers above
 are UNCHANGED (their evidence tokens must keep appearing verbatim for the
@@ -20,6 +17,8 @@ no separate SPEC max-wait constant).
 
 from __future__ import annotations
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
 
@@ -27,7 +26,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 # hyst=0 so card within-1-cycle idle gate-off matches axi_cg_snoop (DenyDelay=1).
 HYST = 0

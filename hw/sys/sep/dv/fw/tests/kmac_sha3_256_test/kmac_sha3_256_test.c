@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_002 (P0) - SHA-3-256 Known Answer Test
+ * SHA-3-256 Known Answer Test
  *
  * Computes SHA-3-256 of "abc" and verifies against NIST known vector.
  * Digest from two STATE shares XORed. Accepts exact, byte-swapped,
@@ -15,6 +15,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
 #include "kmac_test_vectors.h" // Auto-generated from Python hashlib
 
 static int wait_for_idle(void) {
@@ -31,8 +32,8 @@ static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
         uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
-        if (intr & 0x1) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1);
+        if (intr & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -56,9 +57,9 @@ static int sha3_256_abc_test(void) {
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 0;
-    cfg.f.mode = 0x0;
-    cfg.f.kstrength = 0x2;
-    cfg.f.entropy_mode = 0x2; /* SW mode = 0x2 (0=None, 1=EDN, 2=SW per hjson) */
+    cfg.f.mode = SEP_KMAC_MODE_SHA3;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     cfg.f.msg_endianness = 0;
     cfg.f.state_endianness = 0;
     cfg.f.entropy_ready = 0;
@@ -78,7 +79,7 @@ static int sha3_256_abc_test(void) {
     printf("  Entropy seed written\n");
 
     kmac__CMD_t cmd = {.w = 0};
-    cmd.f.cmd = 29;
+    cmd.f.cmd = SEP_KMAC_CMD_START;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  START issued\n");
 
@@ -104,7 +105,7 @@ static int sha3_256_abc_test(void) {
     }
     printf("  Message abc written (3 bytes via sb[0] x3 to word-aligned base)\n");
 
-    cmd.f.cmd = 46;
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     printf("  PROCESS issued\n");
 
@@ -115,7 +116,8 @@ static int sha3_256_abc_test(void) {
     uint32_t share0[12], share1[12], digest[8];
     for (int i = 0; i < 12; i++) share0[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
     for (int i = 0; i < 12; i++)
-        share1[i] = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (0x100 + (i * 4))));
+        share1[i] =
+            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
     for (int i = 0; i < 8; i++) digest[i] = share0[i] ^ share1[i];
 
     printf("  Share0[0:11]:");
@@ -125,13 +127,13 @@ static int sha3_256_abc_test(void) {
     printf("\n  Digest[0:7]:");
     for (int i = 0; i < 8; i++) printf(" %08x", digest[i]);
     /* Also show A[4][0] (words 8-9) XOR */
-    printf("\n  A[4][0]:     %08x %08x  (w8^w8_s1, w9^w9_s1)", share0[8] ^ share1[8],
+    printf("\n  A[4][0]: %08x %08x  (w8^w8_s1, w9^w9_s1)", share0[8] ^ share1[8],
            share0[9] ^ share1[9]);
     printf("\n  Expected:");
     for (int i = 0; i < 8; i++) printf(" %08x", sha3_256_abc_ref[i]);
     printf("\n");
 
-    cmd.f.cmd = 22;
+    cmd.f.cmd = SEP_KMAC_CMD_DONE;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     /* KMAC with state_endianness=0 returns little-endian data.
@@ -156,14 +158,55 @@ static int sha3_256_abc_test(void) {
     }
 }
 
+static int sha3_256_empty_test(void) {
+    printf("\n=== SHA-3-256 empty Test ===\n");
+    if (wait_for_idle() != 0) return -1;
+
+    kmac__CFG_SHADOWED_t cfg = {.w = 0};
+    cfg.f.mode = SEP_KMAC_MODE_SHA3;
+    cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
+    cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    cfg.f.entropy_ready = 1;
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    setup_entropy();
+
+    kmac__CMD_t cmd = {.w = 0};
+    cmd.f.cmd = SEP_KMAC_CMD_START;
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    if (wait_for_done() != 0) return -1;
+
+    int pass = 1;
+    for (int i = 0; i < 8; i++) {
+        uint32_t dig = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (uint32_t)i * 4u) ^
+                       READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET +
+                                (uint32_t)i * 4u);
+        uint32_t dig_be = byte_swap(dig);
+        if (dig_be != sha3_256_empty_ref[i]) {
+            printf("  FAIL: empty DIGEST_%d=0x%08x expected=0x%08x\n", i, dig_be,
+                   sha3_256_empty_ref[i]);
+            pass = 0;
+        }
+    }
+    cmd.f.cmd = SEP_KMAC_CMD_DONE;
+    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    return pass ? 0 : -1;
+}
+
 int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_002: SHA-3-256 Known Answer\n");
+    printf("  SHA-3-256 Known Answer\n");
     printf("========================================\n");
 
-    int result = sha3_256_abc_test();
+    int result = 0;
+    if (sha3_256_abc_test() != 0) result = -1;
+    if (sha3_256_empty_test() != 0) result = -1;
 
     printf("\n========================================\n");
     if (result == 0) {

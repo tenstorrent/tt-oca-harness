@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS SEP-input AXI UVM agent.
 
 Drives real AXI traffic through the tb_top ``s_axi_*`` bridge into
@@ -12,7 +13,7 @@ from enum import Enum
 
 import cocotb
 from cocotb.triggers import with_timeout
-from ocah_axi_vip import OcahAxiMaster
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -56,7 +57,6 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.expect_error: bool = False
         # Soft-complete on AXI timeout. Default False. Setting True requires a
         # comment at the call site explaining why incomplete traffic is OK and
-        # a second positive evidence path (see dv_hack_cleanup_checklist.md §2.3).
         self.allow_timeout: bool = False
         self.timed_out: bool = False
         self.timeout_ns: int | None = None
@@ -66,6 +66,9 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.update_golden: bool = False
         self.check_golden: bool = False
         self.memory_region: str | None = None
+        # AXI AxPROT. Default 0 (unprivileged) matches historical SEP_IN CSR
+        # traffic. GPIO ACCESS_FILTER tests program this to 1 (privileged).
+        self.prot: int = 0
 
     def __str__(self) -> str:
         exp = "None" if self.expected is None else f"0x{self.expected:x}"
@@ -77,7 +80,7 @@ class SmcSysAxiItem(uvm_sequence_item):
 
 
 class SmcSysAxiDriver(uvm_driver):
-    """Drives SmcSysAxiItem transactions through ocah_axi_vip.OcahAxiMaster."""
+    """Drives SmcSysAxiItem transactions through ocah_axi_vip.OcahAxiMasterSequence."""
 
     bus_prefix = "s_axi"
     bus_name = "SEP_IN AXI"
@@ -85,20 +88,20 @@ class SmcSysAxiDriver(uvm_driver):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
-        self.axi: OcahAxiMaster | None = None
+        self.axi: OcahAxiMasterSequence | None = None
 
     async def run_phase(self) -> None:
         dut = cocotb.top
-        self.axi = OcahAxiMaster.from_prefix(
+        self.axi = OcahAxiMasterAgent.from_prefix(
             dut,
             self.bus_prefix,
             dut.clk_smc_i,
             dut.rst_primary_smc_clk_no,
             name=f"smc_{self.bus_prefix}",
             reset_active_level=False,
-        )
+        ).sequence
         await self.cfg.reset_done.wait()
-        self.logger.info("SMC %s OcahAxiMaster ready on %s", self.bus_name, self.bus_prefix)
+        self.logger.info("SMC %s OcahAxiMasterSequence ready on %s", self.bus_name, self.bus_prefix)
 
         while True:
             item = await self.seq_item_port.get_next_item()
@@ -112,7 +115,7 @@ class SmcSysAxiDriver(uvm_driver):
                 address=item.addr,
                 length=item.length,
                 size=self._axi_size(item.length),
-                prot=0,
+                prot=int(item.prot),
             )
             resp = await self._timed_event(event, item, "read")
             if resp is None:
@@ -128,7 +131,7 @@ class SmcSysAxiDriver(uvm_driver):
                 address=item.addr,
                 data=item.wdata.to_bytes(item.length, "little"),
                 size=self._axi_size(item.length),
-                prot=0,
+                prot=int(item.prot),
             )
             resp = await self._timed_event(event, item, "write")
             if resp is None:

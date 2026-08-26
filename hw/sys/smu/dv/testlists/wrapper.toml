@@ -1,9 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
 # Production-wrapper baseline catalog, run via `run_dv.py --dut smu_wrapper`.
 # Independent of the bare-smu all.toml catalog. Compile profiles are the
 # [targets.*] tables in smu_wrapper_sim_cfg.toml selected per test.
-# Result-reporting policy: docs/SMU_VPLAN.md §13.
+# Result-reporting policy: only enrolled groups report PASS; deferred.toml never does.
 # Config classes here: `no_sep` run mode = no-SEP; `sep_rtl` = real SEP RTL.
 #
 # SIGNOFF NOTE: wrapper `all` / `smoke` is the production-wrapper merge-gate
@@ -12,11 +15,11 @@ schema_version = 1
 #
 # Commercial mirror (oca_smu chiplet testlist YAML naming):
 #   SMU_Dev_with_SEP_Regression          = probe/connectivity (no CPU exec)
-#   Manual_SMU_Blocked_SEP_Exec_Regression = needs real SEP fetch/retire (#3582)
+#   Manual_SMU_Blocked_SEP_Exec_Regression = needs real SEP fetch/retire
 #
 # OSS wrapper merge-gate (`all` / `smoke`) keeps only bring-up that does NOT
 # require SEP CPU execution. `smu_sep_smoke_test` stays defined for the live
-# #3582 IFU reproducer but is enrolled only under `sep_exec_blocked`.
+# SEP IFU reproducer but is enrolled only under `sep_exec_blocked`.
 
 [[tests]]
 name = "smu_wrapper_elaboration_no_sep_test"
@@ -66,7 +69,7 @@ args = [
   "+smc_efuse_hex=smc_efuse_default.hex",
 ]
 
-# Live #3582 reproducer (Manual_SMU_Blocked_SEP_Exec_Regression). Default-run
+# Live SEP IFU reproducer (Manual_SMU_Blocked_SEP_Exec_Regression). Default-run
 # gate is correct at CPU reset release, but IFU never issues boot-ROM fetches
 # (boot_rom_reqs=0, halt=X). Not reportable as PASS until SEP fetch fix lands.
 [[tests]]
@@ -110,7 +113,7 @@ tests = [
 ]
 
 # Quarantine: needs foundry ram_* (OSS sep_tcm_wrapper present; DV shim
-# removed) and/or SEP IFU (#3582).
+# removed) and/or SEP IFU.
 [[groups]]
 name = "sep_tcm_deferred"
 tests = [

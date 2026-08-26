@@ -2,30 +2,30 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Watermark Test - TC_SPIOT_018 (P1)
+ * SPI OT Watermark Test
  *
  * Verifies TX and RX watermark configuration and status bit transitions.
  *
  * CTRL register watermark fields:
- *   CTRL[7:0]  = RX_WATERMARK (8-bit): RXWM=1 when RXQD > RX_WATERMARK
- *   CTRL[15:8] = TX_WATERMARK (8-bit): TXWM=1 when TXQD < TX_WATERMARK
+ * CTRL[7:0]  = RX_WATERMARK (8-bit): RXWM=1 when RXQD > RX_WATERMARK
+ * CTRL[15:8] = TX_WATERMARK (8-bit): TXWM=1 when TXQD < TX_WATERMARK
  *
  * Default: CTRL_REG_DEFAULT=0x7F → RX_WM=0x7F=127, TX_WM=0x00=0
- *   - Default TXWM=0 (TXQD=0 is not < 0)
- *   - Default RXWM=0 (RXQD=0 is not > 127)
+ * - Default TXWM=0 (TXQD=0 is not < 0)
+ * - Default RXWM=0 (RXQD=0 is not > 127)
  *
  * Test Flow:
- *   1. Verify default watermarks (RX_WM=127, TX_WM=0), TXWM=0, RXWM=0
- *   2. Set TX_WM=1: TXWM=1 (empty FIFO: TXQD=0 < 1)
- *   3. Write 2 words to TX FIFO: TXWM=0 (TXQD=2 >= 1)
- *   4. Set TX_WM=4: TXWM=1 (TXQD=2 < 4)
- *   5. Write 2 more words (TXQD=4): TXWM=0 (TXQD=4 >= 4)
- *   6. Set TX_WM=0: TXWM=0 always (0 < 0 is false)
- *   7. Verify RX_WM write-readback (min=0, max=0xFF, restore default)
- *   8. SW_RST to drain TX FIFO
+ * 1. Verify default watermarks (RX_WM=127, TX_WM=0), TXWM=0, RXWM=0
+ * 2. Set TX_WM=1: TXWM=1 (empty FIFO: TXQD=0 < 1)
+ * 3. Write 2 words to TX FIFO: TXWM=0 (TXQD=2 >= 1)
+ * 4. Set TX_WM=4: TXWM=1 (TXQD=2 < 4)
+ * 5. Write 2 more words (TXQD=4): TXWM=0 (TXQD=4 >= 4)
+ * 6. Set TX_WM=0: TXWM=0 always (0 < 0 is false)
+ * 7. Verify RX_WM write-readback (min=0, max=0xFF, restore default)
+ * 8. SW_RST to drain TX FIFO
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_watermark_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_watermark_test STACK=sim
  *
  */
 
@@ -35,7 +35,6 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -43,16 +42,13 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Watermark Test (TC_SPIOT_018)\n");
+    printf("SPI OT Watermark Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
-    volatile int delay;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller with defaults (TX_WM=0, RX_WM=127) */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
@@ -62,25 +58,26 @@ int main(void) {
 
     /* ------------------------------------------------------------------ */
     /* Step 1: Verify default watermarks                                   */
-    /* Default CTRL=0x7F: rx_watermark=127, tx_watermark=0                */
     /* ------------------------------------------------------------------ */
     printf("Step 1: Default watermark values\n");
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     printf("  CTRL=0x%08x: TX_WM=%u, RX_WM=%u\n", ctrl.w, ctrl.f.TX_WATERMARK, ctrl.f.RX_WATERMARK);
-    if (ctrl.f.TX_WATERMARK != 0) {
-        printf("  FAIL: Default TX_WM expected 0, got %u\n", ctrl.f.TX_WATERMARK);
+    if (ctrl.f.TX_WATERMARK != SPI_CONTROLLER__CTRL__TX_WATERMARK_reset) {
+        printf("  FAIL: Default TX_WM expected %u, got %u\n",
+               SPI_CONTROLLER__CTRL__TX_WATERMARK_reset, ctrl.f.TX_WATERMARK);
         pass = 0;
     } else {
-        printf("  PASS: Default TX_WM=0\n");
+        printf("  PASS: Default TX_WM=%u\n", SPI_CONTROLLER__CTRL__TX_WATERMARK_reset);
     }
-    if (ctrl.f.RX_WATERMARK != 0x7F) {
-        printf("  FAIL: Default RX_WM expected 0x7F=127, got %u\n", ctrl.f.RX_WATERMARK);
+    if (ctrl.f.RX_WATERMARK != SPI_CONTROLLER__CTRL__RX_WATERMARK_reset) {
+        printf("  FAIL: Default RX_WM expected %u, got %u\n",
+               SPI_CONTROLLER__CTRL__RX_WATERMARK_reset, ctrl.f.RX_WATERMARK);
         pass = 0;
     } else {
-        printf("  PASS: Default RX_WM=0x7F=127\n");
+        printf("  PASS: Default RX_WM=%u\n", SPI_CONTROLLER__CTRL__RX_WATERMARK_reset);
     }
 
-    /* Verify STATUS bits with default watermarks (TX FIFO empty) */
+    /* Verify STATUS bits with default watermarks (TX/RX FIFOs empty) */
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf(
         "  STATUS: TXWM=%u (expected 0: TXQD=0 not < 0), RXWM=%u (expected 0: RXQD=0 not > 127)\n",
@@ -90,6 +87,13 @@ int main(void) {
         pass = 0;
     } else {
         printf("  PASS: TXWM=0 correct with TX_WM=0\n");
+    }
+    if (status.f.RXWM != 0) {
+        printf("  FAIL: RXWM should be 0 with RXQD=0 and RX_WM=%u\n",
+               SPI_CONTROLLER__CTRL__RX_WATERMARK_reset);
+        pass = 0;
+    } else {
+        printf("  PASS: RXWM=0 correct with empty RX FIFO\n");
     }
 
     /* ------------------------------------------------------------------ */
@@ -205,9 +209,9 @@ int main(void) {
         printf("  PASS: RX_WM=0xFF readback OK\n");
     }
 
-    /* Restore default RX_WM=127 */
+    /* Restore default RX_WM from generated field reset */
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
-    ctrl.f.RX_WATERMARK = 0x7F;
+    ctrl.f.RX_WATERMARK = SPI_CONTROLLER__CTRL__RX_WATERMARK_reset;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
     /* ------------------------------------------------------------------ */
@@ -217,13 +221,22 @@ int main(void) {
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
-    for (delay = 0; delay < 1000; delay++) {
+    {
+        int t = TIMEOUT_LIMIT;
+        while (t-- > 0) {
+            status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+            if (status.f.TXEMPTY && status.f.TXQD == 0 && !status.f.ACTIVE) break;
+        }
+        if (t <= 0) {
+            printf("  FAIL: TIMEOUT waiting for TXEMPTY after SW_RST (STATUS=0x%08x)\n", status.w);
+            pass = 0;
+        }
     }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  After SW_RST: TXEMPTY=%u, TXQD=%u\n", status.f.TXEMPTY, status.f.TXQD);
-    if (!status.f.TXEMPTY) {
-        printf("  FAIL: TXEMPTY should be 1 after SW_RST\n");
+    if (!status.f.TXEMPTY || status.f.TXQD != 0) {
+        printf("  FAIL: TXEMPTY should be 1 and TXQD=0 after SW_RST\n");
         pass = 0;
     } else {
         printf("  PASS: TX FIFO drained by SW_RST\n");

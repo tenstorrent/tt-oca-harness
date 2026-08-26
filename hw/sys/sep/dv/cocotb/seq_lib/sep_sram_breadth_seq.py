@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SRAM datapath-breadth config + driver for ``sep_sram_datapath_breadth_test``.
 
 `[RANDCFG]` rep: ``SepSramBreadthCfg`` is the single source of truth for BOTH the
@@ -7,7 +8,7 @@ walked deterministically (so a single seed never skips one); only legal knobs
 (mask order, region offsets, write/init data, the sequential-window length) are
 seed-randomized, with masked values so they read back exactly.
 
-The SRAM port is 64-bit single-beat (AXI4-Lite-like; the OCAH "burst" tests are
+The SRAM port is 64-bit single-beat (AXI4-Lite-like; the reference suite "burst" tests are
 audit-only AWLEN=0/ARLEN=0 -- no multi-beat burst feature), so only single-beat
 accesses are issued. ``length`` selects the byte count: 8 = full 64-bit word,
 1..7 = a sub-word write/read whose WSTRB cocotbext-axi derives from addr+length.
@@ -24,9 +25,8 @@ from __future__ import annotations
 
 from sep_reg_meta import sym
 
-import random
-
 from env.sep_axi_agent import SepAxiOp
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # SEP SRAM aperture (256 KiB). Derived from the generated Python register export
@@ -64,7 +64,7 @@ class SepSramBreadthCfg:
 
     def __init__(self, seed: int) -> None:
         self.seed = seed
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         self.base_addr = SEP_SRAM_BASE
         self.size = SEP_SRAM_SIZE
 
@@ -77,7 +77,7 @@ class SepSramBreadthCfg:
         self.wstrb_newdata = [rng.getrandbits(64) for _ in self.wstrb_specs]
 
         # Patterns: the required cells are always present; add a few seed-random extras.
-        n_extra = rng.randint(2, 4)
+        n_extra = rng.randrange(2, 5)
         self.pattern_values = list(_REQUIRED_PATTERNS) + [rng.getrandbits(64) for _ in range(n_extra)]
         self.pattern_offset = self._aligned(rng, 0x2000, 0x3000)
 
@@ -85,7 +85,7 @@ class SepSramBreadthCfg:
         self.boundary_addrs = [self.base_addr, self.base_addr + self.size - 8]
 
         # Sequential: >= 4 words (seed-bounded), random aligned base + seed data.
-        self.seq_words = rng.randint(4, 8)
+        self.seq_words = rng.randrange(4, 9)
         self.seq_offset = self._aligned(rng, 0x3000, 0x3F00)
         self.seq_seed = rng.getrandbits(64)
 
@@ -95,7 +95,7 @@ class SepSramBreadthCfg:
         self.nonvac_pattern = rng.getrandbits(64) | 1   # ensure nonzero
 
     @staticmethod
-    def _aligned(rng: random.Random, lo: int, hi: int) -> int:
+    def _aligned(rng: SepSeededRng, lo: int, hi: int) -> int:
         """A 64-bit-word-aligned offset in [lo, hi)."""
         return rng.randrange(lo, hi) & ~0x7
 

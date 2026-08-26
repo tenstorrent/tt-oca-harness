@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Structural production-wrapper sequence used before firmware bring-up.
 
 DV-CARD:          SMU_ALL_001   ANCHOR: smu_wrapper_elaboration_sep_rtl_test
-DV-CARD-REVISION: 2   RECORD-SHA256: 4e5e5594db63d991c8012442ba4bd759549b907e0779d3dd1d9b91b93f61b1cb
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 2   ENV: cocotb
 """
 
 from __future__ import annotations

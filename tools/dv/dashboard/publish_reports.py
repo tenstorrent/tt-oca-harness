@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Publish static dashboard artifacts with timestamped history and latest copy."""
 
 from __future__ import annotations

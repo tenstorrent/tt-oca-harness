@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Sequence for smu_sep_smoke_test (SMU_ALL_007 rev 11).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Sequence for smu_sep_smoke_test (SMU_ALL_007).
 
 DV-CARD:          SMU_ALL_007   ANCHOR: smu_sep_smoke_test
-DV-CARD-REVISION: 11   RECORD-SHA256: 01ce931b85a69a79d77782cf37f77dbe6361b59123bff20c856825e861ab6b71
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 11   ENV: cocotb
 
 Allocated (narrowed Option B; SEP=0 bare tb_top):
   SMC-RST-PRIMARY-EXPORT.S1 / S2
@@ -25,7 +24,7 @@ SRC_ACK_PATS = (0x01, 0x80, 0x3C)
 
 
 class smu_sep_smoke_test_seq:
-    """SMU_ALL_007 r11: primary-reset export + CTM pulse-sync / reserved [1:0]."""
+    """SMU_ALL_007: primary-reset export + CTM pulse-sync / reserved [1:0]."""
 
     BOUND_CYCLES = 2000
     BOUND_REF = 2000

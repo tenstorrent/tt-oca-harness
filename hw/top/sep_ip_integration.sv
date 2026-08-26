@@ -28,15 +28,6 @@ module sep_ip_integration
     input logic clk_i,
     input logic rst_ni,
 
-    // Reset gating the sim-only memory macros, derived by sep_wrapper.sv from
-    // sep.sv's reset and WDT-expiry outputs so the memories reinitialize
-    // along with the core.
-    input logic sep_cpu_reset_n_i,
-
-    // Plain SEP reset, ungated by the WDT; resets the Adams Bridge memories so
-    // they come out of reset together with abr_top.
-    input logic sep_reset_n_i,
-
     // Test/DFT passthrough (used by the AXI extension error slave's test_i)
     input logic test_en_i,
 
@@ -170,7 +161,7 @@ module sep_ip_integration
         .SRAM_ADDR_WIDTH (SRAM_ADDR_WIDTH)
     ) u_sep_sram_interface_shim (
         .clk_i          (clk_i),
-        .rst_ni         (sep_cpu_reset_n_i),
+        .rst_ni         (rst_ni),
         .mem_req_i      (sep_sram_req),
         .mem_rsp_o      (sep_sram_rsp),
         .macro_req_o    (sram_macro_req),
@@ -188,7 +179,7 @@ module sep_ip_integration
         .MemInitFile ("")
     ) u_sep_sram (
         .clk_i     (clk_i),
-        .rst_ni    (sep_cpu_reset_n_i),
+        .rst_ni    (rst_ni),
         .req_i     (sram_macro_req),
         .write_i   (sram_macro_write),
         .addr_i    (sram_macro_addr),
@@ -218,7 +209,7 @@ module sep_ip_integration
         .ROM_ADDR_WIDTH (ROM_ADDR_WIDTH)
     ) u_sep_rom_interface_shim (
         .clk_i         (clk_i),
-        .rst_ni        (sep_cpu_reset_n_i),
+        .rst_ni        (rst_ni),
         .mem_req_i     (sep_boot_rom_req),
         .mem_rsp_o     (sep_boot_rom_rsp),
         .macro_req_o   (rom_macro_req),
@@ -232,7 +223,7 @@ module sep_ip_integration
         .MemInitFile ("")
     ) u_sep_boot_rom (
         .clk_i   (clk_i),
-        .rst_ni  (sep_cpu_reset_n_i),
+        .rst_ni  (rst_ni),
         .req_i   (rom_macro_req),
         .addr_i  (rom_macro_addr),
         .rdata_o (rom_macro_rdata),
@@ -267,8 +258,8 @@ module sep_ip_integration
     assign km_rom_mem_rsp_o.rdata  = km_rom_rdata[31:0];
     assign km_rom_mem_rsp_o.parity = km_rom_rdata[35:32];
 
-    always_ff @(posedge clk_i or negedge sep_cpu_reset_n_i) begin
-        if (!sep_cpu_reset_n_i) km_rom_rvalid <= 1'b0;
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) km_rom_rvalid <= 1'b0;
         else km_rom_rvalid <= km_rom_mem_req_i.req;
     end
 
@@ -278,7 +269,7 @@ module sep_ip_integration
         .MemInitFile ("")
     ) u_km_rom (
         .clk_i   (clk_i),
-        .rst_ni  (sep_cpu_reset_n_i),
+        .rst_ni  (rst_ni),
         .req_i   (km_rom_mem_req_i.req),
         .addr_i  (km_rom_mem_req_i.addr[KM_ROM_AW-1:0]),
         .rdata_o (km_rom_rdata),
@@ -289,7 +280,7 @@ module sep_ip_integration
     // KM SRAM External Module //
     /////////////////////////////
 
-    localparam int unsigned KM_SRAM_DEPTH = 4096; // 4K words x 32b = 16KB
+    localparam int unsigned KM_SRAM_DEPTH = 8192; // 8K words x 32b = 32KB
     localparam int unsigned KM_SRAM_AW    = $clog2(KM_SRAM_DEPTH);
     localparam int unsigned KM_SRAM_WIDTH = 36;   // 32 data + 4 parity
 
@@ -314,7 +305,7 @@ module sep_ip_integration
         .MemInitFile ("")
     ) u_km_sram (
         .clk_i    (clk_i),
-        .rst_ni   (sep_cpu_reset_n_i),
+        .rst_ni   (rst_ni),
         .req_i    (km_sram_mem_req_i.req),
         .write_i  (km_sram_mem_req_i.we),
         .addr_i   (km_sram_mem_req_i.addr[KM_SRAM_AW-1:0]),
@@ -343,7 +334,7 @@ module sep_ip_integration
         .DataBitsPerMask (1)
     ) u_otbn_imem_sram (
         .clk_i    (sep_crypto_pka_imem_sram_req.clk),
-        .rst_ni   (sep_cpu_reset_n_i),
+        .rst_ni   (rst_ni),
         .req_i    (sep_crypto_pka_imem_sram_req.enable),
         .write_i  (sep_crypto_pka_imem_sram_req.write),
         .addr_i   (sep_crypto_pka_imem_sram_req.addr),
@@ -368,7 +359,7 @@ module sep_ip_integration
         .DataBitsPerMask (1)
     ) u_otbn_dmem_sram (
         .clk_i    (sep_crypto_pka_dmem_sram_req.clk),
-        .rst_ni   (sep_cpu_reset_n_i),
+        .rst_ni   (rst_ni),
         .req_i    (sep_crypto_pka_dmem_sram_req.enable),
         .write_i  (sep_crypto_pka_dmem_sram_req.write),
         .addr_i   (sep_crypto_pka_dmem_sram_req.addr),
@@ -387,8 +378,10 @@ module sep_ip_integration
     // packed req/rsp structs (abr_mem_req_i / abr_mem_rsp_o, OTBN convention); this
     // is the home for the technology macros. Each channel gets its own
     // sep_abr_mem_1r1w / sep_abr_mem_1r1w_be instance driven straight off the
-    // request struct, reset from sep_reset_n_i so the arrays and abr_top come out of
-    // reset together.
+    // request struct, reset from rst_ni. These macros hold no state across a reset --
+    // rst_ni only clears their output pipeline flops -- so they do not need abr_top's
+    // own (SEP-gated) reset; rst_ni releases earlier and stays released, and abr_top
+    // ignores stale pipeline data because it resets too.
     //
     // The `ifdef SEP_ABR_EN` below is the memory-side counterpart of the guard around
     // u_sep_crypto_abr_wrapper_s3c_scan in sep_crypto.sv: when Adams Bridge is compiled
@@ -455,7 +448,7 @@ module sep_ip_integration
         .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_w1_mem (
         .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (sep_reset_n_i),
+        .rst_ni  (rst_ni),
         .we_i    (abr_mem_req_i.w1_we),
         .waddr_i (abr_mem_req_i.w1_waddr),
         .wdata_i (abr_mem_req_i.w1_wdata),
@@ -474,7 +467,7 @@ module sep_ip_integration
         .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_mem_inst0_bank0 (
         .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (sep_reset_n_i),
+        .rst_ni  (rst_ni),
         .we_i    (abr_mem_req_i.mem_inst0_bank0.we),
         .waddr_i (abr_mem_req_i.mem_inst0_bank0.waddr[ABR_INST0_ADDR_W-1:0]),
         .wdata_i (abr_mem_req_i.mem_inst0_bank0.wdata),
@@ -489,7 +482,7 @@ module sep_ip_integration
         .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_mem_inst0_bank1 (
         .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (sep_reset_n_i),
+        .rst_ni  (rst_ni),
         .we_i    (abr_mem_req_i.mem_inst0_bank1.we),
         .waddr_i (abr_mem_req_i.mem_inst0_bank1.waddr[ABR_INST0_ADDR_W-1:0]),
         .wdata_i (abr_mem_req_i.mem_inst0_bank1.wdata),
@@ -504,7 +497,7 @@ module sep_ip_integration
         .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_mem_inst1 (
         .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (sep_reset_n_i),
+        .rst_ni  (rst_ni),
         .we_i    (abr_mem_req_i.mem_inst1.we),
         .waddr_i (abr_mem_req_i.mem_inst1.waddr[ABR_INST1_ADDR_W-1:0]),
         .wdata_i (abr_mem_req_i.mem_inst1.wdata),
@@ -519,7 +512,7 @@ module sep_ip_integration
         .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_mem_inst2 (
         .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (sep_reset_n_i),
+        .rst_ni  (rst_ni),
         .we_i    (abr_mem_req_i.mem_inst2.we),
         .waddr_i (abr_mem_req_i.mem_inst2.waddr[ABR_INST2_ADDR_W-1:0]),
         .wdata_i (abr_mem_req_i.mem_inst2.wdata),
@@ -537,7 +530,7 @@ module sep_ip_integration
             .ReadLatency (ABR_MEM_SRAM_LATENCY)
         ) u_abr_mem_inst0_bank0_masked (
             .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (sep_reset_n_i),
+            .rst_ni  (rst_ni),
             .we_i    (abr_mem_req_i.mem_inst0_bank0_masked.we),
             .waddr_i (abr_mem_req_i.mem_inst0_bank0_masked.waddr[ABR_INST0_ADDR_W-1:0]),
             .wdata_i (abr_mem_req_i.mem_inst0_bank0_masked.wdata),
@@ -552,7 +545,7 @@ module sep_ip_integration
             .ReadLatency (ABR_MEM_SRAM_LATENCY)
         ) u_abr_mem_inst0_bank1_masked (
             .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (sep_reset_n_i),
+            .rst_ni  (rst_ni),
             .we_i    (abr_mem_req_i.mem_inst0_bank1_masked.we),
             .waddr_i (abr_mem_req_i.mem_inst0_bank1_masked.waddr[ABR_INST0_ADDR_W-1:0]),
             .wdata_i (abr_mem_req_i.mem_inst0_bank1_masked.wdata),
@@ -567,7 +560,7 @@ module sep_ip_integration
             .ReadLatency (ABR_MEM_SRAM_LATENCY)
         ) u_abr_mem_inst1_masked (
             .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (sep_reset_n_i),
+            .rst_ni  (rst_ni),
             .we_i    (abr_mem_req_i.mem_inst1_masked.we),
             .waddr_i (abr_mem_req_i.mem_inst1_masked.waddr[ABR_INST1_ADDR_W-1:0]),
             .wdata_i (abr_mem_req_i.mem_inst1_masked.wdata),
@@ -582,7 +575,7 @@ module sep_ip_integration
             .ReadLatency (ABR_MEM_SRAM_LATENCY)
         ) u_abr_mem_inst2_masked (
             .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (sep_reset_n_i),
+            .rst_ni  (rst_ni),
             .we_i    (abr_mem_req_i.mem_inst2_masked.we),
             .waddr_i (abr_mem_req_i.mem_inst2_masked.waddr[ABR_INST2_ADDR_W-1:0]),
             .wdata_i (abr_mem_req_i.mem_inst2_masked.wdata),
@@ -614,7 +607,7 @@ module sep_ip_integration
         .EnWriteRangeCheck (1'b0)
     ) u_abr_sk_mem_bank0 (
         .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (sep_reset_n_i),
+        .rst_ni  (rst_ni),
         .we_i    (abr_mem_req_i.sk_bank0_we),
         .waddr_i (abr_mem_req_i.sk_bank0_waddr),
         .wdata_i (abr_mem_req_i.sk_bank0_wdata),
@@ -630,7 +623,7 @@ module sep_ip_integration
         .EnWriteRangeCheck (1'b0)
     ) u_abr_sk_mem_bank1 (
         .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (sep_reset_n_i),
+        .rst_ni  (rst_ni),
         .we_i    (abr_mem_req_i.sk_bank1_we),
         .waddr_i (abr_mem_req_i.sk_bank1_waddr),
         .wdata_i (abr_mem_req_i.sk_bank1_wdata),
@@ -647,7 +640,7 @@ module sep_ip_integration
         .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_sig_z_mem (
         .clk_i     (abr_mem_req_i.clk),
-        .rst_ni    (sep_reset_n_i),
+        .rst_ni    (rst_ni),
         .we_i      (abr_mem_req_i.sig_z_we),
         .waddr_i   (abr_mem_req_i.sig_z_waddr),
         .wdata_i   (abr_mem_req_i.sig_z_wdata),
@@ -663,7 +656,7 @@ module sep_ip_integration
         .ReadLatency (ABR_MEM_SRAM_LATENCY)
     ) u_abr_pk_mem (
         .clk_i     (abr_mem_req_i.clk),
-        .rst_ni    (sep_reset_n_i),
+        .rst_ni    (rst_ni),
         .we_i      (abr_mem_req_i.pk_mem.we),
         .waddr_i   (abr_mem_req_i.pk_mem.waddr),
         .wdata_i   (abr_mem_req_i.pk_mem.wdata),

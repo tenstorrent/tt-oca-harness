@@ -1,12 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_003  smc_sep_xbar  --  shared protocol contract (single source of truth).
+ * smc_sep_xbar  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SEP consumer + SMC producer) and parsed by the cocotb
- * checker (dv/smu/tb/tb_uvm/cocotb_tests/smc_sep_xbar_test.py) so DUT stimulus and DV
- * expectations can never drift (AGENTS.md one-source rule). Every value is a plain
- * integer/hex #define so the Python parser can read it.
+ * Included by both firmwares (SEP consumer + SMC producer) and parsed by the
+ * cocotb checker so DUT stimulus and DV expectations share one contract. Every
+ * value is a plain integer/hex #define for the Python parser.
  *
  * Force-free SEP-driven bootstrap (pivoted 2026-07-20 off the ext_in launch, which
  * segfaults VCS on a CPU_CTRL write -- see B-EXTIN-CPUCTRL-WRITE): the real SEP CPU boots
@@ -30,11 +29,10 @@
 /* ---- Frontdoor SMC bring-up over the SEP->SMC port (SEP-driven; no net force/ext_in) ---- */
 #define XBAR_SMC_SRAM_BASE_ALIAS 0x40060000  /* SEP-view of SMC SRAM base */
 #define XBAR_SMC_IMAGE_FIRST_WORD 0x41014081 /* exact preload cookie (SRAM[0]); drift-checked */
-#define XBAR_SMC_ENTRY \
-    0x00000000C00601B2ULL /* RECONCILE vs built image (smc_sep_xbar_entry) */
-#define XBAR_RESET_VECTOR_ALIAS 0x40039000 /* SEP-view of SMC RESET_VECTOR_0 */
-#define XBAR_RESET_CTRL_ALIAS 0x40039020   /* SEP-view of SMC RESET_CTRL */
-#define XBAR_S0_FAIL 0x00460FA1            /* SEP->scratch12: preload never landed */
+#define XBAR_SMC_ENTRY 0x00000000C00601B2ULL /* RECONCILE vs built image (smc_sep_xbar_entry) */
+#define XBAR_RESET_VECTOR_ALIAS 0x40039000   /* SEP-view of SMC RESET_VECTOR_0 */
+#define XBAR_RESET_CTRL_ALIAS 0x40039020     /* SEP-view of SMC RESET_CTRL */
+#define XBAR_S0_FAIL 0x00460FA1              /* SEP->scratch12: preload never landed */
 
 /* ---- SEP->SMC dedicated fixed-alias datapath (scratch8) ---- */
 #define XBAR_SEP_TO_SMC_SCRATCH8_SEP 0x400390C0u /* SEP-view (global)  */

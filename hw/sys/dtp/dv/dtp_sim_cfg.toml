@@ -1,11 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 schema_version = 1
 
-# Launch entry: selected by `--dut dtp`. The DTP TB uses open-source VIP (cocotbext-jtag for the
-# JTAG TAP, cocotbext-axi for the JTAG2AXI debug/OTP AXI targets); iJTAG/CTP/CTM stay on in-house
-# BFMs (wired in later phases). Shared stage graph + tool list come from profile = "native-cocotb".
+# Launch entry: selected by `--dut dtp`. Two frameworks share this config and one tb_top:
+# cocotb/PyUVM (default; open-source VIP — cocotbext-jtag for the JTAG TAP, cocotbext-axi for the
+# JTAG2AXI debug/OTP AXI targets; iJTAG/CTP/CTM stay on in-house BFMs) and SV-UVM
+# (`--framework uvm`, VCS; see the [frameworks.uvm] overlay at the bottom). Shared stage graph +
+# tool list come from profile = "native".
 name = "dtp"
-profile = "native-cocotb"
-description = "DTP (Debug & Test Ports) OSS PyUVM smoke and functional flow"
+profile = "native"
+default_framework = "cocotb"
+description = "DTP (Debug & Test Ports) OSS DV flow (cocotb/PyUVM default, SV-UVM via --framework uvm)"
 
 [testlist]
 path = "testlists/all.toml"
@@ -34,19 +40,18 @@ common_bender_targets = [
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/sys/dtp/dv/tb"]
 
-[cocotb]
+[frameworks.cocotb]
 # Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.
 python_root = "hw/sys/dtp/dv/cocotb"
 test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
-  "dv/vip/cocotb",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
 [run_modes.smoke]
-description = "PyUVM DTP smoke tests for TAP FSM and IDCODE contributor bring-up"
+description = "DTP smoke tests for TAP FSM and IDCODE contributor bring-up"
 timeout_sec = 1800
 args = []
 
@@ -65,6 +70,21 @@ description = "PyUVM DTP TMP, DEBUG_CONTROL, IC_RESET, and capabilities TDR test
 timeout_sec = 1800
 args = []
 
+[run_modes.jtag2axi]
+description = "PyUVM JTAG2AXI scenario tests against the SMC fabric and OTP AXI targets"
+timeout_sec = 1800
+args = []
+
+[run_modes.scan]
+description = "PyUVM STAP, 3DCR, and iJTAG scan network tests"
+timeout_sec = 1800
+args = []
+
+[run_modes.xtrig]
+description = "PyUVM cross-trigger XTRIG, CTP, and CTM tests"
+timeout_sec = 1800
+args = []
+
 # OD-19: one [targets.<name>] merges the former [compile_targets]/[run_targets] split.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 [targets.default]
@@ -77,3 +97,46 @@ flags = [
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
 ]
+
+# --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
+# profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
+# for both frameworks: +define+UVM (below) switches tb/tb_top.sv from the ported cocotb
+# shape to the self-contained SV-UVM shape, which `include`s uvm/tests/dtp_tests.sv.
+[frameworks.uvm]
+description = "DTP SV-UVM smoke flow (VCS)"
+
+[frameworks.uvm.build]
+# The shared VIP SV-UVM layers come from VIP-owned ordered manifests, expanded in listed order
+# AHEAD of this table's own incdirs/sources (dedup-merge) — never hand-copy VIP paths here.
+# Compile order stays load-bearing and explicit: the generated filelist emits the expanded
+# `sources` AFTER the bender filelist (DUT packages visible), then `top_file` last:
+#   ocah_jtag_vip manifest -> ocah_axi_vip manifest (each: interface -> collateral -> UVM pkg)
+#   -> dtp_tb_if -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
+source_lists = [
+  "hw/common/dv/vip/ocah_jtag_vip/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_compile.f"
+bender_filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_bender.f"
+work_dir = "hw/sys/dtp/dv/build/uvm"
+incdirs = [
+  "hw/sys/dtp/dv/tb",
+  "hw/common/assert",
+  "hw/sys/dtp/dv/uvm/env",
+  "hw/sys/dtp/dv/uvm/seq_lib",
+  "hw/sys/dtp/dv/uvm/tests",
+]
+sources = [
+  "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
+  "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+[frameworks.uvm.targets.default]
+description = "DTP SV-UVM default target"
+build_dir = "hw/sys/dtp/dv/build/uvm"
+# The bare `UVM` define (selects the SV-UVM shape of the shared tb_top.sv) comes from the
+# native profile's [frameworks.uvm] overlay — no per-DUT copy.

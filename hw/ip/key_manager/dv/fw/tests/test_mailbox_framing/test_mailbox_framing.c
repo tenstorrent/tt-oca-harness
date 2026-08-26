@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_mailbox_framing.c
- * @brief Mailbox message framing test (FR-0000-065, FR-0000-066)
+ * @brief Mailbox message framing test
  *
  * Verifies the per-word message separator bit: sender sets separator on last
  * word of a message; receiver sees INBOUND_SEPARATOR / OUTBOUND_SEPARATOR in

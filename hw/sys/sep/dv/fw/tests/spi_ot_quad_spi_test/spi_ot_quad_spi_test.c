@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Quad SPI Test - TC_SPIOT_016 (P1)
+ * SPI OT Quad SPI Test
  *
  * Verifies Quad SPI (x4) mode transmit, dummy cycles, and receive using
  * CMD.SPEED=2. Also verifies that DIRECTION=3 (bidirectional) at Quad speed
@@ -12,14 +12,14 @@
  * All 4 data lines (SD[3:0]) are active in Quad mode.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
- *   2. Quad TX: SPEED=2, DIRECTION=2, LEN=3 (4 bytes), CSAAT=1
- *   3. Quad Dummy: SPEED=2, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
- *   4. Quad RX: SPEED=2, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
- *   5. CMDINVAL test: SPEED=2 + DIRECTION=3 (bidirectional) must fail
+ * 1. Enable controller (freq-robust 25 MHz SCLK (spi_clkdiv), Mode 0)
+ * 2. Quad TX: SPEED=2, DIRECTION=2, LEN=3 (4 bytes), CSAAT=1
+ * 3. Quad Dummy: SPEED=2, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
+ * 4. Quad RX: SPEED=2, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
+ * 5. CMDINVAL test: SPEED=2 + DIRECTION=3 (bidirectional) must fail
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_quad_spi_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_quad_spi_test STACK=sim
  *
  */
 
@@ -30,7 +30,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -66,7 +65,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Quad SPI Test (TC_SPIOT_016)\n");
+    printf("SPI OT Quad SPI Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -75,10 +74,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
-    volatile int delay;
-
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
@@ -180,7 +175,11 @@ int main(void) {
     cmd.f.DIRECTION = 1; /* RX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
-    wait_for_idle(TIMEOUT_LIMIT);
+    if (wait_for_idle(TIMEOUT_LIMIT)) {
+        printf("  FAIL: transaction did not complete (ACTIVE stuck)\n");
+        pass = 0;
+        goto done;
+    }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
@@ -191,16 +190,32 @@ int main(void) {
     if (err_status.f.CMDINVAL || err_status.f.CSIDINVAL) {
         printf("  FAIL: CMD error for valid Quad RX command\n");
         pass = 0;
+    } else if (status.f.RXQD < 1 || status.f.RXEMPTY) {
+        /* RXQD is word count; 4-byte Quad RX packs into one RXDATA word */
+        printf("  FAIL: Quad RX produced no data (RXQD=%u RXEMPTY=%u)\n", status.f.RXQD,
+               status.f.RXEMPTY);
+        pass = 0;
     } else {
-        printf("  PASS: Quad RX accepted (no CMDINVAL/CSIDINVAL)\n");
+        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+        printf("  RXDATA[0]: 0x%08x (4-byte Quad RX packed)\n", rxdata);
+        printf("  PASS: Quad RX accepted (RXQD>=1, no CMDINVAL/CSIDINVAL)\n");
     }
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
-    /* SW_RST to drain RX FIFO before CMDINVAL test */
+    /* SW_RST to drain RX FIFO; wait for READY (not a blind spin) */
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
-    for (delay = 0; delay < 200; delay++) {
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        printf("  FAIL: READY not restored after SW_RST drain\n");
+        pass = 0;
+        goto done;
+    }
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    if (!status.f.RXEMPTY) {
+        printf("  FAIL: RX FIFO not empty after SW_RST (RXQD=%u)\n", status.f.RXQD);
+        pass = 0;
+        goto done;
     }
 
     /* ------------------------------------------------------------------ */
@@ -223,10 +238,19 @@ int main(void) {
     cmd.f.DIRECTION = 3; /* Bidirectional — invalid at Quad speed */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
-    for (delay = 0; delay < 200; delay++) {
+    /* Poll until CMDINVAL sticks (or timeout) — not a blind spin */
+    {
+        int t = TIMEOUT_LIMIT;
+        while (t-- > 0) {
+            err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+            if (err_status.f.CMDINVAL) break;
+        }
+        if (t < 0) {
+            printf("  FAIL: timeout waiting for CMDINVAL sticky\n");
+            pass = 0;
+            goto done;
+        }
     }
-
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (!check_reg("CMDINVAL for Bidirectional+Quad", err_status.f.CMDINVAL, 1))
         pass = 0;
     else

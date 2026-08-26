@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -7,7 +10,7 @@
 #include "smc_sep_xbar_protocol.h"
 
 /*
- * SEP_SMU_003  smc_sep_xbar  --  SEP (consumer/producer) firmware.
+ * smc_sep_xbar  --  SEP (consumer/producer) firmware.
  *
  * Force-free SEP-DRIVEN bring-up (pivoted off ext_in, which segfaults VCS on a CPU_CTRL
  * write -- see B-EXTIN-CPUCTRL-WRITE): the real SEP CPU opens its outbound egress window,

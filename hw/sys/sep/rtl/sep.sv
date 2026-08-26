@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP Secure Enclave Processor
+// SEP Security Processor
 
 `include "axi/assign.svh"
 
@@ -9,9 +9,7 @@ module sep
 #(
     parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
     parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
-    // Open placeholder size for the vendor eFuse shim CSR block. Kept a literal
-    // because the register header that carries the real size is nonfree; the
-    // nonfree sep_wrapper overrides this from sep_top_reg_pkg (0x44).
+    // Size for the vendor eFuse shim CSR block
     parameter int unsigned EFUSE_SHIM_SIZE = 'h4,
     // During synthesis, to be replaced with the actual token digest embedded in the netlist
     parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
@@ -23,8 +21,6 @@ module sep
         input  logic dbg_rstb_i,          // EL2 debugger reset
         input  logic wdt_rst_ni,          // Aggregated WDT Resets from SMC and SEP
 
-        output logic sep_reset_n_o,       // SEP reset (efuse-sense-done, after JTAG override)
-        output logic sep_cpu_reset_n_o,   // sep_reset_n & WDT reset; resets CPU + SEP IP integration
         output logic wdt_timer_rst_req_o, // SEP WDT bite reset request (active-high) to SMC reset unit
 
         input  logic jtag_tck,    // JTAG clk
@@ -56,7 +52,6 @@ module sep
 
         input  logic ext_boot_seq_done_i,
 
-        // TODO: Do we need this?
         // DMI port for uncore
         input  logic        dmi_core_enable,
         input  logic        dmi_uncore_enable,
@@ -75,11 +70,6 @@ module sep
         input logic                      timer_int,
         input logic                      soft_int,
         input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
-
-        // TODO: Are these supposed to go into sep_safety?
-        // input logic wipe_i,
-        // output logic [7:0] error_o,
-        // output logic irq_o,
 
         // Memory macro interfaces
         output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
@@ -157,7 +147,7 @@ module sep
         output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,
         input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-        // Muxed SPI IRQ from sep_ip_integration (Cadence or OT, selected by spi_sel)
+        // SPI IRQ to the PIC, driven by whichever SPI controller the integration selects
         input  logic spi_irq_i,
 
         /////////////
@@ -165,7 +155,7 @@ module sep
         /////////////
 
         output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
-        output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
+        output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
         output logic lc_sigint_err_o,
         output logic security_disable_o,
         output logic secure_tm_o,
@@ -260,7 +250,7 @@ module sep
     logic cpu_lockstep_err_injection_en;
     logic cpu_corruption_detected;
 
-    // FIXME: We dont need these for now
+    // Not currently used; tie off.
     assign cpu_disable_corruption_detection = '0;
     assign cpu_lockstep_err_injection_en = '0;
   `endif
@@ -325,6 +315,7 @@ module sep
     logic entropy_source_irq;
     logic ext_trng_irq;
     logic locked_field_access_interrupt;
+    logic token_match_fault;
 
     // DMA interrupt signals
     logic intr_dma_done;
@@ -371,6 +362,7 @@ module sep
     assign sep_region_size_o      = sep_region_size;
 
     logic security_disable;
+    sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl;
 
     //////////////
     // SEP Resets
@@ -559,6 +551,7 @@ module sep
         // it fills) from a sustained EDN stall (fault, fill path not making progress).
         sep_internal_interrupts[36]     = entropy_pool_low;
         sep_internal_interrupts[37]     = entropy_pool_fill_stall;
+        sep_internal_interrupts[38]     = token_match_fault;
     end
 
     assign sep_interrupts = {extintsrc_req, sep_internal_interrupts};
@@ -627,19 +620,16 @@ module sep
 
         .sep_cpu_trace                  (sep_cpu_trace),
 
-        // FIXME: Forward this to safety island somehow or SEP-level CSRs
         .iccm_ecc_single_error          (cpu_iccm_ecc_single_error),
         .iccm_ecc_double_error          (cpu_iccm_ecc_double_error),
         .dccm_ecc_single_error          (cpu_dccm_ecc_single_error),
         .dccm_ecc_double_error          (cpu_dccm_ecc_double_error),
 
-        // FIXME: Forward this to safety island somehow or SEP-level CSRs
         .dec_tlu_perfcnt0               (cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
         .dec_tlu_perfcnt1               (cpu_dec_tlu_perfcnt1),
         .dec_tlu_perfcnt2               (cpu_dec_tlu_perfcnt2),
         .dec_tlu_perfcnt3               (cpu_dec_tlu_perfcnt3),
 
-      // FIXME: Forward this to safety island somehow or SEP-level CSRs
       `ifdef RV_LOCKSTEP_ENABLE
         .disable_corruption_detection_i (cpu_disable_corruption_detection),
         .lockstep_err_injection_en_i    (cpu_lockstep_err_injection_en),
@@ -832,7 +822,8 @@ module sep
         .ext_boot_seq_done_i                    (ext_boot_seq_done_i),
         .security_disable_o                     (security_disable),
         .lc_state_o                             (lc_state_o),
-        .feat_ctrl_o                            (feat_ctrl_o),
+        .feat_ctrl_o                            (feat_ctrl),
+        .dbg_disable_o                          (dbg_disable_o),
         .lc_sigint_err_o                        (lc_sigint_err_o),
         .shadow_regs_o                          (),
         .fuse_sense_done_o                      (sep_fuse_sense_done_o),
@@ -890,7 +881,9 @@ module sep
         .sep_efuse_token_match_sip_debug_o      (sep_efuse_token_match_sip_debug),
         .sep_efuse_token_match_chiplet_debug_o  (sep_efuse_token_match_chiplet_debug),
 
-        .locked_field_access_interrupt_o        (locked_field_access_interrupt)
+        .locked_field_access_interrupt_o        (locked_field_access_interrupt),
+
+        .token_match_fault_o                    (token_match_fault)
     );
 
     ///////////////
@@ -951,7 +944,7 @@ module sep
 
         .test_en_i                        (test_en_i),
         .scan_rst_ni                      (scan_rst_ni),
-        .inbound_filter_skip_i            (feat_ctrl_o.sep_debug),  // 0: traverses inbound filter, 1: skips filter checking
+        .inbound_filter_skip_i            (feat_ctrl.sep_debug),    // 0: traverses inbound filter, 1: skips filter checking
         .outbound_filter_skip_i           (1'b0),                   // output filter is not affected by feature control
 
         // AXI4 Slave Interface
@@ -1039,53 +1032,9 @@ module sep
         .sep_sw_rst_no              (sep_sw_rst_no)
     );
 
-    // TODO: AXI slave in + AXI master out (to CPU subsystem, indirectly connected to everything) + local CSRs
-    // TODO: Does this need to be wrapped in a ifdef or parameter?
-    // if (EN_SEP_SAFETY) begin: GEN_SEP_SAFETY
-
-    //     sep_safety safety (
-
-    //         .clk_i,
-    //         .rst_ni,
-
-    //         // TODO: AXI master in
-    //         // TODO: AXI master out
-
-    //         // TODO: external safety/error interface
-    //         // input logic wipe_i,
-    //         // output logic [7:0] error_o,
-    //         // output logic irq_o,
-
-    //         .cpu_iccm_ecc_single_error_i(cpu_iccm_ecc_single_error),
-    //         .cpu_iccm_ecc_double_error_i(cpu_iccm_ecc_double_error),
-    //         .cpu_dccm_ecc_single_error_i(cpu_dccm_ecc_single_error),
-    //         .cpu_dccm_ecc_double_error_i(cpu_dccm_ecc_double_error),
-    //         // TODO: Similar signals for the scratchpad RAM?
-
-    //         `ifdef RV_LOCKSTEP_ENABLE
-    //         .cpu_disable_corruption_detection_o(cpu_disable_corruption_detection),
-    //         .cpu_lockstep_err_injection_en_o(cpu_lockstep_err_injection_en),
-    //         .cpu_corruption_detected_i(corruption_detected),
-    //         `endif
-
-    //         // TODO: Do we need more of these?
-    //         .cpu_dec_tlu_perfcnt0(cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
-    //         .cpu_dec_tlu_perfcnt1(cpu_dec_tlu_perfcnt1),
-    //         .cpu_dec_tlu_perfcnt2(cpu_dec_tlu_perfcnt2),
-    //         .cpu_dec_tlu_perfcnt3(cpu_dec_tlu_perfcnt3)
-
-    //     );
-
-    // end else begin: NO_GEN_EN_SEP_SAFETY
-    //     ;
-    // end
-
     ////////////////
     // Secure DMA //
     ////////////////
-
-    // TODO: Tie in unused signals or remove from wrapper
-    // TODO: Check over these parameters
 
     secure_dma_pkg::lsio_trigger_t lsio_trigger;
     assign lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger;
@@ -1121,8 +1070,6 @@ module sep
     );
 
     assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
-    assign sep_reset_n_o        = sep_reset_n;
-    assign sep_cpu_reset_n_o    = sep_cpu_reset_n;
     assign security_disable_o   = security_disable;
 
     // External debug bus assignment (384 bits, 16-bit aligned fields)

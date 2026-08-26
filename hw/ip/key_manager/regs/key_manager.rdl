@@ -54,40 +54,46 @@ addrmap key_manager {
     // - Includes byte-wise parity checking
     // - Size: 16KB (4096 words × 4 bytes)
 
-    // SRAM Region: 0x0000_4000 - 0x0000_7FFF (16KB)
+    // Reserved: 0x0000_4000 - 0x0000_7FFF (16KB)
+    // - Unmapped; returns DECERR
+
+    // SRAM Region: 0x0000_8000 - 0x0000_FFFF (32KB)
     // - Read/write memory for KM CPU data and stack
     // - Accessed via direct memory interface (not AXI-Lite)
     // - Includes byte-wise parity checking
     // - Optional address/data scrambling (controlled by KMCSR)
-    // - Size: 16KB (4096 words × 4 bytes)
+    // - Size: 32KB (8192 words × 4 bytes)
 
     //=========================================================================
     // Register-Based Peripherals (AXI-Lite Access)
     //=========================================================================
 
+    // Each window below is the power of two that covers its block's registers,
+    // so no register is reachable from a second address.
+
     // KPV (Key and Policy Vault) - KM port
-    // Base Address: 0x0000_D000
-    // Size: 4KB
-    // 32 key entries (512b each), 32 control registers; lock_write/lock_use enforced in RTL
-    km_kpv kpv @ 0x0000_D000;
+    // Base Address: 0x0001_2000
+    // Size: 0x1108 of registers in an 8KB decode window
+    // 64 key entries (512b each), 64 control registers; lock_write/lock_use enforced in RTL
+    km_kpv kpv @ 0x0001_2000;
 
     // KMCSR (Key Manager Control and Status Registers)
-    // Base Address: 0x0000_E000
-    // Size: 4KB (0x1000)
+    // Base Address: 0x0001_4000
+    // Size: 0x4C0 of registers in a 2KB (0x800) decode window
     // Description: Control and status registers for the Key Manager subsystem
     // Includes: VERSION, CTRL, STATUS, IRQ_STATUS, IRQ_ENABLE, IRQ_SET,
     //           SCRAMBLER_KEY, SCRAMBLER_CTRL, Virtual UART, Test Protocol
-    km_csr kmcsr @ 0x0000_E000;
+    km_csr kmcsr @ 0x0001_4000;
 
     // DRBG Sampler
-    // Base Address: 0x0000_F000
-    // Size: 4KB (0x1000) decode window; register block is 16 bytes
+    // Base Address: 0x0001_5000
+    // Size: 16 bytes (0x10), which is also the decode window
     // Description: Bridges KM CPU reads to DRBG AXI-Stream; DATA, CFG, STATUS, PREFETCH_DATA
-    km_drbg_sampler drbg_sampler @ 0x0000_F000;
+    km_drbg_sampler drbg_sampler @ 0x0001_5000;
 
     // Mailbox KM Side Interface
     // Base Address: 0x0001_0000
-    // Size: 4KB (0x1000) decode window; registers occupy lower portion
+    // Size: 28 bytes (0x1C) of registers in a 32-byte (0x20) decode window
     // Description: Register interface for KM CPU to access mailbox
     // - WRITE_DATA: Write to outbound FIFO (KM→SEP messages)
     // - READ_DATA: Read from inbound FIFO (SEP→KM messages)
@@ -109,35 +115,35 @@ addrmap key_manager {
 
     // OTBN Key Storage
     // Base Address: 0x0001_8000
-    // Size: 100 bytes (0x64), 4KB decode window
+    // Size: 100 bytes (0x64) in a 128-byte (0x80) decode window
     // Description: Key storage for OTBN sideload interface (otbn_key_req_t).
     //              2 × 384-bit key shares (12 words each) + valid flag.
     otbn_wrapper_key otbn_wrapper_key @ 0x0001_8000;
 
     // AES Key Storage
     // Base Address: 0x0001_9000
-    // Size: 68 bytes (0x44), 4KB decode window
+    // Size: 68 bytes (0x44) in a 128-byte (0x80) decode window
     // Description: Key storage for AES sideload interface (hw_key_req_t).
     //              2 × 256-bit key shares (8 words each) + valid flag.
     aes_wrapper_key aes_wrapper_key @ 0x0001_9000;
 
     // KMAC Key Storage
     // Base Address: 0x0001_A000
-    // Size: 68 bytes (0x44), 4KB decode window
+    // Size: 68 bytes (0x44) in a 128-byte (0x80) decode window
     // Description: Key storage for KMAC sideload interface (hw_key_req_t).
     //              2 × 256-bit key shares (8 words each) + valid flag.
     kmac_wrapper_key kmac_wrapper_key @ 0x0001_A000;
 
     // HMAC Key Storage
     // Base Address: 0x0001_B000
-    // Size: 68 bytes (0x44), 4KB decode window
+    // Size: 68 bytes (0x44) in a 128-byte (0x80) decode window
     // Description: Key storage for HMAC sideload interface (hw_key_req_t).
     //              2 × 256-bit key shares (8 words each) + valid flag.
     hmac_wrapper_key hmac_wrapper_key @ 0x0001_B000;
 
     // Adams Bridge Key Storage
     // Base Address: 0x0001_C000
-    // Size: 1280 bytes (0x500), 4KB decode window
+    // Size: 1068 bytes (0x42C) in a 2KB (0x800) decode window
     // Description: Key storage for the Adams Bridge sideload interface.
     //              Five 256-bit sub-blocks (0x100 stride): MLDSA_SEED,
     //              MLKEM_SEED_D, MLKEM_SEED_Z, MLKEM_MSG (dual-share write-only)
@@ -170,22 +176,22 @@ addrmap key_manager {
     // Address Range          | Size    | Description                    | Access
     // -----------------------|---------|--------------------------------|--------
     // 0x0000_0000-0x0000_3FFF| 16KB    | ROM (boot code)                | Direct Memory (R)
-    // 0x0000_4000-0x0000_7FFF| 16KB    | SRAM (data/stack)              | Direct Memory (R/W)
-    // 0x0000_8000-0x0000_CFFF| 20KB    | Reserved                       | -
-    // 0x0000_D000-0x0000_DFFF| 4KB     | KPV (Key and Policy Vault)     | AXI-Lite
-    // 0x0000_E000-0x0000_EFFF| 4KB     | KMCSR (control/status)         | AXI-Lite
-    // 0x0000_F000-0x0000_FFFF| 4KB     | DRBG Sampler                   | AXI-Lite
-    // 0x0001_0000-0x0001_0FFF| 4KB     | Mailbox KM Side                | AXI-Lite
+    // 0x0000_4000-0x0000_7FFF| 16KB    | Reserved (future ROM growth)   | DECERR
+    // 0x0000_8000-0x0000_FFFF| 32KB    | SRAM (data/stack)              | Direct Memory (R/W)
+    // 0x0001_0000-0x0001_001F| 32B     | Mailbox KM Side                | AXI-Lite
     // 0x0001_1000-0x0001_1FFF| 4KB     | OTP/eFuse (external, remapped) | AXI-Lite
-    // 0x0001_2000-0x0001_7FFF| 24KB    | Reserved                       | -
-    // 0x0001_8000-0x0001_8FFF| 4KB     | OTBN Key Storage               | AXI-Lite
-    // 0x0001_9000-0x0001_9FFF| 4KB     | AES Key Storage                | AXI-Lite
-    // 0x0001_A000-0x0001_AFFF| 4KB     | KMAC Key Storage               | AXI-Lite
-    // 0x0001_B000-0x0001_BFFF| 4KB     | HMAC Key Storage               | AXI-Lite
-    // 0x0001_C000-0x0001_CFFF| 4KB     | ABR Key Storage                | AXI-Lite
-    // 0x0001_D000-0xFFFF_FFFF| -       | Reserved/Unmapped              | DECERR
+    // 0x0001_2000-0x0001_3FFF| 8KB     | KPV (Key and Policy Vault)     | AXI-Lite
+    // 0x0001_4000-0x0001_47FF| 2KB     | KMCSR (control/status)         | AXI-Lite
+    // 0x0001_5000-0x0001_500F| 16B     | DRBG Sampler                   | AXI-Lite
+    // 0x0001_8000-0x0001_807F| 128B    | OTBN Key Storage               | AXI-Lite
+    // 0x0001_9000-0x0001_907F| 128B    | AES Key Storage                | AXI-Lite
+    // 0x0001_A000-0x0001_A07F| 128B    | KMAC Key Storage               | AXI-Lite
+    // 0x0001_B000-0x0001_B07F| 128B    | HMAC Key Storage               | AXI-Lite
+    // 0x0001_C000-0x0001_C7FF| 2KB     | ABR Key Storage                | AXI-Lite
+    // Every other address    | -       | Reserved/Unmapped              | DECERR
     //
-    // Total Mapped: 116KB (0x0001_D000)
+    // Addresses between two windows answer DECERR; an unmapped offset inside a
+    // window answers SLVERR.
     //
     //=========================================================================
     // Access Notes

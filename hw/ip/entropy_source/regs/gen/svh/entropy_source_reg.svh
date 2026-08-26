@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 /*******************************************************************************
  * Header file for register addresses and fields
  *
@@ -396,10 +399,10 @@ localparam int unsigned ENTROPY_SOURCE_FIFO_CTRL_ENTROPY_CHURN_ENABLE_SHIFT     
 localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_LEVEL_MASK                                                     = 32'h7F;
 localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_LEVEL_SHIFT                                                    = 0;
 
-localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_WPTR_MASK                                                      = 32'h1F00;
+localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_WPTR_MASK                                                      = 32'h3F00;
 localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_WPTR_SHIFT                                                     = 8;
 
-localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_RPTR_MASK                                                      = 32'h1F0000;
+localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_RPTR_MASK                                                      = 32'h3F0000;
 localparam int unsigned ENTROPY_SOURCE_FIFO_STATUS_RPTR_SHIFT                                                     = 16;
 
 localparam int unsigned ENTROPY_SOURCE_FIFO_RDATA_RDATA_MASK                                                      = 32'hFFFFFFFF;
@@ -675,10 +678,10 @@ localparam int unsigned ENTROPY_SOURCE_BIW_OBS_CTRL_RAW_ENABLE_SHIFT            
 localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_LEVEL_MASK                                                  = 32'h7F;
 localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_LEVEL_SHIFT                                                 = 0;
 
-localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_WPTR_MASK                                                   = 32'h1F00;
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_WPTR_MASK                                                   = 32'h3F00;
 localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_WPTR_SHIFT                                                  = 8;
 
-localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_RPTR_MASK                                                   = 32'h1F0000;
+localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_RPTR_MASK                                                   = 32'h3F0000;
 localparam int unsigned ENTROPY_SOURCE_BIW_OBS_STATUS_RPTR_SHIFT                                                  = 16;
 
 localparam int unsigned ENTROPY_SOURCE_BIW_OBS_RDATA_RDATA_MASK                                                   = 32'hFFFFFFFF;
@@ -696,10 +699,10 @@ localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_CTRL_LANE_SEL_SHIFT            
 localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_LEVEL_MASK                                                = 32'h7F;
 localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_LEVEL_SHIFT                                               = 0;
 
-localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_WPTR_MASK                                                 = 32'h1F00;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_WPTR_MASK                                                 = 32'h3F00;
 localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_WPTR_SHIFT                                                = 8;
 
-localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_RPTR_MASK                                                 = 32'h1F0000;
+localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_RPTR_MASK                                                 = 32'h3F0000;
 localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_STATUS_RPTR_SHIFT                                                = 16;
 
 localparam int unsigned ENTROPY_SOURCE_NOISE_OBS_RDATA_RDATA_MASK                                                 = 32'hFFFFFFFF;
@@ -824,9 +827,9 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [4:0]   rptr ;
-    logic [2:0]   rsvd_1 ;
-    logic [4:0]   wptr ;
+    logic [5:0]   rptr ;
+    logic [1:0]   rsvd_1 ;
+    logic [5:0]   wptr ;
     logic [0:0]   rsvd_0 ;
     logic [6:0]   level ;
 } entropy_source_fifo_status_reg_t;
@@ -1236,9 +1239,9 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [4:0]   rptr ;
-    logic [2:0]   rsvd_1 ;
-    logic [4:0]   wptr ;
+    logic [5:0]   rptr ;
+    logic [1:0]   rsvd_1 ;
+    logic [5:0]   wptr ;
     logic [0:0]   rsvd_0 ;
     logic [6:0]   level ;
 } entropy_source_biw_obs_status_reg_t;
@@ -1261,9 +1264,9 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [4:0]   rptr ;
-    logic [2:0]   rsvd_1 ;
-    logic [4:0]   wptr ;
+    logic [5:0]   rptr ;
+    logic [1:0]   rsvd_1 ;
+    logic [5:0]   wptr ;
     logic [0:0]   rsvd_0 ;
     logic [6:0]   level ;
 } entropy_source_noise_obs_status_reg_t;

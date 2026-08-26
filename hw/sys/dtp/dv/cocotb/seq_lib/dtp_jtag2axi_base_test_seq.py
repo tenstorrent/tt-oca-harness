@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG2AXI helper base sequence for DTP tests."""
 
 from __future__ import annotations
+
+import os
 
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
@@ -86,6 +89,119 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         """Backdoor-preload the AXI RAM for read-side scenarios."""
         payload = (value & self.data_mask(size)).to_bytes(self.size_bytes(size), "little")
         self.cfg.axi_ram.write(addr, payload)
+        self._mirror_model_preload("smc_axi", addr, payload)
+
+    # --- shared-VIP AXI scoreboard glue (issue #3295) -------------------------
+    @property
+    def axi_scoreboard(self):
+        """The shared OcahAxiScoreboard, or None when the test did not opt in."""
+        return getattr(self.cfg, "axi_scoreboard", None)
+
+    def axi_model(self, target: str):
+        """The shared OcahAxiRefModel for one JTAG2AXI target, or None."""
+        return getattr(self.cfg, "axi_models", {}).get(target)
+
+    def _mirror_model_preload(self, target: str, addr: int, payload: bytes) -> None:
+        """Keep the reference model's shadow memory equal to backdoor preloads."""
+        model = self.axi_model(target)
+        if model is not None:
+            model.write_bytes(addr, payload)
+
+    async def scoreboard_expect_no_activity(
+        self, target: str, cycles: int, *, context: str
+    ) -> None:
+        """Emit CHK-AXI-NOACT from tb pulse counters and monitor counters."""
+        scoreboard = self.axi_scoreboard
+        if scoreboard is None:
+            return
+        before = await self.target_activity_counts(target)
+        monitor = getattr(self.cfg, "axi_monitors", {}).get(target)
+        monitor_before = monitor.get_request_activity() if monitor else None
+        await self.wait_sys_cycles(cycles)
+        after = await self.target_activity_counts(target)
+        scoreboard.expect_no_activity(
+            before=before,
+            after=after,
+            context=f"{context} target={target} cycles={cycles} source=tb_pulse_counters",
+        )
+        if monitor_before is not None:
+            scoreboard.expect_no_activity(
+                before=monitor_before,
+                after=monitor.get_request_activity(),
+                context=f"{context} target={target} cycles={cycles} source=vip_monitor",
+            )
+
+    def scoreboard_begin_blocked(self, target: str) -> None:
+        """Open a blocked window: any monitored item on the stream fails."""
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            scoreboard.begin_blocked_window(stream=target)
+
+    def scoreboard_end_blocked(self, target: str, *, context: str) -> None:
+        """Close a blocked window and emit zero-transaction evidence."""
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            scoreboard.end_blocked_window(stream=target, context=context)
+
+    def scoreboard_check_target_memory(
+        self,
+        target: str,
+        addr: int,
+        length: int,
+        *,
+        context: str,
+        expected: bytes | None = None,
+    ) -> None:
+        """Emit CHK-AXI-WMEM: backdoor RAM bytes versus an expectation.
+
+        Pass ``expected`` with intent-derived bytes (what the stimulus meant to
+        write) for a non-circular check; without it the model shadow is used,
+        which only proves RAM-vs-observed-bus consistency.
+        """
+        scoreboard = self.axi_scoreboard
+        if scoreboard is None:
+            return
+        scoreboard.check_memory(
+            dut_bytes=bytes(self.target_memory(target).read(addr, length)),
+            address=addr,
+            length=length,
+            stream=target,
+            context=context,
+            expected=expected,
+        )
+
+    def scoreboard_arm_strobes(
+        self, target: str, wstrb: int, addr: int, *, context: str
+    ) -> None:
+        """Arm the intent write strobes for the next observed write."""
+        scoreboard = self.axi_scoreboard
+        if scoreboard is None:
+            return
+        cfg = self.target_cfg(target)
+        aligned = addr - (addr % cfg.beat_bytes)
+        scoreboard.arm_expected_strobes(
+            (wstrb,),
+            address=aligned,
+            stream=target,
+            context=f"{context} target={target} source=stimulus-wstrb",
+        )
+
+    def scoreboard_expect_completion(
+        self, target: str, status: int, *, context: str
+    ) -> None:
+        """Emit CHK-AXI-COMPLETION: the bridge left BUSY within the poll bound."""
+        scoreboard = self.axi_scoreboard
+        if scoreboard is None:
+            return
+        cfg = self.target_cfg(target)
+        # Bound: 16 status polls, each one wide TDR scan plus TAP navigation.
+        bound_ns = 16 * (cfg.single_op_len + 16) * self.cfg.jtag_period_ns
+        scoreboard.expect_not_timed_out(
+            "CHK-AXI-COMPLETION",
+            timed_out=(int(status) == int(DtpJtag2AxiStatus.BUSY_OR_FULL)),
+            timeout_ns=float(bound_ns),
+            context=f"{context} target={target} polls=16",
+        )
 
     @staticmethod
     def target_cfg(target: str):
@@ -145,10 +261,40 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             write,
         )
         self.target_responder(target).inject_error(aligned, resp, read=read, write=write)
+        # Arm the shared reference model and scoreboard credit so the injected
+        # non-OKAY is classified as EXPECTED (issue #3295). One credit covers
+        # the single op; direction narrows when only one side is armed.
+        # DTP_AXI_SCOREBOARD_NEGATIVE=1 is the documented negative-validation
+        # hook: it deliberately arms the WRONG response so the run must FAIL,
+        # proving the checker rejects a bad expectation end to end.
+        armed_resp = int(resp)
+        if os.environ.get("DTP_AXI_SCOREBOARD_NEGATIVE", "0") not in ("", "0"):
+            armed_resp = 2 if armed_resp == 3 else 3
+            self.log.warning(
+                "NEGATIVE VALIDATION: arming resp=%d instead of injected resp=%d",
+                armed_resp,
+                int(resp),
+            )
+        model = self.axi_model(target)
+        if model is not None:
+            model.expect_error(aligned, armed_resp, read=read, write=write)
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            direction = None if (read and write) else ("read" if read else "write")
+            scoreboard.arm_expected_resp(
+                armed_resp,
+                address=aligned,
+                direction=direction,
+                stream=target,
+                context=f"target={target} injected=0x{aligned:x}",
+            )
         return self.axi_resp_to_jtag_status(resp)
 
     def clear_target_errors(self, target: str) -> None:
         self.target_responder(target).clear_errors()
+        model = self.axi_model(target)
+        if model is not None:
+            model.clear_expected_errors()
 
     def configure_target_backpressure(
         self,
@@ -184,6 +330,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     def write_target_mem_int(self, target: str, addr: int, value: int, size: int) -> None:
         payload = (value & self.data_mask(size)).to_bytes(self.size_bytes(size), "little")
         self.target_memory(target).write(addr, payload)
+        self._mirror_model_preload(target, addr, payload)
 
     def log_jtag2axi_op(
         self,
@@ -297,6 +444,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         """Issue a target-specific SINGLE_OP without waiting for completion."""
         cfg = self.target_cfg(target)
         size = cfg.default_size if size is None else size
+        if op == DtpJtag2AxiOp.WRITE:
+            # Intent strobes for CHK-AXI-STRB: the wstrb programmed into the
+            # TDR is the stimulus truth the observed bus strobes must match.
+            self.scoreboard_arm_strobes(target, wstrb, addr, context="single_op")
         value = pack_single_op(op, addr, data, wstrb=wstrb, size=size, target=cfg)
         await self.write_tdr(cfg.single_op_reg, value)
 
@@ -349,6 +500,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             size=size,
         )
         status, rdata = await self.poll_target_single_status(target)
+        self.scoreboard_expect_completion(target, status, context=context)
         self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
         observed = self.read_target_mem_int(target, addr, size)
         for byte_idx in range(self.size_bytes(size)):
@@ -379,6 +531,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self.log_target_jtag2axi_op(target, context, addr=addr, size=size)
         await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
         status, rdata = await self.poll_target_single_status(target)
+        self.scoreboard_expect_completion(target, status, context=context)
         self.assert_equal(f"{context}.status", status, DtpJtag2AxiStatus.SUCCESS)
         self.assert_equal(
             f"{context}.rdata",
@@ -420,6 +573,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             size=size,
         )
         status, rdata = await self.poll_target_single_status(target)
+        self.scoreboard_expect_completion(target, status, context=context)
         self.assert_equal(f"{context}.status", status, expected_status)
         return status, rdata
 
@@ -438,6 +592,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self.log_target_jtag2axi_op(target, context, addr=addr, size=size)
         await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
         status, rdata = await self.poll_target_single_status(target)
+        self.scoreboard_expect_completion(target, status, context=context)
         self.assert_equal(f"{context}.status", status, expected_status)
         return status, rdata
 
@@ -469,6 +624,16 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 data,
                 size=size,
                 context=f"{context}.recover_write",
+            )
+            # CHK-AXI-WMEM against the STIMULUS intent (non-circular): the
+            # bytes the recovery write meant to store must be in the RAM.
+            intent = (data & self.data_mask(size)).to_bytes(self.size_bytes(size), "little")
+            self.scoreboard_check_target_memory(
+                target,
+                addr,
+                self.size_bytes(size),
+                context=f"{context}.recover_write",
+                expected=intent,
             )
         self.assert_equal(f"{context}.recovery_status", status, DtpJtag2AxiStatus.SUCCESS)
 
@@ -605,46 +770,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
         return unpack_series_data(result, size, with_status=True)
 
-    # --- lifecycle and AXI activity helpers ----------------------------------
-    async def set_lifecycle(self, **bits: int) -> None:
-        """Drive TB lifecycle enable bits; 1 means the feature is enabled."""
-        dut = cocotb.top
-        for name, value in bits.items():
-            signal = f"feat_ctrl_{name}"
-            if not hasattr(dut, signal):
-                raise AttributeError(f"{signal} is not exposed by tb_top")
-            getattr(dut, signal).value = value & 0x1
-            self.log.info("Lifecycle enable %s=%d", signal, value & 0x1)
-        await self.wait_sys_cycles(4)
-
-    async def enable_all_lifecycle(self) -> None:
-        await self.set_lifecycle(
-            sip_debug=1,
-            soc_debug=1,
-            ap_debug=1,
-            sep_debug=1,
-            fuse_test=1,
-        )
-
-    async def clear_lifecycle(self) -> None:
-        """Legacy restore helper: all protected lifecycle features enabled."""
-        await self.enable_all_lifecycle()
-
-    async def gate_lifecycle_bits(self, **bits: bool) -> None:
-        values = {
-            "sip_debug": 1,
-            "soc_debug": 1,
-            "ap_debug": 1,
-            "sep_debug": 1,
-            "fuse_test": 1,
-        }
-        for name, gated in bits.items():
-            if name not in values:
-                raise ValueError(f"unknown lifecycle feature {name!r}")
-            if gated:
-                values[name] = 0
-        await self.set_lifecycle(**values)
-
+    # --- AXI activity helpers -------------------------------------------------
     async def axi_activity_counts(self) -> dict[str, int]:
         """Sample SMC AXI request activity counters exposed by tb_top."""
         await ReadOnly()

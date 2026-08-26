@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OpenTitan KMAC run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Runs one keyed KMAC-256 (cSHAKE, PREFIX="KMAC") over a message, with the key
 either from the KM sideload port (CFG.sideload=1) or the public KEY_SHARE CSRs
-(SW-key path, sideload=0) -- mirroring the OCAH sep_km_kmac_sideload_kat_test_seq
+(SW-key path, sideload=0) -- mirroring the reference sep_km_kmac_sideload_kat_test_seq
 op helper (RAL there; direct AXI here, like SepAes/SepHmac). Masking is enabled
 (EnMasking), so the digest is read as STATE share0 ^ share1. 32-bit beats (size=2).
 
 KMAC register map (base 0x1091_3000; vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_reg_pkg.sv; bit/cmd
-encodings reused from fw/sep/tests/kmac_test + the OCAH seq):
+encodings reused from fw/sep/tests/kmac_test + the reference seq):
   CFG_SHADOWED @ 0x014 (shadowed: written twice)   CMD @ 0x018   STATUS @ 0x01C
   KEY_SHARE0_0 @ 0x030 .. KEY_SHARE0_15 @ 0x06C    KEY_SHARE1_0 @ 0x070
   KEY_LEN @ 0x0B0   PREFIX_0 @ 0x0B4   ERR_CODE @ 0x0E0
@@ -66,7 +67,7 @@ KMAC_INTR_KMAC_DONE = 1 << 0
 KMAC_INTR_KMAC_ERR = 1 << 2
 
 # CFG_SHADOWED for keyed KMAC-256 cSHAKE, entropy_mode=EDN, entropy_ready=1
-# (FW/OCAH-confirmed): kmac_en[0], kstrength L256 (0x4), mode cSHAKE (0x20),
+# (FW/reference suite-confirmed): kmac_en[0], kstrength L256 (0x4), mode cSHAKE (0x20),
 # entropy_mode EDN (0x1_0000), entropy_ready (0x100_0000), sideload (0x1000).
 KMAC_CFG_KEYED_SIDELOAD = 0x0101_1025
 KMAC_CFG_KEYED_SWKEY = 0x0101_0025
@@ -92,7 +93,8 @@ KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}     # Key128..Key512
 def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool,
                    sideload: bool = False) -> int:
     """CFG_SHADOWED word with EDN entropy (entropy_mode=EDN + entropy_ready), the
-    masking-required config. Reproduces #13's KMAC-256 keyed SW value 0x0101_0025."""
+    masking-required config. KMAC-256 keyed SW CFG 0x0101_0025 (same word the KM
+    KMAC sideload KAT uses)."""
     return (
         int(bool(kmac_en))
         | (kstrength << 1)
@@ -126,7 +128,7 @@ class SepKmacCfg:
     def mode_val(self) -> int:
         # KMAC is programmed as mode=cSHAKE + kmac_en=1 (kmac programmers_guide.md
         # §"Initialization": "configure CFG_SHADOWED.mode to cSHAKE"). This is the
-        # spec-correct KMAC mode; #13's mode=Shake was cross-check-consistent only.
+        # spec-correct KMAC mode. Do not program mode=SHAKE for keyed KMAC.
         return KMAC_MODE["cshake" if self.mode == "kmac" else self.mode]
 
     def cfg_word(self, *, sideload: bool = False) -> int:
@@ -153,12 +155,27 @@ class SepKmac(SepAxiRegDriver):
 
     _DRIVER_TAG = "KMAC"
 
-    async def read_public_key_shares(self) -> tuple[list[int], list[int]]:
-        """Read the public KEY_SHARE0/1 CSRs. With a KM-sideloaded key these stay
-        write-only and read back zero -- the key is not exposed on the frontdoor."""
+    async def read_public_key_shares(self) -> tuple[list[int], list[int], int]:
+        """Read the public KEY_SHARE0/1 CSRs, plus a positive control.
+
+        These key registers are declared write-only and the generated register
+        block ties their read data to a constant '0. Reading them back as zero is
+        therefore NOT evidence that the sideloaded key is unexposed -- they read
+        zero whether the key is protected, mirrored elsewhere, or never delivered.
+        (Directly demonstrated: a decoy value written to these addresses earlier in
+        the run still reads back as zero here.) What the readback can do is catch
+        the day they become readable.
+
+        For that to be worth anything the read path must be known alive, so this
+        also returns STATUS, a readable register in the same window over the same
+        bus. A caller asserting the shares are zero must also assert the control
+        read is non-zero; otherwise a dead read path returning zeros for everything
+        would look identical to a pass.
+        """
         s0 = [await self._rd(KMAC_KEY_SHARE0_0 + i * 4) for i in range(KMAC_NUM_PUBLIC_KEY)]
         s1 = [await self._rd(KMAC_KEY_SHARE1_0 + i * 4) for i in range(KMAC_NUM_PUBLIC_KEY)]
-        return s0, s1
+        control = await self._rd(KMAC_STATUS)
+        return s0, s1, control
 
     async def keyed_mac(self, msg_words: list[int], *, sideload: bool,
                         sw_key: list[int] | None = None) -> list[int]:
@@ -230,11 +247,12 @@ class SepKmac(SepAxiRegDriver):
             if not seq.resp_ok:
                 raise AssertionError(f"KMAC partial MSG_FIFO write ({rem}B) not OKAY")
 
-    async def run_family(self, cfg: "SepKmacCfg", *, tag: str = "") -> list[int]:
+    async def run_family(self, cfg: "SepKmacCfg", *, tag: str = "",
+                         hold: bool = False) -> list[int]:
         """Run one KMAC-family op (sha3/shake/cshake/kmac SW-key) per ``cfg``;
         return the digest words (STATE share0 ^ share1, masking on). Proves the
         INTR_STATE.kmac_done RW1C contract (observed set -> W1C -> reads 0) before
-        CmdDone (AGENTS.md §7)."""
+        CmdDone."""
         if cfg.kmac_en:
             await self._wr(KMAC_KEY_LEN, KMAC_KEYLEN[cfg.key_bits])
         await self._write_prefix(cfg.prefix_bytes())
@@ -263,9 +281,26 @@ class SepKmac(SepAxiRegDriver):
             s1 = await self._rd(KMAC_STATE_S1 + i * 4)
             digest.append((s0 ^ s1) & 0xFFFF_FFFF)
         await self._check_done_rw1c(tag)
+        if hold:
+            # Leave STATE in squeeze so a later re-read is the held result.
+            return digest
         await self._wr(KMAC_CMD, KMAC_CMD_DONE)
         await self._wait_idle("post-done")
         return digest
+
+    async def read_digest(self, nwords: int = KMAC_DIGEST_WORDS) -> list[int]:
+        """Re-read STATE share0^share1. Valid while the engine is still in squeeze
+        (after run_family(..., hold=True)); a domain reset perturbs it."""
+        digest = []
+        for i in range(nwords):
+            s0 = await self._rd(KMAC_STATE_S0 + i * 4)
+            s1 = await self._rd(KMAC_STATE_S1 + i * 4)
+            digest.append((s0 ^ s1) & 0xFFFF_FFFF)
+        return digest
+
+    async def read_status(self) -> int:
+        """Read STATUS (sha3_idle[0], sha3_squeeze[2], fifo_empty, ...)."""
+        return await self._rd(KMAC_STATUS)
 
     async def _check_done_rw1c(self, tag: str) -> None:
         """CHK-DONE-RW1C: after the message is absorbed (squeeze ready) the

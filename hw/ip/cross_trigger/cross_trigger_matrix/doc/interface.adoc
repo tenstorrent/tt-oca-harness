@@ -24,11 +24,15 @@ Where N = NUM_CTP and M = NUM_INT_CT.
 
 The CTM has the following data ports:
 
-* *CT_Src[N-1:0]* - Cross trigger pulse output signals from the CTM to CLAs, CTPs, or other cross trigger sinking devices, where N is the number of these cross trigger sinks.
-* *CT_Dst[M-1:0]* - Cross trigger pulse input signals to the CTM from CLAs, CTPs, or other cross trigger generating devices, where M is the number of these cross trigger sources.
+* *CT_Src[N-1:0]* - Cross trigger pulse output signals from the CTM to CLAs,
+  CTPs, or other cross trigger sinking devices, where N is the number of these
+  cross trigger sinks.
+* *CT_Dst[M-1:0]* - Cross trigger pulse input signals to the CTM from CLAs,
+  CTPs, or other cross trigger generating devices, where M is the number of
+  these cross trigger sources.
 
 ===== Dependencies
 
 The CTM depends on the following components:
 
-* `hw/common/prim` - Primitive cells
+* `hw/common/och_prim` - Primitive cells

@@ -14,6 +14,7 @@ dependencies = [
   "peakrdl>=1.4.0",
   "peakrdl-cheader>=1.1.0",
   "peakrdl-html>=2.12.2",
+  "peakrdl-ipxact>=3.4.0",
   "peakrdl-markdown>=1.0.3",
   "peakrdl-rawheader>=0.2.4",
   "peakrdl-regblock>=1.2.0",

@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OpenTitan-SPI flash command-breadth firmware test (OSS rep SPI flash command breadth). Direct
-// cpu-firmware port of the OCAH spi_ot_flash_write_read_test +
+// cpu-firmware port of the reference spi_ot_flash_write_read_test +
 // spi_ot_flash_sector_erase_test, driving the OT SPI host (@ 0x10B0_0000) against
-// the OcahSpiFlash BFM. Firmware-mode (like every OCAH spi_ot flash test + the
+// the OcahSpiFlash BFM. Firmware-mode (like every reference spi_ot flash test + the
 // Phase-1 sep_spi_ot_dma_rx) -- the OT spi_host multi-command flash sequence runs
 // from the EL2 CPU, not the no_cpu AXI splice.
 //
-// Flow: WREN -> PAGE PROGRAM (single TX segment: cmd+addr+data) -> READ + verify
-// == pattern -> WREN -> SECTOR ERASE -> READ + verify == 0xFF. ERROR_STATUS
-// checked == 0. The RDSR/WIP status-poll path is deferred: the current BFM is
-// instant-ready and the split RDSR transaction sequence needs separate bring-up.
+// Flow: JEDEC, then WREN -> RDSR (WEL set) -> WRDI -> RDSR (WEL clear), then
+// WREN -> PAGE PROGRAM -> READ + verify == pattern -> FAST_READ, then neighbour
+// PAGE PROGRAM, then WREN -> SECTOR ERASE -> READ == 0xFF with neighbour intact.
+// ERROR_STATUS checked == 0. The BFM is instant-ready (no WIP bit); dual/quad
+// lanes are not modeled. Neither is a checker here.
 //
 // The BFM memory inits to 0xFF (erased), so PAGE PROGRAM (NOR-AND) writes the
-// pattern directly. CHK-DUAL-QUAD is deferred: the BFM models neither the
-// 0x3B/0x6B opcodes nor multi-lane DQ (single-bit data phase).
+// pattern directly.
 //
 // RANDOMIZATION ([RAND-REP]): the scenario (flash address, word count, data) is
 // held in the g_spi1_params block below. The committed defaults are the directed
@@ -38,12 +39,16 @@
 #define MAX_WORDS 16
 
 #define FLASH_CMD_WREN 0x06u
+#define FLASH_CMD_WRDI 0x04u
 #define FLASH_CMD_RDSR 0x05u
+#define FLASH_CMD_JEDEC 0x9Fu
 #define FLASH_CMD_PP 0x02u
 #define FLASH_CMD_READ 0x03u
+#define FLASH_CMD_FAST 0x0Bu
 #define FLASH_CMD_ERASE 0x20u
 #define FLASH_SR_WIP (1u << 0)
 #define FLASH_SR_WEL (1u << 1)
+#define FLASH_JEDEC_RX 0x0018BA20u
 
 // Non-ASCII sentinel that the cocotb test byte-searches for in the DTCM image to
 // locate this block (avoids needing the .map). Stored little-endian: DE C0 11 5A.
@@ -58,9 +63,9 @@ volatile uint32_t g_spi1_params[3 + MAX_WORDS] = {
 };
 
 static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
-    uint32_t v = (direction << SPI_CMD_DIR_SHIFT) | ((len_bytes - 1) & 0x1FF);
+    uint32_t v = (direction << SPI_CONTROLLER__CMD__DIRECTION_bp) | ((len_bytes - 1) & 0x1FF);
     if (csaat) {
-        v |= SPI_CMD_CSAAT;
+        v |= SPI_CONTROLLER__CMD__CSAAT_bm;
     }
     return v;
 }
@@ -71,37 +76,60 @@ static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
            (((addr >> 0) & 0xFF) << 24);
 }
 
-// No SPI-mux CS release: the och_sep_spi_mux_ctrl_ot CSR is a nonfree shim absent from this
-// repository (the wrapper's SPI is a struct boundary), so nothing holds CS
-// deasserted and the 0x2000_0000 extension aperture decode-errors.
+// No pad-mux step: this DUT drives the OT SPI host onto the pads directly.
 
 static void spi_init(void) {
-    spi_wr(SPI_CTRL_REG, SPI_CTRL_SPIEN | SPI_CTRL_OUTPUT_EN);
-    spi_wr(SPI_CFG_REG, SPI_CFG_CLKDIV9_CSN);
-    spi_wr(SPI_CSID_REG, 0);
-    spi_wr(SPI_ERROR_STATUS_REG, 0xFFFFFFFFu);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
+           SPI_CONTROLLER__CTRL__SPIEN_bm | SPI_CONTROLLER__CTRL__OUTPUT_EN_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
 }
 
 static int flash_wren(void) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SPI_TXDATA_REG, FLASH_CMD_WREN);
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_WREN);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
     return spi_wait_idle(TIMEOUT);
 }
 
-static uint8_t flash_rdsr(void) {
-    if (spi_wait_ready(TIMEOUT)) return 0xFF;
-    spi_wr(SPI_TXDATA_REG, FLASH_CMD_RDSR);
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
-    if (spi_wait_ready(TIMEOUT)) return 0xFF;
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_RX, 1, 0)); // RX 1 byte, release CS
-    if (spi_wait_idle(TIMEOUT)) return 0xFF;
-    return (uint8_t)(spi_rd(SPI_RXDATA_REG) & 0xFF);
+static int flash_wrdi(void) {
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_WRDI);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    return spi_wait_idle(TIMEOUT);
+}
+
+static int flash_jedec(uint32_t *out) {
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_JEDEC);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1));
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 3, 0));
+    if (spi_wait_idle(TIMEOUT)) return -1;
+    *out = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+    return 0;
+}
+
+// Returns 0 and stores the status byte, or -1 if the controller never responded.
+// A timeout is not encoded as 0xFF: WEL is bit 1, so 0xFF would look like WEL set.
+static int flash_rdsr_checked(uint8_t *out) {
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_RDSR);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_RX, 1, 0)); // RX 1 byte, release CS
+    if (spi_wait_idle(TIMEOUT)) return -1;
+    *out = (uint8_t)(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR) & 0xFF);
+    return 0;
 }
 
 static int flash_wip_wait(void) {
     for (int i = 0; i < WIP_POLL_LIM; i++) {
-        if (!(flash_rdsr() & FLASH_SR_WIP)) return 0;
+        uint8_t sr;
+        if (flash_rdsr_checked(&sr)) return -1;
+        if (!(sr & FLASH_SR_WIP)) return 0;
     }
     return -1;
 }
@@ -114,31 +142,50 @@ static int flash_page_program(uint32_t addr, const uint32_t *data, uint32_t nwor
     // command_ready low under tx_stall mid-segment); the proven dma_rx path also
     // uses a single TX segment.
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SPI_TXDATA_REG, pack_hdr(FLASH_CMD_PP, addr)); // opcode + 24-bit addr
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR,
+           pack_hdr(FLASH_CMD_PP, addr)); // opcode + 24-bit addr
     for (uint32_t i = 0; i < nwords; i++) {
-        spi_wr(SPI_TXDATA_REG, data[i]); // data words, LSB-first
+        spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, data[i]); // data words, LSB-first
     }
     // total TX bytes = 4 (cmd+addr) + nwords*4
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 4 + nwords * 4, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 4 + nwords * 4, 0));
     return spi_wait_idle(TIMEOUT);
 }
 
 static int flash_sector_erase(uint32_t addr) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SPI_TXDATA_REG, pack_hdr(FLASH_CMD_ERASE, addr));
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 4, 0)); // cmd+addr, release CS
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, pack_hdr(FLASH_CMD_ERASE, addr));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_TX, 4, 0)); // cmd+addr, release CS
     return spi_wait_idle(TIMEOUT);
 }
 
 static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SPI_TXDATA_REG, pack_hdr(FLASH_CMD_READ, addr));
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_TX, 4, 1)); // cmd+addr, CSAAT held
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, pack_hdr(FLASH_CMD_READ, addr));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_TX, 4, 1)); // cmd+addr, CSAAT held
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(SPI_CMD_REG, cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX data, release CS
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX data, release CS
     if (spi_wait_idle(TIMEOUT)) return -1;
     for (uint32_t i = 0; i < nwords; i++) {
-        out[i] = spi_rd(SPI_RXDATA_REG);
+        out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+    }
+    return 0;
+}
+
+static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, pack_hdr(FLASH_CMD_FAST, addr));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0); // dummy byte
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 5, 1));
+    if (spi_wait_ready(TIMEOUT)) return -1;
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+           cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0));
+    if (spi_wait_idle(TIMEOUT)) return -1;
+    for (uint32_t i = 0; i < nwords; i++) {
+        out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     }
     return 0;
 }
@@ -175,6 +222,51 @@ int main(void) {
 
     spi_init();
 
+    uint32_t jedec = 0;
+    if (flash_jedec(&jedec)) {
+        sep_mbx_puts("FAIL: JEDEC timeout\n");
+        return 1;
+    }
+    if ((jedec & 0x00FFFFFFu) != FLASH_JEDEC_RX) {
+        sep_mbx_puts("FAIL: CHK-JEDEC got ");
+        sep_mbx_puthex(jedec);
+        sep_mbx_putc('\n');
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-JEDEC PASS: READ ID 0x9F -> 0x0018ba20\n");
+    }
+
+    // WEL is 0 out of reset, so WRDI must run on a WEL that is KNOWN set -- otherwise
+    // the "cleared" check asserts 0 after 0 and passes on a no-op opcode.
+    uint8_t sr;
+    if (flash_wren()) {
+        sep_mbx_puts("FAIL: WREN(rdsr) timeout\n");
+        return 1;
+    }
+    if (flash_rdsr_checked(&sr)) {
+        sep_mbx_puts("FAIL: CHK-RDSR status read timed out after WREN\n");
+        errors++;
+    } else if (!(sr & FLASH_SR_WEL)) {
+        sep_mbx_puts("FAIL: CHK-RDSR WEL not set after WREN\n");
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-RDSR PASS: opcode 0x05 saw WEL after WREN\n");
+    }
+
+    if (flash_wrdi()) {
+        sep_mbx_puts("FAIL: WRDI timeout\n");
+        return 1;
+    }
+    if (flash_rdsr_checked(&sr)) {
+        sep_mbx_puts("FAIL: CHK-WRDI status read timed out after WRDI\n");
+        errors++;
+    } else if (sr & FLASH_SR_WEL) {
+        sep_mbx_puts("FAIL: CHK-WRDI WEL still set after WRDI\n");
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-WRDI PASS: opcode 0x04 cleared a WEL proven set by WREN\n");
+    }
+
     // --- PROGRAM path: WREN -> PP -> READ == pattern ---
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN timeout\n");
@@ -204,9 +296,55 @@ int main(void) {
     }
     if (prog_ok) {
         sep_mbx_puts("CHK-PROGRAM/CHK-READ PASS: PP + READ match the pattern\n");
+        if (flash_fast_read(addr, rd, nwords)) {
+            sep_mbx_puts("FAIL: FAST READ timeout\n");
+            return 1;
+        }
+        int fast_ok = 1;
+        for (uint32_t i = 0; i < nwords; i++) {
+            if (rd[i] != exp[i]) {
+                sep_mbx_puts("FAIL: CHK-FAST-READ word ");
+                sep_mbx_puthex(i);
+                sep_mbx_putc('\n');
+                errors++;
+                fast_ok = 0;
+            }
+        }
+        if (fast_ok) {
+            sep_mbx_puts("CHK-FAST-READ PASS: opcode 0x0B returned the programmed pattern\n");
+        }
     }
 
-    // --- ERASE path: WREN -> ERASE -> READ == 0xFF ---
+    // Neighbour 4 KiB sector: program it so the erase below cannot pass as a
+    // chip-wide wipe.
+    uint32_t neigh = addr ^ 0x1000u;
+    uint32_t neigh_pat[MAX_WORDS];
+    uint32_t neigh_rd[MAX_WORDS];
+    for (uint32_t i = 0; i < nwords; i++) {
+        neigh_pat[i] = exp[i] ^ 0xFFFFFFFFu;
+    }
+    if (flash_wren()) {
+        sep_mbx_puts("FAIL: WREN(neighbour) timeout\n");
+        return 1;
+    }
+    if (flash_page_program(neigh, neigh_pat, nwords)) {
+        sep_mbx_puts("FAIL: PAGE PROGRAM(neighbour) timeout\n");
+        return 1;
+    }
+    if (flash_read(neigh, neigh_rd, nwords)) {
+        sep_mbx_puts("FAIL: READ(neighbour) timeout\n");
+        return 1;
+    }
+    for (uint32_t i = 0; i < nwords; i++) {
+        if (neigh_rd[i] != neigh_pat[i]) {
+            sep_mbx_puts("FAIL: neighbour sector program word ");
+            sep_mbx_puthex(i);
+            sep_mbx_putc('\n');
+            errors++;
+        }
+    }
+
+    // --- ERASE path: WREN -> ERASE -> READ == 0xFF, neighbour intact ---
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN(erase) timeout\n");
         return 1;
@@ -232,11 +370,30 @@ int main(void) {
         }
     }
     if (erase_ok) {
-        sep_mbx_puts("CHK-ERASE PASS: sector erase -> READ all 0xFF\n");
+        int neigh_ok = 1;
+        if (flash_read(neigh, neigh_rd, nwords)) {
+            sep_mbx_puts("FAIL: READ(neighbour after erase) timeout\n");
+            return 1;
+        }
+        for (uint32_t i = 0; i < nwords; i++) {
+            if (neigh_rd[i] != neigh_pat[i]) {
+                sep_mbx_puts("FAIL: CHK-ERASE neighbour word ");
+                sep_mbx_puthex(i);
+                sep_mbx_puts(" got ");
+                sep_mbx_puthex(neigh_rd[i]);
+                sep_mbx_puts(" -- sector erase wiped the adjacent 4KiB sector\n");
+                errors++;
+                neigh_ok = 0;
+            }
+        }
+        if (neigh_ok) {
+            sep_mbx_puts("CHK-ERASE PASS: sector erase -> READ all 0xFF, neighbour "
+                         "4KiB sector intact\n");
+        }
     }
 
     // --- CHK-NO-ERROR: the OT SPI host saw no error across the whole sequence ---
-    uint32_t err = spi_rd(SPI_ERROR_STATUS_REG);
+    uint32_t err = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (err != 0) {
         sep_mbx_puts("FAIL: CHK-NO-ERROR ERROR_STATUS=");
         sep_mbx_puthex(err);
@@ -245,8 +402,6 @@ int main(void) {
     } else {
         sep_mbx_puts("CHK-NO-ERROR PASS: OT SPI ERROR_STATUS==0\n");
     }
-    sep_mbx_puts("CHK-WIP DEFERRED: RDSR/WIP poll path not enabled in this firmware\n");
-    sep_mbx_puts("CHK-DUAL-QUAD DEFERRED: BFM has no 0x3B/0x6B opcode or multi-lane DQ\n");
 
     if (errors == 0) {
         sep_mbx_puts("PASS: OT SPI flash program/read/erase/no-error all OK\n");

@@ -1,41 +1,37 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Crypto-EDN arbiter: two crypto-endpoint clients (AES + KMAC) contend.
 
 Top-down integration edge: AES (crypto_edn[0]) and KMAC (crypto_edn[1]) BOTH pull
 the shared crypto-EDN leg (drbg_axis_edn_adapter -> u_axis_edn_crypto round-robin
 arbiter, sep_crypto.sv) concurrently off ONE verified DRBG stream. This is the
-first time TWO real crypto clients contend the crypto arbiter -- TOP-20 #15
-(sep_drbg_real_sink_multi_km_aes) had AES as the SOLE crypto client (KMAC parked)
+first time TWO real crypto clients contend the crypto arbiter.
+`sep_drbg_real_sink_multi_km_aes_test` had AES as the SOLE crypto client (KMAC parked)
 and used KM (a different leg) as the second sink; the standalone AES/KMAC breadth
 tests are single-engine KATs. DISTINCT from all of those -- do NOT re-prove
 single-sink routing here.
 
-OCAH parity: COVERED_STRONGER re-expression of OCAH drbg/sep_drbg_real_sink_multi_
-rand_test at the crypto-endpoint arbiter (OCAH's per-IP tb cannot reach the SEP
+reference parity: COVERED_STRONGER re-expression of reference suite drbg/sep_drbg_real_sink_multi_
+rand_test at the crypto-endpoint arbiter (the reference suite's per-IP tb cannot reach the SEP
 integration where two crypto engines share one EDN adapter). No KM firmware / no
 rom_main / no real fuse-sense (+skip_fuse_sense), so it follows the standalone
 crypto-engine bring-up style.
 
-Per-sink bit-exact ROUTING (which word to which endpoint) is arbiter-determined
-for >1 concurrent crypto sink and needs OCAH's full per-endpoint assignment trace
-(documented delta, deferred). Instead each sink is scored bit-exact MEMBERSHIP:
-every word AES consumes AND every word KMAC consumes must be a genuine CHK4
-genbits-golden word (sep_drbg_scoreboard per-sink membership mode, removal tally).
-This is stronger than the card's aggregate-AXIS1 membership: it proves EACH
-engine's delivered words are genuine genbits, not just the combined stream.
+CHK5 ROUTING: each AES and each KMAC post-adapter beat equals the AXIS1 word
+the adapter granted that cycle. Membership of those words in the CHK4 genbits
+set follows because AXIS1 is chained to genbits in report().
 
 Budget: total genbits consumption is kept < cfg.glen=32 blocks so the CHK4
-one-Generate-per-seed golden stays bit-exact (the #15 desync lesson). No KM boot
+one-Generate-per-seed golden stays bit-exact (do not overrun glen). No KM boot
 here, so the full 32-block budget is available for AES+KMAC; a few ops each is far
 under it.
 
 Checkers:
   CHK1..CHK4     bit-exact golden (decor/compress/seed/CTR_DRBG genbits) -- strict;
-                 the correctness anchor the per-sink membership pool draws from.
+                 the correctness anchor the AXIS1 routing stream draws from.
   CHK-NONVAC     single-engine BASELINE: AES-alone ct == AES-256-ECB golden AND
                  KMAC-alone digest == Keccak golden (each engine correct in
-                 isolation -- proves the membership/both-beats check is not
-                 always-true).
+                 isolation -- proves the both-beats check is not always-true).
   CHK-BOTH-COMPLETE  under CONTENTION: AES block-0 ct == golden AND KMAC digest ==
                  golden (both engines compute correctly while sharing the arbiter).
   CHK-BOTH-BEATS every engaged crypto sink (AES, KMAC) takes real post-adapter EDN
@@ -44,14 +40,13 @@ Checkers:
                  TIME-SPANS overlap during the fork (each was being granted words by
                  u_axis_edn_crypto in an overlapping window), so the arbiter time-
                  multiplexed two live clients -- not one sink drained before the other.
-  CHK-MEMBERSHIP each consumed AES word and each consumed KMAC word is a member of
-                 the CHK4 genbits-golden multiset (per-sink, removal) -- the
-                 partition-into-two-crypto-sinks proof.
+  CHK-ROUTING    each AES beat and each KMAC beat equals the AXIS1 word granted
+                 that cycle (dual-sink bit-exact CHK5).
+  CHK-MEMBERSHIP each routed word is a CHK4 genbits-golden word (AXIS1 chain).
 """
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
 
 import cocotb
@@ -60,11 +55,13 @@ import pyuvm
 from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 
 # AES SW-key path: arbitrary key (the test exercises the entropy datapath + the
-# arbiter, not a key contract -- same rationale as #15). Plaintext is seed-randomized.
+# arbiter, not a key contract -- same as `sep_drbg_real_sink_multi_km_aes_test`).
+# Plaintext is seed-randomized.
 AES_KEY = (
     0x0F0E0D0C, 0x0B0A0908, 0x07060504, 0x03020100,
     0x1F1E1D1C, 0x1B1A1918, 0x17161514, 0x13121110,
@@ -107,11 +104,11 @@ class CryptoEdnMultisinkCfg:
     @classmethod
     def randomize(cls, seed: int) -> "CryptoEdnMultisinkCfg":
         """Resolve the seeded fields from `seed` (single RNG = reproducible)."""
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         return cls(
             seed=seed,
             aes_pt=[rng.getrandbits(32) for _ in range(4)],
-            kmac_msg=[rng.getrandbits(32) for _ in range(rng.randint(2, 6))],
+            kmac_msg=[rng.getrandbits(32) for _ in range(rng.randrange(2, 7))],
         )
 
     def log_resolved(self, logger) -> None:
@@ -130,7 +127,7 @@ class CryptoEdnMultisinkCfg:
 
 @pyuvm.test()
 class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
-    """AES + KMAC concurrent crypto-EDN clients off one real DRBG; per-sink membership."""
+    """AES + KMAC concurrent crypto-EDN clients off one real DRBG; dual-sink CHK5 routing."""
 
     def _aes_beats(self) -> int:
         """Live count of AES crypto-EDN post-adapter beats (public scoreboard accessor)."""
@@ -161,11 +158,11 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         kmac_msg = cfg.kmac_msg
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact anchors the one DRBG. Both
-        # crypto sinks score per-sink MEMBERSHIP (each word must be a genbits word;
-        # concurrent-arbiter routing order is not golden-predictable). KM leg unused.
+        # crypto sinks score CHK5 ROUTING (each post-adapter beat equals the AXIS1
+        # word granted that cycle). KM leg unused.
         await self.bring_up_entropy(
             strict=True, score_km=False,
-            score_sinks={"aes": "membership", "kmac": "membership"})
+            score_sinks={"aes": "golden", "kmac": "golden"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()   # frontdoor CHK2 (proven in sep_esrc_e2e_smoke)
 
@@ -214,13 +211,17 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
             for i in range(cfg.aes_blocks_fork):
                 await self.aes.load_key_iv(list(cfg.aes_key))
                 ct = await self.aes.run_ecb_block(aes_pt)
-                if i == 0:
-                    assert ct == aes_golden, (
-                        "AES contended block-0 ct != golden:\n"
-                        f"  ct    ={[hex(w) for w in ct]}\n"
-                        f"  golden={[hex(w) for w in aes_golden]}")
-                else:
-                    assert any(w != 0 for w in ct), f"AES all-zero ct (block {i})"
+                # Every fork block is compared bit-exact, not just block 0. ECB is
+                # stateless and the key/plaintext are identical per iteration, so the
+                # former `any(w != 0 for w in ct)` guard on later blocks reduced to
+                # `any(aes_golden)` -- a property of the Python model, true with the
+                # simulator switched off. The exact expected value is already known
+                # here, so asserting it turns each later block into a real second
+                # contended data point instead of a non-zero placeholder.
+                assert ct == aes_golden, (
+                    f"AES contended block-{i} ct != golden:\n"
+                    f"  ct    ={[hex(w) for w in ct]}\n"
+                    f"  golden={[hex(w) for w in aes_golden]}")
 
         async def kmac_arm():
             """KMAC crypto-EDN pulls: each keyed KMAC-256 op reseeds masking from EDN;
@@ -280,16 +281,21 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
             "time-multiplexed two live clients (real contention)",
             ov_lo, ov_hi, aes_ft[0], aes_ft[-1], kmac_ft[0], kmac_ft[-1])
 
-        # --- EOT: engine status clean, entropy health, per-sink membership ---------
+        # --- EOT: engine status clean, entropy health, dual-sink CHK5 routing ------
         await self.aes.check_status_clean("EOT")
         await self.kmac.check_status_clean("EOT")
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        # Strict report: CHK1..CHK4 bit-exact + per-sink membership (each AES word and
-        # each KMAC word is a genbits-golden word) -- raises on any mismatch, a starved
-        # sink (matches<1), or a genbits protocol violation.
-        self.drbg_sb.report()
+        # Strict report: CHK1..CHK4 bit-exact + CHK5_aes/CHK5_kmac ROUTING
+        # (each post-adapter beat == the AXIS1 word granted that cycle).
+        assert self.drbg_sb.report()
+        ra = self.drbg_sb.results["CHK5_aes"]
+        rk = self.drbg_sb.results["CHK5_kmac"]
+        assert ra.mismatches == 0 and rk.mismatches == 0
+        self.logger.info(
+            "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_kmac match=%d equal the "
+            "AXIS1 grant-order stream (mismatch=0)", ra.matches, rk.matches)
         self.logger.info(
             "CHK-MEMBERSHIP PASS: every AES and every KMAC crypto-EDN word is a CHK4 "
-            "genbits-golden word (per-sink removal tally) -- one DRBG partitions into "
-            "the two contending crypto sinks; CHK1..CHK4 bit-exact; alerts zero")
+            "genbits-golden word (AXIS1 chained to genbits) -- one DRBG partitions "
+            "into the two contending crypto sinks; CHK1..CHK4 bit-exact; alerts zero")

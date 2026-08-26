@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 package mem_gen_pkg;
 
 	parameter TSEL_TSMC7_SETTINGS_1PRF_DEFAULT    = 8'b00000110;

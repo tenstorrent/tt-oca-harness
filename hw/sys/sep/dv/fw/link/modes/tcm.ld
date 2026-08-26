@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /* Copyright 2025 Tenstorrent Inc.
  *
  * Linker script for VeeR EL2 bare-metal DV environment.
@@ -136,7 +139,7 @@ SECTIONS {
      * Stack grows DOWNWARD from here toward BSS_END */
     STACK = INTVEC_BASE - 4;
 
-    /* Aliases for compatibility */
+    /* Stack symbol aliases */
     stack  = STACK;
     _stack = STACK;
 

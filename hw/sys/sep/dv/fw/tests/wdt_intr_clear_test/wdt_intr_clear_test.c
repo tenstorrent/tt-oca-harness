@@ -2,11 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_011 (V3, P2) - WDT Interrupt Clear Test
+ * WDT Interrupt Clear Test
  *
  * Verifies INTR_STATE W1C mechanism:
- * - Bark fires → INTR_STATE[1] sets
- * - Write 1 to INTR_STATE[1] → clears
+ * - Bark fires → INTR_STATE bark sets
+ * - Write 1 to INTR_STATE bark → clears
  * - Interrupt output deasserts
  * - Re-trigger: pet after W1C resets count, count grows back → new posedge
  *
@@ -16,7 +16,7 @@
  * then waiting for count to grow back above bark_thold (posedge fires again).
  *
  * Steps:
- * 1. Generate BARK → read INTR_STATE[1]=1, W1C clears it
+ * 1. Generate BARK → read INTR_STATE bark=1, W1C clears it
  * 2. Pet (count=0 → wdog_intr_o LOW) → wait for re-trigger (new posedge)
  * 3. Disable WDT, verify no further triggers
  * 4. INTR_TEST W1C verification
@@ -30,6 +30,10 @@
 #include "sep_outbound_filter.h"
 #include "nmi.h"
 #include "test_completion.h"
+#include "aon_timer.h"
+
+#define INTR_STATE_CLEAR_ALL \
+    (AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm | AON_TIMER__INTR_STATE__WKUP_TIMER_EXPIRED_bm)
 
 static volatile int nmi_count = 0;
 static volatile int nmi_errors = 0;
@@ -42,25 +46,26 @@ void wdt_nmi_handler(void) {
     uint32_t state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
 
     /* Always W1C first to prevent continuous NMI re-entry (level-triggered NMI) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
 
     printf("  NMI #%d (phase=%d)\n", nmi_count, phase);
 
-    if (!(state & 0x2)) {
-        printf("  FAIL: INTR_STATE[1] not set on NMI #%d\n", nmi_count);
+    if (!(state & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm)) {
+        printf("  FAIL: INTR_STATE bark not set on NMI #%d\n", nmi_count);
         nmi_errors++;
     } else {
-        printf("  PASS: INTR_STATE = 0x%08x (bit 1 set)\n", state);
+        printf("  PASS: INTR_STATE = 0x%08x (bark set)\n", state);
     }
 
     if (phase == 0) {
         /* First bark: verify W1C worked, signal main to pet and wait for re-trigger */
         uint32_t after = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-        if (after & 0x2) {
+        if (after & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
             printf("  FAIL: W1C did not clear INTR_STATE (0x%08x)\n", after);
             nmi_errors++;
         } else {
-            printf("  PASS: W1C cleared INTR_STATE[1]\n");
+            printf("  PASS: W1C cleared INTR_STATE bark\n");
         }
         phase = 1;
         /* Main will pet (count=0 → wdog_intr_o LOW), then count grows back → re-trigger */
@@ -77,7 +82,7 @@ void wdt_nmi_handler(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_011: WDT Interrupt Clear Test\n");
+    printf("WDT Interrupt Clear Test\n");
     printf("======================================\n\n");
 
     nmi_register_handler(wdt_nmi_handler);
@@ -91,7 +96,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 2000);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* Wait for first bark */
     while (phase == 0) {
@@ -129,35 +134,45 @@ int main(void) {
         printf("  PASS: No spurious NMI after disable+pet\n");
     }
 
-    /* STEP 4: Manual INTR_STATE W1C with WDT disabled */
+    /* STEP 4: Manual INTR_STATE W1C with WDT disabled — require bark set first */
     printf("\n// STEP 4: Manual INTR_STATE W1C (via INTR_TEST)\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x3); /* clear any residual */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, 0x2);  /* inject */
-    int prev = nmi_count;
-    for (volatile int i = 0; i < 1000000 && nmi_count == prev; i++) {
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, INTR_STATE_CLEAR_ALL);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_TEST_BASE_ADDR, AON_TIMER__INTR_TEST__WDOG_TIMER_BARK_bm);
+
+    uint32_t st = 0;
+    int timeout = 2000000;
+    while (timeout-- > 0) {
+        st = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+        if (st & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
+            break;
+        }
         __asm__ volatile("nop");
     }
 
-    /* Phase is 2 now, NMI won't be in our phase handler, but will at least read INTR_STATE */
-    uint32_t st = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    /* Clear it */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
-    uint32_t st2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    if (st2 & 0x2) {
-        printf("  FAIL: INTR_STATE[1] not cleared by W1C (0x%08x)\n", st2);
+    if (!(st & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm)) {
+        printf("  FAIL: INTR_STATE bark never set after INTR_TEST (0x%08x)\n", st);
         errors++;
     } else {
-        printf("  PASS: W1C clears INTR_STATE[1]\n");
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+                  AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
+        uint32_t st2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
+        if (st2 & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) {
+            printf("  FAIL: INTR_STATE bark not cleared by W1C (set=0x%08x, clr=0x%08x)\n", st,
+                   st2);
+            errors++;
+        } else {
+            printf("  PASS: W1C clears INTR_STATE bark (was 0x%08x)\n", st);
+        }
     }
 
     errors += nmi_errors;
 
     printf("\n======================================\n");
     if (errors == 0) {
-        printf("TC_WDT_011: PASS\n");
+        printf("WDT Interrupt Clear Test: PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_011: FAIL (errors=%d)\n", errors);
+        printf("WDT Interrupt Clear Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("======================================\n");

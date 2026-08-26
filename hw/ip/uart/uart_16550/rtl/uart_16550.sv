@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright lowRISC contributors.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
@@ -61,8 +59,6 @@ module uart_16550
     // Signal Declarations //
     /////////////////////////
 
-    // Synchronized modem status inputs
-    logic cts_n, dsr_n, ri_n, dcd_n;
 
     // Registers to/from hardware signals
     uart_16550_reg_in_t  reg_in;

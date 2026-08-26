@@ -36,8 +36,8 @@ Module dtp {
     Parameter  JTAG_IDCODE_SI_REV       = 4'h0;
     Parameter  JTAG_OCH_VER             = 8'h00;
     // These values must match dtp_pkg::DEFAULT_NUM_CTP and dtp_pkg::DEFAULT_NUM_INT_CT
-    Parameter  XTRIG_NUM_CTP            = 16;  // Templated: matches dtp_pkg::DEFAULT_NUM_CTP
-    Parameter  XTRIG_NUM_INT_CT         = 10;  // Templated: matches dtp_pkg::DEFAULT_NUM_INT_CT
+    Parameter  XTRIG_NUM_CTP            = 16;
+    Parameter  XTRIG_NUM_INT_CT         = 10;
 
     //-------------------------------------------------------------------------
     // Primary JTAG TAP Interface (External Pins)

@@ -1,11 +1,12 @@
-/* Copyright 2026 Tenstorrent Inc. */
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 /* Key Manager Startup Code for PicoRV32 with q-register IRQ support */
 
 /*
  * Memory Layout:
  *   0x0000_0000 - Reset vector (_start)
  *   0x0000_0010 - IRQ vector (irq_vec)
- *   0x0000_4000 - SRAM base
+ *   0x0000_8000 - SRAM base
  *   _stack      - Stack top (linker-defined, top of SRAM)
  *
  * PicoRV32 IRQ Configuration (ENABLE_IRQ_QREGS=1):

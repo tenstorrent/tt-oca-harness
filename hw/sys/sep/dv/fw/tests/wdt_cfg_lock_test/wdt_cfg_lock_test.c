@@ -25,10 +25,11 @@
 #include "tb.h"
 #include "nmi.h"
 #include "test_completion.h"
+#include "aon_timer.h"
 
 #define WDOG_BARK_THOLD_DEFAULT 0xFFFF
 #define WDOG_BITE_THOLD_DEFAULT 0xFFFFFFFF
-#define WDOG_CTRL_DEFAULT 0x1
+#define WDOG_CTRL_DEFAULT AON_TIMER__WDOG_CTRL__ENABLE_bm
 
 uint32_t interrupt_expected;
 
@@ -46,16 +47,16 @@ void wdt_nmi_handler(void) {
 
     /* Read back the INTR_STATE register */
     uint32_t intr_state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);
-    if (intr_state != 0x2) {
-        printf("ERROR: INTR_STATE register is not set! Expected 0x2, got 0x%08x\n", intr_state);
+    if ((intr_state & AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm) == 0) {
+        printf("ERROR: INTR_STATE bark bit not set! got 0x%08x\n", intr_state);
         test_fail(1);
         return;
     }
 
     printf("INTR_STATE register after interrupt: 0x%08x\n", intr_state);
 
-    /* Clear watchdog bark interrupt (bit 1 of INTR_STATE is wdog_timer_bark) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
 
     /* Read back INTR_STATE register and verify its cleared */
     intr_state = READ_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR);

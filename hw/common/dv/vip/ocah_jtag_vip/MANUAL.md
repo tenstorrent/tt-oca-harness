@@ -10,7 +10,7 @@ cocotb tests.
 Tests should import `ocah_jtag_vip` classes, not backend classes:
 
 ```python
-from ocah_jtag_vip import OcahJtagTap, OcahJtagMonitor, OcahJtagChecker
+from ocah_jtag_vip import OcahJtagMasterDriver, OcahJtagMasterMonitor, OcahJtagChecker
 ```
 
 The package uses `cocotbext-jtag` for bus/device compatibility and owns the raw
@@ -22,7 +22,7 @@ machine internals while preserving deterministic one-cycle TMS control.
 For flattened signal prefixes:
 
 ```python
-tap = OcahJtagTap.from_prefix(
+tap = OcahJtagMasterDriver.from_prefix(
     dut,
     "ptap",
     name="ptap",
@@ -34,7 +34,7 @@ tap = OcahJtagTap.from_prefix(
 For custom signal maps:
 
 ```python
-tap = OcahJtagTap(
+tap = OcahJtagMasterDriver(
     dut,
     name="dtp_ptap",
     ir_width=6,
@@ -103,7 +103,7 @@ fields = tap.decode_idcode(idcode)
 await tap.bypass()
 ```
 
-`read_idcode()` raises `OcahJtagTapError` for all-ones readback, which usually
+`read_idcode()` raises `OcahJtagMasterDriverError` for all-ones readback, which usually
 means the chain is in BYPASS or no TAP device responded.
 
 ## Device Register Maps
@@ -125,11 +125,11 @@ packing, polling, and scoreboard publication stay in DTP code.
 
 ## Monitor And Checker
 
-`OcahJtagMonitor` passively samples TCK/TMS/TDI/TDO and emits
+`OcahJtagMasterMonitor` passively samples TCK/TMS/TDI/TDO and emits
 `OcahJtagScanItem` records.
 
 ```python
-monitor = OcahJtagMonitor(dut, signal_map={"tck": "jtag_tck", "tms": "jtag_tms"})
+monitor = OcahJtagMasterMonitor(dut, signal_map={"tck": "jtag_tck", "tms": "jtag_tms"})
 checker = OcahJtagChecker(ir_width=6)
 checker.attach_monitor(monitor)
 
@@ -146,6 +146,168 @@ checker.assert_clean()
 `OcahJtagScanItem` fields include `kind`, `tdi_value`, `tdo_value`,
 `bit_count`, `instruction`, `start_time_ns`, `end_time_ns`, `start_state`,
 `end_state`, and `source`.
+
+## Config, Agent, And Sequence API
+
+`OcahJtagMasterConfig` is a plain dataclass describing one TAP connection; explicit
+keyword arguments always override its fields. `OcahJtagMasterAgent` bundles driver,
+monitor, and checker from one DUT handle, and `OcahJtagMasterSequence` provides
+checked scenario operations that emit the same `CHK-*` named evidence as
+hand-wired checker calls:
+
+```python
+from ocah_jtag_vip import OcahJtagMasterAgent, OcahJtagMasterConfig, OcahJtagMasterSequence
+
+config = OcahJtagMasterConfig(name="ptap", ir_width=6, tck_period_ns=10,
+                        signal_map={"tck": "jtag_tck", "tms": "jtag_tms",
+                                    "tdi": "jtag_tdi", "tdo": "jtag_tdo",
+                                    "trst": "jtag_trst"})
+agent = OcahJtagMasterAgent(dut, config=config)
+await agent.start()
+
+seq = OcahJtagMasterSequence(agent.tap, agent.checker, monitor=agent.monitor)
+await seq.reset_to_tlr()
+await seq.read_idcode_checked(expected_idcode)
+await seq.check_bypass_latency(pattern, width=64)
+seq.check_last_scan_length(is_ir=False, expected_width=64)
+
+await agent.stop()
+seq.finalize()
+```
+
+`OcahJtagMasterSequence` is the VIP's test-facing stimulus surface: tests drive the
+TAP through it (or a DUT sequence layer built on it), never through the raw
+driver. Besides the checked operations above it exposes the pass-through scan
+API (`step_tms`, `goto_state`, `shift_ir`, `shift_dr`); missing operations
+get added here first, never inlined in tests. The checker argument is
+optional — one is constructed when omitted.
+
+Sequence checks are pin-level (driven TDI/TMS vs captured TDO plus
+monitor-reconstructed scan shapes). Checks that need a DUT-side TAP-state
+observable stay in DUT-level sequences that can sample it.
+
+## Slave Side (Reactive TAP Device)
+
+When the DUT is the JTAG **host**, instantiate the slave side: a behavioral
+TAP device that responds on TDO. Configure its identity and register map,
+start it, and judge the host's traffic through the slave sequence API:
+
+```python
+from ocah_jtag_vip import (
+    OcahJtagSlaveAgent, OcahJtagSlaveConfig, OcahJtagSlaveSequence,
+)
+
+config = OcahJtagSlaveConfig(
+    name="stap0", idcode=0x1B34_C0D1, ir_width=5,
+    registers={
+        "IDCODE": (32, 0x01),
+        "CTRL":   (16, 0x02, True),   # writable: latches on Update-DR
+        "STATUS": (8,  0x03),         # read-only: presents backdoor value
+    },
+)
+agent = OcahJtagSlaveAgent(dut.stap0_if, config=config)
+await agent.start()
+
+seq = OcahJtagSlaveSequence(agent.responder, agent.checker)
+seq.set_register("STATUS", 0xA5)      # value the host will read
+# ... DUT host traffic runs ...
+seq.check_last_update("CTRL", 0xBEEF) # CHK-SLAVE-DR-UPDATE evidence
+seq.check_update_count(1, reg_name="CTRL")
+seq.finalize()
+```
+
+Behavior implemented from the public IEEE Std 1149.1 clause descriptions:
+Test-Logic-Reset selects IDCODE (BYPASS when none), IR capture presents `01`
+in the LSBs, unknown instructions behave as BYPASS, BYPASS delays TDI to TDO
+by one TCK, TDO changes on the falling edge with `tdo_oen` asserted only
+while shifting. Registers are limited to 64 bits. The pure-logic engine is
+validated standalone by `examples/example_slave_selftest.py`.
+
+## TAP Reference Model And Named TAP Checks
+
+`OcahJtagTapRefModel` is a pure-Python IEEE 1149.1 TAP controller model with
+no simulator handles. Every `OcahJtagChecker` owns one (or accepts a shared
+instance via `ref_model=`) and exposes reference-model-backed named evidence:
+
+```python
+checker = OcahJtagChecker(
+    required_ids={"CHK-TAP-RESET-TLR", "CHK-TAP-STATE", "CHK-TAP-TLR-TMS5"},
+)
+
+# TAP reset must land in Test-Logic-Reset.
+checker.check_reset_to_tlr(observed_state)
+
+# Every raw TMS step must match the reference FSM prediction.
+checker.check_state_step(tms, observed_state)
+
+# Five or more TMS-high TCK cycles must force TLR from any state.
+checker.check_tms_ones_to_tlr(ones_count, observed_state)
+
+# BYPASS must delay TDI to TDO by exactly one TCK.
+checker.check_bypass_latency(observed_tdo, pattern=pattern, width=width)
+
+# Monitor-observed scan bit counts must equal the driven widths.
+checker.check_scan_length(scan_item, expected_width=width)
+
+checker.finalize()
+```
+
+`check_state_step()` predicts from the model's tracked state. Scan helpers
+that navigate internally (for example back-to-RTI legs) move the TAP without
+per-step visibility; call `checker.sync_state(state)` at those landing points
+so the next prediction starts from the true controller state. On a mismatch
+in aggregate mode the model re-aligns to the observed state so later steps
+stay meaningful.
+
+The DTP `dtp_jtag_base_test_seq.attach_tap_checker()` hook wires these checks
+into TAP navigation automatically; `DTP_JTAG_TAP_CHECKER_NEGATIVE=1` runs the
+documented negative validation (a deliberately desynced model must FAIL the
+`dtp_jtag_tlr_reset_test` run).
+
+## SystemVerilog Layer (interface / sva / cov / uvm)
+
+The SV side of this package compiles through the VIP-owned ordered manifest
+`uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
+its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
+the DUT's own sources — never hand-copy these paths into a DUT sim config, and
+never add them to Bender or Verilator filelists. Its contents:
+
+- `interface/ocah_jtag_if.sv` — shared pin-level IEEE 1149.1 interface
+  (JTAG pins only; reused by any DUT).
+- `cov/ocah_jtag_cov.sv` — commercial-simulator-only functional-coverage
+  collateral.
+- `sva/ocah_jtag_sva.sv` — clean-room SVA protocol rules for the TAP pins.
+- `uvm/ocah_jtag_uvm_pkg.sv` — the SV-UVM VIP: item/config/driver/monitor/
+  sequencer/agent plus the encoding-agnostic TAP reference model;
+  `ocah_jtag_master_env` is the commercial-overridable unit that DUT envs
+  instantiate (see the DTP SV-UVM flow for the first consumer).
+
+## UVM Env Surface Convention
+
+Both shipped OCAH VIPs (`ocah_jtag_vip`, `ocah_axi_vip`) follow one surface
+convention, with the JTAG master env as the reference template:
+
+- **Side tokens.** Side-specific components — config, driver, sequencer,
+  sequence, agent, env, and agent-attached monitors — carry the side token
+  (`_master_*` / `_slave_*`). Wire-level observation classes — items, bus
+  monitors, reference models, scoreboards, checkers, coverage subscribers,
+  and the passive observation env — are side-neutral: they observe
+  DUT-generated traffic regardless of which VIP side, if any, is active.
+- **config_db fields.** An env-wrapped unit resolves its config from field
+  `cfg` and republishes the same object to its children as `cfg`. A
+  standalone reactive agent (the slave stacks) resolves the side-tokened
+  field `slave_cfg` instead.
+- **Payload-named analysis ports.** An observation port is named
+  `<kind>_ap` after the class it streams, mirroring the cocotb monitor
+  callback names: `event_ap` (`ocah_jtag_event`), `scan_ap`
+  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names are
+  deliberately not unified across VIPs — the payloads genuinely differ,
+  and the name tells a DUT env what it is subscribing to.
+- **Frozen surface is env-top-level handles only.** Everything a DUT env,
+  test, or sequence may depend on is a direct member of the VIP env — the
+  env promotes child handles (`m_sequencer` on `ocah_jtag_master_env` and
+  `ocah_axi_master_env`, `m_checker` on `ocah_axi_env`) rather than
+  letting consumers reach through its children.
 
 ## Backend And License Status
 
@@ -166,7 +328,7 @@ python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilat
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_sample_preload_test --tool vcs
 ```
 
-If time allows, run:
+For broader coverage, run the full `basic_jtag` group:
 
 ```bash
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator

@@ -1,0 +1,115 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: `--dut smc` (discovered by the directory convention).
+# tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
+# smc_cpu_mem_integration); the bare DUT name selects that wrapper-based TB.
+name = "smc"
+profile = "native"
+description = "SMC OSS cocotb: smc_wrapper under tb_top"
+default_tool = "verilator"
+tools = ["vcs", "verilator", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/sys/smc/dv/build"]
+
+[build]
+top_module = "smc_uvm_top"
+top_file = "hw/sys/smc/dv/tb/tb_top.sv"
+filelist = "hw/sys/smc/dv/build/smc_dut_compile.f"
+bender_filelist = "hw/sys/smc/dv/build/smc_bender.f"
+work_dir = "hw/sys/smc/dv/build"
+common_bender_targets = [
+  "tech_cells_generic_exclude_deprecated",
+  "tech_cells_generic_exclude_tc_sram",
+  "axi_rtl",
+  "apb_rtl",
+  "common_cells_rtl",
+  "common_cell_sync_shim",
+  "idma_rtl",
+  "register_interface_l1",
+]
+# smc_wrapper Bender target pulls hw/top/smc_wrapper.sv + CPU mem integration.
+bender_targets = ["smc", "smc_wrapper"]
+incdirs = [
+  "hw/sys/sep/dv/shims/prim",
+  "hw/sys/smc/dv/tb",
+]
+exclude_files = [
+  "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
+  "hw/oss-example/wrapper/smu/smu_wrapper.sv",
+  "hw/oss-example/wrapper/sep/sep_ip_integration.sv",
+  "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv",
+  "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
+  "deps/i3c-core",
+]
+stubs = [
+  # Tooling shims only (OSS prim port / X-init). No product-module overrides.
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
+]
+sources = [
+  # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
+  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+]
+
+[build.verilator]
+disable_public_flat_rw = true
+public_scope = "hw/sys/smc/dv/tb/smc_public_scope.vlt"
+low_mem_make = true
+ccache = true
+
+[build.options]
+build_jobs = 8
+
+[frameworks.cocotb]
+python_root = "hw/sys/smc/dv/cocotb"
+test_dir = "hw/sys/smc/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[c_build.default]
+# Build the selected SMC C test and declare every time-zero preload consumed by
+# the firmware boot test. run_dv stages these basenames into the simulator cwd.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "make ocah-dv-fw-tests TARGET=smc TEST={fw_target} && cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
+]
+outputs = [
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/default_efuse_shadow_reg.preload",
+]
+
+[run_modes.smoke]
+description = "SMC functional smoke (smc_wrapper under tb_top)"
+timeout_sec = 1800
+args = [
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
+
+[targets.default]
+description = "OSS SMC cocotb target"
+build_dir = "hw/sys/smc/dv/build/cocotb"
+defines = [
+  "SYNTHESIS",
+]
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+  "+define+ASSERTS_OFF",
+]

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 //-----------------------------------------------------------------------------
 // I2C Core
 //
@@ -363,7 +360,6 @@ module i2c_core
     assign i2c_fifo_tx_thresh  = reg_out_i.TARGET_FIFO_CONFIG.TX_THRESH.value;
     assign i2c_fifo_acq_thresh = reg_out_i.TARGET_FIFO_CONFIG.ACQ_THRESH.value;
 
-    // TODO: Add equal conditions to match most commercial IPs
     // FMT FIFO level below programmed threshold?
     assign fmt_lt_threshold = MaxFifoDepthW'(fmt_fifo_depth) < i2c_fifo_fmt_thresh;
     // Rx FIFO level above programmed threshold?
@@ -1038,7 +1034,6 @@ module i2c_core
     assign tx_stretch_intr_en      = reg_out_i.INTR_ENABLE.TX_STRETCH.value;
     assign tx_threshold_intr_en    = reg_out_i.INTR_ENABLE.TX_THRESHOLD.value;
     assign acq_stretch_intr_en     = reg_out_i.INTR_ENABLE.ACQ_STRETCH.value;
-    // TODO: Remove after PeakRDL bug fix
     assign rx_overflow_intr_en              = reg_out_i.INTR_ENABLE.RX_OVERFLOW.value;
     assign scl_interference_intr_en         = reg_out_i.INTR_ENABLE.SCL_INTERFERENCE.value;
     assign sda_interference_intr_en         = reg_out_i.INTR_ENABLE.SDA_INTERFERENCE.value;

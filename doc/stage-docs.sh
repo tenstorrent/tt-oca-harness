@@ -71,6 +71,29 @@ stage_gen_html() {
   cp -R "$src/." "$dst/"
 }
 
+# draw.io-exported SVGs append a trailing <switch> fallback block ("Text is
+# not SVG - cannot display" + FAQ link) for renderers without SVG
+# Extensibility support. Browsers report support correctly and never show
+# it; asciidoctor-pdf's SVG renderer (prawn-svg) doesn't recognize the
+# feature and renders the fallback text visibly in PDF output.
+#
+# Run as a postprocess step over every staged assets location (below), not
+# as a preprocess step on the aggregation source, so it also catches SVGs
+# checked in directly to a product's own assets/ that never pass through
+# the hw/*/doc aggregation loop at all.
+
+strip_drawio_switch_fallback() {
+  local dir="$1"
+  [ -d "$dir" ] || return 0
+  find "$dir" -name '*.svg' -type f -print0 | while IFS= read -r -d '' svg; do
+    local tmp
+    tmp="$(mktemp)"
+    tr '\n' ' ' < "$svg" \
+      | sed 's#<switch><g requiredFeatures="[^"]*\#Extensibility"[^/]*/> *<a[^>]*xlink:href="https://www\.drawio\.com/doc/faq/svg-export-text-problems"[^>]*> *<text[^>]*>.*</text></a></switch>##' \
+      > "$tmp" 2>/dev/null && mv -f "$tmp" "$svg" || rm -f "$tmp"
+  done
+}
+
 # --- module skeleton ---
 for m in $MODULES; do
   mkdir -p "$MOD/$m/pages" "$MOD/$m/partials" "$MOD/$m/assets/images"
@@ -80,6 +103,9 @@ done
 for f in "$SRC"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/"
 done
+if [ "${OCAH_DOC_PRODUCT_INCLUDE_REVISION:-1}" != "1" ]; then
+  rm -f "$MOD/ROOT/pages/revision.adoc"
+fi
 mkdir -p "$MOD/ROOT/pages/meta"
 for f in "$META"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/meta/"
@@ -121,6 +147,26 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/ "$ROOT"/hw/common/axi/*/; do
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
 
+# --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
+#     collateral is generated into the lowRISC overlay rather than hw/ip, because
+#     they are instantiated through wrappers (e.g. the DRBG wraps CSRNG and EDN).
+#     Stage each under the ip module namespace so its generated maps include like
+#     any other IP. Overlay names do not collide with hw/ip. ---
+for otdir in "$ROOT"/vendor/lowRISC/opentitan/overlay/regs/*/; do
+  [ -d "$otdir" ] || continue
+  ip="$(basename "$otdir")"
+  stage_gen_adoc "$otdir/regs/gen/adoc" "$MOD/ip/partials/$ip/regs/gen/adoc"
+  stage_gen_html "$otdir/regs/gen/html" "$MOD/ip/partials/$ip/regs/gen/html"
+done
+
+# --- pulp-platform overlay: the iDMA frontend register block (dma_ctrl) is
+#     generated into the pulp overlay's flat rdl/gen tree rather than hw/ip,
+#     because it is instantiated through the SMC DMA wrapper. The overlay vends a
+#     single block, so stage its flat gen under the block-named ip partial
+#     namespace (ip:partial$dma_ctrl) like the OpenTitan overlay above. ---
+stage_gen_adoc "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/adoc" "$MOD/ip/partials/dma_ctrl/regs/gen/adoc"
+stage_gen_html "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/html" "$MOD/ip/partials/dma_ctrl/regs/gen/html"
+
 # --- images: aggregate hw doc images into doc/assets (PDF) and module images
 #     (HTML). Flattened by basename so references resolve regardless of source. ---
 while IFS= read -r img; do
@@ -141,5 +187,13 @@ stage_module_assets() {
 
 stage_module_assets "$COMMON_ASSETS"
 stage_module_assets "$ASSETS"
+
+# Postprocess every location that ends up holding a copy of these images --
+# after all copying above is done. 
+strip_drawio_switch_fallback "$ASSETS"
+strip_drawio_switch_fallback "$COMMON_ASSETS"
+for m in $MODULES; do
+  strip_drawio_switch_fallback "$MOD/$m/assets/images"
+done
 
 echo "Staged Antora modules under $MOD"

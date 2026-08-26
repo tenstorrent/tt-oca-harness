@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC Interrupt Generation and Masking Test - TC_HMAC_005 (P0)
+ * HMAC Interrupt Generation and Masking Test
  *
  * Verifies INTR_TEST forcing, INTR_STATE reflection, W1C clearing,
  * INTR_ENABLE masking behavior, and real hmac_done interrupt generation.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_interrupt_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_interrupt_test STACK=sim
  */
 
 #include <stdint.h>
@@ -17,6 +17,7 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -61,7 +62,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("HMAC Interrupt Test (TC_HMAC_005)\n");
+    printf("HMAC Interrupt Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -75,9 +76,15 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     uint32_t rb = READ_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR);
-    if (!check_reg("INTR_ENABLE all set", rb & 0x7, 0x7)) pass = 0;
+    if (!check_reg("INTR_ENABLE all set",
+                   rb & (HMAC__INTR_ENABLE__HMAC_DONE_bm | HMAC__INTR_ENABLE__FIFO_EMPTY_bm |
+                         HMAC__INTR_ENABLE__HMAC_ERR_bm),
+                   HMAC__INTR_ENABLE__HMAC_DONE_bm | HMAC__INTR_ENABLE__FIFO_EMPTY_bm |
+                       HMAC__INTR_ENABLE__HMAC_ERR_bm))
+        pass = 0;
 
     clear_all_interrupts();
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, 0);
 
     /* Step 2: INTR_TEST hmac_done, verify and W1C clear */
     printf("\nStep 2: INTR_TEST hmac_done\n");
@@ -92,33 +99,30 @@ int main(void) {
     intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
     if (!check_reg("INTR_STATE.hmac_done after W1C", intr.f.hmac_done, 0)) pass = 0;
 
-    /* Step 3: INTR_TEST fifo_empty, verify and clear via INTR_TEST=0
-     * fifo_empty uses IntrT="Status" in prim_intr_hw: INTR_STATE is RO and always
-     * driven by (event_intr_i | test_q). W1C to INTR_STATE has no effect.
-     * The correct way to clear it is to write 0 to INTR_TEST, which clears test_q.
-     * When event_intr_i=0 (FIFO not empty / engine not started) and test_q=0,
-     * INTR_STATE deasserts.
+    /*
+     * Step 3: fifo_empty IntrT path via INTR_TEST (FAIL-ON).
+     * Idle STATUS.fifo_empty=1 is a precondition. This DUT/integration does not
+     * mirror STATUS→INTR_STATE for fifo_empty at idle (observed INTR=0); do not
+     * claim that reflection here — tracked separately if RTL-owned.
      */
-    printf("\nStep 3: INTR_TEST fifo_empty\n");
+    printf("\nStep 3: fifo_empty INTR_TEST (idle STATUS precondition)\n");
+    clear_all_interrupts();
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, 0);
+    hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+    intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
+    printf("  Idle STATUS.fifo_empty=%u INTR_STATE.fifo_empty=%u\n", sts.f.fifo_empty,
+           intr.f.fifo_empty);
+    if (!sts.f.fifo_empty) {
+        printf("  FAIL: idle FIFO not empty\n");
+        pass = 0;
+    }
     test_reg.w = 0;
     test_reg.f.fifo_empty = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, test_reg.w);
-
     intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
     if (!check_reg("INTR_STATE.fifo_empty after INTR_TEST", intr.f.fifo_empty, 1)) pass = 0;
-
-    /* Clear test_q by writing 0 to INTR_TEST (Status-type: W1C on INTR_STATE is RO) */
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, 0);
-    intr.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
-    /* fifo_empty is level-triggered: re-asserts immediately when FIFO is empty.
-     * At idle (no active hash), FIFO is always empty → bit stays set after W1C.
-     * Accept re-assertion as INFO, not a test failure (same behavior as KMAC). */
-    if (intr.f.fifo_empty) {
-        printf("  INFO: INTR_STATE.fifo_empty re-asserted after W1C (level-triggered, FIFO empty) "
-               "- expected\n");
-    } else {
-        printf("  INTR_STATE.fifo_empty after W1C: 0x00000000 (expected 0x00000000) - PASS\n");
-    }
+    clear_all_interrupts();
 
     /* Step 4: INTR_TEST hmac_err, verify and W1C clear */
     printf("\nStep 4: INTR_TEST hmac_err\n");
@@ -163,11 +167,12 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     clear_all_interrupts();
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, 0);
 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;
     cfg.f.hmac_en = 0;
-    cfg.f.digest_size = 1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t cmd = {.f.hash_start = 1};

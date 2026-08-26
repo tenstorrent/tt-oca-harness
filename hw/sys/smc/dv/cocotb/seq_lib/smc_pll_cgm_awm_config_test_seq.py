@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: PLL CGM_0/1 + AWM_0/1 CSR precheck (TC_SMC_P1CG_06).
 
 Existing PLL tests only touch PLL_CNTL at 0xC000_3000. RTL exposes

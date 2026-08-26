@@ -5,10 +5,8 @@
 AXI-Over-UCIe Bridge
 --------------------
 
-The AoU components are described in this document.
+AoU is specified outside this document. See the
+https://cdn.sanity.io/files/jpb4ed5r/production/25de1707769f21e4a3916103371d1fb419cadac0.pdf[AoU Technical Reference Manual].
 
-[WARNING]
-====
-This section is currently under development. More content will be added
-as the project matures.
-====
+OCAH instantiates the vendored `aou-rtl` bridge; it does not maintain a
+local AoU chapter.

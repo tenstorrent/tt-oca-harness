@@ -2,20 +2,20 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_HMAC_007 (P1) - HMAC-SHA256 with software key
+ * HMAC-SHA256 with software key
  *
  * Uses RFC 4231 test case 2:
- *   Key  = "Jefe" (4 bytes, zero-padded to 256 bits)
- *   Data = "what do ya want for nothing?"
- *   Expected HMAC-SHA256 =
- *     5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
+ * Key  = "Jefe" (4 bytes, zero-padded to 256 bits)
+ * Data = "what do ya want for nothing?"
+ * Expected HMAC-SHA256 =
+ * 5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
  *
  * Steps:
- *   1) Write 256-bit key to KEY_0..KEY_7 (pad "Jefe" with zeros)
- *   2) Configure: hmac_en=1, sha_en=1, digest_size=SHA-256, key_length=0x02 (256b)
- *   3) hash_start, feed message, hash_process
- *   4) Wait done, read digest, bswap32, compare
- *   5) WIPE_SECRET cleanup
+ * 1) Write 256-bit key to KEY_0..KEY_7 (pad "Jefe" with zeros)
+ * 2) Configure: hmac_en=1, sha_en=1, digest_size=SHA-256, key_length=0x02 (256b)
+ * 3) hash_start, feed message, hash_process
+ * 4) Wait done, read digest, bswap32, compare
+ * 5) WIPE_SECRET cleanup
  */
 
 #include <stdint.h>
@@ -25,6 +25,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static inline uint32_t bswap32(uint32_t x) {
     return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
@@ -78,7 +79,7 @@ static int feed_msg(const uint8_t *data, uint32_t len) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("=== TC_HMAC_007: HMAC-SHA256 with software key ===\n");
+    printf("=== HMAC-SHA256 with software key ===\n");
 
     /* RFC 4231 test case 2 key: "Jefe" = 0x4a656665 */
     uint32_t key[8] = {0};
@@ -99,8 +100,8 @@ int main(void) {
     cfg.f.sha_en = 1;
     cfg.f.endian_swap = 0;
     cfg.f.digest_swap = 0;
-    cfg.f.digest_size = 1;   /* SHA2_256 */
-    cfg.f.key_length = 0x02; /* 256-bit key */
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; /* SHA2_256 */
+    cfg.f.key_length = SEP_HMAC_KEY_LENGTH_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     /* Start hash */
@@ -141,7 +142,7 @@ int main(void) {
     to_hex(digest, got, 32);
     const char *expected = "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843";
 
-    printf("Digest:   %s\n", got);
+    printf("Digest: %s\n", got);
     printf("Expected: %s\n", expected);
 
     /* Cleanup: disable and wipe */
@@ -153,7 +154,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 
     if (strcmp(got, expected) == 0) {
-        printf("=== TC_HMAC_007 PASSED ===\n");
+        printf("=== PASSED ===\n");
         test_pass(0);
     } else {
         printf("FAIL: Digest mismatch\n");

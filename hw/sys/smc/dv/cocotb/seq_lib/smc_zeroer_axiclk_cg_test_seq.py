@@ -1,12 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_ZEROER_AXICLK_CG_TEST ANCHOR: smc_zeroer_axiclk_cg_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 67c81eca9fc764cc694026df6a7da34a406f4c5528305cc17e43d9d6b9a045db
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 DV-CARD: SMC_CG_P2_002 ANCHOR: smc_zeroer_axiclk_cg_test
-DV-CARD-REVISION: 2 RECORD-SHA256: 7716914f5e4c5adb60a4a2ebb6c58c271518148cdabc04a7796f561b5743fc7f
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P2_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 
 The P2 card extends this same anchor (additive): the P1 steps/checkers above are
 UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1
@@ -19,7 +16,7 @@ outcome. That carve-out applies ONLY to CHK-ZEROER-AXICLK-COMPLETION's
 protocol-outcome verdict.
 
 AMENDMENT (revision 2, supersedes revision 1, owner decision minshaoho
-standing order "都簽署繼續" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
+standing order "approve-and-continue" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
 revision 1's CHK-ZEROER-AXICLK-NOGLITCH required zero axi_clk_enable deassert
 across the WHOLE busy-to-idle boundary, including the real ~26-28 clk_smc_i
 cycle turnaround of the documented 3-write DEST_ADDR->SIZE->CTRL_STATUS
@@ -43,6 +40,8 @@ under test.
 
 from __future__ import annotations
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
 
@@ -53,7 +52,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 HYST = 8
 IDLE_OBSERVE = 16

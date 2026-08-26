@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS zeroer datapath payload test.
 
 DV-CARD:          SMC_006   ANCHOR: smc_zeroer_dma_timeout_test
-DV-CARD-REVISION: 2   RECORD-SHA256: 8434b5884c73c281ef8ebefa9a3a1aa867a172be603a87301d97408f42460538
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
 """
 
 from __future__ import annotations

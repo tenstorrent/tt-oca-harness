@@ -328,10 +328,10 @@ data movement patterns.
 
 ifdef::backend-html5[]
 ++++
-include::partial$smc/regs/gen/html/blocks/dma_ctrl.html[]
+include::ip:partial$dma_ctrl/regs/gen/html/dma_ctrl.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/dma_ctrl.adoc[]
+include::../../../../vendor/pulp-platform/idma/overlay/rdl/gen/adoc/dma_ctrl.adoc[]
 endif::backend-pdf[]

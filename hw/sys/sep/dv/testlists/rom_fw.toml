@@ -1,0 +1,161 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+# ROM FIRMWARE boot tests. Separate from cpu.toml because they differ from every
+# other CPU test on BOTH build axes, not just at run time:
+#
+#   * RTL target `rom_boot` -- cpu_all_live plus a behavioral SMC AXI responder
+#     (axi_sim_mem), not the `lsu_stub_all_live` CPU stub and not `default`.
+#   * Firmware profiles `boot_rom` / `boot_rom_ot` / `boot_rom_ot_pio` -- the
+#     production Boot ROM under hw/sys/sep/bootrom/prod, which drives its own
+#     Makefile, links to ROM_BASE instead of the TCMs, and packs a manifest+BL1
+#     image. The shared TCM firmware engine (`c_build.default`) does not build it.
+#
+# OWNERSHIP: these exercise ROM firmware, not the ROM macro. They are not
+# contracted in docs/SEP_VPLAN.adoc. ROM *hardware*
+# coverage stays in the SEP plans (`sep_boot_rom_lsu_read_test`, the
+# `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
+# four names are graded.
+#
+# They run in the `all` and `rom_fw` groups, not `cpu`: a CPU-class run is
+# one RTL target (`default`), and these need `rom_boot`.
+
+[[tests]]
+# ROM non-secure boot (the reference suite's sep_rom_non_secure_boot_test): the CPU boots the REAL
+# production Boot ROM (hw/sys/sep/bootrom/prod) from ROM_BASE and runs the full non-secure
+# manifest flow -- read manifest from SMC SRAM, validate its SHA256, DMA-copy BL1
+# into SEP SRAM, jump, and observe BL1 PASS magic on the outbound mailbox. It is
+# NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
+# OpenTitan Quad spi_host),
+# so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
+# behavioral SMC responder (SEP_SMC_MEM_MODEL).
+name = "sep_rom_non_secure_boot_test"
+module = "cpu.sep_rom_non_secure_boot_test"
+target = "rom_boot"
+# Selects [c_build.boot_rom], which builds the Boot ROM + manifest/BL1 images in
+# the c_compile stage. This ROM does not come from the shared firmware engine, so
+# the entry names a build mode rather than an engine test target.
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "cpu", "subsystem"]
+run_modes = ["cpu"]
+# Boot ROM + manifest/BL1 images, both built entirely from source in the OSS
+# tree by hw/sys/sep/bootrom/prod/Makefile (prod ROM copy + tt-boot-manifest packer; no
+# internal prebuilt blob). {repo_root} is expanded before backend dispatch so
+# the paths stay portable (independent-repo clean, no absolute/user paths).
+# NOTE: no +skip_fuse_sense -- the ROM's rom_lifecycle_policy needs a valid
+# (differential-encoded) LC_STATE in the eFuse shadow, which only exists if the
+# real fuse-sense FSM runs. A zero OTP senses to LC_STATE_TEST_DEV (raw 0x0, valid).
+# The images are gitignored and built by the c_compile stage (see the `firmware`
+# key above and [c_build.boot_rom] in sep_sim_cfg.toml), so a plain run_dv.py
+# invocation is self-contained. The one prerequisite it cannot do for you is the
+# manifest packer submodule, because a build step must not mutate git state:
+# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+# Paths stay absolute via {repo_root} rather than pointing at the staged copies,
+# so a --stage sim rerun reads the same images the c_compile stage produced.
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+]
+
+[[tests]]
+# ROM boot over the REAL OpenTitan SPI host with the SECURE_DMA drain -- the SPI
+# half of the TODO the SMC-SRAM test above carries. Same production Boot ROM and
+# same bl1_pass_test payload, but the ROM is built with BOOT_SPI_CONTROLLER_OT=1
+# (build_ot/) so it links the OpenTitan driver instead of the weak sep_spi.c stub,
+# and the manifest + payload are fetched over the spi_host from the OcahSpiFlash
+# cocotb BFM.
+#
+# "dma" names the RX-FIFO drain, which boot_flash.h picks at build time: this
+# builds BOOT_OT_SPI_USE_PIO=0 (SECURE_DMA handshake). The CPU-PIO drain (=1,
+# build_ot_pio/) is a genuinely different datapath with its own entry below,
+# sep_rom_ot_pio_boot_test, so passing this one proves nothing about that one.
+#
+# +sep_boot_from_spi seeds STRAPS_LO[25] (primary_chiplet) in the SMC responder so
+# boot_from_spi() is true; without it the ROM takes the SMC-SRAM branch.
+#
+# Note there is deliberately NO +sep_smc_mem_hex here: nothing stages a manifest
+# in SMC SRAM, so an accidental fallback to that branch cannot pass -- the test
+# additionally asserts on the ROM console that BOOT_SPI ran and
+# WAIT_SMC_MANIFEST did not.
+#
+# timeout is double the SMC-SRAM sibling's: a serial flash fetch of the manifest
+# (1184 B) plus payload (5136 B) is far more sim time than an AXI read.
+name = "sep_rom_ot_dma_boot_test"
+module = "cpu.sep_rom_ot_dma_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
+# The drain-method sibling of sep_rom_ot_dma_boot_test: same OpenTitan spi_host,
+# same flash image, same PASS criteria -- but the ROM is built with
+# BOOT_OT_SPI_USE_PIO=1 (build_ot_pio/) so boot_flash.h calls ot_spi_flash_read()
+# and the CPU polls the RX FIFO itself instead of arming the SECURE_DMA.
+#
+# It is a separate entry because it is a separate binary exercising separate
+# hardware: build_ot_pio/boot_rom.elf does not even link ot_spi_flash_read_dma
+# (the linker drops it), so a green DMA test says nothing about this path. Both
+# halves of the reference pair are now ported.
+#
+# Same timeout as the DMA sibling. That is a starting budget, not a measurement:
+# a CPU-polled drain could well be slower than the DMA handshake, and if it turns
+# out to need more, raise it with the observed sim time rather than pre-inflating.
+name = "sep_rom_ot_pio_boot_test"
+module = "cpu.sep_rom_ot_pio_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot_pio", mode = "boot_rom_ot_pio" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
+# Signed sibling of sep_rom_ot_dma_boot_test specifically -- it shares that test's
+# build_ot/ ROM and SECURE_DMA drain, NOT the PIO entry that happens to sit above
+# it here. Same ROM, same OpenTitan SPI transport, but
+# the flash carries the RSA-3072 PKCS#1 v1.5 signed image (make secure_boot_spi,
+# dev0 key from the tt-boot-manifest submodule, digest pinned in key_digests.c
+# slot 0). That single swap turns on the whole crypto path -- version rollback,
+# key revocation, RSA-3072 modexp on OTBN, PKCS#1 unpad, payload hash -- which the
+# non-secure test never reaches (it prints SBOOT_OFF and skips straight past).
+#
+# No special eFuse image is needed: secure_boot_enabled() enforces on the manifest
+# flag when the lifecycle is TEST_DEV, and a zero OTP already gives TEST_DEV with
+# sboot_dis=0. (The internal flow ships a PROD preload instead; either works.)
+#
+# Entropy is NOT exercised here -- see +sep_crypto_edn_force in args below for
+# what is forced and why. Timeout is generous because a 3072-bit modexp on OTBN is
+# millions of cycles on top of the serial flash fetch.
+name = "sep_rom_ot_secure_boot_test"
+module = "cpu.sep_rom_ot_secure_boot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # DV SHORTCUT, tagged dv_shortcut above. OTBN parks in UrndRefresh until EDN
+  # grants entropy, and the boot flow does not enable the entropy chain (the
+  # ROM has no CSRNG/EDN code), so without this the RSA verify never starts and
+  # the test sits at RSA_VERIFY_START until timeout. This forces the OTBN EDN
+  # grants only -- the entropy_source/CSRNG/EDN path is NOT exercised here, and
+  # the RSA assertions are untouched, so a pass still means the signature really
+  # verified.
+  "+sep_crypto_edn_force",
+]

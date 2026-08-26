@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_002 ANCHOR: smc_static_cg_sanity_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 3e58481e3b0cf7321a51f26a98560768603af989a54bb69cf5e776f5b9e6d34b
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P0_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 # Also preserves P1 CHK-MODULE-GATING / CHK-ENABLE-THRESHOLD evidence for closed P1 grade.
 """
 
 from __future__ import annotations
+
+import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -18,7 +19,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 # SF-002: Enable Threshold == Hysteresis Control (same programmable field).
 THRESH_MIN = 8

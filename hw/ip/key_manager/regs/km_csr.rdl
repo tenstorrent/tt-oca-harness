@@ -6,7 +6,7 @@
 // SystemRDL 2.0 Register Definition
 //
 //
-// Base Address: 0x0000_E000
+// Base Address: 0x0001_4000
 // Size: 4KB (0x1000)
 
 addrmap km_csr {
@@ -248,7 +248,7 @@ addrmap km_csr {
 
         field {
             name = "EXEC_VIOLATION";
-            desc = "Instruction fetch from a non-whitelisted (non-executable) memory region detected. Sticky, write 1 to clear.";
+            desc = "Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.";
             sw = rw;
             hw = rw;
             hwset = true;
@@ -259,12 +259,24 @@ addrmap km_csr {
         } exec_violation[10:10];
 
         field {
+            name = "ROM_ACCESS_VIOLATION";
+            desc = "KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } rom_access_violation[11:11];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 20'h0;
+        } rsvd[31:12];
     };
 
     irq_status_reg IRQ_STATUS @ 0x00C;
@@ -376,12 +388,21 @@ addrmap km_csr {
         } exec_violation_en[10:10];
 
         field {
+            name = "ROM_ACCESS_VIOLATION_EN";
+            desc = "Enable ROM lockout violation interrupt";
+            sw = rw;
+            hw = r;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } rom_access_violation_en[11:11];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 20'h0;
+        } rsvd[31:12];
     };
 
     irq_enable_reg IRQ_ENABLE @ 0x010;
@@ -509,12 +530,22 @@ addrmap km_csr {
         } exec_violation_set[10:10];
 
         field {
+            name = "ROM_ACCESS_VIOLATION_SET";
+            desc = "Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)";
+            sw = w;
+            hw = r;
+            singlepulse;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } rom_access_violation_set[11:11];
+
+        field {
             name = "RSVD";
             desc = "Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)";
             sw = w;
             hw = na;
-            reset = 21'h0;
-        } rsvd[31:11];
+            reset = 20'h0;
+        } rsvd[31:12];
     };
 
     irq_set_reg IRQ_SET @ 0x020;
@@ -575,7 +606,7 @@ addrmap km_csr {
     scrambler_ctrl_reg SCRAMBLER_CTRL @ 0x018;
 
     //=========================================================================
-    // SRAM_LOCK Register (0x01C) - Write-1-only, one bit per 512-byte region
+    // SRAM_LOCK Register (0x01C) - Write-1-only, one bit per 1 KB region
     //=========================================================================
     // Native SystemRDL woset: writing 1 sets the bit, writing 0 has no effect.
     // Warm-reset domain: cleared by a warm or cold reset. The ROM is responsible
@@ -583,11 +614,11 @@ addrmap km_csr {
     // handing control to mutable firmware.
     reg sram_lock_reg {
         name = "SRAM_LOCK";
-        desc = "SRAM write-lock bits. Bit[i]=1 locks region i (512 bytes each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.";
+        desc = "SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.";
 
         field {
             name = "LOCK_BITS";
-            desc = "One bit per 512-byte SRAM region. Region 0 = 0x4000-0x41FF, region 31 = 0x7E00-0x7FFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
+            desc = "One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
             sw = rw;
             onwrite = woset;
             hw = r;   // Hardware only reads; storage is updated by SW woset
@@ -693,17 +724,21 @@ addrmap km_csr {
     // PicoRV32 is permitted to execute from:
     //   0 (ROM mode): ROM only.  Instruction fetch from SRAM or peripheral
     //     space triggers an unrecoverable fault (EXEC_VIOLATION IRQ).
-    //   1 (SRAM mode): ROM and write-locked SRAM regions (SRAM_LOCK bits).
-    //     Instruction fetch from unlocked SRAM or peripheral space faults.
-    // Warm reset clears it so the ROM-only whitelist is re-applied on every
-    // boot cycle.
+    //   1 (SRAM mode): write-locked SRAM regions (SRAM_LOCK bits).  Instruction
+    //     fetch from unlocked SRAM or peripheral space faults.
+    // Writing 1 arms an exchange rather than adding to the whitelist: the ROM
+    // stays executable until the first committed fetch from write-locked SRAM,
+    // at which point the ROM lockout engages and revokes ROM fetch and read
+    // access (ROM_ACCESS_VIOLATION IRQ).
+    // Warm reset clears both this bit and the lockout, so the ROM-only whitelist
+    // is re-applied on every boot cycle.
     reg sram_exec_mode_reg {
         name = "SRAM_EXEC_MODE";
-        desc = "Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM-only executable; 1=ROM + write-locked SRAM regions executable. Set by ROM stack-less handover immediately before jumping to mutable firmware.";
+        desc = "Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.";
 
         field {
             name = "ENABLE";
-            desc = "Execute-permission mode: 0=ROM-only whitelist; 1=ROM + write-locked SRAM whitelist. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
+            desc = "Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.";
             sw = rw;
             onwrite = woset;
             hw = r;
@@ -777,10 +812,10 @@ addrmap km_csr {
     // Each field exposes: VAL_0..7 (value[255:0] in 32-bit words) and
     //                     CPL_0..7 (complement[255:0] in 32-bit words).
     // All fields: sw=r; hw=w; no reset (read-through).
-    // Read-lock: controlled by OTP_READ_LOCK; locked reads return zero (set in km_csr.sv).
+    // Read-lock: OTP_READ_LOCK | OTP_READ_LOCK_COLD; locked reads return zero (set in km_csr.sv).
     reg otp_dr_word_reg {
         name = "OTP_DR_WORD";
-        desc = "Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the corresponding OTP_READ_LOCK bit is set.";
+        desc = "Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.";
         field {
             name = "VALUE";
             desc = "32-bit OTP word. No reset; power-up value undefined.";
@@ -1103,7 +1138,7 @@ addrmap km_csr {
     tb_cmd_result_reg TB_CMD_RESULT @ 0x12C;
 
     //=========================================================================
-    // Dual-Rail OTP Readout Registers (0x200-0x2FC)
+    // Dual-Rail OTP Readout Registers (secrets 0x200-0x2FC, public IDs 0x400-0x4BF)
     //=========================================================================
     // Each 256-bit OTP field is exposed as 8 value words (VAL_0..7) and
     // 8 complement words (CPL_0..7), i.e. the {~value, value} dual-rail.
@@ -1183,6 +1218,62 @@ addrmap km_csr {
     otp_dr_word_reg OTP_CLASS_KEY_CPL_5 @ 0x2F4;
     otp_dr_word_reg OTP_CLASS_KEY_CPL_6 @ 0x2F8;
     otp_dr_word_reg OTP_CLASS_KEY_CPL_7 @ 0x2FC;
+
+    // Public per-owner identity fields.
+
+    // SEP_CHIPLET_ID: value words @ 0x400-0x41C, complement words @ 0x420-0x43C
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_0 @ 0x400;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_1 @ 0x404;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_2 @ 0x408;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_3 @ 0x40C;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_4 @ 0x410;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_5 @ 0x414;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_6 @ 0x418;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_VAL_7 @ 0x41C;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_0 @ 0x420;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_1 @ 0x424;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_2 @ 0x428;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_3 @ 0x42C;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_4 @ 0x430;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_5 @ 0x434;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_6 @ 0x438;
+    otp_dr_word_reg OTP_SEP_CHIPLET_ID_CPL_7 @ 0x43C;
+
+    // SEP_SIP_ID: value words @ 0x440-0x45C, complement words @ 0x460-0x47C
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_0 @ 0x440;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_1 @ 0x444;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_2 @ 0x448;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_3 @ 0x44C;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_4 @ 0x450;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_5 @ 0x454;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_6 @ 0x458;
+    otp_dr_word_reg OTP_SEP_SIP_ID_VAL_7 @ 0x45C;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_0 @ 0x460;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_1 @ 0x464;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_2 @ 0x468;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_3 @ 0x46C;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_4 @ 0x470;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_5 @ 0x474;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_6 @ 0x478;
+    otp_dr_word_reg OTP_SEP_SIP_ID_CPL_7 @ 0x47C;
+
+    // SEP_SYS_ID: value words @ 0x480-0x49C, complement words @ 0x4A0-0x4BC
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_0 @ 0x480;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_1 @ 0x484;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_2 @ 0x488;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_3 @ 0x48C;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_4 @ 0x490;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_5 @ 0x494;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_6 @ 0x498;
+    otp_dr_word_reg OTP_SEP_SYS_ID_VAL_7 @ 0x49C;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_0 @ 0x4A0;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_1 @ 0x4A4;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_2 @ 0x4A8;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_3 @ 0x4AC;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_4 @ 0x4B0;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_5 @ 0x4B4;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_6 @ 0x4B8;
+    otp_dr_word_reg OTP_SEP_SYS_ID_CPL_7 @ 0x4BC;
 
     //=========================================================================
     // OTP_READ_LOCK Register (0x300) - Write-1-only, warm reset domain
@@ -1264,12 +1355,42 @@ addrmap km_csr {
         } class_key[5:5];
 
         field {
+            name = "SEP_CHIPLET_ID";
+            desc = "Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_chiplet_id[6:6];
+
+        field {
+            name = "SEP_SIP_ID";
+            desc = "Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_sip_id[7:7];
+
+        field {
+            name = "SEP_SYS_ID";
+            desc = "Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_sys_id[8:8];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
+            reset = 23'h0;
+        } rsvd[31:9];
     };
 
     otp_read_lock_reg OTP_READ_LOCK @ 0x300;
@@ -1348,12 +1469,39 @@ addrmap km_csr {
         } class_key[5:5];
 
         field {
+            name = "SEP_CHIPLET_ID";
+            desc = "Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } sep_chiplet_id[6:6];
+
+        field {
+            name = "SEP_SIP_ID";
+            desc = "Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } sep_sip_id[7:7];
+
+        field {
+            name = "SEP_SYS_ID";
+            desc = "Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.";
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            reset = 1'b0;
+        } sep_sys_id[8:8];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
+            reset = 23'h0;
+        } rsvd[31:9];
     };
 
     otp_read_lock_cold_reg OTP_READ_LOCK_COLD @ 0x308;
@@ -1441,12 +1589,48 @@ addrmap km_csr {
         } class_key[5:5];
 
         field {
+            name = "SEP_CHIPLET_ID";
+            desc = "OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_chiplet_id[6:6];
+
+        field {
+            name = "SEP_SIP_ID";
+            desc = "OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_sip_id[7:7];
+
+        field {
+            name = "SEP_SYS_ID";
+            desc = "OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.";
+            sw = rw;
+            hw = rw;
+            hwset = true;
+            stickybit = true;
+            onwrite = woclr;
+            resetsignal = WARM_RST_N;
+            reset = 1'b0;
+        } sep_sys_id[8:8];
+
+        field {
             name = "RSVD";
             desc = "Reserved";
             sw = r;
             hw = na;
-            reset = 26'h0;
-        } rsvd[31:6];
+            reset = 23'h0;
+        } rsvd[31:9];
     };
 
     otp_change_status_reg OTP_CHANGE_STATUS @ 0x304;

@@ -2,14 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_HMAC_011 (P1) - Endian swap and digest swap test
+ * Endian swap and digest swap test
  *
  * Steps:
- *   1) Hash "abc" with endian_swap=0, digest_swap=0, save raw digest words
- *   2) Hash "abc" with endian_swap=1, digest_swap=0, save raw digest words
- *   3) Verify digests from step 1 and 2 are different
- *   4) Hash "abc" with endian_swap=0, digest_swap=1, save raw digest words
- *   5) Verify digest from step 4 differs from step 1
+ * 1) Hash "abc" with endian_swap=0, digest_swap=0, save raw digest words
+ * 2) Hash "abc" with endian_swap=1, digest_swap=0, save raw digest words
+ * 3) Verify digests from step 1 and 2 are different
+ * 4) Hash "abc" with endian_swap=0, digest_swap=1, save raw digest words
+ * 5) Verify digest from step 4 differs from step 1
  */
 
 #include <stdint.h>
@@ -19,6 +19,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static int wait_for_done_or_idle(void) {
     int timeout = 1000000;
@@ -64,7 +65,7 @@ static int hash_abc_with_swap(uint32_t endian_swap, uint32_t digest_swap, uint32
 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;
-    cfg.f.digest_size = 1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     cfg.f.endian_swap = endian_swap;
     cfg.f.digest_swap = digest_swap;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
@@ -105,7 +106,7 @@ static void print_digest(const char *label, const uint32_t d[8]) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("=== TC_HMAC_011: Endian swap and digest swap test ===\n");
+    printf("=== Endian swap and digest swap test ===\n");
     int pass = 1;
 
     /* Case 1: endian_swap=0, digest_swap=0 (baseline) */
@@ -132,16 +133,25 @@ int main(void) {
     }
     print_digest("Endian-swap", digest_eswap);
 
-    /* Verify baseline vs endian-swap differ */
-    int diff_e = 0;
+    /* Independent SHA-256 of word 0x61626300 under LE (es=0) / BE (es=1) consume. */
+    static const uint32_t expected_base[8] = {0x4270e117u, 0x797344c6u, 0x3175638fu, 0xb462d265u,
+                                              0x59ea1f22u, 0x08a68210u, 0x16d8288du, 0x690fea6au};
+    static const uint32_t expected_eswap[8] = {0xdc1114cdu, 0x074914bdu, 0x872cc1f9u, 0xa23ec910u,
+                                               0xea2203bcu, 0x79779ab2u, 0xe17da257u, 0x82a624fcu};
+    static const uint32_t expected_dswap[8] = {0x17e17042u, 0xc6447379u, 0x8f637531u, 0x65d262b4u,
+                                               0x221fea59u, 0x1082a608u, 0x8d28d816u, 0x6aea0f69u};
+
     for (int i = 0; i < 8; i++) {
-        if (digest_base[i] != digest_eswap[i]) diff_e = 1;
-    }
-    if (!diff_e) {
-        printf("FAIL: endian_swap=1 produced same raw digest as endian_swap=0\n");
-        pass = 0;
-    } else {
-        printf("OK: endian_swap produces different raw digest\n");
+        if (digest_base[i] != expected_base[i]) {
+            printf("FAIL: baseline DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_base[i],
+                   expected_base[i]);
+            pass = 0;
+        }
+        if (digest_eswap[i] != expected_eswap[i]) {
+            printf("FAIL: endian_swap DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_eswap[i],
+                   expected_eswap[i]);
+            pass = 0;
+        }
     }
 
     /* Case 3: endian_swap=0, digest_swap=1 */
@@ -156,23 +166,19 @@ int main(void) {
     }
     print_digest("Digest-swap", digest_dswap);
 
-    /* Verify baseline vs digest-swap differ */
-    int diff_d = 0;
     for (int i = 0; i < 8; i++) {
-        if (digest_base[i] != digest_dswap[i]) diff_d = 1;
-    }
-    if (!diff_d) {
-        printf("FAIL: digest_swap=1 produced same raw digest as digest_swap=0\n");
-        pass = 0;
-    } else {
-        printf("OK: digest_swap produces different raw digest\n");
+        if (digest_dswap[i] != expected_dswap[i]) {
+            printf("FAIL: digest_swap DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_dswap[i],
+                   expected_dswap[i]);
+            pass = 0;
+        }
     }
 
     if (pass) {
-        printf("=== TC_HMAC_011 PASSED ===\n");
+        printf("=== PASSED ===\n");
         test_pass(0);
     } else {
-        printf("FAIL: TC_HMAC_011 endian/digest swap test\n");
+        printf("FAIL: endian/digest swap test\n");
         test_fail(1);
     }
 

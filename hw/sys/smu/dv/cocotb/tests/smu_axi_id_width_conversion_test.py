@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_id_width_conversion_test - SEP=0 external->SMC ID converter live path.
 
 Under SEP=0, ``smu_axi_in`` (8-bit ID) feeds ``axi_iw_converter`` -> SMC SYS_IN
@@ -12,6 +13,8 @@ Filter program / allow contrast stays deferred (see tests_deferred filter suite)
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 import pyuvm
@@ -39,6 +42,19 @@ class smu_axi_id_width_conversion_test(smu_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         sb = self.env.scoreboard
+        seed = self.random_seed()
+        rng = random.Random(seed ^ 0xFAB_1D00)
+        # Distinct non-zero 8-bit IDs per probe (seeded traffic).
+        arids = []
+        while len(arids) < len(PROBE_ADDRS):
+            arid = rng.randint(1, 0xFF)
+            if arid not in arids:
+                arids.append(arid)
+        self.logger.info(
+            "SEED: %d id_width arids=%s",
+            seed,
+            [f"0x{a:x}" for a in arids],
+        )
 
         await ClockCycles(dut.clk_smu_i, 50)
         master = await make_smu_axi_master(
@@ -46,7 +62,7 @@ class smu_axi_id_width_conversion_test(smu_base_test):
         )
 
         for idx, addr in enumerate(PROBE_ADDRS):
-            arid = (0x11 + idx) & 0xFF
+            arid = arids[idx]
             _value, resp, issued, rid = await axi_read32_resp_ids_bounded(
                 master,
                 addr,

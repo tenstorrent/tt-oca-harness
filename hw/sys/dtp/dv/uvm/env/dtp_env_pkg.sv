@@ -14,9 +14,10 @@ package dtp_env_pkg;
     `include "uvm_macros.svh"
 
     import ocah_jtag_uvm_pkg::*;
+    import ocah_axi_uvm_pkg::*;   // passive AXI monitor/ref-model/scoreboard (issue #3295)
     import jtag_tap_pkg::*;       // DUT one-hot tap_state_e + is_onehot/is_valid helpers
 
     `include "dtp_tap_fsm_checker.svh"
-    `include "dtp_uvm_env.svh"
+    `include "dtp_env.svh"
 
 endpackage : dtp_env_pkg

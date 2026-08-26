@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_ext_boot_seq_gate_test (SMU_006 rev 2).
 
 Observes fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i

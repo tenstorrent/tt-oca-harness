@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shadow-register readout checker for the SEP eFuse OSS flow.
 
 After fuse-sense, reads the software-visible shadow-register block field-by-field
 over AXI and checks each word against the golden ``SepEfuseImage`` (which applies
 the LC_STATE differential-encode and reads every other readable field verbatim).
-A mismatch is caught by the scoreboard value-check (uvm_error). This is the
-checker that fails when the OTP responder mis-places a field (e.g. the LC_STATE
-word-2 bug).
+A mismatch is caught by the scoreboard value-check (uvm_error). Fails when a
+shadow word does not match the golden field placement.
 """
 
 from __future__ import annotations

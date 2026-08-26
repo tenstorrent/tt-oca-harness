@@ -477,10 +477,6 @@ module sep_crypto_abr_wrapper
         // shifted, and under secure_tm=0 the Class 2 chain is tied off -- specifically so
         // crypto logic STAYS on the scan chain for DFT coverage. Firmware retains
         // MLDSA_CTRL.ZEROIZE / MLKEM_CTRL.ZEROIZE for explicit wipes.
-        //
-        // TODO: ABR's secret storage (MLDSA seed/privkey, sk_mem banks, sig_z) still
-        // needs adding to the Class 2 list in attack_countermeasures.adoc and its flops
-        // renamed so DFT can pull them onto the secure scan chain. Tracked separately.
         .debugUnlock_or_scan_mode_switch (1'b0),
 
         .busy_o      (busy_o),

@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_012 (V3, P2) - WDT Poll Consistency Test
+ * WDT Poll Consistency Test
  *
  * Verifies WDOG_COUNT is monotonically incrementing and readable without
  * stale values or races.
@@ -21,13 +21,14 @@
 #include "sep.h"
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
+#include "aon_timer.h"
 
 #define POLL_ITERS 200
 
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_012: WDT Poll Consistency Test\n");
+    printf("WDT Poll Consistency Test\n");
     printf("=======================================\n\n");
 
     int errors = 0;
@@ -38,7 +39,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     /* STEP 2: Poll monotonicity */
     uint32_t prev = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
@@ -102,10 +103,10 @@ int main(void) {
 
     printf("\n=======================================\n");
     if (errors == 0) {
-        printf("TC_WDT_012: PASS\n");
+        printf("WDT Poll Consistency Test: PASS\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_012: FAIL (errors=%d)\n", errors);
+        printf("WDT Poll Consistency Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("=======================================\n");

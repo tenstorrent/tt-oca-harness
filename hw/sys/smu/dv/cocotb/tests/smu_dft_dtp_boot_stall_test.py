@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dft_dtp_boot_stall_test - DTP DEBUG_CONTROL boot-stall -> SMC fuse_reset.
 
 Real checkers (must FAIL if wrong):

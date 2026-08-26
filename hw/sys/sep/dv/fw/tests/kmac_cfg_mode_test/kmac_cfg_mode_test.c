@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_KMAC_004 (P0) - CFG Mode/Kstrength Field Verification
+ * CFG Mode/Kstrength Field Verification
  *
  * Writes CFG_SHADOWED with different mode/kstrength combinations,
  * reads back and verifies each configuration.
@@ -14,6 +14,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_kmac.h"
 
 static int test_errors = 0;
 
@@ -64,7 +65,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("  TC_KMAC_004: CFG Mode Test\n");
+    printf("  CFG Mode Test\n");
     printf("========================================\n");
 
     if (wait_for_idle() != 0) {
@@ -76,35 +77,46 @@ int main(void) {
     }
 
     /* SHA3 mode, L128 strength */
-    write_cfg_and_verify("SHA3/L128", 0, 0x0, 0x0, 0x1, 0, 0);
+    write_cfg_and_verify("SHA3/L128", 0, SEP_KMAC_MODE_SHA3, SEP_KMAC_KSTRENGTH_L128,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
     /* SHA3 mode, L256 strength */
-    write_cfg_and_verify("SHA3/L256", 0, 0x0, 0x2, 0x1, 0, 0);
+    write_cfg_and_verify("SHA3/L256", 0, SEP_KMAC_MODE_SHA3, SEP_KMAC_KSTRENGTH_L256,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
     /* SHAKE mode, L128 */
-    write_cfg_and_verify("SHAKE/L128", 0, 0x2, 0x0, 0x1, 0, 0);
+    write_cfg_and_verify("SHAKE/L128", 0, SEP_KMAC_MODE_SHAKE, SEP_KMAC_KSTRENGTH_L128,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
     /* SHAKE mode, L256 */
-    write_cfg_and_verify("SHAKE/L256", 0, 0x2, 0x2, 0x1, 0, 0);
+    write_cfg_and_verify("SHAKE/L256", 0, SEP_KMAC_MODE_SHAKE, SEP_KMAC_KSTRENGTH_L256,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
-    /* cSHAKE mode, L128 (mode=3 per hjson sha3_mode_e::CShake=2'b11) */
-    write_cfg_and_verify("cSHAKE/L128", 0, 0x3, 0x0, 0x1, 0, 0);
+    /* cSHAKE mode, L128 */
+    write_cfg_and_verify("cSHAKE/L128", 0, SEP_KMAC_MODE_CSHAKE, SEP_KMAC_KSTRENGTH_L128,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
-    /* KMAC enabled, cSHAKE mode, L128 (mode=3 per hjson) */
-    write_cfg_and_verify("KMAC_EN/cSHAKE/L128", 1, 0x3, 0x0, 0x1, 0, 0);
+    /* KMAC enabled, cSHAKE mode, L128 */
+    write_cfg_and_verify("KMAC_EN/cSHAKE/L128", 1, SEP_KMAC_MODE_CSHAKE, SEP_KMAC_KSTRENGTH_L128,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
-    /* KMAC enabled, cSHAKE mode, L256 (mode=3 per hjson) */
-    write_cfg_and_verify("KMAC_EN/cSHAKE/L256", 1, 0x3, 0x2, 0x1, 0, 0);
+    /* KMAC enabled, cSHAKE mode, L256 */
+    write_cfg_and_verify("KMAC_EN/cSHAKE/L256", 1, SEP_KMAC_MODE_CSHAKE, SEP_KMAC_KSTRENGTH_L256,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
     /* Test endianness flags */
-    write_cfg_and_verify("msg_endian=1", 0, 0x0, 0x2, 0x1, 1, 0);
+    write_cfg_and_verify("msg_endian=1", 0, SEP_KMAC_MODE_SHA3, SEP_KMAC_KSTRENGTH_L256,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 1, 0);
 
-    write_cfg_and_verify("state_endian=1", 0, 0x0, 0x2, 0x1, 0, 1);
+    write_cfg_and_verify("state_endian=1", 0, SEP_KMAC_MODE_SHA3, SEP_KMAC_KSTRENGTH_L256,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 1);
 
-    write_cfg_and_verify("both_endian=1", 0, 0x0, 0x2, 0x1, 1, 1);
+    write_cfg_and_verify("both_endian=1", 0, SEP_KMAC_MODE_SHA3, SEP_KMAC_KSTRENGTH_L256,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 1, 1);
 
-    /* Entropy mode: EDN (0x1 per hjson: 0=None, 1=EDN, 2=SW) */
-    write_cfg_and_verify("entropy_mode=EDN", 0, 0x0, 0x2, 0x1, 0, 0);
+    /* Entropy mode: EDN */
+    write_cfg_and_verify("entropy_mode=EDN", 0, SEP_KMAC_MODE_SHA3, SEP_KMAC_KSTRENGTH_L256,
+                         SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
     /* Restore default */
     WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);

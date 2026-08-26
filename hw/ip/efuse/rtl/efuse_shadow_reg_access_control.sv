@@ -12,15 +12,17 @@ module efuse_shadow_reg_access_control
     parameter int unsigned EFUSE_FIELDS = 1,
     parameter bit HAS_LC_STATE = 1'b0,
 
-    parameter type efuse_map_t = logic,
-
     parameter type efuse_apb_req_t = logic,
     parameter type efuse_apb_resp_t = logic,
 
     parameter type efuse_addr_t = logic,
     parameter type efuse_data_t = logic,
 
-    localparam type efuse_strb_t = logic [3:0]
+    localparam type efuse_strb_t = logic [3:0],
+
+    // Two lock bits per real field slot. The LOCKS meta-field uses the fixed
+    // sentinel idx '1 (all-ones) and is excluded from hw-lock checks.
+    localparam int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1)
 ) (
     input  logic                                  clk_i,
     input  logic                                  rst_ni,
@@ -51,8 +53,9 @@ module efuse_shadow_reg_access_control
     output logic                                  lc_state_access_o,
     output logic                                  read_locked_o,
 
-    // Shadow Register Map Input
-    input  efuse_map_t                            shadow_regs_i,
+    // Hardware lock vector: 2 bits per real field slot (write-lock at 2n, read-lock at 2n+1).
+    // Extracted from the LOCK shadow register by the parent efuse_shadow_regs module.
+    input  logic [LOCK_VECTOR_BITS-1:0]           locks_i,
 
     // Locked Field Access Interrupt
     output logic                                  locked_field_access_interrupt_o
@@ -76,7 +79,7 @@ module efuse_shadow_reg_access_control
     logic                                     is_lc_state_access;
 
     // Field lookup results
-    logic [4:0]                               field_index;
+    logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] field_index;
     logic [3:0]                               sw_lock_bits;
 
     // Final combined status
@@ -95,12 +98,12 @@ module efuse_shadow_reg_access_control
 
         if (HAS_LC_STATE) begin
             // For LC_STATE field (index 0), write/read locks are handled by parent module
-            is_write_locked = (field_index == 5'd0) ? 1'b0 : write_locked(field_index, shadow_regs_i);
-            is_read_locked = (field_index == 5'd0) ? 1'b0 : read_locked(field_index, shadow_regs_i);
+            is_write_locked = (field_index == '0) ? 1'b0 : write_locked(field_index);
+            is_read_locked = (field_index == '0) ? 1'b0 : read_locked(field_index);
         end else begin
             // Standard lock checking for non-LC_STATE configurations
-            is_write_locked = write_locked(field_index, shadow_regs_i);
-            is_read_locked = read_locked(field_index, shadow_regs_i);
+            is_write_locked = write_locked(field_index);
+            is_read_locked = read_locked(field_index);
         end
     end
 
@@ -113,7 +116,7 @@ module efuse_shadow_reg_access_control
 
     // LC_STATE access detection
     always_comb begin
-        if (HAS_LC_STATE && (field_index == 5'd0)) begin
+        if (HAS_LC_STATE && (field_index == '0)) begin
             is_lc_state_access = 1'b1;
         end else begin
             is_lc_state_access = 1'b0;
@@ -186,15 +189,19 @@ module efuse_shadow_reg_access_control
     // Helper Functions
     ////////////////////////////////////////////////////////////////////////////
 
-    // Find the efuse field index for a given address
-    function automatic logic [4:0] find_efuse_field_index(efuse_addr_t address);
+    // Find the efuse field index for a given address.
+    // Returns '1 (all-ones) for the LOCKS meta-field or any unmapped address;
+    // both cases are excluded from hardware lock checks.
+    function automatic logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] find_efuse_field_index(
+        efuse_addr_t address
+    );
         for (int i = 0; i < EFUSE_FIELDS; i = i + 1) begin
             if (address >= efuse_addr_t'(efuse_field_map_i[i].start_addr) &&
                 address <= efuse_addr_t'(efuse_field_map_i[i].end_addr)) begin
                 return efuse_field_map_i[i].idx;
             end
         end
-        return EFUSE_FIELDS;
+        return '1;
     endfunction
 
     // Find the software lock bits for a given address
@@ -205,23 +212,28 @@ module efuse_shadow_reg_access_control
                 return efuse_field_map_i[i].lock;
             end
         end
-
-        return '0; // Return unlocked if not found
+        return '0;
     endfunction
 
-    // Check if a field is write locked by hardware locks
-    function automatic logic write_locked(logic [4:0] index, efuse_map_t shadow_regs);
-        if (index < 5'h1f) begin
-            return shadow_regs.f.locks[index*2];
+    // Check if a field is write locked by hardware locks.
+    // idx '1 (all-ones) is the sentinel for the LOCKS meta-field and unmapped
+    // addresses; both are excluded from hardware lock checks.
+    function automatic logic write_locked(
+        logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] index
+    );
+        if (index != '1) begin
+            return locks_i[index*2];
         end else begin
             return 1'b0;
         end
     endfunction
 
-    // Check if a field is read locked by hardware locks
-    function automatic logic read_locked(logic [4:0] index, efuse_map_t shadow_regs);
-        if (index < 5'h1f) begin
-            return shadow_regs.f.locks[index*2+1];
+    // Check if a field is read locked by hardware locks.
+    function automatic logic read_locked(
+        logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] index
+    );
+        if (index != '1) begin
+            return locks_i[index*2+1];
         end else begin
             return 1'b0;
         end
@@ -232,17 +244,5 @@ module efuse_shadow_reg_access_control
     ////////////////////////////////////////////////////////////////////////////
 
     // Generate address width checks for each efuse field
-    // for (genvar i = 0; i < EFUSE_FIELDS; i = i + 1) begin : gen_field_assertions
-    //     `OCAH_OT_ASSERT_INIT(EfuseFieldStartAddrCheck_A,
-    //                  efuse_field_map_i[i].start_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    //     `OCAH_OT_ASSERT_INIT(EfuseFieldEndAddrCheck_A,
-    //                  efuse_field_map_i[i].end_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    // end
-    // for (genvar i = 0; i < EFUSE_FIELDS; i = i + 1) begin : gen_field_assertions
-    //     `OCAH_OT_ASSERT_INIT(EfuseFieldStartAddrCheck_A,
-    //                  efuse_field_map_i[i].start_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    //     `OCAH_OT_ASSERT_INIT(EfuseFieldEndAddrCheck_A,
-    //                  efuse_field_map_i[i].end_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    // end
 
 endmodule : efuse_shadow_reg_access_control

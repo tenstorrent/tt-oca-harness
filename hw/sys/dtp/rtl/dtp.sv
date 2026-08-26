@@ -44,7 +44,7 @@ module dtp
 
     localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (JTAG_NUM_EXTRA_STAPS > 0) ? JTAG_NUM_EXTRA_STAPS : 1,  // Minimum of 1 for tie-off case
 
-    // Cross trigger configuration parameters (templated, not configurable)
+    // Cross trigger port counts, from dtp_pkg
     localparam int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,           // The number of cross trigger ports
                              XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT,        // Number of internal cross triggers
                              XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ,  // The number of incoming clock stop requests
@@ -101,8 +101,8 @@ module dtp
     // Power-on reset (for JTAG logic)
     input  logic pwr_on_rst_ni,  // Power-on reset for JTAG logic
 
-    // Lifecycle feature control
-    input  sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t  feat_ctrl_i,
+    // Per-TAP debug/test disables from the SEP lifecycle controller (active-high)
+    input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,
 
     // Primary JTAG TAP interface
     input  jtag_tap_ctrl_t  jtag_ptap_client_tap_ctrl_i,
@@ -281,7 +281,7 @@ module dtp
         .clk_i                       (clk_i),
         .rst_n_i                     (rst_n_i),
         .pwr_on_rst_ni               (pwr_on_rst_ni),
-        .feat_ctrl_i                 (feat_ctrl_i),
+        .dbg_disable_i               (dbg_disable_i),
         .ptap_client_tap_ctrl_i      (jtag_ptap_client_tap_ctrl_i),
         .ptap_client_tdi_i           (jtag_ptap_client_tdi_i),
         .ptap_client_tdo_o           (jtag_ptap_client_tdo_o),

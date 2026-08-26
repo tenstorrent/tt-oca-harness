@@ -2,24 +2,24 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Multi-Segment Test - TC_SPIOT_020 (P1)
+ * SPI OT Multi-Segment Test
  *
  * Verifies that multiple SPI command segments can be chained using CSAAT=1
  * to keep CS# asserted across segments (typical flash/QSPI protocol sequence).
  *
  * Segment chain (mimics a quad fast-read sequence):
- *   Seg 1 (TX 1B, CSAAT=1):  Command byte   (0xEB)
- *   Seg 2 (TX 3B, CSAAT=1):  24-bit Address (0x00_1234)
- *   Seg 3 (Dum 2cy,CSAAT=1): Mode/dummy cycles
- *   Seg 4 (RX 4B, CSAAT=0):  Data read, release CS#
+ * Seg 1 (TX 1B, CSAAT=1): Command byte   (0xEB)
+ * Seg 2 (TX 3B, CSAAT=1): 24-bit Address (0x00_1234)
+ * Seg 3 (Dum 2cy,CSAAT=1): Mode/dummy cycles
+ * Seg 4 (RX 4B, CSAAT=0): Data read, release CS#
  *
  * Checks:
- *   - No CMDINVAL or CSIDINVAL error throughout the chain
- *   - Controller returns READY between segments (CMDQD drains)
- *   - Final CSAAT=0 command completes cleanly
+ * - No CMDINVAL or CSIDINVAL error throughout the chain
+ * - Controller returns READY between segments (CMDQD drains)
+ * - Final CSAAT=0 command completes cleanly
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_multi_segment_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_multi_segment_test STACK=sim
  *
  */
 
@@ -30,7 +30,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -74,7 +73,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Multi-Segment Test (TC_SPIOT_020)\n");
+    printf("SPI OT Multi-Segment Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -83,8 +82,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__STATUS_t status;
 
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
@@ -194,7 +191,11 @@ int main(void) {
     cmd.f.DIRECTION = 1; /* RX */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
 
-    wait_for_idle(TIMEOUT_LIMIT);
+    if (wait_for_idle(TIMEOUT_LIMIT)) {
+        printf("  FAIL: transaction did not complete (ACTIVE stuck)\n");
+        pass = 0;
+        goto done;
+    }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  Post-seg4: CMDQD=%u ACTIVE=%u RXQD=%u\n", status.f.CMDQD, status.f.ACTIVE,

@@ -70,7 +70,10 @@ module sep_efuse_wrapper
 	output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,
 
 	// Locked Field Access Interrupt
-	output logic                               locked_field_access_interrupt_o
+	output logic                               locked_field_access_interrupt_o,
+
+	// Token Comparator Redundancy Fault Interrupt
+	output logic                               token_match_fault_o
 );
 
 	// Intermediate 32-bit AXI (after data-width conversion)
@@ -145,8 +148,8 @@ module sep_efuse_wrapper
         .AxiDataWidth   (SEP_EFUSE_AXI32_DATA_WIDTH),
         .AxiIdWidth     (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
         .AxiUserWidth   (sep_pkg::SEP_CRYPTO_AXI_USER_WIDTH),
-        .AxiMaxWriteTxns(16), // TODO
-        .AxiMaxReadTxns (16), // TODO
+        .AxiMaxWriteTxns(16),
+        .AxiMaxReadTxns (16),
         .FullBW         (1'b0), // ID Queue in Full BW mode in axi_burst_splitter
         .FallThrough    (1'b0), // FIFOs in Fall through mode in ID reflect
         .SpillAw        (1'b0), // Spill register control
@@ -212,7 +215,7 @@ module sep_efuse_wrapper
     prim_diff_decode_multi #(.Width(sep_pkg::LC_STATE_BIT_WIDTH)) u_lc_state_jtag_dec (
         .clk_i,
         .rst_ni,
-        .data_i  (shadow_regs_o.f.lc_state.lc_state[2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]),
+        .data_i  (shadow_regs_o.fields.lc_state.lc_state[2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]),
         .data_o  (lc_state_local_raw),
         .sigint_o(lc_sigint_err)
     );
@@ -401,13 +404,15 @@ module sep_efuse_wrapper
 
 		.sec_disable_token_o          (),
 
-		.locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
+		.locked_field_access_interrupt_o  (locked_field_access_interrupt_o),
+
+		.token_match_fault_o              (token_match_fault_o)
 	);
 
 
 
 	// SEP LC state output
-    assign lc_state_o = shadow_regs_o.f.lc_state.lc_state;
+    assign lc_state_o = shadow_regs_o.fields.lc_state.lc_state;
 
 	assign secure_tm_o = secure_tm_n0_scan;
 	assign security_disable_o = security_disable;

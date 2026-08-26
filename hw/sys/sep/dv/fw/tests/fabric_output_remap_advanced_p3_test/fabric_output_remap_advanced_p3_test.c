@@ -2,22 +2,20 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_FABRIC_066: fabric_output_remap_advanced_p3_test
+ * fabric_output_remap_advanced_p3_test
  *
- * 目標: output_remap 進階測試場景，完整性能優化
- * 策略: 進階output remap scenario，複雜配置組合
- * 優先級: 第二輪 (進階複雜度)
+ * Strategy: Advanced output-remap scenarios; complex configuration combinations
  *
- * 專注於output remap的進階場景和複雜配置組合測試
+ * Focus on advanced output-remap scenarios and complex config combinations
  */
 
 #include "sep_test_common.h"
 #include "sep_fabric.h"
 
-// Advanced output remap 場景數量
+// Advanced output remap scenario count
 #define ADVANCED_OUTPUT_SCENARIOS 8
 
-// Advanced 測試定義
+// Advanced test definitions
 #define COMPLEX_REGION_COUNT 16
 #define ADVANCED_PATTERN_COUNT 32
 #define MULTI_CHANNEL_SCENARIOS 8
@@ -31,7 +29,7 @@
 static int test_multi_level_address_translation(void) {
     printf("Starting multi-level address translation test...\n");
 
-    // 場景1: Multi-level address translation
+    // Scenario 1: Multi-level address translation
     for (int translation_level = 0; translation_level < 16; translation_level++) {
         for (int region = 0; region < 16; region++) {
             // Level 1: Virtual to Intermediate
@@ -43,7 +41,7 @@ static int test_multi_level_address_translation(void) {
             // Level 2: Intermediate to Physical
             uint32_t physical_base = intermediate_base + 0x10000000 + (region << 20);
 
-            // 複雜的address mapping
+            // Complex address mapping
             uint32_t mapping_pattern = (translation_level << 24) | (region << 20) | 0x80000;
             uint32_t final_dest = physical_base ^ mapping_pattern;
 
@@ -56,7 +54,7 @@ static int test_multi_level_address_translation(void) {
                 continue;
             }
 
-            // 測試multi-level translation的不同存取模式
+            // Test multi-level translation under different access modes
             uint32_t test_addr = virtual_base + 0x40000;
 
             // Sequential access patterns
@@ -82,9 +80,9 @@ static int test_multi_level_address_translation(void) {
 static int test_dynamic_region_reconfiguration(void) {
     printf("Starting dynamic region reconfiguration test...\n");
 
-    // 場景2: Dynamic region reconfiguration
+    // Scenario 2: Dynamic region reconfiguration
     for (int reconfig_round = 0; reconfig_round < 24; reconfig_round++) {
-        // Phase 1: 初始配置
+        // Phase 1: initial configuration
         for (int region = 0; region < 16; region++) {
             uint32_t initial_src =
                 VIRTUAL_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
@@ -99,7 +97,7 @@ static int test_dynamic_region_reconfiguration(void) {
                 continue;
             }
 
-            // 測試初始配置
+            // Test initial configuration
             uint32_t test_addr = initial_src + 0x80000;
             test_axi_transaction(test_addr, 16, AXI_READ);
             test_axi_transaction(test_addr + 0x1000, 16, AXI_WRITE);
@@ -107,36 +105,36 @@ static int test_dynamic_region_reconfiguration(void) {
 
         // Phase 2: Dynamic reconfiguration
         for (int region = 0; region < 16; region++) {
-            // Hot reconfiguration - 不同的destination
+            // Hot reconfiguration - different destination
             uint32_t new_src = CACHED_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
             uint32_t new_dest =
                 UNCACHED_ADDR_SPACE + reconfig_round * 0x4000000 + region * 0x400000;
 
-            // 在有active traffic的情況下reconfigure
+            // Reconfigure while traffic is active
             if (setup_output_remap_region_extended(region, new_src, new_dest,
                                                    1,                            // enable
-                                                   (region + 1) % 2,             // 切換channel
+                                                   (region + 1) % 2, // switch channel
                                                    0xFFF00000,                   // 1MB granularity
-                                                   CACHE_ATTR_NORMAL_NC) != 0) { // 切換cache屬性
+                                                   CACHE_ATTR_NORMAL_NC) != 0) { // switch cache attributes
                 continue;
             }
 
-            // 立即測試新配置
+            // Immediately test new configuration
             uint32_t new_test_addr = new_src + 0x80000;
             test_axi_transaction(new_test_addr, 8, AXI_READ);
             test_axi_transaction(new_test_addr + 0x2000, 8, AXI_WRITE);
 
-            // Phase 3: 再次動態調整
+            // Phase 3: dynamic adjust again
             uint32_t final_dest = new_dest + 0x8000000 + (region << 18);
             if (setup_output_remap_region_extended(region, new_src, final_dest,
                                                    1,          // enable
-                                                   region % 2, // 再次切換channel
+                                                   region % 2, // switch channel again
                                                    0xFFFC0000, // 256KB granularity
                                                    CACHE_ATTR_DEVICE) != 0) {
                 continue;
             }
 
-            // 驗證最終配置
+            // Verify final configuration
             test_axi_transaction(new_test_addr, 32, AXI_READ);
             test_axi_transaction(new_test_addr + 0x3000, 32, AXI_WRITE);
         }
@@ -149,19 +147,19 @@ static int test_dynamic_region_reconfiguration(void) {
 static int test_complex_overlap_resolution(void) {
     printf("Starting complex overlap resolution test...\n");
 
-    // 場景3: Complex overlap resolution
+    // Scenario 3: Complex overlap resolution
     for (int overlap_scenario = 0; overlap_scenario < 16; overlap_scenario++) {
-        // 設置複雜的重疊scenarios
+        // Set up complex overlap scenarios
         for (int layer = 0; layer < 4; layer++) {
             for (int region = layer * 4; region < (layer + 1) * 4; region++) {
                 uint32_t base_addr = VIRTUAL_ADDR_SPACE + overlap_scenario * 0x8000000;
 
-                // 創建不同層級的重疊
+                // Create multi-level overlaps
                 uint32_t overlap_src = base_addr + region * 0x400000 - layer * 0x200000;
                 uint32_t overlap_dest =
                     PHYSICAL_ADDR_SPACE + overlap_scenario * 0x8000000 + region * 0x600000;
 
-                // 不同優先級和大小，創建複雜重疊
+                // Vary priority/size to create complex overlaps
                 uint32_t region_size = (1 << (20 + layer)); // 1MB, 2MB, 4MB, 8MB
                 uint32_t mask = ~(region_size - 1);
                 int priority = (layer * 4) + (region % 4); // 0-15 priority range
@@ -176,18 +174,18 @@ static int test_complex_overlap_resolution(void) {
             }
         }
 
-        // 測試重疊區域的resolution
+        // Test overlap-region resolution
         uint32_t base_test_addr = VIRTUAL_ADDR_SPACE + overlap_scenario * 0x8000000;
 
         for (int test_point = 0; test_point < 32; test_point++) {
             uint32_t overlap_test_addr = base_test_addr + test_point * 0x100000;
 
-            // 測試不同size的存取
+            // Access with different sizes
             test_axi_transaction(overlap_test_addr, 4, AXI_READ);
             test_axi_transaction(overlap_test_addr + 0x1000, 8, AXI_WRITE);
             test_axi_transaction(overlap_test_addr + 0x2000, 16, AXI_READ);
 
-            // 大burst存取測試resolution
+            // Large-burst access tests resolution
             if (test_point % 4 == 0) {
                 test_axi_transaction(overlap_test_addr + 0x10000, 64, AXI_READ);
                 test_axi_transaction(overlap_test_addr + 0x10040, 64, AXI_WRITE);
@@ -202,7 +200,7 @@ static int test_complex_overlap_resolution(void) {
 static int test_cache_coherency_advanced_scenarios(void) {
     printf("Starting cache coherency advanced scenarios test...\n");
 
-    // 場景4: Cache coherency advanced scenarios
+    // Scenario 4: Cache coherency advanced scenarios
     uint32_t coherency_scenarios[] = {CACHE_ATTR_WRITEBACK | CACHE_ATTR_READ_ALLOCATE,
                                       CACHE_ATTR_WRITETHROUGH | CACHE_ATTR_WRITE_ALLOCATE,
                                       CACHE_ATTR_NORMAL_NC | CACHE_ATTR_SHAREABLE,
@@ -229,7 +227,7 @@ static int test_cache_coherency_advanced_scenarios(void) {
                 continue;
             }
 
-            // 測試cache coherency scenarios
+            // Test cache-coherency scenarios
             uint32_t test_addr = coherency_src + 0x40000;
 
             // Scenario 1: Write-Read coherency
@@ -277,7 +275,7 @@ static int test_cache_coherency_advanced_scenarios(void) {
 static int test_performance_critical_patterns(void) {
     printf("Starting performance critical patterns test...\n");
 
-    // 場景5: Performance critical patterns
+    // Scenario 5: Performance critical patterns
     for (int perf_test = 0; perf_test < 16; perf_test++) {
         for (int region = 0; region < 16; region++) {
             uint32_t perf_src = VIRTUAL_ADDR_SPACE + perf_test * 0x4000000 + region * 0x400000;
@@ -339,7 +337,7 @@ static int test_performance_critical_patterns(void) {
 static int test_error_recovery_advanced_scenarios(void) {
     printf("Starting error recovery advanced scenarios test...\n");
 
-    // 場景6: Error recovery advanced scenarios
+    // Scenario 6: Error recovery advanced scenarios
     for (int error_scenario = 0; error_scenario < 12; error_scenario++) {
         for (int region = 0; region < 16; region++) {
             uint32_t error_src =
@@ -347,7 +345,7 @@ static int test_error_recovery_advanced_scenarios(void) {
             uint32_t error_dest =
                 PHYSICAL_ADDR_SPACE + error_scenario * 0x2000000 + region * 0x200000;
 
-            // 設置normal configuration
+            // Set normal configuration
             if (setup_output_remap_region_extended(region, error_src, error_dest,
                                                    1,          // enable
                                                    region % 2, // channel
@@ -408,7 +406,7 @@ static int test_error_recovery_advanced_scenarios(void) {
 static int test_system_integration_stress(void) {
     printf("Starting system integration stress test...\n");
 
-    // 場景7: System integration stress
+    // Scenario 7: System integration stress
     for (int stress_round = 0; stress_round < 8; stress_round++) {
         // Configure all 16 regions simultaneously
         for (int region = 0; region < 16; region++) {
@@ -484,55 +482,53 @@ static int test_system_integration_stress(void) {
 }
 
 int main(void) {
-    printf("TC_FABRIC_066: Output Remap Advanced P3 Test\n");
-    printf("Goals: output_remap 進階測試場景，完整性能優化\n");
-    printf("Strategy: 進階output remap scenario，複雜配置組合\n\n");
+    printf("Output Remap Advanced Test\n");
+    printf("Strategy: Advanced output-remap scenarios; complex configuration combinations\n\n");
 
-    // 初始化fabric系統
+    // Initialize fabric system
     if (init_sep_fabric() != 0) {
-        test_fail("TC_FABRIC_066");
+        test_fail("fabric_output_remap_advanced_p3_test");
         return TEST_FAIL;
     }
 
-    // 執行所有advanced output remap場景
+    // Run all advanced output-remap scenarios
     if (test_multi_level_address_translation() != 0) {
-        test_fail("TC_FABRIC_066 - Multi Level Address Translation");
+        test_fail("Multi Level Address Translation");
         return TEST_FAIL;
     }
 
     if (test_dynamic_region_reconfiguration() != 0) {
-        test_fail("TC_FABRIC_066 - Dynamic Region Reconfiguration");
+        test_fail("Dynamic Region Reconfiguration");
         return TEST_FAIL;
     }
 
     if (test_complex_overlap_resolution() != 0) {
-        test_fail("TC_FABRIC_066 - Complex Overlap Resolution");
+        test_fail("Complex Overlap Resolution");
         return TEST_FAIL;
     }
 
     if (test_cache_coherency_advanced_scenarios() != 0) {
-        test_fail("TC_FABRIC_066 - Cache Coherency Advanced Scenarios");
+        test_fail("Cache Coherency Advanced Scenarios");
         return TEST_FAIL;
     }
 
     if (test_performance_critical_patterns() != 0) {
-        test_fail("TC_FABRIC_066 - Performance Critical Patterns");
+        test_fail("Performance Critical Patterns");
         return TEST_FAIL;
     }
 
     if (test_error_recovery_advanced_scenarios() != 0) {
-        test_fail("TC_FABRIC_066 - Error Recovery Advanced Scenarios");
+        test_fail("Error Recovery Advanced Scenarios");
         return TEST_FAIL;
     }
 
     if (test_system_integration_stress() != 0) {
-        test_fail("TC_FABRIC_066 - System Integration Stress");
+        test_fail("System Integration Stress");
         return TEST_FAIL;
     }
 
-    printf("\n=== TC_FABRIC_066: OUTPUT REMAP ADVANCED P3 TEST PASSED ===\n");
-    printf("Expected improvement: output_remap advanced scenarios and performance optimization\n");
+    printf("\n=== OUTPUT REMAP ADVANCED TEST PASSED ===\n");
 
-    test_pass("TC_FABRIC_066");
+    test_pass("fabric_output_remap_advanced_p3_test");
     return TEST_PASS;
 }

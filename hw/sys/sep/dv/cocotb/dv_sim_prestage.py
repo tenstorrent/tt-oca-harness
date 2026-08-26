@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Pre-sim image staging hook for the SEP OSS DV flow.
 
 The `sep_wrapper` DUT's generic efuse model self-preloads its OTP bank from
@@ -44,30 +45,65 @@ _DV_ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_EFUSE_PRELOAD = _DV_ROOT / "tb" / "efuse_preloads" / "sep_efuse_default.hex"
 
 
-def _load_sep_efuse_image():
-    """Import SepEfuseImage by file path. The `env` package __init__ pulls in
-    cocotb/pyuvm (sim-only), so a plain package import would fail in the pre-sim
-    runlib process; sep_efuse_image.py imports nothing beyond the stdlib and its
-    own env siblings, so load it directly.
+def _load_env_module(modname: str, filename: str):
+    """Import a cocotb/env module by file path.
 
-    The env directory has to go on sys.path first: the sim gets it from
-    `[cocotb] python_paths` in sep_sim_cfg.toml, but this hook runs in run_dv.py's
-    interpreter, where a bare sibling import (`from sep_reg_meta import sym`) would
-    otherwise raise ModuleNotFoundError.
+    The ``env`` package ``__init__`` pulls in cocotb/pyuvm (sim-only), so a
+    plain package import would fail in the pre-sim runlib process. The env
+    directory has to go on ``sys.path`` first: the sim gets it from
+    ``[cocotb] python_paths`` in ``sep_sim_cfg.toml``, but this hook runs in
+    ``run_dv.py``'s interpreter, where a bare sibling import would raise
+    ``ModuleNotFoundError``.
     """
     env_dir = _DV_ROOT / "cocotb" / "env"
     if str(env_dir) not in sys.path:
         sys.path.insert(0, str(env_dir))
-    path = env_dir / "sep_efuse_image.py"
-    spec = importlib.util.spec_from_file_location("sep_efuse_image", path)
+    path = env_dir / filename
+    spec = importlib.util.spec_from_file_location(modname, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {modname} from {path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.SepEfuseImage
+    return module
+
+
+def _load_sep_efuse_image():
+    """Import SepEfuseImage without going through env/__init__.py."""
+    return _load_env_module("sep_efuse_image", "sep_efuse_image.py").SepEfuseImage
+
+
+def _rma_token_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_efuse_rma_token_rand_test``'s ``cfg.image_fixed()``."""
+    mod = _load_env_module("sep_rma_token", "sep_rma_token.py")
+    return mod.SepRmaTokenCfg(seed).image_fixed()
+
+
+def _locked_field_irq_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_locked_field_access_irq_path_test``'s ``cfg.image_fixed()``."""
+    mod = _load_env_module("sep_locked_field_irq", "sep_locked_field_irq.py")
+    return mod.SepLockedFieldIrqCfg(seed).image_fixed()
+
+
+def _set_only_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
+    mod = _load_env_module("sep_efuse_set_only", "sep_efuse_set_only.py")
+    return mod.SepEfuseSetOnlyCfg(seed).image_fixed()
+
 
 # Common LC-gated field pins shared by several PROD-lifecycle tests.
 _SIP_SYS_DIS_PINS = {
     "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0F,
     "SYS_DIS": 0x00FF_00FF_00FF_00FF,
+}
+
+# sep_lcc_uvm_inbound_filter_gating_test needs DBG_1 bits 0/1 left enabled, because a
+# PROD demotion only relaxes its group to these vectors rather than forcing it open.
+# Kept separate rather than changing the shared dict: the other two entries want the
+# fully-disabled vectors, and this file must mirror each test's own
+# select_efuse_image(fixed=...) or the staged image and the golden disagree.
+_SIP_SYS_DIS_PINS_DBG_OPEN = {
+    "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0C,
+    "SYS_DIS": 0x00FF_00FF_00FF_00FC,
 }
 
 # test name -> OTP image spec. mode "random" => randomize(seed+seed_offset, **kw);
@@ -86,8 +122,10 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_efuse_jtag_axil_el2_cpu_mux_test": {"mode": "random", "lc_raw": 0x1},
     "sep_fabric_inbound_filter_rule_matrix_test": {
         "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
-    "sep_lcc_uvm_inbound_filter_gating_test": {
+    "sep_sec_dis_override_test": {
         "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS)},
+    "sep_lcc_uvm_inbound_filter_gating_test": {
+        "mode": "random", "lc_raw": 0x1, "fixed": dict(_SIP_SYS_DIS_PINS_DBG_OPEN)},
     "sep_efuse_km_axil_cpu_mux_coexist_test": {
         "mode": "random", "lc_raw": 0x1, "fixed": {"CHIPLET_UID": 0xDEAD_BEEF}},
     "sep_km_kmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
@@ -95,6 +133,41 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_km_hmac_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_otbn_sideload_kat_test": {"mode": "random", "lc_raw": 0x1},
     "sep_drbg_real_sink_multi_km_aes_test": {"mode": "random", "lc_raw": 0x1},
+    # Spare-field lock x program. SPARE0..7 pinned 0 so the unlocked-then-lock
+    # walk starts from a known-zero field (lock_prob stays 0).
+    "sep_efuse_program_lock_matrix_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": {f"SPARE{i}": 0 for i in range(8)},
+    },
+    # Demote product starts at TEST_DEV with DIS=0; the pinned DIS pair is
+    # W1S-programmed after the first LC walk.
+    "sep_lcc_demote_feat_ctrl_matrix_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed": {"SIP_DIS": 0, "SYS_DIS": 0},
+    },
+    # RMA token RANDCFG. Digests come from SepRmaTokenCfg(seed); see
+    # _rma_token_fixed() so the t=0 hex matches the test golden.
+    "sep_efuse_rma_token_rand_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "rma_token",
+    },
+    # Set-only shadow OR-merge. Sensed ones come from SepEfuseSetOnlyCfg(seed);
+    # see _set_only_fixed() so the t=0 hex matches the test golden.
+    "sep_efuse_set_only_monotonicity_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed_from": "set_only",
+    },
+    # Locked-field shadow IRQ. SPARE lock bits and patterns come from
+    # SepLockedFieldIrqCfg(seed); see _locked_field_irq_fixed().
+    "sep_locked_field_access_irq_path_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "locked_field_irq",
+    },
 }
 
 
@@ -147,6 +220,7 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
     preload_sel = _preload_from_args(sim_args)
     spec = EFUSE_IMAGE_REGISTRY.get(item)
     if preload_sel is None and spec is None:
+        print(f"[dv_sim_prestage] no-op item={item!r} (not in registry)", flush=True)
         return False
 
     SepEfuseImage = _load_sep_efuse_image()
@@ -165,14 +239,26 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
     elif spec.get("mode") == "preload":
         image.load(spec["preload"])
     else:
+        fixed = spec.get("fixed")
+        if spec.get("fixed_from") == "rma_token":
+            fixed = _rma_token_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "set_only":
+            fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "locked_field_irq":
+            fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
         image.randomize(
             seed + int(spec.get("seed_offset", 0)),
             lc_raw=spec.get("lc_raw"),
             lock_prob=float(spec.get("lock_prob", 0.0)),
-            fixed=spec.get("fixed"),
+            fixed=fixed,
         )
 
     out_dir = Path(cwd) / "out"
     out_dir.mkdir(parents=True, exist_ok=True)
-    image.write_hex(out_dir / "sep_efuse.hex")
+    hex_path = out_dir / "sep_efuse.hex"
+    image.write_hex(hex_path)
+    print(
+        f"[dv_sim_prestage] staged {item} seed={seed} -> {hex_path}",
+        flush=True,
+    )
     return True

@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_001 ANCHOR: smc_clk_running_test
-DV-CARD-REVISION: 1 RECORD-SHA256: c9a8f2011802914da1e11a25c66a37abbfcfed17058830392c07cfd14228c33c
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P0_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 # Also preserves P1 evidence tokens CHK-ACTIVE-RUNNING / legacy fence for closed P1 grade.
 """
 
 from __future__ import annotations
+
+import logging
 
 import cocotb
 from cocotb.triggers import RisingEdge
@@ -18,7 +19,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = cocotb.log
+_LOG = logging.getLogger(__name__)
 
 HYST_CYCLES = 8
 ACTIVE_WINDOW = 16

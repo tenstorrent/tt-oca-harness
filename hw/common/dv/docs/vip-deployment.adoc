@@ -34,8 +34,8 @@ Always import the top-level OCAH package:
 
 [source,python]
 ----
-from ocah_axi_vip import OcahAxiMaster
-from ocah_jtag_vip import OcahJtagTap
+from ocah_axi_vip import OcahAxiMasterAgent
+from ocah_jtag_vip import OcahJtagMasterDriver
 from ocah_checker import OcahChecker
 ----
 
@@ -60,14 +60,14 @@ A DUT environment typically performs four steps:
 
 [source,python]
 ----
-master = OcahAxiMaster.from_prefix(
+master = OcahAxiMasterAgent.from_prefix(
     dut,
     "s_axi",
     dut.clk_i,
     dut.rst_ni,
     reset_active_level=False,
     timeout_ns=50_000,
-)
+).sequence
 master.init_signals()
 await master.wait_for_reset()
 
@@ -159,7 +159,7 @@ initial begin
 end
 ----
 
-The DUT environment retrieves `jtag_vif`, assigns it to an `ocah_jtag_cfg`,
+The DUT environment retrieves `jtag_vif`, assigns it to an `ocah_jtag_master_config`,
 and publishes that config to the shared JTAG environment. DUT sequences consume
 OCAH items and sequencer handles. DUT scoreboards consume OCAH events or
 monitor items. They do not reach into driver internals.

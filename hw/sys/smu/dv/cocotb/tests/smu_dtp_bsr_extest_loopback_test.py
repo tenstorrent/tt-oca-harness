@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_bsr_extest_loopback_test - P4 EXTEST BSR scan loopback.
 
 Loads IR=EXTEST, shifts compact 8-bit patterns through the TB scan_in<-scan_out
@@ -15,9 +16,12 @@ STUB:DECLARED
   scope: TB EXTEST DR path only — NOT LIVE pad BSR / SEP STAP proof
   real-path: deferred until a pad-BSR / STAP model is enrolled
 
-Patterns whose retimed expectation is all-zero are forbidden: OcahJtagTap's
+Patterns whose retimed expectation is all-zero are forbidden: the JTAG driver's
 _logic_int maps X/Z TDO to 0, which would make an all-zero expect can't-fail.
 Nonzero expectations remain sensitive to stuck-0 / unresolved TDO.
+
+All TAP driving goes through the VIP sequence API (OcahJtagMasterSequence); the raw
+driver built by make_smu_jtag_tap is wrapped, never called directly here.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 
+from ocah_jtag_vip import OcahJtagMasterSequence
 from seq_lib.smu_jtag_helpers import (
     DTP_BSR_MODEL_LEN,
     DTP_EXTEST_DECODED_BIT,
@@ -59,9 +64,9 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
         dut = cocotb.top
         sb = self.env.scoreboard
 
-        jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
+        seq = OcahJtagMasterSequence(make_smu_jtag_tap(dut, self.cfg.jtag_period_ns))
         await self.cfg.reset_done.wait()
-        await jtag.reset_tap()
+        await seq.reset_to_tlr()
         await ClockCycles(dut.clk_smu_i, 8)
 
         self.logger.info(
@@ -71,7 +76,7 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
             DTP_BSR_MODEL_LEN,
         )
 
-        await jtag.shift_ir(DTP_IR_EXTEST)
+        await seq.shift_ir(DTP_IR_EXTEST)
         await ClockCycles(dut.clk_smu_i, 4)
 
         decoded = _sample(dut.jtag_ptap_inst_decoded, "jtag_ptap_inst_decoded")
@@ -103,9 +108,9 @@ class smu_dtp_bsr_extest_loopback_test(smu_base_test):
             expected = (pattern << 1) & mask  # one-TCK TDO retiming delay
             if expected == 0:
                 raise AssertionError("all-zero expectation forbidden (X/Z->0 can't-fail)")
-            captured = await jtag.shift_dr(
+            captured = await seq.shift_dr(
                 pattern & mask,
-                width=DTP_BSR_MODEL_LEN,
+                DTP_BSR_MODEL_LEN,
                 back_to_rti=True,
             )
             # Fail-closed observation of TDO pin after VIP capture.

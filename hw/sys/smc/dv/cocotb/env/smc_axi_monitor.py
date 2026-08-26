@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Passive AXI protocol/integrity monitor for the SMC SEP_IN ``s_axi`` bus.
 
 This monitor snoops the top-level ``s_axi_*`` channels independently from the
