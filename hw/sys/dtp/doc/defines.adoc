@@ -124,6 +124,11 @@ or profile selects another one with `[build.vcs]` `uvm_lib` in its sim config
 OpenTitan assertion macros do not compile against older libraries. There are
 no DUT-specific framework defines.
 
+An adopter overlay (`run_dv.py --overlay`, see the runner manual's "Adopter
+overlay layer") may dedup-append further defines into the target tables —
+the intended use is commercial-VIP gate defines such as
+`OCAH_JTAG_VENDOR_IF`/`OCAH_AXI_VENDOR_IF`, which no checked-in config sets.
+
 ==== Inherited native-profile defines DTP sources do not consume
 
 The native profile also passes the following names on every DTP DV compile.

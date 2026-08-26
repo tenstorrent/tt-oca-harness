@@ -12,7 +12,7 @@
 // Cadence registers are touched, so the real ROM still runs end-to-end.
 //
 // All symbols are WEAK: a build that carries the real Cadence xSPI driver
-// (nonfree sep_spi_cdns.c, injected via the Makefile NONFREE_BOOTCODE_SOURCES
+// (companion-supplied, injected via the Makefile NONFREE_BOOTCODE_SOURCES
 // hook) overrides them at link time -- same weak-stub/strong-override pattern
 // as the SMC prod ROM drivers.
 
