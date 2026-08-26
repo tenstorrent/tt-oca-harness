@@ -324,3 +324,31 @@ tags = ["fabric", "decode", "negative", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Reserved rows of hw/sys/sep/doc/memory_map.adoc must be refused. Walks the
+# gaps BETWEEN block windows; sep_fabric_deadspace_decode_test walks the dead
+# tail INSIDE a window. Expectation is spec-derived; the crossbar decode table
+# is logged as a cross-check, never used to build the expectation.
+name = "sep_axi_map_refuse_test"
+module = "system.sep_axi_map_refuse_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Narrow-write byte masking and memory-window readback. Every AxSIZE at every
+# legal lane offset on every seed; the seed varies staged data only. The
+# window compare is the only checker that catches a read-mask defect, which
+# returns a correct response with zeroed data.
+name = "sep_axi_strobe_window_test"
+module = "system.sep_axi_strobe_window_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "strobe", "system", "subsystem"]
+run_modes = ["no_cpu"]
+args = ["+skip_fuse_sense"]

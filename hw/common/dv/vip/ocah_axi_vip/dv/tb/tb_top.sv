@@ -165,4 +165,63 @@ module ocah_axi_vip_tb_top;
     end
 `endif
 
+    // ------------------------------------------------------------------
+    // The VIP's own protocol checker, watching the wire-level bundle the
+    // tests drive by hand. This is the bench that can prove the checker
+    // fires: ocah_axi_illegal_test drives deliberately illegal traffic and
+    // requires a rule to catch it.
+    //
+    // sva_en is a plain signal rather than a tie-off so a test can open a
+    // suppression window around traffic it knows is illegal, then close it
+    // and confirm the rule fired. Default on.
+    //
+    // Live under VCS only: the rule bodies are guarded by OCAH_INC_ASSERT,
+    // which Verilator does not define.
+    // ------------------------------------------------------------------
+    logic sva_en = 1'b1;
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (8)
+    ) u_t_axi_sva (
+        .aclk    (clk),
+        .aresetn (rst_n),
+        .en_i    (sva_en),
+        .awid    (t_axi_awid),
+        .awaddr  (t_axi_awaddr),
+        .awlen   (t_axi_awlen),
+        .awsize  (t_axi_awsize),
+        .awburst (t_axi_awburst),
+        .awlock  (t_axi_awlock),
+        .awprot  (t_axi_awprot),
+        .awvalid (t_axi_awvalid),
+        .awready (t_axi_awready),
+        .wdata   (t_axi_wdata),
+        .wstrb   (t_axi_wstrb),
+        .wlast   (t_axi_wlast),
+        .wvalid  (t_axi_wvalid),
+        .wready  (t_axi_wready),
+        .bid     (t_axi_bid),
+        .bresp   (t_axi_bresp),
+        .bvalid  (t_axi_bvalid),
+        .bready  (t_axi_bready),
+        .arid    (t_axi_arid),
+        .araddr  (t_axi_araddr),
+        .arlen   (t_axi_arlen),
+        .arsize  (t_axi_arsize),
+        .arburst (t_axi_arburst),
+        .arlock  (t_axi_arlock),
+        .arprot  (t_axi_arprot),
+        .arvalid (t_axi_arvalid),
+        .arready (t_axi_arready),
+        .rid     (t_axi_rid),
+        .rdata   (t_axi_rdata),
+        .rresp   (t_axi_rresp),
+        .rlast   (t_axi_rlast),
+        .rvalid  (t_axi_rvalid),
+        .rready  (t_axi_rready)
+    );
+
 endmodule

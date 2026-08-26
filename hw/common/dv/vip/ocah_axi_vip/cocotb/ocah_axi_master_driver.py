@@ -168,6 +168,31 @@ class OcahAxiMasterDriver:
             resolved_reset = getattr(axi4_intf, "rst_ni", None)
         return bus, resolved_clock, resolved_reset
 
+    def set_timing(self, profile) -> None:
+        """Arm an ``AxiTimingProfile`` on this master's five channels.
+
+        AXI channels are independent, so AW/W ordering and response-channel
+        backpressure are legal stimulus the backend cannot otherwise produce.
+        See ocah_axi_timing.AxiTimingProfile.
+        """
+        from .ocah_axi_timing import apply_profile
+
+        apply_profile(self, profile)
+
+    @property
+    def channels(self) -> dict:
+        """The backend channel objects, keyed by AxiTimingProfile field name.
+
+        Exposed so timing control does not reach into the backend handle.
+        """
+        return {
+            "aw_delay": self._master.write_if.aw_channel,
+            "w_delay": self._master.write_if.w_channel,
+            "ar_delay": self._master.read_if.ar_channel,
+            "b_ready_delay": self._master.write_if.b_channel,
+            "r_ready_delay": self._master.read_if.r_channel,
+        }
+
     def init_signals(self) -> None:
         """Compatibility no-op; cocotbext-axi drives idle values at construction."""
 
