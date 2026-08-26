@@ -1,0 +1,127 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Slim local manifest for the vendored Tenstorrent DFD (debug-for-design) IP used
+# by OCAH. This tree carries only the subset of tt_hw_debug reachable from
+# dfd_top_cla_dst_apb - the CLA + DST + trace-sink build with an APB MMR port,
+# instantiated by smc_dfd_wrap. The other seven generated tops, the N-Trace
+# encoder path and the DV tree are not vendored.
+#
+# Source order mirrors upstream tt_dfd.f (bender-generated from the upstream
+# Bender.yml), filtered to that subset. Upstream gates rtl/top/ behind the
+# `dfd_generated_tops` target; the single top we use is listed unconditionally
+# here so OCAH needs no extra bender target.
+#
+# axi/ and common_cells/ are NOT vendored under upstream/: upstream checks them
+# out into dependencies/ via bender, and OCAH already vendors them at
+# vendor/pulp-platform/. Bender.local forces both to those path packages.
+#
+# upstream/ is pristine tt_hw_debug except for the patches/ deltas, which are the
+# authoritative record of every local change and reproduce upstream/ exactly when
+# applied in order to a clean checkout:
+#   0001-expose-trace-sink-ram-ports          EXTERNAL_SINK_MEM + trace_mem_pkg,
+#                                             so the sink RAMs stay outside the block
+#   0002-generic_ffs_fast-width1-size-guard   $clog2(1) == 0 breaks NUM_DST_INST = 1
+# Do not edit upstream/ files directly; add a numbered patch under patches/ instead,
+# and re-run the round-trip check before committing.
+# TODO: add the matching `vendor_package` entry to the root Bender.yml once the
+# tt_hw_debug GitLab remote is reachable from CI, then re-run `bender vendor init`.
+
+package:
+  name: tt_dfd
+  authors:
+    - "Tenstorrent USA, Inc."
+
+dependencies:
+  axi: { version: 0.39.8, git: "https://github.com/pulp-platform/axi.git" }
+
+export_include_dirs:
+  - upstream/dependencies/common
+  - upstream/rtl
+  - upstream/rtl/cla
+  - upstream/rtl/mmr
+  - upstream/rtl/trace
+
+sources:
+  # All gated on smc, matching the pre-vendoring hw/ip/dfd/rtl blocks. SMU builds
+  # reference tn_pkg/trace_mem_pkg/cla_pkg types but always enable smc too; SEP
+  # enables neither and must not pull this IP in.
+  - target: smc
+    files:
+    - upstream/dependencies/common/generic_clkgate.sv
+    - upstream/dependencies/common/generic_clkmux2.sv
+    - upstream/dependencies/common/generic_ipx_clk_rst_ctrl.sv
+    - upstream/dependencies/common/generic_ccg.sv
+    - upstream/dependencies/common/generic_dff.sv
+    - upstream/dependencies/common/generic_axilitetommr.sv
+    - upstream/dependencies/common/generic_dff_clr.sv
+    - upstream/dependencies/common/generic_dff_staging.sv
+    - upstream/dependencies/common/generic_ffs_fast.sv
+    - upstream/dependencies/common/generic_ffs_N.sv
+    - upstream/dependencies/common/generic_fifoMN.sv
+    - upstream/dependencies/common/generic_mem_model.sv
+    - upstream/dependencies/common/generic_decoded_mux.sv
+    - upstream/dependencies/common/generic_vidtopid.sv
+    - upstream/rtl/mmr/cla_mmr_pkg.svh
+    - upstream/rtl/mmr/dst_mmr_pkg.svh
+    - upstream/rtl/mmr/dst_sink_mmr_pkg.svh
+    - upstream/rtl/mmr/funnel_mmr_pkg.svh
+    - upstream/rtl/mmr/ntr_mmr_pkg.svh
+    - upstream/rtl/mmr/ntr_sink_mmr_pkg.svh
+    - upstream/rtl/mmr/cla_mmr.sv
+    - upstream/rtl/mmr/dst_mmr.sv
+    - upstream/rtl/mmr/dst_sink_mmr.sv
+    - upstream/rtl/mmr/funnel_mmr.sv
+    - upstream/rtl/mmr/ntr_mmr.sv
+    - upstream/rtl/mmr/ntr_sink_mmr.sv
+    - upstream/rtl/dfd_pkg.svh
+    - upstream/rtl/cla/dst_pkg.svh
+    - upstream/rtl/cla/cla_pkg.svh
+    - upstream/rtl/cla/tt_dbm_pkg.svh
+    - upstream/rtl/cla/cla_action_gen.sv
+    - upstream/rtl/cla/cla_counter.sv
+    - upstream/rtl/cla/debug_signal_shift_mux.sv
+    - upstream/rtl/cla/xtrigger_stretch_circuit.sv
+    - upstream/rtl/cla/cla_debug_signals_change.sv
+    - upstream/rtl/cla/cla_debug_signals_match.sv
+    - upstream/rtl/cla/cla_debug_signals_ones_count.sv
+    - upstream/rtl/cla/cla_debug_signals_transition.sv
+    - upstream/rtl/cla/cla_edge_detect.sv
+    - upstream/rtl/cla/cla_event_gen.sv
+    - upstream/rtl/cla/cla_node_eap.sv
+    - upstream/rtl/cla/cla_node_eap_set.sv
+    - upstream/rtl/cla/core_logic_analyzer.sv
+    - upstream/rtl/cla/tt_debug_bus_mux.sv
+    - upstream/rtl/cla/xor_compression.sv
+    - upstream/rtl/cla/vlt_packet_compression.sv
+    - upstream/rtl/cla/dst_priority_mux.sv
+    - upstream/rtl/cla/debug_sig_trace_gen.sv
+    - upstream/rtl/cla/cla_lfsr.sv
+    - upstream/rtl/cla/cla_arithmetic_compare.sv
+    - upstream/rtl/trace/te_pkg.svh
+    - upstream/rtl/trace/tn_pkg.svh
+    - upstream/rtl/trace/trace_mem_pkg.svh
+    - upstream/rtl/trace/packetizer_pkg.svh
+    - upstream/rtl/trace/trace_hop.sv
+    - upstream/rtl/trace/accumulator_bank.sv
+    - upstream/rtl/trace/accumulator.sv
+    - upstream/rtl/trace/cross_connect.sv
+    - upstream/rtl/trace/frame_filler.sv
+    - upstream/rtl/trace/packetizer.sv
+    - upstream/rtl/trace/tnif.sv
+    - upstream/rtl/trace/trace_axi_master.sv
+    - upstream/rtl/trace/trace_network.sv
+    - upstream/rtl/trace/trace_sink.sv
+    - upstream/rtl/trace/trace_mem_sink.sv
+    - upstream/rtl/trace/trace_mem.sv
+    - upstream/rtl/trace/trace_funnel.sv
+    - upstream/rtl/trace/trace_top.sv
+    - upstream/rtl/trace/trace_wrapper.sv
+    - upstream/rtl/mmrs.sv
+    - upstream/rtl/mux_sel.sv
+    - upstream/rtl/apb2mmr.sv
+    - upstream/rtl/mmr_read_delay.sv
+    - upstream/rtl/clk_rst_wrapper.sv
+    - upstream/rtl/cla_wrapper.sv
+    - upstream/rtl/dst_wrapper.sv
+    - upstream/rtl/tnif_wrapper.sv
+    - upstream/rtl/top/dfd_top_cla_dst_apb.sv
