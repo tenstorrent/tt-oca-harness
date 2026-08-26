@@ -155,26 +155,47 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
     mmio_write32(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, 0x7u);
 
     // 2. Write HMAC key to KEY_0..KEY_7 (before enabling HMAC).
-    //    Key bytes are written in little-endian word order.
-    //    Unused bytes are zero-padded.
+    //
+    // The KEY registers are BIG-ENDIAN: key byte 0 goes in KEY_0[31:24]. That is
+    // what CFG.key_swap = 0 (its reset value) selects; setting key_swap would
+    // ask for the little-endian order instead. This previously packed the bytes
+    // little-endian, which byte-reverses the key within every word and derives a
+    // completely different HMAC. Unused trailing bytes are zero-padded, which is
+    // also what the IP wants for a key shorter than the programmed key_length.
     for (int w = 0; w < 8; ++w) {
         uint32_t word = 0;
         for (int b = 0; b < 4; ++b) {
             uint32_t idx = (uint32_t)(w * 4 + b);
             if (idx < key_len) {
-                word |= (uint32_t)key[idx] << (b * 8);
+                word |= (uint32_t)key[idx] << (24 - b * 8);
             }
         }
         mmio_write32(OCH_SEP_TOP_HMAC_KEY_BASE_ADDR(0) + (uint32_t)(w * 4), word);
     }
 
     // 3. Configure: HMAC + SHA-256 mode.
+    //
+    // key_length is REQUIRED in HMAC mode and is a 6-bit one-hot field, not a
+    // byte count (hmac.rdl:138-153). Its reset value is Key_None (0x20), and the
+    // IP blocks the start and raises hmac_err when HMAC is triggered with
+    // Key_None -- so leaving it at zero, as this driver previously did, makes
+    // every HMAC operation fail and read back 0xFFFFFFFF digests. Only the
+    // keyed path is affected, which is why sha256() worked and this did not:
+    // nothing exercised hmac_sha256() until the OCA payload KDF.
+    uint32_t key_length_field;
+    if (key_len <= 16u) {
+        key_length_field = 0x01u;        // Key_128
+    } else {
+        key_length_field = 0x02u;        // Key_256
+    }
+
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 1;     // HMAC mode (uses KEY registers)
     cfg.f.sha_en = 1;      // Enable SHA engine
     cfg.f.endian_swap = 0; // Little-endian input
     cfg.f.digest_swap = 0; // No digest byte swap
     cfg.f.digest_size = 1; // SHA2-256
+    cfg.f.key_length = key_length_field;
     mmio_write32(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // 4. Start HMAC operation.
