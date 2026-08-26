@@ -108,18 +108,20 @@ WRITE_SAFE_PREFIXES = (
 #
 # The pick is seed-selected only where the block has more than one candidate.
 # Measured against the current export: SECURE_DMA 14, SPI_CONTROLLER 4,
-# WDT_TIMER 4 vary with the seed; HMAC, KMAC, OTBN and both mailboxes have a
-# single candidate, so their pick is fixed and reseeding does not widen it.
+# WDT_TIMER 4 vary with the seed; AES, HMAC, KMAC, OTBN and both mailboxes
+# have a single candidate, so their pick is fixed and reseeding does not
+# widen it.
 # Four of those fixed picks are INTR_ENABLE, which is the generated interrupt
 # shim rather than IP-owned storage -- a decode/storage proof for the block,
 # not evidence about the engine. Say so rather than letting the log imply the
 # whole set is randomized.
 #
-# AES is deliberately absent: every AES export-RW register is key material, a
-# datapath port, or shadowed control, so it has no plain-storage candidate.
-# The RuntimeError below is the guard that keeps that honest -- if a future
-# export adds one, add AES back here rather than relaxing a deny reason.
+# AES's only candidate is CTRL_AUX_SHADOWED. touch_write detects the SHADOWED
+# name and issues the dual write the register requires, so it is a valid
+# storage touch; the deny list covers CTRL_SHADOWED / CFG_SHADOWED because
+# those are the shadowed *control* registers whose value has side effects.
 TOUCH_BLOCKS: tuple[str, ...] = (
+    "AES",
     "HMAC",
     "KMAC",
     "OTBN",
@@ -148,7 +150,6 @@ _TOUCH_DENY_SUBSTR: dict[str, str] = {
     "FATAL_ALERT": "W1C status",
     "CTRL_SHADOWED": "shadowed control",
     "CFG_SHADOWED": "shadowed control",
-    "CTRL_AUX_SHADOWED": "shadowed control",
     "CTRL_GCM": "multi-field encoding",
     "REGWEN": "sticky lock",
     "CONTROL": "trigger",
