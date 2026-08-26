@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smc_security_demote_pm_test - SEP=0 demote / lc_state observe-only.
+"""smu_smc_security_demote_pm_test - SEP=0 demote / lc_state observe-only.
 
 Bare smu (SEP=0) ties lcc_demote_state_*_o to 0 and drives lc_state=0xf0.
 
@@ -34,7 +34,7 @@ def _sample(signal, name: str) -> int:
 
 
 @pyuvm.test()
-class smc_security_demote_pm_test(smu_base_test):
+class smu_smc_security_demote_pm_test(smu_base_test):
     """SEP=0 demote outputs + default lc_state observe."""
 
     async def run_scenario(self) -> None:
@@ -79,5 +79,5 @@ class smc_security_demote_pm_test(smu_base_test):
         )
 
         self.logger.info(
-            "smc_security_demote_pm_test: demote tie-off + lc_state=0xf0 OK"
+            "smu_smc_security_demote_pm_test: demote tie-off + lc_state=0xf0 OK"
         )

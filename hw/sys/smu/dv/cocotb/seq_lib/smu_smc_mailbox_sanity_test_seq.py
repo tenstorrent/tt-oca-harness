@@ -38,7 +38,7 @@ POLL = 128
 MASK32 = 0xFFFF_FFFF
 
 
-class smc_mailbox_sanity_test_seq:
+class smu_smc_mailbox_sanity_test_seq:
     """J2A mailbox outbound-0 STATUS + IRQEN R/W."""
 
     def __init__(self, test) -> None:
