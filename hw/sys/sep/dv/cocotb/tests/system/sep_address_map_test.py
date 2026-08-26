@@ -26,6 +26,16 @@ class sep_address_map_test(sep_base_test):
         await self.bring_up_no_cpu()
         seq = sep_address_map_seq("addr_map_seq")
         await self.start_seq(seq)
+        # The scoreboard accumulates response/value errors and defers its raise
+        # to check_phase. Without this gate every CHK-* PASS line below prints
+        # on a run that has already failed, and a PASS token in a kept log must
+        # not survive a failure. The counters below are accesses issued, so
+        # they are only evidence once the scoreboard is clean.
+        sb_errors = self.env.scoreboard.errors
+        assert not sb_errors, (
+            f"CHK-ADDRMAP FAIL: {len(sb_errors)} scoreboard error(s) before "
+            f"the PASS summary; first: {sb_errors[0]}"
+        )
         self.logger.info(
             "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable as 0x%08x_%08x",
             seq.ref_counter_high,

@@ -15,9 +15,10 @@ rather than stripping ``[2:0]`` from the mask. Skipping those 32
 registers is a coverage hole, not a fix.
 
 Full complement bash stays on no-side-effect blocks. ``TOUCH_BLOCKS``
-picks one seed-selected RW register per other major IP from the export
-candidate list, writes a seed-derived ``x``, and checks
-``(readback & mask) == (x & mask)`` before restoring reset.
+picks one RW register per other major IP from the export candidate list,
+writes a seed-derived ``x``, and checks ``(readback & mask) == (x & mask)``
+before restoring reset. The pick is seed-selected only where the block
+offers more than one candidate -- see the TOUCH_BLOCKS comment.
 """
 
 from __future__ import annotations
@@ -101,11 +102,24 @@ WRITE_SAFE_PREFIXES = (
     "INBOUND_FILTER_CTRL_",
 )
 
-# One seed-selected RW storage touch per IP outside WRITE_SAFE_PREFIXES.
-# Candidates and addr/reset/mask come from the export; names here are only
-# which blocks must be visited. No GO / key / lock / fabric remap / SW reset.
+# One RW storage touch per IP outside WRITE_SAFE_PREFIXES. Candidates and
+# addr/reset/mask come from the export; names here are only which blocks must
+# be visited. No GO / key / lock / fabric remap / SW reset.
+#
+# The pick is seed-selected only where the block has more than one candidate.
+# Measured against the current export: SECURE_DMA 14, SPI_CONTROLLER 4,
+# WDT_TIMER 4 vary with the seed; HMAC, KMAC, OTBN and both mailboxes have a
+# single candidate, so their pick is fixed and reseeding does not widen it.
+# Four of those fixed picks are INTR_ENABLE, which is the generated interrupt
+# shim rather than IP-owned storage -- a decode/storage proof for the block,
+# not evidence about the engine. Say so rather than letting the log imply the
+# whole set is randomized.
+#
+# AES is deliberately absent: every AES export-RW register is key material, a
+# datapath port, or shadowed control, so it has no plain-storage candidate.
+# The RuntimeError below is the guard that keeps that honest -- if a future
+# export adds one, add AES back here rather than relaxing a deny reason.
 TOUCH_BLOCKS: tuple[str, ...] = (
-    "AES",
     "HMAC",
     "KMAC",
     "OTBN",
@@ -118,51 +132,52 @@ TOUCH_BLOCKS: tuple[str, ...] = (
 
 # Not usable as a plain storage RW touch (WO, sticky, trigger, W1C status,
 # or multi-field encodings that reject a random mask-legal value).
-_TOUCH_DENY_SUBSTR: tuple[str, ...] = (
-    "KEY",
-    "IV_",
-    "DATA_IN",
-    "DATA_OUT",
-    "DIGEST",
-    "WIPE",
-    "MSG_LENGTH",
-    "PREFIX_",
-    "ENTROPY_SEED",
-    "LOAD_CHECKSUM",
-    "INSN_CNT",
-    "ERR_BITS",
-    "FATAL_ALERT",
-    "CTRL_SHADOWED",
-    "CFG_SHADOWED",
-    "CTRL_GCM",
-    "REGWEN",
-    "CONTROL",
-    "WDOG_CTRL",
-    "WKUP_CTRL",
-    "SW_RESET",
-    "CLEAR_INTR",
-)
+_TOUCH_DENY_SUBSTR: dict[str, str] = {
+    "KEY": "key material",
+    "IV_": "key material",
+    "DATA_IN": "datapath port",
+    "DATA_OUT": "datapath port",
+    "DIGEST": "hw-produced result",
+    "WIPE": "trigger",
+    "MSG_LENGTH": "engine-updated",
+    "PREFIX_": "multi-field encoding",
+    "ENTROPY_SEED": "key material",
+    "LOAD_CHECKSUM": "hw-produced result",
+    "INSN_CNT": "engine-updated",
+    "ERR_BITS": "W1C status",
+    "FATAL_ALERT": "W1C status",
+    "CTRL_SHADOWED": "shadowed control",
+    "CFG_SHADOWED": "shadowed control",
+    "CTRL_AUX_SHADOWED": "shadowed control",
+    "CTRL_GCM": "multi-field encoding",
+    "REGWEN": "sticky lock",
+    "CONTROL": "trigger",
+    "WDOG_CTRL": "arms the watchdog",
+    "WKUP_CTRL": "arms the wakeup timer",
+    "SW_RESET": "trigger",
+    "CLEAR_INTR": "trigger",
+}
 
 # Exact names: W1C / status / enable-ish multi-field CSRs that are still
 # export-rw but do not behave as plain storage under a random ``x``.
-_TOUCH_DENY_NAME: frozenset[str] = frozenset({
-    "CTRL",
-    "CFG",
-    "INTR_STATE",
-    "IRQS",
-    "IRQP",
-    "ERR_CODE",
-    "ERROR_CODE",
-    "WKUP_CAUSE",
-    "RANGE_VALID",
+_TOUCH_DENY_NAME: dict[str, str] = {
+    "CTRL": "trigger",
+    "CFG": "multi-field encoding",
+    "INTR_STATE": "W1C status",
+    "IRQS": "W1C status",
+    "IRQP": "W1C status",
+    "ERR_CODE": "W1C status",
+    "ERROR_CODE": "W1C status",
+    "WKUP_CAUSE": "W1C status",
+    "RANGE_VALID": "arms the range",
     # Thresholds clamp to FIFO depth; export mask is wider than storage.
-    "RIRQT",
-    "WIRQT",
+    "RIRQT": "clamped to FIFO depth",
+    "WIRQT": "clamped to FIFO depth",
     # Entropy CSRs need KMAC CFG / runtime; not plain POR storage.
-    "ENTROPY_PERIOD",
-    "ENTROPY_REFRESH_HASH_CNT",
-    "ENTROPY_REFRESH_THRESHOLD_SHADOWED",
-})
+    "ENTROPY_PERIOD": "needs KMAC cfg",
+    "ENTROPY_REFRESH_HASH_CNT": "needs KMAC cfg",
+    "ENTROPY_REFRESH_THRESHOLD_SHADOWED": "needs KMAC cfg",
+}
 
 # Remap / outbound-filter writes are reset-checked only: an unprogrammed
 # alias region still rewrites a live beat.
@@ -189,8 +204,17 @@ def write_mask(info: RegInfo) -> int:
 def inbound_addr_expected(name: str, written: int) -> int:
     """Readback after a solo START/END write with the peer at reset.
 
-    Matches ``axi_filter_wrap`` allow_burst=0: when START and END share a
+    Models ``axi_filter_wrap`` allow_burst=0: when START and END share a
     beat, START[2:0] clears and END[2:0] sets; otherwise the write lands.
+
+    This is an RTL-behaviour lock, not a specification check. The same-beat
+    widen appears in no architecture document -- neither
+    ``hw/sys/sep/doc/fabric.adoc`` nor ``hw/sys/sep/doc/memory_map.adoc``
+    describes it -- so this compare pins what the RTL does today and fails
+    loudly if it changes. It cannot tell a correct widen from a window
+    over-grant, because nothing states which is intended. The sibling
+    allow_burst=1 4 KB widen is the same open question and is not modelled
+    here. Resolve the specification before treating either as proven.
     """
     written &= 0xFFFF_FFFF
     peer = _INBOUND_PEER_RESET[name]
@@ -208,17 +232,27 @@ def _is_inbound_addr(info: RegInfo) -> bool:
     )
 
 
-def touch_candidate(info: RegInfo) -> bool:
-    """Export RW storage that can take a mask-legal write + readback."""
-    if reset_reason(info) is not None:
-        return False
+def touch_reason(info: RegInfo) -> str | None:
+    """Why this register is not a plain storage touch, or None if it is.
+
+    Mirrors reset_reason/write_reason: every exclusion carries a reason the
+    cfg tallies, so the summary accounts for the whole export.
+    """
+    why = reset_reason(info)
+    if why is not None:
+        return why
     if info.mask == 0:
-        return False
-    if _suffix_reason(info.name) is not None:
-        return False
-    if info.name in _TOUCH_DENY_NAME:
-        return False
-    return not any(s in info.name for s in _TOUCH_DENY_SUBSTR)
+        return "no software-usable field"
+    why = _suffix_reason(info.name)
+    if why is not None:
+        return why
+    why = _TOUCH_DENY_NAME.get(info.name)
+    if why is not None:
+        return why
+    for frag, reason in _TOUCH_DENY_SUBSTR.items():
+        if frag in info.name:
+            return reason
+    return None
 
 
 def touch_write_value(before: int, mask: int, rng: SepSeededRng) -> int:
@@ -328,9 +362,13 @@ class SepRegBitBashCfg:
             )
 
         by_block: dict[str, list[RegInfo]] = defaultdict(list)
+        self.touch_skipped: dict[str, int] = defaultdict(int)
         for info in inventory:
-            if touch_candidate(info):
+            why_t = touch_reason(info)
+            if why_t is None:
                 by_block[info.block].append(info)
+            else:
+                self.touch_skipped[why_t] += 1
         rng_touch = SepSeededRng(seed ^ 0xC0FFEE)
         touch: list[tuple[RegInfo, int]] = []
         for block in TOUCH_BLOCKS:
@@ -348,6 +386,7 @@ class SepRegBitBashCfg:
     def summary(self) -> str:
         skip_r = " ".join(f"{k}={v}" for k, v in sorted(self.reset_skipped.items()))
         skip_w = " ".join(f"{k}={v}" for k, v in sorted(self.write_skipped.items()))
+        skip_t = " ".join(f"{k}={v}" for k, v in sorted(self.touch_skipped.items()))
         touches = ",".join(
             f"{i.block}.{i.name}=0x{x:x}/m0x{i.mask:x}" for i, x in self.touch_regs
         )
@@ -356,7 +395,8 @@ class SepRegBitBashCfg:
             f"reset={len(self.reset_regs)}/{len(self.reset_blocks)}blocks "
             f"write={len(self.write_regs)}/{len(self.write_blocks)}blocks "
             f"touch={len(self.touch_regs)}[{touches}] "
-            f"reset_skip=[{skip_r}] write_skip=[{skip_w}]"
+            f"reset_skip=[{skip_r}] write_skip=[{skip_w}] "
+            f"touch_skip=[{skip_t}]"
         )
 
 
@@ -370,6 +410,17 @@ class SepRegBitBash:
         self.write_ok = 0
         self.lands_ok = 0
         self.touch_ok = 0
+        # Falsifiable-only tallies, reported separately from the register
+        # count. A register whose software-usable mask is all ones has no
+        # out-of-mask bits, so its CHK-RO compare cannot fail; one with
+        # reserved=0 gives CHK-RESERVED nothing to catch. Counting those into
+        # the PASS line would advertise evidence the sweep never produced.
+        self.ro_ok = 0
+        self.reserved_ok = 0
+        # Inbound START/END prove the same-beat wrap model plus mask[31:3];
+        # bits [2:0] are pinned by that model compare, not by the move, so
+        # they are not full-mask CHK-WRITE-LANDS evidence.
+        self.lands_upper_ok = 0
 
     async def _rd(self, addr: int, *, name: str) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
@@ -434,7 +485,7 @@ class SepRegBitBash:
                     f"mask 0x{upper:08x} moved 0x{moved_upper:08x} "
                     f"(before 0x{entry:08x} after 0x{after:08x})"
                 )
-                self.lands_ok += 1
+                self.lands_upper_ok += 1
                 return after
             moved = (entry ^ after) & 0xFFFF_FFFF
             leaked = moved & ~mask
@@ -443,6 +494,8 @@ class SepRegBitBash:
                 f"0x{mask:08x} moved 0x{leaked:08x} "
                 f"(before 0x{entry:08x} after 0x{after:08x})"
             )
+            if (~mask) & 0xFFFF_FFFF:
+                self.ro_ok += 1
             # TIMEOUT_* placeholders: mask=0 and mask_all=1, so the lone
             # reserved bit is real storage.
             if mask != 0 and mask == info.mask:
@@ -451,6 +504,8 @@ class SepRegBitBash:
                     f"CHK-RESERVED FAIL: {info.block}.{info.name} reserved "
                     f"0x{info.reserved:08x} read 0x{reserved:08x}"
                 )
+                if info.reserved:
+                    self.reserved_ok += 1
             if mask != 0:
                 landed = moved & mask
                 assert landed == mask, (

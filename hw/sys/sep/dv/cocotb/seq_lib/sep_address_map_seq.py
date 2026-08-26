@@ -134,6 +134,13 @@ WRITE_ONLY = [
 #
 # Blocks whose address AND reset value are exported take both from the header;
 # ABR NAME and the entropy-pool STATUS come from their owning seq modules.
+# The remaining rows still carry a literal address. Which CSR is "the one safe
+# readable CSR" is a DV choice the export cannot make, but once chosen the
+# address is exported and could be derived the way the OTBN/HMAC/KMAC rows
+# already do. AGENTS.md prefers source-derived, so these literals are a
+# to-be-converted holdover, not a justified exception.
+# ABR NAME0 is regex-scraped from the ABR RTL params by its owning seq, so that
+# row proves decode and plumbing rather than a specified value.
 _INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 _INFILT0_CFG_RESET = next(
     info.reset

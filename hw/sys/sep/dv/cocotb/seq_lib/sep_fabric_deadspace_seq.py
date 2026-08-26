@@ -219,8 +219,16 @@ class SepDeadspaceCfg:
         ]
         rng = SepSeededRng(seed)
         taken = {(p.window, p.addr, p.op) for p in probes}
+        # Windows that could not supply their full random quota within the spin
+        # bound. Probe count is the coverage claim, so a shortfall is recorded
+        # and logged rather than silently absorbed into a smaller probe set.
+        self.short_windows: dict[str, tuple[int, int]] = {}
         for win in self.windows.values():
             if win.dead_lo >= win.dead_hi:
+                # No dead span to probe. Recorded rather than skipped so a
+                # window that loses its span to a map change shows up as 0/N
+                # instead of quietly leaving the probe set.
+                self.short_windows[win.name] = (0, n_random)
                 continue
             added = 0
             spins = 0
@@ -236,14 +244,21 @@ class SepDeadspaceCfg:
                 taken.add(key)
                 probes.append(DeadProbe(win.name, addr, op, False))
                 added += 1
+            if added < n_random:
+                self.short_windows[win.name] = (added, n_random)
         self.probes = tuple(probes)
 
     def summary(self) -> str:
         n_anchor = sum(1 for p in self.probes if p.anchor)
         n_rand = len(self.probes) - n_anchor
+        short = " ".join(
+            f"{name}={got}/{want}"
+            for name, (got, want) in sorted(self.short_windows.items())
+        )
         return (
             f"seed={self.seed} probes={len(self.probes)} "
-            f"anchors={n_anchor} random={n_rand} windows={len(self.windows)}"
+            f"anchors={n_anchor} random={n_rand} windows={len(self.windows)} "
+            f"short=[{short}]"
         )
 
 

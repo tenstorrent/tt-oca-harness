@@ -3406,7 +3406,7 @@ both lock flavours of one seed-selected spare.
 . `SepRegBitBashCfg` is the single source of truth for both the walk and the skip reasons.
 . Write-lands is the anti-vacuity control: a complement write must move exactly the software-usable mask.
 . Inbound-filter START/END stay in the write sweep under the full export mask; readback is checked against the same-beat wrap model with the peer at reset (`END_ADDR` reset `0x7`).
-. The inventory is seed-stable: 417 reset, 51 write (16 scratch + 3 `SEP_CPU_CTRL` + 32 inbound address regs), plus 9 `TOUCH_BLOCKS` IP storage proofs (seed-selected RW per AES/HMAC/KMAC/OTBN/DMA/SPI/WDT/ mailbox; write ``x``, ``(read & mask) == (x & mask)``).
+. The inventory is seed-stable: 417 reset, 51 write (16 scratch + 3 `SEP_CPU_CTRL` + 32 inbound address regs), plus 8 `TOUCH_BLOCKS` IP storage proofs (HMAC/KMAC/OTBN/DMA/SPI/WDT and both mailboxes; write ``x``, ``(read & mask) == (x & mask)``). AES carries no plain-storage export RW register -- every one is key material, a datapath port, shadowed control, a trigger, a sticky lock or hw-driven -- so it is not in the set.
 
 *Checkers*:
 
@@ -3416,15 +3416,15 @@ both lock flavours of one seed-selected spare.
 |CHK-RESET
 |Every reset-eligible register reads its exported reset value.
 |CHK-WRITE-LANDS
-|A complement write moves exactly the software-usable mask bits.
+|A complement write moves exactly the software-usable mask bits: 19 registers over the full mask, plus 32 inbound START/END over ``mask[31:3]`` whose ``[2:0]`` are pinned by the same-beat wrap model instead.
 |CHK-RO
-|Bits outside the mask stay unchanged across the write bash.
+|Bits outside the mask stay unchanged across the write bash. Counted only where the register has out-of-mask bits: 48 of the 51 have an all-ones mask, so the compare cannot fail there and is not claimed. Falsifiable on 3 (`PKA_CTRL`, `RAS_BANK_INFO`, `SEP_NMI_VEC`).
 |CHK-RESERVED
-|Reserved bits (`mask_all` minus `mask`) read back 0 on every write-bash register that has a software-usable field.
+|Reserved bits (`mask_all` minus `mask`) read back 0. Counted only where the register has a non-zero reserved field: 1 of the 51 (`SEP_NMI_VEC`, reserved `0x1`).
 |CHK-BLOCK-TOUCH
-|One seed-selected export RW storage register per other major IP (`TOUCH_BLOCKS`): write seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. Candidates exclude W1C/status/enable/key/GO.
+|One export RW storage register per other major IP (`TOUCH_BLOCKS`): write seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. Candidates exclude W1C/status/enable/key/GO. The register is seed-selected only where the block offers more than one candidate (DMA 14, SPI 4, WDT 4); HMAC, KMAC, OTBN and both mailboxes have exactly one, so those picks are fixed. Four of the fixed picks are `INTR_ENABLE`, the generated interrupt shim -- block decode and storage evidence, not evidence about the engine.
 |CHK-RANDCFG
-|The full reset set, write-safe set, and TOUCH_BLOCKS set ran in one invocation; block order, ones-first, and per-IP touch pick/value come from the seed.
+|The full reset set, write-safe set, and TOUCH_BLOCKS set ran in one invocation; block order, ones-first, and the touch value come from the seed, as does the touch pick in the three blocks with more than one candidate.
 |===
 
 '''''

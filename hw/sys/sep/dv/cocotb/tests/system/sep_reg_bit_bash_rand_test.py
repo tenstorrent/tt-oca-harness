@@ -12,9 +12,13 @@ full export mask and compare readback to the same-beat wrap model
 (peer at reset). Remap and outbound-filter banks are reset-checked
 only: an unprogrammed alias region still rewrites a live beat.
 
-BLOCK_TOUCH adds one seed-selected frontdoor RW storage proof per other
-major IP from the export candidate list: write seed-derived ``x``, check
+BLOCK_TOUCH adds one frontdoor RW storage proof per other major IP from
+the export candidate list: write seed-derived ``x``, check
 ``(readback & mask) == (x & mask)``, restore reset. No GO/key/remap.
+Which register is picked varies with the seed only where the block has
+more than one candidate; several blocks have exactly one, and four of
+those are INTR_ENABLE -- the generated interrupt shim, so those rows are
+block decode/storage evidence, not evidence about the engine.
 """
 
 from __future__ import annotations
@@ -64,15 +68,18 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
                 f"({bash.lands_ok} lands, {bash.write_ok} restore)")
         self.logger.info(
             "CHK-WRITE-LANDS PASS: %d complementary write(s) moved exactly "
-            "the software-usable mask",
-            bash.lands_ok)
+            "the software-usable mask, plus %d inbound START/END that moved "
+            "mask[31:3] and matched the same-beat wrap model",
+            bash.lands_ok, bash.lands_upper_ok)
         self.logger.info(
-            "CHK-RO PASS: %d write-bash register(s) left bits outside mask "
-            "unchanged",
-            bash.write_ok)
+            "CHK-RO PASS: %d write-bash register(s) with out-of-mask bits "
+            "left them unchanged (registers whose mask is all ones carry no "
+            "out-of-mask bits and are not counted)",
+            bash.ro_ok)
         self.logger.info(
-            "CHK-RESERVED PASS: reserved bits read back 0 on every "
-            "write-bash register with a software-usable field")
+            "CHK-RESERVED PASS: %d write-bash register(s) with a non-zero "
+            "reserved field read those bits back as 0",
+            bash.reserved_ok)
 
         touch_fails: list[str] = []
         for info, x in cfg.touch_regs:

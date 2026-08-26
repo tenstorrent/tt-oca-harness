@@ -291,7 +291,7 @@ args = ["+skip_fuse_sense"]
 # CSR reset / RW / RO / reserved sweep over the generated SystemRDL export.
 # RANDCFG: block order and complement-vs-ones order from the run seed.
 # Every reset-eligible register and every write-safe register is walked
-# in one invocation; TOUCH_BLOCKS picks one seed-selected storage RW per
+# in one invocation; TOUCH_BLOCKS picks one storage RW per
 # other major IP (write x, compare with mask, restore).
 # no_cpu; +skip_fuse_sense (CSR storage, no OTP dep).
 name = "sep_reg_bit_bash_rand_test"
