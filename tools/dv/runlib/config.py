@@ -1505,6 +1505,24 @@ def _validate_run_mode_references(flow: Flow, tests: dict[str, TestEntry]) -> No
         validate_run_mode_request(flow.raw, str(default), f"{flow.path}: [defaults].run_mode")
 
 
+def _validate_group_members(
+    tests: dict[str, TestEntry], groups: dict[str, list[str]], group_sources: dict[str, Path]
+) -> None:
+    """Every group member must name a test defined after include expansion.
+
+    An unresolved member would otherwise survive selection and surface at runtime as a
+    KeyError when the plan indexes the catalog. Only existence is checked: a test may be
+    a member of any number of groups, and a group may list tests declared in other files.
+    """
+    for name, members in groups.items():
+        missing = [member for member in members if member not in tests]
+        if missing:
+            raise ConfigError(
+                f"{group_sources[name]}: group `{name}` references missing test(s): "
+                f"{', '.join(missing)}"
+            )
+
+
 def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
     testlist = flow.raw.get("testlist", {})
     if isinstance(testlist, dict) and testlist.get("path"):
@@ -1514,12 +1532,15 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
             # The clean contract says testlist paths are DUT-local. The sandbox configs still use
             # repo-relative paths, so accept both while preferring the existing repo-relative form.
             path = flow.path.parent / raw_path
-        tests, groups = _merge_testlist_data(load_toml(path), path, path.parent, root, [path])
+        tests, groups, group_sources = _merge_testlist_data(
+            load_toml(path), path, path.parent, root, [path]
+        )
         _resolve_catalog_frameworks(flow, tests, path)
         _validate_run_mode_references(flow, tests)
+        _validate_group_members(tests, groups, group_sources)
         return TestCatalog(path=path, tests=tests, groups=groups)
     # No separate testlist file: read inline [[tests]]/[[groups]] from the flow TOML.
-    tests, groups = _merge_testlist_data(
+    tests, groups, group_sources = _merge_testlist_data(
         flow.raw,
         flow.path,
         flow.path.parent,
@@ -1529,10 +1550,11 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
     )
     _resolve_catalog_frameworks(flow, tests, flow.path)
     _validate_run_mode_references(flow, tests)
+    _validate_group_members(tests, groups, group_sources)
     return TestCatalog(path=None, tests=tests, groups=groups)
 
 
-def _expand_testlist(path: Path, root: Path, stack: list[Path]) -> tuple[dict, dict]:
+def _expand_testlist(path: Path, root: Path, stack: list[Path]) -> tuple[dict, dict, dict]:
     """Load one testlist file and recursively expand its includes, detecting cycles."""
     resolved = path.resolve()
     for seen in stack:
@@ -1553,14 +1575,16 @@ def _merge_testlist_data(
     stack: list[Path],
     *,
     validate_testlist_keys: bool = True,
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, dict]:
     """Merge included testlists first, then this file's own tests/groups.
 
     Include paths are resolved relative to the including file (``base_dir``); duplicate test or
-    group names after expansion are validation errors.
+    group names after expansion are validation errors. The third returned dict maps each group
+    to the file that declared it, so cross-reference errors name the file to edit.
     """
     tests: dict[str, TestEntry] = {}
     groups: dict[str, list[str]] = {}
+    group_sources: dict[str, Path] = {}
     if validate_testlist_keys:
         validate_allowed_keys(data, TESTLIST_KEYS, str(source))
 
@@ -1573,7 +1597,7 @@ def _merge_testlist_data(
             raise ConfigError(
                 f"{source}: include `{include}` resolves outside the repository root"
             )
-        inc_tests, inc_groups = _expand_testlist(inc_path, root, stack)
+        inc_tests, inc_groups, inc_sources = _expand_testlist(inc_path, root, stack)
         for name, test in inc_tests.items():
             if name in tests:
                 raise ConfigError(f"{source}: duplicate test `{name}` after include expansion")
@@ -1582,6 +1606,7 @@ def _merge_testlist_data(
             if name in groups:
                 raise ConfigError(f"{source}: duplicate group `{name}` after include expansion")
             groups[name] = members
+            group_sources[name] = inc_sources.get(name, inc_path)
 
     for entry in data.get("tests", []):
         if not isinstance(entry, dict):
@@ -1610,8 +1635,9 @@ def _merge_testlist_data(
                 f"expected_count is {expected}; update the group or the count"
             )
         groups[name] = members
+        group_sources[name] = source
 
-    return tests, groups
+    return tests, groups, group_sources
 
 
 def flow_stages(flow: Flow) -> dict[str, Any]:

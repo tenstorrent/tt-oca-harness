@@ -1452,6 +1452,13 @@ def expand_items(
     for name in requested:
         if name in catalog.groups:
             members = catalog.groups[name]
+            # Catalog loading already rejects unresolved members; this keeps directly
+            # constructed catalogs on the same contract instead of a downstream KeyError.
+            missing = [member for member in members if member not in catalog.tests]
+            if missing:
+                raise ConfigError(
+                    f"group `{name}` references missing test(s): {', '.join(missing)}"
+                )
         elif name in catalog.tests:
             members = [name]
         else:
@@ -1616,7 +1623,9 @@ def target_plan(
     ordered: list[str] = []
     seen: set[str] = set()
     for item in items:
-        test = catalog.tests[item]
+        test = catalog.tests.get(item)
+        if test is None:
+            raise ConfigError(f"selected item `{item}` is not a test in the catalog")
         target = resolved_target_name(sim_cfg, test)
         target_by_item[item] = target
         if target not in seen:
