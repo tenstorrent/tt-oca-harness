@@ -60,12 +60,9 @@ SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL_BASE + 0x150
 # LC_STATE's shadow word (efuse_pkg::SHADOW_IDX_LC_STATE). The OTP word carries the
 # 4-bit raw code in [3:0] and the FSM differential-encodes it.
 #
-# Derived, never written down. This index moved 2 -> 3 when LOCKS_SPARE was inserted
-# ahead of LC_STATE, and every hardcoded copy of it in this environment then pointed
-# at LOCKS_SPARE while still claiming to read the lifecycle state -- which the shadow
-# checkers could not flag, because a wrong-but-self-consistent differential pair looks
-# exactly like a healthy one. Read it out of the generated map so the map is the only
-# place it is stated.
+# Derived, never written down. Read the index out of the generated map so a
+# hardcoded word offset cannot silently point at a neighbour field (a wrong but
+# self-consistent differential pair still looks healthy to a shadow checker).
 LC_WORD_IDX = sym("SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
 LC_RAW_WIDTH = 4
 # efuse_pkg::lc_state_raw_e — only these 7 codes are legal.

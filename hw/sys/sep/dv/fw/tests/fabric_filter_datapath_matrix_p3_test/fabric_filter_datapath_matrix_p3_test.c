@@ -4,9 +4,7 @@
 /*
  * fabric_filter_datapath_matrix_p3_test
  *
- * Goal: traffic_filter 88.11% -> 90%+, axi_filter_wrap 64.11% -> 90%+
  * Strategy: Targeted pass/block traffic tests covering all datapath combinations
- * Priority: first pass (medium difficulty)
  *
  * Focus on full datapath-matrix testing of the filter module
  */
@@ -207,7 +205,6 @@ static int test_burst_allowed_blocked_scenarios(void) {
 
 int main(void) {
     printf("Filter Datapath Matrix Test\n");
-    printf("Goals: traffic_filter 88.11%% -> 90%%+, axi_filter_wrap 64.11%% -> 90%%+\n");
     printf("Strategy: Targeted pass/block traffic tests covering all datapath combinations\n\n");
 
     // Initialize fabric system
@@ -238,8 +235,6 @@ int main(void) {
     }
 
     printf("\n=== FILTER DATAPATH MATRIX TEST PASSED ===\n");
-    printf("Expected improvement: traffic_filter 88.11%% -> 90%%+, axi_filter_wrap 64.11%% -> "
-           "90%%+\n");
 
     test_pass("fabric_filter_datapath_matrix_p3_test");
     return TEST_PASS;

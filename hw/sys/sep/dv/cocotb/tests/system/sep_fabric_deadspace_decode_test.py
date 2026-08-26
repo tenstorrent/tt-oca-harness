@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Intra-block dead-space decode. Hard FAILED until RTL refuses the wrap.
 
-no_cpu / +skip_fuse_sense. RANDCFG: known-bad offsets from the RTL
-question (tenstorrent/tt-oca-harness#228) every seed, plus seed-selected
-dead offsets inside each block window.
+no_cpu / +skip_fuse_sense. RANDCFG: known wrap-offset anchors every seed,
+plus seed-selected dead offsets inside each block window.
 
 A write or read past a block's allocated size must be refused (DECERR
 or SLVERR; the specification does not mandate which), and no live
