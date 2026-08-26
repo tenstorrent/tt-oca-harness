@@ -3,9 +3,9 @@
 //
 // SMC OSS TB top for the native cocotb / PyUVM flow.
 //
-// Instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
-// smc_cpu_mem_integration). File name is tb_top.sv / module smc_uvm_top so
-// `--dut smc_wrapper` + smc_wrapper_sim_cfg.toml is the single launch entry.
+// Instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration). File name is
+// tb_top.sv / module smc_uvm_top so `--dut smc_wrapper` +
+// smc_wrapper_sim_cfg.toml is the single launch entry.
 //
 // Cocotb port surface keeps the SmcEnv catalog pin names. Hierarchical XMRs
 // into the core use u_dut.u_smc.*.
@@ -13,7 +13,9 @@
 // PLL/PVT/adopter-extension/GPIO-ctrl AXI-Lite macros and eFuse live inside
 // smc_ip_integration. DTP CSR and I3C DAT/DCT remain smc_wrapper boundary
 // ports (resp/mem idle — no TB placeholder; smc_wrapper-only DTP CSR gap —
-// SMU wires DTP internally). CPU ROM/scratch/L1$ via smc_cpu_mem_integration.
+// SMU wires DTP internally). CPU ROM/scratch/L1$ are smc_wrapper passthrough
+// ports, attached here to the smc_cpu_mem_integration reference model
+// (hw/sys/smc/dv/models/), matching the SMU TBs.
 //
 // Additive elaboration-alias outputs (dut_present_o / powergood_o / ...) sit
 // at the end of the port list for the thin elaboration smoke.
@@ -1121,13 +1123,68 @@ module smc_uvm_top
     assign ej_axi_req.r_ready  = ej_axi_rready;
 
     // ------------------------------------------------------------------
-    // CPU ROM/scratch/L1$ are absorbed into smc_wrapper
-    // (u_smc_cpu_mem_integration -> OCAH4CORECluster_mems / prim_*).
-    // Observability / ECC inject map to DUT ports; images backdoor into
-    // prim_*.mem inside smc_cpu_mem_integration (SEP posture).
+    // CPU ROM/scratch/L1$ reference model. smc_wrapper passes the macro
+    // interfaces straight through (same posture as smu_wrapper), so the
+    // model is attached here in the TB -- not inside the DUT. Images
+    // backdoor into prim_*.mem inside the model (SEP posture).
     // ------------------------------------------------------------------
+    chipyard_4core_mem_pkg::rom_req_t            cpu_rom_req;
+    chipyard_4core_mem_pkg::rom_rsp_t            cpu_rom_rsp;
+    chipyard_4core_mem_pkg::scratch_ram_req_t    cpu_scratch_ram_req
+        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+    chipyard_4core_mem_pkg::scratch_ram_rsp_t    cpu_scratch_ram_rsp
+        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_icache_tag_req_t  cpu_l1_icache_tag_req
+        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  cpu_l1_icache_tag_rsp
+        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_icache_data_req_t cpu_l1_icache_data_req
+        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_icache_data_rsp_t cpu_l1_icache_data_rsp
+        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_dcache_tag_req_t  cpu_l1_dcache_tag_req
+        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  cpu_l1_dcache_tag_rsp
+        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_dcache_data_req_t cpu_l1_dcache_data_req
+        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+    chipyard_4core_mem_pkg::l1_dcache_data_rsp_t cpu_l1_dcache_data_rsp
+        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+
     logic        cpu_scratch0_inject_fire;
     logic [31:0] ecc_inject_fire_count_q;
+
+    // Clock/reset match the smc_wrapper-internal wiring this replaced:
+    // clk_smc_i and the DUT's rst_primary_smc_clk_no.
+    smc_cpu_mem_integration u_smc_cpu_mem (
+        .clk_i  (clk_smc_i),
+        .rst_ni (rst_primary_smc_clk_no),
+
+        .rom_req_i (cpu_rom_req),
+        .rom_rsp_o (cpu_rom_rsp),
+
+        .scratch_ram_req_i (cpu_scratch_ram_req),
+        .scratch_ram_rsp_o (cpu_scratch_ram_rsp),
+
+        .l1_icache_tag_req_i  (cpu_l1_icache_tag_req),
+        .l1_icache_tag_rsp_o  (cpu_l1_icache_tag_rsp),
+        .l1_icache_data_req_i (cpu_l1_icache_data_req),
+        .l1_icache_data_rsp_o (cpu_l1_icache_data_rsp),
+        .l1_dcache_tag_req_i  (cpu_l1_dcache_tag_req),
+        .l1_dcache_tag_rsp_o  (cpu_l1_dcache_tag_rsp),
+        .l1_dcache_data_req_i (cpu_l1_dcache_data_req),
+        .l1_dcache_data_rsp_o (cpu_l1_dcache_data_rsp),
+
+        .rom_read_count_o          (tb_cpu_rom_read_count),
+        .scratch_ram_read_count_o  (tb_cpu_scratch_read_count),
+        .scratch_ram_write_count_o (tb_cpu_scratch_write_count),
+        .dcache_data_write_count_o (tb_cpu_dcache_write_count),
+        .fw_mailbox_o              (tb_cpu_fw_mailbox),
+        .fw_mailbox_valid_o        (tb_cpu_fw_mailbox_valid),
+        .ecc_inject_sbe_i          (tb_cpu_ecc_inject_sbe),
+        .ecc_inject_dbe_i          (tb_cpu_ecc_inject_dbe),
+        .scratch0_inject_fire_o    (cpu_scratch0_inject_fire)
+    );
 
     // Probe pin kept for cocotb init compatibility; do not OR into the score.
     logic unused_ecc_probe;
@@ -1153,12 +1210,12 @@ module smc_uvm_top
     smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl [31:0];
 
     // ------------------------------------------------------------------
-    // DUT: smc_wrapper (smc + smc_ip_integration + smc_cpu_mem_integration).
+    // DUT: smc_wrapper (smc + smc_ip_integration).
     //
     // Ports absorbed by smc_ip_integration and NOT present on this boundary:
     // smc_external_*, efuse_bank_ctrl_*, efuse_shim_command_*, pad2core_i, core2pad_o,
     // pad2core_en_o, core2pad_en_o (internal smc_wrapper nets → gpio_pad_io).
-    // CPU ROM/scratch/L1$ are absorbed by smc_cpu_mem_integration.
+    // CPU ROM/scratch/L1$ ARE boundary ports here, driven into u_smc_cpu_mem.
     // ------------------------------------------------------------------
     smc_wrapper u_dut (
         .clk_smc_i,
@@ -1247,15 +1304,19 @@ module smc_uvm_top
         .ss_config_o                (),
         .ss_reset_ctrl_o            (ss_reset_ctrl),
         .sync_irq_o                 (sync_irq),
-        .cpu_rom_read_count_o       (tb_cpu_rom_read_count),
-        .cpu_scratch_read_count_o   (tb_cpu_scratch_read_count),
-        .cpu_scratch_write_count_o  (tb_cpu_scratch_write_count),
-        .cpu_dcache_write_count_o   (tb_cpu_dcache_write_count),
-        .cpu_fw_mailbox_o           (tb_cpu_fw_mailbox),
-        .cpu_fw_mailbox_valid_o     (tb_cpu_fw_mailbox_valid),
-        .cpu_ecc_inject_sbe_i       (tb_cpu_ecc_inject_sbe),
-        .cpu_ecc_inject_dbe_i       (tb_cpu_ecc_inject_dbe),
-        .cpu_scratch0_inject_fire_o (cpu_scratch0_inject_fire),
+        // CPU ROM/scratch/L1$ macro interfaces -> u_smc_cpu_mem above.
+        .rom_intf_req_o             (cpu_rom_req),
+        .rom_intf_rsp_i             (cpu_rom_rsp),
+        .scratch_ram_intf_req_o     (cpu_scratch_ram_req),
+        .scratch_ram_intf_rsp_i     (cpu_scratch_ram_rsp),
+        .l1_icache_tag_intf_req_o   (cpu_l1_icache_tag_req),
+        .l1_icache_tag_intf_rsp_i   (cpu_l1_icache_tag_rsp),
+        .l1_icache_data_intf_req_o  (cpu_l1_icache_data_req),
+        .l1_icache_data_intf_rsp_i  (cpu_l1_icache_data_rsp),
+        .l1_dcache_tag_intf_req_o   (cpu_l1_dcache_tag_req),
+        .l1_dcache_tag_intf_rsp_i   (cpu_l1_dcache_tag_rsp),
+        .l1_dcache_data_intf_req_o  (cpu_l1_dcache_data_req),
+        .l1_dcache_data_intf_rsp_i  (cpu_l1_dcache_data_rsp),
         .disable_sram_auto_init_i   (1'b1),
         .init_mem_done_o,
         .chiplet_is_primary_i       (tb_chiplet_is_primary),

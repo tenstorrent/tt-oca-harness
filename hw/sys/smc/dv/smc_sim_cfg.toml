@@ -4,8 +4,9 @@
 schema_version = 1
 
 # Launch entry: `--dut smc` (discovered by the directory convention).
-# tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration +
-# smc_cpu_mem_integration); the bare DUT name selects that wrapper-based TB.
+# tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration) and
+# attaches the CPU mem reference model itself; the bare DUT name selects that
+# wrapper-based TB.
 name = "smc"
 profile = "native"
 description = "SMC OSS cocotb: smc_wrapper under tb_top"
@@ -36,7 +37,8 @@ common_bender_targets = [
   "idma_rtl",
   "register_interface_l1",
 ]
-# smc_wrapper Bender target pulls hw/top/smc_wrapper.sv + CPU mem integration.
+# smc_wrapper Bender target pulls hw/top/smc_wrapper.sv + the CPU mem
+# reference model the TB attaches to its passthrough ports.
 bender_targets = ["smc", "smc_wrapper"]
 incdirs = [
   "hw/sys/sep/dv/shims/prim",

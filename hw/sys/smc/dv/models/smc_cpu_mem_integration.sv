@@ -4,6 +4,10 @@
 //-----------------------------------------------------------------------------
 // SMC CPU memory integration -- OSS reference macros for smc_wrapper
 //
+// Lives with the other SMC DV models (pll_wrap / pvt_wrap) because it is a
+// simulation-only stand-in: prim_* macros plus DV observability (counters,
+// FW mailbox, ECC inject) and time-zero $readmemh backdoors.
+//
 // Absorbs Chipyard CPU ROM / scratch / L1$ ports using the same prim_rom /
 // prim_ram_1p macros as SEP (via OCAH4CORECluster_mems / mem_swaps).
 // Instantiated by smc_wrapper.sv and by bare SMC TB (tb_top) so both share the

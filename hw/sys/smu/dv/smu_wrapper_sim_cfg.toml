@@ -56,8 +56,9 @@ common_bender_targets = [
   "register_interface_l1",
 ]
 # smu pulls smc+dtp; sep+sep_el2 supply the real SEP subsystem and EL2 CPU;
-# smu_wrapper adds hw/top/{smu_wrapper,smc_ip_integration,sep_ip_integration,
-# smc_cpu_mem_integration}. `simulation` is deliberately NOT set: the
+# smu_wrapper adds hw/top/{smu_wrapper,smc_ip_integration,sep_ip_integration}
+# plus hw/sys/smc/dv/models/smc_cpu_mem_integration.sv.
+# `simulation` is deliberately NOT set: the
 # sep×simulation slice references absolute /tech and /vendor_ip model paths
 # that only exist on internal hosts.
 bender_targets = [

@@ -23,7 +23,7 @@ top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
   # Same CPU mem macros as smc_wrapper / smu_wrapper (not a DV behavioral responder).
-  "hw/top/smc_cpu_mem_integration.sv",
+  "hw/sys/smc/dv/models/smc_cpu_mem_integration.sv",
   # External SMN AXI: pulp axi_sim_mem (SEP/SMC posture).
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
 ]
