@@ -317,6 +317,9 @@ module km_kpv import km_intf_pkg::*; import axi_pkg::*; import scrambler_pkg::*;
         .DATA_WIDTH(DATA_W)
     ) u_scrambler_km (
         .addr_i                (km_scrambler_addr),
+        // scrambler_512x32 reserves byte_mask_i for future byte-masked write support (hw/ip/scrambler/doc/architecture.adoc)
+        // Tie to 0 for now (instead of leaving open), matches with km_sram_interface call sites
+        .byte_mask_i           ('0),
         .scrambler_key_i       (scrambler_key_stored),
         .scrambled_addr_o      (km_scrambler_phys_addr),
         .write_data_i          (km_scrambler_in_data),

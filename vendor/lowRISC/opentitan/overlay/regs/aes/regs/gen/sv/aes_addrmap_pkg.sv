@@ -37,4 +37,4 @@ localparam longint unsigned AES_STATUS_BASE_ADDR = 64'h84;
 localparam longint unsigned AES_CTRL_GCM_SHADOWED_BASE_ADDR = 64'h88;
 
 
-endpackage;
+endpackage
