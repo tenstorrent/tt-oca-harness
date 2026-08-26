@@ -223,18 +223,25 @@ the hashes embedded in the ROM to authenticate manifests.
 |CHIPLET_PUBK_HASH1 |21 |256 |true |true |Hash of chiplet-owner authentication
 key 1, fused.
 
-|REQUIRED_SIGNERS |22 |32 (use only 2 bits) |true |true |Owners whose signature
-a manifest must carry to be authenticated by SEP ROM. Per owner, 1 = required,
-0 = not-required; the default all-zero value requires no additional owner. [0]
-SiP owner, [1] system owner, [31:2] reserved. The chiplet creator is the root of
-trust -- its classical and PQC root digests are embedded in SEP ROM and always
-authenticate BL1 -- so it has no bit here. Burning a fuse bit only ever adds a
-required signer, so the fuse is monotonic: the standard LOCK bits exist but
-locking this field is unnecessary, since a later burn can never weaken security.
-The value is applied via the shadow register (loaded from the fuse at cold reset,
-SW-writable): firmware may update the shadow to set the required signers for each
-manifest it verifies (BL1, BL2, runtime, ...). See Secure-Boot Signing Model in
-the Life Cycle Controller section.
+|REQUIRED_SIGNERS |22 |64 (40 used) |true |true |Owners whose signature a manifest
+must carry as a co-signer to be authenticated by SEP ROM. The OCA Payload Manifest
+defines the co-signer mechanism but leaves the choice of co-signing keys to the
+implementor; this field is where SEP fills that gap. Bits [7:0] are the
+required-co-signer mask, bit n selecting co-signer n+1, matching the shape of
+co_signer_enable in the manifest: a required co-signer must be enabled there and
+must carry a populated signature block, or the manifest is rejected. Bits [39:8]
+hold one 4-bit owner code per co-signer, with co-signer N at bits [4N+7:4N+4], so
+co-signer N occupies the same nibble index here as it does in REQUIRED_ALGS. Owner
+codes are one-hot: 0b0001 anonymous key (verify with the public key carried in the
+co-signer block itself, no revocation check), 0b0010 chiplet-designated key (must
+match a non-revoked ROM-embedded or CHIPLET_PUBK* digest), 0b0100 SiP key (must
+match a non-revoked SIP_PUBK* digest), 0b1000 system key (must match a non-revoked
+SYS_PUBK* digest); all other values are reserved. Bits [63:40] reserved. The
+chiplet creator remains the root of trust -- its classical and PQC root digests are
+embedded in SEP ROM and always authenticate BL1 -- so it needs no co-signer slot.
+Because the fuse is one-way and the owner codes are one-hot, a slot's owner code
+must be burned and read back before its mask bit is burned. See Secure-Boot Signing
+Model in the Life Cycle Controller section.
 
 |REQUIRED_ALGS |23 |32 (use only 12 bits) |set-only |true |Per-owner required
 signature algorithms, applied only when that owner is required. Each owner has a
