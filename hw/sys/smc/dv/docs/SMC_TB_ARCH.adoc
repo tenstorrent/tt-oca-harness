@@ -399,7 +399,6 @@ class smc_register_sanity_test_seq(SmcCsrSeq):
         await self.csr_read("VERSION_LO", 0xC000_0000, expected=0x000100A0)
         await self.csr_write_readback("SCRATCH", 0xC001_0040, 0xDEAD_BEEF)
         # Negative path: window must return an error response (not OKAY/wedge).
-        await self.csr_read_err_signature("I3C_STUB", 0xC000_A000)  # SLVERR+0xBADCAB1E
         await self.csr_read_decerr_zero("GPIO_CTRL_0", 0xC000_4440)  # integration err_slv
 ----
 

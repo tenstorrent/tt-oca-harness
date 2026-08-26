@@ -99,7 +99,7 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_smoke_test": [
         ("smc_boot_cg", "bringup", "cold_primary_release"),
     ],
-    "smc_reset_ctrl_test": [
+    "smu_smc_reset_ctrl_test": [
         ("smc_boot_cg", "bringup", "cold_primary_release"),
     ],
     "smu_sys_in_filter_program_jtag_test": [
@@ -169,7 +169,7 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
     "smu_jtag_chain_enhanced_test": [
         ("dtp_debug_cg", "jtag", "chain_freq"),
     ],
-    "smc_mailbox_sanity_test": [
+    "smu_smc_mailbox_sanity_test": [
         ("reg_access_cg", "path", "jtag2axi_fabric"),
         ("reg_access_cg", "outcome", "success"),
     ],
@@ -268,7 +268,7 @@ TEST_FCOV_HITS: dict[str, list[tuple[str, str, str]]] = {
         ("dtp_debug_cg", "jtag2axi", "security_gate"),
         ("reg_access_cg", "outcome", "gated_deny"),
     ],
-    "smc_wdt_timeout_irq_test": [
+    "smu_smc_wdt_timeout_irq_test": [
         ("wdt_cg", "timeout", "wdogip0"),
     ],
     "smc_reset_unit_wdt_scratch_test": [
