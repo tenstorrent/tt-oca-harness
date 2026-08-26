@@ -31,4 +31,4 @@ localparam longint unsigned CSRNG_ERR_CODE_TEST_BASE_ADDR = 64'h58;
 localparam longint unsigned CSRNG_MAIN_SM_STATE_BASE_ADDR = 64'h5C;
 
 
-endpackage;
+endpackage

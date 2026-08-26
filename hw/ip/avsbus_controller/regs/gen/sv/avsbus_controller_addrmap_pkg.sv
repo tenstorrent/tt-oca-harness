@@ -20,4 +20,4 @@ localparam longint unsigned AVSBUS_CONTROLLER_AVS_CFG_1_BASE_ADDR = 64'h54;
 localparam longint unsigned AVSBUS_CONTROLLER_AVS_CONFIG_BASE_ADDR = 64'h58;
 
 
-endpackage;
+endpackage

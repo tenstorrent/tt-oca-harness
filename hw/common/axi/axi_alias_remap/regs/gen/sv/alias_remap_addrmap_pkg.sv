@@ -13,4 +13,4 @@ localparam longint unsigned ALIAS_REMAP_REGION_REGION_END_BASE_ADDR = 64'h8;
 localparam longint unsigned ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR = 64'h10;
 
 
-endpackage;
+endpackage

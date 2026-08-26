@@ -11,4 +11,4 @@ localparam longint unsigned OUTPUT_REMAP_REGION_SIZE = 64'h8;
 localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR = 64'h0;
 
 
-endpackage;
+endpackage

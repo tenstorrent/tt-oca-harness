@@ -742,4 +742,4 @@ typedef enum logic [1:0] {
     SHA512 = 2'd3
 } opcode_e_e;
 
-endpackage;
+endpackage

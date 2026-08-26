@@ -14,4 +14,4 @@ localparam longint unsigned SEP_EXTERNAL_XIP_REGION_SIZE = 64'h10000000;
 localparam longint unsigned SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR = 64'h0;
 
 
-endpackage;
+endpackage

@@ -109,4 +109,4 @@ endfunction
 localparam longint unsigned UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_NUM = 64'h10;
 
 
-endpackage;
+endpackage

@@ -11,4 +11,4 @@ localparam longint unsigned KM_DRBG_SAMPLER_STATUS_BASE_ADDR = 64'h8;
 localparam longint unsigned KM_DRBG_SAMPLER_PREFETCH_DATA_BASE_ADDR = 64'hC;
 
 
-endpackage;
+endpackage

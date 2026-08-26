@@ -35,4 +35,4 @@ localparam longint unsigned SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR = 64'h30;
 localparam longint unsigned SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR = 64'h34;
 
 
-endpackage;
+endpackage

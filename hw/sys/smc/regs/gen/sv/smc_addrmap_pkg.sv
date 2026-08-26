@@ -1854,4 +1854,4 @@ typedef enum logic [2:0] {
     DEU_ERROR = 3'd7
 } cause_enum_e;
 
-endpackage;
+endpackage

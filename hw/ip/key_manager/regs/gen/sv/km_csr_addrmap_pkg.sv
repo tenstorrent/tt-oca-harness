@@ -103,4 +103,4 @@ localparam longint unsigned KM_CSR_OTP_CHANGE_STATUS_BASE_ADDR = 64'h304;
 localparam longint unsigned KM_CSR_OTP_READ_LOCK_COLD_BASE_ADDR = 64'h308;
 
 
-endpackage;
+endpackage

@@ -10,4 +10,4 @@ localparam longint unsigned FILTER_CTRL_START_ADDR_BASE_ADDR = 64'h8;
 localparam longint unsigned FILTER_CTRL_END_ADDR_BASE_ADDR = 64'h10;
 
 
-endpackage;
+endpackage

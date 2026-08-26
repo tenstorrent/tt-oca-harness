@@ -33,4 +33,4 @@ localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC24_CONFIG_0_BASE_ADDR = 6
 localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC25_CONFIG_0_BASE_ADDR = 64'hC8;
 
 
-endpackage;
+endpackage

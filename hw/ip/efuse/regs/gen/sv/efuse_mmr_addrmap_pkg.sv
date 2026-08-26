@@ -23,4 +23,4 @@ localparam longint unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR = 64'h68
 localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR = 64'h6C;
 
 
-endpackage;
+endpackage

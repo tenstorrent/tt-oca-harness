@@ -17,4 +17,4 @@ localparam longint unsigned GPIO_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR = 64'h8;
 localparam longint unsigned GPIO_WRAP_GPIO_CTRL_CONTROL_BASE_ADDR = 64'h10;
 
 
-endpackage;
+endpackage

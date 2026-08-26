@@ -49,4 +49,4 @@ typedef enum logic [3:0] {
     FALSE = 4'd9
 } MultiBitBool4_e;
 
-endpackage;
+endpackage

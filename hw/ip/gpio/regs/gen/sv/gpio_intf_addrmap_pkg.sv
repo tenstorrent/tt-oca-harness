@@ -10,4 +10,4 @@ localparam longint unsigned GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR = 64'h4;
 localparam longint unsigned GPIO_INTF_ACCESS_FILTER_BASE_ADDR = 64'h8;
 
 
-endpackage;
+endpackage

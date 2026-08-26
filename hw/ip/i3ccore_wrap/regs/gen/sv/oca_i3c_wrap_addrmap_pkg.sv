@@ -13,4 +13,4 @@ localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
 
 
 
-endpackage;
+endpackage

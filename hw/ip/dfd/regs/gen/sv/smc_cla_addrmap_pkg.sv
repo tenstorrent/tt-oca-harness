@@ -110,4 +110,4 @@ localparam longint unsigned SMC_CLA_TRSCRATCHPADLO_BASE_ADDR = 64'h8FF0;
 localparam longint unsigned SMC_CLA_TRSCRATCHPADHI_BASE_ADDR = 64'h8FF4;
 
 
-endpackage;
+endpackage

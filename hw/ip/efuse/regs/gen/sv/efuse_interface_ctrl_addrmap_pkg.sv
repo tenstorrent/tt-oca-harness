@@ -14,4 +14,4 @@ localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADD
 localparam longint unsigned EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_BASE_ADDR = 64'h18;
 
 
-endpackage;
+endpackage

@@ -10,12 +10,12 @@
 ## 7/9/10 was emitted as `logic [1:0]` with `2'd10`, silently truncating. Now sized
 ## from max(value).
 ##
-## Deliberately NOT changed: the file still ends `endpackage;`. That trailing
-## semicolon is an empty statement (lint W193) in every generated *_addrmap_pkg.sv
-## and is covered by per-block W193 waivers; changing it would churn all 54
-## generated files for a cosmetic gain.
+## SECOND fix vs upstream 0.2.4: the file ended `endpackage;`. That trailing
+## semicolon is an empty statement, raising lint W193 in every generated
+## *_addrmap_pkg.sv (162 records across smc/sep/dtp/smu/smu_wrapper). It is now
+## `endpackage`, which retires the per-block W193 waivers that covered it.
 ##
-## Delete this file and the --template flag once the enum fix lands upstream.
+## Delete this file and the --template flag once both fixes land upstream.
 <%!
     from peakrdl_rawheader.utils import fmt_hex, fmt_addr_expr, fmt_idx_expr, fmt_license, clog2
 %>\
@@ -64,4 +64,4 @@ typedef enum logic [${enum_width-1}:0] {
 } ${enum["name"]}_e;
 % endfor
 
-endpackage;
+endpackage

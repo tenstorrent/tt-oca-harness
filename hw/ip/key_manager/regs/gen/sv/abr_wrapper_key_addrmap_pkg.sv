@@ -65,4 +65,4 @@ localparam longint unsigned ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_STATUS_BASE_ADD
 localparam longint unsigned ABR_WRAPPER_KEY_MLKEM_SHARED_KEY_IRQ_ENABLE_BASE_ADDR = 64'h428;
 
 
-endpackage;
+endpackage

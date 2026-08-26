@@ -18,4 +18,4 @@ endfunction
 localparam longint unsigned LOG_ENGINE_LOG_CTRL_NUM = 64'h10;
 
 
-endpackage;
+endpackage

@@ -9,4 +9,4 @@ localparam longint unsigned UART_16550_DL_DLL_BASE_ADDR = 64'h0;
 localparam longint unsigned UART_16550_DL_DLM_BASE_ADDR = 64'h4;
 
 
-endpackage;
+endpackage

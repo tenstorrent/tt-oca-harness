@@ -10,4 +10,4 @@ localparam longint unsigned ZEROER_CTRL_SIZE_BASE_ADDR = 64'h8;
 localparam longint unsigned ZEROER_CTRL_CTRL_STATUS_BASE_ADDR = 64'h10;
 
 
-endpackage;
+endpackage
