@@ -1,0 +1,160 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smc-dv-functional-coverage-plan]]
+== SMC OCAH Open-Source Functional Coverage Plan
+
+=== Overview
+
+Verilator does not support SystemVerilog covergroups, so the SMC suite
+collects functional coverage Python-side: each test records what it
+exercised, an aggregator merges the per-test records into one report, and
+the commercial simulators collect RTL code coverage over the same tests.
+This chapter describes both halves and the baselines they are measured
+against.
+
+[[sec-3-functional-coverage-pipeline]]
+=== Functional Coverage Pipeline
+
+The SMC OSS TB began as observation-only, so simulator-side coverage was limited.
+Instead the scoreboard emits *functional event records* that can be aggregated
+across runs by a small Python script.
+
+[[how-it-works]]
+==== How it works
+
+`hw/sys/smc/dv/cocotb/env/smc_scoreboard.py` maintains event bins and emits a
+`FUNC_COV_VALUE bin=<name> value=<...>` log line on every observation:
+
+[cols=",,",options="header",]
+|========================================================================================================================
+|Bin |Captures |Ceiling
+|`reset_op` |Each `SmcResetOp` enum hit (SAMPLE, COLD_RST_LO/HI, …) |*8* (all enum values)
+|`reset_state` |4-tuple of post-reset stable signals (and mid-glitch via RAW_SAMPLE) |3 (DUT synchronously releases bits)
+|`i2c_state` |(resolvable, cg_en) |1 (no I2C cg toggle stimulus)
+|`clk_bucket` |(ref_edges // 50, smc_edges // 50, periph_edges // 50) |grows with seed count
+|`irq_state` |(sync_irq, gpio_irq_any, uart_irq_any) |1 (no IRQ source)
+|`gpio_state` |(core2pad_any, core2pad_en_any, pad2core_en_any) |1 (no GPIO driver)
+|`axil_master` |(any_master_active,) |1 (no AXI master traffic)
+|`protocol_vip` |`SmcProtocolVipItem` kind/test/proxy triple |grows with promoted tests
+|========================================================================================================================
+
+[[aggregator-script]]
+==== Aggregator script
+
+Scans one or more run dirs and reports unique events per bin plus the union
+across runs.
+
+[source,python]
+----
+#!/usr/bin/env python3
+"""Aggregate SMC OSS functional coverage events across run dirs.
+
+Usage:
+    python3 aggregate_cov.py <run_dir> [<run_dir> ...]
+    # Lists per-run + UNION counts of FUNC_COV_VALUE events.
+"""
+import sys
+import re
+import glob
+from collections import defaultdict
+
+def collect(run_dir: str) -> dict[str, set[str]]:
+    bins: dict[str, set[str]] = defaultdict(set)
+    for log in glob.glob(f"{run_dir}/**/*.log", recursive=True):
+        try:
+            with open(log) as f:
+                for line in f:
+                    m = re.search(r"FUNC_COV_VALUE bin=(\S+) value=(.+)$", line.rstrip())
+                    if m:
+                        bins[m.group(1)].add(m.group(2))
+        except OSError:
+            pass
+    return bins
+
+def main(argv: list[str]) -> int:
+    if len(argv) < 2:
+        print(__doc__)
+        return 2
+
+    union: dict[str, set[str]] = defaultdict(set)
+    for run_dir in argv[1:]:
+        bins = collect(run_dir)
+        print(f"=== {run_dir} ===")
+        for b in sorted(bins):
+            print(f"  {b:14s} unique={len(bins[b]):3d}")
+            union[b] |= bins[b]
+        print(f"  TOTAL={sum(len(v) for v in bins.values())}")
+        print()
+
+    if len(argv) > 2:
+        print("=== UNION ===")
+        for b in sorted(union):
+            print(f"  {b:14s} unique={len(union[b]):3d}  sample={sorted(union[b])[:4]}")
+        print(f"  TOTAL={sum(len(v) for v in union.values())}")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+----
+
+[[baselines]]
+==== Baselines
+
+Single-run output from the historical 22-test observability baseline (seed 1):
+
+....
+  axil_master    unique=  1
+  clk_bucket     unique=  6
+  gpio_state     unique=  1
+  i2c_state      unique=  1
+  irq_state      unique=  1
+  reset_op       unique=  8
+  reset_state    unique=  3
+  TOTAL=21
+....
+
+Five seeds widen `clk_bucket` from ~6 to ~20, because `randomize_timing(seed)`
+varies clock periods and `smc_clk_multi_window_test_seq` picks 8 random window
+sizes per seed. The 5-seed union reaches `clk_bucket unique=20`, `TOTAL=35`.
+
+[[coverage-progression-history]]
+==== Coverage progression history
+
+[cols=",,",options="header",]
+|============================================
+|Stage |Single seed |5-seed UNION
+|Original baseline (`smoke` 73 tests) |13 |17
+|Slim to 22 representative tests |13 |17
+|+ Cool reset op in repeated seq |15 |19
+|+ Seed-driven random clk windows |18 |32
+|+ RAW_SAMPLE op mid-glitch |21 |35
+|+ Denser RAW_SAMPLE probing |21 |35 (capped)
+|============================================
+
+35 was the natural ceiling of the pure-observability TB. Growing the four
+saturated bins (`axil_master`, `gpio_state`, `i2c_state`, `irq_state`) required
+an active driver — which the later AXI master / JTAG2AXI promotions delivered.
+
+'''''
+
+[[sec-4-simulator-side-coverage]]
+=== Simulator-Side Coverage
+
+With `--cov` on Xcelium the runner instructs `xrun` to emit UCIS coverage data
+per test under `<run_dir>/<test>/coverage/scope/`:
+
+....
+coverage/scope/icc_<hash>.ucm        # design model
+coverage/scope/test/icc_<hash>.ucd   # per-test data
+....
+
+The `cov_merge` / `cov_report` stages call Cadence IMC. Where IMC is not
+installed, both stages report ERROR while the per-test `.ucd` files remain on
+disk for offline merge.
+
+The runner passes `-covworkdir <abs path>` and `-covoverwrite` to `xrun -R`.
+Without those, the sim stage wrote to a `./cov_work` relative to the cocotb test
+cwd and hit `*F,C58EXS` ("database already exists") on the second run.
+
+'''''
