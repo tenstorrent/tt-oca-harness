@@ -229,13 +229,20 @@ does not hide that work, it gives it exactly one home per protocol:
    checkers, scoreboards) must be re-pointed to vendor analysis streams or
    fed by an adapter subscriber — part of the integration.
 4. **Nest the vendor interface inside `ocah_<proto>_if`.** The vendor VIP
-   brings its own SV interface; instantiate it INSIDE the OCAH interface
-   (guarded `ifdef OCAH_<PROTO>_VENDOR_IF` hook), wired from the OCAH
-   interface's boundary signals, and publish the nested instance with one
-   `uvm_config_db::set`. DUT tb_tops never touch vendor collateral.
-5. **Flow.** Vendor compile/setup args ride the existing per-DUT
-   `[build.vcs]` `analyze_args`/`compile_args`/`elab_args` and `sources`
-   keys (e.g. `-ntb_opts svt`, DesignWare incdirs); license-env gating is
+   brings its own SV interface; the OCAH interface carries a guarded hook
+   (`` `ifdef OCAH_<PROTO>_VENDOR_IF `` around
+   `` `include "ocah_<proto>_vendor_if.svh" ``) that instantiates it INSIDE
+   the OCAH interface. The integration supplies that `.svh` on an overlay
+   incdir — the OSS tree ships no copy — wiring the vendor interface from
+   the OCAH interface's boundary signals and publishing the nested instance
+   with one `uvm_config_db::set`. DUT tb_tops never touch vendor collateral.
+5. **Flow.** Everything above rides one adopter overlay config
+   (`run_dv.py --overlay <path>`, see the runner manual's "Adopter overlay
+   layer"): the vendor package's sources/incdirs (`[build]`), the
+   `OCAH_<PROTO>_VENDOR_IF` gate define and vendor tool flags (e.g.
+   `-ntb_opts svt`) in the target tables, and the factory override
+   (`+uvm_set_type_override=ocah_<proto>_master_env,<vendor>_env`) in
+   `[sim].args` — no checked-in config changes; license-env gating is
    already part of the commercial profile contract.
 
 No commercial-VIP integration exists in-tree, so this contract is
