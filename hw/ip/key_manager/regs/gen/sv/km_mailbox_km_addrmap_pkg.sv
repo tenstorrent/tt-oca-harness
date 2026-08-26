@@ -17,4 +17,4 @@ localparam longint unsigned KM_MAILBOX_KM_KM_IRQ_ENABLE_BASE_ADDR = 64'h14;
 localparam longint unsigned KM_MAILBOX_KM_KM_CTRL_BASE_ADDR = 64'h18;
 
 
-endpackage;
+endpackage

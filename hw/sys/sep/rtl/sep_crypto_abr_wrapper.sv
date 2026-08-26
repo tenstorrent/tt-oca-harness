@@ -70,6 +70,8 @@ module sep_crypto_abr_wrapper
     output      logic busy_o
 );
 
+    `include "prim_assert.sv"
+
     // =========================================================================
     // AXI4 (64b) -> AHB-lite (64b/32a) : reuse the verified VeeR bridge
     // =========================================================================
@@ -143,6 +145,10 @@ module sep_crypto_abr_wrapper
         .ahb_hready    (ab_hreadyout),  // single slave: bus hready == slave hreadyout
         .ahb_hresp     (ab_hresp)
     );
+
+    // axi4_to_ahb has no AXI USER ports
+    assign abr_axi_resp_o.b.user = '0;
+    assign abr_axi_resp_o.r.user = '0;
 
     // =========================================================================
     // Key CSR register block : KM AXI4-Lite key bus -> abr_wrapper_key_reg
@@ -249,22 +255,22 @@ module sep_crypto_abr_wrapper
 
         // 96-bit coefficient memories
         abr_mem_req_o.mem_inst0_bank0.we    = u_abr_mem.mem_inst0_bank0_we_i;
-        abr_mem_req_o.mem_inst0_bank0.waddr = u_abr_mem.mem_inst0_bank0_waddr_i;
+        abr_mem_req_o.mem_inst0_bank0.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank0_waddr_i);
         abr_mem_req_o.mem_inst0_bank0.wdata = u_abr_mem.mem_inst0_bank0_wdata_i;
         abr_mem_req_o.mem_inst0_bank0.re    = u_abr_mem.mem_inst0_bank0_re_i;
-        abr_mem_req_o.mem_inst0_bank0.raddr = u_abr_mem.mem_inst0_bank0_raddr_i;
+        abr_mem_req_o.mem_inst0_bank0.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank0_raddr_i);
 
         abr_mem_req_o.mem_inst0_bank1.we    = u_abr_mem.mem_inst0_bank1_we_i;
-        abr_mem_req_o.mem_inst0_bank1.waddr = u_abr_mem.mem_inst0_bank1_waddr_i;
+        abr_mem_req_o.mem_inst0_bank1.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank1_waddr_i);
         abr_mem_req_o.mem_inst0_bank1.wdata = u_abr_mem.mem_inst0_bank1_wdata_i;
         abr_mem_req_o.mem_inst0_bank1.re    = u_abr_mem.mem_inst0_bank1_re_i;
-        abr_mem_req_o.mem_inst0_bank1.raddr = u_abr_mem.mem_inst0_bank1_raddr_i;
+        abr_mem_req_o.mem_inst0_bank1.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank1_raddr_i);
 
         abr_mem_req_o.mem_inst1.we    = u_abr_mem.mem_inst1_we_i;
-        abr_mem_req_o.mem_inst1.waddr = u_abr_mem.mem_inst1_waddr_i;
+        abr_mem_req_o.mem_inst1.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst1_waddr_i);
         abr_mem_req_o.mem_inst1.wdata = u_abr_mem.mem_inst1_wdata_i;
         abr_mem_req_o.mem_inst1.re    = u_abr_mem.mem_inst1_re_i;
-        abr_mem_req_o.mem_inst1.raddr = u_abr_mem.mem_inst1_raddr_i;
+        abr_mem_req_o.mem_inst1.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst1_raddr_i);
 
         abr_mem_req_o.mem_inst2.we    = u_abr_mem.mem_inst2_we_i;
         abr_mem_req_o.mem_inst2.waddr = u_abr_mem.mem_inst2_waddr_i;
@@ -274,22 +280,22 @@ module sep_crypto_abr_wrapper
 
         // Masked coefficient memories (tied to '0 inside abr_top when MASKING_EN=0)
         abr_mem_req_o.mem_inst0_bank0_masked.we    = u_abr_mem.mem_inst0_bank0_masked_we_i;
-        abr_mem_req_o.mem_inst0_bank0_masked.waddr = u_abr_mem.mem_inst0_bank0_masked_waddr_i;
+        abr_mem_req_o.mem_inst0_bank0_masked.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank0_masked_waddr_i);
         abr_mem_req_o.mem_inst0_bank0_masked.wdata = u_abr_mem.mem_inst0_bank0_masked_wdata_i;
         abr_mem_req_o.mem_inst0_bank0_masked.re    = u_abr_mem.mem_inst0_bank0_masked_re_i;
-        abr_mem_req_o.mem_inst0_bank0_masked.raddr = u_abr_mem.mem_inst0_bank0_masked_raddr_i;
+        abr_mem_req_o.mem_inst0_bank0_masked.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank0_masked_raddr_i);
 
         abr_mem_req_o.mem_inst0_bank1_masked.we    = u_abr_mem.mem_inst0_bank1_masked_we_i;
-        abr_mem_req_o.mem_inst0_bank1_masked.waddr = u_abr_mem.mem_inst0_bank1_masked_waddr_i;
+        abr_mem_req_o.mem_inst0_bank1_masked.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank1_masked_waddr_i);
         abr_mem_req_o.mem_inst0_bank1_masked.wdata = u_abr_mem.mem_inst0_bank1_masked_wdata_i;
         abr_mem_req_o.mem_inst0_bank1_masked.re    = u_abr_mem.mem_inst0_bank1_masked_re_i;
-        abr_mem_req_o.mem_inst0_bank1_masked.raddr = u_abr_mem.mem_inst0_bank1_masked_raddr_i;
+        abr_mem_req_o.mem_inst0_bank1_masked.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst0_bank1_masked_raddr_i);
 
         abr_mem_req_o.mem_inst1_masked.we    = u_abr_mem.mem_inst1_masked_we_i;
-        abr_mem_req_o.mem_inst1_masked.waddr = u_abr_mem.mem_inst1_masked_waddr_i;
+        abr_mem_req_o.mem_inst1_masked.waddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst1_masked_waddr_i);
         abr_mem_req_o.mem_inst1_masked.wdata = u_abr_mem.mem_inst1_masked_wdata_i;
         abr_mem_req_o.mem_inst1_masked.re    = u_abr_mem.mem_inst1_masked_re_i;
-        abr_mem_req_o.mem_inst1_masked.raddr = u_abr_mem.mem_inst1_masked_raddr_i;
+        abr_mem_req_o.mem_inst1_masked.raddr = SEP_CRYPTO_ABR_INST2_ADDR_W'(u_abr_mem.mem_inst1_masked_raddr_i);
 
         abr_mem_req_o.mem_inst2_masked.we    = u_abr_mem.mem_inst2_masked_we_i;
         abr_mem_req_o.mem_inst2_masked.waddr = u_abr_mem.mem_inst2_masked_waddr_i;
@@ -484,5 +490,10 @@ module sep_crypto_abr_wrapper
     // each protected op. FUTURE: a small EDN -> entropy-register loader (a second
     // AHB writer or a CSR-mux) for automatic per-op reseed.
     // =========================================================================
+
+    // Assertion to protect against truncation on casts
+    `OCAH_OT_ASSERT_INIT(AbrChanAddrFits_A,
+        (SEP_CRYPTO_ABR_INST0_ADDR_W <= SEP_CRYPTO_ABR_INST2_ADDR_W) &&
+        (SEP_CRYPTO_ABR_INST1_ADDR_W <= SEP_CRYPTO_ABR_INST2_ADDR_W))
 
 endmodule

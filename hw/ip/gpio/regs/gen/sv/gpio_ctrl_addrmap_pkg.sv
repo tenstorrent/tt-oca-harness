@@ -11,4 +11,4 @@ localparam longint unsigned GPIO_CTRL_SIZE = 64'h4;
 localparam longint unsigned GPIO_CTRL_CONTROL_BASE_ADDR = 64'h0;
 
 
-endpackage;
+endpackage
