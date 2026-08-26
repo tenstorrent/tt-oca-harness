@@ -13,7 +13,7 @@ module tb_entropy_source (
 
     // APB4 Register Interface
     input  entropy_source_pkg::reg_addr_t paddr_i,
-    input  logic [2:0]                    pprot_i, // TODO: Use Pulp's apb_pkg
+    input  logic [2:0]                    pprot_i,
     input  logic                          psel_i,
     input  logic                          penable_i,
     input  logic                          pwrite_i,
@@ -38,7 +38,7 @@ module tb_entropy_source (
 
         // APB4 Register Interface
         .paddr_i,
-        .pprot_i, // TODO: Use Pulp's apb_pkg
+        .pprot_i,
         .psel_i,
         .penable_i,
         .pwrite_i,
