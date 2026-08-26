@@ -725,6 +725,9 @@ def regression_payload(
         "rerun_commands": [record["rerun"] for record in [*failed_tests, *flaky_tests] if record.get("rerun")],
         "jobs": jobs,
     }
+    overlay = flow.raw.get("adopter_overlay")
+    if overlay:
+        payload["overlay"] = overlay
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:
@@ -781,6 +784,11 @@ def result_payload(
     targets = _targets_summary(stages)
     if targets:
         payload["targets"] = targets
+    overlay = flow.raw.get("adopter_overlay")
+    if overlay:
+        # The adopter overlay applied to this run (--overlay / OCAH_DV_OVERLAY), so the
+        # result records the exact config layers that produced it.
+        payload["overlay"] = overlay
     skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
     if skipped:
         payload["selection"] = {"skipped_unimplemented": skipped}
