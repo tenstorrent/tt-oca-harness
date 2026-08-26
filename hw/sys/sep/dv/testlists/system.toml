@@ -337,6 +337,7 @@ reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "decode", "system", "subsystem"]
 run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
@@ -351,4 +352,20 @@ reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "strobe", "system", "subsystem"]
 run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI channel-timing superset: three legal AW/W orderings x three transfer
+# sizes, all nine cells on every seed. A slave that latches its pending-write
+# flag on AW accept answers OKAY while dropping the data, so the cell compares
+# the readback, not the response.
+name = "sep_axi_superset_test"
+module = "system.sep_axi_superset_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "protocol", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

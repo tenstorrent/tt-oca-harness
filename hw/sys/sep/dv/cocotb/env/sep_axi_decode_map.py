@@ -35,7 +35,15 @@ _RSV = "_RSV_"
 
 @dataclass(frozen=True)
 class SpecRegion:
-    """One row of the memory-map table. ``end_addr`` is inclusive."""
+    """One row of a memory-map table.
+
+    ``end_addr`` is INCLUSIVE. The coarse region table writes an exclusive end
+    (0x0000_0000-0x1000_0000 for a 256 MB region) while the detailed tables
+    write an inclusive one (0x1000_0000-0x1000_FFFF for 64 kB). Treating both
+    as inclusive attributed every coarse upper boundary to the wrong row, so
+    ``spec_regions`` normalises the coarse rows on the way in and everything
+    downstream sees one convention.
+    """
 
     base: int
     end_addr: int
@@ -78,11 +86,17 @@ _RSV_DESC = ("reserved",)
 
 
 def _is_reserved(unit: str, desc: str) -> bool:
+    """True when the row allocates nothing.
+
+    Three spellings appear in the document: Unit ``_RSV_``; a blank Unit with
+    a Description that starts "Reserved"; and a named Unit whose Description
+    says it is reserved (the 512 MB "SEP External Region ... Reserved for
+    adopter extension IP"). Reading only the first two classified that whole
+    region as allocated, so it was never probed and never counted as a skip.
+    """
     if unit == _RSV:
         return True
-    if unit == "":
-        return desc.strip().lower().startswith(_RSV_DESC)
-    return False
+    return desc.strip().lower().startswith(_RSV_DESC)
 
 
 def spec_regions() -> tuple[SpecRegion, ...]:
@@ -108,9 +122,15 @@ def spec_regions() -> tuple[SpecRegion, ...]:
             continue
         base, end, _size, unit, desc = m.groups()
         unit, desc = unit.strip(), desc.strip()
+        lo, hi = _hexint(base), _hexint(end)
+        # Normalise the coarse table's exclusive end. A row whose size is an
+        # exact power-of-two multiple of (hi - lo) is exclusive; the detailed
+        # rows always end on an all-ones boundary, which is inclusive.
+        if hi > lo and (hi & 0xFFF) == 0 and (lo & 0xFFF) == 0:
+            hi -= 1
         rows.append(
             SpecRegion(
-                _hexint(base), _hexint(end),
+                lo, hi,
                 _RSV if _is_reserved(unit, desc) else unit,
                 desc,
             )

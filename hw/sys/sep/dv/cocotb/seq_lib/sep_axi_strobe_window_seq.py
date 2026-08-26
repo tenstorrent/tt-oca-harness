@@ -19,7 +19,7 @@ register in the same block behaves. That failure is silent -- correct
 response, wrong data -- so register reads do not cover it and the readback
 compare is the only thing that catches it.
 
-Targets are the scratch banks (safe to scribble, restored) and the OTBN
+Targets are the scratch banks (safe to scribble, not restored) and the OTBN
 DMEM/IMEM and KMAC STATE windows, which are the memory-mapped apertures in
 the SEP local map. Windows are only exercised when the run can prove they
 read back what was written; see ``probe_window``.
@@ -39,7 +39,9 @@ RESP_OKAY = 0
 # AxSIZE encodings: 0 = 1 byte, 1 = 2 bytes, 2 = 4 bytes.
 SIZE_BYTES = {0: 1, 1: 2, 2: 4}
 
-# Scratch words are plain RW storage in the SEP local map, restored after use.
+# Scratch words are plain RW storage in the SEP local map. Not restored:
+# the sweep overwrites them and nothing downstream reads them back, so a
+# restore would be ceremony rather than a contract.
 SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR")
 SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR")
 

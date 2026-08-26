@@ -32,7 +32,7 @@ from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from ocah_axi_vip.cocotb.ocah_axi_timing import AxiTimingProfile
+from ocah_axi_vip import AxiTimingProfile
 from sep_reg_meta import sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -40,7 +40,8 @@ RESP_OKAY = 0
 
 SIZE_BYTES = {0: 1, 1: 2, 2: 4}
 
-# Scratch storage: plain RW, no side effects, restored after the sweep.
+# Scratch storage: plain RW, no side effects. Not restored -- each cell
+# primes the word itself, so no cell depends on what the last one left.
 TARGET = sym("SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR")
 TARGET_ALT = sym("SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR")
 
@@ -113,9 +114,24 @@ class SepAxiSuperset:
         self.dropped: dict[tuple[str, int], str] = {}
 
     def _driver(self):
-        """The VIP master driver behind the SEP agent, or None."""
-        agent_seq = getattr(self.test.env.axi_agent, "axi", None)
-        return getattr(agent_seq, "driver", None)
+        """The VIP master driver behind the SEP agent.
+
+        env.axi_agent (SepAxiAgent) -> .driver (SepAxiDriver, the pyuvm
+        adapter) -> .axi (OcahAxiMasterSequence) -> .driver (the VIP master).
+        Raises rather than returning None: a missing handle means no timing
+        profile is applied, and every cell would then be dropped while the
+        test still reported cells.
+        """
+        agent = self.test.env.axi_agent
+        seq = getattr(getattr(agent, "driver", None), "axi", None)
+        drv = getattr(seq, "driver", None)
+        if drv is None or not hasattr(drv, "set_timing"):
+            raise RuntimeError(
+                "no VIP master with set_timing() behind env.axi_agent.driver"
+                ".axi.driver; the ordering sweep cannot apply a timing "
+                "profile and would report cells it never drove"
+            )
+        return drv
 
     async def _rd(self, addr: int, *, size: int = 2) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
@@ -136,10 +152,6 @@ class SepAxiSuperset:
     async def run_cell(self, cell: SupersetCell) -> str | None:
         """None when the cell passed. A string names the failure."""
         drv = self._driver()
-        if drv is None or not hasattr(drv, "set_timing"):
-            self.dropped[cell.key] = "VIP master exposes no timing control"
-            return None
-
         nbytes = SIZE_BYTES[cell.size]
         lane_mask = (1 << (8 * nbytes)) - 1
         # Prime with the complement so the write is always observable.

@@ -54,6 +54,13 @@ class sep_axi_superset_test(sep_base_test):
             elif miss is not None:
                 fails.append(miss)
                 self.logger.error("CHK-ORDER FAIL: %s", miss)
+            else:
+                # Dropped before the compare. Name it: a cell that produced
+                # neither a PASS nor a FAIL must not vanish from the log.
+                self.logger.info(
+                    "CHK-ORDER DROP: %s %dB not driven (%s)",
+                    cell.order, SIZE_BYTES[cell.size],
+                    sup.dropped.get(cell.key, "reason not recorded"))
 
         report = sup.coverage_report(cfg)
         if fails:
@@ -62,10 +69,13 @@ class sep_axi_superset_test(sep_base_test):
                 f"write under a legal channel ordering; coverage {report}"
             )
 
-        # A run that covered nothing must not look like a pass.
-        assert sup.covered, (
-            f"CHK-ORDER FAIL: no cell produced a data compare ({report}); "
-            "the sweep asked the DUT nothing"
+        # Every cell must have produced a data compare. Accepting a partial
+        # sweep would let eight of nine cells vanish while the test still
+        # reported PASS, which is what the docstring promises against.
+        assert len(sup.covered) == cfg.n_cells(), (
+            f"CHK-ORDER FAIL: {len(sup.covered)} of {cfg.n_cells()} cells "
+            f"produced a data compare ({report}); every legal ordering must "
+            "be exercised, not just the ones that happened to run"
         )
         self.logger.info("CHK-ORDER PASS: %d cell(s) verified", len(sup.covered))
         self.logger.info("CHK-COVERAGE: %s", report)
