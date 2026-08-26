@@ -14,7 +14,7 @@
 |Project |OCAH
 |Framework |PyUVM on cocotb (primary); SystemVerilog UVM smoke layer (`--framework uvm`, VCS)
 |Primary simulator |Verilator
-|Commercial simulator use |Coverage and CSR paths that Verilator cannot elaborate today; SV-UVM smoke flow (VCS)
+|Commercial simulator use |SV covergroup, assertion, and code coverage collection; SV-UVM smoke flow (VCS)
 |===
 
 The OCAH open-source DTP testbench follows the canonical `hw/sys/<system>/dv/` layout under
@@ -172,9 +172,9 @@ between packed RTL structs and cocotb-friendly scalar/vector ports.
 |SMC fabric AXI4 |Flattens `+axi_smc_dbg_*+` structs into `+m_axi_*+` for `OcahAxiSlaveAgent.from_prefix(dut, "m_axi")`
 |Debug disables |Exposes one `+dbg_disable_<field>+` scalar input per `sep_lifecycle_ctrl_pkg::dbg_disable_t` field, packed unchanged into `dbg_disable_i`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly
 |BSR/STAP/iJTAG |Looped back or tied idle for scenarios that do not actively use these paths
-|SMC/SEP OTP AXI-Lite |Tied idle until OCAH AXI-Lite responder agents are added
+|SMC/SEP OTP AXI-Lite |Flattens both AXI-Lite manager ports; `OcahAxiLiteSlaveAgent.from_prefix` RAM responders (`"smc_otp_axil"`, `"sep_otp_axil"`) answer them
 |DEBUG_CONTROL and IC_RESET |Flattens boot-stall, clock-stop, and IC_RESET struct outputs into cocotb-visible scalar signals
-|XTRIG CSR/CTP/CTM |CSR blocks tied idle or stubbed for Verilator; `xtrig_clk_stop_req` is directly driven for DEBUG_CONTROL clock-stop tests
+|XTRIG CSR/CTP/CTM |Exposes the flattened `+xtrig_axil_*+` CSR port for the env's AXI-Lite master BFM (the generated CSR blocks elaborate under Verilator); `xtrig_clk_stop_req` is directly driven for DEBUG_CONTROL clock-stop tests
 |Clocks/resets |cocotb drives `clk_i`, `rst_n_i`, and `pwr_on_rst_ni`; JTAG driver owns TCK/TRST sequencing
 |===
 
@@ -309,8 +309,9 @@ in their testlist `module` binding map; those without a `uvm` entry error at
 selection unless `--skip-unimplemented` is passed.
 
 There is exactly ONE testbench top module: `dtp_uvm_top` in `tb/tb_top.sv`,
-shared between both frameworks. The bare `+define+UVM` (set by the
-`[frameworks.uvm]` overlay; cocotb is the default framework, so no define
+shared between both frameworks. The bare `+define+UVM` (set by the native
+profile's `[frameworks.uvm]` overlay for every UVM DUT; cocotb is the
+default framework, so no define
 means the cocotb shape) switches its shape — without it the module exposes the cocotb pin
 port list; with it the ports become internal TB signals and an in-module
 harness adds the clock, interface instances, quiescent tie-offs, and
@@ -345,8 +346,12 @@ tests in `_test`):
   starts its sequence on the agent sequencer and then invokes
   `check_fsm_closure()`
 
-Compile order is explicit and load-bearing: interfaces first, then
-`ocah_jtag_uvm_pkg`, `dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
+Compile order is explicit and load-bearing: the shared VIP layers come from
+the VIP-owned manifests (`ocah_jtag_vip/uvm/sources.toml`,
+`ocah_axi_vip/uvm/sources.toml`, listed in
+`[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
+sources — interface and collateral first, each VIP's UVM package last), then
+`dtp_seq_lib_pkg`, `dtp_env_pkg`, and `tb_top.sv` last.
 
 ==== JTAG2AXI Checker Layer
 

@@ -57,7 +57,14 @@ def words_from_bytes(data: bytes | bytearray, beat_bytes: int, *, byteorder: str
 
 @dataclass(frozen=True)
 class OcahAxiWriteResult:
-    """Plain AXI write result returned by OCAH wrapper result APIs."""
+    """Plain AXI write result returned by OCAH wrapper result APIs.
+
+    ``issued_id`` is the AWID the master drove; ``observed_id`` is the BID
+    independently sampled from the live B-channel handshake — never a copy of
+    the issued ID, so an ID-echo defect in the responder is distinguishable.
+    ``observed_id`` is ``None`` when no ID was captured (AXI4-Lite buses,
+    timeouts, or a capture miss).
+    """
 
     address: int
     length: int
@@ -65,7 +72,16 @@ class OcahAxiWriteResult:
     resp_list: tuple[int, ...]
     ok: bool
     timed_out: bool = False
+    issued_id: int | None = None
+    observed_id: int | None = None
     raw: Any = None
+
+    @property
+    def id_match(self) -> bool | None:
+        """True/False when both IDs are known; ``None`` when either is not."""
+        if self.issued_id is None or self.observed_id is None:
+            return None
+        return int(self.issued_id) == int(self.observed_id)
 
     def to_item(self, *, protocol: str = "axi4", source: str = "master"):
         """Convert this result into an OCAH transaction item."""
@@ -77,13 +93,20 @@ class OcahAxiWriteResult:
             resp_list=self.resp_list,
             source=source,
             timed_out=self.timed_out,
-            metadata={"length": self.length},
+            transaction_id=self.issued_id,
+            metadata={"length": self.length, "observed_id": self.observed_id},
         )
 
 
 @dataclass(frozen=True)
 class OcahAxiReadResult:
-    """Plain AXI read result returned by OCAH wrapper result APIs."""
+    """Plain AXI read result returned by OCAH wrapper result APIs.
+
+    ``issued_id`` is the ARID the master drove; ``observed_id`` is the RID
+    independently sampled from the live R-channel handshake on the completing
+    (RLAST) beat — never a copy of the issued ID.  ``observed_id`` is ``None``
+    when no ID was captured (AXI4-Lite buses, timeouts, or a capture miss).
+    """
 
     address: int
     data: int
@@ -93,7 +116,16 @@ class OcahAxiReadResult:
     resp_list: tuple[int, ...]
     ok: bool
     timed_out: bool = False
+    issued_id: int | None = None
+    observed_id: int | None = None
     raw: Any = None
+
+    @property
+    def id_match(self) -> bool | None:
+        """True/False when both IDs are known; ``None`` when either is not."""
+        if self.issued_id is None or self.observed_id is None:
+            return None
+        return int(self.issued_id) == int(self.observed_id)
 
     def to_item(self, *, protocol: str = "axi4", source: str = "master"):
         """Convert this result into an OCAH transaction item."""
@@ -107,5 +139,6 @@ class OcahAxiReadResult:
             resp_list=self.resp_list,
             source=source,
             timed_out=self.timed_out,
-            metadata={"data": self.data},
+            transaction_id=self.issued_id,
+            metadata={"data": self.data, "observed_id": self.observed_id},
         )

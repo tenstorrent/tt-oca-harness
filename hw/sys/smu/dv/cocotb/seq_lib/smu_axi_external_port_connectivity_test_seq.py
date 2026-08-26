@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002 rev 4).
+"""Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002).
 
 DV-CARD:          SMU_ALL_002   ANCHOR: smu_axi_external_port_connectivity_test
-DV-CARD-REVISION: 4   RECORD-SHA256: 61e6a1d6e4b3a7f36b116cea03e3071127257a88b50b87161c3dd4b5bc62cca6
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 4   ENV: cocotb
 
 Approved OWNS (card r4 / plan r3):
   SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via
@@ -40,7 +38,7 @@ SMC_FILTER_POISON_LO = 0xBADCAB1E
 
 
 class smu_axi_external_port_connectivity_test_seq:
-    """SMU_ALL_002 r4: SEP=0 inbound→SMC + direct IW converter elaboration."""
+    """SMU_ALL_002: SEP=0 inbound→SMC + direct IW converter elaboration."""
 
     # Authoritative map: smc_addr.h VERSION_LO (SMC local-alias aperture).
     IN_PROBE = SMC_CHIP_CONFIG_VERSION_LO

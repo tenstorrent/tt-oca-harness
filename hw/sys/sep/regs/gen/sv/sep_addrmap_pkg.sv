@@ -710,9 +710,9 @@ endfunction
 localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_NUM = 64'h20;
 
 
-typedef enum logic [0:0] {
-    TRUE = 1'd6,
-    FALSE = 1'd9
+typedef enum logic [3:0] {
+    TRUE = 4'd6,
+    FALSE = 4'd9
 } MultiBitBool4_e;
 
-endpackage;
+endpackage

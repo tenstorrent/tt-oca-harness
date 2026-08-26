@@ -28,4 +28,4 @@ localparam longint unsigned KM_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR = 64'h1100;
 localparam longint unsigned KM_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR = 64'h1104;
 
 
-endpackage;
+endpackage

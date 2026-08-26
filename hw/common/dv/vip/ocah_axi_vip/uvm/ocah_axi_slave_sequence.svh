@@ -90,6 +90,18 @@ class ocah_axi_slave_sequence extends uvm_object;
         responder.cfg.inject_error(addr, resp, for_read, for_write);
     endfunction
 
+    // Arm one-shot response-ID corruption: the next selected transaction
+    // answers BID/RID = request_id ^ mask (ID-width truncated; data path and
+    // response code untouched). clear_errors() disarms.
+    function void inject_id_corruption(
+        bit [15:0] mask,
+        bit        for_read  = 1'b1,
+        bit        for_write = 1'b1
+    );
+        check_bound();
+        responder.cfg.inject_id_corruption(mask, for_read, for_write);
+    endfunction
+
     function void clear_errors();
         check_bound();
         responder.cfg.clear_errors();

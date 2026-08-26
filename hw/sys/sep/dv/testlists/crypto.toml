@@ -57,6 +57,32 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# ESRC FIPS_LOCK. RANDCFG walks every certified-configuration class every
+# seed; lock sequencing is directed. Write-0 leaves LOCK=1. CTRL.RESET does
+# not clear; rst_ni does. Observe FIFO stays writable. +skip_fuse_sense.
+name = "sep_esrc_fips_lock_test"
+module = "crypto.sep_esrc_fips_lock_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# ESRC persistent-failure alert to PIC source 16, then W1C-clear. RAND-NONE.
+# Short window plus stuck forced noise trips ALERT_THRESHOLD. Health-test
+# quality stays out of scope. +skip_fuse_sense; +esrc_noise_force.
+name = "sep_esrc_alert_delivery_test"
+module = "crypto.sep_esrc_alert_delivery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["entropy", "crypto", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 # CHK4 Generate segmentation at glen=4. BOOT_GEN_CMD resets to glen=4095 and is
 # what BOOT_REQ issues; GENERATE_CMD alone never completes a command. This entry
 # programs both from SepEntropyCfg(glen=4, program_boot_generate=True). Leave
@@ -175,3 +201,19 @@ tags = ["drbg", "entropy", "crypto", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture
+# (sep_crypto_pkg::ABR_REG_MAP_BASE_ADDR). Software-written seed only.
+# Public key matches the vendored ACVP vector; one seed-bit flip must
+# change the key. PIC [34] low / [35] high on completion. RANDCFG: masking
+# entropy and flip bit from the run seed. Sign/verify, ML-KEM, and the
+# key-vault seed path are not claimed. no_cpu; +skip_fuse_sense.
+name = "sep_abr_mldsa_keygen_kat_test"
+module = "crypto.sep_abr_mldsa_keygen_kat_test"
+seed = 1
+timeout_sec = 7200
+tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]

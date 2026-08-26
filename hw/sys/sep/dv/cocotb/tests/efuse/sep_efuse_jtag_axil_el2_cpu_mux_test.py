@@ -26,8 +26,13 @@ Checkers (each logged):
     data == 0xbadcab1e (the LC-gated filter).
   * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY (MMR is
     allowed even in the restricted state).
-  * CHK-JTAG-MMR-DENY: a JTAG read of a non-token MMR (SEC_DISABLE_TOKEN_MATCH)
-    must DECERR in PROD. Today's RTL opens the whole MMR window -- hard fail.
+  * CHK-JTAG-TOKEN-BLOCK: in PROD/RMA_SIP, JTAG may reach the MMR token
+    block. This checker samples ``SEC_DISABLE_TOKEN_I[0]``, ``TOKEN_EOP``,
+    and ``SEC_DISABLE_TOKEN_MATCH`` (reads only — a ``TOKEN_EOP`` write
+    would start a compare). ``CHK-JTAG-MMR`` already walks RMA ``TOKEN_I``.
+    It is a sample of the allow class, not every TOKEN_I word and MATCH.
+  * CHK-JTAG-IFACE-DENY: a JTAG read of the program/read interface
+    (`EFUSE_PROGRAM_CTRL`) DECERRs with ``0xbadcab1e`` — same class as shadow.
   * CHK-COEXIST: the CPU loop counter (scratch-cold[2], read via the read-only
     scratch_cold_probe_o) advances across the JTAG burst -- the CPU was not stalled
     by the JTAG master.
@@ -61,9 +66,12 @@ _ICCM_BASE = 0xC000_0000
 _EFUSE_SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")   # shadow map -> DENIED to JTAG at PROD
 _EFUSE_MMR_TOKEN1 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_1__REG_ADDR")    # MMR token region -> ALLOWED
 _EFUSE_MMR_TOKEN3 = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_3__REG_ADDR")
-# Not a token register. hw/sys/sep/doc/periphs.adoc: in PROD/RMA_SIP, JTAG may only access
-# RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I. This address must DECERR.
-_EFUSE_MMR_DENIED = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
+# Token-block members beyond the two RMA TOKEN_I words already walked above.
+_EFUSE_MMR_SEC_DIS_I0 = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_I_0__REG_ADDR")
+_EFUSE_MMR_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+_EFUSE_MMR_SEC_DIS_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
+# Interface control sits outside the token block and must DECERR in PROD.
+_EFUSE_IFACE_PROGRAM = sym("EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR")
 _BADCAB1E = 0xBADC_AB1E
 # The JTAG LC-gated denial routes to prim_axi_lite_err_slv, whose default RESP is
 # RESP_DECERR (=3); the sep_efuse_wrapper instance does not override it. So a
@@ -201,19 +209,36 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         assert cpu_err == 0, f"CPU eFuse MMR read error count nonzero after JTAG burst: {cpu_err}"
         self.logger.info("CHK-CPU-MMR PASS: CPU eFuse MMR read error count stayed zero")
 
-        # hw/sys/sep/doc/periphs.adoc PROD/RMA_SIP: JTAG may only R/W RMA_SIP_TOKEN_I and
-        # RMA_CHIPLET_TOKEN_I. A non-token MMR must complete DECERR. RTL opens
-        # the whole MMR window. Hard fail: the mismatch is the reveal.
-        code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_DENIED)
+        # Sample of the PROD/RMA_SIP MMR token-block allow class. Reads only —
+        # a TOKEN_EOP write would start a compare. CHK-JTAG-MMR already walks
+        # RMA TOKEN_I.
+        for label, addr in (
+            ("SEC_DISABLE_TOKEN_I[0]", _EFUSE_MMR_SEC_DIS_I0),
+            ("TOKEN_EOP", _EFUSE_MMR_TOKEN_EOP),
+            ("SEC_DISABLE_TOKEN_MATCH", _EFUSE_MMR_SEC_DIS_MATCH),
+        ):
+            code, rdata = await self.jtag_axil_op(write=False, addr=addr)
+            assert code == 0, (
+                f"CHK-JTAG-TOKEN-BLOCK FAIL: JTAG {label} @0x{addr:08x} in PROD "
+                f"must be OKAY; RTL returned resp={code} rdata=0x{rdata:08x}"
+            )
+        self.logger.info(
+            "CHK-JTAG-TOKEN-BLOCK PASS: JTAG SEC_DISABLE_TOKEN_I / TOKEN_EOP / "
+            "SEC_DISABLE_TOKEN_MATCH all OKAY in PROD"
+        )
+
+        code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_IFACE_PROGRAM)
         assert code == _RESP_DECERR, (
-            f"CHK-JTAG-MMR-DENY FAIL: spec requires DECERR on non-token MMR "
-            f"SEC_DISABLE_TOKEN_MATCH @0x{_EFUSE_MMR_DENIED:08x} in PROD; "
-            f"RTL returned resp={code} rdata=0x{rdata:08x}"
+            f"CHK-JTAG-IFACE-DENY FAIL: JTAG EFUSE_PROGRAM_CTRL @0x{_EFUSE_IFACE_PROGRAM:08x} "
+            f"in PROD must DECERR; RTL returned resp={code} rdata=0x{rdata:08x}"
+        )
+        assert rdata == _BADCAB1E, (
+            f"CHK-JTAG-IFACE-DENY FAIL: denied-read data 0x{rdata:08x} != 0x{_BADCAB1E:08x}"
         )
         self.logger.info(
-            "CHK-JTAG-MMR-DENY PASS: JTAG non-token MMR @0x%08x denied with DECERR "
-            "(resp=%d)",
-            _EFUSE_MMR_DENIED, code,
+            "CHK-JTAG-IFACE-DENY PASS: JTAG program-interface read @0x%08x denied "
+            "with DECERR (resp=%d, rdata=0x%08x)",
+            _EFUSE_IFACE_PROGRAM, code, rdata,
         )
 
         self.logger.info("SEP eFuse JTAG/EL2 mux test PASS")
