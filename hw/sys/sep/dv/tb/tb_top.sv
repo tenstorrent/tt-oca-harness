@@ -1602,6 +1602,114 @@ module sep_uvm_top
     assign s_axi_ruser   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.user;
     assign s_axi_rvalid  = `SEP_CORE.sep_cpu.lsu_axi_resp.r_valid;
 
+    // ------------------------------------------------------------------
+    // AXI protocol checkers (hw/common/dv/vip/ocah_axi_vip/sva).
+    //
+    // Passive readers on the two TB-driven AXI4 buses. They assert the AMBA
+    // IHI 0022 rules the VIP implements: handshake stability, VALID held
+    // until READY, X/Z hygiene, burst and size legality, WRAP alignment, the
+    // 4KB boundary, WLAST position, WSTRB lane legality, response-before-
+    // request ordering, and ID outstanding tracking. They drive nothing.
+    //
+    // Both buses carry TB-sourced stimulus, so a failure here is a stimulus
+    // bug in the VIP or a sequence rather than a DUT bug. That is the value:
+    // it stops an illegal transaction being blamed on the DUT.
+    //
+    // Assertion bodies are guarded by OCAH_INC_ASSERT (hw/common/assert),
+    // which Verilator does not define, so both instances elaborate to empty
+    // modules there and cost nothing. The rules are live under VCS.
+    //
+    // en_i is tied high: neither bus has a legitimate suppression window. A
+    // test that needs one should drive a TB signal here, not drop the bind.
+    // ------------------------------------------------------------------
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_m_axi_sva (                       // external SMN inbound master
+        .aclk    (clk_i),
+        .aresetn (rst_ni),
+        .en_i    (1'b1),
+        .awid    (m_axi_awid),
+        .awaddr  (m_axi_awaddr),
+        .awlen   (m_axi_awlen),
+        .awsize  (m_axi_awsize),
+        .awburst (m_axi_awburst),
+        .awlock  (m_axi_awlock),
+        .awprot  (m_axi_awprot),
+        .awvalid (m_axi_awvalid),
+        .awready (m_axi_awready),
+        .wdata   (m_axi_wdata),
+        .wstrb   (m_axi_wstrb),
+        .wlast   (m_axi_wlast),
+        .wvalid  (m_axi_wvalid),
+        .wready  (m_axi_wready),
+        .bid     (m_axi_bid),
+        .bresp   (m_axi_bresp),
+        .bvalid  (m_axi_bvalid),
+        .bready  (m_axi_bready),
+        .arid    (m_axi_arid),
+        .araddr  (m_axi_araddr),
+        .arlen   (m_axi_arlen),
+        .arsize  (m_axi_arsize),
+        .arburst (m_axi_arburst),
+        .arlock  (m_axi_arlock),
+        .arprot  (m_axi_arprot),
+        .arvalid (m_axi_arvalid),
+        .arready (m_axi_arready),
+        .rid     (m_axi_rid),
+        .rdata   (m_axi_rdata),
+        .rresp   (m_axi_rresp),
+        .rlast   (m_axi_rlast),
+        .rvalid  (m_axi_rvalid),
+        .rready  (m_axi_rready)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_s_axi_sva (                       // CPU LSU master (sep_cpu stub drive)
+        .aclk    (clk_i),
+        .aresetn (rst_ni),
+        .en_i    (1'b1),
+        .awid    (s_axi_awid),
+        .awaddr  (s_axi_awaddr),
+        .awlen   (s_axi_awlen),
+        .awsize  (s_axi_awsize),
+        .awburst (s_axi_awburst),
+        .awlock  (s_axi_awlock),
+        .awprot  (s_axi_awprot),
+        .awvalid (s_axi_awvalid),
+        .awready (s_axi_awready),
+        .wdata   (s_axi_wdata),
+        .wstrb   (s_axi_wstrb),
+        .wlast   (s_axi_wlast),
+        .wvalid  (s_axi_wvalid),
+        .wready  (s_axi_wready),
+        .bid     (s_axi_bid),
+        .bresp   (s_axi_bresp),
+        .bvalid  (s_axi_bvalid),
+        .bready  (s_axi_bready),
+        .arid    (s_axi_arid),
+        .araddr  (s_axi_araddr),
+        .arlen   (s_axi_arlen),
+        .arsize  (s_axi_arsize),
+        .arburst (s_axi_arburst),
+        .arlock  (s_axi_arlock),
+        .arprot  (s_axi_arprot),
+        .arvalid (s_axi_arvalid),
+        .arready (s_axi_arready),
+        .rid     (s_axi_rid),
+        .rdata   (s_axi_rdata),
+        .rresp   (s_axi_rresp),
+        .rlast   (s_axi_rlast),
+        .rvalid  (s_axi_rvalid),
+        .rready  (s_axi_rready)
+    );
+
 `undef SEP_CORE
 `undef SEP_IPI
 

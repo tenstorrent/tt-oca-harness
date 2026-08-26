@@ -46,6 +46,11 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
+  # buses at the foot of tb_top. Assertion bodies are guarded by
+  # OCAH_INC_ASSERT, which Verilator does not define, so it elaborates to an
+  # empty module there and the rules are live only under VCS.
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
   "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
   # POR initializer for prim_flop. exclude_files drops the vendored definition
@@ -92,7 +97,8 @@ common_bender_targets = [
 # `sep_wrapper` adds hw/top/sep_{wrapper,ip_integration}.sv plus the vendored
 # prim_ram_1p/prim_ram_1p_adv/prim_rom memory models the IP integration needs.
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
-incdirs = ["hw/sys/sep/dv/tb"]
+# hw/common/assert carries ocah_assert.svh, included by the AXI protocol SVA.
+incdirs = ["hw/sys/sep/dv/tb", "hw/common/assert"]
 
 [build.options]
 # SEP is a large cold build (VeeR EL2 + OTBN + full crypto). Parallelize the
