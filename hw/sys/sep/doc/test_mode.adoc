@@ -23,8 +23,8 @@ Controller chapter, _`secure_tm` and the Secure Scan Chain_:
 while SECURE_TM = 1. At SECURE_TM = 0 no command is admitted on that
 chain, and a *dump* command is never admitted at either value.
 
-. The shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are
-blocked from any update.
+. The shadow registers of LOCK (both the LOCKS and LOCKS_SPARE windows),
+LC_STATE, SIP_DIS, and SYS_DIS are blocked from any update.
 
 . The fuse write-enable inputs to the fuse IP block are tied inactive.
 

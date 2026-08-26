@@ -81,7 +81,7 @@ chain (never scannable):
 
 * Class 1a (confidentiality): UIDs, `CLASS_KEY`, token-plaintext input
 registers (`*_TOKEN_I`).
-* Class 1b (integrity): `LOCKS`, `LC_STATE`, `SIP_DIS`, `SYS_DIS`,
+* Class 1b (integrity): `LOCKS`/`LOCKS_SPARE`, `LC_STATE`, `SIP_DIS`, `SYS_DIS`,
 `*_TOKEN_DIGEST` shadow registers.
 
 [[class-2-asset-manifest]]
@@ -139,11 +139,11 @@ We assert a GPIO pin strap to enable secure test mode. This generates
 the SECURE_TM signal which is consumed by
 
 * The DFT controller, which admits a *test* command on the Class 2 secure chain only while SECURE_TM is asserted. SECURE_TM does not enable scan test and authorizes nothing; it is the condition under which that chain will accept a test command at all.
-** Shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers
+** Shadow registers of LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers
 ** Any downstream registers in the path from these registers to the feature control outputs or the fuse write-enable signals are also non-scannable, as are the SECURE_TM latch and the command-admission logic that consumes it
 *** Dedicated test registers may be inserted in the path while in SECURE_TM mode to enable testing of downstream logic
 ** During scan test (`secure_tm = 1`) the secret-source outputs (UID / `CLASS_KEY`) are disconnected from the Class 2 consumers, so no real secret is shifted. On the Class 2 secure chain the DFT controller admits a test command only at `secure_tm = 1`, admits no command at `secure_tm = 0`, and never admits a dump command (never dumpable). See the Lifecycle Controller chapter, _`secure_tm` and the Secure Scan Chain_.
 ** Disable writing to any OTP fuse state to prevent updates.
 * OTP controller
-** Disable _writing_ of shadow registers: LOCKS, LC_STATE, SIP_DIS and SYS_DIS
+** Disable _writing_ of shadow registers: LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS and SYS_DIS
 ** Other shadow register fields may optionally also have write disabled

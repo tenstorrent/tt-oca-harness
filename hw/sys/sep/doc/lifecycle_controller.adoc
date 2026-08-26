@@ -636,7 +636,7 @@ everything else.
 
 |*1b* +
 (non-scannable; integrity)
-|`LOCKS`, `LC_STATE`, `SIP_DIS`, `SYS_DIS` shadow registers; `*_TOKEN_DIGEST` shadow registers; token-hash digest/valid and RMA match state
+|`LOCKS`/`LOCKS_SPARE`, `LC_STATE`, `SIP_DIS`, `SYS_DIS` shadow registers; `*_TOKEN_DIGEST` shadow registers; token-hash digest/valid and RMA match state
 |No
 |No
 |*Excluded* from all scan chains. *Integrity* rationale: the values are not secret (digests are SHA-256 preimage-resistant), but scan shifting could change them and illegitimately enable a disabled feature or make an attacker-presented token match. Stability against scan-induced perturbation is required.

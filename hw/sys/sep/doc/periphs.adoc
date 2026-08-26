@@ -26,9 +26,10 @@ enabled and fetches its first instruction from the SEP ROM.
 Every fuse field has two lock bits in the LOCKS field: one write-lock bit and
 one read-lock bit. When the write-lock bit is set to 1, the corresponding fuse
 field can no longer be programmed, and its shadow register is no longer
-writable. When the read-lock bit is set to 1, the shadow register of the
-corresponding fuse field is readable neither by software nor by JTAG. The read
-lock is effective only for fuse fields that are software-visible.
+writable. When the read-lock bit is set to 1, neither the shadow register nor
+the corresponding OTP field is readable by software or by JTAG. The lock field is
+itself the exception: LOCK has no lock-bit pair, and no lock bit may write-lock
+or read-lock LOCKS or LOCKS_SPARE.
 
 The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
@@ -66,15 +67,17 @@ programming never needs to configure the programming voltage.
 
 * Programming a fuse does not update its shadow register until the next fuse
 sensing occurs.
-* The shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are
-non-scannable. Any register on the path from these registers to the feature
-control outputs or the fuse write-enable signals is likewise non-scannable.
-* When SECURE_TM is 1 (see the Test Mode section), the shadow registers of
-LOCKS, LC_STATE, SIP_DIS, and SYS_DIS shall be blocked from any update, from
-every source -- software, JTAG, and TRoot. This list is normative and
-exhaustive: these are the fields whose perturbation could enable a feature that
-a DIS vector or the lifecycle state has disabled. An implementation may block
-further fields, but no other requirement in this specification depends on it.
+* The shadow registers of LOCK (both the LOCKS and LOCKS_SPARE windows),
+LC_STATE, SIP_DIS, and SYS_DIS are non-scannable. Any register on the path
+from these registers to the feature control outputs or the fuse write-enable
+signals is likewise non-scannable.
+* When SECURE_TM is 1 (see the Test Mode section), the shadow registers of LOCK
+(both the LOCKS and LOCKS_SPARE windows), LC_STATE, SIP_DIS, and SYS_DIS shall
+be blocked from any update, from every source -- software, JTAG, and TRoot.
+This list is normative and exhaustive: these are the fields whose perturbation
+could enable a feature that a DIS vector or the lifecycle state has disabled.
+An implementation may block further fields, but no other requirement in this
+specification depends on it.
 
 To prevent test patterns from accidentally or maliciously changing or reading
 out the fuse values:
@@ -98,7 +101,9 @@ field is split across two RDL registers because PeakRDL requires power-of-2
 * `LOCKS_SPARE` (32-bit `@0x8`): slots 32–39 in bits [15:0]; slots 40–47 (unassigned) in bits [31:16]
 
 Firmware reads the complete 96-bit lock state as three consecutive 32-bit APB words.
-There are 40 lockable fields (slots 0–39). When write-locked, the corresponding
+There are 40 lockable fields (slots 0–39). LOCK is not one of them: *_the 96-bit
+lock field has no lock-bit pair of its own_*, and no lock bit may write-lock or
+read-lock `LOCKS` or `LOCKS_SPARE`. When write-locked, the corresponding
 shadow register is not writable. When read-locked, neither software nor JTAG can
 read the corresponding shadow register or fuse field. The fuse-sensing FSM is
 _always_ able to read the fuses in order to populate the shadow registers.
