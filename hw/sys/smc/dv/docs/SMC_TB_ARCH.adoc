@@ -7,10 +7,10 @@
 === Overview
 
 The required section spine, in this order, is Overview, VIP Selection Policy,
-Testbench Hierarchy, Directory Structure, HDL Top, Environment Components,
-Clock and Reset Strategy, Stimulus Strategy, Checking Strategy, Coverage
-Strategy, and Build and Run. Subsystem-specific sections sit on top of that
-spine.
+DUT-Local Model Ownership, Testbench Hierarchy, Directory Structure, HDL Top,
+Environment Components, Clock and Reset Strategy, Stimulus Strategy, Checking
+Strategy, Coverage Strategy, Canonical RTL Selection, and Build and Run.
+Subsystem-specific sections sit on top of that spine.
 
 [cols=",",options="header",]
 |===
@@ -68,15 +68,16 @@ line engines in `ocah_uart_vip` (via `OcahUartConsole`) onto the UART0 pads.
 I3C has no VIP dependency: `smc_i3c_to_fabric_test` gates on CSR decode plus
 the `check_i3c0_external_pull_low` line-level check.
 
-'''''
+[[dut-local-model-ownership]]
+=== DUT-Local Model Ownership
+
+The shared promotion checklist is defined in `hw/common/dv/README.md`. The SMC
+adapters below remain local because they encode this DUT's port flattening,
+address/catalog policy, error signatures, or split-port open-drain polarity.
 
 [[common-vip-reuse-layer]]
-==== Common VIP reuse layer
-
-The SMC environment keeps DUT-specific adapters around shared protocol engines.
-The AXI adapter binds flattened SMC ports directly; three additional adapters
-under `seq_lib/` target the `tb_top.sv` split-port `ext_low` open-drain
-convention:
+The AXI adapter binds flattened SMC ports directly; additional adapters under
+`seq_lib/` target the `tb_top.sv` split-port `ext_low` open-drain convention:
 
 [cols=",,",options="header",]
 |=======================================================================================================================================================================================================================================================================================================================================
@@ -97,6 +98,12 @@ changes automatically. The bit-level check was deliberately lenient on first
 landing (assert `bit[0] == 1`, `!= 0`, `!= 0xFFFFFFFF`; only _log_ the expected
 `0x10CA0555`) and was tightened to a strict compare once a live PASS confirmed
 the captured value.
+
+`SmcCsrSeq` and `smc_csr_field_catalog.py` stay DUT-local: they carry SMC
+address/catalog policy and error signatures. `SmcMemoryModel` is a TB-local
+golden, not a DUT-hierarchy backdoor. Promote a register helper to shared DV
+only after a second DUT needs the same protocol-neutral API with those policies
+removed.
 
 [[protocol-vip-proxy-pattern-smc-specific]]
 === Protocol-VIP "proxy" pattern (SMC-specific)
@@ -467,6 +474,20 @@ Verilator does not support SystemVerilog covergroups. The SMC open-source path
 collects Python-side functional observations in `SmcScoreboard`
 (`FUNC_COV_VALUE` bins) and relies on commercial simulators for SV covergroups,
 assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
+
+[[canonical-rtl-selection]]
+=== Canonical RTL Selection
+
+Bender supplies the product SMC RTL to the simulator flows. Verilator and the
+commercial simulators therefore compile the same subsystem source graph.
+`tb/verilator_stubs/` may contain tooling shims only (`prim_sync2` /
+`prim_sync3` for OSS prim port remap and X-init). Product-module overrides
+(`smc_reset_*`, `smc_dfx_*`, …) are forbidden.
+
+PeakRDL nested hwif structs stay compilable with `disable_public_flat_rw` plus
+`smc_public_scope.vlt`. PLL and PVT windows compile the adopter `pll_wrap` /
+`pvt_wrap` placeholders inside `smc_ip_integration`; those are handshake
+responders, not substitute macro RTL.
 
 [[house-rules]]
 === House rules

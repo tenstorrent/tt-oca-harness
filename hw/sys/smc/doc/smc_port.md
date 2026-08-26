@@ -25,7 +25,7 @@
 
 - `hw/sys/smc/dv/docs/index.adoc` — chapter set
 - `hw/sys/smc/dv/docs/SMC_TB_ARCH.adoc` — how to rebuild a test (env / seq / checkers)
-- `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` — verification plan, porting plan, sign-off records
+- `hw/sys/smc/dv/docs/SMC_VPLAN.adoc` — verification plan
 - `hw/sys/smc/dv/docs/SMC_FCOV.adoc` — coverage pipeline
 - `hw/sys/smc/dv/README.md` — green policy (real DUT RTL only)
 
