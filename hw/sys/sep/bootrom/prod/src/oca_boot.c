@@ -167,7 +167,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     oca_manifest_peek_t pk;
     oca_result_t r = oca_peek_manifest(body, OCA_MANIFEST_PEEK_MIN, &pk);
     if (r != OCA_OK) {
-        report_status(STATUS_TYPE_ERROR, status_for_result(r));
+        report_status(STATUS_TYPE_WARN, status_for_result(r));
         return OCA_BOOT_ERR_RESULT(r);
     }
     simputshex32("OCA_BODY=", (uint32_t)pk.body_size);
@@ -191,7 +191,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_CHECK_MANIFEST_HASH);
     r = oca_validate_manifest(body, pk.body_size, sep_oca_callbacks(), &vctx);
     if (r != OCA_OK) {
-        report_status(STATUS_TYPE_ERROR, status_for_result(r));
+        report_status(STATUS_TYPE_WARN, status_for_result(r));
         return OCA_BOOT_ERR_RESULT(r);
     }
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_VALIDATED);
@@ -201,7 +201,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     oca_payload_encryption_t enc;
     r = oca_payload_encryption_info(body, &enc);
     if (r != OCA_OK) {
-        report_status(STATUS_TYPE_ERROR, status_for_result(r));
+        report_status(STATUS_TYPE_WARN, status_for_result(r));
         return OCA_BOOT_ERR_RESULT(r);
     }
 
@@ -219,7 +219,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     size_t  payload_span = 0u;
     r = oca_locate_payload(body, &bounds, &payload_addr, &payload_span);
     if (r != OCA_OK) {
-        report_status(STATUS_TYPE_ERROR, status_for_result(r));
+        report_status(STATUS_TYPE_WARN, status_for_result(r));
         simputs("PAYLOAD_LOC_FAIL\n");
         return OCA_BOOT_ERR_RESULT(r);
     }
@@ -246,7 +246,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     r = oca_check_payload_at(body, payload, payload_span,
                              sep_oca_callbacks(), &vctx, NULL);
     if (r != OCA_OK) {
-        report_status(STATUS_TYPE_ERROR, status_for_result(r));
+        report_status(STATUS_TYPE_WARN, status_for_result(r));
         return OCA_BOOT_ERR_RESULT(r);
     }
     report_status(STATUS_TYPE_INFO, SEP_MSG_PAYLOAD_VALIDATED);
@@ -331,7 +331,10 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         }
 
         report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_LOAD_START);
-        simputs(retry == 0u ? "MANIFEST_PRIMARY\n" : "MANIFEST_BACKUP\n");
+        // Keyed on the SLOT, not the retry counter. rotate_update swaps the
+        // order, so retry 0 can be the backup slot -- labelling by retry made
+        // the marker say PRIMARY while MANIFEST_SRC showed 0x41000.
+        simputs(slot == 0u ? "MANIFEST_PRIMARY\n" : "MANIFEST_BACKUP\n");
         simputshex32("MANIFEST_SRC=", manifest_src);
 
         uint32_t err = try_manifest_slot(manifest_src, from_spi, region_base, region_limit);
@@ -347,6 +350,16 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         return 0u;
     }
 
+    // Every slot is gone, so now it IS a boot failure. Re-report the last slot's
+    // verdict as an ERROR before the generic code: during the retry loop each
+    // verdict was only a WARN, because a slot the backup recovers from must not
+    // look like a failed boot to anything watching the production stream. The
+    // low byte of an OCA_BOOT_ERR_RESULT carries the library's oca_result_t, so
+    // the specific reason survives without being tracked separately.
+    if ((last_err & 0xFFFFFF00u) == OCA_BOOT_ERR_BASE) {
+        report_status(STATUS_TYPE_ERROR,
+                      status_for_result((oca_result_t)(last_err & 0xFFu)));
+    }
     report_status(STATUS_TYPE_ERROR, SEP_MSG_MANIFEST_LOAD_FAILED);
     simputs("MANIFEST_ALL_FAILED\n");
     return last_err;

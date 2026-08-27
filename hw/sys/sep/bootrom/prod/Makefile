@@ -439,63 +439,64 @@ $(ENCRYPTED_SPI_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
 	python3 "$(BIN_TO_SPI)" "$(ENCRYPTED_BOOT_BIN)" "$@"
 
 # --- OCA boot-manifest images (the format the ROM parses) ---------------------
-# Three images, one per path through the validator: unsigned, RSA-3072 signed,
-# and signed with an AES-256-CBC encrypted payload. The encrypted one derives its
-# key from the CLASS_KEY fuse bank, so it only boots against a matching fuse map
-# (virtual_platform/tests/fuse_maps/oca_encrypted.yaml).
+# One entry per path through the validator. Each name <n> in OCA_IMAGES needs a
+# pair of configs: configs/oca_<n>_image.yaml (oca-combined -- places the bundle
+# at the two slot offsets the ROM reads, PRIMARY/BACKUP_MANIFEST_OFFSET in
+# boot_flash.h) and configs/oca_<n>_test.yaml (the bundle itself). A bare bundle
+# packs to offset 0 and is not bootable from SPI on its own.
 #
-# Each emits BOTH forms, because the two test environments consume different
-# ones -- the VP stages the raw .bin through SimConfig(flash_image=...), DV hands
-# the same .bin to OcahSpiFlash.preload(), and the .spi_preload ($readmemh) is
-# what a VP run using spiPreload= or an SMC-SRAM preload needs. Cheap to emit,
-# and having only one of them is a confusing failure much later.
+# Every image emits BOTH forms: the VP stages the raw .bin through
+# SimConfig(flash_image=...), DV hands the same .bin to OcahSpiFlash.preload(),
+# and the .spi_preload ($readmemh) is what a spiPreload= run wants. Cheap to
+# emit, and having only one is a confusing failure much later.
 #
-# The *_image.yaml configs are oca-combined: they place the bundle at the two slot
-# offsets the ROM actually reads (PRIMARY/BACKUP_MANIFEST_OFFSET, boot_flash.h).
-# The bare *_test.yaml bundle configs they reference pack to offset 0 and are not
-# bootable on their own.
-#
-# No OCH_ROOT/ROOT env prefix here, unlike the Grendel recipes above: the OCA
-# producer does not expand variables in config paths (src/oca/payload.py opens
-# `path` verbatim), so the configs carry paths relative to this directory instead.
-OCA_NS_CONFIG      := $(CURDIR)/configs/oca_non_secure_boot_image.yaml
-OCA_NS_BUNDLE_CFG  := $(CURDIR)/configs/oca_non_secure_boot_test.yaml
-OCA_NS_BIN         := $(BUILD_DIR)/oca_non_secure_boot.bin
-OCA_NS_SPI_HEX     := $(BUILD_DIR)/oca_non_secure_boot.spi_preload
+# No OCH_ROOT/ROOT env prefix, unlike the Grendel recipes above: the OCA producer
+# does not expand variables in config paths (src/oca/payload.py opens `path`
+# verbatim), so the configs carry paths relative to this directory.
+OCA_IMAGES := \
+	non_secure_boot \
+	secure_boot \
+	encrypted_boot \
+	aes128_boot \
+	otp_key_boot \
+	sip_key_boot \
+	identity_boot \
+	pqc_boot \
+	ecdsa_boot \
+	der_boot \
+	multi_image_boot \
+	no_bl1_boot
 
-OCA_SEC_CONFIG     := $(CURDIR)/configs/oca_secure_boot_image.yaml
-OCA_SEC_BUNDLE_CFG := $(CURDIR)/configs/oca_secure_boot_test.yaml
-OCA_SEC_BIN        := $(BUILD_DIR)/oca_secure_boot.bin
-OCA_SEC_SPI_HEX    := $(BUILD_DIR)/oca_secure_boot.spi_preload
+OCA_BINS := $(patsubst %,$(BUILD_DIR)/oca_%.bin,$(OCA_IMAGES))
+OCA_HEXS := $(patsubst %,$(BUILD_DIR)/oca_%.spi_preload,$(OCA_IMAGES))
 
-OCA_ENC_CONFIG     := $(CURDIR)/configs/oca_encrypted_boot_image.yaml
-OCA_ENC_BUNDLE_CFG := $(CURDIR)/configs/oca_encrypted_boot_test.yaml
-OCA_ENC_BIN        := $(BUILD_DIR)/oca_encrypted_boot.bin
-OCA_ENC_SPI_HEX    := $(BUILD_DIR)/oca_encrypted_boot.spi_preload
+# The SMC-SRAM path stages a BARE BUNDLE, not a combined image: it resolves the
+# payload from the manifest's own payload_offset, which for a bundle is exactly
+# body_size, so the slot offsets a combined image adds mean nothing there.
+OCA_SMC_CONFIG := $(CURDIR)/configs/oca_secure_boot_test.yaml
+OCA_SMC_BIN    := $(BUILD_DIR)/oca_smc_bundle.bin
 
-.PHONY: oca-images oca_non_secure_spi oca_secure_boot_spi oca_encrypted_boot_spi
-oca-images: $(OCA_NS_SPI_HEX) $(OCA_SEC_SPI_HEX) $(OCA_ENC_SPI_HEX)
-oca_non_secure_spi: $(OCA_NS_SPI_HEX)
-oca_secure_boot_spi: $(OCA_SEC_SPI_HEX)
-oca_encrypted_boot_spi: $(OCA_ENC_SPI_HEX)
+.PHONY: oca-images
+oca-images: $(OCA_HEXS) $(OCA_SMC_BIN)
 
-$(OCA_NS_SPI_HEX): $(OCA_NS_CONFIG) $(OCA_NS_BUNDLE_CFG) bl1_test ensure-pack-deps | $(BUILD_DIR)
-	$(PACK_RUN) --config "$(OCA_NS_CONFIG)" --out "$(OCA_NS_BIN)" -v
-	python3 "$(BIN_TO_SPI)" "$(OCA_NS_BIN)" "$@"
-
-$(OCA_SEC_SPI_HEX): $(OCA_SEC_CONFIG) $(OCA_SEC_BUNDLE_CFG) bl1_test ensure-pack-deps | $(BUILD_DIR)
+# Static pattern rule so a new image is one line in OCA_IMAGES plus its two
+# configs -- there is no per-image recipe to copy and get subtly wrong.
+$(OCA_BINS): $(BUILD_DIR)/oca_%.bin: $(CURDIR)/configs/oca_%_image.yaml \
+                                     $(CURDIR)/configs/oca_%_test.yaml \
+                                     bl1_test ensure-pack-deps | $(BUILD_DIR)
 	@test -f "$(SEP_SIGNING_KEY)" || { \
-	  echo "ERROR: OCA secure boot image needs the dev0 signing key."; \
+	  echo "ERROR: OCA images need the dev0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
 	  echo "       It ships in the tt-boot-manifest submodule, so this normally means"; \
 	  echo "       the submodule is stale; re-run git submodule update."; \
 	  exit 1; }
-	$(PACK_RUN) --config "$(OCA_SEC_CONFIG)" --out "$(OCA_SEC_BIN)" -v
-	python3 "$(BIN_TO_SPI)" "$(OCA_SEC_BIN)" "$@"
+	$(PACK_RUN) --config "$<" --out "$@" -v
 
-$(OCA_ENC_SPI_HEX): $(OCA_ENC_CONFIG) $(OCA_ENC_BUNDLE_CFG) bl1_test ensure-pack-deps | $(BUILD_DIR)
-	$(PACK_RUN) --config "$(OCA_ENC_CONFIG)" --out "$(OCA_ENC_BIN)" -v
-	python3 "$(BIN_TO_SPI)" "$(OCA_ENC_BIN)" "$@"
+$(OCA_HEXS): $(BUILD_DIR)/oca_%.spi_preload: $(BUILD_DIR)/oca_%.bin
+	python3 "$(BIN_TO_SPI)" "$<" "$@"
+
+$(OCA_SMC_BIN): $(OCA_SMC_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
+	$(PACK_RUN) --config "$(OCA_SMC_CONFIG)" --out "$@" -v
 
 # Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
 # behind would let a stale OT image survive into the next run and boot silently.

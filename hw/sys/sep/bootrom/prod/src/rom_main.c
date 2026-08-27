@@ -182,7 +182,18 @@ __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code) {
     }
 
     // Record in cold_scratch[1] for debugger visibility (STATUS_ENCODE format).
-    STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_ERROR, error_code & 0xFFFF));
+    //
+    // Only for codes that ARE status values. A subsystem error carries its
+    // subsystem in the upper half (manifest errors are 0x0003xxxx), and
+    // truncating one to 16 bits lands it in the SEP_MSG_* numbering space where
+    // it decodes as an unrelated message: MANIFEST_ERR 0x00030012 came out as
+    // "SEP_MSG_BL1_SIZE_INVALID" on a payload-hash failure. Every such path has
+    // already reported its own specific ERROR status, so the truncated word adds
+    // nothing and actively misleads. The full 32-bit code still reaches the
+    // mailbox below, so DV loses no information.
+    if ((error_code & 0xFFFF0000u) == 0u) {
+        STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_ERROR, error_code & 0xFFFF));
+    }
 
     // Verdict on cold_scratch[0] -- the channel DV gates on. The error code is
     // NOT repeated here; it is already on cold_scratch[1] above, which is what
