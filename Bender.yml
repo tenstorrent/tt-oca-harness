@@ -1573,6 +1573,7 @@ sources:
       - hw/top/sep_wrapper.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:
+      - hw/top/smc_i3c_mem_integration.sv
       - hw/top/smc_ijtag_net.sv
       - hw/top/smc_ip_integration.sv
   - target: smc_wrapper

@@ -51,20 +51,40 @@ def ensure_cocotbext_i3c() -> tuple[bool, str]:
     if "cocotbext_i3c.i3c_target" in sys.modules:
         return True, "already-imported"
 
+    # cocotbext-i3c ships as a submodule of the i3c-core checkout rather than a
+    # PyPI release, so it has to be found on disk. Two layouts exist: the
+    # upstream i3c-core tree keeps it under deps/, while OCAH vendors i3c-core
+    # via `bender vendor` under vendor/chipsalliance/i3c-core/upstream/. Probe
+    # both, relative to whichever marker directory a checkout actually has.
+    _SUBPATHS = (
+        ("deps", "i3c-core", "third_party", "cocotbext-i3c", "src"),
+        (
+            "vendor",
+            "chipsalliance",
+            "i3c-core",
+            "upstream",
+            "third_party",
+            "cocotbext-i3c",
+            "src",
+        ),
+    )
+
     roots = []
     och = os.environ.get("OCH_ROOT", "")
     if och:
-        roots.append(os.path.join(och, "deps", "i3c-core", "third_party", "cocotbext-i3c", "src"))
+        roots.extend(os.path.join(och, *parts) for parts in _SUBPATHS)
     # Fallbacks used by various checkout layouts.
     here = os.path.abspath(__file__)
-    # .../hw/common/dv/vip/ocah_i3c_vip/ocah_i3c_split_port.py -> repo root ~6 up
+    # .../hw/common/dv/vip/ocah_i3c_vip/cocotb/ocah_i3c_split_port.py
     repo = here
     for _ in range(10):
         repo = os.path.dirname(repo)
-        if os.path.isdir(os.path.join(repo, "deps")):
-            roots.append(
-                os.path.join(repo, "deps", "i3c-core", "third_party", "cocotbext-i3c", "src")
-            )
+        if not repo or repo == os.path.sep:
+            break
+        if os.path.isdir(os.path.join(repo, "deps")) or os.path.isdir(
+            os.path.join(repo, "vendor")
+        ):
+            roots.extend(os.path.join(repo, *parts) for parts in _SUBPATHS)
             break
 
     for candidate in roots:

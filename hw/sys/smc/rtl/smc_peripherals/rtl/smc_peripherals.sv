@@ -940,7 +940,17 @@ module smc_peripherals #(
 	i3ccore_wrapper #(
 		.NUM_I3C            (smc_config_pkg::NUM_I3C),
 		.I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3C_REG_ADDR_WIDTH),
-		.BASE_ADDR          (oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_BASE_ADDR),
+		// The system base of instance 0, NOT the generated block-relative base.
+		// i3ccore_wrapper subtracts BASE_ADDR from the incoming address before
+		// picking an instance (i3ccore_wrapper.sv:126-146), which is the whole
+		// reason the parameter exists. Passing the block's own base (0) while the
+		// fabric delivers full system addresses left every range comparison
+		// unmatched, so write_select/read_select kept their initialised 0 and every
+		// I3C instance silently aliased to instance 0 -- writes to 0xC003B000 or
+		// 0xC003D000 returned OKAY and configured instance 0. Five of six
+		// controllers were unreachable with no error signalled. See
+		// hw/sys/smc/dv/docs/i3c_instance_decode_defect.md.
+		.BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_0_BASE_ADDR),
 		.INSTANCE_SPACING   (i3ccore_wrap_pkg::I3C_INSTANCE_SPACING),
 
 		// I3C Core parameters

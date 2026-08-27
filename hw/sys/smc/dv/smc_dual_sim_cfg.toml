@@ -1,0 +1,155 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: `--dut smc_dual` (registered in hw/common/dv/configs/duts.toml).
+#
+# Two hw/top/smc_wrapper.sv instances on a shared I3C0 bus under
+# tb/tb_top_dual.sv, for the OCCP unsecure-boot flow where one SMC boots the
+# other. See docs/dual_smc_occp_boot_design.md.
+#
+# Independent of the single-instance `smc` catalog in smc_sim_cfg.toml. Every
+# build path below is de-conflicted from it -- separate filelists, work_dir,
+# build_dir and cocotb tree -- because concurrent --rebuild runs race on bender
+# filelist generation (docs/smc_oss_execution_guide.md). Same split as
+# smu / smu_wrapper.
+name = "smc_dual"
+profile = "native"
+description = "Dual-SMC OSS cocotb: OCCP controller + target on a shared I3C0 bus"
+default_tool = "verilator"
+tools = ["vcs", "verilator", "xcelium"]
+
+[testlist]
+path = "testlists/dual.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/sys/smc/dv/build_dual"]
+
+[build]
+top_module = "smc_dual_uvm_top"
+top_file = "hw/sys/smc/dv/tb/tb_top_dual.sv"
+filelist = "hw/sys/smc/dv/build_dual/smc_dual_dut_compile.f"
+bender_filelist = "hw/sys/smc/dv/build_dual/smc_dual_bender.f"
+work_dir = "hw/sys/smc/dv/build_dual"
+common_bender_targets = [
+  "tech_cells_generic_exclude_deprecated",
+  "tech_cells_generic_exclude_tc_sram",
+  "axi_rtl",
+  "apb_rtl",
+  "common_cells_rtl",
+  "common_cell_sync_shim",
+  "idma_rtl",
+  "register_interface_l1",
+]
+bender_targets = ["smc", "smc_wrapper"]
+incdirs = [
+  "hw/sys/sep/dv/shims/prim",
+  "hw/sys/smc/dv/tb",
+]
+exclude_files = [
+  "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
+  "hw/oss-example/wrapper/smu/smu_wrapper.sv",
+  "hw/oss-example/wrapper/sep/sep_ip_integration.sv",
+  "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv",
+  "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
+  "deps/i3c-core",
+]
+stubs = [
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
+  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
+]
+sources = [
+  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+]
+
+[build.verilator]
+disable_public_flat_rw = true
+public_scope = "hw/sys/smc/dv/tb/smc_dual_public_scope.vlt"
+low_mem_make = true
+ccache = true
+
+[build.options]
+build_jobs = 8
+
+[frameworks.cocotb]
+# Own PyUVM tree so module names stay independent of the single-instance
+# cocotb/ catalog sharing this DV root.
+python_root = "hw/sys/smc/dv/cocotb_dual"
+test_dir = "hw/sys/smc/dv/cocotb_dual/tests"
+python_paths = [
+  "hw/common/dv/vip",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[c_build.bootrom]
+# Target-side image: the real production boot ROM, same recipe (and the same
+# I3C_CORE=swap HCI-target selection) as [c_build.bootrom] in smc_sim_cfg.toml.
+# See that file for why the toolchain probe / container fallback exists and for
+# the no-braces constraint on argv.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; ROM_DIR=hw/sys/smc/bootrom/prod; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the SMC boot ROM in the OCAH toolchain container\"; ./scripts/docker-run.sh run make -C \"$ROM_DIR\" I3C_CORE=swap; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+]
+
+[c_build.dual_occp]
+# All three images the dual boot needs, in one stage, because the test needs
+# them together:
+#   prod_rom            -> u_dut  (target, real production boot ROM)
+#   occp_unsecure_boot_test -> u_bfm  (controller, rom-mode DV image)
+#   hello_world         -> transferred over I3C by the controller. An ordinary
+#                          sram-mode image from the shared test engine, matching
+#                          the reference environment's +ROM_FW_TEST=hello_world.
+#                          cocotb writes it into the controller's SRAM over AXI,
+#                          so nothing has to embed it in a ROM image.
+#
+# {fw_target} is the only placeholder the runlib allows, so the DV test names
+# are spelled out rather than interpolated. Same host-toolchain-vs-container
+# split as [c_build.bootrom]; see smc_sim_cfg.toml for why it exists and for
+# the no-braces constraint on argv.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap RISCV_TOOLCHAIN=\"$RV_TC\"; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the dual-OCCP images in the OCAH toolchain container\"; ./scripts/docker-run.sh run bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap && make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+  "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.hex",
+  "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.sym",
+  "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.bin",
+  "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.sym",
+]
+
+[run_modes.dual]
+# No +rom_hex here, for the same reason [run_modes.prod_rom] in
+# smc_sim_cfg.toml omits it: smc_cpu_mem_integration's #0.2 backdoor would
+# apply it on top of the production ROM loaded at #0.1 and zero its entry point.
+description = "Dual-SMC OCCP boot (+rom_bin64 target, +bfm_rom_hex controller)"
+timeout_sec = 7200
+args = [
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+]
+
+[targets.default]
+description = "OSS dual-SMC cocotb target"
+build_dir = "hw/sys/smc/dv/build_dual/cocotb"
+defines = [
+  "SYNTHESIS",
+  "SIM",
+]
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+  "+define+ASSERTS_OFF",
+]

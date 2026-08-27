@@ -75,6 +75,15 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_ram_1p.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
 
+  # I3C DAT/DCT/RLT table memories (hw/top/smc_i3c_mem_integration.sv). Only the
+  # bare smc_wrapper build needs these listed here; every build that activates
+  # smu_wrapper also activates sep/smu, which already supply all three above.
+  - target: smc_wrapper
+    files:
+      - upstream/hw/ip/prim/rtl/prim_ram_1p.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_2p.sv
+
   # `opentitan_smu` can still be requested explicitly, but it also auto-activates
   # whenever `sep` or `smu` are requested: SEP's crypto wrappers (aes_wrapper.sv,
   # hmac_wrapper.sv, kmac_wrapper.sv, sep_crypto_otbn_wrapper.sv, sep.sv's secure_dma

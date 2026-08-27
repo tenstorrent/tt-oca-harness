@@ -27,8 +27,30 @@ FW_C_SRCS += \
   $(FW_DIR)/common/occp/occp_interfaces.c \
   $(FW_DIR)/common/occp/status_decode.c \
   $(FW_DIR)/common/occp/sep_ring_buffer_model.c \
-  $(FW_DIR)/common/occp/i2c_controller_driver.c \
+  $(FW_DIR)/common/occp/i2c_controller_driver.c
+
+# I3C controller half of the OCCP master BFM. i3c_controller_driver.c is the
+# real MIPI-HCI driver for the vendored OCA i3c-core this tree actually
+# instantiates, and its whole body is gated by I3C_USE_HCI_CORE. The stub is
+# still compiled alongside it: its I3C_GetDriverInstance / i3c_release_reset /
+# cfg_ps / init_i3c_ctrl are __attribute__((weak)), so the real driver's strong
+# definitions win at link time, and the stub keeps providing them for any build
+# that leaves I3C_USE_HCI_CORE undefined.
+FW_C_SRCS += \
+  $(FW_DIR)/common/occp/i3c_controller_driver.c \
   $(FW_DIR)/common/occp/i3c_controller_driver_stub.c
+# FW_EXTRA_CFLAGS reaches both the library objects and the per-test objects, so
+# the define is seen by the driver body and by anything that keys off it.
+#
+# Blast radius, since this is unconditional and i3c_controller_driver.c was dead
+# code before: every SMC DV firmware test that resolves I3C_GetDriverInstance now
+# links the real HCI driver instead of the weak stub that returned NULL. Besides
+# the OCCP family (via common/occp/occp_interfaces.c) that is fw/tests/
+# i3c_raw_master and i3c_raw_slave -- both still build clean, and neither is
+# referenced by any testlist, so no DV test's behaviour changes today. A test
+# that used to get NULL and bail will now drive the core for real, which is the
+# intent; it is called out here so that is a decision rather than a surprise.
+FW_EXTRA_CFLAGS += -DI3C_USE_HCI_CORE
 
 # exit_stub.c provides _exit() for rom-mode tests (crt0 → exit() → _exit();
 # ROM tests never return so it just spins in WFI).

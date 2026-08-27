@@ -92,12 +92,61 @@ outputs = [
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/default_efuse_shadow_reg.preload",
 ]
 
+[c_build.bootrom]
+# Build the real SMC production boot ROM (hw/sys/smc/bootrom/prod) instead of a
+# DV C test. Selected by `firmware = { name = "prod_rom", mode = "bootrom" }`.
+#
+# I3C_CORE=swap is load-bearing: it defines I3C_USE_HCI_CORE, which is what
+# selects drivers/src/i3c_hci_driver.c -- the target-side driver for the OCA
+# i3c-core this tree actually instantiates -- over the Cadence override.
+#
+# The ROM's own Makefile is standalone and needs a picolibc-enabled RISC-V
+# toolchain, which most hosts do not carry, so probe for one and fall back to
+# the OCAH toolchain container. Same host-vs-container split as
+# hw/sys/sep/dv/sep_sim_cfg.toml's [c_build.boot_rom].
+#
+# NOTE: as in [c_build.default], argv goes through str.format() and the runlib
+# rejects every placeholder except {fw_target} -- braces of any kind, including
+# shell ${...} expansion, are unavailable here. Use "$VAR" and $(...) instead.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; ROM_DIR=hw/sys/smc/bootrom/prod; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the SMC boot ROM in the OCAH toolchain container\"; ./scripts/docker-run.sh run make -C \"$ROM_DIR\" I3C_CORE=swap; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+# prod_rom.bin64 is exactly 16384 64-bit lines, matching the CPU ROM array
+# (prim_rom Width=64 Depth=16384 in OCAH4CORECluster_rom_ext), so it loads via
+# +rom_bin64 / $readmemb with no truncation. The .preload.hex form is staged
+# alongside it for inspection.
+outputs = [
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.preload.hex",
+]
+
 [run_modes.smoke]
 description = "SMC functional smoke (smc_wrapper under tb_top)"
 timeout_sec = 1800
 args = [
   "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
+
+[run_modes.prod_rom]
+# Production boot ROM runs. Deliberately carries NO +rom_hex.
+#
+# `smoke` is the default run mode for any test that does not name one, and its
+# +rom_hex points at assets/smc_rom_default.hex -- 16 lines of zeros. Two
+# separate loaders consume it: OCAH4CORECluster_rom_ext at #0.1 (which prefers
+# +rom_bin64, so the production image wins there) and
+# smc_cpu_mem_integration's backdoor at #0.2 (which only knows +smc_rom_hex /
+# +rom_hex). The later one would therefore zero ROM words 0-15 -- the reset
+# vector and first instructions -- on top of a correctly loaded production ROM,
+# leaving the CPU to fetch all-zero opcodes. Keeping +rom_hex out of this mode
+# is what makes +rom_bin64 the single ROM image for these tests.
+description = "SMC boot from the real production ROM (+rom_bin64 only)"
+timeout_sec = 3600
+args = [
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
 ]
 
 [targets.default]
