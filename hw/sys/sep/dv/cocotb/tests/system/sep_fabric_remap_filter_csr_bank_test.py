@@ -9,8 +9,8 @@ the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_widt
 field, with a non-vacuity anchor (a written value differs from reset and is confined
 to its field). RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W
 (clearable), NOT woset -- only the filter locked bit is woset (CHK-VALID-RW vs
-CHK-WOSET). CSR layer only -- functional remap translation and outbound-filter
-enforcement are infra-gated (ledger GAP-deferred).
+CHK-WOSET). CSR layer only -- this entry does not prove live remap translation
+or outbound-filter drop.
 
 reference refs: sep_fabric_64bit_regwidth_test (, 64-bit + locked/valid
 woset), sep_outbound_filter_cfg_test (, FILTER_CONFIG incl. RO

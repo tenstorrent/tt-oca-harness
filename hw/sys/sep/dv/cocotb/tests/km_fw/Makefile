@@ -6,7 +6,7 @@ RISCV_OBJCOPY ?= $(GCC_PREFIX)-objcopy
 PYTHON ?= python3
 
 OUT_DIR := ..
-ROMS := km_rom_entropy km_rom_coexist
+ROMS := km_rom km_rom_entropy km_rom_coexist km_rom_vault
 PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
 .PHONY: all clean rom_main
@@ -42,8 +42,7 @@ ROM_MAIN_WIPE_DEFINES := -DROM_KM_BOOT_WIPE_DEFAULT=0 -DROM_KM_UNREC_WIPE_DEFAUL
 # The defines above are COMPILE flags, and compile.mk's dependency tracking
 # (-MMD -MP) records HEADER dependencies only -- it cannot see a CFLAGS change.
 # So an object left over from a build that did not pass them would be silently
-# reused, re-enabling the boot wipe and reproducing the exact dead-KM symptom
-# these tests were once parked for.
+# reused, re-enabling the boot wipe and leaving the KM CPU dead.
 #
 # The object that carries these defines is NOT under build/tests/. rom_boot.c is
 # a DRIVER, and compile.mk:118 places driver objects FLAT in $(FW_BUILD_DIR)
@@ -72,6 +71,12 @@ rom_main: rom_main_stamp
 	@printf '%s' "$(ROM_MAIN_WIPE_DEFINES)" > $(ROM_MAIN_STAMP)
 	cp $(KM_ROM_BUILT) $(OUT_DIR)/rom_main.rom.parhex
 	@echo "[km_fw] staged rom_main.rom.parhex -> $(OUT_DIR)/rom_main.rom.parhex"
+
+# Vault ROM uses RV32E: PicoRV32 is built with ENABLE_REGS_16_31=0.
+$(OUT_DIR)/km_rom_vault.parhex: km_rom_vault.S gen_parhex.py
+	$(RISCV_CC) -nostdlib -march=rv32e -mabi=ilp32e -Ttext=0 -o km_rom_vault.elf $<
+	$(RISCV_OBJCOPY) -O binary km_rom_vault.elf km_rom_vault.bin
+	$(PYTHON) gen_parhex.py km_rom_vault.bin > $@
 
 $(OUT_DIR)/%.parhex: %.S gen_parhex.py
 	$(RISCV_CC) -nostdlib -march=rv32i -mabi=ilp32 -Ttext=0 -o $*.elf $<

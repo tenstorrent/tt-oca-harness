@@ -20,7 +20,7 @@
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
 #include "sep_kmac.h"
-// Simple test: all zeros for now to verify hardware works
+// Directed all-zero key for the hardware smoke path.
 static const uint32_t test_key[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 static void print_status(const char *tag) {

@@ -263,9 +263,6 @@ int main(void) {
 
     // Release timer from reset
     // Note: peripherals_out_of_reset() is no longer available
-    // simputs("Calling peripherals_out_of_reset()\n");
-    // peripherals_out_of_reset();
-    // simputs("peripherals_out_of_reset() completed\n");
 
     // Wait for reset to propagate
     wait_cycles(100);

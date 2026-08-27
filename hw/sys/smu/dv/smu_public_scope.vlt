@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 `verilator_config
 // SMU cocotb/Verilator public-signal scope.
 // (Comment lines must NOT start with the word "verilator" -- the lexer would treat
@@ -13,6 +14,8 @@ public_flat_rw -module "smu_uvm_top" -var "*"
 public_flat_rw -module "smu" -var "*"
 public_flat_rw -module "axi_iw_converter" -var "*"
 public_flat_rw -module "dtp" -var "*"
+public_flat_rw -module "jtag_intf_unit" -var "*"
+public_flat_rw -module "jtag_stap" -var "*"
 public_flat_rw -module "jtag_ptap" -var "*"
 public_flat_rw -module "smc" -var "*"
 public_flat_rw -module "smc_base" -var "*"

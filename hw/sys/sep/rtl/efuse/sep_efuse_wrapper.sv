@@ -148,8 +148,8 @@ module sep_efuse_wrapper
         .AxiDataWidth   (SEP_EFUSE_AXI32_DATA_WIDTH),
         .AxiIdWidth     (sep_pkg::SEP_CRYPTO_AXI_ID_WIDTH),
         .AxiUserWidth   (sep_pkg::SEP_CRYPTO_AXI_USER_WIDTH),
-        .AxiMaxWriteTxns(16), // TODO
-        .AxiMaxReadTxns (16), // TODO
+        .AxiMaxWriteTxns(16),
+        .AxiMaxReadTxns (16),
         .FullBW         (1'b0), // ID Queue in Full BW mode in axi_burst_splitter
         .FallThrough    (1'b0), // FIFOs in Fall through mode in ID reflect
         .SpillAw        (1'b0), // Spill register control
@@ -330,14 +330,14 @@ module sep_efuse_wrapper
 
 		.SEP_SEC_DISABLE_TOKEN      (SEP_SEC_DISABLE_TOKEN),
 
-		.EFUSE_MAP_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR),
-		.EFUSE_MAP_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE),
+		.EFUSE_MAP_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)),
+		.EFUSE_MAP_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE)),
 
-		.EFUSE_MMR_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR),
-		.EFUSE_MMR_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE),
+		.EFUSE_MMR_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR)),
+		.EFUSE_MMR_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE)),
 
-		.EFUSE_CTRL_REG_MAP_BASE_ADDR(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR),
-		.EFUSE_CTRL_REG_MAP_SIZE     (och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE),
+		.EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
+		.EFUSE_CTRL_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
 
 		.SHADOW_REG_BITS            (sep_efuse_pkg::SHADOW_REG_BITS),
 		.EFUSE_MACRO_WORD_WIDTH     (sep_efuse_pkg::NumFuseWordWidth),

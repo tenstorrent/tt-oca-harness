@@ -4,7 +4,6 @@
 /*
  * sep_smu_spi - SMU-level SEP SPI write/read command test.
  *
- * Goal:
  *   Run a minimal OpenTitan SPI command sequence in SMU SEP_RTL mode without
  *   requiring an external flash model, then park the CPU in explicit pass/fail
  *   loops so the cocotb test can classify the result by SEP PC. The open DUT

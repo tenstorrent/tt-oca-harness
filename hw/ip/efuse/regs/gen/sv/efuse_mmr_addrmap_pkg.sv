@@ -27,4 +27,4 @@ localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR = 64'h6C
 localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR = 64'h70;
 
 
-endpackage;
+endpackage

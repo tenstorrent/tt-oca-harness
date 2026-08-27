@@ -18,6 +18,6 @@ package dtp_env_pkg;
     import jtag_tap_pkg::*;       // DUT one-hot tap_state_e + is_onehot/is_valid helpers
 
     `include "dtp_tap_fsm_checker.svh"
-    `include "dtp_uvm_env.svh"
+    `include "dtp_env.svh"
 
 endpackage : dtp_env_pkg

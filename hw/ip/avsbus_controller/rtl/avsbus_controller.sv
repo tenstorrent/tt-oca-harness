@@ -145,7 +145,6 @@ module avsbus_controller #(
   // External Registers
   logic [31:0] external_reg_wr_data;
   logic R_avs_cmd_wr_en;
-  logic R_avs_readback_wr_en;
   logic R_avs_readback_rd_en;
 
   //Register fields resync'd to/from other clock domains:
@@ -1111,15 +1110,9 @@ module avsbus_controller #(
           end else begin
             // Reset retry counter on completion of successful slave transfer:
             avs_retry_countdown <= R_avs_cfg_0_F_max_retries_RS_avs_clk;
-            //if (fifos_ready_to_launch_frame) begin
-            //   pop_avs_cmd_en <= 1'b1 ;
-            //   avs_mdata_transmit_frame <= {MasterSubframePreamble,avs_cmd_from_fifo[29:3],calculated_crc} ;
-            //   o_avs_mdata <= 1'b0 ;
-            //end else begin
             // No more commands available to launch => go to IDLE:
             avs_mdata_o <= 1'b1;
             pop_avs_cmd_en <= 1'b0;
-            //end
           end
         end
         AVS_PROCESS_PREVIOUS_SDATA: begin
@@ -1133,15 +1126,9 @@ module avsbus_controller #(
           end else begin
             // Reset retry counter on completion of successful slave transfer:
             avs_retry_countdown <= R_avs_cfg_0_F_max_retries_RS_avs_clk;
-            //if (fifos_ready_to_launch_frame) begin
-            //   pop_avs_cmd_en <= 1'b1 ;
-            //   avs_mdata_transmit_frame <= {MasterSubframePreamble,avs_cmd_from_fifo[29:3],calculated_crc} ;
-            //   o_avs_mdata <= 1'b0 ;
-            //end else begin
             // No more commands available to launch => go to IDLE:
             avs_mdata_o <= 1'b1;
             pop_avs_cmd_en <= 1'b0;
-            //end
           end
         end
         default: begin

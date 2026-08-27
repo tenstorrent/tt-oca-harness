@@ -87,7 +87,7 @@ module smc_base
     input  logic [9:0]                                                         efuse_debug_i,
 
     // DFD signals
-		output logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]		           cla_ext_action_custom_o,
+		output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]		           cla_ext_action_custom_o,
 
     output smc_pkg::xtrigger_t                                                 xtrigger_ss_o,
     input  wire smc_pkg::xtrigger_t                                            xtrigger_ss_i,
@@ -96,8 +96,8 @@ module smc_base
     input  wire logic                                                          tdr_dbg_ctrl_clock_stop_en_i,
     output      logic                                                          tdr_dbg_ctrl_clocks_stopped_by_cla_o,
 
-    output dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req_o,
-    input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
+    output trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req_o,
+    input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
 
     // Test mode
     input  logic                                                               test_en_i,
@@ -146,8 +146,6 @@ module smc_base
   smc_pkg::smc_axil_32_64_resp_t axil_outbound_filter_ctrl_resp;
   smc_pkg::smc_axil_32_64_req_t  axil_mailbox_req;
   smc_pkg::smc_axil_32_64_resp_t axil_mailbox_resp;
-  smc_pkg::smc_axil_32_64_req_t  axil_dfd_ctrl_req;
-  smc_pkg::smc_axil_32_64_resp_t axil_dfd_ctrl_resp;
   smc_pkg::smc_axil_32_64_req_t  axil_smc_base_config_req;
   smc_pkg::smc_axil_32_64_resp_t axil_smc_base_config_resp;
 
@@ -597,12 +595,26 @@ module smc_base
   // Data Accelerator Wrap //
   ///////////////////////////
 
+  // Assertions to protect against truncation on casts
+  `OCAH_OT_ASSERT_INIT(DmaCtrlBaseFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR
+          < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
+  `OCAH_OT_ASSERT_INIT(DmaCtrlSizeFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE
+          < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
+  `OCAH_OT_ASSERT_INIT(ZeroerCtrlBaseFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR
+          < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
+  `OCAH_OT_ASSERT_INIT(ZeroerCtrlSizeFits_A,
+      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE
+          < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
+
   // Contains DMA and Zeroer
   smc_data_accelerator_wrap #(
-    .DMA_CTRL_REG_MAP_BASE_ADDR         (smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR),
-    .DMA_CTRL_REG_MAP_SIZE              (smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE),
-    .ZEROER_CTRL_REG_MAP_BASE_ADDR      (smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
-    .ZEROER_CTRL_REG_MAP_SIZE           (smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE)
+    .DMA_CTRL_REG_MAP_BASE_ADDR         (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR)),
+    .DMA_CTRL_REG_MAP_SIZE              (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE)),
+    .ZEROER_CTRL_REG_MAP_BASE_ADDR      (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR)),
+    .ZEROER_CTRL_REG_MAP_SIZE           (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))
   ) u_smc_data_accelerator_wrap (
     .clk_i                              (clk_smc_i),
     .rst_ni                             (rst_primary_smc_clk_ni),

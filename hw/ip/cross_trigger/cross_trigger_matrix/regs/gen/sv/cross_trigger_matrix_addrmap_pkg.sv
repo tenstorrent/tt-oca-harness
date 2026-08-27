@@ -22,4 +22,4 @@ endfunction
 localparam longint unsigned CROSS_TRIGGER_MATRIX_CT_SRC_CONFIG_0_NUM = 64'h1A;
 
 
-endpackage;
+endpackage

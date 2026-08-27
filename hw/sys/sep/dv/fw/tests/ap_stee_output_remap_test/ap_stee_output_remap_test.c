@@ -119,12 +119,6 @@ static int test_config_ap_output_remap(void) {
         // printf("  Readback: 0x%016llX\n", (unsigned long long)readback);
 
         // TODO: READ_REG64() doesn't seem to work properly right now, only returns lower 32 bits
-        // if (readback != ap_remap_ctrl.f.offset)
-        // {
-        //     printf("  ERROR: AP remap register write %d verification failed!\n", i);
-        //     printf("    Expected: 0x%016llX\n", (unsigned long long)ap_remap_ctrl.f.offset);
-        //     printf("    Got:      0x%016llX\n", (unsigned long long)readback);
-        // }
     }
 
     printf("  AP output remap configured successfully\n");
@@ -158,12 +152,6 @@ static int test_config_stee_output_remap(void) {
         // printf("  Readback: 0x%016llX\n", (unsigned long long)readback);
 
         // TODO: READ_REG64() doesn't seem to work properly right now, only returns lower 32 bits
-        // if (readback != stee_remap_ctrl.f.offset)
-        // {
-        //     printf("  ERROR: STEE remap register %d write verification failed!\n", i);
-        //     printf("    Expected: 0x%016llX\n", (unsigned long long)stee_remap_ctrl.f.offset);
-        //     printf("    Got:      0x%016llX\n", (unsigned long long)readback);
-        // }
     }
 
     printf("  STEE output remap configured successfully\n");

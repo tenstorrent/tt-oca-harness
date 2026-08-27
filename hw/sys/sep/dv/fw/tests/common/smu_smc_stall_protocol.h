@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_004  smu_smc_stall_sep  --  shared protocol contract (single source of truth).
+ * smu_smc_stall_sep  --  shared protocol contract (single source of truth).
  *
  * Included by both firmwares (SMC hold/release + SEP GO-poll) and parsed by the
  * cocotb checker so DUT stimulus and DV expectations share one contract.

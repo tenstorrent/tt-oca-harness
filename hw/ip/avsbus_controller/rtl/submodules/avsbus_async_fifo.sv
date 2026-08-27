@@ -19,21 +19,17 @@ module avsbus_async_fifo #(
 		input logic [WIDTH-1:0] i_wr_data,
 		output logic o_wr_full,
 		output logic o_wr_empty,
-		//output logic o_fifo_overflow,
 
 		input logic i_reset_n_rd_clk_syncd,
 		input logic i_rd_clk,
 		input logic i_rd_en,
 		output logic [WIDTH-1:0] o_rd_data,
 		output logic o_rd_empty,
-		//output logic o_fifo_underflow,
 		output logic [$clog2(DEPTH):0] o_vacant_slots,
 		output logic [$clog2(DEPTH):0] o_full_slots
 	);
 
 	//NOTE: DEPTH must be a power of 2 for this fifo to work (otherwise gray code counter will not work).
-	//parameter DEPTH = 8 ;
-	//parameter WIDTH = 32 ;
 	localparam int unsigned PointerWidth = $clog2(DEPTH) + 1;
 	typedef logic [PointerWidth-1:0] pointer_t;
 
