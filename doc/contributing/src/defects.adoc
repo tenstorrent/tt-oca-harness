@@ -17,16 +17,33 @@ The words "Bug" and "Defect" are here used interchangeably to represent any beha
 
 We are dedicated to maintaining the security, integrity and reliability of our hardware and software designs, and we actively encourage responsible security vulnerability reporting from the user community.
 
+Security reports must not be public issues and should use xref:security.adoc[private vulnerability reporting]
+
 === Reporting Bugs
 
 Ideally, all designs are bug free. However, code will be at different states of maturity.  Some will still be under active testing and development.  Defects may even be found in production code.
 
-If you have discovered a possible defect in the code in this repository, please raise a new GitHub Issue to describe the bug.
+If you have discovered a possible defect in the code in this repository, please raise a new GitHub Issue using the process below:
+
+* Open a new issue from
+https://github.com/tenstorrent/tt-oca-harness/issues/new/choose[New issue]
+* Pick **Bug** as the issue type
+** Allowed values live in `.github/issue-taxonomy.yml`
+** **Task** represents work items
+** **Feature** represents new feature requests
+* The following fields are mandatory and must be set:
+** *Workstream*
+** *Subsystem*
+** *Component* (use `General` if unsure)
+** *Priority* (use `P2` if unsure)
+** *Target release* (use `Future` if unscheduled).
+* Please do not assign:
+** A GitHub milestone.
+** GitHub labels.
 
 === Defect data
 
-Issues raised to represent bugs should include as much detail as possible
-about the nature of the bug and how it can be reproduced.  The goal should
+Although the description field is optional, issues raised to represent bugs should include as much detail as possible about the nature of the bug and how it can be reproduced.  The goal should
 always be that the defect should be reproduceable from the data in the Issue.
 
 It is helpful to include:
