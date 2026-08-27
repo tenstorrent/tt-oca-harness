@@ -157,7 +157,9 @@ hw/sys/sep/dv/
 ├── tb/                  # DUT-only top + helper RTL
 │   ├── tb_top.sv        #   module sep_uvm_top (wraps sep_wrapper) + tb_backdoor_mem
 │   ├── sep_outbound_mbx.sv  # outbound mailbox responder + console/PASS monitor
-│   ├── efuse_preloads/  #   committed default eFuse image (sep_efuse_default.hex)
+│   ├── efuse_preloads/  #   efuse_configurations/*.toml declare OTP images by
+│   │                    #   register/field; sep_efuse_default.hex is the one
+│   │                    #   committed image (a random-vector snapshot)
 │   └── interfaces/      #   (SV interfaces — empty for now)
 ├── testlists/           # native TOML testlists (all.toml + per-subsystem leaves)
 ├── sep_sim_cfg.toml     # block build/filelist manifest, run modes, tool knobs

@@ -14,8 +14,9 @@ from the ``CLASS_KEY`` fuse (``manifest_crypto.c:257-264``) and runs
 ``encryption_kdf_input`` to derive it. The packer performs the identical
 derivation from its ``encryption_key_input`` and checks the result against
 ``encryption_derived_key`` (``pack_images.py:457-470``). So the fuse must carry
-exactly the config's ``encryption_key_input``; ``sep_efuse_class_key.hex`` does,
-and :meth:`build_efuse_image` asserts it rather than trusting the file.
+exactly the config's ``encryption_key_input``;
+``efuse_configurations/sep_efuse_class_key.toml`` does, and
+:meth:`build_efuse_image` asserts it rather than trusting the file.
 
 ENTROPY. AES is EDN client 0 and OTBN is 2/3 (``sep_crypto.sv:513,542``), so the
 testlist's ``+sep_crypto_edn_force`` had to be extended to cover client 0 --
@@ -38,7 +39,7 @@ _PLAINTEXT_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "secure_boot.b
 _BACKUP_OFF = 0x41000   # the backup slot is the one that runs last
 _PAYLOAD_OFF = 0x1000
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "sep_efuse_class_key.hex"
+    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_class_key.toml"
 )
 
 # The class key the packer derived from, verbatim from
@@ -77,6 +78,17 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
         "HMAC_OP_REJECTED", "SHA_START_REJECTED", "SHA_OP_REJECTED",
         "AES_INIT_FAIL", "AES_INIT_BUSY", "AES_DEC_FAIL", "SBOOT_OFF",
         "PLD_HASH_MISMATCH", "MANIFEST_ERR=",
+        # Every manifest/TOC/image rejection arm. This image is valid, so any of
+        # these firing means a new check rejects something it should accept --
+        # which a boot that merely ends in MANIFEST_ERR would not tell apart.
+        "PAYLOAD_OFF_RANGE", "PAYLOAD_LEN_RANGE", "PAYLOAD_OFF_ALIGN",
+        "PAYLOAD_HASHED_LEN_BAD", "ENC_HASHED_LEN_PARTIAL", "ENC_WITHOUT_SBOOT",
+        "TOC_REGION_OOB", "TOC_PLEN_MISMATCH", "IMAGE_ORDER_BAD",
+        "IMAGE_LEN_ZERO", "IMAGE_LEN_ALIGN", "IMAGE_HASH_MISMATCH",
+        "IMAGE_HASH_TIMEOUT", "NO_BL1_IMAGE", "BL1_ADDR_RANGE",
+        "BL1_ENTRY_RANGE", "ROM_KEY_EMPTY", "FLASH_REINIT_FAIL",
+        # AES alert bits, the same silent-failure shape as the HMAC ones above.
+        "AES_CTRL_REJECTED", "AES_ALERT_AFTER_DEC", "AES_ALERT_STATUS=",
     )
 
     def build_efuse_image(self):

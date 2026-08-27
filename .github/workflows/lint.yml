@@ -181,3 +181,11 @@ jobs:
             git diff
             exit 1
           fi
+      # Here rather than in its own job so the configs are checked against the
+      # header this job just regenerated: they name OTP registers and fields, so
+      # an RDL rename silently invalidates one. stdlib-only, hence --no-project;
+      # 3.11 for tomllib.
+      - name: eFuse preload configs load against the regenerated map
+        run: |
+          uv run --no-project --python 3.11 \
+            hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py --selftest

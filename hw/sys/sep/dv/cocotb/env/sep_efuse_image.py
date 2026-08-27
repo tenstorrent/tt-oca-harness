@@ -264,9 +264,26 @@ class SepEfuseImage:
         return self.set_words(name, words)
 
     def load(self, path: str | Path) -> "SepEfuseImage":
-        """Load a preload file, auto-detecting the format: a per-bit reference suite
-        ``*.preload`` (one 0/1 per line) vs a 256-word hex image."""
-        toks = Path(path).read_text().split()
+        """Load a preload, auto-detecting the format: a declarative ``*.toml``
+        fuse configuration, a per-bit reference suite ``*.preload`` (one 0/1 per
+        line), or a 256-word hex image.
+
+        Dispatching here rather than in the callers is what keeps the two
+        execution points honest. This method is the single entry both of them
+        use -- ``dv_sim_prestage.stage()`` to write the array the RTL
+        ``$readmemh`` reads at t=0, and ``sep_base_test.select_efuse_image()`` to
+        build the golden the post-sense shadow compare checks that array
+        against -- so a format taught to one is a format the other already
+        speaks. Teaching only the prestage about TOML would silently give the
+        golden a zero-filled image and turn every field into a mismatch.
+        """
+        path = Path(path)
+        if path.suffix == ".toml":
+            # Lazy so a .hex-only run pays for neither tomllib nor the scan of
+            # the generated header's bitfield structs.
+            from sep_generate_efuse_preload import apply_toml
+            return apply_toml(self, path)
+        toks = path.read_text().split()
         if toks and all(t in ("0", "1") for t in toks) and len(toks) > NUM_FUSE_WORDS:
             return self.load_preload_bits(path)
         return self.load_hex(path)

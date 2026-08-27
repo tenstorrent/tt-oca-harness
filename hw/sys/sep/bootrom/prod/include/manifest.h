@@ -317,6 +317,7 @@ enum {
     MANIFEST_ERR_KEY_HASH_MISMATCH = 0x00030016u,
     MANIFEST_ERR_PAYLOAD_HASH_MISMATCH = 0x00030017u,
     MANIFEST_ERR_DECRYPT_FAILED = 0x00030018u,
+    MANIFEST_ERR_IMAGE_HASH_MISMATCH = 0x00030019u,
 };
 
 // =========================================================================

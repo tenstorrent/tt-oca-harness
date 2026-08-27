@@ -31,14 +31,21 @@
 #include "rom_smc.h"
 #include "bl0_state.h"
 #include "manifest_crypto.h"
+#include "sep_helpers.h"
 
 // Generated register map for OCH SEP.
 #include "sep.h"
 #include "sep_smc_interface.h"
 
 // SEP EXT SRAM: staging area for manifest and payload.
-#define SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10100000
+#define SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
 #define SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
+
+// AES-CBC block size. Used only as the upper bound on how far an encrypted
+// payload's manifest length may exceed the plaintext length its TOC reports:
+// the packer PKCS#7-pads before encrypting, and PKCS#7 appends between 1 and a
+// full block.
+#define AES_CBC_BLOCK_BYTES 16u
 
 // SPI XIP region size (for payload location check).
 #ifndef SEP_SPI_MAX_SIZE
@@ -155,15 +162,54 @@ static uint32_t validate_manifest_header(const manifest_t *m) {
         return MANIFEST_ERR_BAD_LENGTH;
     }
 
+    // payload_offset and payload_length are 64-bit in the manifest but every
+    // consumer below truncates them to 32 bits. Range-check the full width
+    // first, or a value above 4 GiB silently becomes a small in-range one and
+    // every later bound is computed against the wrong number.
+    if (m->boot_arguments.payload_offset > (int64_t)0x7FFFFFFF ||
+        m->boot_arguments.payload_offset < -(int64_t)0x7FFFFFFF) {
+        simputs("PAYLOAD_OFF_RANGE\n");
+        return MANIFEST_ERR_BAD_LENGTH;
+    }
+    if (m->payload_length > (uint64_t)0xFFFFFFFFu) {
+        simputs("PAYLOAD_LEN_RANGE\n");
+        return MANIFEST_ERR_PAYLOAD_TOO_LARGE;
+    }
+
     // payload_offset (int64_t in boot_arguments) must be positive and sane.
     int32_t p_off = (int32_t)m->boot_arguments.payload_offset;
     if (p_off <= 0) {
         return MANIFEST_ERR_BAD_LENGTH;
     }
 
+    // The payload is DMA'd and then read as a TOC of 64-bit fields, so the
+    // whole region has to start 8-byte aligned.
+    if (((uint32_t)p_off & 7u) != 0u) {
+        simputs("PAYLOAD_OFF_ALIGN\n");
+        return MANIFEST_ERR_BAD_LENGTH;
+    }
+
     // payload_length must be non-zero (must at least contain a TOC header).
     uint32_t p_len = (uint32_t)m->payload_length;
     if (p_len == 0u) {
+        return MANIFEST_ERR_BAD_LENGTH;
+    }
+
+    // payload_hashed_length bounds. verify_payload_hash() returns OK when this
+    // is 0, so leaving it unchecked lets a manifest opt out of its own payload
+    // hash entirely -- the digest is simply never computed. Requiring a non-zero
+    // value that cannot exceed the payload closes that, and for an encrypted
+    // payload the hash must cover all of it: the packer hashes the whole
+    // already-encrypted blob, so a shorter length would leave ciphertext
+    // unauthenticated while still appearing to verify.
+    uint64_t h_len = m->payload_hashed_length;
+    if (h_len == 0u || h_len > (uint64_t)p_len) {
+        simputshex32("PAYLOAD_HASHED_LEN_BAD=", (uint32_t)h_len);
+        return MANIFEST_ERR_BAD_LENGTH;
+    }
+    if ((m->usage_constraints.flags & (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD)) &&
+        h_len != (uint64_t)p_len) {
+        simputs("ENC_HASHED_LEN_PARTIAL\n");
         return MANIFEST_ERR_BAD_LENGTH;
     }
 
@@ -263,6 +309,46 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
 
     uint32_t p_len = (uint32_t)m->payload_length;
 
+    // The TOC header and its n entries were read before this point, so confirm
+    // the payload was ever big enough to hold them. Without this, a small
+    // payload with a large image_count reads entries from beyond the DMA'd
+    // region -- whatever happens to follow it in SRAM -- and validates those.
+    uint32_t toc_bytes = (uint32_t)sizeof(struct toc_header) + n * (uint32_t)sizeof(struct toc_entry);
+    if (toc_bytes < n || toc_bytes > p_len) {
+        simputshex32("TOC_REGION_OOB=", toc_bytes);
+        return MANIFEST_ERR_PAYLOAD_TOO_LARGE;
+    }
+
+    // The TOC repeats the payload length, and the two must not contradict the
+    // bounds every check below relies on.
+    //
+    // For a plaintext payload they describe the same bytes and must agree
+    // exactly. For an encrypted one they do NOT: the manifest records the
+    // ciphertext length the DMA transferred, while the TOC only becomes
+    // readable after decryption and records the plaintext content length. The
+    // packer pads with PKCS#7 before encrypting (tt-boot-manifest
+    // aes128cbc.py), which appends a whole block when the plaintext is already
+    // block-aligned, so the manifest length legitimately runs up to one AES
+    // block ahead of the TOC's.
+    //
+    // The property worth enforcing in both cases is that the TOC cannot claim
+    // more than was actually loaded; the padding bound keeps the slack from
+    // being an arbitrary amount of unaccounted payload.
+    const uint64_t toc_p_len = (uint64_t)toc->payload_length;
+    const bool encrypted = (m->usage_constraints.flags &
+                            (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD)) != 0u;
+    const bool plen_bad = encrypted
+        ? (toc_p_len > m->payload_length ||
+           m->payload_length - toc_p_len > AES_CBC_BLOCK_BYTES)
+        : (toc_p_len != m->payload_length);
+    if (plen_bad) {
+        simputshex32("TOC_PLEN_MISMATCH=", (uint32_t)toc_p_len);
+        return MANIFEST_ERR_BAD_LENGTH;
+    }
+
+    uint32_t prev_end = toc_bytes; // images start after the TOC region
+    bool bl1_found = false;
+
     for (uint32_t i = 0; i < n; ++i) {
         const struct toc_entry *e = &toc->images[i];
 
@@ -282,6 +368,33 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
             return MANIFEST_ERR_IMAGE_OOB;
         }
 
+        // Image bodies must start after the TOC region and run in strictly
+        // ascending order. Ascending order is what makes prev_end a sufficient
+        // bound: it turns overlap detection into a single comparison and, with
+        // the gap zeroization below, means every byte of the payload is either
+        // inside a validated image or has been cleared.
+        if (off < prev_end) {
+            simputshex32("IMAGE_ORDER_BAD idx=", i);
+            return MANIFEST_ERR_IMAGE_OVERLAP;
+        }
+        if (e->length == 0u) {
+            simputshex32("IMAGE_LEN_ZERO idx=", i);
+            return MANIFEST_ERR_IMAGE_OOB;
+        }
+        if ((len & 3u) != 0u) {
+            simputshex32("IMAGE_LEN_ALIGN idx=", i);
+            return MANIFEST_ERR_IMAGE_OOB;
+        }
+
+        // Clear the gap between the previous image and this one. Those bytes
+        // were DMA'd in and are covered by no TOC entry, so nothing validates
+        // them; leaving them means BL1 inherits attacker-chosen data sitting
+        // between the images it does trust.
+        if (off > prev_end) {
+            explicit_memzero((uint8_t *)(uintptr_t)toc + prev_end, off - prev_end);
+        }
+        prev_end = end;
+
         // Check no overlap with any earlier entry.
         for (uint32_t j = 0; j < i; ++j) {
             uint32_t b_off = (uint32_t)toc->images[j].offset;
@@ -291,6 +404,51 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
                 return MANIFEST_ERR_IMAGE_OVERLAP;
             }
         }
+
+        // Per-image hash, over the image body, against the digest in its TOC
+        // entry. This runs after the bounds check above so only bytes already
+        // proven to lie inside the payload are hashed.
+        //
+        // This is a distinct guarantee from the manifest payload_hash: that one
+        // covers a single contiguous blob and only for the payload_hashed_length
+        // it spans, so it binds the images only transitively and only as far as
+        // that length reaches. The per-entry digest binds each image body on its
+        // own. Image offsets are relative to the TOC, which is the start of the
+        // payload, so the same base is used here as for the bounds check.
+        uint8_t img_digest[32];
+        if (sha256((const uint8_t *)toc + off, len, img_digest) != 0) {
+            simputs("IMAGE_HASH_TIMEOUT\n");
+            return MANIFEST_ERR_IMAGE_HASH_MISMATCH;
+        }
+        if (!const_time_eq(img_digest, e->hash, 32)) {
+            simputshex32("IMAGE_HASH_MISMATCH idx=", i);
+            return MANIFEST_ERR_IMAGE_HASH_MISMATCH;
+        }
+
+        // BL1 must be present and loadable, and that is decided HERE rather than
+        // at handoff. rom_handoff_bl1() repeats these checks, but by the time it
+        // runs the slot has already been accepted, the crypto chain has passed
+        // and the fuse secrets are locked -- so a manifest with no usable BL1
+        // ended the boot outright instead of failing this slot and letting
+        // rom_manifest_boot() try the backup.
+        if (e->type == IMAGE_TYPE_SEP_BL1) {
+            uint32_t chk = check_bl1_image(e);
+            if (chk != 0u) {
+                simputs(chk == 1u ? "BL1_ADDR_RANGE\n" : "BL1_ENTRY_RANGE\n");
+                return MANIFEST_ERR_BL1_BAD_ADDR;
+            }
+            bl1_found = true;
+        }
+    }
+
+    if (!bl1_found) {
+        simputs("NO_BL1_IMAGE\n");
+        return MANIFEST_ERR_NO_BL1_IMAGE;
+    }
+
+    // Same reasoning as the inter-image gaps, for the tail after the last one.
+    if (p_len > prev_end) {
+        explicit_memzero((uint8_t *)(uintptr_t)toc + prev_end, p_len - prev_end);
     }
 
     return MANIFEST_OK;
@@ -345,6 +503,17 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
     // C13.5: Determine secure boot state.
     const bool sb = secure_boot_enabled(dest, lc_state, sboot_dis);
     get_bl0_state()->secure_boot = sb;
+
+    // An encrypted payload without secure boot is rejected outright. The
+    // decryption key is derived from a fuse, so with secure boot off nothing
+    // authenticates the manifest that selects it -- and the ciphertext would
+    // reach the TOC check undecrypted anyway, failing as a malformed TOC and
+    // hiding the real reason.
+    if (!sb && (dest->usage_constraints.flags &
+                (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD))) {
+        simputs("ENC_WITHOUT_SBOOT\n");
+        return MANIFEST_ERR_LC_USAGE_CONSTRAINT;
+    }
 
     // C13.7: Validate usage constraints.
     // Checks selector_bits to decide which constraints to enforce.
@@ -554,15 +723,19 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
             if (status & SMC_SEP_STATUS_MANIFEST_READY) break;
         }
         offsets[0] = smc_scratch_read(SMC_SCRATCH_MANIFEST_ADDR_IDX);
-        num_retries = 0; // Single attempt for SMC path.
+        offsets[1] = offsets[0]; // never selected; see the rotate_update guard
+        num_retries = 0;         // Single attempt for SMC path.
     }
 
     uint32_t last_err = 0;
 
     for (uint32_t retry = 0; retry <= num_retries; ++retry) {
-        // Select slot: rotate_update swaps primary/backup order.
+        // Select slot: rotate_update swaps primary/backup order. Only the SPI
+        // path has two slots -- the SMC path fills offsets[0] alone and runs a
+        // single attempt, so rotating there selected an offset that was never
+        // assigned.
         uint32_t slot = retry;
-        if (straps->rotate_update) {
+        if (straps->rotate_update && from_spi) {
             slot ^= 1u;
         }
         uint32_t offset = offsets[slot];
@@ -601,7 +774,15 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
             // Clean up SRAM before retrying.
             if (from_spi && retry < num_retries) {
                 clear_sram_region(SRAM_BASE, SRAM_SIZE);
-                boot_flash_reinit();
+                uint32_t rerr = boot_flash_reinit();
+                if (rerr) {
+                    // Without a working controller the backup slot cannot be
+                    // read at all. Discarding this made the next attempt read
+                    // through a dead controller and report whatever it got as a
+                    // manifest defect, blaming the image for a transport fault.
+                    simputshex32("FLASH_REINIT_FAIL=", rerr);
+                    return MANIFEST_ERR_DMA_FAILED;
+                }
             }
             continue;
         }

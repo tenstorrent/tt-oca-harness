@@ -52,7 +52,7 @@ _CRYPTO_OK = "CRYPTO_VALIDATE_OK"
 
 _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "sep_efuse_lc_prod_sboot_dis.hex"
+    / "efuse_configurations" / "sep_efuse_lc_prod_sboot_dis.toml"
 )
 
 

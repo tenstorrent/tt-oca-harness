@@ -54,6 +54,36 @@
 .equ WARM_HANDLER_RANGE_BASE,  OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
 .equ WARM_HANDLER_RANGE_END,   OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 
+/* MEM_REPAIR boot gate. Mirrors include/sep_smc_interface.h -- the C side owns
+ * these numbers, so they must be changed in both places together. Kept as .equ
+ * rather than pulled from a header because that header is C, not assembly. */
+.equ SEP_SMC_GLOBAL_BASE,      0x40000000
+.equ SMC_DFX_CTRL_STATUS_SMU,  SEP_SMC_GLOBAL_BASE + 0xF800
+/* SMC scratch registers are 64-bit; index 10 is the agreed MBIST/MEM_REPAIR
+ * failure slot, read back by the debugger and by DV. */
+.equ SMC_SCRATCH_MBIST_FAIL,   SEP_SMC_GLOBAL_BASE + 0x10100 + (10 * 8)
+.equ DFT_MEM_REPAIR_SUCCESS,   (1 << 1)
+
+/* MEM_REPAIR bypass fuse: STATUS_RPT bit 2.
+ *
+ * Fail-closed: the bit is 0 on an unblown part, and 0 means hang. Permitting a
+ * boot after a repair failure therefore requires deliberately blowing a fuse; it
+ * cannot be arranged at run time. That is the whole point of reading a fuse here
+ * instead of the SMC strap the C version used -- a strap is a pin, so anyone able
+ * to hold it could switch this gate off on a production part.
+ *
+ * NOTE (A32): bit 2 currently falls inside `reserved[31:2]` in
+ * regs/blocks/sep_efuse_map/sep_efuse_map.rdl:806, so this is an undeclared use
+ * of a reserved bit. The reference does exactly the same thing -- its own RDL
+ * also leaves the bit reserved while its vector.S reads it -- and the OCH eFuse
+ * spec does not allocate it either. A32 is to split that field into
+ * `mem_repair_ignore[2:2]` so the allocation is documented rather than merely
+ * relied upon. The register's existing `sw = r` / `hw = rw` access is already
+ * correct for a bypass: software cannot assert it, only the fuse can.
+ */
+.equ SEP_EFUSE_STATUS_RPT,     OCH_SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR
+.equ STATUS_RPT_MEM_REPAIR_IGNORE, (1 << 2)
+
 _start:
     /* Multi-hart safety: only hart0 proceeds (others park). */
     csrr    t0, mhartid
@@ -83,9 +113,12 @@ _start:
      * Protocol:
      *   1. Read warm_scratch[0]
      *   2. If zero → cold boot
-     *   3. If non-zero: range check (must be within ICCM)
+     *   3. If non-zero: range check against
+     *      [WARM_HANDLER_RANGE_BASE, WARM_HANDLER_RANGE_END) = SEP SRAM
      *   4. If valid: poison scratch (write 0), jump to handler
      *   5. If invalid: hang
+     *   The cold path poisons with -1, deliberately out of range, so an
+     *   unarmed warm reset lands on step 5 rather than step 2.
      *
      * This check happens BEFORE touching DCCM (sp/gp/scrub/.data/.bss)
      * to preserve BL1's runtime state across warm reset.
@@ -135,9 +168,20 @@ warm_reset_hang:
     /* ── end warm reset ─────────────────────────────────────────── */
 
 cold_boot:
-    /* Clear warm_scratch[0] defensively (ensure clean state). */
+    /* Poison warm_scratch[0] with an out-of-range value rather than 0.
+     * A later warm reset arriving with no handler armed then fails the range
+     * check and hangs with SEP_MSG_WARM_RESET_HANG, instead of taking the
+     * beqz early-out and silently cold booting -- for a repeating watchdog
+     * that would be a boot loop with no diagnosable stop. This matches the
+     * philosophy already stated on the invalid-handler path below: an
+     * unexpected handler value may indicate corruption or attack.
+     *
+     * The warm path keeps its own zero poison; that one exists to prevent
+     * handler re-entry and must stay. Neither value alone is the stronger
+     * choice on both paths. */
     li      t0, SEP_WARM_SCRATCH_0
-    sw      zero, 0(t0)
+    li      t1, -1
+    sw      t1, 0(t0)
 
     /* Set stack near top of DCCM (from linker script). */
     la      sp, __stack_top
@@ -261,6 +305,82 @@ cold_boot:
     sw      t1, 0(t0)
 #endif /* PMP_ENABLE */
 
+    /* ── MEM_REPAIR boot gate ─────────────────────────────────────────────
+     *
+     * On-chip SRAMs carry redundancy; MBIST finds faulty cells at reset and the
+     * repair logic swaps in spares. DFX_CTRL_STATUS_SMU.mem_repair_success says
+     * whether that worked. If it did not, the memories may return wrong data,
+     * and the ROM's entire job is comparing digests and deciding what to trust:
+     * a single flipped cell can make const_time_eq() agree, or corrupt a derived
+     * key, with nothing reporting an error. So a repair failure is fatal unless a
+     * fuse says otherwise.
+     *
+     * WHY IT SITS HERE, IN ASSEMBLY. This runs before the DCCM scrub below, so
+     * before anything writes DCCM and before the C runtime exists. The check used
+     * to live in C (rom_main.c, after straps, PLL, lifecycle and chip-ID), which
+     * meant a repair failure let the ROM compute and store the lifecycle -- the
+     * input that decides whether secure boot is enforced -- in memory whose
+     * integrity had not been established. Worse, LC_STATE_TEST_DEV is 0x0, so a
+     * corrupted lc_state biases toward the permissive answer.
+     *
+     * Three instructions of setup are all it takes: the SMC base is a
+     * compile-time constant here, so unlike the reference (which loads its SMC
+     * base from a register first) no preparation is needed.
+     */
+    li      t0, SMC_DFX_CTRL_STATUS_SMU
+    lw      t1, 0(t0)                       /* t1 = raw DFT status, kept live */
+    andi    t2, t1, DFT_MEM_REPAIR_SUCCESS
+    bnez    t2, 4f                          /* repaired -> continue */
+
+    /* Repair failed. Record the raw status before doing anything else: if this
+     * read ever returns 0 because the SMC window is not reachable this early,
+     * scratch 10 shows 0 and distinguishes "cannot read" from "really failed". */
+    li      t0, SMC_SCRATCH_MBIST_FAIL
+    sw      t1, 0(t0)
+
+    /* STATUS_ENCODE(STATUS_TYPE_WARN, SEP_MSG_MBIST_FAIL)
+     * = (0x08 << 24) | (0x01 << 16) | 0x219 = 0x08010219
+     * WARN, not ERROR: the bypass fuse below may still permit the boot. */
+    li      t0, SEP_COLD_SCRATCH_1
+    li      t2, 0x08010219
+    sw      t2, 0(t0)
+
+    /* Bypass fuse. Blown -> continue despite the failure; unblown -> hang. */
+    li      t0, SEP_EFUSE_STATUS_RPT
+    lw      t3, 0(t0)
+    andi    t4, t3, STATUS_RPT_MEM_REPAIR_IGNORE
+    bnez    t4, 4f
+
+    /* No bypass: stop. Do not fall through to the scrub -- writing 128KiB of
+     * memory that just failed repair is exactly what must not happen.
+     *
+     * This reproduces what rom_err_fail(ROM_ERR_DFT_GATE_BLOCKED) used to emit,
+     * deliberately, so the observable contract does not change when the gate
+     * moves out of C: cold_scratch[1] gets STATUS_ENCODE(ERROR, 0xD001) =
+     * 0x0f01d001, then the mailbox gets the MAGIC/FAIL/code triple that tells the
+     * testbench the ROM stopped rather than hung silently. The one part that
+     * cannot come along is the simputs() console text -- there is no C runtime
+     * here -- and the bl0_state error_code, which is not initialised this early.
+     *
+     * The mailbox writes work because the outbound filter was opened above;
+     * warm_reset_hang cannot do this because it runs before that setup, which is
+     * why it only leaves a scratch word. */
+mem_repair_fail_hang:
+    li      t0, SEP_COLD_SCRATCH_1
+    li      t2, 0x0f01d001
+    sw      t2, 0(t0)
+
+    li      t0, SEP_STDOUT_MBX
+    li      t2, SEP_FW_MAGIC0
+    sw      t2, 0(t0)
+    li      t2, SEP_FW_FAIL
+    sw      t2, 0(t0)
+    li      t2, 0x0000d001              /* ROM_ERR_DFT_GATE_BLOCKED */
+    sw      t2, 0(t0)
+
+5:  wfi
+    j       5b
+4:
     /* Memory scrub (DCCM):
      * Clear DCCM before initializing runtime sections.
      *

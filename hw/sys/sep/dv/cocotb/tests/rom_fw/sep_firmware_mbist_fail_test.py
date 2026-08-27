@@ -3,29 +3,45 @@
 """SEP Boot ROM MEM_REPAIR / MBIST boot gate, failure arm (PyUVM).
 
 FEATURE UNDER TEST. Before the ROM boots anything it asks the SMC whether memory
-repair succeeded, and refuses to continue if it did not.
-``bootrom/prod/src/rom_main.c`` ``dft_mem_repair_gate()``::
+repair succeeded, and refuses to continue if it did not. The gate lives in
+``bootrom/prod/src/vector.S``, immediately before the DCCM scrub::
 
-    dft_status = smc_read_dft_status();          # smc_base + 0xF800
-    if (dft_status & DFT_STATUS_MEM_REPAIR_SUCCESS_MASK) return;   # bit 1 set -> ok
-    smc_scratch_write(SMC_SCRATCH_MBIST_FAILURE_IDX, dft_status);  # publish raw value
-    report_status(STATUS_TYPE_WARN, SEP_MSG_MBIST_FAIL);
-    simputs("MEM_REPAIR_FAIL\n");
-    if (straps_lo & SMC_STRAP_MEM_REPAIR_BYPASS_MASK) return;      # bypass strap
-    rom_err_fail(ROM_ERR_DFT_GATE_BLOCKED);                        # terminal
+    lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xF800
+    andi t2, t1, DFT_MEM_REPAIR_SUCCESS     # bit 1 set -> continue
+    sw   t1, (SMC_SCRATCH_MBIST_FAIL)       # publish raw value, scratch 10
+    sw   0x08010219, (SEP_COLD_SCRATCH_1)   # WARN + SEP_MSG_MBIST_FAIL
+    lw   t3, (SEP_EFUSE_STATUS_RPT)         # bypass fuse
+    andi t4, t3, (1 << 2)                   # blown -> continue
+    sw   0x0f01d001, (SEP_COLD_SCRATCH_1)   # ERROR + ROM_ERR_DFT_GATE_BLOCKED
+    <mailbox MAGIC / FAIL / 0xd001>, then spin
 
 This covers the fail + no-bypass arm only. The bypass and pass arms are separate
 items and are NOT exercised here.
+
+WHY THE GATE IS IN ASSEMBLY, AND WHAT THAT MEANS FOR THIS TEST. It used to run in
+C, after straps, PLL, lifecycle and chip-ID. A repair failure therefore let the
+ROM compute and store the lifecycle -- the input deciding whether secure boot is
+enforced -- in DCCM whose integrity had not been established, and
+``LC_STATE_TEST_DEV`` is 0x0 so a corrupted value biases toward the permissive
+answer. Moving the gate ahead of the DCCM scrub fixes that, and it also means
+**there is no virtual console on this path**: ``simputs()`` needs the C runtime.
+The old ``MEM_REPAIR_FAIL`` / ``MEM_REPAIR_BYPASS`` / ``DFT_STATUS=`` markers are
+gone by construction, so this test now reads the register evidence instead --
+which is strictly more than it could check before, because an empty console is
+itself proof the gate ran ahead of C.
+
+The status word and mailbox triple are unchanged from the C version on purpose
+(``0x0f01d001`` / ``0xd001``), so those assertions still pin the same contract.
 
 The injected value is 0xFFFFFFFD -- every bit set except mem_repair_success.
 Injecting 0 would also pass against a ROM that gated on any-bit-clear, on a zero
 word, or on the wrong bit entirely, so it would not test what it claims.
 All-ones-but-one can only pass if the ROM reads bit 1 specifically.
 
-The bypass control here is a STRAP (``STRAPS_LO[13]``, bypass_mem_repair), left at
-its default 0. The eFuse ``STATUS_RPT`` (sep_efuse_map.rdl) declares only
-``rpt[1:0]`` plus ``reserved[31:2]`` and the ROM never reads it, so there is no
-fuse-based bypass in this design.
+BYPASS. Now the eFuse ``STATUS_RPT`` bit 2, left unblown, rather than the old
+``STRAPS_LO[13]`` strap -- a strap is a pin, so anyone able to hold it could
+switch this gate off on a production part. Bit 2 is still inside
+``reserved[31:2]`` in ``sep_efuse_map.rdl``; declaring it is tracked as A32.
 
 The terminal outcome is a mailbox FAIL, so ``SepBootScoreboard`` is not used: it
 treats fw_pass=0 as an error, whereas here it is the expected result.
@@ -59,20 +75,21 @@ _DFT_STATUS_FAIL = 0xFFFF_FFFD
 # bootrom/prod/include/sep_smc_interface.h: DFT_STATUS_MEM_REPAIR_SUCCESS_BIT 1.
 _MEM_REPAIR_SUCCESS_BIT = 1
 
-# Console lines. MEM_REPAIR_FAIL is the gate firing; the DFT_STATUS echo is what
-# proves the ROM read OUR injected word rather than a default (simputshex32
-# renders lowercase hex, and the console decoder reassembles the two HEX16 halves).
-_FAIL_MARKER = "MEM_REPAIR_FAIL"
-_DFT_STATUS_MARKER = f"DFT_STATUS=0x{_DFT_STATUS_FAIL:08x}"
-# Must NOT appear: the bypass arm, and any marker from downstream of the gate.
-# Without these a ROM that printed the warning and then booted anyway would pass.
-_BYPASS_MARKER = "MEM_REPAIR_BYPASS"
+# The gate is pre-C, so the console is silent on this path. Any of these appearing
+# would mean the ROM reached the C runtime, i.e. the gate did NOT stop it early.
+# This replaces the old presence-checks on MEM_REPAIR_FAIL / DFT_STATUS= /
+# MEM_REPAIR_BYPASS, which were simputs() text that no longer exists.
+_PRE_C_MARKERS = ("SMC_MEM_CHK", "LC=", "DFT_STATUS=", "CHIP_ID=")
+# Must NOT appear either: anything downstream of the gate.
 _DOWNSTREAM_MARKERS = ("MANIFEST_OK", "BL1_COPIED", "PRE_JUMP")
 
-# cold_scratch[1] on the terminal path. rom_err_fail() writes
-# STATUS_ENCODE(STATUS_TYPE_ERROR, code & 0xFFFF) with
-# ROM_ERR_DFT_GATE_BLOCKED = 0xD001 (rom_main.c), and SEP_STATUS_ID is 1 for BL0:
-# 0x0f << 24 | 0x01 << 16 | 0xD001.
+# cold_scratch[1] on the two arms. The assembly reproduces exactly what
+# report_status()/rom_err_fail() used to emit, so these words are unchanged:
+#   WARN  + SEP_MSG_MBIST_FAIL (0x219)      -> 0x08 << 24 | 0x01 << 16 | 0x219
+#   ERROR + ROM_ERR_DFT_GATE_BLOCKED (0xD001) -> 0x0f << 24 | 0x01 << 16 | 0xD001
+# SEP_STATUS_ID is 1 for BL0.
+_SEP_MSG_MBIST_FAIL = 0x219
+_STATUS_MBIST_WARN = 0x0801_0000 | _SEP_MSG_MBIST_FAIL
 _ROM_ERR_DFT_GATE_BLOCKED = 0xD001
 _STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | _ROM_ERR_DFT_GATE_BLOCKED
 
@@ -182,28 +199,49 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         self.logger.info("SMC scratch[10] sequence: %s", s10_hex)
         self.logger.info("ROM console: %s", console)
 
-        # Guard the guards: a dark console makes every marker check below
-        # vacuously true, and the ROM must have executed at all.
+        # Guard the guard: the ROM must have executed at all, or every absence
+        # check below is vacuously true. The console is NOT used for this any more
+        # -- on this path it is legitimately empty -- so instruction retirement is
+        # the only liveness evidence available.
         assert retired, "core retired no instructions; the ROM never ran"
-        assert console, (
-            "ROM console is empty, so no marker check below means anything (the "
-            "virt console is DEBUG-build only -- check the ROM build)"
-        )
 
-        # CHK-DFT-READ: the ROM read the injected word. This is what ties the rest
-        # of the run to our stimulus rather than to the tb's default 0x03.
-        assert any(_DFT_STATUS_MARKER in line for line in console), (
-            f"ROM never echoed {_DFT_STATUS_MARKER}; it did not read the injected "
-            f"DFX_CTRL_STATUS. Console: {console}"
+        # CHK-DFT-READ: the ROM read the injected word. scratch[10] carries it, so
+        # this ties the rest of the run to our stimulus rather than to the tb's
+        # default 0x03. It replaces the old console echo, and is better evidence:
+        # scratch[10] is readable over JTAG on a part that is hung.
+        assert _DFT_STATUS_FAIL in scratch10_seq, (
+            f"SMC scratch[10] never held the injected DFT status "
+            f"0x{_DFT_STATUS_FAIL:08x}; the ROM did not read our DFX_CTRL_STATUS. "
+            f"Observed {s10_hex}"
         )
         self.logger.info("CHK-DFT-READ: ROM read DFT_STATUS=0x%08x", _DFT_STATUS_FAIL)
 
-        # CHK-DFT-DETECT: the gate classified it as a failure.
-        assert any(_FAIL_MARKER in line for line in console), (
-            f"ROM never printed {_FAIL_MARKER}: it read the failing status but did "
-            f"not take the failure arm. Console: {console}"
+        # CHK-DFT-DETECT: the gate classified it as a failure and said so before
+        # consulting the bypass fuse. Without this, a ROM that skipped straight to
+        # the terminal status would be indistinguishable from one that evaluated
+        # the failure arm properly.
+        assert _STATUS_MBIST_WARN in status_seq, (
+            f"cold_scratch[1] never held the WARN word 0x{_STATUS_MBIST_WARN:08x} "
+            f"(SEP_MSG_MBIST_FAIL): the gate did not take the failure arm. "
+            f"Observed {status_hex}"
         )
-        self.logger.info("CHK-DFT-DETECT: %s observed", _FAIL_MARKER)
+        self.logger.info(
+            "CHK-DFT-DETECT: cold_scratch[1] = 0x%08x (WARN)", _STATUS_MBIST_WARN
+        )
+
+        # CHK-DFT-PRE-C: the gate stopped the ROM before the C runtime, which is
+        # the whole point of it living in vector.S. A silent console proves it: the
+        # virtual console is simputs(), and simputs() needs C. If any of these
+        # appear, the gate ran too late even if it eventually blocked the boot.
+        for marker in _PRE_C_MARKERS:
+            assert not any(marker in line for line in console), (
+                f"ROM printed {marker}, which only the C runtime emits: the gate "
+                f"did not stop the boot before C. Console: {console}"
+            )
+        self.logger.info(
+            "CHK-DFT-PRE-C: console silent (%d lines), so the gate preceded C",
+            len(console),
+        )
 
         # CHK-DFT-PUBLISH: the raw value reached SMC scratch[10]. The procedure
         # calls this out specifically -- it is the JTAG-readable evidence that the
@@ -216,13 +254,18 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             "CHK-DFT-PUBLISH: SMC scratch[10] = 0x%08x", _DFT_STATUS_FAIL
         )
 
-        # CHK-DFT-NO-BYPASS: the bypass strap is at its default 0, so the ROM must
-        # not have taken the bypass return.
-        assert not any(_BYPASS_MARKER in line for line in console), (
-            f"ROM printed {_BYPASS_MARKER} with the bypass strap at 0: it skipped "
-            f"the gate it should have enforced. Console: {console}"
+        # CHK-DFT-NO-BYPASS: the bypass fuse (STATUS_RPT bit 2) is unblown in this
+        # eFuse image, so the ROM must not have taken the bypass path. Evidence is
+        # the terminal status below plus fw_pass=0; the bypass arm would instead
+        # have continued into C and produced console output, which CHK-DFT-PRE-C
+        # already established did not happen.
+        bypass_bit = (efuse_img.field_int("STATUS_RPT") >> 2) & 1
+        assert bypass_bit == 0, (
+            f"STATUS_RPT bit 2 (mem_repair bypass) is set in the eFuse image, so "
+            f"the ROM was entitled to continue and this test proves nothing about "
+            f"the enforced arm"
         )
-        self.logger.info("CHK-DFT-NO-BYPASS: %s absent", _BYPASS_MARKER)
+        self.logger.info("CHK-DFT-NO-BYPASS: STATUS_RPT bit 2 unblown in the OTP")
 
         # CHK-DFT-TERMINAL: the error code, and a FAIL rather than a boot. Both
         # halves matter: the status word says *why* it stopped, fw_pass=0 says it

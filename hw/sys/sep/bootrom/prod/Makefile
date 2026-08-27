@@ -50,9 +50,15 @@ REG_INCLUDE_DIRS := $(call ocah_fw_nonfree_reg_includes,sep) $(call ocah_fw_reg_
 ROM_BASE  ?= 0x10040000
 DCCM_BASE ?= 0xC0040000
 
-# DCCM/SRAM scrub disabled for DV (backdoor preloads with correct ECC; the CPU
-# store loop is extremely slow in RTL sim). Matches the internal bootcode default.
-DCCM_SCRUB_BYTES ?= 0
+# Full DCCM, matching vector.S's default. Reset does not clear DCCM, and
+# explicit_memzero() reaches only named buffers -- not temporaries or spilled
+# registers -- so this scrub is what keeps key material off the ROM stack
+# between boots.
+DCCM_SCRUB_BYTES ?= 0x20000
+
+# Off, and not for speed: rom_clear_ext_sram() runs before the manifest load and
+# would wipe the warm handler sep_scratch_7_test preloads at SRAM_BASE + 0x100.
+# Stays off until that preload can be staged after the cold-boot scrub.
 SRAM_SCRUB_BYTES ?= 0
 PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0

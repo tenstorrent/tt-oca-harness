@@ -42,7 +42,7 @@ _SBOOT_DIS_SET = "FUSE: SBOOT_DIS: 1"
 
 _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "sep_efuse_lc_prod.hex"
+    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
 

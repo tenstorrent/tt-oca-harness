@@ -24,7 +24,7 @@
 //   [C9c]   init_bl0_state()   (must precede every bl0_state writer)
 //   [C6]    lifecycle policy
 //   [C7]    chip ID identification (reads SMC CHIP_CONFIG_CHIP_ID)
-//   [V3]    DFT / MEM_REPAIR gate (reads DFX_CTRL_STATUS_SMU)
+//   [V3]    DFT / MEM_REPAIR gate — in vector.S, before the DCCM scrub
 //    —      peripheral/bus reset
 //   [C8]    crypto/security init
 //   [C9a]   EXT SRAM clear
@@ -137,6 +137,9 @@ extern uint8_t __stack_bottom[];       // defined in linker script
 
 enum {
     ROM_ERR_RUNTIME_INIT_FAILED = 0x0000B001u,
+    // Retained for the error-code space only; the MEM_REPAIR gate moved to
+    // vector.S and reports STATUS_ENCODE(ERROR, SEP_MSG_MBIST_FAIL) directly,
+    // since rom_err_fail() needs a C stack that does not exist that early.
     ROM_ERR_DFT_GATE_BLOCKED = 0x0000D001u,
     ROM_ERR_SMC_COORD_NOT_READY = 0x0000C001u,
     ROM_ERR_SPI_INIT_FAILED = 0x0000E001u,
@@ -234,6 +237,21 @@ static void rom_iccm_clear(void) {
     report_status(STATUS_TYPE_INFO, SEP_MSG_ICCM_CLEAR_START);
     simputshex32("ICCM_BASE=", ROM_ICCM_BASE);
     simputshex32("ICCM_SIZE=", ROM_ICCM_SIZE_BYTES);
+
+    // ROM_ICCM_SIZE_BYTES defaults to 0 and nothing overrides it, so this loop
+    // clears nothing. It used to print ICCM_CLR_OK regardless, which is the one
+    // outcome a reader must not be told: "reported success while doing nothing"
+    // is exactly how the HMAC key_length defect stayed hidden. Report SKIP, the
+    // same way rom_clear_ext_sram() does for its disabled scrub.
+    //
+    // Enabling this needs two things settled first. The ROM never writes ICCM on
+    // any path -- rom_handoff.c copies BL1 to SRAM and says "system bus, so no
+    // ICCM/DCCM split is needed" -- so there is no boot-path reason for the clear
+    // yet. And a CPU store to OCH_SEP_TOP_SEP_ICCM_BASE_ADDR (0xC0000000) may be
+    // caught by the axi_local_alias_remap that already forces sep_dma.c to
+    // temporarily zero SEP_REGION_SIZE for ICCM writes; whether the CPU LSU path
+    // has the same translation is unverified.
+#if ROM_ICCM_SIZE_BYTES > 0
     volatile uint32_t *p = (volatile uint32_t *)ROM_ICCM_BASE;
     uint32_t words = ROM_ICCM_SIZE_BYTES / 4u;
     for (uint32_t i = 0; i < words; ++i) {
@@ -242,8 +260,11 @@ static void rom_iccm_clear(void) {
             simputshex32("ICCM_CLR_PROG=", i * 4u);
         }
     }
-    report_status(STATUS_TYPE_INFO, SEP_MSG_ICCM_CLEAR_DONE);
     simputs("ICCM_CLR_OK\n");
+#else
+    simputs("ICCM_CLR_SKIP\n");
+#endif
+    report_status(STATUS_TYPE_INFO, SEP_MSG_ICCM_CLEAR_DONE);
 }
 
 static void rom_peripheral_reset(void) {
@@ -343,16 +364,25 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     // Logic:
     //   PROD_END: never demote, lock both registers.
     //   BL1 selector set: demotion_reg = usage_constraints flag, lock DEMOTE_1.
-    //   BL2 deferred: store decision in bl0_state for BL1/KDF, do NOT write
-    //     or lock DEMOTE_1 in the deferred BL2 case.
+    //   BL2 deferred: store the decision in bl0_state for BL1/KDF. DEMOTE_1 is
+    //     still written and locked in the non-demoted state UNLESS BL2 actually
+    //     requested demotion -- that request is the only case in which the
+    //     register is left unlocked. Skipping the write whenever the BL1
+    //     selector bit was clear left DEMOTE_1 unwritten and unlocked for later
+    //     software to set at will.
     //   DEMOTE_2 is never written by BL0 (except PROD_END lock).
+    //
+    // The register write itself is deferred until after the fuse secrets are
+    // locked; only the decision is taken here. See the [C15] block below.
+    bool demotion_reg = false;
+    bool lock_demotion = true;
     {
         const manifest_t *m =
             (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
 
         if (lc_state == LC_STATE_PROD_END) {
-            // PROD_END: never demote, always lock both registers.
-            lc_write_demotion(false, true);
+            // PROD_END: never demote, always lock. DEMOTE_2 is locked here too,
+            // which is the one case where BL0 touches it at all.
             lc_write_demotion_2(false, true);
             simputs("DEMOTE: PROD_END lock\n");
         } else {
@@ -361,19 +391,20 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
                 (m->boot_arguments.flag_args & (1u << FLAG_ARGS_BIT_BL2_DEMOTION)) != 0;
 
             if (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION)) {
-                // BL1 manifest decides demotion: write DEMOTE_1 + lock.
-                bool bl1_demote = (m->usage_constraints.flags &
-                                   (1u << USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION)) != 0;
-                lc_write_demotion(bl1_demote, true);
-                simputsdec24("BL1_DEMOTE=", bl1_demote);
+                // BL1 manifest decides demotion, and the register is always locked.
+                demotion_reg = (m->usage_constraints.flags &
+                                (1u << USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION)) != 0;
+                simputsdec24("BL1_DEMOTE=", demotion_reg);
+            } else if (bl2_demote) {
+                // The only case that leaves the register unlocked, so that BL2
+                // can still apply the demotion it asked for.
+                lock_demotion = false;
+                simputs("DEMOTE: BL2 deferred, unlocked\n");
             } else {
-                // BL2 deferred: do NOT write or lock DEMOTE_1.
-                // Leave DEMOTE_1 untouched in the deferred BL2 case.
-                simputs("DEMOTE: BL2 deferred\n");
+                simputs("DEMOTE: BL2 deferred, lock non-demoted\n");
             }
 
-            // Store BL2 demotion decision in bl0_state (for KDF/measurement).
-            // DEMOTE_2 is NOT written by BL0; BL1 handles it.
+            // Stored for BL1/KDF/measurement. DEMOTE_2 is BL1's to write.
             get_bl0_state()->bl2_demotion_decision = bl2_demote;
             simputsdec24("BL2_DEMOTE_DEC=", bl2_demote);
         }
@@ -391,6 +422,19 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     }
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SECRETS_LOCKED);
 
+    // ── Demotion register write (deferred from the decision above) ──
+    // Ordered after the secret lock deliberately: the demotion register is the
+    // last fuse state BL0 changes, so any fault while writing it cannot leave
+    // the secret fuses readable. Anything that needs to READ a secret -- the UID
+    // key derivation, and the boot measurement when it lands -- must therefore
+    // run before the lock, not here.
+    if (lock_demotion) {
+        lc_write_demotion(demotion_reg, true);
+        simputs("DEMOTE_LOCKED\n");
+    } else {
+        simputs("DEMOTE_NOT_LOCKED\n");
+    }
+
     // ── [C18] BL1 handoff ──
     {
         report_status(STATUS_TYPE_DEBUG, SEP_MSG_HANDOFF_CHECK);
@@ -401,36 +445,6 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         // rom_handoff_bl1 does not return on success; if we get here, it failed.
         rom_err_fail(ho_err);
     }
-}
-
-static void dft_mem_repair_gate(void) {
-    report_status(STATUS_TYPE_DEBUG, SEP_MSG_DFT_GATE_CHECK);
-    /* Read DFX_CTRL_STATUS_SMU register. */
-    const uint32_t dft_status = smc_read_dft_status();
-    simputshex32("DFT_STATUS=", dft_status);
-
-    /* Check mem_repair_success (bit 1). */
-    if (dft_status & DFT_STATUS_MEM_REPAIR_SUCCESS_MASK) {
-        /* Success — continue boot. */
-        return;
-    }
-
-    /* MEM_REPAIR failure: dump raw value to scratch[10] for debugger. */
-    smc_scratch_write(SMC_SCRATCH_MBIST_FAILURE_IDX, dft_status);
-
-    /* Emit warning status. */
-    report_status(STATUS_TYPE_WARN, SEP_MSG_MBIST_FAIL);
-    simputs("MEM_REPAIR_FAIL\n");
-
-    /* Check bypass strap (bit 13 of STRAPS_LO). */
-    const uint32_t straps_lo = smc_read_straps_lo();
-    if (straps_lo & SMC_STRAP_MEM_REPAIR_BYPASS_MASK) {
-        simputs("MEM_REPAIR_BYPASS\n");
-        return;
-    }
-
-    /* No bypass — halt. */
-    rom_err_fail(ROM_ERR_DFT_GATE_BLOCKED);
 }
 
 // Report the ROM hash prefix via the status ring.
@@ -548,8 +562,9 @@ void rom_main(void) {
         simputshex32("CHIP_ID=", chip_id);
     }
 
-    // ── [V3] DFT / MBIST / MEM_REPAIR boot-gating (reads DFX_CTRL_STATUS register) ──
-    dft_mem_repair_gate();
+    // [V3] DFT / MBIST / MEM_REPAIR boot-gating now runs in vector.S, before the
+    // DCCM scrub and before this C runtime existed. It has to: a repair failure
+    // must not reach the lifecycle decision, and that decision is stored in DCCM.
 
     // ── Peripheral/Bus reset sequencing ──
     rom_peripheral_reset();
@@ -629,15 +644,20 @@ void rom_main(void) {
     // SMC scratch coordination (manifest/status buffer handoff).
     rom_smc_coordination_probe();
 
-    // ── [C12–C14] Manifest load / validate + [C15/C17] fuse lock + [C18] handoff ──
-    rom_manifest_validate_handoff(&straps, spi_status, lc_state, sboot_dis);
-
     // ── [C16] Stack canary check ──
-    // Verify the canary placed at __stack_bottom is still intact.
-    // If corrupted, the stack overflowed into .bss — fatal error.
+    // Verify the canary placed at __stack_bottom is still intact. If corrupted,
+    // the stack overflowed into .bss — fatal error.
+    //
+    // Checked BEFORE the handoff, not after: rom_manifest_validate_handoff()
+    // never returns (every path either enters BL1 or ends in the noreturn
+    // rom_err_fail), so a check placed after the call is unreachable and the
+    // canary was never actually read.
     if (*(volatile uint32_t *)__stack_bottom != STACK_CANARY_VALUE) {
         rom_err_fail(ROM_ERR_STACK_OVERFLOW);
     }
+
+    // ── [C12–C14] Manifest load / validate + [C15/C17] fuse lock + [C18] handoff ──
+    rom_manifest_validate_handoff(&straps, spi_status, lc_state, sboot_dis);
 
     // ── Done ──
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_ROM_MAIN_BEFORE_PASS);

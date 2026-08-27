@@ -1,0 +1,13 @@
+# PROD lifecycle, everything else at zero.
+#
+# The baseline secure-boot preload: PROD is what makes SEP ROM enforce signature
+# verification, and SBOOT_DIS stays 0 so nothing can opt out of it. Used by
+# sep_firmware_enforced_secure_boot_flow_test,
+# sep_firmware_cntl_secure_boot_flow_test,
+# sep_firmware_backup_invalid_signature_test,
+# sep_firmware_backup_invalid_public_key_selection_test and
+# sep_firmware_backup_unpopulated_rom_key_slot_test.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)

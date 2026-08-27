@@ -8,11 +8,7 @@ backup's ``public_key_sel.selection`` is set to 3 -- one of the three encodings
 (``manifest_crypto.c:143-221``); a fixed value makes the run reproducible and lets
 the test assert the exact ``PUBK_SEL=`` the ROM echoed.
 
-TWO PLATFORM ADAPTATIONS.
-
-*Stage.* The manifest loop and the crypto chain are separate stages here
-(``rom_main.c:324-346``), so the backup legitimately passes structural validation,
-prints ``MANIFEST_OK``, and is only then rejected by ``validate_signature``.
+PLATFORM ADAPTATION.
 
 *Marker.* This ROM has no ``INVALID_KEY_INDEX`` status. The unassigned-selection
 arm prints ``BAD_KEY_SEL`` and returns ``MANIFEST_ERR_SIG_FAILED``; a bad ROM key
@@ -37,7 +33,7 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "sep_efuse_lc_prod.hex"
+    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
 # manifest.h:109-114 assigns 0,1,2,4,5. 3, 6 and 7 name nothing.

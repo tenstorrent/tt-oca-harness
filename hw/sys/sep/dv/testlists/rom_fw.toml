@@ -61,8 +61,8 @@ args = [
 
 [[tests]]
 # ROM boot over the REAL OpenTitan SPI host with the SECURE_DMA drain -- the SPI
-# half of the TODO the SMC-SRAM test above carries. Same production Boot ROM and
-# same bl1_pass_test payload, but the ROM is built with BOOT_SPI_CONTROLLER_OT=1
+# half of the coverage the SMC-SRAM test above leaves open. Same production Boot
+# ROM and same bl1_pass_test payload, but the ROM is built with BOOT_SPI_CONTROLLER_OT=1
 # (build_ot/) so it links the OpenTitan driver instead of the weak sep_spi.c stub,
 # and the manifest + payload are fetched over the spi_host from the OcahSpiFlash
 # cocotb BFM.
@@ -264,7 +264,7 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod_sboot_dis.hex",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
 
 [[tests]]
@@ -285,7 +285,7 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod.hex",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
 ]
 
@@ -304,7 +304,7 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod.hex",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
 ]
 
@@ -323,7 +323,7 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod.hex",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
 ]
 
@@ -343,7 +343,7 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod_secver8.hex",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_secver8.toml",
 ]
 
 [[tests]]
@@ -361,7 +361,28 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_lc_prod.hex",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+]
+
+[[tests]]
+# Backup selects a ROM key slot with no compiled-in digest. The verification
+# modulus comes from the manifest, so an unpopulated slot must fail closed:
+# skipping the digest bind would verify a manifest against a modulus it supplied
+# itself. Everything else about the backup is valid, so ROM_KEY_EMPTY is the only
+# available verdict. Same PROD OTP as the sibling key tests -- an unrevoked slot
+# and BL1_VERSION 0, so neither revocation nor rollback pre-empts the check.
+name = "sep_firmware_backup_unpopulated_rom_key_slot_test"
+module = "rom_fw.sep_firmware_backup_unpopulated_rom_key_slot_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
 
 [[tests]]
@@ -433,6 +454,6 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_class_key.hex",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
   "+sep_crypto_edn_force",
 ]

@@ -32,7 +32,7 @@ from rom_fw.sep_backup_manifest_fail_base import (
 
 _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "sep_efuse_lc_prod_secver8.hex"
+    / "efuse_configurations" / "sep_efuse_lc_prod_secver8.toml"
 )
 
 # Fuse thermometer count in the preload above, and the version planted in the
