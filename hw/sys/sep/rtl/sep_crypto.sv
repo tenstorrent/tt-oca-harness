@@ -716,8 +716,6 @@ module sep_crypto #(
     // Fuse Wrapper   //
     ////////////////////
 
-    logic prod_dbg_active;
-
     // Key Manager eFuse AXI-Lite master bus — driven by key_manager efuse_req_o,
     // consumed by sep_efuse_wrapper's km_efuse_axil_req_i port.
     km_intf_pkg::km_axil_req_t  km_efuse_axil_req;
@@ -812,7 +810,6 @@ module sep_crypto #(
         .fuse_sense_done_o                     (fuse_sense_done_o),
 
         .secure_tm_o                           (secure_tm_o),
-        .prod_dbg_active_i                     (prod_dbg_active),
 
         // DTP JTAG to AXI-Lite bus
         .axil_sep_otp_jtag_req_i               (axil_sep_otp_jtag_req_i),
@@ -855,7 +852,6 @@ module sep_crypto #(
         .lcc_demote_state_1_o(lcc_demote_state_1_o),
         .lcc_demote_state_2_o(lcc_demote_state_2_o),
         .lc_sigint_err_o(lc_sigint_err_o),
-        .prod_dbg_active_o(prod_dbg_active),
 
         .lifecycle_axi_req_i(sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiLifecycle]),
         .lifecycle_axi_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiLifecycle])

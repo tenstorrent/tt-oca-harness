@@ -68,9 +68,6 @@ module efuse_shadow_regs
     input  logic [5:0]                          rma_chiplet_token_match_i,
     input  logic [5:0]                          rma_sip_token_match_i,
 
-    // PROD_DBG isolation: when asserted with LC_STATE==PROD, block all transitions
-    input  logic                                prod_dbg_active_i,
-
     // Fuse Command Interface - custom interface for SHIM state machine
     output fuse_command_req_t                   fuse_command_req,  // {address, write data, access length, command, valid}
     input  fuse_command_resp_t                  fuse_command_resp, // {read data, command status, valid}
@@ -280,7 +277,6 @@ module efuse_shadow_regs
 
   logic [LC_STATE_WIDTH-1:0] lc_state_cur;
   logic                      lc_state_is_prod;
-  logic                      lc_state_is_prod_dbg;
   logic [LC_STATE_WIDTH-1:0] lc_state_candidate;
   logic [LC_STATE_WIDTH-1:0] lc_state_intended_dest;
   logic                      lc_state_write_allowed;
@@ -295,7 +291,6 @@ module efuse_shadow_regs
       lc_state_write_allowed = 1'b0;
       lc_state_cur = '0;
       lc_state_is_prod = 1'b0;
-      lc_state_is_prod_dbg = 1'b0;
       if (HAS_LC_STATE) begin
           lc_state_raw_d = shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
           lc_state_candidate = shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
@@ -311,17 +306,15 @@ module efuse_shadow_regs
               end
           end else begin
               // LC state transition enforcement:
-              //   PROD_END, RMA_CHIPLET, and PROD_DBG are terminal — no W1S updates.
+              //   PROD_END and RMA_CHIPLET are terminal — no W1S updates.
               //   From PROD, bit[2] and bit[3] are blocked (per-bit gating).
               //   bit[2] (RMA_CHIPLET) requires bit[1] (RMA_SIP) already established.
               lc_state_cur     = shadow_efuse.values[efuse_pkg::SHADOW_IDX_LC_STATE][LC_STATE_WIDTH-1:0];
               lc_state_is_prod = (lc_state_cur == efuse_pkg::LC_PROD);
-              lc_state_is_prod_dbg = prod_dbg_active_i && lc_state_is_prod;
 
               if (lc_state_cur inside {efuse_pkg::LC_PROD_END,
                                        efuse_pkg::LC_RMA_CHIP_0,
-                                       efuse_pkg::LC_RMA_CHIP_1}
-                  || lc_state_is_prod_dbg) begin
+                                       efuse_pkg::LC_RMA_CHIP_1}) begin
                   lc_state_raw_d = lc_state_cur;
               end else if (apb_req_from_ac.psel) begin
                   if (apb_req_from_ac.pwrite && !write_locked &&
