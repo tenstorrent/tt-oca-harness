@@ -10,6 +10,7 @@ module smc_local_fabric
     input logic                                         test_en_i,
 
     input smc_pkg::smc_axi_addr_t                       local_base_addr_i,
+    input logic [31:0]                                  region_size_i,
 
     // Input AXI
     input  smc_pkg::smc_local_32_64_6_12_axi_req_t      input_axi_req_i,
@@ -63,19 +64,29 @@ module smc_local_fabric
     smc_local_xbar_pkg::axi64_req_t sep_in_req_masked;
     smc_local_xbar_pkg::axi64_req_t local_req_masked;
 
-    // Apply address masking to input ports (replace upper 7 bits with local_base_addr)
+    // Offset bits covered by the region size come from the incoming address, the rest
+    // from local_base_addr_i, so an access arriving on a global base lands on the same
+    // offset inside the local aperture. region_size_i is a power of two by SW contract
+    // (see the RDL), which is what makes the subtract below a contiguous low-bit mask.
+    logic [31:0] local_addr_mask;
+    logic [31:0] local_addr_base;
+
+    assign local_addr_mask = region_size_i - 32'd1;
+    assign local_addr_base = local_base_addr_i[31:0] & ~local_addr_mask;
+
+    // Apply address masking to input ports
     always_comb begin
         system_req_masked = input_axi_req_i;
-        system_req_masked.aw.addr = {local_base_addr_i[31:25], input_axi_req_i.aw.addr[24:0]};
-        system_req_masked.ar.addr = {local_base_addr_i[31:25], input_axi_req_i.ar.addr[24:0]};
+        system_req_masked.aw.addr = local_addr_base | (input_axi_req_i.aw.addr & local_addr_mask);
+        system_req_masked.ar.addr = local_addr_base | (input_axi_req_i.ar.addr & local_addr_mask);
 
         sep_in_req_masked = sep_in_axi_req_i;
-        sep_in_req_masked.aw.addr = {local_base_addr_i[31:25], sep_in_axi_req_i.aw.addr[24:0]};
-        sep_in_req_masked.ar.addr = {local_base_addr_i[31:25], sep_in_axi_req_i.ar.addr[24:0]};
+        sep_in_req_masked.aw.addr = local_addr_base | (sep_in_axi_req_i.aw.addr & local_addr_mask);
+        sep_in_req_masked.ar.addr = local_addr_base | (sep_in_axi_req_i.ar.addr & local_addr_mask);
 
         local_req_masked = local_axi_req_i;
-        local_req_masked.aw.addr = {local_base_addr_i[31:25], local_axi_req_i.aw.addr[24:0]};
-        local_req_masked.ar.addr = {local_base_addr_i[31:25], local_axi_req_i.ar.addr[24:0]};
+        local_req_masked.aw.addr = local_addr_base | (local_axi_req_i.aw.addr & local_addr_mask);
+        local_req_masked.ar.addr = local_addr_base | (local_axi_req_i.ar.addr & local_addr_mask);
     end
 
     //------------------------//

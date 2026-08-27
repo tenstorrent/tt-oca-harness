@@ -6,7 +6,6 @@
 module smc_base
 #(
   parameter bit                               NO_ADDR_REMAP           = 1'b1,
-  parameter bit [smc_pkg::AXI_ADDR_WIDTH-1:0] LOCAL_ALIAS_REGION_SIZE = 56'h8_0000,
 
   parameter smc_pkg::smc_cpu_config_e         SMC_CPU_CONFIG          = smc_pkg::SMC_1CORE,
 
@@ -379,6 +378,7 @@ module smc_base
 
     .global_base_addr_i                     (smc_global_base_o),
     .local_base_addr_i                      (smc_local_base),
+    .region_size_i                          (smc_region_size_o),
 
     // Input Fabric interfaces (placeholder connections)
     .axi_in_jtag_req_i                      (jtag_axi_in_req_i),

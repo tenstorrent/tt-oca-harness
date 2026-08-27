@@ -14,10 +14,9 @@ be either the local alias (`LOCAL_BASE`, fixed read-only at
 `0xC000_0000`) or the global system address (`GLOBAL_BASE`,
 programmable by firmware). The fabric routes transactions to SMC
 resources identically regardless of which base is used, as long as the
-access falls inside the relevant local or global aperture. The current
-SMC `REGION_SIZE` CSR reset is 16 MiB for the chiplet-global aperture;
-the input fabric's internal local-alias window is controlled by the RTL
-`LOCAL_ALIAS_REGION_SIZE` parameter, currently fixed at 16 MiB.
+access falls inside the relevant local or global aperture. Both
+apertures are sized by the SMC `REGION_SIZE` CSR, which resets to
+16 MiB and may be reprogrammed by firmware.
 Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
 conventions. For details on how `LOCAL_BASE` and `GLOBAL_BASE` relate
 and how an adopter maps this aperture into the system address space,
