@@ -432,13 +432,17 @@ module smc_padring #(
 		// Pad allocation settings
 		localparam bit INPUT_BY_DEFAULT	= smc_padring_pkg::DefaultDirectionMap[i];
 
+		// Assertion to protect against truncation on casts
+		`OCAH_OT_ASSERT_INIT(GpioIntfSizeFits_A,
+		    smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::ADDR_WIDTH))
+
 		// GPIO interface
 		gpio #(
 			.MAX_TRANS					(MAX_TRANS),
 			.INPUT_BY_DEFAULT			(INPUT_BY_DEFAULT),
 
 			.GPIO_INTF_REG_MAP_BASE_ADDR(GPIO_INTF_BASE_ADDR + (i * ADDRESS_MAP_SIZE_PER_GPIO)),
-			.GPIO_INTF_REG_MAP_SIZE     (smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE),
+			.GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE)),
 			.ADDRESS_MAP_SIZE_PER_GPIO  (ADDRESS_MAP_SIZE_PER_GPIO)
 		) u_gpio_interface (
 			.clk_i					(clk_i),

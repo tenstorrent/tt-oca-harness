@@ -46,11 +46,12 @@ from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0
 # Inbound FILTER_* per-entry register offsets (64-bit START/END as lo/hi 32-bit words).
 FILTER_START_ADDR = 0x08
 FILTER_END_ADDR = 0x10
-# filter_ctrl.rdl FILTER_CONFIG.data_bus_width reset = 3 (8-byte beat).
-# axi_filter_wrap expands a same-beat [start,end] window so END's low bits are 1
-# (RDL reset of END_ADDR is 0x7 for that reason).
-FILTER_DBUS_WIDTH_LOG2 = 3
-FILTER_BEAT_MASK = (1 << FILTER_DBUS_WIDTH_LOG2) - 1
+# filter_ctrl.rdl FILTER_CONFIG.data_bus_width reset = 3 (8-byte beat), so
+# axi_filter_wrap expands a same-beat [start,end] window and END's low bits
+# read back as 1 (which is why the RDL reset of END_ADDR is 0x7). Nothing in
+# this module needs the granule: the readback proof lives in
+# sep_reg_bit_bash_seq.inbound_addr_expected(), which models the widen across
+# the whole write sweep rather than one programmed entry.
 
 # Allowed target: a pure-RW scratch CSR (SEP_SW_DEBUG @ sep_cpu_ctrl+0x178) in the
 # system_csr region the smn_inbound xbar reaches post-filter. Staged with a distinctive

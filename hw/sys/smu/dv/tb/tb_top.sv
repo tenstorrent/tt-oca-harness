@@ -115,7 +115,7 @@ module smu_uvm_top
     output logic            tb_tel_atready /*verilator public_flat_rw*/,
     output logic            tb_tel_afvalid /*verilator public_flat_rw*/,
 
-    // Flat external SMN AXI subordinate (cocotbext-axi master drives this)
+    // Flat external SMN AXI subordinate (the shared ocah_axi_vip master drives this)
     input  wire logic [7:0]   s_axi_awid,
     input  wire logic [55:0]  s_axi_awaddr,
     input  wire logic [7:0]   s_axi_awlen,
@@ -356,8 +356,8 @@ module smu_uvm_top
     assign tb_tel_afvalid = tel_afvalid[0];
 
     // Trace mem idle responses
-    dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
-    dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
+    trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
+    trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
     assign trc_resp = '0;
 
     // eFuse shim idle response

@@ -63,6 +63,12 @@ from ocah_axi_vip import (
 )
 ```
 
+Response codes are plain integers (`RESP_OKAY`, `RESP_EXOKAY`, `RESP_SLVERR`,
+`RESP_DECERR`, `RESP_TIMEOUT`); `resp_name(resp)` renders them for log and
+failure messages. AxPROT values are built by OR-ing the plain
+`PROT_PRIVILEGED`, `PROT_NONSECURE`, and `PROT_INSTRUCTION` bits and passed
+via the `prot=` argument.
+
 Do not import `cocotbext.axi.AxiMaster`, `AxiLiteMaster`, `AxiRam`, or backend
 response enums in new OCAH tests. Add missing behavior to this wrapper instead.
 

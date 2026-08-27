@@ -87,10 +87,10 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         self.logger.info("KMAC mode/strength breadth KMAC mode x strength breadth: seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
-        # output, not on the loop's own trip count. The former guard compared
-        # `walked` against a product of file-scope constants -- it asserted its
-        # own arithmetic. Distinct results additionally show the cells really did
-        # program different configurations.
+        # output, not on the loop's own trip count. Comparing `walked` only to a
+        # product of file-scope constants asserts the test's own arithmetic.
+        # Distinct results additionally show the cells programmed different
+        # configurations.
         results: dict[str, tuple[int, ...]] = {}
         for mode, sec, outb, key_bits, s in CELLS:
             results[f"{mode}-{sec}-{outb}"] = await self._run_cell(
