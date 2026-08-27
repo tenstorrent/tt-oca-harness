@@ -20,4 +20,4 @@ localparam longint unsigned UART_16550_MAIN_ECR_BASE_ADDR = 64'h20;
 localparam longint unsigned UART_16550_MAIN_ITR_BASE_ADDR = 64'h24;
 
 
-endpackage;
+endpackage
