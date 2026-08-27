@@ -258,31 +258,49 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 // it can only establish that SOME private key signed it. This is the callback
 // that says whose, and it is the reason secure boot decides anything at all.
 //
-// Two anchor kinds, matching what the part provisions:
+// Slot numbering is NOT this file's invention. public_key_select_classic and the
+// CHIPLET_PUBK_REVOKE bitmap index the same key entries -- the RDL says "each key
+// entry maps to one bit here" -- so the two must agree bit for bit. If they did
+// not, revoking slot N and authorizing slot N would name different keys and
+// revocation would be decorative. The map, from CHIPLET_PUBK_REVOKE's own
+// description in sep_efuse_map.rdl:
 //
-//   slots 0..PUBK_SEL_NUM_ROM_KEYS-1   digests embedded in ROM (key_digests.c)
-//   slots above that                   digests burned into OTP
+//   [7:0]   ROM chiplet-creator classical keys (0,1 are the development keys)
+//   [15:8]  ROM chiplet-creator PQC keys
+//   [17:16] CHIPLET_PUBK_HASH0 / 1
+//   [19:18] CHIPLET_PUBK_PQC_HASH0 / 1
+//   [21:20] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0
+//   [23:22] SYS_PUBK_HASH  / SYS_PUBK_PQC_HASH
+//   [25:24] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1
+//   [31:26] reserved
 //
-// This is the same split the previous ROM's validate_signature() had
-// (PUBK_SEL_ROM_KEY vs PUBK_SEL_FUSE_KEY_0/1), carried across to the new format.
+// The classical OTP slots resolve to a fuse bank; PQC slots are refused because
+// nothing here verifies a PQC signature, so authorizing one would hand a key to
+// a verifier that cannot check it.
 //
-// NOTE: the OTP addresses here are NOT the ones that code used. It computed
-// CHIPLET_PUBK_REVOKE_BASE + 0x100 / + 0x120, which land on SPI_PHY_DLL_SLAVE
-// and the middle of CHIPLET_PUBK_HASH0. The real banks are +0x110 and +0x130.
-// That path was never exercised -- only ROM slot 0 is used by any test -- so the
-// bug sat latent. The generated symbols are used directly here so it cannot
-// recur.
-#define OCA_OTP_KEY_SLOT_FIRST PUBK_SEL_NUM_ROM_KEYS
-#define OCA_OTP_KEY_SLOT_COUNT 4u
+// NOTE the addresses are the generated symbols, not the previous ROM's
+// CHIPLET_PUBK_REVOKE_BASE + 0x100 / + 0x120 arithmetic, which landed on
+// SPI_PHY_DLL_SLAVE and the middle of CHIPLET_PUBK_HASH0. That path was never
+// exercised -- only ROM slot 0 is used by any test -- so the bug sat latent.
+#define OCA_KEY_SLOT_ROM_CLASSICAL_LAST 7u   // [7:0]
+#define OCA_KEY_SLOT_ROM_PQC_LAST      15u   // [15:8]
+#define OCA_KEY_SLOT_MAX               25u   // [31:26] reserved
 
+// Resolve a classical OTP key slot to its digest bank. Returns false for a slot
+// that is not a classical OTP anchor (PQC, or out of the defined range).
 static bool otp_key_digest_addr(uint32_t slot, uint32_t *out_addr)
 {
-    switch (slot - OCA_OTP_KEY_SLOT_FIRST) {
-    case 0: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR; return true;
-    case 1: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR; return true;
-    case 2: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR;     return true;
-    case 3: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR;      return true;
-    default: return false;
+    switch (slot) {
+    case 16u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR; return true;
+    case 17u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR; return true;
+    case 20u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR;     return true;
+    case 22u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR;      return true;
+    // SIP_PUBK_HASH1 is a real bank in the RDL (@0x260) but the VP eFuse model
+    // has no register there yet, so a run selecting slot 24 reads reserved space
+    // rather than a provisioned digest. Mapped for correctness against silicon;
+    // not exercisable on sep-vp until the model is re-synced.
+    case 24u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_BASE_ADDR;     return true;
+    default:  return false;
     }
 }
 
@@ -295,9 +313,27 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
     // Only RSA-3072 raw keys can be anchored: the digests are over a 384-byte
     // modulus. Refusing anything else here keeps this from silently hashing a
     // differently shaped field and comparing it to an unrelated digest.
-    if (public_key->primitive_type != OCA_PRIMITIVE_RSA_3072_PKCS1V15_SHA256
-        || public_key->encoding != OCA_ENCODING_RAW
-        || public_key->field_length < OCA_RSA3072_PUBKEY_BYTES) {
+    //
+    // The library gives this callback one failure code, so all three refusals
+    // below surface as ROOT_KEY_UNAUTHORIZED. They are very different problems --
+    // an unsigned image on a part that demands signing, an algorithm this ROM
+    // does not implement, and an encoding it does not parse -- so each gets its
+    // own console marker. Without them a triage starts from "invalid key hash",
+    // which is the one thing none of them is.
+    if (public_key->primitive_type == OCA_PRIMITIVE_NONE) {
+        simputs("PUBK_NO_SIGNATURE\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+    }
+    if (public_key->primitive_type != OCA_PRIMITIVE_RSA_3072_PKCS1V15_SHA256) {
+        simputs("PUBK_ALGO_UNSUPPORTED\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+    }
+    if (public_key->encoding != OCA_ENCODING_RAW) {
+        simputs("PUBK_ENCODING_UNSUPPORTED\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+    }
+    if (public_key->field_length < OCA_RSA3072_PUBKEY_BYTES) {
+        simputs("PUBK_FIELD_TOO_SMALL\n");
         return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
     }
 
@@ -319,24 +355,43 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
         return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
     }
 
+    if ((uint32_t)slot > OCA_KEY_SLOT_MAX) {
+        // [31:26] are reserved. A manifest naming one is not describing a key
+        // this format defines, let alone one this part holds.
+        simputs("PUBK_SLOT_RESERVED\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+    }
+
     uint8_t anchor[32];
-    if (slot < (int)PUBK_SEL_NUM_ROM_KEYS) {
-        const uint8_t *rom_digest = public_key_digests[slot].digest;
-        if (rom_digest == NULL) {
-            // An unprovisioned ROM slot authorizes nothing. This is the one
-            // place the behaviour deliberately differs from the old ROM, which
-            // treated a NULL digest as "skip the hash check" and so accepted any
-            // key naming an empty slot.
+    if ((uint32_t)slot <= OCA_KEY_SLOT_ROM_CLASSICAL_LAST) {
+        // ROM classical key. The bitmap defines eight of these; key_digests.c
+        // ships fewer (NUM_PUBLIC_KEY_DIGESTS), so the upper ones are simply
+        // unprovisioned rather than invalid.
+        if ((uint32_t)slot >= NUM_PUBLIC_KEY_DIGESTS
+            || public_key_digests[slot].digest == NULL) {
+            // An unprovisioned ROM slot authorizes nothing. This deliberately
+            // differs from the old ROM, which treated a NULL digest as "skip the
+            // hash check" and so accepted any key naming an empty slot.
             simputs("PUBK_SLOT_UNPROVISIONED\n");
             return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
         }
+        const uint8_t *rom_digest = public_key_digests[slot].digest;
         for (uint32_t i = 0; i < 32u; ++i) {
             anchor[i] = rom_digest[i];
         }
+    } else if ((uint32_t)slot <= OCA_KEY_SLOT_ROM_PQC_LAST) {
+        // ROM PQC key. Refused rather than resolved: nothing here verifies a PQC
+        // signature, so authorizing one would hand a key to a verifier that
+        // cannot check it, and the manifest would fail later with a code that
+        // blamed the signature instead of the unsupported algorithm.
+        simputs("PUBK_SLOT_PQC_UNSUPPORTED\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
     } else {
         uint32_t addr;
         if (!otp_key_digest_addr((uint32_t)slot, &addr)) {
-            simputs("PUBK_SLOT_UNKNOWN\n");
+            // A defined-but-PQC OTP slot (18, 19, 21, 23, 25), for the same
+            // reason as above.
+            simputs("PUBK_SLOT_PQC_UNSUPPORTED\n");
             return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
         }
         fuse_read_bytes(addr, anchor, 32u);
