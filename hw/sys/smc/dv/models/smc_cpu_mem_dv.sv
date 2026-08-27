@@ -38,7 +38,15 @@ module smc_cpu_mem_dv
     input l1_dcache_data_req_t l1_dcache_data_req_i [NUM_DCACHE_DATA_BANKS-1:0],
 
     input logic ecc_inject_sbe_i,
-    input logic ecc_inject_dbe_i
+    input logic ecc_inject_dbe_i,
+
+    // Codeword poke. Scratch stores the full 72-bit ECC codeword, so XORing
+    // bits into the array is a real corruption the CPU's ECC logic sees on the
+    // next read -- one bit is correctable, two are not. Same posture as the
+    // SEP testbench, which writes codewords into the macro arrays directly.
+    input logic        ecc_poke_en_i,
+    input logic [31:0] ecc_poke_entry_i,
+    input logic [1:0]  ecc_poke_mask_i
 );
 
     localparam logic [31:0] FW_MAGIC = 32'hACAF_ACA1;
@@ -68,6 +76,21 @@ module smc_cpu_mem_dv
             scratch0_inject_fire_q <= scratch_ram_req_i[0].en &&
                 !scratch_ram_req_i[0].wmode &&
                 (ecc_inject_sbe_i || ecc_inject_dbe_i);
+        end
+    end
+
+    // ------------------------------------------------------------------
+    // Codeword poke (rising edge of ecc_poke_en_i)
+    // ------------------------------------------------------------------
+    logic ecc_poke_en_q;
+    always @(posedge clk_i) begin
+        ecc_poke_en_q <= ecc_poke_en_i;
+        if (ecc_poke_en_i && !ecc_poke_en_q) begin
+            u_mems.gen_scratch_rams[0].mem.mem.mem[ecc_poke_entry_i][1:0] <=
+                u_mems.gen_scratch_rams[0].mem.mem.mem[ecc_poke_entry_i][1:0]
+                ^ ecc_poke_mask_i;
+            $display("[smc_cpu_mem_dv] ECC poke: bank0 entry %0d ^= 2'b%b",
+                     ecc_poke_entry_i, ecc_poke_mask_i);
         end
     end
 

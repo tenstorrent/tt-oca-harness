@@ -424,6 +424,14 @@ module smc_uvm_top
     input  wire logic   tb_cpu_ecc_inject_sbe /*verilator public_flat_rw*/,
     input  wire logic   tb_cpu_ecc_inject_dbe /*verilator public_flat_rw*/,
     input  wire logic   tb_cpu_ecc_inject_probe /*verilator public_flat_rw*/,
+    // Scratch codeword poke: XOR mask into bank0 entry on a rising poke_en.
+    // One bit is a correctable error, two are not.
+    input  wire logic        tb_cpu_ecc_poke_en /*verilator public_flat_rw*/,
+    input  wire logic [31:0] tb_cpu_ecc_poke_entry /*verilator public_flat_rw*/,
+    input  wire logic [1:0]  tb_cpu_ecc_poke_mask /*verilator public_flat_rw*/,
+    // CPU cluster double-error detect (live + sticky).
+    output logic        tb_cluster_ded /*verilator public_flat_rw*/,
+    output logic        tb_cluster_ded_seen /*verilator public_flat_rw*/,
     output logic [31:0] tb_cpu_ecc_inject_fire_count /*verilator public_flat_rw*/,
     output logic        tb_cpu_scratch0_inject_fire /*verilator public_flat_rw*/,
 
@@ -1139,8 +1147,26 @@ module smc_uvm_top
         .scratch_ram_req_i    (scratch_ram_intf_req),
         .l1_dcache_data_req_i (l1_dcache_data_intf_req),
         .ecc_inject_sbe_i     (smc_uvm_top.tb_cpu_ecc_inject_sbe),
-        .ecc_inject_dbe_i     (smc_uvm_top.tb_cpu_ecc_inject_dbe)
+        .ecc_inject_dbe_i     (smc_uvm_top.tb_cpu_ecc_inject_dbe),
+        .ecc_poke_en_i        (smc_uvm_top.tb_cpu_ecc_poke_en),
+        .ecc_poke_entry_i     (smc_uvm_top.tb_cpu_ecc_poke_entry),
+        .ecc_poke_mask_i      (smc_uvm_top.tb_cpu_ecc_poke_mask)
     );
+
+    // Cluster DED from the CPU (smc_4core_cpu.sv flops
+    // |{io_errors_uncorrectable_valid, uncorrectable_2} into it). Sticky, so a
+    // polling test cannot miss it.
+    logic cpu_cluster_ded;
+    logic cpu_cluster_ded_seen_q;
+    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            cpu_cluster_ded_seen_q <= 1'b0;
+        end else if (cpu_cluster_ded) begin
+            cpu_cluster_ded_seen_q <= 1'b1;
+        end
+    end
+    assign tb_cluster_ded      = cpu_cluster_ded;
+    assign tb_cluster_ded_seen = cpu_cluster_ded_seen_q;
 
     // Bound-instance observability -> the cocotb pins (names unchanged).
     `define CPU_MEM_DV u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv
@@ -1242,7 +1268,7 @@ module smc_uvm_top
         .telemetry_atvalid_i        (tb_telemetry_atvalid),
         .telemetry_afvalid_o        (tb_telemetry_afvalid),
         .telemetry_afready_i        (tb_telemetry_afready),
-        .cluster_ded_o              (),
+        .cluster_ded_o              (cpu_cluster_ded),
         .wdt_first_timeout_o        (),
         .wdt_second_timeout_o       (),
         .smc_global_base_o          (),
