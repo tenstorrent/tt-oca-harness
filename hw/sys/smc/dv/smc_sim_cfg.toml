@@ -60,6 +60,10 @@ stubs = [
 sources = [
   # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # DV collateral for the CPU memory macros: counters, FW mailbox, bank0 ECC
+  # injection, and the image backdoors bound into smc_cpu_mem_integration.
+  # Not in the Bender wrapper target -- only this TB instantiates it.
+  "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
 ]
 
 [build.verilator]

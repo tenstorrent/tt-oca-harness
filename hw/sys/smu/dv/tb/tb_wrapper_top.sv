@@ -514,8 +514,6 @@ module smu_wrapper_uvm_top (
 
     // CPU ROM/scratch/L1$ macros (same module smc_wrapper embeds).
     smc_cpu_mem_integration u_smc_cpu_mem (
-        .clk_i   (clk_smu_i),
-        .rst_ni  (rst_cold_ni),
         .rom_req_i (rom_intf_req),
         .rom_rsp_o (rom_intf_rsp),
         .scratch_ram_req_i (scratch_ram_intf_req),
@@ -527,16 +525,7 @@ module smu_wrapper_uvm_top (
         .l1_dcache_tag_req_i (l1_dcache_tag_intf_req),
         .l1_dcache_tag_rsp_o (l1_dcache_tag_intf_rsp),
         .l1_dcache_data_req_i (l1_dcache_data_intf_req),
-        .l1_dcache_data_rsp_o (l1_dcache_data_intf_rsp),
-        .rom_read_count_o (),
-        .scratch_ram_read_count_o (),
-        .scratch_ram_write_count_o (),
-        .dcache_data_write_count_o (),
-        .fw_mailbox_o (),
-        .fw_mailbox_valid_o (),
-        .ecc_inject_sbe_i (1'b0),
-        .ecc_inject_dbe_i (1'b0),
-        .scratch0_inject_fire_o ()
+        .l1_dcache_data_rsp_o (l1_dcache_data_intf_rsp)
     );
 
     // ------------------------------------------------------------------

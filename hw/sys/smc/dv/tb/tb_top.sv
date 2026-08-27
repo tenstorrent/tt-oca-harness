@@ -1123,14 +1123,24 @@ module smc_uvm_top
     assign ej_axi_req.r_ready  = ej_axi_rready;
 
     // ------------------------------------------------------------------
-    // CPU ROM/scratch/L1$ reference model. smc_wrapper passes the macro
-    // interfaces straight through (same posture as smu_wrapper), so the
-    // model is attached here in the TB -- not inside the DUT. Images
-    // backdoor into prim_*.mem inside the model (SEP posture).
+    // CPU ROM/scratch/L1$. smc_wrapper passes the macro interfaces straight
+    // through (same posture as smu_wrapper), so both the macro model and its
+    // DV collateral are attached here in the TB -- not inside the DUT.
+    //
+    // u_smc_cpu_mem     - macros only (hw/sys/smc/dv/models/).
+    // u_smc_cpu_mem_dv  - counters, FW mailbox, bank0 ECC injection. It sits
+    //                     in the scratch response path, so the DUT consumes
+    //                     the injected data.
+    // The bind below adds the +smc_rom_hex / +smc_scratch_ram_hex image
+    // backdoors into the macro arrays (SEP posture).
     // ------------------------------------------------------------------
     chipyard_4core_mem_pkg::rom_req_t            cpu_rom_req;
     chipyard_4core_mem_pkg::rom_rsp_t            cpu_rom_rsp;
     chipyard_4core_mem_pkg::scratch_ram_req_t    cpu_scratch_ram_req
+        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+    // _raw is the macro output; the DV block injects on bank0 and drives the
+    // version the DUT sees.
+    chipyard_4core_mem_pkg::scratch_ram_rsp_t    cpu_scratch_ram_rsp_raw
         [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
     chipyard_4core_mem_pkg::scratch_ram_rsp_t    cpu_scratch_ram_rsp
         [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
@@ -1154,17 +1164,12 @@ module smc_uvm_top
     logic        cpu_scratch0_inject_fire;
     logic [31:0] ecc_inject_fire_count_q;
 
-    // Clock/reset match the smc_wrapper-internal wiring this replaced:
-    // clk_smc_i and the DUT's rst_primary_smc_clk_no.
     smc_cpu_mem_integration u_smc_cpu_mem (
-        .clk_i  (clk_smc_i),
-        .rst_ni (rst_primary_smc_clk_no),
-
         .rom_req_i (cpu_rom_req),
         .rom_rsp_o (cpu_rom_rsp),
 
         .scratch_ram_req_i (cpu_scratch_ram_req),
-        .scratch_ram_rsp_o (cpu_scratch_ram_rsp),
+        .scratch_ram_rsp_o (cpu_scratch_ram_rsp_raw),
 
         .l1_icache_tag_req_i  (cpu_l1_icache_tag_req),
         .l1_icache_tag_rsp_o  (cpu_l1_icache_tag_rsp),
@@ -1173,18 +1178,36 @@ module smc_uvm_top
         .l1_dcache_tag_req_i  (cpu_l1_dcache_tag_req),
         .l1_dcache_tag_rsp_o  (cpu_l1_dcache_tag_rsp),
         .l1_dcache_data_req_i (cpu_l1_dcache_data_req),
-        .l1_dcache_data_rsp_o (cpu_l1_dcache_data_rsp),
+        .l1_dcache_data_rsp_o (cpu_l1_dcache_data_rsp)
+    );
+
+    // Clock/reset match the smc_wrapper-internal wiring this replaced:
+    // clk_smc_i and the DUT's rst_primary_smc_clk_no.
+    smc_cpu_mem_dv u_smc_cpu_mem_dv (
+        .clk_i  (clk_smc_i),
+        .rst_ni (rst_primary_smc_clk_no),
+
+        .rom_req_i            (cpu_rom_req),
+        .scratch_ram_req_i    (cpu_scratch_ram_req),
+        .l1_dcache_data_req_i (cpu_l1_dcache_data_req),
+
+        .scratch_ram_rsp_i (cpu_scratch_ram_rsp_raw),
+        .scratch_ram_rsp_o (cpu_scratch_ram_rsp),
+
+        .ecc_inject_sbe_i       (tb_cpu_ecc_inject_sbe),
+        .ecc_inject_dbe_i       (tb_cpu_ecc_inject_dbe),
+        .scratch0_inject_fire_o (cpu_scratch0_inject_fire),
 
         .rom_read_count_o          (tb_cpu_rom_read_count),
         .scratch_ram_read_count_o  (tb_cpu_scratch_read_count),
         .scratch_ram_write_count_o (tb_cpu_scratch_write_count),
         .dcache_data_write_count_o (tb_cpu_dcache_write_count),
         .fw_mailbox_o              (tb_cpu_fw_mailbox),
-        .fw_mailbox_valid_o        (tb_cpu_fw_mailbox_valid),
-        .ecc_inject_sbe_i          (tb_cpu_ecc_inject_sbe),
-        .ecc_inject_dbe_i          (tb_cpu_ecc_inject_dbe),
-        .scratch0_inject_fire_o    (cpu_scratch0_inject_fire)
+        .fw_mailbox_valid_o        (tb_cpu_fw_mailbox_valid)
     );
+
+    // Image backdoors reach the macro arrays, so they bind into the model.
+    bind smc_cpu_mem_integration smc_cpu_mem_backdoor u_smc_cpu_mem_backdoor ();
 
     // Probe pin kept for cocotb init compatibility; do not OR into the score.
     logic unused_ecc_probe;
@@ -1465,6 +1488,7 @@ module smc_uvm_top
 
     // TB-GLUE only (deferred test): pulse tb_dfd_fault_inject to latch a
     // deterministic token. This is NOT smc_dfd_wrap / hw/ip/dfd coverage.
+    // See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
     // into the public capture port (cocotb cannot int() X).
     always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin

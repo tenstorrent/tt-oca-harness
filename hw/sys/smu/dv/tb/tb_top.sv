@@ -385,8 +385,6 @@ module smu_uvm_top
 
     // CPU ROM/scratch/L1$ — same macros as smc_wrapper / smu_wrapper TB.
     smc_cpu_mem_integration u_smc_cpu_mem (
-        .clk_i   (clk_smu_i),
-        .rst_ni  (rst_cold_ni),
         .rom_req_i (smc_rom_req),
         .rom_rsp_o (smc_rom_rsp),
         .scratch_ram_req_i (smc_scratch_ram_req),
@@ -398,16 +396,7 @@ module smu_uvm_top
         .l1_dcache_tag_req_i (smc_l1_dcache_tag_req),
         .l1_dcache_tag_rsp_o (smc_l1_dcache_tag_rsp),
         .l1_dcache_data_req_i (smc_l1_dcache_data_req),
-        .l1_dcache_data_rsp_o (smc_l1_dcache_data_rsp),
-        .rom_read_count_o (),
-        .scratch_ram_read_count_o (),
-        .scratch_ram_write_count_o (),
-        .dcache_data_write_count_o (),
-        .fw_mailbox_o (),
-        .fw_mailbox_valid_o (),
-        .ecc_inject_sbe_i (1'b0),
-        .ecc_inject_dbe_i (1'b0),
-        .scratch0_inject_fire_o ()
+        .l1_dcache_data_rsp_o (smc_l1_dcache_data_rsp)
     );
 
     // Macro AXI-Lite activity (OR of aw/w/ar valid). Boundary resp left open —
