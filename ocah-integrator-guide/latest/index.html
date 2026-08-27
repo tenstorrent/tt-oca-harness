@@ -425,9 +425,8 @@ assigned to SMC.</p></td>
 <ul>
 <li>
 <p><code>LOCAL_BASE</code> (read-only, fixed at <code>0xC000_0000</code>): The local alias
-base. Together with the fixed 16 MiB <code>LOCAL_ALIAS_REGION_SIZE</code>, this
-is the address space the SMC CPU and internal fabric use to access SMC
-resources.</p>
+base. Together with <code>REGION_SIZE</code>, this is the address space the SMC
+CPU and internal fabric use to access SMC resources.</p>
 </li>
 <li>
 <p><code>GLOBAL_BASE</code> (read-write, defaults to <code>0x4000_0000</code>): The
@@ -436,10 +435,11 @@ to match the adopter&#8217;s system address assignment, enabling the SMC to
 issue outbound transactions using global system addresses.</p>
 </li>
 <li>
-<p><code>REGION_SIZE</code> (read-write, currently resets to <code>0x0100_0000</code> /
-16 MiB): The size of the SMC global aperture used by SMU-level routing
-and SEP-to-SMC decode. The SMC input fabric&#8217;s local/global split uses
-the fixed <code>LOCAL_ALIAS_REGION_SIZE</code> parameter in RTL.</p>
+<p><code>REGION_SIZE</code> (read-write, resets to <code>0x0100_0000</code> / 16 MiB): The size
+of both the local alias window and the global aperture. It sizes the
+SMC input fabric&#8217;s local/global split as well as SMU-level routing and
+SEP-to-SMC decode. Firmware must not program it to zero, and must keep
+<code>LOCAL_BASE + REGION_SIZE</code> inside the 32-bit SMC-local address space.</p>
 </li>
 </ul>
 </div>

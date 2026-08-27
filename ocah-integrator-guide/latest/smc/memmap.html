@@ -185,10 +185,9 @@ be either the local alias (<code>LOCAL_BASE</code>, fixed read-only at
 <code>0xC000_0000</code>) or the global system address (<code>GLOBAL_BASE</code>,
 programmable by firmware). The fabric routes transactions to SMC
 resources identically regardless of which base is used, as long as the
-access falls inside the relevant local or global aperture. The current
-SMC <code>REGION_SIZE</code> CSR reset is 16 MiB for the chiplet-global aperture;
-the input fabric&#8217;s internal local-alias window is controlled by the RTL
-<code>LOCAL_ALIAS_REGION_SIZE</code> parameter, currently fixed at 16 MiB.
+access falls inside the relevant local or global aperture. Both
+apertures are sized by the SMC <code>REGION_SIZE</code> CSR, which resets to
+16 MiB and may be reprogrammed by firmware.
 Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
 conventions. For details on how <code>LOCAL_BASE</code> and <code>GLOBAL_BASE</code> relate
 and how an adopter maps this aperture into the system address space,
@@ -1049,7 +1048,7 @@ wording in <a href="#peripherals">[peripherals]</a>.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
 </table>
 <h3 id="CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</h3>
 <table>

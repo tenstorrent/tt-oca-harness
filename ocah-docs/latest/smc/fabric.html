@@ -986,19 +986,18 @@ system components. Local resources can be addressed using either their
 global address or a local alias address.</p>
 </div>
 <div class="paragraph">
-<p>The fabric distinguishes the chiplet-global SMC aperture from the
-internal local-alias window. The <code>GLOBAL_BASE</code> and <code>REGION_SIZE</code> CSRs
-describe the chiplet-global aperture used by SMU-level routing and
-SEP-to-SMC decode. The current <code>REGION_SIZE</code> reset value is
-<code>0x0100_0000</code> (16 MiB), and firmware may reprogram it during early boot
-to match the chiplet address assignment.</p>
+<p>The <code>GLOBAL_BASE</code>, <code>LOCAL_BASE</code>, and <code>REGION_SIZE</code> CSRs describe the SMC
+aperture. <code>REGION_SIZE</code> resets to <code>0x0100_0000</code> (16 MiB), and firmware
+may reprogram it during early boot to match the chiplet address
+assignment.</p>
 </div>
 <div class="paragraph">
-<p>The SMC input fabric&#8217;s local/global split uses the RTL
-<code>LOCAL_ALIAS_REGION_SIZE</code> parameter rather than the CSR <code>REGION_SIZE</code>.
-In the current RTL this parameter is 16 MiB. This keeps the SMC-internal
-local address window fixed while allowing the chiplet-facing global
-aperture to be programmed independently.</p>
+<p>The SMC input fabric&#8217;s local/global split is sized by the same
+<code>REGION_SIZE</code> CSR used by SMU-level routing and SEP-to-SMC decode, so
+the internal local-alias window and the chiplet-facing global aperture
+stay the same size by construction. Firmware must not program
+<code>REGION_SIZE</code> to zero: doing so collapses both windows and routes SMC
+CPU accesses to its own resources out through the output fabric.</p>
 </div>
 <div class="paragraph">
 <p>After global-aperture reconfiguration, software may use global addresses
