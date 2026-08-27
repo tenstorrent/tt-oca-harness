@@ -65,9 +65,13 @@ _FW_DIR = os.path.join(_ROM_DIR, "build_ot")
 # (stub, OT+DMA, OT+PIO) read the same image and it is built once.
 # NOT the .spi_preload variant: that is $readmemh text, while
 # OcahSpiFlash.preload() reads raw binary.
-_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "non_secure_boot.bin")
-# Signed sibling, same layout, RSA-3072 over the manifest (make secure_boot_spi).
-SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "secure_boot.bin")
+# OCA boot manifests (make oca-images). The ROM parses only the OCA format now;
+# the Grendel non_secure_boot.bin / secure_boot.bin these used to name are still
+# built for other consumers but the ROM rejects them at the magic check
+# (MANIFEST_ERR=0x00030002 on both slots, then MANIFEST_ALL_FAILED).
+_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_non_secure_boot.bin")
+# Signed sibling, same layout, RSA-3072 over the manifest's signed region.
+SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_secure_boot.bin")
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 # A serial flash read of the manifest (1184 B) plus the BL1 payload (5136 B) at

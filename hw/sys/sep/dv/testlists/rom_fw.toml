@@ -56,7 +56,7 @@ run_modes = ["cpu"]
 # so a --stage sim rerun reads the same images the c_compile stage produced.
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
-  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
 
 [[tests]]

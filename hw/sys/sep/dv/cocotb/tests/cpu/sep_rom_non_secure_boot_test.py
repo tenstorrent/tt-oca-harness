@@ -44,9 +44,12 @@ _MAX_RUN_CYCLES = 4_000_000
 # Markers that must appear on the ROM's scratch virtual console.
 #
 #   SMC_MEM_CHK        boot-ROM stage: the SMC memory check ran
-#   MANIFEST_HASH_OK   the ROM reports it validated the manifest hash
-#   PLD_HASH_OK        the ROM reports it validated the payload hash
+#   MANIFEST_OK        the ROM validated the manifest (framing + manifest hash)
+#   PAYLOAD_OK         the ROM validated the payload (hash, hash chain, TOC entries)
 #   BL1, FUSE_CHK      emitted by the copied payload AFTER handoff
+#
+# They now cover strictly more: the OCA library checks the
+# payload hash chain and every TOC entry hash, not just the payload hash.
 #
 # The pair at the end is what evidences the transfer of control: those two strings
 # exist only in the BL1 source, nowhere in the boot-ROM sources. The two hash
@@ -55,8 +58,8 @@ _MAX_RUN_CYCLES = 4_000_000
 # rejected. Nothing here corrupts one, so the negative direction is untested.
 _REQUIRED_ROM_MARKERS = (
     "SMC_MEM_CHK",
-    "MANIFEST_HASH_OK",
-    "PLD_HASH_OK",
+    "MANIFEST_OK",
+    "PAYLOAD_OK",
     "BL1",
     "FUSE_CHK",
 )

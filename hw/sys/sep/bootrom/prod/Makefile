@@ -458,9 +458,10 @@ OCA_HEXS := $(patsubst %,$(BUILD_DIR)/oca_%.spi_preload,$(OCA_IMAGES))
 # body_size, so the slot offsets a combined image adds mean nothing there.
 OCA_SMC_CONFIG := $(CURDIR)/configs/oca_secure_boot_test.yaml
 OCA_SMC_BIN    := $(BUILD_DIR)/oca_smc_bundle.bin
+OCA_SMC_MEM_HEX := $(BUILD_DIR)/oca_smc_mem.hex
 
 .PHONY: oca-images
-oca-images: $(OCA_HEXS) $(OCA_SMC_BIN)
+oca-images: $(OCA_HEXS) $(OCA_SMC_BIN) $(OCA_SMC_MEM_HEX)
 
 # Static pattern rule so a new image is one line in OCA_IMAGES plus its two
 # configs -- there is no per-image recipe to copy and get subtly wrong.
@@ -480,6 +481,16 @@ $(OCA_HEXS): $(BUILD_DIR)/oca_%.spi_preload: $(BUILD_DIR)/oca_%.bin
 
 $(OCA_SMC_BIN): $(OCA_SMC_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
 	$(PACK_RUN) --config "$(OCA_SMC_CONFIG)" --out "$@" -v
+
+# The same image the DV SMC-SRAM test loads with +sep_smc_mem_hex, as $readmemh
+# rebased to the SMC-SRAM base. Built from the COMBINED image, not the bundle:
+# the behavioural SMC responder publishes MANIFEST_ADDR = 0x1000, so the manifest
+# has to sit one slot offset into the window -- which is exactly where the
+# combined image already puts it. Rebasing the bundle instead would place the
+# manifest at the window base and the ROM would read 0x1000 bytes past it.
+$(OCA_SMC_MEM_HEX): $(BUILD_DIR)/oca_non_secure_boot.bin
+	python3 "$(BIN_TO_SPI)" "$<" "$(BUILD_DIR)/oca_smc_mem.spi_preload"
+	sed 's/@00000000/@$(SMC_SRAM_BASE)/' "$(BUILD_DIR)/oca_smc_mem.spi_preload" > "$@"
 
 # Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
 # behind would let a stale OT image survive into the next run and boot silently.
