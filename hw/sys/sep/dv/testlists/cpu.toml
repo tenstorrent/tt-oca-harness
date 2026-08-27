@@ -10,7 +10,7 @@ schema_version = 1
 # sep_rom_ot_{dma,pio,secure}_boot_test) are not defined here -- they live in
 # rom_fw.toml (different RTL target and firmware profile). They run in
 # the `all` and `rom_fw` groups, not `cpu`; this VPLAN grades ROM hardware
-# access only (see docs/verification_plan_phase2.adoc, rom-fw-out-of-scope).
+# access only (see docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
 
 [[tests]]
 name = "sep_hello_world_test"

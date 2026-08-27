@@ -20,4 +20,4 @@ localparam longint unsigned AXIL_MAILBOX_IRQP_BASE_ADDR = 64'h40;
 localparam longint unsigned AXIL_MAILBOX_CTRL_BASE_ADDR = 64'h48;
 
 
-endpackage;
+endpackage

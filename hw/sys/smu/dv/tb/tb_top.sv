@@ -356,8 +356,8 @@ module smu_uvm_top
     assign tb_tel_afvalid = tel_afvalid[0];
 
     // Trace mem idle responses
-    dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
-    dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
+    trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
+    trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
     assign trc_resp = '0;
 
     // eFuse shim idle response

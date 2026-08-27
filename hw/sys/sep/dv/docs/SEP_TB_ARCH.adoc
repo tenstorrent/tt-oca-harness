@@ -1,0 +1,558 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-dv-testbench-architecture]]
+== SEP OCAH Open-Source Testbench Architecture
+
+=== Overview
+
+[cols=",",options="header"]
+|===
+|Field |Value
+|DUT |`sep_wrapper` (`hw/top/sep_wrapper.sv` + `sep_ip_integration.sv`)
+|Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
+|Repository |`tt-oca-harness`
+|Project |OCAH
+|Framework |PyUVM on cocotb (Phase 1 / Phase 2); new UVM bench planned (Phase 3)
+|Primary simulator |Verilator
+|Commercial simulator use |VCS / Xcelium for development iteration; Verilator is pre-merge acceptance
+|How to run |`README.md` (`tools/dv/run_dv.py --dut sep`)
+|===
+
+The OCAH open-source SEP testbench follows the canonical `hw/sys/<system>/dv/`
+layout under `hw/sys/sep/dv/`. It uses a PyUVM environment and the unified OCAH
+BFM packages for AXI, SPI, and (where needed) JTAG. Sibling SMC and DTP envs
+share the same runner and cocotb/PyUVM idioms; this document describes *SEP*.
+
+eFuse image selection, memory/eFuse/SPI models, CPU-trace reconstruction, and
+Boot ROM image builds are covered in the sections below. Test contracts live in
+link:SEP_VPLAN.adoc[SEP_VPLAN.adoc].
+
+=== VIP Selection Policy
+
+[arabic]
+. Import unified OCAH BFM wrappers from `hw/common/dv/vip` for standard
+  protocol access.
+. Wrap those BFMs in PyUVM agents so tests remain sequence-based and reusable.
+. Keep DUT-local goldens, scoreboards, and register metadata in `cocotb/env/`.
+. Prefer frontdoor stimulus and observation. Signed-off probe / init exceptions
+  are listed under <<sep-hdl-top>>; do not widen them without owner sign-off.
+
+[cols=",,,",options="header"]
+|===
+|SEP Interface |Preferred VIP |Modeling Approach |Notes
+|CPU-LSU AXI (no_cpu) |`ocah_axi_vip` via `SepAxiAgent` (`s_axi`) |Unified OCAH BFM |Primary stimulus; no inbound filter on this path
+|SMN-inbound AXI |Second `SepAxiAgent` (`m_axi`) |Unified OCAH BFM |Real DUT inbound port; traverses inbound filter (block-by-default)
+|SPI flash pads |`ocah_spi_vip` `OcahSpiFlash` |Unified OCAH BFM |Pads are scalar ports on `tb_top`; no pad mux in the open build
+|JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite / `ocah_jtag_vip` where used |Unified OCAH BFM |eFuse JTAG–AXI-Lite coexistence tests
+|Entropy raw noise |`esrc_noise_ext_i` + Python goldens |DUT-local |Deterministic noise shared with the decorrelator golden
+|eFuse / OTP |Generic OSS eFuse bank model |Shared OSS model |No foundry OTP macros; staged via `+sep_efuse_hex`
+|Memories |Wrapper `prim_ram_1p` / `prim_rom` / EL2 TCM |RTL macros + signed-off init |`tb_backdoor_mem` loads images at t=0
+|===
+
+=== DUT-Local Model Ownership
+
+Shared VIP packages own protocol-neutral driving, monitoring, and result
+packaging. SEP-local code owns hierarchy binding, address maps, expected values,
+lifecycle / fuse policy, and scoreboarding.
+
+[cols=",,,",options="header"]
+|===
+|Model / Helper |Current Scope |Why It Stays DUT-Local |Promotion Trigger
+|`SepAxiAgent` / `SepAxiItem` |LSU + SMN-inbound masters |Prefix binding, timeout / expect_error policy, AxUSER for inbound src_id |Already thin over `ocah_axi_vip`; keep SEP policy here
+|`sep_reg_meta` |PeakRDL-exported addresses / resets / masks |SEP register export layout |Share only with a second consumer of the same export contract
+|`sep_*_golden.py` |AES / HMAC / KMAC / OTBN / entropy / LCC / DRBG |SEP datapath + config objects |Promote a stage only after an independent consumer needs the same KAT
+|`SepDrbgScoreboard` |Entropy CHK1–CHK5 chain |SEP ESRC→DRBG→EDN probe set and sink policy |Stay local while probes are tb_top-specific
+|`SepEfuseImage` |OTP image + shadow expectation |SEP fuse map and secret-blanking |Shared model already exists; image semantics stay SEP
+|`SepBootScoreboard` / `SepCpuTraceMonitor` |FW console, PC-advance, call stack |EL2 retirement ports and outbound mailbox |Promote only with a second EL2 consumer
+|`SepSeededRng` |Seed→stimulus stream |DV reproducibility contract (not a CSPRNG) |Already reusable; keep under SEP until a shared DV home exists
+|`sep_cpu` stub |no_cpu LSU master splice |First-class run mode, not a workaround |Never promote as a product CPU
+|===
+
+=== Testbench Hierarchy
+
+[source,text]
+----
+sep_<scenario>_test (@pyuvm.test)
+  -> sep_base_test
+       build_phase:
+         SepEnvCfg -> ConfigDB
+         SepCpuTraceMonitor (idle unless +cpu_boot)
+         SepEnv (optional; build_env=True)
+       run_phase:
+         raise_objection
+         run_scenario()   # concrete test owns the flow
+         drop_objection
+
+SepEnv
+  -> axi_agent        SepAxiAgent  prefix s_axi   (CPU-LSU)
+  -> ext_axi_agent    SepAxiAgent  prefix m_axi   (SMN-inbound; idle by default)
+  -> scoreboard       SepScoreboard  (subscribes to s_axi completed items)
+  -> axi_monitor      SepAxiMonitor  s_axi  (fail on DECERR)
+  -> ext_axi_monitor  SepAxiMonitor  m_axi  (tally DECERR; filter may block)
+----
+
+Concrete tests inherit `sep_base_test`, override `run_scenario()`, and use
+bring-up helpers rather than re-implementing clock/reset:
+
+[cols=",",options="header"]
+|===
+|Helper |Use
+|`bring_up_no_cpu()` |CPU held off; wait for fuse-sense done (or skip-sense fast path)
+|`bring_up_and_wait_fuse_sense()` |Real OTP sense; stages image first
+|`bring_up_cpu_boot()` / `boot_firmware(...)` |VeeR EL2 ICCM/DCCM load + boot scoreboard poll
+|`start_seq(seq)` |Start on the CPU-LSU agent sequencer (default)
+|`start_ext_seq(seq)` |Start on the external SMN-inbound sequencer
+|`write_efuse_image(image)` |Stage golden before real sense
+|`bring_up_entropy(...)` |Program ESRC/DRBG path with a shared config object
+|===
+
+=== Directory Structure
+
+[source,text]
+----
+hw/sys/sep/dv/
+  docs/
+    index.adoc              # book entry
+    SEP_TB_ARCH.adoc        # this document
+    SEP_VPLAN.adoc          # verification contracts
+  tb/
+    tb_top.sv               # sep_uvm_top
+    sep_outbound_mbx.sv     # FW console / PASS magic
+    efuse_preloads/         # committed default OTP image
+    interfaces/
+  shims/
+    cpu/sep_cpu_stub.sv     # no_cpu LSU splice
+    prim/prim_sync2.sv
+    crypto/abr_wrapper_key_reg_stub.sv
+    analog/entropy_ring_oscillator.sv
+  cocotb/
+    env/                    # agents, monitors, goldens, scoreboards
+    seq_lib/                # uvm_sequence stimulus
+    tests/                  # @pyuvm.test leaves (by area)
+    dv_sim_prestage.py      # pre-sim eFuse hex staging
+  fw/                       # bare-metal CPU FW + drivers
+  testlists/                # system/cpu/crypto/... + all.toml
+  sep_sim_cfg.toml          # sole launch config
+  sep_public_scope.vlt      # scoped Verilator public (not --public-flat-rw)
+----
+
+=== HDL Top
+
+[[sep-hdl-top]]
+`tb/tb_top.sv` instantiates `sep_wrapper` as `sep_uvm_top` and adapts packed RTL
+structs to cocotb-friendly scalar/vector ports.
+
+[cols=",",options="header"]
+|===
+|DUT Interface |`tb_top` Handling
+|CPU-LSU AXI |Flattens to `s_axi_*`. no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). Response XMR-read back into the flat bus.
+|SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
+|Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`
+|Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
+|SPI host pads |Scalar MISO/MOSI/SCK/CS ports for `OcahSpiFlash`
+|Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
+|FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
+|CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes — observation-only unless listed as a signed-off inject
+|===
+
+Signed-off exceptions (do not extend without owner approval):
+
+* *CPU-LSU splice* — primary no_cpu stimulus (stub assign, not a `force`).
+* *ESRC noise force* — `esrc_noise_ext_i` into the decorrelator.
+* *LC differential / token-comparator fault inject* — fail-closed paths with no
+  legal OTP frontdoor.
+* *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
+  (not runtime pass-faking).
+* *Observation-only XMR probe ports* — continuous assigns out of the DUT for
+  scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate, …).
+
+=== Environment Components
+
+==== `SepEnv` / `SepEnvCfg`
+
+`SepEnvCfg` holds clock periods (seed-randomized `sys_clk_period_ns`), the AXI
+access timeout, and the `reset_done` event the AXI driver waits on. `SepEnv`
+builds both AXI agents, the value scoreboard, and the two passive monitors.
+
+==== `SepAxiAgent`
+
+PyUVM adapter over `ocah_axi_vip.OcahAxiMasterSequence`. Translates
+`SepAxiItem` (op, addr, length, size, wdata, expected, expect_error,
+allow_timeout, user, burst) into the VIP result API and broadcasts completed
+items on an analysis port. Default prefix `s_axi`; set `axi_prefix = "m_axi"`
+for the external master.
+
+==== `SepScoreboard`
+
+Subscribes to the CPU-LSU agent only. Checks OKAY responses, exact read
+`expected` values when set, and the inverse for `expect_error` probes (must be
+a real non-OKAY, not OKAY and not a timeout). `check_phase` requires zero
+errors and at least one observed transaction.
+
+==== `SepAxiMonitor`
+
+Passive raw-pin integrity monitor (in-TB substitute for Verilator-disabled RTL
+assertions). LSU bus fails on DECERR; external bus tallies DECERR because the
+inbound filter may block by design.
+
+==== Entropy / crypto goldens and `SepDrbgScoreboard`
+
+Pure-Python stage goldens under `cocotb/env/` (`sep_decor_golden`,
+`sep_compress_golden`, `sep_ctr_drbg_golden`, AES/HMAC/KMAC, LCC, …). The DRBG
+scoreboard consumes the same config object the sequence programs into the DUT
+and compares against signed-off datapath probes (CHK1–CHK5). Details of noise
+staging and SR seeding are in the VPLAN entropy procedures and
+`AGENTS.md`.
+
+==== Boot path: `SepBootScoreboard` + `SepCpuTraceMonitor`
+
+CPU tests call `boot_firmware()`, which stages ITCM/DTCM hex, loads via
+`tcm_load_i`, brings up with `+cpu_boot`, and polls PC-advance / console /
+PASS magic. The trace monitor reconstructs a shadow call stack from EL2
+retirement ports; see <<env-cpu-trace>>.
+
+==== Register metadata
+
+`sep_reg_meta.py` imports generated PeakRDL headers under
+`hw/sys/sep/regs/gen/` so sequences prefer source-derived addresses and reset
+values over hand-kept literals.
+=== eFuse Content Selection
+
+All eFuse tests select their contents through
+`sep_base_test.select_efuse_image()`. The shared helper uses
+`+sep_efuse_preload` as the selector for fixed contents; without that plusarg it
+generates constrained-random eFuse contents from the test seed.
+
+[cols=",",options="header"]
+|===
+|Selector |Contents
+|`+sep_efuse_preload=<path>` |A specific fixed `.hex` / `.preload` image
+|`+sep_efuse_preload` (no path) |The committed default preload image (`tb/efuse_preloads/`)
+|(none) |A random image generated from the test seed
+|`+sep_efuse_hex=<path>` |Model-file override only; normal eFuse tests use the generated `out/sep_efuse.hex`
+|===
+
+The selected `SepEfuseImage` is the single source of truth. Because the generic
+eFuse model deposits its image once at t=0 (not on every reset), the per-seed
+image is staged BEFORE the simulator launches by the pre-sim hook
+(`cocotb/dv_sim_prestage.py`, driven from `run_dv.py`), which writes
+`out/sep_efuse.hex`; the model `$readmemh`s it at t=0 and its persistent W1S
+storage retains programmed bits across resets. The same `SepEfuseImage` object
+computes the expected shadow-register data for comparison.
+
+End to end, one eFuse test runs:
+
+[arabic]
+. Test starts; calls `select_efuse_image()`, which reads the cocotb plusargs.
+. Per the selector table above, a fixed, default, or seed-random image is built
+  into one `SepEfuseImage` golden object.
+. The pre-sim hook writes that image to `out/sep_efuse.hex`.
+. The simulator launches; the model deposits the image at t=0.
+. Reset is applied and released; the model's W1S storage persists.
+. The RTL fuse-sense FSM reads the OTP words and fills the eFuse shadow
+  registers; the test waits on `sep_fuse_sense_done_o`.
+. The test reads the actual shadow data and compares it against the expected
+  data computed from the same `SepEfuseImage`. Mismatch fails the test.
+
+==== Readout method vs image source
+
+The generic eFuse model sense flow (OTP image -> sense FSM -> shadow) is used by
+more than the two shadow-compare tests. *Readout method and image source are
+independent axes* for those two — backdoor is the default readout, exactly one
+test uses the AXI front door, and either readout can run any source:
+
+`sep_efuse_sense_test`:: *Backdoor* shadow compare (the default), reading the
+  sensed array directly from the top-level `efuse_shadow_probe_o` port. Enrolled
+  with `+sep_efuse_preload` (committed default preload).
+`sep_efuse_image_test`:: The *one* test that reads the shadow over the *AXI front
+  door* (exercising the real software read datapath), plus a resense cycle with a
+  fresh image. Runs the default (random) source.
+
+Other enrolled tests also run *real* fuse sense (no `+skip_fuse_sense`) for a
+different contract — lifecycle decode, inbound-filter `SEP_DBG` gating — and do
+not replace the shadow-compare pair: `sep_efuse_lcc_lc_state_stitch_test`,
+`sep_lcc_uvm_inbound_filter_gating_test`,
+`sep_fabric_inbound_filter_rule_matrix_test`.
+
+
+=== Memory, eFuse, and SPI Models
+
+The memory and eFuse integration is RTL inside `sep_wrapper`
+(`hw/top/sep_ip_integration.sv`). The OpenTitan SPI host is RTL inside the `sep`
+core. The TB does not back those ports with responders.
+
+==== Memory macros
+
+Real `prim_ram_1p` / `prim_rom` / EL2 TCM (`ram_16384x39`) macros. They have no
+runtime init, so `tb_backdoor_mem` (in `tb/tb_top.sv`) pre-fills correct
+power-up patterns (KM ROM NOP+parity, KM SRAM zero+valid parity, OTBN
+SECDED-valid zero) and backdoor-loads images:
+
+* boot-ROM / SEP-SRAM / KM-ROM via the `+sep_boot_rom_hex` / `+sep_sram_hex` /
+  `+km_rom_hex` plusargs, with a CWD-default fallback to `sep_boot_rom.hex` /
+  `sep_sram.hex` / `km_rom.parhex`.
+* the ICCM/DCCM firmware on `tcm_load_i`, de-interleaved with per-word Hsiao ECC.
+
+These backdoor writes require the target arrays to be public under Verilator
+(`sep_public_scope.vlt`: `prim_ram_1p.mem`, `prim_rom.mem`,
+`ram_16384x39.ram_core`).
+
+==== Generic eFuse model
+
+`hw/ip/efuse/dv/models/efuse_bank_model.sv`, shared with SMC via a plusarg
+prefix. It backs the eFuse bank-control and fuse-command datapath so fuse sense
+runs without foundry OTP macros. It self-preloads its OTP image at t=0 via
+`+sep_efuse_hex` (default `out/sep_efuse.hex`, staged by the pre-sim hook) and
+persists W1S programs across reset. It can inject opt-in OTP program failures
+with `+sep_efuse_prog_fail_count`, `+sep_efuse_prog_fail_percent`, and
+`+sep_efuse_prog_fail_seed`.
+
+==== OpenTitan SPI host
+
+Internal to the wrapper; its pads come out as scalar cocotb ports in `tb_top.sv`
+so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM.
+
+There is no SPI pad mux in this build — the pads are driven straight off the
+wrapper's struct port, so flash tests need no mux step.
+
+==== Kept TB shims
+
+`shims/` holds the `sep_cpu` stub (no_cpu build), `prim_sync2`, the ABR key-CSR
+Verilator stub, and the entropy ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
+console / PASS monitor) is also kept — it services a real wrapper output port,
+not a memory model.
+
+=== Sequence Library
+
+Stimulus lives in `cocotb/seq_lib/`. Prefer parameterized `uvm_sequence` classes
+with register-map constants co-located in the same module. Tests orchestrate
+bring-up / wait / check via `sep_base_test` helpers and start sequences with
+`start_seq` / `start_ext_seq`.
+
+[cols=",",options="header"]
+|===
+|Layer |Role
+|`sep_base_test` helpers |Bring-up, fuse image, entropy wait, boot firmware
+|Feature / IP sequences |DMA, SPI, inbound filter, eFuse, crypto KATs, fabric walks, …
+|Concrete `@pyuvm.test` |Scenario steps only — no raw clock/reset paste
+|===
+
+New leaf pattern: `seq_lib/sep_<feature>_seq.py` +
+`tests/<area>/sep_<scenario>_test.py`. Randomized reps use a config object as
+the single source of truth for DUT programming and golden expectations
+(`RAND-REP` / `RANDCFG` in the VPLAN).
+
+[[env-cpu-trace]]
+=== Processor-State Monitoring and Firmware Stack Tracing
+
+Firmware execution visibility has three layers: the virtual console
+(`tb/sep_outbound_mbx.sv`, byte stores to `0x8000_0000` plus the PASS/FAIL
+magic), the processor-state monitor, and firmware stack tracing. The last two
+live in `cocotb/env/sep_cpu_trace_monitor.py`, a passive `uvm_component` built
+by `sep_base_test` for every test and self-idling unless the `+cpu_boot` run
+mode is active.
+
+==== Trace source
+
+`tb_top.sv` exports the complete VeeR EL2 retirement-trace struct
+(`el2_trace_pkt_t`) as ports: `cpu_trace_valid_o`, `cpu_trace_addr_o`,
+`cpu_trace_insn_o`, `dbg_cpu_trace_exc_o`, `cpu_trace_ecause_o`,
+`cpu_trace_interrupt_o`, and `cpu_trace_tval_o`. The no-CPU shim ties the struct
+to zero, so no_cpu targets elaborate unchanged. Sampling gates on
+`sep_cpu_reset_n_o`; a warm CPU reset (e.g. the WDT bite path) flushes the
+shadow call stack while history and tallies survive.
+
+==== What the monitor reconstructs
+
+PC history:: every retirement feeds a count, a distinct-PC set (the boot
+  scoreboard's PC-advance evidence), and a 512-entry ring of the most recent
+  retirements.
+Shadow call stack:: retired RV32IMC encodings are decoded for linking calls
+  (`jal`/`jalr`/`c.jal`/`c.jalr` through ra/t0), returns (`jalr`/`c.jr` through
+  ra/t0), and `mret`. Exception-flagged retirements push a synthetic trap frame
+  carrying ecause/interrupt/tval; `mret` unwinds it.
+Trap records:: every exception retirement is kept with its cycle, PC, decoded
+  mcause name, and tval.
+Hang watch:: after the first retirement, a 20k-cycle retirement-free gap out of
+  reset logs a one-shot warning with a full dump. Diagnostic only — a core idling
+  in a wait loop or halt is legitimate.
+
+Reconstruction hiccups (pop of an empty stack, depth overflow) are tallied as
+resync notes and logged, never failed; pass/fail judgement stays in
+`sep_boot_scoreboard.py`.
+
+==== Symbolization
+
+`cocotb/env/sep_fw_symbols.py` parses the `nm -B -n` listing the firmware build
+emits next to every ELF (`<test>.tcm.sym`; `boot_rom.sym` for ROM profiles — both
+staged into the run directory via the `[c_build.*].outputs` manifests) and
+resolves PCs to `name+0xoff`. `boot_firmware` attaches the listing automatically
+from the ITCM hex path; a missing listing degrades to numeric PCs and never fails
+a test. Trace PCs are link addresses — the `-0xC0000000` bias in `fw.mk` only
+rebases the TCM hex images.
+
+==== Output
+
+On any failing boot exit (no boot, hang, cycle exhaustion, firmware FAIL) the
+monitor dumps the symbolized call stack, trap records, and the tail of the
+retirement ring at error level before the scoreboard assertion ends the run; a
+passing run logs the same summary at info level in `report_phase`. Passing
+`+cpu_trace_log` additionally streams every retirement (cycle, PC, encoding,
+symbol) to `cpu_trace.log` in the run directory.
+
+`sep_cpu_trace_diag_test` (`testlists/cpu.toml`, firmware
+`fw/tests/cpu_trace_diag_test`) audits the reconstruction against architectural
+ground truth: a known noinline call chain, one breakpoint trap with the CSR-true
+`mcause`/`mepc` reported on the console, cross-checked against the monitor's trap
+record, shadow-stack depth, and symbolization.
+
+=== Clock and Reset Strategy
+
+[cols=",,",options="header"]
+|===
+|Clock / Reset |Source |Notes
+|`clk_i` |cocotb `Clock` in base test |System / AXI / most CSR domains; period seed-randomized
+|`clk_wdt_i` |cocotb |Slow WDT domain (~1000× core in default cfg)
+|`entropy_rosc_sample_clk_i` |cocotb |Entropy sample clock
+|`rst_ni` |base test |Active-low; release before fuse-sense wait
+|`ext_boot_seq_done_i` |`drive_idle_defaults` |Held 1 (DUT port, not a plusarg)
+|`mpc_reset_run_req` |bring-up helper |0 for no_cpu; 1 for CPU boot
+|`wdt_rst_ni_i` / `dbg_rstb_i` |default 1 |Isolation tests pulse low
+|===
+
+Fabric release gates on `sep_fuse_sense_done_o`. With `+skip_fuse_sense` the
+RTL asserts done quickly; without it the test stages an OTP image and waits
+through real sense.
+
+=== Stimulus Strategy
+
+[cols=",",options="header"]
+|===
+|Area |Strategy
+|no_cpu CSR / fabric |AXI master on LSU splice; decode, bit-bash, dead-space, remap, inbound filter via external master
+|CPU firmware |Bare-metal `fw/tests/*` + drivers; console and PASS magic; PIC interrupts where needed
+|SPI |Program OT SPI host over AXI; attach `OcahSpiFlash` on pads; DMA TX/RX where enrolled
+|Entropy / DRBG |Deterministic noise port + Python goldens; optional KM ROM images via `+km_rom_hex`
+|eFuse / LCC |Generic model + `SepEfuseImage`; real sense vs `+skip_fuse_sense` per VPLAN leaf
+|Randomization |`SepSeededRng(self.random_seed())` only — pure function of `--seed` / `reseed`
+|===
+
+=== Checking Strategy
+
+[cols=",,",options="header"]
+|===
+|Check Type |Component |Description
+|AXI response / value |`SepScoreboard` |OKAY + exact `expected`; expect_error inverse
+|Protocol integrity |`SepAxiMonitor` |Raw-pin / DECERR policy per bus
+|Crypto / entropy |Goldens + `SepDrbgScoreboard` |Bit-exact or observe-mode per sink
+|Firmware outcome |`SepBootScoreboard` |PC-advance, banner, fw_done / fw_pass
+|eFuse shadow |`SepEfuseImage` + probe or AXI |Backdoor default; one frontdoor image test
+|Named evidence |Test / sequence logs |`CHK-* PASS` lines required for audit
+|Regression parsing |Global DV parser |Positive cocotb / `results.xml` evidence — exit 0 alone is not enough
+|===
+RTL and vendor-IP SVA do not participate in any run. The shared native build
+profile — used by both the cocotb and the UVM flow — defines `DISABLE_ASSERT`
+and `COMMON_CELLS_ASSERTS_OFF`, so no assertion in the design or in the
+vendored IP is watching. The checks above are the whole of the checking layer:
+nothing is watching except what a test states explicitly, and there is no
+assertion layer underneath catching what a checker misses.
+
+
+=== Coverage Strategy
+
+Verilator does not support SystemVerilog covergroups on the acceptance path
+(guard SV covergroups with `` `ifndef VERILATOR ``). Cocotb phases collect
+named checker evidence and the iconic-feature scorecard in
+link:SEP_VPLAN.adoc[SEP_VPLAN]. RTL code-coverage close-out is Phase 3 work.
+Code coverage is instrumented but unthresholded, and is a different number from
+feature coverage. `[coverage.verilator]` in `sep_sim_cfg.toml` instruments line,
+expression and user coverage (toggle stays off) and the nightly `no_cpu`
+regression collects it, but `cov/config/<tool>/` holds no coverage policy and no
+run gates on a coverage percentage. Do not mix the two numbers.
+
+
+=== Canonical RTL and Shim Selection
+
+Bender targets are `["sep", "sep_el2", "sep_wrapper"]` only — never
+`"simulation"` (licensed I/O / padring). Verilator override shims under
+`shims/` are listed ahead of the Bender filelist so first-def-wins selects
+them (`sep_cpu` stub on no_cpu, `prim_sync2` port remap, ABR key-reg stub,
+entropy RO). Proprietary IPs stay out of the filelist rather than being
+blackbox-stubbed. Scoped `sep_public_scope.vlt` replaces global
+`--public-flat-rw` so AXI ready/valid cones stay optimizable.
+
+[[_boot_rom_firmware_builds]]
+=== Boot ROM Firmware Builds
+
+Production Boot ROM firmware tests (`sep_rom_non_secure_boot_test`,
+`sep_rom_ot_{dma,pio,secure}_boot_test`) live in `testlists/rom_fw.toml` and run
+in the `all` and `rom_fw` groups. They belong to the ROM-FW owner; the OSS suite
+grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
+`sep_rom_sanity_test`, `sep_boot_rom_lsu_read_test`).
+
+A named ROM run needs the Boot ROM + manifest + BL1 image. Each test declares
+both keys of a `firmware = { name = ..., mode = ... }` pair (`mode` alone does not
+select a `[c_build.*]` block), and the three profiles select three different
+blocks in `sep_sim_cfg.toml`, all driving `hw/sys/sep/bootrom/prod/Makefile`:
+
+`boot_rom`:: `sep_rom_non_secure_boot_test` — `[c_build.boot_rom]`, the SMC-SRAM
+  manifest path.
+`boot_rom_ot`:: `sep_rom_ot_dma_boot_test` and `sep_rom_ot_secure_boot_test` —
+  `[c_build.boot_rom_ot]`, the OpenTitan SPI host with the SECURE_DMA drain.
+`boot_rom_ot_pio`:: `sep_rom_ot_pio_boot_test` — `[c_build.boot_rom_ot_pio]`, the
+  same transport with the CPU-PIO drain.
+
+The one prerequisite a build step must not mutate git for is the manifest packer
+submodule; without it the pack half dies with `No module named tt_boot_manifest`:
+
+[source,bash]
+----
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+----
+
+Build the ROM by hand only when iterating on the ROM sources themselves. The two
+halves are split by tool dependency, so each runs where its tools are:
+
+`toolchain-images`:: Needs the RISC-V toolchain *with* picolibc — the generated
+  register headers close their packing checks with `static_assert`, i.e.
+  `<assert.h>`, which is not a freestanding header. Use the toolchain container.
+`pack-images`:: Pure Python; its deps come from the submodule's own
+  `pyproject.toml`, installed on demand by `uv` (no `pip3 install` needed).
+
+`[c_build.boot_rom]` performs exactly these two steps. It probes the host
+toolchain for picolibc first and builds natively when the probe succeeds; the
+container is the *fallback* for a host whose toolchain has no picolibc:
+
+[source,bash]
+----
+# host toolchain has picolibc:
+make -C hw/sys/sep/bootrom/prod toolchain-images \
+  GCC_PREFIX=... RISCV_TOOLCHAIN=... RISCV_PREFIX=...
+# otherwise, in the OCAH toolchain container:
+./scripts/docker-run.sh run-here make -C hw/sys/sep/bootrom/prod toolchain-images
+
+# pack-images is pure Python and always runs on the host:
+make -C hw/sys/sep/bootrom/prod pack-images
+----
+
+=== Build and Run
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut sep --items all --list
+python3 tools/dv/run_dv.py --dut sep --items all --tag smoke --stage sim
+python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test \
+  --stage flist --stage hdl_compile --stage sim
+python3 tools/dv/run_dv.py --dut sep --items sep_address_map_test --stage sim --seed 1
+python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
+  --tool verilator --stage flist --stage hdl_compile --stage sim
+python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
+  --tool verilator --stage flist --stage hdl_compile --stage sim
+----
+
+Firmware-boot leaves need a RISC-V image build first (`fw/fw.mk` or the
+testlist `c_compile` stage). Per-run logs land under
+`hw/sys/sep/dv/build/runs/<run-id>/`. Full prerequisite and mode detail is in
+`README.md`.

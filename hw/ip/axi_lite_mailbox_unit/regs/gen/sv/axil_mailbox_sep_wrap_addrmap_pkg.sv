@@ -218,4 +218,4 @@ localparam longint unsigned AXIL_MAILBOX_SEP_WRAP_INBOUND_MAILBOX_7_IRQP_BASE_AD
 localparam longint unsigned AXIL_MAILBOX_SEP_WRAP_INBOUND_MAILBOX_7_CTRL_BASE_ADDR = 64'h7848;
 
 
-endpackage;
+endpackage

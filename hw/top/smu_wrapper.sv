@@ -241,8 +241,8 @@ module smu_wrapper
     output logic [63:0]  timer_count_o,
 
     // Trace Memory
-    output dfd_trace_mem_pkg::SinkMemPktIn_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
-    input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_resp_i,
+    output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
+    input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_resp_i,
 
     // Test Mode
     input  logic  test_en_i,

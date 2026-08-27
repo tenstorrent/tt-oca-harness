@@ -45,12 +45,12 @@
 #define READ_REG(addr) (*((volatile uint32_t *)(uintptr_t)(addr)))
 
 /**
- * Legacy alias for WRITE_REG (for compatibility)
+ * Alias for WRITE_REG
  */
 #define WRITE32(addr, value) WRITE_REG(addr, value)
 
 /**
- * Legacy alias for READ_REG (for compatibility)
+ * Alias for READ_REG
  */
 #define READ32(addr) READ_REG(addr)
 
@@ -81,12 +81,12 @@
 #define READ_REG64(addr) (*((volatile uint64_t *)(uintptr_t)(addr)))
 
 /**
- * Legacy alias for WRITE_REG64 (for compatibility)
+ * Alias for WRITE_REG64
  */
 #define WRITE64(addr, value) WRITE_REG64(addr, value)
 
 /**
- * Legacy alias for READ_REG64 (for compatibility)
+ * Alias for READ_REG64
  */
 #define READ64(addr) READ_REG64(addr)
 

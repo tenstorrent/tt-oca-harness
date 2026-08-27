@@ -13,10 +13,15 @@ CSRNG / EDN / entropy_source). Window end comes from
 ``hw/sys/sep/doc/memory_map.adoc``. RTL decode width is never the judge
 of legality.
 
-Known-bad offsets from the RTL question
-https://github.com/tenstorrent/tt-oca-harness/issues/228 stay in the
-probe set every seed. The seed adds further dead offsets. Do not shrink
-the set to the addresses that already pass.
+Windows cover CSR apertures whose memory-map window is larger than
+``REG_MAP_SIZE`` (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox,
+lifecycle, SPI). HMAC/KMAC fill their map window so they have no
+intra-window dead span here. Remap / filter arrays and scratch are
+owned elsewhere for live programming.
+
+Known wrap offsets that alias onto live registers stay in the probe set
+every seed. The seed adds further dead offsets. Do not shrink the set to
+the addresses that already pass.
 """
 
 from __future__ import annotations
@@ -112,6 +117,13 @@ def dead_windows() -> tuple[DeadWindow, ...]:
             _sep_watch(sym("AES_REG_MAP_BASE_ADDR"), block_size("AES")),
         ),
         DeadWindow(
+            "otbn",
+            sym("OTBN_REG_MAP_BASE_ADDR"),
+            0x1091_0000,
+            block_size("OTBN"),
+            _sep_watch(sym("OTBN_REG_MAP_BASE_ADDR"), block_size("OTBN")),
+        ),
+        DeadWindow(
             "csrng",
             CSRNG_BASE,
             EDN_BASE,
@@ -166,7 +178,7 @@ def dead_windows() -> tuple[DeadWindow, ...]:
     )
 
 
-# (window name, addr, "r"|"w") — the #228 wrap set. Every seed probes all of them.
+# (window name, addr, "r"|"w") — known wrap anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("km_mailbox", 0x1092_0414, "w"),
     ("km_mailbox", 0x1092_0C04, "w"),
@@ -206,8 +218,16 @@ class SepDeadspaceCfg:
         ]
         rng = SepSeededRng(seed)
         taken = {(p.window, p.addr, p.op) for p in probes}
+        # Windows that could not supply their full random quota within the spin
+        # bound. Probe count is the coverage claim, so a shortfall is recorded
+        # and logged rather than silently absorbed into a smaller probe set.
+        self.short_windows: dict[str, tuple[int, int]] = {}
         for win in self.windows.values():
             if win.dead_lo >= win.dead_hi:
+                # No dead span to probe. Recorded rather than skipped so a
+                # window that loses its span to a map change shows up as 0/N
+                # instead of quietly leaving the probe set.
+                self.short_windows[win.name] = (0, n_random)
                 continue
             added = 0
             spins = 0
@@ -223,14 +243,21 @@ class SepDeadspaceCfg:
                 taken.add(key)
                 probes.append(DeadProbe(win.name, addr, op, False))
                 added += 1
+            if added < n_random:
+                self.short_windows[win.name] = (added, n_random)
         self.probes = tuple(probes)
 
     def summary(self) -> str:
         n_anchor = sum(1 for p in self.probes if p.anchor)
         n_rand = len(self.probes) - n_anchor
+        short = " ".join(
+            f"{name}={got}/{want}"
+            for name, (got, want) in sorted(self.short_windows.items())
+        )
         return (
             f"seed={self.seed} probes={len(self.probes)} "
-            f"anchors={n_anchor} random={n_rand} windows={len(self.windows)}"
+            f"anchors={n_anchor} random={n_rand} windows={len(self.windows)} "
+            f"short=[{short}]"
         )
 
 
