@@ -456,6 +456,33 @@ into multiple, self-contained PRs.</p>
 <div class="paragraph">
 <p>For bug fixes - a single PR is ideal to fix a single bug.</p>
 </div>
+<div class="sect3">
+<h4 id="creating-a-pull-request"><a class="anchor" href="#creating-a-pull-request"></a><a class="link" href="#creating-a-pull-request">2.3.1. Creating a Pull Request</a></h4>
+<div class="paragraph">
+<p>Open a pull request against <code>main</code>. There is a default template which asks for:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Summary</strong> — optional. What changed and why</p>
+</li>
+<li>
+<p><strong>Test plan</strong> — optional. Leave blank or write <code>N/A</code> if nothing was run</p>
+</li>
+<li>
+<p><strong>Closes</strong> — Add <code>Fixes #N</code> if this PR should close issues on merge
+(or pick them under <strong>Development</strong>). Delete this section if no issues are closed by this PR.</p>
+</li>
+<li>
+<p><strong>Notes</strong> — optional; delete if unused</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>CI does not require those sections. Project taxonomy lives in issues, not PRs.
+Pull requests are typically reviewed weekly.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="continuous-integration"><a class="anchor" href="#continuous-integration"></a><a class="link" href="#continuous-integration">2.4. Continuous Integration</a></h3>

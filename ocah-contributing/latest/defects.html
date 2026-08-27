@@ -247,6 +247,9 @@ The words "Bug" and "Defect" are here used interchangeably to represent any beha
 <div class="paragraph">
 <p>We are dedicated to maintaining the security, integrity and reliability of our hardware and software designs, and we actively encourage responsible security vulnerability reporting from the user community.</p>
 </div>
+<div class="paragraph">
+<p>Security reports must not be public issues and should use <a href="security.html" class="xref page">private vulnerability reporting</a></p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="reporting-bugs"><a class="anchor" href="#reporting-bugs"></a><a class="link" href="#reporting-bugs">1.2. Reporting Bugs</a></h3>
@@ -254,14 +257,72 @@ The words "Bug" and "Defect" are here used interchangeably to represent any beha
 <p>Ideally, all designs are bug free. However, code will be at different states of maturity.  Some will still be under active testing and development.  Defects may even be found in production code.</p>
 </div>
 <div class="paragraph">
-<p>If you have discovered a possible defect in the code in this repository, please raise a new GitHub Issue to describe the bug.</p>
+<p>If you have discovered a possible defect in the code in this repository, please raise a new GitHub Issue using the process below:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Open a new issue from
+<a href="https://github.com/tenstorrent/tt-oca-harness/issues/new/choose">New issue</a></p>
+</li>
+<li>
+<p>Pick <strong>Bug</strong> as the issue type</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Allowed values live in <code>.github/issue-taxonomy.yml</code></p>
+</li>
+<li>
+<p><strong>Task</strong> represents work items</p>
+</li>
+<li>
+<p><strong>Feature</strong> represents new feature requests</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>The following fields are mandatory and must be set:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Workstream</strong></p>
+</li>
+<li>
+<p><strong>Subsystem</strong></p>
+</li>
+<li>
+<p><strong>Component</strong> (use <code>General</code> if unsure)</p>
+</li>
+<li>
+<p><strong>Priority</strong> (use <code>P2</code> if unsure)</p>
+</li>
+<li>
+<p><strong>Target release</strong> (use <code>Future</code> if unscheduled).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Please do not assign:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>A GitHub milestone.</p>
+</li>
+<li>
+<p>GitHub labels.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect2">
 <h3 id="defect-data"><a class="anchor" href="#defect-data"></a><a class="link" href="#defect-data">1.3. Defect data</a></h3>
 <div class="paragraph">
-<p>Issues raised to represent bugs should include as much detail as possible
-about the nature of the bug and how it can be reproduced.  The goal should
+<p>Although the description field is optional, issues raised to represent bugs should include as much detail as possible about the nature of the bug and how it can be reproduced.  The goal should
 always be that the defect should be reproduceable from the data in the Issue.</p>
 </div>
 <div class="paragraph">
