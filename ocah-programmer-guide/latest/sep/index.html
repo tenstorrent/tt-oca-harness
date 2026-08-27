@@ -1338,6 +1338,12 @@ remap.</p>
 <div class="paragraph">
 <p>The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.</p>
 </div>
+<div class="paragraph">
+<p>Each row below is the address <strong>aperture</strong> reserved for a unit, not the extent that
+decodes. Within an aperture, only the unit&#8217;s register extent responds; the
+remainder is reserved and returns DECERR. Reads and writes there never reach the
+unit, so an address that owns no register cannot alias onto one.</p>
+</div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 20%;">
