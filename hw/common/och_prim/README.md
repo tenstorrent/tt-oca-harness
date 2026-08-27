@@ -12,7 +12,6 @@ under [`vendor/opentitan/patches/`](../../../vendor/opentitan/patches/) on top o
 | Path | Contents |
 |------|----------|
 | `rtl/` | TT-only prim modules (bus adapters, CDC sync, JTAG, libcell behavioral, etc.) with no upstream name |
-| `icl/` | JTAG ICL descriptions (where present) |
 
 Default simulation and synthesis file lists compile `rtl/` here plus the
 (patched) vendored `prim*` under `vendor/opentitan/` (see repo-root `Bender.yml`).
