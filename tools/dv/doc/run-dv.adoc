@@ -291,7 +291,10 @@ simulator via `-ntb_opts uvm`, tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
 policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium support is planned
 behind a real-run sign-off gate; Questa is unsupported. The first user is the
-DTP SV-UVM smoke flow, `--dut dtp --framework uvm`.
+DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
+guide — conventions plus the bring-up walkthrough for adding a UVM view to a
+cocotb-only DUT — is the SystemVerilog UVM Framework section of
+`hw/common/dv/docs/index.adoc` (`uvm-framework.adoc`).
 
 `--framework NAME` selects the test framework for a DUT that implements more
 than one (a DUT implements a framework by declaring a `[frameworks.<name>]`
