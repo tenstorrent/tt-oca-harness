@@ -97,6 +97,9 @@
     <a class="nav-link" href="dependencies.html">Dependencies</a>
   </li>
   <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <a class="nav-link" href="workflows.html">Workflows</a>
   </li>
   <li class="nav-item" data-depth="2">
@@ -227,6 +230,10 @@
 <li>
 <p>Semantic Versioning may need considering in a silicon context</p>
 </li>
+<li>
+<p>For public contributions, it is probably better to encourage people to fork and
+PR from forks rather than directly give them push access to upstream as this doc implies?</p>
+</li>
 </ul>
 </div>
 </td>
@@ -252,14 +259,6 @@ typically available on shared Linux build hosts when needed.</p>
 <p>Create a GitHub account if you do not already have one.</p>
 </li>
 <li>
-<p>Configure Git credential management on your machine:</p>
-<div class="literalblock">
-<div class="content">
-<pre>brew install git-credential-manager</pre>
-</div>
-</div>
-</li>
-<li>
 <p>Generate an SSH key pair:</p>
 <div class="literalblock">
 <div class="content">
@@ -268,7 +267,7 @@ typically available on shared Linux build hosts when needed.</p>
 </div>
 </li>
 <li>
-<p>Start the SSH agent and add your key. You may want to add this to your
+<p><strong>(Optional)</strong> Start the SSH agent and add your key. You may want to add this to your
 shell startup script:</p>
 <div class="literalblock">
 <div class="content">
@@ -279,19 +278,14 @@ ssh-add &lt;name of your key&gt;</pre>
 </li>
 <li>
 <p>Add the public key to your GitHub account under
-<a href="https://github.com/settings/keys" class="bare">https://github.com/settings/keys</a>. Verify the key with:</p>
-<div class="literalblock">
-<div class="content">
-<pre>ssh-add -l</pre>
-</div>
-</div>
+<a href="https://github.com/settings/keys" class="bare">https://github.com/settings/keys</a>.</p>
 </li>
 <li>
 <p>Clone the repository</p>
 <div class="literalblock">
 <div class="content">
-<pre>git clone git@github.com:tenstorrent/tt-oca.git
-cd tt-oca
+<pre>git clone git@github.com:tenstorrent/tt-oca-harness.git
+cd tt-oca-harness
 git checkout -b &lt;your-branch&gt;</pre>
 </div>
 </div>

@@ -97,6 +97,9 @@
     <a class="nav-link" href="dependencies.html">Dependencies</a>
   </li>
   <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <a class="nav-link" href="workflows.html">Workflows</a>
   </li>
   <li class="nav-item" data-depth="2">
@@ -257,13 +260,13 @@ capabilities</p>
 - Using asciidoctor-pdf for downloadable PDFs</p>
 </div>
 <div class="paragraph">
-<p>Material intended only to be viewed the website will not be built as downloadable PDFs</p>
+<p>Material intended only to be viewed via the website will not be built as downloadable PDFs</p>
 </div>
 <div class="paragraph">
 <p>Documents are published in GitHub Pages at [<a href="https://tenstorrent.github.io/tt-oca-harness/" class="bare">https://tenstorrent.github.io/tt-oca-harness/</a>](<a href="https://tenstorrent.github.io/tt-oca-harness/" class="bare">https://tenstorrent.github.io/tt-oca-harness/</a>)</p>
 </div>
 <div class="paragraph">
-<p>Downloadable PDFs are accessible from this location.</p>
+<p>Downloadable PDFs are also accessible from the above location.</p>
 </div>
 </div>
 <div class="sect2">
@@ -278,16 +281,23 @@ capabilities</p>
 <div class="sect2">
 <h3 id="build-process-and-local-builds"><a class="anchor" href="#build-process-and-local-builds"></a><a class="link" href="#build-process-and-local-builds">1.3. Build Process and Local Builds</a></h3>
 <div class="paragraph">
-<p>Documentation may also be built locally for development.</p>
+<p>Documentation may also be built locally for development. Follow the instructions <a href="setup.html#package-dependencies" class="xref page">here</a> to install Asciidoctor and Antora.</p>
 </div>
 <div class="paragraph">
-<p>To avoid the need to install local tools, the toolchain is included as container images.
-The two commands below may be executed from the root of the checked out repository.
+<p>Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install <code>podman</code> or <code>docker</code> as described <a href="setup.html#containers" class="xref page">here</a>.</p>
+</div>
+<div class="paragraph">
+<p>The two commands below may be executed from the root of the checked out repository.
 They generate the built material in subfolders under each book.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Locally installed Packages
+make doc-html-all
+make doc-pdf-all
+
+# OR Container workflow
+scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
 scripts/docker-run.sh doc-pdf  all    # PDF       → doc/XXXX/dist/ocah-trm.pdf</code></pre>
 </div>
 </div>
@@ -297,7 +307,11 @@ This builds the whole site in the location shown.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">scripts/docker-run.sh doc-stage       # site → doc/_build/html_antora</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make doc-stage-all
+
+# OR
+
+scripts/docker-run.sh doc-stage       # site → doc/_build/html_antora</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -305,9 +319,16 @@ This builds the whole site in the location shown.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">cd doc/_build/html_antora
-python3 -m http.server</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">make doc-serve-all
+
+# OR
+
+cd doc/_build/html_antora
+python3 -m http.server 8000</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>This will generate the documentation, and then serve it on <code><a href="http://localhost:8000/" class="bare">http://localhost:8000/</a></code>. You will then be able to access it in your web browser.</p>
 </div>
 </div>
 <div class="sect2">
@@ -336,12 +357,6 @@ the build process.</p>
 <ul>
 <li>
 <p><a href="https://asciidoctor.org">Asciidoctor</a></p>
-</li>
-<li>
-<p><a href="https://www.drawio.com">drawio</a></p>
-</li>
-<li>
-<p><a href="https://wavedrom.com">wavedrom</a></p>
 </li>
 </ul>
 </div>

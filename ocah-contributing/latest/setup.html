@@ -96,7 +96,7 @@
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="dependencies.html">Dependencies</a>
   </li>
-  <li class="nav-item" data-depth="2">
+  <li class="nav-item is-current-page" data-depth="2">
     <a class="nav-link" href="setup.html">Environment Setup</a>
   </li>
   <li class="nav-item" data-depth="2">
@@ -111,7 +111,7 @@
     <button class="nav-item-toggle"></button>
     <span class="nav-text">Starting as a contributor</span>
 <ul class="nav-list">
-  <li class="nav-item is-current-page" data-depth="2">
+  <li class="nav-item" data-depth="2">
     <a class="nav-link" href="licensing.html">Licensing</a>
   </li>
   <li class="nav-item" data-depth="2">
@@ -199,8 +199,8 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Contributing Guide</a></li>
-    <li>Starting as a contributor</li>
-    <li><a href="licensing.html">Licensing</a></li>
+    <li>Starting as a user</li>
+    <li><a href="setup.html">Environment Setup</a></li>
   </ul>
 </nav>
 </div>
@@ -210,7 +210,7 @@
 </aside>
 <article class="doc">
 <div class="sect1">
-<h2 id="licensing"><a class="anchor" href="#licensing"></a><a class="link" href="#licensing">1. Licensing</a></h2>
+<h2 id="environment_setup"><a class="anchor" href="#environment_setup"></a><a class="link" href="#environment_setup">1. Environment Setup</a></h2>
 <div class="sectionbody">
 <div class="admonitionblock warning">
 <table>
@@ -225,10 +225,16 @@
 <div class="ulist">
 <ul>
 <li>
-<p>Use of CLAs needs discussion</p>
+<p>Can we add an installation script to the repo?</p>
 </li>
 <li>
-<p>Use of copyright messages needs discussion</p>
+<p>Need to check the correct RISCV Toolchain is listed here?</p>
+</li>
+<li>
+<p>May need 32b toolchain</p>
+</li>
+<li>
+<p>Makefile references <code>riscv64-unknown-elf-*</code>, but it&#8217;s a 32b Simulator?</p>
 </li>
 </ul>
 </div>
@@ -236,92 +242,141 @@
 </tr>
 </table>
 </div>
+<div class="sect2">
+<h3 id="python"><a class="anchor" href="#python"></a><a class="link" href="#python">1.1. Python</a></h3>
 <div class="paragraph">
-<p>The main license used in this project is the Apache License, Version 2.0.</p>
+<p>We recommend the use of pyenv to ensure the correct version of python is in use.
+To install pyenv, visit <a href="https://github.com/pyenv/pyenv">their GitHub page</a>,
+or run <code>curl <a href="https://pyenv.run" class="bare">https://pyenv.run</a> | bash</code>.</p>
 </div>
-<div class="paragraph">
-<p>There are strict rules around the licenses used with open source RTL.
-OCAH will only permit incorporation of material governed under the
-liberal Apache 2.0 or equivalent licenses such as Solderpad.</p>
-</div>
-<div class="paragraph">
-<p>This avoids the restrictions which come with licenses such as GPL.</p>
-</div>
-<div class="paragraph">
-<p>The licences discussed above are documented here. Others may be added to the project over time.</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="https://www.apache.org/licenses/LICENSE-2.0" class="bare">https://www.apache.org/licenses/LICENSE-2.0</a></p>
-</li>
-<li>
-<p><a href="https://solderpad.org/licenses/SHL-2.1/" class="bare">https://solderpad.org/licenses/SHL-2.1/</a></p>
-</li>
-</ul>
-</div>
-<div class="admonitionblock note">
+<div class="admonitionblock warning">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<i class="fa icon-warning" title="Warning"></i>
 </td>
 <td class="content">
-Do not attempt to commit material which was distributed under any other license without discussing first with OCAH project managers.
+<div class="paragraph">
+<p>The piping of a script from the internet as above, without checking it, is never safe.
+You should always check the contents of the script first to guarantee safety.
+This may be done using <code>curl <a href="https://pyenv.run" class="bare">https://pyenv.run</a></code>, which will print the script,
+instead of running it.</p>
+</div>
 </td>
 </tr>
 </table>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="third-party-code"><a class="anchor" href="#third-party-code"></a><a class="link" href="#third-party-code">2. Third Party Code</a></h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>The OCAH project leverages third party open source RTL code whenever
-practical in order to boost productivity and not "reinvent the wheel".
-The primary projects we reference are:</p>
+<p>To install Python 3.11 with pyenv, first install the <a href="https://github.com/pyenv/pyenv/wiki#suggested-build-environment">python build dependencies</a>, and then Python 3.11 itself:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Check Pyenv GitHub for up-to-date build environment
+sudo apt update
+sudo apt install make build-essential libssl-dev zlib1g-dev \
+libbz2-dev libreadline-dev libsqlite3-dev curl git \
+libncursesw5-dev xz-utils tk-dev libxml2-dev \
+libxmlsec1-dev libffi-dev liblzma-dev libzstd-dev
+
+pyenv install 3.11</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>From here, enter a pyenv shell, and install <code>uv</code> using the following commands:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">pyenv shell 3.11
+
+# In the shell
+pip install uv</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="repository"><a class="anchor" href="#repository"></a><a class="link" href="#repository">1.2. Repository</a></h3>
+<div class="paragraph">
+<p>To clone the repository, ensure that you have <code>git</code> installed (<code>sudo apt install git</code>), and then run the following commands:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git clone git@github.com:tenstorrent/tt-oca-harness.git
+
+cd tt-oca-harness</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="package-dependencies"><a class="anchor" href="#package-dependencies"></a><a class="link" href="#package-dependencies">1.3. Package Dependencies</a></h3>
+<div class="paragraph">
+<p>Once the repository is cloned, install the required open source tools:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo apt install asciidoctor asciidoctor-pdf verilator gcc clang \
+fuse-overlayfs ccache picolibc-riscv64-unknown-elf</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Follow the instructions on the following pages for tools not packaged within Ubuntu:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://pulp-platform.org">ETH PULP</a></p>
+<p><a href="https://docs.antora.org/antora/latest/install-and-run-quickstart/"><strong>Antora</strong></a></p>
 </li>
 <li>
-<p><a href="https://opentitan.org">lowRISC OpenTitan</a></p>
+<p><a href="https://github.com/pulp-platform/bender"><strong>Bender</strong></a></p>
 </li>
 <li>
-<p><a href="https://www.opencompute.org/products/575/caliptra">OCP Caliptra</a></p>
+<p><a href="https://github.com/chipsalliance/verible"><strong>Verible</strong></a></p>
+</li>
+<li>
+<p><a href="https://surfer-project.org/"><strong>Surfer</strong></a> (optional, alternatives available, used for wave trace debugging)</p>
+</li>
+<li>
+<p><a href="https://www.drawio.com/"><strong>Drawio</strong></a> (optional, used for creating new diagrams for documentation)</p>
+</li>
+<li>
+<p><a href="https://github.com/wavedrom/wavedrom.github.io/releases"><strong>Wavedrom</strong></a> (optional, used for creating new diagrams for documentation)</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>This is not an exclusive list and there will inevitably be other open
-source projects added. We also leverage open source tools which are
-discussed elsewhere.</p>
+<p>Enter the repository and use the following command to set up the Python environment:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">uv sync # or `make uv-sync`</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="containers"><a class="anchor" href="#containers"></a><a class="link" href="#containers">1.4. Containers</a></h3>
+<div class="paragraph">
+<p>Certain workflows within the repository currently use a container, so a docker-compatible containerisation system is also required. We support docker and podman at this time, follow the installation guides to install either docker or podman below:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://podman.io/docs/installation#ubuntu"><strong>Podman</strong></a> (recommended)</p>
+</li>
+<li>
+<p><a href="https://docs.docker.com/engine/install/ubuntu/"><strong>Docker</strong></a></p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>Third party components will be forked into the OCAH repository to
-decouple them from the originating project. We may still track the
-original project and update these forked versions if there is a good
-reason. Some reasons include incorporating bug fixes and feature
-enhancements.</p>
+<p>If you installed podman, you&#8217;ll need to add the docker hub as a container registry to be able to pull the container:</p>
 </div>
-<div class="paragraph">
-<p>We fully expect that third party components will be modified to some
-extent. This would be done by adding a wrapper around the design or
-portions of it, attempting to leave the core functionality unmodified.
-This may not always be possible, so the exact method of modification
-will vary.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo mkdir -p /etc/containers/registries.conf.d
+cat &lt;&lt;'EOF' | sudo tee /etc/containers/registries.conf.d/docker.conf
+unqualified-search-registries = ["docker.io"]
+EOF</code></pre>
 </div>
-<div class="paragraph">
-<p>An example modification would be that OpenTitan components use TileLink
-for their system bus interfaces. OCAHwill use AMBA APB and AXI4, so again, these will need to be replaced.</p>
 </div>
-<div class="paragraph">
-<p>When adopting and potentially modifying third party modules, make sure
-to follow all of the license rules such as keeping all attribution
-comments in the file headers.</p>
 </div>
 </div>
 </div>
