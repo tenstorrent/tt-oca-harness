@@ -22,8 +22,6 @@ paths = ["{run_dir}", "hw/sys/smu/dv/build"]
 top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
-  # Same CPU mem macros as smc_wrapper / smu_wrapper (not a DV behavioral responder).
-  "hw/sys/smc/dv/models/smc_cpu_mem_integration.sv",
   # External SMN AXI: pulp axi_sim_mem (SEP/SMC posture).
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
 ]
@@ -116,7 +114,7 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 description = "Phase-1 smoke: SMC reset/AXI, DTP JTAG IDCODE, no-SEP config"
 timeout_sec = 1800
 # Skip OTP fuse-sense FSM so primary reset can release without a real eFuse model.
-# +rom_hex required by real OCAH4CORECluster_mems (smc_cpu_mem_integration).
+# +rom_hex required by real OCAH4CORECluster_mems (in smc_ip_integration).
 args = [
   "+skip_fuse_sense",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",

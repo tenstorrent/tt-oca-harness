@@ -199,7 +199,7 @@ run_modes = ["smoke"]
 # min_pass.rom.hex: sync-free RV64 stub at ROM window (writes 0xACAFACA1).
 # Both +rom_hex and +smc_rom_hex point at min_pass so the smoke-mode
 # default smc_rom_default.hex cannot remain the sole identity (OCAH loads
-# the first +rom_hex; smc_cpu_mem_integration then prefers +smc_rom_hex).
+# the first +rom_hex; smc_cpu_mem_dv then prefers +smc_rom_hex).
 # (main #172 c_compile hello_world.ecc.scratch path intentionally not used.)
 args = [
     "+smc_hold_cpu_boot",

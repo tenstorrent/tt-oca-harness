@@ -1501,13 +1501,7 @@ sources:
       - hw/top/smc_ip_integration.sv
   - target: smc_wrapper
     files:
-      # CPU ROM/scratch/L1$ reference model. The wrapper only passes the macro
-      # interfaces through; the TB instantiates this and attaches it.
-      - hw/sys/smc/dv/models/smc_cpu_mem_integration.sv
       - hw/top/smc_wrapper.sv
   - target: smu_wrapper
     files:
-      # Same model, same posture: TB attaches it to the passthrough
-      # rom_intf_* ports (smc_ip_integration stays SMU-safe).
-      - hw/sys/smc/dv/models/smc_cpu_mem_integration.sv
       - hw/top/smu_wrapper.sv

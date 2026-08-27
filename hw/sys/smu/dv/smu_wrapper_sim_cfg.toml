@@ -8,8 +8,8 @@ schema_version = 1
 #
 # DUT is hw/top/smu_wrapper.sv (smu + smc_ip_integration + sep_ip_integration),
 # pulled through the `smu_wrapper` bender target — same OSS composition as
-# smc_wrapper / sep_wrapper. TB attaches smc_cpu_mem_integration on the
-# passthrough CPU memory ports and keeps the cocotb observe surface.
+# smc_wrapper / sep_wrapper. The CPU memory macros come with
+# smc_ip_integration; the TB keeps the cocotb observe surface.
 #
 # Independent of the SEP=0 bare-`smu` catalog in smu_sim_cfg.toml; both configs
 # share this DV root and the build/runs evidence directory.
@@ -56,8 +56,7 @@ common_bender_targets = [
   "register_interface_l1",
 ]
 # smu pulls smc+dtp; sep+sep_el2 supply the real SEP subsystem and EL2 CPU;
-# smu_wrapper adds hw/top/{smu_wrapper,smc_ip_integration,sep_ip_integration}
-# plus hw/sys/smc/dv/models/smc_cpu_mem_integration.sv.
+# smu_wrapper adds hw/top/{smu_wrapper,smc_ip_integration,sep_ip_integration}.
 # `simulation` is deliberately NOT set: the
 # sep×simulation slice references absolute /tech and /vendor_ip model paths
 # that only exist on internal hosts.

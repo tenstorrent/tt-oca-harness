@@ -4,8 +4,8 @@
 schema_version = 1
 
 # Launch entry: `--dut smc` (discovered by the directory convention).
-# tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration) and
-# attaches the CPU mem reference model itself; the bare DUT name selects that
+# tb_top.sv instantiates hw/top/smc_wrapper.sv (smc + smc_ip_integration,
+# which carries the CPU memory macros); the bare DUT name selects that
 # wrapper-based TB.
 name = "smc"
 profile = "native"
@@ -37,8 +37,7 @@ common_bender_targets = [
   "idma_rtl",
   "register_interface_l1",
 ]
-# smc_wrapper Bender target pulls hw/top/smc_wrapper.sv + the CPU mem
-# reference model the TB attaches to its passthrough ports.
+# smc_wrapper Bender target pulls hw/top/smc_wrapper.sv.
 bender_targets = ["smc", "smc_wrapper"]
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
@@ -60,9 +59,9 @@ stubs = [
 sources = [
   # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
-  # DV collateral for the CPU memory macros: counters, FW mailbox, bank0 ECC
-  # injection, and the image backdoors bound into smc_cpu_mem_integration.
-  # Not in the Bender wrapper target -- only this TB instantiates it.
+  # DV collateral for the CPU memory macros: counters, FW mailbox, the ECC
+  # inject hook and the image backdoors, bound into smc_ip_integration.
+  # Not in the Bender wrapper target -- only this TB binds it.
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
 ]
 

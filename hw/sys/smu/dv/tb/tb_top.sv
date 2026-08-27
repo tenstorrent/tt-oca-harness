@@ -384,19 +384,54 @@ module smu_uvm_top
     assign jtag_ptap_inst_decoded    = 32'(ptap_inst);
 
     // CPU ROM/scratch/L1$ — same macros as smc_wrapper / smu_wrapper TB.
-    smc_cpu_mem_integration u_smc_cpu_mem (
-        .rom_req_i (smc_rom_req),
-        .rom_rsp_o (smc_rom_rsp),
-        .scratch_ram_req_i (smc_scratch_ram_req),
-        .scratch_ram_rsp_o (smc_scratch_ram_rsp),
-        .l1_icache_tag_req_i (smc_l1_icache_tag_req),
-        .l1_icache_tag_rsp_o (smc_l1_icache_tag_rsp),
-        .l1_icache_data_req_i (smc_l1_icache_data_req),
-        .l1_icache_data_rsp_o (smc_l1_icache_data_rsp),
-        .l1_dcache_tag_req_i (smc_l1_dcache_tag_req),
-        .l1_dcache_tag_rsp_o (smc_l1_dcache_tag_rsp),
-        .l1_dcache_data_req_i (smc_l1_dcache_data_req),
-        .l1_dcache_data_rsp_o (smc_l1_dcache_data_rsp)
+    // Bare `smu` exposes the CPU memory ports (smc_ip_integration lives in
+    // smu_wrapper, not here), so terminate them with the macros directly.
+    localparam int unsigned MEM_CFG_WIDTH = 11;
+    logic [MEM_CFG_WIDTH-1:0] smc_scratch_ram_cfg [NUM_SRAM_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_icache_tag_cfg  [NUM_ICACHE_TAG_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_icache_data_cfg [NUM_ICACHE_DATA_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_dcache_tag_cfg  [NUM_DCACHE_TAG_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_dcache_data_cfg [NUM_DCACHE_DATA_BANKS-1:0];
+    logic [MEM_CFG_WIDTH-1:0] smc_rom_cfg;
+
+    for (genvar i = 0; i < NUM_SRAM_BANKS; i++) begin : gen_smc_scratch_cfg
+        assign smc_scratch_ram_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < NUM_ICACHE_TAG_BANKS; i++) begin : gen_smc_itag_cfg
+        assign smc_icache_tag_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < NUM_ICACHE_DATA_BANKS; i++) begin : gen_smc_idata_cfg
+        assign smc_icache_data_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < NUM_DCACHE_TAG_BANKS; i++) begin : gen_smc_dtag_cfg
+        assign smc_dcache_tag_cfg[i] = '0;
+    end
+    for (genvar i = 0; i < NUM_DCACHE_DATA_BANKS; i++) begin : gen_smc_ddata_cfg
+        assign smc_dcache_data_cfg[i] = '0;
+    end
+    assign smc_rom_cfg = '0;
+
+    OCAH4CORECluster_mems #(
+        .MEM_CFG_WIDTH (MEM_CFG_WIDTH)
+    ) u_smc_cpu_mem (
+        .rom_req            (smc_rom_req),
+        .rom_rsp            (smc_rom_rsp),
+        .scratch_ram_req    (smc_scratch_ram_req),
+        .scratch_ram_rsp    (smc_scratch_ram_rsp),
+        .l1_icache_tag_req  (smc_l1_icache_tag_req),
+        .l1_icache_tag_rsp  (smc_l1_icache_tag_rsp),
+        .l1_icache_data_req (smc_l1_icache_data_req),
+        .l1_icache_data_rsp (smc_l1_icache_data_rsp),
+        .l1_dcache_tag_req  (smc_l1_dcache_tag_req),
+        .l1_dcache_tag_rsp  (smc_l1_dcache_tag_rsp),
+        .l1_dcache_data_req (smc_l1_dcache_data_req),
+        .l1_dcache_data_rsp (smc_l1_dcache_data_rsp),
+        .icache_tag_cfg_i   (smc_icache_tag_cfg),
+        .icache_data_cfg_i  (smc_icache_data_cfg),
+        .dcache_tag_cfg_i   (smc_dcache_tag_cfg),
+        .dcache_data_cfg_i  (smc_dcache_data_cfg),
+        .scratch_ram_cfg_i  (smc_scratch_ram_cfg),
+        .rom_cfg_i          (smc_rom_cfg)
     );
 
     // Macro AXI-Lite activity (OR of aw/w/ar valid). Boundary resp left open —

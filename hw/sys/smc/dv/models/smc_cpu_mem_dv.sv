@@ -4,23 +4,23 @@
 //-----------------------------------------------------------------------------
 // SMC CPU memory DV collateral
 //
-// Everything simulation-only that used to sit inside smc_cpu_mem_integration:
-// observability counters, the firmware mailbox magic detector, bank0 ECC fault
-// injection, and the time-zero image backdoors. Keeping it here leaves the
-// macro wrapper a pure structural model an adopter can swap out.
+// The CPU ROM/scratch/L1$ macros live inside smc_ip_integration.sv, so this is
+// bound into that module rather than instantiated in the testbench: it reaches
+// the macro interfaces and the macro arrays by upward name resolution, and
+// smc_ip_integration itself carries no DV behaviour.
 //
-// Two pieces, because they need different access:
+// Provides, for the SMC testbench only:
+//   * observability counters (ROM / scratch read+write / dcache write)
+//   * the firmware mailbox magic detector
+//   * bank0 ECC fault injection, forced onto the macro response so the CPU
+//     consumes the corrupted data
+//   * the +smc_rom_hex / +smc_scratch_ram_hex time-zero image backdoors
 //
-//   smc_cpu_mem_dv       - port-based. Taps the request buses for the counters
-//                          and the mailbox, and sits in the scratch response
-//                          path so bank0 injection can corrupt what the DUT
-//                          sees. The testbench instantiates it.
+// The SMU testbenches do not bind it. They load their SMC ROM through
+// +rom_hex, which OCAH4CORECluster_rom_ext handles on its own.
 //
-//   smc_cpu_mem_backdoor - needs the macro arrays themselves, so it is bound
-//                          into smc_cpu_mem_integration and reaches u_mems by
-//                          upward name resolution. Only the SMC TB binds it;
-//                          the SMU TBs load their SMC ROM through the macro's
-//                          own +rom_hex loader in OCAH4CORECluster_rom_ext.
+// The testbench drives ecc_inject_* and reads the counters through the bound
+// instance; see hw/sys/smc/dv/tb/tb_top.sv.
 //-----------------------------------------------------------------------------
 
 `timescale 1ps/1fs
@@ -28,32 +28,26 @@
 module smc_cpu_mem_dv
     import chipyard_4core_mem_pkg::*;
 (
-    input  logic clk_i,
-    input  logic rst_ni,
+    input logic clk_i,
+    input logic rst_ni,
 
-    // Observed request buses (tapped off the DUT -> macro path).
-    input  rom_req_t            rom_req_i,
-    input  scratch_ram_req_t    scratch_ram_req_i     [NUM_SRAM_BANKS-1:0],
-    input  l1_dcache_data_req_t l1_dcache_data_req_i  [NUM_DCACHE_DATA_BANKS-1:0],
+    // Bound into smc_ip_integration: these connect to that module's own
+    // memory interfaces, which the bind port list resolves in its scope.
+    input rom_req_t            rom_req_i,
+    input scratch_ram_req_t    scratch_ram_req_i    [NUM_SRAM_BANKS-1:0],
+    input l1_dcache_data_req_t l1_dcache_data_req_i [NUM_DCACHE_DATA_BANKS-1:0],
 
-    // Scratch response path: macro -> here -> DUT, so bank0 injection lands
-    // on the data the CPU actually consumes.
-    input  scratch_ram_rsp_t    scratch_ram_rsp_i     [NUM_SRAM_BANKS-1:0],
-    output scratch_ram_rsp_t    scratch_ram_rsp_o     [NUM_SRAM_BANKS-1:0],
-
-    input  logic        ecc_inject_sbe_i,
-    input  logic        ecc_inject_dbe_i,
-    output logic        scratch0_inject_fire_o,
-
-    output logic [31:0] rom_read_count_o,
-    output logic [31:0] scratch_ram_read_count_o,
-    output logic [31:0] scratch_ram_write_count_o,
-    output logic [31:0] dcache_data_write_count_o,
-    output logic [31:0] fw_mailbox_o,
-    output logic        fw_mailbox_valid_o
+    input logic ecc_inject_sbe_i,
+    input logic ecc_inject_dbe_i
 );
 
     localparam logic [31:0] FW_MAGIC = 32'hACAF_ACA1;
+
+    localparam int unsigned SCRATCH_WORDS = 1 << SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH;
+    localparam int unsigned BANK_STRIPE_BYTES = 64;
+    localparam int unsigned BYTES_PER_ENTRY = 8;
+    localparam int unsigned ENTRIES_PER_STRIPE = BANK_STRIPE_BYTES / BYTES_PER_ENTRY;
+    localparam int unsigned MAX_LINEAR_WORDS = 4096;
 
     logic        magic_hit_scratch;
     logic        magic_hit_dcache;
@@ -64,30 +58,9 @@ module smc_cpu_mem_dv
     logic [31:0] scratch_ram_read_count_q;
     logic [31:0] scratch_ram_write_count_q;
     logic        scratch0_inject_fire_q;
-    logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] scratch0_rdata_mux;
 
-    // ------------------------------------------------------------------
-    // Bank0 ECC inject: corrupt returned rdata (SEP DV keeps inject outside
-    // the prim macros).
-    // ------------------------------------------------------------------
-    always_comb begin
-        scratch0_rdata_mux = scratch_ram_rsp_i[0].rdata;
-        if (ecc_inject_dbe_i) begin
-            scratch0_rdata_mux[0] = ~scratch0_rdata_mux[0];
-            scratch0_rdata_mux[1] = ~scratch0_rdata_mux[1];
-        end else if (ecc_inject_sbe_i) begin
-            scratch0_rdata_mux[0] = ~scratch0_rdata_mux[0];
-        end
-    end
-
-    for (genvar bank = 0; bank < NUM_SRAM_BANKS; bank++) begin : gen_scratch_rsp
-        if (bank == 0) begin : gen_bank0
-            assign scratch_ram_rsp_o[0].rdata = scratch0_rdata_mux;
-        end else begin : gen_bank_n
-            assign scratch_ram_rsp_o[bank] = scratch_ram_rsp_i[bank];
-        end
-    end
-
+    // Bank0 ECC injection itself is a force on smc_ip_integration's response
+    // net and lives in the testbench; this only counts the qualifying reads.
     always_ff @(posedge scratch_ram_req_i[0].clk or negedge rst_ni) begin
         if (!rst_ni) begin
             scratch0_inject_fire_q <= 1'b0;
@@ -97,7 +70,6 @@ module smc_cpu_mem_dv
                 (ecc_inject_sbe_i || ecc_inject_dbe_i);
         end
     end
-    assign scratch0_inject_fire_o = scratch0_inject_fire_q;
 
     // ------------------------------------------------------------------
     // Observability counters / FW mailbox
@@ -122,7 +94,8 @@ module smc_cpu_mem_dv
                 end
             end
             for (int unsigned bank = 0; bank < NUM_DCACHE_DATA_BANKS; bank++) begin
-                if (l1_dcache_data_req_i[bank].en && l1_dcache_data_req_i[bank].wmode) begin
+                if (l1_dcache_data_req_i[bank].en &&
+                        l1_dcache_data_req_i[bank].wmode) begin
                     dcache_data_write_count_q <= dcache_data_write_count_q + 32'd1;
                 end
             end
@@ -146,7 +119,8 @@ module smc_cpu_mem_dv
     always_comb begin
         magic_hit_dcache = 1'b0;
         for (int unsigned bank = 0; bank < NUM_DCACHE_DATA_BANKS; bank++) begin
-            if (l1_dcache_data_req_i[bank].en && l1_dcache_data_req_i[bank].wmode) begin
+            if (l1_dcache_data_req_i[bank].en &&
+                    l1_dcache_data_req_i[bank].wmode) begin
                 for (int unsigned bit_base = 0; bit_base + 32 <= 144; bit_base += 8) begin
                     if (l1_dcache_data_req_i[bank].wdata[bit_base +: 32] == FW_MAGIC) begin
                         magic_hit_dcache = 1'b1;
@@ -156,34 +130,11 @@ module smc_cpu_mem_dv
         end
     end
 
-    assign rom_read_count_o          = rom_read_count_q;
-    assign scratch_ram_read_count_o  = scratch_ram_read_count_q;
-    assign scratch_ram_write_count_o = scratch_ram_write_count_q;
-    assign dcache_data_write_count_o = dcache_data_write_count_q;
-    assign fw_mailbox_o              = fw_mailbox_q;
-    assign fw_mailbox_valid_o        = fw_mailbox_valid_q;
-
-endmodule
-
-
-//-----------------------------------------------------------------------------
-// Time-zero image load into the macro arrays (SEP backdoor posture).
-//
-// Bound into smc_cpu_mem_integration, so `u_mems` below resolves upward into
-// the bound-into instance. MemInitFile is "" on the prim_* macros; images are
-// written straight into the public `mem` arrays.
-//-----------------------------------------------------------------------------
-
-module smc_cpu_mem_backdoor
-    import chipyard_4core_mem_pkg::*;
-();
-
-    localparam int unsigned SCRATCH_WORDS = 1 << SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH;
-    localparam int unsigned BANK_STRIPE_BYTES = 64;
-    localparam int unsigned BYTES_PER_ENTRY = 8;
-    localparam int unsigned ENTRIES_PER_STRIPE = BANK_STRIPE_BYTES / BYTES_PER_ENTRY;
-    localparam int unsigned MAX_LINEAR_WORDS = 4096;
-
+    // ------------------------------------------------------------------
+    // Time-zero image load into the macro arrays (SEP backdoor posture).
+    // MemInitFile is "" on the prim_* macros; images are written straight
+    // into the public `mem` arrays.
+    // ------------------------------------------------------------------
     initial begin : backdoor_rom_load
         string rom_path;
         int    rom_fd;
@@ -196,9 +147,9 @@ module smc_cpu_mem_backdoor
             if (rom_fd != 0) begin
                 $fclose(rom_fd);
                 $readmemh(rom_path, u_mems.rom_mem.mem.mem);
-                $display("[smc_cpu_mem_backdoor] backdoor ROM %s", rom_path);
+                $display("[smc_cpu_mem_dv] backdoor ROM %s", rom_path);
             end else begin
-                $display("[smc_cpu_mem_backdoor] WARN: missing ROM %s", rom_path);
+                $display("[smc_cpu_mem_dv] WARN: missing ROM %s", rom_path);
             end
         end
     end
@@ -243,13 +194,12 @@ module smc_cpu_mem_backdoor
                     end
                     if (bank == 0) begin
                         $display(
-                            "[smc_cpu_mem_backdoor] stripe-loaded scratch %s (bank0 nonzero=%0d)",
+                            "[smc_cpu_mem_dv] stripe-loaded scratch %s (bank0 nonzero=%0d)",
                             scratch_path, loaded_words
                         );
                     end
                 end else if (bank == 0) begin
-                    $display("[smc_cpu_mem_backdoor] WARN: missing scratch %s",
-                             scratch_path);
+                    $display("[smc_cpu_mem_dv] WARN: missing scratch %s", scratch_path);
                 end
             end
         end
