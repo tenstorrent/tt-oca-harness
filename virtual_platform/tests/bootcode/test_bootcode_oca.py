@@ -375,11 +375,25 @@ def test_unsigned_image_refused_on_a_secure_lifecycle(vp, bootcode_elf, oca_imag
     is_secure_boot_active(). This is the case that proves device-side enforcement
     works -- every other signed test has the manifest asking for verification, so
     none of them would notice if the device's opinion were ignored.
+
+    The refusal is the library's, not ours. It used to be ours: the ROM's
+    is_key_authorized callback saw an unsigned manifest and emitted
+    PUBK_NO_SIGNATURE. The validator now rejects earlier, at the signature-class
+    control -- secure boot in force while neither secure_boot_classic nor
+    secure_boot_pqc names a family to verify by -- so the callback is never
+    reached. Earlier and in the library is the better place for it; assert the
+    outcome rather than the old route to it.
     """
     t = vp(_cfg("oca_unsigned_prod", bootcode_elf, oca_images["unsigned"],
                 otp="tests/fuse_maps/prod_secure.yaml"))
     t.spawn()
-    t.expect("PUBK_NO_SIGNATURE", timeout=TIMEOUT)
-    match = t.expect_status("SEP_MSG_INVALID_KEY_HASH", type="ERROR", timeout=TIMEOUT)
+    # 0x0003_0024 == OCA_FAIL_SIGNATURE_CLASS_CONTROL. Pinning the code keeps
+    # this honest: refusing for some unrelated reason would also produce an
+    # ERROR, and would pass a test that only looked for one. Match the per-slot
+    # verdict, which precedes the ERROR -- the final MANIFEST_BOOT_FAIL carries
+    # the same code but lands after it, and expect()'s default error pattern
+    # would trip on the ERROR first.
+    t.expect(r"MANIFEST_ERR=0x00030024", timeout=TIMEOUT)
+    match = t.expect_status("SEP_MSG_MANIFEST_SECURE_BOOT", type="ERROR", timeout=TIMEOUT)
     assert "ERROR" in match.group(0)
     t.close()
