@@ -1,0 +1,20 @@
+# SIP_PUBK_HASH1 provisioned with the SHA-256 of the dev0 RSA-3072 modulus.
+#
+# configs/oca_sip_key_boot_test.yaml selects public_key_select_classic bit 24,
+# which is SIP_PUBK_HASH1 -- the SiP owner's second root key slot. Same digest as
+# the CHIPLET_PUBK_HASH0 map, because it is the same signing key; only which bank
+# the device is asked to trust it from differs.
+#
+# This bank was inside a generic RESERVED block until the eFuse model was
+# re-synced to the RDL, so slot 24 was mapped by the ROM but unreachable here.
+lc_state: TEST_DEV
+sboot_dis: 0
+sip_pubk_hash1:
+  - 0x23d07646
+  - 0xbd5e6b73
+  - 0x5bf73151
+  - 0x5e352a06
+  - 0x0e79e19a
+  - 0xb572c880
+  - 0x1f0c9bee
+  - 0xe3c304ff

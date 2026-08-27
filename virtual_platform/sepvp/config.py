@@ -30,6 +30,11 @@ class SimConfig:
     flash_image: Optional[PathLike] = None      # prebuilt raw .bin staged to data/flash_memory.bin
     spi_preload: Optional[PathLike] = None      # $readmemh .spi_preload image, loaded VP-side
     otp: Optional[PathLike] = None              # YAML fuse-map path
+    # Raw OCA bundle staged into the SMC SRAM window for the recovery / secondary
+    # boot path, where the manifest arrives from the SMC rather than SPI flash.
+    # A BUNDLE, not a combined SPI image: that path resolves the payload from the
+    # manifest's own payload_offset, which for a bundle is already body_size.
+    smc_sram_image: Optional[PathLike] = None
     # --- boot straps (och_sep_ss1.smc.*) ---
     boot: str = "secondary"                     # "primary" (SPI boot) | "secondary" (wait SMC)
     recovery: bool = False                      # boot_recovery: wait for SMC manifest (implies primary)
@@ -68,6 +73,13 @@ class SimConfig:
             ("bool", "och_sep_ss1.scratch_cold.sep_status.enable", self.sep_status),
         ]
 
+    def smc_overrides(self) -> List[Override]:
+        """SMC-SRAM staged manifest, as an absolute path the platform can open."""
+        if not self.smc_sram_image:
+            return []
+        return [("string", "och_sep_ss1.smcSramBackdoorFile",
+                 str(Path(self.smc_sram_image).resolve()))]
+
     def fuse_overrides(self) -> List[Override]:
         return fuses.load(self.otp) if self.otp else []
 
@@ -77,7 +89,8 @@ class SimConfig:
         Absolute path overrides (targets/configFile) are added by the backend,
         which knows the platform paths; they are kept out of SimConfig on purpose.
         """
-        return [*self.strap_overrides(), *self.fuse_overrides(), *self.extra_ini]
+        return [*self.strap_overrides(), *self.smc_overrides(),
+                *self.fuse_overrides(), *self.extra_ini]
 
     def __str__(self):
         return (

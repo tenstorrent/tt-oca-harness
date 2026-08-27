@@ -40,6 +40,25 @@ BOOTCODE_ELF = BOOTCODE_DIR / BOOTCODE_OT_BUILD_DIR / "boot_rom.elf"
 # `make -C <bootrom> secure_boot_spi` (there is no checked-in prebuilt/ anymore).
 SECURE_BOOT_PRELOAD = BOOTCODE_DIR / "build" / "secure_boot.spi_preload"
 
+# OCA boot-manifest images (the format the ROM parses). Raw .bin rather than
+# .spi_preload: these are oca-combined SPI images placing the bundle at the slot
+# offsets the ROM reads, and SimConfig(flash_image=...) wants the raw form.
+# Built by `make -C <bootrom> oca-images`.
+OCA_NS_IMAGE  = BOOTCODE_DIR / "build" / "oca_non_secure_boot.bin"
+OCA_SEC_IMAGE = BOOTCODE_DIR / "build" / "oca_secure_boot.bin"
+OCA_ENC_IMAGE = BOOTCODE_DIR / "build" / "oca_encrypted_boot.bin"
+OCA_OTP_IMAGE = BOOTCODE_DIR / "build" / "oca_otp_key_boot.bin"
+# A bare bundle, for the SMC-SRAM path (see SimConfig.smc_sram_image).
+OCA_SMC_BUNDLE = BOOTCODE_DIR / "build" / "oca_smc_bundle.bin"
+OCA_ID_IMAGE = BOOTCODE_DIR / "build" / "oca_identity_boot.bin"
+OCA_PQC_IMAGE = BOOTCODE_DIR / "build" / "oca_pqc_boot.bin"
+OCA_ECDSA_IMAGE = BOOTCODE_DIR / "build" / "oca_ecdsa_boot.bin"
+OCA_DER_IMAGE = BOOTCODE_DIR / "build" / "oca_der_boot.bin"
+OCA_AES128_IMAGE = BOOTCODE_DIR / "build" / "oca_aes128_boot.bin"
+OCA_SIP_KEY_IMAGE = BOOTCODE_DIR / "build" / "oca_sip_key_boot.bin"
+OCA_MULTI_IMAGE = BOOTCODE_DIR / "build" / "oca_multi_image_boot.bin"
+OCA_NO_BL1_IMAGE = BOOTCODE_DIR / "build" / "oca_no_bl1_boot.bin"
+
 # --- SEP DV firmware engine (replaces the old fw/sep/tests tree) --------------
 # Tests live in hw/sys/sep/dv/fw/tests/ and are built by the shared engine
 # (`make ocah-dv-fw-tests TARGET=sep TEST=<name>` at the repo root).

@@ -181,6 +181,54 @@ def secure_boot_preload(request):
     return paths.SECURE_BOOT_PRELOAD
 
 
+@pytest.fixture(scope="session")
+def oca_images(request):
+    """Build (unless --no-build) the three OCA boot images and return their paths.
+
+    Returns a dict keyed "unsigned" / "signed" / "encrypted" / "otp_key" /
+    "smc_bundle". One fixture rather
+    than three because they come from a single make target and share every
+    prerequisite, so splitting them would just triple the build check.
+
+    container_ok=False for the same reason as secure_boot_preload: the pack step
+    is Python and wants uv, which the toolchain container does not carry. The BL1
+    payload it packs needs a host RISC-V toolchain -- without one this skips
+    rather than fails, which is a coverage hole worth knowing about.
+    """
+    imgs = {
+        "unsigned":  paths.OCA_NS_IMAGE,
+        "signed":    paths.OCA_SEC_IMAGE,
+        "encrypted": paths.OCA_ENC_IMAGE,
+        # Signed with the same dev0 key, but public_key_select_classic names an
+        # OTP anchor (CHIPLET_PUBK_HASH0) instead of a ROM digest slot.
+        "otp_key":   paths.OCA_OTP_IMAGE,
+        # Bare bundle for the SMC-SRAM path, not a combined SPI image.
+        "smc_bundle": paths.OCA_SMC_BUNDLE,
+        # Manifest bound to a chiplet identity via usage_constraints.
+        "identity":  paths.OCA_ID_IMAGE,
+        "pqc":       paths.OCA_PQC_IMAGE,
+        "ecdsa":     paths.OCA_ECDSA_IMAGE,
+        "der":       paths.OCA_DER_IMAGE,
+        "aes128":    paths.OCA_AES128_IMAGE,
+        "sip_key":   paths.OCA_SIP_KEY_IMAGE,
+        "multi":     paths.OCA_MULTI_IMAGE,
+        "no_bl1":    paths.OCA_NO_BL1_IMAGE,
+    }
+    if request.config.getoption("build"):
+        res = _make(request.config, "-C", str(paths.BOOTCODE_DIR),
+                    "oca-images", cwd=paths.OCAH_ROOT, container_ok=False)
+        if res.returncode != 0:
+            pytest.skip(
+                "oca-images build failed (tt-boot-manifest submodule initialized? "
+                "uv and a RISC-V toolchain on PATH?):\n"
+                f"{res.stdout[-1500:]}\n{res.stderr[-1500:]}")
+    missing = [str(p) for p in imgs.values() if not p.is_file()]
+    if missing:
+        pytest.skip(f"OCA images not present: {', '.join(missing)}; "
+                    "build them or drop --no-build")
+    return imgs
+
+
 @pytest.fixture
 def fw_test_builder(request):
     """Return build(name) -> ELF path for a hw/sys/sep/dv/fw test (skips on build failure).

@@ -107,15 +107,7 @@ def test_sep_status_can_be_disabled(vp, bootcode_elf):
     t.close()
 
 
-@pytest.mark.skip(reason="needs a real PTOC manifest staged in SPI/SMC SRAM (future work)")
-def test_full_boot_to_bl1(vp, bootcode_elf):
-    """Full secure boot to BL1 handoff: reach SEP_MSG_STARTING_BL1 with no ERROR.
-
-    Requires staging a signed PTOC manifest + image in the SPI flash model (--spi) and/or
-    the SMC SRAM ring. Tracked as the next harness milestone.
-    """
-    t = vp(_cfg("boot_to_bl1", bootcode_elf, boot="primary", flash_image=None))  # SPI image TBD
-    t.spawn()
-    shared.expect_common_early(t, timeout=TIMEOUT)
-    t.expect_status("SEP_MSG_STARTING_BL1", timeout=TIMEOUT)
-    t.close()
+# The full-boot-to-BL1 milestone this file used to hold as a skipped placeholder
+# now lives in test_bootcode_oca.py, which stages real signed and encrypted OCA
+# images and reaches SEP_MSG_STARTING_BL1. Keeping the placeholder would report a
+# coverage gap that has been closed.

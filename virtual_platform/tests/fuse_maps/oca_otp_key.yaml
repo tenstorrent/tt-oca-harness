@@ -1,0 +1,23 @@
+# CHIPLET_PUBK_HASH0 provisioned with the SHA-256 of the dev0 RSA-3072 modulus.
+#
+# configs/oca_otp_key_boot_test.yaml selects public_key_select_classic bit 16,
+# which is CHIPLET_PUBK_HASH0 (see CHIPLET_PUBK_REVOKE's bit map in
+# sep_efuse_map.rdl -- select and revoke index the same key entries). The ROM
+# therefore takes its anchor from this bank instead of key_digests.c.
+#
+# The model now names this bank CHIPLET_PUBK_HASH0, matching the RDL.
+#
+# Word order matches plat_is_key_authorized()'s fuse_read_bytes(): word[0] holds
+# bits[31:0], so each word is four consecutive digest bytes read little-endian.
+# The digest is over the 384-byte MODULUS only, not the 388-byte RAW blob.
+lc_state: TEST_DEV
+sboot_dis: 0
+chiplet_pubk_hash0:
+  - 0x23d07646
+  - 0xbd5e6b73
+  - 0x5bf73151
+  - 0x5e352a06
+  - 0x0e79e19a
+  - 0xb572c880
+  - 0x1f0c9bee
+  - 0xe3c304ff

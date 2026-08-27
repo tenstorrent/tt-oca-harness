@@ -92,6 +92,19 @@ class SepVpHarness(Harness):
         overrides = [
             ("string", "och_sep_ss1.targets", str(elf)),
             ("string", "och_sep_ss1.configFile", str(paths.VEERISS_CONFIG.resolve())),
+            # The platform config ships `otbn.algorithm_type : otbn_loop`, a loop
+            # benchmark with no RSA in it, so RSA-3072 signature verification can
+            # never succeed under the default. Any signed manifest then fails with
+            # RSA_PKCS1_FAIL, which reads as a bad image rather than a stubbed
+            # accelerator -- that is exactly how the pre-existing
+            # test_ot_manifest_negative[rotate_to_backup] failure hid for so long.
+            #
+            # Set here rather than per test: the ROM links the OTBN RSA app
+            # unconditionally, so no sep-vp run of this firmware ever wants the
+            # loop model. A test that genuinely wants a different algorithm can
+            # still override it through SimConfig.extra_ini, which composes after
+            # these.
+            ("string", "och_sep_ss1.otbn.algorithm_type", "rsa_3072"),
         ]
         if self.config.spi_preload:
             overrides.append(

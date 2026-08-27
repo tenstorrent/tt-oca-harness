@@ -121,15 +121,27 @@ _TOML_REG_MAP = {
     "BL1_VERSION": ("array8", "bl1_version"),
     "BL2_VERSION": ("array8", "bl2_version"),
     "CHIPLET_UID": ("array8", "chiplet_uid"),
-    "SiP_PUBK": ("array8", "sip_pubk"),
+    "SiP_PUBK": ("array8", "sip_pubk_hash0"),
     "SiP_UID": ("array8", "sip_uid"),
-    "SYS_PUBK": ("array8", "sys_pubk"),
+    "SYS_PUBK": ("array8", "sys_pubk_hash"),
     "SYS_UID": ("array8", "sys_uid"),
     "STATUS_RPT": ("uint32", "status_rpt"),
     "SEP_ROM_CTRL": ("rom_ctrl", "sep_rom_ctrl"),
     "SEP_SPI_CTRL": ("spi_ctrl", None),
-    "PUBLIC_KEY_0": ("array8", "public_key_0"),
-    "PUBLIC_KEY_1": ("array8", "public_key_1"),
+    # The model used to call these PUBLIC_KEY_0/1; they are the RDL's
+    # CHIPLET_PUBK_HASH0/1. Both spellings are accepted so an existing TOML
+    # written against the old name keeps working.
+    "CHIPLET_PUBK_HASH0": ("array8", "chiplet_pubk_hash0"),
+    "CHIPLET_PUBK_HASH1": ("array8", "chiplet_pubk_hash1"),
+    "PUBLIC_KEY_0": ("array8", "chiplet_pubk_hash0"),
+    "PUBLIC_KEY_1": ("array8", "chiplet_pubk_hash1"),
+    "SIP_PUBK_HASH1": ("array8", "sip_pubk_hash1"),
+    # Identity fuses. Reachable only since the model gained these registers --
+    # they were inside a generic RESERVED block before, so a manifest with
+    # identity usage constraints could not be tested at all.
+    "SEP_CHIPLET_ID": ("array8", "sep_chiplet_id"),
+    "SEP_SIP_ID": ("array8", "sep_sip_id"),
+    "SEP_SYS_ID": ("array8", "sep_sys_id"),
 }
 
 # SEP_SPI_CTRL is one wide register whose named fields fan out to distinct sep-vp
