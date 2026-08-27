@@ -2508,10 +2508,16 @@ locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>287</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>63</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Unused peripheral interrupt slot; tied to zero</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>peripheral_interrupts_o</code> is initialized to <code>'0</code>, and bit 31 is never
-overwritten in <code>smc_peripherals.sv</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI hang detector OR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
+while any detector&#8217;s <code>irq_o</code> is high, so software must read
+<code>SMC_BASE_CONFIG.HANG_DET_{SYS_AXI,SEP_AXI,DATA_ACCEL}_CTRL</code> to identify the
+stalled master, and clears the condition through those same registers. The
+CPU AXI master is not covered here; it is covered by the watchdog.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> OR-reduces <code>hang_irq_sys_axi | hang_irq_sep_axi |
+hang_irq_data_accel</code> onto <code>axi_hang_irq_o</code>; <code>smc.sv</code> routes that back into
+<code>u_smc_peripherals</code>, and <code>smc_peripherals.sv</code> drives
+<code>peripheral_interrupts_o[31] = axi_hang_irq_i</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[319:288]</code></p></td>
@@ -2573,7 +2579,10 @@ tail bits in <code>smc_base.sv</code>.</p></td>
 <ul>
 <li>
 <p>Peripheral interrupt construction is defined in
-<code>hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv</code>.</p>
+<code>hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv</code>. Bit 31 is the one
+peripheral source that originates outside that module: the AXI hang detectors
+live in <code>hw/sys/smc/rtl/smc_base.sv</code> and their OR is routed back in through
+<code>smc.sv</code> so the whole peripheral vector still has a single assembly point.</p>
 </li>
 <li>
 <p>Mailbox interrupt construction is defined in <code>hw/ip/mailbox/rtl/mailbox.sv</code>
@@ -2599,7 +2608,7 @@ external interrupt bit is defined by the enclosing SoC integration.</p>
 <div class="paragraph">
 <p>The SMC uses a standards-compliant RISC-V Platform-Level Interrupt
 Controller (PLIC) at 0xC400_0000–0xC43F_FFFF (4MB) to manage 332
-interrupt sources (326 active, 6 reserved) with multi-core delivery in
+interrupt sources (327 active, 5 reserved) with multi-core delivery in
 the 4-core configuration. The PLIC provides hardware prioritization,
 per-core routing, and configurable thresholds for efficient, parallel
 interrupt handling. The SMC-driven contribution to global interrupt
