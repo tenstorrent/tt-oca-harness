@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
-from cocotbext.axi import AxiProt, AxiResp
+from ocah_axi_vip import PROT_NONSECURE, PROT_PRIVILEGED, RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -63,8 +63,8 @@ SMC_FILTER_POISON_LO = 0xBADCAB1E
 AXI_TIMEOUT_NS = 200_000
 FILTER_READY_POLLS = 64
 FILTER_READY_STEP = 4
-SECURE_PROT = AxiProt.PRIVILEGED  # prot[1]=0
-NONSECURE_PROT = AxiProt.PRIVILEGED | AxiProt.NONSECURE  # 0x3
+SECURE_PROT = PROT_PRIVILEGED  # prot[1]=0
+NONSECURE_PROT = PROT_PRIVILEGED | PROT_NONSECURE  # 0x3
 
 
 class smu_axi_filter_allow_ns_test_seq:
@@ -87,13 +87,15 @@ class smu_axi_filter_allow_ns_test_seq:
     ):
         async def _do():
             if write:
-                beat = await master.write(
-                    addr, wdata.to_bytes(4, "little"), prot=prot
+                result = await master.write_bytes_result(
+                    addr, wdata.to_bytes(4, "little"), prot=prot,
+                    check_response=False,
                 )
-                return None, beat.resp
-            beat = await master.read(addr, 4, prot=prot)
-            val = int.from_bytes(bytes(beat.data), "little")
-            return val, beat.resp
+                return None, result.resp
+            result = await master.read_bytes_result(
+                addr, 4, prot=prot, check_response=False
+            )
+            return result.data, result.resp
 
         try:
             return await with_timeout(_do(), AXI_TIMEOUT_NS, "ns")
@@ -230,13 +232,13 @@ class smu_axi_filter_allow_ns_test_seq:
             master,
             probe,
             prot=SECURE_PROT,
-            want=AxiResp.OKAY,
+            want=RESP_OKAY,
             label="S1_secure_wr_ready",
             write=True,
             wdata=0xA5A50001,
         )
         s_rd, s_rr = await self._axi_rw(master, probe, prot=SECURE_PROT, write=False)
-        if s_rr != AxiResp.OKAY:
+        if s_rr != RESP_OKAY:
             raise AssertionError(
                 f"S1 secure read expected OKAY got {resp_name(s_rr)} data=0x{s_rd:08x}"
             )
@@ -246,7 +248,7 @@ class smu_axi_filter_allow_ns_test_seq:
             master,
             probe,
             prot=NONSECURE_PROT,
-            want=AxiResp.DECERR,
+            want=RESP_DECERR,
             label="S1_ns_wr_block",
             write=True,
             wdata=0xB5B50002,
@@ -254,7 +256,7 @@ class smu_axi_filter_allow_ns_test_seq:
         ns_rd, ns_rr = await self._axi_rw(
             master, probe, prot=NONSECURE_PROT, write=False
         )
-        if ns_rr != AxiResp.DECERR:
+        if ns_rr != RESP_DECERR:
             raise AssertionError(
                 f"S1 NS read expected DECERR got {resp_name(ns_rr)} data=0x{ns_rd:08x}"
             )
@@ -274,13 +276,13 @@ class smu_axi_filter_allow_ns_test_seq:
                 master,
                 probe,
                 prot=prot,
-                want=AxiResp.OKAY,
+                want=RESP_OKAY,
                 label=f"S2_{label}_wr_ready",
                 write=True,
                 wdata=0xC5C50003,
             )
             rd, rr = await self._axi_rw(master, probe, prot=prot, write=False)
-            if rr != AxiResp.OKAY:
+            if rr != RESP_OKAY:
                 raise AssertionError(
                     f"S2 {label} read expected OKAY got {resp_name(rr)} "
                     f"data=0x{rd:08x}"
@@ -301,7 +303,7 @@ class smu_axi_filter_allow_ns_test_seq:
                 master,
                 probe,
                 prot=prot,
-                want=AxiResp.DECERR,
+                want=RESP_DECERR,
                 label=f"S3_{label}_block",
                 write=False,
             )
