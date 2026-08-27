@@ -27,4 +27,4 @@ localparam longint unsigned OTBN_INSN_CNT_BASE_ADDR = 64'h24;
 localparam longint unsigned OTBN_LOAD_CHECKSUM_BASE_ADDR = 64'h28;
 
 
-endpackage;
+endpackage
