@@ -37,6 +37,9 @@ module jtag_tmp
     
     // TMP controller state machine
     tmp_state_e tmp_state_q, tmp_state_d;
+    logic [$bits(tmp_state_e)-1:0] tmp_state_q_bits;
+
+    assign tmp_state_q = tmp_state_e'(tmp_state_q_bits);
     
     // Internal control signals
     logic bypass_escape_condition;
@@ -95,7 +98,7 @@ module jtag_tmp
         .clk_i  (tap_ctrl_i.tck),
         .rst_ni (tap_ctrl_i.trst_n),
         .d_i    (tmp_state_d),
-        .q_o    (tmp_state_q)
+        .q_o    (tmp_state_q_bits)
     );
 
     //--------------------------------------------------------------------------

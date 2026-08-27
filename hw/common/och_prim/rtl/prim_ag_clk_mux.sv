@@ -17,6 +17,8 @@ module prim_ag_clk_mux #(
 		output logic o_clk
 	);
 
+	`include "prim_assert.sv"
+
 	logic sel_sync_clk0, sel_sync_clk1;
 	logic gated_clk0, gated_clk1;
 	logic inv_clk0, inv_clk1;
