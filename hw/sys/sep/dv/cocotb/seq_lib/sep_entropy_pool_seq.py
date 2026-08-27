@@ -21,7 +21,7 @@ from sep_reg_meta import ENTROPY_SOURCE
 
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-_XBAR = Path(__file__).resolve().parents[3] / "rtl" / "crossbars" / "sep_local_axi_xbar.sv"
+_XBAR = Path(__file__).resolve().parents[3] / "rtl" / "sep_local_axi_xbar.sv"
 _FIFO = Path(__file__).resolve().parents[3] / "rtl" / "sep_entropy_fifo.sv"
 
 

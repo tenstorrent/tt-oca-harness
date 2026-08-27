@@ -325,7 +325,6 @@ module smc
 
   smc_base # (
     .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),           // Enable address remap in the output fabric
-    .LOCAL_ALIAS_REGION_SIZE            (smc_pkg::LOCAL_ALIAS_REGION_SIZE), // Use smc address space for local alias region
     .SMC_CPU_CONFIG                     (SMC_CPU_CONFIG)
   ) u_smc_base (
     // Clocks from PLLs
