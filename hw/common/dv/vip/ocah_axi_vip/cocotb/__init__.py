@@ -62,6 +62,9 @@ from .ocah_axi_ref_model import (
 )
 from .ocah_axi_scoreboard import OcahAxiScoreboard
 from .ocah_axi_results import (
+    PROT_INSTRUCTION,
+    PROT_NONSECURE,
+    PROT_PRIVILEGED,
     RESP_DECERR,
     RESP_EXOKAY,
     RESP_OKAY,
@@ -69,6 +72,7 @@ from .ocah_axi_results import (
     RESP_TIMEOUT,
     OcahAxiReadResult,
     OcahAxiWriteResult,
+    resp_name,
 )
 
 
@@ -200,6 +204,11 @@ __all__ = [
     "RESP_SLVERR",
     "RESP_DECERR",
     "RESP_TIMEOUT",
+    "resp_name",
+    # AxPROT bit values
+    "PROT_PRIVILEGED",
+    "PROT_NONSECURE",
+    "PROT_INSTRUCTION",
 ]
 
 __version__ = "0.2.0"
