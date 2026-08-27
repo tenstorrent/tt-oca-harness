@@ -1,10 +1,15 @@
-# ocah_checker — Common Cocotb Checker Evidence
+# ocah_checker — Common Checker Evidence
 
 SPDX-License-Identifier: Apache-2.0
 
 `ocah_checker` supplies protocol-neutral comparison evidence, required-check
-tracking, timeout semantics, and finalization for OCAH cocotb tests. Protocol
-legality remains in each `ocah_<protocol>_vip` checker.
+tracking, timeout semantics, and finalization for OCAH tests. Protocol
+legality remains in each `ocah_<protocol>_vip` checker. The cocotb layer is
+`cocotb/checker.py` (`OcahChecker`); the SV-UVM mirror is
+`uvm/ocah_checker_uvm_pkg.sv` (class `ocah_checker`), which every
+`ocah_<protocol>_vip` UVM checker extends — the per-protocol classes carry
+only their protocol checks and identity, never a copy of the evidence
+mechanics.
 
 ## Public API
 
@@ -109,6 +114,17 @@ The ownership boundary is:
   models;
 - tests/sequences: expected values, configuration, and one mandatory
   finalization call.
+
+## SV-UVM layer
+
+`uvm/ocah_checker_uvm_pkg.sv` carries the same grammar and policy for SV-UVM:
+`expect_equal`/`expect_true`/`expect_equal_words` route PASS evidence through
+`uvm_info` (`UVM_LOW`) and FAIL evidence through `uvm_error` so the `uvm-log`
+parse policy fails the run, and `finalize()` emits the `CHECKER_SUMMARY` once,
+erroring on zero checks (when required) and on missing `required_ids`.
+Dependent VIP manifests list the package ahead of their own; the flow's
+source-list expansion dedup-merges the entry when several VIPs are consumed
+together.
 
 ## Runner authority
 
