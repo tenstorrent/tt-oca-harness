@@ -5,9 +5,8 @@ Open-source DV environment for the SMC (System Management Controller) subsystem.
 Flow = cocotb/PyUVM on Verilator (functional backend) and VCS/Xcelium (coverage),
 driven by `tools/dv/run_dv.py`. See `docs/index.adoc` for the chapter set:
 `docs/SMC_TB_ARCH.adoc` for test development, environment setup and run
-recipes, `docs/SMC_VPLAN.adoc` for the verification plan, the porting plan and
-the recorded sign-off evidence, and `docs/SMC_FCOV.adoc` for the coverage
-pipeline.
+recipes, `docs/SMC_VPLAN.adoc` for the verification plan, and
+`docs/SMC_FCOV.adoc` for the coverage pipeline.
 
 **Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue

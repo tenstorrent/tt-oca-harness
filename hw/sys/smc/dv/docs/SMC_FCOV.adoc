@@ -6,38 +6,149 @@
 
 === Overview
 
-Verilator does not support SystemVerilog covergroups, so the SMC suite
-collects functional coverage Python-side: each test records what it
-exercised, an aggregator merges the per-test records into one report, and
-the commercial simulators collect RTL code coverage over the same tests.
-This chapter describes both halves and the baselines they are measured
-against.
+This document defines functional coverage intent for the OCAH open-source SMC
+testbench and its PyUVM/Verilator flow.
 
-[[sec-3-functional-coverage-pipeline]]
-=== Functional Coverage Pipeline
+Verilator does not compile SystemVerilog `covergroup`, `coverpoint`, or `cross`.
+The SMC open-source path therefore uses Python-side coverage/observation
+counters in `SmcScoreboard` for public CI, while SV covergroups, assertion
+coverage, and full code coverage are collected with commercial simulators.
 
-The SMC OSS TB began as observation-only, so simulator-side coverage was limited.
-Instead the scoreboard emits *functional event records* that can be aggregated
-across runs by a small Python script.
+[cols=",",options="header",]
+|===
+|Field |Value
+|Reference VPLAN |`SMC_VPLAN.adoc`
+|Reference architecture |`SMC_TB_ARCH.adoc`
+|Open-source framework |PyUVM on cocotb
+|Open-source simulator |Verilator
+|===
 
-[[how-it-works]]
-==== How it works
-
-`hw/sys/smc/dv/cocotb/env/smc_scoreboard.py` maintains event bins and emits a
-`FUNC_COV_VALUE bin=<name> value=<...>` log line on every observation:
+=== Coverage Goals
 
 [cols=",,",options="header",]
-|========================================================================================================================
-|Bin |Captures |Ceiling
-|`reset_op` |Each `SmcResetOp` enum hit (SAMPLE, COLD_RST_LO/HI, …) |*8* (all enum values)
-|`reset_state` |4-tuple of post-reset stable signals (and mid-glitch via RAW_SAMPLE) |3 (DUT synchronously releases bits)
-|`i2c_state` |(resolvable, cg_en) |1 (no I2C cg toggle stimulus)
-|`clk_bucket` |(ref_edges // 50, smc_edges // 50, periph_edges // 50) |grows with seed count
-|`irq_state` |(sync_irq, gpio_irq_any, uart_irq_any) |1 (no IRQ source)
-|`gpio_state` |(core2pad_any, core2pad_en_any, pad2core_en_any) |1 (no GPIO driver)
-|`axil_master` |(any_master_active,) |1 (no AXI master traffic)
-|`protocol_vip` |`SmcProtocolVipItem` kind/test/proxy triple |grows with promoted tests
-|========================================================================================================================
+|===
+|Metric |Target |Open-Source Collection Path
+|Functional coverage |Every `FUNC_COV_VALUE` bin named below is hit by the
+canonical suite |Python-side counters in `SmcScoreboard`
+|Line/branch/FSM/condition coverage |Collected for signoff in the commercial
+flow |VCS/Xcelium coverage databases (`--cov`)
+|Assertion coverage |Collected for enabled assertions in the commercial flow
+|Xcelium UCIS / IMC
+|===
+
+SAMPLE-only bins (`i2c_state`, `irq_state`, `gpio_state`, `axil_master`)
+saturate at unique=1 until an active driver exists; growing them is a
+stimulus problem, not a missing coverpoint.
+
+=== Coverage Summary
+
+[cols=",,",options="header",]
+|===
+|Category |Covergroup / Coverage Model |Collection Notes
+|Reset operations |`reset_op` |Each `SmcResetOp` enum, ceiling 8
+|Post-reset state |`reset_state` |4-tuple of post-reset stable signals;
+mid-glitch via RAW_SAMPLE
+|I2C observability |`i2c_state` |(resolvable, cg_en)
+|Clock liveness |`clk_bucket` |(ref/smc/periph edges // 50); grows with seed
+|IRQ observability |`irq_state` |(sync_irq, gpio_irq_any, uart_irq_any)
+|GPIO observability |`gpio_state` |(core2pad_any, core2pad_en_any,
+pad2core_en_any)
+|AXI-Lite master activity |`axil_master` |(any_master_active,)
+|Protocol-VIP evidence |`protocol_vip` |`SmcProtocolVipItem` kind/test/proxy
+triple; grows with promoted tests
+|===
+
+=== Coverage Definitions
+
+[[how-it-works]]
+`hw/sys/smc/dv/cocotb/env/smc_scoreboard.py` maintains event bins and emits a
+`FUNC_COV_VALUE bin=<name> value=<...>` log line on every observation.
+
+==== `reset_op`
+
+*Description*: Covers each `SmcResetOp` enum hit (SAMPLE, COLD_RST_LO/HI, …).
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|Reset operation |all 8 `SmcResetOp` values
+|===
+
+==== `reset_state`
+
+*Description*: Covers the 4-tuple of post-reset stable signals, including
+mid-glitch via RAW_SAMPLE.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|Post-reset tuple |ceiling 3 (DUT synchronously releases bits)
+|===
+
+==== `i2c_state`
+
+*Description*: (resolvable, cg_en). Unique count stays 1 until I2C clock-gate
+toggle stimulus exists.
+
+==== `clk_bucket`
+
+*Description*: `(ref_edges // 50, smc_edges // 50, periph_edges // 50)`. Grows
+with seed count because `randomize_timing(seed)` varies clock periods and
+`smc_clk_multi_window_test_seq` picks random window sizes per seed.
+
+==== `irq_state`
+
+*Description*: `(sync_irq, gpio_irq_any, uart_irq_any)`. Unique count stays 1
+until an IRQ source is actively driven.
+
+==== `gpio_state`
+
+*Description*: `(core2pad_any, core2pad_en_any, pad2core_en_any)`. Unique count
+stays 1 until a GPIO driver is bound.
+
+==== `axil_master`
+
+*Description*: `(any_master_active,)`. Unique count stays 1 until AXI master
+traffic is present; CSR tests grow this through SEP_IN.
+
+==== `protocol_vip`
+
+*Description*: `SmcProtocolVipItem` kind/test/proxy triple. Grows with each
+promoted protocol-VIP test.
+
+=== VPLAN to FCOV Traceability
+
+[cols=",",options="header",]
+|===
+|VPLAN Test / Group |Coverage
+|`smc_cold_reset_test` / reset family |`reset_op`, `reset_state`
+|`smc_canonical_smoke_test` |`reset_op`, `reset_state`, SAMPLE bins
+|`smc_clk_multi_window_test` / clock family |`clk_bucket`
+|`smc_i2c_master_target_test` / I2C family |`i2c_state`, `protocol_vip`
+|`smc_gpio_irq_active_test` / GPIO family |`gpio_state`, `irq_state`,
+`protocol_vip`
+|`smc_register_sanity_test` / CSR family |`axil_master`, `protocol_vip`
+|`smc_mailbox_irq_test` |`irq_state`, `protocol_vip`
+|`project_p0` / `canonical_top20` |union of the bins above plus
+`protocol_vip` for each promoted area
+|===
+
+=== Collection Strategy
+
+[cols=",",options="header",]
+|===
+|Flow |Strategy
+|Verilator open-source CI |Python-side `FUNC_COV_VALUE` lines in
+`SmcScoreboard`
+|Aggregator |Scan one or more run dirs and report unique events per bin plus
+the union across runs
+|Commercial simulation |`--cov` on Xcelium emits UCIS under
+`<run_dir>/<test>/coverage/scope/`; `cov_merge` / `cov_report` call Cadence IMC
+|Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion
+coverage
+|Closure triage |Grow SAMPLE-only bins with an active driver; keep PLL/PVT
+placeholder windows out of feature PASS
+|===
 
 [[aggregator-script]]
 ==== Aggregator script
@@ -98,48 +209,8 @@ if __name__ == "__main__":
     sys.exit(main(sys.argv))
 ----
 
-[[baselines]]
-==== Baselines
-
-Single-run output from the historical 22-test observability baseline (seed 1):
-
-....
-  axil_master    unique=  1
-  clk_bucket     unique=  6
-  gpio_state     unique=  1
-  i2c_state      unique=  1
-  irq_state      unique=  1
-  reset_op       unique=  8
-  reset_state    unique=  3
-  TOTAL=21
-....
-
-Five seeds widen `clk_bucket` from ~6 to ~20, because `randomize_timing(seed)`
-varies clock periods and `smc_clk_multi_window_test_seq` picks 8 random window
-sizes per seed. The 5-seed union reaches `clk_bucket unique=20`, `TOTAL=35`.
-
-[[coverage-progression-history]]
-==== Coverage progression history
-
-[cols=",,",options="header",]
-|============================================
-|Stage |Single seed |5-seed UNION
-|Original baseline (`smoke` 73 tests) |13 |17
-|Slim to 22 representative tests |13 |17
-|+ Cool reset op in repeated seq |15 |19
-|+ Seed-driven random clk windows |18 |32
-|+ RAW_SAMPLE op mid-glitch |21 |35
-|+ Denser RAW_SAMPLE probing |21 |35 (capped)
-|============================================
-
-35 was the natural ceiling of the pure-observability TB. Growing the four
-saturated bins (`axil_master`, `gpio_state`, `i2c_state`, `irq_state`) required
-an active driver — which the later AXI master / JTAG2AXI promotions delivered.
-
-'''''
-
 [[sec-4-simulator-side-coverage]]
-=== Simulator-Side Coverage
+==== Commercial simulator collection
 
 With `--cov` on Xcelium the runner instructs `xrun` to emit UCIS coverage data
 per test under `<run_dir>/<test>/coverage/scope/`:
@@ -157,4 +228,15 @@ The runner passes `-covworkdir <abs path>` and `-covoverwrite` to `xrun -R`.
 Without those, the sim stage wrote to a `./cov_work` relative to the cocotb test
 cwd and hit `*F,C58EXS` ("database already exists") on the second run.
 
-'''''
+=== Exclusions and Limitations
+
+[cols=",",options="header",]
+|===
+|Item |Reason
+|SV covergroups in Verilator |Unsupported by the tool
+|SAMPLE-only bins at unique=1 |No active driver yet; not a missing coverpoint
+|PLL / PVT placeholder windows |`pll_wrap` / `pvt_wrap` complete OKAY+0;
+handshake only, deferred from feature PASS
+|I3C CCC/IBI |Owned by IP-level DV
+|Coverage-progression history |Status record; kept in `local_records.adoc`
+|===

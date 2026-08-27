@@ -8,9 +8,16 @@
 # the complete VIP layer — both RAM responders ship even when a DUT wires only one.
 description = "OCAH AXI VIP SV-UVM compile layer (interface, sva/responders/cov, UVM package)"
 
-incdirs = ["hw/common/dv/vip/ocah_axi_vip/uvm"]
+incdirs = [
+  "hw/common/dv/vip/ocah_checker/uvm",
+  "hw/common/dv/vip/ocah_axi_vip/uvm",
+]
 
 sources = [
+  # Shared protocol-neutral evidence base (extended by this VIP's checker).
+  # Every dependent VIP manifest lists it; consuming several VIPs together
+  # dedup-merges the entry, so it compiles exactly once, first.
+  "hw/common/dv/vip/ocah_checker/uvm/ocah_checker_uvm_pkg.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   "hw/common/dv/vip/ocah_axi_vip/sv/ocah_axi_ram_responder.sv",

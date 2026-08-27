@@ -20,7 +20,9 @@
 //   ocah_axi_slave_config.svh     — slave cfg: vif, memory, one-shot
 //                                   injection (responses and response IDs)
 //   ocah_axi_master_config.svh    — master cfg: vif, geometry, watchdog
-//   ocah_axi_checker.svh          — CHK-*/CHECKER_SUMMARY evidence mechanics
+//   ocah_axi_checker.svh          — AXI checker identity over the shared
+//                                   ocah_checker evidence base
+//                                   (ocah_checker_uvm_pkg, issue #1132)
 //   ocah_axi_monitor.svh          — passive burst reconstruction (per-ID
 //                                   pairing; side-neutral bus observer)
 //   ocah_axi_ref_model.svh        — shadow memory + expected-item prediction
@@ -49,6 +51,7 @@
 package ocah_axi_uvm_pkg;
 
     import uvm_pkg::*;
+    import ocah_checker_uvm_pkg::*;
     `include "uvm_macros.svh"
 
     `include "ocah_axi_types.svh"
