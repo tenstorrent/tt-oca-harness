@@ -195,6 +195,19 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
         report_status(STATUS_TYPE_WARN, status_for_result(r));
         return OCA_BOOT_ERR_RESULT(r);
     }
+    // Record the determination for the rest of the ROM and for BL1. The library
+    // keeps it in the validation context, which does not outlive this function,
+    // so it has to be copied into bl0_state -- and nothing else writes this
+    // field: the old loader's secure_boot_enabled() used to, and dropping that
+    // left the flag permanently false. rom_main.c reads it to decide whether to
+    // print SBOOT_OFF, so a signed boot was reporting itself as unverified.
+    //
+    // `enabled` rather than `authenticated`: the field means "verification is
+    // enforced for this boot", which is what the old secure_boot_enabled()
+    // returned. A manifest that reached here with it set has also been verified,
+    // since oca_validate_manifest() would have refused otherwise.
+    get_bl0_state()->secure_boot = (vctx.secure_boot_enabled == OCA_SECURE_TRUE);
+
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_VALIDATED);
     simputs("MANIFEST_OK\n");
 
@@ -251,6 +264,11 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
         return OCA_BOOT_ERR_RESULT(r);
     }
     report_status(STATUS_TYPE_INFO, SEP_MSG_PAYLOAD_VALIDATED);
+    // Console evidence that the payload was verified, not just staged. The DV
+    // suite asserts on these strings rather than the SEP_STATUS stream, and its
+    // predecessor marker (PLD_HASH_OK, from the deleted manifest_crypto.c) left
+    // it with nothing to check once the payload hash moved into the library.
+    simputs("PAYLOAD_OK\n");
 
     g_body        = body;
     g_payload     = payload;
