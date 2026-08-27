@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
-from cocotbext.axi import AxiProt, AxiResp
+from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -80,9 +80,10 @@ class smu_axi_prot_encoding_decode_test_seq:
 
     async def _axi_rd(self, master, addr: int, prot: int):
         async def _do():
-            beat = await master.read(addr, 4, prot=AxiProt(prot))
-            val = int.from_bytes(bytes(beat.data), "little")
-            return val, beat.resp
+            result = await master.read_bytes_result(
+                addr, 4, prot=prot, check_response=False
+            )
+            return result.data, result.resp
 
         try:
             return await with_timeout(_do(), AXI_TIMEOUT_NS, "ns")
@@ -160,12 +161,12 @@ class smu_axi_prot_encoding_decode_test_seq:
 
         # Warm filter path with one known-good secure encoding.
         await self._await_resp(
-            master, probe, 0x1, AxiResp.OKAY, "S9_warm_secure"
+            master, probe, 0x1, RESP_OKAY, "S9_warm_secure"
         )
 
         for prot in range(8):
             label = PROT_LABELS[prot]
-            want = AxiResp.OKAY if prot in SECURE_ALLOWED else AxiResp.DECERR
+            want = RESP_OKAY if prot in SECURE_ALLOWED else RESP_DECERR
             _val, resp = await self._axi_rd(master, probe, prot)
             if resp != want:
                 raise AssertionError(

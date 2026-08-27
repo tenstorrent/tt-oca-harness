@@ -32,4 +32,4 @@ localparam longint unsigned HMAC_MSG_LENGTH_LOWER_BASE_ADDR = 64'hE4;
 localparam longint unsigned HMAC_MSG_LENGTH_UPPER_BASE_ADDR = 64'hE8;
 
 
-endpackage;
+endpackage

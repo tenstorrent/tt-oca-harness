@@ -4,8 +4,8 @@
 package sep_efuse_pkg;
   import och_sep_top_addrmap_pkg::*;
 
-  function automatic longint unsigned efuse_offset(input longint unsigned addr);
-    return addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR;
+  function automatic int unsigned efuse_offset(input longint unsigned addr);
+    return int'(addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR);
   endfunction
 
   // -------------------------------------------------------------------------

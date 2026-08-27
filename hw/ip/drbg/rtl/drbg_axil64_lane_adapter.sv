@@ -184,9 +184,9 @@ module drbg_axil64_lane_adapter import drbg_pkg::*; import axi_pkg::*; #(
         case (state_q)
             StIdle: begin
                 axil64_rsp_o.aw_ready =
-                    !aw_pending_q && !(axil64_req_i.ar_valid || axil64_req_i.r_ready);
+                    !aw_pending_q && !axil64_req_i.ar_valid;
                 axil64_rsp_o.w_ready =
-                    !w_pending_q && !(axil64_req_i.ar_valid || axil64_req_i.r_ready);
+                    !w_pending_q && !axil64_req_i.ar_valid;
                 axil64_rsp_o.ar_ready =
                     !aw_pending_q && !w_pending_q && !axil64_req_i.aw_valid && !axil64_req_i.w_valid;
 

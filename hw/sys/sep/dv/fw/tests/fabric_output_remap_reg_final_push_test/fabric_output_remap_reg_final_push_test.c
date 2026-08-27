@@ -4,9 +4,7 @@
 /*
  * fabric_output_remap_reg_final_push_test
  *
- * Goal: output_remap_reg 86.36% -> 90%+ (needs 3.64% improvement)
- * Strategy: Full scan of remaining CSR toggle bits
- * Priority: second (medium difficulty; high success rate)
+ * Strategy: CSR field toggle coverage
  *
  * Focus on precise CSR-field toggle coverage in output_remap_reg
  */
@@ -207,7 +205,6 @@ static int test_attribute_flag_complete_toggle(void) {
 
 int main(void) {
     printf("Output Remap Reg Final Push Test\n");
-    printf("Goal: 86.36%% -> 90%%+ (needs 3.64%% improvement)\n");
     printf("Strategy: Full scan of remaining CSR toggle bits\n\n");
 
     // Initialize fabric system
@@ -243,7 +240,6 @@ int main(void) {
     }
 
     printf("\n=== OUTPUT REMAP REG FINAL PUSH TEST PASSED ===\n");
-    printf("Expected improvement: 86.36%% -> 90%+ coverage\n");
 
     test_pass("fabric_output_remap_reg_final_push_test");
     return TEST_PASS;

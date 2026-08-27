@@ -50,4 +50,4 @@ endfunction
 localparam longint unsigned TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_COUNTER_NUM = 64'h20;
 
 
-endpackage;
+endpackage

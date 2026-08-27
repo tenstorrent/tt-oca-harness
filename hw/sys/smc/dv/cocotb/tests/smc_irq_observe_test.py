@@ -3,8 +3,6 @@
 """SMC OSS PyUVM interrupt-observe test.
 
 DV-CARD:          SMC_007   ANCHOR: smc_irq_observe_test
-DV-CARD-REVISION: 3   RECORD-SHA256: a399ea1cc087130bcc95d3c95962fb1940e9e59cb611bea4b2b536edd3ef47ff
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
 """
 
 from __future__ import annotations
