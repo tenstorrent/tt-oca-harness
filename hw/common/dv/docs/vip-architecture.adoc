@@ -183,14 +183,12 @@ agent exists, its item and event surfaces follow the same protocol contract.
 DUT environments instantiate the OCAH VIP-level environment rather than a
 backend-specific agent.
 
-Commercial VIP integration is an adopter-owned adapter:
-
-* subclass or replace the OCAH VIP-level environment;
-* translate OCAH items to vendor transactions and responses back to OCAH items;
-* disable the OCAH monitor if the commercial monitor owns observation;
-* adapt the vendor analysis stream to OCAH events and checker items;
-* keep vendor interfaces and configuration behind compile guards and
-  `uvm_config_db`.
+Commercial VIP integration is an adopter-owned adapter behind the hooks the
+open tree ships (the opaque `vendor_cfg` extension, the `en_monitor` knob,
+the guarded vendor-interface nest, the factory-overridable environments).
+The normative contract — hook by hook, with the placement policy — is the
+*Template Contract* section of `hw/common/dv/vip/ocah_jtag_vip/README.md`;
+deployment-side guidance is <<shared-vip-commercial-deployment>>.
 
 Tests, VPLAN evidence, and DUT scoreboards stay independent of the selected
 backend.
