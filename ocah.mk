@@ -48,6 +48,7 @@ include $(OCAH_ROOT)/doc/doc.mk
 ## yosys Docker-by-default; see tools/docker/README.md and
 ## flows/synth/yosys/README.md).
 include $(OCAH_ROOT)/flows/lint/slang.mk
+include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
