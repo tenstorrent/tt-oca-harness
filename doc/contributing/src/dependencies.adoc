@@ -9,7 +9,6 @@
 This document is currently under development.
 
 - Check license requirements of external IPs
-- Do we use 64 bit or 32 bit RV Toolchain? Binary name implies 64, but linker errors when not using 32?
 ====
 
 This section outlines the system requirements and dependencies for the
@@ -37,7 +36,8 @@ and a docker container for synthesis tools:
 * *Python packages*: Managed by the repo-level `pyproject.toml` and `uv.lock`;
 run `make uv-sync` or `uv sync` from the repository root.
 * *Podman/Docker Containers*: Used for some workflows.
-* *RISC-V Toolchain*: `riscv64-unknown-elf-*` - used to compile firmware and bootcode - containerised alternative available
+* *RISC-V Toolchain*: `riscv64-unknown-elf-*` with support for both 32 bit and 64 bit architectures - used
+to compile firmware and bootcode - containerised alternative available
 
 === License Requirements
 
