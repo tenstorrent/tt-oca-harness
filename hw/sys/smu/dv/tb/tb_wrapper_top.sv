@@ -179,10 +179,10 @@ module smu_wrapper_uvm_top (
     sep_pkg::sep_cpu_trace_t sep_cpu_trace;
     sep_pkg::sep_straps_t    sep_straps;
 
-    dfd_trace_mem_pkg::SinkMemPktIn_s
-        [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
-    dfd_trace_mem_pkg::SinkMemPktOut_s
-        [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
+    trace_mem_pkg::SinkMemPktIn_s
+        [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_req;
+    trace_mem_pkg::SinkMemPktOut_s
+        [tn_pkg::TRC_RAM_INSTANCES-1:0] trc_resp;
     assign trc_resp = '0;
 
     i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;

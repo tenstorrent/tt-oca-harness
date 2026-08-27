@@ -23,13 +23,12 @@ sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test ha
 its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 
 - `docs/` — public verification plan, TB architecture, register/coverage notes.
-- `tb/` — SystemVerilog testbench top (`dtp_uvm_top`) plus Verilator stubs.
+- `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, shared by the cocotb and SV-UVM flows) and `dtp_tb_if`.
 - `env/` — UVM env: config, JTAG agent, AXI memory agent, scoreboard, TDR encoders.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
 - `dtp_sim_cfg.toml` — `tt-oca`-local simulation defaults, modes, bender targets, tool knobs.
-- `dtp_sim.core` — optional FuseSoC/CAPI-2 view (not parsed by the native flow).
 
 ## BFM Policy
 
@@ -142,7 +141,7 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
 ```
 
 Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
-with `+define+DTP_UVM_TB` (set by the `[frameworks.uvm]` overlay) switching it from the
+with the bare `+define+UVM` (set by the `[frameworks.uvm]` overlay) switching it from the
 cocotb ported shape to the self-contained SV-UVM shape. The class library
 mirrors the cocotb layout: `uvm/env/dtp_env_pkg.sv` (reusable environment:
 shared `ocah_jtag_vip` SV-UVM agent + `dtp_tap_fsm_checker` subscriber),

@@ -249,6 +249,10 @@ module sep_uvm_top
     output logic              o_cpu_run_ack_o,   // core run acknowledge (XMR-tapped)
     output logic              cpu_trace_valid_o, // retired-instruction valid
     output logic [31:0]       cpu_trace_addr_o,  // retired-instruction PC
+    output logic [31:0]       cpu_trace_insn_o,  // retired instruction encoding
+    output logic [4:0]        cpu_trace_ecause_o,   // exception cause (with dbg_cpu_trace_exc_o)
+    output logic              cpu_trace_interrupt_o, // exception was an interrupt
+    output logic [31:0]       cpu_trace_tval_o,  // trap value (faulting addr/insn)
     output logic              fw_done_o,         // firmware signaled completion
     output logic              fw_pass_o,         // completion was PASS
     output logic [7:0]        fw_char_o,         // firmware console byte
@@ -344,6 +348,19 @@ module sep_uvm_top
     // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
     // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
     output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
+    // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
+    // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
+    // SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to
+    // single" is this bridge. The external master still sees AxLEN=1;
+    // Lite has no AxLEN, so the split is not a frontdoor CSR. Addr is the
+    // local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
+    // m_axi ready/valid cones.
+    output logic        sys_csr_axil_arvalid_o,
+    output logic        sys_csr_axil_arready_o,
+    output logic [31:0] sys_csr_axil_araddr_o,
+    output logic        sys_csr_axil_awvalid_o,
+    output logic        sys_csr_axil_awready_o,
+    output logic [31:0] sys_csr_axil_awaddr_o,
     // Lifecycle status observability. security_disable and lc_sigint_err are DUT
     // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
     // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -496,20 +513,19 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // SEP DUT = sep_wrapper (smn_inbound driven by the flat m_axi_* external
     // master). Real memory macros + generic efuse model are internal (no
-    // mem/efuse responder buses). SPI now leaves the wrapper as the
-    // sep_io_pkg struct pair (sep_io_spi_req_o / sep_io_spi_rsp_i); the TB
-    // bridges it to the legacy single-lane pad ports below. The reset vector
-    // is a direct rst_vec input (the vendored VeeR tap dropped the TDR).
+    // mem/efuse responder buses). SPI leaves the wrapper as the sep_io_pkg
+    // struct pair (sep_io_spi_req_o / sep_io_spi_rsp_i); the TB bridges it to
+    // the scalar pad ports below. The reset vector is a direct rst_vec input
+    // (the vendored VeeR tap has no reset-vector TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
     // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT (3):
     // sep_crypto binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
     // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
-    // ([0]=Key Manager, [1]=crypto adapter, [2]=entropy pool). Passing 2 truncated
-    // that bind; sep_crypto.sv's g_drbg_endpoint_mux_width_check catches it, but
-    // only under simulators that evaluate elaboration-time $error -- VCS fails
-    // elaboration while Verilator silently skips the check, so this was latent in
-    // every Verilator run.
+    // ([0]=Key Manager, [1]=crypto adapter, [2]=entropy pool). Width 2 truncates
+    // that bind; sep_crypto.sv's g_drbg_endpoint_mux_width_check catches it under
+    // simulators that evaluate elaboration-time $error (VCS). Verilator skips
+    // that check, so the width must stay correct here.
     //
     // The third leg is NOT free. sep_entropy_fifo drives edn_req from the first
     // post-reset cycle, so once endpoint [2] is connected the DRBG grants it real
@@ -518,7 +534,18 @@ module sep_uvm_top
     // genbits_gen_last()): a fixed glen-blocks-per-seed model desynchronises at
     // the first extra Generate. Truncating to 2 to dodge that is not an option
     // either -- it left the dropped leg's inputs X-driven.
-    sep_wrapper #(.EXT_TRNG_NUM_AXIS(3)) u_dut (
+    //
+    // SEP_SEC_DISABLE_TOKEN is the metal expected digest, not an AXI register.
+    // Product RTL defaults it to 0, which no SHA-256 output matches. Bind the
+    // SHA-256 of the all-zero 32-byte token so a frontdoor write of zeros can
+    // take the match. This is the TB stand-in for the metal ECO; it does not
+    // force security_disable.
+    localparam bit [255:0] SEC_DIS_TB_DIGEST =
+        256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+    sep_wrapper #(
+        .EXT_TRNG_NUM_AXIS     (3),
+        .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
+    ) u_dut (
         // Clocks / resets
         .clk_i                        (clk_i),
         .clk_wdt_i                    (clk_wdt_i),
@@ -639,7 +666,7 @@ module sep_uvm_top
         // External debug bus
         .ext_debug_bus_o              ()
     );
-    // Legacy single-lane SPI pad bridge (see the struct boundary note above).
+    // Scalar SPI pad bridge from the wrapper struct port.
     assign spi_sck_o  = sep_io_spi_req_w.sck;
     assign spi_cs_n_o = sep_io_spi_req_w.cs_n;
     assign spi_mosi_o = sep_io_spi_req_w.sd[0];
@@ -1040,10 +1067,17 @@ module sep_uvm_top
     // response above.
     assign cpu_trace_valid_o = cpu_trace_w.trace_rv_i_valid_ip;
     assign cpu_trace_addr_o  = cpu_trace_w.trace_rv_i_address_ip;
+    // Full retirement record for the cocotb CPU-trace monitor: the instruction
+    // encoding drives call/return decode (shadow call stack); ecause/interrupt/
+    // tval qualify the exception flag below into a diagnosable trap record.
+    assign cpu_trace_insn_o      = cpu_trace_w.trace_rv_i_insn_ip;
+    assign cpu_trace_ecause_o    = cpu_trace_w.trace_rv_i_ecause_ip;
+    assign cpu_trace_interrupt_o = cpu_trace_w.trace_rv_i_interrupt_ip;
+    assign cpu_trace_tval_o      = cpu_trace_w.trace_rv_i_tval_ip;
     assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.o_cpu_run_ack;
 
-    // SEP resets (internal nets, no longer sep ports): the reset-independence and
-    // wdt-reset-path tests read them. Same XMR-probe style as above.
+    // SEP resets (internal nets): the reset-independence and wdt-reset-path
+    // tests read them. Same XMR-probe style as above.
     assign dbg_sep_reset_n_o = `SEP_CORE.sep_reset_n;
     assign sep_cpu_reset_n_o = `SEP_CORE.sep_cpu_reset_n;
 
@@ -1074,6 +1108,20 @@ module sep_uvm_top
     `SCRATCH_COLD(0); `SCRATCH_COLD(1); `SCRATCH_COLD(2); `SCRATCH_COLD(3);
     `SCRATCH_COLD(4); `SCRATCH_COLD(5); `SCRATCH_COLD(6); `SCRATCH_COLD(7);
 `undef SCRATCH_COLD
+
+    // System-CSR AXI-Lite after u_system_csr_a2l_1. See port comment.
+    assign sys_csr_axil_arvalid_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar_valid;
+    assign sys_csr_axil_arready_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.ar_ready;
+    assign sys_csr_axil_araddr_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar.addr[31:0];
+    assign sys_csr_axil_awvalid_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw_valid;
+    assign sys_csr_axil_awready_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.aw_ready;
+    assign sys_csr_axil_awaddr_o =
+        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
 
     // ------------------------------------------------------------------
     // LC differential-integrity error inject.

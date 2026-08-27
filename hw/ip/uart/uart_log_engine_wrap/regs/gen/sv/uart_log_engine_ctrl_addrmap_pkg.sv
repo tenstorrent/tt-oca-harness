@@ -11,4 +11,4 @@ localparam longint unsigned UART_LOG_ENGINE_CTRL_SIZE = 64'h4;
 localparam longint unsigned UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR = 64'h0;
 
 
-endpackage;
+endpackage

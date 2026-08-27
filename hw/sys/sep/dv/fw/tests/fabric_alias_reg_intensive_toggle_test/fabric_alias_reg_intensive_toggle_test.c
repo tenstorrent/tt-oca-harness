@@ -4,9 +4,7 @@
 /*
  * fabric_alias_reg_intensive_toggle_test
  *
- * Goal: alias_remap_reg 82.81% -> 90%+ (needs 7.19% improvement)
  * Strategy: Deep CSR-field toggle stress across all 16 alias entries
- * Priority: third (medium difficulty)
  *
  * Focus on full toggle coverage of all 16 alias_remap_reg entries
  */
@@ -209,7 +207,6 @@ static int test_cross_field_dependency_scenarios(void) {
 
 int main(void) {
     printf("Alias Reg Intensive Toggle Test\n");
-    printf("Goal: 82.81%% -> 90%%+ (needs 7.19%% improvement)\n");
     printf("Strategy: Deep CSR-field toggle stress across all 16 alias entries\n\n");
 
     // Initialize fabric system
@@ -245,7 +242,6 @@ int main(void) {
     }
 
     printf("\n=== ALIAS REG INTENSIVE TOGGLE TEST PASSED ===\n");
-    printf("Expected improvement: 82.81%% -> 90%+ coverage\n");
 
     test_pass("fabric_alias_reg_intensive_toggle_test");
     return TEST_PASS;

@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_smc_smoke_test (SMU_ALL_003 rev 6).
+"""Sequence for smu_smc_smoke_test (SMU_ALL_003).
 
 DV-CARD:          SMU_ALL_003   ANCHOR: smu_smc_smoke_test
-DV-CARD-REVISION: 6   RECORD-SHA256: b3f504a0350089e1b8867785d30aa618dd4c31a9fc7dcef2192f8ff42ada6380
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 6   ENV: cocotb
 
 Approved OWNS (card r6 / plan r3):
   SMC-FAB-DUAL-NET.S2 — local peripherals/config registers use AXI4-Lite LP
@@ -26,7 +24,7 @@ from cocotb.triggers import ClockCycles, RisingEdge, Timer
 
 
 class smu_smc_smoke_test_seq:
-    """SMU_ALL_003 r6: SMC dual-network LP dest + SPEC 64-bit data observe."""
+    """SMU_ALL_003: SMC dual-network LP dest + SPEC 64-bit data observe."""
 
     BOUND_CYCLES = 2000
     SETTLE_CYCLES = 32
