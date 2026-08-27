@@ -17,6 +17,25 @@ RESP_SLVERR = 2
 RESP_DECERR = 3
 RESP_TIMEOUT = -1
 
+# AxPROT bit values (IHI 0022 A4.7): OR them into the `prot` argument.
+PROT_PRIVILEGED = 1
+PROT_NONSECURE = 2
+PROT_INSTRUCTION = 4
+
+_RESP_NAMES = {
+    RESP_OKAY: "OKAY",
+    RESP_EXOKAY: "EXOKAY",
+    RESP_SLVERR: "SLVERR",
+    RESP_DECERR: "DECERR",
+    RESP_TIMEOUT: "TIMEOUT",
+}
+
+
+def resp_name(resp: Any) -> str:
+    """Human-readable name for a response code (worst beat of a list)."""
+    code = worst_resp(resp)
+    return _RESP_NAMES.get(code, str(resp))
+
 
 def normalize_resp_list(resp: Any) -> tuple[int, ...]:
     """Return a tuple of plain response codes from scalar/list/backend enums."""
