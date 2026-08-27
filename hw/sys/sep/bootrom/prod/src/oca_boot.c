@@ -140,6 +140,7 @@ static uint16_t status_for_result(oca_result_t r)
     case OCA_FAIL_SECURE_BOOT_INVARIANT:     return SEP_MSG_MANIFEST_SECURE_BOOT;
     case OCA_FAIL_SECURE_BOOT_UNDETERMINED:  return SEP_MSG_MANIFEST_SECURE_BOOT;
     case OCA_FAIL_SECURE_BOOT_STATE_CHANGED: return SEP_MSG_MANIFEST_SECURE_BOOT;
+    case OCA_FAIL_SIGNATURE_CLASS_CONTROL:   return SEP_MSG_MANIFEST_SECURE_BOOT;
     default:                                 return SEP_MSG_MANIFEST_LOAD_FAILED;
     }
 }
