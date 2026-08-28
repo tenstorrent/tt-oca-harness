@@ -111,3 +111,16 @@ tags = ["km", "kmac", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM key/policy vault: slot extent and SRAM write-lock. RANDCFG: slot and
+# lock region from the run seed. Dedicated KM ROM (not rom_main); seal
+# stays on the parked command-set vehicle. no_cpu; +skip_fuse_sense.
+name = "sep_km_key_policy_vault_test"
+module = "km.sep_km_key_policy_vault_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "kpv", "sram_lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]

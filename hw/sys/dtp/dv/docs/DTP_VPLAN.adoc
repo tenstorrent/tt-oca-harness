@@ -6526,15 +6526,14 @@ temporary testlist aliases.
 |===
 |Group |Tests |Purpose
 |`smoke` |`dtp_sanity_test`, `dtp_jtag_idcode_test` |Fast TAP bring-up gate
-|`functional` |Smoke/JTAG2AXI tests from the public functional set |Legacy public functional regression
+|`functional` |Smoke plus the JTAG2AXI `single_write` and `single_write_read` scenarios |Fast functional regression
 |`basic_jtag` |All 19 Smoke and Basic JTAG scenarios |TAP, instruction, reset, BSR-loopback, and TMP smoke coverage
 |`debug_tdr` |12 TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS tests |Debug TDR coverage
-|`all` |Smoke, Basic JTAG, JTAG2AXI single-op, and debug TDR tests |Aggregate public DTP regression
+|`all` |All 149 scenario-expanded tests (`expected_count`-pinned in `all.toml`) |Full OCAH DTP regression; the nightly CI tier runs this group
 |`jtag2axi` |All JTAG2AXI write/read/error/robustness scenarios |AXI/AXI-Lite bridge coverage
 |`scan` |STAP, 3DCR, and iJTAG scenarios |IEEE 1838 and IEEE 1687 coverage
 |`dbg_disable` |The two debug-disable matrix tests plus every resource-specific directed gating test |Per-field `dbg_disable_t` closure (22-cell coverage contract)
 |`xtrig` |XTRIG, CTP, and CTM scenarios |Cross-trigger and CSR coverage
-|`nightly` |All 149 scenario-expanded tests |Full OCAH DTP regression
 |===
 
 === Known Limitations
@@ -6542,8 +6541,8 @@ temporary testlist aliases.
 [cols=",,",options="header",]
 |===
 |Limitation |Impact |Resolution Path
-|CTP/CTM generated CSR blocks are stubbed for Verilator |XTRIG CSR scenarios require non-stub CSR behavior |Replace stubs with Verilator-compatible CSR RTL or run these tests on a commercial simulator
-|iJTAG and OCH cross-trigger protocols do not have established public cocotb VIP |No public protocol VIP identified |Implement OCAH-local DTP BFMs in `env/`
+|STAP/iJTAG scan chains are looped back (`scan_in <- scan_out`) in `tb_top` |Scan scenarios validate the DTP-side path plumbing, not an external iJTAG network |Attach an iJTAG network model behind the STAP when integration scenarios need one
+|The SV-UVM harness ties off the XTRIG CSR port, `xtrig_clk_stop_req`, and SEP OTP AXI-Lite |XTRIG and SEP-OTP scenarios run in the cocotb framework only |Extend the UVM harness as the SV-UVM flow grows beyond smoke
 |The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus |The `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
 |SV covergroups are not supported by Verilator |Functional coverage must be Python-side or commercial-sim |See `DTP_FCOV.adoc`
 |===

@@ -42,4 +42,4 @@ localparam longint unsigned KMAC_PREFIX_NUM = 64'hB;
 localparam longint unsigned KMAC_ERR_CODE_BASE_ADDR = 64'hE0;
 
 
-endpackage;
+endpackage

@@ -23,36 +23,6 @@ tools = ["verilator", "xcelium", "vcs"]
 path = "testlists/all.toml"
 format = "toml_list"
 
-# The vendored adams_bridge abr_reg has two immediate assertions on
-# external_wr_ack / external_rd_ack (abr_reg.sv:67,69). They fire once at t=0 fs,
-# before reset releases, because the ack strobes are still X and an X fails
-# `assert(!ack || ...)`. Benign X-init in third-party IP whose datapath OSS DV
-# does not exercise.
-#
-# They live in the POST-reset branch of an always_ff, so they are REAL runtime
-# protocol checks -- waiving them by file:line alone would also hide a genuine
-# runtime violation. Two patterns are therefore needed, and they work as a pair:
-#
-#   ignore    -- drops the "Error:" line, which VCS prints WITHOUT a timestamp.
-#   hard-fail -- the companion line DOES carry the timestamp
-#                ("...abr_reg.sv", 67: ...: started at 0fs failed at 0 fs).
-#                Matching "failed at <non-zero>" turns any post-time-0 firing of
-#                those exact assertions back into a hard failure.
-#
-# So the t=0 X-init noise is waived and nothing else is: a real runtime abr_reg
-# violation still fails the run, loudly, on the timestamped line.
-#
-# ($assertoff in the TB does not work here -- it races the always_ff's own
-# time-0 evaluation and the assertion fires first.)
-[pass_fail]
-extra_ignore_patterns = [
-  'abr_reg\.sv.*at time 0',
-  'abr_reg\.sv", (67|69):',
-]
-extra_hard_fail_patterns = [
-  'abr_reg\.sv", (67|69):.*failed at [1-9]',
-]
-
 [native.stages.clean]
 kind = "clean"
 paths = ["{run_dir}", "hw/sys/sep/dv/build"]
@@ -78,6 +48,10 @@ sources = [
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
   # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
   "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
+  # POR initializer for prim_flop. exclude_files drops the vendored definition
+  # for every tool, so this is the single definition in the build -- no MODDUP,
+  # and no reliance on a last-wins or first-wins ordering rule.
+  "hw/sys/sep/dv/shims/prim/prim_flop.sv",
 ]
 # PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
 # aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
@@ -85,6 +59,9 @@ sources = [
 # Package files (*_reg_pkg.sv) stay — substring match is on this exact basename.
 exclude_files = [
   "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
+  # Replaced by shims/prim/prim_flop.sv (one-shot POR until first edge). Unique path so
+  # abr_prim_flop.sv is not also dropped.
+  "prim_generic/rtl/prim_flop.sv",
 ]
 # `stubs` are Verilator/VCS-compat overrides, listed ahead of
 # the bender filelist so -Wno-MODDUP "first definition wins" selects them. prim_sync2 retargets
@@ -115,11 +92,7 @@ common_bender_targets = [
 # `sep_wrapper` adds hw/top/sep_{wrapper,ip_integration}.sv plus the vendored
 # prim_ram_1p/prim_ram_1p_adv/prim_rom memory models the IP integration needs.
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
-# shims/prim is listed first so its prim_assert.sv shadows the vendored upstream OpenTitan
-# copy (the runlib prepends these incdirs ahead of the bender filelist): it restores the
-# `ifndef SYNTHESIS gating of ASSUME/COVER that the vendoring reorg dropped, so +define+SYNTHESIS
-# neutralizes the unsupported `##[1:$]` concurrent assumptions Verilator cannot parse.
-incdirs = ["hw/sys/sep/dv/shims/prim", "hw/sys/sep/dv/tb"]
+incdirs = ["hw/sys/sep/dv/tb"]
 
 [build.options]
 # SEP is a large cold build (VeeR EL2 + OTBN + full crypto). Parallelize the
@@ -224,6 +197,11 @@ argv = [
 outputs = [
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  # ELF + nm listing (same link, produced unconditionally by compile.mk): the
+  # CPU trace monitor symbolizes retired PCs from the .sym, and staging both
+  # keeps sim-only reruns and post-mortem symbolization hermetic in the run dir.
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
 ]
 
 [c_build.boot_rom]
@@ -264,6 +242,8 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build/boot_rom.dtcm.hex",
   "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+  # nm listing for the CPU trace monitor's ROM-PC symbolization.
+  "hw/sys/sep/bootrom/prod/build/boot_rom.sym",
 ]
 
 [c_build.boot_rom_ot]
@@ -305,6 +285,8 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.dtcm.hex",
+  # nm listing for the CPU trace monitor's ROM-PC symbolization.
+  "hw/sys/sep/bootrom/prod/build_ot/boot_rom.sym",
   "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
   "hw/sys/sep/bootrom/prod/build/secure_boot.bin",
 ]
@@ -336,6 +318,8 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.vmem",
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.dtcm.hex",
+  # nm listing for the CPU trace monitor's ROM-PC symbolization.
+  "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.sym",
   "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
 ]
 
@@ -349,13 +333,12 @@ args = []
 
 [run_modes.cpu]
 description = "CPU firmware boot: VeeR EL2 owns its master buses and fetches firmware from TCM"
-# Doubled from 1800 -> 3600: cpu firmware tests run heavier sims; the low-fanout/high-thread
-# cpu regression policy should keep them under this, but the extra headroom guards the heaviest
-# (crypto/dma). Per-test timeout_sec (also doubled to 3600 for cpu tests) overrides this fallback.
+# CPU firmware sims need a longer wall-clock budget than no_cpu smoke.
+# Per-test timeout_sec overrides this fallback where set.
 timeout_sec = 3600
 args = ["+cpu_boot"]
 
-# OD-19: one [targets.<name>] merges the former [compile_targets]/[run_targets] split.
+# One [targets.<name>] owns both compile and run knobs.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 # cocotb's runner forces a global --public-flat-rw. The runlib cocotb_public_scope() integration
 # drops it and substitutes the scoped public config in `public_scope` above, because cocotb only
@@ -370,9 +353,10 @@ args = ["+cpu_boot"]
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
 # [target_defaults.default] (native.toml). Do NOT redefine [target_defaults.default]
 # here -- the profile->DUT merge REPLACES that array, which would drop the profile flags.
-# Each target below therefore re-states the SEP-specific common bits (SYNTHESIS + the
-# three SEP -Wno flags); the profile's [target_defaults.default] is still inherited
-# (selected_target uses it as the fallback for every target name).
+# Each target below therefore re-states the three SEP -Wno flags; the profile's
+# [target_defaults.default] is still inherited (selected_target uses it as the fallback
+# for every target name). +define+SYNTHESIS is re-stated there too, and is Verilator-only:
+# see [targets.default.tools.verilator].
 #
 # Compile targets keep the normal regression models explicit:
 #   * default            (cpu_all_live)     : full VeeR CPU; m_axi + j_axi live.
@@ -396,16 +380,12 @@ args = ["+cpu_boot"]
 # speedup.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
-# [target_defaults.default] (native.toml). Each target re-states the SEP-specific
-# common bits (SYNTHESIS + the three SEP -Wno flags); do NOT redefine [target_defaults.default].
+# [target_defaults.default] (native.toml). Each target re-states the three SEP -Wno flags
+# plus Verilator-only +define+SYNTHESIS; do NOT redefine [target_defaults.default].
 [targets.default]
 description = "cpu_all_live: full VeeR EL2 CPU; m_axi + j_axi always live (fallback for all cpu tests)"
 build_dir = "hw/sys/sep/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
 defines = [
-  # SYNTHESIS no-ops every `ifndef SYNTHESIS` concurrent-assertion / cover block
-  # (prim_assert.sv ASSERT/ASSUME, prim_alert_sender sequences, kmac sha3pad
-  # `##[1:$]`), which Verilator cannot parse. Only assertion/debug code is gated.
-  "SYNTHESIS",
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
 ]
@@ -415,6 +395,13 @@ defines = [
 
 [targets.default.tools.verilator]
 flags = [
+  # SYNTHESIS no-ops every `ifndef SYNTHESIS` concurrent-assertion / cover
+  # block (prim_assert.sv ASSERT/ASSUME, prim_alert_sender sequences, kmac
+  # sha3pad `##[1:$]`). Only Verilator cannot parse those, so the define is
+  # scoped to Verilator here rather than sitting in the tool-agnostic
+  # `defines` list -- there it also silenced every assertion under VCS and
+  # Xcelium, where they compile and fire correctly.
+  "+define+SYNTHESIS",
   # PeakRDL reg blocks reset their axil_resp_buffer struct-array via an NBA in a
   # for-loop (incl. the read-target sep_cpu_ctrl_reg) -> Verilator BLKLOOPINIT,
   # suppressed here (the loop-style reset is functionally correct for the read path).
@@ -433,7 +420,6 @@ flags = [
 description = "cpu_all_live + behavioral SMC AXI responder (axi_sim_mem) for the real-ROM non-secure boot test"
 build_dir = "hw/sys/sep/dv/build/rom_boot/cocotb"
 defines = [
-  "SYNTHESIS",
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
   "SEP_SMC_MEM_MODEL",
@@ -444,6 +430,7 @@ sources = [
 
 [targets.rom_boot.tools.verilator]
 flags = [
+  "+define+SYNTHESIS",   # Verilator-only; see [targets.default.tools.verilator]
   "-Wno-BLKLOOPINIT",
   "-Wno-UNUSEDSIGNAL",
   "-Wno-UNUSEDPARAM",
@@ -456,7 +443,7 @@ flags = [
 [targets.lsu_stub_all_live]
 description = "lsu_stub_all_live: CPU stubbed (no VeeR EL2, LSU demux preserved); m_axi + j_axi live; for no_cpu tests"
 build_dir = "hw/sys/sep/dv/build/cocotb"
-defines = ["SYNTHESIS", "SEP_CPU_STUB", "SEP_SMN_INBOUND_AXI_LIVE", "SEP_JTAG_AXIL_LIVE"]
+defines = ["SEP_CPU_STUB", "SEP_SMN_INBOUND_AXI_LIVE", "SEP_JTAG_AXIL_LIVE"]
 # Drop the real CPU wrapper from the bender filelist and append the stub after it (so all
 # DUT packages are declared ahead of the stub); the stub is the only sep_cpu definition.
 exclude_files = [
@@ -467,4 +454,5 @@ sources = [
 ]
 
 [targets.lsu_stub_all_live.tools.verilator]
-flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+# +define+SYNTHESIS is Verilator-only; see [targets.default.tools.verilator]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "+define+SYNTHESIS"]

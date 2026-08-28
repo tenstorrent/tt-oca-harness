@@ -88,7 +88,6 @@ module prim_apb_mux_struct #(
             end
         end
 
-        // TODO: replace with prim_arbiter_tree
         stream_arbiter #(
             .DATA_T      (apb_req_payload_t),
             .N_INP       (NUM_MASTERS)

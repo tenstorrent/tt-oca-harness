@@ -2,12 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_DMA_CG_ACTIVITY_TEST ANCHOR: smc_dma_cg_activity_test
-DV-CARD-REVISION: 2 RECORD-SHA256: b1f928140c5123ae1298877e726f91b309ba15c3b287fb236f723b3582d51653
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 
 DV-CARD: SMC_CG_P2_001 ANCHOR: smc_dma_cg_activity_test
-DV-CARD-REVISION: 1 RECORD-SHA256: f30a819ece07cac193724665274c74e6512a18c0771b7fde11375464acf5489a
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P2_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 The P2 card extends this same anchor (additive): the P1 steps/checkers above are
 UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1

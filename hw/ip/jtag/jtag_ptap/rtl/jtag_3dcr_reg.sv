@@ -23,6 +23,9 @@ module jtag_3dcr_reg
     // STAP control output (IEEE 1838)
     output logic  stap_sel_o
 );
+    // Tie off unused fields to satisfy lint
+    logic unused_tap_ctrl;
+    assign unused_tap_ctrl = ^{tap_ctrl_i.tms, tap_ctrl_i.tck};
 
     jtag_scan_ctrl_t  reg_scan_ctrl;
     logic             config_hold;
