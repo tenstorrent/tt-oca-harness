@@ -7,7 +7,7 @@ TT-specific drive-strength/flavor variants in [`../och_prim/`](../och_prim/).
 
 | Path | Contents |
 |------|----------|
-| `rtl/` | 24 behavioral `prim_*.sv` modules (flops, syncs, muxes, gates, clock cells) |
+| `rtl/` | 28 behavioral `prim_*.sv` modules (flops, syncs, muxes, gates, clock cells) |
 
 In a synthesis flow that targets a specific process node, every module here
 should be overridden by a technology-mapped implementation from the library
