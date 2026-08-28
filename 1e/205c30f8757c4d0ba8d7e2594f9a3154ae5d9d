@@ -1,0 +1,19 @@
+.github/workflows/weekly-issue-activity.md
+  s_e3a2045b75fa7d::t_a13ca8867d21c9 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1e205c30f8757c4d0ba8d7e2594f9a3154ae5d9d",
+  "prompts": {},
+  "sessions": {
+    "s_e3a2045b75fa7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2ecc471-9ff5-400f-b08f-0daf55f3418a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
