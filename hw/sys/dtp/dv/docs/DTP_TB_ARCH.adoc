@@ -201,9 +201,20 @@ backdoor view used by the scoreboard.
 
 ==== `DtpScoreboard`
 
-The scoreboard subscribes to completed JTAG items. It verifies IDCODE bit 0,
-checks JTAG2AXI write data against the OCAH AXI RAM backdoor, and checks read data
-against preloaded memory contents. `check_phase` requires zero errors.
+The scoreboard subscribes to completed JTAG items. It verifies IDCODE reads
+against the full expected DTP IDCODE value, checks JTAG2AXI write data against
+the OCAH AXI RAM backdoor, and checks read data against preloaded memory
+contents. `check_phase` requires zero errors and reports per-category check
+counts alongside the observed-item total, so a run whose JTAG traffic produced
+no scoreboard-checkable operations is visible in the log.
+
+Beyond this always-on subscriber, every cocotb JTAG2AXI test enables the
+shared `ocah_axi_vip` scoreboard (`use_axi_scoreboard = True` with required
+evidence IDs and per-stream minimum compared-transaction counts), and every
+XTRIG/CTM sequence finalizes a named-evidence `OcahChecker` (CTM reference
+model route comparison, CSR readbacks, quiet windows, stretch measurements) —
+in both cases a zero-check pass or a missing required evidence ID fails the
+test at finalization.
 
 ==== Sequence Library
 
