@@ -11,9 +11,10 @@ This test drives deliberately illegal traffic on ``t_axi``:
 
 * ``AWBURST = 2'b11`` -- the reserved burst encoding (IHI 0022 A3.4.1). The
   ``AW_BURST_LEGAL`` rule must fire.
-* an INCR burst crossing a 4KB boundary: 16 beats of 4 bytes from 0x0FC0
-  ends at 0x1000, one byte past the page (A3.4.1). ``AW_4KB_BOUNDARY`` must
-  fire.
+* an INCR burst crossing a 4KB boundary: 16 beats of 4 bytes from 0x0FC4
+  ends at 0x1004, four bytes into the next page (A3.4.1).
+  ``AW_4KB_BOUNDARY`` must fire. Note 0x0FC0 would NOT do -- it ends exactly
+  at 0x1000, the last byte inside the page, which AXI permits.
 
 **The pass criterion is inverted, and this coroutine does not decide it.**
 Success is the simulator reporting an assertion failure. cocotb cannot read
@@ -45,15 +46,21 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import RisingEdge
 
-from ocah_axi_vip_harness import reset_dut, start_clock
+from ocah_axi_vip_harness import (
+    build_wire_slave,
+    start_clock_reset,
+    _wait_ready,
+)
 
 
 async def _drive_illegal_aw(dut, *, awid: int, addr: int, burst: int, length: int):
-    """Present one AW the checker must reject, then withdraw it.
+    """Present one AW the checker must reject, and complete the handshake.
 
-    Only the address channel is driven. The AW payload is the whole point, and
-    leaving the transaction incomplete avoids depending on how the fault slave
-    answers traffic it should never have been offered.
+    Every AW payload rule is qualified on ``awvalid && awready`` -- an accepted
+    request, not an offered one. Driving AWVALID alone therefore proves
+    nothing: without a slave raising AWREADY the antecedent never holds and no
+    rule can fire, however illegal the payload is. So the fault slave is
+    attached and this waits for AWREADY before withdrawing.
     """
     clock = dut.clk
     dut.t_axi_awid.value = awid
@@ -62,10 +69,7 @@ async def _drive_illegal_aw(dut, *, awid: int, addr: int, burst: int, length: in
     dut.t_axi_awsize.value = 2          # 4-byte beats
     dut.t_axi_awburst.value = burst
     dut.t_axi_awvalid.value = 1
-    # Hold several cycles so a rule sampling on the clock edge sees it, and so
-    # the payload is visible in a waveform without hunting for one edge.
-    for _ in range(4):
-        await RisingEdge(clock)
+    await _wait_ready(clock, dut.t_axi_awready)
     dut.t_axi_awvalid.value = 0
     await RisingEdge(clock)
 
@@ -75,14 +79,14 @@ async def ocah_axi_illegal_test(dut):
     """Drive illegal AW payloads at the bound protocol checker."""
     log = dut._log
 
-    await start_clock(dut)
-    await reset_dut(dut)
+    await start_clock_reset(dut)
+    build_wire_slave(dut)
 
     log.info("CHK-SVA-NEGATIVE: driving AWBURST=2'b11 (reserved encoding)")
     await _drive_illegal_aw(dut, awid=0x11, addr=0x0000_1000, burst=0b11, length=0)
 
     log.info("CHK-SVA-NEGATIVE: driving a 16-beat INCR across a 4KB boundary")
-    await _drive_illegal_aw(dut, awid=0x12, addr=0x0000_0FC0, burst=0b01, length=15)
+    await _drive_illegal_aw(dut, awid=0x12, addr=0x0000_0FC4, burst=0b01, length=15)
 
     log.info(
         "CHK-SVA-NEGATIVE: 2 illegal AW payload(s) driven. This coroutine "

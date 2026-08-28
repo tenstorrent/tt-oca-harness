@@ -20,6 +20,19 @@ timeout_sec = 600
 tags = ["smoke", "ci", "axi_id"]
 run_modes = ["smoke"]
 
+# Negative control for the bound protocol checker. The pass criterion is
+# INVERTED: success is VCS reporting OCAH_AXI_AW_BURST_LEGAL and
+# OCAH_AXI_AW_4KB_BOUNDARY failures, so a run of this test reports FAIL and a
+# clean run means the checker is dead. It carries no "ci" tag and joins no
+# group for that reason -- select it by name, and read the log.
+[[tests]]
+name = "ocah_axi_illegal_test"
+module = { cocotb = "ocah_axi_illegal_test" }
+seed = 1
+timeout_sec = 600
+tags = ["axi_sva_negative"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "smoke"
 tests = ["ocah_axi_id_match_test", "ocah_axi_id_mismatch_test"]

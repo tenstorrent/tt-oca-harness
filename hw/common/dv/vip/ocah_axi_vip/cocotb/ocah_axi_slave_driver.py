@@ -135,7 +135,16 @@ class _FaultAxiRamWrite(AxiRamWrite):
             addr = int(aw.awaddr)
             length = int(getattr(aw, "awlen", 0))
             size = int(getattr(aw, "awsize", self.max_burst_size))
-            burst = AxiBurstType(int(getattr(aw, "awburst", AxiBurstType.INCR)))
+            # AWBURST 2'b11 is the reserved encoding. A fault slave must absorb
+            # it rather than raise: the SVA negative control drives it on
+            # purpose, and a ValueError here would kill the test before the
+            # rule under test has been observed. Treat it as INCR for
+            # addressing only -- responding is not endorsing the encoding.
+            raw_burst = int(getattr(aw, "awburst", AxiBurstType.INCR))
+            try:
+                burst = AxiBurstType(raw_burst)
+            except ValueError:
+                burst = AxiBurstType.INCR
             prot = AxiProt(int(getattr(aw, "awprot", AxiProt.NONSECURE)))
 
             num_bytes = 2**size
@@ -224,7 +233,12 @@ class _FaultAxiRamRead(AxiRamRead):
             addr = int(ar.araddr)
             length = int(getattr(ar, "arlen", 0))
             size = int(getattr(ar, "arsize", self.max_burst_size))
-            burst = AxiBurstType(int(getattr(ar, "arburst", AxiBurstType.INCR)))
+            # Same reserved-encoding tolerance as the write path above.
+            raw_burst = int(getattr(ar, "arburst", AxiBurstType.INCR))
+            try:
+                burst = AxiBurstType(raw_burst)
+            except ValueError:
+                burst = AxiBurstType.INCR
             prot = AxiProt(int(getattr(ar, "arprot", AxiProt.NONSECURE)))
 
             num_bytes = 2**size

@@ -27,7 +27,8 @@ from pathlib import Path
 
 _DV_ROOT = Path(__file__).resolve().parents[2]
 _SPEC = _DV_ROOT.parent / "doc" / "memory_map.adoc"
-_XBAR = _DV_ROOT.parent / "rtl" / "crossbars" / "sep_local_axi_xbar.sv"
+_XBAR = _DV_ROOT.parent / "rtl" / "sep_local_axi_xbar.sv"
+_ADDRMAP_PKG = _DV_ROOT.parent / "regs" / "gen" / "sv" / "sep_addrmap_pkg.sv"
 
 # Reserved marker in the memory-map Unit column.
 _RSV = "_RSV_"
@@ -101,7 +102,9 @@ def _is_reserved(unit: str, desc: str) -> bool:
 
 def spec_regions() -> tuple[SpecRegion, ...]:
     """Every allocation row, finest first. Raises if the tables vanish."""
-    lines = _SPEC.read_text().splitlines()
+    # utf-8 explicitly: these sources carry box-drawing characters, and the
+    # simulator runs cocotb under an ASCII default locale.
+    lines = _SPEC.read_text(encoding="utf-8").splitlines()
     rows: list[SpecRegion] = []
     line_re = re.compile(
         r"^\|(0x[0-9A-Fa-f_]+)\s*\|(0x[0-9A-Fa-f_]+)\s*\|([^|]*)\|([^|]*)\|(.*)$"
@@ -151,15 +154,63 @@ def spec_regions() -> tuple[SpecRegion, ...]:
     return tuple(sorted(rows, key=lambda r: (r.end_addr - r.base, r.base)))
 
 
+def _addrmap_symbols() -> dict[str, int]:
+    """The generated address-map localparams, by bare name.
+
+    The crossbar states some rules as `PKG::SYM` arithmetic rather than a hex
+    literal, so the rule text alone does not carry the bound.
+    """
+    text = _ADDRMAP_PKG.read_text(encoding="utf-8")
+    sym_re = re.compile(
+        r"localparam\s+longint\s+unsigned\s+(\w+)\s*=\s*64'h([0-9A-Fa-f_]+)\s*;"
+    )
+    return {n: _hexint(v) for n, v in sym_re.findall(text)}
+
+
+def _resolve_bound(expr: str, syms: dict[str, int]) -> int:
+    """One AddrMap bound: a hex literal, or a sum of address-map symbols.
+
+    Only `+` appears in the table today. Anything else raises rather than
+    resolving to a plausible wrong number -- a bound this cross-check cannot
+    read must stop the parse, not silently drop the rule.
+    """
+    expr = re.sub(r"\b\d+'\s*", "", expr)           # width casts
+    expr = expr.replace("och_sep_top_addrmap_pkg::", "")
+    expr = expr.replace("(", " ").replace(")", " ").strip()
+    total = 0
+    for term in expr.split("+"):
+        term = term.strip()
+        if not term:
+            continue
+        if re.fullmatch(r"h?[0-9A-Fa-f_]+", term) and not term.isalpha():
+            try:
+                total += _hexint(term.lstrip("h"))
+                continue
+            except ValueError:
+                pass
+        if term not in syms:
+            raise RuntimeError(
+                f"AddrMap bound `{term}` is neither a hex literal nor a symbol "
+                f"in {_ADDRMAP_PKG.name}"
+            )
+        total += syms[term]
+    return total
+
+
 def rtl_ranges() -> tuple[RtlRange, ...]:
     """Parse the crossbar AddrMap. Cross-check input only, never an expectation."""
-    text = _XBAR.read_text()
+    text = _XBAR.read_text(encoding="utf-8")
+    syms = _addrmap_symbols()
+    # Bounds are matched loosely and resolved after: a rule stated in package
+    # symbols (see dma_csr / sep_wdt) must not fall out of the sweep just
+    # because it carries no hex literal.
     rule_re = re.compile(
-        r"'\{idx:\s*(\d+),\s*start_addr:\s*32'h([0-9A-Fa-f_]+),"
-        r"\s*end_addr:\s*33'h([0-9A-Fa-f_]+)\}"
+        r"'\{\s*idx:\s*(\d+),\s*start_addr:\s*(.+?),"
+        r"\s*end_addr:\s*(.+?)\}",
+        re.DOTALL,
     )
     out = [
-        RtlRange(int(i), _hexint(s), _hexint(e))
+        RtlRange(int(i), _resolve_bound(s, syms), _resolve_bound(e, syms))
         for i, s, e in rule_re.findall(text)
     ]
     if not out:
@@ -228,8 +279,10 @@ def _selftest() -> None:
     # The RTL table must still be parseable; ranges are exclusive-end there.
     rtl = rtl_ranges()
     assert len(rtl) >= 14, f"only {len(rtl)} AddrMap rules parsed"
+    # The dma_csr rule spans the secure_dma register extent, NOT the 4 kB spec
+    # aperture: secure_dma_reg_top decodes 9 bits, so a wider window aliases.
     assert any(
-        r.start_addr == 0x1080_0000 and r.end_addr == 0x1080_1000 for r in rtl
+        r.start_addr == 0x1080_0000 and r.end_addr == 0x1080_0150 for r in rtl
     ), "dma_csr AddrMap rule not found"
 
 
