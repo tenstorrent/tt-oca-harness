@@ -95,12 +95,16 @@ class sep_axi_order_sweep_test(sep_base_test):
             "CHK-ORDER-XSIZE PASS: %d/%d (ordering x size) cell(s) verified",
             len(sweep.cross_covered), len(cfg.cross_cells()))
 
-        # The displacement check needs a second register in the block to write.
-        # Without one the cell proves only the land contract, so the count is
-        # reported rather than assumed equal to the cell count.
-        assert sweep.witnessed > 0, (
-            f"CHK-ORDER-DISPLACE FAIL: no cell ran a follow-on write, so the "
-            f"displaced-write contract was never tested ({report})"
+        # The displacement check needs a second register in the block to
+        # write; a cell in a single-register block proves the land contract
+        # alone. Every cell that CAN carry the check must have completed it,
+        # so the count is compared against the configured total rather than
+        # merely being non-zero.
+        assert sweep.witnessed == cfg.n_witnessed(), (
+            f"CHK-ORDER-DISPLACE FAIL: {sweep.witnessed} of "
+            f"{cfg.n_witnessed()} cell(s) completed a follow-on write; the "
+            f"displaced-write contract was not tested where it could be "
+            f"({report})"
         )
         self.logger.info(
             "CHK-ORDER-DISPLACE PASS: %d follow-on write(s) landed on the "

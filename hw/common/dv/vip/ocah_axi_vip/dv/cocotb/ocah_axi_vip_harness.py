@@ -29,8 +29,56 @@ ID_MASK = 0xFF  # tb_top ID signals are 8 bits wide
 log = logging.getLogger("cocotb.tb.ocah_axi_vip_harness")
 
 
+_REQUEST_NETS = (
+    "awvalid", "wvalid", "arvalid",
+    "awid", "awaddr", "awlen", "awsize", "awburst", "awlock", "awcache",
+    "awprot", "awqos", "awregion",
+    "wdata", "wstrb", "wlast",
+    "arid", "araddr", "arlen", "arsize", "arburst", "arlock", "arcache",
+    "arprot", "arqos", "arregion",
+)
+
+# Slave-driven nets, idled for the same reason as the requester side.
+_RESPONSE_NETS = (
+    "awready", "wready", "arready",
+    "bvalid", "bid", "bresp",
+    "rvalid", "rid", "rdata", "rresp", "rlast",
+)
+
+
+def idle_bus(dut, prefix: str) -> bool:
+    """Drive every net of one bus to its idle value.
+
+    Returns False when the harness carries no such bus. The reset rules and
+    the X-hygiene rules sample every cycle including the reset window, so a
+    net left undriven there fails them on stimulus that does not exist. The
+    contract under test is what the DUT does with a driven bus.
+
+    Both sides are idled. An agent installs its own drivers when its
+    coroutines first run, which is a clock edge away, and the checker samples
+    before then.
+    """
+    if not hasattr(dut, f"{prefix}_awvalid"):
+        return False
+    for name in _REQUEST_NETS + _RESPONSE_NETS:
+        net = getattr(dut, f"{prefix}_{name}", None)
+        if net is not None:
+            net.value = 0
+    for name in ("bready", "rready"):
+        net = getattr(dut, f"{prefix}_{name}", None)
+        if net is not None:
+            net.value = 1
+    return True
+
+
 async def start_clock_reset(dut) -> None:
-    """Start the harness clock and run the active-low reset sequence."""
+    """Start the harness clock and run the active-low reset sequence.
+
+    Every bus is idled before reset is asserted, so the checker never samples
+    an undriven net.
+    """
+    for prefix in ("s_axi", "t_axi"):
+        idle_bus(dut, prefix)
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, "ns").start())
     dut.rst_n.value = 0
     await ClockCycles(dut.clk, 5)
@@ -58,11 +106,17 @@ def build_full_stack(dut, *, timeout_ns: int = 100_000):
         timeout_ns=timeout_ns,
         name="harness_s_axi_master",
     )
+    idle_bus(dut, "s_axi")
     return master, slave
 
 
-def build_wire_slave(dut):
-    """Attach the fault-slave agent to the t_axi nets and idle the requester side."""
+def build_wire_slave(dut, *, tolerate_illegal_addressing: bool = False):
+    """Attach the fault-slave agent to the t_axi nets and idle the requester side.
+
+    ``tolerate_illegal_addressing`` lets the slave absorb a reserved burst
+    encoding or a 4KB crossing instead of raising, for the bench that drives
+    those on purpose at the protocol checker.
+    """
     slave = OcahAxiSlaveAgent.from_prefix(
         dut,
         "t_axi",
@@ -71,19 +125,9 @@ def build_wire_slave(dut):
         reset_active_level=False,
         size=2**16,
         name="harness_t_axi_slave",
+        tolerate_illegal_addressing=tolerate_illegal_addressing,
     )
-    for name in ("awvalid", "wvalid", "arvalid"):
-        getattr(dut, f"t_axi_{name}").value = 0
-    for name in (
-        "awid", "awaddr", "awlen", "awsize", "awburst", "awlock", "awcache",
-        "awprot", "awqos", "awregion",
-        "wdata", "wstrb", "wlast",
-        "arid", "araddr", "arlen", "arsize", "arburst", "arlock", "arcache",
-        "arprot", "arqos", "arregion",
-    ):
-        getattr(dut, f"t_axi_{name}").value = 0
-    dut.t_axi_bready.value = 1
-    dut.t_axi_rready.value = 1
+    idle_bus(dut, "t_axi")
     return slave
 
 

@@ -87,7 +87,11 @@ class OrderCell:
     # in the same block. None when the block offers only one candidate, and
     # the cell then checks the dropped-write signature alone.
     witness: RegInfo | None
-    witness_value: int
+    # Which software-usable bit of the witness to flip, as an index into its
+    # mask bits. A bit rather than a value: the follow-on write has to differ
+    # from whatever the witness holds when the cell reaches it, which is not
+    # known when the cell is built.
+    witness_bit: int
 
     @property
     def key(self) -> tuple[str, str, str, int]:
@@ -171,13 +175,9 @@ class SepAxiOrderSweepCfg:
                     witness = (
                         peers[rng.randrange(0, len(peers))] if peers else None
                     )
-                    w_value = 0
-                    if witness is not None:
-                        w_value = touch_write_value(
-                            witness.reset, write_mask(witness), rng
-                        )
+                    w_bit = rng.randrange(0, 32)
                     cells.append(OrderCell(
-                        order, info, value, size, profile, witness, w_value
+                        order, info, value, size, profile, witness, w_bit
                     ))
         self.cells = tuple(cells)
 
@@ -185,6 +185,16 @@ class SepAxiOrderSweepCfg:
         wide = sum(1 for i in self.regs if i.block not in SIZE_CROSS_BLOCKS)
         narrow = len(self.regs) - wide
         return len(WRITE_ORDERS) * (wide + narrow * len(SIZE_BYTES))
+
+    def n_witnessed(self) -> int:
+        """Cells that carry the displacement check.
+
+        A block with only one swept register offers no second register to
+        write, so its cells prove the land contract alone. The count is
+        stated here so the test can require exactly it rather than requiring
+        merely that some cell ran.
+        """
+        return sum(1 for c in self.cells if c.witness is not None)
 
     def cross_cells(self) -> set[tuple[str, int]]:
         """Every (ordering, size) pair the sweep must report a compare for."""
@@ -270,16 +280,33 @@ class SepAxiOrderSweep:
         drv = self._driver()
         info = cell.info
         nbytes = SIZE_BYTES[cell.size]
-        # A narrow write reaches only its own lanes; the rest of the word must
-        # survive. Anchored at the register address, so the lanes are the low
-        # nbytes of the word.
+        # A narrow write is compared on the lanes it addresses. Whether the
+        # lanes it does NOT address survive is the strobe contract, checked by
+        # sep_axi_strobe_window_test; here the question is whether the write
+        # arrived at all under this channel ordering.
         lane_mask = (1 << (8 * nbytes)) - 1
-        mask = write_mask(info) & lane_mask
+        # The compare covers the whole software-usable word, not just the
+        # lanes written. A narrow write must deliver its own lanes AND leave
+        # the others alone, and both halves of that have to hold under a
+        # non-default channel ordering.
+        mask = write_mask(info)
         tag = f"[{cell.order} {nbytes}B {info.block}.{info.name}]"
+        # An empty mask compares nothing while still counting as covered, so it
+        # is a build error rather than a silent pass.
+        assert mask != 0, (
+            f"{tag} has no software-usable bit; the compare would be vacuous "
+            f"but would still count toward coverage"
+        )
+        assert mask & lane_mask, (
+            f"{tag} has no software-usable bit in the written lanes; the "
+            f"write could not be observed"
+        )
 
         drv.set_timing(AxiTimingProfile())          # prime at default timing
-        # Prime with the complement under the mask so the write always
-        # changes something and a dropped write cannot pass by luck.
+        # Prime the complement across the whole word, so the written lanes
+        # always change and the untouched lanes hold a value a widened strobe
+        # would destroy. A prime of the reset value would leave the upper
+        # lanes at zero, which a strobe-ignoring write also produces.
         prime = (info.reset & ~mask) | (~cell.value & mask)
         if await self._commit(info, prime) != RESP_OKAY:
             self.dropped[cell.key] = "prime write refused"
@@ -309,17 +336,27 @@ class SepAxiOrderSweep:
         if resp != RESP_OKAY:
             return f"{tag} readback resp={resp}"
 
-        if (after & mask) != (cell.value & mask):
-            hint = (
-                " -- the write did not land; an adapter that latches its "
-                "pending-write flag on AW accept and reads it the same cycle "
-                "W arrives fails exactly here"
-                if (after & mask) == (prime & mask) else ""
-            )
+        # The AXI lane rule: the addressed lanes take the new data, every
+        # other lane keeps what it held.
+        want = (prime & ~lane_mask) | (cell.value & lane_mask)
+        if (after & mask) != (want & mask):
+            if (after & mask & lane_mask) == (prime & mask & lane_mask):
+                hint = (
+                    " -- the write did not land; an adapter that latches its "
+                    "pending-write flag on AW accept and reads it the same "
+                    "cycle W arrives fails exactly here"
+                )
+            elif (after & mask & ~lane_mask) != (prime & mask & ~lane_mask):
+                hint = (
+                    " -- the write reached lanes it did not address; the "
+                    "strobe was widened somewhere on the path"
+                )
+            else:
+                hint = ""
             return (
                 f"{tag} 0x{info.addr:08x}: wrote 0x{cell.value:08x} over "
-                f"0x{prime:08x}, read 0x{after:08x} under mask 0x{mask:08x} "
-                f"({cell.profile.summary()}){hint}"
+                f"0x{prime:08x}, read 0x{after:08x}, expected 0x{want:08x} "
+                f"under mask 0x{mask:08x} ({cell.profile.summary()}){hint}"
             )
 
         # Displaced-write check: the NEXT write in this block must land on the
@@ -328,33 +365,54 @@ class SepAxiOrderSweep:
         if cell.witness is not None:
             wit = cell.witness
             wmask = write_mask(wit)
-            if await self._commit(wit, cell.witness_value) != RESP_OKAY:
-                self.dropped[cell.key] = "witness write refused"
-            else:
-                resp, wafter = await self._rd(wit.addr)
-                if resp != RESP_OKAY:
-                    self.dropped[cell.key] = f"witness readback resp={resp}"
-                elif (wafter & wmask) != (cell.witness_value & wmask):
-                    return (
-                        f"{tag} follow-on write to {wit.block}.{wit.name} "
-                        f"(0x{wit.addr:08x}) wrote 0x{cell.witness_value:08x}, "
-                        f"read 0x{wafter:08x} under mask 0x{wmask:08x} -- a "
-                        f"pending-write flag left set by the {cell.order} "
-                        f"access displaced the next write in the block"
-                    )
-                else:
-                    # Re-read the swept register: the witness write must not
-                    # have landed here either.
-                    resp, again = await self._rd(info.addr)
-                    if resp == RESP_OKAY and (again & mask) != (
-                        cell.value & mask
-                    ):
-                        return (
-                            f"{tag} 0x{info.addr:08x} changed to 0x{again:08x} "
-                            f"when {wit.name} was written -- the {cell.order} "
-                            f"access left this register latched as the target"
-                        )
-                    self.witnessed += 1
+            resp, wbefore = await self._rd(wit.addr)
+            if resp != RESP_OKAY:
+                return (
+                    f"{tag} witness {wit.block}.{wit.name} "
+                    f"(0x{wit.addr:08x}) resp={resp} before the follow-on "
+                    f"write"
+                )
+            # The follow-on value has to differ from what the witness already
+            # holds. A value the register happens to contain would read back
+            # correct even if the write never arrived, and the compare would
+            # prove nothing. Flip one software-usable bit, chosen by the seed.
+            bits = [b for b in range(32) if wmask & (1 << b)]
+            flip = 1 << bits[cell.witness_bit % len(bits)]
+            wvalue = (wbefore & 0xFFFF_FFFF) ^ flip
+
+            resp = await self._commit(wit, wvalue)
+            if resp != RESP_OKAY:
+                return (
+                    f"{tag} follow-on write to {wit.block}.{wit.name} "
+                    f"(0x{wit.addr:08x}) resp={resp}, expected OKAY -- the "
+                    f"{cell.order} access left the block unable to accept the "
+                    f"next write"
+                )
+            resp, wafter = await self._rd(wit.addr)
+            if resp != RESP_OKAY:
+                return (
+                    f"{tag} witness {wit.block}.{wit.name} readback "
+                    f"resp={resp} after the follow-on write"
+                )
+            if (wafter & wmask) != (wvalue & wmask):
+                return (
+                    f"{tag} follow-on write to {wit.block}.{wit.name} "
+                    f"(0x{wit.addr:08x}) wrote 0x{wvalue:08x} over "
+                    f"0x{wbefore:08x}, read 0x{wafter:08x} under mask "
+                    f"0x{wmask:08x} -- a pending-write flag left set by the "
+                    f"{cell.order} access displaced the next write in the block"
+                )
+            # The swept register must not have taken the witness write either.
+            resp, again = await self._rd(info.addr)
+            if resp != RESP_OKAY:
+                return f"{tag} 0x{info.addr:08x} re-read resp={resp}"
+            if (again & mask) != (want & mask):
+                return (
+                    f"{tag} 0x{info.addr:08x} changed to 0x{again:08x} when "
+                    f"{wit.name} was written -- the {cell.order} access left "
+                    f"this register latched as the target"
+                )
+            self.witnessed += 1
 
         self.covered[cell.order] += 1
         self.cross_covered[cell.cross_key] += 1
@@ -397,6 +455,14 @@ def _selftest() -> None:
         assert {cell.cross_key for cell in c.cells} == c.cross_cells(), (
             f"seed {seed} does not build every ordering x size cell"
         )
+    # A witness with an empty mask has no bit to flip, so the displacement
+    # compare could not be built for it.
+    for cell in cfg.cells:
+        if cell.witness is not None:
+            assert write_mask(cell.witness) != 0, (
+                f"witness {cell.witness.block}.{cell.witness.name} has no "
+                f"software-usable bit to flip"
+            )
     # The sweep must reach past the scratch words, or it proves only stimulus.
     assert len(cfg.blocks) > 1, f"only {cfg.blocks} in the sweep"
     assert any(b in TOUCH_BLOCKS for b in cfg.blocks), (

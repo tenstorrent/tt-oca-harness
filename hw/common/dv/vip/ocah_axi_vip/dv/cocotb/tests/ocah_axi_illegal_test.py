@@ -9,12 +9,13 @@ clean bus.
 
 This test drives deliberately illegal traffic on ``t_axi``:
 
-* ``AWBURST = 2'b11`` -- the reserved burst encoding (IHI 0022 A3.4.1). The
-  ``AW_BURST_LEGAL`` rule must fire.
+* ``AWBURST = 2'b11`` -- the reserved burst encoding (IHI 0022 A3.4.1).
+  ``OCAH_AXI_AW_BURST_LEGAL`` must fire.
 * an INCR burst crossing a 4KB boundary: 16 beats of 4 bytes from 0x0FC4
-  ends at 0x1004, four bytes into the next page (A3.4.1).
-  ``AW_4KB_BOUNDARY`` must fire. Note 0x0FC0 would NOT do -- it ends exactly
-  at 0x1000, the last byte inside the page, which AXI permits.
+  covers 0x0FC4 to 0x1003, so its last four bytes are in the next page
+  (A3.4.1). ``OCAH_AXI_AW_4KB_BOUNDARY`` must fire. 0x0FC0 would NOT do: it
+  covers 0x0FC0 to 0x0FFF, ending on the last byte inside the page, which
+  AXI permits.
 
 **The pass criterion is inverted, and this coroutine does not decide it.**
 Success is the simulator reporting an assertion failure. cocotb cannot read
@@ -28,14 +29,21 @@ summary. Consequences:
   can fire, and a green run proves nothing at all.
 
 Because a normal testlist has no way to say "this run must report an
-assertion failure", the test is deliberately not enrolled in
-``dv/testlists/all.toml``. Run it by name and read the assertion summary.
+assertion failure", the entry in ``dv/testlists/all.toml`` carries the
+``axi_sva_negative`` tag, no ``ci`` tag and no group membership. Select it by
+name and read the assertion summary.
 
-An earlier draft gated the stimulus on an ``OCAH_INC_ASSERT`` environment
-variable. Nothing sets that -- it is a compile-time Verilog define -- so the
-guard was always false and the illegal beats were never driven. The stimulus
-is now unconditional: under Verilator it is harmless because the checker is
-empty, and under VCS it is the whole point.
+The stimulus is unconditional. ``OCAH_INC_ASSERT`` is a compile-time Verilog
+define and is not readable from Python, so there is nothing here to gate on:
+under Verilator the illegal beats are harmless because the checker is empty,
+and under VCS they are the whole point.
+
+The fault slave is built with ``tolerate_illegal_addressing``. Both payloads
+are requests it would otherwise refuse to serve, and the refusal would end
+the run before the rule under test had been sampled. The tolerance is opt-in
+and applies to this bench only: every other user of the slave still raises on
+a reserved encoding or a page crossing, which is what makes those violations
+visible when a DUT emits them.
 
 Illegal stimulus belongs here and nowhere else. A DUT-level test emitting it
 would be reporting a stimulus bug as a DUT bug.
@@ -79,13 +87,17 @@ async def ocah_axi_illegal_test(dut):
     """Drive illegal AW payloads at the bound protocol checker."""
     log = dut._log
 
+    build_wire_slave(dut, tolerate_illegal_addressing=True)
     await start_clock_reset(dut)
-    build_wire_slave(dut)
 
-    log.info("CHK-SVA-NEGATIVE: driving AWBURST=2'b11 (reserved encoding)")
+    log.info(
+        "CHK-SVA-NEGATIVE: driving AWBURST=2'b11 (reserved encoding); "
+        "OCAH_AXI_AW_BURST_LEGAL must fire")
     await _drive_illegal_aw(dut, awid=0x11, addr=0x0000_1000, burst=0b11, length=0)
 
-    log.info("CHK-SVA-NEGATIVE: driving a 16-beat INCR across a 4KB boundary")
+    log.info(
+        "CHK-SVA-NEGATIVE: driving a 16-beat INCR across a 4KB boundary; "
+        "OCAH_AXI_AW_4KB_BOUNDARY must fire")
     await _drive_illegal_aw(dut, awid=0x12, addr=0x0000_0FC4, burst=0b01, length=15)
 
     log.info(

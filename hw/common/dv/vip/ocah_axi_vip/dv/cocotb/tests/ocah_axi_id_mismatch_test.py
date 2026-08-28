@@ -61,8 +61,17 @@ def _rid_capture(dut) -> OcahAxiIdCapture:
 
 @cocotb.test()
 async def ocah_axi_id_mismatch_test(dut) -> None:
-    await start_clock_reset(dut)
     slave = build_wire_slave(dut)
+    await start_clock_reset(dut)
+
+    # The injected response IDs are genuine protocol violations, and the bound
+    # checker is right to fire on them: OCAH_AXI_B_ID_OUTSTANDING,
+    # OCAH_AXI_R_ID_OUTSTANDING and OCAH_AXI_R_NOT_BEFORE_AR all trip on a
+    # response whose ID matches no outstanding request. The baseline traffic
+    # is driven with the checker live, and the injection rounds run inside a
+    # suppression window, so the fault this test is about does not present as
+    # a checker failure while the checker still covers the clean traffic.
+    sva = getattr(dut, "sva_en", None)
 
     addr = random.randrange(0, 2**14) & ~0x3
     data = random.getrandbits(32)
@@ -80,6 +89,8 @@ async def ocah_axi_id_mismatch_test(dut) -> None:
     # is untouched, and the following unarmed write matches again (one-shot).
     data2 = random.getrandbits(32)
     addr2 = (addr + 0x100) & ~0x3
+    if sva is not None:
+        sva.value = 0
     for round_index in range(3):
         mask = random.randrange(1, 256)
         slave.sequence.inject_id_corruption(mask=mask, write=True, read=False)
@@ -111,6 +122,9 @@ async def ocah_axi_id_mismatch_test(dut) -> None:
             f"round {round_index}: BID corruption must be one-shot"
         )
 
+    if sva is not None:
+        sva.value = 1
+
     # Baseline read: uncorrupted responder echoes the issued ARID.
     arid = random.randrange(256)
     capture = _rid_capture(dut)
@@ -121,6 +135,8 @@ async def ocah_axi_id_mismatch_test(dut) -> None:
 
     # Armed one-shot RID corruption over several random masks, sampled on the
     # completing beat; each following unarmed read matches again (one-shot).
+    if sva is not None:
+        sva.value = 0
     for round_index in range(3):
         mask = random.randrange(1, 256)
         slave.sequence.inject_id_corruption(mask=mask, write=False, read=True)
@@ -148,6 +164,9 @@ async def ocah_axi_id_mismatch_test(dut) -> None:
         assert resp == RESP_OKAY and observed == arid, (
             f"round {round_index}: RID corruption must be one-shot"
         )
+
+    if sva is not None:
+        sva.value = 1
 
     # clear_errors() disarms pending corruption.
     slave.sequence.inject_id_corruption(mask=random.randrange(1, 256))

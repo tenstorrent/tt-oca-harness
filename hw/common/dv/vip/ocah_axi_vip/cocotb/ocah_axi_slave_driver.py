@@ -119,9 +119,51 @@ class OcahFaultMixin:
         self.log.info("Disabled AXI backpressure")
 
 
-class _FaultAxiRamWrite(AxiRamWrite):
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, *, fault_owner, **kwargs):
+class _IllegalAddressingMixin:
+    """Decoding rules for stimulus that AXI forbids.
+
+    A slave answering a bus is not an arbiter of legality, but it must not
+    silently normalise an illegal request either: a test whose DUT emits one
+    would then go green. So each violation raises by default, and a bench that
+    drives the violation ON PURPOSE -- the protocol-checker negative control --
+    opts in with ``tolerate_illegal_addressing`` and gets a logged
+    normalisation instead.
+    """
+
+    def _decode_burst(self, raw: int, field: str) -> AxiBurstType:
+        """The burst type, or INCR for the reserved encoding when tolerated."""
+        try:
+            return AxiBurstType(raw)
+        except ValueError:
+            if not self.tolerate_illegal_addressing:
+                raise
+            self.log.info(
+                "%s=0x%x is the reserved burst encoding (IHI 0022 A3.4.1); "
+                "absorbing it as INCR for addressing only", field, raw)
+            return AxiBurstType.INCR
+
+    def _check_page(self, aligned_addr: int, transfer_size: int, field: str) -> int:
+        """``transfer_size``, clamped to the 4KB page when a crossing is tolerated."""
+        room = 0x1000 - (aligned_addr & 0xFFF)
+        if room >= transfer_size:
+            return transfer_size
+        if not self.tolerate_illegal_addressing:
+            raise AssertionError(
+                f"{field} INCR burst at 0x{aligned_addr:x} of "
+                f"{transfer_size} bytes crosses a 4KB boundary "
+                f"(IHI 0022 A3.4.1)"
+            )
+        self.log.info(
+            "%s INCR burst at 0x%x of %d bytes crosses a 4KB boundary "
+            "(IHI 0022 A3.4.1); serving %d bytes to the page end",
+            field, aligned_addr, transfer_size, room)
+        return room
+
+
+class _FaultAxiRamWrite(_IllegalAddressingMixin, AxiRamWrite):
+    def __init__(self, bus, clock, reset=None, reset_active_level=True, *, fault_owner, tolerate_illegal_addressing=False, **kwargs):
         self.fault_owner = fault_owner
+        self.tolerate_illegal_addressing = tolerate_illegal_addressing
         super().__init__(bus, clock, reset, reset_active_level=reset_active_level, **kwargs)
         try:
             self._bid_mask = (1 << len(self.bus.b.bid)) - 1
@@ -135,16 +177,8 @@ class _FaultAxiRamWrite(AxiRamWrite):
             addr = int(aw.awaddr)
             length = int(getattr(aw, "awlen", 0))
             size = int(getattr(aw, "awsize", self.max_burst_size))
-            # AWBURST 2'b11 is the reserved encoding. A fault slave must absorb
-            # it rather than raise: the SVA negative control drives it on
-            # purpose, and a ValueError here would kill the test before the
-            # rule under test has been observed. Treat it as INCR for
-            # addressing only -- responding is not endorsing the encoding.
             raw_burst = int(getattr(aw, "awburst", AxiBurstType.INCR))
-            try:
-                burst = AxiBurstType(raw_burst)
-            except ValueError:
-                burst = AxiBurstType.INCR
+            burst = self._decode_burst(raw_burst, "AWBURST")
             prot = AxiProt(int(getattr(aw, "awprot", AxiProt.NONSECURE)))
 
             num_bytes = 2**size
@@ -157,7 +191,8 @@ class _FaultAxiRamWrite(AxiRamWrite):
                 lower_wrap_boundary = (addr // transfer_size) * transfer_size
                 upper_wrap_boundary = lower_wrap_boundary + transfer_size
             if burst == AxiBurstType.INCR:
-                assert 0x1000 - (aligned_addr & 0xFFF) >= transfer_size
+                transfer_size = self._check_page(
+                    aligned_addr, transfer_size, "AW")
 
             cur_addr = aligned_addr
             b = self.b_channel._transaction_obj()
@@ -217,9 +252,10 @@ class _FaultAxiRamWrite(AxiRamWrite):
             await self.b_channel.send(b)
 
 
-class _FaultAxiRamRead(AxiRamRead):
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, *, fault_owner, **kwargs):
+class _FaultAxiRamRead(_IllegalAddressingMixin, AxiRamRead):
+    def __init__(self, bus, clock, reset=None, reset_active_level=True, *, fault_owner, tolerate_illegal_addressing=False, **kwargs):
         self.fault_owner = fault_owner
+        self.tolerate_illegal_addressing = tolerate_illegal_addressing
         super().__init__(bus, clock, reset, reset_active_level=reset_active_level, **kwargs)
         try:
             self._rid_mask = (1 << len(self.bus.r.rid)) - 1
@@ -233,12 +269,8 @@ class _FaultAxiRamRead(AxiRamRead):
             addr = int(ar.araddr)
             length = int(getattr(ar, "arlen", 0))
             size = int(getattr(ar, "arsize", self.max_burst_size))
-            # Same reserved-encoding tolerance as the write path above.
             raw_burst = int(getattr(ar, "arburst", AxiBurstType.INCR))
-            try:
-                burst = AxiBurstType(raw_burst)
-            except ValueError:
-                burst = AxiBurstType.INCR
+            burst = self._decode_burst(raw_burst, "ARBURST")
             prot = AxiProt(int(getattr(ar, "arprot", AxiProt.NONSECURE)))
 
             num_bytes = 2**size
@@ -251,7 +283,8 @@ class _FaultAxiRamRead(AxiRamRead):
                 lower_wrap_boundary = (addr // transfer_size) * transfer_size
                 upper_wrap_boundary = lower_wrap_boundary + transfer_size
             if burst == AxiBurstType.INCR:
-                assert 0x1000 - (aligned_addr & 0xFFF) >= transfer_size
+                transfer_size = self._check_page(
+                    aligned_addr, transfer_size, "AR")
 
             cur_addr = aligned_addr
 
@@ -295,7 +328,7 @@ class _FaultAxiRamRead(AxiRamRead):
 class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
     """cocotbext AXI4 RAM responder engine with OCAH fault-control APIs."""
 
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahAxiSlaveDriver", **kwargs):
+    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahAxiSlaveDriver", tolerate_illegal_addressing=False, **kwargs):
         self.write_if = None
         self.read_if = None
         self._init_fault_state(name)
@@ -308,6 +341,7 @@ class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
             size=size,
             mem=self.mem,
             fault_owner=self,
+            tolerate_illegal_addressing=tolerate_illegal_addressing,
         )
         self.read_if = _FaultAxiRamRead(
             bus.read,
@@ -317,6 +351,7 @@ class OcahAxiSlaveDriver(Memory, OcahFaultMixin):
             size=size,
             mem=self.mem,
             fault_owner=self,
+            tolerate_illegal_addressing=tolerate_illegal_addressing,
         )
 
     @classmethod
