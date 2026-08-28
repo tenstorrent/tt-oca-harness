@@ -97,6 +97,15 @@ DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
 DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_jtag_tlr_reset_test
 
+# Every JTAG instruction test (BYPASS variants, IDCODE, SAMPLE/PRELOAD,
+# EXTEST, INTEST, EXTEST_TRAIN/PULSE, CLAMP, HIGHZ, RUNBIST, CLAMP_HOLD/
+# RELEASE, undefined-instruction fallback, TRST/POR/TLR) finalizes a named
+# evidence checker per pass; most also run a passive pin-level scan monitor
+# whose IR/DR reconstruction is cross-checked against the sequence's own
+# scan intent. Corrupted family expectations must fail the run:
+DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag_extest_test
+
 # XTRIG checker negative validation: a corrupted CTM reference model must
 # fail every route-comparing scenario
 DTP_XTRIG_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
