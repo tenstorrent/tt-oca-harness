@@ -7,8 +7,8 @@
 // Provides software-controllable reset for KM and crypto accelerators.
 // Each bit in the SW_RESET register drives a sep_isolate_rst_seq FSM which
 // requests isolation of that domain's AXI paths, waits for them to drain,
-// and then asserts the domain's sequenced reset. The exported resets remain
-// overridable through JTAG.
+// and then asserts the domain's sequenced reset. Reset primitives combine the
+// sequenced resets with the SEP reset and apply the JTAG IC_RESET overrides.
 //
 // Register map defined in meta/registers/rdl/sep_reset_ctrl.rdl
 //   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
@@ -139,7 +139,7 @@ module sep_reset_ctrl
     // side's reset may assert.
 
     logic otbn_isolate_req, aes_isolate_req, hmac_isolate_req, kmac_isolate_req, km_isolate_req;
-    sep_pkg::sep_sw_rst_t gated_rst_n;
+    sep_pkg::sep_sw_rst_t isolated_rst_n;
 
     sep_isolate_rst_seq u_otbn_isolate_seq (
         .clk_i        (clk_i),
@@ -147,7 +147,7 @@ module sep_reset_ctrl
         .sw_rst_req_ni(sw_reset_bits.otbn),
         .isolated_i   (sep_crypto_isolated_i.host_otbn & sep_crypto_isolated_i.km_otbn),
         .isolate_req_o(otbn_isolate_req),
-        .gated_rst_no (gated_rst_n.otbn)
+        .gated_rst_no (isolated_rst_n.otbn)
     );
 
     sep_isolate_rst_seq u_aes_isolate_seq (
@@ -156,7 +156,7 @@ module sep_reset_ctrl
         .sw_rst_req_ni(sw_reset_bits.aes),
         .isolated_i   (sep_crypto_isolated_i.host_aes & sep_crypto_isolated_i.km_aes),
         .isolate_req_o(aes_isolate_req),
-        .gated_rst_no (gated_rst_n.aes)
+        .gated_rst_no (isolated_rst_n.aes)
     );
 
     sep_isolate_rst_seq u_hmac_isolate_seq (
@@ -165,7 +165,7 @@ module sep_reset_ctrl
         .sw_rst_req_ni(sw_reset_bits.hmac),
         .isolated_i   (sep_crypto_isolated_i.host_hmac & sep_crypto_isolated_i.km_hmac),
         .isolate_req_o(hmac_isolate_req),
-        .gated_rst_no (gated_rst_n.hmac)
+        .gated_rst_no (isolated_rst_n.hmac)
     );
 
     sep_isolate_rst_seq u_kmac_isolate_seq (
@@ -174,7 +174,7 @@ module sep_reset_ctrl
         .sw_rst_req_ni(sw_reset_bits.kmac),
         .isolated_i   (sep_crypto_isolated_i.host_kmac & sep_crypto_isolated_i.km_kmac),
         .isolate_req_o(kmac_isolate_req),
-        .gated_rst_no (gated_rst_n.kmac)
+        .gated_rst_no (isolated_rst_n.kmac)
     );
 
     // KM reset waits for all of the KM's master paths to drain.
@@ -186,7 +186,7 @@ module sep_reset_ctrl
                          sep_crypto_isolated_i.km_hmac & sep_crypto_isolated_i.km_kmac &
                          sep_crypto_isolated_i.km_abr  & sep_crypto_isolated_i.km_efuse),
         .isolate_req_o  (km_isolate_req),
-        .gated_rst_no   (gated_rst_n.km)
+        .gated_rst_no   (isolated_rst_n.km)
     );
 
     // Host-path isolates belong to their engine; KM-path isolates isolate when
@@ -215,14 +215,81 @@ module sep_reset_ctrl
     // If syncronized to clk_i, this would create a dependecny on clk_i being functional during TCK operations. This is not always the case.
     // If stop clock propagation is used, there might not be a clock and the jtag_sep_reset_ctrl_i value can't propagate.
 
-    assign sep_crypto_gated_rst_no.kmac = jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val : (gated_rst_n.kmac & sep_reset_n);
-    assign sep_crypto_gated_rst_no.hmac = jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val : (gated_rst_n.hmac & sep_reset_n);
-    assign sep_crypto_gated_rst_no.aes  = jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd  ? jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val  : (gated_rst_n.aes  & sep_reset_n);
-    assign sep_crypto_gated_rst_no.otbn = jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val : (gated_rst_n.otbn & sep_reset_n);
-    assign sep_crypto_gated_rst_no.km   = jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd   ? jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val   : (gated_rst_n.km   & sep_reset_n);
+    sep_pkg::sep_sw_rst_t pre_jtag_rst_n;
+
+    prim_and2 #(.Width(1)) u_kmac_rst_and (
+        .in0_i (isolated_rst_n.kmac),
+        .in1_i (sep_reset_n),
+        .out_o (pre_jtag_rst_n.kmac)
+    );
+
+    prim_and2 #(.Width(1)) u_hmac_rst_and (
+        .in0_i (isolated_rst_n.hmac),
+        .in1_i (sep_reset_n),
+        .out_o (pre_jtag_rst_n.hmac)
+    );
+
+    prim_and2 #(.Width(1)) u_aes_rst_and (
+        .in0_i (isolated_rst_n.aes),
+        .in1_i (sep_reset_n),
+        .out_o (pre_jtag_rst_n.aes)
+    );
+
+    prim_and2 #(.Width(1)) u_otbn_rst_and (
+        .in0_i (isolated_rst_n.otbn),
+        .in1_i (sep_reset_n),
+        .out_o (pre_jtag_rst_n.otbn)
+    );
+
+    prim_and2 #(.Width(1)) u_km_rst_and (
+        .in0_i (isolated_rst_n.km),
+        .in1_i (sep_reset_n),
+        .out_o (pre_jtag_rst_n.km)
+    );
+
+    prim_rst_mux2_hf_n u_kmac_rst_ovrd_mux (
+        .rst0_ni (pre_jtag_rst_n.kmac),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd),
+        .rst_no  (sep_crypto_gated_rst_no.kmac)
+    );
+
+    prim_rst_mux2_hf_n u_hmac_rst_ovrd_mux (
+        .rst0_ni (pre_jtag_rst_n.hmac),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd),
+        .rst_no  (sep_crypto_gated_rst_no.hmac)
+    );
+
+    prim_rst_mux2_hf_n u_aes_rst_ovrd_mux (
+        .rst0_ni (pre_jtag_rst_n.aes),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd),
+        .rst_no  (sep_crypto_gated_rst_no.aes)
+    );
+
+    prim_rst_mux2_hf_n u_otbn_rst_ovrd_mux (
+        .rst0_ni (pre_jtag_rst_n.otbn),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd),
+        .rst_no  (sep_crypto_gated_rst_no.otbn)
+    );
+
+    prim_rst_mux2_hf_n u_km_rst_ovrd_mux (
+        .rst0_ni (pre_jtag_rst_n.km),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd),
+        .rst_no  (sep_crypto_gated_rst_no.km)
+    );
 
     // JTAG override to efuse reset
-    assign sep_reset_n  = jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd ? jtag_sep_reset_ctrl_i.val.sep_reset_n_val : sep_intermediate_reset_ni;
+    prim_rst_mux2_hf_n u_sep_reset_ovrd_mux (
+        .rst0_ni (sep_intermediate_reset_ni),
+        .rst1_ni (jtag_sep_reset_ctrl_i.val.sep_reset_n_val),
+        .sel_i   (jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd),
+        .rst_no  (sep_reset_n)
+    );
+
     assign sep_reset_no = sep_reset_n;
 
 endmodule : sep_reset_ctrl

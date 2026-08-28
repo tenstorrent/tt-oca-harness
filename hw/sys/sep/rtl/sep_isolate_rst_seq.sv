@@ -28,7 +28,7 @@ module sep_isolate_rst_seq (
   } isolate_state_e;
 
   isolate_state_e state_q, state_d;
-  logic gated_rst_d, gated_rst_q;
+  logic gated_rst_d, gated_rst_n_q;
 
   always_comb begin
     state_d = state_q;
@@ -68,13 +68,13 @@ module sep_isolate_rst_seq (
   // Reset value 1 = domain reset asserted while rst_ni is asserted.
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
-      gated_rst_q <= 1'b1;
+      gated_rst_n_q <= 1'b1;
     end else begin
-      gated_rst_q <= gated_rst_d;
+      gated_rst_n_q <= ~gated_rst_d;
     end
   end
 
-  assign gated_rst_no = ~gated_rst_q;
+  assign gated_rst_no = gated_rst_n_q;
 
   // The domain reset must never assert while a path is still open.
   `OCAH_ASSERT(ResetOnlyWhenIsolated_A, !gated_rst_no |-> isolated_i, clk_i, !rst_ni)

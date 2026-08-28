@@ -9,7 +9,6 @@
 module sep_crypto_axi_interconnect (
     input  logic clk_i,
     input  logic rst_ni,
-    input  logic sep_reset_ni,
     input  logic test_en_i,
 
     // Full AXI4 slave from local crossbar
@@ -894,7 +893,7 @@ module sep_crypto_axi_interconnect (
     //=========================================================================
     // TRNG AXI-Lite passthrough — demux port [sep_crypto_pkg::SepCryptoAxiTrng]
     //=========================================================================
-    // 64b AXI → 32b AXI → 32b AXI-Lite → ext_trng_axil_* (to sep_ip_integration)
+    // 64b AXI → 32b AXI → 32b AXI-Lite → ext_trng_axil_*
 
     axi32_req_t  trng_axi32_req;
     axi32_resp_t trng_axi32_resp;
@@ -970,8 +969,8 @@ module sep_crypto_axi_interconnect (
         .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
         .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t)
     ) u_abr_b_cut (
-        .clk_i,
-        .rst_ni     (sep_reset_ni),
+        .clk_i      (clk_i),
+        .rst_ni     (rst_ni),
         .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAbr]),
         .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
         .mst_req_o  (abr_axi_req_o),

@@ -67,7 +67,7 @@ module sep_crypto #(
     input  logic                               ext_boot_seq_done_i,
     output logic                               security_disable_o,       // To SMC
     output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
-    output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,    
+    output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
     output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
     output logic                               lc_sigint_err_o,
     output sep_efuse_pkg::efuse_map_t 		   shadow_regs_o,
@@ -284,14 +284,13 @@ module sep_crypto #(
     sep_pkg::sep_32_64_6_12_axi_resp_t fuse_axi_resp, lifecycle_axi_resp, abr_axi_resp;
 
     sep_crypto_axi_interconnect u_sep_crypto_axi_interconnect (
-        .clk_i,
-        .rst_ni,
-        .sep_reset_ni,
-        .test_en_i,
-        .sep_crypto_axi_req_i,
-        .sep_crypto_axi_resp_o,
-        .isolate_req_i,
-        .isolated_o,
+        .clk_i                        (clk_i),
+        .rst_ni                       (rst_ni),
+        .test_en_i                    (test_en_i),
+        .sep_crypto_axi_req_i         (sep_crypto_axi_req_i),
+        .sep_crypto_axi_resp_o        (sep_crypto_axi_resp_o),
+        .isolate_req_i                (isolate_req_i),
+        .isolated_o                   (isolated_o),
         .otbn_axil_isolated_req_o     (otbn_axil_isolated_req),
         .otbn_axil_isolated_resp_i    (otbn_axil_isolated_resp),
         .hmac_axil_isolated_req_o     (hmac_axil_isolated_req),
