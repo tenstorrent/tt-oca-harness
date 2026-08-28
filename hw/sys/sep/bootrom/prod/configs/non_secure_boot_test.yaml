@@ -34,7 +34,7 @@ primary:
     signing_authority: "local"
     signing_key_name: "none"
     signing_key_id: "0"
-    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.dev0.pem"
+    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.rom_key0.pem"
     public_key_sel:
       selection: 0
       rom_key_index: 0
@@ -103,7 +103,7 @@ backup:
     signing_authority: "local"
     signing_key_name: "none"
     signing_key_id: "0"
-    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.dev0.pem"
+    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.rom_key0.pem"
     public_key_sel:
       selection: 0
       rom_key_index: 0

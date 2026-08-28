@@ -10,7 +10,7 @@ meta:
 
 # Produces a signed SPI image for testing C13.10 secure boot validation:
 #   - RSA-3072 signature (PKCS#1 v1.5 + SHA-256)
-#   - dev0 test key (slot 0)
+#   - ROM key 0 test key (slot 0)
 #   - No payload encryption (encrypted_payload: 0)
 #   - BL1 payload = bl1_pass_test
 #
@@ -19,7 +19,7 @@ meta:
 #       --config fw/sep/bootcode/configs/secure_boot_test.yaml \
 #       --out fw/sep/bootcode/build/secure_boot.spi_preload
 #
-# Key: tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem (submodule)
+# Key: tests/signing_keys/rsa_private_key.rom_key0.pem (submodule)
 # Key digest (SHA-256 of modulus) must match key_digests.c slot 0.
 
 primary:
@@ -37,12 +37,12 @@ primary:
       use_ext_sram: 0
     signature_type: 1  # RSA-3072
     signing_authority: "local"
-    signing_key_name: "test_dev_rom_key_0"
+    signing_key_name: "test_rom_key_0"
     signing_key_id: "0"
-    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.dev0.pem"
+    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.rom_key0.pem"
     public_key_sel:
       selection: 0      # ROM_KEY
-      rom_key_index: 0   # slot 0 (dev0)
+      rom_key_index: 0   # slot 0
     usage_constraints:
       selectors:
         chiplet_id: 0b00000000
@@ -106,9 +106,9 @@ backup:
       use_ext_sram: 0
     signature_type: 1
     signing_authority: "local"
-    signing_key_name: "test_dev_rom_key_0"
+    signing_key_name: "test_rom_key_0"
     signing_key_id: "0"
-    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.dev0.pem"
+    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.rom_key0.pem"
     public_key_sel:
       selection: 0
       rom_key_index: 0

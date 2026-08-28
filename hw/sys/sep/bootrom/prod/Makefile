@@ -391,7 +391,7 @@ $(SMC_MEM_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 # exercise the RSA-3072 signature check. Same packer as the non-secure image; the
 # config just turns on secure_boot and names a signing key.
 #
-# key_digests.c pins slot 0 to the SHA-256 of the dev0 modulus, so only that exact
+# key_digests.c pins slot 0 to the SHA-256 of ROM key 0's modulus, so only that exact
 # key produces an image the ROM will accept. It is a test key that ships in the
 # tt-boot-manifest repo, so the submodule brings it along and this builds with no
 # extra setup -- $ROOT is what the config resolves signing_key_file against.
@@ -401,7 +401,7 @@ $(SMC_MEM_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 SECURE_PACK_CONFIG := $(CURDIR)/configs/secure_boot_test.yaml
 SECURE_BOOT_BIN    := $(BUILD_DIR)/secure_boot.bin
 SECURE_SPI_HEX     := $(BUILD_DIR)/secure_boot.spi_preload
-SEP_SIGNING_KEY    ?= $(TT_BOOT_MANIFEST_DIR)/tests/signing_keys/rsa_private_key.dev0.pem
+SEP_SIGNING_KEY    ?= $(CURDIR)/tests/signing_keys/rsa_private_key.rom_key0.pem
 
 .PHONY: secure_boot_spi
 secure_boot_spi: $(SECURE_SPI_HEX)
@@ -410,10 +410,10 @@ secure_boot_spi: $(SECURE_SPI_HEX)
 # or, worse, letting the test start and stall waiting for an image nobody built.
 $(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 	@test -f "$(SEP_SIGNING_KEY)" || { \
-	  echo "ERROR: secure boot image needs the dev0 signing key."; \
+	  echo "ERROR: secure boot image needs the ROM key 0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
-	  echo "       It ships in the tt-boot-manifest submodule, so this normally means"; \
-	  echo "       the submodule is stale; re-run git submodule update, or set"; \
+	  echo "       It is committed in tests/signing_keys/ alongside the other five ROM"; \
+	  echo "       test keys, so a missing file means a partial checkout; or set"; \
 	  echo "       SEP_SIGNING_KEY=<path>. key_digests.c slot 0 pins the accepted key,"; \
 	  echo "       so no other key will boot."; \
 	  exit 1; }
@@ -436,6 +436,13 @@ $(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 # No OCH_ROOT/ROOT env prefix, unlike the Grendel recipes above: the OCA producer
 # does not expand variables in config paths (src/oca/payload.py opens `path`
 # verbatim), so the configs carry paths relative to this directory.
+#
+# rom_key1..rom_key5 are not extra validator paths -- they are the same signed
+# path anchored on ROM key slots 1-5, each signed by a DIFFERENT key from
+# tests/signing_keys/ (slot 0 is secure_boot, signed by ROM key 0).
+# Six distinct keys are what makes per-slot resolution and per-slot revocation
+# testable: with one shared key every slot would resolve to the same digest and an
+# off-by-one in either path would go unnoticed.
 OCA_IMAGES := \
 	non_secure_boot \
 	secure_boot \
@@ -448,7 +455,12 @@ OCA_IMAGES := \
 	ecdsa_boot \
 	der_boot \
 	multi_image_boot \
-	no_bl1_boot
+	no_bl1_boot \
+	rom_key1_boot \
+	rom_key2_boot \
+	rom_key3_boot \
+	rom_key4_boot \
+	rom_key5_boot
 
 OCA_BINS := $(patsubst %,$(BUILD_DIR)/oca_%.bin,$(OCA_IMAGES))
 OCA_HEXS := $(patsubst %,$(BUILD_DIR)/oca_%.spi_preload,$(OCA_IMAGES))
@@ -469,7 +481,7 @@ $(OCA_BINS): $(BUILD_DIR)/oca_%.bin: $(CURDIR)/configs/oca_%_image.yaml \
                                      $(CURDIR)/configs/oca_%_test.yaml \
                                      bl1_test ensure-pack-deps | $(BUILD_DIR)
 	@test -f "$(SEP_SIGNING_KEY)" || { \
-	  echo "ERROR: OCA images need the dev0 signing key."; \
+	  echo "ERROR: OCA images need the ROM key 0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
 	  echo "       It ships in the tt-boot-manifest submodule, so this normally means"; \
 	  echo "       the submodule is stale; re-run git submodule update."; \

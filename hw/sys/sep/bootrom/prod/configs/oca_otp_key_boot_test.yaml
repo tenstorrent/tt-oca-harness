@@ -16,7 +16,7 @@
 # of key_digests.c, which means this image only boots against a fuse map that
 # provisions it: virtual_platform/tests/fuse_maps/oca_otp_key.yaml.
 #
-# Same dev0 signing key as the ROM-anchored image; only where the digest is held
+# Same ROM key 0 signing key as the ROM-anchored image; only where the digest is held
 # differs, which is exactly the axis under test.
 manifest_format: oca-classic
 manifest_identifier: "OCAHOTP"
@@ -25,8 +25,8 @@ secure_boot: 1
 
 signature_type: 0x01                 # RSA-3072 PKCS#1 v1.5 / SHA-256
 signing_authority: local
-signing_key_name: "test_dev_rom_key_0"
-signing_key_file: "tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem"
+signing_key_name: "test_rom_key_0"
+signing_key_file: "tests/signing_keys/rsa_private_key.rom_key0.pem"
 public_key_select_classic: 0x10000    # bit 16 = CHIPLET_PUBK_HASH0 (an OTP anchor)
 public_key_encoding: 0x02            # RAW (388 B: 384-byte modulus + 4-byte exponent)
 signature_encoding: 0x02             # RAW (384 B, big-endian)
