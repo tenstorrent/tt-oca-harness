@@ -60,7 +60,11 @@ module sep_reset_ctrl
     // Internal reset signal (after JTAG override) for efuse sensing being done
     logic                     sep_reset_n;
     // CPU reset = sep_reset_n gated with the Aggregated WDT Resets from SMC and SEP
-    assign sep_cpu_reset_no = sep_reset_n & wdt_rst_ni;
+    prim_and2 #(.Width(1)) u_sep_cpu_rst_and (
+        .in0_i (sep_reset_n),
+        .in1_i (wdt_rst_ni),
+        .out_o (sep_cpu_reset_no)
+    );
 
     // =========================================================================
     // AXI4 -> AXI-Lite conversion for the generated reg block
