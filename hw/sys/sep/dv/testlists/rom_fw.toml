@@ -127,7 +127,7 @@ args = [
 # Signed sibling of sep_rom_ot_dma_boot_test specifically -- it shares that test's
 # build_ot/ ROM and SECURE_DMA drain, NOT the PIO entry that happens to sit above
 # it here. Same ROM, same OpenTitan SPI transport, but
-# the flash carries the RSA-3072 PKCS#1 v1.5 signed image (make secure_boot_spi,
+# the flash carries the RSA-3072 PKCS#1 v1.5 signed image (make oca-images,
 # dev0 key from the tt-boot-manifest submodule, digest pinned in key_digests.c
 # slot 0). That single swap turns on the whole crypto path -- version rollback,
 # key revocation, RSA-3072 modexp on OTBN, PKCS#1 unpad, payload hash -- which the

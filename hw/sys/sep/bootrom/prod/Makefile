@@ -6,17 +6,25 @@ SHELL := /usr/bin/env
 #
 # SEP Boot ROM.
 #
-# SPI is stubbed (src/sep_spi.c): the `sep` DUT has no Cadence xSPI, so the ROM
-# skips the SPI manifest and boots from the SMC-SRAM manifest path.  The
-# manifest+BL1 image it boots is built from source here -- bl1_pass_test is
-# compiled and packed by tt-boot-manifest from configs/non_secure_boot_test.yaml,
-# then rebased to the SMC-SRAM base.
+# A trimmed copy of fw/sep/bootcode adapted for the OSS DV flow:
+#   * SPI is stubbed (src/sep_spi.c) -- the OSS `sep` DUT has no Cadence xSPI, so
+#     the ROM skips the SPI manifest and boots from the SMC-SRAM manifest path.
+#
+# The manifest+BL1 images the ROM boots are built entirely from source in this
+# tree: bl1_pass_test (<sep>/dv/fw/tests/bl1_pass_test) is compiled and packed by
+# the real tt-boot-manifest packer from the tools/tt-boot-manifest submodule,
+# using the configs/oca_*.yaml pairs -- see OCA_IMAGES below. The SMC-SRAM path
+# takes build/oca_smc_mem.hex, the same image rebased to the SMC-SRAM base.
+#
+# Code (.text) links to Boot ROM (ROM_BASE) -> loaded via +sep_boot_rom_hex.
+# Data (.rodata/.data/.bss) links to DCCM -> backdoor-loaded via the TCM responder.
 #
 # Outputs (build/, gitignored):
-#   boot_rom.vmem     - 64-bit VMEM for the Boot ROM responder
-#   boot_rom.itcm.hex - ROM .text as TCM-relative byte hex
-#   boot_rom.dtcm.hex - .data/.bss as DCCM-relative byte hex
-#   smc_mem.hex       - manifest+BL1 image at the SMC-SRAM base
+#   boot_rom.vmem     - 64-bit VMEM for the Boot ROM responder ($readmemh)
+#   boot_rom.itcm.hex - ROM .text as TCM-relative byte hex (legacy/optional)
+#   boot_rom.dtcm.hex - .rodata/.data/.bss as DCCM-relative byte hex
+#   oca_*.bin         - OCA boot images, one per validator path (OCA_IMAGES)
+#   oca_smc_mem.hex   - manifest+BL1 image at SMC-SRAM base (+sep_smc_mem_hex)
 #
 # Prereqs: RISCV_TOOLCHAIN pointing at a picolibc-enabled toolchain bin dir, or
 # scripts/docker-run.sh. The packer's Python dependencies come from its
@@ -89,10 +97,6 @@ ELF_TO_VMEM   := $(TOOLS_DIR)/elf-to-vmem.py
 # --- manifest+BL1 SMC image (built from source, packed by tt-boot-manifest) ---
 BL1_TEST_DIR := $(DV_ROOT)/fw/tests/bl1_pass_test
 BL1_TEST_BIN := $(BL1_TEST_DIR)/build/bl1_pass_test.bin
-PACK_CONFIG  := $(CURDIR)/configs/non_secure_boot_test.yaml
-NS_BOOT_BIN  := $(BUILD_DIR)/non_secure_boot.bin
-NS_SPI_HEX   := $(BUILD_DIR)/non_secure_boot.spi_preload
-SMC_MEM_HEX  := $(BUILD_DIR)/smc_mem.hex
 # SMC-SRAM base the behavioral SMC responder loads the image at (see tb_top.sv
 # SEP_SMC_MEM_MODEL + testlist +sep_smc_mem_hex). Verilog-hex @ address (no 0x).
 SMC_SRAM_BASE ?= 40060000
@@ -179,13 +183,19 @@ DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
 
 .PHONY: all clean bl1_test ensure-pack-deps toolchain-images toolchain-images-build \
-        pack-images ot-toolchain-images ot-pio-toolchain-images
-all:
-	$(MAKE) toolchain-images
-	$(MAKE) pack-images
+        ot-toolchain-images ot-pio-toolchain-images
+all: toolchain-images oca-images
 
-# OT SPI-host ROM variants, each into its own BUILD_DIR so they coexist. The
-# packed flash image is transport-agnostic, so `pack-images` builds it once.
+# OpenTitan SPI-host ROM variants. Same sources, built with the OT transport
+# selected (boot_flash.h picks the driver on BOOT_SPI_CONTROLLER_OT) and each into
+# its own BUILD_DIR so the variants coexist instead of clobbering one another.
+# Named targets rather than raw knobs: the variant-to-directory mapping is the
+# thing that must not be got wrong, so it lives here and not in every caller.
+#
+# These build the ROM only. The packed flash images are transport- and
+# drain-agnostic -- the same manifest+BL1 bytes are what any of the three ROMs
+# read -- so they are built ONCE by `oca-images` into the default build/ and shared.
+# Packing them per variant would be pure duplication with three copies to drift.
 ot-toolchain-images:
 	$(MAKE) BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images
 ot-pio-toolchain-images:
@@ -194,7 +204,7 @@ ot-pio-toolchain-images:
 
 # Split by tool dependency so callers can run each half in the right environment:
 # toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
-# container), while pack-images is pure Python and needs cryptography +
+# container), while oca-images is pure Python and needs cryptography +
 # ruamel.yaml, which the container image does not carry. The companion's SEP
 # firmware build script drives the two halves this way.
 #
@@ -227,7 +237,6 @@ toolchain-images:
 	fi
 
 toolchain-images-build: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) bl1_test
-pack-images: $(SMC_MEM_HEX)
 
 $(BUILD_DIR):
 	mkdir -p "$(BUILD_DIR)"
@@ -383,60 +392,10 @@ ensure-pack-deps:
 	  echo "       (the ocah-toolchain container carries them as distro packages)."; \
 	  exit 1; }
 
-# manifest+BL1 -> raw image -> Verilog hex -> rebased to the SMC-SRAM base.
-# OCH_ROOT resolves the config's payload file_path; ROOT (signing keys) is unused
-# for the non-secure config (signature_type 0) so it points at a harmless dir.
-$(SMC_MEM_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
-	OCH_ROOT="$(DV_ROOT)" ROOT="$(TOOLS_DIR)" \
-		$(PACK_RUN) --config "$(PACK_CONFIG)" --out "$(NS_BOOT_BIN)" -v
-	python3 "$(BIN_TO_SPI)" "$(NS_BOOT_BIN)" "$(NS_SPI_HEX)"
-	sed 's/@00000000/@$(SMC_SRAM_BASE)/' "$(NS_SPI_HEX)" > "$@"
-
-# --- signed (secure boot) SPI image ---
-# key_digests.c pins ROM key slot 0 to the SHA-256 of the dev0 modulus, so only
-# that key produces an image the ROM accepts. $ROOT resolves signing_key_file.
-SECURE_PACK_CONFIG := $(CURDIR)/configs/secure_boot_test.yaml
-SECURE_BOOT_BIN    := $(BUILD_DIR)/secure_boot.bin
-SECURE_SPI_HEX     := $(BUILD_DIR)/secure_boot.spi_preload
+# ROM key 0's private key. The OCA configs name it by relative path; this is the
+# guard the oca-images recipe checks so a missing key fails with a reason rather
+# than a packer stack trace. Overridable for a locally generated key.
 SEP_SIGNING_KEY    ?= $(CURDIR)/tests/signing_keys/rsa_private_key.rom_key0.pem
-
-.PHONY: secure_boot_spi
-secure_boot_spi: $(SECURE_SPI_HEX)
-
-# Fail here with the reason rather than letting the packer die on a missing file
-# or, worse, letting the test start and stall waiting for an image nobody built.
-$(SECURE_SPI_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
-	@test -f "$(SEP_SIGNING_KEY)" || { \
-	  echo "ERROR: secure boot image needs the ROM key 0 signing key."; \
-	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
-	  echo "       It is committed in tests/signing_keys/ alongside the other five ROM"; \
-	  echo "       test keys, so a missing file means a partial checkout; or set"; \
-	  echo "       SEP_SIGNING_KEY=<path>. key_digests.c slot 0 pins the accepted key,"; \
-	  echo "       so no other key will boot."; \
-	  exit 1; }
-	OCH_ROOT="$(DV_ROOT)" ROOT="$(abspath $(dir $(SEP_SIGNING_KEY))/../..)" \
-		$(PACK_RUN) --config "$(SECURE_PACK_CONFIG)" --out "$(SECURE_BOOT_BIN)" -v
-	python3 "$(BIN_TO_SPI)" "$(SECURE_BOOT_BIN)" "$@"
-
-# Encrypted variant of secure_boot_spi. The ROM derives its AES key from the
-# CLASS_KEY fuse, so the OTP must carry the config's encryption_key_input.
-ENCRYPTED_PACK_CONFIG := $(CURDIR)/configs/encrypted_boot_test.yaml
-ENCRYPTED_BOOT_BIN    := $(BUILD_DIR)/encrypted_boot.bin
-ENCRYPTED_SPI_HEX     := $(BUILD_DIR)/encrypted_boot.spi_preload
-
-.PHONY: encrypted_boot_spi
-encrypted_boot_spi: $(ENCRYPTED_SPI_HEX)
-
-$(ENCRYPTED_SPI_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
-	@test -f "$(SEP_SIGNING_KEY)" || { \
-	  echo "ERROR: encrypted boot image needs the dev0 signing key."; \
-	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
-	  echo "       The packer rejects encrypted_payload=1 with secure_boot=0, so an"; \
-	  echo "       encrypted image is always a signed image."; \
-	  exit 1; }
-	OCH_ROOT="$(DV_ROOT)" ROOT="$(abspath $(dir $(SEP_SIGNING_KEY))/../..)" \
-		$(PACK_RUN) --config "$(ENCRYPTED_PACK_CONFIG)" --out "$(ENCRYPTED_BOOT_BIN)" -v
-	python3 "$(BIN_TO_SPI)" "$(ENCRYPTED_BOOT_BIN)" "$@"
 
 # --- OCA boot-manifest images (the format the ROM parses) ---------------------
 # One entry per path through the validator. Each name <n> in OCA_IMAGES needs a
@@ -450,9 +409,9 @@ $(ENCRYPTED_SPI_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
 # and the .spi_preload ($readmemh) is what a spiPreload= run wants. Cheap to
 # emit, and having only one is a confusing failure much later.
 #
-# No OCH_ROOT/ROOT env prefix, unlike the Grendel recipes above: the OCA producer
-# does not expand variables in config paths (src/oca/payload.py opens `path`
-# verbatim), so the configs carry paths relative to this directory.
+# No OCH_ROOT/ROOT env prefix: the OCA producer does not expand variables in
+# config paths (src/oca/payload.py opens `path` verbatim), so the configs carry
+# paths relative to this directory.
 #
 # rom_key1..rom_key5 are not extra validator paths -- they are the same signed
 # path anchored on ROM key slots 1-5, each signed by a DIFFERENT key from

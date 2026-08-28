@@ -271,7 +271,7 @@ outputs = [
 #   toolchain-images  needs the RISC-V toolchain WITH picolibc (the generated
 #                     register headers close their packing checks with
 #                     static_assert, i.e. <assert.h>, which is not freestanding).
-#   pack-images       is pure Python and must run on the HOST: the packer's deps
+#   oca-images        is pure Python and must run on the HOST: the packer's deps
 #                     come from the tt-boot-manifest submodule's pyproject.toml via
 #                     uv, and the ocah-toolchain image carries neither.
 #
@@ -293,18 +293,16 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images oca-images",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "hw/sys/sep/bootrom/prod/build/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build/boot_rom.dtcm.hex",
-  "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build/boot_rom.sym",
   # The SMC-SRAM test loads this with +sep_smc_mem_hex: the OCA manifest rebased
-  # to the SMC-SRAM base. smc_mem.hex above is its Grendel predecessor, still
-  # built for other consumers but no longer parseable by the ROM.
+  # to the SMC-SRAM base.
   "hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
 
@@ -319,8 +317,8 @@ outputs = [
 # The host-vs-container decision below is identical to [c_build.boot_rom]:
 # explicit $RISCV_TOOLCHAIN or docker-run.sh run-here, with no implicit probe.
 #
-# pack-images runs into build_ot/ too, so non_secure_boot.bin -- the raw image the
-# cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
+# oca-images runs into build_ot/ too, so oca_non_secure_boot.bin -- the raw image
+# the cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
 # default-variant image can never be picked up by mistake.
 #
 # NONFREE_ROOT= is load-bearing, not tidiness. reg_includes.mk puts the nonfree
@@ -359,7 +357,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images secure_boot_spi encrypted_boot_spi oca-images",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
@@ -367,13 +365,6 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.sym",
-  "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
-  "hw/sys/sep/bootrom/prod/build/secure_boot.bin",
-  # The SMC-SRAM staged image, produced by the same `pack-images` rule as the two
-  # .bin files above. Declared because sep_boot_recovery_test passes it as
-  # +sep_smc_mem_hex, and an undeclared input would let `--stage sim` start and
-  # then die inside $readmemh instead of failing the output check.
-  "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
   # OCA boot-manifest images -- the format the ROM parses. Listed so --stage sim
   # fails loudly on a stale image instead of simulating one.
   "hw/sys/sep/bootrom/prod/build/oca_non_secure_boot.bin",
@@ -391,9 +382,9 @@ outputs = [
 # no-braces argv constraint -- matches [c_build.boot_rom_ot]. See that block
 # for why each part is the way it is.
 #
-# Only `pack-images` here, no `secure_boot_spi`: the PIO test boots the unsigned
-# image, and the signed one is the DMA variant's business. The packed bytes are
-# drain-agnostic and land in the shared build/, so this does not rebuild them.
+# `oca-images` builds every variant in one go, so the PIO test gets the unsigned
+# image it boots along with the rest. The packed bytes are drain-agnostic and land
+# in the shared build/, so this does not rebuild them per variant.
 #
 # DCCM_SCRUB_BYTES is left at the product default, as in every boot_rom variant.
 # See [c_build.boot_rom_ot] for why the testbench no longer supplies DCCM's ECC
@@ -402,7 +393,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT-PIO boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT-PIO boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.vmem",
@@ -410,7 +401,6 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.sym",
-  "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
 ]
 
 [c_build.km_rom_main]
