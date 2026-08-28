@@ -3,8 +3,10 @@
 """CSR reset / RW / RO / reserved sweep over the generated SEP register export.
 
 no_cpu / +skip_fuse_sense. RANDCFG: block order and complement-vs-ones
-order come from the run seed. Every reset-eligible register and every
-write-safe register is walked in one invocation.
+order come from the run seed. The reset walk is the inventory after
+reasoned skips, not the raw OFFSET export. Full-mask write-lands is 19
+registers (8 scratch-cold + 8 scratch-warm + 3 CPU_CTRL); 32 inbound
+START/END use the wrap model.
 
 Write-lands is the anti-vacuity control: a complement write must move
 exactly the software-usable mask bits. Inbound-filter START/END use the
@@ -100,8 +102,26 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
         self.logger.info(
             "CHK-BLOCK-TOUCH PASS: %d IP storage touch(es)",
             bash.touch_ok)
+        # Completeness, in the house CHK-RANDCFG sense: the whole seed-built
+        # configuration ran in this one invocation. The counts are cfg-computed,
+        # so this is not evidence about the DUT -- it is evidence that no part of
+        # the walk was skipped. The walk sizes are printed with it so a shrunken
+        # inventory is visible in the log rather than inferred from a PASS.
+        walked = (
+            ("reset", bash.reset_ok, len(cfg.reset_regs)),
+            ("write", bash.write_ok, len(cfg.write_regs)),
+            ("touch", bash.touch_ok, len(cfg.touch_regs)),
+        )
+        short = [
+            f"{what} {done}/{want}" for what, done, want in walked if done != want
+        ]
+        if short:
+            raise AssertionError(
+                f"CHK-RANDCFG FAIL: walk did not cover the configuration: "
+                f"{', '.join(short)}")
         self.logger.info(
-            "CHK-RANDCFG PASS: reset=%d write=%d touch=%d ones_first=%d "
-            "from seed %d",
+            "CHK-RANDCFG PASS: export=%d inventory=%d nometa=%d "
+            "reset=%d write=%d touch=%d ones_first=%d seed=%d",
+            cfg.export, cfg.inventory, cfg.nometa,
             len(cfg.reset_regs), len(cfg.write_regs), len(cfg.touch_regs),
             int(cfg.ones_first), cfg.seed)

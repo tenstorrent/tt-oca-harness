@@ -4,8 +4,7 @@
 
 OSS port combining the reference suite ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
 Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
-  * verifies SW_RESET_N default 0x1E and that pulsing each crypto IP's reset bit
-    clears that IP's probe CSR (the reset wire reached the IP);
+  * verifies SW_RESET_N default 0x1E;
   * proves a write + a read to an unmapped fabric gap each raise a D-bus-error
     NMI (count == 2);
   * exercises the WDT bark -> NMI, pet, disable-freeze, and re-bark; then lets the
@@ -18,6 +17,11 @@ output ``wdt_timer_rst_req_o`` (brought out in tb_top): after the firmware PASSe
 request, which the cocotb side must see -- the WDT's headline safety function.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
+JTAG-holds OTBN/AES/HMAC/KMAC across ``rst_ni`` release and fuse sense so they
+never raise crypto ``edn_req`` while the fabric is opening, then drops the
+override. The hold must not outlast sense: the firmware probes each engine's
+reset wire, and a held engine's registers are unreachable, so the probe write
+traps instead of landing.
 """
 
 from __future__ import annotations
@@ -65,6 +69,8 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+            park=("otbn", "aes", "hmac", "kmac"),
+            release_park=True,
         )
 
         # The firmware PASS gates the reset_ctrl + WDT bark/pet/disable/re-bark

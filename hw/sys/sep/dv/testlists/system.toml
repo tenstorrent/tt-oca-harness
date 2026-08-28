@@ -233,9 +233,12 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # reset_ctrl CSR + WDT sanity, combined (the reference suite\'s sep_reset_ctrl_csr_test +
-# wdt_sanity_test): SW_RESET_N=0x1E + per-IP reset-wire clears, bad-address D-bus
-# NMI x2, WDT bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
+# wdt_sanity_test): SW_RESET_N=0x1E, bad-address D-bus NMI x2, WDT
+# bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
 # wdt_timer_rst_req_o output (tb_top probe). cpu run mode; +skip_fuse_sense.
+# JTAG-holds OTBN/AES/HMAC/KMAC across rst_ni release and fuse sense so they
+# never raise crypto edn_req, then releases them; the firmware then probes all
+# four per-IP reset wires.
 name = "sep_reset_wdt_sanity_test"
 module = "cpu.sep_reset_wdt_sanity_test"
 firmware = "reset_wdt_sanity_test"
@@ -290,9 +293,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # CSR reset / RW / RO / reserved sweep over the generated SystemRDL export.
 # RANDCFG: block order and complement-vs-ones order from the run seed.
-# Every reset-eligible register and every write-safe register is walked
-# in one invocation; TOUCH_BLOCKS picks one storage RW per
-# other major IP (write x, compare with mask, restore).
+# Reset walk is the inventory after reasoned skips (not every OFFSET
+# symbol). Full-mask write-lands is 19 registers (8 scratch-cold +
+# 8 scratch-warm + 3 CPU_CTRL); 32 inbound START/END use the wrap model.
+# TOUCH_BLOCKS picks one storage RW per other major IP.
 # no_cpu; +skip_fuse_sense (CSR storage, no OTP dep).
 name = "sep_reg_bit_bash_rand_test"
 module = "system.sep_reg_bit_bash_rand_test"
@@ -308,6 +312,9 @@ args = ["+skip_fuse_sense"]
 # (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI).
 # An access past allocated size must be refused and must not change a
 # live register. Hard FAILED until RTL refuses the wrap; do not XFAIL.
+# Also hard FAILS on CHK-DEADSPACE-BURST: a burst beat still reaches dead
+# space in entropy_source and sep_lifecycle_ctrl, where a single beat to the
+# same address is refused. See the VPLAN row for the tracking pointer.
 # no_cpu; +skip_fuse_sense.
 name = "sep_fabric_deadspace_decode_test"
 module = "system.sep_fabric_deadspace_decode_test"

@@ -263,7 +263,7 @@ class SepEfuseImage:
     def load(self, path: str | Path) -> "SepEfuseImage":
         """Load a preload file, auto-detecting the format: a per-bit reference suite
         ``*.preload`` (one 0/1 per line) vs a 256-word hex image."""
-        toks = Path(path).read_text().split()
+        toks = Path(path).read_text(encoding="utf-8").split()
         if toks and all(t in ("0", "1") for t in toks) and len(toks) > NUM_FUSE_WORDS:
             return self.load_preload_bits(path)
         return self.load_hex(path)
@@ -276,7 +276,7 @@ class SepEfuseImage:
         works because only the LC_STATE word's [3:0] (== the raw nibble) is significant.
         """
         path = Path(path)
-        words = [int(tok, 16) for tok in path.read_text().split()]
+        words = [int(tok, 16) for tok in path.read_text(encoding="utf-8").split()]
         if len(words) > NUM_FUSE_WORDS:
             raise ValueError(f"{path}: {len(words)} words > {NUM_FUSE_WORDS}")
         self.words = [0] * NUM_FUSE_WORDS
@@ -288,7 +288,7 @@ class SepEfuseImage:
         """Load a reference-suite OTP ``*.preload`` (one bit per line, LSB-first) as the
         golden, packing 32 bits/word to match the fuse-array word layout."""
         path = Path(path)
-        bits = [c for c in path.read_text().split() if c in ("0", "1")]
+        bits = [c for c in path.read_text(encoding="utf-8").split() if c in ("0", "1")]
         self.words = [0] * NUM_FUSE_WORDS
         for bit_idx, c in enumerate(bits):
             if c == "1":

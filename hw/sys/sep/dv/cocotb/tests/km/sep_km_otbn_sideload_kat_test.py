@@ -54,7 +54,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_OTBN
 from seq_lib.sep_otbn_seq import SepOtbn
-from seq_lib.sep_sw_reset_seq import SepSwReset, SW_RESET_N_BIT
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 384-bit KAT key: 12 DISTINCT 32-bit words so an exact DMEM compare catches
 # a truncated / word-swapped / share-defeated sideload (a single repeated word
@@ -76,18 +76,15 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # OTP at boot); stage it before bring-up so sense populates the shadow.
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.otbn = SepOtbn(self)
 
-        # Park the EDN-consuming crypto engines (OTBN/AES/KMAC) BEFORE entropy comes
-        # up so all CSRNG/EDN flow is dedicated to the KM; otherwise OTBN's own
-        # post-reset entropy requests starve the KM's DRBG reads (the reference consume
-        # ordering). They power up released (SW_RESET_N reset = 0x1E), so this is a
-        # real state change, not a no-op. HMAC is parked too for a clean baseline.
-        await self.swrst.park("otbn", "aes", "hmac", "kmac")
+        # AES/KMAC/OTBN JTAG-held across rst_ni release, then parked in SW_RESET_N so they never sit as ungranted
+        # crypto-EDN requesters through fuse sense. HMAC is parked too for
+        # key-bus isolation. KM owns CSRNG/EDN once entropy is up; OTBN is
+        # released later for the transfer.
 
         # Shared entropy bring-up with the STRICT golden scoreboard so this test
         # proves CHK1..CHK4 itself (decorrelator/compressor/seed/genbits), not just

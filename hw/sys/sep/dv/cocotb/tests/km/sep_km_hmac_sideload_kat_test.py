@@ -57,7 +57,7 @@ from sep_base_test import sep_base_test
 from env.sep_hmac_golden import hmac_sha256_words
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_HMAC
-from seq_lib.sep_sw_reset_seq import SepSwReset, SW_RESET_N_BIT
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 256-bit KAT key: 8 DISTINCT 32-bit words (non-degenerate by construction).
 KAT_KEY = (
@@ -80,18 +80,14 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         # --- Boot the real KM firmware on real entropy -------------------------
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD (KM reads OTP at boot)
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.hmac = SepHmac(self)
 
-        # Park all four sideload-target crypto engines so the KM owns the EDN stream
-        # AND the key bus is isolated. HMAC is not an EDN consumer, so (unlike AES)
-        # it stays parked through boot/load and is released only before the
-        # transfer (like OTBN). They power up released (SW_RESET_N reset=0x1E), so
-        # this is a real state change.
-        await self.swrst.park("otbn", "aes", "hmac", "kmac")
+        # All four sideload targets JTAG-held across rst_ni release, then parked in SW_RESET_N. HMAC is not an EDN
+        # consumer; it stays parked through boot/load and is released only
+        # before the transfer.
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
         # (rom_main pull order is firmware-driven). No crypto EDN sink scored --
