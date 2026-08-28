@@ -235,9 +235,10 @@ enabled and fetches its first instruction from the SEP ROM.</p>
 <p>Every fuse field has two lock bits in the LOCKS field: one write-lock bit and
 one read-lock bit. When the write-lock bit is set to 1, the corresponding fuse
 field can no longer be programmed, and its shadow register is no longer
-writable. When the read-lock bit is set to 1, the shadow register of the
-corresponding fuse field is readable neither by software nor by JTAG. The read
-lock is effective only for fuse fields that are software-visible.</p>
+writable. When the read-lock bit is set to 1, neither the shadow register nor
+the corresponding OTP field is readable by software or by JTAG. The lock field is
+itself the exception: LOCK has no lock-bit pair, and no lock bit may write-lock
+or read-lock LOCKS or LOCKS_SPARE.</p>
 </div>
 <div class="paragraph">
 <p>The fuse block’s internal space, including the fuse-programming configuration
@@ -285,14 +286,19 @@ programming never needs to configure the programming voltage.</p>
 sensing occurs.</p>
 </li>
 <li>
-<p>The shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are
-non-scannable. Any register on the path from these registers to the TAP
-test-enable or fuse write-enable signals is likewise non-scannable.</p>
+<p>The shadow registers of LOCK (both the LOCKS and LOCKS_SPARE windows),
+LC_STATE, SIP_DIS, and SYS_DIS are non-scannable. Any register on the path
+from these registers to the feature control outputs or the fuse write-enable
+signals is likewise non-scannable.</p>
 </li>
 <li>
-<p>When SECURE_TM is 1 (see the Test Mode section), the shadow registers of
-LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are blocked from any update. Other fuse
-fields may optionally follow the same rule.</p>
+<p>When SECURE_TM is 1 (see the Test Mode section), the shadow registers of LOCK
+(both the LOCKS and LOCKS_SPARE windows), LC_STATE, SIP_DIS, and SYS_DIS shall
+be blocked from any update, from every source&#8201;&#8212;&#8201;software, JTAG, and TRoot.
+This list is normative and exhaustive: these are the fields whose perturbation
+could enable a feature that a DIS vector or the lifecycle state has disabled.
+An implementation may block further fields, but no other requirement in this
+specification depends on it.</p>
 </li>
 </ul>
 </div>
@@ -344,7 +350,9 @@ field is split across two RDL registers because PeakRDL requires power-of-2
 <p class="tableblock">* <code>LOCKS</code> (64-bit <code>@0x0</code>): slots 0–31 — two bits per field, write-lock at bit 2n, read-lock at 2n+1
 * <code>LOCKS_SPARE</code> (32-bit <code>@0x8</code>): slots 32–39 in bits [15:0]; slots 40–47 (unassigned) in bits [31:16]</p>
 <p class="tableblock">Firmware reads the complete 96-bit lock state as three consecutive 32-bit APB words.
-There are 40 lockable fields (slots 0–39). When write-locked, the corresponding
+There are 40 lockable fields (slots 0–39). LOCK is not one of them: <strong><em>the 96-bit
+lock field has no lock-bit pair of its own</em></strong>, and no lock bit may write-lock or
+read-lock <code>LOCKS</code> or <code>LOCKS_SPARE</code>. When write-locked, the corresponding
 shadow register is not writable. When read-locked, neither software nor JTAG can
 read the corresponding shadow register or fuse field. The fuse-sensing FSM is
 <em>always</em> able to read the fuses in order to populate the shadow registers.</p>

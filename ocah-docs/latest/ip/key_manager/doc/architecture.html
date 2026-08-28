@@ -1271,11 +1271,13 @@ Key Manager captures no real secret and key derivation is starved of key
 material while registers are being shifted.</p>
 </li>
 <li>
-<p><strong>Never scan-dumpable.</strong> During debug (<code>secure_tm = 0</code>) the dedicated KM
-scan chain is tied off, so no KM register or key material can ever be
-extracted via scan dump&#8201;&#8212;&#8201;in any LC state and for any owner (chiplet or
-SiP). This protection is governed solely by <code>secure_tm</code>; it is <strong>not</strong> gated
-by, and cannot be overridden by, the <code>*_DBG</code> feature-control bits.</p>
+<p><strong>Never scan-dumpable.</strong> No KM register or key material can ever be extracted
+via scan dump&#8201;&#8212;&#8201;in any LC state and for any owner (chiplet or SiP). The
+protection is the command class admitted on the dedicated KM chain, not a gate
+on its output: the DFT controller admits a <strong>test</strong> command only when
+<code>secure_tm = 1</code>, admits no command at <code>secure_tm = 0</code>, and never admits a <strong>dump</strong>
+command. The <code>*_DBG</code> feature-control bits gate whether the chain is reachable at
+all, but no combination of them can turn a permitted test into a dump.</p>
 </li>
 </ul>
 </div>

@@ -250,8 +250,8 @@ scan chains which will be managed for security in the TAP controller.</p>
 <p>These three groups correspond to the SEP asset classes defined
 authoritatively in the Lifecycle Controller chapter (<em>Asset and Scan-Chain
 Protection</em>): group 1 = Class 3 (general), group 2 = Class 2 (crypto / KM
-secret-bearing), group 3 = Class 1 (secrets and integrity-critical control
-fields).</p>
+secret-bearing, plus the fuse program path), group 3 = Class 1 (secrets and
+integrity-critical control fields).</p>
 </div>
 <div class="sect4">
 <h5 id="debug-and-scan-dump"><a class="anchor" href="#debug-and-scan-dump"></a><a class="link" href="#debug-and-scan-dump">Debug and Scan Dump</a></h5>
@@ -271,11 +271,13 @@ path into the chiplet, and the LC state permit it.</p>
 <div class="paragraph">
 <p><strong>Secret-bearing logic (Class 2)</strong>&#8201;&#8212;&#8201;crypto-engine key / round-key storage and
 the Key Manager key vault / shared key storage&#8201;&#8212;&#8201;is placed on a <strong>dedicated
-secret-bearing scan chain</strong> so DFT keeps coverage, but is <strong>never
-scan-dumpable</strong>, for any owner or LC state. It is governed by <code>secure_tm</code>, not
-the <code>*_DBG</code> bits: under <code>secure_tm = 1</code> the secret sources (UID / <code>CLASS_KEY</code>)
-are disconnected from these consumers, and under <code>secure_tm = 0</code> the chain is
-tied off.</p>
+secure scan chain</strong> so DFT keeps coverage, but is <strong>never scan-dumpable</strong>, for any
+owner or LC state. The <code><strong>_DBG</code> bits decide whether that chain is reachable, as
+they do for any chain; what makes it undumpable is the command class. The DFT
+controller admits a *test</strong> command on it only when <code>secure_tm = 1</code>, admits
+nothing at <code>secure_tm = 0</code>, and never admits a <strong>dump</strong> command at all. Under
+<code>secure_tm = 1</code> the secret sources (UID / <code>CLASS_KEY</code>) are disconnected from
+these consumers, so a permitted test shift moves no real secret.</p>
 </div>
 <div class="paragraph">
 <p><strong>Secrets and integrity-critical fields (Class 1)</strong> are excluded from every scan
@@ -288,7 +290,7 @@ chain (never scannable):</p>
 registers (<code>*_TOKEN_I</code>).</p>
 </li>
 <li>
-<p>Class 1b (integrity): <code>LOCKS</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>, <code>SYS_DIS</code>,
+<p>Class 1b (integrity): <code>LOCKS</code>/<code>LOCKS_SPARE</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>, <code>SYS_DIS</code>,
 <code>*_TOKEN_DIGEST</code> shadow registers.</p>
 </li>
 </ul>
@@ -301,14 +303,14 @@ registers (<code>*_TOKEN_I</code>).</p>
 in the Lifecycle Controller chapter (<em>Asset and Scan-Chain Protection</em>); Key
 Manager specifics are in the Key Manager chapter (<em>Scan and Scan-Dump
 Protection</em>). This section records the implementation manifest. A complete
-module instance is classified as Class 2 when it is the Key Manager, a
+module instance is classified as Class <strong>2a</strong> when it is the Key Manager, a
 device-secret-consuming cryptographic engine, an entropy engine, or sequential
 distribution logic that retains key, seed, random, digest-working, or round-key
 state. Classifying complete instances deliberately includes their control
 flops and avoids fragile per-register marking.</p>
 </div>
 <div class="paragraph">
-<p>The current SEP implementation has exactly 10 Class 2 RTL scan roots:</p>
+<p>The current SEP implementation has exactly 10 Class 2a RTL scan roots:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -350,13 +352,24 @@ names. It is not a module-name or per-flop suffix. A nested <code>_n0_scan</code
 remains Class 1 and takes precedence over an enclosing <code>_s3c_scan</code> hierarchy.</p>
 </div>
 <div class="paragraph">
-<p>Three writable companion SRAMs are also Class 2 assets:
+<p>Three writable companion SRAMs are also Class 2a assets:
 <code>u_km_sram</code>, <code>u_otbn_imem_sram</code>, and <code>u_otbn_dmem_sram</code>. Their macro instance
 names remain unchanged because <code>_s3c_scan</code> identifies RTL scan hierarchies;
 the owning memory-DFT/MBIST policy must provide the same never-dump outcome.
 <code>u_km_rom</code> is explicitly excluded because immutable executable contents
 cannot retain runtime secrets. The vendor TRNG core keeps its delivered DFT
 view beneath <code>u_trng_wrapper_s3c_scan</code>.</p>
+</div>
+<div class="paragraph">
+<p>Class <strong>2b</strong> covers the fuse programming <strong>control</strong> and <strong>status</strong> MMRs of the SEP
+fuse controller. These hold no secret; they are never-dumpable because scan
+shifting drives arbitrary transient values through them, and a program-control
+register reached during an ordinary dump could burn fuses (see the Lifecycle
+Controller chapter, <em>Asset Classes</em>). Class 2b shares the secure chain and the
+command-class rule with Class 2a, so the <code>_s3c_scan</code> suffix applies to it as
+well. Unlike Class 2a it is <strong>not</strong> a whole-instance classification: the remainder
+of the fuse controller stays Class 3, so the implementation must identify the
+program-path scan roots and name them accordingly.</p>
 </div>
 </div>
 <div class="sect4">
@@ -368,14 +381,14 @@ the SECURE_TM signal which is consumed by</p>
 <div class="ulist">
 <ul>
 <li>
-<p>TAP to enable scan test</p>
+<p>The DFT controller, which admits a <strong>test</strong> command on the Class 2 secure chain only while SECURE_TM is asserted. SECURE_TM does not enable scan test and authorizes nothing; it is the condition under which that chain will accept a test command at all.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Shadow registers of LOCKS, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers</p>
+<p>Shadow registers of LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS, and SYS_DIS are non-scannable registers</p>
 </li>
 <li>
-<p>Any downstream registers in the path from these registers to the test enablement signals for DTAP or fuse write enablement signals are also non-scannable</p>
+<p>Any downstream registers in the path from these registers to the feature control outputs or the fuse write-enable signals are also non-scannable, as are the SECURE_TM latch and the command-admission logic that consumes it</p>
 <div class="ulist">
 <ul>
 <li>
@@ -385,7 +398,7 @@ the SECURE_TM signal which is consumed by</p>
 </div>
 </li>
 <li>
-<p>During scan test (<code>secure_tm = 1</code>) the secret-source outputs (UID / <code>CLASS_KEY</code>) are disconnected from the Class 2 secret-bearing consumers, so no real secret is shifted; during scan dump (<code>secure_tm = 0</code>) the Class 2 secret-bearing chain is tied off (never dumpable). See the Lifecycle Controller chapter, <em>`secure_tm` and Scan Dump</em>.</p>
+<p>During scan test (<code>secure_tm = 1</code>) the secret-source outputs (UID / <code>CLASS_KEY</code>) are disconnected from the Class 2 consumers, so no real secret is shifted. On the Class 2 secure chain the DFT controller admits a test command only at <code>secure_tm = 1</code>, admits no command at <code>secure_tm = 0</code>, and never admits a dump command (never dumpable). See the Lifecycle Controller chapter, <em>`secure_tm` and the Secure Scan Chain</em>.</p>
 </li>
 <li>
 <p>Disable writing to any OTP fuse state to prevent updates.</p>
@@ -398,7 +411,7 @@ the SECURE_TM signal which is consumed by</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Disable <em>writing</em> of shadow registers: LOCKS, LC_STATE, SIP_DIS and SYS_DIS</p>
+<p>Disable <em>writing</em> of shadow registers: LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS and SYS_DIS</p>
 </li>
 <li>
 <p>Other shadow register fields may optionally also have write disabled</p>
