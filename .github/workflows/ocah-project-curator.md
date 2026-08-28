@@ -22,8 +22,8 @@ engine: copilot
 network: defaults
 strict: true
 timeout-minutes: 120
-max-ai-credits: 400
-max-daily-ai-credits: 800
+max-ai-credits: 2000
+max-daily-ai-credits: 5000
 
 concurrency:
   group: ocah-project-curator
@@ -125,6 +125,10 @@ If someone else is a better fit, please feel free to reassign.
 <!-- github-auto-assign -->
 
 Comment only for an assign that stuck, a merge nudge, or a due reminder.
+
+Always write @-mentions as plain text — never wrap them in backticks, code spans, or
+any other formatting. Backtick-wrapped mentions (`@login`) are rendered as code and do
+not trigger GitHub notifications.
 
 ## Shared title and body style
 
