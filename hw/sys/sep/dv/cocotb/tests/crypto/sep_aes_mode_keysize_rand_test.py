@@ -45,7 +45,6 @@ from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes_encrypt_words
 from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_aes_seq import SepAes, SepAesCfg, AES_OP_ENC, AES_OP_DEC
-from seq_lib.sep_sw_reset_seq import SepSwReset
 
 MODES = ["ecb", "cbc", "ctr"]
 KEY_SIZES = [128, 192, 256]
@@ -57,11 +56,10 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
     """Standalone AES ECB/CBC/CTR x 128/192/256 breadth (no_cpu, SW key)."""
 
     async def run_scenario(self) -> None:
-        await self.bring_up_no_cpu()
-        # Park every other crypto-EDN client so CHK5_aes golden routing is
-        # in-order (one live sink). AES stays released for the masking reseed.
-        self.swrst = SepSwReset(self)
-        await self.swrst.park("otbn", "hmac", "kmac")
+        await self.bring_up_no_cpu(park=("otbn", "hmac", "kmac"))
+        # Every other crypto-EDN client JTAG-held across rst_ni release, then parked in SW_RESET_N so CHK5_aes golden
+        # routing is in-order (one live sink). AES stays released for the
+        # masking reseed.
         await self.bring_up_entropy(
             strict=True, score_km=False, score_sinks={"aes": "golden"})
         self.start_fifo_drain()

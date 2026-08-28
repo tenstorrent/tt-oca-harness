@@ -38,6 +38,7 @@ Usage:
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import sys
 from dataclasses import dataclass
@@ -423,19 +424,172 @@ def ot_reg_offsets(ip: str) -> list[tuple[str, int]]:
     return out
 
 
-def iter_registers() -> list[RegInfo]:
-    """Every generated SEP register that has an offset, address, and reset.
+# TEMPORARY, and DV-owned on purpose.
+#
+# Per-field software access lives in the RDL and only the JSON exporter emits it
+# (tools/regs/rdljson.py). rdlpyhdr.py compiles the same RDL and drops `sw`,
+# `woclr`, `onwrite` and `onread`, so the Python header this module otherwise
+# reads cannot answer "may software write this register".
+#
+# The generated JSON is not usable directly: `**/regs/gen/json/**` is gitignored,
+# no DV stage and no CI sim job runs `make ocah-regen-regs-json`, so on a clean
+# checkout the file does not exist and every caller here fails at import. These
+# are byte-identical copies committed under dv/, next to the other DV-owned
+# register artifacts (models/regs/sep_external.rdl).
+#
+# RETIRE THIS when rdlpyhdr.py emits per-register software access: point the
+# accessors below at the generated Python header and delete these files.
+#
+# Refresh with:
+#     make ocah-regen-regs-json
+#     cp hw/ip/entropy_source/regs/gen/json/entropy_source.json \
+#        hw/sys/sep/dv/models/regs/entropy_source_sw_access.json
+# `cmp` against that generator output is the staleness check; _json_model() also
+# cross-checks every register name against the generated Python header, which IS
+# regenerated and gated in CI, so an RDL edit cannot leave this copy stale and
+# quiet.
+_DV_MODEL_REGS = Path(__file__).resolve().parents[2] / "models" / "regs"
+_JSON_EXPORTS = {
+    "entropy_source": _DV_MODEL_REGS / "entropy_source_sw_access.json",
+}
 
-    A register without ``_REG_DEFAULT`` (after ``_TYPE_ALIAS``) is skipped:
-    there is no source-derived reset to check. The sweep uses this list as
-    the single inventory — tests do not keep their own copies.
+
+def _json_model(block: str) -> dict:
+    """Load a DV-owned JSON register model, cross-checked and cached."""
+    cache = getattr(_json_model, "_cache", None)
+    if cache is None:
+        cache = _json_model._cache = {}
+    if block not in cache:
+        try:
+            path = _JSON_EXPORTS[block]
+        except KeyError:
+            raise KeyError(
+                f"no JSON register model for {block!r}; add a copy under "
+                f"{_DV_MODEL_REGS} and an entry in _JSON_EXPORTS here"
+            ) from None
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"{path} is missing; refresh it from the generator -- see the "
+                f"comment above _JSON_EXPORTS"
+            )
+        model = json.loads(path.read_text(encoding="utf-8"))
+        _check_json_matches_header(block, model, path)
+        cache[block] = model
+    return cache[block]
+
+
+def _check_json_matches_header(block: str, model: dict, path: Path) -> None:
+    """Fail if the committed copy has drifted from the RDL.
+
+    The copy is hand-refreshed, so an RDL edit would otherwise leave it stale and
+    the register sweeps would exclude the wrong set without any log changing.
+    The generated Python header IS regenerated and gated by the regen-regs CI
+    job, so comparing against it turns a silent drift into an import failure.
+    """
+    header = {name for name, _off in ot_reg_offsets(block)}
+    in_json = {reg["inst_name"] for reg, _fields in _iter_json_regs(model)}
+    missing = header - in_json
+    extra = in_json - header
+    if missing or extra:
+        raise RuntimeError(
+            f"{path} has drifted from {block!r}: "
+            f"{len(missing)} register(s) in the generated header and not the "
+            f"copy {sorted(missing)[:5]}, {len(extra)} in the copy and not the "
+            f"header {sorted(extra)[:5]}. Refresh the copy -- see the comment "
+            f"above _JSON_EXPORTS."
+        )
+
+
+def _iter_json_regs(node):
+    """Yield every ``reg`` node with its field children."""
+    if isinstance(node, dict):
+        children = node.get("children", [])
+        if node.get("type") == "reg":
+            yield node, [c for c in children if c.get("type") == "field"]
+        for child in children:
+            yield from _iter_json_regs(child)
+    elif isinstance(node, list):
+        for child in node:
+            yield from _iter_json_regs(child)
+
+
+def reg_sw_readonly(block: str) -> frozenset[str]:
+    """Registers of ``block`` that software can read but never write.
+
+    A register qualifies when every field declares ``sw_access = "r"``: no bus
+    write can store into it, so it can never be the target of an aliased or
+    wrapped write. entropy_source has 26 -- health-test counters, alert tallies,
+    FIFO and observation status, and the component ID.
+
+    Source is the generated JSON model, the only export that carries per-field
+    software access. ``rdlpyhdr.py`` emits offsets, defaults and field structs
+    and drops ``sw_access`` / ``woclr`` / ``onwrite`` / ``onread``, so a caller
+    that needs access type must come here rather than infer it from a register
+    name. Enable a block by adding its id to ``OCAH_REG_JSON_BLOCKS``
+    (``hw/common/regs/classify.mk``) and a path to ``_JSON_EXPORTS`` above.
+    """
+    names = {
+        reg["inst_name"]
+        for reg, fields in _iter_json_regs(_json_model(block))
+        if fields and all(f.get("sw_access") == "r" for f in fields)
+    }
+    if not names:
+        raise RuntimeError(
+            f"no software-read-only registers found in the {block!r} JSON model; "
+            f"the export schema changed and a caller filtering on this would "
+            f"silently filter nothing"
+        )
+    return frozenset(names)
+
+
+@dataclass(frozen=True)
+class RegisterWalk:
+    """``_REG_OFFSET`` symbols versus the sweepable inventory."""
+
+    regs: tuple[RegInfo, ...]
+    export: int
+    # Dropped OFFSET symbols, split by cause so a change of cause is visible
+    # rather than absorbed into one figure. All three are real code paths.
+    no_default: int = 0     # no _REG_DEFAULT / field struct, even after _TYPE_ALIAS
+    unknown_block: int = 0  # the symbol stem matches no known block prefix
+    duplicate: int = 0      # a (block, register) pair already walked
+
+    @property
+    def nometa(self) -> int:
+        """Every OFFSET symbol not in the inventory, whatever the cause."""
+        return self.no_default + self.unknown_block + self.duplicate
+
+    @property
+    def inventory(self) -> int:
+        return len(self.regs)
+
+
+def iter_register_walk() -> RegisterWalk:
+    """Walk every generated ``_REG_OFFSET`` and keep those with addr/reset/mask.
+
+    ``export`` is the OFFSET-symbol count. ``inventory`` is ``export - nometa``.
+    A silent drop is a bug, so every dropped symbol is counted under the reason
+    it was dropped for:
+
+    * ``no_default``    -- no ``_REG_DEFAULT`` or field struct, even after
+      ``_TYPE_ALIAS``, so there is no source-derived reset to check.
+    * ``unknown_block`` -- the stem matches no known block prefix. Zero today;
+      a new top-level RDL that is not in ``block_names()`` would land here.
+    * ``duplicate``     -- the ``(block, register)`` pair was already walked.
+      Zero today; a generator that emits an instance twice would land here.
+
+    Reporting one figure would let a change of cause pass unnoticed, so the
+    three are kept apart and ``nometa`` sums them.
     """
     names = block_names()
     found: list[RegInfo] = []
     seen: set[tuple[str, str]] = set()
-    for sym_name, val in vars(sep_reg).items():
+    export = 0
+    no_default = unknown_block = duplicate = 0
+    for sym_name in vars(sep_reg):
         if not sym_name.endswith("_REG_OFFSET"):
             continue
+        export += 1
         stem = sym_name[: -len("_REG_OFFSET")]
         block = None
         reg = None
@@ -445,7 +599,11 @@ def iter_registers() -> list[RegInfo]:
                 block = candidate
                 reg = stem[len(prefix):]
                 break
-        if block is None or (block, reg) in seen:
+        if block is None:
+            unknown_block += 1
+            continue
+        if (block, reg) in seen:
+            duplicate += 1
             continue
         seen.add((block, reg))
         view = RegBlock(block)
@@ -455,10 +613,76 @@ def iter_registers() -> list[RegInfo]:
             mask = view.mask32(reg)
             mask_all = view.mask32_all(reg)
         except KeyError:
+            no_default += 1
             continue
         found.append(RegInfo(block, reg, addr, reset, mask, mask_all))
     found.sort(key=lambda info: (info.addr, info.block, info.name))
-    return found
+    return RegisterWalk(tuple(found), export, no_default, unknown_block, duplicate)
+
+
+# Registers hardware owns but never changes after reset. `sw = r` means hardware
+# drives the value, so by default its value at an arbitrary read time is not the
+# POR value; these are the exceptions, opted back in by name so a reset compare
+# on them stays real coverage. Keyed by block.
+_CONSTANT_RO: dict[str, frozenset[str]] = {
+    # entropy_source.rdl COMPONENT_ID: hardwired identity, reset 0x0100_0001.
+    "entropy_source": frozenset({"COMPONENT_ID"}),
+}
+
+
+def reg_hw_updating(block: str) -> frozenset[str]:
+    """Registers whose value hardware may change while the design runs.
+
+    ``sw = r`` minus the constants in ``_CONSTANT_RO``. Two different checks need
+    this same set and must not drift apart:
+
+    * a reset compare on one measures elapsed time, not the DUT's reset value;
+    * a dead-space store compare on one measures the same drift and reports it
+      as an aliased write.
+
+    Default is "hardware may change it", so a newly added ``sw = r`` register is
+    excluded until someone shows it is constant -- the safe direction.
+    """
+    readonly = reg_sw_readonly(block)
+    constant = _CONSTANT_RO.get(block, frozenset())
+    unknown = constant - readonly
+    if unknown:
+        raise RuntimeError(
+            f"_CONSTANT_RO[{block!r}] names absent from the export: "
+            f"{sorted(unknown)}; the register was renamed or its access changed"
+        )
+    return readonly - constant
+
+
+def reg_write_destructive(block: str) -> frozenset[str]:
+    """Registers a sampled value cannot be written back to.
+
+    Covers both write-one-to-clear and write-one-to-set fields. On a `woclr`
+    field every bit that read as 1 is CLEARED by the write-back, so the restore
+    destroys the state it claims to put back. On a `woset` field the write-back
+    is simply ignored for a sampled 0 and re-asserts for a sampled 1, so the
+    register is not restored either -- entropy_source FIPS_LOCK.LOCK is the one
+    instance. Anything that snapshots and restores must skip both.
+
+    Both spellings are checked: the export carries a boolean `woclr` field AND
+    an `onwrite` string ("", "woclr", "woset"), and `woset` appears only in the
+    latter.
+
+    `onread` in this export is only ever "" or "ruser", and `singlepulse` only
+    appears on INTR_TEST and NOISE_OBS_CTRL.FLUSH, which callers already drop by
+    name suffix, so those flavours need no entry here.
+    """
+    return frozenset(
+        reg["inst_name"]
+        for reg, fields in _iter_json_regs(_json_model(block))
+        if any(f.get("woclr") or f.get("onwrite") in ("woclr", "woset")
+               for f in fields)
+    )
+
+
+def iter_registers() -> list[RegInfo]:
+    """Sweepable generated registers (those with offset, address, and reset)."""
+    return list(iter_register_walk().regs)
 
 
 def iter_addrs() -> list[tuple[str, str, int]]:
@@ -581,12 +805,32 @@ def _selftest() -> int:
     else:
         failures.append("unknown register did not raise KeyError")
 
-    regs = iter_registers()
+    walk = iter_register_walk()
+    regs = list(walk.regs)
     # Only registers with OFFSET+ADDR+DEFAULT (and a field struct) are
     # sweepable. Array instances without a per-index DEFAULT are skipped
-    # on purpose rather than guessed.
-    if len(regs) < 100:
-        failures.append(f"iter_registers returned {len(regs)} entries; expected 100+")
+    # on purpose rather than guessed; the walk must count those drops.
+    if walk.export != walk.inventory + walk.nometa:
+        failures.append(
+            f"iter_register_walk identity failed: export={walk.export} "
+            f"inventory={walk.inventory} nometa={walk.nometa}"
+        )
+    if (walk.export, walk.inventory, walk.nometa) != (1032, 873, 159):
+        failures.append(
+            f"iter_register_walk counts {walk.export}/{walk.inventory}/"
+            f"{walk.nometa} != 1032/873/159"
+        )
+    if walk.inventory < 100:
+        failures.append(
+            f"iter_registers returned {walk.inventory} entries; expected 100+"
+        )
+    esrc_ro = reg_sw_readonly("entropy_source")
+    if len(esrc_ro) != 26:
+        failures.append(
+            f"entropy_source sw-readonly count {len(esrc_ro)} != 26"
+        )
+    if "HT_WATERMARK" not in esrc_ro or "HT_WATERMARK_NUM" in esrc_ro:
+        failures.append(f"entropy_source sw-readonly set is wrong: {sorted(esrc_ro)}")
     by_key = {(info.block, info.name): info for info in regs}
     nmi = by_key.get(("SEP_CPU_CTRL", "SEP_NMI_VEC"))
     if nmi is None or nmi.addr != 0x10A3_0180 or nmi.reset != 0xC000_0100:
@@ -612,7 +856,10 @@ def _selftest() -> int:
             print(f"FAIL {line}")
         return 1
     total = len(checks) + len(_TYPE_ALIAS) + len(block_checks)
-    print(f"sep_reg_meta: {total} register(s) match the generated RDL header")
+    print(
+        f"sep_reg_meta: {total} register(s) match the generated RDL header; "
+        f"export={walk.export} inventory={walk.inventory} nometa={walk.nometa}"
+    )
     return 0
 
 

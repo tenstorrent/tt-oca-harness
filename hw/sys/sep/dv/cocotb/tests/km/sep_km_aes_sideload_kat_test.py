@@ -78,7 +78,7 @@ from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_AES
-from seq_lib.sep_sw_reset_seq import SepSwReset, SW_RESET_N_BIT
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 256-bit KAT key: 8 DISTINCT 32-bit words so the golden compare and the
 # negative reference catch a truncated / word-swapped / share-defeated sideload.
@@ -107,19 +107,14 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # OTP at boot); stage it before bring-up so sense populates the shadow.
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "kmac", "hmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
-        # Park OTBN/KMAC (on-demand EDN consumers) so the KM owns the boot/seed
-        # stream, and HMAC (for key-bus isolation). Leave AES RELEASED (default
-        # 0x1E) so its masking-PRNG reseed is served as EDN starts -- the proven
-        # reference suite real_sink_aes ordering (release_consumers_pre_noise releases AES
-        # pre-noise). This both feeds the AES PRNG and isolates the key bus: only
-        # AES, of the four KM sideload targets, is released.
-        await self.swrst.park("otbn", "kmac", "hmac")
+        # OTBN/KMAC JTAG-held across rst_ni release, then parked in SW_RESET_N so they never sit ungranted through fuse
+        # sense; HMAC parked for key-bus isolation. AES stays released so its
+        # masking-PRNG reseed is served when EDN starts.
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
         # (rom_main pull order is firmware-driven); CHK5_aes observed proves the

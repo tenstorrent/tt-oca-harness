@@ -22,8 +22,8 @@ engine: copilot
 network: defaults
 strict: true
 timeout-minutes: 120
-max-ai-credits: 400
-max-daily-ai-credits: 800
+max-ai-credits: 20000
+max-daily-ai-credits: 50000
 
 concurrency:
   group: ocah-project-curator
@@ -106,6 +106,12 @@ guaranteeing nothing is permanently missed.
 There is no per-run count cap in the taxonomy. If a write budget is exhausted, apply newest
 items first and report how many remain.
 
+Within the window, process in this priority order so field-fill work is never starved by
+cheaper Managed-stamp updates:
+1. Items where Workstream, Subsystem, or Component are empty (field-fill pass).
+2. Items where fields are complete but Curation state is unset (stamp-Managed pass).
+3. All other window criteria (assignee, style, reminders).
+
 Skip Curation state = Locked. Skip protected authors. Skip protected milestones for Project
 field fills, title prefixes, assignments, and milestone backstop; due reminders still run on
 those issues.
@@ -125,6 +131,10 @@ If someone else is a better fit, please feel free to reassign.
 <!-- github-auto-assign -->
 
 Comment only for an assign that stuck, a merge nudge, or a due reminder.
+
+Always write @-mentions as plain text — never wrap them in backticks, code spans, or
+any other formatting. Backtick-wrapped mentions (`@login`) are rendered as code and do
+not trigger GitHub notifications.
 
 ## Shared title and body style
 
@@ -155,6 +165,26 @@ that already has a taxonomy prefix.
 
 Add the issue to Project 291 if it is missing. Include the full project URL
 in every update_project call.
+
+When reading a `[PREFIX/SUFFIX]` bracket title to derive Workstream and Subsystem, apply
+these normalizations before checking against the taxonomy allow-lists. Do not require an
+exact case or spelling match; use best-effort judgment:
+
+- Case-fold the prefix: `doc`, `DOC` → `DOCS`; `rtl`, `dv`, `rom`, `spec`, `infra`,
+  `synth`, `lint`, `rdl`, `release`, `nonfree` → their uppercase equivalents.
+- `fw` or `firmware` prefix → `ROM` workstream (firmware lives in the ROM subsystem).
+- Subsystem tokens not in the allow-list: map to the owning block —
+  `DFD`, `I3C`, `I2C`, `GPIO`, `DMA`, `EFUSE`, `AXI`, `SPI`, `CRYPTO`, `LC`, `KM`,
+  `TRNG`, `WDT`, `PIC`, `JTAG` → the subsystem they belong to
+  (`DFD`/`I3C`/`I2C`/`GPIO`/`DMA`/`AXI`/`JTAG` → `SMC`;
+  `EFUSE`/`CRYPTO`/`LC`/`KM`/`TRNG`/`WDT`/`PIC` → `SEP`).
+  When the component token matches a Component allow-list value exactly, set it as
+  Component; otherwise use `General`.
+- A bracket prefix that is only a subsystem with no workstream (e.g. `[SEP]`) —
+  infer the workstream from context (issue body, labels, or related issues) rather
+  than leaving the field empty.
+- If after normalization a value is still ambiguous, set Curation state Needs review
+  rather than guessing.
 
 Only fill empty Project fields:
 - Workstream, Subsystem, or Component when one allowed value is obvious
