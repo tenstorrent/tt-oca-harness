@@ -35,6 +35,8 @@ from sep_reg_meta import (
     iter_addrs,
     ot_reg_map_size,
     ot_reg_offsets,
+    reg_hw_updating,
+    reg_write_destructive,
     sym,
 )
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -45,9 +47,14 @@ RESP_DECERR = 3
 
 # Watch-list names that pop a FIFO or fire a trigger. Snapshotting them
 # is a side effect, so they are not part of the no-alias compare.
+# `RDATA` covers the entropy_source auto-incrementing read ports (FIFO_RDATA,
+# BIW_OBS_RDATA, NOISE_OBS_RDATA, all `onread: ruser`). snapshot() reads every
+# watched address twice, so without this each FIFO is popped twice per run:
+# the pointer advances, FIFO_STATUS.LEVEL drops, and an empty FIFO raises
+# INTR_STATUS.FIFO_UNDERFLOW into whatever test runs next.
 _WATCH_SKIP_SUFFIX = (
     "INTR_TEST", "ALERT_TEST", "TXDATA", "RXDATA", "WRITE_DATA",
-    "READ_DATA", "GENBITS", "CMD", "CMD_REQ",
+    "READ_DATA", "RDATA", "GENBITS", "CMD", "CMD_REQ",
 )
 
 
@@ -61,6 +68,24 @@ class DeadWindow:
     alloc: int
     watch: tuple[int, ...]
     write_ok: bool = True
+    # Watched addresses hardware may change on its own (sep_reg_meta.reg_hw_updating,
+    # the same source the bit-bash reset walk uses). Excluded from the write-probe
+    # store compare -- see probe(). They stay in the snapshot for the read-alias
+    # compare, which does not care that they move.
+    hw_updating: frozenset[int] = frozenset()
+    # Watched addresses a sampled value cannot be written back to (woclr/woset).
+    # restore() must skip them: on a woclr field every bit that read as 1 would be
+    # CLEARED in the DUT, so the "restore" destroys the live status it claims to
+    # put back.
+    #
+    # LIMITATION: populated for entropy_src only. The other nine windows come from
+    # iter_addrs() (the Python header), which does not carry woclr/onwrite -- see
+    # hw/common/regs/classify.mk. spi_controller ERROR_STATUS and the km_mailbox
+    # status_reg / irq_status_reg are W1C and are still written back by restore().
+    # Closing that needs hw/sys/sep/regs and hw/ip/key_manager/regs added to
+    # OCAH_REG_JSON_BLOCKS. restore() runs only after a probe already FAILED, so
+    # the corruption is confined to a run that is reporting a failure.
+    write_destructive: frozenset[int] = frozenset()
 
     @property
     def dead_lo(self) -> int:
@@ -89,6 +114,14 @@ def _ot_watch(ip: str, base: int, alloc: int) -> tuple[int, ...]:
         if off < alloc and not _watch_skip(name)
     ]
     return tuple(sorted(set(addrs)))
+
+
+def _ot_named(ip: str, base: int, alloc: int, names) -> frozenset[int]:
+    """Watched addresses of an OT block whose register name is in ``names``."""
+    return frozenset(
+        base + off for name, off in ot_reg_offsets(ip)
+        if off < alloc and not _watch_skip(name) and name in names
+    )
 
 
 def dead_windows() -> tuple[DeadWindow, ...]:
@@ -143,6 +176,12 @@ def dead_windows() -> tuple[DeadWindow, ...]:
             0x1091_7000,
             ot_reg_map_size("entropy_source"),
             _ot_watch("entropy_source", esrc_base, ot_reg_map_size("entropy_source")),
+            hw_updating=_ot_named(
+                "entropy_source", esrc_base, ot_reg_map_size("entropy_source"),
+                reg_hw_updating("entropy_source")),
+            write_destructive=_ot_named(
+                "entropy_source", esrc_base, ot_reg_map_size("entropy_source"),
+                reg_write_destructive("entropy_source")),
         ),
         DeadWindow(
             "km_mailbox",
@@ -279,6 +318,39 @@ class SepDeadspace:
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF, seq.timed_out
 
+    async def burst_across_extent(self, win, beats: int = 4) -> tuple[int, int, bool]:
+        """Read an INCR burst that starts inside the extent and ends past it.
+
+        AXI routes a burst on its FIRST address and a burst may not cross a 4 KB
+        boundary, which is what normally makes a refused address unreachable. An
+        extent that does not end on a 4 KB boundary breaks that: a burst begun in
+        the last live words is routed wholly to this block, and its later beats
+        land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says returns
+        DECERR and never reaches the unit.
+
+        Returns the start address, the burst response, the timeout flag, the four
+        beats, and a single-beat read of each of the same addresses. A dead-space
+        beat that answers OKAY where the single beat is refused is the defect the
+        caller asserts on.
+        """
+        start = win.dead_lo - 8       # two live beats, then two past the extent
+        seq = SepAxiAccessSeq(
+            f"dead_burst_0x{start:08x}", op=SepAxiOp.READ, addr=start,
+            length=16, size=2, expect_error=False,
+        )
+        await self.test.start_seq(seq)
+        words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(4)]
+        # Single-beat the same four addresses. Beats 0-1 are inside the extent
+        # and must match; beats 2-3 are past it and are refused on their own, so
+        # a non-zero burst word there is data the single-beat path cannot reach.
+        singles = []
+        for i in range(4):
+            past = start + 4 * i >= win.dead_lo
+            r, d, _to = await self._access(
+                SepAxiOp.READ, start + 4 * i, expect_error=past)
+            singles.append((r, d))
+        return start, seq.resp_code, seq.timed_out, words, singles
+
     async def snapshot(self, win) -> dict[int, int]:
         snap: dict[int, int] = {}
         volatile: set[int] = set()
@@ -297,9 +369,26 @@ class SepDeadspace:
                 win.name, len(volatile))
         return snap
 
-    async def restore(self, snap: dict[int, int]) -> None:
+    async def restore(self, win, snap: dict[int, int]) -> None:
+        """Put the allocated image back after a probe disturbed it.
+
+        Write-one-to-clear registers are skipped, and the skip is reported. On a
+        W1C field, writing the sampled value back does not restore it -- every
+        bit that READ as 1 is CLEARED in the DUT, so the restore would destroy
+        the live status it claims to put back. entropy_source has 15 such
+        registers (INTR_STATUS, HEALTH_TEST_STATUS, MAIN_SM_STATUS and the
+        twelve GENERATOR_n_HEALTH_STATUS), all reachable from this snapshot.
+        """
+        skipped = 0
         for addr, val in snap.items():
+            if addr in win.write_destructive:
+                skipped += 1
+                continue
             await self._access(SepAxiOp.WRITE, addr, wdata=val)
+        self.test.logger.info(
+            "deadspace restore: %s restored %d of %d register(s); %d skipped as "
+            "write-destructive (a write-back would clear or re-set them)",
+            win.name, len(snap) - skipped, len(snap), skipped)
 
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
         """Return failure strings. Empty means this probe matched the spec."""
@@ -352,12 +441,36 @@ class SepDeadspace:
         # DECERR/SLVERR that still stores is the wrap this entry exists to
         # catch. Read probes skip that compare — health-test counters move
         # on their own and would false-fail it.
+        #
+        # The store compare covers software-WRITABLE registers only. A field
+        # declared `sw = r` has no bus write path -- the generated regblock
+        # answers a write to one with OKAY and no error (entropy_source_reg.sv
+        # `is_valid_rw = '1'`, `cpuif_wr_err = '0'`) and stores nothing -- so
+        # such an address can never hold evidence of a store, aliased or
+        # otherwise. It stays in `snap` for the read-alias compare above.
+        # Leaving it in this compare instead measures the entropy source's own
+        # health-test counters advancing over the microseconds the readback
+        # takes, and reports that drift as a wrap. Every `sw = rw` register
+        # stays armed, so a write that aliases onto a control register is still
+        # caught -- at that control register, where the store actually lands.
         if item.op == "w":
             after = {}
+            skipped = 0
             for addr in snap:
+                if addr in win.hw_updating:
+                    skipped += 1
+                    continue
                 resp_a, val, _to = await self._access(SepAxiOp.READ, addr)
                 if resp_a == RESP_OKAY:
                     after[addr] = val
+            # Report the size of the store compare, not just its verdict. An
+            # exclusion that silently grows -- a schema change widening the
+            # software-read-only set onto a control register -- would otherwise
+            # shrink the coverage with an identical-looking log.
+            self.test.logger.info(
+                "deadspace scope: %s %s 0x%08x compared %d of %d watched "
+                "register(s); %d skipped as hardware-updating",
+                win.name, item.op, item.addr, len(after), len(snap), skipped)
             changed = {
                 addr: (snap[addr], after[addr])
                 for addr in snap
@@ -372,5 +485,5 @@ class SepDeadspace:
                     f"{win.name} {item.op} 0x{item.addr:08x} changed live "
                     f"register(s) {detail}"
                 )
-                await self.restore(snap)
+                await self.restore(win, snap)
         return fails
