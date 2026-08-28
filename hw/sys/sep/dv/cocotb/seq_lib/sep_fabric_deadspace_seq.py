@@ -318,7 +318,9 @@ class SepDeadspace:
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF, seq.timed_out
 
-    async def burst_across_extent(self, win, beats: int = 4) -> tuple[int, int, bool]:
+    async def burst_across_extent(
+        self, win
+    ) -> tuple[int, int, bool, list[int], list[tuple[int, int]]]:
         """Read an INCR burst that starts inside the extent and ends past it.
 
         AXI routes a burst on its FIRST address and a burst may not cross a 4 KB
@@ -333,18 +335,19 @@ class SepDeadspace:
         beat that answers OKAY where the single beat is refused is the defect the
         caller asserts on.
         """
-        start = win.dead_lo - 8       # two live beats, then two past the extent
+        beats = 4                     # two live beats, then two past the extent
+        start = win.dead_lo - 4 * (beats // 2)
         seq = SepAxiAccessSeq(
             f"dead_burst_0x{start:08x}", op=SepAxiOp.READ, addr=start,
-            length=16, size=2, expect_error=False,
+            length=4 * beats, size=2, expect_error=False,
         )
         await self.test.start_seq(seq)
-        words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(4)]
+        words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
         # Single-beat the same four addresses. Beats 0-1 are inside the extent
         # and must match; beats 2-3 are past it and are refused on their own, so
         # a non-zero burst word there is data the single-beat path cannot reach.
         singles = []
-        for i in range(4):
+        for i in range(beats):
             past = start + 4 * i >= win.dead_lo
             r, d, _to = await self._access(
                 SepAxiOp.READ, start + 4 * i, expect_error=past)
