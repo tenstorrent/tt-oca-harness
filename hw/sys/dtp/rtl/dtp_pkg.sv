@@ -6,6 +6,7 @@
 package dtp_pkg;
 
     `include "prim_assert.sv"
+    `include "axi/typedef.svh"
 
     //-------------------------------------------------------------------------
     // Cross Trigger Configuration Parameters
