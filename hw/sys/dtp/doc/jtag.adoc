@@ -62,18 +62,26 @@ CTPs.
 
 ==== IC_RESET Overrides
 
-The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Each reset
-port in the TDR carries two fields: `reset_control`, the active-low reset value
-to drive, and `reset_enable`, which selects between that value and the port's
-functional reset. The DTP presents them per destination on
-`jtag_ic_reset_{smc,sep,ext}_o` as the `.val` and `.ovrd` struct members, which
-feed the SMC reset unit and the SEP reset controller.
+The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset
+port it holds `reset_control`, the active-low reset value to drive, and
+`reset_enable`, which selects it. One `reset_hold` bit sits nearest TDO.
+
+`reset_enable` is active low despite the name. It resets to 1, which leaves the
+port's functional reset connected; writing 0 is what hands the port over to
+`reset_control`. `jtag_ic_reset_reg` inverts it, so the `.ovrd` member of
+`jtag_ic_reset_{smc,sep,ext}_o` is active high, paired with `.val` carrying
+`reset_control`. Those slices feed the SMC reset unit and the SEP reset
+controller.
+
+`reset_hold` also resets to 1, which lets Test-Logic-Reset clear the
+enable/control bits. Write 0 to keep an override asserted across TLR; only TRST
+clears `reset_hold` itself.
 
 Consumers select between the two sources with a hazard-free multiplexer, which
-holds its output only while the select moves on its own. Program
-`reset_control` first and assert `reset_enable` in a second Update-DR:
-changing both fields in one update can pulse a reset on a port that neither
-source is resetting.
+holds its output while the select alone moves. Write `reset_control` first and
+clear `reset_enable` in a second Update-DR: moving both in one update changes
+the select and a data input together, which can pulse a reset on a port that
+neither source is resetting.
 
 ==== Lifecycle Feature Control
 
