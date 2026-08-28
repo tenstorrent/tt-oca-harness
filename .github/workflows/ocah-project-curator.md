@@ -214,12 +214,8 @@ If Assignees is empty, assign one human. First match wins:
    unique assignee, or the assignee with a strict majority. A tie is not a match.
 4. Otherwise leave unassigned. Do not assign the opener as a fallback.
 
-REASON must name which rule matched. Use these phrasings:
-- Rule 1: "the issue body names you as the person to act"
-- Rule 2: "the parent issue is assigned to you"
-- Rule 3: "you have a strict majority of open [PREFIX/SUBSYSTEM] issues"
-Never use "you opened it" as the REASON for an issue — that phrase is
-reserved for PR assignments only.
+REASON describes why this person was chosen. Never say "you opened it" —
+opening an issue does not determine who works on it.
 
 If the issue has an assignee and a milestone due date or an issue due date
 in the next 3 days, post a due reminder. Prefer the sooner of the two dates.
