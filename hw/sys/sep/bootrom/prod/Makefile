@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-SHELL := /bin/bash
+SHELL := /usr/bin/env
+.SHELLFLAGS := bash -ec
 #
 # SEP Boot ROM.
 #
@@ -259,7 +260,7 @@ $(OBJS): | $(OTBN_APP_C)
 $(NONFREE_BOOTCODE_OBJS): $(BUILD_DIR)/%.o: | $(BUILD_DIR)
 	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$(filter %/$*.c,$(NONFREE_BOOTCODE_SOURCES))" -o "$@"
 
-$(ELF): $(OBJS) $(LINK_DIR)/rom.ld
+$(ELF): $(BUILD_DIR) $(OBJS) $(LINK_DIR)/rom.ld
 	$(GCC_PREFIX)-gcc $(LDFLAGS) $(OBJS) -o "$@"
 	python3 $(INSERT_SHA256) --gcc-prefix $(GCC_PREFIX) -o "$@" "$@" 2>/dev/null || true
 	$(GCC_PREFIX)-objdump -d -S "$@" > "$(BUILD_DIR)/boot_rom.dis"
