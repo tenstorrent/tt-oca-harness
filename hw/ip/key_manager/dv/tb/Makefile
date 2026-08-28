@@ -16,7 +16,8 @@ else ifndef OCH_ROOT
   $(error Not in a git repository and OCH_ROOT is not set)
 endif
 export OCH_ROOT
-SHELL := /bin/bash
+SHELL := /usr/bin/env
+.SHELLFLAGS := bash -ec
 
 KM_ROOT := $(OCH_ROOT)/hw/ip/key_manager
 FW_BUILD_TESTS := $(KM_ROOT)/dv/fw/build/tests
