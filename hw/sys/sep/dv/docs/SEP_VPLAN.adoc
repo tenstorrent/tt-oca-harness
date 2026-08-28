@@ -1828,8 +1828,7 @@ reaches its wait before the interrupt fires.
 *Test Procedure*:
 
 [arabic]
-. Check the software reset register default.
-. For each engine: write its probe register, pulse its reset, confirm the probe cleared.
+. Check the software reset register default. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The firmware then probes each engine's per-IP reset wire: assert the bit, confirm the engine's register goes to its reset value, release, confirm it is writable again.
 . Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts.
 . Configure the watchdog with small bark and bite thresholds; enable.
 . On the first bark the handler clears and disables; confirm the count is frozen non-zero, pet returns it to zero, and it stays zero while disabled.
@@ -1840,8 +1839,6 @@ reaches its wait before the interrupt fires.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-RESET-WIRES
-|Each engine's reset pulse clears that engine's probe register.
 |CHK-BADADDR
 |Accesses to the unmapped gap raise exactly two bus-error interrupts.
 |CHK-WDT-NMI
@@ -3394,7 +3391,7 @@ both lock flavours of one seed-selected spare.
 
 *Testlist*: `system.toml`
 
-*Randomization*: RANDCFG — every reset-eligible register and every write-safe register every seed; block order and complement-vs-ones order come from the run seed.
+*Randomization*: RANDCFG — block order and complement-vs-ones order come from the run seed. The reset walk is the inventory after reasoned skips. Full-mask write-lands is 19 registers; 32 inbound START/END use the wrap model.
 
 *Objective*: `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL.
 
@@ -3402,11 +3399,11 @@ both lock flavours of one seed-selected spare.
 
 [arabic]
 . Not a UVM RAL model.
-. `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL.
-. `SepRegBitBashCfg` is the single source of truth for both the walk and the skip reasons.
+. `env/sep_reg_meta.py` exports `addr`, `reset`, `mask` (software-usable field bits) and `mask_all` (storage, reserved included) from the generated SystemRDL. `iter_register_walk` counts OFFSET symbols that lack DEFAULT/struct (`nometa`) instead of dropping them silently.
+. `SepRegBitBashCfg` is the single source of truth for both the walk and the skip reasons. ENTROPY_SOURCE registers that hardware advances while the noise source runs are excluded from the reset walk by `sep_reg_meta.reg_hw_updating()`: every register whose fields all declare `sw = r` in the generated JSON model, minus the constants named in `_CONSTANT_RO`. That set is 25 registers, of which 17 are tallied under `hw-owned; read value is not the POR value` -- the other 8 are claimed first by the `STATUS` and `RDATA` name suffixes. `sw = r` alone is not the criterion: COMPONENT_ID is software-read-only but hardwired (`entropy_source.rdl` `hw = na`, no storage in `entropy_source_reg.sv`), so it is opted back in and stays in the walk. The dead-space store compare uses the same accessor, so the two checks cannot drift apart.
 . Write-lands is the anti-vacuity control: a complement write must move exactly the software-usable mask.
-. Inbound-filter START/END stay in the write sweep under the full export mask; readback is checked against the same-beat wrap model with the peer at reset (`END_ADDR` reset `0x7`).
-. The inventory is seed-stable: 417 reset, 51 write (16 scratch + 3 `SEP_CPU_CTRL` + 32 inbound address regs), plus 9 `TOUCH_BLOCKS` IP storage proofs (AES/HMAC/KMAC/OTBN/DMA/SPI/WDT and both mailboxes; write ``x``, ``(read & mask) == (x & mask)``).
+. Inbound-filter START/END stay in the write sweep under the full export mask; readback is checked against the same-beat wrap model with the peer at reset (`END_ADDR` reset `0x7`). That compare pins current RTL wrap behaviour; it is not a specification check.
+. The inventory is seed-stable: export 1032, inventory 873, nometa 159, reset 484 after 389 reasoned skips -- the `reset_skip=[...]` tally in the walk line accounts for all 389. Write-lands is 19 full-mask registers (8 scratch-cold + 8 scratch-warm + 3 `SEP_CPU_CTRL`) plus 32 inbound START/END under the wrap model, plus 9 `TOUCH_BLOCKS` IP storage proofs (AES/HMAC/KMAC/OTBN/DMA/SPI/WDT and both mailboxes; write ``x``, ``(read & mask) == (x & mask)``).
 
 *Checkers*:
 
@@ -3424,7 +3421,7 @@ both lock flavours of one seed-selected spare.
 |CHK-BLOCK-TOUCH
 |One export RW storage register per other major IP (`TOUCH_BLOCKS`): write seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. Candidates exclude W1C/status/enable/key/GO. The register is seed-selected only where the block offers more than one candidate (DMA 14, SPI 4, WDT 4); AES, HMAC, KMAC, OTBN and both mailboxes have exactly one, so those picks are fixed. Four of the fixed picks are `INTR_ENABLE`, the generated interrupt shim -- block decode and storage evidence, not evidence about the engine.
 |CHK-RANDCFG
-|The full reset set, write-safe set, and TOUCH_BLOCKS set ran in one invocation; block order, ones-first, and the touch value come from the seed, as does the touch pick in the three blocks with more than one candidate.
+|The whole seed-built configuration ran in one invocation: the reset, write and TOUCH_BLOCKS walks each covered every register the cfg named. A completeness control over the sweep itself, not evidence about the DUT -- it fails when a walk silently drops work, not when a register misbehaves. The walk sizes (`export`, `inventory`, `nometa`) are logged with it so a shrunken inventory is visible rather than inferred from a PASS.
 |===
 
 '''''
@@ -3459,7 +3456,7 @@ both lock flavours of one seed-selected spare.
 |===
 |Checker |Contract
 |CHK-WINDOW-LIVE
-|Each of the nine watched windows has a non-empty allocated-register snapshot, so the no-alias compare can fail.
+|Each of the ten watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller) has a non-empty allocated-register snapshot, so the no-alias compare can fail. The line reports readable and armed separately: the store compare drops hardware-updating addresses, so armed is the falsifiable count.
 |CHK-DEADSPACE-REFUSE
 |A read or write past the allocated size is refused (not OKAY). Every issue-228 anchor still wraps (KM `0x10920ff8` onto `SEP_CTRL`, DMA `0x108008a8` onto `+0xa8`). AES / lifecycle / some SPI probes already refuse. The accepted-OKAY count depends on the seed-selected probes; do not freeze it in the Proof cell.
 |CHK-DEADSPACE-NO-ALIAS

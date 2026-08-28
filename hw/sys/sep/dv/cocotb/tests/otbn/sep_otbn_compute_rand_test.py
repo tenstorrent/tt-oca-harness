@@ -19,7 +19,6 @@ import pyuvm
 
 from sep_base_test import sep_base_test
 from seq_lib.sep_otbn_compute_seq import SepOtbnCompute, SepOtbnComputeCfg
-from seq_lib.sep_sw_reset_seq import SepSwReset
 
 
 @pyuvm.test()
@@ -27,9 +26,7 @@ class sep_otbn_compute_rand_test(sep_base_test):
     """IMEM program + EXECUTE + ERR_BITS==0 + DMEM==golden."""
 
     async def run_scenario(self) -> None:
-        await self.bring_up_no_cpu()
-        self.swrst = SepSwReset(self)
-        await self.swrst.park("aes", "hmac", "kmac")
+        await self.bring_up_no_cpu(park=("aes", "hmac", "kmac"))
         await self.bring_up_entropy(
             strict=True, score_km=False, score_sinks={"otbn_urnd": "observe"})
         self.start_fifo_drain()

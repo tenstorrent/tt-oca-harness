@@ -66,7 +66,6 @@ from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_AES
-from seq_lib.sep_sw_reset_seq import SepSwReset
 
 # AES SW-key path key + plaintext for the entropy-pulling encrypt loop (values
 # are arbitrary -- this test exercises the entropy datapath, not a key contract).
@@ -102,16 +101,14 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # --- Boot the real KM firmware on real entropy -------------------------
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD (KM reads OTP at boot)
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "kmac", "hmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
-        # Park OTBN/KMAC/HMAC so KM + AES are the only entropy sinks. Leave AES
-        # RELEASED (default SW_RESET_N=0x1E) so its masking-PRNG reseed is served as
-        # EDN starts (real_sink_aes ordering), making AES a live crypto-EDN consumer.
-        await self.swrst.park("otbn", "kmac", "hmac")
+        # OTBN/KMAC/HMAC JTAG-held across rst_ni release, then parked in SW_RESET_N. AES stays released so its
+        # masking-PRNG reseed is served as EDN starts, making AES a live
+        # crypto-EDN consumer.
 
         # Strict entropy bring-up. CHK1..CHK4 bit-exact golden anchors the one DRBG.
         # KM = "membership" (each KM AXIS word is a genbits-golden word; rom_main pull
