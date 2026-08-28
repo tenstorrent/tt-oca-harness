@@ -20,7 +20,7 @@ different hardware: the ROM-digest path is a memcmp against .rodata, this one is
 real eFuse bank read through the sense path, subject to the same shadow/lock
 behaviour as any other OTP field.
 
-The digest below is SHA-256 over the dev0 RSA-3072 modulus -- the 384-byte MODULUS
+The digest below is SHA-256 over ROM key 0's RSA-3072 modulus -- the 384-byte MODULUS
 only, not the 388-byte RAW blob that carries the exponent. Word order matches
 ``fuse_read_bytes()``: word[0] holds bits[31:0], so each word is four consecutive
 digest bytes read little-endian. Same table as
@@ -42,8 +42,8 @@ OTP_KEY_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build",
                                    "oca_otp_key_boot.bin")
 
 _CHIPLET_PUBK_HASH0_WORDS = [
-    0x23D07646, 0xBD5E6B73, 0x5BF73151, 0x5E352A06,
-    0x0E79E19A, 0xB572C880, 0x1F0C9BEE, 0xE3C304FF,
+    0x63CA71A7, 0xC2F5A837, 0x94C96E1A, 0xA03A7E64,
+    0xD2A7FD9C, 0xBB617D03, 0x2B03DFEC, 0xF6508284,
 ]
 
 # plat_is_key_authorized() refuses an all-zero OTP bank rather than treating it

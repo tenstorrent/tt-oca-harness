@@ -35,12 +35,12 @@ primary:
       use_ext_sram: 0
     signature_type: 1  # RSA-3072
     signing_authority: "local"
-    signing_key_name: "test_dev_rom_key_0"
+    signing_key_name: "test_rom_key_0"
     signing_key_id: "0"
-    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.dev0.pem"
+    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.rom_key0.pem"
     public_key_sel:
       selection: 0      # ROM_KEY
-      rom_key_index: 0   # slot 0 (dev0)
+      rom_key_index: 0   # slot 0
     usage_constraints:
       selectors:
         chiplet_id: 0b00000000
@@ -104,9 +104,9 @@ backup:
       use_ext_sram: 0
     signature_type: 1
     signing_authority: "local"
-    signing_key_name: "test_dev_rom_key_0"
+    signing_key_name: "test_rom_key_0"
     signing_key_id: "0"
-    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.dev0.pem"
+    signing_key_file: "$ROOT/tests/signing_keys/rsa_private_key.rom_key0.pem"
     public_key_sel:
       selection: 0
       rom_key_index: 0
