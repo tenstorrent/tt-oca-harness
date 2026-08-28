@@ -277,15 +277,6 @@ set, and `STATUS.READY` re-asserts only after a `zeroize` or a reset. Firmware
 therefore detects completion from `VALID`, and must issue a `zeroize` between
 back-to-back operations.
 
-NOTE: Several parts of the block are integrated but not yet exercised by a
-driver. This is an ML-DSA-first build with no ML-KEM engine driver, so the ML-KEM
-read and write paths through `sep_abr_kv_shim` are covered by DV stimulus only.
-Operational entropy is written by firmware per operation; there is no EDN
-auto-reseed loader. The working SRAMs are behavioral models pending real macros.
-The Key Manager crossbar does not yet route a dedicated key-bus port to ABR, so
-the hardware-confined seed path -- in which the ML-DSA private key is never
-readable by the SEP CPU -- is not yet closed.
-
 Consult the https://github.com/chipsalliance/adams-bridge[Adams Bridge
 documentation] for the authoritative core functionality of the IP. Its CSRs are
 defined by the vendored Caliptra register package rather than by an OCAH PeakRDL

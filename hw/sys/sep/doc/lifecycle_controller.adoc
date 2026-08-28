@@ -853,8 +853,8 @@ gated by `secure_tm` -- see <<secure-tm-vs-scandump>>.
 
 |SMC fabric JTAG2AXI path |Case 2 |
 
-|SEP debug S-TAP host path |Case 3 |Gating `SEP_DBG` alone would be wrong; see
-the note below.
+|SEP debug S-TAP host path |Case 3 |Requires the full Case 3 conjunction;
+`SEP_DBG` alone is not sufficient.
 
 |Secure external DFT iJTAG path |Case 3 |The DFT secure chain SIB. Reaching it
 grants test access only, under the command-class rule of
@@ -870,9 +870,6 @@ controller's register interface, whose own per-field `LOCKS` read/write access
 control is the enforcement point, so a feature control bit would be redundant.
 `LOCKS` is only in force once sensed, so this depends on nothing on this path
 being able to execute before fuse sensing completes.
-
-|Boundary scan (BSR) |_Not yet assigned_ |Requires a decision on whether
-board-level interconnect test must work in states where DFD and DFT are closed.
 |=======================================================================
 
 Two consequences are worth stating explicitly.
@@ -887,11 +884,9 @@ path shut.
 `CHIPLET_DBG` for any other Case 2 path also opens SMC debug. Separating the two
 would require allocating a dedicated bit from the reserved DBG_1 range.
 
-The failure mode this table exists to prevent is specific: it is tempting to gate
-the SEP debug S-TAP on `SEP_DBG` alone because the names match, but the layered
-model deliberately breaks that one-to-one mapping. Such a bug is invisible in
-ordinary testing -- in `TEST_DEV`, and after any demotion, the bits are open, so
-the path works and every test passes. It surfaces only under a partial lockdown.
+The SEP debug S-TAP host path shall be gated on the full Case 3 conjunction,
+`SIP_DBG & CHIPLET_DBG & SEP_DBG`. `SEP_DBG` alone is not sufficient: the
+layered model deliberately does not map a path to the like-named bit.
 
 [[non-primary-chiplets]]
 ===== Non-Primary Chiplets
