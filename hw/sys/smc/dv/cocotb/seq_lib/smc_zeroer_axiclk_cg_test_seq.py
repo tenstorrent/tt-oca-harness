@@ -15,22 +15,20 @@ genuine overlap) is evidence-only -- no pass/fail asserted on that protocol
 outcome. That carve-out applies ONLY to CHK-ZEROER-AXICLK-COMPLETION's
 protocol-outcome verdict.
 
-AMENDMENT (revision 2, supersedes revision 1, owner decision minshaoho
-standing order "approve-and-continue" amend choice (ii), approved 2026-08-05T17:25:00+08:00):
-revision 1's CHK-ZEROER-AXICLK-NOGLITCH required zero axi_clk_enable deassert
-across the WHOLE busy-to-idle boundary, including the real ~26-28 clk_smc_i
-cycle turnaround of the documented 3-write DEST_ADDR->SIZE->CTRL_STATUS
-trigger protocol -- physically unreachable via that frontdoor protocol at all
-3 swept timings (see revision-1 (B) finding, kept log run 20260805_091625,
-now STALE against this revision). Revision 2 narrows the proof: while
-zeroer_busy_o==1 for EITHER operation (op1's tail or op2's own busy span),
-axi_clk_enable must stay asserted with zero deassert -- no mid-busy glitch --
-at all 3 swept timings (still scored, still no carve-out for this half of the
-checker). A deassert gap occurring STRICTLY BETWEEN the two busy pulses
-(caused by the multi-write trigger protocol's turnaround latency) is now
-PERMITTED and must be LOGGED (start cycle, end cycle, duration) at each swept
-timing -- never scored as a failure. CHK-ZEROER-AXICLK-COMPLETION is
-unchanged (same-cycle/1-after scored; 1-before evidence-only per SF-005).
+CHK-ZEROER-AXICLK-NOGLITCH is scoped to the busy spans, not to the whole
+busy-to-idle boundary. Requiring zero axi_clk_enable deassert across that whole
+boundary is physically unreachable through this frontdoor: the documented
+3-write DEST_ADDR->SIZE->CTRL_STATUS trigger protocol has a ~26-28 clk_smc_i
+turnaround, so a gap appears at all 3 swept timings regardless of the DUT.
+
+The scored claim is therefore: while zeroer_busy_o==1 for EITHER operation
+(op1's tail or op2's own busy span), axi_clk_enable must stay asserted with zero
+deassert -- no mid-busy glitch -- at all 3 swept timings, with no carve-out for
+this half of the checker. A deassert gap STRICTLY BETWEEN the two busy pulses,
+caused by the multi-write trigger protocol's turnaround latency, is PERMITTED
+and must be LOGGED (start cycle, end cycle, duration) at each swept timing --
+never scored as a failure. CHK-ZEROER-AXICLK-COMPLETION follows SF-005:
+same-cycle/1-after scored, 1-before evidence-only.
 `_p2_race_cell` below implements this split by classifying every deasserted
 (enable==0) sample as either "mid-busy" (busy==1 at that sample -- fail_on
 scope) or "inter-busy gap" (busy==0, strictly between op1's busy-fall and
@@ -647,8 +645,8 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         # All 3 required cells' evidence is now in the kept log (checkers
         # emitted above). Fail the testcase, with a full summary, if any cell
         # recorded a real mid-busy glitch or a missed completion -- this would
-        # be a DUT/RTL finding, not a test bug; per SMC_CG_P2_002 revision 2's
-        # approved contract, the inter-busy deassert gap (logged above in
+        # be a DUT/RTL finding, not a test bug. Per SMC_CG_P2_002, the
+        # inter-busy deassert gap (logged above in
         # CHK-ZEROER-AXICLK-NOGLITCH's inter_busy_gap_* fields) is permitted
         # and therefore excluded from `violations` -- only a mid-busy glitch
         # (glitch_detail) or a missed same-cycle/1-after completion
