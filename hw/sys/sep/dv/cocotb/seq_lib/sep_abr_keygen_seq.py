@@ -31,7 +31,7 @@ _PARAMS = (
 
 
 def _pkg_u32(name: str) -> int:
-    text = _PKG.read_text()
+    text = _PKG.read_text(encoding="utf-8")
     m = re.search(rf"localparam logic \[31:0\] {name} = 32'h([0-9A-Fa-f_]+);", text)
     if not m:
         raise RuntimeError(f"{name} not found in {_PKG}")
@@ -39,7 +39,7 @@ def _pkg_u32(name: str) -> int:
 
 
 def _uvm_reg_off(name: str) -> int:
-    text = _UVM.read_text()
+    text = _UVM.read_text(encoding="utf-8")
     m = re.search(rf"add_reg\(this\.{name}, 'h([0-9a-fA-F]+)\)", text)
     if not m:
         raise RuntimeError(f"{name} add_reg not found in {_UVM}")
@@ -47,7 +47,7 @@ def _uvm_reg_off(name: str) -> int:
 
 
 def _uvm_array_base(name: str) -> int:
-    text = _UVM.read_text()
+    text = _UVM.read_text(encoding="utf-8")
     m = re.search(
         rf"add_reg\(this\.{name}\[i0\], 'h([0-9a-fA-F]+) \+ i0\*'h4\)",
         text,
@@ -58,7 +58,7 @@ def _uvm_array_base(name: str) -> int:
 
 
 def _uvm_submap_off(name: str) -> int:
-    text = _UVM.read_text()
+    text = _UVM.read_text(encoding="utf-8")
     m = re.search(
         rf"add_submap\(this\.{name}\.default_map, 'h([0-9a-fA-F]+)\)",
         text,
@@ -69,7 +69,7 @@ def _uvm_submap_off(name: str) -> int:
 
 
 def _mldsa_core_name() -> tuple[int, int]:
-    text = _PARAMS.read_text()
+    text = _PARAMS.read_text(encoding="utf-8")
     m = re.search(
         r"MLDSA_CORE_NAME\s*=\s*64'h([0-9A-Fa-f]+)_([0-9A-Fa-f]+);",
         text,
