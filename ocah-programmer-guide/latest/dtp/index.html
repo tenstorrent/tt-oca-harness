@@ -5536,7 +5536,34 @@ combined internally with TRST_n</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="lifecycle-feature-control"><a class="anchor" href="#lifecycle-feature-control"></a><a class="link" href="#lifecycle-feature-control">1.8.5. Lifecycle Feature Control</a></h4>
+<h4 id="ic_reset-overrides"><a class="anchor" href="#ic_reset-overrides"></a><a class="link" href="#ic_reset-overrides">1.8.5. IC_RESET Overrides</a></h4>
+<div class="paragraph">
+<p>The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset
+port it holds <code>reset_control</code>, the active-low reset value to drive, and
+<code>reset_enable</code>, which selects it. One <code>reset_hold</code> bit sits nearest TDO.</p>
+</div>
+<div class="paragraph">
+<p><code>reset_enable</code> is active low despite the name: it resets to 1, leaving the
+port&#8217;s functional reset connected, and writing 0 hands the port over to
+<code>reset_control</code>. The overrides leave the DTP on
+<code>jtag_ic_reset_{smc,sep,ext}_o</code>, whose <code>.ovrd</code> member is active high and whose
+<code>.val</code> carries <code>reset_control</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>reset_hold</code> also resets to 1, which lets Test-Logic-Reset clear the
+enable/control bits. Write 0 to keep an override asserted across TLR; only TRST
+clears <code>reset_hold</code> itself.</p>
+</div>
+<div class="paragraph">
+<p>Consumers select between the two sources with a hazard-free multiplexer, which
+holds its output while the select alone moves. Write <code>reset_control</code> first and
+clear <code>reset_enable</code> in a second Update-DR: moving both in one update changes
+the select and a data input together, which can pulse a reset on a port that
+neither source is resetting.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="lifecycle-feature-control"><a class="anchor" href="#lifecycle-feature-control"></a><a class="link" href="#lifecycle-feature-control">1.8.6. Lifecycle Feature Control</a></h4>
 <div class="paragraph">
 <p>The DTP top level consumes <code>feat_ctrl_i</code> using the SEP lifecycle feature control
 type <code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code>. That type is reused for
