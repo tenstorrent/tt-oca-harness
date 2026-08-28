@@ -7,6 +7,8 @@ SepRegBitBashCfg is the single source of truth for which registers are reset-
 checked, which take a write bash, and the seed-selected walk order.
 
 Exclusions are data: one reason string per entry. A silent skip is a bug.
+``iter_register_walk`` counts OFFSET symbols that lack DEFAULT/struct
+(``nometa``) instead of dropping them without a tally.
 Inbound-filter START/END stay in the write sweep under the full export
 mask. ``axi_filter_wrap`` rewrites a same-beat window only
 (``START[2:0]->0``, ``END[2:0]->1``; END reset ``0x7``). Solo bash keeps
@@ -27,7 +29,11 @@ from collections import defaultdict
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import RegInfo, iter_registers
+from sep_reg_meta import (
+    RegInfo,
+    iter_register_walk,
+    reg_hw_updating,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # (block, name) -> reason. name None = every register in the block.
@@ -53,6 +59,20 @@ RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("WDT_TIMER", "WDOG_COUNT"): "hw-driven timer",
 }
 
+# ENTROPY_SOURCE registers hardware may change while the noise source runs: a
+# reset compare on one measures elapsed time, not the DUT's reset value. The set
+# is `sw = r` minus proven constants, derived in sep_reg_meta.reg_hw_updating so
+# the dead-space store compare uses the SAME source and the two cannot drift
+# apart. HT_WATERMARK_NUM is `sw = rw` (a mode selector) and stays in the walk.
+# Resolved on first use so importing this module does not need the JSON on disk.
+def esrc_reset_skip() -> frozenset[str]:
+    """ENTROPY_SOURCE registers whose read value is not the POR value (cached)."""
+    cached = getattr(esrc_reset_skip, "_cache", None)
+    if cached is None:
+        cached = esrc_reset_skip._cache = reg_hw_updating("entropy_source")
+    return cached
+
+
 # Name suffixes excluded from reset and write. Each carries a reason.
 RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     "INTR_TEST": "trigger",
@@ -63,6 +83,12 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     "RXDATA": "FIFO",
     "WRITE_DATA": "FIFO",
     "READ_DATA": "FIFO",
+    # `RDATA`, not just `READ_DATA`: entropy_source names its auto-incrementing
+    # read ports FIFO_RDATA / BIW_OBS_RDATA / NOISE_OBS_RDATA. A read advances
+    # the pointer and decrements FIFO_STATUS.LEVEL; on an empty FIFO it also sets
+    # INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Reading one to check
+    # a reset value therefore destroys the state it is checking.
+    "RDATA": "FIFO",
     "GENBITS": "FIFO",
     "CMD": "trigger",
     "CMD_REQ": "trigger",
@@ -237,7 +263,9 @@ def touch_reason(info: RegInfo) -> str | None:
     """Why this register is not a plain storage touch, or None if it is.
 
     Mirrors reset_reason/write_reason: every exclusion carries a reason the
-    cfg tallies, so the summary accounts for the whole export.
+    cfg tallies, so the summary accounts for every inventory register.
+    Export symbols that lack DEFAULT/struct are counted by
+    ``iter_register_walk`` (``nometa``), not here.
     """
     why = reset_reason(info)
     if why is not None:
@@ -281,7 +309,12 @@ def _suffix_reason(name: str) -> str | None:
 
 
 def reset_reason(info: RegInfo) -> str | None:
-    return _lookup(RESET_EXCLUDE, info.block, info.name) or _suffix_reason(info.name)
+    hit = _lookup(RESET_EXCLUDE, info.block, info.name) or _suffix_reason(info.name)
+    if hit is not None:
+        return hit
+    if info.block == "ENTROPY_SOURCE" and info.name in esrc_reset_skip():
+        return "hw-owned; read value is not the POR value"
+    return None
 
 
 def write_reason(info: RegInfo) -> str | None:
@@ -315,9 +348,13 @@ class SepRegBitBashCfg:
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
-        inventory = iter_registers()
+        walk = iter_register_walk()
+        inventory = list(walk.regs)
         if not inventory:
             raise RuntimeError("generated register export is empty")
+        self.export = walk.export
+        self.inventory = walk.inventory
+        self.nometa = walk.nometa
 
         reset_by_block: dict[str, list[RegInfo]] = defaultdict(list)
         write_by_block: dict[str, list[RegInfo]] = defaultdict(list)
@@ -393,6 +430,7 @@ class SepRegBitBashCfg:
         )
         return (
             f"seed={self.seed} ones_first={int(self.ones_first)} "
+            f"export={self.export} inventory={self.inventory} nometa={self.nometa} "
             f"reset={len(self.reset_regs)}/{len(self.reset_blocks)}blocks "
             f"write={len(self.write_regs)}/{len(self.write_blocks)}blocks "
             f"touch={len(self.touch_regs)}[{touches}] "
