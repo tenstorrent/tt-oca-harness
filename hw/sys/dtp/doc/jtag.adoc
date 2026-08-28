@@ -66,12 +66,11 @@ The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset
 port it holds `reset_control`, the active-low reset value to drive, and
 `reset_enable`, which selects it. One `reset_hold` bit sits nearest TDO.
 
-`reset_enable` is active low despite the name. It resets to 1, which leaves the
-port's functional reset connected; writing 0 is what hands the port over to
-`reset_control`. `jtag_ic_reset_reg` inverts it, so the `.ovrd` member of
-`jtag_ic_reset_{smc,sep,ext}_o` is active high, paired with `.val` carrying
-`reset_control`. Those slices feed the SMC reset unit and the SEP reset
-controller.
+`reset_enable` is active low despite the name: it resets to 1, leaving the
+port's functional reset connected, and writing 0 hands the port over to
+`reset_control`. The overrides leave the DTP on
+`jtag_ic_reset_{smc,sep,ext}_o`, whose `.ovrd` member is active high and whose
+`.val` carries `reset_control`.
 
 `reset_hold` also resets to 1, which lets Test-Logic-Reset clear the
 enable/control bits. Write 0 to keep an override asserted across TLR; only TRST
