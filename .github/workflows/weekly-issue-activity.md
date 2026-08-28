@@ -19,7 +19,7 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
-  discussions: read
+  discussions: write
   copilot-requests: write
 
 network:
