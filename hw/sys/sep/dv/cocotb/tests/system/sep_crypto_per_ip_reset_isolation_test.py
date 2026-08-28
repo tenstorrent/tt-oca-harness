@@ -392,7 +392,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         sw_final = await self.rst.read_back()
         assert sw_final == SW_RESET_N_DEFAULT, (
             f"SW_RESET_N=0x{sw_final:08x} after domain walk, expected default "
-            f"0x{SW_RESET_N_DEFAULT:08x} (bit0 held, otbn/aes/hmac/kmac released)"
+            f"0x{SW_RESET_N_DEFAULT:08x} (bit0 held, everything else released)"
         )
 
         # score_sinks={"aes": "observe", "kmac": "observe"} sets a >=1-beat

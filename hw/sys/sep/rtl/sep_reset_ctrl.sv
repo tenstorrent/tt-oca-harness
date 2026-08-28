@@ -14,6 +14,8 @@
 //   Bit 2: aes_sw_rst      - write 1 to release AES from reset (0=hold)
 //   Bit 3: hmac_sw_rst     - write 1 to release HMAC from reset (0=hold)
 //   Bit 4: kmac_sw_rst     - write 1 to release KMAC from reset (0=hold)
+//   Bit 5: esrc_sw_rst     - write 1 to release the entropy source (0=hold)
+//   Bit 6: drbg_sw_rst     - write 1 to release the DRBG (0=hold)
 
 `include "prim_assert.sv"
 
@@ -117,6 +119,8 @@ module sep_reset_ctrl
     // =========================================================================
     sep_pkg::sep_sw_rst_t sw_reset_bits;
 
+    assign sw_reset_bits.drbg   = hwif_out.SW_RESET_N.drbg_sw_rst_n.value;
+    assign sw_reset_bits.esrc   = hwif_out.SW_RESET_N.esrc_sw_rst_n.value;
     assign sw_reset_bits.kmac   = hwif_out.SW_RESET_N.kmac_sw_rst_n.value;
     assign sw_reset_bits.hmac   = hwif_out.SW_RESET_N.hmac_sw_rst_n.value;
     assign sw_reset_bits.aes    = hwif_out.SW_RESET_N.aes_sw_rst_n.value;
@@ -133,6 +137,8 @@ module sep_reset_ctrl
     // If syncronized to clk_i, this would create a dependecny on clk_i being functional during TCK operations. This is not always the case.
     // If stop clock propagation is used, there might not be a clock and the jtag_sep_reset_ctrl_i value can't propagate.
 
+    assign sep_sw_rst_no.drbg = jtag_sep_reset_ctrl_i.ovrd.drbg_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.drbg_jtag_rst_n_val : (sw_reset_bits.drbg & sep_reset_n);
+    assign sep_sw_rst_no.esrc = jtag_sep_reset_ctrl_i.ovrd.esrc_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.esrc_jtag_rst_n_val : (sw_reset_bits.esrc & sep_reset_n);
     assign sep_sw_rst_no.kmac = jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val : (sw_reset_bits.kmac & sep_reset_n);
     assign sep_sw_rst_no.hmac = jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd ? jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val : (sw_reset_bits.hmac & sep_reset_n);
     assign sep_sw_rst_no.aes  = jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd  ? jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val  : (sw_reset_bits.aes  & sep_reset_n);

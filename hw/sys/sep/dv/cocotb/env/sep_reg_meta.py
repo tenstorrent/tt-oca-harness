@@ -560,7 +560,7 @@ def _selftest() -> int:
 
     # Fabric-walk blocks the sequence value-checks.
     block_checks = [
-        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_001E),
+        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_007E),
         (OTBN, "INTR_STATE", 0x1090_0000, 0x0),
         (HMAC, "INTR_STATE", 0x1091_1000, 0x0),
         (KMAC, "INTR_STATE", 0x1091_3000, 0x0),

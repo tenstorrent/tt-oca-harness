@@ -37,11 +37,14 @@ static uint32_t byte_swap(uint32_t x) {
 #define RST_AES SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm
 #define RST_HMAC SEP_RESET_CTRL__SW_RESET_N__HMAC_SW_RST_N_bm
 #define RST_KMAC SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_bm
+#define RST_ESRC SEP_RESET_CTRL__SW_RESET_N__ESRC_SW_RST_N_bm
+#define RST_DRBG SEP_RESET_CTRL__SW_RESET_N__DRBG_SW_RST_N_bm
 
-/* Post-TB bring-up: KM held (bit0=0), otbn/aes/hmac/kmac released (0x1E). */
-#define RST_POST_TB_EXPECTED (RST_OTBN | RST_AES | RST_HMAC | RST_KMAC)
-/* Explicit full release mask used when this test releases KMAC (and KM). */
-#define RST_ALL_RELEASE (RST_KM | RST_OTBN | RST_AES | RST_HMAC | RST_KMAC)
+/* Post-TB bring-up: KM held (bit0=0), everything else released (0x7E). */
+#define RST_POST_TB_EXPECTED (RST_OTBN | RST_AES | RST_HMAC | RST_KMAC | RST_ESRC | RST_DRBG)
+/* Explicit full release mask used when this test releases KMAC (and KM). The
+ * TRNG bits stay set throughout: parking them would starve KMAC's entropy. */
+#define RST_ALL_RELEASE (RST_KM | RST_POST_TB_EXPECTED)
 
 static int test_errors = 0;
 
@@ -122,7 +125,7 @@ static int test_sw_reset(void) {
     uint32_t rst = READ_REG(RST_CTRL_ADDR);
     printf("  SW_RESET_N default = 0x%08x (expect 0x%08x: KM held, others released)\n", rst,
            RST_POST_TB_EXPECTED);
-    /* Fail hard if TB precondition unmet (matches sep_reset_ctrl reset value 0x1E). */
+    /* Fail hard if TB precondition unmet (matches sep_reset_ctrl reset value 0x7E). */
     if (rst != RST_POST_TB_EXPECTED) {
         printf("FAIL: SW_RESET_N=0x%08x expected=0x%08x (TB precondition unmet)\n", rst,
                RST_POST_TB_EXPECTED);

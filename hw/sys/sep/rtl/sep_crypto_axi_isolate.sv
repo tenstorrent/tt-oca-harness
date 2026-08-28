@@ -4,11 +4,14 @@
 // SEP Crypto AXI Isolate
 //
 // Software-reset isolation for the crypto accelerator AXI ports (HMAC, OTBN,
-// AES, KMAC). Sits between the sep_crypto demux master ports and the
-// accelerator wrappers. On a software reset request, isolates the requesting
-// accelerator's AXI port (drains in-flight transactions, terminates new ones
-// with DECERR), then asserts that wrapper's reset. Each port is sequenced
-// independently by a sep_crypto_axi_isolate_unit.
+// AES, KMAC), the entropy source, and the DRBG. Sits between the sep_crypto
+// demux master ports and the accelerator wrappers. On a software reset request,
+// isolates the requesting accelerator's AXI port (drains in-flight
+// transactions, terminates new ones with DECERR), then asserts that wrapper's
+// reset. Each port is sequenced independently by a sep_crypto_axi_isolate_unit.
+//
+// The DRBG is the one block with two AXI subordinates (CSRNG and EDN) behind a
+// single reset, so it gets a unit per port and one shared reset request.
 
 module sep_crypto_axi_isolate
 #(
@@ -54,7 +57,27 @@ module sep_crypto_axi_isolate
     output axi_resp_t kmac_slv_resp_o,
     output axi_req_t  kmac_mst_req_o,
     input  axi_resp_t kmac_mst_resp_i,
-    output logic      kmac_gated_rst_no
+    output logic      kmac_gated_rst_no,
+
+    // Entropy source
+    input  logic      esrc_sw_rst_req_ni,
+    input  axi_req_t  esrc_slv_req_i,
+    output axi_resp_t esrc_slv_resp_o,
+    output axi_req_t  esrc_mst_req_o,
+    input  axi_resp_t esrc_mst_resp_i,
+    output logic      esrc_gated_rst_no,
+
+    // DRBG: one reset request, one gated reset, two AXI ports
+    input  logic      drbg_sw_rst_req_ni,
+    input  axi_req_t  drbg_csrng_slv_req_i,
+    output axi_resp_t drbg_csrng_slv_resp_o,
+    output axi_req_t  drbg_csrng_mst_req_o,
+    input  axi_resp_t drbg_csrng_mst_resp_i,
+    input  axi_req_t  drbg_edn_slv_req_i,
+    output axi_resp_t drbg_edn_slv_resp_o,
+    output axi_req_t  drbg_edn_mst_req_o,
+    input  axi_resp_t drbg_edn_mst_resp_i,
+    output logic      drbg_gated_rst_no
 );
 
     sep_crypto_axi_isolate_unit #(
@@ -132,5 +155,69 @@ module sep_crypto_axi_isolate
         .mst_resp_i    (kmac_mst_resp_i),
         .gated_rst_no  (kmac_gated_rst_no)
     );
+
+    sep_crypto_axi_isolate_unit #(
+        .ADDR_WIDTH  (ADDR_WIDTH),
+        .DATA_WIDTH  (DATA_WIDTH),
+        .ID_WIDTH    (ID_WIDTH),
+        .USER_WIDTH  (USER_WIDTH),
+        .NUM_PENDING (NUM_PENDING),
+        .axi_req_t   (axi_req_t),
+        .axi_resp_t  (axi_resp_t)
+    ) u_esrc_iso (
+        .clk_i         (clk_i),
+        .rst_ni        (rst_ni),
+        .sw_rst_req_ni (esrc_sw_rst_req_ni),
+        .slv_req_i     (esrc_slv_req_i),
+        .slv_resp_o    (esrc_slv_resp_o),
+        .mst_req_o     (esrc_mst_req_o),
+        .mst_resp_i    (esrc_mst_resp_i),
+        .gated_rst_no  (esrc_gated_rst_no)
+    );
+
+    logic drbg_csrng_gated_rst_n, drbg_edn_gated_rst_n;
+
+    sep_crypto_axi_isolate_unit #(
+        .ADDR_WIDTH  (ADDR_WIDTH),
+        .DATA_WIDTH  (DATA_WIDTH),
+        .ID_WIDTH    (ID_WIDTH),
+        .USER_WIDTH  (USER_WIDTH),
+        .NUM_PENDING (NUM_PENDING),
+        .axi_req_t   (axi_req_t),
+        .axi_resp_t  (axi_resp_t)
+    ) u_drbg_csrng_iso (
+        .clk_i         (clk_i),
+        .rst_ni        (rst_ni),
+        .sw_rst_req_ni (drbg_sw_rst_req_ni),
+        .slv_req_i     (drbg_csrng_slv_req_i),
+        .slv_resp_o    (drbg_csrng_slv_resp_o),
+        .mst_req_o     (drbg_csrng_mst_req_o),
+        .mst_resp_i    (drbg_csrng_mst_resp_i),
+        .gated_rst_no  (drbg_csrng_gated_rst_n)
+    );
+
+    sep_crypto_axi_isolate_unit #(
+        .ADDR_WIDTH  (ADDR_WIDTH),
+        .DATA_WIDTH  (DATA_WIDTH),
+        .ID_WIDTH    (ID_WIDTH),
+        .USER_WIDTH  (USER_WIDTH),
+        .NUM_PENDING (NUM_PENDING),
+        .axi_req_t   (axi_req_t),
+        .axi_resp_t  (axi_resp_t)
+    ) u_drbg_edn_iso (
+        .clk_i         (clk_i),
+        .rst_ni        (rst_ni),
+        .sw_rst_req_ni (drbg_sw_rst_req_ni),
+        .slv_req_i     (drbg_edn_slv_req_i),
+        .slv_resp_o    (drbg_edn_slv_resp_o),
+        .mst_req_o     (drbg_edn_mst_req_o),
+        .mst_resp_i    (drbg_edn_mst_resp_i),
+        .gated_rst_no  (drbg_edn_gated_rst_n)
+    );
+
+    // Both ports are active-low, and the two units drain independently, so the
+    // OR holds the DRBG out of reset until the slower of the two has isolated.
+    // An AND would reset it while the other port was still open.
+    assign drbg_gated_rst_no = drbg_csrng_gated_rst_n | drbg_edn_gated_rst_n;
 
 endmodule

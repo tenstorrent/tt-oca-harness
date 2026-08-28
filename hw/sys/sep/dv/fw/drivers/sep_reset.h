@@ -4,10 +4,11 @@
 // SEP reset-control driver (EL2 host side).
 //
 // The SEP reset controller holds the Key Manager (KM) PicoRV32 second core in
-// warm reset out of cold reset: SW_RESET_N resets to 0x1E, i.e. km_sw_rst_n
-// (bit 0) = 0 while the other crypto cores (otbn/aes/hmac/kmac) come up released.
-// The EL2 firmware writes km_sw_rst_n = 1 to release the KM so it boots from its
-// ROM responder. (Addresses are SEP fabric facts; hw/sys/sep/regs sep_reset_ctrl.)
+// warm reset out of cold reset: SW_RESET_N resets to 0x7E, i.e. km_sw_rst_n
+// (bit 0) = 0 while the other cores (otbn/aes/hmac/kmac) and the TRNG
+// (esrc/drbg) come up released. The EL2 firmware writes km_sw_rst_n = 1 to
+// release the KM so it boots from its ROM responder. (Addresses are SEP fabric
+// facts; hw/sys/sep/regs sep_reset_ctrl.)
 
 #ifndef SEP_RESET_H
 #define SEP_RESET_H
@@ -16,13 +17,15 @@
 
 #define SEP_RESET_CTRL_SW_RESET_N 0x10803000u // SW_RESET_N register
 #define SEP_SW_RESET_N_DEFAULT \
-    0x0000001Eu                         // reset value: km held (bit0=0),
-                                        // otbn/aes/hmac/kmac released
+    0x0000007Eu                         // reset value: km held (bit0=0),
+                                        // otbn/aes/hmac/kmac/esrc/drbg released
 #define SEP_SW_RESET_N_KM_BIT (1u << 0) // km_sw_rst_n: 1 = KM released
 #define SEP_SW_RESET_N_OTBN_BIT (1u << 1)
 #define SEP_SW_RESET_N_AES_BIT (1u << 2)
 #define SEP_SW_RESET_N_HMAC_BIT (1u << 3)
 #define SEP_SW_RESET_N_KMAC_BIT (1u << 4)
+#define SEP_SW_RESET_N_ESRC_BIT (1u << 5)
+#define SEP_SW_RESET_N_DRBG_BIT (1u << 6)
 
 static inline uint32_t sep_reset_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;

@@ -8,12 +8,15 @@ engines without a read-modify-write race, the way the reference consume base seq
 releases KM first and the target crypto engine later.
 
 The shadow is seeded with the HW reset default (hw/sys/sep/regs/rdl/
-sep_reset_ctrl.rdl): km_sw_rst_n=0 (held), otbn/aes/hmac/kmac=1 (released) => 0x1E.
+sep_reset_ctrl.rdl): km_sw_rst_n=0 (held), everything else 1 (released) => 0x7E.
 A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
 must park() them explicitly; do not rely on a wrong all-parked assumption.
 
+Parking "drbg" or "esrc" starves every entropy consumer, so a test that parks
+them has to release them again before exercising anything that draws on EDN.
+
 Bit map (hw/sys/sep/rtl/sep_reset_ctrl.sv: SW_RESET_N fields):
-  km=0, otbn=1, aes=2, hmac=3, kmac=4
+  km=0, otbn=1, aes=2, hmac=3, kmac=4, esrc=5, drbg=6
 """
 
 from __future__ import annotations
@@ -31,10 +34,12 @@ SW_RESET_N_BIT = {
     "aes": 2,
     "hmac": 3,
     "kmac": 4,
+    "esrc": 5,
+    "drbg": 6,
 }
 
-# HW reset default: km held (0), otbn/aes/hmac/kmac released (1) -> 0x1E.
-SW_RESET_N_RESET_DEFAULT = 0x1E
+# HW reset default: km held (0), everything else released (1) -> 0x7E.
+SW_RESET_N_RESET_DEFAULT = 0x7E
 
 
 class SepSwReset:
@@ -44,7 +49,7 @@ class SepSwReset:
         self.test = test
         self.addr = addr
         self.log = logger if logger is not None else test.logger
-        self.value = SW_RESET_N_RESET_DEFAULT  # km held, crypto released (0x1E)
+        self.value = SW_RESET_N_RESET_DEFAULT  # km held, everything else released (0x7E)
 
     async def _write(self) -> None:
         seq = SepAxiAccessSeq("sw_reset_n", op=SepAxiOp.WRITE, addr=self.addr, wdata=self.value)

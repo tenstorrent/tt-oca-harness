@@ -16,7 +16,9 @@
 <h3 id="SW_RESET_N">SW_RESET_N</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>drbg_sw_rst_n</td><td>RW</td><td>0x1</td><td>DRBG reset (0=assert, 1=release)</td></tr>
+<tr><td>5</td><td>esrc_sw_rst_n</td><td>RW</td><td>0x1</td><td>ESRC reset (0=assert, 1=release)</td></tr>
 <tr><td>4</td><td>kmac_sw_rst_n</td><td>RW</td><td>0x1</td><td>KMAC reset (0=assert, 1=release)</td></tr>
 <tr><td>3</td><td>hmac_sw_rst_n</td><td>RW</td><td>0x1</td><td>HMAC reset (0=assert, 1=release)</td></tr>
 <tr><td>2</td><td>aes_sw_rst_n</td><td>RW</td><td>0x1</td><td>AES reset (0=assert, 1=release)</td></tr>

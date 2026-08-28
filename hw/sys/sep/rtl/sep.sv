@@ -843,6 +843,8 @@ module sep
         .aes_sw_rst_ni                          (sep_sw_rst_no.aes),
         .hmac_sw_rst_ni                         (sep_sw_rst_no.hmac),
         .kmac_sw_rst_ni                         (sep_sw_rst_no.kmac),
+        .esrc_sw_rst_ni                         (sep_sw_rst_no.esrc),
+        .drbg_sw_rst_ni                         (sep_sw_rst_no.drbg),
 
         .lcc_demote_state_1_o                   (lcc_demote_state_1_o),
         .lcc_demote_state_2_o                   (lcc_demote_state_2_o),

@@ -5,7 +5,7 @@
 // sep_reset_ctrl_csr_test and wdt_sanity_test). Two phases, one EL2 boot:
 //
 // PHASE A -- reset controller (sep_reset_ctrl):
-//   * SW_RESET_N reads its reset default 0x1E (km held, otbn/aes/hmac/kmac out).
+//   * SW_RESET_N reads its reset default 0x7E (km held, the rest out).
 //   * For each released crypto IP (otbn/aes/hmac/kmac): write a probe CSR, confirm
 //     it landed, pulse ONLY that IP's SW_RESET_N bit low->high, and confirm the
 //     probe returned to its reset default -- proving the reset wire reached the IP.
@@ -241,7 +241,7 @@ int main(void) {
     }
 
     if (errors == 0) {
-        sep_mbx_puts("PASS: SW_RESET_N=0x1E + per-IP reset wires + bad-addr NMI x2 "
+        sep_mbx_puts("PASS: SW_RESET_N=0x7E + per-IP reset wires + bad-addr NMI x2 "
                      "+ WDT bark/pet/disable/re-bark (BITE pending)\n");
     }
     return errors;

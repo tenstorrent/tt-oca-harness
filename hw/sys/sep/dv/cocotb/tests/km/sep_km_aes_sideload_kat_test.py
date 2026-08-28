@@ -109,13 +109,13 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_no_cpu()
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
+        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x7E)
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
         # Park OTBN/KMAC (on-demand EDN consumers) so the KM owns the boot/seed
         # stream, and HMAC (for key-bus isolation). Leave AES RELEASED (default
-        # 0x1E) so its masking-PRNG reseed is served as EDN starts -- the proven
+        # 0x7E) so its masking-PRNG reseed is served as EDN starts -- the proven
         # reference suite real_sink_aes ordering (release_consumers_pre_noise releases AES
         # pre-noise). This both feeds the AES PRNG and isolates the key bus: only
         # AES, of the four KM sideload targets, is released.

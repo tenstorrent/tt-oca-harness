@@ -12,7 +12,9 @@
 .SW_RESET_N Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:5 | `Reserved` | - | - a| Reserved
+| 63:7 | `Reserved` | - | - a| Reserved
+| 6 | `drbg_sw_rst_n` | RW | 0x1 a| DRBG reset (0=assert, 1=release)
+| 5 | `esrc_sw_rst_n` | RW | 0x1 a| ESRC reset (0=assert, 1=release)
 | 4 | `kmac_sw_rst_n` | RW | 0x1 a| KMAC reset (0=assert, 1=release)
 | 3 | `hmac_sw_rst_n` | RW | 0x1 a| HMAC reset (0=assert, 1=release)
 | 2 | `aes_sw_rst_n` | RW | 0x1 a| AES reset (0=assert, 1=release)

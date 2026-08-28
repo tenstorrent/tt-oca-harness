@@ -104,12 +104,12 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_no_cpu()
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
+        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x7E)
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
         # Park OTBN/KMAC/HMAC so KM + AES are the only entropy sinks. Leave AES
-        # RELEASED (default SW_RESET_N=0x1E) so its masking-PRNG reseed is served as
+        # RELEASED (default SW_RESET_N=0x7E) so its masking-PRNG reseed is served as
         # EDN starts (real_sink_aes ordering), making AES a live crypto-EDN consumer.
         await self.swrst.park("otbn", "kmac", "hmac")
 

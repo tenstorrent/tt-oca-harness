@@ -41,8 +41,10 @@ sideload structures expected by the OpenTitan cores.
 
 Alerts from all crypto components are collected by 11 `prim_alert_receiver`
 instances within `sep_crypto` and aggregated into a single `crypto_alert_o`
-output. Each accelerator has its own independent software-controllable reset,
-gated with the system reset through the SEP Reset Controller.
+output. Each accelerator, the entropy source, and the DRBG have their own
+independent software-controllable reset, gated with the system reset through
+the SEP Reset Controller. See <<sep-trng-reset>> for the constraints that apply
+to the two TRNG resets.
 
 The crypto complex uses whole-instance Class 2 scan boundaries so all
 sequential key, round-key, digest-working, seed, and random-distribution state

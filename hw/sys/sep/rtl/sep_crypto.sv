@@ -99,6 +99,8 @@ module sep_crypto #(
     input  logic                               aes_sw_rst_ni,
     input  logic                               hmac_sw_rst_ni,
     input  logic                               kmac_sw_rst_ni,
+    input  logic                               esrc_sw_rst_ni,
+    input  logic                               drbg_sw_rst_ni,
 
     output logic [1:0]                         lcc_demote_state_1_o, // To SMC
 
@@ -424,10 +426,15 @@ module sep_crypto #(
 
     // Isolated AXI ports and sequenced resets for the accelerator wrappers
     sep_pkg::sep_32_64_6_12_axi_req_t  hmac_axi_isolated_req,  otbn_axi_isolated_req,
-                                       aes_axi_isolated_req,   kmac_axi_isolated_req;
+                                       aes_axi_isolated_req,   kmac_axi_isolated_req,
+                                       esrc_axi_isolated_req,  drbg_csrng_axi_isolated_req,
+                                       drbg_edn_axi_isolated_req;
     sep_pkg::sep_32_64_6_12_axi_resp_t hmac_axi_isolated_resp, otbn_axi_isolated_resp,
-                                       aes_axi_isolated_resp,  kmac_axi_isolated_resp;
-    logic hmac_gated_rst_n, otbn_gated_rst_n, aes_gated_rst_n, kmac_gated_rst_n;
+                                       aes_axi_isolated_resp,  kmac_axi_isolated_resp,
+                                       esrc_axi_isolated_resp, drbg_csrng_axi_isolated_resp,
+                                       drbg_edn_axi_isolated_resp;
+    logic hmac_gated_rst_n, otbn_gated_rst_n, aes_gated_rst_n, kmac_gated_rst_n,
+          esrc_gated_rst_n, drbg_gated_rst_n;
 
     sep_crypto_axi_isolate #(
         .ADDR_WIDTH  (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
@@ -467,7 +474,25 @@ module sep_crypto #(
         .kmac_slv_resp_o    (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiKmac]),
         .kmac_mst_req_o     (kmac_axi_isolated_req),
         .kmac_mst_resp_i    (kmac_axi_isolated_resp),
-        .kmac_gated_rst_no  (kmac_gated_rst_n)
+        .kmac_gated_rst_no  (kmac_gated_rst_n),
+
+        .esrc_sw_rst_req_ni (esrc_sw_rst_ni),
+        .esrc_slv_req_i     (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEntropySrc]),
+        .esrc_slv_resp_o    (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEntropySrc]),
+        .esrc_mst_req_o     (esrc_axi_isolated_req),
+        .esrc_mst_resp_i    (esrc_axi_isolated_resp),
+        .esrc_gated_rst_no  (esrc_gated_rst_n),
+
+        .drbg_sw_rst_req_ni    (drbg_sw_rst_ni),
+        .drbg_csrng_slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiCsrng]),
+        .drbg_csrng_slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiCsrng]),
+        .drbg_csrng_mst_req_o  (drbg_csrng_axi_isolated_req),
+        .drbg_csrng_mst_resp_i (drbg_csrng_axi_isolated_resp),
+        .drbg_edn_slv_req_i    (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEdn]),
+        .drbg_edn_slv_resp_o   (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEdn]),
+        .drbg_edn_mst_req_o    (drbg_edn_axi_isolated_req),
+        .drbg_edn_mst_resp_i   (drbg_edn_axi_isolated_resp),
+        .drbg_gated_rst_no     (drbg_gated_rst_n)
     );
 
 
@@ -1058,8 +1083,8 @@ module sep_crypto #(
         .clk_i       (clk_i),
         .rst_ni      (rst_ni),
         .test_i      (test_en_i),
-        .slv_req_i   (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiCsrng]),
-        .slv_resp_o  (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiCsrng]),
+        .slv_req_i   (drbg_csrng_axi_isolated_req),
+        .slv_resp_o  (drbg_csrng_axi_isolated_resp),
         .mst_req_o   (csrng_axil_req),
         .mst_resp_i  (csrng_axil_resp)
     );
@@ -1082,8 +1107,8 @@ module sep_crypto #(
         .clk_i       (clk_i),
         .rst_ni      (rst_ni),
         .test_i      (test_en_i),
-        .slv_req_i   (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEdn]),
-        .slv_resp_o  (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEdn]),
+        .slv_req_i   (drbg_edn_axi_isolated_req),
+        .slv_resp_o  (drbg_edn_axi_isolated_resp),
         .mst_req_o   (edn_axil_req),
         .mst_resp_i  (edn_axil_resp)
     );
@@ -1116,8 +1141,8 @@ module sep_crypto #(
     ) u_esrc_axi_dw_converter (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
-        .slv_req_i (sep_crypto_axi_reqs [sep_crypto_pkg::SepCryptoAxiEntropySrc]),
-        .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEntropySrc]),
+        .slv_req_i (esrc_axi_isolated_req),
+        .slv_resp_o(esrc_axi_isolated_resp),
         .mst_req_o (esrc_axi32_req),
         .mst_resp_i(esrc_axi32_resp)
     );
@@ -1151,7 +1176,7 @@ module sep_crypto #(
 
     entropy_source u_entropy_source_s3c_scan (
         .clk_i,
-        .rst_ni              (sep_reset_ni),
+        .rst_ni              (esrc_gated_rst_n),
 
         .s_axil_awvalid_i    (esrc_axil_req.aw_valid),
         .s_axil_awready_o    (esrc_axil_resp.aw_ready),
@@ -1253,7 +1278,7 @@ module sep_crypto #(
         .EDN_NATIVE_ENDPOINT_COUNT (0)
     ) u_drbg_s3c_scan (
         .clk_i,
-        .rst_ni              (sep_reset_ni),
+        .rst_ni              (drbg_gated_rst_n),
 
         .entropy_stream_data_i (entropy_stream_data),
         .entropy_stream_vld_i  (entropy_stream_vld),

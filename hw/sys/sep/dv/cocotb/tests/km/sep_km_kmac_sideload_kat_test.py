@@ -91,7 +91,7 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_no_cpu()
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
+        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x7E)
         self.km = SepKmMailbox(self)
         self.kmac = SepKmac(self)
 

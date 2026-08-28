@@ -14,6 +14,8 @@
         rand uvm_reg_field aes_sw_rst_n;
         rand uvm_reg_field hmac_sw_rst_n;
         rand uvm_reg_field kmac_sw_rst_n;
+        rand uvm_reg_field esrc_sw_rst_n;
+        rand uvm_reg_field drbg_sw_rst_n;
 
         function new(string name = "sep_reset_ctrl__SW_RESET_N");
             super.new(name, 64, UVM_NO_COVERAGE);
@@ -30,6 +32,10 @@
             this.hmac_sw_rst_n.configure(this, 1, 3, "RW", 0, 'h1, 1, 1, 0);
             this.kmac_sw_rst_n = uvm_reg_field::type_id::create("kmac_sw_rst_n");
             this.kmac_sw_rst_n.configure(this, 1, 4, "RW", 0, 'h1, 1, 1, 0);
+            this.esrc_sw_rst_n = uvm_reg_field::type_id::create("esrc_sw_rst_n");
+            this.esrc_sw_rst_n.configure(this, 1, 5, "RW", 0, 'h1, 1, 1, 0);
+            this.drbg_sw_rst_n = uvm_reg_field::type_id::create("drbg_sw_rst_n");
+            this.drbg_sw_rst_n.configure(this, 1, 6, "RW", 0, 'h1, 1, 1, 0);
         endfunction : build
     endclass : sep_reset_ctrl__SW_RESET_N
 

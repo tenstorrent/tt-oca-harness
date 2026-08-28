@@ -459,7 +459,11 @@ package sep_pkg;
     // SEP Software Reset Controller   //
     /////////////////////////////////////
 
+    // Member order mirrors the SW_RESET_N field order, so bit N of the packed
+    // struct is bit N of the register.
     typedef struct packed {
+        logic drbg;
+        logic esrc;
         logic kmac;
         logic hmac;
         logic aes;
@@ -646,7 +650,14 @@ package sep_pkg;
     typedef sep_56_64_5_12_axi_resp_t    mux_out_axi_resp_t;
 
     // JTAG SEP Reset Control
+    //
+    // jtag_ptap sizes the DTP IC_RESET SEP slice as $bits(type)/2 and scans
+    // first-declared closest to TDI, so the two sub-structs must stay the same
+    // width and member order is TDR bit order. Inserting a member moves the TDR
+    // position of every member below it; new overrides go on top.
     typedef struct packed {
+        logic drbg_jtag_rst_n_ovrd;
+        logic esrc_jtag_rst_n_ovrd;
         logic sep_reset_n_ovrd;
         logic kmac_jtag_rst_n_ovrd;
         logic hmac_jtag_rst_n_ovrd;
@@ -656,6 +667,8 @@ package sep_pkg;
     } jtag_sep_reset_ctrl_ovrd_t;
 
     typedef struct packed {
+        logic drbg_jtag_rst_n_val;
+        logic esrc_jtag_rst_n_val;
         logic sep_reset_n_val;
         logic kmac_jtag_rst_n_val;
         logic hmac_jtag_rst_n_val;

@@ -421,7 +421,7 @@ register map is reported in <<sep-detailed-register-map>>.
 [[sep-reset-controller]]
 ==== SEP Reset Controller
 
-The SEP Reset Controller provides software-controllable resets for the Key Manager and crypto accelerators. It is accessible via AXI4-Lite at base address `0x10A5_0000` within the System Peripherals crossbar.
+The SEP Reset Controller provides software-controllable resets for the Key Manager, the crypto accelerators, and the TRNG. It is accessible via AXI4-Lite at base address `0x10A5_0000` within the System Peripherals crossbar.
 
 The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
 
@@ -433,24 +433,50 @@ The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` wi
 |2 |aes_sw_rst_n |RW |1 |AES reset (0=assert, 1=release)
 |3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
 |4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
+|5 |esrc_sw_rst_n |RW |1 |ESRC reset (0=assert, 1=release)
+|6 |drbg_sw_rst_n |RW |1 |DRBG reset (0=assert, 1=release)
 |=======================================================================
 
-On power-up, `SW_RESET_N` resets to `0x1E`: KM is held in reset, while OTBN,
-AES, HMAC, and KMAC are released. The SEP host firmware writes `1` to release an
-IP from reset and writes `0` to assert its software reset.
+On power-up, `SW_RESET_N` resets to `0x7E`: KM is held in reset, while OTBN,
+AES, HMAC, KMAC, the entropy source and the DRBG are released. The SEP host
+firmware writes `1` to release an IP from reset and writes `0` to assert its
+software reset.
 
 Inside `sep_reset_ctrl`, each bit is ANDed with `sep_reset_n` and then passed
 through a per-IP JTAG override mux (`jtag_sep_reset_ctrl_i`). The `sep_reset_n`
 term holds every IP in reset until eFuse sensing completes during boot.
 
 The Key Manager reset (`km_sw_rst_n`) is applied directly as the KM warm reset.
-The four crypto accelerators (`otbn`, `aes`, `hmac`, `kmac`) are AXI subordinates
-on the `sep_crypto` demux, so resetting one mid-transaction would strand an
-in-flight request and hang its master. Their reset bits are therefore treated as
-requests: `sep_crypto_axi_isolate` first isolates the accelerator's AXI port,
+The other six IPs (`otbn`, `aes`, `hmac`, `kmac`, `esrc`, `drbg`) are AXI
+subordinates on the `sep_crypto` demux, so resetting one mid-transaction would
+strand an in-flight request and hang its master. Their reset bits are therefore
+treated as requests: `sep_crypto_axi_isolate` first isolates the IP's AXI port,
 draining outstanding transactions and terminating new ones with DECERR, and only
 then asserts the reset. The isolation is held for the duration of the reset and
 released when the software bit deasserts.
+
+`drbg_sw_rst_n` covers the whole DRBG wrapper, CSRNG and EDN together, since the
+two share internal state. The wrapper presents two AXI subordinates, so the bit
+drives one isolation unit per port and the reset is asserted only once both have
+drained.
+
+[[sep-trng-reset]]
+===== Resetting the TRNG
+
+The entropy source and the DRBG feed every other consumer in the SEP, so their
+resets need more care from software than the accelerators' do.
+
+The entropy source also has its own `CTRL.RESET` bit. That one is a soft reset
+which preserves `FIPS_LOCK` and `HT_WATERMARK_NUM`; `esrc_sw_rst_n` is the
+harder of the two and returns the module to its power-on configuration,
+health-test settings included. Use `CTRL.RESET` to restart entropy generation
+and `esrc_sw_rst_n` to reconfigure from scratch.
+
+A DRBG reset does not answer EDN requests that were already outstanding. Those
+run over AXI-Stream rather than the AXI port the isolate drains, so a consumer
+waiting on entropy across the reset waits indefinitely. Quiesce the entropy
+consumers -- KM, AES, OTBN and KMAC -- before asserting `drbg_sw_rst_n`, or
+reset them in the same write.
 
 // Additive cross-reference: canonical OTP/eFuse IP documentation
 // is maintained by SMC and can be found at:

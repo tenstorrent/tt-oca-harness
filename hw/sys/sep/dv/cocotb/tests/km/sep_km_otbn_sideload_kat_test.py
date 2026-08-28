@@ -78,14 +78,14 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_no_cpu()
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
+        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x7E)
         self.km = SepKmMailbox(self)
         self.otbn = SepOtbn(self)
 
         # Park the EDN-consuming crypto engines (OTBN/AES/KMAC) BEFORE entropy comes
         # up so all CSRNG/EDN flow is dedicated to the KM; otherwise OTBN's own
         # post-reset entropy requests starve the KM's DRBG reads (the reference consume
-        # ordering). They power up released (SW_RESET_N reset = 0x1E), so this is a
+        # ordering). They power up released (SW_RESET_N reset = 0x7E), so this is a
         # real state change, not a no-op. HMAC is parked too for a clean baseline.
         await self.swrst.park("otbn", "aes", "hmac", "kmac")
 

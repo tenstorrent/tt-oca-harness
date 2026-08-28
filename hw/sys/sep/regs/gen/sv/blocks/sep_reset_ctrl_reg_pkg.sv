@@ -31,11 +31,21 @@ package sep_reset_ctrl_reg_pkg;
     } sep_reset_ctrl__SW_RESET_N__kmac_sw_rst_n__out_t;
 
     typedef struct {
+        logic value;
+    } sep_reset_ctrl__SW_RESET_N__esrc_sw_rst_n__out_t;
+
+    typedef struct {
+        logic value;
+    } sep_reset_ctrl__SW_RESET_N__drbg_sw_rst_n__out_t;
+
+    typedef struct {
         sep_reset_ctrl__SW_RESET_N__km_sw_rst_n__out_t km_sw_rst_n;
         sep_reset_ctrl__SW_RESET_N__otbn_sw_rst_n__out_t otbn_sw_rst_n;
         sep_reset_ctrl__SW_RESET_N__aes_sw_rst_n__out_t aes_sw_rst_n;
         sep_reset_ctrl__SW_RESET_N__hmac_sw_rst_n__out_t hmac_sw_rst_n;
         sep_reset_ctrl__SW_RESET_N__kmac_sw_rst_n__out_t kmac_sw_rst_n;
+        sep_reset_ctrl__SW_RESET_N__esrc_sw_rst_n__out_t esrc_sw_rst_n;
+        sep_reset_ctrl__SW_RESET_N__drbg_sw_rst_n__out_t drbg_sw_rst_n;
     } sep_reset_ctrl__SW_RESET_N__out_t;
 
     typedef struct {

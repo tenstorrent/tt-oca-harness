@@ -34,6 +34,14 @@ extern "C" {
 #define SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_bp 4
 #define SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_bw 1
 #define SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_reset 0x1
+#define SEP_RESET_CTRL__SW_RESET_N__ESRC_SW_RST_N_bm 0x20
+#define SEP_RESET_CTRL__SW_RESET_N__ESRC_SW_RST_N_bp 5
+#define SEP_RESET_CTRL__SW_RESET_N__ESRC_SW_RST_N_bw 1
+#define SEP_RESET_CTRL__SW_RESET_N__ESRC_SW_RST_N_reset 0x1
+#define SEP_RESET_CTRL__SW_RESET_N__DRBG_SW_RST_N_bm 0x40
+#define SEP_RESET_CTRL__SW_RESET_N__DRBG_SW_RST_N_bp 6
+#define SEP_RESET_CTRL__SW_RESET_N__DRBG_SW_RST_N_bw 1
+#define SEP_RESET_CTRL__SW_RESET_N__DRBG_SW_RST_N_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t km_sw_rst_n :1;
@@ -41,7 +49,9 @@ typedef union {
         uint64_t aes_sw_rst_n :1;
         uint64_t hmac_sw_rst_n :1;
         uint64_t kmac_sw_rst_n :1;
-        uint64_t :59;
+        uint64_t esrc_sw_rst_n :1;
+        uint64_t drbg_sw_rst_n :1;
+        uint64_t :57;
     } f;
     uint64_t w;
 } sep_reset_ctrl__SW_RESET_N_t;

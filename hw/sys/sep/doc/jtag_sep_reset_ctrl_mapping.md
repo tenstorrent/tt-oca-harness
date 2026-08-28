@@ -1,14 +1,15 @@
 # JTAG SEP Reset Control Mapping
 
-`sep_pkg::jtag_sep_reset_ctrl_t` carries the six JTAG reset overrides consumed by
-`sep_reset_ctrl`. The SMU drives it from the DTP's SEP IC_RESET slice
+`sep_pkg::jtag_sep_reset_ctrl_t` carries the eight JTAG reset overrides consumed
+by `sep_reset_ctrl`. The SMU drives it from the DTP's SEP IC_RESET slice
 (`ic_reset_sep_t`, enabled by `JTAG_IC_RESET_SEP_ENABLE`) over an internal net;
 there is no SMU port for it.
 
 The struct is a pair of `.ovrd`/`.val` sub-structs that must stay the same width;
 field declaration order within them is the TDI->TDO scan order, and `jtag_ptap`
 sizes the slice from `$bits(type)/2`. Reordering or resizing either sub-struct
-moves TDR bit positions.
+moves TDR bit positions. New overrides are therefore declared at the top of each
+sub-struct, above `sep_reset_n`, so the positions already in use do not shift.
 
 ## SEP Main Reset Override
 
@@ -20,7 +21,9 @@ moves TDR bit positions.
 
 | Struct Field | Override Applied In | Target Signal | RTL Path |
 |---|---|---|---|
-| `kmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[4]` | `sep.sv` → `sep_reset_ctrl` |
+| `drbg_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[6]` | `sep.sv` → `sep_reset_ctrl` |
+| `esrc_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[5]` | same |
+| `kmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[4]` | same |
 | `hmac_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[3]` | same |
 | `aes_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[2]` | same |
 | `otbn_jtag_rst_n_val/ovrd` | `sep_reset_ctrl` | `sw_reset_bits[1]` | same |
@@ -58,8 +61,9 @@ SMU u_dtp IC_RESET TDR, SEP slice
                  ├─ Path A: .sep_reset_n_{val,ovrd}
                  │    └─ Muxes sep_reset_no from sep_intermediate_reset_ni
                  │       (efuse-sensing-done)
-                 └─ Path B: 5 crypto/KM overrides
-                      └─ Muxes each of 5 sw_reset_bits (kmac, hmac, aes, otbn, km)
+                 └─ Path B: 7 crypto/KM/TRNG overrides
+                      └─ Muxes each of 7 sw_reset_bits
+                         (drbg, esrc, kmac, hmac, aes, otbn, km)
 ```
 
 Original internal migration notes are intentionally not reproduced in the open

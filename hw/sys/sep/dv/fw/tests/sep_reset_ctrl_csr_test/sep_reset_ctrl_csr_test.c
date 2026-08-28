@@ -20,15 +20,20 @@
  *      proving the reset wire reached the IP.
  *
  * SW_RESET_N bit layout:
+ *   bit 6 = drbg_sw_rst_n  (default 1, released)
+ *   bit 5 = esrc_sw_rst_n  (default 1, released)
  *   bit 4 = kmac_sw_rst_n  (default 1, released)
  *   bit 3 = hmac_sw_rst_n  (default 1, released)
  *   bit 2 = aes_sw_rst_n   (default 1, released)
  *   bit 1 = otbn_sw_rst_n  (default 1, released)
  *   bit 0 = km_sw_rst_n    (default 0, held in reset)
  *
- * Default value: 0x1E = 0b11110
+ * Default value: 0x7E = 0b1111110
  *
  * KM is skipped because it cannot be brought out of reset in this test case.
+ * The TRNG bits are left released throughout: this test only walks the four
+ * crypto accelerators, and parking the entropy source or DRBG would starve
+ * the masking PRNGs the accelerators reseed from.
  *
  * Copyright 2026 Tenstorrent Inc.
  ******************************************************************************/
@@ -40,6 +45,12 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "nmi.h"
+
+/* Derived from the generated field masks so it tracks the RDL. */
+#define SW_RESET_N_DEFAULT \
+    (SEP_RESET_CTRL__SW_RESET_N__OTBN_SW_RST_N_bm | SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm | \
+     SEP_RESET_CTRL__SW_RESET_N__HMAC_SW_RST_N_bm | SEP_RESET_CTRL__SW_RESET_N__KMAC_SW_RST_N_bm | \
+     SEP_RESET_CTRL__SW_RESET_N__ESRC_SW_RST_N_bm | SEP_RESET_CTRL__SW_RESET_N__DRBG_SW_RST_N_bm)
 
 void reset_ctrl_nmi_handler(void) {
     uint32_t prev = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
@@ -78,8 +89,8 @@ int main(void) {
     uint32_t sw_reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     printf("SW_RESET_N value: 0x%08x\n", sw_reset_n);
 
-    if (sw_reset_n != 0x1eu) {
-        printf("ERROR: SW_RESET_N default is not 0x%08x\n", 0x1eu);
+    if (sw_reset_n != SW_RESET_N_DEFAULT) {
+        printf("ERROR: SW_RESET_N default is not 0x%08x\n", SW_RESET_N_DEFAULT);
         test_fail(1);
     }
 
@@ -119,7 +130,7 @@ int main(void) {
     for (size_t i = 0; i < sizeof(accels) / sizeof(accels[0]); i++) {
         const char *name = accels[i].name;
         uint32_t bit_mask = accels[i].bit_mask;
-        uint32_t asserted = 0x1eu & ~bit_mask;
+        uint32_t asserted = SW_RESET_N_DEFAULT & ~bit_mask;
 
         /*
          * 2a: probe write/readback - port open, IP alive
@@ -200,7 +211,7 @@ int main(void) {
          * its default (reset reached the IP) without an NMI (port reopened).
          */
         printf("Step 2.%u.e: %s - releasing reset...\n", (unsigned)i, name);
-        WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, 0x1eu);
+        WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, SW_RESET_N_DEFAULT);
         (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
         uint32_t rd_after = READ_REG(accels[i].probe_addr);
@@ -222,8 +233,8 @@ int main(void) {
      */
     uint32_t sw_reset_n_restored = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     printf("Final SW_RESET_N value: 0x%08x\n", sw_reset_n_restored);
-    if (sw_reset_n_restored != 0x1eu) {
-        printf("ERROR: SW_RESET_N is not at default 0x%08x after test\n", 0x1eu);
+    if (sw_reset_n_restored != SW_RESET_N_DEFAULT) {
+        printf("ERROR: SW_RESET_N is not at default 0x%08x after test\n", SW_RESET_N_DEFAULT);
         test_fail(1);
     }
 

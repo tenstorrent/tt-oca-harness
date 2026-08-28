@@ -9,7 +9,7 @@ from pyuvm import uvm_sequence
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N
 
-SW_RESET_N_RELEASE_KM = 0x0000_001F  # release all engines (km|otbn|aes|hmac|kmac)
+SW_RESET_N_RELEASE_KM = 0x0000_007F  # release everything (km|otbn|aes|hmac|kmac|esrc|drbg)
 
 # The word the KM smoke ROM stores to SRAM[0]. sep_km_mem_smoke_test value-compares
 # the probed word against this, which is what makes that test more than a set of

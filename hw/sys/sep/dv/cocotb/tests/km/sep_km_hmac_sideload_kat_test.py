@@ -82,14 +82,14 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         self.write_efuse_image(image)
         await self.bring_up_no_cpu()
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
+        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x7E)
         self.km = SepKmMailbox(self)
         self.hmac = SepHmac(self)
 
         # Park all four sideload-target crypto engines so the KM owns the EDN stream
         # AND the key bus is isolated. HMAC is not an EDN consumer, so (unlike AES)
         # it stays parked through boot/load and is released only before the
-        # transfer (like OTBN). They power up released (SW_RESET_N reset=0x1E), so
+        # transfer (like OTBN). They power up released (SW_RESET_N reset=0x7E), so
         # this is a real state change.
         await self.swrst.park("otbn", "aes", "hmac", "kmac")
 

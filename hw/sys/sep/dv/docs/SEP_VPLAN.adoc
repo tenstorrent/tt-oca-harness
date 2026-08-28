@@ -1199,7 +1199,7 @@ starved it to a handful of writes fails.
 |CHK-B
 |`CMD_KEY_TRANSFER` succeeds with OTBN as destination.
 |CHK-ISO
-|Only the Key Manager and OTBN are out of reset during the transfer; the other three engines are parked.The reset-control readback that records this is `SW_RESET_N=0x03`.
+|Only the Key Manager and OTBN are out of reset during the transfer; the other three engines are parked. The TRNG stays released so OTBN's masking PRNG can reseed. The reset-control readback that records this is `SW_RESET_N=0x63`.
 |CHK-C
 |The OTBN program loads, executes to idle, and reports no error bits.
 |CHK-F
@@ -1494,7 +1494,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-B
 |The transfer to AES succeeds.
 |CHK-ISO
-|Only the Key Manager and AES are released during the transfer.The reset-control readback that records this is `SW_RESET_N=0x05`.
+|Only the Key Manager and AES are released during the transfer, the TRNG aside. The reset-control readback that records this is `SW_RESET_N=0x65`.
 |CHK-NEG
 |The decoy-key ciphertext matches its own golden, so the comparison baseline is sound.
 |CHK-F
