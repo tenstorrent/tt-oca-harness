@@ -13,8 +13,8 @@ has to grant both.
 The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
 on that bring-up. Two crypto sinks are live (AES + OTBN URND), so CHK5 is
-per-sink membership -- every delivered word is a CHK4 genbits word; dual-sink
-bit-exact routing still needs the unported arbiter-assignment trace.
+dual-sink ROUTING: each post-adapter beat equals the AXIS1 word the adapter
+granted that cycle.
 
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (signed-off
 observation ports).
@@ -103,7 +103,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             dut, self.logger, strict=True,
             golden_kwargs=cfg.golden_kwargs(), chk2_backdoor=cfg.chk2_backdoor,
             score_km=False,
-            score_sinks={"aes": "membership", "otbn_urnd": "membership"},
+            score_sinks={"aes": "golden", "otbn_urnd": "golden"},
         )
         self.drbg_sb.start()
         await self.assert_noise_force_active()
@@ -176,5 +176,12 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
+        ra = self.drbg_sb.results["CHK5_aes"]
+        ru = self.drbg_sb.results["CHK5_otbn_urnd"]
+        assert ra.mismatches == 0 and ru.mismatches == 0
         self.logger.info(
-            "CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd membership PASS")
+            "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_otbn_urnd match=%d "
+            "equal the AXIS1 grant-order stream (mismatch=0)",
+            ra.matches, ru.matches)
+        self.logger.info(
+            "CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS")

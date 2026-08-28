@@ -19,11 +19,8 @@
 //      the loop counter and error count to scratch-cold so the observer can
 //      confirm the CPU keeps making progress during the JTAG burst.
 //
-// OSS sync delta (documented, mirrors the #1 coexist port): reference releases the
-// loop with a backdoor uvm_hdl_deposit of UVM_DONE; cocotb cannot deposit an
-// internal register, so the EL2 runs as a live worker and the observer proves
-// coexistence by the loop counter advancing across the JTAG burst while the
-// CPU-published error count remains zero.
+// The EL2 runs as a live worker. Coexistence is the loop counter advancing
+// across the JTAG burst while the CPU-published error count stays zero.
 
 #include <stdint.h>
 

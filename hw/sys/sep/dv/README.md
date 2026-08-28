@@ -9,12 +9,8 @@ cocotb/PyUVM and driven by `tools/dv/run_dv.py --dut sep`.
 (`hw/top/sep_ip_integration.sv`: real memory macros and the generic eFuse model).
 The OpenTitan SPI host is inside the `sep` core (`sep_io` / `sep_ot_spi_wrap`);
 its pads come out of the wrapper. There is no SPI pad mux in this build.
-A mux that selects between the OCAH SPI host and a proprietary SPI belongs
-with whichever repo holds that wrapper.
-**Backend** = Verilator (pre-merge acceptance); VCS and
-Xcelium are supported for development iteration. Everything the environment needs
-lives under this tree, so the build, tests, shims, and docs are easy to review and
-reuse.
+**Backend** = Verilator is the reference backend; VCS and Xcelium also run.
+Everything the environment needs lives under this tree.
 
 ## Prerequisites
 
@@ -39,8 +35,11 @@ python3 $PY --dut sep --items all --list
 # 2. Green in minutes: the no-CPU AXI smoke subset. No firmware build needed.
 python3 $PY --dut sep --items all --tag smoke --stage sim
 
-# 3. One named test, from filelist through simulation.
-python3 $PY --dut sep --items sep_axi_smoke_test --stage flist --stage sim
+# 3. One named test, from filelist through simulation. Include
+#    --stage hdl_compile: --stage sim alone reuses whatever model is on disk,
+#    and a stale one can report a pass that the current RTL would not give.
+python3 $PY --dut sep --items sep_axi_smoke_test \
+  --stage flist --stage hdl_compile --stage sim
 ```
 
 Firmware-boot tests need their image built first:
@@ -66,22 +65,21 @@ single failing leaf with `--stage sim --seed N`.
 Per-run logs land in `build/runs/<run-id>/` (gitignored).
 
 **PASS/FAIL requires positive evidence from `results.xml` — a clean simulator
-exit alone is not enough.** That rule is the environment's contract, and it
-extends to the verification plans: a test passing is the entry condition for
-reading its checkers, never a substitute for them, and a checker row exists only
-if a run can prove it. A log tag is not the proof; an independent audit of the
-checker is.
+exit alone is not enough.** A test passing is the entry condition for reading
+its checkers, never a substitute for them, and a checker row exists only if a run
+can prove it. A log tag is not the proof.
 
-What each test proves, and the exact log evidence that proves it:
+The contracts themselves:
 
-* [`docs/oss_dv_plan.adoc`](docs/oss_dv_plan.adoc) — the high-level plan: three
-  phases, coverage model, quality bar.
-* [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) —
-  Phase 1 baseline, closed. States the shared contract above.
-* [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) —
-  Phase 2 iconic-feature contract, active.
-* [`docs/verification_plan_phase3.adoc`](docs/verification_plan_phase3.adoc) —
-  Phase 3 candidates, unscheduled and moving to a new UVM environment.
+* [`docs/index.adoc`](docs/index.adoc) — SEP DV documentation book (entry point)
+* [`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc) — testbench architecture: VIP
+  policy, env hierarchy, HDL top, stimulus and checking. Also the detail the
+  README leaves out — eFuse content selection (the `+sep_efuse_preload` selector,
+  the `SepEfuseImage` golden, the sense-and-compare flow), what backs the memory
+  / eFuse / SPI ports inside `sep_wrapper` and their backdoor plusargs, CPU-trace
+  reconstruction and symbolization, and the Boot ROM image builds.
+* [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) — verification plan: per-test
+  contracts and checkers, naming rules, VIP policy, iconic feature scorecard.
 
 ## Two run modes
 
@@ -96,12 +94,13 @@ flat `s_axi_*` ports). The no_cpu build swaps in the `sep_cpu` stub, which is th
 sole driver of that bus and drives `lsu_axi_req` from `tb_top`'s `lsu_req_drive`
 with a plain `assign` — not a `force`.
 
-* `sep_axi_smoke_test` — read `sep_cpu_ctrl.CLOCK_GATE_CTRL` + write/readback RW
-  registers.
-* `sep_address_map_test` — field-aware `sep_cpu_ctrl` sweep plus a SEP-local
-  fabric walk across the LSU-reachable, OSS-clean blocks (DMA, WDT, reset_ctrl,
-  OTBN/AES/HMAC/KMAC, CSRNG/EDN/entropy, lifecycle, KM/AXIL mailbox, eFuse
-  shadow, alias/output-remap, OT SPI host).
+* `sep_axi_smoke_test` — reset-value read of `sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR`
+  (`+0x0C8`) for decode sanity, then a masked write/readback walk of
+  `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and `PKA_CTRL`.
+* `sep_address_map_test` — `sep_cpu_ctrl` sweep plus one CSR per LSU-reachable
+  block (DMA, WDT, scratch, reset, OTBN/AES/HMAC/KMAC, CSRNG/EDN/ESRC, ABR,
+  entropy pool, lifecycle, KM/AXI mailbox, eFuse shadow, inbound filter,
+  alias/outbound remap, SPI). Not CSR bit-bash and not dead-space refuse.
 
 ### CPU firmware boot — `run_modes.cpu`, tag `boot`
 
@@ -123,26 +122,32 @@ bypass and let the RTL fuse-sense FSM finish against the generic eFuse model.
 
 Production Boot ROM firmware tests belong to the ROM-FW owner and need extra
 build steps — see
-[`docs/dv_env_reference.adoc`](docs/dv_env_reference.adoc#_boot_rom_firmware_builds).
+[`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc#_boot_rom_firmware_builds).
 
 ## Layout
 
 ```
 hw/sys/sep/dv/
 ├── cocotb/              # flow-first: cocotb owns env + stimulus + tests
-│   ├── assertions/      #   (cocotb Python checkers — empty for now)
+│   ├── assertions/      #   cocotb Python checkers
 │   ├── env/             #   PyUVM env: agents, scoreboards, config
 │   ├── seq_lib/         #   sequences (scenarios)
 │   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
 │   └── dv_sim_prestage.py  # pre-sim hook (stages out/sep_efuse.hex)
-│                        # uvm/  — future sibling, not created
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
-│                        # + cov/sv/ (scaffold, empty)
-├── docs/                # verification plans + env reference (AsciiDoc)
+│                        #   and cov/sv/. Verilator coverage flags live in
+│                        #   sep_sim_cfg.toml ([coverage.verilator]).
+├── docs/                # testbench architecture + verification plan (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
-├── models/              # SEP-local SystemRDL models (sep_axi_extension + generated)
-├── shims/               # SEP-local behavioral sim-models (kept, accepted shims)
+├── models/              # SEP-local SystemRDL: models/regs/sep_external.rdl is the
+│                        #   open stand-in that satisfies sep.rdl's sep_external
+│                        #   include -- eFuse SHIM control plus the execute-in-place
+│                        #   window. Excluded for OSS hygiene: proprietary IPs in
+│                        #   nonfree. Firmware includes the open C headers
+│                        #   (models/regs/gen/c/sep_external.h) via sep.h; the
+│                        #   SV addrmap package is the RTL build input.
+├── shims/               # SEP-local behavioral sim-models
 │   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
 │   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)
 │   ├── crypto/          #   abr_wrapper_key_reg_stub (Verilator ABR CSR shim)
@@ -151,7 +156,7 @@ hw/sys/sep/dv/
 │   ├── tb_top.sv        #   module sep_uvm_top (wraps sep_wrapper) + tb_backdoor_mem
 │   ├── sep_outbound_mbx.sv  # outbound mailbox responder + console/PASS monitor
 │   ├── efuse_preloads/  #   committed default eFuse image (sep_efuse_default.hex)
-│   └── interfaces/      #   (SV interfaces — empty for now)
+│   └── interfaces/      #   SV interfaces
 ├── testlists/           # native TOML testlists (all.toml + per-subsystem leaves)
 ├── sep_sim_cfg.toml     # block build/filelist manifest, run modes, tool knobs
 ├── sep_public_scope.vlt # scoped Verilator public list (narrow on purpose: a global
@@ -160,18 +165,6 @@ hw/sys/sep/dv/
 ├── build/               # generated: per-tool models + build/runs/<run-id>/ logs (gitignored)
 └── README.md
 ```
-
-## Going deeper
-
-[`docs/dv_env_reference.adoc`](docs/dv_env_reference.adoc) covers what the README
-deliberately leaves out:
-
-* **eFuse content selection** — the `+sep_efuse_preload` selector, the
-  `SepEfuseImage` golden object, and the full sense-and-compare flow.
-* **Memory / eFuse / SPI models** — what backs those ports inside `sep_wrapper`,
-  the backdoor plusargs, and why the SPI pad mux is absent from a pure-open build.
-* **Boot ROM firmware builds** — the submodule prerequisite and the
-  picolibc-dependent two-step ROM build.
 
 ## OSS hygiene
 
@@ -194,15 +187,14 @@ grep TEC_RV_ICG vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep/common
 # expect: `define TEC_RV_ICG clockhdr
 ```
 
-Restore it from git rather than regenerating — regeneration is a deliberate,
-reviewed change to tracked collateral. The snapshot is TT-generated collateral
-committed to git (see that package's `Bender.yml`), so a fresh clone builds as
-is; it lives in `overlay/` precisely so `bender vendor init` — which wipes and
-recreates `upstream/` only — never touches it.
+Restore it from git rather than regenerating. The snapshot is committed
+collateral (see that package's `Bender.yml`), so a fresh clone builds as is; it
+lives in `overlay/` so `bender vendor init` — which wipes and recreates
+`upstream/` only — never touches it.
 
 **`unrecognized command line option '-fcoroutines'`** — g++ is too old for
 Verilator `--timing`. See [Prerequisites](#prerequisites).
 
 **`No module named tt_boot_manifest`** — the manifest packer submodule is not
 checked out; only affects Boot ROM builds. See
-[`docs/dv_env_reference.adoc`](docs/dv_env_reference.adoc#_boot_rom_firmware_builds).
+[`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc#_boot_rom_firmware_builds).

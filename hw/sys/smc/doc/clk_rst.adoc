@@ -66,14 +66,12 @@ The following peripherals operate within this clock domain:
 * UART 16550
 * I3C Controller
 
-The peripheral register crossbar also operates in this clock domain.
-A CDC bridge at the crossbar's upstream slave port synchronizes
-register accesses arriving from the CPU fabric.
-
-The register path to the GPIO controller and the pad interface includes
-a dedicated AXI-Lite CDC from the peripheral clock domain into the
-reference clock domain. The pad multiplexing logic and the physical pad
-I/O interface operate in the always-on reference clock domain.
+The peripheral register crossbar is not part of this clock domain. It
+runs on the SMC clock, so register accesses arriving from the CPU
+fabric are decoded and routed at SMC clock speed. The clock domain
+crossing happens downstream of the crossbar: each master port that
+targets a peripheral in this domain has its own AXI-Lite CDC bridge
+into the peripheral clock.
 
 Decoupling peripheral timing from the high-frequency CPU and fabric
 clock enables independent frequency scaling of the peripheral

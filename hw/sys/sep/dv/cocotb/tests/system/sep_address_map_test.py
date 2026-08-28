@@ -2,14 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP address-map register sweep test (PyUVM).
 
-Builds the SEP env, brings up clocks/reset with the CPU held off, and runs a
-field-aware register sweep of sep_cpu_ctrl over the CPU LSU bus: reset-value
-read-checks across the map, plus write->readback of the pure-RW registers. The
-scoreboard checks the AXI response on every access and the value on every read.
+Intention: prove the CPU-LSU can decode sep_cpu_ctrl and one safe CSR in every
+LSU-reachable CSR block (including ABR and the entropy pool), without owning
+full CSR bit-bash or dead-space refuse.
 
-Every expected value (offset, reset, implemented-field mask) is derived from the
-generated SystemRDL export via env/sep_reg_meta.py — see sep_address_map_seq for
-the derivation and for the documented CLOCK_GATE_CTRL scope delta.
+Bring-up holds the CPU off. Expected offsets/resets/masks come from
+env/sep_reg_meta.py and the ABR / pool seq constants — see sep_address_map_seq.
 """
 
 from __future__ import annotations
@@ -28,6 +26,16 @@ class sep_address_map_test(sep_base_test):
         await self.bring_up_no_cpu()
         seq = sep_address_map_seq("addr_map_seq")
         await self.start_seq(seq)
+        # The scoreboard accumulates response/value errors and defers its raise
+        # to check_phase. Without this gate every CHK-* PASS line below prints
+        # on a run that has already failed, and a PASS token in a kept log must
+        # not survive a failure. The counters below are accesses issued, so
+        # they are only evidence once the scoreboard is clean.
+        sb_errors = self.env.scoreboard.errors
+        assert not sb_errors, (
+            f"CHK-ADDRMAP FAIL: {len(sb_errors)} scoreboard error(s) before "
+            f"the PASS summary; first: {sb_errors[0]}"
+        )
         self.logger.info(
             "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable as 0x%08x_%08x",
             seq.ref_counter_high,
@@ -45,4 +53,8 @@ class sep_address_map_test(sep_base_test):
              f"`reserved` placeholders with no software-usable fields: "
              f"{', '.join(seq.write_readback_storage_only)})")
             if seq.write_readback_storage_only else "",
+        )
+        self.logger.info(
+            "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",
+            seq.fabric_walk_checks,
         )

@@ -244,17 +244,5 @@ module efuse_shadow_reg_access_control
     ////////////////////////////////////////////////////////////////////////////
 
     // Generate address width checks for each efuse field
-    // for (genvar i = 0; i < EFUSE_FIELDS; i = i + 1) begin : gen_field_assertions
-    //     `OCAH_OT_ASSERT_INIT(EfuseFieldStartAddrCheck_A,
-    //                  efuse_field_map_i[i].start_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    //     `OCAH_OT_ASSERT_INIT(EfuseFieldEndAddrCheck_A,
-    //                  efuse_field_map_i[i].end_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    // end
-    // for (genvar i = 0; i < EFUSE_FIELDS; i = i + 1) begin : gen_field_assertions
-    //     `OCAH_OT_ASSERT_INIT(EfuseFieldStartAddrCheck_A,
-    //                  efuse_field_map_i[i].start_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    //     `OCAH_OT_ASSERT_INIT(EfuseFieldEndAddrCheck_A,
-    //                  efuse_field_map_i[i].end_addr[31:EFUSE_ADDR_WIDTH] == 'd0)
-    // end
 
 endmodule : efuse_shadow_reg_access_control

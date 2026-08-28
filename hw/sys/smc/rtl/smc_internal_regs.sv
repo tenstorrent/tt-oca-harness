@@ -95,7 +95,7 @@ module smc_internal_regs
 
 		// DFD signals
 		output logic                                                                           cla_interrupt_o,
-		output logic [dfd_cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]						   cla_ext_action_custom_o,
+		output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]						   cla_ext_action_custom_o,
 
 		output smc_pkg::xtrigger_t                     							               xtrigger_ss_o,
 		input  wire smc_pkg::xtrigger_t                							               xtrigger_ss_i,
@@ -108,8 +108,8 @@ module smc_internal_regs
 		output logic [7:0]                                                                     debug_marker_o,
 
 		// Trace Sink Memory Interface
-		output dfd_trace_mem_pkg::SinkMemPktIn_s  [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
-		input  dfd_trace_mem_pkg::SinkMemPktOut_s [dfd_tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
+		output trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_req_o,
+		input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]          trace_mem_resp_i,
 
 		// Test mode
 		input  logic                                                                           test_en_i,
@@ -151,9 +151,9 @@ module smc_internal_regs
 	localparam int unsigned AXIL_OUTSTANDING_TX = smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans;
 
 	// DFD config from the DFT/DFD CSR block
-	logic [dfd_cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable;
+	logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable;
 	smc_pkg::dfd_enable_t                   dfd_enables;
-	dfd_tt_dbm_pkg::DbgMuxSelCsr_s          dbg_mux_sel_csr;
+	tt_dbm_pkg::DbgMuxSelMmr_s          dbg_mux_sel_csr;
 
 	/////////////////
 	// SMC Mailbox //

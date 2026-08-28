@@ -30,6 +30,9 @@ module jtag_tmp
     // TMP status register input
     input  logic             bypass_escape_enable_i // Bypass escape enable input from status register
 );
+    // Tie off unused fields to satisfy lint
+    logic unused_tap;
+    assign unused_tap = ^{test_logic_reset_i, tap_ctrl_i.tms};
 
     //--------------------------------------------------------------------------
     // Internal Signals

@@ -73,6 +73,10 @@ extern "C" {
 // Locked field access: peripheral_interrupts[28] = cpu_interrupts_o[284] -> PLIC ID 285
 #define LOCKED_FIELD_ACCESS_INTERRUPT_ID (285)
 
+// AXI hang detector: peripheral_interrupts[31] = cpu_interrupts_o[287] -> PLIC ID 288
+// One line shared by all three detectors (sys_axi, sep_axi, data_accel).
+#define AXI_HANG_DETECTOR_INTERRUPT_ID (288)
+
 // SMC inbound mailbox: cpu_interrupts_o[319:288] -> PLIC IDs 289-320
 #define MAILBOX_0_INTERRUPT_ID (289)
 #define MAILBOX_1_INTERRUPT_ID (290)

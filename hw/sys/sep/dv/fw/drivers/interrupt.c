@@ -20,8 +20,11 @@ static inline void pic_write_reg(uint32_t addr, uint32_t value) {
 }
 
 void pic_register_handler(uint32_t source_id, pic_handler_t handler) {
-    uint32_t *vectbl = (uint32_t *)INTVEC_BASE;
-    vectbl[source_id] = (uint32_t)handler;
+    // Must be a 32-bit store: INTVEC_BASE is a char[] symbol, so a C pointer
+    // write becomes four `sb`s under -mstrict-align, and EL2 DCCM drops them.
+    uint32_t addr = (uint32_t)(uintptr_t)&INTVEC_BASE[source_id * 4u];
+    uint32_t val = (uint32_t)(uintptr_t)handler;
+    __asm__ volatile("sw %0, 0(%1)" ::"r"(val), "r"(addr) : "memory");
     __asm__ volatile("fence" ::: "memory");
 }
 

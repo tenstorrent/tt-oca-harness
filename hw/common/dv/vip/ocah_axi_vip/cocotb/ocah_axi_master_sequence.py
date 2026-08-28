@@ -151,6 +151,7 @@ class OcahAxiMasterSequence:
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
+        user: int = 0,
     ) -> OcahAxiWriteResult:
         """Issue a write of an explicit byte payload and return a plain result.
 
@@ -167,6 +168,7 @@ class OcahAxiMasterSequence:
             check_response=check_response,
             timeout_ns=timeout_ns,
             allow_timeout=allow_timeout,
+            user=user,
         )
 
     async def read_result(
@@ -210,6 +212,7 @@ class OcahAxiMasterSequence:
         check_response: bool = True,
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
+        user: int = 0,
     ) -> OcahAxiReadResult:
         """Issue a read of ``length`` bytes and return a plain result.
 
@@ -226,6 +229,7 @@ class OcahAxiMasterSequence:
             check_response=check_response,
             timeout_ns=timeout_ns,
             allow_timeout=allow_timeout,
+            user=user,
         )
 
     async def burst_write(
@@ -354,7 +358,9 @@ class OcahAxiMasterSequence:
             self.timeout_ns = int(kwargs["timeout_ns"])
         unsupported = set(kwargs) - {"timeout_cycles", "timeout_ns", "default_id"}
         if unsupported:
-            self.log.warning("%s: ignored unsupported cocotbext config keys %s", self.name, sorted(unsupported))
+            raise ValueError(
+                f"{self.name}: unsupported cocotbext config keys {sorted(unsupported)}"
+            )
 
     def get_statistics(self) -> dict[str, int]:
         """Return wrapper-level transaction counters."""
@@ -384,21 +390,36 @@ class OcahAxiMasterSequence:
         check_response: bool,
         timeout_ns: int | None,
         allow_timeout: bool,
+        user: int = 0,
     ) -> OcahAxiWriteResult:
-        event = self.driver.init_write(addr, payload, id=id, size=size, **self._axkwargs(burst, prot))
+        capture = self.driver.start_response_id_capture("b")
+        event = self.driver.init_write(
+            addr, payload, id=id, size=size, **self._axkwargs(burst, prot, user))
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
+            capture.cancel()
             if allow_timeout:
-                return OcahAxiWriteResult(addr, len(payload), -1, (), False, True, None)
+                return OcahAxiWriteResult(
+                    address=addr,
+                    length=len(payload),
+                    resp=-1,
+                    resp_list=(),
+                    ok=False,
+                    timed_out=True,
+                    issued_id=int(id),
+                )
             raise AssertionError(f"{self.name}: write to 0x{addr:08X} timed out") from exc
 
+        observed_id = await capture.finish()
         result = OcahAxiWriteResult(
             address=int(getattr(raw, "address", addr)),
             length=int(getattr(raw, "length", len(payload))),
             resp=worst_resp(getattr(raw, "resp", None)),
             resp_list=normalize_resp_list(getattr(raw, "resp", None)),
             ok=axi_resp_ok(getattr(raw, "resp", None)),
+            issued_id=int(id),
+            observed_id=observed_id,
             raw=raw,
         )
         self._write_count += 1
@@ -417,15 +438,30 @@ class OcahAxiMasterSequence:
         check_response: bool,
         timeout_ns: int | None,
         allow_timeout: bool,
+        user: int = 0,
     ) -> OcahAxiReadResult:
-        event = self.driver.init_read(addr, length, id=id, size=size, **self._axkwargs(burst, prot))
+        capture = self.driver.start_response_id_capture("r")
+        event = self.driver.init_read(
+            addr, length, id=id, size=size, **self._axkwargs(burst, prot, user))
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
+            capture.cancel()
             if allow_timeout:
-                return OcahAxiReadResult(addr, 0, b"", (), -1, (), False, True, None)
+                return OcahAxiReadResult(
+                    address=addr,
+                    data=0,
+                    data_bytes=b"",
+                    data_words=(),
+                    resp=-1,
+                    resp_list=(),
+                    ok=False,
+                    timed_out=True,
+                    issued_id=int(id),
+                )
             raise AssertionError(f"{self.name}: read from 0x{addr:08X} timed out") from exc
 
+        observed_id = await capture.finish()
         data_bytes = bytes(getattr(raw, "data", b""))
         beat_bytes = self.driver.bytes_for_beats(1, size)
         words = words_from_bytes(data_bytes, beat_bytes)
@@ -437,6 +473,8 @@ class OcahAxiMasterSequence:
             resp=worst_resp(getattr(raw, "resp", None)),
             resp_list=normalize_resp_list(getattr(raw, "resp", None)),
             ok=axi_resp_ok(getattr(raw, "resp", None)),
+            issued_id=int(id),
+            observed_id=observed_id,
             raw=raw,
         )
         self._read_count += 1
@@ -444,8 +482,8 @@ class OcahAxiMasterSequence:
         return result
 
     @staticmethod
-    def _axkwargs(burst: int | None, prot: int | None) -> dict[str, int]:
-        kwargs: dict[str, int] = {}
+    def _axkwargs(burst: int | None, prot: int | None, user: int = 0) -> dict[str, int]:
+        kwargs: dict[str, int] = {"user": user}
         if burst is not None:
             kwargs["burst"] = burst
         if prot is not None:

@@ -95,4 +95,4 @@ typedef enum logic [2:0] {
     MARKOV_LO = 3'd4
 } WATERMARK_TEST_e;
 
-endpackage;
+endpackage

@@ -15,11 +15,8 @@ SW_RESET_N_RELEASE_KM = 0x0000_001F  # release all engines (km|otbn|aes|hmac|kma
 # the probed word against this, which is what makes that test more than a set of
 # liveness counters.
 #
-# HARDCODED DELIBERATELY: it comes from cocotb/tests/km_rom.parhex, a COMMITTED
-# image with no tracked assembly source in cocotb/tests/km_fw/ (only
-# km_rom_entropy.S and km_rom_coexist.S are tracked there), so there is nothing to
-# derive it from. If that image is ever rebuilt from tracked source, this constant
-# must move with it -- the compare fails loudly if they diverge, which is intended.
+# The image is built from cocotb/tests/km_fw/km_rom.S, which carries the same
+# literal; the compare fails loudly if the two diverge, which is intended.
 KM_SMOKE_SRAM_WORD0 = 0x0000_005A
 
 

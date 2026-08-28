@@ -59,8 +59,6 @@ module uart_16550
     // Signal Declarations //
     /////////////////////////
 
-    // Synchronized modem status inputs
-    logic cts_n, dsr_n, ri_n, dcd_n;
 
     // Registers to/from hardware signals
     uart_16550_reg_in_t  reg_in;

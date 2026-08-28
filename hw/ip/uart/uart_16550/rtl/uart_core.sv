@@ -103,7 +103,7 @@ module uart_core
     logic            frame_err, break_err, parity_err, rx_char_err;
     logic            allzero_err;
     logic            event_rx_overflow;
-    logic            event_rx_frame_err, event_rx_break_err, event_rx_timeout, event_rx_parity_err;
+    logic            event_rx_frame_err, event_rx_timeout, event_rx_parity_err;
     logic            rx_watermark_d;
     logic            tx_uart_idle_q;
     logic            fifo_thr_rbr_err, rx_fifo_rbr_err, tx_fifo_thr_err;

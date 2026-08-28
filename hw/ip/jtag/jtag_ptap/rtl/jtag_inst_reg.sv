@@ -20,6 +20,13 @@ module jtag_inst_reg
     // Decoded instruction output
     output jtag_instruction_decoded_e  inst_decoded_o  // Current decoded instruction
 );
+    // Tie off unused fields to satisfy lint
+    logic unused_scan_ctrl;
+    assign unused_scan_ctrl = ^{scan_ctrl_i.runbist,
+                                scan_ctrl_i.test_logic_reset,
+                                scan_ctrl_i.run_test_idle,
+                                scan_ctrl_i.select,
+                                scan_ctrl_i.chrst_n};
 
     //--------------------------------------------------------------------------
     // Internal Registers

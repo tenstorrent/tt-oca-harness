@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_axi_crossbar_error_handling_test (SMU_ALL_008 rev 18).
+"""Sequence for smu_axi_crossbar_error_handling_test (SMU_ALL_008).
 
 DV-CARD:          SMU_ALL_008   ANCHOR: smu_axi_crossbar_error_handling_test
-DV-CARD-REVISION: 18   RECORD-SHA256: 3be11166c37e13bc35de8dddbea105adf69f1f819525f7bb5bdcd292ffdf521d
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 18   ENV: cocotb
 
 Option-B honesty amend (plan/cards r18): OWNS only SMC-PWRGOOD-DTP-POR.S2.
 FAB-IN / DECODE removed from the runnable path (OOM / dishonest DECERR poison).
@@ -26,7 +24,7 @@ from seq_lib.smu_jtag_helpers import make_smu_jtag_tap
 
 
 class smu_axi_crossbar_error_handling_test_seq:
-    """SMU_ALL_008 r18: bare tb_top SEP=0 PTAP leave-TLR under power-good."""
+    """SMU_ALL_008: bare tb_top SEP=0 PTAP leave-TLR under power-good."""
 
     BOUND_TCK = 2000
 
@@ -169,7 +167,7 @@ class smu_axi_crossbar_error_handling_test_seq:
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         jtag.init_signals()
 
-        # FAB-IN / DECODE intentionally absent from runnable path (r18).
+        # FAB-IN / DECODE intentionally absent from runnable path.
         await self._step_s1_leave_tlr(jtag)
 
         # Bounded-wait inventory (fail_on timeout); not a card checker in r18.

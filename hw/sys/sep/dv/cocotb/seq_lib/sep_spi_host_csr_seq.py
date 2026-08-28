@@ -17,9 +17,8 @@ from __future__ import annotations
 
 from sep_reg_meta import sym
 
-import random
-
 from env.sep_axi_agent import SepAxiOp
+from env.sep_seeded_rng import SepSeededRng
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # --- register offsets (SEP spi_controller @ 0x10B0_0000; NUM_CS=1) ----------
@@ -108,7 +107,7 @@ class SepSpiHostCfg:
 
     def __init__(self, seed: int) -> None:
         self.seed = seed
-        rng = random.Random(seed)
+        rng = SepSeededRng(seed)
         # RW readback walk: (name, addr, writable_mask, random_value).
         self.rw_regs = [
             ("CTRL", CTRL, CTRL_RW_MASK, rng.getrandbits(32) & CTRL_RW_MASK),
@@ -120,8 +119,8 @@ class SepSpiHostCfg:
         ]
         rng.shuffle(self.rw_regs)
         # Watermark facet: a TX_WATERMARK threshold in a range a small fill can cross.
-        self.tx_watermark = rng.randint(2, 8)
-        self.tx_fill_words = self.tx_watermark + rng.randint(2, 4)
+        self.tx_watermark = rng.randrange(2, 9)
+        self.tx_fill_words = self.tx_watermark + rng.randrange(2, 5)
         # CHK-NONVAC pattern (nonzero) written to CFG.
         self.nonvac_cfg = (rng.getrandbits(32) & CFG_RW_MASK) | 0x1
 
