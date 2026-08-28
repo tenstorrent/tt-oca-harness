@@ -6,8 +6,6 @@ DV-CARD: SMCCGP0_004 ANCHOR: smc_cg_zeroer_activity_bringup_test
 
 from __future__ import annotations
 
-import logging
-
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, ReadOnly, Timer
 
@@ -18,7 +16,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = logging.getLogger(__name__)
+# Every record this sequence emits goes through `cocotb.log`: a module-level
+# `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
+# the STEP/CHK/FENCE evidence written through one never reaches the kept log
+# ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 HYST = 0
 IDLE_OBSERVE = 16
@@ -326,4 +327,4 @@ class smc_cg_zeroer_activity_bringup_test_seq(SmcCsrSeq):
             "< busy-ungates-axi-clk-observed < PASS",
         )
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_cg_zeroer_activity_bringup_test_seq PASS")
+        cocotb.log.info("smc_cg_zeroer_activity_bringup_test_seq PASS")

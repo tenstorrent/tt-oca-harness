@@ -21,10 +21,28 @@ class smc_mailbox_data_error_test(smc_base_test):
         seq = smc_mailbox_data_error_test_seq("mailbox_data_error_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         await check_mailbox_irq_source(mask=0x2)
+        assert "CHK-MAILBOX-FIFO-DATA" in seq.chk_seen, (
+            "missing CHK evidence token: CHK-MAILBOX-FIFO-DATA "
+            f"(seen={sorted(seq.chk_seen)})"
+        )
         await self.record_protocol_vip(
             SmcProtocolVipKind.MAILBOX,
             type(self).__name__,
+            # Directed stimulus floor: 22 SEP_IN AXI mailbox FIFO/illegal-access
+            # CSR accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=22,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="Mailbox FIFO data flow, illegal access SLVERR, and IRQ injection checked",
+            # Narrowed: the IRQ leg observes the aggregate
+            # `tb_mailbox_irq_any` (an OR of peripheral_interrupts[7:0],
+            # tb_top.sv:1363), so it proves assert/clear on the aggregate, not
+            # that mask 0x2 is the source that raised it ([MERGED-EVIDENCE];
+            # per-source decode needs a per-bit probe in
+            # seq_lib/smc_mailbox_vip_utils.py, shared with
+            # smc_mailbox_irq_test / smc_mailbox_event_irq_test).
+            details=(
+                "Mailbox FIFO data flow (outbound->inbound and inbound->"
+                "outbound payloads compared) and illegal-access SLVERR "
+                "checked; aggregate mailbox IRQ assert/clear observed"
+            ),
         )

@@ -23,6 +23,10 @@ class smc_gpio_ctrl_full_sweep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.GPIO_IRQ,
             type(self).__name__,
+            # Directed stimulus floor: 65 GPIO_CTRL window reads (one per
+            # bootrom EXTERNAL_MANDATORY GPIO_CTRL instance). Literal here, not
+            # read from `seq.accesses`.
+            min_csr_accesses=65,
             csr_accesses=seq.accesses,
             proxy=True,
             details=(

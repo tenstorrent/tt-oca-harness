@@ -424,6 +424,16 @@ module smc_uvm_top
     input  wire logic   tb_cpu_ecc_inject_dbe /*verilator public_flat_rw*/,
     input  wire logic   tb_cpu_ecc_inject_probe /*verilator public_flat_rw*/,
     output logic [31:0] tb_cpu_ecc_inject_fire_count /*verilator public_flat_rw*/,
+    // DUT ECC observable. smc_4core_cpu.cluster_ded_o is the OR of the 4
+    // dcache-uncorrectable valids and all 32 SPM/TLRAM o_uncorrectable_2 bits
+    // (smc_4core_cpu.sv:120-128, OCAH4CORECluster_TLRAM.sv:310), registered at
+    // :123-129 to de-glitch the CDC. It was previously left unconnected here,
+    // so no testcase could observe the DUT's own SECDED detection. The level
+    // is a 1-cycle pulse, not sticky, so a sticky latch and a count are
+    // provided alongside it for cocotb (same pattern as the inject counter).
+    output logic        tb_cluster_ded /*verilator public_flat_rw*/,
+    output logic        tb_cluster_ded_sticky /*verilator public_flat_rw*/,
+    output logic [31:0] tb_cluster_ded_count /*verilator public_flat_rw*/,
     output logic        tb_cpu_scratch0_inject_fire /*verilator public_flat_rw*/,
 
     // U7-2: DFD/DBS fault inject + debug-bus capture latch.
@@ -1143,6 +1153,27 @@ module smc_uvm_top
     assign tb_cpu_ecc_inject_fire_count = ecc_inject_fire_count_q;
     assign tb_cpu_scratch0_inject_fire = cpu_scratch0_inject_fire;
 
+    // DUT ECC detection observability. cluster_ded_o pulses for one cycle per
+    // detection, so latch it sticky and count the pulses; cocotb reads any of
+    // the three depending on whether it wants the live level, "has it ever
+    // fired", or "how many times".
+    logic        cluster_ded_lvl;
+    logic        cluster_ded_sticky_q;
+    logic [31:0] cluster_ded_count_q;
+
+    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            cluster_ded_sticky_q <= 1'b0;
+            cluster_ded_count_q  <= '0;
+        end else if (cluster_ded_lvl) begin
+            cluster_ded_sticky_q <= 1'b1;
+            cluster_ded_count_q  <= cluster_ded_count_q + 32'd1;
+        end
+    end
+    assign tb_cluster_ded        = cluster_ded_lvl;
+    assign tb_cluster_ded_sticky = cluster_ded_sticky_q;
+    assign tb_cluster_ded_count  = cluster_ded_count_q;
+
     // ------------------------------------------------------------------
     // DTP CSR boundary (smc_wrapper only): NO TB err_slv (policy: no
     // placeholder). resp idle until a legal subordinate exists. Not an
@@ -1219,7 +1250,7 @@ module smc_uvm_top
         .telemetry_atvalid_i        (tb_telemetry_atvalid),
         .telemetry_afvalid_o        (tb_telemetry_afvalid),
         .telemetry_afready_i        (tb_telemetry_afready),
-        .cluster_ded_o              (),
+        .cluster_ded_o              (cluster_ded_lvl),
         .wdt_first_timeout_o        (),
         .wdt_second_timeout_o       (),
         .smc_global_base_o          (),

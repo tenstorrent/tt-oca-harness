@@ -30,7 +30,12 @@ class smc_jtag_reset_proxy_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
-            csr_accesses=getattr(seq, "accesses", 0),
+            # `seq.accesses` directly, not getattr(..., 0): a renamed attribute
+            # must raise rather than silently record 0 accesses.
+            csr_accesses=seq.accesses,
+            # Directed stimulus floor: 6 SEP_IN AXI JTAG reset-proxy CSR
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=6,
             proxy=True,
             details="CPU JTAG TCK/TMS/TDI/reset driven and TDO checked",
         )

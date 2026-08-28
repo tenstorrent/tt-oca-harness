@@ -18,6 +18,11 @@ WRITE_LOCK = smc_efuse_map_u32(
 READ_LOCK = smc_efuse_map_u32(
     "SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm"
 )
+# SPEC-traceable: hw/ip/efuse/doc/architecture.adoc:299 states that a read of a
+# read-locked eFuse map region "returns an error response with data value
+# `0xbadcab1e`". The architecture document is the source, independent of the RTL
+# literal at smc_efuse_wrapper.sv:145, so this expectation is not a
+# transcription of the design it checks.
 READ_LOCKED_VALUE = 0xBADCAB1E
 _UNLOCKED_PAT = 0xCAFE0001
 _DRAIN = 8
@@ -99,10 +104,14 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
         )
 
         async def _locked_read() -> None:
-            got = await self.csr_read(
+            # `expected=` hands the compare to the scoreboard, which raises on
+            # mismatch, so the `assert got == READ_LOCKED_VALUE` that used to
+            # follow was a restatement with no failure mode of its own
+            # ([NO-ALWAYS-PASS-CHECKER]). The value is still returned for the
+            # evidence token.
+            await self.csr_read(
                 "CHIPLET_ID_LOCK_RD", CHIPLET_ID, expected=READ_LOCKED_VALUE
             )
-            assert got == READ_LOCKED_VALUE
 
         rd_edges = await self._count_edges_during(_locked_read())
         assert rd_edges >= 1, (

@@ -25,6 +25,12 @@ class smc_jtag_dmi_smoke_test(smc_base_test):
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
             csr_accesses=0,
+            # This scenario issues no CSR traffic at all (JTAG DMI only), so it
+            # has no CSR-access floor. Its fail-capability comes from the byte
+            # golden below: expected_bytes = DMI abstract-debug version 2 vs the
+            # observed dmstatus[3:0]. min_csr_accesses=0 is legal only together
+            # with such a golden (see smc_base_test.record_protocol_vip).
+            min_csr_accesses=0,
             proxy=False,
             details=(
                 f"CPU JTAG DMI: IDCODE=0x{seq.idcode:08X} "

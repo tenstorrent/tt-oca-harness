@@ -24,6 +24,10 @@ class smc_gpio_strap_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.GPIO_IRQ,
             type(self).__name__,
+            # Directed stimulus floor: the GPIO0 DATA_CTRL active-low-IRQ write
+            # plus the MAILBOX_IRQEN decode read (smc_gpio_irq_active_test_seq).
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=2,
             csr_accesses=seq.accesses,
             proxy=False,
             details="GPIO0 external active-low drive toggled GPIO IRQ aggregate",

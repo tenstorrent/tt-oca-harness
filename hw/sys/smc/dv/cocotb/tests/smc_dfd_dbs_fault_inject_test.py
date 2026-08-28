@@ -28,6 +28,10 @@ class smc_dfd_dbs_fault_inject_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
+            # Directed stimulus floor: the single RAS_BANK_INFO CSR read this
+            # TB-glue scenario issues. Literal here, not read from
+            # `seq.accesses`.
+            min_csr_accesses=1,
             csr_accesses=seq.accesses,
             proxy=False,
             details=(

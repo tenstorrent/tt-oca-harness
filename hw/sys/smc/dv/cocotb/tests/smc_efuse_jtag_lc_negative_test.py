@@ -97,6 +97,10 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
+            # Directed stimulus floor: 5 accesses across the PROD JTAG eFuse
+            # block/allow legs plus the LC-state CSR reads. Literal here, not
+            # read from the sequence counters.
+            min_csr_accesses=5,
             csr_accesses=self.checks + lc_seq.accesses,
             proxy=False,
             details=(

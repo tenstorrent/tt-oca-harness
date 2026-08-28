@@ -20,6 +20,56 @@ WARM_PAT = 0xCAFEB0BA
 _WDT_PULSE = 16
 _CSR_BOUND = 64
 
+# ---------------------------------------------------------------------------
+# RESET_UNIT SS_* / ISOLATE_REQ sweep.
+#
+# All of these are `sw = rw; hw = r` with reset 0x0 in
+# hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl -- plain software-owned
+# storage whose only consumer is a TOP-LEVEL OUTPUT. Verified before writing
+# them, because a write that fed back into the DUT would reset the bench:
+#   * `ss_reset_ctrl_o [31:0]` (smc.sv:191) reaches tb_top as
+#     `ss_reset_ctrl [31:0]` (tb_top.sv:1184,1279) and only
+#     `ss_reset_ctrl[0].warm_reset_n` is tapped out (tb_top.sv:1400).
+#   * `isolate_req_o [31:0]` (smc.sv:187) goes straight to the observation port
+#     `tb_isolate_req_o` (tb_top.sv:144,1276).
+# Neither loops back into the DUT, so driving them perturbs nothing.
+#
+# DELIBERATELY EXCLUDED: `SS_CONFIG_LOCK` @0x24 and `SS_COLD_RESET_LOCK` @0x70
+# are `onwrite = woset` -- irreversible until a cold reset, and the latter
+# removes SS_COLD_RESET_N's writability. They are provable, but leaving
+# irreversible state behind in a shared regression is not worth one register
+# each. `ISOLATE_REQ_VIS` @0xC0 is `sw=r`/`hw=w` pin visibility, and
+# `ISOLATE_REQ_PINEN_REG` has a live side effect; both are out of scope here.
+_SS_SWEEP_REGS = (
+    "SS_CONFIG", "SS_COLD_RESET_N", "SS_CONFIG_HOLD", "SS_SRAM_HOLD",
+    "SS_CRITICAL_HOLD", "SS_DEBUG_HOLD", "SS_FORCE_TO_REF_CLK",
+)
+# ALSO EXCLUDED: `ISOLATE_REQ_SMC_REG` @0xB8 and `ISOLATE_REQ_SMCEN_REG` @0xBC.
+#
+# The reason is the implemented semantics, not the `external` keyword: being
+# declared `external` says where a register lives, not whether it stores what
+# software writes, and `SS_CONFIG` @0x20 and `SS_COLD_RESET_N` @0x40 are
+# `external` too (reset_unit.rdl:227,230) yet sweep and pass. What makes this
+# one unsuitable for a write/read-back probe is that
+# `smc_cool_reset_wrap.sv:267-275` implements `isolate_req_smc_reg` as a
+# HARDWARE-SET, SOFTWARE-CLEARED flag -- it is set to 1 when
+# `cfg_flr_pf_active` asserts, and ANY software write with a non-zero bit
+# enable clears it to 0 regardless of the data written. It is also one bit
+# wide: `:99` returns `{31'b0, isolate_req_smc_reg}`. So the 0x0 this sweep
+# measured after writing 0x5A5AA5A5 is the specified behaviour, not a dead
+# register. Proving the set half needs an FLR event (`cfg_flr_pf_active`),
+# which is out of this testcase's scope.
+#
+# `ISOLATE_REQ_REG` @0xB0 keeps its own dedicated check below because its value
+# is observable on a DUT output pin, a property independent of all of the above.
+# Alternating bits so a stuck-at-0 or stuck-at-1 register cannot read it back.
+_SS_PATTERN = 0x5A5A_A5A5
+# ISOLATE_REQ_REG gets a stronger check than write/readback: its value is
+# observable on a DUT output pin, so the CSR-to-pin path is checked too. A
+# single bit is driven, and one that is not bit 0, so a tie-off or an
+# off-by-one on the bus would not satisfy it.
+ISOLATE_REQ_BIT = 5
+
 
 class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
     """COLD persists across SEP WDT reset; COLD_WARM does not."""
@@ -29,6 +79,61 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
         self.pre_ok = False
         self.cold_ok = False
         self.warm_ok = False
+
+    async def _ss_sweep(self, dut) -> None:
+        """Write/readback/restore the software-owned RESET_UNIT SS_* registers.
+
+        Run AFTER the SEP WDT pulse on purpose: the pulse clears the COLD_WARM
+        domain, so values written before it would not survive to be read back.
+        """
+        for reg in _SS_SWEEP_REGS:
+            addr = smc_addr(f"SMC_TOP_SMC_RESET_UNIT_{reg}_BASE_ADDR")
+            await self.csr_read(f"{reg}_RESET", addr, expected=0)
+            await self.csr_write(f"{reg}_WR", addr, _SS_PATTERN)
+            await self.csr_read(f"{reg}_RB", addr, expected=_SS_PATTERN)
+            await self.csr_write(f"{reg}_RESTORE", addr, 0)
+            await self.csr_read(f"{reg}_RESTORE_RB", addr, expected=0)
+
+        # ISOLATE_REQ_REG: CSR value must also appear on the DUT output pin.
+        iso = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_REG_BASE_ADDR")
+        assert hasattr(dut, "tb_isolate_req_o"), (
+            "tb_isolate_req_o missing from the TB top: the CSR-to-pin half of "
+            "the ISOLATE_REQ_REG check has no observation port"
+        )
+        pin_idle = int(dut.tb_isolate_req_o.value)
+        assert pin_idle == 0, (
+            f"isolate_req_o is already 0x{pin_idle:x} before ISOLATE_REQ_REG "
+            f"was written; the pin check below could not be attributed to the "
+            f"CSR write"
+        )
+        await self.csr_read("ISOLATE_REQ_REG_RESET", iso, expected=0)
+        await self.csr_write("ISOLATE_REQ_REG_WR", iso, 1 << ISOLATE_REQ_BIT)
+        await self.csr_read(
+            "ISOLATE_REQ_REG_RB", iso, expected=1 << ISOLATE_REQ_BIT
+        )
+        await RisingEdge(dut.clk_smc_i)
+        pin_set = int(dut.tb_isolate_req_o.value)
+        assert pin_set == (1 << ISOLATE_REQ_BIT), (
+            f"ISOLATE_REQ_REG read back 0x{1 << ISOLATE_REQ_BIT:x} but the DUT "
+            f"output isolate_req_o is 0x{pin_set:x}; the CSR stores the value "
+            f"without driving the pin it is specified to drive"
+        )
+        await self.csr_write("ISOLATE_REQ_REG_RESTORE", iso, 0)
+        await self.csr_read("ISOLATE_REQ_REG_RESTORE_RB", iso, expected=0)
+        await RisingEdge(dut.clk_smc_i)
+        pin_clr = int(dut.tb_isolate_req_o.value)
+        assert pin_clr == 0, (
+            f"isolate_req_o stayed 0x{pin_clr:x} after ISOLATE_REQ_REG was "
+            f"restored to 0"
+        )
+        cocotb.log.info(
+            "CHK-RESET-UNIT-SS-SWEEP: %d software-owned SS_*/ISOLATE_REQ "
+            "registers took 0x%08x on a reset-read / write / readback / restore "
+            "cycle; ISOLATE_REQ_REG additionally drove isolate_req_o 0x%x -> "
+            "0x%x -> 0x%x, so the CSR-to-pin path is checked and not just the "
+            "storage (woset LOCK registers excluded -- see module header)",
+            len(_SS_SWEEP_REGS), _SS_PATTERN, pin_idle, pin_set, pin_clr,
+        )
 
     async def _await_warm_cleared(self, dut, label: str) -> int:
         last = None
@@ -73,9 +178,17 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
             got_c,
             got_w,
         )
-        cocotb.log.info(
-            "CHK-RESET-UNIT-BASIC: pre=%s cold=%s warm=%s",
-            self.pre_ok,
-            self.cold_ok,
-            self.warm_ok,
-        )
+        await self._ss_sweep(dut)
+        # There is deliberately no summary token here. Every value available at
+        # this line is a constant: `COLD_PAT` / `WARM_PAT` are module literals,
+        # `got_c` comes from a `csr_read(expected=COLD_PAT)` that raises on
+        # mismatch, and `got_w` comes from `_await_warm_cleared`, which returns
+        # only on `== 0`. A summary line built from them would be constants
+        # whichever way it is phrased ([NO-ALWAYS-PASS-CHECKER]), and the two
+        # per-leg tokens above already print the same words.
+        #
+        # The fail-capability of this scenario lives in
+        # `csr_read(expected=...)` (scoreboard-enforced), in
+        # `_await_warm_cleared`'s expiry, and in `_ss_sweep`'s CSR-to-pin check
+        # on `tb_isolate_req_o`, which is the only leg here whose value the DUT
+        # is free to get wrong.

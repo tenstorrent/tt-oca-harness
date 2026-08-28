@@ -24,6 +24,9 @@ class smc_efuse_otp_burn_shadow_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
+            # Directed stimulus floor: 8 SEP_IN AXI OTP sense/shadow/burn
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=8,
             csr_accesses=seq.accesses,
             proxy=False,
             details="OTP sense+shadow+burn/fail via efuse_bank_model",

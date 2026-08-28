@@ -97,6 +97,23 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
         self.priority_ok = True
         cocotb.log.info("CHK-GPIO-P0-MUX-PRIO: interface_enable kept wrap0 TX with lsio_select")
 
+        # THE LSIO BRANCH IS NOT PROVEN ON THIS BENCH, and this leg does not
+        # claim it. Wrap 0's LSIO source is SPI DQ0, and `smc_base_test.py`
+        # parks the whole SPI octal pad group not-driving for the entire run
+        # (`tb_spi_dq_oe_n = 0xFF`, `tb_spi_dq_ie_n = 0xFF`). So with
+        # `lsio_select` set and `interface_enable` cleared, the LSIO source
+        # contributes en=0 -- which is bit-identical to what a mux with
+        # `lsio_select` tied to 0 would produce. A dead select bit fails nothing
+        # here ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+        #
+        # What the leg below DOES prove, and all it is credited with, is the
+        # `interface_enable` half: clearing it drops wrap 0's register TX enable
+        # back to the baseline measured before any write. That is fail-capable
+        # and is what the token says.
+        #
+        # Proving the select bit would need the SPI DQ0 pad driven, i.e. a
+        # change to the base test's idle-safe SPI parking, which is out of scope
+        # for a GPIO mux testcase.
         await self.csr_write("GPIO0_LSIO", GPIO0_DATA_CTRL, OUT_LSIO_ONLY)
         await self._await_en_bit(dut, 0, "LSIO")
         en_lsio = self._known_int(dut.tb_core2pad_en_o, "LSIO_EN") & mask
@@ -105,7 +122,15 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
             f"base_bit={bool(base_en & _WRAP0_BIT)} now={bool(en_lsio & _WRAP0_BIT)}"
         )
         self.lsio_ok = True
-        cocotb.log.info("CHK-GPIO-P0-MUX-LSIO: wrap0 register TX dropped without interface_enable")
+        cocotb.log.info(
+            "CHK-GPIO-P0-MUX-LSIO: wrap0 register TX enable returned to its "
+            "pre-write baseline (0x%x) when interface_enable was cleared. This "
+            "is an interface_enable property ONLY -- the lsio_select branch is "
+            "not exercised, because wrap0's LSIO source is SPI DQ0 and the base "
+            "test parks the SPI pads not-driving all run, so a select bit tied "
+            "to 0 would give the same result",
+            base_en & _WRAP0_BIT,
+        )
 
         await self.csr_write("GPIO0_RESTORE", GPIO0_DATA_CTRL, 0)
         cocotb.log.info(

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import Timer
+from cocotb.triggers import ClockCycles, Timer
 
 from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -19,8 +19,11 @@ from .smc_i2c_field_masks import (
     I2C_FDATA_STOP,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
+    I2C_STATUS_FMTEMPTY,
+    I2C_STATUS_FMTFULL,
     I2C_STATUS_HOSTIDLE,
     I2C_STATUS_RXEMPTY,
+    I2C_STATUS_RXFULL,
     I2C_TARGET_EVENTS_TX_PENDING,
     I2C_WRAP_CTRL_HOST,
     I2C_WRAP_CTRL_TARGET,
@@ -31,6 +34,13 @@ CLOCK_GATE_CONTROL = smc_addr(
 )
 
 _TARGET_ADDR = 0x10
+# Settle bound for the post-read host check, in peripheral clock cycles so it
+# scales with the randomised clk_periph_i period instead of against it. One SCL
+# bit is thigh(0x1A)+tlow(0x32)=76 periph cycles at the TIMING0 programmed below,
+# so 512 cycles per poll x 64 polls covers ~430 SCL bits of settle margin.
+HOSTIDLE_SETTLE_CYCLES = 512
+HOSTIDLE_SETTLE_POLLS = 64
+
 _READ0 = 0xB1
 
 
@@ -131,28 +141,59 @@ class smc_i2c_p0_stretch_test_seq(SmcCsrSeq):
         )
 
     async def _wait_hostidle(self) -> None:
+        """Bounded wait for the host controller to settle after the read.
+
+        The previous form required observing the host *leave* idle and only then
+        return to it. By the time this runs that transient is already consumed:
+        ``_wait_rx_byte`` returns only after it has polled STATUS and then read
+        RDATA, and the host completes its STOP during those two CSR accesses.
+        Whether the busy window was still visible depended on where the 5 us RX
+        poll grid happened to land relative to a transaction whose duration
+        scales with ``cfg.periph_clk_period_ns`` -- randomised over 8/10/12 ns by
+        ``SmcEnvCfg.randomize_timing`` -- so the leg passed only on the 8 ns
+        draw and failed deterministically on 10 ns and 12 ns.
+
+        Dropping it removes no proof. That the host really executed the read on
+        the bus is established by ``body``: ``_wait_rx_byte`` returns the byte the
+        target supplied and it is compared against ``_READ0``. What remains to
+        establish is the settled state, which is now an exact expectation over
+        the bits this scenario determines instead of a single ``HOSTIDLE`` bit:
+
+          HOSTIDLE  = 1  the host FSM finished the transfer
+          FMTEMPTY  = 1  the format FIFO drained -- no queued command remains
+          FMTFULL   = 0  (implied, asserted so a stuck-full FIFO is caught)
+          RXEMPTY   = 1  ``_wait_rx_byte`` drained the byte via the RDATA read
+          RXFULL    = 0  (implied, same reason)
+
+        The bound is in peripheral clock cycles rather than absolute time, so it
+        scales with the randomised clock instead of shrinking against it.
+        """
         status_addr = self._idx_addr(
             "SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", 1
         )
+        settled_set = (
+            I2C_STATUS_HOSTIDLE | I2C_STATUS_FMTEMPTY | I2C_STATUS_RXEMPTY
+        )
+        settled_clear = I2C_STATUS_FMTFULL | I2C_STATUS_RXFULL
         status = 0
-        left_idle = False
-        for _ in range(200):
-            status = await self.csr_read("HOST_BUSY", status_addr)
-            if not (status & I2C_STATUS_HOSTIDLE):
-                left_idle = True
-                break
-            await Timer(1, units="us")
-        if not left_idle:
-            raise AssertionError(
-                f"host never left idle STATUS=0x{status:08x}"
-            )
-        for _ in range(400):
+        for _ in range(HOSTIDLE_SETTLE_POLLS):
             status = await self.csr_read("HOST_IDLE", status_addr)
-            if status & I2C_STATUS_HOSTIDLE:
+            if (status & settled_set) == settled_set and not (
+                status & settled_clear
+            ):
+                cocotb.log.info(
+                    "CHK-I2C-P0-HOST-SETTLED: I2C1 STATUS=0x%08x -- HOSTIDLE, "
+                    "FMTEMPTY and RXEMPTY set, FMTFULL/RXFULL clear after the "
+                    "stretched read (bound=%d clk_periph_i cycles per poll)",
+                    status, HOSTIDLE_SETTLE_CYCLES,
+                )
                 return
-            await Timer(10, units="us")
+            await ClockCycles(cocotb.top.clk_periph_i, HOSTIDLE_SETTLE_CYCLES)
         raise AssertionError(
-            f"host did not return idle STATUS=0x{status:08x}"
+            f"host did not settle: STATUS=0x{status:08x}, expected "
+            f"0x{settled_set:08x} set and 0x{settled_clear:08x} clear within "
+            f"{HOSTIDLE_SETTLE_POLLS} polls of {HOSTIDLE_SETTLE_CYCLES} "
+            f"clk_periph_i cycles"
         )
 
     async def body(self) -> None:

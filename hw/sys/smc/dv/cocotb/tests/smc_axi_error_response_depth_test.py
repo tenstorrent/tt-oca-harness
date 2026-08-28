@@ -24,6 +24,10 @@ class smc_axi_error_response_depth_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.AXI,
             type(self).__name__,
+            # Directed stimulus floor: 3 ERROR_PROBES + the 2 alive-sentinel
+            # CSR reads that bracket them. Literal here, not read from
+            # `seq.accesses`.
+            min_csr_accesses=5,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

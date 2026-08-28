@@ -20,7 +20,22 @@ class smc_efuse_locked_access_interrupt_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_efuse_locked_access_interrupt_test_seq("efuse_lock_irq_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert seq.unlock_ok and seq.wrlock_ok and seq.rdlock_ok, (
-            f"efuse lock irq incomplete unlock={seq.unlock_ok} "
-            f"wr={seq.wrlock_ok} rd={seq.rdlock_ok}"
-        )
+        # WHERE THE TEETH ARE. The `*_ok` flags are set unconditionally after
+        # their legs, and every leg either raises or compares with `expected=`,
+        # so all of them are literal True at this line: the assert they used to
+        # feed could not fail on anything the DUT did
+        # ([NO-ALWAYS-PASS-CHECKER]).
+        #
+        # The fail-capable content is in the sequence: the locked read must return
+        # the SPEC blocked-read signature 0xBADCAB1E
+        # (hw/ip/efuse/doc/architecture.adoc:299), enforced by the
+        # scoreboard, and `_count_edges_during` must see at least one edge on
+        # the real interrupt net `peripheral_interrupts[28]`.
+        #
+        # What is kept is the one thing not implied upstream: that every leg
+        # actually ran. A refactor that made a bounded wait non-raising, or a
+        # leg quietly skipped, fails here.
+        legs = {"unlock": seq.unlock_ok, "wrlock": seq.wrlock_ok,
+                "rdlock": seq.rdlock_ok}
+        missing = [k for k, v in legs.items() if not v]
+        assert not missing, f"efuse lock irq legs that did not run: {missing}"

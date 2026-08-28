@@ -23,6 +23,10 @@ class smc_mailbox_multi_instance_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.MAILBOX,
             type(self).__name__,
+            # Directed stimulus floor: 32 outbound + 32 inbound mailbox STATUS
+            # reads plus the 3 sweep prologue accesses. Literal here, not read
+            # from `seq.accesses`.
+            min_csr_accesses=67,
             csr_accesses=seq.accesses,
             proxy=False,
             details="P1 coverage-gap round 2: mailbox 32 outbound + 32 inbound STATUS sweep",

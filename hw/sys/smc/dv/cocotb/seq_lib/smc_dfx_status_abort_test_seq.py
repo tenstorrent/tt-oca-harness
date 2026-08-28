@@ -43,6 +43,8 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         dut = cocotb.top
+        #: STATUS_SMU words observed at each stage, in order.
+        self.status_progression: list[int] = []
         await self.wait_fuse_sense_done()
         assert hasattr(dut, "tb_mem_repair_abort"), "tb_mem_repair_abort missing"
         assert hasattr(dut, "tb_mbist_abort"), "tb_mbist_abort missing"
@@ -50,9 +52,18 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
         dut.tb_mbist_abort.value = 0
 
         idle = await self._await_status(DFX_STATUS_IDLE, _CSR_BOUND, "STATUS_IDLE")
+        # TB DEPOSIT CONFIRMATION, not DUT evidence. These two reads read back
+        # the value this sequence itself drove onto `tb_mem_repair_abort` /
+        # `tb_mbist_abort` four lines above. The pins are real DUT inputs
+        # (tb_top.sv:1316,1319 -> .mem_repair_abort_i / .mbist_abort_i), so the
+        # deposit matters, but a readback of one's own drive cannot fail on
+        # anything the DUT did ([NO-ALWAYS-PASS-CHECKER]). Kept because a
+        # silently-refused deposit would make every leg below meaningless, and
+        # labelled so the kept log does not read as an observation.
         assert self._bit(dut.tb_mem_repair_abort, "tb_mem_repair_abort") == 0
         assert self._bit(dut.tb_mbist_abort, "tb_mbist_abort") == 0
         self.idle_ok = True
+        self.status_progression.append(idle)
         cocotb.log.info("CHK-DFX-ABORT-IDLE: STATUS_SMU=0x%x abort pins=0", idle)
 
         dut.tb_mem_repair_abort.value = 1
@@ -69,6 +80,7 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
             expected=DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT,
         )
         self.repair_ok = True
+        self.status_progression.append(sticky)
         cocotb.log.info(
             "CHK-DFX-ABORT-REPAIR: STATUS_SMU=0x%x after pin 1→0 (sticky)", sticky
         )
@@ -86,6 +98,7 @@ class smc_dfx_status_abort_test_seq(SmcCsrSeq):
             expected=DFX_STATUS_IDLE | DFX_MEM_REPAIR_ABORT | DFX_MBIST_ABORT,
         )
         self.mbist_ok = True
+        self.status_progression.append(both_sticky)
         cocotb.log.info(
             "CHK-DFX-ABORT-MBIST: STATUS_SMU=0x%x both abort sticky", both_sticky
         )

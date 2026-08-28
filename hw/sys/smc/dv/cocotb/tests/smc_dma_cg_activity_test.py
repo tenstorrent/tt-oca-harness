@@ -43,6 +43,11 @@ class smc_dma_cg_activity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Conservative stimulus floor: 88 accesses observed in the retained
+            # regression run across the four CG evidence phases; the DMA-DONE
+            # polls are a timing-dependent remainder, so the floor is set below
+            # the observed count. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=70,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

@@ -23,6 +23,9 @@ class smc_cluster_beu_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
+            # Directed stimulus floor: 12 SEP_IN AXI cluster-BEU 0..3 CSR
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=12,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

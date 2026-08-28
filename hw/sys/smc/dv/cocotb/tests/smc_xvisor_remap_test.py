@@ -23,6 +23,9 @@ class smc_xvisor_remap_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
+            # Directed stimulus floor: 8 SEP_IN AXI XVISOR_REMAP 0..7 accesses.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=8,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

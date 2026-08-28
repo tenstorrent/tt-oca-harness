@@ -11,6 +11,17 @@ from seq_lib.smc_efuse_otp_clock_test_seq import smc_efuse_otp_clock_test_seq
 from seq_lib.smc_efuse_vip_utils import check_efuse_otp_observability
 
 
+# Fail-capable stimulus floor, written out here rather than read back from
+# `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
+# sequence that silently stopped issuing accesses.
+# Composition (smc_efuse_otp_clock_test_seq, directed, no polling):
+#   1 eFuse-shim positive-control read (prove_efuse_bank_axil_activity)
+# + 1 CLOCK_GATE_CONTROL read
+# + 3 chip-config reads
+# + 1 CLOCK_GATE_CONTROL re-check read
+EFUSE_OTP_CLOCK_MIN_CSR_ACCESSES = 6
+
+
 @pyuvm.test()
 class smc_efuse_otp_clock_test(smc_base_test):
     """Run the eFuse/OTP and clock-control CSR precheck."""
@@ -25,6 +36,7 @@ class smc_efuse_otp_clock_test(smc_base_test):
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
             csr_accesses=seq.accesses,
+            min_csr_accesses=EFUSE_OTP_CLOCK_MIN_CSR_ACCESSES,
             proxy=False,
             details="eFuse/OTP chip-config observable semantics and clock stability checked",
         )

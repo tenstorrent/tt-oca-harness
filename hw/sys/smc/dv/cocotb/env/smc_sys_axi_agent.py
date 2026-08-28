@@ -69,6 +69,11 @@ class SmcSysAxiItem(uvm_sequence_item):
         # AXI AxPROT. Default 0 (unprivileged) matches historical SEP_IN CSR
         # traffic. GPIO ACCESS_FILTER tests program this to 1 (privileged).
         self.prot: int = 0
+        # Stamped by the driver that actually drove this item (its `bus_name`),
+        # so the scoreboard can keep a MEASURED per-port access tally. A test
+        # never sets this: the point is that the count comes from the driver that
+        # completed the access, not from the test that claims to have issued it.
+        self.bus_name: str = ""
 
     def __str__(self) -> str:
         exp = "None" if self.expected is None else f"0x{self.expected:x}"
@@ -105,6 +110,7 @@ class SmcSysAxiDriver(uvm_driver):
 
         while True:
             item = await self.seq_item_port.get_next_item()
+            item.bus_name = self.bus_name
             await self._drive(item)
             self.ap.write(item)
             self.seq_item_port.item_done()
@@ -123,9 +129,11 @@ class SmcSysAxiDriver(uvm_driver):
                 return
             item.rdata = int.from_bytes(resp.data, "little")
             item.resp_code = self._resp_code(resp)
-            item.resp_ok = self._resp_ok(resp) or item.allow_error
-            self.logger.info("%s read  0x%014x -> 0x%x ok=%s",
-                             self.bus_name, item.addr, item.rdata, item.resp_ok)
+            _raw_ok = self._resp_ok(resp)
+            item.resp_ok = _raw_ok or item.allow_error
+            self.logger.info("%s read  0x%014x -> 0x%x ok=%s%s",
+                             self.bus_name, item.addr, item.rdata, item.resp_ok,
+                             self._tolerated_note(_raw_ok, item.resp_code))
         elif item.op is SmcSysAxiOp.WRITE:
             event = self.axi.init_write(
                 address=item.addr,
@@ -138,11 +146,28 @@ class SmcSysAxiDriver(uvm_driver):
                 item.resp_ok = item.allow_timeout
                 return
             item.resp_code = self._resp_code(resp)
-            item.resp_ok = self._resp_ok(resp) or item.allow_error
-            self.logger.info("%s write 0x%014x <- 0x%x ok=%s",
-                             self.bus_name, item.addr, item.wdata, item.resp_ok)
+            _raw_ok = self._resp_ok(resp)
+            item.resp_ok = _raw_ok or item.allow_error
+            self.logger.info("%s write 0x%014x <- 0x%x ok=%s%s",
+                             self.bus_name, item.addr, item.wdata, item.resp_ok,
+                             self._tolerated_note(_raw_ok, item.resp_code))
         else:
             raise ValueError(f"unknown SMC SYS AXI op {item.op}")
+
+    @staticmethod
+    def _tolerated_note(raw_ok: bool, resp_code: int) -> str:
+        """Suffix that makes a TOLERATED error response visible in the log.
+
+        `item.resp_ok` is `self._resp_ok(resp) or item.allow_error`, so without
+        this suffix a SLVERR/DECERR that a sequence chose to tolerate renders as
+        a bare `ok=True`, byte-identical to a genuine OKAY. The kept log is what
+        a reader uses to decide what a testcase proved, so a tolerated error has
+        to stay visible in it. The OKAY case keeps the plain format.
+        """
+        if raw_ok:
+            return ""
+        name = {1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}.get(resp_code, f"resp={resp_code}")
+        return f" [{name} TOLERATED via allow_error]"
 
     async def _timed_event(self, event, item: SmcSysAxiItem, what: str):
         timeout_ns = item.timeout_ns or self.cfg.axi_timeout_ns

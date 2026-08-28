@@ -15,6 +15,20 @@ from smc_base_test import smc_base_test
 from seq_lib.smc_register_sanity_test_seq import smc_register_sanity_test_seq
 
 
+# Fail-capable stimulus floor, written out here rather than read back from
+# `seq.accesses`: a floor derived from the sequence's own counter shrinks
+# together with a sequence that silently stopped issuing accesses, which is
+# exactly the failure the floor exists to catch.
+# Composition (smc_register_sanity_test_seq, directed, no polling): the sequence
+# walks 3 scratch CSRs (SCRATCH_COLD_0, SCRATCH_COLD_1, SCRATCH_COLD_WARM_0 in
+# WRITE_READBACK) and issues 5 accesses on each --
+#   reset read + pattern write + pattern readback + restore write + restore
+#   readback
+#   => 3 x 5 = 15 SEP_IN AXI accesses
+# The composition is 3 CSRs x 5 accesses each, not 5 CSRs x 3.
+REGISTER_SANITY_MIN_CSR_ACCESSES = 15
+
+
 @pyuvm.test()
 class smc_register_sanity_test(smc_base_test):
     """Run the SMC OSS register-sanity scenario."""
@@ -28,6 +42,7 @@ class smc_register_sanity_test(smc_base_test):
             SmcProtocolVipKind.CSR,
             type(self).__name__,
             csr_accesses=seq.accesses,
+            min_csr_accesses=REGISTER_SANITY_MIN_CSR_ACCESSES,
             proxy=False,
             details="Field-aware catalog scratch RW write/read/restore checked",
         )

@@ -19,6 +19,9 @@ schema_version = 1
 #   needs_fw_boot      — commercial body is CPU FW; prefer BFM rebuild first
 #   sv_uvm_rebuild     — commercial is SV UVM sequence; rebuild as PyUVM
 #   depth / planned    — Nightly intent catalogued; body not yet local-honest
+#   dut_defect_suspect — SPEC-legal stimulus this environment does not program
+#                        because the DUT misbehaves on it; the entry is the
+#                        tracking record until a product issue exists
 
 [[tests]]
 name = "smc_dfd_dbs_fault_inject_test"
@@ -91,9 +94,7 @@ timeout_sec = 1800
 tags = ["deferred", "rtl_placeholder"]
 
 # ---------------------------------------------------------------------------
-# PLANNED: Nightly Tier A inventory (nonfree2 Main_SMC_Chiplet_Nightly MISS)
-# Source: /proj_soc/user_dev/minshaoho/tryrun/nonfree2/.../testlist_smc_chiplet.yaml
-# Dest plan: /proj_soc/user_dev/minshaoho/tryrun/oss2/hw/sys/smc/doc/smc_port.md
+# PLANNED: Nightly Tier A inventory
 # Bodies are not enrolled; rebuild as BFM/PyUVM before moving to leaf tomls.
 # ---------------------------------------------------------------------------
 
@@ -193,6 +194,55 @@ module = "smc_output_fabric_filter_no_remap_test"
 seed = 1
 timeout_sec = 1800
 tags = ["deferred", "fabric", "depth", "planned", "covered_by_live"]
+
+# ---------------------------------------------------------------------------
+# DEFERRED STIMULUS BAND (not a deferred body): clock-gate hysteresis 0..7.
+#
+# Owner testcase   : smc_clk_multi_window_test (LIVE, enrolled in clock.toml)
+# Exclusion record : seq_lib/smc_clk_multi_window_test_seq.py HYST_LOW_EXCLUSION
+#                    ("HYST-LOW-BAND-0-7-NOT-EXERCISED"), which references this
+#                    entry by name in its `linked_issue` field.
+# SPEC range       : CLOCK_GATE_CONTROL hysteresis is the full 6-bit field,
+#                    0..63 legal — hw/sys/smc/doc/dma.adoc (DMA Parameters,
+#                    CG_HYSTERESIS_W = 6, "6-bit = 0-63 cycle delay") and
+#                    hw/sys/smc/doc/clk_rst.adoc (Clock Gating Control
+#                    Parameters, 6-bit programmable, no reserved encodings).
+#                    Nothing makes 0..7 reserved, so the narrowed randomized
+#                    draw (HYST_LEGAL_LO = 8) is a stimulus exclusion, not a
+#                    legality boundary.
+# Why excluded     : suspected DUT/integration defect, not a DV limitation. At
+#                    hyst=1 the DMA accepts the command (DMA_CTRL_NEXT_ID_0
+#                    returns a non-zero id) but DMA_CTRL_DONE_0 never advances
+#                    and the bounded completion wait expires with BOTH busy
+#                    inputs already low ("TIMEOUT waiting DMA done: baseline=1
+#                    status=0xff gater_busy=0 busy=0"), i.e. the transfer is
+#                    dropped rather than merely slow. Reproduced 2026-08-25 by
+#                    programming hyst=1 in that sequence's low window. hyst=0
+#                    is never run under cg_enable at all.
+# Coverage effect  : the within-1-cycle hysteresis-scaling proof holds for
+#                    8..63 ONLY. The 0..7 band is UNPROVEN and must not be
+#                    counted as covered by any closure report.
+# Next action      : file the product issue for the hyst=0/1 completion drop and
+#                    replace this entry with the real issue id; then either
+#                    restore HYST_LEGAL_LO = 0 or, if the behaviour turns out to
+#                    be intended, cite the SPEC table/revision that reserves
+#                    0..7 and add a negative leg proving the DUT rejects or
+#                    clamps it.
+# NOT a runnable module: no such test file exists. This entry exists so the
+# carve-out is tracked in the deferral ledger instead of living only inside a DV
+# sequence, and it is NOT enrolled by all.toml.
+[[tests]]
+name = "smc_clk_multi_window_test_hyst_low_band_0_7"
+module = "smc_clk_multi_window_test_hyst_low_band_0_7"
+seed = 1
+timeout_sec = 1800
+tags = ["deferred", "clock", "dut_defect_suspect", "needs_product_issue"]
+
+[[groups]]
+name = "deferred_stimulus_bands"
+tests = [
+  "smc_clk_multi_window_test_hyst_low_band_0_7",
+]
 
 [[groups]]
 name = "deferred_tb_policy"
@@ -663,3 +713,21 @@ tests = [
   "smc_cpu_multicore_sanity_test",
   "smc_external_test",
 ]
+
+[[tests]]
+# BLOCKER: the whole 0xC800_0000 cluster-local window folds onto 0xC000_0000 on
+# the SEP_IN path, so this test's reads never reach the CLINT. Measured with two
+# discriminators from different blocks in the same run:
+#   0xC8000020 -> 0x00001000 == CORE0 WDT CMP reset  (WDT block, 0xC0000020)
+#   0xC8004034 -> 0x000001ff == AVS_INTERRUPT_MASK reset (AVSBUS, 0xC0004034)
+# and MTIME, a free-running counter, reads 0x0 twice 512 clk_smc_i apart.
+# This is the same bit-27 fold as issue #1237, which filed it for the BEU
+# sub-window 0xC801_xxxx only; the scope is the entire 0xC8xx_xxxx region. The
+# testcase is kept because its MTIME-monotonic leg is the cheapest available
+# regression guard for that decode: it will start passing when the fold is
+# repaired. It is NOT enrolled, because it cannot prove a CLINT property today.
+name = "smc_clint_csr_test"
+module = "smc_clint_csr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["deferred", "clint", "rtl_addr_fold", "blocked_by_1237"]

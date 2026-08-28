@@ -58,6 +58,40 @@ stubs = [
 sources = [
   # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
+  #   prim_fifo_async <- hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv:79
+  #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
+  #   prim_rst_sync   <- hw/ip/efuse/rtl/efuse_interface_controller.sv:159
+  #                      (Bender.yml:64,  target any(opentitan_smu, sep, smu, key_manager))
+  # Without them both cells elaborate as unresolved: VCS/Xcelium refuse the
+  # build outright, and Verilator only proceeds because `-Wno-fatal` demotes
+  # the missing-module error to a warning and black-boxes them -- so a CDC FIFO
+  # and a reset synchronizer were silently absent from every SMC run. The
+  # upstream fix is to add `smc` to those two Bender targets; this DV-local
+  # source entry unblocks all three simulators without editing vendor/.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
+  # prim_flop_2sync instantiates prim_cdc_rand_delay when SIMULATION is defined
+  # (it is, see targets.default.tools.*). Bender.yml:38-42 records exactly this
+  # gap for `dtp` and closes it with `target: all(dtp, simulation)`; `smc` has
+  # the same hole and no equivalent entry. Upstream fix: add
+  # `target: all(smc, simulation)` carrying this file.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
+  # prim_ram_1p backs the CPU cluster memory macros
+  # (smc_cpu/mem_swaps/4core/OCAH4CORECluster_mem_swaps.sv:95, reached via
+  # smc_cpu_mem_integration -> prim_ram_1p_adv_ext). Bender.yml:81,197 carry it
+  # only for any(sep_wrapper, smu_wrapper) / any(opentitan_smu, sep, smu); the
+  # smc/smc_wrapper targets get prim_ram_1p_adv_ext but not the macro it wraps,
+  # so every CPU icache/dcache tag+data array elaborated as a black box.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv",
+  # prim_subreg/prim_subreg_ext back idma_reg64_2d_reg_top (the iDMA register
+  # file); prim_arbiter_tree backs log_engine. All three sit in Bender.yml under
+  # any(opentitan_smu, sep, smu) only, so under smc/smc_wrapper the DMA CSR
+  # subregs and the log-engine arbiter elaborated as black boxes.
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_ext.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv",
+  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv",
 ]
 
 [build.verilator]

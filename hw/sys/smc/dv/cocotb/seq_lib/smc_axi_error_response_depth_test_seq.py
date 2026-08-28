@@ -16,12 +16,36 @@ ALIVE_SENTINEL = smc_addr(
     "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
 )
 
-# Intentional unmapped holes — SPEC: hw/sys/smc/doc/memmap.adoc
-# "SMC Address Space Layout". Offsets are not decoded CSR windows; fabric
-# default slave returns DECERR.
+# DECERR probes. These were described as "intentional unmapped holes" per
+# memmap.adoc; that description is WRONG in two ways and is corrected here
+# ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+#
+# 1. Neither offset is a hole. `smc.rdl:101-105` declares three
+#    `external remapped_region` blocks of 0x80_0000 each:
+#      ecam_region   BASE+0x080_0000 .. BASE+0x0FF_FFFF
+#      mmode_region  BASE+0x100_0000 .. BASE+0x17F_FFFF
+#      xvisor_region BASE+0x180_0000 .. BASE+0x1FF_FFFF
+#    `BASE + 0x0FF_F000` lies INSIDE ecam_region. What these probes actually
+#    demonstrate is that an `external` region with no implementation behind it
+#    on this bench answers DECERR -- which is worth locking, but it is not an
+#    address-decode hole.
+#
+# 2. The high probe does not even reach the address written. The local fabric
+#    rewrites every incoming address as {LOCAL_BASE[31:25], addr[24:0]}
+#    (`smc_local_fabric.sv:66-78`, LOCAL_BASE reset 0xC000_0000; see #1237 /
+#    #1249), so `BASE + 0x0FFF_F000` = 0xCFFF_F000 arrives as 0xC1FF_F000 --
+#    inside xvisor_region, not 0x0F_FF_F000 of anything.
+#
+# There is no genuinely unmapped address left to probe on this path: the
+# surviving offset field is [24:0], i.e. 0x000_0000..0x1FF_FFFF, and
+# xvisor_region covers it up to the top. The probes are kept for what they do
+# show, with their names and the evidence token corrected to match.
 _SMC_TOP_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
-_UNMAPPED_LOW = _SMC_TOP_BASE + 0x00FF_F000
-_UNMAPPED_HIGH = _SMC_TOP_BASE + 0x0FFF_F000
+# Inside ecam_region; passes through the masking unchanged (bits [31:25] are
+# already LOCAL_BASE's).
+_UNIMPL_ECAM = _SMC_TOP_BASE + 0x00FF_F000
+# Written as 0xCFFF_F000, ARRIVES as 0xC1FF_F000 inside xvisor_region.
+_UNIMPL_XVISOR_VIA_MASK = _SMC_TOP_BASE + 0x0FFF_F000
 
 # EXTERNAL_MANDATORY GPIO_CTRL is terminated with DECERR on the OSS DUT path
 # (smc_ip_integration err_slv). Replaces the obsolete I3C-stub SLVERR probe —
@@ -30,8 +54,8 @@ _GPIO_CTRL0 = external_gpio_ctrl_addr(0)
 
 # (name, addr, expected AXI resp)
 ERROR_PROBES: list[tuple[str, int, int]] = [
-    ("UNMAPPED_LOW", _UNMAPPED_LOW, AXI_RESP_DECERR),
-    ("UNMAPPED_HIGH", _UNMAPPED_HIGH, AXI_RESP_DECERR),
+    ("UNIMPL_ECAM_REGION", _UNIMPL_ECAM, AXI_RESP_DECERR),
+    ("UNIMPL_XVISOR_REGION_VIA_MASK", _UNIMPL_XVISOR_VIA_MASK, AXI_RESP_DECERR),
     ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR),
 ]
 

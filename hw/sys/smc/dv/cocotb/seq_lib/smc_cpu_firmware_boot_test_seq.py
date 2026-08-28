@@ -61,6 +61,11 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             )
             return
 
+        # `is_resolvable` here and at :74 is a 4-state precondition, not a
+        # check: under Verilator (2-state) it is constant-true, so the `-1` /
+        # `continue` branches are unreachable in the retained evidence. The
+        # fail-capable part of this helper is the 0->1 transition requirement
+        # and the bounded expiry raise below ([NO-DUMMY-DEAD-CODE]).
         val = int(dut.tb_fuse_sense_done.value) if dut.tb_fuse_sense_done.value.is_resolvable else -1
         if val == 1 and not self.fuse_saw_low:
             raise AssertionError(
@@ -102,6 +107,12 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         self._mark_step("S1", "SETUP clocks/resets; CPU BFM observability")
         await check_cpu_bfm_observability()
         assert int(dut.powergood_stable_o.value) == 1
+        # PRECONDITION, not a check: every retained run of this testcase is
+        # Verilator (2-state), where `is_resolvable` cannot be False, so this
+        # line has no FAIL-ON path in the evidence that exists. It is kept for
+        # the 4-state simulators. The verdict-bearing compares on this path are
+        # the value compares at :104, :113, :148, :155, :166 and :192
+        # ([NO-DUMMY-DEAD-CODE]).
         assert dut.rst_primary_smc_clk_no.value.is_resolvable
 
         # S2 — eFuse sense completion (before vector release)
@@ -135,7 +146,14 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         self.boot = await check_cpu_firmware_boot_contract(
             self, require_image=True
         )
-        self.accesses = getattr(self, "accesses", 0) or 4
+        # `self.accesses` is initialised to 0 in __init__ and bumped by the
+        # SmcCsrSeq helpers, so it is already a measured count. An earlier
+        # revision laundered it through `getattr(self, "accesses", 0) or 4`,
+        # which silently reported 4 whenever the measurement was 0 -- a
+        # measured statistic replaced by a constant on the proof path
+        # ([NO-DUMMY-DEAD-CODE]). Removed: whatever the helpers counted is what
+        # the record carries, so a genuinely silent sequence now reports 0 and
+        # fails the testcase's stimulus floor.
 
         assert self.boot.get("boot_checked"), self.boot
         rom_reads = int(self.boot["rom_reads"])

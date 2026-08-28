@@ -19,6 +19,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_addr_map import smc_addr
+from .smc_efuse_vip_utils import efuse_preload_word_at
 from .smc_csr_seq_utils import SmcCsrSeq
 
 EFUSE_STATUS = smc_addr(
@@ -29,7 +30,14 @@ EFUSE_PROGRAM_CTRL = smc_addr(
 )
 EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 
-OTP_WORD0_MARKER = 0xA5A55A5A
+# Word 0 of the eFuse bank model after sense, i.e. word 0 of the preload asset
+# the model $readmemh's at time 0. Derived from the asset at run time via the
+# same helper the sibling efuse sequences use, rather than a transcribed
+# literal, which cannot detect the asset and the model disagreeing
+# ([INDEPENDENT-EXPECTED-MODEL]).
+OTP_WORD0_MARKER = efuse_preload_word_at(
+    smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+)
 _PROG_DATA = 1 << 16
 _PROG_GO = 1 << 17
 _PROG_READBACK = 1 << 18
@@ -60,8 +68,21 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
 
         await ClockCycles(clk, 20)
 
+        # MODEL-BACKED, DECLARED. `tb_efuse_otp_word0` taps the adopter-supplied
+        # `efuse_bank_model` (hw/ip/efuse/dv/models/efuse_bank_model.sv,
+        # instantiated at hw/top/smc_ip_integration.sv:102-115), whose set-once
+        # behaviour is `onwrite = woset` in the DV RDL. SPEC declares it a
+        # stand-in for the foundry OTP macro
+        # (hw/ip/efuse/doc/architecture.adoc:163-170). Every assert on
+        # `tb_efuse_*_word0` below therefore shows that the controller's command
+        # reached the bank model -- it is NOT evidence that a fuse burns in
+        # silicon ([BEHAVIORAL-STUB-DECLARED]).
+        #
+        # The DUT-path asserts in this sequence are the two that go through the
+        # register interface: `EFUSE_MAP_0` (the shadow/map load) and
+        # `EFUSE_STATUS.efuse_sense_done`.
         otp0 = int(dut.tb_efuse_otp_word0.value)
-        cocotb.log.info("OTP word0 after sense = 0x%08x", otp0)
+        cocotb.log.info("OTP word0 after sense = 0x%08x (model-backed)", otp0)
         assert otp0 == OTP_WORD0_MARKER, (
             f"OTP word0 mismatch: got 0x{otp0:08x}, expected 0x{OTP_WORD0_MARKER:08x}"
         )
@@ -72,12 +93,18 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
             f"shadow/map word0 mismatch: got 0x{map0:08x}, expected 0x{OTP_WORD0_MARKER:08x}"
         )
 
-        # efuse_bank_model keeps a single OTP array (no separate "programmed"
-        # store). After sense, programmed_word0 mirrors the preload marker.
+        # `tb_efuse_programmed_word0` and `tb_efuse_otp_word0` ARE THE SAME NET:
+        # `tb_top.sv:1358` is `assign tb_efuse_programmed_word0 =
+        # tb_efuse_otp_word0;`. Asserting both against the same expectation
+        # compared one value twice and read as two independent observations
+        # ([NO-ALWAYS-PASS-CHECKER]). The duplicate assert is removed; the
+        # equality of the two TB outputs is stated once, as a fact about the
+        # testbench rather than a property of the DUT.
         prog0 = int(dut.tb_efuse_programmed_word0.value)
-        assert prog0 == OTP_WORD0_MARKER, (
-            f"programmed_word0 expected preload marker 0x{OTP_WORD0_MARKER:08x}, "
-            f"got 0x{prog0:08x}"
+        assert prog0 == otp0, (
+            f"tb_efuse_programmed_word0 (0x{prog0:08x}) and tb_efuse_otp_word0 "
+            f"(0x{otp0:08x}) differ, but tb_top.sv:1358 aliases them -- the "
+            f"testbench no longer matches this sequence's assumption"
         )
 
         # First PROGRAM (bit2 is clear in A5A55A5A): fail-inject must not sticky-OR.
@@ -118,6 +145,17 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         assert (prog_ok & 1) == 1, "sticky-OR burn did not set bit0"
         assert prog_ok == (OTP_WORD0_MARKER | 1), (
             f"sticky-OR burn unexpected: got 0x{prog_ok:08x}"
+        )
+        # POSITIVE CONTROL for the `program_status == 1` assert on the injected
+        # failure above. Without it, a PROGRAM_CTRL whose status bit were stuck
+        # high would satisfy the fail leg just as well
+        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). The clean program's status word
+        # was already being read into `st_ok` and logged, and then discarded;
+        # it is now compared.
+        assert ((st_ok >> 26) & 1) == 0, (
+            f"program_status is set after a program that was NOT fail-injected "
+            f"(PROGRAM_CTRL=0x{st_ok:08x}); the status bit does not "
+            f"discriminate, so the injected-failure assert above proves nothing"
         )
 
         status = await self.csr_read("EFUSE_STATUS", EFUSE_STATUS)

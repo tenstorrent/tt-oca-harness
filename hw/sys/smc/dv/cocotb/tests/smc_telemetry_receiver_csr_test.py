@@ -27,6 +27,9 @@ class smc_telemetry_receiver_csr_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,
+            # Directed stimulus floor: 16 SEP_IN AXI TELEMETRY CTRL/INTR_TEST/
+            # PROBE_ID accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=16,
             csr_accesses=seq.accesses,
             proxy=False,
             details=(

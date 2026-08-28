@@ -24,6 +24,9 @@ class smc_cpu_ecc_lint_pint_depth_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.DIAGNOSTIC,
             type(self).__name__,
+            # Directed stimulus floor: 6 SEP_IN AXI RAS/debug CSR reads.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=6,
             csr_accesses=seq.accesses,
             proxy=True,
             details=(

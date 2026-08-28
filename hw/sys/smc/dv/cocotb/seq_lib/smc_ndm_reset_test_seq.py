@@ -19,8 +19,24 @@ NDM_PROCESS = smc_addr(
 NDM_CLUSTERS = smc_addr(
     "SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR"
 )
-# smc_config_pkg::CPU_CLUSTER_COUNT — TB pin width tracks this.
-_CLUSTERS = 4
+# NDMRESET_CLUSTER_COUNT carries no golden here: `ndm_reset.rdl:33-39` declares
+# it `sw = r; hw = w` with reset 0x0, i.e. the value is driven by the
+# integration's cluster count and no SPEC table in this repository pins it to a
+# number. Transcribing `smc_config_pkg::CPU_CLUSTER_COUNT` into the test would
+# be the RTL grading its own homework ([INDEPENDENT-EXPECTED-MODEL]).
+#
+# What the RDL DOES state is the register's contract, and that is what is
+# checked instead:
+#   * the field is `ndmreset_cluster_count[7:0]`, and REQUEST/PROCESS
+#     "Supports up to 32 CPU Clusters" -- so 1 <= count <= 32;
+#   * "Number of NDM Clusters supported. Can be read to mask the
+#     ndmreset_request register" -- so driving every request line high must
+#     make NDMRESET_REQUEST read exactly the count's mask, no more and no less.
+# The second property is what makes the count fail-capable against the DUT: a
+# count that disagrees with the number of implemented request bits fails it,
+# whichever of the two is wrong.
+_NDM_CLUSTER_COUNT_MASK = 0xFF          # ndm_reset.rdl ndmreset_cluster_count[7:0]
+_NDM_MAX_CLUSTERS = 32                  # ndm_reset.rdl "Supports up to 32 CPU Clusters"
 _PIN_BOUND = 64
 
 
@@ -29,10 +45,15 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_ndm_reset_test_seq") -> None:
         super().__init__(name)
-        self.count_ok = False
-        self.bits_ok = False
+        # Measured, not "did we get here": the test module gates on these.
+        self.cluster_count: int | None = None
+        self.request_port_width: int | None = None
+        self.all_request_readback: int | None = None
+        self.bits_swept: list[int] = []
 
-    async def _await_pins(self, dut, irq: int, process: int, label: str) -> None:
+    async def _await_pins(self, dut, irq: int, process: int,
+                          label: str) -> dict[str, int]:
+        """Return the SAMPLE that matched so tokens print measured pin values."""
         last = {}
         for _ in range(_PIN_BOUND):
             await RisingEdge(dut.clk_smc_i)
@@ -41,7 +62,7 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
                 "process": int(dut.tb_ndmreset_process.value),
             }
             if last["irq"] == irq and last["process"] == process:
-                return
+                return last
         raise AssertionError(
             f"{label}: pin handshake expired irq={last.get('irq')} "
             f"process=0x{last.get('process', 0):x} want irq={irq} "
@@ -55,47 +76,122 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
         assert int(dut.tb_ndmreset_request.value) == 0, "NDM request must idle 0"
 
         nclu = await self.csr_read("NDM_CLUSTER_COUNT", NDM_CLUSTERS)
-        assert (nclu & 0xFF) == _CLUSTERS, (
-            f"CLUSTER_COUNT=0x{nclu:x} want {_CLUSTERS}"
+        count = nclu & _NDM_CLUSTER_COUNT_MASK
+        assert 1 <= count <= _NDM_MAX_CLUSTERS, (
+            f"NDMRESET_CLUSTER_COUNT=0x{nclu:x} -> {count} clusters, outside the "
+            f"1..{_NDM_MAX_CLUSTERS} range ndm_reset.rdl declares for the "
+            f"REQUEST/PROCESS registers"
         )
-        self.count_ok = True
-        cocotb.log.info("CHK-NDM-COUNT: CLUSTER_COUNT=%d", nclu & 0xFF)
+        port_width = len(dut.tb_ndmreset_request.value)
+        # PROVENANCE, stated plainly: `port_width` is the width of the TB
+        # OBSERVATION port `tb_ndmreset_request`, which `tb_top.sv:149` declares
+        # as a hard-coded `[3:0]` -- its comment claims "Width =
+        # CPU_CLUSTER_COUNT" but it is a literal that mirrors
+        # `smc_config_pkg.sv:58`, not the DUT's parameterised
+        # `smc.sv:179` port. So this compare is a TB/DUT integration check (the
+        # bench cannot carry more lines than it declares); it CANNOT validate
+        # the count against a specification, because no spec value for it exists
+        # in the tree: `ndm_reset.rdl:33-38` declares
+        # `ndmreset_cluster_count[7:0] = 0x0` as `sw=r; hw=w` -- hardware-driven
+        # with reset 0x0 -- and its "up to 32 CPU Clusters" wording bounds the
+        # REQUEST/PROCESS width, supplying no expected count. The claim that the
+        # count is CORRECT is therefore NOT made by this testcase; what is
+        # proven is that the count agrees with the request bits that physically
+        # reach the register (see the all-lines leg below).
+        assert count == port_width, (
+            f"NDMRESET_CLUSTER_COUNT reports {count} cluster(s) but the TB "
+            f"observation port tb_ndmreset_request is {port_width} bit(s) wide "
+            f"(tb_top.sv:149, hard-coded [3:0]) -- the bench cannot observe the "
+            f"lines the DUT says exist"
+        )
+        self.cluster_count = count
+        self.request_port_width = port_width
 
         req0 = await self.csr_read("NDM_REQUEST_IDLE", NDM_REQUEST, expected=0)
         proc0 = await self.csr_read("NDM_PROCESS_IDLE", NDM_PROCESS, expected=0)
-        await self._await_pins(dut, irq=0, process=0, label="IDLE")
+        idle_pins = await self._await_pins(dut, irq=0, process=0, label="IDLE")
         cocotb.log.info(
-            "CHK-NDM-IDLE: REQUEST=0x%x PROCESS=0x%x irq=0", req0, proc0
+            "CHK-NDM-IDLE: REQUEST=0x%x PROCESS=0x%x process_o=0x%x irq=%d",
+            req0, proc0, idle_pins["process"], idle_pins["irq"],
         )
 
-        for bit in range(_CLUSTERS):
+        # The RDL's stated use of CLUSTER_COUNT -- "can be read to mask the
+        # ndmreset_request register" -- made falsifiable: with every request
+        # line driven high, NDMRESET_REQUEST must read exactly that mask.
+        #
+        # The STIMULUS is deliberately all-ones across the whole TB port rather
+        # than `all_mask`. When both the drive and the expectation were derived
+        # from `count`, a CSR that UNDER-reported (say 2 on a 4-line part) drove
+        # 0x3, read back 0x3 and passed -- the under-report was invisible. With
+        # every physical line driven, the readback reports how many request bits
+        # actually reach the register, so `expected=all_mask` now fails in BOTH
+        # directions: an over-report fails because the extra bits read 0, and an
+        # under-report fails because an extra line shows up
+        # ([INDEPENDENT-EXPECTED-MODEL] -- both sides of this compare are now
+        # DUT-sourced, the CSR count against the CSR request reflection, rather
+        # than a DUT value against a TB literal).
+        all_mask = (1 << count) - 1
+        drive_all = (1 << len(dut.tb_ndmreset_request.value)) - 1
+        dut.tb_ndmreset_request.value = drive_all
+        await self._await_pins(dut, irq=1, process=0, label="COUNT_ALL")
+        self.all_request_readback = await self.csr_read(
+            "NDM_REQUEST_ALL", NDM_REQUEST, expected=all_mask
+        )
+        dut.tb_ndmreset_request.value = 0
+        await self._await_pins(dut, irq=0, process=0, label="COUNT_ALL_DROP")
+        await self.csr_read("NDM_REQUEST_ALL_DROP", NDM_REQUEST, expected=0)
+        cocotb.log.info(
+            "CHK-NDM-COUNT: NDMRESET_CLUSTER_COUNT=%d (ndm_reset.rdl field "
+            "[7:0]; the RDL reset is 0x0 and hw-driven, so the RDL supplies NO "
+            "expected count -- this testcase does not claim the count is "
+            "correct). TB observation port tb_ndmreset_request is %d bits "
+            "(tb_top.sv:149 hard-coded [3:0], an RTL mirror, NOT the DUT's "
+            "parameterised port). With ALL %d physical lines driven high, "
+            "NDMRESET_REQUEST read exactly 0x%x == (1<<%d)-1, so the count "
+            "agrees with the request bits that actually reach the register in "
+            "both directions",
+            count, port_width, drive_all.bit_count(),
+            self.all_request_readback, count,
+        )
+
+        for bit in range(count):
             mask = 1 << bit
             dut.tb_ndmreset_request.value = mask
-            await self._await_pins(dut, irq=1, process=0, label=f"REQ{bit}")
+            req_pins = await self._await_pins(
+                dut, irq=1, process=0, label=f"REQ{bit}"
+            )
             got_req = await self.csr_read(
                 f"NDM_REQUEST_B{bit}", NDM_REQUEST, expected=mask
             )
             cocotb.log.info(
-                "CHK-NDM-REQ-%d: pin=0x%x REQUEST=0x%x irq=1 process=0",
+                "CHK-NDM-REQ-%d: pin=0x%x REQUEST=0x%x irq=%d process_o=0x%x",
                 bit,
                 mask,
                 got_req,
+                req_pins["irq"],
+                req_pins["process"],
             )
 
             await self.csr_write(f"NDM_PROCESS_SET_B{bit}", NDM_PROCESS, mask)
-            await self._await_pins(dut, irq=1, process=mask, label=f"PROC{bit}")
+            proc_pins = await self._await_pins(
+                dut, irq=1, process=mask, label=f"PROC{bit}"
+            )
             got_proc = await self.csr_read(
                 f"NDM_PROCESS_B{bit}", NDM_PROCESS, expected=mask
             )
             cocotb.log.info(
-                "CHK-NDM-PROC-%d: PROCESS=0x%x process_o=0x%x",
+                "CHK-NDM-PROC-%d: PROCESS=0x%x process_o=0x%x (measured pin "
+                "sample, irq=%d)",
                 bit,
                 got_proc,
-                mask,
+                proc_pins["process"],
+                proc_pins["irq"],
             )
 
             dut.tb_ndmreset_request.value = 0
-            await self._await_pins(dut, irq=0, process=mask, label=f"DROP{bit}")
+            drop_pins = await self._await_pins(
+                dut, irq=0, process=mask, label=f"DROP{bit}"
+            )
             got_req = await self.csr_read(
                 f"NDM_REQUEST_DROP_B{bit}", NDM_REQUEST, expected=0
             )
@@ -103,22 +199,24 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
                 f"NDM_PROCESS_HOLD_B{bit}", NDM_PROCESS, expected=mask
             )
             cocotb.log.info(
-                "CHK-NDM-DROP-%d: REQUEST=0x%x PROCESS held 0x%x irq=0",
+                "CHK-NDM-DROP-%d: REQUEST=0x%x PROCESS held 0x%x process_o=0x%x "
+                "irq=%d",
                 bit,
                 got_req,
                 got_proc,
+                drop_pins["process"],
+                drop_pins["irq"],
             )
 
             await self.csr_write(f"NDM_PROCESS_CLR_B{bit}", NDM_PROCESS, 0)
-            await self._await_pins(dut, irq=0, process=0, label=f"CLR{bit}")
+            clr_pins = await self._await_pins(
+                dut, irq=0, process=0, label=f"CLR{bit}"
+            )
             got_proc = await self.csr_read(
                 f"NDM_PROCESS_CLR_B{bit}", NDM_PROCESS, expected=0
             )
             cocotb.log.info(
-                "CHK-NDM-CLR-%d: PROCESS=0x%x process_o=0", bit, got_proc
+                "CHK-NDM-CLR-%d: PROCESS=0x%x process_o=0x%x irq=%d",
+                bit, got_proc, clr_pins["process"], clr_pins["irq"],
             )
-
-        self.bits_ok = True
-        cocotb.log.info(
-            "CHK-NDM-BASIC: count=%s bits=%s", self.count_ok, self.bits_ok
-        )
+            self.bits_swept.append(bit)

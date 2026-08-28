@@ -103,6 +103,36 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
             f"TIMEOUT SBE: no DUT fire within {_FIRE_BOUND_CYCLES} cycles"
         )
 
+    async def _wait_ded_count_gt(self, baseline: int, *, label: str,
+                                 bound: int = _FIRE_BOUND_CYCLES) -> int:
+        """Wait for the DUT's own DED aggregate to fire.
+
+        `tb_cluster_ded_count` counts pulses of `smc_4core_cpu.cluster_ded_o`,
+        which is the OR of the four dcache-uncorrectable valids and all 32
+        SPM/TLRAM `o_uncorrectable_2` bits (smc_4core_cpu.sv:120-128). Unlike
+        `tb_cpu_ecc_inject_fire_count` -- a TB counter of "we flipped a bit
+        during a read" -- this is the DUT's SECDED decoder reporting that it
+        could not correct the word.
+        """
+        dut = cocotb.top
+        clk = dut.clk_smc_i
+        for i in range(bound):
+            await RisingEdge(clk)
+            cur = int(dut.tb_cluster_ded_count.value)
+            if cur > baseline:
+                cocotb.log.info(
+                    "%s DUT cluster_ded_count %d -> %d after %d cycles "
+                    "(SECDED uncorrectable reported by the DUT)",
+                    label, baseline, cur, i + 1,
+                )
+                return cur
+        raise AssertionError(
+            f"TIMEOUT {label}: the DUT's cluster_ded aggregate never fired "
+            f"({baseline} unchanged over {bound} cycles). The 2-bit inject at "
+            f"smc_cpu_mem_integration.sv:130-132 reaches the SECDED decoder, so "
+            f"an uncorrectable detection was expected."
+        )
+
     async def _pulse_scratch_boot(self) -> None:
         """Re-fetch from scratch; end in RESET_CTRL DEFAULT (pulse alone can stick)."""
         await _pulse_core_reset(self, CPU_RESET_VECTOR_SCRATCH, settle_cycles=64)
@@ -133,6 +163,13 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
 
         base = int(dut.tb_cpu_ecc_inject_fire_count.value)
         scratch_base = int(dut.tb_cpu_scratch_read_count.value)
+        # DUT-side ECC observable, sampled before any inject is armed.
+        ded_base = int(dut.tb_cluster_ded_count.value)
+        assert int(dut.tb_cluster_ded_sticky.value) == 0, (
+            f"the DUT already reported an uncorrectable ECC error before any "
+            f"inject was armed (cluster_ded_count={ded_base}); the two legs "
+            f"below could not be attributed to the injects"
+        )
 
         # SBE + recovery in one boot window: clear inject on first fire while
         # the I$ fill is still in flight, then require more scratch reads with
@@ -164,6 +201,20 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
             f"inject-clear recovery failed during I$ fill: "
             f"fire_count {mid} -> {mid_after}"
         )
+        # DUT ECC property, negative half: the SBE inject flips ONE bit
+        # (smc_cpu_mem_integration.sv:133-134), which SECDED corrects, so the
+        # DUT's uncorrectable aggregate must NOT have fired anywhere in the SBE
+        # or recovery window. This is the contrast that makes the DBE leg below
+        # mean something: without it, a cluster_ded that was stuck high would
+        # satisfy the DBE leg too.
+        ded_after_sbe = int(dut.tb_cluster_ded_count.value)
+        assert ded_after_sbe == ded_base, (
+            f"single-bit inject raised the DUT's uncorrectable ECC aggregate: "
+            f"cluster_ded_count {ded_base} -> {ded_after_sbe}. A 1-bit error in "
+            f"a 72-bit SECDED word (64 data + 8 check, "
+            f"chipyard_4core_mem_pkg.sv:20) must be CORRECTED, not flagged "
+            f"uncorrectable."
+        )
         cocotb.log.info(
             "RECOVERY ok: fire_count held at %d (first_fire=%d); "
             "scratch_reads %d -> %d",
@@ -185,20 +236,64 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
             await self._pulse_scratch_boot()
             dbe = await self._wait_fire_count_gt(mid, label="DBE")
         await self._wait_scratch_reads_gt(scratch_dbe_base, label="DBE")
+        # DUT ECC property, positive half: the DBE inject flips TWO bits
+        # (smc_cpu_mem_integration.sv:130-132) between the SRAM macro and the
+        # DUT's SECDED decoder, which cannot correct a 2-bit error and must
+        # report it uncorrectable. This is the DUT's own detector, not a TB
+        # counter of the injection.
+        ded_dbe = await self._wait_ded_count_gt(ded_after_sbe, label="DBE")
 
         dut.tb_cpu_ecc_inject_dbe.value = 0
+        # The baseline for the recovery wait is taken AFTER `boot_task`
+        # completes. A baseline sampled before the CPU has fetched anything is
+        # already exceeded by the time the wait starts, so the wait would return
+        # on its first cycle and could not fail ([TIMEOUT-MUST-FAIL] /
+        # [NO-ALWAYS-PASS-CHECKER]).
         await boot_task
-        await self._wait_scratch_reads_gt(scratch_base, label="SBE")
+        # There is deliberately no scratch-read wait at this point. The CPU does
+        # not re-fetch from scratch bank0 once the boot fetch has completed, and
+        # that is measured rather than assumed: a correctly baselined wait here
+        # times out with the count static at 33 over 50_000 cycles, and still
+        # times out at a static 33 after an extra `_pulse_scratch_boot()`. A
+        # wait with no stimulus behind it can only be satisfied by a stale
+        # baseline ([NO-ALWAYS-PASS-CHECKER]).
+        #
+        # The recovery property --
+        # further scratch traffic with the inject cleared must not score -- is
+        # already proven earlier in this body by the `RECOVERY` leg, which takes
+        # its baseline (`scratch_hold`) live, a few statements before it waits,
+        # and is followed by `assert mid_after == mid`.
+        ded_final = int(dut.tb_cluster_ded_count.value)
+        # NO ASSERTION IS MADE on `ded_final`, because "clearing the injects
+        # stops further uncorrectable reports" is not a property this bench can
+        # hold the DUT to: measured, the count still advances 1 -> 4 after both
+        # inject pins are deasserted. The DBE inject
+        # corrupts read data on its way out of the macro, so a corrupted word
+        # can be captured into the cache/SPM hierarchy and re-reported as
+        # uncorrectable on later accesses even with the inject pin deasserted.
+        # This testcase does not establish where those later detections come
+        # from, so it makes no claim about them -- it only records the count
+        # ([NO-FABRICATED-VERDICT]).
 
         await self.wait_fuse_sense_done()
         await self.csr_read("RAS_BANK_INFO", RAS_BANK_INFO)
 
         await ClockCycles(clk, 2)
         cocotb.log.info(
-            "CHK-ECC-INJECT: SBE %d->%d recovery_hold=%d DBE %d->%d",
-            base,
-            sbe,
-            mid,
-            mid,
-            dbe,
+            "CHK-ECC-INJECT: TB inject fire_count SBE %d->%d recovery_hold=%d "
+            "DBE %d->%d",
+            base, sbe, mid, mid, dbe,
+        )
+        cocotb.log.info(
+            "CHK-ECC-DUT-SECDED: the DUT's OWN uncorrectable aggregate "
+            "(smc_4core_cpu.cluster_ded_o = |{4 dcache-uncorrectable, 32 "
+            "SPM/TLRAM o_uncorrectable_2}) counted %d before any inject, %d "
+            "after the 1-bit SBE window (unchanged -- SECDED corrected it), "
+            "and %d after the 2-bit DBE window (raised -- SECDED could not "
+            "correct it). Both halves are DUT-sourced; neither is the TB "
+            "inject counter. Post-inject the count reached %d; NO claim is made "
+            "about those later detections (injected corruption can be captured "
+            "into the cache/SPM hierarchy and re-reported after the inject pin "
+            "is deasserted, and this testcase does not establish their origin).",
+            ded_base, ded_after_sbe, ded_dbe, ded_final,
         )

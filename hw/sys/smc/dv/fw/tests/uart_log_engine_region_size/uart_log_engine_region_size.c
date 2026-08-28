@@ -64,7 +64,10 @@
 #define SLOT_SIZE (LOG_REGION_SIZE / NUM_ENTRIES) // 16 bytes
 
 static int read_byte_with_timeout(uint8_t *out) {
-    for (uint32_t t = 0; t < 1000000u; t++) {
+    /* 1000000 polls is ~4 s of sim here; the harness timeout fired long
+     * before it, making the RX-timeout FAIL path unreachable. 200 polls
+     * (~0.8 ms) still dwarfs a single byte's latency. */
+    for (uint32_t t = 0; t < 200u; t++) {
         if (read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) {
             *out = (uint8_t)(read_reg(WRAP0_UART_BASE + UART_RBR_OFF) & 0xFFu);
             return 0;
@@ -138,7 +141,7 @@ int main(void) {
 
         // Wait for LOG_CTRL[i] to clear
         {
-            uint32_t t = 200000u;
+            uint32_t t = 200u;  /* see note above: keep expiry reachable */
             while (t > 0u &&
                    (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF + (i * 4u)) & 0xFFFFu) != 0u) {
                 t--;

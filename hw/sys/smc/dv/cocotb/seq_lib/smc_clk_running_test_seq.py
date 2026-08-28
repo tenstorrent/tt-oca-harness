@@ -7,8 +7,6 @@ DV-CARD: SMCCGP0_001 ANCHOR: smc_clk_running_test
 
 from __future__ import annotations
 
-import logging
-
 import cocotb
 from cocotb.triggers import RisingEdge
 
@@ -19,7 +17,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from . import smc_cg_obs_utils as cg
 from . import smc_addr_map as _addr
 
-_LOG = logging.getLogger(__name__)
+# Every record this sequence emits goes through `cocotb.log`: a module-level
+# `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
+# the CHK/STEP/FENCE evidence written through one never reaches the kept log
+# ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 HYST_CYCLES = 8
 ACTIVE_WINDOW = 16
@@ -83,7 +84,8 @@ class smc_clk_running_test_seq(SmcCsrSeq):
 
     async def _program_cg(
         self, *, dma_en: bool, zeroer_en: bool, hyst: int
-    ) -> int:
+    ) -> tuple[int, int]:
+        """Program CLOCK_GATE_CONTROL and return ``(programmed, readback)``."""
         cur = await self.csr_read("CLOCK_GATE_CONTROL_RD", CLOCK_GATE_CONTROL, length=8)
         nxt = (
             cur
@@ -100,7 +102,9 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         assert (rb & DMA_CG_EN) == (DMA_CG_EN if dma_en else 0)
         assert (rb & ZEROER_CG_EN) == (ZEROER_CG_EN if zeroer_en else 0)
         assert ((rb & CG_HYST_MASK) >> CG_HYST_SHIFT) == hyst
-        return rb
+        # Programmed word returned alongside the read-back so callers can log the
+        # two quantities that were compared instead of a literal `match=1`.
+        return nxt, rb
 
     async def _program_output_fabric_pass_all(self) -> None:
         await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
@@ -135,6 +139,27 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         item.update_golden = True
         item.memory_region = DMA_MODEL_REGION
         await _OneShot(item, f"{item_name}_os").start(self.env.jtag_axi_agent.sequencer)
+
+    async def _read_bytes(self, addr: int, length: int, *,
+                          check_golden: bool = False) -> bytes:
+        """Frontdoor JTAG-AXI read; optionally compared against the golden model.
+
+        The consumer for the ``update_golden`` bookkeeping the payload writes
+        already do: without a `check_golden` read the model is written and never
+        read back, which leaves "memory-model UPDATE" records in the kept log
+        that read like data-integrity checking while nothing is compared
+        ([NO-DUMMY-DEAD-CODE]).
+        """
+        assert self.env is not None
+        item_name = f"jtag_clk_run_rd_0x{addr:x}"
+        item = SmcSysAxiItem(item_name)
+        item.op = SmcSysAxiOp.READ
+        item.addr = addr
+        item.length = length
+        item.check_golden = check_golden
+        item.memory_region = DMA_MODEL_REGION
+        await _OneShot(item, f"{item_name}_os").start(self.env.jtag_axi_agent.sequencer)
+        return item.rdata.to_bytes(length, "little")
 
     async def _program_dma_descriptors(self) -> None:
         await self.csr_write("DMA_CONFIG", DMA_CTRL_CONFIG, DMA_CONFIG_ENABLED_ND)
@@ -227,16 +252,34 @@ class smc_clk_running_test_seq(SmcCsrSeq):
             "S1",
             "frontdoor-write CLOCK_GATE_CONTROL DMA_CG_EN=1 ZEROER_CG_EN=1; readback",
         )
-        rb = await self._program_cg(dma_en=True, zeroer_en=True, hyst=HYST_CYCLES)
-        assert cg.sample_bit(dut, "tb_dma_cg_en") == 1
-        assert cg.sample_bit(dut, "tb_zeroer_cg_en") == 1
+        programmed, rb = await self._program_cg(
+            dma_en=True, zeroer_en=True, hyst=HYST_CYCLES
+        )
+        dma_probe = cg.sample_bit(dut, "tb_dma_cg_en")
+        zeroer_probe = cg.sample_bit(dut, "tb_zeroer_cg_en")
+        assert dma_probe == 1, f"tb_dma_cg_en={dma_probe}, expected 1"
+        assert zeroer_probe == 1, f"tb_zeroer_cg_en={zeroer_probe}, expected 1"
         dma_rb = int((rb & DMA_CG_EN) != 0)
         zeroer_rb = int((rb & ZEROER_CG_EN) != 0)
+        hyst_rb = (rb & CG_HYST_MASK) >> CG_HYST_SHIFT
+        # Print the compared quantities, not a literal `match=1`: the programmed
+        # word, the read-back word, the three decoded fields and the two sampled
+        # probe levels. `_program_cg` has already asserted each field equal, so
+        # this line evidences the match it claims instead of asserting a
+        # comparison result as a constant ([NO-DUMMY-DEAD-CODE]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-CG-ENABLE-READBACK",
-            "CHK-CG-ENABLE-READBACK: DMA_CG_EN=1 ZEROER_CG_EN=1 "
-            f"readback_dma={dma_rb} readback_zeroer={zeroer_rb} match=1",
+            "CHK-CG-ENABLE-READBACK: programmed=0x%016x readback=0x%016x "
+            "dma_cg_en %d->%d zeroer_cg_en %d->%d hyst %d->%d "
+            "probe_tb_dma_cg_en=%d probe_tb_zeroer_cg_en=%d"
+            % (
+                programmed, rb,
+                int((programmed & DMA_CG_EN) != 0), dma_rb,
+                int((programmed & ZEROER_CG_EN) != 0), zeroer_rb,
+                (programmed & CG_HYST_MASK) >> CG_HYST_SHIFT, hyst_rb,
+                dma_probe, zeroer_probe,
+            ),
         )
         cg.mark_fence(self.fence, "cg-enable-readback")
 
@@ -320,11 +363,15 @@ class smc_clk_running_test_seq(SmcCsrSeq):
             f"toggles_every_cycle={toggles_every} dma_edges={dma_edges} "
             f"window={ACTIVE_WINDOW} zeroer_axi_edges={zaxi_edges}",
         )
-        # Legacy P1 token (closed P1 grade still greps this name).
+        # Legacy P1 token: an ALIAS of CHK-DMA-ACTIVITY-UNGATE, re-reporting the
+        # same dma_edges / zaxi_edges measurement under the name the closed P1
+        # grade greps. It carries no additional compare and must not be counted
+        # as an independent proof ([NO-DUMMY-DEAD-CODE]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-ACTIVE-RUNNING",
-            "CHK-ACTIVE-RUNNING: active_module=DMA "
+            "CHK-ACTIVE-RUNNING: alias_of=CHK-DMA-ACTIVITY-UNGATE "
+            "(same measurement, no additional compare) active_module=DMA "
             f"toggles_every_cycle={toggles_every} dma_edges={dma_edges} "
             f"idle_module=Zeroer axi_clk_gated={axi_gated} "
             f"zeroer_edges={zaxi_edges} concurrent_window={ACTIVE_WINDOW}",
@@ -334,15 +381,55 @@ class smc_clk_running_test_seq(SmcCsrSeq):
         # ---- S4: bounded DMA completion wait ----
         cg.log_step("S4", "bounded wait for DMA transfer completion")
         done_cyc = await self._wait_dma_done(baseline_done)
+        # Measured, not asserted-by-literal: the observed completion cycle and
+        # the bound it was measured against. A constant such as
+        # `fail_on_expiry=1` in this token would evidence nothing
+        # ([NO-DUMMY-DEAD-CODE]); the bounded waits that do raise on expiry are
+        # `_wait_dma_busy`, `_wait_dma_done` and `cg.wait_gated_off`.
+        assert 0 <= done_cyc < DMA_DONE_TIMEOUT_SMC, (
+            f"DMA completion cycle {done_cyc} outside the bound "
+            f"{DMA_DONE_TIMEOUT_SMC}"
+        )
         cg.emit_chk(
             self.chk_seen,
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS: "
             f"bound_smc_cycles={DMA_DONE_TIMEOUT_SMC} expired=0 "
-            f"done_after_smc={done_cyc} fail_on_expiry=1",
+            f"done_after_smc={done_cyc} "
+            f"margin_smc={DMA_DONE_TIMEOUT_SMC - done_cyc} "
+            f"gate_off_bound_smc={GATE_OFF_TIMEOUT_SMC} "
+            f"busy_bound_smc={RESUME_TIMEOUT_SMC * 8}",
         )
 
-        cg.assert_fence_order(
+        # ---- S5: golden consumer for the payload writes -------------------
+        # The two payload writes update the TB-local golden; predict the DMA
+        # outcome into the model *before* reading the destination back, so the
+        # scoreboard compare is DUT-vs-prediction and the model bookkeeping is
+        # a real data check instead of dead records ([NO-DUMMY-DEAD-CODE]).
+        cg.log_step("S5", "golden check: DMA destination holds the payload")
+        self.memory_model.write(DMA_DST_ADDR, DMA_PAYLOAD, region=DMA_MODEL_REGION)
+        moved = await self._read_bytes(
+            DMA_DST_ADDR, len(DMA_PAYLOAD), check_golden=True
+        )
+        assert moved == DMA_PAYLOAD, (
+            f"DMA destination mismatch after the ungate window: got "
+            f"{moved.hex()}, expected {DMA_PAYLOAD.hex()}"
+        )
+        cg.emit_chk(
+            self.chk_seen,
+            "CHK-DMA-PAYLOAD-GOLDEN",
+            "CHK-DMA-PAYLOAD-GOLDEN: DMA destination @ "
+            f"0x{DMA_DST_ADDR:x} reads {moved.hex()} == predicted payload "
+            f"{DMA_PAYLOAD.hex()} (scoreboard memory-model CHECK, "
+            f"reps={DMA_REPS})",
+        )
+
+        # Non-vacuity: the phase order *and* strictly increasing DUT timestamps,
+        # plus the measured contrast that makes the whole scenario fail-capable
+        # -- the same probe read 0 edges in the idle window and every cycle in
+        # the active window. A stuck-on or stuck-off gated clock, or a phase that
+        # consumed no simulation time, fails here ([NO-ALWAYS-PASS-CHECKER]).
+        fence_times = cg.assert_fence_progress(
             self.fence,
             [
                 "cg-enable-readback",
@@ -350,11 +437,20 @@ class smc_clk_running_test_seq(SmcCsrSeq):
                 "dma-activity-ungate",
             ],
         )
+        assert dma_edges > dma_idle, (
+            f"CHK-NONVAC contrast failed: tb_dma_gated_clk sampled enabled on "
+            f"{dma_idle}/{IDLE_OBSERVE} idle rises and {dma_edges}/"
+            f"{ACTIVE_WINDOW} active rises -- the measurement does not "
+            f"distinguish gated from ungated"
+        )
         cg.emit_chk(
             self.chk_seen,
             "CHK-NONVAC",
             "CHK-NONVAC: cg-enable-readback < idle-gated-baseline < "
-            "dma-activity-ungate < PASS",
+            "dma-activity-ungate recorded at strictly increasing sim times "
+            f"{fence_times}ns, and the same probe measured "
+            f"idle_enabled={dma_idle}/{IDLE_OBSERVE} vs "
+            f"active_enabled={dma_edges}/{ACTIVE_WINDOW} (contrast > 0)",
         )
         cg.mark_fence(self.fence, "PASS")
-        _LOG.info("smc_clk_running_test_seq PASS")
+        cocotb.log.info("smc_clk_running_test_seq PASS")

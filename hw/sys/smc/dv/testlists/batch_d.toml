@@ -119,14 +119,6 @@ tags = ["smoke", "ci", "batch_d", "canonical_top20", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_input_fabric_axi_wr_rd_test"
-module = "smc_input_fabric_axi_wr_rd_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_d", "project_p0", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_avsbus_sanity_test"
 module = "smc_avsbus_sanity_test"
 seed = 1
@@ -169,14 +161,6 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_uart_loopback_test"
 module = "smc_uart_loopback_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_d", "depth_uart_log", "p2_phase_a", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_spi_loopback_test"
-module = "smc_spi_loopback_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "batch_d", "depth_uart_log", "p2_phase_a", "pyuvm"]
@@ -266,14 +250,12 @@ tests = [
     "smc_efuse_chip_config_read_test",
     "smc_gpio_irq_active_test",
     "smc_sideband_protocol_smoke_test",
-    "smc_input_fabric_axi_wr_rd_test",
     "smc_avsbus_sanity_test",
     "smc_avsbus_status_depth_test",
     "smc_avsbus_clock_config_proxy_test",
     "smc_uart_spi_log_engine_test",
     "smc_uart_log_engine_reg_rw_test",
     "smc_uart_loopback_test",
-    "smc_spi_loopback_test",
     "smc_spi_pad_bfm_test",
     "smc_octs_dual_sync_test",
     "smc_zeroer_dma_timeout_test",

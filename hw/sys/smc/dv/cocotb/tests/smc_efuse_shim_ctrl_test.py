@@ -23,6 +23,9 @@ class smc_efuse_shim_ctrl_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
+            # Directed stimulus floor: 2 SEP_IN AXI EFUSE_INTERFACE/SHIM_CTRL
+            # probe accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=2,
             csr_accesses=seq.accesses,
             proxy=False,
             details="P1 coverage-gap: EFUSE_INTERFACE + SHIM_CTRL probe",
