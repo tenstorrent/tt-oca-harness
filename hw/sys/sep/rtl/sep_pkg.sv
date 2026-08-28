@@ -652,9 +652,8 @@ package sep_pkg;
     // JTAG SEP Reset Control
     //
     // jtag_ptap sizes the DTP IC_RESET SEP slice as $bits(type)/2 and scans
-    // first-declared closest to TDI, so the two sub-structs must stay the same
-    // width and member order is TDR bit order. Inserting a member moves the TDR
-    // position of every member below it; new overrides go on top.
+    // first-declared closest to TDI, so both sub-structs must stay the same
+    // width and member order is TDR bit order. New overrides go on top.
     typedef struct packed {
         logic drbg_jtag_rst_n_ovrd;
         logic esrc_jtag_rst_n_ovrd;

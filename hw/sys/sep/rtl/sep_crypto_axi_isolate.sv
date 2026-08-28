@@ -215,9 +215,7 @@ module sep_crypto_axi_isolate
         .gated_rst_no  (drbg_edn_gated_rst_n)
     );
 
-    // Both ports are active-low, and the two units drain independently, so the
-    // OR holds the DRBG out of reset until the slower of the two has isolated.
-    // An AND would reset it while the other port was still open.
+    // Active low, so the DRBG holds out of reset until both ports have isolated.
     assign drbg_gated_rst_no = drbg_csrng_gated_rst_n | drbg_edn_gated_rst_n;
 
 endmodule
