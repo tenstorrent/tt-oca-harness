@@ -64,8 +64,8 @@ as passwords. We have tokens:
 ** Digest SEC_DIS_TOKEN_DIGEST in hardware gates (global)
 
 The separate security disable token SEC_DIS_TOKEN overrides the entire
-LC control mechanism; the resulting feature control follows the SEC_DIS /
-SECURE_TM rules in the Lifecycle Controller chapter. This feature is an
+LC control mechanism; the resulting feature control follows the SEC_DIS
+rules in the Lifecycle Controller chapter. This feature is an
 _emergency fallback_ intended to enable A0 silicon debugging and shall
 be permanently disabled in subsequent A1/B0 revisions via metal mask
 only ECO.

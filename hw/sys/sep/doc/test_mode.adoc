@@ -8,12 +8,26 @@ Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
 latched when SEP fuse sensing is done if SEC_DIS is not asserted.
 TEST_EN is latched on chiplet cold reset release if SEC_DIS is asserted.
 
-The latched value becomes an internal signal SECURE_TM. Only when
-SECURE_TM is asserted to 1 can any tests be enabled. While Table tbd
-defines the static enablement of different tests, SECURE_TM provides
-dynamic control on top of that.
+The latched value becomes the internal signal SECURE_TM, which can be
+cleared only by chip reset.
 
-The test feature control signals sent from SEP to TAP are qualified by
-SECURE_TM == 1 in order to enable the tests. The SECURE_TM is also used
-in SEP to protect secrets that cannot be erased before entering RMA
-modes. The latched SECURE_TM value can only be cleared by chip reset.
+SECURE_TM is not an authorization signal, and no feature control bit is
+qualified by it: the debug and function groups of `feat_ctrl_o` are
+determined solely by the LC state, the DIS vectors, and the SEC_DIS
+override. SECURE_TM is instead a coercion -- it forces the part into a
+configuration in which no secret is present and no fuse can be
+programmed. It has four uses, defined normatively in the Life Cycle
+Controller chapter, _`secure_tm` and the Secure Scan Chain_:
+
+. On the dedicated secure scan chain, a *test* command is admitted only
+while SECURE_TM = 1. At SECURE_TM = 0 no command is admitted on that
+chain, and a *dump* command is never admitted at either value.
+
+. The shadow registers of LOCK (both the LOCKS and LOCKS_SPARE windows),
+LC_STATE, SIP_DIS, and SYS_DIS are blocked from any update.
+
+. The fuse write-enable inputs to the fuse IP block are tied inactive.
+
+. The secret sources (the UIDs and CLASS_KEY) are disconnected from
+downstream logic. This is what protects the secrets that cannot be
+erased before entering RMA modes.
