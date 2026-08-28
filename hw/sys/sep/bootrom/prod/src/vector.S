@@ -5,7 +5,9 @@
  *
  * Code executes from Boot ROM (0x10040000) via the IFU AXI demux.
  * Data (.rodata/.data/.bss/stack) resides in DCCM (0xC0040000).
- * PASS/FAIL signalled via STDOUT mailbox (0x80000000).
+ * The C runtime signals PASS/FAIL via the STDOUT mailbox (0x80000000); this
+ * file opens the outbound filter and PMP window for it but never writes it
+ * itself -- see the note above the constants below.
  *
  * Build assumes RV32IM (no compressed — .option norvc).
  */
@@ -17,12 +19,13 @@
 
 #include "sep_addr.h"
 
-/* SEP firmware status mailbox observed by the DV harness. */
-.equ SEP_STDOUT_MBX, 0x80000000
-.equ SEP_FW_MAGIC0,  0xA5A55A5A
-.equ SEP_FW_PASS,    0xCAFEBABE
-.equ SEP_FW_FAIL,    0xDEADBEEF
-.equ SEP_STAT_TAG,   0x53544154      /* 'STAT' (legacy, kept for reference) */
+/* No mailbox constants here on purpose. The DV status mailbox is at 0x80000000,
+ * inside the external SMU aperture, so whether a store to it lands or takes a
+ * bus error is an SoC integration property. Assembly runs on the paths that must
+ * survive anything -- reset entry and the halts -- and a bus error there raises
+ * NMI, turning a clean stop into a loop. These paths report through
+ * cold_scratch, a SEP register that is always present. The C runtime may use the
+ * mailbox; it runs later, after the outbound filter is open. */
 .equ SEP_COLD_SCRATCH_1, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
 
 /* DCCM base from EL2 snapshot: sadr=0xC0040000, size=128KiB → top=0xC0060000.
@@ -72,14 +75,14 @@
  * instead of the SMC strap the C version used -- a strap is a pin, so anyone able
  * to hold it could switch this gate off on a production part.
  *
- * NOTE (A32): bit 2 currently falls inside `reserved[31:2]` in
+ * NOTE: bit 2 currently falls inside `reserved[31:2]` in
  * regs/blocks/sep_efuse_map/sep_efuse_map.rdl:806, so this is an undeclared use
  * of a reserved bit. The reference does exactly the same thing -- its own RDL
  * also leaves the bit reserved while its vector.S reads it -- and the OCH eFuse
- * spec does not allocate it either. A32 is to split that field into
- * `mem_repair_ignore[2:2]` so the allocation is documented rather than merely
- * relied upon. The register's existing `sw = r` / `hw = rw` access is already
- * correct for a bypass: software cannot assert it, only the fuse can.
+ * spec does not allocate it either. Splitting that field into
+ * `mem_repair_ignore[2:2]` would document the allocation rather than leave it
+ * merely relied upon. The register's existing `sw = r` / `hw = rw` access is
+ * already correct for a bypass: software cannot assert it, only the fuse can.
  */
 .equ SEP_EFUSE_STATUS_RPT,     OCH_SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR
 .equ STATUS_RPT_MEM_REPAIR_IGNORE, (1 << 2)
@@ -89,8 +92,12 @@ _start:
     csrr    t0, mhartid
     bnez    t0, secondary_hart
 
-    /* Set trap vector early (before any MMIO access, for safety). */
-    la      t0, trap_vector
+    /* Set a trap vector before the first MMIO access. It has to be the
+     * stack-free one: sp is not established until cold_boot, and trap_vector
+     * pushes ra, so a trap taken here would store through a garbage sp --
+     * likely outside DCCM, which is a bus error, which is an NMI, which is a
+     * double fault. cold_boot re-points mtvec once sp exists. */
+    la      t0, trap_vector_early
     csrw    mtvec, t0
 
     /* Configure VeeR EL2 MRAC before warm reset check so that the
@@ -188,6 +195,11 @@ cold_boot:
 
     /* Set global pointer for small-data accesses (gp-relative). */
     la      gp, __global_pointer$
+
+    /* sp exists now, so upgrade from the stack-free early vector to the one
+     * that can call into C and print a decoded trap. */
+    la      t0, trap_vector
+    csrw    mtvec, t0
 
     /* Configure outbound filter to allow mailbox writes at 0x8000_0000.
      *
@@ -354,28 +366,25 @@ cold_boot:
     /* No bypass: stop. Do not fall through to the scrub -- writing 128KiB of
      * memory that just failed repair is exactly what must not happen.
      *
-     * This reproduces what rom_err_fail(ROM_ERR_DFT_GATE_BLOCKED) used to emit,
-     * deliberately, so the observable contract does not change when the gate
-     * moves out of C: cold_scratch[1] gets STATUS_ENCODE(ERROR, 0xD001) =
-     * 0x0f01d001, then the mailbox gets the MAGIC/FAIL/code triple that tells the
-     * testbench the ROM stopped rather than hung silently. The one part that
-     * cannot come along is the simputs() console text -- there is no C runtime
-     * here -- and the bl0_state error_code, which is not initialised this early.
+     * cold_scratch[1] gets STATUS_ENCODE(ERROR, 0xD001) = 0x0f01d001, the same
+     * word rom_err_fail(ROM_ERR_DFT_GATE_BLOCKED) leaves, so the observable
+     * contract survives the gate moving out of C. What cannot come along is the
+     * simputs() console text -- there is no C runtime here -- and the bl0_state
+     * error_code, which is not initialised this early.
      *
-     * The mailbox writes work because the outbound filter was opened above;
-     * warm_reset_hang cannot do this because it runs before that setup, which is
-     * why it only leaves a scratch word. */
+     * Scratch ONLY, deliberately: no mailbox write. The mailbox lives at
+     * 0x80000000, inside the external SMU aperture, and whether anything is
+     * mapped there is an SoC integration property. On a part where it is not,
+     * the store takes a bus error, the bus error raises NMI, and a failure path
+     * that was supposed to stop cleanly turns into an NMI loop. A halt path must
+     * not depend on anything outside SEP. cold_scratch is a SEP register and is
+     * always there.
+     *
+     * DV therefore cannot learn of this halt from fw_done; a test covering it
+     * polls cold_scratch[1] instead. */
 mem_repair_fail_hang:
     li      t0, SEP_COLD_SCRATCH_1
     li      t2, 0x0f01d001
-    sw      t2, 0(t0)
-
-    li      t0, SEP_STDOUT_MBX
-    li      t2, SEP_FW_MAGIC0
-    sw      t2, 0(t0)
-    li      t2, SEP_FW_FAIL
-    sw      t2, 0(t0)
-    li      t2, 0x0000d001              /* ROM_ERR_DFT_GATE_BLOCKED */
     sw      t2, 0(t0)
 
 5:  wfi
@@ -445,9 +454,54 @@ mem_repair_fail_hang:
     j       1b
 
     .align  4
+trap_vector_early:
+    /* Trap handler for the window before cold_boot establishes sp: touches no
+     * memory except cold_scratch[1], and calls nothing.
+     *
+     * Diagnostics go to cold_scratch[1] in sequence -- status, mcause, mtval,
+     * mepc, then the status again -- each store overwriting the last. The order
+     * mirrors the reference's ECR, EFA, ERET so a decoder written for one works
+     * on the other. This is
+     * the reference ROM's _default_handler pattern, including the closing
+     * status write, and that last store is the point: a bus observer (the tb
+     * samples this register every cycle) reconstructs the whole sequence, while
+     * a post-mortem register read on silicon finds a decodable status rather
+     * than a bare CSR value it cannot identify.
+     *
+     * cold_scratch is a SEP register, so these stores cannot leave the
+     * subsystem and cannot themselves fault. Nothing here may reach the mailbox
+     * at 0x80000000 -- see the note by the constants at the top of this file. */
+    li      t0, SEP_COLD_SCRATCH_1
+    li      t1, 0x0f010028              /* STATUS_ENCODE(ERROR, SEP_MSG_GENERAL_EXCEPTION) */
+    sw      t1, 0(t0)
+    csrr    t2, mcause                  /* reference: ECR  */
+    sw      t2, 0(t0)
+    csrr    t2, mtval                   /* reference: EFA  */
+    sw      t2, 0(t0)
+    csrr    t2, mepc                    /* reference: ERET */
+    sw      t2, 0(t0)
+    sw      t1, 0(t0)                   /* leave a decodable status resting here */
+
+    /* Fail code for sim/emulation, as the reference's _default_handler does.
+     * Unnecessary on silicon but harmless, and cold_scratch[0] is a SEP
+     * register so it carries none of the mailbox's addressing risk. 0xDEADBEEF
+     * is already this ROM's fail magic (rom_mbx.h ROM_FW_FAIL) and the value
+     * the reference uses, so one constant covers both.
+     *
+     * Only the exception handler does this, not mem_repair_fail_hang -- again
+     * matching the reference, where a repair failure is a gated outcome with a
+     * bypass fuse rather than an unexpected fault. */
+    li      t0, SEP_COLD_SCRATCH_0
+    li      t2, 0xDEADBEEF
+    sw      t2, 0(t0)
+3:  wfi
+    j       3b
+
+    .align  4
 trap_vector:
     /* On any trap, read key CSRs and call C handler for debug output.
-     * Requires sp to be valid (set up during cold_boot). */
+     * Requires sp to be valid; mtvec only points here after cold_boot sets it,
+     * and trap_vector_early covers everything before that. */
     addi    sp, sp, -4
     sw      ra, 0(sp)
     csrr    a0, mcause
@@ -462,8 +516,10 @@ trap_vector:
     j       2b
 
 secondary_hart:
-    /* Secondary harts: set mtvec then park. */
-    la      t0, trap_vector
+    /* Secondary harts: set mtvec then park. The stack-free vector, not
+     * trap_vector -- these harts never reach cold_boot, so they never get an
+     * sp, and trap_vector would push ra through whatever sp holds at reset. */
+    la      t0, trap_vector_early
     csrw    mtvec, t0
 4:  wfi
     j       4b
