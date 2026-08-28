@@ -124,8 +124,15 @@ module km_reset_conditioner import prim_mubi_pkg::*; #(
         end
     end
 
-    assign rst_warm_sync_no = mubi4_test_true_strict(scanmode_i) ? scan_rst_ni
-                                                                   : ~warm_hold_active_q;
+    logic warm_rst_n;
+    assign warm_rst_n = ~warm_hold_active_q;
+
+    prim_rst_mux2_hf_n u_warm_rst_scan_mux (
+        .rst0_ni (warm_rst_n),
+        .rst1_ni (scan_rst_ni),
+        .sel_i   (mubi4_test_true_strict(scanmode_i)),
+        .rst_no  (rst_warm_sync_no)
+    );
 
     //=========================================================================
     // Assertions
