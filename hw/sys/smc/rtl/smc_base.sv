@@ -649,8 +649,10 @@ module smc_base
   // One non-intrusive detector per independent master AXI into the fabric (CPU
   // is excluded -- covered by the watchdog). Snoop is local; config comes from
   // the cpu_ctrl register block (u_internal_regs). The three irqs are OR'd into
-  // a single fault line routed out of the SMC to the safety island. clk_smc_i
-  // domain, AXI4 so r_last comes from the read response.
+  // a single fault line on axi_hang_irq_o, which smc.sv feeds back into
+  // smc_peripherals to land on peripheral_interrupts[31] -> PLIC source 288.
+  // Software reads the per-detector HANG_DET_*_CTRL registers to tell which
+  // master stalled.
   logic hang_irq_sys_axi, hang_irq_sep_axi, hang_irq_data_accel;
 
   axi_hang_detector #(.OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX)) u_hang_det_sys_axi (
@@ -716,7 +718,7 @@ module smc_base
       .irq_o            (hang_irq_data_accel)
   );
 
-  // Combined fault to the safety island
+  // Combined fault out to smc.sv, which routes it to peripheral_interrupts[31]
   assign axi_hang_irq_o = hang_irq_sys_axi | hang_irq_sep_axi | hang_irq_data_accel;
 
 endmodule

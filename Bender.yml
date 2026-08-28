@@ -593,8 +593,6 @@ sources:
       - hw/common/och_prim/rtl/prim_pipe_stages.sv
       - hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
       - hw/common/och_prim/rtl/prim_pulse_signal.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
       - hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
       - hw/common/och_prim/rtl/prim_rom_bank_swap.sv
       - hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
@@ -615,6 +613,11 @@ sources:
       - hw/common/och_prim_generic/rtl/prim_clock_or2.sv
       - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
       - hw/common/sync.sv
+  # Scrambled-RAM primitives: dtp has no scrambled memory, so excluded here.
+  - target: any(sep, smc, key_manager)
+    files:
+      - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
+      - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
   - target: all(any(dtp, sep, smc, key_manager), not(synth))
     files:
       - hw/common/och_prim_generic/rtl/prim_clkgater.sv
