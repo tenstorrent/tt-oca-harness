@@ -970,8 +970,9 @@ module sep_uvm_top
     // fall back to the CWD default filename (mirrors the retired tb_*_responder
     // load order: tests that stage a committed hex into the sim CWD without a
     // plusarg still get it -- e.g. sep_boot_rom_smoke_test relies on the default
-    // sep_boot_rom.hex). The $fopen existence guard leaves the default fill intact
-    // when the file is absent.
+    // sep_boot_rom.hex). A missing default file leaves the default fill intact.
+    // A named `+km_rom_hex` file must exist: $readmemh of an absent path leaves
+    // the KM ROM empty and the firmware never posts ready.
     initial begin : backdoor_image_loads
         string img;
         int    fd;
@@ -997,7 +998,13 @@ module sep_uvm_top
             end
         end
         if ($value$plusargs("km_rom_hex=%s", img)) begin
+            fd = $fopen(img, "r");
+            if (fd == 0) begin
+                $fatal(1, "[tb_backdoor_mem] +km_rom_hex=%s is not readable", img);
+            end
+            $fclose(fd);
             $readmemh(img, `SEP_IPI.u_km_rom.mem);
+            $display("[tb_backdoor_mem] KM ROM image loaded (%0s)", img);
         end else begin
             fd = $fopen("km_rom.parhex", "r");
             if (fd != 0) begin
